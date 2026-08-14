@@ -13,100 +13,15 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "implemented_pending_human_review",
-  "active": {
-    "task_id": "TASK_GOVERNANCE_EVIDENCE_DIGEST_AUTOCORRECTION",
-    "summary": "Automatically canonicalize a role evidence SHA-256 when the committed path and commit identity are valid and unchanged.",
-    "kind": "simple",
-    "classification": "simple",
-    "phase": "human_review",
-    "scope_contract": {
-      "schema": "connlab.serial-task-request",
-      "version": 1,
-      "task_id": "TASK_GOVERNANCE_EVIDENCE_DIGEST_AUTOCORRECTION",
-      "summary": "Automatically canonicalize a role evidence SHA-256 when the committed path and commit identity are valid and unchanged.",
-      "root_cause_clear": true,
-      "expected_result_clear": true,
-      "may_touch": [
-        "scripts/connlab_personal_task.py",
-        "tests/integration/test_connlab_serial_complex_recovery.py",
-        "docs/task_board.md"
-      ],
-      "targeted_validation": [
-        "py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q",
-        "py -m py_compile scripts/connlab_personal_task.py",
-        "git diff --check"
-      ],
-      "requires_independent_review": false,
-      "forbidden_categories": {
-        "api_contract": false,
-        "database": false,
-        "schema_or_migration": false,
-        "persistence": false,
-        "authority": false,
-        "public_drive_workflow": false,
-        "business_rule_semantics": false,
-        "destructive_action": false,
-        "external_mutation": false,
-        "push_or_release": false
-      }
-    },
-    "plan_ref": null,
-    "approval_ref": null,
-    "activation_parent_sha": "0c06d11b4d2b1067f98efab89bd41e3934a42790",
-    "activated_at": "2026-08-14T13:23:16Z",
-    "updated_at": "2026-08-14T13:46:05Z",
-    "blocker": null,
-    "validation": {
-      "schema": "connlab.personal-task-validation",
-      "version": 1,
-      "status": "passed",
-      "checks": [
-        {
-          "command": "py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q --basetemp=tmp/pytest-digest-review-final -p no:cacheprovider",
-          "exit_code": 0,
-          "summary": "17 passed in 55.22s"
-        },
-        {
-          "command": "py -m py_compile scripts/connlab_personal_task.py",
-          "exit_code": 0,
-          "summary": "Python syntax validation passed"
-        },
-        {
-          "command": "git diff --check",
-          "exit_code": 0,
-          "summary": "No whitespace errors"
-        }
-      ],
-      "observed_paths": [
-        "scripts/connlab_personal_task.py",
-        "tests/integration/test_connlab_serial_complex_recovery.py",
-        "docs/task_board.md"
-      ],
-      "manual_checks": [
-        "A 40-character Git OID is canonicalized for Developer, Reviewer, QA, and Integrator callbacks.",
-        "A mismatched 64-character SHA-256 is rejected with BLOCKED_CALLBACK_INVALID and byte-identical board state.",
-        "Human-readable board sections contain no dynamic idle or active-task claim and defer to machine state/active authority."
-      ],
-      "recorded_at": "2026-08-14T13:46:05Z"
-    },
-    "complex_context": null
-  },
+  "state": "idle",
+  "active": null,
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
-    "task_id": "TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER",
-    "disposition": "retained",
-    "decision_ref": "User explicitly sent 关闭 for TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER in the current thread on 2026-08-14.",
-    "integration_commit": "5a53c9eeedee36a20b378b33f12861de99c71322",
-    "integrator_evidence_ref": "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_integrator.md@0ad87cd3d7b68d7e82f202a1015a015564abc7d6#5beef5ab137bf3b5e78acbcf5e764a991331d7f83ba7695dd5b58ac62d3e5909",
-    "retained_resources": {
-      "thread_id": "019fb3d4-12a5-73b3-be8e-e59686fa39a9",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\task-matrix-import-browser-project-source-picker",
-      "branch": "codex/task-matrix-import-browser-project-source-picker",
-      "head_sha": "05be2d9ad8ebab387f1c8414805a55f14ac9cff8"
-    },
-    "closed_at": "2026-08-14T13:11:21Z"
+    "task_id": "TASK_GOVERNANCE_EVIDENCE_DIGEST_AUTOCORRECTION",
+    "disposition": "closed after human review",
+    "decision_ref": "User explicitly sent 关闭 after reviewing the corrected implementation.",
+    "closed_at": "2026-08-14T14:06:37Z"
   },
   "retained_history": [
     {
