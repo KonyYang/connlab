@@ -20,7 +20,7 @@
     "summary": "Automatically canonicalize a role evidence SHA-256 when the committed path and commit identity are valid and unchanged.",
     "kind": "simple",
     "classification": "simple",
-    "phase": "blocked",
+    "phase": "implementation",
     "scope_contract": {
       "schema": "connlab.serial-task-request",
       "version": 1,
@@ -56,41 +56,8 @@
     "approval_ref": null,
     "activation_parent_sha": "0c06d11b4d2b1067f98efab89bd41e3934a42790",
     "activated_at": "2026-08-14T13:23:16Z",
-    "updated_at": "2026-08-14T13:42:11Z",
-    "blocker": {
-      "schema": "connlab.personal-task-blocker",
-      "version": 1,
-      "code": "VALIDATION_FAILED",
-      "reason": "Human review found two in-scope P1 defects that must be corrected before close.",
-      "dirty_paths": [],
-      "failed_validation": {
-        "schema": "connlab.personal-task-validation",
-        "version": 1,
-        "status": "failed",
-        "checks": [
-          {
-            "command": "review: reject mismatched 64-character SHA-256",
-            "exit_code": 1,
-            "summary": "A mismatched 64-character digest is currently autocorrected instead of failing closed."
-          },
-          {
-            "command": "review: board human summary matches machine authority",
-            "exit_code": 1,
-            "summary": "Human-readable board text currently claims idle while the machine block is active in human review."
-          }
-        ],
-        "observed_paths": [
-          "scripts/connlab_personal_task.py",
-          "tests/integration/test_connlab_serial_complex_recovery.py",
-          "docs/task_board.md"
-        ],
-        "manual_checks": [
-          "Review confirmed both defects at commit 95ec78338d4d018474284635073da66713db89b0."
-        ],
-        "recorded_at": "2026-08-14T13:42:11Z"
-      },
-      "recorded_at": "2026-08-14T13:42:11Z"
-    },
+    "updated_at": "2026-08-14T13:42:27Z",
+    "blocker": null,
     "validation": {
       "schema": "connlab.personal-task-validation",
       "version": 1,
