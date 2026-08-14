@@ -38,7 +38,20 @@
       "worktree_lifecycle": "absent",
       "current_role": "Planner",
       "current_attempt": 1,
-      "role_invocations": [],
+      "role_invocations": [
+        {
+          "schema": "connlab.serial-invocation",
+          "version": 1,
+          "action_id": "d9ebd4935e7cc614dd855844078e624ac28e14e6f5b0f340f53235be8cf69f77",
+          "role": "Planner",
+          "attempt": 1,
+          "thread_id": null,
+          "agent_id": "/root/nondestructive_evidence_topology_planner",
+          "host_id": null,
+          "status": "started",
+          "recorded_at": "2026-08-14T15:01:11Z"
+        }
+      ],
       "host_thread_id": null,
       "host_id": null,
       "approved_code_paths": [
@@ -66,7 +79,7 @@
       "integrated_commit": null,
       "evidence_refs": [],
       "pending_callback": {
-        "state": "dispatch_pending",
+        "state": "callback_pending",
         "action_id": "d9ebd4935e7cc614dd855844078e624ac28e14e6f5b0f340f53235be8cf69f77",
         "role": "Planner",
         "attempt": 1
