@@ -106,6 +106,18 @@
           "host_id": "host-task-matrix-import-browser-project-source-picker",
           "status": "started",
           "recorded_at": "2026-08-14T04:42:02.799113Z"
+        },
+        {
+          "schema": "connlab.serial-invocation",
+          "version": 1,
+          "action_id": "a1e73c2fcc90ff575edc0432e75a813c3f01045bcdffeb270415444938fdcd44",
+          "role": "QA",
+          "attempt": 1,
+          "thread_id": null,
+          "agent_id": "/root/browser_source_picker_qa",
+          "host_id": "host-task-matrix-import-browser-project-source-picker",
+          "status": "started",
+          "recorded_at": "2026-08-14T04:50:34.180014Z"
         }
       ],
       "host_thread_id": "019fb3d4-12a5-73b3-be8e-e59686fa39a9",
@@ -135,7 +147,7 @@
         "docs/lane_evidence/TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER_reviewer.md@42d620bd0575a6d9ca47504eb26d283befb442d7#31b612f984ea8c8aab7bc8822c5332cc4dac29a94441ae5131731c06c4b449e7"
       ],
       "pending_callback": {
-        "state": "dispatch_pending",
+        "state": "callback_pending",
         "action_id": "a1e73c2fcc90ff575edc0432e75a813c3f01045bcdffeb270415444938fdcd44",
         "role": "QA",
         "attempt": 1
