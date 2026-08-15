@@ -75,8 +75,8 @@
       "base_sha": "56f1fe51a29d5449f1b3178257d62e90ce363601",
       "head_sha": "56f1fe51a29d5449f1b3178257d62e90ce363601",
       "integration_target": "master",
-      "worktree_lifecycle": "ready",
-      "current_role": "Integrator",
+      "worktree_lifecycle": "integration_ready",
+      "current_role": null,
       "current_attempt": 2,
       "role_invocations": [
         {
@@ -276,14 +276,10 @@
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_integrator.md@0729144924df7bf4417efdee1edba687c103b17f#fd90c34c35e9cd9537a9df2f54bfabc189fadafa28bd672a18b4f5dcca46e2f3",
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@5bb3a708c23b57a23d6d4a247caceab717792bab#48072b6c04a8ecea993a4ec22b13a89a12dde7684f3fe8ddf49ae572cf29ee16",
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md@ac1202368f4941206b9fe0828b79f1e5df46e00d#7b4b399086246b22db8cb488bbad879bfe2f341f14eecfe099c154bb4d940e25",
-        "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_qa.md@39a80f0a0a8ea3bb8472d78147f91ead9f28158b#6f15db03378769da2c7b134585bf1657afaf7749e3e7e8d8f470208ae5f5111a"
+        "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_qa.md@39a80f0a0a8ea3bb8472d78147f91ead9f28158b#6f15db03378769da2c7b134585bf1657afaf7749e3e7e8d8f470208ae5f5111a",
+        "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_integrator.md@003fd22c98b90e9ed9cac01947afb9d57a30ff8a#ba3904ebe7e96a5cd74ac806b9ba6ed22f84213439a48d75c4968b82395fe556"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "3567496e030fe8235f38af6a294057058a2d327c2e821f67e180f57a047c5422",
-        "role": "Integrator",
-        "attempt": 2
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
