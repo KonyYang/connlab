@@ -76,8 +76,8 @@
       "head_sha": "56f1fe51a29d5449f1b3178257d62e90ce363601",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": null,
-      "current_attempt": 4,
+      "current_role": "Reviewer",
+      "current_attempt": 3,
       "role_invocations": [
         {
           "schema": "connlab.serial-invocation",
@@ -240,7 +240,12 @@
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_integrator.md@0729144924df7bf4417efdee1edba687c103b17f#fd90c34c35e9cd9537a9df2f54bfabc189fadafa28bd672a18b4f5dcca46e2f3",
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@5bb3a708c23b57a23d6d4a247caceab717792bab#48072b6c04a8ecea993a4ec22b13a89a12dde7684f3fe8ddf49ae572cf29ee16"
       ],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "f7b2fae2674d85395db74d176b3a192336d0fe3be624fba95f1332b41272fe06",
+        "role": "Reviewer",
+        "attempt": 3
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
