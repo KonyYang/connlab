@@ -38,7 +38,20 @@
       "worktree_lifecycle": "absent",
       "current_role": "Planner",
       "current_attempt": 1,
-      "role_invocations": [],
+      "role_invocations": [
+        {
+          "schema": "connlab.serial-invocation",
+          "version": 1,
+          "action_id": "458e8cb081db716a16adc9550a1514ab5fcfd69f0d1026983781b776b1bd3a49",
+          "role": "Planner",
+          "attempt": 1,
+          "thread_id": null,
+          "agent_id": "/root/ltr_password_admin_planner",
+          "host_id": null,
+          "status": "started",
+          "recorded_at": "2026-08-15T14:07:23.8391181Z"
+        }
+      ],
       "host_thread_id": null,
       "host_id": null,
       "approved_code_paths": [
@@ -76,7 +89,7 @@
       "evidence_refs": [],
       "blocker_history": [],
       "pending_callback": {
-        "state": "dispatch_pending",
+        "state": "callback_pending",
         "action_id": "458e8cb081db716a16adc9550a1514ab5fcfd69f0d1026983781b776b1bd3a49",
         "role": "Planner",
         "attempt": 1
