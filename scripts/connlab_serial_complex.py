@@ -144,6 +144,21 @@ def validate_complex_blocker(value: Any) -> dict[str, Any]:
     if value.get("failed_validation") is not None:
         validate_failure_proof(value["failed_validation"])
     return value
+def validate_blocker_history(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        _contract_error("BLOCKED_SCHEMA_INVALID", "Complex blocker history is invalid.")
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"blocker", "decision_ref", "resolution", "resolved_at"}:
+            _contract_error("BLOCKED_SCHEMA_INVALID", "Complex blocker history entry is invalid.")
+        if item.get("resolution") not in {"bounded_fix", "scope_amendment"} or not all(
+            isinstance(item.get(key), str) and item[key] for key in ("decision_ref", "resolved_at")
+        ):
+            _contract_error("BLOCKED_SCHEMA_INVALID", "Complex blocker resolution facts are invalid.")
+        try:
+            validate_complex_blocker(item.get("blocker"))
+        except SerialContractError as exc:
+            raise SerialContractError("BLOCKED_SCHEMA_INVALID", "Historical complex blocker is invalid.") from exc
+    return value
 def callback_transition(value: Any) -> dict[str, Any]:
     keys = {"schema", "version", "task_id", "role", "status", "subject_commit", "evidence", "next", "blocker"}
     if not isinstance(value, dict) or set(value) != keys:
@@ -257,6 +272,7 @@ def complex_transition(active: dict[str, Any], command: str, payload: dict[str, 
     phase, pending = active.get("phase"), context.get("pending_callback")
     if command == "begin-role":
         role, action = payload.get("role"), validate_native_action(payload.get("native_action"))
+        if active.get("blocker") is not None: _contract_error("BLOCKED_STATE", "A current blocker must be resolved before another role begins.")
         if PHASE_ROLE.get(phase) != role or action["role"] != role: _contract_error("BLOCKED_ROLE_ORDER", "Role is not legal for the current phase.")
         if role != "Planner" and not context.get("host_id"): _contract_error("BLOCKED_HOST_REQUIRED", "Execution roles require the recorded host.")
         if pending is not None: _contract_error("BLOCKED_NATIVE_ACTION_PENDING", "A native action is already pending.")

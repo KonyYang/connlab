@@ -221,11 +221,13 @@ def test_protocol_assigns_one_final_matrix_and_fail_fast_integration() -> None:
     assert "approximate elapsed time" in protocol
 
 
-def test_protocol_records_phase2_inputs_without_claiming_phase1_runtime() -> None:
+def test_protocol_records_phase2_runtime_as_the_existing_v2_authority() -> None:
     protocol = read("docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md")
+    compact = " ".join(protocol.split())
 
-    assert "Deferred Phase 2 runtime inputs" in protocol
-    assert "REVIEWER_BLOCKED / QA_BLOCKED / INTEGRATION_BLOCKED -> development" in protocol
-    assert "atomic amendment-approval transition" in protocol
+    assert "Phase 2 runtime recovery" in protocol
+    assert "REVIEWER_BLOCKED / QA_BLOCKED / INTEGRATION_BLOCKED -> development" in compact
+    assert "one atomic amendment transition" in compact
     assert "active_snapshot" in protocol and "next_action" in protocol
-    assert "not implemented by Phase 1" in protocol
+    assert "scripts/connlab_serial_payload.py native-action" in compact
+    assert "does not create another authority or task tier" in compact

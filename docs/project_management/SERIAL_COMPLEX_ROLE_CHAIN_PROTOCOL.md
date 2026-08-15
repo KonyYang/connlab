@@ -226,24 +226,31 @@ The final summary reports approximate elapsed time for planning, host setup, Dev
 Integrator, integration, and tests, plus automatic retry count and reason, using existing commit, turn,
 and test timing only. Do not add telemetry, a database, or a monitoring framework.
 
-## Deferred Phase 2 runtime inputs
+## Phase 2 runtime recovery
 
-The following require production writer/state-machine changes and are not implemented by Phase 1:
+Phase 2 extends the existing V2 production writer; it does not create another authority or task tier.
 
-- After explicit User approval of a same-scope bounded fix, one atomic production-writer transition
-  performs `REVIEWER_BLOCKED / QA_BLOCKED / INTEGRATION_BLOCKED -> development`, preserves Plan,
-  scope, host, identity, blocker/evidence history, increments Developer attempt, clears the current
-  blocker, and creates one pending Developer action with one writer call and one board-only commit. It
-  must not replay Planner or Approve and must fail closed on missing decision, scope/identity drift, or
-  unprovable dirty state.
-- After explicit exact-scope amendment approval, one atomic amendment-approval transition updates
-  `scope_contract`, `approved_code_paths`, `plan_ref`, `approval_ref`, blocker, and resume phase in one
-  board-only commit, then uses normal Developer begin. It must not replay Planner lifecycle or require
-  two byte-identical Approve calls.
-- Add compact `active_snapshot` / `next_action`, scripted governance JSON construction, bounded reads
-  instead of rereading the complete board/Task/Plan/protocol every turn, and direct durable-state resume
-  after interruption. Reuse the existing V2 authority and framework; do not add another governance
-  framework or a standard-task tier.
+- After explicit User approval of a same-scope bounded fix, use `reenter-development` once. The writer
+  mechanically verifies the committed clean primary and the recorded task worktree branch, HEAD and
+  cleanliness, then atomically performs `REVIEWER_BLOCKED / QA_BLOCKED / INTEGRATION_BLOCKED ->
+  development`. It preserves Plan, scope, host and identity, archives the typed blocker in
+  `blocker_history`, increments Developer attempt, clears the current blocker, and creates exactly one
+  pending Developer action. Missing approval, scope/subject/host drift, dirty state, or an existing
+  pending action fails closed with zero board write. Planner and Approve are not replayed.
+- After explicit exact-scope amendment approval, the existing `approve` writer performs one atomic
+  amendment transition. It records the old `SCOPE_EXPANDED` blocker in `blocker_history`, synchronizes
+  `scope_contract`, `approved_code_paths`, `plan_ref`, and `approval_ref`, clears the blocker, and resumes
+  `development`. The next step is the normal Developer begin; Planner lifecycle and a second identical
+  Approve call are forbidden.
+- Every writer result and `inspect` expose compact `active_snapshot` and `next_action`. Recovery reads
+  these board-derived facts first and follows the pending durable action directly; it does not reread
+  the complete Task, Plan, board prose, and protocol on every turn.
+- Build native-action JSON with `scripts/connlab_serial_payload.py native-action`. The builder reads the
+  active board, increments the durable attempt, hashes the raw prompt bytes, and derives the action ID;
+  use its `git-reference` command for Plan/evidence path, commit, and raw byte SHA-256. Do not copy SHA
+  values or assemble escaped PowerShell JSON manually.
+- A context without `blocker_history` remains readable for interruption recovery. The first Phase 2
+  resolution creates the history field atomically; newly activated complex tasks initialize it empty.
 
 Recovery reconstructs the durable active task and host from board, Git, and evidence before any action,
 reuses the recorded host, and never duplicates activation. Unprovable identity fails closed with an exact

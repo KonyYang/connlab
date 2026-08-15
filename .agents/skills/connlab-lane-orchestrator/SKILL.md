@@ -86,9 +86,10 @@ first attempt and recover interrupted work mechanically from board, Git, worktre
 
 ## Recovery
 
-Recovery first reconstructs the durable active task and host from board, Git, and evidence; it reuses
-the recorded host and never duplicates activation. If identity cannot be proved, stop fail-closed with
-the typed blocker. Follow the protocol's single-retry rule only after proving zero state change.
+Recover from `inspect` and its `active_snapshot` / `next_action`, reusing the board/Git/evidence host.
+Build actions/refs with `connlab_serial_payload.py native-action` / `git-reference`; never copy hashes/JSON.
+Use atomic `reenter-development` for an approved bounded fix and one `approve` for a scope amendment.
+Fail closed on unproved identity; retry only after proving zero state change. Do not duplicate activation.
 
 ## Safety
 

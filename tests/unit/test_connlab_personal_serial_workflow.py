@@ -63,6 +63,7 @@ def invoke(repo: Path, command: str, *args: str, expected_exit: int = 0) -> dict
     completed = subprocess.run(
         [sys.executable, str(SCRIPT), command, "--repo-root", str(repo), "--json", *args],
         text=True,
+        encoding="utf-8",
         capture_output=True,
     )
     assert completed.returncode == expected_exit, completed.stderr or completed.stdout
@@ -82,6 +83,8 @@ def invoke(repo: Path, command: str, *args: str, expected_exit: int = 0) -> dict
         "board_sha256_after",
         "primary_root",
         "reason",
+        "active_snapshot",
+        "next_action",
     ]
     return result
 

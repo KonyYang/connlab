@@ -323,6 +323,7 @@ COMPLEX_CONTEXT_KEYS = {
     "reviewer_subject_commit", "qa_subject_commit", "integrated_commit", "evidence_refs",
     "pending_callback", "closeout_disposition", "retained_resource_refs", "close_decision_ref",
 }
+COMPLEX_CONTEXT_OPTIONAL_KEYS = {"blocker_history"}
 V2_PHASES = {
     "planning", "awaiting_user_approval", "implementation", "development", "review", "qa",
     "integration", "blocked", "human_review", "closing",
@@ -349,12 +350,18 @@ def validate_v2_control(value: dict[str, Any]) -> None:
         if context is not None: raise Blocked("BLOCKED_SCHEMA_INVALID", "Simple task cannot have complex context.")
         return
     if not isinstance(context, dict): raise Blocked("BLOCKED_SCHEMA_INVALID", "Complex task requires durable context.")
-    exact_keys(context, COMPLEX_CONTEXT_KEYS, "BLOCKED_SCHEMA_INVALID")
+    if frozenset(context) not in {frozenset(COMPLEX_CONTEXT_KEYS), frozenset(COMPLEX_CONTEXT_KEYS | COMPLEX_CONTEXT_OPTIONAL_KEYS)}:
+        raise Blocked("BLOCKED_SCHEMA_INVALID", "Complex context keys do not match a supported schema revision.")
     if context.get("workflow_version") != 1 or type(context.get("current_attempt")) is not int:
         raise Blocked("BLOCKED_SCHEMA_INVALID", "Complex workflow identity is invalid.")
     for key in ("role_invocations", "approved_code_paths", "required_gates", "evidence_refs", "retained_resource_refs"):
         if not isinstance(context.get(key), list):
             raise Blocked("BLOCKED_SCHEMA_INVALID", f"Complex context array is invalid: {key}.")
+    from scripts.connlab_serial_complex import SerialContractError, validate_blocker_history
+    try:
+        validate_blocker_history(context.get("blocker_history", []))
+    except SerialContractError as exc:
+        raise Blocked(exc.code, exc.reason) from exc
     if context.get("closeout_disposition") is not None and not isinstance(context["closeout_disposition"], dict):
         raise Blocked("BLOCKED_SCHEMA_INVALID", "Complex closeout disposition is invalid.")
 
@@ -394,6 +401,7 @@ def v2_submit(control: dict[str, Any], request: dict[str, Any], head: str) -> tu
         "role_invocations": [], "host_thread_id": None, "host_id": None, "approved_code_paths": request.get("may_touch", []),
         "required_gates": ["Reviewer", "QA", "Integrator"], "developer_subject_commit": None,
         "reviewer_subject_commit": None, "qa_subject_commit": None, "integrated_commit": None, "evidence_refs": [],
+        "blocker_history": [],
         "pending_callback": None, "closeout_disposition": None, "retained_resource_refs": [],
         "close_decision_ref": None,
     }

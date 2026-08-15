@@ -824,10 +824,7 @@ def test_record_integration_verifies_git_worktree_evidence_and_committed_board(
     assert unverified["code"] == "BLOCKED_INTEGRATION_PROOF"
     assert board_hash(repo) == before
 
-    _, board, _ = parse_board((repo / "docs/task_board.md").read_bytes())
-    evidence_ref = board["active"]["complex_context"]["evidence_refs"][-1]
-    failure = {"schema": "connlab.serial-failure-proof", "version": 1, "operation": "integration", "command": ["git", "merge"], "exit_code": 1, "summary": "temporary integration failure", "recorded_at": "2026-08-07T00:00:00Z"}
-    blocker = {"schema": "connlab.serial-task-blocker", "version": 1, "code": "INTEGRATION_BLOCKED", "stage": "integration", "reason": "exercise committed transition guard", "dirty_paths": [], "failed_validation": failure, "subject_commit": subject, "evidence_ref": evidence_ref, "native_action_id": None, "related_ids": [], "retryable": False, "requires_user": True, "resume_phase": "integration", "recorded_at": "2026-08-07T00:00:00Z"}
+    blocker = {"schema": "connlab.serial-task-blocker", "version": 1, "code": "DIRTY_WORKTREE", "stage": "integration", "reason": "exercise committed transition guard", "dirty_paths": ["unreviewed.txt"], "failed_validation": None, "subject_commit": subject, "evidence_ref": None, "native_action_id": None, "related_ids": [], "retryable": True, "requires_user": True, "resume_phase": "integration", "recorded_at": "2026-08-07T00:00:00Z"}
     blocked = invoke_personal(
         repo,
         "block",
@@ -857,8 +854,8 @@ def test_record_integration_verifies_git_worktree_evidence_and_committed_board(
     assert board_hash(repo) == uncommitted_hash
 
 
-@pytest.mark.parametrize(("code", "stage", "resume_phase", "retryable"), [("DEVELOPER_BLOCKED", "development", "development", True), ("INTEGRATION_BLOCKED", "integration", "integration", False)])
-def test_complex_resume_uses_validated_blocker_resume_phase(tmp_path: Path, code: str, stage: str, resume_phase: str, retryable: bool) -> None:
+@pytest.mark.parametrize(("code", "stage", "resume_phase", "retryable"), [("DEVELOPER_BLOCKED", "development", "development", True)])
+def test_complex_resume_uses_validated_non_bounded_fix_blocker_phase(tmp_path: Path, code: str, stage: str, resume_phase: str, retryable: bool) -> None:
     repo = tmp_path / code.lower()
     worktree = tmp_path / f"{code.lower()}-host"
     subject = prepare_complex_task_host(repo, worktree)

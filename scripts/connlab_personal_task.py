@@ -15,20 +15,24 @@ from scripts.connlab_serial_board import (
     write_board, writer_lock,
 )
 from scripts.connlab_serial_complex import SerialContractError, classification_result, complex_transition, validate_complex_blocker, validate_integration_transition
+from scripts.connlab_serial_phase2 import (
+    BOUNDED_FIX_CODES, active_snapshot, apply_bounded_fix_reentry, apply_scope_amendment, next_action,
+    verify_transition_repository,
+)
 from scripts.connlab_serial_evidence_topology import (
     verify_callback_evidence_topology,
     verify_integration_evidence_topology,
 )
 
-COMPLEX_COMMANDS = ("begin-role", "record-invocation", "consume-callback", "begin-host", "record-host", "record-integration", "request-close", "record-closeout", "finalize-close")
+COMPLEX_COMMANDS = ("begin-role", "record-invocation", "consume-callback", "begin-host", "record-host", "record-integration", "request-close", "record-closeout", "finalize-close", "reenter-development")
 COMMANDS = ("inspect", "check", "classify", "submit", "activate-next", "approve", "mark-review", "block", "resume", "cancel", "close", *COMPLEX_COMMANDS)
-RESULT_FIELDS = ("schema", "version", "code", "allowed", "changed", "command", "task_id", "state", "active_task_id", "queue_position", "board_sha256_before", "board_sha256_after", "primary_root", "reason")
+RESULT_FIELDS = ("schema", "version", "code", "allowed", "changed", "command", "task_id", "state", "active_task_id", "queue_position", "board_sha256_before", "board_sha256_after", "primary_root", "reason", "active_snapshot", "next_action")
 ROLE_CALLBACKS = {"Developer", "Reviewer", "QA", "Integrator"}
 CALLBACK_EVIDENCE_PATTERN = re.compile(
     r"(docs/lane_evidence/[A-Za-z0-9_./-]+)@([0-9a-f]{40})#([0-9a-f]{40}|[0-9a-f]{64})"
 )
 
-def result(code: str, command: str, root: Path | None, before: str | None, after: str | None, control: dict[str, Any] | None, *, task_id: str | None = None, changed: bool = False, reason: str = "") -> dict[str, Any]:
+def result(code: str, command: str, root: Path | None, before: str | None, after: str | None, control: dict[str, Any] | None, *, task_id: str | None = None, changed: bool = False, reason: str = "", primary_head: str | None = None) -> dict[str, Any]:
     active = control.get("active") if control else None
     queue_position = None
     if control and task_id:
@@ -40,7 +44,7 @@ def result(code: str, command: str, root: Path | None, before: str | None, after
         "connlab.personal-task-result", 1, code, not code.startswith("BLOCKED_"), changed,
         command, task_id, control.get("state") if control else None,
         active.get("task_id") if isinstance(active, dict) else None, queue_position, before, after,
-        str(root) if root else None, reason,
+        str(root) if root else None, reason, active_snapshot(control, primary_head), next_action(control),
     )))
 def require_active(control: dict[str, Any], task_id: str) -> dict[str, Any]:
     active = control.get("active")
@@ -203,6 +207,11 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         callback = json.loads(args.callback_json or "null")
         callback, evidence_corrected = canonicalize_role_callback_evidence(root, callback) if command == "consume-callback" else (callback, False)
         raw = {"role": args.role, "native_action": json.loads(args.native_action_json or "null"), "invocation": json.loads(args.invocation_json or "null"), "callback": callback, "worktree": json.loads(args.worktree_json or "null"), "integration": json.loads(args.integration_json or "null"), "closeout": json.loads(args.closeout_json or "null"), "decision_ref": args.decision_ref}
+        if command == "reenter-development":
+            verify_transition_repository(root, active, require_host=True)
+            apply_bounded_fix_reentry(active, raw["native_action"], args.decision_ref, now())
+            control["state"] = "running"
+            return "ALLOW_REENTER_DEVELOPMENT", True, "Approved same-scope bounded fix resumed as the next Developer attempt."
         if command == "consume-callback":
             verify_callback_evidence_topology(root, active, callback)
         if command == "record-integration":
@@ -284,6 +293,10 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
             if active["blocker"].get("code") != "SCOPE_EXPANDED": raise Blocked("BLOCKED_APPROVED_SCOPE_INVALID", "Only a scope-expansion blocker permits path changes.")
             if not old_paths < new_paths: raise Blocked("BLOCKED_APPROVED_SCOPE_INVALID", "A scope amendment must be a strict path superset.")
             if scope["forbidden_categories"] != previous["forbidden_categories"]: raise Blocked("BLOCKED_APPROVED_SCOPE_INVALID", "A scope amendment cannot change risk-category facts.")
+            if is_v2_complex:
+                verify_transition_repository(root, active, require_host=bool(active["complex_context"].get("host_id")))
+                apply_scope_amendment(active, approved, scope, args.plan_ref, args.approval_ref, now())
+                return "ALLOW_SCOPE_AMEND", True, "User-approved scope amendment atomically resumed development."
             active.update(summary=approved["summary"], scope_contract=scope, plan_ref=args.plan_ref, approval_ref=args.approval_ref, updated_at=now())
             return "ALLOW_SCOPE_AMEND", True, "User-approved scope expansion recorded; blocker remains until explicit resume."
         target_phase = "development" if is_v2_complex else "implementation"
@@ -323,6 +336,8 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
             raise Blocked("BLOCKED_STATE", "Explicit User decision reference is required.")
         blocker = active["blocker"]
         if isinstance(active.get("complex_context"), dict) and blocker.get("schema") == "connlab.serial-task-blocker":
+            if blocker.get("code") in BOUNDED_FIX_CODES:
+                raise Blocked("BLOCKED_STATE", "Bounded-fix blockers require the atomic reenter-development transition.")
             resume_phase = validate_complex_blocker(blocker)["resume_phase"]
         else:
             resume_phase = "implementation" if active["scope_contract"] else "planning"
@@ -376,7 +391,7 @@ def parser() -> argparse.ArgumentParser:
     return value
 def validate_argument_combination(args: argparse.Namespace) -> None:
     names = {"expected_board_sha256", "task_id", "request_json", "approved_request_json", "plan_ref", "approval_ref", "validation_json", "blocker_json", "decision_ref", "disposition", "intent", "role", "native_action_json", "native_action_id", "invocation_json", "callback_json", "worktree_json", "integration_json", "closeout_json"}
-    allowed = {"inspect": set(), "check": {"task_id", "intent"}, "classify": {"request_json"}, "submit": {"expected_board_sha256", "task_id", "request_json"}, "activate-next": {"expected_board_sha256", "task_id"}, "approve": {"expected_board_sha256", "task_id", "approved_request_json", "plan_ref", "approval_ref"}, "mark-review": {"expected_board_sha256", "task_id", "validation_json"}, "block": {"expected_board_sha256", "task_id", "blocker_json"}, "resume": {"expected_board_sha256", "task_id", "decision_ref"}, "cancel": {"expected_board_sha256", "task_id", "decision_ref", "disposition"}, "close": {"expected_board_sha256", "task_id", "decision_ref"}, "begin-role": {"expected_board_sha256", "task_id", "role", "native_action_json"}, "record-invocation": {"expected_board_sha256", "task_id", "role", "native_action_id", "invocation_json"}, "consume-callback": {"expected_board_sha256", "task_id", "callback_json"}, "begin-host": {"expected_board_sha256", "task_id", "native_action_json"}, "record-host": {"expected_board_sha256", "task_id", "native_action_id", "worktree_json"}, "record-integration": {"expected_board_sha256", "task_id", "integration_json"}, "request-close": {"expected_board_sha256", "task_id", "decision_ref"}, "record-closeout": {"expected_board_sha256", "task_id", "closeout_json"}, "finalize-close": {"expected_board_sha256", "task_id", "decision_ref"}}[args.command]
+    allowed = {"inspect": set(), "check": {"task_id", "intent"}, "classify": {"request_json"}, "submit": {"expected_board_sha256", "task_id", "request_json"}, "activate-next": {"expected_board_sha256", "task_id"}, "approve": {"expected_board_sha256", "task_id", "approved_request_json", "plan_ref", "approval_ref"}, "mark-review": {"expected_board_sha256", "task_id", "validation_json"}, "block": {"expected_board_sha256", "task_id", "blocker_json"}, "resume": {"expected_board_sha256", "task_id", "decision_ref"}, "cancel": {"expected_board_sha256", "task_id", "decision_ref", "disposition"}, "close": {"expected_board_sha256", "task_id", "decision_ref"}, "begin-role": {"expected_board_sha256", "task_id", "role", "native_action_json"}, "record-invocation": {"expected_board_sha256", "task_id", "role", "native_action_id", "invocation_json"}, "consume-callback": {"expected_board_sha256", "task_id", "callback_json"}, "begin-host": {"expected_board_sha256", "task_id", "native_action_json"}, "record-host": {"expected_board_sha256", "task_id", "native_action_id", "worktree_json"}, "record-integration": {"expected_board_sha256", "task_id", "integration_json"}, "request-close": {"expected_board_sha256", "task_id", "decision_ref"}, "record-closeout": {"expected_board_sha256", "task_id", "closeout_json"}, "finalize-close": {"expected_board_sha256", "task_id", "decision_ref"}, "reenter-development": {"expected_board_sha256", "task_id", "decision_ref", "native_action_json"}}[args.command]
     if {name for name in names if getattr(args, name) is not None} - allowed: raise Blocked("BLOCKED_ARGUMENT_COMBINATION", "Arguments are incompatible with the selected command.")
 def pre_git_busy_submit(args: argparse.Namespace) -> tuple[Path, dict[str, Any], str] | None:
     if args.command != "submit":
@@ -390,10 +405,13 @@ def pre_git_busy_submit(args: argparse.Namespace) -> tuple[Path, dict[str, Any],
         return root, control, sha(data)
     return None
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     args = parser().parse_args()
     root: Path | None = None
     control: dict[str, Any] | None = None
     before: str | None = None
+    primary_head: str | None = None
     try:
         validate_argument_combination(args)
         busy = pre_git_busy_submit(args)
@@ -406,19 +424,20 @@ def main() -> int:
             print(json.dumps(output, ensure_ascii=False, separators=(",", ":")) if args.json else "\n".join(f"{key}: {value}" for key, value in output.items()))
             return 2
         root = resolve_primary(args.repo_root)
+        primary_head = run_git(root, "rev-parse", "HEAD").stdout.strip()
         board = root / BOARD_REL
         data = board.read_bytes()
         before = sha(data)
         prefix, control, suffix = parse_board(data)
         if args.command == "classify":
-            output = classification_result(json.loads(args.request_json or ""), command=args.command, primary_root=str(root), primary_head=run_git(root, "rev-parse", "HEAD").stdout.strip(), board_sha256=before)
+            output = classification_result(json.loads(args.request_json or ""), command=args.command, primary_root=str(root), primary_head=primary_head, board_sha256=before)
         elif args.command == "inspect":
-            output = result("ALLOW_INSPECT", args.command, root, before, before, control, reason=f"Git dirty paths: {len(git_dirty(root))}.")
+            output = result("ALLOW_INSPECT", args.command, root, before, before, control, reason=f"Git dirty paths: {len(git_dirty(root))}.", primary_head=primary_head)
         elif args.command == "check":
             if not args.intent or (args.intent != "Inspect" and not args.task_id):
                 raise Blocked("BLOCKED_STATE", "Check intent/task arguments are incomplete.")
             code, reason = check(args, root, control)
-            output = result(code, args.command, root, before, before, control, task_id=args.task_id, reason=reason)
+            output = result(code, args.command, root, before, before, control, task_id=args.task_id, reason=reason, primary_head=primary_head)
         else:
             if not args.task_id or not re.fullmatch(r"[A-Z][A-Z0-9_\-]+", args.task_id):
                 raise Blocked("BLOCKED_TASK_MISMATCH", "A valid task ID is required.")
@@ -432,10 +451,10 @@ def main() -> int:
                     raise Blocked("BLOCKED_BOARD_HASH_MISMATCH", "Board changed since caller inspection.")
                 code, changed, reason = transition(args, root, control)
                 after = write_board(root, board, prefix, control, suffix) if changed else before
-            output = result(code, args.command, root, before, after, control, task_id=args.task_id, changed=changed, reason=reason)
+            output = result(code, args.command, root, before, after, control, task_id=args.task_id, changed=changed, reason=reason, primary_head=primary_head)
     except (Blocked, SerialContractError, OSError, json.JSONDecodeError) as exc:
         blocked = exc if isinstance(exc, Blocked) else Blocked(getattr(exc, "code", "BLOCKED_CLASSIFICATION_INVALID"), str(exc))
-        output = result(blocked.code, args.command, root, before, before, control, task_id=getattr(args, "task_id", None), reason=blocked.reason)
+        output = result(blocked.code, args.command, root, before, before, control, task_id=getattr(args, "task_id", None), reason=blocked.reason, primary_head=primary_head)
     print(json.dumps(output, ensure_ascii=False, separators=(",", ":")) if args.json else "\n".join(f"{key}: {value}" for key, value in output.items()))
     return 2 if output["code"].startswith("BLOCKED_") else 0
 if __name__ == "__main__": sys.exit(main())
