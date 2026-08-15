@@ -76,7 +76,7 @@
       "head_sha": "56f1fe51a29d5449f1b3178257d62e90ce363601",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": null,
+      "current_role": "Integrator",
       "current_attempt": 2,
       "role_invocations": [
         {
@@ -266,7 +266,12 @@
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md@ac1202368f4941206b9fe0828b79f1e5df46e00d#7b4b399086246b22db8cb488bbad879bfe2f341f14eecfe099c154bb4d940e25",
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_qa.md@39a80f0a0a8ea3bb8472d78147f91ead9f28158b#6f15db03378769da2c7b134585bf1657afaf7749e3e7e8d8f470208ae5f5111a"
       ],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "3567496e030fe8235f38af6a294057058a2d327c2e821f67e180f57a047c5422",
+        "role": "Integrator",
+        "attempt": 2
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
