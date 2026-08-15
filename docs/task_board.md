@@ -13,89 +13,15 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "implemented_pending_human_review",
-  "active": {
-    "task_id": "TASK_SETTINGS_HIDE_LTR_WORKBOOK_PASSWORD_CARD",
-    "summary": "Hide the LTR workbook password card from the Settings UI only while preserving all backend, API, and configuration behavior for a later separately approved task.",
-    "kind": "simple",
-    "classification": "simple",
-    "phase": "human_review",
-    "scope_contract": {
-      "schema": "connlab.serial-task-request",
-      "version": 1,
-      "task_id": "TASK_SETTINGS_HIDE_LTR_WORKBOOK_PASSWORD_CARD",
-      "summary": "Hide the LTR workbook password card from the Settings UI only while preserving all backend, API, and configuration behavior for a later separately approved task.",
-      "root_cause_clear": true,
-      "expected_result_clear": true,
-      "may_touch": [
-        "frontend/src/features/settings/SettingsExternalResourcesPanel.tsx",
-        "frontend/src/features/settings/SettingsStandardRecordSheet.test.tsx",
-        "docs/task_board.md"
-      ],
-      "targeted_validation": [
-        "npm test -- --run src/features/settings/SettingsStandardRecordSheet.test.tsx",
-        "npm run build",
-        "git diff --check"
-      ],
-      "requires_independent_review": false,
-      "forbidden_categories": {
-        "api_contract": false,
-        "database": false,
-        "schema_or_migration": false,
-        "persistence": false,
-        "authority": false,
-        "public_drive_workflow": false,
-        "business_rule_semantics": false,
-        "destructive_action": false,
-        "external_mutation": false,
-        "push_or_release": false
-      }
-    },
-    "plan_ref": null,
-    "approval_ref": null,
-    "activation_parent_sha": "e9b2a1b4df9ff7b314234c2ea6496e50812a5ef9",
-    "activated_at": "2026-08-15T14:17:11Z",
-    "updated_at": "2026-08-15T14:21:09Z",
-    "blocker": null,
-    "validation": {
-      "schema": "connlab.personal-task-validation",
-      "version": 1,
-      "status": "passed",
-      "checks": [
-        {
-          "command": "npm test -- --run src/features/settings/SettingsStandardRecordSheet.test.tsx",
-          "exit_code": 0,
-          "summary": "3 tests passed, including the password editor absence regression."
-        },
-        {
-          "command": "npm run build",
-          "exit_code": 0,
-          "summary": "TypeScript and Vite production build passed; existing chunk-size advisory only."
-        },
-        {
-          "command": "git diff --check",
-          "exit_code": 0,
-          "summary": "Passed before implementation commit."
-        }
-      ],
-      "observed_paths": [
-        "frontend/src/features/settings/SettingsExternalResourcesPanel.tsx",
-        "frontend/src/features/settings/SettingsStandardRecordSheet.test.tsx"
-      ],
-      "manual_checks": [
-        "In-app browser smoke at http://localhost:5173/settings: LTR workbook password input count 0; Update password button count 0; Editable file locations heading count 1."
-      ],
-      "recorded_at": "2026-08-15T14:21:09Z"
-    },
-    "complex_context": null
-  },
+  "state": "idle",
+  "active": null,
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
-    "task_id": "TASK_LTR_WORKBOOK_PASSWORD_ADMIN_CONFIG_ONLY",
-    "disposition": "Replaced before implementation by two serial tasks; no code, Plan, Task, evidence, host, or worktree was created.",
-    "decision_ref": "User requested on 2026-08-15 to split the work into two serial tasks: first hide the Settings password card; later create the administrator configuration contract and remove obsolete logic.",
-    "closed_at": "2026-08-15T14:13:28Z"
+    "task_id": "TASK_SETTINGS_HIDE_LTR_WORKBOOK_PASSWORD_CARD",
+    "disposition": "closed after human review",
+    "decision_ref": "关闭 TASK_SETTINGS_HIDE_LTR_WORKBOOK_PASSWORD_CARD",
+    "closed_at": "2026-08-15T14:25:19Z"
   },
   "retained_history": [
     {
