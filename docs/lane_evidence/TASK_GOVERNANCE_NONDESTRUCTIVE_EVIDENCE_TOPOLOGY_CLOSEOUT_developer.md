@@ -3,34 +3,38 @@
 TASK_ID: TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT
 ROLE: Developer
 STATUS: ready
-SUBJECT: 2e6f16322c93fc1a83188658476191d2a032b959
+SUBJECT: 59e0cc7b7fa4b53b1a5a21719647aa47f9491fcb
 MODEL: gpt-5.6-sol
 REASONING_EFFORT: medium
 MODEL_ROUTE_REASON: risk:authority
-ACTION_ID: a572503df59e606f3fe4a158e85ee28222967636ae767d692ec05091cb8c68ed
-ATTEMPT: 3
+ACTION_ID: cef992a7eb2245504ec2a389b4bae7ff305f8fe06731880049210889543edb43
+ATTEMPT: 4
 NEXT: Reviewer
 BLOCKER: none
 
-## Reviewer fix
+## Scope
 
-The integration verifier now pairs the complete accepted evidence list one-to-one with the complete durable callback invocation list in actual order. It supports interleaved Planner callbacks and repeated execution-role fix loops without a contiguous-prefix or role-count partition. Planner governance bundles retain their existing non-execution topology, while every execution evidence commit remains strictly path, parent, board-byte, identity, route, digest and ancestry verified.
+- Modified only `scripts/connlab_serial_evidence_topology.py` and `tests/integration/test_connlab_nondestructive_evidence_topology.py`.
+- No board/evidence write on task branch; no push or destructive Git operation.
 
-## Changed paths
+## Implementation
 
-- `scripts/connlab_serial_evidence_topology.py`
-- `tests/integration/test_connlab_nondestructive_evidence_topology.py`
+- Planner accepted evidence now requires the fixed Task-derived Planner evidence path and exact raw SHA-256.
+- An otherwise-unmapped Planner revision bundle is accepted only as an exact single-parent Task/derived-Plan/fixed-Planner-evidence three-path commit whose board bytes equal its parent, immediately followed by a single-parent board-only commit whose active task and exact `plan_ref` bind that same commit, derived Plan path, and recomputed raw Plan SHA-256.
+- No commit/SHA allowlist or hardcoded production identity was added.
+- Execution-role evidence verifier code and its ordering/path/digest/parent/board/subject/identity/model/ancestry checks were unchanged.
 
-## Validation
+## TDD / Validation
 
-- `py -m pytest tests/integration/test_connlab_nondestructive_evidence_topology.py -q` — 16 passed.
-- `py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q` — 17 passed.
-- `py -m pytest tests/unit/test_connlab_personal_serial_workflow.py tests/unit/test_connlab_serial_complex_state.py tests/unit/test_connlab_serial_complex_orchestrator_contract.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q` — 60 passed.
-- `py -m py_compile scripts/connlab_personal_task.py scripts/connlab_serial_complex.py scripts/connlab_serial_evidence_topology.py` — passed.
-- Line budgets — 441 / 270 / 463 for the bounded writer, verifier and new integration test; all at or below 500.
-- `git diff --check` — passed.
-- Exact staged scope and post-commit clean worktree — verified.
-- Regression coverage now includes mixed Planner amendment commits, Planner/Developer interleaving, repeated Developer callbacks, evidence-order drift, multiparent evidence, unknown commits, identity/model/status/subject/path/hash drift, dirty primary/task worktrees, complete repository snapshots and a forbidden-Git-command ledger.
+- RED: `test_integration_accepts_immediately_bound_planner_revision_bundle` initially failed with `BLOCKED_INTEGRATION_PROOF` unknown/code-mixed commit (1 failed).
+- GREEN was compressed into the existing disposable-repo fixture to preserve Plan line budget. The fixture is non-SHA-specific and exercises the legal revision bundle in every integration history.
+- Planner drift matrix covers unbound, wrong digest, extra path, board modification, and later-descendant binding, all fail closed; existing multiparent, reorder, unknown commit, execution-path/digest/identity/subject/worktree and zero-write regressions remain active.
+- `py -m pytest tests/integration/test_connlab_nondestructive_evidence_topology.py -q` — 21 passed in 49.84s.
+- `py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q` — 17 passed in 73.72s.
+- `py -m py_compile scripts/connlab_serial_evidence_topology.py` — passed.
+- `git diff --check` and cached diff check — passed.
+- Line counts: verifier 326; integration test 495, both <=500 hard limit.
+- Post-commit worktree/index clean; changed paths confirmed exactly the two authorized files.
 
 ## Safety
 
