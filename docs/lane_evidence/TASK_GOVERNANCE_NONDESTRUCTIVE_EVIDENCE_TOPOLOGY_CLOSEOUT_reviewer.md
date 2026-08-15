@@ -3,58 +3,56 @@
 TASK_ID: TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT
 ROLE: Reviewer
 STATUS: pass
-SUBJECT: 2e6f16322c93fc1a83188658476191d2a032b959
+SUBJECT: 59e0cc7b7fa4b53b1a5a21719647aa47f9491fcb
 MODEL: gpt-5.6-sol
 REASONING_EFFORT: medium
 MODEL_ROUTE_REASON: risk:authority
-ACTION_ID: 46c55df298ebbfd1d9b18b344623d80e7d90e16701f6f58122a7ea3d53964d0f
-ATTEMPT: 2
+ACTION_ID: f7b2fae2674d85395db74d176b3a192336d0fe3be624fba95f1332b41272fe06
+ATTEMPT: 3
 NEXT: QA
 BLOCKER: none
 
 ## Verdict
 
-Pass. The attempt-3 two-path fix closes both attempt-1 findings. The complete durable callback invocation sequence is now paired one-to-one and in order with the complete accepted evidence sequence, including interleaved Planner callbacks and repeated execution-role fix loops. No contiguous-prefix or role-count partition remains.
+PASS. No blocking findings.
 
-## Standards review
+## Standards
 
-No repository-standard violation or material baseline code smell was found in the exact attempt-3 delta or the complete seven-path implementation diff.
+Pass, 0 findings.
 
-## Spec review
+- Exact delta contains only the two authorized paths.
+- No hardcoded production SHA or commit allowlist.
+- Change remains bounded and introduces no speculative abstraction or unrelated behavior.
+- `git diff --check` passed.
+- Worktree/index remain clean at the exact subject.
 
-No remaining finding.
+## Spec
 
-The prior P0 is closed by `verify_integration_evidence_topology`: it walks the full invocation/evidence lists with strict equal length and ordered pairing. Execution evidence retains strict fixed-path, parent, board-byte, identity, route, digest and ancestry verification. Planner callbacks retain their approved pre-host/governance topology while still binding committed bytes, digest, ancestry and durable order.
+Pass, 0 findings.
 
-The prior P1 is closed by regression coverage for the real `Planner 1 -> Developer 1 -> Planner 2 -> Developer 2` interleaving, repeated Developer callbacks, evidence-order drift, multiparent evidence, code-mixed execution evidence, unknown commits, identity/model/status/subject/path/hash drift, dirty primary/task worktrees, complete repository snapshots and a captured forbidden-Git-command ledger. The canonical Submit-through-human-review integration path remains green.
+- Planner revision bundle acceptance requires the exact Task-derived Task, Plan, and Planner-evidence paths.
+- Bundle and immediate authority successor are each single-parent.
+- Bundle preserves board bytes.
+- Immediate successor changes only `docs/task_board.md`.
+- Successor binds the exact bundle through Task identity, exact `plan_ref`, Plan path, bundle commit, and recomputed raw Plan SHA-256.
+- Accepted Planner evidence retains fixed Task-derived path and raw digest verification.
+- Unbound, wrong-digest, extra-path, board-change, later-descendant, multiparent, reordered, mixed, and execution-evidence drift cases fail closed.
+- Execution evidence ordering, path, digest, parent, board bytes, subject, identity, model route, and ancestry checks were not relaxed.
 
-## Independent model-routing audit
+## Developer reconciliation
 
-The durable Developer invocation, committed evidence and actual dispatch capsule reconcile exactly:
+Developer evidence:
 
-- Developer attempt 3: `gpt-5.6-sol / medium / risk:authority`; action `a572503df59e606f3fe4a158e85ee28222967636ae767d692ec05091cb8c68ed`; prompt `582f60bd1f9c1c83dbefd89a2f766c4a419963717b007531d91a30e23ff869d2`; agent `/root/nondestructive_evidence_topology_developer`; host `/root/nondestructive_evidence_topology_host`; subject `2e6f16322c93fc1a83188658476191d2a032b959`.
-- Reviewer attempt 2: `gpt-5.6-sol / medium / risk:authority`; action `46c55df298ebbfd1d9b18b344623d80e7d90e16701f6f58122a7ea3d53964d0f`; prompt `ce7f06d003f0771bdd26a330d4ea2f5dbc579b1c107b74ca0c645533db6536ac`; agent `/root/nondestructive_evidence_topology_reviewer`; same host.
-- Neither audited dispatch uses Luna.
+`docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@5bb3a708c23b57a23d6d4a247caceab717792bab#48072b6c04a8ecea993a4ec22b13a89a12dde7684f3fe8ddf49ae572cf29ee16`
 
-Developer evidence is `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@d7a331a1c9e6336a71c36278029d5c5779d74a41#1a66295ba0ffe753965f579b5a92189e96027199def11854c039700800906fe0`; its subject, action, attempt and model headers match the board invocation and capsule.
+The raw digest recomputes exactly. Its action, attempt, subject, model, effort, route reason, changed paths, and validation report match the durable dispatch and reviewed commit.
 
-## Validation
+## Focused validation
 
-- `py -m pytest tests/integration/test_connlab_nondestructive_evidence_topology.py -q` — 16 passed.
-- `py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q` — 17 passed.
-- `py -m pytest tests/unit/test_connlab_personal_serial_workflow.py tests/unit/test_connlab_serial_complex_state.py tests/unit/test_connlab_serial_complex_orchestrator_contract.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q` — 60 passed.
-- `py -m py_compile scripts/connlab_personal_task.py scripts/connlab_serial_complex.py scripts/connlab_serial_evidence_topology.py` — passed.
-- Line budgets — 441 / 270 / 463 for the writer, topology verifier and topology integration test; each remains at or below 500.
-- `git diff --check 56f1fe51a29d5449f1b3178257d62e90ce363601 2e6f16322c93fc1a83188658476191d2a032b959` — passed.
-- Complete implementation scope — exactly seven approved paths.
-- Attempt-3 delta — exactly `scripts/connlab_serial_evidence_topology.py` and `tests/integration/test_connlab_nondestructive_evidence_topology.py`.
-- Frozen Plan raw SHA-256 — `0892bcf16008c2be90bd6de84a065f650fb6bb5dfecff8f2fba905f4162cf57d`.
-- Developer evidence raw SHA-256 — `1a66295ba0ffe753965f579b5a92189e96027199def11854c039700800906fe0`.
-- All test processes completed normally with no timeout or known residual process.
+- Risk-targeted pytest selection — 19 passed, 2 deselected in 30.54s.
+- Real-history read-only probe accepted `7ee08a659172bde11f4bb1b87e1e9bac2630eaeb` only with immediate authority commit `677fce2cb461743265ed7602796a2b4d9e485765`.
+- That authority commit is single-parent, directly parents to the bundle, and changes only `docs/task_board.md`.
+- Accepted original Planner evidence digest recomputed exactly as `9e393adb8d7df9c485bfc2367c4d87f818543f13d94e15d87a8f6be625dce4b9`.
+- Exact subject remains clean at `59e0cc7b7fa4b53b1a5a21719647aa47f9491fcb`.
 
-## Zero-write and topology facts
-
-- The task subject is the direct child of the prior reviewed subject and the task worktree remained clean at exact HEAD `2e6f16322c93fc1a83188658476191d2a032b959` before and after review.
-- Primary was clean at `27bc706be37e4858e1e13441617888764d1aebd2`; board SHA-256 was `af6e02ca8092ec2fce91b9a67d2260bbf0e8271172bd03174567f92b703e3b39` at the final read-only audit.
-- The durable board order at review was Planner 1, Developer 1, Planner 2, Developer 2, Reviewer 1, Developer 3, Reviewer 2, with accepted evidence through Developer 3 in the same completed-callback order.
-- Reviewer modified no implementation, board, evidence, branch, worktree or ref and performed no reset, restore, stash, rebase, cherry-pick, cleanup or push.
+Summary: Standards 0 findings; Spec 0 findings. Ready for QA.
