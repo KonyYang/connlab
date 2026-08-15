@@ -13,13 +13,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_PROJECT_REGISTRY_DEFAULT_RECENT_FIRST_SORT",
     "summary": "Default the Projects registry Project ID sort to newest first while preserving the existing clickable ascending/descending toggle and stored user selection.",
     "kind": "simple",
     "classification": "simple",
-    "phase": "implementation",
+    "phase": "human_review",
     "scope_contract": {
       "schema": "connlab.serial-task-request",
       "version": 1,
@@ -56,9 +56,38 @@
     "approval_ref": null,
     "activation_parent_sha": "ac3a7daa91317f2d7755604788612f9a4f0e45a4",
     "activated_at": "2026-08-15T12:52:27Z",
-    "updated_at": "2026-08-15T12:52:27Z",
+    "updated_at": "2026-08-15T12:59:23Z",
     "blocker": null,
-    "validation": null,
+    "validation": {
+      "schema": "connlab.personal-task-validation",
+      "version": 1,
+      "status": "passed",
+      "checks": [
+        {
+          "command": "npm test -- --run src/pages/ProjectListPage.test.tsx",
+          "exit_code": 0,
+          "summary": "8 tests passed"
+        },
+        {
+          "command": "npm run build",
+          "exit_code": 0,
+          "summary": "Production build passed with the existing chunk-size advisory only"
+        },
+        {
+          "command": "git diff --check",
+          "exit_code": 0,
+          "summary": "Passed"
+        }
+      ],
+      "observed_paths": [
+        "frontend/src/pages/ProjectListPage.tsx",
+        "frontend/src/pages/ProjectListPage.test.tsx"
+      ],
+      "manual_checks": [
+        "Fresh browser session opened with newest Project IDs first: DL-2026-08-004, DL-2026-08-003, DL-2026-08-002, DL-2026-08-001, then DL-2026-07-010. Sort control offered ascending as the next action."
+      ],
+      "recorded_at": "2026-08-15T12:59:23.1670180Z"
+    },
     "complex_context": null
   },
   "queue": [],
