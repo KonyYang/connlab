@@ -47,6 +47,14 @@ phase, record its native action and returned identity, wait for its exact callba
 subject/evidence, then consume it. Reviewer or QA blocking findings route back to Developer without
 new approval when the fix remains inside approved scope.
 
+Primary is the sole owner of execution-role evidence. For every Developer, Reviewer, QA or Integrator
+callback, keep the task branch and its worktree clean at the exact role subject and advance primary in
+this fixed order: `begin-role` board-only commit -> `record-invocation` board-only commit -> one
+evidence-only commit changing exactly `docs/lane_evidence/<TASK_ID>_<role>.md` -> `consume-callback`
+board-only commit. This sequence also applies to every bounded fix-loop callback, so the accepted
+evidence list is dynamic and follows durable invocation order. Never write or commit execution evidence
+in the task worktree, and never repair its branch pointer after evidence persistence.
+
 ## Canonical user entry payloads
 
 Use only `scripts/run_task.ps1`; never construct request JSON for a direct Python entry, probe legacy
@@ -139,6 +147,11 @@ Integrator must bind the accepted Developer subject, Reviewer and QA evidence, a
 host HEAD before the runtime performs the approved local integration. The completed task remains
 `implemented_pending_human_review` until the User says `关闭`. Closeout retains clean task/thread/
 worktree/branch/HEAD/evidence references; lifecycle cleanup is outside the daily gate.
+
+Before integration, revalidate the committed Planner prefix plus every execution evidence commit
+against its durable invocation, frozen Plan route, fixed path, raw digest and primary ancestry. The
+integration merge uses the final callback board commit as first parent and the unchanged task subject
+as second parent; execution evidence must never occur in task-subject ancestry.
 
 The first ordinary complex task is a monitored first real run, not a pilot or governance project.
 If it fails, keep it active with its blocker and report the exact stopping fact.
