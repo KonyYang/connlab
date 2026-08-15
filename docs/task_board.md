@@ -65,35 +65,25 @@
     "approval_ref": "User approved Plan docs/task_governance_nondestructive_evidence_topology_closeout_plan.md@9d7966d53896d032e3bfe546bbd0ea38659a9fbb#0892bcf16008c2be90bd6de84a065f650fb6bb5dfecff8f2fba905f4162cf57d and approved-request SHA-256 9910790e5d12df746f4c1fc3680eccbe249b6fec7762e76cd7deb340a106ee51 by saying 批准.",
     "activation_parent_sha": "dd88e7fab9494985502236a32a46e81c3c79e0fe",
     "activated_at": "2026-08-14T14:59:46Z",
-    "updated_at": "2026-08-14T23:03:46Z",
+    "updated_at": "2026-08-15T04:10:03Z",
     "blocker": {
       "schema": "connlab.serial-task-blocker",
       "version": 1,
-      "code": "INTEGRATION_BLOCKED",
-      "stage": "integration",
-      "reason": "Production integration topology verification rejects the committed Planner planning bundle 7ee08a659172bde11f4bb1b87e1e9bac2630eaeb as an unknown or code-mixed commit.",
+      "code": "APPROVAL_REQUIRED",
+      "stage": "blocked",
+      "reason": "User authorized same-scope reapproval to correct the approved integration verifier defect.",
       "dirty_paths": [],
-      "failed_validation": {
-        "schema": "connlab.serial-failure-proof",
-        "version": 1,
-        "operation": "verify_integration_evidence_topology",
-        "command": [
-          "py",
-          "-c",
-          "direct verifier audit against committed primary history"
-        ],
-        "exit_code": null,
-        "summary": "BLOCKED_INTEGRATION_PROOF: Primary history contains an unknown or code-mixed commit; first exact offending commit 7ee08a659172bde11f4bb1b87e1e9bac2630eaeb.",
-        "recorded_at": "2026-08-15T00:25:27Z"
-      },
-      "subject_commit": "2e6f16322c93fc1a83188658476191d2a032b959",
-      "evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_integrator.md@0729144924df7bf4417efdee1edba687c103b17f#fd90c34c35e9cd9537a9df2f54bfabc189fadafa28bd672a18b4f5dcca46e2f3",
+      "failed_validation": null,
+      "subject_commit": null,
+      "evidence_ref": null,
       "native_action_id": null,
-      "related_ids": [],
-      "retryable": false,
+      "related_ids": [
+        "PLANNER_REVISION_BUNDLE_TOPOLOGY_FIX"
+      ],
+      "retryable": true,
       "requires_user": true,
-      "resume_phase": "integration",
-      "recorded_at": "2026-08-15T00:25:27Z"
+      "resume_phase": "awaiting_user_approval",
+      "recorded_at": "2026-08-15T04:10:03Z"
     },
     "validation": null,
     "complex_context": {
