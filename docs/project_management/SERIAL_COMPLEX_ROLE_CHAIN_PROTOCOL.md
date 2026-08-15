@@ -172,6 +172,79 @@ and forbidden-Luna assertion. Integrator evidence and the final User summary inc
 `ACTUAL_MODEL_ROUTING` table: role, model, effort, reason, evidence ref. A missing or mismatched field
 blocks the gate.
 
+Supporting engineering skills are role-local methods, not additional workflow roles. Developer uses
+`$tdd` for substantive behavior and adds `$diagnosing-bugs` only for hard, repeated, flaky, or
+unexplained software failures. Reviewer uses `$code-review`. Planner/Developer use `$codebase-design`
+only for approved structural work. Planner/Orchestrator use `$grilling` only for material product
+ambiguity and ask at most three blocking questions. UI work loads `$impeccable`; UI QA uses
+`$playwright` only when browser-visible behavior changed. Supporting skills never change approved
+scope, authority, routing, or evidence ownership.
+
+## Validation efficiency and exact-subject evidence
+
+Developer completes implementation and self-review before the final complete approved test matrix.
+The matrix result binds the final exact subject. Any later implementation or test byte change
+invalidates the old result; rerun every affected validation on the new exact subject before writing
+Developer evidence. Evidence must never cite tests run before the final code/test change.
+
+Reviewer inspects the exact diff, requirement fit, boundaries, safety, regression risk, and Developer
+evidence. Reviewer runs only tests directly targeted at changed risk, a finding, or a critical negative
+case; it does not unconditionally repeat Developer's complete matrix. After a bounded finding fix,
+Reviewer confirms that finding with targeted checks. `$code-review` is the existing Reviewer's method,
+not a second review workflow. QA owns the final independent complete-matrix gate.
+
+QA runs the complete approved matrix once on a clean, exact reviewed subject. QA is the only default
+independent repeat of the complete approved matrix in a normal complex task. QA must not mutate board,
+phase, validation, or fixture state to manufacture a passing precondition.
+
+Integrator does not repeat the complete pytest matrix. It verifies only exact subject, approved scope,
+evidence topology and raw-byte digests, task/primary HEAD, Git parents/tree, clean worktrees, and actual
+integration facts. On a deterministically proved blocker, stop remaining unrelated checks, emit concise
+typed blocker evidence, and do not merge or call `record-integration`. Only a blocker-free gate proceeds
+to the already approved non-conflicting local integration.
+
+For sibling worktrees, disposable Git repositories, and pytest temporary roots that are already known
+to require additional permission, request the complete command's required permission boundary first.
+Do not intentionally run a setup-only permission probe and then repeat the same command. Permission,
+authority, dirty, identity, or partial-state failures are not mechanical retries. Only argv, encoding,
+JSON compression, or equivalent transport errors may be corrected and retried once in the same turn,
+after proving board, HEAD, worktree registration, and relevant file bytes are unchanged.
+
+Obtain primary HEAD/approved base, task branch/worktree/HEAD, Plan path/commit/raw SHA-256, evidence
+path/commit/raw SHA-256, and pending action/attempt/role/thread/agent identity mechanically from board,
+Git, and original file bytes. Never write a truncated SHA, manually complete a digest, or assemble an
+unescaped ad-hoc PowerShell command for authority writes.
+
+After interruption or reconnection, reconstruct from board, Git, worktree, and committed evidence.
+Do not repeat a durable transition. Reuse an identity-exact host, and do not duplicate a branch,
+worktree, role invocation, or evidence commit. The User may resume with: `继续当前活动任务，从
+board/Git/evidence 恢复；不得重复已完成步骤`.
+
+Evidence contains only required identity, subject, model route, findings, validation conclusions, and
+exact Git/evidence facts. Do not paste the complete Plan, complete test output, or large board content.
+The final summary reports approximate elapsed time for planning, host setup, Developer, Reviewer, QA,
+Integrator, integration, and tests, plus automatic retry count and reason, using existing commit, turn,
+and test timing only. Do not add telemetry, a database, or a monitoring framework.
+
+## Deferred Phase 2 runtime inputs
+
+The following require production writer/state-machine changes and are not implemented by Phase 1:
+
+- After explicit User approval of a same-scope bounded fix, one atomic production-writer transition
+  performs `REVIEWER_BLOCKED / QA_BLOCKED / INTEGRATION_BLOCKED -> development`, preserves Plan,
+  scope, host, identity, blocker/evidence history, increments Developer attempt, clears the current
+  blocker, and creates one pending Developer action with one writer call and one board-only commit. It
+  must not replay Planner or Approve and must fail closed on missing decision, scope/identity drift, or
+  unprovable dirty state.
+- After explicit exact-scope amendment approval, one atomic amendment-approval transition updates
+  `scope_contract`, `approved_code_paths`, `plan_ref`, `approval_ref`, blocker, and resume phase in one
+  board-only commit, then uses normal Developer begin. It must not replay Planner lifecycle or require
+  two byte-identical Approve calls.
+- Add compact `active_snapshot` / `next_action`, scripted governance JSON construction, bounded reads
+  instead of rereading the complete board/Task/Plan/protocol every turn, and direct durable-state resume
+  after interruption. Reuse the existing V2 authority and framework; do not add another governance
+  framework or a standard-task tier.
+
 Recovery reconstructs the durable active task and host from board, Git, and evidence before any action,
 reuses the recorded host, and never duplicates activation. Unprovable identity fails closed with an exact
 typed blocker. Browser smoke is required only for a user-visible UI change; use documented load state or

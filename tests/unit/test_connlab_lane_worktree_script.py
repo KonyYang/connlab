@@ -135,15 +135,19 @@ def test_controlled_lane_skill_forbids_credentials_and_real_dry_run_actions() ->
     text = (
         ROOT / ".agents" / "skills" / "connlab-controlled-lane" / "SKILL.md"
     ).read_text(encoding="utf-8")
+    metadata = (
+        ROOT / ".agents" / "skills" / "connlab-controlled-lane" / "agents" / "openai.yaml"
+    ).read_text(encoding="utf-8")
 
     assert "_codex_runtime" in text
     assert "must not" in text.lower()
     assert "exactly one external action" in text
     assert "zero-write dry-run" in text
     assert "`route-plan` is a" in text and "diagnostic-only pure projection" in text
+    assert "allow_implicit_invocation: false" in metadata
 
 
-def test_v2_governance_hooks_are_present_without_bootstrap_activation() -> None:
+def test_frozen_v2_artifacts_remain_auditable_without_daily_activation() -> None:
     agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
     protocol = (
         ROOT / "docs" / "project_management" / "LANE_ORCHESTRATION_PROTOCOL.md"
@@ -158,8 +162,7 @@ def test_v2_governance_hooks_are_present_without_bootstrap_activation() -> None:
         / "CONTROLLED_LANE_ORCHESTRATION_V2.md"
     ).read_text(encoding="utf-8")
 
-    assert "CONTROLLED_LANE_ORCHESTRATION_V2.md" in agents
-    assert "Frozen Legacy Automation Modes" in agents
+    assert "frozen Controlled Lane audit material" in agents
     assert "dispatch_ack" in protocol
     assert "mark-invocation-started" in operations
     assert "Status: frozen legacy" in v2

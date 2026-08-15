@@ -1,6 +1,6 @@
 ---
 name: connlab-lane-orchestrator
-description: Run ConnLab's active personal-serial complex workflow from plan through automatic Developer, Reviewer, QA, and Integrator handoffs.
+description: Run ConnLab's active Personal Serial Workflow V2 for task intake, read-only planning, approved implementation, review, QA, integration, recovery, and closeout. Use whenever the User asks to start, continue, approve, inspect, recover, or close ConnLab repository work.
 ---
 
 # ConnLab Personal Serial Orchestrator
@@ -10,6 +10,10 @@ Status: active version-2 runtime.
 Use this skill when the User submits, approves, resumes, inspects or closes a ConnLab complex task.
 Read `AGENTS.md`, `docs/task_board.md`, the active Task/Plan and relevant evidence first. The board's
 version-2 control block and Git facts override conversation memory.
+
+Detailed schemas, evidence topology, model routing, recovery, and integration rules live only in
+`docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md`. Read the relevant section before a
+write or dispatch; do not duplicate or improvise that contract here.
 
 ## User contract
 
@@ -47,111 +51,49 @@ phase, record its native action and returned identity, wait for its exact callba
 subject/evidence, then consume it. Reviewer or QA blocking findings route back to Developer without
 new approval when the fix remains inside approved scope.
 
-Primary is the sole owner of execution-role evidence. For every Developer, Reviewer, QA or Integrator
-callback, keep the task branch and its worktree clean at the exact role subject and advance primary in
-this fixed order: `begin-role` board-only commit -> `record-invocation` board-only commit -> one
-evidence-only commit changing exactly `docs/lane_evidence/<TASK_ID>_<role>.md` -> `consume-callback`
-board-only commit. This sequence also applies to every bounded fix-loop callback, so the accepted
-evidence list is dynamic and follows durable invocation order. Never write or commit execution evidence
-in the task worktree, and never repair its branch pointer after evidence persistence.
+Primary owns execution-role evidence. Keep the task host clean at the exact subject and follow the
+protocol's fixed transition/evidence order for every callback and bounded fix loop.
 
-## Canonical user entry payloads
+## Canonical entry
 
-Use only `scripts/run_task.ps1`; never construct request JSON for a direct Python entry, probe legacy
-schemas, or retry another schema after a validation error. Submit is exactly
-`-Action Submit -RequestJson <single JSON object>` with these ten keys:
+Use only `scripts/run_task.ps1` for User-facing Submit, Approve, and Close. Copy the exact payload and
+decision contracts from the normative protocol. A schema error is terminal and zero-write; never guess
+another schema or bypass the entry with direct request JSON.
 
-```text
-schema, version, task_id, summary, root_cause_clear, expected_result_clear,
-may_touch, targeted_validation, requires_independent_review, forbidden_categories
-```
+## Supporting engineering skills
 
-Its identity is `connlab.serial-task-request` version `1`; `kind` is forbidden. Its
-`forbidden_categories` has exactly ten keys: `api_contract`, `database`,
-`schema_or_migration`, `persistence`, `authority`, `public_drive_workflow`,
-`business_rule_semantics`, `destructive_action`, `external_mutation`, and `push_or_release`.
-Missing decision facts may classify as discovery only under that schema. An unknown field is a terminal,
-zero-write classification error, not a signal to copy or retry an alternate payload.
+Supporting skills improve a role's method; they never create another route, broaden approved scope, or
+override board authority.
 
-Approve is separately `-Action Approve -ApprovedRequestJson <single JSON object> -PlanRef <committed
-Plan ref> -ApprovalRef <explicit User approval>` with exactly these nine top-level decision keys plus
-identity: `schema`, `version`, `task_id`, `summary`, `kind`, `may_touch`, `expected_file_count`,
-`classification_reason`, `targeted_validation`, and `forbidden_categories`. It requires
-`schema=connlab.personal-task-approved-request`, `version=1`, and `kind=planned`. Its forbidden map has
-only the first nine Submit category keys: `push_or_release` is explicitly forbidden. Do not copy Submit
-fields into Approve.
+- Developer uses `$tdd` for substantive behavior changes. Add `$diagnosing-bugs` only for hard,
+  repeated, flaky, or unexplained failures—not routine implementation and not Windows hardware faults.
+- Reviewer uses `$code-review` after a meaningful diff; QA does not repeat that review.
+- Planner or Developer uses `$codebase-design` only for an approved structural refactor or module seam.
+- Planner or Orchestrator uses `$grilling` only for material product ambiguity; ask at most three
+  blocking questions and decide ordinary technical details autonomously.
+- UI work loads `$impeccable`; UI QA uses `$playwright` only when observable browser behavior changed.
 
-Close has no JSON payload: use only `-Action Close -DecisionRef <non-empty explicit User decision>`.
-Do not invent a close schema; a missing `DecisionRef` fails before the writer runs.
+Choose and audit role models exactly as defined by the normative protocol.
 
-## Model routing and audit
+## Validation ownership
 
-The permanent Orchestrator and direct simple task stay `gpt-5.6-sol / medium`; the shortest simple path
-is Submit, one preflight and activation commit, direct primary implementation, one bounded validation,
-then human inspection and Close. It adds no Task/Plan, role agent, branch, worktree, intermediate
-`继续`, or model-switching hop. Complex role dispatches must explicitly pass both `model` and
-`reasoning_effort` to `spawn_agent`; inherited/default selection is forbidden.
+Developer self-reviews and runs the complete approved matrix last on the final exact subject; any later
+implementation or test change invalidates that result. Reviewer runs risk-targeted tests and uses
+`$code-review` as its method, not a second review route. QA independently runs the complete matrix once
+on the clean reviewed subject. Integrator verifies exact Git/evidence/integration facts, does not repeat
+the matrix, and stops immediately on a deterministic blocker. Use known permission boundaries on the
+first attempt and recover interrupted work mechanically from board, Git, worktree, and evidence.
 
-| Role | Default model | Effort | Reason |
-| --- | --- | --- | --- |
-| Developer | `gpt-5.6-terra` | medium | `default_complex` |
-| Reviewer | `gpt-5.6-terra` | medium | `default_complex` |
-| QA | `gpt-5.6-terra` | low only for bounded documentation/copy-only work; otherwise medium | `qa_bounded_low` or `default_complex` |
-| Integrator | `gpt-5.6-terra` | medium | `default_complex` |
-
-QA uses low only when all frozen risk flags are false, no operational skill/protocol/runtime/product
-behavior changes, no blocker/fix loop, and validation is fully enumerated; every other non-high-risk
-case is Terra medium. The affected role escalates to `gpt-5.6-sol / medium` for API contract;
-database/schema/migration/persistence; authority/public-drive/business semantics; cross-frontend/backend
-or multi-layer work; unexplained repeated test failure; integration conflict; or security-sensitive
-change. High effort is limited to migration, authority, or a hard-to-diagnose failure. Luna is not used.
-
-Every Developer, Reviewer, QA, and Integrator evidence header contains exactly one each of `MODEL`,
-`REASONING_EFFORT`, and `MODEL_ROUTE_REASON` (`default_complex`, `qa_bounded_low`, or
-`risk:<frozen-category>`). Reviewer reconciles its dispatch capsule with subject evidence; QA verifies
-the complete route and the forbidden-Luna assertion. Integrator evidence and the final User summary
-contain an `ACTUAL_MODEL_ROUTING` table with role, model, effort, reason, and evidence reference.
-Missing or mismatched audit values block the gate.
-
-## Recovery and UI smoke
+## Recovery
 
 Recovery first reconstructs the durable active task and host from board, Git, and evidence; it reuses
 the recorded host and never duplicates activation. If identity cannot be proved, stop fail-closed with
-the typed blocker. A browser smoke is required only for a user-visible UI change, and then uses a
-documented load state or deterministic selectors; unsupported `networkidle` probing is forbidden.
-
-After the durable `begin-host` commit, create or reuse the host only through one complete
-`scripts/connlab_serial_worktree.ps1 -Action Create` call. Pass the exact primary root, active Task ID,
-approved branch, sibling worktree root, direct-child target path and approved base SHA; use named
-PowerShell splatting and request one permission boundary for the complete helper call. The helper
-returns Git facts only. Combine them mechanically with the unchanged pending `action_id` and native
-`thread_id`/`host_id` to form the existing `record-host` payload.
-
-Retry a local transport failure at most once in the same turn, only after proving `changed=false`, the
-same `host_creation_pending` action ID, unchanged board and primary HEAD, and no branch, path or
-worktree-registration drift. Use identical task/branch/path/base identity. Never retry permission,
-authority, scope, dirty, conflict or partial-state failures; retain their facts and stop. Record the
-host once, after `ALLOW_WORKTREE_CREATE` or `ALLOW_WORKTREE_REUSE`.
+the typed blocker. Follow the protocol's single-retry rule only after proving zero state change.
 
 ## Safety
 
-WIP is one. When a task is active, a new submission returns `BLOCKED_ACTIVE_TASK_RUNNING` immediately
-after board parsing, before Git verification, lock acquisition, request parsing or classification;
-the User submits it again after close. Reuse an already-recorded
-host and never create a duplicate. Do not push, rebase, force-remove, restore, reset, stash, discard,
-delete a branch, archive or retire resources automatically. Stop and record a typed blocker on
-unprovable identity/evidence, dirty/divergent state, conflict, scope expansion, destructive work or
-repeated failure.
-
-Integrator must bind the accepted Developer subject, Reviewer and QA evidence, and the exact clean
-host HEAD before the runtime performs the approved local integration. The completed task remains
-`implemented_pending_human_review` until the User says `关闭`. Closeout retains clean task/thread/
-worktree/branch/HEAD/evidence references; lifecycle cleanup is outside the daily gate.
-
-Before integration, revalidate the committed Planner prefix plus every execution evidence commit
-against its durable invocation, frozen Plan route, fixed path, raw digest and primary ancestry. The
-integration merge uses the final callback board commit as first parent and the unchanged task subject
-as second parent; execution evidence must never occur in task-subject ancestry.
-
-The first ordinary complex task is a monitored first real run, not a pilot or governance project.
-If it fails, keep it active with its blocker and report the exact stopping fact.
+WIP is one. Reuse a recorded host and never duplicate activation. Do not push, rebase, force-remove,
+restore, reset, stash, discard, delete, archive, or retire automatically. Stop with a typed blocker on
+unprovable identity/evidence, dirty or divergent state, conflict, scope expansion, destructive work,
+or repeated failure. Integrate only after the protocol's subject/evidence/Git gate passes; remain at
+`implemented_pending_human_review` until the User says `关闭`.

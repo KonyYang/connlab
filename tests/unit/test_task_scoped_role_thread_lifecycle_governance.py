@@ -147,26 +147,85 @@ def test_powershell_entry_mapping_keeps_close_payload_free() -> None:
     assert "CloseJson" not in entry
 
 
-def test_routing_recovery_and_ui_smoke_contract_is_mirrored() -> None:
+def test_orchestrator_delegates_detailed_runtime_contract_to_protocol() -> None:
     orchestrator = read(".agents/skills/connlab-lane-orchestrator/SKILL.md")
     protocol = read("docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md")
 
-    for document in (orchestrator, protocol):
-        assert "connlab.serial-task-request" in document
-        assert "connlab.personal-task-approved-request" in document
-        assert "`kind`" in document
-        assert "is forbidden" in document
-        assert "push_or_release" in document
-        assert "-Action Close -DecisionRef" in document
-        assert "gpt-5.6-terra" in document
-        assert "gpt-5.6-sol" in document
-        assert "qa_bounded_low" in document
-        assert "Luna is not used" in document
-        assert "MODEL_ROUTE_REASON" in document
-        assert "ACTUAL_MODEL_ROUTING" in document
-        assert "reuses" in document
-        assert "recorded host" in document
-        assert "never duplicates" in document
-        assert "activation" in document
-        assert "user-visible UI change" in document
-        assert "networkidle" in document
+    assert "SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md" in orchestrator
+    assert "connlab.serial-task-request" not in orchestrator
+    assert "ACTUAL_MODEL_ROUTING" not in orchestrator
+    assert len(orchestrator.splitlines()) <= 100
+
+    assert "connlab.serial-task-request" in protocol
+    assert "connlab.personal-task-approved-request" in protocol
+    assert "-Action Close -DecisionRef" in protocol
+    assert "ACTUAL_MODEL_ROUTING" in protocol
+    assert "networkidle" in protocol
+
+
+def test_current_workflow_documents_do_not_conflict_on_role_dispatch() -> None:
+    agents = read("AGENTS.md")
+    execution = read("docs/project_management/TASK_EXECUTION_SKILL.md")
+    planning = read("docs/project_management/PLANNER_DISCOVERY_PROTOCOL.md")
+
+    assert "## 14." not in agents
+    assert "Classic Persistent Roles" not in agents
+    assert "Quick Fixer Fast Path" not in agents
+    assert "Never dispatch roles" not in execution
+    assert "No Planner role conversation" not in planning
+    assert "queued planned intake" not in planning
+    assert "Developer -> Reviewer -> QA -> Integrator" in execution
+    assert "read-only Planner" in planning
+
+
+def test_orchestrator_scopes_supporting_skills_by_role_and_risk() -> None:
+    orchestrator = read(".agents/skills/connlab-lane-orchestrator/SKILL.md")
+    normalized = " ".join(orchestrator.split())
+
+    for skill in (
+        "$tdd",
+        "$diagnosing-bugs",
+        "$code-review",
+        "$codebase-design",
+        "$grilling",
+        "$playwright",
+        "$impeccable",
+    ):
+        assert skill in orchestrator
+    assert "hard, repeated, flaky, or unexplained" in normalized
+    assert "material product ambiguity" in normalized
+
+
+def test_legacy_workflow_skills_are_not_implicitly_injected() -> None:
+    for skill in ("connlab-planner", "connlab-controlled-lane"):
+        metadata = read(f".agents/skills/{skill}/agents/openai.yaml")
+        assert "allow_implicit_invocation: false" in metadata
+
+
+def test_protocol_assigns_one_final_matrix_and_fail_fast_integration() -> None:
+    orchestrator = " ".join(
+        read(".agents/skills/connlab-lane-orchestrator/SKILL.md").split()
+    )
+    protocol = " ".join(
+        read("docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md").split()
+    )
+
+    assert "any later implementation or test change invalidates that result" in orchestrator
+    assert "Reviewer runs risk-targeted tests" in orchestrator
+    assert "QA is the only default independent repeat of the complete approved matrix" in protocol
+    assert "must not mutate board, phase, validation, or fixture state" in protocol
+    assert "Integrator does not repeat the complete pytest matrix" in protocol
+    assert "stop remaining unrelated checks" in protocol
+    assert "request the complete command's required permission boundary first" in protocol
+    assert "Never write a truncated SHA" in protocol
+    assert "approximate elapsed time" in protocol
+
+
+def test_protocol_records_phase2_inputs_without_claiming_phase1_runtime() -> None:
+    protocol = read("docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md")
+
+    assert "Deferred Phase 2 runtime inputs" in protocol
+    assert "REVIEWER_BLOCKED / QA_BLOCKED / INTEGRATION_BLOCKED -> development" in protocol
+    assert "atomic amendment-approval transition" in protocol
+    assert "active_snapshot" in protocol and "next_action" in protocol
+    assert "not implemented by Phase 1" in protocol
