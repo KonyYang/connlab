@@ -56,6 +56,28 @@ describe("ProjectListPage lifecycle registry views", () => {
     expect(screen.getByLabelText("Project view")).toHaveProperty("value", "ongoing");
   });
 
+  it("defaults Project IDs to newest first and lets the operator switch to oldest first", async () => {
+    const user = userEvent.setup();
+    mockRows([
+      registryRow({ project_id: "P-OLD", display_project_id: "DL-2026-06-001" }),
+      registryRow({ project_id: "P-NEW", display_project_id: "DL-2026-07-003" }),
+    ]);
+    mockLifecycle({
+      "P-OLD": lifecycle({ project_id: "P-OLD" }),
+      "P-NEW": lifecycle({ project_id: "P-NEW" }),
+    });
+
+    render(<ProjectListPage onOpenProject={vi.fn()} />);
+
+    expect(await projectIdsInTable()).toEqual(["DL-2026-07-003", "DL-2026-06-001"]);
+    const sortButton = screen.getByRole("button", { name: "Sort Project ID ascending" });
+
+    await user.click(sortButton);
+
+    expect(await projectIdsInTable()).toEqual(["DL-2026-06-001", "DL-2026-07-003"]);
+    expect(screen.getByRole("button", { name: "Sort Project ID descending" })).toBeTruthy();
+  });
+
   it("shows completed and administrative closed projects in the Closed view", async () => {
     const user = userEvent.setup();
     mockRows([
@@ -267,6 +289,14 @@ describe("ProjectListPage lifecycle registry views", () => {
 
 function mockRows(rows: ProjectRegistryRow[]): void {
   listProjectRegistryRowsMock.mockResolvedValue(rows);
+}
+
+async function projectIdsInTable(): Promise<string[]> {
+  await screen.findByRole("button", { name: /Sort Project ID/ });
+  return screen
+    .getAllByRole("row")
+    .slice(1)
+    .map((row) => row.querySelector<HTMLElement>("[data-label='Project ID']")?.textContent ?? "");
 }
 
 function mockLifecycle(overlays: Record<string, ProjectLifecycleResponse>): void {

@@ -356,7 +356,7 @@ function loadProjectRegistryViewState(): ProjectRegistryViewState {
   const fallback: ProjectRegistryViewState = {
     search: "",
     selectedView: "ongoing",
-    projectIdSort: "asc",
+    projectIdSort: "desc",
     currentPage: 1,
   };
   try {
