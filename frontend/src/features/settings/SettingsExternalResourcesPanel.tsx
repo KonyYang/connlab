@@ -30,6 +30,8 @@ type DraftValue = {
   worksheetName: string;
 };
 
+const SHOW_LTR_WORKBOOK_PASSWORD_EDITOR = false;
+
 export function SettingsExternalResourcesPanel({
   resources,
   savingType,
@@ -108,7 +110,8 @@ export function SettingsExternalResourcesPanel({
                   onBrowse={() => onBrowse(row.resourceType)}
                 />
               ))}
-              {category === "Public registration and record files" ? (
+              {SHOW_LTR_WORKBOOK_PASSWORD_EDITOR &&
+              category === "Public registration and record files" ? (
                 <LtrWorkbookPasswordRow
                   status={passwordStatus}
                   saving={savingPassword}

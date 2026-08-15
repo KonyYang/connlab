@@ -33,6 +33,13 @@ function renderPanel(onSave = vi.fn().mockResolvedValue(undefined)) {
 }
 
 describe("Standard record worksheet setting", () => {
+  it("does not expose the LTR workbook password editor", () => {
+    renderPanel();
+
+    expect(screen.queryByLabelText("LTR workbook password")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Update password" })).toBeNull();
+  });
+
   it("omits worksheet_name when the path auto-saves", async () => {
     const onSave = renderPanel();
     expect(screen.getByText("Standard version file path")).toBeTruthy();
