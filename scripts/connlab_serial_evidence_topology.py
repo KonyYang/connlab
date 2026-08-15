@@ -102,6 +102,50 @@ def _single_parent(root: Path, commit: str) -> str:
     return parts[1]
 
 
+def _planner_paths(active: dict[str, Any]) -> tuple[str, str, str]:
+    task_id = active["task_id"]
+    return (
+        f"tasks/{task_id}.md",
+        f"docs/{task_id.lower()}_plan.md",
+        f"docs/lane_evidence/{task_id}_planner.md",
+    )
+
+
+def _planner_revision_bundle(
+    root: Path,
+    active: dict[str, Any],
+    commit: str,
+    following_commit: str | None,
+) -> bool:
+    task_path, plan_path, planner_path = _planner_paths(active)
+    parent = _single_parent(root, commit)
+    if _changed_paths(root, parent, commit) != sorted((task_path, plan_path, planner_path)):
+        return False
+    if _committed_bytes(root, commit, BOARD_REL, code="BLOCKED_INTEGRATION_PROOF") != _committed_bytes(
+        root, parent, BOARD_REL, code="BLOCKED_INTEGRATION_PROOF"
+    ):
+        return False
+    if following_commit is None or _single_parent(root, following_commit) != commit:
+        return False
+    if _changed_paths(root, commit, following_commit) != [BOARD_REL]:
+        return False
+    plan = _committed_bytes(root, commit, plan_path, code="BLOCKED_INTEGRATION_PROOF")
+    expected_ref = f"{plan_path}@{commit}#{hashlib.sha256(plan).hexdigest()}"
+    authority_board = _committed_bytes(
+        root, following_commit, BOARD_REL, code="BLOCKED_INTEGRATION_PROOF"
+    )
+    try:
+        _, control, _ = parse_board(authority_board)
+        authority_active = control["active"]
+    except (KeyError, TypeError, ValueError):
+        return False
+    return (
+        isinstance(authority_active, dict)
+        and authority_active.get("task_id") == active.get("task_id")
+        and authority_active.get("plan_ref") == expected_ref
+    )
+
+
 def _invocation_board(
     root: Path, parent: str, active: dict[str, Any], invocation: dict[str, Any]
 ) -> bytes:
@@ -238,10 +282,14 @@ def verify_integration_evidence_topology(
             commit, _ = _verify_execution_evidence(root, active, evidence_ref, invocation)
         elif invocation.get("role") != "Planner":
             _blocked("BLOCKED_INTEGRATION_PROOF", "Evidence binds an unknown callback role.")
-        elif hashlib.sha256(
-            _committed_bytes(root, commit, path, code="BLOCKED_EVIDENCE_INVALID")
-        ).hexdigest() != digest:
-            _blocked("BLOCKED_EVIDENCE_INVALID", "Planner evidence bytes do not match the supplied SHA-256.")
+        else:
+            planner_path = _planner_paths(active)[2]
+            if path != planner_path:
+                _blocked("BLOCKED_EVIDENCE_INVALID", "Planner evidence path does not match the Task-derived path.")
+            if hashlib.sha256(
+                _committed_bytes(root, commit, path, code="BLOCKED_EVIDENCE_INVALID")
+            ).hexdigest() != digest:
+                _blocked("BLOCKED_EVIDENCE_INVALID", "Planner evidence bytes do not match the supplied SHA-256.")
         if run_git(root, "merge-base", "--is-ancestor", commit, integration["primary_parent"]).returncode != 0:
             _blocked("BLOCKED_INTEGRATION_PROOF", "Callback evidence is outside the accepted primary ancestry.")
         commits.append(commit)
@@ -259,10 +307,18 @@ def verify_integration_evidence_topology(
         commit: (path, invocation["role"])
         for commit, path, invocation in zip(commits, evidence_paths, role_invocations, strict=True)
     }
-    for commit in history.stdout.splitlines():
+    history_commits = history.stdout.splitlines()
+    for index, commit in enumerate(history_commits):
         parent = _single_parent(root, commit)
         evidence = evidence_by_commit.get(commit)
         if evidence is not None and evidence[1] == "Planner":
+            continue
+        if evidence is None and _planner_revision_bundle(
+            root,
+            active,
+            commit,
+            history_commits[index + 1] if index + 1 < len(history_commits) else None,
+        ):
             continue
         expected = [evidence[0]] if evidence is not None else [BOARD_REL]
         if _changed_paths(root, parent, commit) != expected:

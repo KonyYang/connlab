@@ -56,6 +56,7 @@ def fixture(
     *,
     mixed_evidence: bool = False,
     header_overrides: dict[str, str] | None = None,
+    planner_drift: str | None = None,
 ) -> tuple[Path, Path, dict, dict, str]:
     repo, host = tmp_path / "repo", tmp_path / "host"
     repo.mkdir()
@@ -64,7 +65,7 @@ def fixture(
     git(repo, "config", "user.email", "topology@example.invalid")
     (repo / "docs").mkdir()
     (repo / "docs/lane_evidence").mkdir()
-    plan_path = repo / "docs/plan.md"
+    plan_path = repo / f"docs/{TASK_ID.lower()}_plan.md"
     plan_bytes = (
         "# Plan\n\nDeveloper, Reviewer, QA and Integrator are all "
         "`gpt-5.6-sol / medium / risk:authority`.\n"
@@ -73,10 +74,10 @@ def fixture(
     _, template, suffix = parse_board((ROOT / "docs/task_board.md").read_bytes())
     template.update(state="running", active=None, queue=[], next_enqueue_sequence=1)
     (repo / "docs/task_board.md").write_bytes(render_board("", template, suffix))
-    git(repo, "add", "docs/plan.md", "docs/task_board.md")
+    git(repo, "add", str(plan_path.relative_to(repo)), "docs/task_board.md")
     git(repo, "commit", "-m", "fixture base")
     plan_commit = git(repo, "rev-parse", "HEAD")
-    plan_ref = f"docs/plan.md@{plan_commit}#{hashlib.sha256(plan_bytes).hexdigest()}"
+    plan_ref = f"{plan_path.relative_to(repo).as_posix()}@{plan_commit}#{hashlib.sha256(plan_bytes).hexdigest()}"
     planner_path = repo / f"docs/lane_evidence/{TASK_ID}_planner.md"
     planner_bytes = f"TASK_ID: {TASK_ID}\nROLE: Planner\nSTATUS: ready\n".encode()
     planner_path.write_bytes(planner_bytes)
@@ -123,11 +124,35 @@ def fixture(
         "activated_at": "2026-08-15T00:00:00Z", "updated_at": "2026-08-15T00:00:00Z",
         "blocker": None, "validation": None, "complex_context": context,
     }
+    task_path = repo / f"tasks/{TASK_ID}.md"
+    task_path.parent.mkdir()
+    task_path.write_text("# Revised Task\n", encoding="utf-8")
+    plan_bytes += b"\nPlanner revision.\n"
+    plan_path.write_bytes(plan_bytes)
+    planner_path.write_bytes(planner_bytes + b"REVISION: bounded\n")
+    if planner_drift == "extra_path":
+        (repo / "extra.txt").write_text("extra\n", encoding="utf-8")
+        git(repo, "add", "extra.txt")
+    if planner_drift == "board_change":
+        (repo / "docs/task_board.md").write_bytes((repo / "docs/task_board.md").read_bytes() + b"\n")
+        git(repo, "add", "docs/task_board.md")
+    git(repo, "add", str(task_path.relative_to(repo)), str(plan_path.relative_to(repo)), str(planner_path.relative_to(repo)))
+    git(repo, "commit", "-m", "governance: revise Planner bundle")
+    bundle_commit = git(repo, "rev-parse", "HEAD")
+    bound_ref = f"{plan_path.relative_to(repo).as_posix()}@{bundle_commit}#{hashlib.sha256(plan_bytes).hexdigest()}"
+    if planner_drift not in {"unbound", "later_descendant"}:
+        active["plan_ref"] = bound_ref if planner_drift != "wrong_digest" else bound_ref[:-1] + ("0" if bound_ref.endswith("f") else "f")
     template.update(state="running", active=active)
     board_bytes = render_board("", template, suffix)
     (repo / "docs/task_board.md").write_bytes(board_bytes)
     git(repo, "add", "docs/task_board.md")
     git(repo, "commit", "-m", "record Developer invocation")
+    if planner_drift == "later_descendant":
+        active["plan_ref"] = bound_ref
+        template["active"] = active
+        (repo / "docs/task_board.md").write_bytes(render_board("", template, suffix))
+        git(repo, "add", "docs/task_board.md")
+        git(repo, "commit", "-m", "late Planner binding")
 
     evidence_path = f"docs/lane_evidence/{TASK_ID}_developer.md"
     headers = {
@@ -279,8 +304,11 @@ def test_header_or_route_drift_fails_closed(tmp_path: Path, header_overrides: di
     assert snapshot(repo, host) == before
 
 
-def test_integration_revalidates_dynamic_primary_evidence_history(tmp_path: Path) -> None:
-    repo, _, active, callback, _ = fixture(tmp_path)
+@pytest.mark.parametrize("planner_drift", (None, "unbound", "wrong_digest", "extra_path", "board_change", "later_descendant"))
+def test_integration_revalidates_dynamic_primary_evidence_history(
+    tmp_path: Path, planner_drift: str | None,
+) -> None:
+    repo, _, active, callback, _ = fixture(tmp_path, planner_drift=planner_drift)
     accepted = copy.deepcopy(active)
     context = accepted["complex_context"]
     context["evidence_refs"].append(callback["evidence"])
@@ -304,7 +332,11 @@ def test_integration_revalidates_dynamic_primary_evidence_history(tmp_path: Path
         "evidence_refs": context["evidence_refs"],
     }
 
-    verify_integration_evidence_topology(repo, accepted, integration)
+    if planner_drift is None:
+        verify_integration_evidence_topology(repo, accepted, integration)
+    else:
+        with pytest.raises(Blocked):
+            verify_integration_evidence_topology(repo, accepted, integration)
 
 
 def test_integration_pairs_interleaved_planner_and_repeated_developer_callbacks(tmp_path: Path) -> None:
