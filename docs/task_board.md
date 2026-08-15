@@ -13,98 +13,15 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "implemented_pending_human_review",
-  "active": {
-    "task_id": "TASK_PROJECT_REGISTRY_DEFAULT_RECENT_FIRST_SORT",
-    "summary": "Default the Projects registry Project ID sort to newest first while preserving the existing clickable ascending/descending toggle and stored user selection.",
-    "kind": "simple",
-    "classification": "simple",
-    "phase": "human_review",
-    "scope_contract": {
-      "schema": "connlab.serial-task-request",
-      "version": 1,
-      "task_id": "TASK_PROJECT_REGISTRY_DEFAULT_RECENT_FIRST_SORT",
-      "summary": "Default the Projects registry Project ID sort to newest first while preserving the existing clickable ascending/descending toggle and stored user selection.",
-      "root_cause_clear": true,
-      "expected_result_clear": true,
-      "may_touch": [
-        "frontend/src/pages/ProjectListPage.tsx",
-        "frontend/src/pages/ProjectListPage.test.tsx",
-        "docs/task_board.md"
-      ],
-      "targeted_validation": [
-        "npm test -- --run src/pages/ProjectListPage.test.tsx",
-        "npm run build",
-        "git diff --check",
-        "browser smoke: initial Projects order is newest to oldest and Project ID header toggles to oldest to newest"
-      ],
-      "requires_independent_review": false,
-      "forbidden_categories": {
-        "api_contract": false,
-        "database": false,
-        "schema_or_migration": false,
-        "persistence": false,
-        "authority": false,
-        "public_drive_workflow": false,
-        "business_rule_semantics": false,
-        "destructive_action": false,
-        "external_mutation": false,
-        "push_or_release": false
-      }
-    },
-    "plan_ref": null,
-    "approval_ref": null,
-    "activation_parent_sha": "ac3a7daa91317f2d7755604788612f9a4f0e45a4",
-    "activated_at": "2026-08-15T12:52:27Z",
-    "updated_at": "2026-08-15T12:59:23Z",
-    "blocker": null,
-    "validation": {
-      "schema": "connlab.personal-task-validation",
-      "version": 1,
-      "status": "passed",
-      "checks": [
-        {
-          "command": "npm test -- --run src/pages/ProjectListPage.test.tsx",
-          "exit_code": 0,
-          "summary": "8 tests passed"
-        },
-        {
-          "command": "npm run build",
-          "exit_code": 0,
-          "summary": "Production build passed with the existing chunk-size advisory only"
-        },
-        {
-          "command": "git diff --check",
-          "exit_code": 0,
-          "summary": "Passed"
-        }
-      ],
-      "observed_paths": [
-        "frontend/src/pages/ProjectListPage.tsx",
-        "frontend/src/pages/ProjectListPage.test.tsx"
-      ],
-      "manual_checks": [
-        "Fresh browser session opened with newest Project IDs first: DL-2026-08-004, DL-2026-08-003, DL-2026-08-002, DL-2026-08-001, then DL-2026-07-010. Sort control offered ascending as the next action."
-      ],
-      "recorded_at": "2026-08-15T12:59:23.1670180Z"
-    },
-    "complex_context": null
-  },
+  "state": "idle",
+  "active": null,
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
-    "task_id": "TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT",
-    "disposition": "retained",
-    "decision_ref": "User decision in current message: 关闭 TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT",
-    "integration_commit": "3aac31e588d07855cdf495cec156a40fca1fdcef",
-    "integrator_evidence_ref": "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_integrator.md@003fd22c98b90e9ed9cac01947afb9d57a30ff8a#ba3904ebe7e96a5cd74ac806b9ba6ed22f84213439a48d75c4968b82395fe556",
-    "retained_resources": {
-      "thread_id": "/root/nondestructive_evidence_topology_host",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\task-governance-nondestructive-evidence-topology-closeout",
-      "branch": "codex/task-governance-nondestructive-evidence-topology-closeout",
-      "head_sha": "59e0cc7b7fa4b53b1a5a21719647aa47f9491fcb"
-    },
-    "closed_at": "2026-08-15T10:10:13Z"
+    "task_id": "TASK_PROJECT_REGISTRY_DEFAULT_RECENT_FIRST_SORT",
+    "disposition": "closed after human review",
+    "decision_ref": "User decision in current message: 关闭 TASK_PROJECT_REGISTRY_DEFAULT_RECENT_FIRST_SORT",
+    "closed_at": "2026-08-15T13:03:55Z"
   },
   "retained_history": [
     {
