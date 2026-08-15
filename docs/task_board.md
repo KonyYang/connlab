@@ -13,13 +13,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT",
     "summary": "Persist every complex execution callback evidence as a sequential primary evidence-only commit so the task branch remains at the exact reviewed subject and verified integration needs no destructive topology recovery.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "integration",
+    "phase": "human_review",
     "scope_contract": {
       "may_touch": [
         "scripts/connlab_personal_task.py",
@@ -73,9 +73,9 @@
       "task_branch": "codex/task-governance-nondestructive-evidence-topology-closeout",
       "task_worktree": "D:\\PythonProject\\connlab-worktrees\\task-governance-nondestructive-evidence-topology-closeout",
       "base_sha": "56f1fe51a29d5449f1b3178257d62e90ce363601",
-      "head_sha": "56f1fe51a29d5449f1b3178257d62e90ce363601",
+      "head_sha": "59e0cc7b7fa4b53b1a5a21719647aa47f9491fcb",
       "integration_target": "master",
-      "worktree_lifecycle": "integration_ready",
+      "worktree_lifecycle": "integrated",
       "current_role": null,
       "current_attempt": 2,
       "role_invocations": [
@@ -263,7 +263,7 @@
       "developer_subject_commit": "59e0cc7b7fa4b53b1a5a21719647aa47f9491fcb",
       "reviewer_subject_commit": "59e0cc7b7fa4b53b1a5a21719647aa47f9491fcb",
       "qa_subject_commit": "59e0cc7b7fa4b53b1a5a21719647aa47f9491fcb",
-      "integrated_commit": null,
+      "integrated_commit": "3aac31e588d07855cdf495cec156a40fca1fdcef",
       "evidence_refs": [
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md@72a135b3e891a1c3b2c97bb78d55163f09ffda31#9e393adb8d7df9c485bfc2367c4d87f818543f13d94e15d87a8f6be625dce4b9",
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@109a3b58fa29ab8bc51710687cfb163add977ddb#05f5f78c54cc52dae9b0446f17819784840ef2ad44d9205e36bb2d825031fe23",
