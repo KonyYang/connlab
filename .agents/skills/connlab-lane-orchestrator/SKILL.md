@@ -34,14 +34,8 @@ fresh expected board SHA-256. Exact-stage and locally commit each authority tran
 next write-capable action. Never use chat text as a substitute for board state.
 
 ```text
-idle -> submit/classify
-planning -> fresh read-only Planner -> awaiting_user_approval
-User approval commit -> create one task branch/worktree host
-development -> Developer
-review -> Reviewer
-qa -> QA
-integration -> Integrator -> verified primary integration
-human_review -> User
+idle -> submit/classify; simple -> direct implementation -> human review
+complex -> planning/approval -> Developer -> Reviewer -> QA -> Integrator -> human review
 User 关闭 -> retained closeout -> idle
 ```
 
@@ -53,6 +47,11 @@ new approval when the fix remains inside approved scope.
 
 Primary owns execution-role evidence. Keep the task host clean at the exact subject and follow the
 protocol's fixed transition/evidence order for every callback and bounded fix loop.
+
+## Simple-fast
+
+Within an already classified simple task, use `simple-fast` only when every detailed-protocol predicate
+is true; it is not a task kind, state, role, or approval. Keep normal states and apply its bounded contract.
 
 ## Canonical entry
 
@@ -71,7 +70,8 @@ override board authority.
 - Planner or Developer uses `$codebase-design` only for an approved structural refactor or module seam.
 - Planner or Orchestrator uses `$grilling` only for material product ambiguity; ask at most three
   blocking questions and decide ordinary technical details autonomously.
-- UI work loads `$impeccable`; UI QA uses `$playwright` only when observable browser behavior changed.
+- UI work loads `$impeccable` except for protocol-eligible `simple-fast`; UI QA uses `$playwright`
+  only when observable browser behavior changed.
 
 Choose and audit role models exactly as defined by the normative protocol.
 

@@ -34,6 +34,31 @@ def test_personal_workflow_keeps_simple_direct_and_complex_automatic() -> None:
     assert "implemented_pending_human_review" in policy
 
 
+def test_simple_fast_path_is_bounded_without_becoming_another_task_tier() -> None:
+    agents = " ".join(read("AGENTS.md").split()).lower()
+    orchestrator = " ".join(
+        read(".agents/skills/connlab-lane-orchestrator/SKILL.md").split()
+    )
+    protocol = " ".join(
+        read("docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md").split()
+    )
+
+    for contract in (agents, orchestrator, protocol):
+        assert "simple-fast" in contract
+        assert "not a task kind, state, role, or approval" in contract
+
+    assert "one implementation path" in protocol
+    assert "one existing test path" in protocol
+    assert "one targeted test command" in protocol
+    assert "does not load `$impeccable`" in protocol
+    assert agents.count("except for protocol-eligible `simple-fast`") == 2
+    assert "does not run a production build or browser smoke" in protocol
+    assert "must not probe, install, or download Playwright" in protocol
+    assert "fall back to ordinary `simple`" in protocol
+    assert "one to three minutes" in protocol
+    assert "report the concrete delay once at five minutes" in protocol
+
+
 def test_v2_busy_intake_waits_without_a_queue_action() -> None:
     protocol = read("docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md")
     entry = read("scripts/run_task.ps1")

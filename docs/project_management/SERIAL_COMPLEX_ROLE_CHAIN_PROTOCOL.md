@@ -150,6 +150,45 @@ validation, human inspection, and Close; it has no additional Task/Plan, role ho
 intermediate `继续`, or implicit model switching. Every complex `spawn_agent` dispatch explicitly passes
 both `model` and `reasoning_effort`; inherited/default routing is forbidden.
 
+### Simple-fast execution optimization
+
+`simple-fast` is an execution optimization inside an already classified `simple` request, not a task
+kind, state, role, or approval. It does not alter the writer schema, board lifecycle, WIP=1, model route,
+human review, Close contract, or the three-path simple limit.
+
+Use it only when all of these facts are mechanically true before implementation:
+
+- the request is unambiguous and changes one existing default value, literal, or fixed local mapping;
+- the complete scope is one implementation path, at most one existing test path, and the board;
+- the expected semantic diff is at most 20 lines and adds no file, dependency, import, type, state,
+  abstraction, component seam, build configuration, or generated artifact;
+- copy, visual design, layout, styling, interaction structure, API, database, schema/migration,
+  persistence, authority, public-drive workflow, business semantics, destructive behavior, and
+  external mutation are unchanged; and
+- one targeted test command at an existing public seam can prove the requested result and its direct
+  toggle or fallback behavior when applicable.
+
+The execution sequence is fixed:
+
+1. Read the board control block through `inspect` and its `active_snapshot` / `next_action`, then read
+   only the exact implementation path, the optional existing test path, and locally applicable rules.
+   Do not reread board history, unrelated protocols, architecture documents, or product context.
+2. Preserve the normal activation commit. Use one `$tdd` vertical slice when observable behavior
+   changes: one failing assertion, the minimal implementation, then the same targeted test command.
+3. Self-review the exact diff. Eligible `simple-fast` does not load `$impeccable`, `$codebase-design`,
+   `$code-review`, `$diagnosing-bugs`, or `$playwright` because its predicates exclude their triggers.
+4. After the targeted test passes, run `git diff --check`, make the implementation commit, perform the
+   normal human-review board transition, and stop. By default it does not run a production build or
+   browser smoke. Add one only when the targeted test cannot prove the changed observable behavior or
+   the User explicitly requested it; it must not probe, install, or download Playwright.
+
+The expected elapsed time from committed activation to human review is one to three minutes. If it has
+not completed, report the concrete delay once at five minutes and continue only the still-required
+step; elapsed time never relaxes correctness or safety. If any predicate becomes false, stop the fast
+sequence and fall back to ordinary `simple` when the request remains simple, or fail closed for a new
+planned/complex submission when the simple classification no longer holds. Never stretch the fast
+path by adding validation, documentation, skills, files, or abstractions merely to keep its label.
+
 | Role | Default route |
 | --- | --- |
 | Developer | `gpt-5.6-terra / medium / default_complex` |

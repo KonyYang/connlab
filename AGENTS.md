@@ -77,7 +77,8 @@ Layering rules:
 
 `$impeccable` is a ConnLab project-wide rule for frontend and UI work. It is not limited to Phase 5 or Phase 6.
 
-Use `$impeccable` before any task that designs, changes, critiques, audits, polishes, refactors, or documents:
+Except for protocol-eligible `simple-fast`, use `$impeccable` before any task that designs, changes,
+critiques, audits, polishes, refactors, or documents:
 
 - frontend pages, routes, components, forms, navigation, panels, tables, dashboards, empty states, error states, loading states, or disabled states
 - UX copy, operator guidance, business-readable status text, action labels, confirmation flows, or frontend smoke expectations
@@ -85,11 +86,15 @@ Use `$impeccable` before any task that designs, changes, critiques, audits, poli
 
 Requirements:
 
-- Load `$impeccable` context before UI design or edits and follow `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json`.
+- Except for protocol-eligible `simple-fast`, load `$impeccable` context before UI design or edits and
+  follow `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json`.
 - Read `docs/02_ARCHITECTURE_RULES.md` and `docs/frontend_architecture_rules.md` before any frontend/UI implementation, refactor, UX-copy, layout, component, route, state, API-client, or styling task.
 - Treat ConnLab as `$impeccable` `register: product`.
 - Backend-only, parser-only, storage-only, Office gateway-only, database-only, and non-UI test tasks are exempt unless they change UI behavior or user-facing copy.
 - If `$impeccable` guidance conflicts with the active task scope, obey `AGENTS.md` and `docs/task_board.md` scope control first, then report the conflict.
+- An eligible `simple-fast` default-value or fixed-mapping edit inside an unchanged existing interface
+  is exempt from loading `$impeccable`; any copy, visual, layout, styling, interaction-structure, new
+  state, or component-boundary change is not exempt.
 
 Frontend architecture control:
 
@@ -252,6 +257,11 @@ A simple task requires a clear root cause and expected result, 1–3 total chang
 including tests and board, and no API/database/schema/migration/persistence/authority/public-drive/
 business-semantic/destructive/external mutation. It runs directly on primary after its activation
 commit, receives bounded validation, and stops at human review.
+
+`simple-fast` is a deterministic execution optimization inside an already valid simple task, not a
+task kind, state, role, or approval. Use it only for the protocol's exact micro-change predicates and
+otherwise retain the ordinary simple or planned/complex route. Its detailed read, skill, validation,
+fallback, and elapsed-time contract lives only in `SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md`.
 
 Every other task is planned/complex:
 
