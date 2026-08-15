@@ -186,7 +186,7 @@ def test_public_writer_atomically_reenters_developer_and_changes_only_board(tmp_
 
     result = invoke(
         repo, "reenter-development", "--expected-board-sha256", board_hash(repo),
-        "--task-id", "TASK_PHASE2", "--decision-ref", "user:bounded-fix-approved",
+        "--task-id", "TASK_PHASE2", "--decision-ref", "用户：初始批准",
         "--native-action-json", json.dumps(action, separators=(",", ":")),
     )
 

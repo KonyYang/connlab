@@ -128,7 +128,8 @@ def test_bounded_fix_reentry_is_one_atomic_state_transition(code: str, phase: st
     original_scope = copy.deepcopy(value["scope_contract"])
     original_host = {key: value["complex_context"][key] for key in ("host_id", "host_thread_id", "task_branch", "task_worktree")}
 
-    apply_bounded_fix_reentry(value, native_action(), "user:bounded-fix-approved", "2026-08-15T00:00:02Z")
+    decision_ref = "user:bounded-fix-approved" if code == "INTEGRATION_BLOCKED" else value["approval_ref"]
+    apply_bounded_fix_reentry(value, native_action(), decision_ref, "2026-08-15T00:00:02Z")
 
     context = value["complex_context"]
     assert value["phase"] == "development" and value["blocker"] is None
@@ -137,10 +138,14 @@ def test_bounded_fix_reentry_is_one_atomic_state_transition(code: str, phase: st
     assert context["current_attempt"] == 3 and context["current_role"] == "Developer"
     assert context["pending_callback"] == {"state": "dispatch_pending", "action_id": "2" * 64, "role": "Developer", "attempt": 3}
     assert context["blocker_history"][-1]["blocker"]["code"] == code
-    assert context["blocker_history"][-1]["decision_ref"] == "user:bounded-fix-approved"
+    assert context["blocker_history"][-1]["decision_ref"] == decision_ref
 
 
 def test_bounded_fix_reentry_fails_closed_on_scope_or_attempt_drift() -> None:
+    value = active("REVIEWER_BLOCKED", phase="development")
+    with pytest.raises(SerialContractError, match="BLOCKED_APPROVAL_REQUIRED"):
+        apply_bounded_fix_reentry(value, native_action(), "user:new-routine-approval", "2026-08-15T00:00:02Z")
+
     value = active("REVIEWER_BLOCKED", phase="development")
     value["complex_context"]["approved_code_paths"].append("scripts/drift.py")
     with pytest.raises(SerialContractError, match="BLOCKED_APPROVED_SCOPE_INVALID"):
@@ -202,7 +207,9 @@ def test_scope_amendment_fails_closed_on_prior_approved_path_drift() -> None:
 def test_snapshot_and_next_action_resume_from_durable_pending_state() -> None:
     value = active("QA_BLOCKED", phase="development")
     control = {"state": "running", "active": value}
-    assert next_action(control) == {"command": "reenter-development", "role": "Developer", "requires_user": True}
+    assert next_action(control) == {"command": "reenter-development", "role": "Developer", "requires_user": False}
+    integration = {"state": "running", "active": active("INTEGRATION_BLOCKED")}
+    assert next_action(integration) == {"command": "reenter-development", "role": "Developer", "requires_user": True}
 
     apply_bounded_fix_reentry(value, native_action(), "user:approved", "2026-08-15T00:00:02Z")
     snapshot = active_snapshot(control)

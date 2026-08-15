@@ -230,7 +230,9 @@ and test timing only. Do not add telemetry, a database, or a monitoring framewor
 
 Phase 2 extends the existing V2 production writer; it does not create another authority or task tier.
 
-- After explicit User approval of a same-scope bounded fix, use `reenter-development` once. The writer
+- For a same-scope bounded fix, use `reenter-development` once. Reviewer/QA reuse the existing explicit
+  `approval_ref` without a fourth routine User interaction; `INTEGRATION_BLOCKED` requires a new explicit
+  User decision because it is an unresolved integration blocker. The writer
   mechanically verifies the committed clean primary and the recorded task worktree branch, HEAD and
   cleanliness, then atomically performs `REVIEWER_BLOCKED / QA_BLOCKED / INTEGRATION_BLOCKED ->
   development`. It preserves Plan, scope, host and identity, archives the typed blocker in

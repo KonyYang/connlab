@@ -132,7 +132,9 @@ def apply_bounded_fix_reentry(
     if code not in BOUNDED_FIX_CODES or active.get("phase") not in {"blocked", "development"}:
         _fail("BLOCKED_STATE", "The blocker is not eligible for bounded-fix reentry.")
     if not isinstance(decision_ref, str) or not decision_ref.strip():
-        _fail("BLOCKED_STATE", "Explicit User bounded-fix approval is required.")
+        _fail("BLOCKED_STATE", "A durable bounded-fix decision reference is required.")
+    if code in {"REVIEWER_BLOCKED", "QA_BLOCKED"} and decision_ref != active.get("approval_ref"):
+        _fail("BLOCKED_APPROVAL_REQUIRED", "Reviewer/QA bounded fixes must reuse the existing User approval reference.")
     scope = active.get("scope_contract")
     if (
         not isinstance(scope, dict)
@@ -313,7 +315,7 @@ def next_action(control: dict[str, Any] | None) -> dict[str, Any]:
     blocker = active.get("blocker")
     blocker_code = blocker.get("code") if isinstance(blocker, dict) else None
     if blocker_code in BOUNDED_FIX_CODES:
-        return {"command": "reenter-development", "role": "Developer", "requires_user": True}
+        return {"command": "reenter-development", "role": "Developer", "requires_user": blocker_code == "INTEGRATION_BLOCKED"}
     if blocker_code == "SCOPE_EXPANDED":
         return {"command": "approve", "role": "User", "requires_user": True}
     if blocker_code:
