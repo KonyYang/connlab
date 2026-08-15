@@ -19,7 +19,7 @@
     "summary": "Persist every complex execution callback evidence as a sequential primary evidence-only commit so the task branch remains at the exact reviewed subject and verified integration needs no destructive topology recovery.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "review",
+    "phase": "qa",
     "scope_contract": {
       "may_touch": [
         "scripts/connlab_personal_task.py",
@@ -76,7 +76,7 @@
       "head_sha": "56f1fe51a29d5449f1b3178257d62e90ce363601",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Reviewer",
+      "current_role": null,
       "current_attempt": 3,
       "role_invocations": [
         {
@@ -237,7 +237,7 @@
         "Integrator"
       ],
       "developer_subject_commit": "59e0cc7b7fa4b53b1a5a21719647aa47f9491fcb",
-      "reviewer_subject_commit": "2e6f16322c93fc1a83188658476191d2a032b959",
+      "reviewer_subject_commit": "59e0cc7b7fa4b53b1a5a21719647aa47f9491fcb",
       "qa_subject_commit": "2e6f16322c93fc1a83188658476191d2a032b959",
       "integrated_commit": null,
       "evidence_refs": [
@@ -250,14 +250,10 @@
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md@d582be59a2509fd6f828097cc0bb44d9afd42093#27b5949e0abcfcc184f34a0b7f5544f941bbbb4565576feaf5c71848d3502a5d",
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_qa.md@5c91ea8e48d936e742d5ad706207b4089979468b#641a0184e6c673a9cc3c11423004c69fa59c0ed62148389d4e5f7113dfe9e713",
         "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_integrator.md@0729144924df7bf4417efdee1edba687c103b17f#fd90c34c35e9cd9537a9df2f54bfabc189fadafa28bd672a18b4f5dcca46e2f3",
-        "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@5bb3a708c23b57a23d6d4a247caceab717792bab#48072b6c04a8ecea993a4ec22b13a89a12dde7684f3fe8ddf49ae572cf29ee16"
+        "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@5bb3a708c23b57a23d6d4a247caceab717792bab#48072b6c04a8ecea993a4ec22b13a89a12dde7684f3fe8ddf49ae572cf29ee16",
+        "docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md@ac1202368f4941206b9fe0828b79f1e5df46e00d#7b4b399086246b22db8cb488bbad879bfe2f341f14eecfe099c154bb4d940e25"
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "f7b2fae2674d85395db74d176b3a192336d0fe3be624fba95f1332b41272fe06",
-        "role": "Reviewer",
-        "attempt": 3
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
