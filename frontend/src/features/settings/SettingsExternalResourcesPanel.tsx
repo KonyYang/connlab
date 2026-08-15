@@ -5,15 +5,12 @@ import {
   type ReactElement
 } from "react";
 import type { ExternalResource, ExternalResourceType } from "../../api/client";
-import type { LtrWorkbookPasswordStatus } from "../../api/client";
 import { SHARED_RESOURCE_CONFIGS } from "./settingsResourceConfig";
 import { buildSettingsResourceRows, type SettingsResourceRow } from "./settingsSelectors";
 
 type SettingsExternalResourcesPanelProps = {
   resources: ExternalResource[];
   savingType: ExternalResourceType | null;
-  passwordStatus: LtrWorkbookPasswordStatus | null;
-  savingPassword: boolean;
   browseEnabled: boolean;
   pathValidationMessages: Record<ExternalResourceType, string | null>;
   onPathChange: (resourceType: ExternalResourceType) => void;
@@ -21,7 +18,6 @@ type SettingsExternalResourcesPanelProps = {
     resourceType: ExternalResourceType,
     input: { path: string; active: boolean; worksheet_name?: string | null }
   ) => Promise<void>;
-  onPasswordSave: (password: string) => Promise<void>;
   onBrowse: (resourceType: ExternalResourceType) => Promise<string | null>;
 };
 
@@ -30,18 +26,13 @@ type DraftValue = {
   worksheetName: string;
 };
 
-const SHOW_LTR_WORKBOOK_PASSWORD_EDITOR = false;
-
 export function SettingsExternalResourcesPanel({
   resources,
   savingType,
-  passwordStatus,
-  savingPassword,
   browseEnabled,
   pathValidationMessages,
   onPathChange,
   onSave,
-  onPasswordSave,
   onBrowse
 }: SettingsExternalResourcesPanelProps): ReactElement {
   const rows = useMemo(() => buildSettingsResourceRows(resources), [resources]);
@@ -110,14 +101,6 @@ export function SettingsExternalResourcesPanel({
                   onBrowse={() => onBrowse(row.resourceType)}
                 />
               ))}
-              {SHOW_LTR_WORKBOOK_PASSWORD_EDITOR &&
-              category === "Public registration and record files" ? (
-                <LtrWorkbookPasswordRow
-                  status={passwordStatus}
-                  saving={savingPassword}
-                  onSave={onPasswordSave}
-                />
-              ) : null}
             </div>
           </div>
         );
@@ -263,83 +246,6 @@ function ResourceRow({
           />
         </label>
       ) : null}
-    </article>
-  );
-}
-
-function LtrWorkbookPasswordRow({
-  status,
-  saving,
-  onSave
-}: {
-  status: LtrWorkbookPasswordStatus | null;
-  saving: boolean;
-  onSave: (password: string) => Promise<void>;
-}): ReactElement {
-  const [draft, setDraft] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
-  const [hidePassword, setHidePassword] = useState(true);
-  const configured = Boolean(status?.configured);
-  const overridden = Boolean(status?.overridden_by_environment);
-  const canSave = draft.trim().length > 0 && !saving && !overridden;
-
-  useEffect(() => {
-    setDraft(status?.password ?? "");
-    setMessage(null);
-  }, [status?.password]);
-
-  async function savePassword(): Promise<void> {
-    setMessage(null);
-    await onSave(draft);
-    setMessage("Password updated.");
-  }
-
-  return (
-    <article className="settings-resource-row settings-password-row">
-      <div className="settings-resource-label">
-        <strong>LTR workbook password</strong>
-      </div>
-      <div className="settings-password-field">
-        <div className="settings-password-control">
-          <input
-            aria-label="LTR workbook password"
-            autoComplete="new-password"
-            disabled={saving || overridden}
-            type={hidePassword ? "password" : "text"}
-            value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              setMessage(null);
-            }}
-            placeholder={configured ? "Enter new password" : "Enter password"}
-          />
-          <label className="settings-secret-toggle">
-            <input
-              checked={hidePassword}
-              disabled={saving || overridden}
-              type="checkbox"
-              onChange={(event) => setHidePassword(event.target.checked)}
-            />
-            <span>Hide password</span>
-          </label>
-          <button
-            className="ui-secondary-action"
-            type="button"
-            disabled={!canSave}
-            onClick={() => {
-              void savePassword().catch(() => undefined);
-            }}
-          >
-            {saving ? "Updating..." : "Update password"}
-          </button>
-        </div>
-        {overridden ? (
-          <span className="settings-secret-note">
-            Environment password is active; local changes will not take effect.
-          </span>
-        ) : null}
-        {message ? <span className="settings-secret-note">{message}</span> : null}
-      </div>
     </article>
   );
 }

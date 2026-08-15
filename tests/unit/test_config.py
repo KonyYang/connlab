@@ -64,7 +64,7 @@ modify_password = "placeholder-secret"
         assert settings.ltr_workbook.backup_retention_count == 12
         assert settings.ltr_workbook.backup_retention_days == 7
         assert settings.ltr_workbook.backup_retention_max_mb == 250
-        assert settings.ltr_workbook.modify_password == "placeholder-secret"
+        assert settings.ltr_workbook.modify_password is None
     finally:
         shutil.rmtree(workspace_tmp, ignore_errors=True)
 
@@ -93,8 +93,8 @@ templates_dir = "operator-templates"
 
 def test_ltr_workbook_safe_summary_redacts_password(monkeypatch) -> None:
     workspace_tmp = _make_workspace_temp_dir()
-    config_path = workspace_tmp / "connlab.local.toml"
-    config_path.write_text(
+    local_config_path = workspace_tmp / "connlab.local.toml"
+    local_config_path.write_text(
         """[ltr_workbook]
 path = "local/LTR_number.xls"
 mode = "excel_com"
@@ -102,7 +102,7 @@ write_enabled = true
 lock_dir = "locks"
 lock_timeout_seconds = 90
 backup_dir = "backups"
-modify_password = "operator-secret"
+modify_password = "legacy-local-sentinel"
 template_sheet_name = "Template"
 sheet_bootstrap_clear_start_row = 3
 backup_retention_count = 10
@@ -111,20 +111,74 @@ backup_retention_max_mb = 300
 """,
         encoding="utf-8",
     )
-    monkeypatch.setenv("CONNLAB_LOCAL_CONFIG_PATH", str(config_path))
+    admin_config_path = workspace_tmp / "connlab.admin.toml"
+    admin_config_path.write_text(
+        '[ltr_workbook]\nmodify_password = "admin-sentinel"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CONNLAB_LOCAL_CONFIG_PATH", str(local_config_path))
 
     try:
         summary = Settings.load(base_dir=workspace_tmp).ltr_workbook.safe_summary()
 
         assert summary["modify_password_configured"] is True
         assert summary["template_sheet_name_configured"] is True
-        assert "operator-secret" not in str(summary)
+        assert "admin-sentinel" not in str(summary)
         assert "Template" not in str(summary)
         assert summary["lock_timeout_seconds"] == 90
         assert summary["sheet_bootstrap_clear_start_row"] == 3
         assert summary["backup_retention_count"] == 10
         assert summary["backup_retention_days"] == 14
         assert summary["backup_retention_max_mb"] == 300
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
+def test_ltr_workbook_password_loads_from_default_admin_config(monkeypatch) -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    (workspace_tmp / "connlab.admin.toml").write_text(
+        '[ltr_workbook]\nmodify_password = "admin-sentinel"\n',
+        encoding="utf-8",
+    )
+
+    try:
+        settings = Settings.load(base_dir=workspace_tmp)
+
+        assert settings.ltr_workbook.modify_password == "admin-sentinel"
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
+def test_ltr_workbook_password_uses_explicit_admin_config_path(monkeypatch) -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    admin_config_path = workspace_tmp / "deployment" / "runtime.toml"
+    admin_config_path.parent.mkdir()
+    admin_config_path.write_text(
+        '[ltr_workbook]\nmodify_password = "explicit-admin-sentinel"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CONNLAB_ADMIN_CONFIG_PATH", "deployment/runtime.toml")
+
+    try:
+        settings = Settings.load(base_dir=workspace_tmp)
+
+        assert settings.ltr_workbook.modify_password == "explicit-admin-sentinel"
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
+def test_blank_password_environment_suppresses_admin_config(monkeypatch) -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    (workspace_tmp / "connlab.admin.toml").write_text(
+        '[ltr_workbook]\nmodify_password = "admin-sentinel"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CONNLAB_LTR_WORKBOOK_PASSWORD", "")
+
+    try:
+        settings = Settings.load(base_dir=workspace_tmp)
+
+        assert settings.ltr_workbook.modify_password is None
     finally:
         shutil.rmtree(workspace_tmp, ignore_errors=True)
 
@@ -179,6 +233,10 @@ def test_contact_measurement_plan_authority_flag_is_strict_and_env_only(monkeypa
 
 def test_ltr_workbook_password_env_override_is_redacted(monkeypatch) -> None:
     workspace_tmp = _make_workspace_temp_dir()
+    (workspace_tmp / "connlab.admin.toml").write_text(
+        '[ltr_workbook]\nmodify_password = "admin-sentinel"\n',
+        encoding="utf-8",
+    )
     monkeypatch.setenv("CONNLAB_LTR_WORKBOOK_PASSWORD", "env-secret")
 
     try:

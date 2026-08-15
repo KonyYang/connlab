@@ -89,8 +89,10 @@ class Settings:
         """Load settings from the environment and ensure required folders exist."""
         root_dir = base_dir or Path(__file__).resolve().parents[2]
         local_config = _load_local_config(root_dir)
+        admin_config = _load_admin_config(root_dir)
         paths_config = local_config.get("paths", {})
         workbook_config = local_config.get("ltr_workbook", {})
+        admin_workbook_config = admin_config.get("ltr_workbook", {})
         test_record_config = local_config.get("test_record", {})
         settings = cls(
             data_dir=_resolve_directory("CONNLAB_DATA_DIR", root_dir / "data", root_dir),
@@ -117,7 +119,11 @@ class Settings:
                     os.getenv("CONNLAB_CONTACT_MEASUREMENT_PLAN_AUTHORITY_ENABLED")
                 )
             ),
-            ltr_workbook=_load_ltr_workbook_settings(root_dir, workbook_config),
+            ltr_workbook=_load_ltr_workbook_settings(
+                root_dir,
+                workbook_config,
+                admin_workbook_config,
+            ),
             test_record=_load_test_record_settings(root_dir, test_record_config),
         )
         settings.ensure_directories()
@@ -184,9 +190,22 @@ def _load_local_config(base_dir: Path) -> dict:
         return tomllib.load(handle)
 
 
+def _load_admin_config(base_dir: Path) -> dict:
+    """Load the optional administrator-managed TOML config without creating it."""
+    raw_path = os.getenv("CONNLAB_ADMIN_CONFIG_PATH")
+    path = Path(raw_path).expanduser() if raw_path else base_dir / "connlab.admin.toml"
+    if not path.is_absolute():
+        path = base_dir / path
+    if not path.is_file():
+        return {}
+    with path.open("rb") as handle:
+        return tomllib.load(handle)
+
+
 def _load_ltr_workbook_settings(
     base_dir: Path,
     config: dict,
+    admin_config: dict,
 ) -> LtrWorkbookSettings:
     """Load optional LTR workbook settings from local config and env overrides."""
     return LtrWorkbookSettings(
@@ -236,10 +255,9 @@ def _load_ltr_workbook_settings(
             ),
         ),
         modify_password=_optional_secret(
-            os.getenv(
-                "CONNLAB_LTR_WORKBOOK_PASSWORD",
-                str(config.get("modify_password", "")),
-            )
+            os.environ["CONNLAB_LTR_WORKBOOK_PASSWORD"]
+            if "CONNLAB_LTR_WORKBOOK_PASSWORD" in os.environ
+            else str(admin_config.get("modify_password", ""))
         ),
         require_operator_confirmation_for_year_sheet_bootstrap=_bool_setting(
             os.getenv("CONNLAB_LTR_WORKBOOK_REQUIRE_BOOTSTRAP_CONFIRMATION"),

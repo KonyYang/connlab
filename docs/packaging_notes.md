@@ -52,6 +52,8 @@ dist_release\
     ConnLab.exe
     README_FOR_OPERATOR.md
     RELEASE_NOTES.md
+    config\
+      connlab.admin.example.toml
     _internal\
 ```
 
@@ -93,6 +95,8 @@ dist_release\
     ConnLab_Server.exe
     README_FOR_OPERATOR.md
     RELEASE_NOTES.md
+    config\
+      connlab.admin.example.toml
     _internal\
 ```
 
@@ -142,17 +146,40 @@ Packaged desktop mode uses `%LOCALAPPDATA%\ConnLab` for mutable operator data:
 
 The release folder is application code. Do not store operator data in the release
 folder. New release folders must not overwrite an operator's existing local
-database, logs, project files, or configured paths.
+database, logs, project files, or configured paths. The release-local
+`config\connlab.admin.example.toml` is a secret-free administrator template only.
 
-## Local Secret And Workbook Settings Policy
+## Administrator Secret And Workbook Settings Policy
 
-External LTR workbook settings are operator-managed local settings. The committed
-`connlab.local.example.toml` contains placeholders only. The real
-`connlab.local.toml` file is ignored by Git and must stay local to the workstation.
+Non-secret external LTR workbook paths and operating options remain operator-managed
+in `connlab.local.toml`. The LTR workbook modify password is administrator-managed
+and is not available through ConnLab Settings or its public API.
 
-Current short-term supported inputs:
+The packaged runtime reads the mutable administrator file at:
 
-- `connlab.local.toml` under `[ltr_workbook]`
+```text
+%PROGRAMDATA%\ConnLab\config\connlab.admin.toml
+```
+
+The application never creates or writes this file or directory. An administrator
+must copy `config\connlab.admin.example.toml` outside the release folder, rename it
+to `connlab.admin.toml`, enter the deployment value, and apply the organization's
+file-permission policy. Release replacement therefore cannot overwrite the value.
+
+Repository/development execution defaults to `<base_dir>\connlab.admin.toml`.
+`CONNLAB_ADMIN_CONFIG_PATH` may select another administrator-managed path and is the
+reuse seam for a future network deployment. `CONNLAB_LTR_WORKBOOK_PASSWORD`, when
+present, remains the highest-priority override, including an explicitly blank value.
+
+One-time upgrade action: if an existing workstation previously stored
+`modify_password` under `[ltr_workbook]` in `connlab.local.toml`, an administrator
+must copy that value manually into the administrator file. The old local key is
+inert; ConnLab does not migrate, delete, display, log, or rewrite it.
+
+Current supported inputs are:
+
+- non-secret LTR settings in `connlab.local.toml` under `[ltr_workbook]`
+- administrator password in `connlab.admin.toml` under `[ltr_workbook]`
 - `CONNLAB_LTR_WORKBOOK_*` environment variable overrides
 
 Rules:
@@ -161,7 +188,7 @@ Rules:
 - Do not log `modify_password`; use the redacted `safe_summary()` diagnostic shape.
 - Keep `lock_timeout_seconds` and `sheet_bootstrap_clear_start_row` positive integers.
 - Keep write mode disabled unless a later approved task enables a guarded write path.
-- Future Windows Credential Manager integration must be a separate task and should replace, not duplicate, plaintext local password handling.
+- Future Windows Credential Manager integration must be a separate task and should replace, not duplicate, plaintext administrator password handling.
 
 ## Future Packaging Placeholder
 

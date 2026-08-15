@@ -12,6 +12,22 @@ def _read_text(relative_path: str) -> str:
     return (ROOT / relative_path).read_text(encoding="utf-8")
 
 
+def test_admin_template_is_blank_and_both_releases_ship_only_the_example() -> None:
+    template = _read_text("connlab.admin.example.toml")
+    assert template == '[ltr_workbook]\nmodify_password = ""\n'
+
+    for relative_path in (
+        "scripts/build_windows_desktop_release.ps1",
+        "scripts/build_windows_browser_release.ps1",
+    ):
+        script = _read_text(relative_path)
+        assert '"connlab.admin.example.toml"' in script
+        assert 'Join-Path $releaseFolder "config"' in script
+        assert 'Join-Path $releaseConfig "connlab.admin.example.toml"' in script
+        assert "PROGRAMDATA" not in script.upper()
+        assert '"connlab.admin.toml"' not in script
+
+
 def _load_browser_submodule_filter(spec: str):
     tree = ast.parse(spec)
     prefixes = next(

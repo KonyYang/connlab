@@ -150,84 +150,9 @@
   justify-self: end;
 }
 
-.settings-password-row {
-  background: #fbfdff;
-}
-
-.settings-password-field {
-  display: grid;
-  gap: 6px;
-}
-
-.settings-password-control {
-  display: grid;
-  grid-template-columns: minmax(180px, 260px) max-content 150px;
-  align-items: center;
-  gap: 10px;
-}
-
-.settings-password-control input {
-  width: 100%;
-  min-width: 0;
-  padding: 9px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-  color: var(--color-ink);
-  font: inherit;
-}
-
-.settings-password-control input:focus {
-  border-color: var(--color-primary);
-  outline: 3px solid rgba(31, 102, 209, 0.14);
-}
-
-.settings-password-control .ui-secondary-action {
-  min-width: 0;
-  justify-self: end;
-}
-
-.settings-secret-note {
-  color: var(--color-ink-muted);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.settings-secret-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  width: fit-content;
-  color: var(--color-ink-muted);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.settings-secret-toggle input {
-  width: 14px;
-  height: 14px;
-  margin: 0;
-  accent-color: var(--color-primary);
-}
-
 @media (max-width: 980px) {
   .settings-resource-row {
     grid-template-columns: 1fr;
     align-items: stretch;
-  }
-
-  .settings-password-control {
-    grid-template-columns: minmax(180px, 260px) max-content 150px;
-  }
-}
-
-@media (max-width: 640px) {
-  .settings-password-control {
-    grid-template-columns: 1fr;
-  }
-
-  .settings-password-control .ui-secondary-action {
-    justify-self: stretch;
   }
 }

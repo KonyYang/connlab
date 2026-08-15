@@ -101,7 +101,6 @@ from backend.api.routes_section2_completion_preview import (
 from backend.api.routes_section2_write_back import (
     router as section2_write_back_router,
 )
-from backend.api.routes_settings import router as settings_router
 from backend.api.routes_project_section2_sync import (
     router as project_section2_sync_router,
 )
@@ -189,7 +188,6 @@ app.include_router(matrix_editor_live_xlsx_export_router)
 app.include_router(project_output_records_router)
 app.include_router(section2_completion_preview_router)
 app.include_router(section2_write_back_router)
-app.include_router(settings_router)
 app.include_router(project_section2_sync_router)
 app.include_router(customer_feedback_form_generation_router)
 app.include_router(project_package_preview_router)
