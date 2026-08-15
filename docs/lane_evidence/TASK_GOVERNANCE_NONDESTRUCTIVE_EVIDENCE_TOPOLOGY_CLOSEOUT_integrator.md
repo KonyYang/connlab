@@ -2,97 +2,71 @@
 
 TASK_ID: TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT
 ROLE: Integrator
-STATUS: blocked
-SUBJECT: 2e6f16322c93fc1a83188658476191d2a032b959
+STATUS: pass
+SUBJECT: 59e0cc7b7fa4b53b1a5a21719647aa47f9491fcb
 MODEL: gpt-5.6-sol
 REASONING_EFFORT: medium
 MODEL_ROUTE_REASON: risk:authority
-ACTION_ID: 154bf446c2ea9174c36cad1c16163d71aee58078a17817c0d59238cb73533c47
-PROMPT_SHA256: 4cc69d5f9a1d97bacc8da5aa782209bcef4fcf83a85c65822068bb13747feb6a
-ATTEMPT: 1
+ACTION_ID: 3567496e030fe8235f38af6a294057058a2d327c2e821f67e180f57a047c5422
+ATTEMPT: 2
 NEXT: User
-BLOCKER: INTEGRATION_BLOCKED
+BLOCKER: none
 
 ## Verdict
 
-Blocked. Do not create the local merge and do not call `record-integration`.
+PASS. The exact reviewed subject, complete accepted evidence topology, bound Planner revision bundle, task branch/worktree identity, cumulative seven-path implementation scope and prospective local integration are consistent. No integration conflict or evidence blocker was found.
 
-The reviewed seven-path subject, exact scope, evidence digests, model route, clean task host and targeted validation all pass. The production integration topology verifier nevertheless rejects the real primary ancestry with:
+## Current authority facts
 
-`BLOCKED_INTEGRATION_PROOF: Primary history contains an unknown or code-mixed commit.`
-
-## Blocking finding
-
-`verify_integration_evidence_topology` starts its strict primary-history scan at the parent of the first accepted evidence commit. It allows an exact mapped Planner evidence commit without the execution-evidence one-path rules, but requires every other commit in that history to be board-only.
-
-The real primary history contains:
-
-- accepted Planner evidence `72a135b3e891a1c3b2c97bb78d55163f09ffda31`;
-- board-only callback commit `60431829f709b34096ebbbb6479c5379ef439623`;
-- then `7ee08a659172bde11f4bb1b87e1e9bac2630eaeb`, which changes exactly:
-  - `tasks/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT.md`;
-  - `docs/task_governance_nondestructive_evidence_topology_closeout_plan.md`;
-  - `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md`.
-
-Commit `7ee08a65...` is not an accepted evidence ref. The verifier therefore classifies it as an unknown/code-mixed commit. This history remains an ancestor of every possible final Integrator callback commit, so appending this Integrator evidence and consuming its callback cannot make `record-integration` pass.
-
-This contradicts the committed Plan requirement that Planner evidence remain an existing pre-host planning prefix while verified integration succeeds normally. The green disposable-repository test does not reproduce this real multi-commit Planner planning prefix.
-
-## Authority and subject audit
-
+- Primary was clean at invocation commit `d28b5a56283f66556d95f40eb128cf84ff5ec965` before this evidence-only write.
+- Current board raw SHA-256 at invocation was `5de70e50770f3757c777767c5a16588f272d452ae77ea5c8d6ab88f9c34fe67d`.
 - Frozen Plan: `docs/task_governance_nondestructive_evidence_topology_closeout_plan.md@9d7966d53896d032e3bfe546bbd0ea38659a9fbb#0892bcf16008c2be90bd6de84a065f650fb6bb5dfecff8f2fba905f4162cf57d`.
-- Recomputed Plan raw SHA-256: `0892bcf16008c2be90bd6de84a065f650fb6bb5dfecff8f2fba905f4162cf57d`.
-- Primary before this evidence-only commit: clean at `aef5ab0f5d6919e27a85ed7f30e8e8b3f056f230`.
-- Registered task branch/worktree: clean at exact reviewed subject `2e6f16322c93fc1a83188658476191d2a032b959`.
-- Merge base between primary and task subject: `56f1fe51a29d5449f1b3178257d62e90ce363601`.
-- The subject is a two-commit implementation chain from the approved base and contains no primary execution-evidence commit.
-- Exact implementation diff: seven approved paths only.
-- Primary governance history currently changes seven approved governance paths; this fixed Integrator evidence path would be the eighth governance path, yielding the exact fifteen-path authority boundary.
-- Both primary and task worktree remained clean after the audit.
+- Approved-request SHA-256: `9910790e5d12df746f4c1fc3680eccbe249b6fec7762e76cd7deb340a106ee51`.
 
-## Accepted evidence digest and order audit
+## Exact subject and implementation scope
 
-All eight currently accepted evidence refs recompute to their declared raw SHA-256 and are ordered in primary ancestry:
+- Task branch/worktree are clean at exact subject `59e0cc7b7fa4b53b1a5a21719647aa47f9491fcb`.
+- Subject has exactly one parent `2e6f16322c93fc1a83188658476191d2a032b959` and tree `008ec10f162aac7467e158bde169b0c218c9bf98`.
+- Merge base with primary is `56f1fe51a29d5449f1b3178257d62e90ce363601`.
+- Base-to-subject contains exactly three single-parent implementation commits and the approved seven-path cumulative implementation scope.
+- `git diff --check` over the complete range passes.
 
-1. Planner attempt 1: `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md@72a135b3e891a1c3b2c97bb78d55163f09ffda31#9e393adb8d7df9c485bfc2367c4d87f818543f13d94e15d87a8f6be625dce4b9`
-2. Developer attempt 1: `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@109a3b58fa29ab8bc51710687cfb163add977ddb#05f5f78c54cc52dae9b0446f17819784840ef2ad44d9205e36bb2d825031fe23`
-3. Planner attempt 2: `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_planner.md@9d7966d53896d032e3bfe546bbd0ea38659a9fbb#c14b81b0bd97048ba0e5487d151dd92d3e1cf8cf712c149768ce79e917109a2e`
-4. Developer attempt 2: `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@700d26e7b3953e92162086a96dbd8604f45bee29#7ded3a425bd16c4405a2c9510e8e1479dc17020cc0c5d600f7ca2ce67c4df858`
-5. Reviewer attempt 1: `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md@9b496e5c9afd7a3ff29055ca3fe8636ff4711e00#5d6b143b0455116f75be06ea8ba780f3d8960016a2a2b5f9fa7b07f753d4ae6f`
-6. Developer attempt 3: `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@d7a331a1c9e6336a71c36278029d5c5779d74a41#1a66295ba0ffe753965f579b5a92189e96027199def11854c039700800906fe0`
-7. Reviewer attempt 2: `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md@d582be59a2509fd6f828097cc0bb44d9afd42093#27b5949e0abcfcc184f34a0b7f5544f941bbbb4565576feaf5c71848d3502a5d`
-8. QA attempt 1: `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_qa.md@5c91ea8e48d936e742d5ad706207b4089979468b#641a0184e6c673a9cc3c11423004c69fa59c0ed62148389d4e5f7113dfe9e713`
+## Planner revision bundle binding
 
-The current ninth invocation is this Integrator attempt and remains callback-pending with action `154bf446c2ea9174c36cad1c16163d71aee58078a17817c0d59238cb73533c47`.
+- Bundle `7ee08a659172bde11f4bb1b87e1e9bac2630eaeb` is single-parent and changes exactly the Task-derived Task, Plan and fixed Planner-evidence paths while preserving board bytes.
+- Immediate successor `677fce2cb461743265ed7602796a2b4d9e485765` is single-parent directly on the bundle and changes only `docs/task_board.md`.
+- Its board binds the same task and exact Plan ref `docs/task_governance_nondestructive_evidence_topology_closeout_plan.md@7ee08a659172bde11f4bb1b87e1e9bac2630eaeb#c6ceda8c42a7e91c784eac98628eda8d6cd5b528883df5266fe8d9ecb23d1446`; the raw Plan SHA-256 recomputes exactly.
+- No production SHA allowlist or hardcoded commit identity occurs in the verifier or regression test.
 
-## Validation
+## Complete accepted evidence topology
 
-- `py -m pytest tests/integration/test_connlab_nondestructive_evidence_topology.py -q` — 16 passed.
-- `py -m pytest tests/integration/test_connlab_serial_complex_recovery.py -q` — 17 passed.
-- `py -m pytest tests/unit/test_connlab_personal_serial_workflow.py tests/unit/test_connlab_serial_complex_state.py tests/unit/test_connlab_serial_complex_orchestrator_contract.py tests/unit/test_task_scoped_role_thread_lifecycle_governance.py -q` — 60 passed.
-- `py -m py_compile scripts/connlab_personal_task.py scripts/connlab_serial_complex.py scripts/connlab_serial_evidence_topology.py` — passed.
-- Line budgets: `scripts/connlab_personal_task.py=441`, `scripts/connlab_serial_evidence_topology.py=270`, `tests/integration/test_connlab_nondestructive_evidence_topology.py=463`.
-- `git diff --check 56f1fe51a29d5449f1b3178257d62e90ce363601 2e6f16322c93fc1a83188658476191d2a032b959` — passed.
-- A provisional read-only `git merge-tree` audit of current primary `aef5ab0f5d6919e27a85ed7f30e8e8b3f056f230` with subject `2e6f16322c93fc1a83188658476191d2a032b959` found no textual merge conflict.
-- Direct execution of the production topology verifier against the real accepted history returned `BLOCKED_INTEGRATION_PROOF` for the unknown/code-mixed primary commit described above.
+- Production verifier from the exact subject passed the real current topology for all 12 accepted evidence refs mapped one-to-one to the first 12 durable invocations: `PRODUCTION_TOPOLOGY_PASS 12 12`.
+- Every raw digest recomputes exactly.
+- Every execution evidence commit is single-parent, changes only its Task-derived fixed evidence path, preserves invocation-parent board bytes, matches ACTION_ID/ROLE/ATTEMPT and frozen model route, follows durable invocation order, is in accepted primary ancestry and is outside task-subject ancestry.
+- Latest accepted refs are Developer `5bb3a708...#48072b6c...`, Reviewer `ac120236...#7b4b3990...`, and QA `39a80f0a...#6f15db03...`.
 
 ## ACTUAL_MODEL_ROUTING
 
 | Role | Model | Effort | Reason | Exact evidence ref |
 | --- | --- | --- | --- | --- |
-| Developer | gpt-5.6-sol | medium | risk:authority | `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@d7a331a1c9e6336a71c36278029d5c5779d74a41#1a66295ba0ffe753965f579b5a92189e96027199def11854c039700800906fe0` |
-| Reviewer | gpt-5.6-sol | medium | risk:authority | `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md@d582be59a2509fd6f828097cc0bb44d9afd42093#27b5949e0abcfcc184f34a0b7f5544f941bbbb4565576feaf5c71848d3502a5d` |
-| QA | gpt-5.6-sol | medium | risk:authority | `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_qa.md@5c91ea8e48d936e742d5ad706207b4089979468b#641a0184e6c673a9cc3c11423004c69fa59c0ed62148389d4e5f7113dfe9e713` |
-| Integrator | gpt-5.6-sol | medium | risk:authority | This evidence path, pending this evidence-only commit |
+| Developer | gpt-5.6-sol | medium | risk:authority | `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_developer.md@5bb3a708c23b57a23d6d4a247caceab717792bab#48072b6c04a8ecea993a4ec22b13a89a12dde7684f3fe8ddf49ae572cf29ee16` |
+| Reviewer | gpt-5.6-sol | medium | risk:authority | `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_reviewer.md@ac1202368f4941206b9fe0828b79f1e5df46e00d#7b4b399086246b22db8cb488bbad879bfe2f341f14eecfe099c154bb4d940e25` |
+| QA | gpt-5.6-sol | medium | risk:authority | `docs/lane_evidence/TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT_qa.md@39a80f0a0a8ea3bb8472d78147f91ead9f28158b#6f15db03378769da2c7b134585bf1657afaf7749e3e7e8d8f470208ae5f5111a` |
+| Integrator | gpt-5.6-sol | medium | risk:authority | This exact evidence path pending its evidence-only commit |
 
-No Luna route was used. The supplied Integrator dispatch capsule matches action `154bf446c2ea9174c36cad1c16163d71aee58078a17817c0d59238cb73533c47`, prompt `4cc69d5f9a1d97bacc8da5aa782209bcef4fcf83a85c65822068bb13747feb6a`, model `gpt-5.6-sol`, effort `medium`, and reason `risk:authority`.
+No Luna route appears.
 
-## Integration disposition
+## Prospective merge audit
 
-- Recommended merge command: none.
-- Recommended `primary_parent`: none until the blocking verifier defect is resolved and the complete callback topology is revalidated.
-- Recommended `merge_commit`: none.
-- Recommended `merge_tree`: none.
-- Recommended `record-integration`: do not call.
-- Preserve primary, task branch, worktree and all evidence exactly as retained.
-- The bounded corrective direction is to make the verifier honor the complete approved Planner pre-host governance prefix while retaining strict ordered execution-evidence verification, and add a regression using the real multi-commit Planner prefix. No destructive topology recovery is authorized.
+- Primary-only and subject-only changes relative to merge base are disjoint.
+- Read-only three-way merge inspection found no conflict.
+- The pre-evidence provisional tree is conflict proof only; final parent/tree must be recomputed after this evidence and callback commits.
+- Final merge must use the Integrator callback board commit as first parent and exact subject `59e0cc7b7fa4b53b1a5a21719647aa47f9491fcb` as second parent.
+
+## Standards / Spec
+
+Standards 0 findings; Spec 0 findings. The bound Planner-bundle recognition is narrow, while execution evidence ordering, path, raw digest, parent, board bytes, subject, identity, model and ancestry verification remain strict.
+
+## Safety
+
+No test matrix was rerun. No merge, implementation edit, board edit, push, cleanup, archive, retire, reset, restore, stash, rebase, cherry-pick, force update, branch/worktree movement, deletion or recreation was performed by Integrator.
