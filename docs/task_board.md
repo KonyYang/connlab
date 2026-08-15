@@ -19,7 +19,7 @@
     "summary": "Establish one formal administrator runtime configuration contract for the LTR workbook default password across packaged desktop releases and a future network deployment, keep real secrets deployment-local and upgrade-safe, remove the ordinary Settings UI password editor and obsolete frontend/API write/readback chain, preserve runtime workbook password consumption, and leave unrelated administrator defaults and the future network implementation out of scope.",
     "kind": "planned",
     "classification": "needs_discovery",
-    "phase": "planning",
+    "phase": "awaiting_user_approval",
     "scope_contract": null,
     "plan_ref": null,
     "approval_ref": null,
@@ -36,7 +36,7 @@
       "head_sha": "a61b7dc559a5122093ebaaa06476c0395e63321a",
       "integration_target": "master",
       "worktree_lifecycle": "absent",
-      "current_role": "Planner",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -64,14 +64,11 @@
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
-      "evidence_refs": [],
+      "evidence_refs": [
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_planner.md@fdaa1feb3781d5704fece77f167cc1f30e893f6b#f6c13b8f4c70969c88dbce360dd0417e3fe02d9f2a20953156fe701883d03d5f"
+      ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "f85e2a37bbb95a6b8a012af1c4cdaeba2667e2757b56ca895023a44fa21dba8c",
-        "role": "Planner",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
