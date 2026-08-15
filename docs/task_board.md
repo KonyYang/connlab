@@ -13,13 +13,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_SETTINGS_HIDE_LTR_WORKBOOK_PASSWORD_CARD",
     "summary": "Hide the LTR workbook password card from the Settings UI only while preserving all backend, API, and configuration behavior for a later separately approved task.",
     "kind": "simple",
     "classification": "simple",
-    "phase": "implementation",
+    "phase": "human_review",
     "scope_contract": {
       "schema": "connlab.serial-task-request",
       "version": 1,
@@ -55,9 +55,38 @@
     "approval_ref": null,
     "activation_parent_sha": "e9b2a1b4df9ff7b314234c2ea6496e50812a5ef9",
     "activated_at": "2026-08-15T14:17:11Z",
-    "updated_at": "2026-08-15T14:17:11Z",
+    "updated_at": "2026-08-15T14:21:09Z",
     "blocker": null,
-    "validation": null,
+    "validation": {
+      "schema": "connlab.personal-task-validation",
+      "version": 1,
+      "status": "passed",
+      "checks": [
+        {
+          "command": "npm test -- --run src/features/settings/SettingsStandardRecordSheet.test.tsx",
+          "exit_code": 0,
+          "summary": "3 tests passed, including the password editor absence regression."
+        },
+        {
+          "command": "npm run build",
+          "exit_code": 0,
+          "summary": "TypeScript and Vite production build passed; existing chunk-size advisory only."
+        },
+        {
+          "command": "git diff --check",
+          "exit_code": 0,
+          "summary": "Passed before implementation commit."
+        }
+      ],
+      "observed_paths": [
+        "frontend/src/features/settings/SettingsExternalResourcesPanel.tsx",
+        "frontend/src/features/settings/SettingsStandardRecordSheet.test.tsx"
+      ],
+      "manual_checks": [
+        "In-app browser smoke at http://localhost:5173/settings: LTR workbook password input count 0; Update password button count 0; Editable file locations heading count 1."
+      ],
+      "recorded_at": "2026-08-15T14:21:09Z"
+    },
     "complex_context": null
   },
   "queue": [],
