@@ -16,16 +16,54 @@
   "state": "running",
   "active": {
     "task_id": "TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP",
-    "summary": "Bootstrap a missing administrator LTR workbook config with the public DGLAB default without overwriting any existing administrator file.",
+    "summary": "Bootstrap an entirely absent administrator LTR workbook config with the public DGLAB default using exclusive atomic publication while preserving existing files, precedence, development and packaged paths, and all workbook/public-drive boundaries.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "awaiting_user_approval",
-    "scope_contract": null,
-    "plan_ref": null,
-    "approval_ref": null,
+    "phase": "development",
+    "scope_contract": {
+      "may_touch": [
+        "backend/shared/config.py",
+        "connlab.admin.example.toml",
+        "tests/unit/test_config.py",
+        "tests/unit/test_desktop_packaged_runtime_paths.py",
+        "tests/unit/test_desktop_release_scripts.py",
+        "tasks/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP.md",
+        "docs/task_ltr_workbook_public_default_admin_config_bootstrap_plan.md",
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_planner.md",
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_developer.md",
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_reviewer.md",
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_qa.md",
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_integrator.md",
+        "docs/task_board.md"
+      ],
+      "expected_file_count": 13,
+      "classification_reason": "Planned/complex because application startup gains administrator-authority persistence and controlled external filesystem mutation, changes a public business default, requires race-safe exclusive publication, and needs independent Reviewer, QA, and Integrator verification.",
+      "targeted_validation": [
+        "py -m pytest tests/unit/test_config.py -q",
+        "py -m pytest tests/unit/test_desktop_packaged_runtime_paths.py tests/unit/test_desktop_release_scripts.py -q",
+        "py -m py_compile backend/shared/config.py tests/unit/test_config.py tests/unit/test_desktop_packaged_runtime_paths.py tests/unit/test_desktop_release_scripts.py",
+        "Verify the exact task diff contains only the five approved implementation/test paths and passes git diff --check.",
+        "Verify tests use only repository/disposable temporary roots and do not access or mutate real ProgramData, development administrator config, public drives, workbooks, installed releases, or user configuration.",
+        "Verify existing administrator files are byte-preserved, concurrent first loads publish one complete file, environment presence including blank stays highest precedence, local password remains inert, and filesystem failures are actionable without fallback.",
+        "Verify runtime_paths.py and both release scripts remain byte-unchanged while packaged path selection and example-only release shipping remain covered by tests."
+      ],
+      "forbidden_categories": {
+        "api_contract": false,
+        "database": false,
+        "schema_or_migration": false,
+        "persistence": true,
+        "authority": true,
+        "public_drive_workflow": false,
+        "business_rule_semantics": true,
+        "destructive_action": false,
+        "external_mutation": true
+      }
+    },
+    "plan_ref": "docs/task_ltr_workbook_public_default_admin_config_bootstrap_plan.md@1ca021a61f556c9e3f8e195f02fb0dd36b603dfa#2146474d4de6e197003023307b2cb3470300c6c018ba9d44ca757b48f49aa1f6",
+    "approval_ref": "批准",
     "activation_parent_sha": "e51a674b68ca1b4d1fe193b5e10903b361ae3660",
     "activated_at": "2026-08-16T02:52:24Z",
-    "updated_at": "2026-08-16T02:52:24Z",
+    "updated_at": "2026-08-16T03:18:56Z",
     "blocker": null,
     "validation": null,
     "complex_context": {
@@ -55,15 +93,19 @@
       "host_thread_id": null,
       "host_id": null,
       "approved_code_paths": [
-        ".gitignore",
-        "backend/desktop/runtime_paths.py",
         "backend/shared/config.py",
         "connlab.admin.example.toml",
-        "scripts/build_windows_browser_release.ps1",
-        "scripts/build_windows_desktop_release.ps1",
         "tests/unit/test_config.py",
         "tests/unit/test_desktop_packaged_runtime_paths.py",
-        "tests/unit/test_desktop_release_scripts.py"
+        "tests/unit/test_desktop_release_scripts.py",
+        "tasks/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP.md",
+        "docs/task_ltr_workbook_public_default_admin_config_bootstrap_plan.md",
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_planner.md",
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_developer.md",
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_reviewer.md",
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_qa.md",
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_integrator.md",
+        "docs/task_board.md"
       ],
       "required_gates": [
         "Reviewer",
@@ -93,6 +135,96 @@
           }
         ],
         "integration_completed_at": null
+      },
+      "execution_routes": {
+        "Developer": {
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium",
+          "reason": "risk:authority"
+        },
+        "Integrator": {
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium",
+          "reason": "risk:authority"
+        },
+        "QA": {
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium",
+          "reason": "risk:authority"
+        },
+        "Reviewer": {
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium",
+          "reason": "risk:authority"
+        }
+      },
+      "validation_manifest": {
+        "schema": "connlab.validation-manifest",
+        "version": 1,
+        "task_id": "TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP",
+        "checks": [
+          {
+            "id": "config-bootstrap-authority",
+            "kind": "targeted",
+            "run_for": [
+              "Developer",
+              "Reviewer",
+              "QA"
+            ],
+            "cwd": ".",
+            "argv": [
+              "py",
+              "-m",
+              "pytest",
+              "tests/unit/test_config.py",
+              "-q"
+            ],
+            "timeout_seconds": 600,
+            "permission": "pytest_temp",
+            "required": true
+          },
+          {
+            "id": "packaged-path-and-release",
+            "kind": "full",
+            "run_for": [
+              "Developer",
+              "QA"
+            ],
+            "cwd": ".",
+            "argv": [
+              "py",
+              "-m",
+              "pytest",
+              "tests/unit/test_desktop_packaged_runtime_paths.py",
+              "tests/unit/test_desktop_release_scripts.py",
+              "-q"
+            ],
+            "timeout_seconds": 600,
+            "permission": "pytest_temp",
+            "required": true
+          },
+          {
+            "id": "config-bootstrap-compile",
+            "kind": "static",
+            "run_for": [
+              "Developer",
+              "QA"
+            ],
+            "cwd": ".",
+            "argv": [
+              "py",
+              "-m",
+              "py_compile",
+              "backend/shared/config.py",
+              "tests/unit/test_config.py",
+              "tests/unit/test_desktop_packaged_runtime_paths.py",
+              "tests/unit/test_desktop_release_scripts.py"
+            ],
+            "timeout_seconds": 120,
+            "permission": "workspace",
+            "required": true
+          }
+        ]
       }
     }
   },
