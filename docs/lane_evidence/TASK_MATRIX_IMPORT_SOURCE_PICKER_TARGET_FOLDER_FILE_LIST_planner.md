@@ -30,6 +30,8 @@ BLOCKER: none
   Cancel/Upload actions, actionable states, read-only gating and desktop behavior.
 - Exact implementation/test scope is 12 paths within the submitted 20-path envelope.
 - Execution roles freeze to `gpt-5.6-sol / medium / risk:api_contract`.
+- Pre-approval machine validation corrected only the route-table encoding to the production-readable
+  `model / effort / reason` form; the approved request, scope, behavior and route values are unchanged.
 
 ## Design influence
 

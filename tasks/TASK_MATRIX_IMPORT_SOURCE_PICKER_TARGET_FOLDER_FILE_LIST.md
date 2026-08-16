@@ -2,6 +2,9 @@
 
 Status: `planned` / `ready_for_user_approval`
 
+Planning revision: the execution-route table is encoded in the production-readable
+`model / effort / reason` form; scope and behavior are unchanged.
+
 ## Goal
 
 Simplify the ordinary-browser Matrix Import chooser so it lists only directly selectable `.doc`,
@@ -69,4 +72,3 @@ refactor, automatic selection/import, generalized modal framework, public-drive 
   and desktop behavior pass targeted tests and deterministic browser smoke.
 - Targeted backend/frontend tests, production build, Python compilation, exact scope, clean worktrees,
   and `git diff --check` pass.
-

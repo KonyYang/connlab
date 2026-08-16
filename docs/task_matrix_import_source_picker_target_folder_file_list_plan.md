@@ -91,12 +91,12 @@ empty/error, cancel, read-only, focus and overflow. No real external file is mut
 
 ## 7. Model routing
 
-| Role | Model | Effort | Reason |
-| --- | --- | --- | --- |
-| Developer | gpt-5.6-sol | medium | risk:api_contract |
-| Reviewer | gpt-5.6-sol | medium | risk:api_contract |
-| QA | gpt-5.6-sol | medium | risk:api_contract |
-| Integrator | gpt-5.6-sol | medium | risk:api_contract |
+| Role | Route |
+| --- | --- |
+| Developer | `gpt-5.6-sol / medium / risk:api_contract` |
+| Reviewer | `gpt-5.6-sol / medium / risk:api_contract` |
+| QA | `gpt-5.6-sol / medium / risk:api_contract` |
+| Integrator | `gpt-5.6-sol / medium / risk:api_contract` |
 
 Reviewer runs risk-targeted candidate/API and UI checks. QA runs the complete manifest once plus browser
 smoke. Integrator verifies subject, scope, evidence, parents/tree, clean state and integration facts
@@ -115,4 +115,3 @@ The following single-line UTF-8 JSON is the byte-identical payload for canonical
 After Task, Plan and Planner evidence are committed and the callback is consumed, stop at
 `awaiting_user_approval`. Do not create a host or implement before explicit approval of the committed
 Plan ref and approved-request SHA-256.
-
