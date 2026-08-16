@@ -38,7 +38,20 @@
       "worktree_lifecycle": "absent",
       "current_role": "Planner",
       "current_attempt": 1,
-      "role_invocations": [],
+      "role_invocations": [
+        {
+          "schema": "connlab.serial-invocation",
+          "version": 1,
+          "action_id": "7e76a4d28ccb2f07e72a4c95667ca21c0c34215cf60944a532ffcdf448be5ce5",
+          "role": "Planner",
+          "attempt": 1,
+          "thread_id": "/root/writer_recovery_correction_planner",
+          "agent_id": null,
+          "host_id": null,
+          "status": "started",
+          "recorded_at": "2026-08-16T23:41:15Z"
+        }
+      ],
       "host_thread_id": null,
       "host_id": null,
       "approved_code_paths": [
@@ -61,7 +74,7 @@
       "evidence_refs": [],
       "blocker_history": [],
       "pending_callback": {
-        "state": "dispatch_pending",
+        "state": "callback_pending",
         "action_id": "7e76a4d28ccb2f07e72a4c95667ca21c0c34215cf60944a532ffcdf448be5ce5",
         "role": "Planner",
         "attempt": 1
