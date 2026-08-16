@@ -5,9 +5,6 @@ description: Run ConnLab's active Personal Serial Workflow V2 for task intake, r
 
 # ConnLab Personal Serial Orchestrator
 
-Status: active version-2 runtime.
-
-Use this skill when the User submits, approves, resumes, inspects or closes a ConnLab complex task.
 Read `AGENTS.md`, `docs/task_board.md`, the active Task/Plan and relevant evidence first. The board's
 version-2 control block and Git facts override conversation memory.
 
@@ -17,11 +14,8 @@ write or dispatch; do not duplicate or improvise that contract here.
 
 ## User contract
 
-A normal complex task has only three User interactions:
-
-1. requirement submission;
-2. Planner-plan approval;
-3. completed-result inspection and `关闭`.
+A normal complex task has only three User interactions: requirement submission, Planner-plan approval,
+and completed-result inspection plus `关闭`.
 
 Do not request routine approvals for host creation, Developer -> Reviewer -> QA -> Integrator, an approved
 bounded fix, non-conflicting local integration, or retained closeout. Return to the User only for a
@@ -33,25 +27,16 @@ Perform one durable state transition at a time with `scripts/connlab_personal_ta
 fresh expected board SHA-256. Exact-stage and locally commit each authority transition before the
 next write-capable action. Never use chat text as a substitute for board state.
 
-```text
-idle -> submit/classify; simple -> direct implementation -> human review
-complex -> planning/approval -> Developer -> Reviewer -> QA -> Integrator -> human review
-User 关闭 -> retained closeout -> idle
-```
+`idle -> submit/classify`; simple goes directly to implementation/human review; complex goes through
+planning/approval -> Developer -> Reviewer -> QA -> Integrator -> human review; User `关闭` returns idle.
 
 Planner runs before the host and cannot write. After approval, Developer, Reviewer, QA and Integrator
 run sequentially in the same isolated task host. Spawn only the role required by the current durable
 phase, record its native action and returned identity, wait for its exact callback, validate the
 subject/evidence, then consume it. Reviewer or QA blocking findings route back to Developer without
-new approval when the fix remains inside approved scope.
-
-Primary owns execution-role evidence. Keep the task host clean at the exact subject and follow the
-protocol's fixed transition/evidence order for every callback and bounded fix loop.
-
-## Simple-fast
-
-Within an already classified simple task, use `simple-fast` only when every detailed-protocol predicate
-is true; it is not a task kind, state, role, or approval. Keep normal states and apply its bounded contract.
+new approval when the fix remains inside approved scope. Primary owns execution-role evidence; keep the
+task host clean and follow the protocol's fixed order. For an already classified simple task, use
+`simple-fast` only when every predicate is true; it is not a task kind, state, role, or approval.
 
 ## Canonical entry
 
@@ -79,8 +64,6 @@ override board authority.
   blocking questions and decide ordinary technical details autonomously.
 - UI work loads `$impeccable` except for protocol-eligible `simple-fast`; UI QA uses `$playwright`
   only when observable browser behavior changed.
-
-Choose and audit role models exactly as defined by the normative protocol.
 
 ## Validation ownership
 
