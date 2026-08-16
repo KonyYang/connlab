@@ -37,6 +37,9 @@ BLOCKER: none
   `model / effort / reason` form; the approved request, scope, behavior and route values are unchanged.
 - User review revision P0 is closed without scope expansion: canonical directory identity is part of
   the opaque digest, and the Plan calls this an existing GET/POST contract extension, not a new endpoint.
+- The first canonical Approve attempt was zero-write blocked because the approved-request metadata had
+  an extra `push_or_release` forbidden key. This revision removes only that noncanonical key; product
+  scope, route, behavior, no-push policy, paths and validation remain unchanged.
 
 ## Design influence
 

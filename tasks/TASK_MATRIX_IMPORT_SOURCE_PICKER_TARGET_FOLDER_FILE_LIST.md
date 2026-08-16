@@ -5,6 +5,10 @@ Status: `planned` / `ready_for_user_approval`
 Planning revision: the execution-route table is encoded in the production-readable
 `model / effort / reason` form; scope and behavior are unchanged.
 
+Approval-contract revision: the embedded approved request uses the canonical nine-field forbidden
+category schema. The removed `push_or_release` metadata was never a product permission; push and release
+remain explicitly prohibited by this Task and the active workflow.
+
 ## Goal
 
 Simplify the ordinary-browser Matrix Import chooser so it lists only directly selectable `.doc`,
