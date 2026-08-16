@@ -19,13 +19,61 @@
     "summary": "In the ordinary-browser Matrix Editor, list only direct .doc, .docx and .pdf files from the resolved email-attachment or Submitted Material project folder, show a concise source title and filename-only choices, preserve explicit selection, Cancel, Upload other file, empty/error/read-only states and desktop picker behavior, reuse retained clean implementation as the starting point, diagnose the failed source-folder candidate contract, and reject stale in-place same-name replacements without adding endpoints, persistence or path exposure.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "awaiting_user_approval",
-    "scope_contract": null,
-    "plan_ref": null,
-    "approval_ref": null,
+    "phase": "development",
+    "scope_contract": {
+      "may_touch": [
+        "backend/application/project_test_plan_source_candidate_service.py",
+        "backend/api/routes_project_test_plan_source_candidates.py",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.tsx",
+        "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx",
+        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.ts",
+        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
+        "frontend/src/workbench.css",
+        "tests/unit/test_matrix_source_candidate_service.py",
+        "tests/integration/test_project_test_plan_source_candidates_api.py",
+        "tasks/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH.md",
+        "docs/task_matrix_import_source_picker_target_folder_file_list_fresh_plan.md",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_planner.md",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_developer.md",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_reviewer.md",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_qa.md",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_integrator.md",
+        "docs/task_board.md"
+      ],
+      "expected_file_count": 20,
+      "classification_reason": "Planned/complex because this is a retained cross-backend/frontend API-contract task with a known authoritative backend/API validation failure, a missing stale in-place replacement identity guarantee, a complete frozen build/browser validation matrix, and mandatory independent Reviewer, QA and Integrator gates.",
+      "targeted_validation": [
+        "py -m pytest tests/unit/test_matrix_source_candidate_service.py tests/integration/test_project_test_plan_source_candidates_api.py tests/integration/test_project_test_plan_preview_api.py -q",
+        "py -m pytest tests/unit/test_matrix_source_candidate_service.py::test_resolved_directory_listing_and_selection_do_not_mutate_source_file -q",
+        "npm.cmd test -- --run src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx src/features/matrix-editor/MatrixEditorWorkspace.test.tsx (cwd frontend)",
+        "npm.cmd run build (cwd frontend)",
+        "py -m py_compile backend/application/project_test_plan_source_candidate_service.py backend/api/routes_project_test_plan_source_candidates.py",
+        "git diff --check 900c26a78009264ab0fc06f2c038e50d6d280869..HEAD",
+        "verify the base-to-HEAD product diff is exactly the frozen 12 product implementation/test paths",
+        "verify retained subject 163e31d455eb4af12e606288fa36d387c81f1476 remains an ancestor, its sole parent is 900c26a78009264ab0fc06f2c038e50d6d280869, the retained branch identity is unchanged, and primary/task worktrees are clean",
+        "node scripts/connlab_ui_smoke.mjs --config tmp/matrix-source-picker-ui-smoke.json at desktop 1280x800 and narrow 514x831",
+        "verify read-only source bytes/metadata, path-free opaque IDs, no external-file mutation, no new endpoint, database/schema/persistence, attachment copy, recursion, parser/conversion, Matrix authority, desktop bridge, public-drive or governance-runtime change"
+      ],
+      "forbidden_categories": {
+        "api_contract": true,
+        "database": false,
+        "schema_or_migration": false,
+        "persistence": false,
+        "authority": false,
+        "public_drive_workflow": false,
+        "business_rule_semantics": false,
+        "destructive_action": false,
+        "external_mutation": false
+      }
+    },
+    "plan_ref": "docs/task_matrix_import_source_picker_target_folder_file_list_fresh_plan.md@4249a74f9c672f070112226a6c37bbc705dc8f1c#bd33c088519c1f4c694469f95e2b2436f12e2e7d6105124a1fc2d374d56d514c",
+    "approval_ref": "User approved Plan ref and approved-request SHA-256 in the current conversation.",
     "activation_parent_sha": "1f0cc2c579bcd4ac1b638b53b8e7cb34b0ac6ec0",
     "activated_at": "2026-08-16T13:16:43Z",
-    "updated_at": "2026-08-16T13:16:43Z",
+    "updated_at": "2026-08-16T14:33:14Z",
     "blocker": null,
     "validation": null,
     "complex_context": {
@@ -104,6 +152,206 @@
           }
         ],
         "integration_completed_at": null
+      },
+      "execution_routes": {
+        "Developer": {
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium",
+          "reason": "risk:api_contract"
+        },
+        "Integrator": {
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium",
+          "reason": "risk:api_contract"
+        },
+        "QA": {
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium",
+          "reason": "risk:api_contract"
+        },
+        "Reviewer": {
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium",
+          "reason": "risk:api_contract"
+        }
+      },
+      "validation_manifest": {
+        "schema": "connlab.validation-manifest",
+        "version": 1,
+        "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH",
+        "checks": [
+          {
+            "id": "source-folder-candidate-contract",
+            "kind": "targeted",
+            "run_for": [
+              "Developer",
+              "Reviewer",
+              "QA"
+            ],
+            "cwd": ".",
+            "argv": [
+              "py",
+              "-m",
+              "pytest",
+              "tests/unit/test_matrix_source_candidate_service.py",
+              "tests/integration/test_project_test_plan_source_candidates_api.py",
+              "tests/integration/test_project_test_plan_preview_api.py",
+              "-q"
+            ],
+            "timeout_seconds": 900,
+            "permission": "pytest_temp",
+            "required": true
+          },
+          {
+            "id": "source-folder-read-only-contract",
+            "kind": "targeted",
+            "run_for": [
+              "Developer",
+              "Reviewer",
+              "QA"
+            ],
+            "cwd": ".",
+            "argv": [
+              "py",
+              "-m",
+              "pytest",
+              "tests/unit/test_matrix_source_candidate_service.py::test_resolved_directory_listing_and_selection_do_not_mutate_source_file",
+              "-q"
+            ],
+            "timeout_seconds": 300,
+            "permission": "pytest_temp",
+            "required": true
+          },
+          {
+            "id": "matrix-source-picker-ui",
+            "kind": "targeted",
+            "run_for": [
+              "Developer",
+              "Reviewer",
+              "QA"
+            ],
+            "cwd": "frontend",
+            "argv": [
+              "npm.cmd",
+              "test",
+              "--",
+              "--run",
+              "src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx",
+              "src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx",
+              "src/features/matrix-editor/MatrixEditorWorkspace.test.tsx"
+            ],
+            "timeout_seconds": 900,
+            "permission": "workspace",
+            "required": true
+          },
+          {
+            "id": "frontend-production-build",
+            "kind": "full",
+            "run_for": [
+              "Developer",
+              "QA"
+            ],
+            "cwd": "frontend",
+            "argv": [
+              "npm.cmd",
+              "run",
+              "build"
+            ],
+            "timeout_seconds": 900,
+            "permission": "workspace",
+            "required": true
+          },
+          {
+            "id": "source-candidate-compile",
+            "kind": "static",
+            "run_for": [
+              "Developer",
+              "QA"
+            ],
+            "cwd": ".",
+            "argv": [
+              "py",
+              "-m",
+              "py_compile",
+              "backend/application/project_test_plan_source_candidate_service.py",
+              "backend/api/routes_project_test_plan_source_candidates.py"
+            ],
+            "timeout_seconds": 120,
+            "permission": "workspace",
+            "required": true
+          },
+          {
+            "id": "scope-diff-check",
+            "kind": "static",
+            "run_for": [
+              "Developer",
+              "QA"
+            ],
+            "cwd": ".",
+            "argv": [
+              "git",
+              "diff",
+              "--check",
+              "900c26a78009264ab0fc06f2c038e50d6d280869..HEAD"
+            ],
+            "timeout_seconds": 120,
+            "permission": "workspace",
+            "required": true
+          },
+          {
+            "id": "approved-product-scope",
+            "kind": "static",
+            "run_for": [
+              "Developer",
+              "QA"
+            ],
+            "cwd": ".",
+            "argv": [
+              "py",
+              "-c",
+              "from subprocess import check_output; base='900c26a78009264ab0fc06f2c038e50d6d280869'; expected=['backend/application/project_test_plan_source_candidate_service.py','backend/api/routes_project_test_plan_source_candidates.py','frontend/src/api/client.ts','frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.tsx','frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx','frontend/src/features/matrix-editor/useMatrixImportSourcePicker.ts','frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx','frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx','frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx','frontend/src/workbench.css','tests/unit/test_matrix_source_candidate_service.py','tests/integration/test_project_test_plan_source_candidates_api.py']; actual=check_output(['git','diff','--name-only',base+'..HEAD'],text=True,encoding='utf-8').splitlines(); print({'expected':expected,'actual':actual}); raise SystemExit(0 if len(actual)==len(expected) and set(actual)==set(expected) else 1)"
+            ],
+            "timeout_seconds": 120,
+            "permission": "workspace",
+            "required": true
+          },
+          {
+            "id": "retained-subject-clean-state",
+            "kind": "static",
+            "run_for": [
+              "Developer",
+              "QA"
+            ],
+            "cwd": ".",
+            "argv": [
+              "py",
+              "-c",
+              "import subprocess; q=lambda *a: subprocess.check_output(['git',*a],text=True,encoding='utf-8').strip(); start='163e31d455eb4af12e606288fa36d387c81f1476'; base='900c26a78009264ab0fc06f2c038e50d6d280869'; branch=q('branch','--show-current'); parent_line=q('rev-list','--parents','-n','1',start); head=q('rev-parse','HEAD'); task_clean=not q('status','--porcelain=v1','--untracked-files=all'); primary='D:/PythonProject/connlab'; primary_clean=not subprocess.check_output(['git','-C',primary,'status','--porcelain=v1','--untracked-files=all'],text=True,encoding='utf-8').strip(); ancestor=subprocess.run(['git','merge-base','--is-ancestor',start,'HEAD'],check=False).returncode==0; print({'branch':branch,'head':head,'parent_line':parent_line,'ancestor':ancestor,'task_clean':task_clean,'primary_clean':primary_clean}); raise SystemExit(0 if branch=='codex/task-matrix-import-source-picker-target-folder-file-list' and parent_line==start+' '+base and ancestor and task_clean and primary_clean else 1)"
+            ],
+            "timeout_seconds": 120,
+            "permission": "workspace",
+            "required": true
+          },
+          {
+            "id": "matrix-source-picker-browser-smoke",
+            "kind": "ui",
+            "run_for": [
+              "Developer",
+              "Reviewer",
+              "QA"
+            ],
+            "cwd": ".",
+            "argv": [
+              "node",
+              "scripts/connlab_ui_smoke.mjs",
+              "--config",
+              "tmp/matrix-source-picker-ui-smoke.json"
+            ],
+            "timeout_seconds": 180,
+            "permission": "browser",
+            "required": true
+          }
+        ]
       }
     }
   },
