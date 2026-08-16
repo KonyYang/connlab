@@ -290,7 +290,17 @@ Evidence contains only required identity, subject, model route, findings, valida
 exact Git/evidence facts. Do not paste the complete Plan, complete test output, or large board content.
 The final summary reports approximate elapsed time for planning, host setup, Developer, Reviewer, QA,
 Integrator, integration, and tests, plus automatic retry count and reason, using existing commit, turn,
-and test timing only. Do not add telemetry, a database, or a monitoring framework.
+and test timing only. `active_snapshot.elapsed_summary` aggregates action/worktree/evidence/integration
+times; `connlab.validation-result.duration_ms` supplies test time; retained closeout persists the final
+summary in `last_closed.timing_summary`. Do not add telemetry, a database, or a monitoring framework.
+
+Commit-count compression was evaluated and is intentionally not applied across external-effect
+boundaries. `begin-role -> record-invocation` must remain two durable board transitions because native
+dispatch occurs between them; `evidence commit -> consume-callback` must remain separate because the
+immutable evidence parent and raw-byte digest are the recovery proof. Combining either pair would save
+one small commit while making a crash ambiguous or allowing unproved side effects. Efficiency comes
+from compact evidence content, structured board facts, no duplicated role/matrix work, and direct
+recovery—not from weakening those commit boundaries.
 
 ## Phase 2 runtime recovery
 
@@ -330,9 +340,9 @@ Phase 2 extends the existing V2 production writer; it does not create another au
   active board, increments the durable attempt, hashes the raw prompt bytes, and derives the action ID;
   use its `git-reference` command for Plan/evidence path, commit, and raw byte SHA-256. Do not copy SHA
   values or assemble escaped PowerShell JSON manually.
-- Contexts without `blocker_history`, `execution_routes`, or `plan_amendments` remain readable for legacy
-  interruption recovery. The first applicable Phase 2 transition creates the optional history field
-  atomically; newly approved tasks persist structured routes.
+- Contexts without `blocker_history`, `execution_routes`, `plan_amendments`, `validation_manifest`, or
+  `timing_facts` remain readable for legacy interruption recovery. The first applicable Phase 2
+  transition creates optional facts atomically; newly approved tasks persist structured routes.
 
 Recovery reconstructs the durable active task and host from board, Git, and evidence before any action,
 reuses the recorded host, and never duplicates activation. Unprovable identity fails closed with an exact

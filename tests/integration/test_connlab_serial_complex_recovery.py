@@ -778,7 +778,11 @@ def test_real_complex_flow_uses_planner_approval_roles_and_atomic_retained_close
             "branch": "codex/task-daily-complex",
             "head_sha": subject,
         },
+        "timing_summary": board["last_closed"]["timing_summary"],
         "closed_at": board["last_closed"]["closed_at"],
+    }
+    assert set(board["last_closed"]["timing_summary"]["seconds"]) == {
+        "planning", "host", "Developer", "Reviewer", "QA", "Integrator", "integration", "overall",
     }
 
 

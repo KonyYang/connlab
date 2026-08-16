@@ -5,6 +5,7 @@ import hashlib
 import json
 import re
 import subprocess
+from datetime import datetime
 from pathlib import Path
 from pathlib import PurePosixPath
 from typing import Any
@@ -226,6 +227,13 @@ def apply_bounded_fix_reentry(
             "attempt": expected_attempt,
         },
     )
+    timing = context.setdefault("timing_facts", {"host": None, "roles": [], "integration_completed_at": None})
+    timing["roles"].append({
+        "role": "Developer",
+        "attempt": expected_attempt,
+        "started_at": action["recorded_at"],
+        "completed_at": None,
+    })
 
 
 def apply_scope_amendment(
@@ -353,6 +361,76 @@ def verify_transition_repository(root: Path, active: dict[str, Any], *, require_
         raise Blocked("BLOCKED_WORKTREE_FACTS", "Recorded host branch, HEAD, or cleanliness drifted.")
 
 
+def _timestamp(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return parsed if parsed.tzinfo is not None else None
+    except ValueError:
+        return None
+
+
+def _duration(start: Any, completed: Any) -> int | None:
+    first, last = _timestamp(start), _timestamp(completed)
+    if first is None or last is None or last < first:
+        return None
+    return round((last - first).total_seconds())
+
+
+def elapsed_summary(active: dict[str, Any]) -> dict[str, Any]:
+    context = active.get("complex_context")
+    context = context if isinstance(context, dict) else {}
+    timing = context.get("timing_facts")
+    timing = timing if isinstance(timing, dict) else {}
+    seconds: dict[str, int | None] = {
+        "planning": None, "host": None, "Developer": None, "Reviewer": None,
+        "QA": None, "Integrator": None, "integration": None, "overall": None,
+    }
+    host = timing.get("host")
+    if isinstance(host, dict):
+        seconds["host"] = _duration(host.get("started_at"), host.get("completed_at"))
+    role_totals: dict[str, int] = {}
+    role_ends: dict[str, datetime] = {}
+    for item in timing.get("roles", []) if isinstance(timing.get("roles"), list) else []:
+        if not isinstance(item, dict):
+            continue
+        duration = _duration(item.get("started_at"), item.get("completed_at"))
+        role = item.get("role")
+        completed = _timestamp(item.get("completed_at"))
+        if duration is None or role not in {"Planner", "Developer", "Reviewer", "QA", "Integrator"}:
+            continue
+        role_totals[role] = role_totals.get(role, 0) + duration
+        if completed is not None:
+            role_ends[role] = max(completed, role_ends.get(role, completed))
+    seconds["planning"] = role_totals.get("Planner")
+    for role in ("Developer", "Reviewer", "QA", "Integrator"):
+        seconds[role] = role_totals.get(role)
+    integration_end = _timestamp(timing.get("integration_completed_at"))
+    if integration_end is not None and "Integrator" in role_ends and integration_end >= role_ends["Integrator"]:
+        seconds["integration"] = round((integration_end - role_ends["Integrator"]).total_seconds())
+    completed_times = [
+        value for value in (
+            _timestamp(host.get("completed_at")) if isinstance(host, dict) else None,
+            integration_end,
+            *role_ends.values(),
+        ) if value is not None
+    ]
+    activated = _timestamp(active.get("activated_at"))
+    if activated is not None and completed_times and max(completed_times) >= activated:
+        seconds["overall"] = round((max(completed_times) - activated).total_seconds())
+    history = context.get("blocker_history")
+    retries = [
+        item.get("blocker", {}).get("code")
+        for item in history if isinstance(item, dict) and item.get("resolution") == "bounded_fix"
+    ] if isinstance(history, list) else []
+    return {
+        "seconds": seconds,
+        "automatic_retry_count": len(retries),
+        "retry_reasons": [reason for reason in retries if isinstance(reason, str)],
+    }
+
+
 def active_snapshot(control: dict[str, Any] | None, primary_head: str | None = None) -> dict[str, Any] | None:
     active = control.get("active") if isinstance(control, dict) else None
     if not isinstance(active, dict):
@@ -407,6 +485,7 @@ def active_snapshot(control: dict[str, Any] | None, primary_head: str | None = N
         "qa_subject_commit": context.get("qa_subject_commit"),
         "evidence_count": len(evidence) if isinstance(evidence, list) else 0,
         "blocker_history_count": len(history) if isinstance(history, list) else 0,
+        "elapsed_summary": elapsed_summary(active),
     }
 
 

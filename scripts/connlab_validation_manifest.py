@@ -116,6 +116,7 @@ def run_manifest(
     if missing:
         return {**base, "status": "blocked", "code": "BLOCKED_PERMISSION_REQUIRED", "required_permissions": missing, "checks": []}
     results: list[dict[str, Any]] = []
+    suite_started = time.monotonic()
     for check in selected:
         cwd = (root / PurePosixPath(check["cwd"])).resolve()
         try:
@@ -152,13 +153,15 @@ def run_manifest(
     if subject_after != subject_before or dirty_after:
         return {
             **base, "status": "blocked", "code": "BLOCKED_VALIDATION_STATE_CHANGED",
-            "subject_after": subject_after, "required_permissions": [], "checks": results,
+            "subject_after": subject_after, "duration_ms": round((time.monotonic() - suite_started) * 1000),
+            "required_permissions": [], "checks": results,
         }
     passed = all(item["status"] == "passed" for item in results)
     return {
         **base, "status": "passed" if passed else "failed",
         "code": "ALLOW_VALIDATION" if passed else "BLOCKED_VALIDATION_FAILED",
         "subject_after": subject_after,
+        "duration_ms": round((time.monotonic() - suite_started) * 1000),
         "required_permissions": [],
         "checks": results,
     }

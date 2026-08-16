@@ -10,6 +10,7 @@ from scripts.connlab_serial_phase2 import (
     apply_bounded_fix_reentry,
     apply_scope_amendment,
     build_native_action,
+    elapsed_summary,
     next_action,
 )
 
@@ -119,6 +120,43 @@ def native_action(attempt: int = 3) -> dict:
         "title": "Bounded fix",
         "recorded_at": "2026-08-15T00:00:01Z",
     }
+
+
+def test_elapsed_summary_aggregates_existing_stage_times_and_retry_reasons() -> None:
+    value = active("REVIEWER_BLOCKED", phase="development")
+    value["activated_at"] = "2026-08-15T00:00:00Z"
+    value["complex_context"]["timing_facts"] = {
+        "host": {"started_at": "2026-08-15T00:00:10Z", "completed_at": "2026-08-15T00:00:15Z"},
+        "roles": [
+            {"role": "Planner", "attempt": 1, "started_at": "2026-08-15T00:00:00Z", "completed_at": "2026-08-15T00:00:10Z"},
+            {"role": "Developer", "attempt": 1, "started_at": "2026-08-15T00:00:15Z", "completed_at": "2026-08-15T00:00:35Z"},
+            {"role": "Reviewer", "attempt": 1, "started_at": "2026-08-15T00:00:35Z", "completed_at": "2026-08-15T00:00:40Z"},
+            {"role": "Developer", "attempt": 2, "started_at": "2026-08-15T00:00:40Z", "completed_at": "2026-08-15T00:00:50Z"},
+            {"role": "Reviewer", "attempt": 2, "started_at": "2026-08-15T00:00:50Z", "completed_at": "2026-08-15T00:00:55Z"},
+            {"role": "QA", "attempt": 1, "started_at": "2026-08-15T00:00:55Z", "completed_at": "2026-08-15T00:01:15Z"},
+            {"role": "Integrator", "attempt": 1, "started_at": "2026-08-15T00:01:15Z", "completed_at": "2026-08-15T00:01:30Z"},
+        ],
+        "integration_completed_at": "2026-08-15T00:01:35Z",
+    }
+    value["complex_context"]["blocker_history"] = [
+        {"blocker": {"code": "REVIEWER_BLOCKED"}, "decision_ref": "approved", "resolution": "bounded_fix", "resolved_at": "2026-08-15T00:00:40Z"},
+        {"blocker": {"code": "QA_BLOCKED"}, "decision_ref": "approved", "resolution": "bounded_fix", "resolved_at": "2026-08-15T00:00:50Z"},
+    ]
+
+    result = elapsed_summary(value)
+
+    assert result["seconds"] == {
+        "planning": 10,
+        "host": 5,
+        "Developer": 30,
+        "Reviewer": 10,
+        "QA": 20,
+        "Integrator": 15,
+        "integration": 5,
+        "overall": 95,
+    }
+    assert result["automatic_retry_count"] == 2
+    assert result["retry_reasons"] == ["REVIEWER_BLOCKED", "QA_BLOCKED"]
 
 
 @pytest.mark.parametrize("code,phase", [("REVIEWER_BLOCKED", "development"), ("QA_BLOCKED", "development"), ("INTEGRATION_BLOCKED", "blocked")])

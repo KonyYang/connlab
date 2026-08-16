@@ -95,6 +95,8 @@ When `active_snapshot.validation_check_ids` is non-empty, run the board-owned ma
 `connlab_validation_manifest.py --from-board`; never reconstruct a shell command from Plan prose.
 Request its declared `pytest_temp` or `browser` permission before the first run. Use the reusable
 `connlab_ui_smoke.mjs` CDP harness for approved desktop/narrow UI checks.
+Report stage/retry time from `active_snapshot.elapsed_summary` and test time from the validation result;
+do not reconstruct telemetry. Preserve the begin/invocation and evidence/callback commit boundaries.
 
 ## Recovery
 

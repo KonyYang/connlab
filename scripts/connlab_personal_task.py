@@ -17,7 +17,7 @@ from scripts.connlab_serial_board import (
 from scripts.connlab_serial_complex import SerialContractError, classification_result, complex_transition, validate_complex_blocker, validate_integration_transition
 from scripts.connlab_serial_phase2 import (
     BOUNDED_FIX_CODES, COMMAND_ARGUMENTS, active_snapshot, apply_bounded_fix_reentry, apply_exact_plan_amendment,
-    apply_scope_amendment, command_contract, next_action, verify_transition_repository,
+    apply_scope_amendment, command_contract, elapsed_summary, next_action, verify_transition_repository,
 )
 from scripts.connlab_serial_evidence_topology import (
     plan_execution_routes,
@@ -102,6 +102,15 @@ def canonicalize_role_callback_evidence(root: Path, value: Any) -> tuple[Any, bo
         callback["blocker"] = blocker
         corrected = corrected or blocker_corrected
     return callback, corrected
+def callback_evidence_commit_time(root: Path, callback: dict[str, Any]) -> str:
+    match = CALLBACK_EVIDENCE_PATTERN.fullmatch(str(callback.get("evidence")))
+    if not match:
+        raise Blocked("BLOCKED_CALLBACK_INVALID", "Callback evidence reference is invalid.")
+    result = run_git(root, "show", "-s", "--format=%cI", match.group(2))
+    recorded_at = result.stdout.strip() if result.returncode == 0 else ""
+    if not recorded_at:
+        raise Blocked("BLOCKED_EVIDENCE_INVALID", "Callback evidence commit time is unavailable.")
+    return recorded_at
 def verify_integration_repository(root: Path, active: dict[str, Any], value: dict[str, Any]) -> None:
     if not committed_board(root):
         raise Blocked("BLOCKED_TRANSITION_UNCOMMITTED", "The integration-ready board transition must be committed first.")
@@ -263,6 +272,8 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
             return "ALLOW_REENTER_DEVELOPMENT", True, "Approved same-scope bounded fix resumed as the next Developer attempt."
         if command == "consume-callback":
             verify_callback_evidence_topology(root, active, callback)
+            if isinstance(callback, dict) and callback.get("role") in ROLE_CALLBACKS:
+                raw["completed_at"] = callback_evidence_commit_time(root, callback)
         if command == "record-integration":
             validate_integration_transition(active, raw["integration"])
             verify_integration_evidence_topology(root, active, raw["integration"])
@@ -272,7 +283,7 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         if transition_code.startswith("NOOP_"): return transition_code, False, "Exact retained closeout is already recorded."
         if active.pop("_release_active", False):
             closeout = active["complex_context"]["closeout_disposition"]
-            control["last_closed"] = {"task_id": task_id, "disposition": "retained", "decision_ref": args.decision_ref, "closeout_evidence_ref": closeout["evidence_ref"], "retained_resources": {key: closeout[key] for key in ("thread_id", "worktree", "branch", "head_sha")}, "closed_at": now()}; control["active"] = None; control["state"] = "idle"
+            control["last_closed"] = {"task_id": task_id, "disposition": "retained", "decision_ref": args.decision_ref, "closeout_evidence_ref": closeout["evidence_ref"], "retained_resources": {key: closeout[key] for key in ("thread_id", "worktree", "branch", "head_sha")}, "timing_summary": elapsed_summary(active), "closed_at": now()}; control["active"] = None; control["state"] = "idle"
         elif active["phase"] == "human_review": control["state"] = "implemented_pending_human_review"
         else: control["state"] = "running"
         reason = "Durable complex transition recorded."
@@ -405,6 +416,7 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         return "ALLOW_RESUME", True, "Blocker cleared by explicit User direction."
     if command == "close" and control.get("version") == 2 and isinstance(active.get("complex_context"), dict):
         control["last_closed"] = atomic_complex_closeout(root, active, args.decision_ref)
+        control["last_closed"]["timing_summary"] = elapsed_summary(active)
         control["active"] = None
         control["state"] = "idle"
         return "ALLOW_CLOSE", True, "Complex task closed atomically with retained Git and Integrator evidence facts."

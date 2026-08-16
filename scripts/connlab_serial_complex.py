@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -196,6 +197,64 @@ def validate_plan_amendments(value: Any) -> list[dict[str, Any]]:
         if type(item.get("attempt")) is not int or item["attempt"] < 1 or not _is_evidence(item["evidence_ref"]):
             _contract_error("BLOCKED_SCHEMA_INVALID", "Plan amendment attempt or evidence is invalid.")
     return value
+
+
+def validate_timing_facts(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != {"host", "roles", "integration_completed_at"}:
+        _contract_error("BLOCKED_SCHEMA_INVALID", "Timing fact keys are invalid.")
+    def valid_time(item: Any, *, nullable: bool = False) -> bool:
+        if nullable and item is None:
+            return True
+        if not isinstance(item, str) or not item:
+            return False
+        try:
+            parsed = datetime.fromisoformat(item.replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        return parsed.tzinfo is not None
+    host = value.get("host")
+    if host is not None and (
+        not isinstance(host, dict)
+        or set(host) != {"started_at", "completed_at"}
+        or not valid_time(host.get("started_at"))
+        or not valid_time(host.get("completed_at"), nullable=True)
+    ):
+        _contract_error("BLOCKED_SCHEMA_INVALID", "Host timing facts are invalid.")
+    if (
+        host is not None
+        and host.get("completed_at") is not None
+        and datetime.fromisoformat(host["completed_at"].replace("Z", "+00:00"))
+        < datetime.fromisoformat(host["started_at"].replace("Z", "+00:00"))
+    ):
+        _contract_error("BLOCKED_SCHEMA_INVALID", "Host completion precedes its start.")
+    roles = value.get("roles")
+    if not isinstance(roles, list):
+        _contract_error("BLOCKED_SCHEMA_INVALID", "Role timing facts are invalid.")
+    identities: set[tuple[str, int]] = set()
+    for item in roles:
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"role", "attempt", "started_at", "completed_at"}
+            or item.get("role") not in {"Planner", *EXECUTION_ROLES}
+            or type(item.get("attempt")) is not int
+            or item["attempt"] < 1
+            or not valid_time(item.get("started_at"))
+            or not valid_time(item.get("completed_at"), nullable=True)
+        ):
+            _contract_error("BLOCKED_SCHEMA_INVALID", "A role timing fact is invalid.")
+        identity = (item["role"], item["attempt"])
+        if identity in identities:
+            _contract_error("BLOCKED_SCHEMA_INVALID", "Role timing identity is duplicated.")
+        identities.add(identity)
+        if (
+            item["completed_at"] is not None
+            and datetime.fromisoformat(item["completed_at"].replace("Z", "+00:00"))
+            < datetime.fromisoformat(item["started_at"].replace("Z", "+00:00"))
+        ):
+            _contract_error("BLOCKED_SCHEMA_INVALID", "Role completion precedes its start.")
+    if not valid_time(value.get("integration_completed_at"), nullable=True):
+        _contract_error("BLOCKED_SCHEMA_INVALID", "Integration timing fact is invalid.")
+    return value
 def callback_transition(value: Any) -> dict[str, Any]:
     keys = {"schema", "version", "task_id", "role", "status", "subject_commit", "evidence", "next", "blocker"}
     if not isinstance(value, dict) or set(value) != keys:
@@ -302,6 +361,11 @@ def validate_integration_transition(active: dict[str, Any], value: Any) -> dict[
         _contract_error("BLOCKED_INTEGRATION_PROOF", "Integration evidence or command proof is invalid.")
     return value
 PHASE_ROLE = {"planning": "Planner", "development": "Developer", "review": "Reviewer", "qa": "QA", "integration": "Integrator"}
+def _timing(context: dict[str, Any]) -> dict[str, Any]:
+    value = context.setdefault("timing_facts", {"host": None, "roles": [], "integration_completed_at": None})
+    if not isinstance(value, dict):
+        _contract_error("BLOCKED_SCHEMA_INVALID", "Timing facts are invalid.")
+    return value
 def complex_transition(active: dict[str, Any], command: str, payload: dict[str, Any]) -> str:
     """Apply one durable v2 transition; repository/evidence proofs remain the writer's precondition."""
     context = active.get("complex_context")
@@ -315,6 +379,7 @@ def complex_transition(active: dict[str, Any], command: str, payload: dict[str, 
         if pending is not None: _contract_error("BLOCKED_NATIVE_ACTION_PENDING", "A native action is already pending.")
         context["current_role"], context["current_attempt"] = role, action["attempt"]
         context["pending_callback"] = {"state": "dispatch_pending", "action_id": action["action_id"], "role": role, "attempt": action["attempt"]}
+        _timing(context)["roles"].append({"role": role, "attempt": action["attempt"], "started_at": action["recorded_at"], "completed_at": None})
     elif command == "record-invocation":
         invocation = validate_invocation(payload.get("invocation"))
         if not isinstance(pending, dict) or pending.get("state") != "dispatch_pending": _contract_error("BLOCKED_NATIVE_ACTION_PENDING", "No matching dispatch is pending.")
@@ -330,6 +395,16 @@ def complex_transition(active: dict[str, Any], command: str, payload: dict[str, 
         if callback["role"] == "Reviewer" and callback["status"] == "pass": context["reviewer_subject_commit"] = callback["subject_commit"]
         if callback["role"] == "QA" and callback["status"] == "pass": context["qa_subject_commit"] = callback["subject_commit"]
         context["evidence_refs"].append(callback["evidence"]); context["pending_callback"] = None; context["current_role"] = None
+        completed_at = payload.get("completed_at")
+        if completed_at is not None:
+            timing_entry = next((item for item in reversed(_timing(context)["roles"]) if item["role"] == callback["role"] and item["attempt"] == pending["attempt"]), None)
+            if timing_entry is None:
+                invocations = context.get("role_invocations")
+                invocation = invocations[-1] if isinstance(invocations, list) and invocations else None
+                if not isinstance(invocation, dict): _contract_error("BLOCKED_SCHEMA_INVALID", "Role timing start is missing.")
+                timing_entry = {"role": callback["role"], "attempt": pending["attempt"], "started_at": invocation["recorded_at"], "completed_at": None}
+                _timing(context)["roles"].append(timing_entry)
+            timing_entry["completed_at"] = completed_at
         active["phase"], active["blocker"] = decision["target_phase"], callback["blocker"]
         if decision["integration_ready"]: context["worktree_lifecycle"] = "integration_ready"
     elif command == "begin-host":
@@ -337,15 +412,20 @@ def complex_transition(active: dict[str, Any], command: str, payload: dict[str, 
         if phase != "development" or action["action"] != "host_create" or context.get("host_id"): _contract_error("BLOCKED_HOST_DUPLICATE", "Host creation is not legal.")
         if pending is not None: _contract_error("BLOCKED_NATIVE_ACTION_PENDING", "A native action is already pending.")
         context["pending_callback"] = {"state": "host_creation_pending", "action_id": action["action_id"], "role": "Host", "attempt": action["attempt"]}
+        _timing(context)["host"] = {"started_at": action["recorded_at"], "completed_at": None}
     elif command == "record-host":
         worktree = payload.get("worktree"); keys = {"schema", "version", "action_id", "thread_id", "host_id", "branch", "worktree", "base_sha", "head_sha", "integration_target", "clean", "recorded_at"}
         if not isinstance(worktree, dict) or set(worktree) != keys or worktree.get("schema") != "connlab.serial-worktree" or worktree.get("version") != 1: _contract_error("BLOCKED_WORKTREE_FACTS", "Worktree schema is invalid.")
         if not isinstance(pending, dict) or pending.get("state") != "host_creation_pending" or pending.get("action_id") != worktree.get("action_id"): _contract_error("BLOCKED_NATIVE_ID_MISMATCH", "Worktree does not bind the host action.")
         if worktree.get("clean") is not True or not _is_sha(worktree.get("base_sha"), 40) or not _is_sha(worktree.get("head_sha"), 40): _contract_error("BLOCKED_WORKTREE_FACTS", "Worktree Git facts are invalid.")
         context.update(host_thread_id=worktree["thread_id"], host_id=worktree["host_id"], task_branch=worktree["branch"], task_worktree=worktree["worktree"], base_sha=worktree["base_sha"], head_sha=worktree["head_sha"], integration_target=worktree["integration_target"], worktree_lifecycle="ready", pending_callback=None)
+        host_timing = _timing(context).get("host")
+        if not isinstance(host_timing, dict): _contract_error("BLOCKED_SCHEMA_INVALID", "Host timing start is missing.")
+        host_timing["completed_at"] = worktree["recorded_at"]
     elif command == "record-integration":
         value = validate_integration_transition(active, payload.get("integration"))
         context["integrated_commit"] = value["merge_commit"]; context["head_sha"] = value["branch_head"]; context["worktree_lifecycle"] = "integrated"; context["current_role"] = None; active["phase"] = "human_review"
+        _timing(context)["integration_completed_at"] = value["recorded_at"]
     elif command == "request-close":
         if phase != "human_review" or not payload.get("decision_ref"): _contract_error("BLOCKED_STATE", "Human review close evidence is required.")
         active["phase"] = "closing"; context["close_decision_ref"] = payload["decision_ref"]

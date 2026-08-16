@@ -323,7 +323,7 @@ COMPLEX_CONTEXT_KEYS = {
     "reviewer_subject_commit", "qa_subject_commit", "integrated_commit", "evidence_refs",
     "pending_callback", "closeout_disposition", "retained_resource_refs", "close_decision_ref",
 }
-COMPLEX_CONTEXT_OPTIONAL_KEYS = {"blocker_history", "execution_routes", "plan_amendments", "validation_manifest"}
+COMPLEX_CONTEXT_OPTIONAL_KEYS = {"blocker_history", "execution_routes", "plan_amendments", "validation_manifest", "timing_facts"}
 V2_PHASES = {
     "planning", "awaiting_user_approval", "implementation", "development", "review", "qa",
     "integration", "blocked", "human_review", "closing",
@@ -360,6 +360,7 @@ def validate_v2_control(value: dict[str, Any]) -> None:
             raise Blocked("BLOCKED_SCHEMA_INVALID", f"Complex context array is invalid: {key}.")
     from scripts.connlab_serial_complex import (
         SerialContractError, validate_blocker_history, validate_execution_routes, validate_plan_amendments,
+        validate_timing_facts,
     )
     try:
         validate_blocker_history(context.get("blocker_history", []))
@@ -373,6 +374,8 @@ def validate_v2_control(value: dict[str, Any]) -> None:
                 validate_manifest(context["validation_manifest"], task_id=active["task_id"])
             except ManifestError as exc:
                 raise SerialContractError("BLOCKED_SCHEMA_INVALID", str(exc)) from exc
+        if "timing_facts" in context:
+            validate_timing_facts(context["timing_facts"])
     except SerialContractError as exc:
         raise Blocked(exc.code, exc.reason) from exc
     if context.get("closeout_disposition") is not None and not isinstance(context["closeout_disposition"], dict):
