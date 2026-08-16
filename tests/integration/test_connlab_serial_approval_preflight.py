@@ -56,7 +56,7 @@ def approved_request() -> dict:
     }
 
 
-def init_awaiting_repo(repo: Path, route_sentence: str) -> tuple[dict, str]:
+def init_awaiting_repo(repo: Path, route_sentence: str, validation_manifest: dict | None = None) -> tuple[dict, str]:
     repo.mkdir()
     git(repo, "init", "-b", "master")
     git(repo, "config", "user.email", "test@example.invalid")
@@ -109,8 +109,11 @@ def init_awaiting_repo(repo: Path, route_sentence: str) -> tuple[dict, str]:
     board.update(state="running", active=active, queue=[], next_enqueue_sequence=1)
     (repo / "docs/task_board.md").write_bytes(render_board(prefix, board, suffix))
     compact = json.dumps(approved, ensure_ascii=False, separators=(",", ":"))
+    manifest_block = "" if validation_manifest is None else (
+        "\n```json\n" + json.dumps(validation_manifest, ensure_ascii=False, separators=(",", ":")) + "\n```\n"
+    )
     (repo / "docs/plan.md").write_text(
-        f"# Plan\n\n{route_sentence}\n\n```json\n{compact}\n```\n",
+        f"# Plan\n\n{route_sentence}\n\n```json\n{compact}\n```\n{manifest_block}",
         encoding="utf-8",
     )
     git(repo, "add", ".gitignore", "docs/task_board.md", "docs/plan.md")
@@ -173,6 +176,43 @@ def test_approve_accepts_a_fully_preflighted_committed_plan(tmp_path: Path) -> N
             "reason": "risk:authority",
         }
         for role in ("Developer", "Reviewer", "QA", "Integrator")
+    }
+
+
+def test_approve_persists_a_structured_validation_manifest(tmp_path: Path) -> None:
+    repo = tmp_path / "validation-manifest"
+    manifest = {
+        "schema": "connlab.validation-manifest",
+        "version": 1,
+        "task_id": "TASK_PLAN_PREFLIGHT",
+        "checks": [{
+            "id": "governance-focused",
+            "kind": "full",
+            "run_for": ["Developer", "QA"],
+            "cwd": ".",
+            "argv": ["py", "-m", "pytest", "tests/unit/test_contract.py", "-q"],
+            "timeout_seconds": 600,
+            "permission": "pytest_temp",
+            "required": True,
+        }],
+    }
+    approved, plan_ref = init_awaiting_repo(
+        repo,
+        "Developer, Reviewer, QA and Integrator are all `gpt-5.6-sol / medium / risk:authority`.",
+        manifest,
+    )
+
+    result = approve(repo, approved, plan_ref)
+
+    assert result["code"] == "ALLOW_APPROVE"
+    _, board, _ = parse_board((repo / "docs/task_board.md").read_bytes())
+    assert board["active"]["complex_context"]["validation_manifest"] == manifest
+    assert result["active_snapshot"]["validation_check_ids"] == ["governance-focused"]
+    assert result["active_snapshot"]["validation_permissions"] == {
+        "Developer": ["pytest_temp"],
+        "Reviewer": [],
+        "QA": ["pytest_temp"],
+        "Integrator": [],
     }
 
 

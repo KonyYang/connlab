@@ -22,6 +22,7 @@ from scripts.connlab_serial_phase2 import (
 from scripts.connlab_serial_evidence_topology import (
     plan_execution_routes,
     validate_approved_plan,
+    validation_manifest_from_plan,
     verify_callback_evidence_topology,
     verify_integration_evidence_topology,
     verify_plan_amendment_evidence_topology,
@@ -225,6 +226,7 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         }
         approved_payload(json.dumps(approved, ensure_ascii=False, separators=(",", ":")), task_id)
         parsed_routes = validate_approved_plan(root, args.plan_ref, approved)
+        amended_manifest = validation_manifest_from_plan(root, args.plan_ref, task_id)
         routes = {
             role: {"model": route[0], "reasoning_effort": route[1], "reason": route[2]}
             for role, route in parsed_routes.items()
@@ -238,10 +240,15 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
             }
         if current_routes is not None and current_routes != routes:
             raise Blocked("BLOCKED_PLAN_INVALID", "Corrected Plan cannot change an approved execution route.")
+        current_manifest = context.get("validation_manifest")
+        if current_manifest is not None and current_manifest != amended_manifest:
+            raise Blocked("BLOCKED_PLAN_INVALID", "Corrected Plan cannot change or remove the approved validation manifest.")
         if not isinstance(args.approval_ref, str) or not args.approval_ref.strip():
             raise Blocked("BLOCKED_APPROVAL_REQUIRED", "Explicit User approval is required for exact Plan amendment.")
         verify_plan_amendment_evidence_topology(root, active, callback, args.plan_ref)
         apply_exact_plan_amendment(active, args.plan_ref, args.approval_ref, callback, routes, now())
+        if amended_manifest is not None:
+            context["validation_manifest"] = amended_manifest
         return "ALLOW_PLAN_AMEND", True, "Exact Plan metadata corrected; pending callback and evidence were preserved."
     if command in COMPLEX_COMMANDS:
         if control.get("version") != 2: raise Blocked("BLOCKED_LEGACY_MODE_FROZEN", "Complex commands remain dormant before cutover.")
@@ -328,8 +335,10 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         if not args.approval_ref:
             raise Blocked("BLOCKED_APPROVAL_REQUIRED", "Explicit User approval is required.")
         approved_routes = None
+        validation_manifest = None
         if is_v2_complex and not blocked_reapproval:
             approved_routes = validate_approved_plan(root, args.plan_ref, approved)
+            validation_manifest = validation_manifest_from_plan(root, args.plan_ref, task_id)
         if blocked_reapproval:
             previous = active["scope_contract"]; old_paths, new_paths = set(previous["may_touch"]), set(scope["may_touch"])
             if scope == previous:
@@ -352,6 +361,8 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
                 role: {"model": route[0], "reasoning_effort": route[1], "reason": route[2]}
                 for role, route in approved_routes.items()
             }
+            if validation_manifest is not None:
+                active["complex_context"]["validation_manifest"] = validation_manifest
         return "ALLOW_APPROVE", True, "Approved scope bound to active task."
     if command == "mark-review":
         if control["state"] == "implemented_pending_human_review":

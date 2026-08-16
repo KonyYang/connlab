@@ -367,6 +367,7 @@ def active_snapshot(control: dict[str, Any] | None, primary_head: str | None = N
     evidence = context.get("evidence_refs")
     scope = active.get("scope_contract")
     approved_paths = context.get("approved_code_paths")
+    validation_manifest = context.get("validation_manifest")
     if approved_paths is None and isinstance(scope, dict):
         approved_paths = scope.get("may_touch")
     return {
@@ -390,6 +391,17 @@ def active_snapshot(control: dict[str, Any] | None, primary_head: str | None = N
         "approved_code_paths": approved_paths or [],
         "execution_routes": context.get("execution_routes"),
         "plan_amendment_count": len(context.get("plan_amendments", [])) if isinstance(context.get("plan_amendments", []), list) else 0,
+        "validation_check_ids": [
+            check.get("id") for check in validation_manifest.get("checks", []) if isinstance(check, dict)
+        ] if isinstance(validation_manifest, dict) else [],
+        "validation_permissions": {
+            role: sorted({
+                check.get("permission")
+                for check in validation_manifest.get("checks", [])
+                if isinstance(check, dict) and role in check.get("run_for", [])
+            })
+            for role in ("Developer", "Reviewer", "QA", "Integrator")
+        } if isinstance(validation_manifest, dict) else {},
         "developer_subject_commit": context.get("developer_subject_commit"),
         "reviewer_subject_commit": context.get("reviewer_subject_commit"),
         "qa_subject_commit": context.get("qa_subject_commit"),

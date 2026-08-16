@@ -323,7 +323,7 @@ COMPLEX_CONTEXT_KEYS = {
     "reviewer_subject_commit", "qa_subject_commit", "integrated_commit", "evidence_refs",
     "pending_callback", "closeout_disposition", "retained_resource_refs", "close_decision_ref",
 }
-COMPLEX_CONTEXT_OPTIONAL_KEYS = {"blocker_history", "execution_routes", "plan_amendments"}
+COMPLEX_CONTEXT_OPTIONAL_KEYS = {"blocker_history", "execution_routes", "plan_amendments", "validation_manifest"}
 V2_PHASES = {
     "planning", "awaiting_user_approval", "implementation", "development", "review", "qa",
     "integration", "blocked", "human_review", "closing",
@@ -367,6 +367,12 @@ def validate_v2_control(value: dict[str, Any]) -> None:
             validate_execution_routes(context["execution_routes"])
         if "plan_amendments" in context:
             validate_plan_amendments(context["plan_amendments"])
+        if "validation_manifest" in context:
+            from scripts.connlab_validation_manifest import ManifestError, validate_manifest
+            try:
+                validate_manifest(context["validation_manifest"], task_id=active["task_id"])
+            except ManifestError as exc:
+                raise SerialContractError("BLOCKED_SCHEMA_INVALID", str(exc)) from exc
     except SerialContractError as exc:
         raise Blocked(exc.code, exc.reason) from exc
     if context.get("closeout_disposition") is not None and not isinstance(context["closeout_disposition"], dict):

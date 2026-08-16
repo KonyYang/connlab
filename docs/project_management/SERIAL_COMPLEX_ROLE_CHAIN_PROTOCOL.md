@@ -247,6 +247,22 @@ QA runs the complete approved matrix once on a clean, exact reviewed subject. QA
 independent repeat of the complete approved matrix in a normal complex task. QA must not mutate board,
 phase, validation, or fixture state to manufacture a passing precondition.
 
+For new complex Plans, freeze executable checks in one optional-to-legacy but normative
+`connlab.validation-manifest/v1` JSON block. Approve validates it and stores it as
+`complex_context.validation_manifest`; role turns do not translate prose into shell commands. Each
+check freezes `id`, `kind`, `run_for`, repository-relative `cwd`, exact `argv[]`, timeout, permission
+class, and required status. Run it with
+`py -m scripts.connlab_validation_manifest run --repo-root . --from-board --role <Role>
+--allow-permission <approved-class>`. The runner always uses `shell=False`, requests all missing
+permission classes before starting any check, binds results to the clean exact Git subject, and reports
+only command identity, duration, exit code and stdout/stderr SHA-256. Developer runs its complete set
+last; Reviewer selects only finding/risk check IDs; QA runs its complete approved set once.
+
+UI checks use a manifest `kind=ui` argv that calls `node scripts/connlab_ui_smoke.mjs --config <file>`.
+The reusable CDP harness checks required selectors/text, runtime exceptions, forbidden console patterns,
+horizontal overflow, and every approved viewport (normally desktop plus 514px). `--validate-only`
+validates its config without starting Chrome. The browser permission class must be approved before run.
+
 Integrator does not repeat the complete pytest matrix. It verifies only exact subject, approved scope,
 evidence topology and raw-byte digests, task/primary HEAD, Git parents/tree, clean worktrees, and actual
 integration facts. On a deterministically proved blocker, stop remaining unrelated checks, emit concise

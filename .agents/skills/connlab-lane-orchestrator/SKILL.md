@@ -91,6 +91,11 @@ on the clean reviewed subject. Integrator verifies exact Git/evidence/integratio
 the matrix, and stops immediately on a deterministic blocker. Use known permission boundaries on the
 first attempt and recover interrupted work mechanically from board, Git, worktree, and evidence.
 
+When `active_snapshot.validation_check_ids` is non-empty, run the board-owned manifest through
+`connlab_validation_manifest.py --from-board`; never reconstruct a shell command from Plan prose.
+Request its declared `pytest_temp` or `browser` permission before the first run. Use the reusable
+`connlab_ui_smoke.mjs` CDP harness for approved desktop/narrow UI checks.
+
 ## Recovery
 
 Recover from `inspect` and its `active_snapshot` / `next_action`, reusing the board/Git/evidence host.

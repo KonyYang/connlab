@@ -116,6 +116,34 @@ def plan_execution_routes(
     }
 
 
+def validation_manifest_from_plan(
+    root: Path, plan_ref: str, task_id: str, *, code: str = "BLOCKED_PLAN_INVALID"
+) -> dict[str, Any] | None:
+    from scripts.connlab_validation_manifest import ManifestError, validate_manifest
+
+    plan = _committed_plan_bytes(root, plan_ref, code=code)
+    try:
+        text = plan.decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        _blocked(code, "Committed Plan must be UTF-8 text.")
+    manifests: list[dict[str, Any]] = []
+    for raw in re.findall(r"```json\s*(\{.*?\})\s*```", text, re.IGNORECASE | re.DOTALL):
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict) and value.get("schema") == "connlab.validation-manifest":
+            manifests.append(value)
+    if len(manifests) > 1:
+        _blocked(code, "Committed Plan contains duplicate validation manifests.")
+    if not manifests:
+        return None
+    try:
+        return validate_manifest(manifests[0], task_id=task_id)
+    except ManifestError as exc:
+        _blocked(code, str(exc))
+
+
 def _plan_route(root: Path, active: dict[str, Any], role: str) -> tuple[str, str, str]:
     """Return the structured approved route, with a Plan fallback for legacy active tasks."""
     context = active.get("complex_context")
