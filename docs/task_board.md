@@ -36,8 +36,8 @@
       "head_sha": "1f0cc2c579bcd4ac1b638b53b8e7cb34b0ac6ec0",
       "integration_target": "master",
       "worktree_lifecycle": "absent",
-      "current_role": null,
-      "current_attempt": 0,
+      "current_role": "Planner",
+      "current_attempt": 1,
       "role_invocations": [],
       "host_thread_id": null,
       "host_id": null,
@@ -74,10 +74,27 @@
       "integrated_commit": null,
       "evidence_refs": [],
       "blocker_history": [],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "8c02f7360e455dd03bd695b6185df799e16be8be3f8d319cb7e073333359e879",
+        "role": "Planner",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
-      "close_decision_ref": null
+      "close_decision_ref": null,
+      "timing_facts": {
+        "host": null,
+        "roles": [
+          {
+            "role": "Planner",
+            "attempt": 1,
+            "started_at": "2026-08-16T13:20:01Z",
+            "completed_at": null
+          }
+        ],
+        "integration_completed_at": null
+      }
     }
   },
   "queue": [],
