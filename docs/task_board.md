@@ -134,12 +134,20 @@
         "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_CORRECTED_PLAN_planner.md@e764e3d913fd83b0e284b67cf31c636113afbcb4#9dc10b25932cc6ceda1fbc6d77dd24abcdd19fc9b8f2e78a4a5ee6328d021dc1"
       ],
       "blocker_history": [],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "host_creation_pending",
+        "action_id": "7b525108bf2fbd4a3994f0d09582e662eb39f74047d7ed498c26c816680a6941",
+        "role": "Host",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
       "timing_facts": {
-        "host": null,
+        "host": {
+          "started_at": "2026-08-16T09:59:05Z",
+          "completed_at": null
+        },
         "roles": [
           {
             "role": "Planner",
