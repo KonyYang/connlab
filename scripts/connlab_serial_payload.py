@@ -12,7 +12,13 @@ if not sys.path or Path(sys.path[0]).resolve() != SCRIPT_REPOSITORY_ROOT:
 
 from scripts.connlab_serial_board import BOARD_REL, Blocked, now, parse_board, resolve_primary
 from scripts.connlab_serial_complex import ACTION_ROLES, SerialContractError
-from scripts.connlab_serial_phase2 import build_git_reference, build_native_action, prompt_bytes
+from scripts.connlab_serial_phase2 import (
+    COMMAND_ARGUMENTS,
+    build_git_reference,
+    build_native_action,
+    command_contract,
+    prompt_bytes,
+)
 
 
 def parser() -> argparse.ArgumentParser:
@@ -27,6 +33,8 @@ def parser() -> argparse.ArgumentParser:
     reference.add_argument("--repo-root", required=True)
     reference.add_argument("--path", required=True)
     reference.add_argument("--commit", default="HEAD")
+    contract = commands.add_parser("contract")
+    contract.add_argument("--command", dest="writer_command", required=True, choices=tuple(COMMAND_ARGUMENTS))
     return value
 
 
@@ -35,6 +43,9 @@ def main() -> int:
         sys.stdout.reconfigure(encoding="utf-8")
     try:
         args = parser().parse_args()
+        if args.command == "contract":
+            print(json.dumps(command_contract(args.writer_command), ensure_ascii=False, separators=(",", ":")))
+            return 0
         root = resolve_primary(args.repo_root)
         if args.command == "git-reference":
             print(build_git_reference(root, args.path, args.commit))

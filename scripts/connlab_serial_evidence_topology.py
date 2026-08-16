@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -45,16 +46,18 @@ def _committed_bytes(root: Path, commit: str, path: str, *, code: str) -> bytes:
     return result.stdout
 
 
-def _plan_route(root: Path, active: dict[str, Any], role: str) -> tuple[str, str, str]:
-    """Return the execution route frozen by the exact committed Plan."""
-    match = PLAN_RE.fullmatch(str(active.get("plan_ref")))
+def _committed_plan_bytes(root: Path, plan_ref: Any, *, code: str) -> bytes:
+    match = PLAN_RE.fullmatch(str(plan_ref))
     if not match or ".." in Path(match.group(1)).parts:
-        _blocked("BLOCKED_EVIDENCE_INVALID", "Committed Plan reference is invalid.")
+        _blocked(code, "Committed Plan reference is invalid.")
     path, commit, digest = match.groups()
-    plan = _committed_bytes(root, commit, path, code="BLOCKED_EVIDENCE_INVALID")
+    plan = _committed_bytes(root, commit, path, code=code)
     if hashlib.sha256(plan).hexdigest() != digest:
-        _blocked("BLOCKED_EVIDENCE_INVALID", "Committed Plan bytes do not match its frozen reference.")
-    text = plan.decode("utf-8", errors="strict")
+        _blocked(code, "Committed Plan bytes do not match its frozen reference.")
+    return plan
+
+
+def _route_from_plan_text(text: str, role: str, *, code: str) -> tuple[str, str, str]:
     shared = re.search(
         r"Developer,\s*Reviewer,\s*QA\s+and\s+Integrator\s+are\s+all\s+"
         r"`([^`/]+?)\s*/\s*([^`/]+?)\s*/\s*([^`]+?)`",
@@ -70,7 +73,45 @@ def _plan_route(root: Path, active: dict[str, Any], role: str) -> tuple[str, str
     )
     if row:
         return tuple(item.strip() for item in row.groups())  # type: ignore[return-value]
-    _blocked("BLOCKED_EVIDENCE_INVALID", "Committed Plan does not freeze the execution-role route.")
+    _blocked(code, "Committed Plan does not freeze the execution-role route.")
+
+
+def validate_approved_plan(
+    root: Path, plan_ref: str, approved_request: dict[str, Any]
+) -> dict[str, tuple[str, str, str]]:
+    """Validate every machine-consumed Plan fact before approval can mutate the board."""
+    code = "BLOCKED_PLAN_INVALID"
+    plan = _committed_plan_bytes(root, plan_ref, code=code)
+    try:
+        text = plan.decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        _blocked(code, "Committed Plan must be UTF-8 text.")
+    embedded: list[dict[str, Any]] = []
+    for raw in re.findall(r"```json\s*(\{.*?\})\s*```", text, re.IGNORECASE | re.DOTALL):
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict) and value.get("schema") == "connlab.personal-task-approved-request":
+            embedded.append(value)
+    if embedded != [approved_request]:
+        _blocked(code, "Committed Plan must contain exactly the approved request object.")
+    return {
+        role: _route_from_plan_text(text, role, code=code)
+        for role in sorted(EXECUTION_ROLES)
+    }
+
+
+def _plan_route(root: Path, active: dict[str, Any], role: str) -> tuple[str, str, str]:
+    """Return the execution route frozen by the exact committed Plan."""
+    plan = _committed_plan_bytes(
+        root, active.get("plan_ref"), code="BLOCKED_EVIDENCE_INVALID"
+    )
+    try:
+        text = plan.decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        _blocked("BLOCKED_EVIDENCE_INVALID", "Committed Plan must be UTF-8 text.")
+    return _route_from_plan_text(text, role, code="BLOCKED_EVIDENCE_INVALID")
 
 
 def _headers(data: bytes) -> dict[str, str]:

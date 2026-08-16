@@ -19,11 +19,58 @@ from scripts.connlab_serial_board import Blocked, committed_board, git_dirty, ru
 
 
 BOUNDED_FIX_CODES = {"REVIEWER_BLOCKED", "QA_BLOCKED", "INTEGRATION_BLOCKED"}
+COMMAND_ARGUMENTS = {
+    "inspect": set(),
+    "check": {"task_id", "intent"},
+    "classify": {"request_json"},
+    "submit": {"expected_board_sha256", "task_id", "request_json"},
+    "activate-next": {"expected_board_sha256", "task_id"},
+    "approve": {"expected_board_sha256", "task_id", "approved_request_json", "plan_ref", "approval_ref"},
+    "mark-review": {"expected_board_sha256", "task_id", "validation_json"},
+    "block": {"expected_board_sha256", "task_id", "blocker_json"},
+    "resume": {"expected_board_sha256", "task_id", "decision_ref"},
+    "cancel": {"expected_board_sha256", "task_id", "decision_ref", "disposition"},
+    "close": {"expected_board_sha256", "task_id", "decision_ref"},
+    "begin-role": {"expected_board_sha256", "task_id", "role", "native_action_json"},
+    "record-invocation": {"expected_board_sha256", "task_id", "role", "native_action_id", "invocation_json"},
+    "consume-callback": {"expected_board_sha256", "task_id", "callback_json"},
+    "begin-host": {"expected_board_sha256", "task_id", "native_action_json"},
+    "record-host": {"expected_board_sha256", "task_id", "native_action_id", "worktree_json"},
+    "record-integration": {"expected_board_sha256", "task_id", "integration_json"},
+    "request-close": {"expected_board_sha256", "task_id", "decision_ref"},
+    "record-closeout": {"expected_board_sha256", "task_id", "closeout_json"},
+    "finalize-close": {"expected_board_sha256", "task_id", "decision_ref"},
+    "reenter-development": {"expected_board_sha256", "task_id", "decision_ref", "native_action_json"},
+}
+COMMAND_JSON_SCHEMAS = {
+    "submit": {"request_json": "connlab.serial-task-request/v1"},
+    "approve": {"approved_request_json": "connlab.personal-task-approved-request/v1"},
+    "mark-review": {"validation_json": "connlab.personal-task-validation/v1"},
+    "block": {"blocker_json": "connlab.serial-task-blocker/v1"},
+    "begin-role": {"native_action_json": "connlab.serial-native-action/v1"},
+    "record-invocation": {"invocation_json": "connlab.serial-invocation/v1"},
+    "consume-callback": {"callback_json": "connlab.serial-callback/v1"},
+    "begin-host": {"native_action_json": "connlab.serial-native-action/v1"},
+    "record-host": {"worktree_json": "connlab.serial-worktree/v1"},
+    "record-integration": {"integration_json": "connlab.serial-integration/v1"},
+    "record-closeout": {"closeout_json": "connlab.serial-closeout/v1"},
+    "reenter-development": {"native_action_json": "connlab.serial-native-action/v1"},
+}
 SUBJECT_BY_BLOCKER = {
     "REVIEWER_BLOCKED": "developer_subject_commit",
     "QA_BLOCKED": "reviewer_subject_commit",
     "INTEGRATION_BLOCKED": "qa_subject_commit",
 }
+
+
+def command_contract(command: str) -> dict[str, Any]:
+    accepted = COMMAND_ARGUMENTS.get(command)
+    if accepted is None:
+        _fail("BLOCKED_ARGUMENT_COMBINATION", "Unknown writer command contract.")
+    return {
+        "accepted_arguments": sorted(accepted),
+        "json_schemas": dict(COMMAND_JSON_SCHEMAS.get(command, {})),
+    }
 
 
 def _fail(code: str, reason: str) -> None:

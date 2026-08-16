@@ -59,6 +59,11 @@ Use only `scripts/run_task.ps1` for User-facing Submit, Approve, and Close. Copy
 decision contracts from the normative protocol. A schema error is terminal and zero-write; never guess
 another schema or bypass the entry with direct request JSON.
 
+Before building any command, read `inspect.next_action.command_contract` or call
+`connlab_serial_payload.py contract`; these executable contracts are the argument/schema source of truth.
+Approve is allowed to mutate the board only after the writer has verified the committed Plan bytes,
+its exact embedded approved-request object, and every execution-role route.
+
 ## Supporting engineering skills
 
 Supporting skills improve a role's method; they never create another route, broaden approved scope, or

@@ -111,15 +111,18 @@ def invoke_personal(
     return json.loads(completed.stdout)
 
 
-def init_v2_repo(repo: Path) -> None:
+def init_v2_repo(repo: Path, approved: dict | None = None) -> None:
     repo.mkdir(); git(repo, "init", "-b", "master")
     git(repo, "config", "user.email", "test@example.invalid"); git(repo, "config", "user.name", "ConnLab Flow Test")
     (repo / ".gitignore").write_text("tmp/\n", encoding="utf-8"); (repo / "docs").mkdir()
-    (repo / "docs/plan.md").write_text(
+    plan = (
         "# Fixture Plan\n\nDeveloper, Reviewer, QA and Integrator are all "
-        "`gpt-5.6-sol / medium / risk:authority`.\n",
-        encoding="utf-8",
+        "`gpt-5.6-sol / medium / risk:authority`.\n"
     )
+    if approved is not None:
+        compact = json.dumps(approved, ensure_ascii=False, separators=(",", ":"))
+        plan += f"\n```json\n{compact}\n```\n"
+    (repo / "docs/plan.md").write_text(plan, encoding="utf-8")
     prefix, board, suffix = parse_board((ROOT / "docs/task_board.md").read_bytes())
     board.update(state="idle", active=None, queue=[], next_enqueue_sequence=1)
     (repo / "docs/task_board.md").write_bytes(render_board(prefix, board, suffix))
@@ -251,7 +254,19 @@ def prepare_complex_task_host(
     *,
     task_id: str = "TASK_BLOCKED",
 ) -> str:
-    init_v2_repo(repo)
+    approved = {
+        "schema": "connlab.personal-task-approved-request",
+        "version": 1,
+        "task_id": task_id,
+        "summary": "approved blocker fixture",
+        "kind": "planned",
+        "may_touch": ["docs/task_board.md", "a.py"],
+        "expected_file_count": 2,
+        "classification_reason": "bounded complex recovery fixture",
+        "targeted_validation": ["pytest blocker"],
+        "forbidden_categories": PERSONAL_FORBIDDEN,
+    }
+    init_v2_repo(repo, approved)
     request = {
         "schema": "connlab.serial-task-request",
         "version": 1,
@@ -283,18 +298,6 @@ def prepare_complex_task_host(
         "ready",
         "User",
     )
-    approved = {
-        "schema": "connlab.personal-task-approved-request",
-        "version": 1,
-        "task_id": task_id,
-        "summary": "approved blocker fixture",
-        "kind": "planned",
-        "may_touch": ["docs/task_board.md", "a.py"],
-        "expected_file_count": 2,
-        "classification_reason": "bounded complex recovery fixture",
-        "targeted_validation": ["pytest blocker"],
-        "forbidden_categories": PERSONAL_FORBIDDEN,
-    }
     approval = invoke_run_task(
         repo,
         "-Task", task_id,

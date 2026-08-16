@@ -16,10 +16,11 @@ from scripts.connlab_serial_board import (
 )
 from scripts.connlab_serial_complex import SerialContractError, classification_result, complex_transition, validate_complex_blocker, validate_integration_transition
 from scripts.connlab_serial_phase2 import (
-    BOUNDED_FIX_CODES, active_snapshot, apply_bounded_fix_reentry, apply_scope_amendment, next_action,
-    verify_transition_repository,
+    BOUNDED_FIX_CODES, COMMAND_ARGUMENTS, active_snapshot, apply_bounded_fix_reentry,
+    apply_scope_amendment, command_contract, next_action, verify_transition_repository,
 )
 from scripts.connlab_serial_evidence_topology import (
+    validate_approved_plan,
     verify_callback_evidence_topology,
     verify_integration_evidence_topology,
 )
@@ -40,11 +41,13 @@ def result(code: str, command: str, root: Path | None, before: str | None, after
             if item.get("task_id") == task_id:
                 queue_position = position
                 break
+    action = next_action(control)
+    action["command_contract"] = command_contract(action["command"])
     return dict(zip(RESULT_FIELDS, (
         "connlab.personal-task-result", 1, code, not code.startswith("BLOCKED_"), changed,
         command, task_id, control.get("state") if control else None,
         active.get("task_id") if isinstance(active, dict) else None, queue_position, before, after,
-        str(root) if root else None, reason, active_snapshot(control, primary_head), next_action(control),
+        str(root) if root else None, reason, active_snapshot(control, primary_head), action,
     )))
 def require_active(control: dict[str, Any], task_id: str) -> dict[str, Any]:
     active = control.get("active")
@@ -285,6 +288,8 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
             raise Blocked("BLOCKED_PLAN_REQUIRED", "Plan reference format is invalid.")
         if not args.approval_ref:
             raise Blocked("BLOCKED_APPROVAL_REQUIRED", "Explicit User approval is required.")
+        if is_v2_complex and not blocked_reapproval:
+            validate_approved_plan(root, args.plan_ref, approved)
         if blocked_reapproval:
             previous = active["scope_contract"]; old_paths, new_paths = set(previous["may_touch"]), set(scope["may_touch"])
             if scope == previous:
@@ -391,7 +396,7 @@ def parser() -> argparse.ArgumentParser:
     return value
 def validate_argument_combination(args: argparse.Namespace) -> None:
     names = {"expected_board_sha256", "task_id", "request_json", "approved_request_json", "plan_ref", "approval_ref", "validation_json", "blocker_json", "decision_ref", "disposition", "intent", "role", "native_action_json", "native_action_id", "invocation_json", "callback_json", "worktree_json", "integration_json", "closeout_json"}
-    allowed = {"inspect": set(), "check": {"task_id", "intent"}, "classify": {"request_json"}, "submit": {"expected_board_sha256", "task_id", "request_json"}, "activate-next": {"expected_board_sha256", "task_id"}, "approve": {"expected_board_sha256", "task_id", "approved_request_json", "plan_ref", "approval_ref"}, "mark-review": {"expected_board_sha256", "task_id", "validation_json"}, "block": {"expected_board_sha256", "task_id", "blocker_json"}, "resume": {"expected_board_sha256", "task_id", "decision_ref"}, "cancel": {"expected_board_sha256", "task_id", "decision_ref", "disposition"}, "close": {"expected_board_sha256", "task_id", "decision_ref"}, "begin-role": {"expected_board_sha256", "task_id", "role", "native_action_json"}, "record-invocation": {"expected_board_sha256", "task_id", "role", "native_action_id", "invocation_json"}, "consume-callback": {"expected_board_sha256", "task_id", "callback_json"}, "begin-host": {"expected_board_sha256", "task_id", "native_action_json"}, "record-host": {"expected_board_sha256", "task_id", "native_action_id", "worktree_json"}, "record-integration": {"expected_board_sha256", "task_id", "integration_json"}, "request-close": {"expected_board_sha256", "task_id", "decision_ref"}, "record-closeout": {"expected_board_sha256", "task_id", "closeout_json"}, "finalize-close": {"expected_board_sha256", "task_id", "decision_ref"}, "reenter-development": {"expected_board_sha256", "task_id", "decision_ref", "native_action_json"}}[args.command]
+    allowed = COMMAND_ARGUMENTS[args.command]
     if {name for name in names if getattr(args, name) is not None} - allowed: raise Blocked("BLOCKED_ARGUMENT_COMBINATION", "Arguments are incompatible with the selected command.")
 def pre_git_busy_submit(args: argparse.Namespace) -> tuple[Path, dict[str, Any], str] | None:
     if args.command != "submit":

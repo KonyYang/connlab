@@ -142,6 +142,13 @@ forbidden. Close deliberately has no JSON payload and is exactly
 `-Action Close -DecisionRef <non-empty explicit User decision>`; missing `DecisionRef` fails before the
 writer runs.
 
+Before an initial version-2 Approve writes any board byte, the writer verifies the committed Plan
+path/commit/raw SHA-256, requires exactly one embedded approved-request object equal to the supplied
+object, and resolves the frozen route for Developer, Reviewer, QA, and Integrator. Any missing,
+duplicate, unparseable, byte-mismatched, or semantically different Plan fact returns
+`BLOCKED_PLAN_INVALID` with `changed=false`. Callback-time evidence verification remains a
+defense-in-depth check, not the first route validation.
+
 ## Routing, evidence, and bounded checks
 
 The permanent Orchestrator and direct simple task remain `gpt-5.6-sol / medium`. Simple work has the
@@ -286,6 +293,10 @@ Phase 2 extends the existing V2 production writer; it does not create another au
 - Every writer result and `inspect` expose compact `active_snapshot` and `next_action`. Recovery reads
   these board-derived facts first and follows the pending durable action directly; it does not reread
   the complete Task, Plan, board prose, and protocol on every turn.
+- `next_action.command_contract` is the executable source of accepted argument names and JSON schema
+  identities for that command. `scripts/connlab_serial_payload.py contract --command <command>` returns
+  the same object. The writer argument guard consumes the same code-owned table; callers do not
+  reconstruct a command schema from prose or retry a guessed field set.
 - Build native-action JSON with `scripts/connlab_serial_payload.py native-action`. The builder reads the
   active board, increments the durable attempt, hashes the raw prompt bytes, and derives the action ID;
   use its `git-reference` command for Plan/evidence path, commit, and raw byte SHA-256. Do not copy SHA
