@@ -19,7 +19,7 @@
     "summary": "Complete the same LTR workbook administrator runtime configuration goal through a corrected production-parser-readable Plan and a fresh normal V2 role/evidence chain while non-destructively reusing the retained clean implementation subject ff01fb1d725c98fb58a3e343cf241076853e8cfa.",
     "kind": "planned",
     "classification": "needs_discovery",
-    "phase": "development",
+    "phase": "review",
     "scope_contract": {
       "may_touch": [
         ".gitignore",
@@ -97,7 +97,7 @@
       "head_sha": "ff01fb1d725c98fb58a3e343cf241076853e8cfa",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -167,20 +167,16 @@
         "QA",
         "Integrator"
       ],
-      "developer_subject_commit": null,
+      "developer_subject_commit": "ff01fb1d725c98fb58a3e343cf241076853e8cfa",
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
       "evidence_refs": [
-        "docs/lane_evidence/TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN_planner.md@dac9f6c6bfe203e8d4e5b6e57a01645ee8b85dcf#3af1bdc08bcb6971e11f34422c9f64839e980f4414ea911b5cef0788d9e78271"
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN_planner.md@dac9f6c6bfe203e8d4e5b6e57a01645ee8b85dcf#3af1bdc08bcb6971e11f34422c9f64839e980f4414ea911b5cef0788d9e78271",
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN_developer.md@bfe77740bff6866401fcbd0d52c20df281d1513b#f52e044fec29732011c40506d0b9a4806398d1f796d3fff3666ea2428d2a7d42"
       ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "6632b406c9f4713a65c004f6eebfcde6e8cb63ff60fbedd227a3285ce2d004ad",
-        "role": "Developer",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
