@@ -75,12 +75,12 @@
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
-      "task_branch": null,
-      "task_worktree": null,
-      "base_sha": "fd228ae0f69be6584c981c3cfe00668865f2004d",
-      "head_sha": "fd228ae0f69be6584c981c3cfe00668865f2004d",
+      "task_branch": "codex/task-matrix-import-source-picker-target-folder-file-list",
+      "task_worktree": "D:\\PythonProject\\connlab-worktrees\\task-matrix-import-source-picker-target-folder-file-list",
+      "base_sha": "900c26a78009264ab0fc06f2c038e50d6d280869",
+      "head_sha": "163e31d455eb4af12e606288fa36d387c81f1476",
       "integration_target": "master",
-      "worktree_lifecycle": "absent",
+      "worktree_lifecycle": "ready",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -97,8 +97,8 @@
           "recorded_at": "2026-08-16T09:43:24Z"
         }
       ],
-      "host_thread_id": null,
-      "host_id": null,
+      "host_thread_id": "/root/matrix_source_picker_host",
+      "host_id": "/root/matrix_source_picker_host",
       "approved_code_paths": [
         "backend/application/project_test_plan_source_candidate_service.py",
         "backend/api/routes_project_test_plan_source_candidates.py",
@@ -134,19 +134,14 @@
         "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_CORRECTED_PLAN_planner.md@e764e3d913fd83b0e284b67cf31c636113afbcb4#9dc10b25932cc6ceda1fbc6d77dd24abcdd19fc9b8f2e78a4a5ee6328d021dc1"
       ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "host_creation_pending",
-        "action_id": "7b525108bf2fbd4a3994f0d09582e662eb39f74047d7ed498c26c816680a6941",
-        "role": "Host",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
       "timing_facts": {
         "host": {
           "started_at": "2026-08-16T09:59:05Z",
-          "completed_at": null
+          "completed_at": "2026-08-16T10:00:19Z"
         },
         "roles": [
           {
