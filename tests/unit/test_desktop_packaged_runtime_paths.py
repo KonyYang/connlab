@@ -8,6 +8,7 @@ from backend.desktop.runtime_paths import (
     apply_packaged_environment_defaults,
     build_packaged_runtime_paths,
 )
+from backend.shared.config import Settings
 
 
 def test_packaged_paths_use_local_app_data_and_preserve_existing_config(
@@ -113,3 +114,47 @@ def test_packaged_environment_preserves_explicit_admin_config_path(
 
     assert os.environ["CONNLAB_ADMIN_CONFIG_PATH"] == str(explicit_path)
     assert explicit_path.parent.exists() is False
+
+
+def test_packaged_settings_bootstrap_only_the_programdata_admin_target(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    release_root = tmp_path / "release"
+    example_path = release_root / "config" / "connlab.admin.example.toml"
+    development_admin_path = release_root / "connlab.admin.toml"
+    example_path.parent.mkdir(parents=True)
+    example_bytes = b'[ltr_workbook]\nmodify_password = "example-sentinel"\n'
+    development_bytes = b'[ltr_workbook]\nmodify_password = "development-sentinel"\n'
+    example_path.write_bytes(example_bytes)
+    development_admin_path.write_bytes(development_bytes)
+
+    paths = build_packaged_runtime_paths(
+        app_root=release_root,
+        user_root=tmp_path / "LocalAppData" / "ConnLab",
+    )
+    paths.ensure_user_directories()
+    local_bytes = b'[ltr_workbook]\nmodify_password = "local-sentinel"\n'
+    paths.local_config_path.write_bytes(local_bytes)
+    program_data = tmp_path / "ProgramData"
+    admin_path = program_data / "ConnLab" / "config" / "connlab.admin.toml"
+    for name in (
+        "CONNLAB_DATA_DIR",
+        "CONNLAB_PROJECTS_DIR",
+        "CONNLAB_TEMPLATES_DIR",
+        "CONNLAB_DATABASE_PATH",
+        "CONNLAB_LOCAL_CONFIG_PATH",
+        "CONNLAB_ADMIN_CONFIG_PATH",
+        "CONNLAB_LTR_WORKBOOK_PASSWORD",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("PROGRAMDATA", str(program_data))
+
+    apply_packaged_environment_defaults(paths)
+    settings = Settings.load(base_dir=release_root)
+
+    assert settings.ltr_workbook.modify_password == "DGLAB"
+    assert admin_path.read_bytes() == b'[ltr_workbook]\nmodify_password = "DGLAB"\n'
+    assert example_path.read_bytes() == example_bytes
+    assert development_admin_path.read_bytes() == development_bytes
+    assert paths.local_config_path.read_bytes() == local_bytes

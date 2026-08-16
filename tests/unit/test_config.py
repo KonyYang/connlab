@@ -1,10 +1,28 @@
 import shutil
+import tomllib
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
 
+from backend.shared import config as config_module
 from backend.shared.config import DEFAULT_LOG_LEVEL, Settings
+
+
+@pytest.fixture(autouse=True)
+def _isolate_admin_environment(monkeypatch) -> None:
+    for name in (
+        "CONNLAB_ADMIN_CONFIG_PATH",
+        "CONNLAB_LOCAL_CONFIG_PATH",
+        "CONNLAB_LTR_WORKBOOK_PASSWORD",
+        "CONNLAB_DATA_DIR",
+        "CONNLAB_PROJECTS_DIR",
+        "CONNLAB_TEMPLATES_DIR",
+        "CONNLAB_DATABASE_PATH",
+        "CONNLAB_TEST_RECORD_TEMPLATE_PATH",
+    ):
+        monkeypatch.delenv(name, raising=False)
 
 
 def test_settings_load_defaults_and_create_directories() -> None:
@@ -20,7 +38,10 @@ def test_settings_load_defaults_and_create_directories() -> None:
         assert settings.ltr_workbook.mode == "local_only"
         assert settings.ltr_workbook.write_enabled is False
         assert settings.ltr_workbook.path is None
-        assert settings.ltr_workbook.modify_password is None
+        assert settings.ltr_workbook.modify_password == "DGLAB"
+        assert (workspace_tmp / "connlab.admin.toml").read_bytes() == (
+            b'[ltr_workbook]\nmodify_password = "DGLAB"\n'
+        )
         assert settings.ltr_workbook.backup_retention_count == 30
         assert settings.ltr_workbook.backup_retention_days == 30
         assert settings.ltr_workbook.backup_retention_max_mb == 500
@@ -64,7 +85,7 @@ modify_password = "placeholder-secret"
         assert settings.ltr_workbook.backup_retention_count == 12
         assert settings.ltr_workbook.backup_retention_days == 7
         assert settings.ltr_workbook.backup_retention_max_mb == 250
-        assert settings.ltr_workbook.modify_password is None
+        assert settings.ltr_workbook.modify_password == "DGLAB"
     finally:
         shutil.rmtree(workspace_tmp, ignore_errors=True)
 
@@ -163,6 +184,157 @@ def test_ltr_workbook_password_uses_explicit_admin_config_path(monkeypatch) -> N
         settings = Settings.load(base_dir=workspace_tmp)
 
         assert settings.ltr_workbook.modify_password == "explicit-admin-sentinel"
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
+def test_missing_explicit_admin_config_creates_parents_and_exact_bytes(monkeypatch) -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    admin_config_path = workspace_tmp / "managed" / "nested" / "runtime.toml"
+    monkeypatch.setenv("CONNLAB_ADMIN_CONFIG_PATH", "managed/nested/runtime.toml")
+
+    try:
+        settings = Settings.load(base_dir=workspace_tmp)
+
+        assert settings.ltr_workbook.modify_password == "DGLAB"
+        assert admin_config_path.read_bytes() == (
+            b'[ltr_workbook]\nmodify_password = "DGLAB"\n'
+        )
+        assert list(admin_config_path.parent.glob(f".{admin_config_path.name}.*.tmp")) == []
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
+@pytest.mark.parametrize(
+    ("existing_bytes", "expected_password"),
+    [
+        (b'[ltr_workbook]\nmodify_password = "custom-value"\n', "custom-value"),
+        (b"", None),
+    ],
+)
+def test_existing_admin_config_is_byte_preserved(
+    existing_bytes: bytes,
+    expected_password: str | None,
+) -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    admin_config_path = workspace_tmp / "connlab.admin.toml"
+    admin_config_path.write_bytes(existing_bytes)
+
+    try:
+        settings = Settings.load(base_dir=workspace_tmp)
+
+        assert settings.ltr_workbook.modify_password == expected_password
+        assert admin_config_path.read_bytes() == existing_bytes
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
+def test_existing_malformed_admin_config_is_byte_preserved() -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    admin_config_path = workspace_tmp / "connlab.admin.toml"
+    existing_bytes = b"not = [valid"
+    admin_config_path.write_bytes(existing_bytes)
+
+    try:
+        with pytest.raises(tomllib.TOMLDecodeError):
+            Settings.load(base_dir=workspace_tmp)
+
+        assert admin_config_path.read_bytes() == existing_bytes
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
+def test_existing_unreadable_admin_config_is_byte_preserved(monkeypatch) -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    admin_config_path = workspace_tmp / "connlab.admin.toml"
+    existing_bytes = b'[ltr_workbook]\nmodify_password = "operator-value"\n'
+    admin_config_path.write_bytes(existing_bytes)
+    original_open = Path.open
+
+    def deny_admin_read(path: Path, *args, **kwargs):
+        if path == admin_config_path:
+            raise PermissionError(13, "sensitive-read-detail")
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", deny_admin_read)
+
+    try:
+        with pytest.raises(RuntimeError) as exc_info:
+            Settings.load(base_dir=workspace_tmp)
+
+        message = str(exc_info.value)
+        assert "read" in message
+        assert str(admin_config_path) in message
+        assert "sensitive-read-detail" not in message
+        with original_open(admin_config_path, "rb") as handle:
+            assert handle.read() == existing_bytes
+        assert list(workspace_tmp.glob(f".{admin_config_path.name}.*.tmp")) == []
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
+def test_concurrent_first_loads_read_one_complete_admin_config() -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    admin_config_path = workspace_tmp / "connlab.admin.toml"
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            passwords = list(
+                executor.map(
+                    lambda _: Settings.load(base_dir=workspace_tmp).ltr_workbook.modify_password,
+                    range(2),
+                )
+            )
+
+        assert passwords == ["DGLAB", "DGLAB"]
+        assert admin_config_path.read_bytes() == (
+            b'[ltr_workbook]\nmodify_password = "DGLAB"\n'
+        )
+        assert list(workspace_tmp.glob(f".{admin_config_path.name}.*.tmp")) == []
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
+def test_explicit_blank_password_wins_while_missing_admin_config_bootstraps(
+    monkeypatch,
+) -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    monkeypatch.setenv("CONNLAB_LTR_WORKBOOK_PASSWORD", "")
+
+    try:
+        settings = Settings.load(base_dir=workspace_tmp)
+
+        assert settings.ltr_workbook.modify_password is None
+        assert (workspace_tmp / "connlab.admin.toml").read_bytes() == (
+            b'[ltr_workbook]\nmodify_password = "DGLAB"\n'
+        )
+    finally:
+        shutil.rmtree(workspace_tmp, ignore_errors=True)
+
+
+def test_admin_config_publication_failure_is_actionable_redacted_and_has_no_fallback(
+    monkeypatch,
+) -> None:
+    workspace_tmp = _make_workspace_temp_dir()
+    admin_config_path = workspace_tmp / "managed" / "runtime.toml"
+    monkeypatch.setenv("CONNLAB_ADMIN_CONFIG_PATH", str(admin_config_path))
+
+    def fail_exclusive_publication(_source, _destination) -> None:
+        raise OSError(95, "sensitive-filesystem-detail")
+
+    monkeypatch.setattr(config_module.os, "link", fail_exclusive_publication)
+
+    try:
+        with pytest.raises(RuntimeError) as exc_info:
+            Settings.load(base_dir=workspace_tmp)
+
+        message = str(exc_info.value)
+        assert "publish" in message
+        assert str(admin_config_path) in message
+        assert "sensitive-filesystem-detail" not in message
+        assert admin_config_path.exists() is False
+        assert (workspace_tmp / "connlab.admin.toml").exists() is False
+        assert list(admin_config_path.parent.glob(f".{admin_config_path.name}.*.tmp")) == []
     finally:
         shutil.rmtree(workspace_tmp, ignore_errors=True)
 

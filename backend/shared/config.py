@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import os
+import tempfile
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
 
 DEFAULT_LOG_LEVEL = "INFO"
+_DEFAULT_ADMIN_CONFIG_BYTES = b'[ltr_workbook]\nmodify_password = "DGLAB"\n'
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,15 +193,98 @@ def _load_local_config(base_dir: Path) -> dict:
 
 
 def _load_admin_config(base_dir: Path) -> dict:
-    """Load the optional administrator-managed TOML config without creating it."""
+    """Load the administrator TOML config, bootstrapping only a missing file."""
     raw_path = os.getenv("CONNLAB_ADMIN_CONFIG_PATH")
     path = Path(raw_path).expanduser() if raw_path else base_dir / "connlab.admin.toml"
     if not path.is_absolute():
         path = base_dir / path
-    if not path.is_file():
-        return {}
-    with path.open("rb") as handle:
-        return tomllib.load(handle)
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        _bootstrap_admin_config(path)
+    except OSError as exc:
+        raise _admin_config_error(path, "inspect", exc) from exc
+    try:
+        with path.open("rb") as handle:
+            return tomllib.load(handle)
+    except OSError as exc:
+        raise _admin_config_error(path, "read", exc) from exc
+
+
+def _bootstrap_admin_config(path: Path) -> None:
+    """Exclusively publish a synchronized same-directory administrator config."""
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise _admin_config_error(path, "create parent directory for", exc) from exc
+
+    temp_path = _write_admin_config_temp(path)
+    try:
+        os.link(temp_path, path)
+    except FileExistsError:
+        _remove_admin_config_temp(temp_path, path)
+        return
+    except OSError as exc:
+        try:
+            _remove_admin_config_temp(temp_path, path)
+        except RuntimeError as cleanup_exc:
+            raise _admin_config_error(
+                path,
+                "publish (temporary cleanup also failed) for",
+                exc,
+            ) from cleanup_exc
+        raise _admin_config_error(path, "publish", exc) from exc
+    _remove_admin_config_temp(temp_path, path)
+
+
+def _write_admin_config_temp(path: Path) -> Path:
+    """Create and synchronize one unique complete temporary config file."""
+    temp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            dir=path.parent,
+            delete=False,
+        ) as handle:
+            temp_path = Path(handle.name)
+            handle.write(_DEFAULT_ADMIN_CONFIG_BYTES)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except OSError as exc:
+        if temp_path is not None:
+            try:
+                temp_path.unlink()
+            except FileNotFoundError:
+                pass
+            except OSError as cleanup_exc:
+                raise _admin_config_error(
+                    path,
+                    "write and clean temporary file for",
+                    exc,
+                ) from cleanup_exc
+        raise _admin_config_error(path, "write temporary file for", exc) from exc
+    return temp_path
+
+
+def _remove_admin_config_temp(temp_path: Path, path: Path) -> None:
+    """Remove only the unique temporary file owned by this invocation."""
+    try:
+        temp_path.unlink()
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise _admin_config_error(path, "clean temporary file for", exc) from exc
+
+
+def _admin_config_error(path: Path, operation: str, exc: OSError) -> RuntimeError:
+    """Build a path-bearing error without including configuration content."""
+    code = exc.winerror if getattr(exc, "winerror", None) is not None else exc.errno
+    detail = f"OS error {code}" if code is not None else type(exc).__name__
+    return RuntimeError(
+        f"Unable to {operation} administrator config at '{path}' ({detail})."
+    )
 
 
 def _load_ltr_workbook_settings(
