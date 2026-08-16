@@ -74,7 +74,7 @@
       "head_sha": "e51a674b68ca1b4d1fe193b5e10903b361ae3660",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": null,
+      "current_role": "Reviewer",
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -133,7 +133,12 @@
         "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_developer.md@f733dbd33ca68530600f3f6019da6f7f511512ce#d7aa27a6b46b5e5dbcef81ed3823a5ed6a40f181e9e7868bcbacd3f43e76525d"
       ],
       "blocker_history": [],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "5e0a6d00185acdad6d862c60095e09dd894bca6901c4b34d2f4acc04683a3a9b",
+        "role": "Reviewer",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
@@ -154,6 +159,12 @@
             "attempt": 1,
             "started_at": "2026-08-16T03:26:58Z",
             "completed_at": "2026-08-16T11:39:50+08:00"
+          },
+          {
+            "role": "Reviewer",
+            "attempt": 1,
+            "started_at": "2026-08-16T03:40:55Z",
+            "completed_at": null
           }
         ],
         "integration_completed_at": null
