@@ -19,7 +19,7 @@
     "summary": "Simplify the Matrix Import source chooser to list only selectable .doc, .docx, and .pdf files from the resolved intake-attachment or Submitted Material target folder; show only a concise source-location title and filenames, retain Cancel and Upload other file with standard ConnLab button styling, preserve explicit selection, empty/error states, read-only blocking, desktop behavior, and existing preview authority.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "planning",
+    "phase": "awaiting_user_approval",
     "scope_contract": null,
     "plan_ref": null,
     "approval_ref": null,
@@ -36,7 +36,7 @@
       "head_sha": "900c26a78009264ab0fc06f2c038e50d6d280869",
       "integration_target": "master",
       "worktree_lifecycle": "absent",
-      "current_role": "Planner",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -85,14 +85,11 @@
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
-      "evidence_refs": [],
+      "evidence_refs": [
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_planner.md@6228775d12f8a1f165723f37a1c70ae1b29e8bc3#06a91a8b2b634708ff39ff92a4ed51557d9a3f5b6528958f6a517c135585de76"
+      ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "62cfc802605fde4347877b8211697eb9d44c7fa35f7eebfbdbf60e2e301b9d3a",
-        "role": "Planner",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
