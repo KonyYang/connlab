@@ -19,7 +19,7 @@
     "summary": "In the ordinary-browser Matrix Editor, list only direct .doc, .docx and .pdf files from the resolved email-attachment or Submitted Material project folder, show a concise source title and filename-only choices, preserve explicit selection, Cancel, Upload other file, empty/error/read-only states and desktop picker behavior, reuse retained clean implementation as the starting point, diagnose the failed source-folder candidate contract, and reject stale in-place same-name replacements without adding endpoints, persistence or path exposure.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "blocked",
     "scope_contract": {
       "may_touch": [
         "backend/application/project_test_plan_source_candidate_service.py",
@@ -74,7 +74,47 @@
     "activation_parent_sha": "1f0cc2c579bcd4ac1b638b53b8e7cb34b0ac6ec0",
     "activated_at": "2026-08-16T13:16:43Z",
     "updated_at": "2026-08-16T14:33:14Z",
-    "blocker": null,
+    "blocker": {
+      "schema": "connlab.serial-task-blocker",
+      "version": 1,
+      "code": "DEVELOPER_BLOCKED",
+      "stage": "development",
+      "reason": "The approved Developer manifest failed its first backend contract check after the bounded product fix; exact failing pytest node was not exposed.",
+      "dirty_paths": [],
+      "failed_validation": {
+        "schema": "connlab.serial-failure-proof",
+        "version": 1,
+        "operation": "Developer validation manifest",
+        "command": [
+          "py",
+          "-m",
+          "scripts.connlab_validation_manifest",
+          "run",
+          "--authority-root",
+          "D:\\PythonProject\\connlab",
+          "--from-board",
+          "--role",
+          "Developer",
+          "--allow-permission",
+          "browser",
+          "--allow-permission",
+          "pytest_temp",
+          "--allow-permission",
+          "workspace"
+        ],
+        "exit_code": 1,
+        "summary": "source-folder-candidate-contract exited 1; manifest output exposed only stdout SHA-256 d4e05d53bfff11158ceaa9662654c1e5e8c6ec006f728ea06cb274d2297ffcb3.",
+        "recorded_at": "2026-08-16T15:56:31Z"
+      },
+      "subject_commit": "1798d0377347459a78478b9a10e3c2f2a23327e4",
+      "evidence_ref": "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_developer.md@8f5b53701fdc8c0be2d3e986178237345cabf4de#dc491acb40cd3eb708940b1bdce769898ab6c9402823fbaefa1d5907a62153bc",
+      "native_action_id": null,
+      "related_ids": [],
+      "retryable": true,
+      "requires_user": true,
+      "resume_phase": "development",
+      "recorded_at": "2026-08-16T15:56:31Z"
+    },
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
@@ -84,7 +124,7 @@
       "head_sha": "163e31d455eb4af12e606288fa36d387c81f1476",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -146,15 +186,11 @@
       "qa_subject_commit": null,
       "integrated_commit": null,
       "evidence_refs": [
-        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_planner.md@4249a74f9c672f070112226a6c37bbc705dc8f1c#6edaae2e9dedcc4a421f926392b36dd7d979bd2763bd5ae7e3ca4eb722b57937"
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_planner.md@4249a74f9c672f070112226a6c37bbc705dc8f1c#6edaae2e9dedcc4a421f926392b36dd7d979bd2763bd5ae7e3ca4eb722b57937",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_developer.md@8f5b53701fdc8c0be2d3e986178237345cabf4de#dc491acb40cd3eb708940b1bdce769898ab6c9402823fbaefa1d5907a62153bc"
       ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "02a14ac9be19ea59782ca4b53c3f646bbb2672ee156ac4dff2f4ac01149d7551",
-        "role": "Developer",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
@@ -174,7 +210,7 @@
             "role": "Developer",
             "attempt": 1,
             "started_at": "2026-08-16T14:50:05Z",
-            "completed_at": null
+            "completed_at": "2026-08-16T23:55:07+08:00"
           }
         ],
         "integration_completed_at": null
