@@ -26,6 +26,7 @@ COMMAND_ARGUMENTS = {
     "submit": {"expected_board_sha256", "task_id", "request_json"},
     "activate-next": {"expected_board_sha256", "task_id"},
     "approve": {"expected_board_sha256", "task_id", "approved_request_json", "plan_ref", "approval_ref"},
+    "amend-plan": {"expected_board_sha256", "task_id", "plan_ref", "approval_ref", "callback_json"},
     "mark-review": {"expected_board_sha256", "task_id", "validation_json"},
     "block": {"expected_board_sha256", "task_id", "blocker_json"},
     "resume": {"expected_board_sha256", "task_id", "decision_ref"},
@@ -45,6 +46,7 @@ COMMAND_ARGUMENTS = {
 COMMAND_JSON_SCHEMAS = {
     "submit": {"request_json": "connlab.serial-task-request/v1"},
     "approve": {"approved_request_json": "connlab.personal-task-approved-request/v1"},
+    "amend-plan": {"callback_json": "connlab.serial-callback/v1"},
     "mark-review": {"validation_json": "connlab.personal-task-validation/v1"},
     "block": {"blocker_json": "connlab.serial-task-blocker/v1"},
     "begin-role": {"native_action_json": "connlab.serial-native-action/v1"},
@@ -269,6 +271,55 @@ def apply_scope_amendment(
     context["approved_code_paths"] = list(scope["may_touch"])
 
 
+def apply_exact_plan_amendment(
+    active: dict[str, Any],
+    plan_ref: str,
+    approval_ref: str,
+    callback: dict[str, Any],
+    execution_routes: dict[str, dict[str, str]],
+    timestamp: str,
+) -> None:
+    context = _complex_context(active)
+    pending = context.get("pending_callback")
+    if active.get("blocker") is not None or active.get("phase") not in {"development", "review", "qa", "integration"}:
+        _fail("BLOCKED_STATE", "Exact Plan amendment requires an unblocked execution phase.")
+    if not isinstance(pending, dict) or pending.get("state") != "callback_pending":
+        _fail("BLOCKED_CALLBACK_PENDING", "Exact Plan amendment requires the existing pending callback.")
+    if callback.get("role") != pending.get("role"):
+        _fail("BLOCKED_CALLBACK_INVALID", "Plan amendment callback role differs from the pending action.")
+    identity = (pending.get("action_id"), pending.get("role"), pending.get("attempt"))
+    invocations = context.get("role_invocations")
+    invocation = invocations[-1] if isinstance(invocations, list) and invocations else None
+    if not isinstance(invocation, dict) or identity != (
+        invocation.get("action_id"), invocation.get("role"), invocation.get("attempt")
+    ):
+        _fail("BLOCKED_CALLBACK_INVALID", "Plan amendment invocation identity drifted.")
+    old_plan_ref = active.get("plan_ref")
+    old_approval_ref = active.get("approval_ref")
+    if not all(isinstance(value, str) and value.strip() for value in (
+        old_plan_ref, old_approval_ref, plan_ref, approval_ref,
+    )) or old_plan_ref == plan_ref:
+        _fail("BLOCKED_PLAN_INVALID", "Exact old/new Plan and approval references are required.")
+    history = context.setdefault("plan_amendments", [])
+    if not isinstance(history, list):
+        _fail("BLOCKED_SCHEMA_INVALID", "Plan amendment history is invalid.")
+    if any(item.get("new_plan_ref") == plan_ref for item in history if isinstance(item, dict)):
+        _fail("BLOCKED_PLAN_INVALID", "The corrected Plan reference was already applied.")
+    history.append({
+        "old_plan_ref": old_plan_ref,
+        "new_plan_ref": plan_ref,
+        "old_approval_ref": old_approval_ref,
+        "approval_ref": approval_ref,
+        "evidence_ref": callback["evidence"],
+        "action_id": pending["action_id"],
+        "role": pending["role"],
+        "attempt": pending["attempt"],
+        "amended_at": timestamp,
+    })
+    active.update(plan_ref=plan_ref, approval_ref=approval_ref, updated_at=timestamp)
+    context["execution_routes"] = execution_routes
+
+
 def verify_transition_repository(root: Path, active: dict[str, Any], *, require_host: bool) -> None:
     if not committed_board(root):
         raise Blocked("BLOCKED_TRANSITION_UNCOMMITTED", "The blocker transition must be committed first.")
@@ -338,6 +389,7 @@ def active_snapshot(control: dict[str, Any] | None, primary_head: str | None = N
         "blocker_code": blocker.get("code"),
         "approved_code_paths": approved_paths or [],
         "execution_routes": context.get("execution_routes"),
+        "plan_amendment_count": len(context.get("plan_amendments", [])) if isinstance(context.get("plan_amendments", []), list) else 0,
         "developer_subject_commit": context.get("developer_subject_commit"),
         "reviewer_subject_commit": context.get("reviewer_subject_commit"),
         "qa_subject_commit": context.get("qa_subject_commit"),

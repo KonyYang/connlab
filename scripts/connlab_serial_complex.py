@@ -33,6 +33,10 @@ FORBIDDEN_KEYS = {
 DECISION_KEYS = REQUEST_KEYS - {"schema", "version", "task_id", "summary"}
 EXECUTION_ROLES = {"Developer", "Reviewer", "QA", "Integrator"}
 EXECUTION_ROUTE_KEYS = {"model", "reasoning_effort", "reason"}
+PLAN_AMENDMENT_KEYS = {
+    "old_plan_ref", "new_plan_ref", "old_approval_ref", "approval_ref",
+    "evidence_ref", "action_id", "role", "attempt", "amended_at",
+}
 
 
 class SerialContractError(ValueError):
@@ -171,6 +175,26 @@ def validate_execution_routes(value: Any) -> dict[str, dict[str, str]]:
             _contract_error("BLOCKED_SCHEMA_INVALID", f"Execution route keys are invalid: {role}.")
         if not all(isinstance(route.get(key), str) and route[key].strip() for key in EXECUTION_ROUTE_KEYS):
             _contract_error("BLOCKED_SCHEMA_INVALID", f"Execution route values are incomplete: {role}.")
+    return value
+
+
+def validate_plan_amendments(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        _contract_error("BLOCKED_SCHEMA_INVALID", "Plan amendment history is invalid.")
+    for item in value:
+        if not isinstance(item, dict) or set(item) != PLAN_AMENDMENT_KEYS:
+            _contract_error("BLOCKED_SCHEMA_INVALID", "Plan amendment entry keys are invalid.")
+        if not all(isinstance(item.get(key), str) and item[key].strip() for key in (
+            "old_plan_ref", "new_plan_ref", "old_approval_ref", "approval_ref",
+            "evidence_ref", "action_id", "role", "amended_at",
+        )):
+            _contract_error("BLOCKED_SCHEMA_INVALID", "Plan amendment identity is incomplete.")
+        if item["role"] not in EXECUTION_ROLES or not _is_sha(item["action_id"], 64):
+            _contract_error("BLOCKED_SCHEMA_INVALID", "Plan amendment role or action is invalid.")
+        if any(re.fullmatch(r"[A-Za-z0-9_./-]+@[0-9a-f]{40}#[0-9a-f]{64}", item[key]) is None for key in ("old_plan_ref", "new_plan_ref")):
+            _contract_error("BLOCKED_SCHEMA_INVALID", "Plan amendment references are invalid.")
+        if type(item.get("attempt")) is not int or item["attempt"] < 1 or not _is_evidence(item["evidence_ref"]):
+            _contract_error("BLOCKED_SCHEMA_INVALID", "Plan amendment attempt or evidence is invalid.")
     return value
 def callback_transition(value: Any) -> dict[str, Any]:
     keys = {"schema", "version", "task_id", "role", "status", "subject_commit", "evidence", "next", "blocker"}

@@ -96,6 +96,8 @@ first attempt and recover interrupted work mechanically from board, Git, worktre
 Recover from `inspect` and its `active_snapshot` / `next_action`, reusing the board/Git/evidence host.
 Build actions/refs with `connlab_serial_payload.py native-action` / `git-reference`; never copy hashes/JSON.
 Use atomic `reenter-development` for an approved bounded fix and one `approve` for a scope amendment.
+Use exceptional `amend-plan` only when an exact pending callback/evidence is already committed and its
+clean evidence-child Plan-only correction has explicit User approval; then consume the same callback.
 Fail closed on unproved identity; retry only after proving zero state change. Do not duplicate activation.
 
 ## Safety

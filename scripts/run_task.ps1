@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Task,
 
-    [ValidateSet("Submit", "Approve", "Close")]
+    [ValidateSet("Submit", "Approve", "AmendPlan", "Close")]
     [string]$Action = "Submit",
 
     [string]$RequestJson,
@@ -13,6 +13,8 @@ param(
     [string]$PlanRef,
 
     [string]$ApprovalRef,
+
+    [string]$CallbackJson,
 
     [string]$DecisionRef,
 
@@ -82,6 +84,19 @@ switch ($Action) {
         "--expected-board-sha256", $ExpectedBoardSha256,
         "--task-id", $Task, "--approved-request-json", $ApprovedRequestJson,
         "--plan-ref", $PlanRef, "--approval-ref", $ApprovalRef, "--json"
+    )
+}
+"AmendPlan" {
+    if ([string]::IsNullOrWhiteSpace($PlanRef) -or
+        [string]::IsNullOrWhiteSpace($ApprovalRef) -or
+        [string]::IsNullOrWhiteSpace($CallbackJson)) {
+        throw "AmendPlan requires -PlanRef, -ApprovalRef, and -CallbackJson."
+    }
+    $arguments = @(
+        $helper, "amend-plan", "--repo-root", $RepositoryRoot,
+        "--expected-board-sha256", $ExpectedBoardSha256,
+        "--task-id", $Task, "--plan-ref", $PlanRef,
+        "--approval-ref", $ApprovalRef, "--callback-json", $CallbackJson, "--json"
     )
 }
 "Close" {

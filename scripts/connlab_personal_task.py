@@ -16,17 +16,19 @@ from scripts.connlab_serial_board import (
 )
 from scripts.connlab_serial_complex import SerialContractError, classification_result, complex_transition, validate_complex_blocker, validate_integration_transition
 from scripts.connlab_serial_phase2 import (
-    BOUNDED_FIX_CODES, COMMAND_ARGUMENTS, active_snapshot, apply_bounded_fix_reentry,
+    BOUNDED_FIX_CODES, COMMAND_ARGUMENTS, active_snapshot, apply_bounded_fix_reentry, apply_exact_plan_amendment,
     apply_scope_amendment, command_contract, next_action, verify_transition_repository,
 )
 from scripts.connlab_serial_evidence_topology import (
+    plan_execution_routes,
     validate_approved_plan,
     verify_callback_evidence_topology,
     verify_integration_evidence_topology,
+    verify_plan_amendment_evidence_topology,
 )
 
 COMPLEX_COMMANDS = ("begin-role", "record-invocation", "consume-callback", "begin-host", "record-host", "record-integration", "request-close", "record-closeout", "finalize-close", "reenter-development")
-COMMANDS = ("inspect", "check", "classify", "submit", "activate-next", "approve", "mark-review", "block", "resume", "cancel", "close", *COMPLEX_COMMANDS)
+COMMANDS = ("inspect", "check", "classify", "submit", "activate-next", "approve", "amend-plan", "mark-review", "block", "resume", "cancel", "close", *COMPLEX_COMMANDS)
 RESULT_FIELDS = ("schema", "version", "code", "allowed", "changed", "command", "task_id", "state", "active_task_id", "queue_position", "board_sha256_before", "board_sha256_after", "primary_root", "reason", "active_snapshot", "next_action")
 ROLE_CALLBACKS = {"Developer", "Reviewer", "QA", "Integrator"}
 CALLBACK_EVIDENCE_PATTERN = re.compile(
@@ -204,6 +206,43 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         return code, not code.startswith(("NOOP_", "QUEUED_EXISTING")), reason
     if control.get("version") == 2 and command == "activate-next":
         raise Blocked("BLOCKED_LEGACY_MODE_FROZEN", "Version-2 daily workflow does not queue tasks; submit again after close.")
+    if command == "amend-plan":
+        if control.get("version") != 2:
+            raise Blocked("BLOCKED_LEGACY_MODE_FROZEN", "Exact Plan amendment requires version 2.")
+        active = require_active(control, task_id)
+        context = active.get("complex_context")
+        scope = active.get("scope_contract")
+        if not isinstance(context, dict) or not isinstance(scope, dict):
+            raise Blocked("BLOCKED_STATE", "Exact Plan amendment requires an approved complex task.")
+        callback, _ = canonicalize_role_callback_evidence(root, json.loads(args.callback_json or "null"))
+        approved = {
+            "schema": "connlab.personal-task-approved-request",
+            "version": 1,
+            "task_id": active["task_id"],
+            "summary": active["summary"],
+            "kind": "planned",
+            **scope,
+        }
+        approved_payload(json.dumps(approved, ensure_ascii=False, separators=(",", ":")), task_id)
+        parsed_routes = validate_approved_plan(root, args.plan_ref, approved)
+        routes = {
+            role: {"model": route[0], "reasoning_effort": route[1], "reason": route[2]}
+            for role, route in parsed_routes.items()
+        }
+        current_routes = context.get("execution_routes")
+        if current_routes is None:
+            legacy_routes = plan_execution_routes(root, active["plan_ref"])
+            current_routes = {
+                role: {"model": route[0], "reasoning_effort": route[1], "reason": route[2]}
+                for role, route in legacy_routes.items()
+            }
+        if current_routes is not None and current_routes != routes:
+            raise Blocked("BLOCKED_PLAN_INVALID", "Corrected Plan cannot change an approved execution route.")
+        if not isinstance(args.approval_ref, str) or not args.approval_ref.strip():
+            raise Blocked("BLOCKED_APPROVAL_REQUIRED", "Explicit User approval is required for exact Plan amendment.")
+        verify_plan_amendment_evidence_topology(root, active, callback, args.plan_ref)
+        apply_exact_plan_amendment(active, args.plan_ref, args.approval_ref, callback, routes, now())
+        return "ALLOW_PLAN_AMEND", True, "Exact Plan metadata corrected; pending callback and evidence were preserved."
     if command in COMPLEX_COMMANDS:
         if control.get("version") != 2: raise Blocked("BLOCKED_LEGACY_MODE_FROZEN", "Complex commands remain dormant before cutover.")
         active = require_active(control, task_id)

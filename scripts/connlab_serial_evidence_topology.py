@@ -102,6 +102,20 @@ def validate_approved_plan(
     }
 
 
+def plan_execution_routes(
+    root: Path, plan_ref: str, *, code: str = "BLOCKED_PLAN_INVALID"
+) -> dict[str, tuple[str, str, str]]:
+    plan = _committed_plan_bytes(root, plan_ref, code=code)
+    try:
+        text = plan.decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        _blocked(code, "Committed Plan must be UTF-8 text.")
+    return {
+        role: _route_from_plan_text(text, role, code=code)
+        for role in sorted(EXECUTION_ROLES)
+    }
+
+
 def _plan_route(root: Path, active: dict[str, Any], role: str) -> tuple[str, str, str]:
     """Return the structured approved route, with a Plan fallback for legacy active tasks."""
     context = active.get("complex_context")
@@ -196,6 +210,51 @@ def _planner_revision_bundle(
     )
 
 
+def _registered_plan_amendment(
+    root: Path,
+    active: dict[str, Any],
+    plan_commit: str,
+    following_commit: str | None,
+) -> bool:
+    context = active.get("complex_context")
+    amendments = context.get("plan_amendments") if isinstance(context, dict) else None
+    if not isinstance(amendments, list) or following_commit is None:
+        return False
+    entry = None
+    for candidate in amendments:
+        match = PLAN_RE.fullmatch(str(candidate.get("new_plan_ref"))) if isinstance(candidate, dict) else None
+        if match and match.group(2) == plan_commit:
+            entry = candidate
+            plan_path, _, digest = match.groups()
+            break
+    if entry is None:
+        return False
+    try:
+        _, evidence_commit, _ = _ref(entry.get("evidence_ref"))
+    except Blocked:
+        return False
+    if (
+        plan_path != _planner_paths(active)[1]
+        or _single_parent(root, plan_commit) != evidence_commit
+        or _changed_paths(root, evidence_commit, plan_commit) != [plan_path]
+        or hashlib.sha256(_committed_bytes(root, plan_commit, plan_path, code="BLOCKED_INTEGRATION_PROOF")).hexdigest() != digest
+        or _single_parent(root, following_commit) != plan_commit
+        or _changed_paths(root, plan_commit, following_commit) != [BOARD_REL]
+    ):
+        return False
+    try:
+        _, authority, _ = parse_board(_committed_bytes(root, following_commit, BOARD_REL, code="BLOCKED_INTEGRATION_PROOF"))
+        authority_active = authority["active"]
+        recorded = authority_active["complex_context"]["plan_amendments"]
+    except (KeyError, TypeError, ValueError):
+        return False
+    return (
+        authority_active.get("task_id") == active.get("task_id")
+        and authority_active.get("plan_ref") == entry["new_plan_ref"]
+        and entry in recorded
+    )
+
+
 def _invocation_board(
     root: Path, parent: str, active: dict[str, Any], invocation: dict[str, Any]
 ) -> bytes:
@@ -240,6 +299,70 @@ def _worktree_matches(root: Path, active: dict[str, Any], subject: str) -> None:
         or bool(run_git(worktree, "status", "--porcelain=v1", "--untracked-files=all").stdout)
     ):
         _blocked("BLOCKED_WORKTREE_FACTS", "Task worktree branch, subject or clean state drifted.")
+
+
+def verify_plan_amendment_evidence_topology(
+    root: Path,
+    active: dict[str, Any],
+    callback: dict[str, Any],
+    plan_ref: str,
+) -> None:
+    """Bind one corrected Plan commit to the already durable callback and evidence."""
+    from scripts.connlab_serial_complex import callback_transition
+
+    if git_dirty(root):
+        _blocked("BLOCKED_WORKTREE_FACTS", "Primary must be clean before exact Plan amendment.")
+    callback_transition(callback)
+    if callback.get("task_id") != active.get("task_id") or callback.get("role") not in EXECUTION_ROLES:
+        _blocked("BLOCKED_CALLBACK_INVALID", "Plan amendment callback identity is invalid.")
+    context = active.get("complex_context")
+    pending = context.get("pending_callback") if isinstance(context, dict) else None
+    invocations = context.get("role_invocations") if isinstance(context, dict) else None
+    invocation = invocations[-1] if isinstance(invocations, list) and invocations else None
+    identity = (pending.get("action_id"), pending.get("role"), pending.get("attempt")) if isinstance(pending, dict) else None
+    if (
+        not isinstance(pending, dict)
+        or pending.get("state") != "callback_pending"
+        or not isinstance(invocation, dict)
+        or identity != (invocation.get("action_id"), invocation.get("role"), invocation.get("attempt"))
+    ):
+        _blocked("BLOCKED_CALLBACK_INVALID", "Plan amendment has no exact durable pending invocation.")
+    evidence_commit, subject = _verify_execution_evidence(
+        root, active, callback["evidence"], invocation, callback=callback, require_head=False
+    )
+    _worktree_matches(root, active, subject)
+    match = PLAN_RE.fullmatch(str(plan_ref))
+    if not match:
+        _blocked("BLOCKED_PLAN_INVALID", "Corrected Plan reference is invalid.")
+    plan_path, plan_commit, _ = match.groups()
+    current_head = run_git(root, "rev-parse", "HEAD").stdout.strip()
+    if (
+        plan_path != _planner_paths(active)[1]
+        or plan_commit != current_head
+        or _single_parent(root, plan_commit) != evidence_commit
+        or _changed_paths(root, evidence_commit, plan_commit) != [plan_path]
+        or _committed_bytes(root, evidence_commit, BOARD_REL, code="BLOCKED_PLAN_INVALID")
+        != _committed_bytes(root, plan_commit, BOARD_REL, code="BLOCKED_PLAN_INVALID")
+    ):
+        _blocked("BLOCKED_PLAN_INVALID", "Corrected Plan must be the clean evidence-child Plan-only commit.")
+
+
+def _callback_head_is_allowed(root: Path, active: dict[str, Any], evidence_commit: str) -> bool:
+    current_head = run_git(root, "rev-parse", "HEAD").stdout.strip()
+    if current_head == evidence_commit:
+        return True
+    context = active.get("complex_context")
+    amendments = context.get("plan_amendments") if isinstance(context, dict) else None
+    if not isinstance(amendments, list):
+        return False
+    return any(
+        isinstance(entry, dict)
+        and _ref(entry.get("evidence_ref"))[1] == evidence_commit
+        and _registered_plan_amendment(root, active, PLAN_RE.fullmatch(entry["new_plan_ref"]).group(2), current_head)
+        for entry in amendments
+        if isinstance(entry.get("new_plan_ref") if isinstance(entry, dict) else None, str)
+        and PLAN_RE.fullmatch(entry["new_plan_ref"])
+    )
 
 
 def _verify_execution_evidence(
@@ -307,9 +430,11 @@ def verify_callback_evidence_topology(
     identity = (invocation.get("action_id"), invocation.get("role"), invocation.get("attempt"))
     if identity != (pending.get("action_id"), pending.get("role"), pending.get("attempt")):
         _blocked("BLOCKED_CALLBACK_INVALID", "Callback invocation identity drifted.")
-    _, subject = _verify_execution_evidence(
-        root, active, callback["evidence"], invocation, callback=callback, require_head=True
+    evidence_commit, subject = _verify_execution_evidence(
+        root, active, callback["evidence"], invocation, callback=callback, require_head=False
     )
+    if not _callback_head_is_allowed(root, active, evidence_commit):
+        _blocked("BLOCKED_CALLBACK_INVALID", "Primary HEAD is not the evidence commit or its registered Plan amendment.")
     if subject != callback["subject_commit"]:
         _blocked("BLOCKED_SUBJECT_MISMATCH", "Evidence and callback subjects differ.")
     _worktree_matches(root, active, callback["subject_commit"])
@@ -364,6 +489,13 @@ def verify_integration_evidence_topology(
         if evidence is not None and evidence[1] == "Planner":
             continue
         if evidence is None and _planner_revision_bundle(
+            root,
+            active,
+            commit,
+            history_commits[index + 1] if index + 1 < len(history_commits) else None,
+        ):
+            continue
+        if evidence is None and _registered_plan_amendment(
             root,
             active,
             commit,

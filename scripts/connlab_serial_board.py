@@ -323,7 +323,7 @@ COMPLEX_CONTEXT_KEYS = {
     "reviewer_subject_commit", "qa_subject_commit", "integrated_commit", "evidence_refs",
     "pending_callback", "closeout_disposition", "retained_resource_refs", "close_decision_ref",
 }
-COMPLEX_CONTEXT_OPTIONAL_KEYS = {"blocker_history", "execution_routes"}
+COMPLEX_CONTEXT_OPTIONAL_KEYS = {"blocker_history", "execution_routes", "plan_amendments"}
 V2_PHASES = {
     "planning", "awaiting_user_approval", "implementation", "development", "review", "qa",
     "integration", "blocked", "human_review", "closing",
@@ -358,11 +358,15 @@ def validate_v2_control(value: dict[str, Any]) -> None:
     for key in ("role_invocations", "approved_code_paths", "required_gates", "evidence_refs", "retained_resource_refs"):
         if not isinstance(context.get(key), list):
             raise Blocked("BLOCKED_SCHEMA_INVALID", f"Complex context array is invalid: {key}.")
-    from scripts.connlab_serial_complex import SerialContractError, validate_blocker_history, validate_execution_routes
+    from scripts.connlab_serial_complex import (
+        SerialContractError, validate_blocker_history, validate_execution_routes, validate_plan_amendments,
+    )
     try:
         validate_blocker_history(context.get("blocker_history", []))
         if "execution_routes" in context:
             validate_execution_routes(context["execution_routes"])
+        if "plan_amendments" in context:
+            validate_plan_amendments(context["plan_amendments"])
     except SerialContractError as exc:
         raise Blocked(exc.code, exc.reason) from exc
     if context.get("closeout_disposition") is not None and not isinstance(context["closeout_disposition"], dict):

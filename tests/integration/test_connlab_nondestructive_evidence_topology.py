@@ -63,6 +63,7 @@ def fixture(
     git(repo, "init", "-b", "master")
     git(repo, "config", "user.name", "Topology Test")
     git(repo, "config", "user.email", "topology@example.invalid")
+    (repo / ".gitignore").write_text("tmp/\n", encoding="utf-8")
     (repo / "docs").mkdir()
     (repo / "docs/lane_evidence").mkdir()
     plan_path = repo / f"docs/{TASK_ID.lower()}_plan.md"
@@ -74,7 +75,7 @@ def fixture(
     _, template, suffix = parse_board((ROOT / "docs/task_board.md").read_bytes())
     template.update(state="running", active=None, queue=[], next_enqueue_sequence=1)
     (repo / "docs/task_board.md").write_bytes(render_board("", template, suffix))
-    git(repo, "add", str(plan_path.relative_to(repo)), "docs/task_board.md")
+    git(repo, "add", ".gitignore", str(plan_path.relative_to(repo)), "docs/task_board.md")
     git(repo, "commit", "-m", "fixture base")
     plan_commit = git(repo, "rev-parse", "HEAD")
     plan_ref = f"{plan_path.relative_to(repo).as_posix()}@{plan_commit}#{hashlib.sha256(plan_bytes).hexdigest()}"
@@ -111,7 +112,7 @@ def fixture(
         "integration_target": "master", "worktree_lifecycle": "ready",
         "current_role": "Developer", "current_attempt": 1,
         "role_invocations": [planner_invocation, invocation], "host_thread_id": "thread-1", "host_id": "host-1",
-        "approved_code_paths": ["implementation.py"], "required_gates": ["Reviewer", "QA", "Integrator"],
+        "approved_code_paths": ["docs/task_board.md", "implementation.py"], "required_gates": ["Reviewer", "QA", "Integrator"],
         "developer_subject_commit": None, "reviewer_subject_commit": None,
         "qa_subject_commit": None, "integrated_commit": None, "evidence_refs": [planner_ref],
         "pending_callback": {"state": "callback_pending", "action_id": ACTION_ID, "role": "Developer", "attempt": 1},
@@ -119,7 +120,18 @@ def fixture(
     }
     active = {
         "task_id": TASK_ID, "summary": "topology", "kind": "planned", "classification": "complex",
-        "phase": "development", "scope_contract": {"may_touch": ["implementation.py"]},
+        "phase": "development", "scope_contract": {
+            "may_touch": ["docs/task_board.md", "implementation.py"],
+            "expected_file_count": 2,
+            "classification_reason": "approved topology fixture",
+            "targeted_validation": ["py -m pytest"],
+            "forbidden_categories": {
+                key: False for key in (
+                    "api_contract", "database", "schema_or_migration", "persistence", "authority",
+                    "public_drive_workflow", "business_rule_semantics", "destructive_action", "external_mutation",
+                )
+            },
+        },
         "plan_ref": plan_ref, "approval_ref": "approved", "activation_parent_sha": plan_commit,
         "activated_at": "2026-08-15T00:00:00Z", "updated_at": "2026-08-15T00:00:00Z",
         "blocker": None, "validation": None, "complex_context": context,

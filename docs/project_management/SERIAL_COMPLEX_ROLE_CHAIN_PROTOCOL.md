@@ -294,6 +294,15 @@ Phase 2 extends the existing V2 production writer; it does not create another au
   `scope_contract`, `approved_code_paths`, `plan_ref`, and `approval_ref`, clears the blocker, and resumes
   `development`. The next step is the normal Developer begin; Planner lifecycle and a second identical
   Approve call are forbidden.
+- If an already committed execution evidence cannot be consumed solely because the exact Plan metadata
+  must be corrected, use the exceptional `amend-plan` transition. The corrected Plan must be the clean,
+  Plan-only child of that exact evidence commit; the supplied callback must match the durable pending
+  invocation and the corrected embedded approved request must be byte-semantically equal to the active
+  scope. The route cannot change. One board-only transition records `plan_amendments`, updates
+  `plan_ref`/`approval_ref`, and preserves the callback, evidence, role, attempt, host, subject, scope,
+  and phase. The next action remains `consume-callback`; no Planner, Approve, host, role, or evidence is
+  replayed. Code-mixed history, identity drift, dirty state, or missing explicit User approval fails
+  closed with zero board write.
 - Every writer result and `inspect` expose compact `active_snapshot` and `next_action`. Recovery reads
   these board-derived facts first and follows the pending durable action directly; it does not reread
   the complete Task, Plan, board prose, and protocol on every turn.
@@ -305,8 +314,9 @@ Phase 2 extends the existing V2 production writer; it does not create another au
   active board, increments the durable attempt, hashes the raw prompt bytes, and derives the action ID;
   use its `git-reference` command for Plan/evidence path, commit, and raw byte SHA-256. Do not copy SHA
   values or assemble escaped PowerShell JSON manually.
-- A context without `blocker_history` remains readable for interruption recovery. The first Phase 2
-  resolution creates the history field atomically; newly activated complex tasks initialize it empty.
+- Contexts without `blocker_history`, `execution_routes`, or `plan_amendments` remain readable for legacy
+  interruption recovery. The first applicable Phase 2 transition creates the optional history field
+  atomically; newly approved tasks persist structured routes.
 
 Recovery reconstructs the durable active task and host from board, Git, and evidence before any action,
 reuses the recorded host, and never duplicates activation. Unprovable identity fails closed with an exact
