@@ -13,13 +13,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN",
     "summary": "Complete the same LTR workbook administrator runtime configuration goal through a corrected production-parser-readable Plan and a fresh normal V2 role/evidence chain while non-destructively reusing the retained clean implementation subject ff01fb1d725c98fb58a3e343cf241076853e8cfa.",
     "kind": "planned",
     "classification": "needs_discovery",
-    "phase": "integration",
+    "phase": "human_review",
     "scope_contract": {
       "may_touch": [
         ".gitignore",
@@ -96,7 +96,7 @@
       "base_sha": "4540da65516b4c0fd2a0e7442f05ada8bfc8f917",
       "head_sha": "ff01fb1d725c98fb58a3e343cf241076853e8cfa",
       "integration_target": "master",
-      "worktree_lifecycle": "integration_ready",
+      "worktree_lifecycle": "integrated",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -206,7 +206,7 @@
       "developer_subject_commit": "ff01fb1d725c98fb58a3e343cf241076853e8cfa",
       "reviewer_subject_commit": "ff01fb1d725c98fb58a3e343cf241076853e8cfa",
       "qa_subject_commit": "ff01fb1d725c98fb58a3e343cf241076853e8cfa",
-      "integrated_commit": null,
+      "integrated_commit": "e56f3ef78168d9541f7e21b402e0feac3d041aaf",
       "evidence_refs": [
         "docs/lane_evidence/TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN_planner.md@dac9f6c6bfe203e8d4e5b6e57a01645ee8b85dcf#3af1bdc08bcb6971e11f34422c9f64839e980f4414ea911b5cef0788d9e78271",
         "docs/lane_evidence/TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN_developer.md@bfe77740bff6866401fcbd0d52c20df281d1513b#f52e044fec29732011c40506d0b9a4806398d1f796d3fff3666ea2428d2a7d42",
