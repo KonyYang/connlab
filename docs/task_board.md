@@ -163,7 +163,12 @@
         "docs/lane_evidence/TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN_planner.md@dac9f6c6bfe203e8d4e5b6e57a01645ee8b85dcf#3af1bdc08bcb6971e11f34422c9f64839e980f4414ea911b5cef0788d9e78271"
       ],
       "blocker_history": [],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "host_creation_pending",
+        "action_id": "40699798c3239e905bc19ed9c634814b9cca02023c26cda00909c4110bcc7c82",
+        "role": "Host",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
