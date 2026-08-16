@@ -73,8 +73,8 @@
       "base_sha": "e51a674b68ca1b4d1fe193b5e10903b361ae3660",
       "head_sha": "e51a674b68ca1b4d1fe193b5e10903b361ae3660",
       "integration_target": "master",
-      "worktree_lifecycle": "ready",
-      "current_role": "Integrator",
+      "worktree_lifecycle": "integration_ready",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -168,15 +168,11 @@
         "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_planner.md@1ca021a61f556c9e3f8e195f02fb0dd36b603dfa#7bc2ab530762c026ce09b9151153110fed0b27ad3985450266919ea2f8e3ca5d",
         "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_developer.md@f733dbd33ca68530600f3f6019da6f7f511512ce#d7aa27a6b46b5e5dbcef81ed3823a5ed6a40f181e9e7868bcbacd3f43e76525d",
         "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_reviewer.md@536f957aa941f156e78f562e71fee1e44452fdf7#564a4c60d758c89048d2e7a6d60c5338bebb5dfa61c19d79daa4be4f5058f7d9",
-        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_qa.md@3d26a4460ea30d25cbcf2b3d653255dd7047dafb#97a70036d69b6dec204d7e6fefe16ce83219434d0579f005c074c6244445ae97"
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_qa.md@3d26a4460ea30d25cbcf2b3d653255dd7047dafb#97a70036d69b6dec204d7e6fefe16ce83219434d0579f005c074c6244445ae97",
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_integrator.md@93771222ce61d0b70cba9590a7db9a233397f1d7#58d540912b6c17ea602ef12d39b64d83c2f0edff34e7900b812d054385b0d628"
       ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "5f0510ed9f01951c5a58c6e1ae2398d90f3aa9f9caf9a1a98bef9301af5bdb58",
-        "role": "Integrator",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
@@ -214,7 +210,7 @@
             "role": "Integrator",
             "attempt": 1,
             "started_at": "2026-08-16T04:04:01Z",
-            "completed_at": null
+            "completed_at": "2026-08-16T12:13:30+08:00"
           }
         ],
         "integration_completed_at": null
