@@ -19,7 +19,7 @@
     "summary": "Simplify the Matrix Import source chooser to list only selectable .doc, .docx, and .pdf files from the resolved intake-attachment or Submitted Material target folder; show only a concise source-location title and filenames, retain Cancel and Upload other file with standard ConnLab button styling, preserve explicit selection, empty/error states, read-only blocking, desktop behavior, and existing preview authority.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "blocked",
     "scope_contract": {
       "may_touch": [
         "backend/application/project_test_plan_source_candidate_service.py",
@@ -70,8 +70,49 @@
     "approval_ref": "User explicitly approved the corrected Plan ref and approved-request SHA-256 in the current conversation on 2026-08-16.",
     "activation_parent_sha": "fd228ae0f69be6584c981c3cfe00668865f2004d",
     "activated_at": "2026-08-16T09:41:31Z",
-    "updated_at": "2026-08-16T10:22:37Z",
-    "blocker": null,
+    "updated_at": "2026-08-16T12:05:57Z",
+    "blocker": {
+      "schema": "connlab.serial-task-blocker",
+      "version": 1,
+      "code": "NATIVE_ACTION_FAILED",
+      "stage": "development",
+      "reason": "The production Developer begin-role path reused attempt 1 after a Developer blocker resume, causing a duplicate role timing identity; governance writer recovery is required before another role dispatch.",
+      "dirty_paths": [],
+      "failed_validation": {
+        "schema": "connlab.serial-failure-proof",
+        "version": 1,
+        "operation": "Production begin-role for bounded Developer fix",
+        "command": [
+          "py",
+          "scripts/connlab_personal_task.py",
+          "begin-role",
+          "--repo-root",
+          "D:\\PythonProject\\connlab",
+          "--expected-board-sha256",
+          "3e6df979c17bf6040c6e522dca5cbc74c7dbf39aa2af8584e6716ffb14b41d40",
+          "--task-id",
+          "TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_CORRECTED_PLAN",
+          "--role",
+          "Developer",
+          "--native-action-json",
+          "<connlab.serial-native-action/v1 action_id=53832af99b12b8eab50cefd34d7f6d4d46d0d91090dc189d4bfd60e6f16521f6>",
+          "--json"
+        ],
+        "exit_code": 2,
+        "summary": "BLOCKED_WRITE_FAILED: Atomic board write failed because Role timing identity is duplicated. The canonical builder produced Developer attempt 1 after the prior Developer attempt 1 blocker was resumed. The partial invalid board write was recovered exactly to the committed valid board before this blocker was recorded.",
+        "recorded_at": "2026-08-16T12:05:57Z"
+      },
+      "subject_commit": null,
+      "evidence_ref": null,
+      "native_action_id": "53832af99b12b8eab50cefd34d7f6d4d46d0d91090dc189d4bfd60e6f16521f6",
+      "related_ids": [
+        "DEVELOPER_ATTEMPT_IDENTITY_DUPLICATE"
+      ],
+      "retryable": true,
+      "requires_user": true,
+      "resume_phase": "development",
+      "recorded_at": "2026-08-16T12:05:57Z"
+    },
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
