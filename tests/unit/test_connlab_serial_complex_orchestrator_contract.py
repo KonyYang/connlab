@@ -174,3 +174,21 @@ def test_removed_cutover_command_is_rejected_by_argument_parser_without_board_wr
     assert completed.stdout == ""
     assert "invalid choice" in completed.stderr
     assert board.read_bytes() == before
+
+
+def test_orchestrator_and_protocol_freeze_one_authority_bound_validation_command() -> None:
+    orchestrator = (
+        ROOT / ".agents/skills/connlab-lane-orchestrator/SKILL.md"
+    ).read_text(encoding="utf-8")
+    protocol = (
+        ROOT / "docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md"
+    ).read_text(encoding="utf-8")
+    command = (
+        "py -m scripts.connlab_validation_manifest run "
+        "--authority-root <primary> --from-board --role <Role>"
+    )
+
+    assert command in orchestrator
+    assert command in protocol
+    assert "Do not extract the manifest into a temporary file" in orchestrator
+    assert "Do not extract the manifest into a temporary file" in protocol

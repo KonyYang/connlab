@@ -80,6 +80,52 @@ def _git(root: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+def manifest_from_board(
+    authority_root: Path,
+) -> tuple[dict[str, Any], dict[str, str], dict[str, Any]]:
+    authority_root = authority_root.resolve()
+    board_bytes = (authority_root / "docs/task_board.md").read_bytes()
+    from scripts.connlab_serial_board import parse_board
+
+    _, control, _ = parse_board(board_bytes)
+    active = control.get("active")
+    context = active.get("complex_context") if isinstance(active, dict) else None
+    if not isinstance(context, dict) or "validation_manifest" not in context:
+        _fail("Active task has no structured validation manifest.")
+    manifest = validate_manifest(context["validation_manifest"], task_id=active["task_id"])
+    task_worktree = context.get("task_worktree")
+    current_role = context.get("current_role")
+    current_attempt = context.get("current_attempt")
+    recorded_subject = context.get("head_sha")
+    if not isinstance(task_worktree, str) or not task_worktree.strip():
+        _fail("Active task has no recorded task worktree.")
+    if current_role not in ROLES:
+        _fail("Active task has no valid current validation role.")
+    if type(current_attempt) is not int or current_attempt < 1:
+        _fail("Active task has no valid current validation attempt.")
+    if not isinstance(recorded_subject, str) or not recorded_subject.strip():
+        _fail("Active task has no recorded subject.")
+    if _git(authority_root, "status", "--porcelain=v1", "--untracked-files=all"):
+        _fail("Authority worktree must be clean before validation.")
+    canonical_manifest = json.dumps(
+        manifest, ensure_ascii=False, separators=(",", ":"), sort_keys=True,
+    ).encode("utf-8")
+    authority = {
+        "root": str(authority_root),
+        "head": _git(authority_root, "rev-parse", "HEAD"),
+        "board_sha256": hashlib.sha256(board_bytes).hexdigest(),
+        "manifest_sha256": hashlib.sha256(canonical_manifest).hexdigest(),
+    }
+    binding = {
+        "task_id": active["task_id"],
+        "role": current_role,
+        "attempt": current_attempt,
+        "repo_root": str(Path(task_worktree).resolve()),
+        "recorded_subject": recorded_subject,
+    }
+    return manifest, authority, binding
+
+
 def run_manifest(
     root: Path,
     manifest: dict[str, Any],
@@ -87,11 +133,21 @@ def run_manifest(
     role: str,
     allowed_permissions: set[str],
     check_ids: set[str] | None = None,
+    authority: dict[str, str] | None = None,
+    binding: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     root = root.resolve()
     validate_manifest(manifest)
     if role not in ROLES:
         _fail("Validation role is invalid.")
+    if binding is not None:
+        if binding.get("task_id") != manifest["task_id"] or binding.get("role") != role:
+            _fail("Validation binding differs from the requested task or role.")
+        bound_root = binding.get("repo_root")
+        if not isinstance(bound_root, str) or not bound_root or Path(bound_root).resolve() != root:
+            _fail("Validation binding differs from the requested repository root.")
+        if not isinstance(binding.get("recorded_subject"), str) or not binding["recorded_subject"]:
+            _fail("Validation binding has no recorded subject.")
     if allowed_permissions - PERMISSIONS:
         _fail("Unknown validation permission was supplied.")
     allowed_permissions = set(allowed_permissions) | {"workspace"}
@@ -111,6 +167,15 @@ def run_manifest(
         "role": role,
         "subject_before": subject_before,
     }
+    if authority is not None:
+        base["authority"] = authority
+    if binding is not None:
+        base["binding"] = binding
+    if binding is not None and role != "Developer" and binding["recorded_subject"] != subject_before:
+        return {
+            **base, "status": "blocked", "code": "BLOCKED_SUBJECT_MISMATCH",
+            "required_permissions": [], "checks": [],
+        }
     if dirty_before:
         return {**base, "status": "blocked", "code": "BLOCKED_DIRTY_WORKTREE", "required_permissions": [], "checks": []}
     if missing:
@@ -173,6 +238,7 @@ def parser() -> argparse.ArgumentParser:
     source = value.add_mutually_exclusive_group(required=True)
     source.add_argument("--manifest")
     source.add_argument("--from-board", action="store_true")
+    value.add_argument("--authority-root")
     value.add_argument("--repo-root")
     value.add_argument("--role", choices=sorted(ROLES))
     value.add_argument("--allow-permission", action="append", default=[])
@@ -183,27 +249,39 @@ def parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = parser().parse_args()
     try:
+        authority = None
+        binding = None
+        if args.authority_root and not args.from_board:
+            _fail("--authority-root is valid only with --from-board.")
         if args.from_board:
-            if not args.repo_root:
-                _fail("--from-board requires --repo-root.")
-            from scripts.connlab_serial_board import parse_board
-            _, control, _ = parse_board((Path(args.repo_root) / "docs/task_board.md").read_bytes())
-            active = control.get("active")
-            context = active.get("complex_context") if isinstance(active, dict) else None
-            if not isinstance(context, dict) or "validation_manifest" not in context:
-                _fail("Active task has no structured validation manifest.")
-            manifest = validate_manifest(context["validation_manifest"], task_id=active["task_id"])
+            authority_root = args.authority_root or args.repo_root
+            if not authority_root:
+                _fail("--from-board requires --authority-root or --repo-root.")
+            manifest, authority, binding = manifest_from_board(Path(authority_root))
         else:
             manifest = validate_manifest(json.loads(Path(args.manifest).read_text(encoding="utf-8")))
         if args.command == "validate":
             result = {"schema": "connlab.validation-manifest-result", "version": 1, "status": "valid"}
+            if authority is not None:
+                result["authority"] = authority
         else:
-            if not args.repo_root or not args.role:
-                _fail("run requires --repo-root and --role.")
+            if not args.role:
+                _fail("run requires --role.")
+            if binding is not None and args.role != binding["role"]:
+                _fail("Requested role differs from the active board role.")
+            recorded_root = Path(binding["repo_root"]) if binding is not None else None
+            requested_root = Path(args.repo_root).resolve() if args.repo_root else None
+            if requested_root is not None and recorded_root is not None and requested_root != recorded_root:
+                _fail("Requested repository root differs from the recorded task worktree.")
+            repo_root = requested_root or recorded_root
+            if repo_root is None:
+                _fail("run requires --repo-root when no task worktree is available from the board.")
             result = run_manifest(
-                Path(args.repo_root), manifest, role=args.role,
+                repo_root, manifest, role=args.role,
                 allowed_permissions=set(args.allow_permission),
                 check_ids=set(args.check_id) if args.check_id else None,
+                authority=authority,
+                binding=binding,
             )
     except (ManifestError, OSError, json.JSONDecodeError) as exc:
         result = {"schema": "connlab.validation-result", "version": 1, "status": "blocked", "code": "BLOCKED_MANIFEST_INVALID", "reason": str(exc)}

@@ -252,11 +252,16 @@ For new complex Plans, freeze executable checks in one optional-to-legacy but no
 `complex_context.validation_manifest`; role turns do not translate prose into shell commands. Each
 check freezes `id`, `kind`, `run_for`, repository-relative `cwd`, exact `argv[]`, timeout, permission
 class, and required status. Run it with
-`py -m scripts.connlab_validation_manifest run --repo-root . --from-board --role <Role>
---allow-permission <approved-class>`. The runner always uses `shell=False`, requests all missing
-permission classes before starting any check, binds results to the clean exact Git subject, and reports
-only command identity, duration, exit code and stdout/stderr SHA-256. Developer runs its complete set
-last; Reviewer selects only finding/risk check IDs; QA runs its complete approved set once.
+`py -m scripts.connlab_validation_manifest run --authority-root <primary> --from-board --role <Role>`
+plus only the manifest-declared `--allow-permission <approved-class>` and role-selected `--check-id`
+arguments. The runner reads the clean authoritative board and mechanically binds its raw board digest,
+canonical manifest digest, current role/attempt, recorded task worktree, and recorded subject before it
+runs on the clean exact task Git subject. Omit `--repo-root` in the normal complex path; if supplied for
+diagnosis, it must match the recorded task worktree. Do not extract the manifest into a temporary file
+or reconstruct commands from Plan prose. The runner always uses `shell=False`, requests all missing
+permission classes before starting any check, and reports only binding facts, command identity,
+duration, exit code and stdout/stderr SHA-256. Developer runs its complete set last; Reviewer selects
+only finding/risk check IDs; QA runs its complete approved set once.
 
 UI checks use a manifest `kind=ui` argv that calls `node scripts/connlab_ui_smoke.mjs --config <file>`.
 The reusable CDP harness checks required selectors/text, runtime exceptions, forbidden console patterns,
