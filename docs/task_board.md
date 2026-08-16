@@ -68,12 +68,12 @@
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
-      "task_branch": null,
-      "task_worktree": null,
+      "task_branch": "codex/task-ltr-workbook-public-default-admin-config-bootstrap",
+      "task_worktree": "D:\\PythonProject\\connlab-worktrees\\task-ltr-workbook-public-default-admin-config-bootstrap",
       "base_sha": "e51a674b68ca1b4d1fe193b5e10903b361ae3660",
       "head_sha": "e51a674b68ca1b4d1fe193b5e10903b361ae3660",
       "integration_target": "master",
-      "worktree_lifecycle": "absent",
+      "worktree_lifecycle": "ready",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -90,8 +90,8 @@
           "recorded_at": "2026-08-16T02:53:38Z"
         }
       ],
-      "host_thread_id": null,
-      "host_id": null,
+      "host_thread_id": "/root/ltr_public_default_bootstrap_host",
+      "host_id": "/root/ltr_public_default_bootstrap_host",
       "approved_code_paths": [
         "backend/shared/config.py",
         "connlab.admin.example.toml",
@@ -120,19 +120,14 @@
         "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_planner.md@1ca021a61f556c9e3f8e195f02fb0dd36b603dfa#7bc2ab530762c026ce09b9151153110fed0b27ad3985450266919ea2f8e3ca5d"
       ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "host_creation_pending",
-        "action_id": "dba0676b852d96c92ee2323e04c3e6128c12b0cb447eb9f164c5d427e2cbbdf4",
-        "role": "Host",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
       "timing_facts": {
         "host": {
           "started_at": "2026-08-16T03:19:45Z",
-          "completed_at": null
+          "completed_at": "2026-08-16T03:25:52Z"
         },
         "roles": [
           {
