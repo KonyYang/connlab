@@ -19,7 +19,7 @@
     "summary": "Bootstrap an entirely absent administrator LTR workbook config with the public DGLAB default using exclusive atomic publication while preserving existing files, precedence, development and packaged paths, and all workbook/public-drive boundaries.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "review",
     "scope_contract": {
       "may_touch": [
         "backend/shared/config.py",
@@ -74,7 +74,7 @@
       "head_sha": "e51a674b68ca1b4d1fe193b5e10903b361ae3660",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -124,20 +124,16 @@
         "QA",
         "Integrator"
       ],
-      "developer_subject_commit": null,
+      "developer_subject_commit": "503a471a47cd69180822a6e3963c133a4fb68e81",
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
       "evidence_refs": [
-        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_planner.md@1ca021a61f556c9e3f8e195f02fb0dd36b603dfa#7bc2ab530762c026ce09b9151153110fed0b27ad3985450266919ea2f8e3ca5d"
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_planner.md@1ca021a61f556c9e3f8e195f02fb0dd36b603dfa#7bc2ab530762c026ce09b9151153110fed0b27ad3985450266919ea2f8e3ca5d",
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_developer.md@f733dbd33ca68530600f3f6019da6f7f511512ce#d7aa27a6b46b5e5dbcef81ed3823a5ed6a40f181e9e7868bcbacd3f43e76525d"
       ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "ff17be341b801d16b85293183fdfd9b9c1478aa07a334ac40afb1f8ffc26d057",
-        "role": "Developer",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
@@ -157,7 +153,7 @@
             "role": "Developer",
             "attempt": 1,
             "started_at": "2026-08-16T03:26:58Z",
-            "completed_at": null
+            "completed_at": "2026-08-16T11:39:50+08:00"
           }
         ],
         "integration_completed_at": null
