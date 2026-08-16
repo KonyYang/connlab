@@ -120,12 +120,20 @@
         "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_planner.md@1ca021a61f556c9e3f8e195f02fb0dd36b603dfa#7bc2ab530762c026ce09b9151153110fed0b27ad3985450266919ea2f8e3ca5d"
       ],
       "blocker_history": [],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "host_creation_pending",
+        "action_id": "dba0676b852d96c92ee2323e04c3e6128c12b0cb447eb9f164c5d427e2cbbdf4",
+        "role": "Host",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
       "timing_facts": {
-        "host": null,
+        "host": {
+          "started_at": "2026-08-16T03:19:45Z",
+          "completed_at": null
+        },
         "roles": [
           {
             "role": "Planner",
