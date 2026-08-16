@@ -19,7 +19,7 @@
     "summary": "Complete the same approved LTR workbook administrator runtime configuration goal using a corrected committed Plan whose Developer/Reviewer/QA/Integrator route is parseable by the production evidence verifier, while preserving and safely reusing the retained clean implementation subject ff01fb1d725c98fb58a3e343cf241076853e8cfa and existing evidence without cleanup, push, or destructive Git operations.",
     "kind": "planned",
     "classification": "needs_discovery",
-    "phase": "planning",
+    "phase": "awaiting_user_approval",
     "scope_contract": null,
     "plan_ref": null,
     "approval_ref": null,
@@ -36,7 +36,7 @@
       "head_sha": "ad42ae649b9ebda488ffb75088db2cf04bc5857d",
       "integration_target": "master",
       "worktree_lifecycle": "absent",
-      "current_role": "Planner",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -64,14 +64,11 @@
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
-      "evidence_refs": [],
+      "evidence_refs": [
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN_planner.md@dac9f6c6bfe203e8d4e5b6e57a01645ee8b85dcf#3af1bdc08bcb6971e11f34422c9f64839e980f4414ea911b5cef0788d9e78271"
+      ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "edcecab846dd9467263a996ae88931b33e9b033a37119337263ba567dbc91a97",
-        "role": "Planner",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
