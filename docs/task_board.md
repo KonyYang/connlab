@@ -97,7 +97,7 @@
       "head_sha": "ff01fb1d725c98fb58a3e343cf241076853e8cfa",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": null,
+      "current_role": "QA",
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -189,7 +189,12 @@
         "docs/lane_evidence/TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN_reviewer.md@205b52726d07e800f0e0e4fac961fcd876fc0bf2#d7a14d4684183b7b7d04f273c34170ca367ed1fc3958cd5bf17a329085b12910"
       ],
       "blocker_history": [],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "9447fa264b07b29ed15f809650bba1c2f9524ad7a57d601f0c99e849953d7e71",
+        "role": "QA",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
