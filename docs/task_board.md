@@ -13,93 +13,15 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
-  "active": {
-    "task_id": "TASK_GOVERNANCE_PERSONAL_SERIAL_V2_WRITER_RECOVERY_CORRECTION",
-    "summary": "Correct Personal Serial V2 writer recovery so native-action attempts increment from each role's durable invocation/timing history, blocked scope reapproval synchronizes the exact committed validation manifest with paths, and fully rendered boards are validated before atomic replacement with zero-write failure behavior.",
-    "kind": "planned",
-    "classification": "complex",
-    "phase": "awaiting_user_approval",
-    "scope_contract": null,
-    "plan_ref": null,
-    "approval_ref": null,
-    "activation_parent_sha": "5ab877e3bbbf6fec78c16c31d7becf91b0b7c3b5",
-    "activated_at": "2026-08-16T23:39:22Z",
-    "updated_at": "2026-08-16T23:39:22Z",
-    "blocker": null,
-    "validation": null,
-    "complex_context": {
-      "workflow_version": 1,
-      "task_branch": null,
-      "task_worktree": null,
-      "base_sha": "5ab877e3bbbf6fec78c16c31d7becf91b0b7c3b5",
-      "head_sha": "5ab877e3bbbf6fec78c16c31d7becf91b0b7c3b5",
-      "integration_target": "master",
-      "worktree_lifecycle": "absent",
-      "current_role": null,
-      "current_attempt": 1,
-      "role_invocations": [
-        {
-          "schema": "connlab.serial-invocation",
-          "version": 1,
-          "action_id": "7e76a4d28ccb2f07e72a4c95667ca21c0c34215cf60944a532ffcdf448be5ce5",
-          "role": "Planner",
-          "attempt": 1,
-          "thread_id": "/root/writer_recovery_correction_planner",
-          "agent_id": null,
-          "host_id": null,
-          "status": "started",
-          "recorded_at": "2026-08-16T23:41:15Z"
-        }
-      ],
-      "host_thread_id": null,
-      "host_id": null,
-      "approved_code_paths": [
-        "scripts/connlab_serial_phase2.py",
-        "scripts/connlab_serial_native_action.py",
-        "scripts/connlab_serial_board.py",
-        "scripts/connlab_personal_task.py",
-        "tests/unit/test_connlab_serial_phase2_runtime.py",
-        "tests/integration/test_connlab_serial_phase2_writer.py"
-      ],
-      "required_gates": [
-        "Reviewer",
-        "QA",
-        "Integrator"
-      ],
-      "developer_subject_commit": null,
-      "reviewer_subject_commit": null,
-      "qa_subject_commit": null,
-      "integrated_commit": null,
-      "evidence_refs": [
-        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_WRITER_RECOVERY_CORRECTION_planner.md@cb0264a52868e08aa85ca636011b21807e81aaff#2c59c816ce66d844d64faea20417ef0d96ac0f7848a17f4781a9fbc76e1f63d3"
-      ],
-      "blocker_history": [],
-      "pending_callback": null,
-      "closeout_disposition": null,
-      "retained_resource_refs": [],
-      "close_decision_ref": null,
-      "timing_facts": {
-        "host": null,
-        "roles": [
-          {
-            "role": "Planner",
-            "attempt": 1,
-            "started_at": "2026-08-16T23:40:24Z",
-            "completed_at": null
-          }
-        ],
-        "integration_completed_at": null
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
-    "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH",
-    "disposition": "product subject 1798d0377347459a78478b9a10e3c2f2a23327e4 retained; product completion deferred until governance writer recovery is closed; branch, worktree, Task, Plan, evidence, and all commits retained; no cleanup or push",
-    "decision_ref": "User decision in current conversation: first repair Personal Serial V2 governance writer, production cancel the current product task, retain product subject 1798d0377347459a78478b9a10e3c2f2a23327e4 and all resources.",
-    "closed_at": "2026-08-16T23:37:57Z"
+    "task_id": "TASK_GOVERNANCE_PERSONAL_SERIAL_V2_WRITER_RECOVERY_CORRECTION",
+    "disposition": "planning artifacts retained; task cancelled so the independently authorized out-of-band emergency governance writer repair can run outside the damaged Personal Serial role chain.",
+    "decision_ref": "User decision in current conversation: do not approve the current Plan and production cancel TASK_GOVERNANCE_PERSONAL_SERIAL_V2_WRITER_RECOVERY_CORRECTION while retaining all planning and product resources.",
+    "closed_at": "2026-08-16T23:56:04Z"
   },
   "retained_history": [
     {
