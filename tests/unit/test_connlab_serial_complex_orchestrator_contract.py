@@ -192,3 +192,32 @@ def test_orchestrator_and_protocol_freeze_one_authority_bound_validation_command
     assert command in protocol
     assert "Do not extract the manifest into a temporary file" in orchestrator
     assert "Do not extract the manifest into a temporary file" in protocol
+
+
+def test_simple_intake_uses_a_bounded_preactivation_read_and_copy_skill_exemption() -> None:
+    agents = " ".join((ROOT / "AGENTS.md").read_text(encoding="utf-8").split())
+    orchestrator = " ".join((
+        ROOT / ".agents/skills/connlab-lane-orchestrator/SKILL.md"
+    ).read_text(encoding="utf-8").split())
+    protocol = " ".join((
+        ROOT / "docs/project_management/SERIAL_COMPLEX_ROLE_CHAIN_PROTOCOL.md"
+    ).read_text(encoding="utf-8").split())
+    budget = (
+        "The default request-to-Submit decision budget for a mechanically clear "
+        "simple candidate is 60 seconds."
+    )
+    bounded_read = (
+        "Do not load supporting skills or complete product, design, architecture, "
+        "protocol, or task-history documents before Submit."
+    )
+
+    assert budget in orchestrator
+    assert budget in protocol
+    assert bounded_read in orchestrator
+    assert bounded_read in protocol
+    assert "bounded-copy exemption" in agents
+    assert "bounded-copy exemption" in orchestrator
+    assert "bounded-copy exemption" in protocol
+    assert "The 60-second budget is a decision target, not a safety timeout" in protocol
+    assert "it is not `simple-fast`" in protocol
+    assert "It never covers layout, styling" in agents

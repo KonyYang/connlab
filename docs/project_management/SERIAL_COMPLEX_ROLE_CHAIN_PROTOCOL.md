@@ -161,6 +161,33 @@ validation, human inspection, and Close; it has no additional Task/Plan, role ho
 intermediate `继续`, or implicit model switching. Every complex `spawn_agent` dispatch explicitly passes
 both `model` and `reasoning_effort`; inherited/default routing is forbidden.
 
+### Simple intake preflight optimization
+
+This is a preactivation read optimization, not a task kind, board state, writer command, approval, or
+classification shortcut. For an idle request that is a mechanically clear simple candidate, the
+Orchestrator first reads the board through `inspect`, then performs one bounded locator pass for the
+likely implementation path and existing public test seam. It freezes the request's root cause,
+expected result, one-to-three-path scope, bounded validation, and all forbidden-category facts, then
+calls canonical Submit before doing detailed implementation reasoning. The default request-to-Submit
+decision budget for a mechanically clear simple candidate is 60 seconds.
+
+Before Submit, read only the locator result and locally applicable rules already available to the
+permanent Orchestrator. Do not load supporting skills or complete product, design, architecture,
+protocol, or task-history documents before Submit.
+An explicitly User-invoked skill remains binding and is not deferred by this optimization.
+After activation, reuse those exact paths; do not repeat the search or reread unchanged authority. The
+60-second budget is a decision target, not a safety timeout: any concrete ambiguity or frozen risk fact
+routes to discovery/complex, while elapsed time alone never permits guessed scope or skipped safety.
+
+The `bounded-copy exemption` applies after ordinary simple activation only when the complete change is
+one existing error, status, guidance, or action literal/fixed mapping inside an unchanged UI, with at
+most one implementation path, one existing test path, and the board. It forbids layout, styling, state,
+interaction, component-seam, API-behavior, or copy-system changes. Such a task may skip `$impeccable`
+and complete product/design/architecture reading, but it must follow neighboring copy, use the existing
+UI test seam, retain TDD, bounded validation, human review, and immediate fallback when any predicate
+becomes false. This exemption changes only reading and skill cost; it is not `simple-fast` and does not
+alter routing, validation, or UI quality.
+
 ### Simple-fast execution optimization
 
 `simple-fast` is an execution optimization inside an already classified `simple` request, not a task
@@ -226,9 +253,9 @@ Supporting engineering skills are role-local methods, not additional workflow ro
 `$tdd` for substantive behavior and adds `$diagnosing-bugs` only for hard, repeated, flaky, or
 unexplained software failures. Reviewer uses `$code-review`. Planner/Developer use `$codebase-design`
 only for approved structural work. Planner/Orchestrator use `$grilling` only for material product
-ambiguity and ask at most three blocking questions. UI work loads `$impeccable`; UI QA uses
-`$playwright` only when browser-visible behavior changed. Supporting skills never change approved
-scope, authority, routing, or evidence ownership.
+ambiguity and ask at most three blocking questions. UI work loads `$impeccable` except for eligible
+`simple-fast` or `bounded-copy exemption`; UI QA uses `$playwright` only when browser-visible behavior
+changed. Supporting skills never change approved scope, authority, routing, or evidence ownership.
 
 ## Validation efficiency and exact-subject evidence
 

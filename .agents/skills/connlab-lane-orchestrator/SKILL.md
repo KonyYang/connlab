@@ -22,6 +22,21 @@ Do not request routine approvals for host creation, Developer -> Reviewer -> QA 
 bounded fix, non-conflicting local integration, or retained closeout. Return to the User only for a
 scope/behavior/authority change, a destructive action, or an unresolved blocker.
 
+## Simple intake preflight
+
+For an idle new request, inspect the board first. When the request is a mechanically clear simple
+candidate, perform one bounded locator pass for the likely implementation path and existing test seam,
+then submit as soon as root cause, result, scope, validation, and forbidden-category facts are known.
+The default request-to-Submit decision budget for a mechanically clear simple candidate is 60 seconds.
+Do not load supporting skills or complete product, design, architecture, protocol, or task-history
+documents before Submit.
+An explicitly User-invoked skill remains binding and is not deferred by this optimization.
+Reuse the locator result after activation instead of rediscovering the same paths. The budget never
+permits guessed scope: concrete ambiguity or a frozen risk flag routes to discovery/complex normally.
+
+Apply the protocol's exact `bounded-copy exemption` only after ordinary simple activation. It changes
+read/skill cost only and never creates a task kind, route, approval, or `simple-fast` expansion.
+
 ## Event loop
 
 Perform one durable state transition at a time with `scripts/connlab_personal_task.py`, using the
@@ -63,8 +78,8 @@ override board authority.
 - Planner or Developer uses `$codebase-design` only for an approved structural refactor or module seam.
 - Planner or Orchestrator uses `$grilling` only for material product ambiguity; ask at most three
   blocking questions and decide ordinary technical details autonomously.
-- UI work loads `$impeccable` except for protocol-eligible `simple-fast`; UI QA uses `$playwright`
-  only when observable browser behavior changed.
+- UI work loads `$impeccable` except for protocol-eligible `simple-fast` or the exact
+  `bounded-copy exemption`; UI QA uses `$playwright` only when observable browser behavior changed.
 
 ## Validation ownership
 
