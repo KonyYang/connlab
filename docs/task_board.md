@@ -19,7 +19,7 @@
     "summary": "Bootstrap an entirely absent administrator LTR workbook config with the public DGLAB default using exclusive atomic publication while preserving existing files, precedence, development and packaged paths, and all workbook/public-drive boundaries.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "review",
+    "phase": "qa",
     "scope_contract": {
       "may_touch": [
         "backend/shared/config.py",
@@ -74,7 +74,7 @@
       "head_sha": "e51a674b68ca1b4d1fe193b5e10903b361ae3660",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Reviewer",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -137,20 +137,16 @@
         "Integrator"
       ],
       "developer_subject_commit": "503a471a47cd69180822a6e3963c133a4fb68e81",
-      "reviewer_subject_commit": null,
+      "reviewer_subject_commit": "503a471a47cd69180822a6e3963c133a4fb68e81",
       "qa_subject_commit": null,
       "integrated_commit": null,
       "evidence_refs": [
         "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_planner.md@1ca021a61f556c9e3f8e195f02fb0dd36b603dfa#7bc2ab530762c026ce09b9151153110fed0b27ad3985450266919ea2f8e3ca5d",
-        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_developer.md@f733dbd33ca68530600f3f6019da6f7f511512ce#d7aa27a6b46b5e5dbcef81ed3823a5ed6a40f181e9e7868bcbacd3f43e76525d"
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_developer.md@f733dbd33ca68530600f3f6019da6f7f511512ce#d7aa27a6b46b5e5dbcef81ed3823a5ed6a40f181e9e7868bcbacd3f43e76525d",
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_reviewer.md@536f957aa941f156e78f562e71fee1e44452fdf7#564a4c60d758c89048d2e7a6d60c5338bebb5dfa61c19d79daa4be4f5058f7d9"
       ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "5e0a6d00185acdad6d862c60095e09dd894bca6901c4b34d2f4acc04683a3a9b",
-        "role": "Reviewer",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
@@ -176,7 +172,7 @@
             "role": "Reviewer",
             "attempt": 1,
             "started_at": "2026-08-16T03:40:55Z",
-            "completed_at": null
+            "completed_at": "2026-08-16T11:48:52+08:00"
           }
         ],
         "integration_completed_at": null
