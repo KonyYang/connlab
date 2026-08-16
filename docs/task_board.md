@@ -13,13 +13,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP",
     "summary": "Bootstrap an entirely absent administrator LTR workbook config with the public DGLAB default using exclusive atomic publication while preserving existing files, precedence, development and packaged paths, and all workbook/public-drive boundaries.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "integration",
+    "phase": "human_review",
     "scope_contract": {
       "may_touch": [
         "backend/shared/config.py",
@@ -71,9 +71,9 @@
       "task_branch": "codex/task-ltr-workbook-public-default-admin-config-bootstrap",
       "task_worktree": "D:\\PythonProject\\connlab-worktrees\\task-ltr-workbook-public-default-admin-config-bootstrap",
       "base_sha": "e51a674b68ca1b4d1fe193b5e10903b361ae3660",
-      "head_sha": "e51a674b68ca1b4d1fe193b5e10903b361ae3660",
+      "head_sha": "503a471a47cd69180822a6e3963c133a4fb68e81",
       "integration_target": "master",
-      "worktree_lifecycle": "integration_ready",
+      "worktree_lifecycle": "integrated",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -163,7 +163,7 @@
       "developer_subject_commit": "503a471a47cd69180822a6e3963c133a4fb68e81",
       "reviewer_subject_commit": "503a471a47cd69180822a6e3963c133a4fb68e81",
       "qa_subject_commit": "503a471a47cd69180822a6e3963c133a4fb68e81",
-      "integrated_commit": null,
+      "integrated_commit": "7297c1e9c233211165c966729802c1c9178d0173",
       "evidence_refs": [
         "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_planner.md@1ca021a61f556c9e3f8e195f02fb0dd36b603dfa#7bc2ab530762c026ce09b9151153110fed0b27ad3985450266919ea2f8e3ca5d",
         "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_developer.md@f733dbd33ca68530600f3f6019da6f7f511512ce#d7aa27a6b46b5e5dbcef81ed3823a5ed6a40f181e9e7868bcbacd3f43e76525d",
@@ -213,7 +213,7 @@
             "completed_at": "2026-08-16T12:13:30+08:00"
           }
         ],
-        "integration_completed_at": null
+        "integration_completed_at": "2026-08-16T04:15:36Z"
       },
       "execution_routes": {
         "Developer": {
