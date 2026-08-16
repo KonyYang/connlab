@@ -33,4 +33,26 @@ describe("SettingsPage", () => {
     expect(screen.queryByLabelText("LTR workbook password")).toBeNull();
     fetchMock.mockRestore();
   });
+
+  it("does not repeat a missing file path in the validation message", async () => {
+    vi.mocked(listExternalResources).mockResolvedValue([
+      {
+        resource_id: "standard-version",
+        resource_type: "standard_record_excel",
+        path: "D:\\Source\\Foreign file directory.xls",
+        active: true,
+        validation_status: "invalid",
+        last_validated_at: null,
+        validation_failure_reason:
+          "Expected an existing file: D:\\Source\\Foreign file directory.xls",
+        worksheet_name: "认可标准"
+      }
+    ]);
+
+    render(<SettingsPage />);
+
+    const input = await screen.findByLabelText("Standard version file path");
+    expect(input.getAttribute("title")).toBe("File does not exist.");
+    expect(input.getAttribute("title")).not.toContain("D:\\Source");
+  });
 });

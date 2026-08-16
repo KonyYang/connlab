@@ -15,6 +15,13 @@ import {
 import { SettingsExternalResourcesPanel } from "../features/settings/SettingsExternalResourcesPanel";
 import "../settings.css";
 
+function settingsPathValidationMessage(reason: string | null): string {
+  if (reason?.startsWith("Expected an existing file:")) {
+    return "File does not exist.";
+  }
+  return reason ?? "Invalid path";
+}
+
 export function SettingsPage(): ReactElement {
   const [resources, setResources] = useState<ExternalResource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +46,7 @@ export function SettingsPage(): ReactElement {
         };
         for (const resource of currentResources) {
           next[resource.resource_type] = resource.validation_status === "invalid"
-            ? resource.validation_failure_reason ?? "Invalid path"
+            ? settingsPathValidationMessage(resource.validation_failure_reason)
             : null;
         }
         return next;
@@ -77,7 +84,7 @@ export function SettingsPage(): ReactElement {
         ...current,
         [resourceType]:
           validated.validation_status === "invalid"
-            ? validated.validation_failure_reason ?? "Invalid path"
+            ? settingsPathValidationMessage(validated.validation_failure_reason)
             : null
       }));
     } catch (err) {
