@@ -12,9 +12,9 @@ def _read_text(relative_path: str) -> str:
     return (ROOT / relative_path).read_text(encoding="utf-8")
 
 
-def test_admin_template_is_blank_and_both_releases_ship_only_the_example() -> None:
+def test_admin_template_has_public_default_and_both_releases_ship_only_the_example() -> None:
     template = _read_text("connlab.admin.example.toml")
-    assert template == '[ltr_workbook]\nmodify_password = ""\n'
+    assert template == '[ltr_workbook]\nmodify_password = "DGLAB"\n'
 
     for relative_path in (
         "scripts/build_windows_desktop_release.ps1",
