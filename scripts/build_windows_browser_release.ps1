@@ -169,6 +169,9 @@ Invoke-TimedStep "[5/5] Preparing release folder" {
         Remove-Item -LiteralPath $releaseFolder -Recurse -Force
     }
     Move-Item -LiteralPath $pyinstallerOutput -Destination $releaseFolder
+    $releaseConfig = Join-Path $releaseFolder "config"
+    New-Item -ItemType Directory -Path $releaseConfig | Out-Null
+    Copy-Item -LiteralPath "connlab.admin.example.toml" -Destination (Join-Path $releaseConfig "connlab.admin.example.toml") -Force
 
     $stableExe = Join-Path $releaseFolder "ConnLab_Server.exe"
     if (-not (Test-Path $stableExe)) {

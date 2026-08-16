@@ -106,6 +106,9 @@ if (Test-Path $releaseFolder) {
     Remove-Item -LiteralPath $releaseFolder -Recurse -Force
 }
 Move-Item -LiteralPath $pyinstallerOutput -Destination $releaseFolder
+$releaseConfig = Join-Path $releaseFolder "config"
+New-Item -ItemType Directory -Path $releaseConfig | Out-Null
+Copy-Item -LiteralPath "connlab.admin.example.toml" -Destination (Join-Path $releaseConfig "connlab.admin.example.toml") -Force
 
 $versionedExe = Join-Path $releaseFolder "$ReleaseName.exe"
 $stableExe = Join-Path $releaseFolder "ConnLab.exe"

@@ -32,10 +32,12 @@ Before applying LTR numbers on a new computer:
 
 1. Open ConnLab Settings.
 2. Set and save `LTR registration workbook`.
-3. Set and save `LTR workbook password`.
+3. Ask the deployment administrator to provision `%PROGRAMDATA%\ConnLab\config\connlab.admin.toml` from the release's secret-free `config\connlab.admin.example.toml`.
 4. Restart ConnLab if it was already open while these settings were changed.
 
-These values are saved under `%LOCALAPPDATA%\ConnLab\config` and are kept when a newer ConnLab release folder is copied to the computer.
+Ordinary path settings remain under `%LOCALAPPDATA%\ConnLab\config`. The administrator password file remains outside the replaceable release folder and is not managed in ConnLab Settings.
+
+For a one-time upgrade from a version that stored the password in `connlab.local.toml`, the administrator must copy the value manually to the administrator file. ConnLab does not migrate or remove the old key. A future managed deployment may select the same file contract with `CONNLAB_ADMIN_CONFIG_PATH`.
 
 ## Moving To A New Version
 

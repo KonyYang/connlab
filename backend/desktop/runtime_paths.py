@@ -103,12 +103,16 @@ def build_packaged_runtime_paths(
 
 def apply_packaged_environment_defaults(paths: PackagedRuntimePaths) -> None:
     """Apply packaged-mode environment defaults without overriding user choices."""
+    program_data_root = Path(os.getenv("PROGRAMDATA", r"C:\ProgramData"))
     defaults = {
         "CONNLAB_DATA_DIR": paths.data_dir,
         "CONNLAB_PROJECTS_DIR": paths.projects_dir,
         "CONNLAB_TEMPLATES_DIR": paths.templates_dir,
         "CONNLAB_DATABASE_PATH": paths.database_path,
         "CONNLAB_LOCAL_CONFIG_PATH": paths.local_config_path,
+        "CONNLAB_ADMIN_CONFIG_PATH": (
+            program_data_root / APP_NAME / "config" / "connlab.admin.toml"
+        ),
     }
     for name, value in defaults.items():
         os.environ.setdefault(name, str(value))

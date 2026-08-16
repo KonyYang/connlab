@@ -72,3 +72,44 @@ def test_packaged_environment_defaults_do_not_override_existing_values(
     assert os.environ["CONNLAB_DATA_DIR"] == str(paths.data_dir)
     assert os.environ["CONNLAB_DATABASE_PATH"] == str(paths.database_path)
     assert os.environ["CONNLAB_LOCAL_CONFIG_PATH"] == str(paths.local_config_path)
+
+
+def test_packaged_environment_defaults_use_programdata_admin_config_without_creating_it(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    paths = PackagedRuntimePaths(
+        app_root=tmp_path / "release",
+        frontend_dist=tmp_path / "release" / "frontend_dist",
+        user_root=tmp_path / "user",
+        data_dir=tmp_path / "user" / "data",
+        projects_dir=tmp_path / "user" / "projects",
+        templates_dir=tmp_path / "user" / "templates",
+        logs_dir=tmp_path / "user" / "logs",
+        config_dir=tmp_path / "user" / "config",
+        database_path=tmp_path / "user" / "data" / "connlab.sqlite3",
+        local_config_path=tmp_path / "user" / "config" / "connlab.local.toml",
+    )
+    program_data = tmp_path / "ProgramData"
+    expected = program_data / "ConnLab" / "config" / "connlab.admin.toml"
+    monkeypatch.setenv("PROGRAMDATA", str(program_data))
+    monkeypatch.delenv("CONNLAB_ADMIN_CONFIG_PATH", raising=False)
+
+    apply_packaged_environment_defaults(paths)
+
+    assert os.environ["CONNLAB_ADMIN_CONFIG_PATH"] == str(expected)
+    assert expected.parent.exists() is False
+
+
+def test_packaged_environment_preserves_explicit_admin_config_path(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    paths = build_packaged_runtime_paths(user_root=tmp_path / "user")
+    explicit_path = tmp_path / "managed" / "admin.toml"
+    monkeypatch.setenv("CONNLAB_ADMIN_CONFIG_PATH", str(explicit_path))
+
+    apply_packaged_environment_defaults(paths)
+
+    assert os.environ["CONNLAB_ADMIN_CONFIG_PATH"] == str(explicit_path)
+    assert explicit_path.parent.exists() is False

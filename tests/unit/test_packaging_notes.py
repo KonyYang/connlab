@@ -79,3 +79,16 @@ def test_packaging_notes_are_mvp_scoped() -> None:
     assert "PyInstaller" in notes
     assert "PyWebView" in notes
     assert "CONNLAB_DATABASE_PATH" in notes
+
+
+def test_packaging_notes_document_admin_runtime_config_boundary() -> None:
+    notes = (ROOT / "docs" / "packaging_notes.md").read_text(encoding="utf-8")
+
+    for term in [
+        "%PROGRAMDATA%\\ConnLab\\config\\connlab.admin.toml",
+        "connlab.admin.example.toml",
+        "CONNLAB_ADMIN_CONFIG_PATH",
+        "ConnLab Settings",
+    ]:
+        assert term in notes
+    assert "one-time" in notes.lower()

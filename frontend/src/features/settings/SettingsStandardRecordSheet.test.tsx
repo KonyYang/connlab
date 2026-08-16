@@ -19,13 +19,10 @@ function renderPanel(onSave = vi.fn().mockResolvedValue(undefined)) {
     <SettingsExternalResourcesPanel
       resources={[standardResource]}
       savingType={null}
-      passwordStatus={null}
-      savingPassword={false}
       browseEnabled={false}
       pathValidationMessages={{} as never}
       onPathChange={vi.fn()}
       onSave={onSave}
-      onPasswordSave={vi.fn()}
       onBrowse={vi.fn().mockResolvedValue(null)}
     />
   );
