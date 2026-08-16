@@ -5,6 +5,7 @@ description: Run ConnLab's active Personal Serial Workflow V2 for task intake, r
 
 # ConnLab Personal Serial Orchestrator
 
+Status: active version-2 runtime.
 Read `AGENTS.md`, `docs/task_board.md`, the active Task/Plan and relevant evidence first. The board's
 version-2 control block and Git facts override conversation memory.
 
