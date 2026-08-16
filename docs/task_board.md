@@ -74,7 +74,7 @@
       "head_sha": "e51a674b68ca1b4d1fe193b5e10903b361ae3660",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": null,
+      "current_role": "Developer",
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -120,7 +120,12 @@
         "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_planner.md@1ca021a61f556c9e3f8e195f02fb0dd36b603dfa#7bc2ab530762c026ce09b9151153110fed0b27ad3985450266919ea2f8e3ca5d"
       ],
       "blocker_history": [],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "ff17be341b801d16b85293183fdfd9b9c1478aa07a334ac40afb1f8ffc26d057",
+        "role": "Developer",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
@@ -134,6 +139,12 @@
             "role": "Planner",
             "attempt": 1,
             "started_at": "2026-08-16T02:53:04Z",
+            "completed_at": null
+          },
+          {
+            "role": "Developer",
+            "attempt": 1,
+            "started_at": "2026-08-16T03:26:58Z",
             "completed_at": null
           }
         ],
