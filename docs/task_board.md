@@ -19,7 +19,7 @@
     "summary": "Correct Personal Serial V2 writer recovery so native-action attempts increment from each role's durable invocation/timing history, blocked scope reapproval synchronizes the exact committed validation manifest with paths, and fully rendered boards are validated before atomic replacement with zero-write failure behavior.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "planning",
+    "phase": "awaiting_user_approval",
     "scope_contract": null,
     "plan_ref": null,
     "approval_ref": null,
@@ -36,7 +36,7 @@
       "head_sha": "5ab877e3bbbf6fec78c16c31d7becf91b0b7c3b5",
       "integration_target": "master",
       "worktree_lifecycle": "absent",
-      "current_role": "Planner",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -71,14 +71,11 @@
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
-      "evidence_refs": [],
+      "evidence_refs": [
+        "docs/lane_evidence/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_WRITER_RECOVERY_CORRECTION_planner.md@cb0264a52868e08aa85ca636011b21807e81aaff#2c59c816ce66d844d64faea20417ef0d96ac0f7848a17f4781a9fbc76e1f63d3"
+      ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "7e76a4d28ccb2f07e72a4c95667ca21c0c34215cf60944a532ffcdf448be5ce5",
-        "role": "Planner",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
