@@ -111,6 +111,18 @@
           "host_id": null,
           "status": "started",
           "recorded_at": "2026-08-15T23:55:50.6350656Z"
+        },
+        {
+          "schema": "connlab.serial-invocation",
+          "version": 1,
+          "action_id": "6632b406c9f4713a65c004f6eebfcde6e8cb63ff60fbedd227a3285ce2d004ad",
+          "role": "Developer",
+          "attempt": 1,
+          "thread_id": null,
+          "agent_id": "/root/ltr_admin_runtime_config_host/developer",
+          "host_id": "/root/ltr_admin_runtime_config_host",
+          "status": "started",
+          "recorded_at": "2026-08-16T00:16:51.4291354Z"
         }
       ],
       "host_thread_id": "/root/ltr_admin_runtime_config_host",
@@ -164,7 +176,7 @@
       ],
       "blocker_history": [],
       "pending_callback": {
-        "state": "dispatch_pending",
+        "state": "callback_pending",
         "action_id": "6632b406c9f4713a65c004f6eebfcde6e8cb63ff60fbedd227a3285ce2d004ad",
         "role": "Developer",
         "attempt": 1
