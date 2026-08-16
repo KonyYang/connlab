@@ -74,7 +74,7 @@
       "head_sha": "e51a674b68ca1b4d1fe193b5e10903b361ae3660",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": null,
+      "current_role": "QA",
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -146,7 +146,12 @@
         "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_reviewer.md@536f957aa941f156e78f562e71fee1e44452fdf7#564a4c60d758c89048d2e7a6d60c5338bebb5dfa61c19d79daa4be4f5058f7d9"
       ],
       "blocker_history": [],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "4d899f39640b40097f698e165757fdaa787a793f03419f27a4dd6eff9d537060",
+        "role": "QA",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
@@ -173,6 +178,12 @@
             "attempt": 1,
             "started_at": "2026-08-16T03:40:55Z",
             "completed_at": "2026-08-16T11:48:52+08:00"
+          },
+          {
+            "role": "QA",
+            "attempt": 1,
+            "started_at": "2026-08-16T03:52:33Z",
+            "completed_at": null
           }
         ],
         "integration_completed_at": null
