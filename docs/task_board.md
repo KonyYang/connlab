@@ -84,7 +84,7 @@
       "head_sha": "163e31d455eb4af12e606288fa36d387c81f1476",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": null,
+      "current_role": "Developer",
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -137,7 +137,12 @@
         "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_planner.md@4249a74f9c672f070112226a6c37bbc705dc8f1c#6edaae2e9dedcc4a421f926392b36dd7d979bd2763bd5ae7e3ca4eb722b57937"
       ],
       "blocker_history": [],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "02a14ac9be19ea59782ca4b53c3f646bbb2672ee156ac4dff2f4ac01149d7551",
+        "role": "Developer",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
@@ -151,6 +156,12 @@
             "role": "Planner",
             "attempt": 1,
             "started_at": "2026-08-16T13:20:01Z",
+            "completed_at": null
+          },
+          {
+            "role": "Developer",
+            "attempt": 1,
+            "started_at": "2026-08-16T14:50:05Z",
             "completed_at": null
           }
         ],
