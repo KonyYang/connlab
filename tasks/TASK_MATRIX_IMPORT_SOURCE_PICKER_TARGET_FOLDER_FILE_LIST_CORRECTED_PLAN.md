@@ -1,6 +1,6 @@
 # TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_CORRECTED_PLAN
 
-Status: `planned` / `ready_for_user_approval`
+Status: `planned` / `governance_recovery_scope_amendment_pending_user_approval`
 
 ## Correction authority
 
@@ -24,7 +24,7 @@ The prior product task was production-cancelled solely because its frozen Window
 5. Keep explicit selection, Cancel, Upload other file, empty/error/loading states, standard ConnLab buttons, read-only blocking, cancel zero mutation and desktop native picker behavior.
 6. Preserve Matrix authority, preview/parser capability, database, persistence and project attachment storage.
 
-## Exact implementation/test scope (12)
+## Exact product implementation/test scope (12, frozen)
 
 - `backend/application/project_test_plan_source_candidate_service.py`
 - `backend/api/routes_project_test_plan_source_candidates.py`
@@ -39,12 +39,45 @@ The prior product task was production-cancelled solely because its frozen Window
 - `tests/unit/test_matrix_source_candidate_service.py`
 - `tests/integration/test_project_test_plan_source_candidates_api.py`
 
-The eight governance paths are the Task, Plan, fixed Planner/Developer/Reviewer/QA/Integrator evidence paths and `docs/task_board.md`, for exactly 20 approved paths total.
+## Bounded governance recovery scope (5)
+
+1. `scripts/connlab_serial_phase2.py`
+2. `scripts/connlab_serial_native_action.py`
+3. `scripts/connlab_serial_board.py`
+4. `tests/unit/test_connlab_serial_phase2_runtime.py`
+5. `tests/integration/test_connlab_serial_phase2_writer.py`
+
+These paths may only repair per-role durable attempt allocation and fail-closed pre-replace board
+validation. `NATIVE_ACTION_FAILED` must not be added to the generic bounded-fix allowlist. No role
+order, schema, callback, evidence or product contract may change.
+
+The eight governance paths remain the Task, Plan, fixed Planner/Developer/Reviewer/QA/Integrator
+evidence paths and `docs/task_board.md`. The amended approved scope is exactly 25 unique paths:
+12 frozen product implementation/test paths, 5 bounded governance recovery paths and 8 fixed
+governance paths.
+
+## Governance recovery acceptance
+
+- Native-action attempts are derived independently for each role from durable invocation and timing
+  history; `current_attempt` is not a cross-role counter.
+- Developer attempt 1 blocked and resumed must produce canonical Developer attempt 2.
+- Reviewer/QA bounded fixes increment Developer from Developer history only; first and repeated
+  Planner/Reviewer/QA/Integrator attempts do not borrow another role's count.
+- Duplicate, gapped or mismatched role timing/invocation identity is rejected before board replace.
+- `write_board` validates the complete rendered and temporary bytes before `os.replace`; any
+  validation/write failure preserves the original board bytes, HEAD, index/worktree state and
+  `changed=false`.
+- The current `NATIVE_ACTION_FAILED` scene must recover through the ordinary production writer after
+  the amended Plan is approved, without hand-built actions or manual board edits.
 
 ## Non-goals
 
 No new endpoint, database/schema/persistence, registry, attachment copy, recursive scan, parser/conversion change, Matrix authority change, desktop bridge change, upload refactor, external-file mutation, push, cleanup, reset, restore, stash, rebase, cherry-pick or ref movement.
 
-## Execution after approval
+## Execution after amendment approval
 
-Reuse the retained branch/worktree without moving it. A fresh Developer revalidates the unchanged subject and creates fresh evidence; then fresh Reviewer, mandatory QA and Integrator complete the normal local integration chain. Stop at `implemented_pending_human_review`.
+Reuse the retained branch/worktree without moving it. Canonical Approve synchronizes the exact
+25-path scope. A fresh Developer implements the bounded governance recovery and the still-approved
+source-candidate contract fix, creates a clean subject and returns fresh evidence. Fresh Reviewer,
+mandatory QA and Integrator then complete the normal local integration chain. Stop at
+`implemented_pending_human_review`.
