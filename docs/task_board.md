@@ -98,6 +98,18 @@
           "host_id": null,
           "status": "started",
           "recorded_at": "2026-08-16T13:24:46Z"
+        },
+        {
+          "schema": "connlab.serial-invocation",
+          "version": 1,
+          "action_id": "02a14ac9be19ea59782ca4b53c3f646bbb2672ee156ac4dff2f4ac01149d7551",
+          "role": "Developer",
+          "attempt": 1,
+          "thread_id": null,
+          "agent_id": "/root/matrix_source_picker_host/corrected_developer",
+          "host_id": "/root/matrix_source_picker_fresh_host",
+          "status": "started",
+          "recorded_at": "2026-08-16T14:58:56Z"
         }
       ],
       "host_thread_id": "/root/matrix_source_picker_fresh_host",
@@ -138,7 +150,7 @@
       ],
       "blocker_history": [],
       "pending_callback": {
-        "state": "dispatch_pending",
+        "state": "callback_pending",
         "action_id": "02a14ac9be19ea59782ca4b53c3f646bbb2672ee156ac4dff2f4ac01149d7551",
         "role": "Developer",
         "attempt": 1
