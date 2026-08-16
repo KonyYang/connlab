@@ -103,7 +103,16 @@ def validate_approved_plan(
 
 
 def _plan_route(root: Path, active: dict[str, Any], role: str) -> tuple[str, str, str]:
-    """Return the execution route frozen by the exact committed Plan."""
+    """Return the structured approved route, with a Plan fallback for legacy active tasks."""
+    context = active.get("complex_context")
+    routes = context.get("execution_routes") if isinstance(context, dict) else None
+    if routes is not None:
+        from scripts.connlab_serial_complex import SerialContractError, validate_execution_routes
+        try:
+            route = validate_execution_routes(routes)[role]
+        except (KeyError, SerialContractError) as exc:
+            _blocked("BLOCKED_EVIDENCE_INVALID", "Structured execution routes are invalid.")
+        return route["model"], route["reasoning_effort"], route["reason"]
     plan = _committed_plan_bytes(
         root, active.get("plan_ref"), code="BLOCKED_EVIDENCE_INVALID"
     )

@@ -337,6 +337,7 @@ def active_snapshot(control: dict[str, Any] | None, primary_head: str | None = N
         "pending_state": pending.get("state"),
         "blocker_code": blocker.get("code"),
         "approved_code_paths": approved_paths or [],
+        "execution_routes": context.get("execution_routes"),
         "developer_subject_commit": context.get("developer_subject_commit"),
         "reviewer_subject_commit": context.get("reviewer_subject_commit"),
         "qa_subject_commit": context.get("qa_subject_commit"),

@@ -89,7 +89,8 @@ evidence reference's committed byte hash.
 
 Before that transition, repository verification treats Planner evidence as the pre-host prefix and
 dynamically pairs each later evidence ref with its durable Developer/Reviewer/QA/Integrator invocation.
-It revalidates fixed path, exact identity/model headers, frozen committed-Plan route, raw SHA-256,
+It revalidates fixed path, exact identity/model headers, the board's structured approved route (or the
+frozen committed-Plan route only for a legacy active task without `execution_routes`), raw SHA-256,
 single-parent evidence-only topology and ordered primary ancestry. The merge first parent is the final
 callback board commit and the second parent is the unchanged task subject; no execution evidence commit
 may be an ancestor of that subject. Code-mixed evidence, unknown commits, dirty or moved worktrees, and
@@ -146,7 +147,10 @@ Before an initial version-2 Approve writes any board byte, the writer verifies t
 path/commit/raw SHA-256, requires exactly one embedded approved-request object equal to the supplied
 object, and resolves the frozen route for Developer, Reviewer, QA, and Integrator. Any missing,
 duplicate, unparseable, byte-mismatched, or semantically different Plan fact returns
-`BLOCKED_PLAN_INVALID` with `changed=false`. Callback-time evidence verification remains a
+`BLOCKED_PLAN_INVALID` with `changed=false`. The same atomic Approve transition stores those routes as
+`complex_context.execution_routes`; that structured board field becomes the model-route authority for
+dispatch and callback verification. Existing active tasks without the optional field remain readable
+and use their exact committed Plan as a legacy fallback. Callback-time evidence verification remains a
 defense-in-depth check, not the first route validation.
 
 ## Routing, evidence, and bounded checks

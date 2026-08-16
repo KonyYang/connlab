@@ -166,6 +166,14 @@ def test_approve_accepts_a_fully_preflighted_committed_plan(tmp_path: Path) -> N
     _, board, _ = parse_board((repo / "docs/task_board.md").read_bytes())
     assert board["active"]["plan_ref"] == plan_ref
     assert board["active"]["phase"] == "development"
+    assert board["active"]["complex_context"]["execution_routes"] == {
+        role: {
+            "model": "gpt-5.6-sol",
+            "reasoning_effort": "medium",
+            "reason": "risk:authority",
+        }
+        for role in ("Developer", "Reviewer", "QA", "Integrator")
+    }
 
 
 def test_inspect_exposes_the_exact_next_command_contract(tmp_path: Path) -> None:

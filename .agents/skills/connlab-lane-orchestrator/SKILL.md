@@ -62,7 +62,9 @@ another schema or bypass the entry with direct request JSON.
 Before building any command, read `inspect.next_action.command_contract` or call
 `connlab_serial_payload.py contract`; these executable contracts are the argument/schema source of truth.
 Approve is allowed to mutate the board only after the writer has verified the committed Plan bytes,
-its exact embedded approved-request object, and every execution-role route.
+its exact embedded approved-request object, and every execution-role route. For newly approved tasks,
+the board's structured `complex_context.execution_routes` is then the route authority; reparse Plan
+text only when recovering a legacy active task that has no structured routes.
 
 ## Supporting engineering skills
 

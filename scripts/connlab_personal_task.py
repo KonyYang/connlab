@@ -288,8 +288,9 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
             raise Blocked("BLOCKED_PLAN_REQUIRED", "Plan reference format is invalid.")
         if not args.approval_ref:
             raise Blocked("BLOCKED_APPROVAL_REQUIRED", "Explicit User approval is required.")
+        approved_routes = None
         if is_v2_complex and not blocked_reapproval:
-            validate_approved_plan(root, args.plan_ref, approved)
+            approved_routes = validate_approved_plan(root, args.plan_ref, approved)
         if blocked_reapproval:
             previous = active["scope_contract"]; old_paths, new_paths = set(previous["may_touch"]), set(scope["may_touch"])
             if scope == previous:
@@ -308,6 +309,10 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         active.update(summary=approved["summary"], scope_contract=scope, plan_ref=args.plan_ref, approval_ref=args.approval_ref, phase=target_phase, updated_at=now())
         if is_v2_complex:
             active["complex_context"]["approved_code_paths"] = scope["may_touch"]
+            active["complex_context"]["execution_routes"] = {
+                role: {"model": route[0], "reasoning_effort": route[1], "reason": route[2]}
+                for role, route in approved_routes.items()
+            }
         return "ALLOW_APPROVE", True, "Approved scope bound to active task."
     if command == "mark-review":
         if control["state"] == "implemented_pending_human_review":

@@ -31,6 +31,8 @@ FORBIDDEN_KEYS = {
     "push_or_release",
 }
 DECISION_KEYS = REQUEST_KEYS - {"schema", "version", "task_id", "summary"}
+EXECUTION_ROLES = {"Developer", "Reviewer", "QA", "Integrator"}
+EXECUTION_ROUTE_KEYS = {"model", "reasoning_effort", "reason"}
 
 
 class SerialContractError(ValueError):
@@ -158,6 +160,17 @@ def validate_blocker_history(value: Any) -> list[dict[str, Any]]:
             validate_complex_blocker(item.get("blocker"))
         except SerialContractError as exc:
             raise SerialContractError("BLOCKED_SCHEMA_INVALID", "Historical complex blocker is invalid.") from exc
+    return value
+
+
+def validate_execution_routes(value: Any) -> dict[str, dict[str, str]]:
+    if not isinstance(value, dict) or set(value) != EXECUTION_ROLES:
+        _contract_error("BLOCKED_SCHEMA_INVALID", "Execution routes must cover every execution role exactly once.")
+    for role, route in value.items():
+        if not isinstance(route, dict) or set(route) != EXECUTION_ROUTE_KEYS:
+            _contract_error("BLOCKED_SCHEMA_INVALID", f"Execution route keys are invalid: {role}.")
+        if not all(isinstance(route.get(key), str) and route[key].strip() for key in EXECUTION_ROUTE_KEYS):
+            _contract_error("BLOCKED_SCHEMA_INVALID", f"Execution route values are incomplete: {role}.")
     return value
 def callback_transition(value: Any) -> dict[str, Any]:
     keys = {"schema", "version", "task_id", "role", "status", "subject_commit", "evidence", "next", "blocker"}
