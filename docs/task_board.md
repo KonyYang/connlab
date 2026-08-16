@@ -19,7 +19,7 @@
     "summary": "Simplify the Matrix Import source chooser to list only selectable .doc, .docx, and .pdf files from the resolved intake-attachment or Submitted Material target folder; show only a concise source-location title and filenames, retain Cancel and Upload other file with standard ConnLab button styling, preserve explicit selection, empty/error states, read-only blocking, desktop behavior, and existing preview authority.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "blocked",
     "scope_contract": {
       "may_touch": [
         "backend/application/project_test_plan_source_candidate_service.py",
@@ -71,7 +71,43 @@
     "activation_parent_sha": "900c26a78009264ab0fc06f2c038e50d6d280869",
     "activated_at": "2026-08-16T08:01:05Z",
     "updated_at": "2026-08-16T08:45:35Z",
-    "blocker": null,
+    "blocker": {
+      "schema": "connlab.serial-task-blocker",
+      "version": 1,
+      "code": "DEVELOPER_BLOCKED",
+      "stage": "development",
+      "reason": "The frozen validation manifest cannot execute its npm argv on Windows with the production shell=False runner; authority correction is required.",
+      "dirty_paths": [],
+      "failed_validation": {
+        "schema": "connlab.serial-failure-proof",
+        "version": 1,
+        "operation": "Developer validation manifest",
+        "command": [
+          "py",
+          "-m",
+          "scripts.connlab_validation_manifest",
+          "run",
+          "--authority-root",
+          "D:\\PythonProject\\connlab",
+          "--from-board",
+          "--role",
+          "Developer",
+          "--allow-permission",
+          "pytest_temp"
+        ],
+        "exit_code": null,
+        "summary": "BLOCKED_MANIFEST_INVALID: [WinError 2] The system cannot find the file specified because the frozen Windows frontend argv uses npm while shell=False requires npm.cmd.",
+        "recorded_at": "2026-08-16T09:16:09Z"
+      },
+      "subject_commit": "163e31d455eb4af12e606288fa36d387c81f1476",
+      "evidence_ref": "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_developer.md@2dc03e7376fadbab8b975f519b5c5d80786f535f#b3e6cf7152fed7a9c01165cc747d3c7b21e4bf5ae1da75eb4499eb2f8aa0aa22",
+      "native_action_id": null,
+      "related_ids": [],
+      "retryable": true,
+      "requires_user": true,
+      "resume_phase": "development",
+      "recorded_at": "2026-08-16T09:16:09Z"
+    },
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
@@ -81,7 +117,7 @@
       "head_sha": "900c26a78009264ab0fc06f2c038e50d6d280869",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -143,15 +179,11 @@
       "qa_subject_commit": null,
       "integrated_commit": null,
       "evidence_refs": [
-        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_planner.md@6228775d12f8a1f165723f37a1c70ae1b29e8bc3#06a91a8b2b634708ff39ff92a4ed51557d9a3f5b6528958f6a517c135585de76"
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_planner.md@6228775d12f8a1f165723f37a1c70ae1b29e8bc3#06a91a8b2b634708ff39ff92a4ed51557d9a3f5b6528958f6a517c135585de76",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_developer.md@2dc03e7376fadbab8b975f519b5c5d80786f535f#b3e6cf7152fed7a9c01165cc747d3c7b21e4bf5ae1da75eb4499eb2f8aa0aa22"
       ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "906028523892a5dc6dffd36b149f79dc7c97e712f387493eb4d6f08d1eae8d4c",
-        "role": "Developer",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
@@ -171,7 +203,7 @@
             "role": "Developer",
             "attempt": 1,
             "started_at": "2026-08-16T08:52:57Z",
-            "completed_at": null
+            "completed_at": "2026-08-16T17:15:40+08:00"
           }
         ],
         "integration_completed_at": null
