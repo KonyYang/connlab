@@ -91,12 +91,12 @@
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
-      "task_branch": null,
-      "task_worktree": null,
-      "base_sha": "ad42ae649b9ebda488ffb75088db2cf04bc5857d",
-      "head_sha": "ad42ae649b9ebda488ffb75088db2cf04bc5857d",
+      "task_branch": "codex/task-ltr-workbook-admin-runtime-config",
+      "task_worktree": "D:\\PythonProject\\connlab-worktrees\\task-ltr-workbook-admin-runtime-config",
+      "base_sha": "4540da65516b4c0fd2a0e7442f05ada8bfc8f917",
+      "head_sha": "ff01fb1d725c98fb58a3e343cf241076853e8cfa",
       "integration_target": "master",
-      "worktree_lifecycle": "absent",
+      "worktree_lifecycle": "ready",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -113,8 +113,8 @@
           "recorded_at": "2026-08-15T23:55:50.6350656Z"
         }
       ],
-      "host_thread_id": null,
-      "host_id": null,
+      "host_thread_id": "/root/ltr_admin_runtime_config_host",
+      "host_id": "/root/ltr_admin_runtime_config_host",
       "approved_code_paths": [
         ".gitignore",
         "backend/api/main.py",
@@ -163,12 +163,7 @@
         "docs/lane_evidence/TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN_planner.md@dac9f6c6bfe203e8d4e5b6e57a01645ee8b85dcf#3af1bdc08bcb6971e11f34422c9f64839e980f4414ea911b5cef0788d9e78271"
       ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "host_creation_pending",
-        "action_id": "40699798c3239e905bc19ed9c634814b9cca02023c26cda00909c4110bcc7c82",
-        "role": "Host",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
