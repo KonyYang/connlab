@@ -30,8 +30,11 @@ explicit selection, `Cancel`, and `Upload other file` using existing ConnLab con
    registered-asset default.
 2. Enumerate direct regular children only, case-insensitively restricted to `.doc`, `.docx`, `.pdf`.
 3. Sort by filename and include unregistered files without copying or registering them.
-4. Use an opaque deterministic identity; selection must recompute the current directory and accept only
-   an exact currently enumerated identity. Never accept a client path.
+4. Use an opaque deterministic identity derived from the exact project ID, source kind, canonical
+   resolved-directory identity, and filename. The directory path participates only in the digest and
+   is never exposed. Selection must recompute the current directory and accept only an exact currently
+   enumerated identity; a directory change with the same filename invalidates the old identity. Never
+   accept a client path.
 5. Title the chooser `Submitted Material files`, `Email attachment files`, or `Project source files`.
 6. Candidate rows show only filenames. Remove recommendation, type/source, reason, availability and
    visible `Use this file:` copy.
@@ -67,7 +70,8 @@ refactor, automatic selection/import, generalized modal framework, public-drive 
 
 - Browser list contains only immediate `.doc`, `.docx`, `.pdf` files from the resolved folder.
 - Source title and filename-only selection render with standard controls; removed metadata is absent.
-- Stale, foreign, moved, escaped, unsupported, nested, or ambiguous identities fail closed.
+- Stale, foreign, moved, directory-changed/same-name, escaped, unsupported, nested, or ambiguous
+  identities fail closed.
 - Empty/error, upload fallback, cancel zero-state-change, read-only zero-call, explicit preview selection,
   and desktop behavior pass targeted tests and deterministic browser smoke.
 - Targeted backend/frontend tests, production build, Python compilation, exact scope, clean worktrees,

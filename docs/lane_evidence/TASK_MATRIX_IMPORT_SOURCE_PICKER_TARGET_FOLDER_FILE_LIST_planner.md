@@ -26,12 +26,17 @@ BLOCKER: none
   `resolved_directory` view on the existing endpoints.
 - Enumerate direct `.doc/.docx/.pdf` files with namespaced opaque IDs and exact re-enumeration; add no
   persistence, endpoint, registry, path input, parser behavior or external write.
+- The reviewed opaque ID binds project ID, source kind, canonical resolved-directory identity and
+  filename. Directory identity is digest-only and never exposed; changing to another same-kind directory
+  invalidates the old selection even when the new folder contains the same filename.
 - Simplify the browser chooser to a source-kind title and filename-only buttons; retain standard
   Cancel/Upload actions, actionable states, read-only gating and desktop behavior.
 - Exact implementation/test scope is 12 paths within the submitted 20-path envelope.
 - Execution roles freeze to `gpt-5.6-sol / medium / risk:api_contract`.
 - Pre-approval machine validation corrected only the route-table encoding to the production-readable
   `model / effort / reason` form; the approved request, scope, behavior and route values are unchanged.
+- User review revision P0 is closed without scope expansion: canonical directory identity is part of
+  the opaque digest, and the Plan calls this an existing GET/POST contract extension, not a new endpoint.
 
 ## Design influence
 

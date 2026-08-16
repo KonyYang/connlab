@@ -27,10 +27,12 @@ This creates no database record, stored token, copied file, preference, registry
 - Require the resolved parent to remain the exact preferred directory; reject escaping links, nested
   paths, directories, unsupported suffixes, and missing/unreadable entries.
 - Sort by `(filename.casefold(), filename)` without ranking or recommendation.
-- Namespace opaque directory IDs with `folder-` and derive them from exact project ID, source kind and
-  filename. Do not expose or accept a filesystem path.
+- Namespace opaque directory IDs with `folder-` and derive them from exact project ID, source kind,
+  canonical resolved-directory identity, and exact filename. Canonical directory identity participates
+  only in the digest; do not expose or accept a filesystem path.
 - Selection recomputes the preferred directory and candidates. Stale, foreign, renamed, deleted,
-  collided, escaped, or source-priority-changed IDs fail before preview.
+  collided, escaped, source-priority-changed, or same-source-kind directory-changed IDs fail before
+  preview, including when the new directory contains an identically named file.
 - Preserve the response field name `source_asset_id` for client compatibility. Directory candidates use
   neutral internal metadata; the Matrix browser renders only `original_name`.
 - Non-`folder-` IDs continue through the unchanged registered-asset path; no namespace fallback.
@@ -79,6 +81,9 @@ folder tokens, database/schema/persistence, path registry, attachment copying, r
 conversion change, desktop bridge change, Matrix authority change, an arbitrary client path, or any
 unapproved file. Filesystem access errors do not silently fall back to another directory.
 
+The `resolved_directory` query is an extension of the existing GET/POST API contract; it adds no API
+endpoint. Runtime selection never accepts an old ID after canonical directory identity changes.
+
 ## 6. Validation manifest
 
 ```json
@@ -88,6 +93,10 @@ unapproved file. Filesystem access errors do not silently fall back to another d
 QA additionally performs deterministic browser smoke at desktop and 514 px for source title,
 filename-only rows, absent legacy metadata, standard buttons, explicit selection, preview, upload,
 empty/error, cancel, read-only, focus and overflow. No real external file is mutated.
+
+Backend regressions must include two different canonical resolved directories of the same source kind
+containing the same filename: an ID issued for the first directory is rejected after resolution moves
+to the second directory. They also prove that no canonical directory text appears in the client token.
 
 ## 7. Model routing
 
