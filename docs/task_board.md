@@ -19,7 +19,7 @@
     "summary": "Reuse the retained clean Matrix source picker implementation subject and complete the same target-folder filename-only chooser task under a corrected committed Plan whose only validation change is Windows npm.cmd instead of npm.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "planning",
+    "phase": "awaiting_user_approval",
     "scope_contract": null,
     "plan_ref": null,
     "approval_ref": null,
@@ -36,7 +36,7 @@
       "head_sha": "fd228ae0f69be6584c981c3cfe00668865f2004d",
       "integration_target": "master",
       "worktree_lifecycle": "absent",
-      "current_role": "Planner",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -85,14 +85,11 @@
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
-      "evidence_refs": [],
+      "evidence_refs": [
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_CORRECTED_PLAN_planner.md@e764e3d913fd83b0e284b67cf31c636113afbcb4#9dc10b25932cc6ceda1fbc6d77dd24abcdd19fc9b8f2e78a4a5ee6328d021dc1"
+      ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "3e26244f4519e2823e1b716c8e7386defbb7a8ca73a4faf0cb28d03152a6f750",
-        "role": "Planner",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
