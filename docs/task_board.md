@@ -16,16 +16,61 @@
   "state": "running",
   "active": {
     "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_CORRECTED_PLAN",
-    "summary": "Reuse the retained clean Matrix source picker implementation subject and complete the same target-folder filename-only chooser task under a corrected committed Plan whose only validation change is Windows npm.cmd instead of npm.",
+    "summary": "Simplify the Matrix Import source chooser to list only selectable .doc, .docx, and .pdf files from the resolved intake-attachment or Submitted Material target folder; show only a concise source-location title and filenames, retain Cancel and Upload other file with standard ConnLab button styling, preserve explicit selection, empty/error states, read-only blocking, desktop behavior, and existing preview authority.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "awaiting_user_approval",
-    "scope_contract": null,
-    "plan_ref": null,
-    "approval_ref": null,
+    "phase": "development",
+    "scope_contract": {
+      "may_touch": [
+        "backend/application/project_test_plan_source_candidate_service.py",
+        "backend/api/routes_project_test_plan_source_candidates.py",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.tsx",
+        "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx",
+        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.ts",
+        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
+        "frontend/src/workbench.css",
+        "tests/unit/test_matrix_source_candidate_service.py",
+        "tests/integration/test_project_test_plan_source_candidates_api.py",
+        "tasks/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_CORRECTED_PLAN.md",
+        "docs/task_matrix_import_source_picker_target_folder_file_list_corrected_plan_plan.md",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_CORRECTED_PLAN_planner.md",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_CORRECTED_PLAN_developer.md",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_CORRECTED_PLAN_reviewer.md",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_CORRECTED_PLAN_qa.md",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_CORRECTED_PLAN_integrator.md",
+        "docs/task_board.md"
+      ],
+      "expected_file_count": 20,
+      "classification_reason": "Planned/complex because the product change extends the existing project source-candidate API contract while preserving its registered-asset default, crosses backend and frontend, and requires independent review, QA, integration, build and browser verification.",
+      "targeted_validation": [
+        "py -m pytest tests/unit/test_matrix_source_candidate_service.py tests/integration/test_project_test_plan_source_candidates_api.py tests/integration/test_project_test_plan_preview_api.py -q",
+        "npm.cmd test -- --run src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx src/features/matrix-editor/MatrixEditorWorkspace.test.tsx (cwd frontend)",
+        "npm.cmd run build (cwd frontend)",
+        "py -m py_compile backend/application/project_test_plan_source_candidate_service.py backend/api/routes_project_test_plan_source_candidates.py",
+        "git diff --check",
+        "deterministic browser smoke at desktop and 514px for source title, filename-only allowed rows, absent legacy metadata, standard buttons, explicit selection, upload fallback, empty/error, cancel zero mutation, read-only zero calls and unchanged desktop picker",
+        "verify exact approved scope, opaque candidate identity, containment, stale/foreign rejection, clean worktrees and no database, persistence, parser, Matrix authority, public-drive, attachment-copy or external-file mutation"
+      ],
+      "forbidden_categories": {
+        "api_contract": true,
+        "database": false,
+        "schema_or_migration": false,
+        "persistence": false,
+        "authority": false,
+        "public_drive_workflow": false,
+        "business_rule_semantics": false,
+        "destructive_action": false,
+        "external_mutation": false
+      }
+    },
+    "plan_ref": "docs/task_matrix_import_source_picker_target_folder_file_list_corrected_plan_plan.md@e764e3d913fd83b0e284b67cf31c636113afbcb4#6da61c1eaf90df53537743a1c7fdfbcd556e9299fd531dd29186a448b61c1065",
+    "approval_ref": "User explicitly approved the corrected Plan ref and approved-request SHA-256 in the current conversation on 2026-08-16.",
     "activation_parent_sha": "fd228ae0f69be6584c981c3cfe00668865f2004d",
     "activated_at": "2026-08-16T09:41:31Z",
-    "updated_at": "2026-08-16T09:41:31Z",
+    "updated_at": "2026-08-16T09:58:33Z",
     "blocker": null,
     "validation": null,
     "complex_context": {
@@ -104,6 +149,132 @@
           }
         ],
         "integration_completed_at": null
+      },
+      "execution_routes": {
+        "Developer": {
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium",
+          "reason": "risk:api_contract"
+        },
+        "Integrator": {
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium",
+          "reason": "risk:api_contract"
+        },
+        "QA": {
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium",
+          "reason": "risk:api_contract"
+        },
+        "Reviewer": {
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "medium",
+          "reason": "risk:api_contract"
+        }
+      },
+      "validation_manifest": {
+        "schema": "connlab.validation-manifest",
+        "version": 1,
+        "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_CORRECTED_PLAN",
+        "checks": [
+          {
+            "id": "source-folder-candidate-contract",
+            "kind": "targeted",
+            "run_for": [
+              "Developer",
+              "Reviewer",
+              "QA"
+            ],
+            "cwd": ".",
+            "argv": [
+              "py",
+              "-m",
+              "pytest",
+              "tests/unit/test_matrix_source_candidate_service.py",
+              "tests/integration/test_project_test_plan_source_candidates_api.py",
+              "tests/integration/test_project_test_plan_preview_api.py",
+              "-q"
+            ],
+            "timeout_seconds": 900,
+            "permission": "pytest_temp",
+            "required": true
+          },
+          {
+            "id": "matrix-source-picker-ui",
+            "kind": "targeted",
+            "run_for": [
+              "Developer",
+              "Reviewer",
+              "QA"
+            ],
+            "cwd": "frontend",
+            "argv": [
+              "npm.cmd",
+              "test",
+              "--",
+              "--run",
+              "src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx",
+              "src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx",
+              "src/features/matrix-editor/MatrixEditorWorkspace.test.tsx"
+            ],
+            "timeout_seconds": 900,
+            "permission": "workspace",
+            "required": true
+          },
+          {
+            "id": "frontend-production-build",
+            "kind": "full",
+            "run_for": [
+              "Developer",
+              "QA"
+            ],
+            "cwd": "frontend",
+            "argv": [
+              "npm.cmd",
+              "run",
+              "build"
+            ],
+            "timeout_seconds": 900,
+            "permission": "workspace",
+            "required": true
+          },
+          {
+            "id": "source-candidate-compile",
+            "kind": "static",
+            "run_for": [
+              "Developer",
+              "QA"
+            ],
+            "cwd": ".",
+            "argv": [
+              "py",
+              "-m",
+              "py_compile",
+              "backend/application/project_test_plan_source_candidate_service.py",
+              "backend/api/routes_project_test_plan_source_candidates.py"
+            ],
+            "timeout_seconds": 120,
+            "permission": "workspace",
+            "required": true
+          },
+          {
+            "id": "scope-diff-check",
+            "kind": "static",
+            "run_for": [
+              "Developer",
+              "QA"
+            ],
+            "cwd": ".",
+            "argv": [
+              "git",
+              "diff",
+              "--check"
+            ],
+            "timeout_seconds": 120,
+            "permission": "workspace",
+            "required": true
+          }
+        ]
       }
     }
   },
