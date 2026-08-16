@@ -19,7 +19,7 @@
     "summary": "Complete the same LTR workbook administrator runtime configuration goal through a corrected production-parser-readable Plan and a fresh normal V2 role/evidence chain while non-destructively reusing the retained clean implementation subject ff01fb1d725c98fb58a3e343cf241076853e8cfa.",
     "kind": "planned",
     "classification": "needs_discovery",
-    "phase": "qa",
+    "phase": "integration",
     "scope_contract": {
       "may_touch": [
         ".gitignore",
@@ -97,7 +97,7 @@
       "head_sha": "ff01fb1d725c98fb58a3e343cf241076853e8cfa",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "QA",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -193,20 +193,16 @@
       ],
       "developer_subject_commit": "ff01fb1d725c98fb58a3e343cf241076853e8cfa",
       "reviewer_subject_commit": "ff01fb1d725c98fb58a3e343cf241076853e8cfa",
-      "qa_subject_commit": null,
+      "qa_subject_commit": "ff01fb1d725c98fb58a3e343cf241076853e8cfa",
       "integrated_commit": null,
       "evidence_refs": [
         "docs/lane_evidence/TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN_planner.md@dac9f6c6bfe203e8d4e5b6e57a01645ee8b85dcf#3af1bdc08bcb6971e11f34422c9f64839e980f4414ea911b5cef0788d9e78271",
         "docs/lane_evidence/TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN_developer.md@bfe77740bff6866401fcbd0d52c20df281d1513b#f52e044fec29732011c40506d0b9a4806398d1f796d3fff3666ea2428d2a7d42",
-        "docs/lane_evidence/TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN_reviewer.md@205b52726d07e800f0e0e4fac961fcd876fc0bf2#d7a14d4684183b7b7d04f273c34170ca367ed1fc3958cd5bf17a329085b12910"
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN_reviewer.md@205b52726d07e800f0e0e4fac961fcd876fc0bf2#d7a14d4684183b7b7d04f273c34170ca367ed1fc3958cd5bf17a329085b12910",
+        "docs/lane_evidence/TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN_qa.md@25bdaa83bf4089780256af8b4fa2a556c28e2854#c3a8913d388d97758ea173d8aac1ca1e2253c5f682eb159e744240960defcb07"
       ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "9447fa264b07b29ed15f809650bba1c2f9524ad7a57d601f0c99e849953d7e71",
-        "role": "QA",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null
