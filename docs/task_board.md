@@ -13,13 +13,13 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "running",
+  "state": "implemented_pending_human_review",
   "active": {
     "task_id": "TASK_SETTINGS_FILE_PATH_VALIDATION_COPY_CLARITY",
     "summary": "On the Settings File Locations page, replace path-repeating missing-file validation text with a concise user-facing message that clearly states the file does not exist, while preserving existing validation behavior.",
     "kind": "simple",
     "classification": "simple",
-    "phase": "implementation",
+    "phase": "human_review",
     "scope_contract": {
       "schema": "connlab.serial-task-request",
       "version": 1,
@@ -54,9 +54,39 @@
     "approval_ref": null,
     "activation_parent_sha": "7bb62f033416fc4a0d5c9b9a8cb05c54db2bdb39",
     "activated_at": "2026-08-16T07:33:25Z",
-    "updated_at": "2026-08-16T07:33:25Z",
+    "updated_at": "2026-08-16T07:36:04Z",
     "blocker": null,
-    "validation": null,
+    "validation": {
+      "schema": "connlab.personal-task-validation",
+      "version": 1,
+      "status": "passed",
+      "checks": [
+        {
+          "command": "npm test -- --run src/pages/SettingsPage.test.tsx",
+          "exit_code": 0,
+          "summary": "2 passed"
+        },
+        {
+          "command": "npm run build",
+          "exit_code": 0,
+          "summary": "passed with existing non-blocking chunk-size advisory"
+        },
+        {
+          "command": "git diff --check",
+          "exit_code": 0,
+          "summary": "passed"
+        }
+      ],
+      "observed_paths": [
+        "frontend/src/pages/SettingsPage.tsx",
+        "frontend/src/pages/SettingsPage.test.tsx"
+      ],
+      "manual_checks": [
+        "Missing-file validation title is File does not exist. and does not repeat the configured path.",
+        "Other validation failure messages remain unchanged."
+      ],
+      "recorded_at": "2026-08-16T07:36:04Z"
+    },
     "complex_context": null
   },
   "queue": [],
