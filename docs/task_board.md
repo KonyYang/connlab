@@ -13,111 +13,15 @@
   "version": 2,
   "mode": "personal_serial",
   "wip_limit": 1,
-  "state": "implemented_pending_human_review",
-  "active": {
-    "task_id": "TASK_SETTINGS_FILE_PATH_VALIDATION_COPY_CLARITY",
-    "summary": "On the Settings File Locations page, replace path-repeating missing-file validation text with a concise user-facing message that clearly states the file does not exist, while preserving existing validation behavior.",
-    "kind": "simple",
-    "classification": "simple",
-    "phase": "human_review",
-    "scope_contract": {
-      "schema": "connlab.serial-task-request",
-      "version": 1,
-      "task_id": "TASK_SETTINGS_FILE_PATH_VALIDATION_COPY_CLARITY",
-      "summary": "On the Settings File Locations page, replace path-repeating missing-file validation text with a concise user-facing message that clearly states the file does not exist, while preserving existing validation behavior.",
-      "root_cause_clear": true,
-      "expected_result_clear": true,
-      "may_touch": [
-        "frontend/src/pages/SettingsPage.tsx",
-        "frontend/src/pages/SettingsPage.test.tsx",
-        "docs/task_board.md"
-      ],
-      "targeted_validation": [
-        "cd frontend; npm test -- --run src/pages/SettingsPage.test.tsx",
-        "git diff --check"
-      ],
-      "requires_independent_review": false,
-      "forbidden_categories": {
-        "api_contract": false,
-        "database": false,
-        "schema_or_migration": false,
-        "persistence": false,
-        "authority": false,
-        "public_drive_workflow": false,
-        "business_rule_semantics": false,
-        "destructive_action": false,
-        "external_mutation": false,
-        "push_or_release": false
-      }
-    },
-    "plan_ref": null,
-    "approval_ref": null,
-    "activation_parent_sha": "7bb62f033416fc4a0d5c9b9a8cb05c54db2bdb39",
-    "activated_at": "2026-08-16T07:33:25Z",
-    "updated_at": "2026-08-16T07:36:04Z",
-    "blocker": null,
-    "validation": {
-      "schema": "connlab.personal-task-validation",
-      "version": 1,
-      "status": "passed",
-      "checks": [
-        {
-          "command": "npm test -- --run src/pages/SettingsPage.test.tsx",
-          "exit_code": 0,
-          "summary": "2 passed"
-        },
-        {
-          "command": "npm run build",
-          "exit_code": 0,
-          "summary": "passed with existing non-blocking chunk-size advisory"
-        },
-        {
-          "command": "git diff --check",
-          "exit_code": 0,
-          "summary": "passed"
-        }
-      ],
-      "observed_paths": [
-        "frontend/src/pages/SettingsPage.tsx",
-        "frontend/src/pages/SettingsPage.test.tsx"
-      ],
-      "manual_checks": [
-        "Missing-file validation title is File does not exist. and does not repeat the configured path.",
-        "Other validation failure messages remain unchanged."
-      ],
-      "recorded_at": "2026-08-16T07:36:04Z"
-    },
-    "complex_context": null
-  },
+  "state": "idle",
+  "active": null,
   "queue": [],
   "next_enqueue_sequence": 1,
   "last_closed": {
-    "task_id": "TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP",
-    "disposition": "retained",
+    "task_id": "TASK_SETTINGS_FILE_PATH_VALIDATION_COPY_CLARITY",
+    "disposition": "closed after human review",
     "decision_ref": "关闭",
-    "integration_commit": "7297c1e9c233211165c966729802c1c9178d0173",
-    "integrator_evidence_ref": "docs/lane_evidence/TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP_integrator.md@93771222ce61d0b70cba9590a7db9a233397f1d7#58d540912b6c17ea602ef12d39b64d83c2f0edff34e7900b812d054385b0d628",
-    "retained_resources": {
-      "thread_id": "/root/ltr_public_default_bootstrap_host",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\task-ltr-workbook-public-default-admin-config-bootstrap",
-      "branch": "codex/task-ltr-workbook-public-default-admin-config-bootstrap",
-      "head_sha": "503a471a47cd69180822a6e3963c133a4fb68e81"
-    },
-    "closed_at": "2026-08-16T07:01:18Z",
-    "timing_summary": {
-      "seconds": {
-        "planning": null,
-        "host": 367,
-        "Developer": 772,
-        "Reviewer": 477,
-        "QA": 590,
-        "Integrator": 569,
-        "integration": 126,
-        "overall": 4992
-      },
-      "automatic_retry_count": 0,
-      "retry_reasons": []
-    }
+    "closed_at": "2026-08-16T07:37:38Z"
   },
   "retained_history": [
     {
