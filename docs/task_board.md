@@ -100,6 +100,18 @@
           "host_id": "/root/ltr_public_default_bootstrap_host",
           "status": "started",
           "recorded_at": "2026-08-16T03:27:20Z"
+        },
+        {
+          "schema": "connlab.serial-invocation",
+          "version": 1,
+          "action_id": "5e0a6d00185acdad6d862c60095e09dd894bca6901c4b34d2f4acc04683a3a9b",
+          "role": "Reviewer",
+          "attempt": 1,
+          "thread_id": null,
+          "agent_id": "/root/ltr_public_default_bootstrap_reviewer",
+          "host_id": "/root/ltr_public_default_bootstrap_host",
+          "status": "started",
+          "recorded_at": "2026-08-16T03:41:28Z"
         }
       ],
       "host_thread_id": "/root/ltr_public_default_bootstrap_host",
@@ -134,7 +146,7 @@
       ],
       "blocker_history": [],
       "pending_callback": {
-        "state": "dispatch_pending",
+        "state": "callback_pending",
         "action_id": "5e0a6d00185acdad6d862c60095e09dd894bca6901c4b34d2f4acc04683a3a9b",
         "role": "Reviewer",
         "attempt": 1
