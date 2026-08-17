@@ -16,6 +16,7 @@ describe("chooseMatrixImportSource", () => {
     vi.clearAllMocks();
     bridgeMocks.hasMatrixImportSourcePicker.mockReturnValue(true);
     apiMocks.listProjectTestPlanSourceCandidates.mockResolvedValue({
+      view: "registered_assets",
       preferred_import_directory: "D:/projects/DL/Submitted Material",
     });
   });
@@ -34,16 +35,22 @@ describe("chooseMatrixImportSource", () => {
   it("keeps browser upload when the desktop bridge is unavailable", async () => {
     bridgeMocks.hasMatrixImportSourcePicker.mockReturnValue(false);
     apiMocks.listProjectTestPlanSourceCandidates.mockResolvedValue({
-      candidates: [{ source_asset_id: "source-1" }],
+      view: "resolved_directory",
+      source_title: "Submitted Material files",
+      candidates: [{ candidate_id: "source-1", file_name: "matrix.docx" }],
       warnings: ["Review source"],
     });
     await expect(chooseMatrixImportSource("P1")).resolves.toEqual({
       kind: "browser",
-      candidates: [{ source_asset_id: "source-1" }],
+      sourceTitle: "Submitted Material files",
+      candidates: [{ candidate_id: "source-1", file_name: "matrix.docx" }],
       warnings: ["Review source"],
       error: null,
     });
-    expect(apiMocks.listProjectTestPlanSourceCandidates).toHaveBeenCalledWith("P1");
+    expect(apiMocks.listProjectTestPlanSourceCandidates).toHaveBeenCalledWith(
+      "P1",
+      "resolved_directory"
+    );
   });
 
   it("opens the OS default when directory projection fails", async () => {

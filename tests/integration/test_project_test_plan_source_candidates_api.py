@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from datetime import date
+import os
 from pathlib import Path
 
 from docx import Document
@@ -88,6 +89,91 @@ def test_source_candidates_api_projects_submitted_material_directory(tmp_path: P
         assert response.status_code == 200
         assert response.json()["preferred_import_directory"] == str(submitted)
         assert response.json()["preferred_import_directory_source"] == "submitted_material"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_resolved_directory_view_lists_path_free_direct_files_and_previews_current_id(
+    tmp_path: Path,
+) -> None:
+    client, engine = _client(tmp_path)
+    try:
+        _create_project("P1", tmp_path)
+        official = tmp_path / "official"
+        submitted = official / "Submitted Material"
+        submitted.mkdir(parents=True)
+        spec = submitted / "Alpha Matrix.docx"
+        _write_product_spec_docx(spec)
+        original_bytes = spec.read_bytes()
+        (submitted / "beta.PDF").write_bytes(b"%PDF-1.4")
+        (submitted / "legacy.doc").write_bytes(b"legacy")
+        (submitted / "ignore.txt").write_bytes(b"ignore")
+        nested = submitted / "nested"
+        nested.mkdir()
+        (nested / "hidden.docx").write_bytes(b"hidden")
+        _create_workspace("P1", official, tmp_path)
+
+        listed = client.get(
+            "/api/projects/P1/test-plan/source-candidates",
+            params={"view": "resolved_directory"},
+        )
+
+        assert listed.status_code == 200
+        payload = listed.json()
+        assert payload["view"] == "resolved_directory"
+        assert payload["source_title"] == "Submitted Material files"
+        assert payload["preferred_import_directory"] is None
+        assert [item["file_name"] for item in payload["candidates"]] == [
+            "Alpha Matrix.docx",
+            "beta.PDF",
+            "legacy.doc",
+        ]
+        assert set(payload["candidates"][0]) == {"candidate_id", "file_name"}
+        assert str(submitted) not in listed.text
+        assert spec.read_bytes() == original_bytes
+
+        candidate_id = payload["candidates"][0]["candidate_id"]
+        preview = client.post(
+            f"/api/projects/P1/test-plan/source-candidates/{candidate_id}/matrix-preview",
+            params={"view": "resolved_directory"},
+        )
+        assert preview.status_code == 200
+        assert preview.json()["source_document_name"] == "Alpha Matrix.docx"
+        assert spec.read_bytes() == original_bytes
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_resolved_directory_preview_rejects_in_place_same_name_replacement(
+    tmp_path: Path,
+) -> None:
+    client, engine = _client(tmp_path)
+    try:
+        _create_project("P1", tmp_path)
+        official = tmp_path / "official"
+        submitted = official / "Submitted Material"
+        submitted.mkdir(parents=True)
+        source = submitted / "matrix.docx"
+        source.write_bytes(b"first-content")
+        _create_workspace("P1", official, tmp_path)
+        listed = client.get(
+            "/api/projects/P1/test-plan/source-candidates",
+            params={"view": "resolved_directory"},
+        )
+        candidate_id = listed.json()["candidates"][0]["candidate_id"]
+        original_times = (source.stat().st_atime_ns, source.stat().st_mtime_ns)
+
+        source.write_bytes(b"other-content")
+        os.utime(source, ns=original_times)
+
+        response = client.post(
+            f"/api/projects/P1/test-plan/source-candidates/{candidate_id}/matrix-preview",
+            params={"view": "resolved_directory"},
+        )
+        assert response.status_code == 404
+        assert "no longer available" in response.json()["detail"]
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

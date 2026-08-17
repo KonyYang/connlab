@@ -1983,16 +1983,35 @@ export type MatrixSourceCandidate = {
   stored_file_available: boolean;
 };
 
-export type MatrixSourceCandidatesResponse = {
+export type MatrixResolvedDirectoryCandidate = {
+  candidate_id: string;
+  file_name: string;
+};
+
+type MatrixSourceCandidatesResponseBase = {
   project_id: string;
-  candidates: MatrixSourceCandidate[];
   warnings: string[];
+  source_title: string;
   preferred_import_directory: string | null;
   preferred_import_directory_source:
     | "submitted_material"
     | "intake_attachments"
     | "unavailable";
 };
+
+export type MatrixRegisteredSourceCandidatesResponse = MatrixSourceCandidatesResponseBase & {
+  view: "registered_assets";
+  candidates: MatrixSourceCandidate[];
+};
+
+export type MatrixResolvedDirectoryCandidatesResponse = MatrixSourceCandidatesResponseBase & {
+  view: "resolved_directory";
+  candidates: MatrixResolvedDirectoryCandidate[];
+};
+
+export type MatrixSourceCandidatesResponse =
+  | MatrixRegisteredSourceCandidatesResponse
+  | MatrixResolvedDirectoryCandidatesResponse;
 
 export type ProjectTestPlanDraftCreateRequest = {
   source_document_path: string;
@@ -4013,18 +4032,33 @@ export function matrixPreviewPdfUrl(token: string): string {
 
 export function listProjectTestPlanSourceCandidates(
   projectId: string
+): Promise<MatrixRegisteredSourceCandidatesResponse>;
+export function listProjectTestPlanSourceCandidates(
+  projectId: string,
+  view: "registered_assets"
+): Promise<MatrixRegisteredSourceCandidatesResponse>;
+export function listProjectTestPlanSourceCandidates(
+  projectId: string,
+  view: "resolved_directory"
+): Promise<MatrixResolvedDirectoryCandidatesResponse>;
+export function listProjectTestPlanSourceCandidates(
+  projectId: string,
+  view: "registered_assets" | "resolved_directory" = "registered_assets"
 ): Promise<MatrixSourceCandidatesResponse> {
+  const query = view === "registered_assets" ? "" : "?view=resolved_directory";
   return requestJson<MatrixSourceCandidatesResponse>(
-    `/api/projects/${encodeURIComponent(projectId)}/test-plan/source-candidates`
+    `/api/projects/${encodeURIComponent(projectId)}/test-plan/source-candidates${query}`
   );
 }
 
 export function previewProjectTestPlanMatrixFromSourceCandidate(
   projectId: string,
-  sourceAssetId: string
+  sourceAssetId: string,
+  view: "registered_assets" | "resolved_directory" = "registered_assets"
 ): Promise<MatrixPreviewResponse> {
+  const query = view === "registered_assets" ? "" : "?view=resolved_directory";
   return requestJson<MatrixPreviewResponse>(
-    `/api/projects/${encodeURIComponent(projectId)}/test-plan/source-candidates/${encodeURIComponent(sourceAssetId)}/matrix-preview`,
+    `/api/projects/${encodeURIComponent(projectId)}/test-plan/source-candidates/${encodeURIComponent(sourceAssetId)}/matrix-preview${query}`,
     {
       method: "POST"
     }

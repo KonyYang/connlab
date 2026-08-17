@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import os
 from pathlib import Path
 
 import pytest
@@ -129,8 +130,141 @@ def test_preferred_import_directory_is_unavailable_for_missing_paths(tmp_path: P
     assert result.preferred_import_directory_source == "unavailable"
 
 
+def test_resolved_directory_candidates_list_direct_supported_files_in_filename_order(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "official"
+    submitted = official / "Submitted Material"
+    submitted.mkdir(parents=True)
+    (submitted / "zeta.PDF").write_bytes(b"pdf")
+    (submitted / "Alpha.docx").write_bytes(b"docx")
+    (submitted / "middle.doc").write_bytes(b"doc")
+    (submitted / "ignore.txt").write_bytes(b"text")
+    nested = submitted / "nested"
+    nested.mkdir()
+    (nested / "hidden.docx").write_bytes(b"nested")
+    intake = tmp_path / "intake"
+    intake.mkdir()
+    attachment = intake / "fallback.pdf"
+    attachment.write_bytes(b"fallback")
+    service = _service(
+        assets=[_asset("A1", attachment, "fallback.pdf", source_intake_asset_id="I1")],
+        official_folder=official,
+    )
+
+    before = {
+        path.name: (path.read_bytes(), path.stat().st_mtime_ns)
+        for path in submitted.iterdir()
+        if path.is_file()
+    }
+    result = service.list_resolved_directory_candidates("P1")
+
+    assert result.source_title == "Submitted Material files"
+    assert [candidate.file_name for candidate in result.candidates] == [
+        "Alpha.docx",
+        "middle.doc",
+        "zeta.PDF",
+    ]
+    assert all(len(candidate.candidate_id) == 64 for candidate in result.candidates)
+    assert all(str(submitted) not in candidate.candidate_id for candidate in result.candidates)
+    assert {
+        path.name: (path.read_bytes(), path.stat().st_mtime_ns)
+        for path in submitted.iterdir()
+        if path.is_file()
+    } == before
+
+
+def test_resolved_directory_candidate_id_expires_after_same_name_content_replacement(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "official"
+    submitted = official / "Submitted Material"
+    submitted.mkdir(parents=True)
+    source = submitted / "matrix.docx"
+    source.write_bytes(b"first-content")
+    service = _service(assets=[], official_folder=official)
+    candidate_id = service.list_resolved_directory_candidates("P1").candidates[0].candidate_id
+    original_times = (source.stat().st_atime_ns, source.stat().st_mtime_ns)
+
+    source.write_bytes(b"other-content")
+    os.utime(source, ns=original_times)
+
+    with pytest.raises(ProjectTestPlanSourceCandidateNotFoundError):
+        service.get_resolved_directory_candidate_source_path("P1", candidate_id)
+
+    replacement = service.list_resolved_directory_candidates("P1").candidates[0]
+    assert replacement.candidate_id != candidate_id
+    assert service.get_resolved_directory_candidate_source_path(
+        "P1", replacement.candidate_id
+    ) == source
+
+
+def test_resolved_directory_candidate_id_is_bound_to_current_directory_and_name(
+    tmp_path: Path,
+) -> None:
+    first_official = tmp_path / "first-official"
+    first_submitted = first_official / "Submitted Material"
+    first_submitted.mkdir(parents=True)
+    first_source = first_submitted / "matrix.pdf"
+    first_source.write_bytes(b"same-content")
+    workspace_store = _WorkspaceStore(first_official)
+    service = _service(assets=[], workspace_store=workspace_store)
+    candidate_id = service.list_resolved_directory_candidates("P1").candidates[0].candidate_id
+
+    renamed = first_submitted / "renamed.pdf"
+    first_source.rename(renamed)
+    with pytest.raises(ProjectTestPlanSourceCandidateNotFoundError):
+        service.get_resolved_directory_candidate_source_path("P1", candidate_id)
+
+    second_official = tmp_path / "second-official"
+    second_submitted = second_official / "Submitted Material"
+    second_submitted.mkdir(parents=True)
+    (second_submitted / "matrix.pdf").write_bytes(b"same-content")
+    workspace_store.official_folder = second_official
+    with pytest.raises(ProjectTestPlanSourceCandidateNotFoundError):
+        service.get_resolved_directory_candidate_source_path("P1", candidate_id)
+
+
+def test_resolved_directory_candidates_use_email_attachment_folder_fallback(
+    tmp_path: Path,
+) -> None:
+    intake = tmp_path / "intake"
+    intake.mkdir()
+    source = intake / "matrix.pdf"
+    source.write_bytes(b"pdf")
+    service = _service(
+        assets=[_asset("A1", source, "matrix.pdf", source_intake_asset_id="I1")],
+        official_folder=tmp_path / "missing-official",
+    )
+
+    result = service.list_resolved_directory_candidates("P1")
+
+    assert result.source_title == "Email attachment files"
+    assert [candidate.file_name for candidate in result.candidates] == ["matrix.pdf"]
+
+
+def test_resolved_directory_candidates_do_not_follow_file_symlinks(tmp_path: Path) -> None:
+    official = tmp_path / "official"
+    submitted = official / "Submitted Material"
+    submitted.mkdir(parents=True)
+    outside = tmp_path / "outside.docx"
+    outside.write_bytes(b"outside")
+    link = submitted / "linked.docx"
+    try:
+        link.symlink_to(outside)
+    except OSError:
+        pytest.skip("File symlinks are not available in this environment.")
+    service = _service(assets=[], official_folder=official)
+
+    result = service.list_resolved_directory_candidates("P1")
+
+    assert result.candidates == ()
+
+
 def _service(
-    assets: list[FileAsset], official_folder: Path | None = None
+    assets: list[FileAsset],
+    official_folder: Path | None = None,
+    workspace_store: "_WorkspaceStore | None" = None,
 ) -> ProjectTestPlanSourceCandidateService:
     project = Project(
         project_id="P1",
@@ -143,7 +277,7 @@ def _service(
     return ProjectTestPlanSourceCandidateService(
         project_store=_ProjectStore({"P1": project}),
         file_asset_store=_FileAssetStore(assets),
-        official_workspace_store=_WorkspaceStore(official_folder),
+        official_workspace_store=workspace_store or _WorkspaceStore(official_folder),
     )
 
 
@@ -188,9 +322,9 @@ class _FileAssetStore:
 
 class _WorkspaceStore:
     def __init__(self, official_folder: Path | None) -> None:
-        self._official_folder = official_folder
+        self.official_folder = official_folder
 
     def get_by_project(self, project_id: str) -> object | None:
-        if self._official_folder is None:
+        if self.official_folder is None:
             return None
-        return type("Workspace", (), {"official_folder_path": self._official_folder})()
+        return type("Workspace", (), {"official_folder_path": self.official_folder})()

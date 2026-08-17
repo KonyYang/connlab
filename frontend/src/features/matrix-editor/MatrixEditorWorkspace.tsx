@@ -37,7 +37,7 @@ import {
   type MatrixImportCommitResponse,
   type MatrixImportStandardVersionUnavailableAction,
   type ProjectMatrixDraftSaveRequest,
-  type MatrixSourceCandidate,
+  type MatrixResolvedDirectoryCandidate,
 } from "../../api/client";
 import { MatrixSchedulePlanningCard } from "./MatrixSchedulePlanningCard";
 import { MatrixEditorXlsxExportButton } from "./MatrixEditorXlsxExportButton";
@@ -48,6 +48,7 @@ import {
 import { useMatrixEditorXlsxExport } from "./useMatrixEditorXlsxExport";
 import { useMatrixImportSourcePicker } from "./useMatrixImportSourcePicker";
 import { MatrixImportSourceCandidatePicker } from "./MatrixImportSourceCandidatePicker";
+import { hasMatrixImportSourcePicker } from "../../desktop/pathPickerBridge";
 import { MatrixStepQuantityPanel } from "./MatrixStepQuantityPanel";
 import { MatrixMethodVersionSyncPanel } from "./MatrixMethodVersionSyncPanel";
 import { useMatrixMethodVersionSync } from "./useMatrixMethodVersionSync";
@@ -1688,7 +1689,9 @@ export function MatrixEditorWorkspace({
   const [lastParsedLocator, setLastParsedLocator] = useState<ImportLocatorSnapshot | null>(null);
   const [importingPreview, setImportingPreview] = useState(false);
   const [openingImportPreview, setOpeningImportPreview] = useState(false);
-  const [sourceCandidates, setSourceCandidates] = useState<MatrixSourceCandidate[] | null>(null);
+  const [sourceCandidates, setSourceCandidates] = useState<MatrixResolvedDirectoryCandidate[] | null>(null);
+  const [sourceCandidateTitle, setSourceCandidateTitle] = useState("Project source files");
+  const [sourceCandidateLoading, setSourceCandidateLoading] = useState(false);
   const [sourceCandidateError, setSourceCandidateError] = useState<string | null>(null);
   const [sourceCandidatePreviewBusy, setSourceCandidatePreviewBusy] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -2639,8 +2642,13 @@ export function MatrixEditorWorkspace({
     setSourceCandidatePreviewBusy(true);
     setImportError(null);
     try {
-      const preview = await previewProjectTestPlanMatrixFromSourceCandidate(projectId, sourceAssetId);
+      const preview = await previewProjectTestPlanMatrixFromSourceCandidate(
+        projectId,
+        sourceAssetId,
+        "resolved_directory"
+      );
       setSourceCandidates(null);
+      setSourceCandidateTitle("Project source files");
       setImportFile(null);
       setImportSourcePath(null);
       setLocatorPage(preview.selected_page_number != null ? String(preview.selected_page_number) : "");
@@ -2666,13 +2674,25 @@ export function MatrixEditorWorkspace({
       setImportError(lifecycleReadonlyView.message);
       return;
     }
+    const usingBrowserPicker = !hasMatrixImportSourcePicker();
+    if (usingBrowserPicker) {
+      setSourceCandidates([]);
+      setSourceCandidateTitle("Project source files");
+      setSourceCandidateError(null);
+      setSourceCandidateLoading(true);
+    }
     const choice = await chooseMatrixImportSource();
+    setSourceCandidateLoading(false);
     if (choice.kind === "browser") {
       if (!Array.isArray(choice.candidates)) {
+        setSourceCandidates(null);
+        setSourceCandidateTitle("Project source files");
+        setSourceCandidateError(null);
         openChooseDocx();
         return;
       }
       setSourceCandidates(choice.candidates ?? []);
+      setSourceCandidateTitle(choice.sourceTitle ?? "Project source files");
       setSourceCandidateError(choice.error ?? null);
       return;
     }
@@ -3627,15 +3647,18 @@ export function MatrixEditorWorkspace({
       {sourceCandidates ? (
         <MatrixImportSourceCandidatePicker
           candidates={sourceCandidates}
-          loading={false}
+          sourceTitle={sourceCandidateTitle}
+          loading={sourceCandidateLoading}
           previewBusy={sourceCandidatePreviewBusy}
           error={sourceCandidateError}
           onCancel={() => {
             setSourceCandidates(null);
+            setSourceCandidateTitle("Project source files");
             setSourceCandidateError(null);
           }}
           onUploadOtherFile={() => {
             setSourceCandidates(null);
+            setSourceCandidateTitle("Project source files");
             setSourceCandidateError(null);
             openChooseDocx();
           }}

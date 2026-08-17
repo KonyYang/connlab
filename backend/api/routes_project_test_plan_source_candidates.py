@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -41,11 +43,22 @@ class MatrixSourceCandidateResponse(BaseModel):
     stored_file_available: bool
 
 
+class MatrixResolvedDirectoryCandidateResponse(BaseModel):
+    """One path-free candidate from the current resolved directory."""
+
+    candidate_id: str
+    file_name: str
+
+
 class MatrixSourceCandidatesResponse(BaseModel):
     """Project-scoped candidate source list response."""
 
     project_id: str
-    candidates: list[MatrixSourceCandidateResponse]
+    view: Literal["registered_assets", "resolved_directory"]
+    source_title: str
+    candidates: list[
+        MatrixSourceCandidateResponse | MatrixResolvedDirectoryCandidateResponse
+    ]
     warnings: list[str]
     preferred_import_directory: str | None
     preferred_import_directory_source: str
@@ -54,17 +67,39 @@ class MatrixSourceCandidatesResponse(BaseModel):
 @router.get("", response_model=MatrixSourceCandidatesResponse)
 def list_project_test_plan_source_candidates(
     project_id: str,
+    view: Literal["registered_assets", "resolved_directory"] = "registered_assets",
     service: ProjectTestPlanSourceCandidateService = Depends(
         get_project_test_plan_source_candidate_service
     ),
 ) -> MatrixSourceCandidatesResponse:
     """List project Matrix source candidates derived from project file assets."""
     try:
+        if view == "resolved_directory":
+            resolved = service.list_resolved_directory_candidates(project_id)
+            return MatrixSourceCandidatesResponse(
+                project_id=resolved.project_id,
+                view=view,
+                source_title=resolved.source_title,
+                candidates=[
+                    MatrixResolvedDirectoryCandidateResponse(
+                        candidate_id=item.candidate_id,
+                        file_name=item.file_name,
+                    )
+                    for item in resolved.candidates
+                ],
+                warnings=list(resolved.warnings),
+                preferred_import_directory=None,
+                preferred_import_directory_source=resolved.source_directory_kind,
+            )
         result = service.list_source_candidates(project_id)
     except ProjectTestPlanSourceCandidateNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectTestPlanSourceCandidateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return MatrixSourceCandidatesResponse(
         project_id=result.project_id,
+        view=view,
+        source_title="Project source files",
         candidates=[_candidate_response(item) for item in result.candidates],
         warnings=list(result.warnings),
         preferred_import_directory=(
@@ -80,6 +115,7 @@ def list_project_test_plan_source_candidates(
 def preview_project_test_plan_matrix_from_candidate(
     project_id: str,
     source_asset_id: str,
+    view: Literal["registered_assets", "resolved_directory"] = "registered_assets",
     source_candidate_service: ProjectTestPlanSourceCandidateService = Depends(
         get_project_test_plan_source_candidate_service
     ),
@@ -89,9 +125,16 @@ def preview_project_test_plan_matrix_from_candidate(
 ) -> MatrixPreviewResponse:
     """Preview Matrix from one selected project candidate source asset."""
     try:
-        source_path = source_candidate_service.get_candidate_source_path(
-            project_id=project_id,
-            source_asset_id=source_asset_id,
+        source_path = (
+            source_candidate_service.get_resolved_directory_candidate_source_path(
+                project_id=project_id,
+                candidate_id=source_asset_id,
+            )
+            if view == "resolved_directory"
+            else source_candidate_service.get_candidate_source_path(
+                project_id=project_id,
+                source_asset_id=source_asset_id,
+            )
         )
         preview = matrix_preview_service.preview_from_path(
             MatrixPreviewFromPathCommand(

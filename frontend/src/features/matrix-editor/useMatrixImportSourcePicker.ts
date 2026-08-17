@@ -1,13 +1,13 @@
 import { useCallback } from "react";
 
-import { listProjectTestPlanSourceCandidates, type MatrixSourceCandidate } from "../../api/client";
+import { listProjectTestPlanSourceCandidates, type MatrixResolvedDirectoryCandidate } from "../../api/client";
 import {
   hasMatrixImportSourcePicker,
   pickMatrixImportSourceFromDesktop,
 } from "../../desktop/pathPickerBridge";
 
 export type MatrixImportSourceChoice =
-  | { kind: "browser"; candidates?: MatrixSourceCandidate[]; warnings?: string[]; error?: string | null }
+  | { kind: "browser"; sourceTitle?: string; candidates?: MatrixResolvedDirectoryCandidate[]; warnings?: string[]; error?: string | null }
   | { kind: "cancelled" }
   | { kind: "selected"; path: string }
   | { kind: "unsupported"; path: string };
@@ -17,9 +17,13 @@ export async function chooseMatrixImportSource(
 ): Promise<MatrixImportSourceChoice> {
   if (!hasMatrixImportSourcePicker()) {
     try {
-      const projection = await listProjectTestPlanSourceCandidates(projectId);
+      const projection = await listProjectTestPlanSourceCandidates(projectId, "resolved_directory");
+      if (projection.view !== "resolved_directory") {
+        throw new Error("Resolved directory source view was not returned.");
+      }
       return {
         kind: "browser",
+        sourceTitle: projection.source_title,
         candidates: projection.candidates,
         warnings: projection.warnings,
         error: null,

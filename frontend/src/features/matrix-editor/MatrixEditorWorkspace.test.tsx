@@ -1,5 +1,5 @@
 ﻿import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MatrixEditorWorkspace } from "./MatrixEditorWorkspace";
 import {
   ApiRequestError,
@@ -796,22 +796,52 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
       .spyOn(HTMLInputElement.prototype, "click")
       .mockImplementation(() => {});
 
-    sourcePickerMocks.choose.mockResolvedValue({ kind: "browser", candidates: [], warnings: [], error: null });
+    sourcePickerMocks.choose.mockResolvedValue({ kind: "browser", sourceTitle: "Project source files", candidates: [], warnings: [], error: null });
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
 
     expect(window.confirm).not.toHaveBeenCalled();
     expect(inputClickSpy).not.toHaveBeenCalled();
-    expect(await screen.findByRole("heading", { name: "Choose a project source" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Project source files" })).toBeTruthy();
     const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
     expect(input.getAttribute("accept")).toBe(".pdf,.doc,.docx");
+  });
+
+  it("shows the browser source folder loading state while candidates are fetched", async () => {
+    const pendingChoice = createDeferred<{
+      kind: "browser";
+      sourceTitle: string;
+      candidates: [];
+      warnings: [];
+      error: null;
+    }>();
+    sourcePickerMocks.choose.mockReturnValueOnce(pendingChoice.promise);
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
+
+    expect(await screen.findByRole("heading", { name: "Project source files" })).toBeTruthy();
+    expect(screen.getByText("Loading project sources...")).toBeTruthy();
+    await act(async () => {
+      pendingChoice.resolve({
+        kind: "browser",
+        sourceTitle: "Email attachment files",
+        candidates: [],
+        warnings: [],
+        error: null,
+      });
+      await pendingChoice.promise;
+    });
+    expect(await screen.findByRole("heading", { name: "Email attachment files" })).toBeTruthy();
+    expect(screen.queryByText("Loading project sources...")).toBeNull();
   });
 
   it("previews a browser project candidate only after explicit selection", async () => {
     sourcePickerMocks.choose.mockResolvedValue({
       kind: "browser",
-      candidates: [{ source_asset_id: "source-1", original_name: "matrix.docx", extension: ".docx", asset_type: "attachment", candidate_kind: "likely_spec_or_matrix", reason: "Matrix keywords found.", stored_file_available: true }],
+      sourceTitle: "Submitted Material files",
+      candidates: [{ candidate_id: "source-1", file_name: "matrix.docx" }],
       warnings: [],
       error: null,
     });
@@ -819,11 +849,29 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
-    expect(await screen.findByRole("heading", { name: "Choose a project source" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Submitted Material files" })).toBeTruthy();
     expect(apiMocks.previewProjectTestPlanMatrixFromSourceCandidate).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Use this file: matrix.docx" }));
-    await waitFor(() => expect(apiMocks.previewProjectTestPlanMatrixFromSourceCandidate).toHaveBeenCalledWith("P1", "source-1"));
+    fireEvent.click(screen.getByRole("button", { name: "Select matrix.docx" }));
+    await waitFor(() => expect(apiMocks.previewProjectTestPlanMatrixFromSourceCandidate).toHaveBeenCalledWith("P1", "source-1", "resolved_directory"));
     expect(await screen.findByRole("button", { name: "Replace" })).toBeTruthy();
+  });
+
+  it("cancels the browser source chooser without previewing or uploading", async () => {
+    sourcePickerMocks.choose.mockResolvedValue({
+      kind: "browser",
+      sourceTitle: "Submitted Material files",
+      candidates: [{ candidate_id: "source-1", file_name: "matrix.docx" }],
+      warnings: [],
+      error: null,
+    });
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("heading", { name: "Submitted Material files" })).toBeNull();
+    expect(apiMocks.previewProjectTestPlanMatrixFromSourceCandidate).not.toHaveBeenCalled();
+    expect(apiMocks.previewProjectTestPlanMatrixFromUpload).not.toHaveBeenCalled();
   });
 
   it("previews a desktop local path and preserves locator values on reparse", async () => {
@@ -1042,7 +1090,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
 
   it("allows pdf, legacy doc, and docx files from the import selector", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
+    await screen.findByRole("button", { name: "Import Matrix" });
 
     const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
     expect(input.getAttribute("accept")).toBe(".pdf,.doc,.docx");
@@ -1805,6 +1853,8 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
       true
     );
     expect(sourcePickerMocks.choose).not.toHaveBeenCalled();
+    expect(apiMocks.previewProjectTestPlanMatrixFromSourceCandidate).not.toHaveBeenCalled();
+    expect(apiMocks.previewProjectTestPlanMatrixFromUpload).not.toHaveBeenCalled();
     expect(confirmButton).toHaveProperty("disabled", true);
     fireEvent.click(confirmButton);
     expect(apiMocks.confirmMatrixEditorSession).not.toHaveBeenCalled();

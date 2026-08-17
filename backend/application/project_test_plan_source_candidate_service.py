@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 from pathlib import Path
+import stat
 from typing import Protocol
 
 from backend.domain import FileAsset, FileAssetType, Project
@@ -65,6 +67,31 @@ class ProjectTestPlanSourceCandidatesResult:
     preferred_import_directory_source: str
 
 
+@dataclass(frozen=True, slots=True)
+class ProjectTestPlanResolvedDirectoryCandidate:
+    """One path-free file candidate from the currently resolved source directory."""
+
+    candidate_id: str
+    file_name: str
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectTestPlanResolvedDirectoryCandidatesResult:
+    """Bounded direct-file view for the ordinary-browser source picker."""
+
+    project_id: str
+    source_title: str
+    source_directory_kind: str
+    candidates: tuple[ProjectTestPlanResolvedDirectoryCandidate, ...]
+    warnings: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _ResolvedDirectoryEntry:
+    candidate: ProjectTestPlanResolvedDirectoryCandidate
+    path: Path
+
+
 class ProjectTestPlanSourceCandidateService:
     """Build and resolve Project Matrix source candidates from file assets."""
 
@@ -76,6 +103,7 @@ class ProjectTestPlanSourceCandidateService:
         "test",
         "product",
     )
+    _RESOLVED_DIRECTORY_EXTENSIONS = frozenset({".doc", ".docx", ".pdf"})
 
     def __init__(
         self,
@@ -181,6 +209,103 @@ class ProjectTestPlanSourceCandidateService:
             return min(parents, key=lambda path: str(path.resolve()).casefold()), "intake_attachments"
         return None, "unavailable"
 
+    def list_resolved_directory_candidates(
+        self,
+        project_id: str,
+    ) -> ProjectTestPlanResolvedDirectoryCandidatesResult:
+        """List direct supported files without exposing their local directory."""
+        self._require_project(project_id)
+        directory, source = self._preferred_import_directory(
+            project_id,
+            self._assets.list_by_project(project_id),
+        )
+        if directory is None:
+            return ProjectTestPlanResolvedDirectoryCandidatesResult(
+                project_id=project_id,
+                source_title="Project source files",
+                source_directory_kind="unavailable",
+                candidates=(),
+                warnings=("No project source folder is available.",),
+            )
+        entries = self._resolved_directory_entries(project_id, directory, source)
+        return ProjectTestPlanResolvedDirectoryCandidatesResult(
+            project_id=project_id,
+            source_title=_resolved_directory_title(source),
+            source_directory_kind=source,
+            candidates=tuple(entry.candidate for entry in entries),
+            warnings=(),
+        )
+
+    def get_resolved_directory_candidate_source_path(
+        self,
+        project_id: str,
+        candidate_id: str,
+    ) -> Path:
+        """Re-resolve the current directory and accept only a still-current opaque id."""
+        self._require_project(project_id)
+        opaque_id = candidate_id.strip()
+        if not opaque_id:
+            raise ProjectTestPlanSourceCandidateError("candidate_id is required.")
+        directory, source = self._preferred_import_directory(
+            project_id,
+            self._assets.list_by_project(project_id),
+        )
+        if directory is not None:
+            for entry in self._resolved_directory_entries(project_id, directory, source):
+                if entry.candidate.candidate_id == opaque_id:
+                    return entry.path
+        raise ProjectTestPlanSourceCandidateNotFoundError(
+            "Project Matrix source candidate is no longer available."
+        )
+
+    def _resolved_directory_entries(
+        self,
+        project_id: str,
+        directory: Path,
+        source: str,
+    ) -> tuple[_ResolvedDirectoryEntry, ...]:
+        try:
+            canonical_directory = directory.resolve(strict=True)
+            entries: list[_ResolvedDirectoryEntry] = []
+            for path in directory.iterdir():
+                if (
+                    path.is_symlink()
+                    or path.suffix.casefold() not in self._RESOLVED_DIRECTORY_EXTENSIONS
+                ):
+                    continue
+                file_fingerprint = _regular_file_fingerprint(path)
+                if file_fingerprint is None:
+                    continue
+                if path.resolve(strict=True).parent != canonical_directory:
+                    continue
+                candidate_id = _opaque_candidate_id(
+                    project_id=project_id,
+                    source=source,
+                    canonical_directory=canonical_directory,
+                    file_name=path.name,
+                    file_fingerprint=file_fingerprint,
+                )
+                entries.append(
+                    _ResolvedDirectoryEntry(
+                        candidate=ProjectTestPlanResolvedDirectoryCandidate(
+                            candidate_id=candidate_id,
+                            file_name=path.name,
+                        ),
+                        path=path,
+                    )
+                )
+        except OSError as exc:
+            raise ProjectTestPlanSourceCandidateError(
+                "Unable to read the current project source folder."
+            ) from exc
+        entries.sort(
+            key=lambda entry: (
+                entry.candidate.file_name.casefold(),
+                entry.candidate.file_name,
+            )
+        )
+        return tuple(entries)
+
     def get_candidate_source_path(
         self,
         project_id: str,
@@ -250,3 +375,57 @@ def _candidate_profile(asset: FileAsset) -> tuple[int, str, str]:
         "supporting_docx_attachment",
         "Word attachment is available as fallback source candidate.",
     )
+
+
+def _resolved_directory_title(source: str) -> str:
+    if source == "submitted_material":
+        return "Submitted Material files"
+    if source == "intake_attachments":
+        return "Email attachment files"
+    return "Project source files"
+
+
+def _regular_file_fingerprint(path: Path) -> str | None:
+    before = path.stat(follow_symlinks=False)
+    if not stat.S_ISREG(before.st_mode):
+        return None
+    content_digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            content_digest.update(chunk)
+    after = path.stat(follow_symlinks=False)
+    before_identity = _stat_identity(before)
+    if before_identity != _stat_identity(after):
+        raise ProjectTestPlanSourceCandidateError(
+            "A project source file changed while it was being inspected."
+        )
+    return ":".join((*before_identity, content_digest.hexdigest()))
+
+
+def _stat_identity(value: object) -> tuple[str, ...]:
+    return tuple(
+        str(getattr(value, field))
+        for field in ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
+    )
+
+
+def _opaque_candidate_id(
+    *,
+    project_id: str,
+    source: str,
+    canonical_directory: Path,
+    file_name: str,
+    file_fingerprint: str,
+) -> str:
+    digest = hashlib.sha256()
+    for value in (
+        project_id,
+        source,
+        str(canonical_directory),
+        file_name,
+        file_fingerprint,
+    ):
+        encoded = value.encode("utf-8")
+        digest.update(len(encoded).to_bytes(8, byteorder="big"))
+        digest.update(encoded)
+    return digest.hexdigest()

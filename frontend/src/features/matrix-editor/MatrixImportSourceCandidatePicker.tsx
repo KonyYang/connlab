@@ -1,7 +1,8 @@
-import type { MatrixSourceCandidate } from "../../api/client";
+import type { MatrixResolvedDirectoryCandidate } from "../../api/client";
 
 type MatrixImportSourceCandidatePickerProps = {
-  candidates: MatrixSourceCandidate[];
+  candidates: MatrixResolvedDirectoryCandidate[];
+  sourceTitle: string;
   loading: boolean;
   previewBusy: boolean;
   error: string | null;
@@ -12,6 +13,7 @@ type MatrixImportSourceCandidatePickerProps = {
 
 export function MatrixImportSourceCandidatePicker({
   candidates,
+  sourceTitle,
   loading,
   previewBusy,
   error,
@@ -25,8 +27,8 @@ export function MatrixImportSourceCandidatePicker({
     <section aria-labelledby="matrix-import-source-picker-title" className="matrix-import-source-picker-backdrop" role="dialog" aria-modal="true">
       <article className="matrix-import-source-picker">
         <header>
-          <h3 id="matrix-import-source-picker-title">Choose a project source</h3>
-          <p>Use a registered project file, or upload another source for review.</p>
+          <h3 id="matrix-import-source-picker-title">{sourceTitle}</h3>
+          <p>Select a file from this folder, or upload another file.</p>
         </header>
         <div aria-busy={busy} aria-live="polite" className="matrix-import-source-picker-body">
           {loading ? <p>Loading project sources...</p> : null}
@@ -35,21 +37,15 @@ export function MatrixImportSourceCandidatePicker({
           {candidates.length > 0 ? (
             <div className="matrix-import-source-picker-list">
               {candidates.map((candidate) => {
-                const recommended = candidate.candidate_kind === "likely_spec_or_matrix";
-                const available = candidate.stored_file_available;
                 return (
-                  <section className="matrix-import-source-picker-row" key={candidate.source_asset_id}>
+                  <section className="matrix-import-source-picker-row" key={candidate.candidate_id}>
                     <div>
                       <div className="matrix-import-source-picker-name-line">
-                        <strong data-testid="matrix-import-source-name">{candidate.original_name}</strong>
-                        {recommended ? <span className="matrix-import-source-picker-recommended">Recommended</span> : null}
+                        <strong data-testid="matrix-import-source-name">{candidate.file_name}</strong>
                       </div>
-                      <p>{candidate.extension} · {candidate.asset_type}</p>
-                      <p>{candidate.reason}</p>
-                      {!available ? <p className="matrix-import-source-picker-unavailable">Unavailable</p> : null}
                     </div>
-                    <button type="button" disabled={!available || busy} onClick={() => onUseCandidate(candidate.source_asset_id)}>
-                      Use this file: {candidate.original_name}
+                    <button type="button" disabled={busy} onClick={() => onUseCandidate(candidate.candidate_id)}>
+                      Select {candidate.file_name}
                     </button>
                   </section>
                 );
