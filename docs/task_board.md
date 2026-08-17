@@ -73,26 +73,8 @@
     "approval_ref": "User explicitly approved the exact committed Plan, canonical approved-request SHA-256 addc7e5e16a2135702dc84a4c6ee40a1705aa9b36ac1e6696b310125df75f075, validation manifest SHA-256 65f31359d60a0868bef3646b17ffee2a09a53a87b193afd196118126c4a63316, and Planner evidence in the current conversation.",
     "activation_parent_sha": "5c4af0aec50346c940cb486ea2faf975c2838277",
     "activated_at": "2026-08-17T04:42:06Z",
-    "updated_at": "2026-08-17T05:03:30Z",
-    "blocker": {
-      "schema": "connlab.serial-task-blocker",
-      "version": 1,
-      "code": "REVIEWER_BLOCKED",
-      "stage": "review",
-      "reason": "Ordinary-browser candidate loading and request-busy states are unreachable while the source-candidate GET is pending, allowing overlapping Import Matrix requests.",
-      "dirty_paths": [],
-      "failed_validation": null,
-      "subject_commit": "1798d0377347459a78478b9a10e3c2f2a23327e4",
-      "evidence_ref": "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_reviewer.md@5171bdb172dca3e56ae89629283f64967dd148a9#b131e72d3ac3db8e684fb47dfe7257ec64884ca6f3a2591f8df8715d4ad6d093",
-      "native_action_id": null,
-      "related_ids": [
-        "MATRIX_SOURCE_PICKER_LOADING_BUSY"
-      ],
-      "retryable": true,
-      "requires_user": false,
-      "resume_phase": "development",
-      "recorded_at": "2026-08-17T10:19:57Z"
-    },
+    "updated_at": "2026-08-17T10:22:39Z",
+    "blocker": null,
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
@@ -102,8 +84,8 @@
       "head_sha": "1798d0377347459a78478b9a10e3c2f2a23327e4",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": null,
-      "current_attempt": 1,
+      "current_role": "Developer",
+      "current_attempt": 2,
       "role_invocations": [
         {
           "schema": "connlab.serial-invocation",
@@ -180,8 +162,38 @@
         "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_developer.md@28b3ab84511747546088f27add07c37d175aded5#593b1c838af2b9564cdc1a2fe5d8adbe646d6f05f3c4a814daf1898710478e0f",
         "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_reviewer.md@5171bdb172dca3e56ae89629283f64967dd148a9#b131e72d3ac3db8e684fb47dfe7257ec64884ca6f3a2591f8df8715d4ad6d093"
       ],
-      "blocker_history": [],
-      "pending_callback": null,
+      "blocker_history": [
+        {
+          "blocker": {
+            "schema": "connlab.serial-task-blocker",
+            "version": 1,
+            "code": "REVIEWER_BLOCKED",
+            "stage": "review",
+            "reason": "Ordinary-browser candidate loading and request-busy states are unreachable while the source-candidate GET is pending, allowing overlapping Import Matrix requests.",
+            "dirty_paths": [],
+            "failed_validation": null,
+            "subject_commit": "1798d0377347459a78478b9a10e3c2f2a23327e4",
+            "evidence_ref": "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_reviewer.md@5171bdb172dca3e56ae89629283f64967dd148a9#b131e72d3ac3db8e684fb47dfe7257ec64884ca6f3a2591f8df8715d4ad6d093",
+            "native_action_id": null,
+            "related_ids": [
+              "MATRIX_SOURCE_PICKER_LOADING_BUSY"
+            ],
+            "retryable": true,
+            "requires_user": false,
+            "resume_phase": "development",
+            "recorded_at": "2026-08-17T10:19:57Z"
+          },
+          "decision_ref": "User explicitly approved the exact committed Plan, canonical approved-request SHA-256 addc7e5e16a2135702dc84a4c6ee40a1705aa9b36ac1e6696b310125df75f075, validation manifest SHA-256 65f31359d60a0868bef3646b17ffee2a09a53a87b193afd196118126c4a63316, and Planner evidence in the current conversation.",
+          "resolution": "bounded_fix",
+          "resolved_at": "2026-08-17T10:22:39Z"
+        }
+      ],
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "ca3559014c1c6d37b9df83c3e9131488ecb813cc1d0f8c8845cd3659c5e50a7f",
+        "role": "Developer",
+        "attempt": 2
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
@@ -208,6 +220,12 @@
             "attempt": 1,
             "started_at": "2026-08-17T10:03:53Z",
             "completed_at": "2026-08-17T18:18:50+08:00"
+          },
+          {
+            "role": "Developer",
+            "attempt": 2,
+            "started_at": "2026-08-17T10:22:23Z",
+            "completed_at": null
           }
         ],
         "integration_completed_at": null
