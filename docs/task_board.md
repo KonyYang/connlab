@@ -84,7 +84,7 @@
       "head_sha": "1798d0377347459a78478b9a10e3c2f2a23327e4",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": null,
+      "current_role": "Reviewer",
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -150,7 +150,12 @@
         "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_developer.md@28b3ab84511747546088f27add07c37d175aded5#593b1c838af2b9564cdc1a2fe5d8adbe646d6f05f3c4a814daf1898710478e0f"
       ],
       "blocker_history": [],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "b78591dd5b391b44079ed32bc4d1515d75f1259647a44b9da92a2faa46be9d86",
+        "role": "Reviewer",
+        "attempt": 1
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
@@ -171,6 +176,12 @@
             "attempt": 1,
             "started_at": "2026-08-17T05:08:34Z",
             "completed_at": "2026-08-17T18:00:09+08:00"
+          },
+          {
+            "role": "Reviewer",
+            "attempt": 1,
+            "started_at": "2026-08-17T10:03:53Z",
+            "completed_at": null
           }
         ],
         "integration_completed_at": null
