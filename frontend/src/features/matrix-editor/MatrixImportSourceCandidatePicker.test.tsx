@@ -1,10 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { MatrixImportSourceCandidatePicker } from "./MatrixImportSourceCandidatePicker";
 
 describe("MatrixImportSourceCandidatePicker", () => {
-  it("preserves API order and requires explicit selection", () => {
+  it("uses the filename card itself for explicit selection", () => {
     const onUseCandidate = vi.fn();
     render(
       <MatrixImportSourceCandidatePicker
@@ -29,7 +30,34 @@ describe("MatrixImportSourceCandidatePicker", () => {
     expect(screen.queryByText("attachment")).toBeNull();
     expect(screen.queryByText("Matrix keywords found.")).toBeNull();
     expect(onUseCandidate).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Select matrix.docx" }));
+    const matrixCard = screen.getByRole("button", { name: "Select matrix.docx" });
+    expect(matrixCard.classList.contains("matrix-import-source-picker-row")).toBe(true);
+    expect(matrixCard.textContent).toBe("matrix.docx");
+    expect(matrixCard.querySelector("button")).toBeNull();
+    fireEvent.click(matrixCard);
+    expect(onUseCandidate).toHaveBeenCalledWith("source-1");
+  });
+
+  it("confirms a focused filename card from the keyboard", async () => {
+    const user = userEvent.setup();
+    const onUseCandidate = vi.fn();
+    render(
+      <MatrixImportSourceCandidatePicker
+        candidates={[{ candidate_id: "source-1", file_name: "matrix.docx" }]}
+        sourceTitle="Submitted Material files"
+        loading={false}
+        previewBusy={false}
+        error={null}
+        onCancel={vi.fn()}
+        onUploadOtherFile={vi.fn()}
+        onUseCandidate={onUseCandidate}
+      />
+    );
+
+    const matrixCard = screen.getByRole("button", { name: "Select matrix.docx" });
+    matrixCard.focus();
+    await user.keyboard("{Enter}");
+
     expect(onUseCandidate).toHaveBeenCalledWith("source-1");
   });
 

@@ -36,20 +36,18 @@ export function MatrixImportSourceCandidatePicker({
           {!loading && candidates.length === 0 ? <p>No project candidates are available. Upload another file to continue.</p> : null}
           {candidates.length > 0 ? (
             <div className="matrix-import-source-picker-list">
-              {candidates.map((candidate) => {
-                return (
-                  <section className="matrix-import-source-picker-row" key={candidate.candidate_id}>
-                    <div>
-                      <div className="matrix-import-source-picker-name-line">
-                        <strong data-testid="matrix-import-source-name">{candidate.file_name}</strong>
-                      </div>
-                    </div>
-                    <button type="button" disabled={busy} onClick={() => onUseCandidate(candidate.candidate_id)}>
-                      Select {candidate.file_name}
-                    </button>
-                  </section>
-                );
-              })}
+              {candidates.map((candidate) => (
+                <button
+                  aria-label={`Select ${candidate.file_name}`}
+                  className="matrix-import-source-picker-row"
+                  disabled={busy}
+                  key={candidate.candidate_id}
+                  type="button"
+                  onClick={() => onUseCandidate(candidate.candidate_id)}
+                >
+                  <strong data-testid="matrix-import-source-name">{candidate.file_name}</strong>
+                </button>
+              ))}
             </div>
           ) : null}
         </div>

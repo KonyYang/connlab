@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_CARD_SELECTION",
+    "summary": "Replace per-file Select buttons with accessible clickable file cards in the browser Matrix Import source picker.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Remove the redundant per-row Select button. Make each blue filename card the explicit candidate confirmation target for mouse click and Enter or Space, retain filename-only display, focus visibility, busy disabled semantics, Cancel and Upload other file behavior, and verify the real browser layout. Do not change backend selection authority, desktop native picker, read-only behavior, persistence, or external files.",
+    "scope_paths": [
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
+      "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx",
+      "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.tsx",
+      "frontend/src/workbench.css"
+    ],
+    "risk_reasons": [],
+    "activation_head": "6b7c79b19355c1bb7442fbf87a2f81d4042dc82d",
+    "started_at": "2026-08-17T13:05:03.829103Z",
+    "updated_at": "2026-08-17T13:05:03.829103Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST",
     "tier": "standard",

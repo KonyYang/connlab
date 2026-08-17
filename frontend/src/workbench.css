@@ -8537,17 +8537,43 @@
 }
 
 .matrix-import-source-picker-row {
+  width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
   padding: 12px;
+  appearance: none;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface-muted);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.matrix-import-source-picker-name-line,
+.matrix-import-source-picker-row:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary) 36%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface-muted));
+}
+
+.matrix-import-source-picker-row:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 42%, transparent);
+  outline-offset: 2px;
+  border-color: var(--color-primary);
+}
+
+.matrix-import-source-picker-row:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.matrix-import-source-picker-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .matrix-import-source-picker footer {
   display: flex;
   gap: 8px;
@@ -8577,10 +8603,6 @@
 }
 
 @media (max-width: 620px) {
-  .matrix-import-source-picker-row {
-    grid-template-columns: 1fr;
-  }
-
   .matrix-import-source-picker footer {
     flex-wrap: wrap;
   }
