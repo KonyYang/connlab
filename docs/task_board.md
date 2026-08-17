@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_FOOTER_BUTTON_STYLE",
     "summary": "Match the Matrix Import source picker footer buttons to the Matrix Editor button style with white default surfaces, rounded borders, bold text, and blue hover/focus feedback.",
@@ -24,9 +24,59 @@
     "risk_reasons": [],
     "activation_head": "86063b97254e204eb3ded4ff72c56085139acdec",
     "started_at": "2026-08-17T13:23:14.326507Z",
-    "updated_at": "2026-08-17T13:23:14.326507Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-08-17T13:27:03.381058Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_FOOTER_BUTTON_STYLE",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_FOOTER_BUTTON_STYLE",
+      "subject": "f389ed0bce9e2fb8490a8bf73f5c656647ee579c",
+      "summary": "The Matrix Import source picker footer actions now share the Matrix Editor button baseline and blue hover/focus feedback.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/workbench.css"
+      ],
+      "validation": [
+        {
+          "name": "picker component tests",
+          "status": "passed",
+          "result": "4 passed"
+        },
+        {
+          "name": "frontend production build",
+          "status": "passed",
+          "result": "134 modules built"
+        },
+        {
+          "name": "browser style verification",
+          "status": "passed",
+          "result": "603x831 default, hover, focus, layout, and console checks"
+        },
+        {
+          "name": "git diff check",
+          "status": "passed",
+          "result": "clean"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented, self-reviewed, and validated the scoped CSS-only micro change."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "summary": "Committed cleanly on current master at the reported subject."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_CARD_SELECTION",
