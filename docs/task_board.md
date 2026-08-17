@@ -19,7 +19,7 @@
     "summary": "In the ordinary-browser Matrix Editor, list only direct .doc, .docx and .pdf files from the resolved email-attachment or Submitted Material project folder, show a concise source title and filename-only choices, preserve explicit selection, Cancel, Upload other file, empty/error/read-only states and desktop picker behavior, reuse retained clean implementation as the starting point, diagnose the failed source-folder candidate contract, and reject stale in-place same-name replacements without adding endpoints, persistence or path exposure.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "development",
+    "phase": "review",
     "scope_contract": {
       "may_touch": [
         "backend/application/project_test_plan_source_candidate_service.py",
@@ -84,7 +84,7 @@
       "head_sha": "1798d0377347459a78478b9a10e3c2f2a23327e4",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Developer",
+      "current_role": null,
       "current_attempt": 2,
       "role_invocations": [
         {
@@ -165,14 +165,15 @@
         "QA",
         "Integrator"
       ],
-      "developer_subject_commit": "1798d0377347459a78478b9a10e3c2f2a23327e4",
+      "developer_subject_commit": "9f5fda4dbae711eb4e0800b35b8bb90cfc5a96d2",
       "reviewer_subject_commit": null,
       "qa_subject_commit": null,
       "integrated_commit": null,
       "evidence_refs": [
         "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_planner.md@12d5a28c723eaf1b1afe7f65769aa673c7353ed4#0e18ca744ea11cce2ec2d7b8e1575802a6ae1c20fee810fb369d5d40a7272eef",
         "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_developer.md@28b3ab84511747546088f27add07c37d175aded5#593b1c838af2b9564cdc1a2fe5d8adbe646d6f05f3c4a814daf1898710478e0f",
-        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_reviewer.md@5171bdb172dca3e56ae89629283f64967dd148a9#b131e72d3ac3db8e684fb47dfe7257ec64884ca6f3a2591f8df8715d4ad6d093"
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_reviewer.md@5171bdb172dca3e56ae89629283f64967dd148a9#b131e72d3ac3db8e684fb47dfe7257ec64884ca6f3a2591f8df8715d4ad6d093",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_developer.md@39c78e01698a232c0e022e8e10240c572462d5fc#4ba664789aad0776fc52bd1a8ba369d8c1eec08e00da5e783e8fde142b9560b9"
       ],
       "blocker_history": [
         {
@@ -200,12 +201,7 @@
           "resolved_at": "2026-08-17T10:22:39Z"
         }
       ],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "ca3559014c1c6d37b9df83c3e9131488ecb813cc1d0f8c8845cd3659c5e50a7f",
-        "role": "Developer",
-        "attempt": 2
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
@@ -237,7 +233,7 @@
             "role": "Developer",
             "attempt": 2,
             "started_at": "2026-08-17T10:22:23Z",
-            "completed_at": null
+            "completed_at": "2026-08-17T18:38:26+08:00"
           }
         ],
         "integration_completed_at": null
