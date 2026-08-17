@@ -40,7 +40,7 @@ def _history_attempts(context: dict[str, Any], role: str) -> list[int]:
                 _fail("BLOCKED_ATTEMPT_HISTORY_INVALID", f"{source} role attempt is invalid.")
             result[item_role].append(attempt)
         for item_role, attempts in result.items():
-            if attempts and sorted(attempts) != list(range(1, len(attempts) + 1)):
+            if attempts and attempts != list(range(1, len(attempts) + 1)):
                 _fail(
                     "BLOCKED_ATTEMPT_HISTORY_INVALID",
                     f"{source} {item_role} attempts are duplicated or non-contiguous.",

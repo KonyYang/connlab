@@ -345,7 +345,7 @@ def test_developer_resume_action_from_role_history_can_begin_role() -> None:
     assert value["complex_context"]["pending_callback"]["attempt"] == 2
 
 
-@pytest.mark.parametrize("attempts", [[1, 1], [2], [1, 3]])
+@pytest.mark.parametrize("attempts", [[1, 1], [2], [1, 3], [2, 1]])
 def test_native_action_attempt_history_drift_fails_closed(attempts: list[int]) -> None:
     value = active("REVIEWER_BLOCKED", phase="development")
     for attempt in attempts:
