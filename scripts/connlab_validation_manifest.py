@@ -96,7 +96,12 @@ def manifest_from_board(
     task_worktree = context.get("task_worktree")
     current_role = context.get("current_role")
     current_attempt = context.get("current_attempt")
-    recorded_subject = context.get("head_sha")
+    subject_field = {
+        "Reviewer": "developer_subject_commit",
+        "QA": "reviewer_subject_commit",
+        "Integrator": "qa_subject_commit",
+    }.get(current_role, "head_sha")
+    recorded_subject = context.get(subject_field)
     if not isinstance(task_worktree, str) or not task_worktree.strip():
         _fail("Active task has no recorded task worktree.")
     if current_role not in ROLES:

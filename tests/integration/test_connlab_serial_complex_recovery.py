@@ -371,6 +371,22 @@ def prepare_complex_task_host(
     return git(worktree, "rev-parse", "HEAD").stdout.strip()
 
 
+def test_developer_ready_callback_synchronizes_reviewed_subject_and_head_sha(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "developer-subject-binding"
+    worktree = tmp_path / "developer-subject-binding-host"
+    task_id = "TASK_DEVELOPER_SUBJECT_BINDING"
+    subject = prepare_complex_task_host(repo, worktree, task_id=task_id)
+
+    invoke_complex_role(repo, task_id, "Developer", subject, "ready", "Reviewer")
+
+    _, board, _ = parse_board((repo / "docs/task_board.md").read_bytes())
+    context = board["active"]["complex_context"]
+    assert context["developer_subject_commit"] == subject
+    assert context["head_sha"] == subject
+
+
 def test_role_callback_autocorrects_same_committed_evidence_digest_once(
     tmp_path: Path,
 ) -> None:

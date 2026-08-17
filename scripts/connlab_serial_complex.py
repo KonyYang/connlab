@@ -391,7 +391,7 @@ def complex_transition(active: dict[str, Any], command: str, payload: dict[str, 
         if callback["task_id"] != active.get("task_id") or PHASE_ROLE.get(phase) != callback["role"]: _contract_error("BLOCKED_ROLE_ORDER", "Callback role or task is stale.")
         expected = {"Reviewer": context.get("developer_subject_commit"), "QA": context.get("reviewer_subject_commit"), "Integrator": context.get("qa_subject_commit")}.get(callback["role"])
         if expected and callback["subject_commit"] != expected: _contract_error("BLOCKED_SUBJECT_MISMATCH", "Callback subject differs from the reviewed code commit.")
-        if callback["role"] == "Developer" and callback["status"] == "ready": context["developer_subject_commit"] = callback["subject_commit"]
+        if callback["role"] == "Developer" and callback["status"] == "ready": context["developer_subject_commit"] = context["head_sha"] = callback["subject_commit"]
         if callback["role"] == "Reviewer" and callback["status"] == "pass": context["reviewer_subject_commit"] = callback["subject_commit"]
         if callback["role"] == "QA" and callback["status"] == "pass": context["qa_subject_commit"] = callback["subject_commit"]
         context["evidence_refs"].append(callback["evidence"]); context["pending_callback"] = None; context["current_role"] = None

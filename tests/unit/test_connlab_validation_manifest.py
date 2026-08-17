@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.connlab_validation_manifest import ManifestError, run_manifest, validate_manifest
+from scripts.connlab_validation_manifest import ManifestError, manifest_from_board, run_manifest, validate_manifest
 from scripts.connlab_serial_board import render_board, v2_submit
 
 
@@ -105,12 +105,31 @@ def test_manifest_rejects_shell_strings_and_parent_cwd() -> None:
 
 
 @pytest.mark.parametrize("explicit_repo_root", [False, True])
+@pytest.mark.parametrize(
+    ("role", "phase", "subject_field"),
+    (
+        ("Reviewer", "review", "developer_subject_commit"),
+        ("QA", "qa", "reviewer_subject_commit"),
+        ("Integrator", "integration", "qa_subject_commit"),
+    ),
+)
 def test_cli_reads_manifest_from_primary_authority_and_runs_on_task_worktree(
-    tmp_path: Path, explicit_repo_root: bool,
+    tmp_path: Path,
+    explicit_repo_root: bool,
+    role: str,
+    phase: str,
+    subject_field: str,
 ) -> None:
     primary = tmp_path / "primary"
     task = tmp_path / "task"
     init_repo(primary)
+    host_head = subprocess.run(
+        ["git", "-C", str(primary), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    ).stdout.strip()
     subprocess.run(
         ["git", "-C", str(primary), "worktree", "add", "-b", "task", str(task), "HEAD"],
         check=True,
@@ -131,6 +150,7 @@ def test_cli_reads_manifest_from_primary_authority_and_runs_on_task_worktree(
         "-c",
         "from pathlib import Path; raise SystemExit(0 if Path('tracked.txt').read_text() == 'task\\n' else 9)",
     ])
+    value["checks"][0]["run_for"] = [role]
     control = {
         "schema": "connlab.personal-serial-control",
         "version": 2,
@@ -174,16 +194,17 @@ def test_cli_reads_manifest_from_primary_authority_and_runs_on_task_worktree(
         encoding="utf-8",
     ).stdout.strip())
     active = control["active"]
-    active["phase"] = "qa"
+    active["phase"] = phase
     context = active["complex_context"]
     context.update(
         task_branch="task",
         task_worktree=str(task.resolve()),
-        head_sha=task_head,
-        current_role="QA",
+        head_sha=host_head,
+        current_role=role,
         current_attempt=1,
         validation_manifest=value,
     )
+    context[subject_field] = task_head
     board = primary / "docs" / "task_board.md"
     board.parent.mkdir()
     board_bytes = render_board("", control, "\n")
@@ -200,7 +221,7 @@ def test_cli_reads_manifest_from_primary_authority_and_runs_on_task_worktree(
         str(primary),
         "--from-board",
         "--role",
-        "QA",
+        role,
     ]
     if explicit_repo_root:
         command.extend(["--repo-root", str(task)])
@@ -219,7 +240,7 @@ def test_cli_reads_manifest_from_primary_authority_and_runs_on_task_worktree(
     assert result["subject_before"] == result["subject_after"] == task_head
     assert result["binding"] == {
         "task_id": "TASK_VALIDATION",
-        "role": "QA",
+        "role": role,
         "attempt": 1,
         "repo_root": str(task.resolve()),
         "recorded_subject": task_head,
@@ -238,3 +259,14 @@ def test_cli_reads_manifest_from_primary_authority_and_runs_on_task_worktree(
             json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
         ).hexdigest(),
     }
+
+    context[subject_field] = None
+    board.write_bytes(render_board("", control, "\n"))
+    subprocess.run(["git", "-C", str(primary), "add", "docs/task_board.md"], check=True)
+    subprocess.run(
+        ["git", "-C", str(primary), "commit", "-m", "missing role subject"],
+        check=True,
+        capture_output=True,
+    )
+    with pytest.raises(ManifestError, match="recorded subject"):
+        manifest_from_board(primary)
