@@ -471,17 +471,18 @@ def write_board(root: Path, board: Path, prefix: str, value: dict[str, Any], suf
     output = render_board(prefix, value, suffix)
     temporary: str | None = None
     try:
+        parse_board(output)
         with tempfile.NamedTemporaryFile(dir=board.parent, prefix=".task_board.", suffix=".tmp", delete=False) as handle:
             temporary = handle.name
             handle.write(output)
             handle.flush()
             os.fsync(handle.fileno())
+        staged = Path(temporary).read_bytes()
+        parse_board(staged)
+        if staged != output:
+            raise OSError("Staged bytes differ.")
         os.replace(temporary, board)
-        data = board.read_bytes()
-        parse_board(data)
-        if data != output:
-            raise OSError("Post-write bytes differ.")
-        return sha(data)
+        return sha(output)
     except (OSError, Blocked) as exc:
         raise Blocked("BLOCKED_WRITE_FAILED", f"Atomic board write failed: {exc}") from exc
     finally:

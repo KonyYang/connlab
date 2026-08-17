@@ -10,12 +10,8 @@ from pathlib import Path
 from pathlib import PurePosixPath
 from typing import Any
 
-from scripts.connlab_serial_complex import (
-    ACTION_ROLES,
-    SerialContractError,
-    validate_complex_blocker,
-    validate_native_action,
-)
+from scripts.connlab_serial_complex import SerialContractError, validate_complex_blocker, validate_native_action
+from scripts.connlab_serial_native_action import build_native_action, next_role_attempt
 from scripts.connlab_serial_board import Blocked, committed_board, git_dirty, run_git
 
 
@@ -105,68 +101,6 @@ def _record_resolution(
     })
 
 
-def build_native_action(
-    active: dict[str, Any],
-    action_name: str,
-    prompt_bytes: bytes,
-    title: str,
-    recorded_at: str,
-) -> dict[str, Any]:
-    context = _complex_context(active)
-    role = ACTION_ROLES.get(action_name)
-    if role is None or not prompt_bytes or not title.strip() or not recorded_at:
-        _fail("BLOCKED_ARGUMENT_COMBINATION", "Native action inputs are incomplete.")
-    blocker = active.get("blocker")
-    blocker_code = blocker.get("code") if isinstance(blocker, dict) else None
-    phase = active.get("phase")
-    expected_action = {
-        "planning": "planner_dispatch",
-        "review": "reviewer_dispatch",
-        "qa": "qa_dispatch",
-        "integration": "integrator_dispatch",
-    }.get(phase)
-    if phase == "development":
-        expected_action = "developer_dispatch" if context.get("host_id") else "host_create"
-    if blocker_code in BOUNDED_FIX_CODES:
-        expected_action = "developer_dispatch"
-    if action_name != expected_action:
-        _fail("BLOCKED_ROLE_ORDER", "Native action does not match the durable next phase.")
-    current_attempt = context.get("current_attempt", 0)
-    if action_name == "planner_dispatch" or (
-        action_name == "developer_dispatch" and blocker_code in BOUNDED_FIX_CODES
-    ):
-        attempt = current_attempt + 1
-    else:
-        attempt = max(current_attempt, 1)
-    prompt_sha = hashlib.sha256(prompt_bytes).hexdigest()
-    identity = {
-        "task_id": active.get("task_id"),
-        "action": action_name,
-        "role": role,
-        "attempt": attempt,
-        "prompt_sha256": prompt_sha,
-        "title": title,
-        "plan_ref": active.get("plan_ref"),
-        "approval_ref": active.get("approval_ref"),
-        "host_id": context.get("host_id"),
-        "head_sha": context.get("head_sha"),
-    }
-    action_id = hashlib.sha256(
-        json.dumps(identity, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    ).hexdigest()
-    return {
-        "schema": "connlab.serial-native-action",
-        "version": 1,
-        "action_id": action_id,
-        "action": action_name,
-        "role": role,
-        "attempt": attempt,
-        "prompt_sha256": prompt_sha,
-        "title": title,
-        "recorded_at": recorded_at,
-    }
-
-
 def apply_bounded_fix_reentry(
     active: dict[str, Any],
     native_action: dict[str, Any],
@@ -202,7 +136,7 @@ def apply_bounded_fix_reentry(
     if blocker.get("subject_commit") != expected_subject:
         _fail("BLOCKED_SUBJECT_MISMATCH", "Blocker subject differs from the durable exact subject.")
     action = validate_native_action(native_action)
-    expected_attempt = context.get("current_attempt") + 1
+    expected_attempt = next_role_attempt(context, "Developer")
     if (
         action["action"] != "developer_dispatch"
         or action["role"] != "Developer"

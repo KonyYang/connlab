@@ -122,6 +122,20 @@ def native_action(attempt: int = 3) -> dict:
     }
 
 
+def record_attempt(value: dict, role: str, attempt: int) -> None:
+    context = value["complex_context"]
+    context["role_invocations"].append({
+        "action_id": f"{role}-{attempt}", "role": role, "attempt": attempt,
+    })
+    timing = context.setdefault(
+        "timing_facts", {"host": None, "roles": [], "integration_completed_at": None},
+    )
+    timing["roles"].append({
+        "role": role, "attempt": attempt,
+        "started_at": "2026-08-15T00:00:00Z", "completed_at": "2026-08-15T00:00:01Z",
+    })
+
+
 def test_elapsed_summary_aggregates_existing_stage_times_and_retry_reasons() -> None:
     value = active("REVIEWER_BLOCKED", phase="development")
     value["activated_at"] = "2026-08-15T00:00:00Z"
@@ -162,6 +176,8 @@ def test_elapsed_summary_aggregates_existing_stage_times_and_retry_reasons() -> 
 @pytest.mark.parametrize("code,phase", [("REVIEWER_BLOCKED", "development"), ("QA_BLOCKED", "development"), ("INTEGRATION_BLOCKED", "blocked")])
 def test_bounded_fix_reentry_is_one_atomic_state_transition(code: str, phase: str) -> None:
     value = active(code, phase=phase)
+    record_attempt(value, "Developer", 1)
+    record_attempt(value, "Developer", 2)
     original_plan = value["plan_ref"]
     original_scope = copy.deepcopy(value["scope_contract"])
     original_host = {key: value["complex_context"][key] for key in ("host_id", "host_thread_id", "task_branch", "task_worktree")}
@@ -181,15 +197,21 @@ def test_bounded_fix_reentry_is_one_atomic_state_transition(code: str, phase: st
 
 def test_bounded_fix_reentry_fails_closed_on_scope_or_attempt_drift() -> None:
     value = active("REVIEWER_BLOCKED", phase="development")
+    record_attempt(value, "Developer", 1)
+    record_attempt(value, "Developer", 2)
     with pytest.raises(SerialContractError, match="BLOCKED_APPROVAL_REQUIRED"):
         apply_bounded_fix_reentry(value, native_action(), "user:new-routine-approval", "2026-08-15T00:00:02Z")
 
     value = active("REVIEWER_BLOCKED", phase="development")
+    record_attempt(value, "Developer", 1)
+    record_attempt(value, "Developer", 2)
     value["complex_context"]["approved_code_paths"].append("scripts/drift.py")
     with pytest.raises(SerialContractError, match="BLOCKED_APPROVED_SCOPE_INVALID"):
         apply_bounded_fix_reentry(value, native_action(), "user:approved", "2026-08-15T00:00:02Z")
 
     value = active("REVIEWER_BLOCKED", phase="development")
+    record_attempt(value, "Developer", 1)
+    record_attempt(value, "Developer", 2)
     with pytest.raises(SerialContractError, match="BLOCKED_NATIVE_ID_MISMATCH"):
         apply_bounded_fix_reentry(value, native_action(attempt=4), "user:approved", "2026-08-15T00:00:02Z")
 
@@ -203,7 +225,7 @@ def test_role_begin_cannot_bypass_an_unresolved_bounded_fix_blocker() -> None:
 def test_first_phase2_resolution_upgrades_a_pre_phase2_active_context() -> None:
     value = active("REVIEWER_BLOCKED", phase="development")
     value["complex_context"].pop("blocker_history")
-    apply_bounded_fix_reentry(value, native_action(), "user:approved", "2026-08-15T00:00:02Z")
+    apply_bounded_fix_reentry(value, native_action(attempt=1), "user:approved", "2026-08-15T00:00:02Z")
     assert value["complex_context"]["blocker_history"][0]["resolution"] == "bounded_fix"
 
 
@@ -249,7 +271,7 @@ def test_snapshot_and_next_action_resume_from_durable_pending_state() -> None:
     integration = {"state": "running", "active": active("INTEGRATION_BLOCKED")}
     assert next_action(integration) == {"command": "reenter-development", "role": "Developer", "requires_user": True}
 
-    apply_bounded_fix_reentry(value, native_action(), "user:approved", "2026-08-15T00:00:02Z")
+    apply_bounded_fix_reentry(value, native_action(attempt=1), "user:approved", "2026-08-15T00:00:02Z")
     snapshot = active_snapshot(control)
     assert snapshot["task_id"] == "TASK_PHASE2"
     assert snapshot["pending_action_id"] == "2" * 64
@@ -260,6 +282,8 @@ def test_snapshot_and_next_action_resume_from_durable_pending_state() -> None:
 
 def test_native_action_builder_derives_attempt_and_hashes_without_manual_sha() -> None:
     value = active("REVIEWER_BLOCKED", phase="development")
+    record_attempt(value, "Developer", 1)
+    record_attempt(value, "Developer", 2)
     action = build_native_action(value, "developer_dispatch", b"exact prompt bytes\n", "Bounded fix", "2026-08-15T00:00:02Z")
     assert action["attempt"] == 3 and action["role"] == "Developer"
     assert action["prompt_sha256"] != ZERO64
@@ -267,5 +291,70 @@ def test_native_action_builder_derives_attempt_and_hashes_without_manual_sha() -
 
     value["phase"] = "review"
     value["blocker"] = None
+    record_attempt(value, "Reviewer", 1)
     reviewer = build_native_action(value, "reviewer_dispatch", b"review prompt\n", "Review", "2026-08-15T00:00:03Z")
     assert reviewer["attempt"] == 2
+
+
+def test_native_action_attempts_are_role_local_and_repeated_fixes_increment() -> None:
+    value = active("REVIEWER_BLOCKED", phase="development")
+    record_attempt(value, "Planner", 1)
+    record_attempt(value, "Developer", 1)
+    record_attempt(value, "Reviewer", 1)
+    value["complex_context"]["current_attempt"] = 1
+
+    first_fix = build_native_action(
+        value, "developer_dispatch", b"fix one\n", "Fix one", "2026-08-15T00:00:02Z",
+    )
+    assert first_fix["attempt"] == 2
+
+    value["phase"] = "review"; value["blocker"] = None
+    reviewer = build_native_action(value, "reviewer_dispatch", b"review\n", "Review", "2026-08-15T00:00:03Z")
+    assert reviewer["attempt"] == 2
+    record_attempt(value, "Reviewer", 2)
+    value["phase"] = "qa"
+    qa = build_native_action(value, "qa_dispatch", b"qa\n", "QA", "2026-08-15T00:00:04Z")
+    assert qa["attempt"] == 1
+    record_attempt(value, "QA", 1)
+    qa_retry = build_native_action(value, "qa_dispatch", b"qa retry\n", "QA retry", "2026-08-15T00:00:05Z")
+    assert qa_retry["attempt"] == 2
+    value["phase"] = "integration"
+    integrator = build_native_action(value, "integrator_dispatch", b"integrate\n", "Integrate", "2026-08-15T00:00:06Z")
+    assert integrator["attempt"] == 1
+
+    value["phase"] = "development"; value["blocker"] = blocker("QA_BLOCKED")
+    record_attempt(value, "Developer", 2)
+    second_fix = build_native_action(
+        value, "developer_dispatch", b"fix two\n", "Fix two", "2026-08-15T00:00:07Z",
+    )
+    assert second_fix["attempt"] == 3
+
+
+def test_developer_resume_action_from_role_history_can_begin_role() -> None:
+    value = active("REVIEWER_BLOCKED", phase="development")
+    record_attempt(value, "Developer", 1)
+    action = build_native_action(
+        value, "developer_dispatch", b"resume\n", "Resume", "2026-08-15T00:00:02Z",
+    )
+    assert action["attempt"] == 2
+    value["blocker"] = None
+
+    assert complex_transition(
+        value, "begin-role", {"role": "Developer", "native_action": action},
+    ) == "ALLOW_BEGIN_ROLE"
+    assert value["complex_context"]["pending_callback"]["attempt"] == 2
+
+
+@pytest.mark.parametrize("attempts", [[1, 1], [2], [1, 3]])
+def test_native_action_attempt_history_drift_fails_closed(attempts: list[int]) -> None:
+    value = active("REVIEWER_BLOCKED", phase="development")
+    for attempt in attempts:
+        record_attempt(value, "Developer", attempt)
+    before = copy.deepcopy(value)
+
+    with pytest.raises(SerialContractError, match="BLOCKED_ATTEMPT_HISTORY_INVALID"):
+        build_native_action(
+            value, "developer_dispatch", b"fix\n", "Fix", "2026-08-15T00:00:02Z",
+        )
+
+    assert value == before

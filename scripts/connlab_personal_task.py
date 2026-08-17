@@ -9,32 +9,16 @@ SCRIPT_REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if not sys.path or Path(sys.path[0]).resolve() != SCRIPT_REPOSITORY_ROOT:
     sys.path.insert(0, str(SCRIPT_REPOSITORY_ROOT))
 
-from scripts.connlab_serial_board import (
-    BOARD_REL, Blocked, approved_payload, blocker_payload, committed_board, git_dirty, now,
-    parse_board, request_payload, resolve_primary, run_git, sha, validation_payload, v2_submit,
-    write_board, writer_lock,
-)
+from scripts.connlab_serial_board import BOARD_REL, Blocked, approved_payload, blocker_payload, committed_board, git_dirty, now, parse_board, request_payload, resolve_primary, run_git, sha, validation_payload, v2_submit, write_board, writer_lock
 from scripts.connlab_serial_complex import SerialContractError, classification_result, complex_transition, validate_complex_blocker, validate_integration_transition
-from scripts.connlab_serial_phase2 import (
-    BOUNDED_FIX_CODES, COMMAND_ARGUMENTS, active_snapshot, apply_bounded_fix_reentry, apply_exact_plan_amendment,
-    apply_scope_amendment, command_contract, elapsed_summary, next_action, verify_transition_repository,
-)
-from scripts.connlab_serial_evidence_topology import (
-    plan_execution_routes,
-    validate_approved_plan,
-    validation_manifest_from_plan,
-    verify_callback_evidence_topology,
-    verify_integration_evidence_topology,
-    verify_plan_amendment_evidence_topology,
-)
+from scripts.connlab_serial_phase2 import BOUNDED_FIX_CODES, COMMAND_ARGUMENTS, active_snapshot, apply_bounded_fix_reentry, apply_exact_plan_amendment, apply_scope_amendment, command_contract, elapsed_summary, next_action, verify_transition_repository
+from scripts.connlab_serial_evidence_topology import plan_execution_routes, validate_approved_plan, validation_manifest_from_plan, verify_callback_evidence_topology, verify_integration_evidence_topology, verify_plan_amendment_evidence_topology
 
 COMPLEX_COMMANDS = ("begin-role", "record-invocation", "consume-callback", "begin-host", "record-host", "record-integration", "request-close", "record-closeout", "finalize-close", "reenter-development")
 COMMANDS = ("inspect", "check", "classify", "submit", "activate-next", "approve", "amend-plan", "mark-review", "block", "resume", "cancel", "close", *COMPLEX_COMMANDS)
 RESULT_FIELDS = ("schema", "version", "code", "allowed", "changed", "command", "task_id", "state", "active_task_id", "queue_position", "board_sha256_before", "board_sha256_after", "primary_root", "reason", "active_snapshot", "next_action")
 ROLE_CALLBACKS = {"Developer", "Reviewer", "QA", "Integrator"}
-CALLBACK_EVIDENCE_PATTERN = re.compile(
-    r"(docs/lane_evidence/[A-Za-z0-9_./-]+)@([0-9a-f]{40})#([0-9a-f]{40}|[0-9a-f]{64})"
-)
+CALLBACK_EVIDENCE_PATTERN = re.compile(r"(docs/lane_evidence/[A-Za-z0-9_./-]+)@([0-9a-f]{40})#([0-9a-f]{40}|[0-9a-f]{64})")
 
 def result(code: str, command: str, root: Path | None, before: str | None, after: str | None, control: dict[str, Any] | None, *, task_id: str | None = None, changed: bool = False, reason: str = "", primary_head: str | None = None) -> dict[str, Any]:
     active = control.get("active") if control else None
@@ -47,10 +31,9 @@ def result(code: str, command: str, root: Path | None, before: str | None, after
     action = next_action(control)
     action["command_contract"] = command_contract(action["command"])
     return dict(zip(RESULT_FIELDS, (
-        "connlab.personal-task-result", 1, code, not code.startswith("BLOCKED_"), changed,
-        command, task_id, control.get("state") if control else None,
-        active.get("task_id") if isinstance(active, dict) else None, queue_position, before, after,
-        str(root) if root else None, reason, active_snapshot(control, primary_head), action,
+        "connlab.personal-task-result", 1, code, not code.startswith("BLOCKED_"), changed, command,
+        task_id, control.get("state") if control else None, active.get("task_id") if isinstance(active, dict) else None,
+        queue_position, before, after, str(root) if root else None, reason, active_snapshot(control, primary_head), action,
     )))
 def require_active(control: dict[str, Any], task_id: str) -> dict[str, Any]:
     active = control.get("active")
@@ -61,10 +44,9 @@ def active_from_request(request: dict[str, Any], scope: dict[str, Any] | None, h
     timestamp = now()
     return {
         "task_id": request["task_id"], "summary": request["summary"], "kind": request["kind"],
-        "phase": "implementation" if request["kind"] == "simple" else "planning",
-        "scope_contract": scope, "plan_ref": None, "approval_ref": None,
-        "activation_parent_sha": head, "activated_at": timestamp, "updated_at": timestamp,
-        "blocker": None, "validation": None,
+        "phase": "implementation" if request["kind"] == "simple" else "planning", "scope_contract": scope,
+        "plan_ref": None, "approval_ref": None, "activation_parent_sha": head, "activated_at": timestamp,
+        "updated_at": timestamp, "blocker": None, "validation": None,
     }
 def verify_evidence_ref(root: Path, value: Any) -> None:
     match = re.fullmatch(r"(docs/lane_evidence/[A-Za-z0-9_./-]+)@([0-9a-f]{40})#([0-9a-f]{64})", str(value))
@@ -343,17 +325,18 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
             raise Blocked("BLOCKED_PLAN_REQUIRED", "A committed plan reference is required.")
         if not re.fullmatch(r".+@[0-9a-f]{40}#[0-9a-f]{64}", args.plan_ref):
             raise Blocked("BLOCKED_PLAN_REQUIRED", "Plan reference format is invalid.")
-        if not args.approval_ref:
-            raise Blocked("BLOCKED_APPROVAL_REQUIRED", "Explicit User approval is required.")
-        approved_routes = None
-        validation_manifest = None
-        if is_v2_complex and not blocked_reapproval:
+        if not args.approval_ref: raise Blocked("BLOCKED_APPROVAL_REQUIRED", "Explicit User approval is required.")
+        approved_routes = None; validation_manifest = None
+        if is_v2_complex:
             approved_routes = validate_approved_plan(root, args.plan_ref, approved)
             validation_manifest = validation_manifest_from_plan(root, args.plan_ref, task_id)
+            if blocked_reapproval and validation_manifest is None: raise Blocked("BLOCKED_PLAN_INVALID", "Blocked reapproval Plan must freeze a validation manifest.")
+        execution_routes = None if approved_routes is None else {role: {"model": route[0], "reasoning_effort": route[1], "reason": route[2]} for role, route in approved_routes.items()}
         if blocked_reapproval:
             previous = active["scope_contract"]; old_paths, new_paths = set(previous["may_touch"]), set(scope["may_touch"])
             if scope == previous:
                 active.update(summary=approved["summary"], plan_ref=args.plan_ref, approval_ref=args.approval_ref, updated_at=now())
+                if is_v2_complex: active["complex_context"].update(execution_routes=execution_routes, validation_manifest=validation_manifest)
                 return "ALLOW_APPROVAL_EVIDENCE_CORRECTION", True, "Approval evidence corrected; blocker remains until explicit resume."
             if active["blocker"].get("code") != "SCOPE_EXPANDED": raise Blocked("BLOCKED_APPROVED_SCOPE_INVALID", "Only a scope-expansion blocker permits path changes.")
             if not old_paths < new_paths: raise Blocked("BLOCKED_APPROVED_SCOPE_INVALID", "A scope amendment must be a strict path superset.")
@@ -361,6 +344,7 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
             if is_v2_complex:
                 verify_transition_repository(root, active, require_host=bool(active["complex_context"].get("host_id")))
                 apply_scope_amendment(active, approved, scope, args.plan_ref, args.approval_ref, now())
+                active["complex_context"].update(execution_routes=execution_routes, validation_manifest=validation_manifest)
                 return "ALLOW_SCOPE_AMEND", True, "User-approved scope amendment atomically resumed development."
             active.update(summary=approved["summary"], scope_contract=scope, plan_ref=args.plan_ref, approval_ref=args.approval_ref, updated_at=now())
             return "ALLOW_SCOPE_AMEND", True, "User-approved scope expansion recorded; blocker remains until explicit resume."
@@ -368,12 +352,8 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         active.update(summary=approved["summary"], scope_contract=scope, plan_ref=args.plan_ref, approval_ref=args.approval_ref, phase=target_phase, updated_at=now())
         if is_v2_complex:
             active["complex_context"]["approved_code_paths"] = scope["may_touch"]
-            active["complex_context"]["execution_routes"] = {
-                role: {"model": route[0], "reasoning_effort": route[1], "reason": route[2]}
-                for role, route in approved_routes.items()
-            }
-            if validation_manifest is not None:
-                active["complex_context"]["validation_manifest"] = validation_manifest
+            active["complex_context"]["execution_routes"] = execution_routes
+            if validation_manifest is not None: active["complex_context"]["validation_manifest"] = validation_manifest
         return "ALLOW_APPROVE", True, "Approved scope bound to active task."
     if command == "mark-review":
         if control["state"] == "implemented_pending_human_review":
@@ -454,10 +434,8 @@ def check(args: argparse.Namespace, root: Path, control: dict[str, Any]) -> tupl
         raise Blocked("BLOCKED_WORKTREE_DIRTY", "Primary worktree must be clean to close.")
     return "ALLOW_CLOSE", "Task is eligible to close after explicit User direction."
 def parser() -> argparse.ArgumentParser:
-    value = argparse.ArgumentParser()
-    value.add_argument("command", choices=COMMANDS)
-    value.add_argument("--repo-root", required=True)
-    value.add_argument("--json", action="store_true")
+    value = argparse.ArgumentParser(); value.add_argument("command", choices=COMMANDS)
+    value.add_argument("--repo-root", required=True); value.add_argument("--json", action="store_true")
     for name in ("expected-board-sha256", "task-id", "request-json", "approved-request-json", "plan-ref", "approval-ref", "validation-json", "blocker-json", "decision-ref", "disposition", "role", "native-action-json", "native-action-id", "invocation-json", "callback-json", "worktree-json", "integration-json", "closeout-json"): value.add_argument(f"--{name}")
     value.add_argument("--intent", choices=("Inspect", "Implementation", "Close"))
     return value
@@ -466,40 +444,31 @@ def validate_argument_combination(args: argparse.Namespace) -> None:
     allowed = COMMAND_ARGUMENTS[args.command]
     if {name for name in names if getattr(args, name) is not None} - allowed: raise Blocked("BLOCKED_ARGUMENT_COMBINATION", "Arguments are incompatible with the selected command.")
 def pre_git_busy_submit(args: argparse.Namespace) -> tuple[Path, dict[str, Any], str] | None:
-    if args.command != "submit":
-        return None
+    if args.command != "submit": return None
     root = Path(args.repo_root).resolve()
     data = (root / BOARD_REL).read_bytes()
     _, control, _ = parse_board(data)
-    if control.get("version") == 2 and (
-        control.get("state") != "idle" or control.get("active") is not None
-    ):
+    if control.get("version") == 2 and (control.get("state") != "idle" or control.get("active") is not None):
         return root, control, sha(data)
     return None
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     args = parser().parse_args()
-    root: Path | None = None
-    control: dict[str, Any] | None = None
-    before: str | None = None
-    primary_head: str | None = None
+    root: Path | None = None; control: dict[str, Any] | None = None
+    before: str | None = None; primary_head: str | None = None
     try:
         validate_argument_combination(args)
         busy = pre_git_busy_submit(args)
         if busy is not None:
             root, control, before = busy
-            output = result(
-                "BLOCKED_ACTIVE_TASK_RUNNING", args.command, root, before, before, control,
-                task_id=args.task_id, reason="Another task is active; submit again after it is closed.",
-            )
+            output = result("BLOCKED_ACTIVE_TASK_RUNNING", args.command, root, before, before, control,
+                            task_id=args.task_id, reason="Another task is active; submit again after it is closed.")
             print(json.dumps(output, ensure_ascii=False, separators=(",", ":")) if args.json else "\n".join(f"{key}: {value}" for key, value in output.items()))
             return 2
         root = resolve_primary(args.repo_root)
         primary_head = run_git(root, "rev-parse", "HEAD").stdout.strip()
-        board = root / BOARD_REL
-        data = board.read_bytes()
-        before = sha(data)
+        board = root / BOARD_REL; data = board.read_bytes(); before = sha(data)
         prefix, control, suffix = parse_board(data)
         if args.command == "classify":
             output = classification_result(json.loads(args.request_json or ""), command=args.command, primary_root=str(root), primary_head=primary_head, board_sha256=before)
@@ -511,10 +480,8 @@ def main() -> int:
             code, reason = check(args, root, control)
             output = result(code, args.command, root, before, before, control, task_id=args.task_id, reason=reason, primary_head=primary_head)
         else:
-            if not args.task_id or not re.fullmatch(r"[A-Z][A-Z0-9_\-]+", args.task_id):
-                raise Blocked("BLOCKED_TASK_MISMATCH", "A valid task ID is required.")
-            if not args.expected_board_sha256 or not re.fullmatch(r"[0-9a-f]{64}", args.expected_board_sha256):
-                raise Blocked("BLOCKED_BOARD_HASH_MISMATCH", "Expected board SHA-256 is required.")
+            if not args.task_id or not re.fullmatch(r"[A-Z][A-Z0-9_\-]+", args.task_id): raise Blocked("BLOCKED_TASK_MISMATCH", "A valid task ID is required.")
+            if not args.expected_board_sha256 or not re.fullmatch(r"[0-9a-f]{64}", args.expected_board_sha256): raise Blocked("BLOCKED_BOARD_HASH_MISMATCH", "Expected board SHA-256 is required.")
             with writer_lock(root):
                 data = board.read_bytes()
                 before = sha(data)
