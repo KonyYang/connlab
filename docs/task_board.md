@@ -78,12 +78,12 @@
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
-      "task_branch": null,
-      "task_worktree": null,
-      "base_sha": "5c4af0aec50346c940cb486ea2faf975c2838277",
-      "head_sha": "5c4af0aec50346c940cb486ea2faf975c2838277",
+      "task_branch": "codex/task-matrix-import-source-picker-target-folder-file-list",
+      "task_worktree": "D:\\PythonProject\\connlab-worktrees\\task-matrix-import-source-picker-target-folder-file-list",
+      "base_sha": "900c26a78009264ab0fc06f2c038e50d6d280869",
+      "head_sha": "1798d0377347459a78478b9a10e3c2f2a23327e4",
       "integration_target": "master",
-      "worktree_lifecycle": "absent",
+      "worktree_lifecycle": "ready",
       "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
@@ -100,8 +100,8 @@
           "recorded_at": "2026-08-17T04:43:27Z"
         }
       ],
-      "host_thread_id": null,
-      "host_id": null,
+      "host_thread_id": "/root/matrix_source_picker_fresh_host",
+      "host_id": "/root/matrix_source_picker_fresh_host",
       "approved_code_paths": [
         "backend/application/project_test_plan_source_candidate_service.py",
         "backend/api/routes_project_test_plan_source_candidates.py",
@@ -137,19 +137,14 @@
         "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_planner.md@12d5a28c723eaf1b1afe7f65769aa673c7353ed4#0e18ca744ea11cce2ec2d7b8e1575802a6ae1c20fee810fb369d5d40a7272eef"
       ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "host_creation_pending",
-        "action_id": "8870905041837698218fbbb6f66f4bbb0e88fd80283ceeeb7c8eca5c5be45bf3",
-        "role": "Host",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
       "timing_facts": {
         "host": {
           "started_at": "2026-08-17T05:04:17Z",
-          "completed_at": null
+          "completed_at": "2026-08-17T05:07:41Z"
         },
         "roles": [
           {
