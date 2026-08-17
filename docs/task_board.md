@@ -38,7 +38,20 @@
       "worktree_lifecycle": "absent",
       "current_role": "Planner",
       "current_attempt": 1,
-      "role_invocations": [],
+      "role_invocations": [
+        {
+          "schema": "connlab.serial-invocation",
+          "version": 1,
+          "action_id": "cde5e45db502422cbb8f514ef034d3bd1b82d5fb25162cf9a683424cfebb531a",
+          "role": "Planner",
+          "attempt": 1,
+          "thread_id": "/root/matrix_source_picker_reactivation_planner",
+          "agent_id": null,
+          "host_id": null,
+          "status": "started",
+          "recorded_at": "2026-08-17T04:43:27Z"
+        }
+      ],
       "host_thread_id": null,
       "host_id": null,
       "approved_code_paths": [
@@ -75,7 +88,7 @@
       "evidence_refs": [],
       "blocker_history": [],
       "pending_callback": {
-        "state": "dispatch_pending",
+        "state": "callback_pending",
         "action_id": "cde5e45db502422cbb8f514ef034d3bd1b82d5fb25162cf9a683424cfebb531a",
         "role": "Planner",
         "attempt": 1
