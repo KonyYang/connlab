@@ -24,11 +24,9 @@ Forbidden:
 
 ## Frontend/UI Design Rule
 
-`$impeccable` is required for all ConnLab frontend/UI work across the whole project, not just a single phase.
-
-Use it before designing, changing, critiquing, auditing, polishing, refactoring, or documenting frontend UI, UX copy, layout, visual hierarchy, interaction states, responsive behavior, or frontend smoke expectations.
-
-Backend-only, parser-only, storage-only, Office gateway-only, database-only, and non-UI test work is exempt unless it changes UI behavior or user-facing copy.
+`PRODUCT.md`, `DESIGN.md`, and `DESIGN.json` are the product-design authority for substantive
+frontend/UI work. Load only the parts relevant to the actual behavior, layout, interaction, copy, or
+visual change. A particular UI helper skill is not a workflow prerequisite.
 
 Frontend architecture boundaries are defined in `docs/frontend_architecture_rules.md`. Future UI work must follow those page, feature, component, API, state, selector, config, and styling rules unless the active task explicitly updates them.
 

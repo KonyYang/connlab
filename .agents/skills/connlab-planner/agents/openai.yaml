@@ -1,6 +1,0 @@
-interface:
-  display_name: "ConnLab Planner (Explicit)"
-  short_description: "显式执行 ConnLab 复杂任务的只读发现与规划。"
-  default_prompt: "使用 $connlab-planner 为当前 ConnLab 复杂任务生成只读可批准方案。"
-policy:
-  allow_implicit_invocation: false

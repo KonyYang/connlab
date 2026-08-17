@@ -247,7 +247,8 @@ Never expose future-scope features as available actions:
 
 ## Styling Rules
 
-ConnLab is a product UI. Follow `PRODUCT.md`, `DESIGN.md`, and `$impeccable` product guidance for UI work.
+ConnLab is a product UI. Follow `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json` for substantive UI work;
+no particular helper skill is mandatory.
 
 Rules:
 

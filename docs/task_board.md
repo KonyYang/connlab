@@ -1,93 +1,23 @@
 # ConnLab Task Board
 
-> Status Authority: Read `state` and `active` in the machine control block below; dynamic task status is not duplicated in human prose.
-> Last Updated: 2026-08-14
-> Current Source Of Truth: `docs/task_board.md`
-> Current Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
-> Execution Rule: WIP=1; occupied submissions wait with zero writes, while idle submissions classify into direct simple work or the automatic approved complex role chain.
+> Authority: the compact control block below. Workflow: `docs/project_management/TASK_WORKFLOW.md`.
+> WIP=1. GPT-5.6 Sol routes work as micro, standard, or high risk and runs routine stages
+> automatically until the User's final Close.
 
 <!-- CONNLAB_EXECUTION_CONTROL_BEGIN -->
 ```json
 {
-  "schema": "connlab.personal-serial-control",
-  "version": 2,
-  "mode": "personal_serial",
+  "schema": "connlab.sol-task-control",
+  "version": 1,
+  "mode": "sol_native",
   "wip_limit": 1,
   "state": "idle",
   "active": null,
-  "queue": [],
-  "next_enqueue_sequence": 1,
-  "last_closed": {
-    "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_RESTARTED",
-    "disposition": "empty restarted task cancelled before Planner action; no Task, Plan, evidence, branch, worktree, host or implementation created; prior retained product resources remain untouched; no new task authorized",
-    "decision_ref": "User clarified that the request is to close the task only and not create or start a new task.",
-    "closed_at": "2026-08-17T11:26:14Z"
-  },
-  "retained_history": [
-    {
-      "task_id": "TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF",
-      "status": "cancelled",
-      "owner": "User / manual governance",
-      "disposition": "retain clean Task-A lane and all evidence; no automatic adoption, merge, rewrite, deletion, or role dispatch",
-      "evidence": "docs/lane_evidence/TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF_reviewer.md@85e71dfa212c57c26527fad42eaf00a83b19c935#f1ca9341149d567958d837c18932e25ddee1ad47189266d0de73a03540e6de3a",
-      "branch": "lane/task-governance-active-context-deterministic-transition-and-event-handoff",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\task-governance-active-context-deterministic-transition-and-event-handoff",
-      "head": "85e71dfa212c57c26527fad42eaf00a83b19c935"
-    },
-    {
-      "task_id": "TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH",
-      "status": "retained",
-      "owner": "permanent Orchestrator governance",
-      "disposition": "retain clean integrated lane branch/worktree until separately authorized safe maintenance retirement",
-      "evidence": "docs/lane_evidence/TASK_GOVERNANCE_WIP1_AND_PROPORTIONATE_QUICK_FIX_FAST_PATH_integrator.md",
-      "branch": "lane/task-governance-wip1-and-proportionate-quick-fix-fast-path",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\task-governance-wip1-and-proportionate-quick-fix-fast-path",
-      "head": "600bbf2d8d6b7884fed6a3af4e46f56cce3fe3a3"
-    },
-    {
-      "task_id": "TASK_368D_PDF_QUALIFICATION_MATRIX_MERGED_CELL_ALIGNMENT_QUICK_FIX",
-      "status": "retained",
-      "owner": "permanent Orchestrator governance",
-      "disposition": "retain clean integrated lane branch/worktree until separately authorized safe maintenance retirement",
-      "evidence": "docs/lane_evidence/TASK_368D_pdf-qualification-matrix-merged-cell-alignment_integrator.md",
-      "branch": "lane/task-368d-pdf-qualification-matrix-merged-cell-alignment-quick-fix",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\task-368d-pdf-qualification-matrix-merged-cell-alignment-quick-fix",
-      "head": "45f345f49c43eece139245b00048c74e8c83f73b"
-    },
-    {
-      "task_id": "TASK_368E_MATRIX_IMPORT_OPTIONAL_STANDARD_VERSION_FALLBACK_AND_COPY_CLARITY",
-      "status": "retained",
-      "owner": "permanent Orchestrator governance",
-      "disposition": "retain clean integrated lane branch/worktree until separately authorized safe maintenance retirement",
-      "evidence": "docs/lane_evidence/TASK_368E_matrix-import-optional-standard-version-fallback-and-copy-clarity_integrator.md",
-      "branch": "lane/task-368e-matrix-import-optional-standard-version-fallback-and-copy-clarity",
-      "worktree": "D:\\PythonProject\\connlab-worktrees\\task-368e-matrix-import-optional-standard-version-fallback-and-copy-clarity",
-      "head": "c9a61bcb701178c1042d99ca8011d138e0420330"
-    }
-  ]
+  "last_closed": null,
+  "retained_history": []
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
 
-## Active Work
-
-- The machine control block is the sole current-status authority. Read its `state` and `active`
-  fields before submitting, continuing, reviewing, or closing work.
-- This section intentionally contains no dynamic task identity or idle/running claim.
-
-## Queue
-
-- Version-2 queue compatibility fields are inert and have no daily operation entry. Submission
-  availability is determined only by the machine control block's `state` and `active` fields.
-
-## Retained History
-
-- Four retained/cancelled lane snapshots remain location-addressable in the machine-control block.
-- Task-A remains cancelled. All retained branches, worktrees, and evidence are untouched.
-- `TASK_GOVERNANCE_CLASSIC_ROLE_MIGRATION` remains historical planning material only; it is not queued or executable.
-- `TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING` auxiliary reconciliation/proof resources are retained. After the first subsequent real task completes and the User closes it, report `CLEANUP_READY` and request explicit cleanup authorization.
-
-## Immutable History
-
-- Generation-1 board archive and canonical index remain unchanged under `docs/archive/task_board_history/`.
-- Direct generation-1 rollback proof may return `BLOCKED_ROLLBACK_CHAIN` after later legitimate board commits; this is expected protection, not failure.
+Historical boards, role evidence, and retired lane metadata are audit material only. They do not
+authorize work, create WIP, or override this control block.

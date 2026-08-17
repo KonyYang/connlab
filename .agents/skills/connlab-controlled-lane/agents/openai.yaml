@@ -1,6 +1,0 @@
-interface:
-  display_name: "ConnLab Controlled Lane (Legacy)"
-  short_description: "显式审计冻结的 Controlled Lane 历史流程。"
-  default_prompt: "使用 $connlab-controlled-lane 只读审计冻结的历史 lane 规则。"
-policy:
-  allow_implicit_invocation: false
