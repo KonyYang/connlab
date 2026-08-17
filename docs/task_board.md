@@ -19,7 +19,7 @@
     "summary": "In the ordinary-browser Matrix Editor, list only direct .doc, .docx and .pdf files from the resolved email-attachment or Submitted Material project folder, show a concise source title and filename-only choices, preserve explicit selection, Cancel, Upload other file, empty/error/read-only states and desktop picker behavior, reuse retained clean implementation as the starting point, diagnose the failed source-folder candidate contract, and reject stale in-place same-name replacements without adding endpoints, persistence or path exposure.",
     "kind": "planned",
     "classification": "complex",
-    "phase": "review",
+    "phase": "development",
     "scope_contract": {
       "may_touch": [
         "backend/application/project_test_plan_source_candidate_service.py",
@@ -74,7 +74,25 @@
     "activation_parent_sha": "5c4af0aec50346c940cb486ea2faf975c2838277",
     "activated_at": "2026-08-17T04:42:06Z",
     "updated_at": "2026-08-17T05:03:30Z",
-    "blocker": null,
+    "blocker": {
+      "schema": "connlab.serial-task-blocker",
+      "version": 1,
+      "code": "REVIEWER_BLOCKED",
+      "stage": "review",
+      "reason": "Ordinary-browser candidate loading and request-busy states are unreachable while the source-candidate GET is pending, allowing overlapping Import Matrix requests.",
+      "dirty_paths": [],
+      "failed_validation": null,
+      "subject_commit": "1798d0377347459a78478b9a10e3c2f2a23327e4",
+      "evidence_ref": "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_reviewer.md@5171bdb172dca3e56ae89629283f64967dd148a9#b131e72d3ac3db8e684fb47dfe7257ec64884ca6f3a2591f8df8715d4ad6d093",
+      "native_action_id": null,
+      "related_ids": [
+        "MATRIX_SOURCE_PICKER_LOADING_BUSY"
+      ],
+      "retryable": true,
+      "requires_user": false,
+      "resume_phase": "development",
+      "recorded_at": "2026-08-17T10:19:57Z"
+    },
     "validation": null,
     "complex_context": {
       "workflow_version": 1,
@@ -84,7 +102,7 @@
       "head_sha": "1798d0377347459a78478b9a10e3c2f2a23327e4",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": "Reviewer",
+      "current_role": null,
       "current_attempt": 1,
       "role_invocations": [
         {
@@ -159,15 +177,11 @@
       "integrated_commit": null,
       "evidence_refs": [
         "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_planner.md@12d5a28c723eaf1b1afe7f65769aa673c7353ed4#0e18ca744ea11cce2ec2d7b8e1575802a6ae1c20fee810fb369d5d40a7272eef",
-        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_developer.md@28b3ab84511747546088f27add07c37d175aded5#593b1c838af2b9564cdc1a2fe5d8adbe646d6f05f3c4a814daf1898710478e0f"
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_developer.md@28b3ab84511747546088f27add07c37d175aded5#593b1c838af2b9564cdc1a2fe5d8adbe646d6f05f3c4a814daf1898710478e0f",
+        "docs/lane_evidence/TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH_reviewer.md@5171bdb172dca3e56ae89629283f64967dd148a9#b131e72d3ac3db8e684fb47dfe7257ec64884ca6f3a2591f8df8715d4ad6d093"
       ],
       "blocker_history": [],
-      "pending_callback": {
-        "state": "callback_pending",
-        "action_id": "b78591dd5b391b44079ed32bc4d1515d75f1259647a44b9da92a2faa46be9d86",
-        "role": "Reviewer",
-        "attempt": 1
-      },
+      "pending_callback": null,
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
@@ -193,7 +207,7 @@
             "role": "Reviewer",
             "attempt": 1,
             "started_at": "2026-08-17T10:03:53Z",
-            "completed_at": null
+            "completed_at": "2026-08-17T18:18:50+08:00"
           }
         ],
         "integration_completed_at": null
