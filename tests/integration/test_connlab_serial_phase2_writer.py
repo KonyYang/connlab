@@ -282,12 +282,18 @@ def test_public_approve_atomically_applies_scope_amendment(tmp_path: Path) -> No
     assert active["complex_context"]["blocker_history"][0]["resolution"] == "scope_amendment"
 
 
-@pytest.mark.parametrize("fault", ["missing_manifest", "wrong_manifest", "duplicate_manifest", "mismatched_request", "stale_digest"])
+@pytest.mark.parametrize("fault", ["missing_manifest", "wrong_manifest", "duplicate_manifest", "mismatched_request", "stale_digest", "route_drift"])
 def test_blocked_scope_reapproval_with_invalid_plan_facts_is_zero_write(tmp_path: Path, fault: str) -> None:
     repo = tmp_path / fault
     base = init_repo(repo)
     evidence = commit_evidence(repo)
-    value = active_value(base, blocker("SCOPE_EXPANDED", evidence, None), context(base))
+    current = context(base)
+    if fault == "route_drift":
+        current["execution_routes"] = {
+            role: {"model": "gpt-5.6-sol", "reasoning_effort": "high", "reason": "original route"}
+            for role in ("Developer", "Reviewer", "QA", "Integrator")
+        }
+    value = active_value(base, blocker("SCOPE_EXPANDED", evidence, None), current)
     write_active(repo, value)
     amended = scope(["docs/task_board.md", "scripts/current.py", "scripts/new.py"])
     approved = {

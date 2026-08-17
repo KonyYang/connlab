@@ -334,6 +334,7 @@ def transition(args: argparse.Namespace, root: Path, control: dict[str, Any]) ->
         execution_routes = None if approved_routes is None else {role: {"model": route[0], "reasoning_effort": route[1], "reason": route[2]} for role, route in approved_routes.items()}
         if blocked_reapproval:
             previous = active["scope_contract"]; old_paths, new_paths = set(previous["may_touch"]), set(scope["may_touch"])
+            if is_v2_complex and (current_routes := active["complex_context"].get("execution_routes")) is not None and current_routes != execution_routes: raise Blocked("BLOCKED_PLAN_INVALID", "Blocked reapproval cannot change an approved execution route.")
             if scope == previous:
                 active.update(summary=approved["summary"], plan_ref=args.plan_ref, approval_ref=args.approval_ref, updated_at=now())
                 if is_v2_complex: active["complex_context"].update(execution_routes=execution_routes, validation_manifest=validation_manifest)
