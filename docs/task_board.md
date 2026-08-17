@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST",
     "summary": "Complete the ordinary-browser Matrix Import source picker with direct target-directory Word/PDF candidates and stale-safe opaque selection while preserving desktop and read-only behavior.",
@@ -22,17 +22,87 @@
     "risk_reasons": [],
     "activation_head": "f79a095c5db02ed8143d3cfd41099e54fece801a",
     "started_at": "2026-08-17T12:17:24.839564Z",
-    "updated_at": "2026-08-17T12:38:17.317052Z",
+    "updated_at": "2026-08-17T12:53:32.445300Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST",
-      "stage": "developer_validation",
+      "stage": "delivery",
       "status": "running",
-      "summary": "Current master implementation and focused regressions are complete; backend/API tests, frontend focused tests, build, and responsive browser smoke pass before independent review and QA.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST",
+      "subject": "f6bbf843d25aa7d8b288cc467d2ef0219e686604",
+      "summary": "Ordinary-browser Matrix Import now lists path-free direct Word and PDF files from the preferred resolved source folder with stale-safe opaque selection; desktop native and read-only behavior remain intact.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/routes_project_test_plan_source_candidates.py",
+        "backend/application/project_test_plan_source_candidate_service.py",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.tsx",
+        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.test.tsx",
+        "frontend/src/features/matrix-editor/useMatrixImportSourcePicker.ts",
+        "tests/integration/test_project_test_plan_source_candidates_api.py",
+        "tests/unit/test_matrix_source_candidate_service.py"
+      ],
+      "validation": [
+        {
+          "name": "backend_api_preview",
+          "status": "passed",
+          "summary": "26 passed, 1 environment-dependent symlink test skipped"
+        },
+        {
+          "name": "frontend_focused",
+          "status": "passed",
+          "summary": "57 passed"
+        },
+        {
+          "name": "frontend_build",
+          "status": "passed",
+          "summary": "TypeScript and Vite production build passed"
+        },
+        {
+          "name": "python_compile",
+          "status": "passed",
+          "summary": "Changed backend modules compiled"
+        },
+        {
+          "name": "browser_smoke",
+          "status": "passed",
+          "summary": "Real browser at 1280px and 514px passed interaction, overflow, path and console checks"
+        },
+        {
+          "name": "diff_check",
+          "status": "passed",
+          "summary": "Git diff check and scope passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "TDD implementation, self-review and developer validation complete"
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Independent Standards and Spec review found zero findings"
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Independent automated QA matrix passed; browser evidence retained from developer smoke"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "summary": "Clean master integration commit created with exact in-scope product paths"
+      }
+    }
   },
   "last_closed": null,
   "retained_history": []
