@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_CARD_SELECTION",
     "summary": "Replace per-file Select buttons with accessible clickable file cards in the browser Matrix Import source picker.",
@@ -27,9 +27,61 @@
     "risk_reasons": [],
     "activation_head": "6b7c79b19355c1bb7442fbf87a2f81d4042dc82d",
     "started_at": "2026-08-17T13:05:03.829103Z",
-    "updated_at": "2026-08-17T13:05:03.829103Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-08-17T13:17:02.683144Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_CARD_SELECTION",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_CARD_SELECTION",
+      "subject": "c2ac7409efa763587d7dfb596e59f98fb27dc0e3",
+      "summary": "The browser Matrix Import source picker now uses each filename card as the accessible selection control, with no nested Select button.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixImportSourceCandidatePicker.tsx",
+        "frontend/src/workbench.css"
+      ],
+      "validation": [
+        {
+          "name": "focused frontend tests",
+          "status": "passed",
+          "result": "54 passed"
+        },
+        {
+          "name": "frontend production build",
+          "status": "passed",
+          "result": "134 modules built"
+        },
+        {
+          "name": "browser verification",
+          "status": "passed",
+          "result": "603x831 card click, fit, preview transition, cancel, and console checks"
+        },
+        {
+          "name": "git diff check",
+          "status": "passed",
+          "result": "clean"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented, self-reviewed, and validated the scoped micro change."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "summary": "Committed cleanly on current master at the reported subject."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST",
