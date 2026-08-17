@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from shutil import copyfile
 from tempfile import NamedTemporaryFile
@@ -24,6 +25,59 @@ from backend.modules.test_plan import MatrixGroupPreview, MatrixStepPreview
 router = APIRouter(tags=["project-test-plan"])
 _PREVIEW_DIR = Path("tmp/matrix_import_previews")
 _PREVIEW_TOKEN_MAP: dict[str, Path] = {}
+
+
+def _prepare_preview_pdf_artifact(
+    service: ProjectTestPlanMatrixPreviewService,
+    source_path: Path,
+    *,
+    require_token: bool,
+) -> tuple[str | None, tuple]:
+    """Prepare PDF artifact data for a preview request and return preview token info."""
+    suffix = source_path.suffix.lower()
+    if suffix not in {".pdf", ".docx"}:
+        return None, ()
+
+    _PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
+    for stale_file in _PREVIEW_DIR.glob("*.pdf"):
+        stale_file.unlink(missing_ok=True)
+    preview_token = uuid4().hex
+    preview_pdf_path = _PREVIEW_DIR / f"{preview_token}.pdf"
+    table_locations = ()
+    if suffix == ".pdf":
+        try:
+            copyfile(source_path, preview_pdf_path)
+        except Exception:
+            if require_token:
+                raise
+            return None, ()
+    else:
+        try:
+            table_locations = service.read_word_table_locations(source_path)
+        except Exception:
+            table_locations = ()
+        try:
+            service.export_word_preview_pdf(source_path, preview_pdf_path)
+        except Exception:
+            if require_token:
+                raise
+            return None, ()
+    _PREVIEW_TOKEN_MAP.clear()
+    _PREVIEW_TOKEN_MAP[preview_token] = preview_pdf_path
+    return preview_token, table_locations
+
+
+def _preview_response_source(
+    preview: ProjectTestPlanMatrixPreview, source_path: Path
+) -> ProjectTestPlanMatrixPreview:
+    """Mask local source path details for API response while preserving filename metadata."""
+    display_name = source_path.name
+    return replace(
+        preview,
+        source_document_path=Path(display_name),
+        source_document_name=display_name,
+        source_format=source_path.suffix.lower(),
+    )
 
 
 class MatrixPreviewFromPathRequest(BaseModel):
@@ -104,18 +158,26 @@ def preview_matrix_from_path(
 ) -> MatrixPreviewResponse:
     """Return a read-only Matrix preview for a local product specification path."""
     try:
+        source_path = Path(request.source_path)
+        preview_pdf_token, table_locations = _prepare_preview_pdf_artifact(
+            service,
+            source_path,
+            require_token=False,
+        )
         preview = service.preview_from_path(
             MatrixPreviewFromPathCommand(
-                source_path=Path(request.source_path),
+                source_path=source_path,
                 project_id=request.project_id,
                 page_number=request.page_number,
                 page_table_index=request.page_table_index,
                 table_text_query=request.table_text_query,
-            )
+            ),
+            preview_pdf_token=preview_pdf_token,
+            table_locations=table_locations,
         )
     except ProjectTestPlanMatrixPreviewError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return _preview_response(preview)
+    return _preview_response(_preview_response_source(preview, source_path))
 
 
 @router.post(
@@ -164,22 +226,11 @@ async def preview_matrix_from_upload(
                 ),
             ) from exc
     try:
-        _PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
-        for stale_file in _PREVIEW_DIR.glob("*.pdf"):
-            stale_file.unlink(missing_ok=True)
-        _PREVIEW_TOKEN_MAP.clear()
-        preview_token = uuid4().hex
-        preview_pdf_path = _PREVIEW_DIR / f"{preview_token}.pdf"
-        table_locations = ()
-        if suffix == ".pdf":
-            copyfile(temp_path, preview_pdf_path)
-        else:
-            try:
-                table_locations = service.read_word_table_locations(preview_source_path)
-            except Exception:
-                table_locations = ()
-            service.export_word_preview_pdf(preview_source_path, preview_pdf_path)
-        _PREVIEW_TOKEN_MAP[preview_token] = preview_pdf_path
+        preview_pdf_token, table_locations = _prepare_preview_pdf_artifact(
+            service,
+            preview_source_path,
+            require_token=True,
+        )
         preview = service.preview_from_path(
             MatrixPreviewFromPathCommand(
                 source_path=preview_source_path,
@@ -188,28 +239,12 @@ async def preview_matrix_from_upload(
                 page_table_index=page_table_index,
                 table_text_query=table_text_query,
             ),
-            preview_pdf_token=preview_token,
+            preview_pdf_token=preview_pdf_token,
             table_locations=table_locations,
         )
-        if preview.source_document_name != original_name or suffix in {".doc", ".pdf"}:
-            preview = ProjectTestPlanMatrixPreview(
-                project_id=preview.project_id,
-                source_document_path=Path(original_name) if suffix in {".doc", ".pdf"} else preview.source_document_path,
-                source_document_name=original_name,
-                source_format=suffix if suffix in {".doc", ".pdf"} else preview.source_format,
-                capability_status=preview.capability_status,
-                generated_at=preview.generated_at,
-                groups=preview.groups,
-                warnings=preview.warnings,
-                blockers=preview.blockers,
-                selected_table_index=preview.selected_table_index,
-                selected_page_number=preview.selected_page_number,
-                selected_page_table_index=preview.selected_page_table_index,
-                candidate_tables=preview.candidate_tables,
-                preview_pdf_token=preview.preview_pdf_token,
-                rows=preview.rows,
-            )
-        return _preview_response(preview)
+        return _preview_response(
+            _preview_response_source(preview, Path(original_name))
+        )
     except ProjectTestPlanMatrixPreviewError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     finally:

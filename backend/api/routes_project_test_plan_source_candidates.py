@@ -11,7 +11,12 @@ from backend.api.dependencies import (
     get_project_test_plan_matrix_preview_service,
     get_project_test_plan_source_candidate_service,
 )
-from backend.api.routes_project_test_plan import MatrixPreviewResponse, _preview_response
+from backend.api.routes_project_test_plan import (
+    MatrixPreviewResponse,
+    _prepare_preview_pdf_artifact,
+    _preview_response,
+    _preview_response_source,
+)
 from backend.application.project_test_plan_matrix_preview_service import (
     MatrixPreviewFromPathCommand,
     ProjectTestPlanMatrixPreviewError,
@@ -136,11 +141,18 @@ def preview_project_test_plan_matrix_from_candidate(
                 source_asset_id=source_asset_id,
             )
         )
+        preview_pdf_token, table_locations = _prepare_preview_pdf_artifact(
+            matrix_preview_service,
+            source_path,
+            require_token=False,
+        )
         preview = matrix_preview_service.preview_from_path(
             MatrixPreviewFromPathCommand(
                 source_path=source_path,
                 project_id=project_id,
-            )
+            ),
+            preview_pdf_token=preview_pdf_token,
+            table_locations=table_locations,
         )
     except ProjectTestPlanSourceCandidateNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -148,7 +160,7 @@ def preview_project_test_plan_matrix_from_candidate(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ProjectTestPlanMatrixPreviewError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return _preview_response(preview)
+    return _preview_response(_preview_response_source(preview, source_path))
 
 
 def _candidate_response(

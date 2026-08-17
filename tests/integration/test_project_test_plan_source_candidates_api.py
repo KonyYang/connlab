@@ -9,7 +9,11 @@ from docx import Document
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_session, get_settings
+from backend.api.dependencies import (
+    get_project_test_plan_matrix_preview_service,
+    get_session,
+    get_settings,
+)
 from backend.api.main import app
 from backend.domain import FileAsset, FileAssetType, Project, ProjectStatus
 from backend.infrastructure.storage.database import (
@@ -22,6 +26,10 @@ from backend.infrastructure.storage.repositories import (
     FileAssetRepository,
     ProjectOfficialWorkspaceRepository,
     ProjectRepository,
+)
+from backend.application.project_test_plan_matrix_preview_service import (
+    MatrixPreviewFromPathCommand,
+    ProjectTestPlanMatrixPreview,
 )
 from backend.shared.config import Settings
 
@@ -140,9 +148,59 @@ def test_resolved_directory_view_lists_path_free_direct_files_and_previews_curre
         )
         assert preview.status_code == 200
         assert preview.json()["source_document_name"] == "Alpha Matrix.docx"
+        assert preview.json()["source_document_path"] == "Alpha Matrix.docx"
         assert spec.read_bytes() == original_bytes
     finally:
         app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_resolved_directory_preview_generates_pdf_token_for_docx(
+    tmp_path: Path,
+) -> None:
+    client, engine = _client(tmp_path)
+    fake_service = _FakeResolvedDirectoryPreviewService()
+    app.dependency_overrides[get_project_test_plan_matrix_preview_service] = (
+        lambda: fake_service
+    )
+    try:
+        _create_project("P1", tmp_path)
+        official = tmp_path / "official"
+        submitted = official / "Submitted Material"
+        submitted.mkdir(parents=True)
+        spec = submitted / "Alpha Matrix.docx"
+        _write_product_spec_docx(spec)
+        _create_workspace("P1", official, tmp_path)
+
+        listed = client.get(
+            "/api/projects/P1/test-plan/source-candidates",
+            params={"view": "resolved_directory"},
+        )
+        candidate_id = listed.json()["candidates"][0]["candidate_id"]
+
+        preview = client.post(
+            f"/api/projects/P1/test-plan/source-candidates/{candidate_id}/matrix-preview",
+            params={"view": "resolved_directory"},
+        )
+        assert preview.status_code == 200
+        payload = preview.json()
+
+        token = payload["preview_pdf_token"]
+        assert token is not None
+        assert payload["source_document_name"] == "Alpha Matrix.docx"
+        assert payload["source_document_path"] == "Alpha Matrix.docx"
+        assert fake_service.previewed_source == spec
+        assert fake_service.office.word_locations_requested == [spec]
+        assert len(fake_service.office.word_pdf_exports) == 1
+
+        preview_pdf = client.get(f"/api/test-plan/matrix-preview-pdf/{token}")
+        assert preview_pdf.status_code == 200
+        assert preview_pdf.headers["content-type"].startswith("application/pdf")
+    finally:
+        app.dependency_overrides.clear()
+        app.dependency_overrides.pop(get_session, None)
+        app.dependency_overrides.pop(get_settings, None)
+        app.dependency_overrides.pop(get_project_test_plan_matrix_preview_service, None)
         engine.dispose()
 
 
@@ -298,3 +356,62 @@ def _write_product_spec_docx(path: Path) -> None:
         for column_index, value in enumerate(row):
             table.cell(row_index, column_index).text = value
     document.save(path)
+
+
+class _FakeResolvedDirectoryPreviewOffice:
+    def __init__(self) -> None:
+        self.word_locations_requested: list[Path] = []
+        self.word_pdf_exports: list[tuple[Path, Path]] = []
+
+    def read_word_table_locations(self, source_path: Path) -> tuple:
+        self.word_locations_requested.append(Path(source_path))
+        return ()
+
+    def export_word_preview_pdf(self, source_path: Path, output_pdf_path: Path) -> Path:
+        self.word_pdf_exports.append((Path(source_path), Path(output_pdf_path)))
+        output_pdf_path.write_bytes(b"%PDF-1.4")
+        return output_pdf_path
+
+
+class _FakeResolvedDirectoryPreviewService:
+    def __init__(self) -> None:
+        self.office = _FakeResolvedDirectoryPreviewOffice()
+        self.previewed_source: Path | None = None
+        self.previewed_locator: tuple[int | None, int | None, str | None] | None = None
+
+    def read_word_table_locations(self, source_path: Path) -> tuple:
+        return self.office.read_word_table_locations(source_path)
+
+    def export_word_preview_pdf(self, source_path: Path, output_pdf_path: Path) -> Path:
+        return self.office.export_word_preview_pdf(source_path, output_pdf_path)
+
+    def preview_from_path(
+        self,
+        command: MatrixPreviewFromPathCommand,
+        *,
+        preview_pdf_token: str | None = None,
+        table_locations: tuple | None = None,
+    ) -> ProjectTestPlanMatrixPreview:
+        self.previewed_source = Path(command.source_path)
+        self.previewed_locator = (
+            command.page_number,
+            command.page_table_index,
+            command.table_text_query,
+        )
+        return ProjectTestPlanMatrixPreview(
+            project_id=command.project_id,
+            source_document_path=self.previewed_source,
+            source_document_name=self.previewed_source.name,
+            source_format=self.previewed_source.suffix.lower(),
+            capability_status="supported",
+            generated_at="2026-07-04T00:00:00+00:00",
+            preview_pdf_token=preview_pdf_token,
+            rows=(),
+            groups=(),
+            warnings=(),
+            blockers=(),
+            selected_table_index=None,
+            selected_page_number=None,
+            selected_page_table_index=None,
+            candidate_tables=(),
+        )

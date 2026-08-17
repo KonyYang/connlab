@@ -2640,6 +2640,7 @@ export function MatrixEditorWorkspace({
       return;
     }
     setSourceCandidatePreviewBusy(true);
+    setOpeningImportPreview(true);
     setImportError(null);
     try {
       const preview = await previewProjectTestPlanMatrixFromSourceCandidate(
@@ -2666,6 +2667,7 @@ export function MatrixEditorWorkspace({
       setSourceCandidateError(parseRequestError(error, "Failed to preview the selected project source."));
     } finally {
       setSourceCandidatePreviewBusy(false);
+      setOpeningImportPreview(false);
     }
   };
 

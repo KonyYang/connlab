@@ -191,9 +191,11 @@ def test_matrix_preview_upload_accepts_doc_by_converting_to_temp_docx(tmp_path: 
 
     assert response.status_code == 200
     payload = response.json()
+    assert payload["preview_pdf_token"] is not None
     assert payload["project_id"] == "P-doc"
     assert payload["source_document_name"] == "legacy-spec.doc"
     assert payload["source_format"] == ".doc"
+    assert payload["source_document_path"] == "legacy-spec.doc"
     assert not payload["source_document_path"].endswith(".docx")
     assert fake_service.office.converted_source is not None
     assert fake_service.office.converted_source.suffix == ".doc"
@@ -201,8 +203,16 @@ def test_matrix_preview_upload_accepts_doc_by_converting_to_temp_docx(tmp_path: 
     assert fake_service.office.converted_output.suffix == ".docx"
     assert fake_service.previewed_source is not None
     assert fake_service.previewed_source == fake_service.office.converted_output
+    assert fake_service.office.word_locations_requested == [fake_service.office.converted_output]
+    assert len(fake_service.office.word_pdf_exports) == 1
+    assert fake_service.office.word_pdf_exports[0][0] == fake_service.office.converted_output
     assert not fake_service.office.converted_source.exists()
     assert not fake_service.office.converted_output.exists()
+    preview_response = client.get(
+        f"/api/test-plan/matrix-preview-pdf/{payload['preview_pdf_token']}"
+    )
+    assert preview_response.status_code == 200
+    assert preview_response.headers["content-type"].startswith("application/pdf")
 
 
 def test_matrix_preview_upload_doc_conversion_failure_is_readable() -> None:
@@ -253,6 +263,39 @@ def test_matrix_preview_upload_accepts_pdf_with_preview_token() -> None:
     assert fake_service.office.word_locations_requested == []
     assert fake_service.office.word_pdf_exports == []
     assert not fake_service.previewed_source.exists()
+    assert preview_response.status_code == 200
+    assert preview_response.headers["content-type"].startswith("application/pdf")
+
+
+def test_matrix_preview_path_api_supports_docx_preview_pdf_token(
+    tmp_path: Path,
+) -> None:
+    fake_service = _FakeUploadPreviewService()
+    app.dependency_overrides[get_project_test_plan_matrix_preview_service] = lambda: fake_service
+    docx_path = tmp_path / "direct-spec.docx"
+    _write_product_spec_docx(docx_path)
+    client = TestClient(app)
+    try:
+        response = client.post(
+            "/api/test-plan/matrix-preview-from-path",
+            json={"source_path": str(docx_path), "project_id": "P-direct"},
+        )
+        assert response.status_code == 200
+        preview_response = client.get(
+            f"/api/test-plan/matrix-preview-pdf/{response.json()['preview_pdf_token']}"
+        )
+    finally:
+        app.dependency_overrides.pop(get_project_test_plan_matrix_preview_service, None)
+
+    payload = response.json()
+    assert payload["project_id"] == "P-direct"
+    assert payload["source_document_name"] == docx_path.name
+    assert payload["source_document_path"] == docx_path.name
+    assert payload["source_format"] == ".docx"
+    assert payload["preview_pdf_token"] is not None
+    assert fake_service.office.word_locations_requested == [docx_path]
+    assert fake_service.previewed_source == docx_path
+    assert len(fake_service.office.word_pdf_exports) == 1
     assert preview_response.status_code == 200
     assert preview_response.headers["content-type"].startswith("application/pdf")
 

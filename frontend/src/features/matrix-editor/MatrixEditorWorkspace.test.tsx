@@ -856,6 +856,44 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(await screen.findByRole("button", { name: "Replace" })).toBeTruthy();
   });
 
+  it("shows the blocking Matrix search dialog while a browser project candidate is previewed", async () => {
+    const deferredPreview = createDeferred<MatrixPreviewResponse>();
+    sourcePickerMocks.choose.mockResolvedValue({
+      kind: "browser",
+      sourceTitle: "Submitted Material files",
+      candidates: [{ candidate_id: "source-1", file_name: "matrix.docx" }],
+      warnings: [],
+      error: null,
+    });
+    apiMocks.previewProjectTestPlanMatrixFromSourceCandidate.mockReturnValueOnce(deferredPreview.promise);
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
+    expect(await screen.findByRole("heading", { name: "Submitted Material files" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Select matrix.docx" }));
+
+    expect(
+      await screen.findByRole("alertdialog", { name: "Searching for Matrix" })
+    ).toBeTruthy();
+    expect(
+      screen.getByText("ConnLab is reading the source document and preparing the preview.")
+    ).toBeTruthy();
+
+    await act(async () => {
+      deferredPreview.resolve(buildImportPreview({ source_document_name: "matrix.docx", preview_pdf_token: "source-pdf" }));
+      await deferredPreview.promise;
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByRole("alertdialog", { name: "Searching for Matrix" })).toBeNull()
+    );
+    expect(await screen.findByRole("button", { name: "Replace" })).toBeTruthy();
+    await waitFor(() =>
+      expect(apiMocks.previewProjectTestPlanMatrixFromSourceCandidate).toHaveBeenCalledWith("P1", "source-1", "resolved_directory")
+    );
+  });
+
   it("cancels the browser source chooser without previewing or uploading", async () => {
     sourcePickerMocks.choose.mockResolvedValue({
       kind: "browser",
