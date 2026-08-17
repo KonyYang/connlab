@@ -84,7 +84,7 @@
       "head_sha": "1798d0377347459a78478b9a10e3c2f2a23327e4",
       "integration_target": "master",
       "worktree_lifecycle": "ready",
-      "current_role": null,
+      "current_role": "Reviewer",
       "current_attempt": 2,
       "role_invocations": [
         {
@@ -201,7 +201,12 @@
           "resolved_at": "2026-08-17T10:22:39Z"
         }
       ],
-      "pending_callback": null,
+      "pending_callback": {
+        "state": "dispatch_pending",
+        "action_id": "a2419020dd0382afc58b7e85ae81a1de06c6d851fcfce0c107380cdd59484896",
+        "role": "Reviewer",
+        "attempt": 2
+      },
       "closeout_disposition": null,
       "retained_resource_refs": [],
       "close_decision_ref": null,
@@ -234,6 +239,12 @@
             "attempt": 2,
             "started_at": "2026-08-17T10:22:23Z",
             "completed_at": "2026-08-17T18:38:26+08:00"
+          },
+          {
+            "role": "Reviewer",
+            "attempt": 2,
+            "started_at": "2026-08-17T10:40:54Z",
+            "completed_at": null
           }
         ],
         "integration_completed_at": null
