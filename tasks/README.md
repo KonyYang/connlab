@@ -1,6 +1,6 @@
 # ConnLab Task Files
 
-Last Updated: 2026-05-24
+Last Updated: 2026-08-18
 
 Use this directory for current, planned, recently completed, and not-yet-archived task files.
 
@@ -14,18 +14,18 @@ Use this directory for current, planned, recently completed, and not-yet-archive
 
 ## File Roles
 
-- `TASK_XXX_*.md`: executable task scope, constraints, acceptance criteria, and validation.
-- `completed/YYYY/`: future archive location for completed task files after final board alignment.
+- `TASK_XXX_*.md`: executable task scope, constraints, acceptance criteria, and validation (created only when a manual publishing flow requires one).
+- `completed/YYYY/`: archive location for archived task files.
 
 ## Archive Rule
 
-Do not manually move completed task files. Use:
+Sol-native tasks record state in the `docs/task_board.md` JSON control block and do not create
+per-task Markdown artifacts by default. When the User asks for cleanup of an archived task file,
+move it with Git and update the indexes manually:
 
 ```powershell
-py scripts\archive_completed_markdown.py --task TASK_XXX --dry-run
-py scripts\archive_completed_markdown.py --task TASK_XXX --apply
-py scripts\archive_completed_markdown.py --all-completed --dry-run
-py scripts\archive_completed_markdown.py --all-completed --apply
+git mv tasks\TASK_XXX.md tasks\completed\2026\
 ```
 
-The script checks `docs/task_board.md` before moving files and updates archive indexes in `docs/`.
+Confirm the task is closed and no current work references it before moving. Update
+`docs/task_archive_index.md` and `docs/plan_archive_index.md`. See `docs/markdown_management_rules.md`.

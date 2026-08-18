@@ -63,3 +63,5 @@ Out of scope:
 ## Completion Notes
 
 Implemented as a first-stage Markdown governance baseline, then applied the archive workflow to all root-level task files and plan files that could be verified as completed by `docs/task_board.md` or by their own `Status` section. A follow-up cleanup also moved historical phase plans, validation summaries, external modification logs, and nonstandard completed task artifacts out of the `docs/` root into `docs/archive/`. Remaining root-level task/plan files are proposed, pending, planned, paused, or review-only records. Future mainline `TASK_268` remains uncreated and unblocked.
+
+The archive helper was retired as legacy on 2026-08-18. Sol-native tasks record state in the `docs/task_board.md` JSON control block instead of per-task Markdown, so archiving is now a manual `git mv` plus index update. See `docs/markdown_management_rules.md`.

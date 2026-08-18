@@ -18,17 +18,17 @@ for cleanup or the active task includes cleanup.
 
 ## Archive helper
 
-Preview before applying:
+Sol-native tasks do not create per-task Markdown artifacts by default; the JSON control block in
+`docs/task_board.md` is the authoritative record. Archiving completed files is a lightweight manual
+cleanup (the former `scripts/archive_completed_markdown.py` helper is retired as legacy):
 
-```powershell
-py scripts/archive_completed_markdown.py --task TASK_XXX --dry-run
-```
+1. Confirm the task is closed and no current work references it.
+2. Preview what Git tracks, then move with `git mv`:
+   ```powershell
+   git ls-files tasks/
+   git mv tasks/TASK_XXX.md tasks/completed/2026/
+   ```
+3. Update `docs/task_archive_index.md` and `docs/plan_archive_index.md`.
+4. Commit. Git remains the recovery source for removed historical governance files.
 
-Apply only after the preview has the intended exact paths:
-
-```powershell
-py scripts/archive_completed_markdown.py --task TASK_XXX --apply
-```
-
-Do not bulk-migrate history during an unrelated product task. Git remains the recovery source for
-removed historical governance files.
+Do not bulk-migrate history during an unrelated product task.

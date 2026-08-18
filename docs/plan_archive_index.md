@@ -1,8 +1,8 @@
 # Plan Archive Index
 
-Last Updated: 2026-05-24
+Last Updated: 2026-08-18
 
-Completed task plan files archived by `scripts/archive_completed_markdown.py` are indexed here.
+Completed task plan files moved to `docs/completed_plans/YYYY/` are indexed here.
 
 | Task ID | Plan File | Archived Path | Related Task File | Archived On |
 | --- | --- | --- | --- | --- |

@@ -1,8 +1,8 @@
 # Task Archive Index
 
-Last Updated: 2026-05-24
+Last Updated: 2026-08-18
 
-Completed task files archived by `scripts/archive_completed_markdown.py` are indexed here.
+Completed task files moved to `tasks/completed/YYYY/` are indexed here.
 
 | Task ID | Title | Status | Archived Task File | Archived Plan File | Archived On |
 | --- | --- | --- | --- | --- | --- |

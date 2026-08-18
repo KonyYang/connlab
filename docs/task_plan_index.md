@@ -21,8 +21,8 @@ Reason:
 `DOCS_001_MARKDOWN_INFORMATION_ARCHITECTURE_AND_AUTO_ARCHIVE_RULES` introduced and applied a controlled archive path for completed plan files:
 
 - Completed plan files may move to `docs/completed_plans/YYYY/`.
-- Moves must use `scripts/archive_completed_markdown.py`.
-- Dry-run review is required before apply mode.
+- Moves use `git mv` and manual index updates; the former archive script is retired as legacy.
+- Review the planned paths with `git ls-files`/`git status` before moving.
 - `docs/plan_archive_index.md` records archived plan paths.
 - `docs/markdown_management_rules.md` defines protected files and archive eligibility.
 
