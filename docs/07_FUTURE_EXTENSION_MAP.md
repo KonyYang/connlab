@@ -24,7 +24,6 @@ Matrix is the execution authority map, Project remains the lifecycle container.
 
 Current runtime governance:
 
-- `docs/runtime_governance_freeze_rule.md`
 - `docs/matrix_execution_phase_principles.md`
 - `docs/project_workbench_runtime_console_information_architecture.md`
 - `docs/step_centric_domain_foundation.md`

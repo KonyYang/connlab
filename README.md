@@ -40,15 +40,14 @@ Current source-of-truth order:
 
 1. `AGENTS.md`
 2. `docs\task_board.md`
-3. current `tasks\TASK_XXX_*.md`
+3. active task scope and state in the `docs\task_board.md` JSON control block (Sol-native; root `tasks\TASK_XXX_*.md` files are archived)
 4. task-specific plan or architecture docs
-5. `docs\README.md`
+5. `docs\INDEX.md`
 
 Current governance and product references:
 
-- Runtime governance: `docs\runtime_governance_freeze_rule.md`
 - Product purpose: `PRODUCT.md`
-- Documentation map: `docs\README.md`
+- Documentation map: `docs\INDEX.md`
 - Domain snapshot: `docs\03_DOMAIN_MODEL.md`
 - API surface snapshot: `docs\04_API_CONTRACTS.md`
 
