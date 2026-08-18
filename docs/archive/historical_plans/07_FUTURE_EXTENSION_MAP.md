@@ -25,11 +25,11 @@ Matrix is the execution authority map, Project remains the lifecycle container.
 Current runtime governance:
 
 - `docs/matrix_execution_phase_principles.md`
-- `docs/project_workbench_runtime_console_information_architecture.md`
-- `docs/step_centric_domain_foundation.md`
-- `docs/interactive_step_token_read_model_projection_foundation.md`
-- `docs/runtime_projection_service_and_read_model_boundary.md`
-- `docs/first_runtime_implementation_slice_planning.md`
+
+The TASK_195-198 and TASK_200 runtime planning documents (project workbench
+console architecture, step-centric domain foundation, interactive step token
+read model, runtime projection boundary, first runtime slice) are archived
+under `docs/archive/historical_plans/`.
 
 ## Current Implementation Direction After TASK_202
 

@@ -8,9 +8,13 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_intake_precheck_gap_audit_documents_required_findings() -> None:
     """TASK_077 records the key Intake/Precheck business gaps."""
-    source = (ROOT / "docs" / "intake_precheck_business_gap_audit.md").read_text(
-        encoding="utf-8"
-    )
+    source = (
+        ROOT
+        / "docs"
+        / "archive"
+        / "historical_plans"
+        / "intake_precheck_business_gap_audit.md"
+    ).read_text(encoding="utf-8")
 
     for term in [
         "Precheck UI Required Fields Do Not Match Backend Confirmation Rules",

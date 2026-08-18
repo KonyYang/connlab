@@ -12,7 +12,7 @@ The contract is based on:
 
 - `AGENTS.md`
 - `docs/frontend_architecture_rules.md`
-- `docs/intake_precheck_business_gap_audit.md`
+- `docs/archive/historical_plans/intake_precheck_business_gap_audit.md`
 - user-provided business rules on 2026-05-03
 - read-only parser probe of `local/office files samples/E-3718_H Laboratory Test Request-Even.docx`
 
