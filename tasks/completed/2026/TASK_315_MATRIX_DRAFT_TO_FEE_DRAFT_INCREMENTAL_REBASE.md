@@ -1,6 +1,6 @@
 # TASK_315_MATRIX_DRAFT_TO_FEE_DRAFT_INCREMENTAL_REBASE
 
-Status: Umbrella / split rationale. Not directly executable.
+Status: closed (archived 2026-08-18; umbrella/split rationale superseded by Sol-native manual task publishing)
 
 Umbrella plan: `docs/task_315_matrix_draft_to_fee_draft_incremental_rebase_plan.md`
 

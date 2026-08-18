@@ -1,6 +1,6 @@
 # TASK_317A_PROJECT_FOLDER_PREPARATION_UI_BLUEPRINT
 
-Status: Proposed for review. Implementation is not approved.
+Status: closed (archived 2026-08-18; superseded by Sol-native manual task publishing; implementation not approved)
 
 Current phase: Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation.
 

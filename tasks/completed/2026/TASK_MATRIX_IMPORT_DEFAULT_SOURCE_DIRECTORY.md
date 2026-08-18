@@ -1,6 +1,6 @@
 # TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY
 
-Status: `planned` / `bounded_scope_amendment_pending_user_approval`
+Status: closed (archived 2026-08-18; superseded by Sol-native manual task publishing; implementation not approved)
 
 Phase: `Phase 11 - Project Workbench / Matrix / Approval Package controlled foundation`
 

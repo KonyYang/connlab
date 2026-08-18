@@ -1,6 +1,6 @@
 # TASK_314A_MATRIX_EDITOR_DRAFT_PERSISTENCE
 
-Status: Planned. Task scope accepted for review; awaiting explicit user approval before implementation.
+Status: closed (archived 2026-08-18; superseded by Sol-native manual task publishing; implementation not approved)
 
 Executable plan: `docs/task_314a_matrix_editor_draft_persistence_plan.md`
 

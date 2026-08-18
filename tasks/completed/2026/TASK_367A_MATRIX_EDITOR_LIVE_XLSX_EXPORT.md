@@ -1,6 +1,6 @@
 # TASK_367A_MATRIX_EDITOR_LIVE_XLSX_EXPORT
 
-Status: complete / accepted; post-accept docs-only source-of-truth reconciliation complete / pending Reviewer docs-only source-of-truth re-gate
+Status: complete / accepted; archived 2026-08-18 (closed; implementation integrated into local master)
 Lane: `matrix-editor-live-xlsx-export`
 Owner role: Planner / Developer / Reviewer / QA / Integrator
 Implementation authorization: complete; accepted lane HEAD `53840b42ea73358c31fe40c5225646363d485829` plus accepted post-accept corrective commits `f0880310f786ac98ad0f8437db02fc22cca93f08` and `1c9f8fc58ca72d21e020576d5aa611a307c335c3` are integrated into local `master`

@@ -145,3 +145,24 @@ Revisit bulk migration of task plan files only when both conditions are true:
 2. A dedicated path-rewrite validation task is approved.
 
 Individual completed-task cleanup may happen earlier through the DOCS_001 archive helper when the task board already marks that task complete and the user explicitly requests cleanup.
+
+## 2026-08-18 Closure
+
+The user closed and archived the remaining non-active legacy task files and plans because the Sol-native workflow publishes tasks manually and does not consume these files. All were superseded and never approved for implementation (TASK_367A was complete/accepted and its implementation is integrated into local master).
+
+Archived on 2026-08-18:
+
+- Task files → `tasks/completed/2026/`: TASK_314A, TASK_315, TASK_317A, TASK_367A, TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG, TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG_CORRECTED_PLAN, TASK_LTR_WORKBOOK_PUBLIC_DEFAULT_ADMIN_CONFIG_BOOTSTRAP, TASK_MATRIX_IMPORT_BROWSER_PROJECT_SOURCE_PICKER, TASK_MATRIX_IMPORT_DEFAULT_SOURCE_DIRECTORY, TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST, TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_CORRECTED_PLAN, TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_FRESH.
+- Plan files → `docs/completed_plans/2026/`: matching `task_*.md` plans for the tasks above.
+- Indexes updated: `docs/task_archive_index.md` and `docs/plan_archive_index.md`.
+
+## 2026-08-18 Closure (second batch - tasks root cleared)
+
+The user closed and archived the remaining 34 legacy task files in `tasks/` root (TASK_280-360 series and GOVERNANCE series). The Sol-native workflow publishes tasks manually and does not consume these files. Seventeen were complete/accepted with implementation evidence (code, tests, or `docs/lane_evidence/`); seventeen were closed as superseded/never-approved.
+
+Archived on 2026-08-18 (second batch) → `tasks/completed/2026/`:
+
+- complete: TASK_285A, TASK_290 (umbrella, via TASK_290A), TASK_292, TASK_294, TASK_303, TASK_330 (umbrella, via TASK_330A-F), TASK_337B, TASK_339A, TASK_345A-D, TASK_GOVERNANCE_ACTIVE_CONTEXT_DETERMINISTIC_TRANSITION_AND_EVENT_HANDOFF, TASK_GOVERNANCE_NONDESTRUCTIVE_EVIDENCE_TOPOLOGY_CLOSEOUT, TASK_GOVERNANCE_ORCHESTRATOR_LATENCY_AND_MODEL_ROUTING, TASK_GOVERNANCE_PERSONAL_SERIAL_V2_LEGACY_ENTRY_FREEZE_AND_STALE_TEST_CLEANUP, TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION.
+- closed: TASK_280, TASK_334E, TASK_335, TASK_360H-S, TASK_GOVERNANCE_PERSONAL_SERIAL_V2_WRITER_RECOVERY_CORRECTION, TASK_GOVERNANCE_REGATE_EVIDENCE_REUSE_BASELINE_LEDGER_AND_VALIDATION_RUNNER.
+
+`tasks/` root now contains zero `TASK_*.md` files. Index updated: `docs/task_archive_index.md`.

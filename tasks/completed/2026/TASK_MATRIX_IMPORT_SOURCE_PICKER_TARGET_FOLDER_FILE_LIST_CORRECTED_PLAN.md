@@ -1,6 +1,6 @@
 # TASK_MATRIX_IMPORT_SOURCE_PICKER_TARGET_FOLDER_FILE_LIST_CORRECTED_PLAN
 
-Status: `planned` / `governance_recovery_scope_amendment_pending_user_approval`
+Status: closed (archived 2026-08-18; superseded by Sol-native manual task publishing; implementation not approved)
 
 ## Correction authority
 

@@ -1,6 +1,6 @@
 # TASK_LTR_WORKBOOK_ADMIN_RUNTIME_CONFIG
 
-Status: `ready_for_user_approval`
+Status: closed (archived 2026-08-18; superseded by Sol-native manual task publishing; implementation not approved)
 
 Implementation authorization: none until the User approves the exact committed Plan and approved-request contract.
 
