@@ -33,9 +33,13 @@ def test_phase6_plan_defines_real_intake_scope() -> None:
     ]:
         assert term in source
 
-    compatibility = (ROOT / "docs" / "msg_compatibility.md").read_text(
-        encoding="utf-8"
-    )
+    compatibility = (
+        ROOT
+        / "docs"
+        / "archive"
+        / "historical_plans"
+        / "msg_compatibility.md"
+    ).read_text(encoding="utf-8")
     assert "blocked_missing_fixtures" in compatibility
     assert "real samples found: 3" in compatibility
     assert "all available samples classified as `supported`" in compatibility

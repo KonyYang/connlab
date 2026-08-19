@@ -110,7 +110,7 @@ FILES_TO_PACK = [
     "docs/task_191_matrix_draft_starter_import_and_manual_empty_state_plan.md",
     "docs/task_192_matrix_source_candidates_and_browse_fallback_correction_plan.md",
     "docs/archive/historical_plans/project_workbench_matrix_authority_workspace_target.md",
-    "docs/matrix_test_plan_data_management_decisions.md",
+    "docs/archive/historical_plans/matrix_test_plan_data_management_decisions.md",
 ]
 
 
