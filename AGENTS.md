@@ -1,145 +1,77 @@
-# ConnLab Engineering Rules
+# ConnLab Project Instructions
 
-This file contains ConnLab-specific product and engineering facts. The only task workflow is
-`docs/project_management/TASK_WORKFLOW.md`; machine state is in `docs/task_board.md`.
+Keep this file small: it is loaded for every task. The User's current request defines scope. Real
+code and observable behavior outrank historical plans.
 
-## Product mission
+## Read only what the task needs
 
-ConnLab is an offline, Windows-first workbench for an electronic connector laboratory. Project is the
-lifecycle and traceability container. Matrix is the authoritative test-execution map. Test records,
-reports, fee evaluation, and approval packages are derived outputs.
+- Inspect the relevant code and tests. Read the `docs/task_board.md` control block for repository
+  changes, task status, or interruption recovery—not for unrelated explanation or advice.
+- For repository changes, use the tier summary below. Read
+  `docs/project_management/SOL_NATIVE_WORKFLOW.md` only for standard/high-risk execution, board
+  operations, or interruption recovery.
+- Read `docs/PROJECT_CONTEXT.md` when product authority, domain ownership, architecture, Office, or
+  external-file behavior matters.
+- For substantive UI behavior or structure, also read `PRODUCT.md`, `DESIGN.md`, `DESIGN.json`, and
+  `docs/FRONTEND_GUIDE.md`. A literal/default/copy fix does not require the full design set.
+- Read `docs/packaging_notes.md` only for startup, packaging, release, or runtime-path work.
+- `docs/archive/**`, `docs/completed_plans/**`, `docs/lane_evidence/**`, and legacy `tasks/**/*.md` are
+  history, never execution authority. Consult them only for a specifically relevant past decision.
 
-Current controlled foundation:
+## Autonomy and scope
 
-```text
-Phase 11 - Project Workbench / Matrix / Approval Package
-```
+- For explanation, diagnosis, review, or planning, inspect and report; do not implement unless asked.
+- For change, build, fix, or refactor requests, make the in-scope local changes and run relevant
+  non-destructive validation without routine approval pauses.
+- Ask only for material scope expansion, an unresolved product choice with meaningfully different
+  outcomes, new external/destructive authority, or an action that cannot be made safely reversible.
+- Make ordinary technical decisions—implementation, naming, module placement, tests, and tools—using
+  the current code and the smallest coherent change.
+- Preserve unrelated User work. Never silently reset, restore, stash, clean, rebase, push, delete
+  unrelated files, or overwrite external data.
 
-The next direction is Matrix-driven laboratory execution. Do not implement future concepts such as
-StepInstance persistence, image asset management, AI review, multi-user permissions, or LAN deployment
-unless the current User request requires them. Do not copy the old TestFlowManager architecture.
+## Durable product facts
 
-## Authority and compatibility
+- ConnLab is an offline, Windows-first workbench for an electronic connector laboratory.
+- Project is the lifecycle and traceability container. Matrix is the authoritative test-execution map.
+- Test records, reports, fee evaluation, and approval packages are derived outputs.
+- Public-drive LTR workbooks and approved Word/Excel templates retain their existing business
+  authority until an explicit migration changes it. SQLite does not silently replace them.
+- Word and Excel are formats and external authorities where configured, not the primary domain model.
+- Do not introduce future scope—AI review, multi-user permissions, LAN deployment, or new execution
+  persistence—unless the current request requires it.
 
-ConnLab currently operates in legacy-authority compatibility mode:
+## Engineering rules
 
-- Public-drive LTR workbooks and approved Word/Excel templates remain business authority or delivery
-  templates where the existing workflow says so.
-- SQLite is a local personal-workstation cache, automation aid, and migration backup; it must not
-  silently replace authoritative public-drive workflows.
-- Project lifecycle identity belongs to Project. Matrix owns what must be tested.
-- Word and Excel are input/output formats, not the primary long-term domain model.
-- A future authority cutover requires an explicit migration task.
+- Dependency direction is `frontend -> API -> application -> domain/interfaces <- infrastructure`.
+- Keep domain independent of API, UI, SQLAlchemy, Office, and concrete infrastructure.
+- Keep routes and UI handlers thin; place business decisions in the deepest existing module whose
+  interface owns them. Prefer explicit dependencies and one state channel.
+- Keep Word/Excel/Outlook and filesystem details behind infrastructure adapters. Release COM objects,
+  file handles, temporary resources, and child processes deterministically.
+- Preserve compatibility unless the User requests a breaking change. Do not add a framework,
+  dependency, abstraction, or compatibility layer without a present need.
+- Prefer cohesive modules and practical seams. Split by responsibility or change reason, not arbitrary
+  line-count targets.
 
-When a task touches these areas, inspect the real current code and external-file behavior before
-changing it. Preserve existing authority unless the User explicitly requests a migration.
+## Validation and completion
 
-## Technical stack
-
-- Python 3.11+ and pytest.
-- FastAPI with typed Pydantic v2 responses.
-- SQLAlchemy 2.x and SQLite.
-- React and TypeScript frontend.
-- Windows and Microsoft Office integration where required.
-- Prefer `python-docx` and `openpyxl` for offline parsing; keep `pywin32` behind a gateway.
-
-## Architecture
-
-Use the existing layers as real dependency rules, not directory decoration:
-
-```text
-backend/domain          pure domain concepts
-backend/application     use cases and orchestration
-backend/infrastructure  persistence, files, Office and platform adapters
-backend/modules         bounded domain implementations
-backend/api             thin routes and transport DTOs
-backend/shared          genuinely shared primitives
-```
-
-- Domain must not depend on API, infrastructure, modules, UI, SQLAlchemy, or Office libraries.
-- Application coordinates domain interfaces and must not contain concrete Office or SQLite access.
-- Infrastructure supplies concrete adapters.
-- API routes call application modules and return typed responses.
-- Frontend and API routes must not manipulate Office files or project folders directly.
-- Put business decisions in the deepest existing module whose interface naturally owns them.
-- Prefer explicit dependencies and one state channel over global singletons or duplicate event/state
-  propagation.
-
-Before a structural change, trace the real entry point, dependency flow, state flow, data flow, and
-resource lifecycle. Documentation does not override observable code behavior.
-
-## Domain invariants
-
-- Project remains the lifecycle and traceability center.
-- Matrix remains the execution authority map and must not become an Excel-like string store.
-- Extracted or confirmed information is stored as structured records.
-- Application form starts the project; precheck is its first quality gate.
-- LTR and project-folder operations remain downstream of a confirmed project.
-- External files, parsers, validation, persistence, and UI concerns remain separate.
-- Routes and UI handlers coordinate; they do not absorb domain logic.
-- Do not add dependencies or future-scope abstractions without a current need.
-
-## Windows and Office behavior
-
-- Release COM objects, file handles, temporary resources, and child processes deterministically.
-- Keep blocking Office and filesystem work off the UI thread.
-- Test development-path and packaged-path resolution when a task changes resources or configuration.
-- Never overwrite an existing project folder or authoritative workbook without an explicit safe
-  conflict strategy in the current request.
-- Include enough context in file, network, process, and COM errors to diagnose the failed operation.
-
-## Frontend and UX
-
-Use `PRODUCT.md`, `DESIGN.md`, `DESIGN.json`, `docs/02_ARCHITECTURE_RULES.md`, and
-`docs/frontend_architecture_rules.md` when the task actually changes product behavior, layout,
-interaction, visual design, component structure, or frontend architecture. A localized literal,
-default, mapping, or existing-state fix does not require loading the whole design corpus.
-
-- Keep UI focused on operator work, current state, blockers, and next actions.
-- Preserve feature and page seams; do not grow route pages with unrelated workflow state.
-- Use existing selectors, hooks, components, API clients, and styling conventions when they fit.
-- Verify observable browser behavior when it changes. Do not require browser automation for a change
-  already proven through a narrower public seam.
-
-Project-local UI helper skills are optional methods, not mandatory gates.
-
-## Implementation and testing
-
-- Prefer the smallest coherent behavioral change, not the smallest line count.
-- Preserve compatibility unless the User requests a breaking change.
-- Do not swallow exceptions without a deliberate fallback and useful logging.
 - Add regression protection for substantive behavior when a practical public seam exists.
-- Test happy behavior and the important negative or recovery path introduced by the change.
-- Run validation proportional to risk. The independent QA pass for a standard/high-risk task is the
-  only default repetition of the complete approved matrix.
-- After the final code or test byte changes, rerun affected validation on that exact subject.
-- Keep fixtures and tests behavior-focused; do not simulate the governance implementation itself.
+- Validate proportional to risk. After the final implementation or test byte changes, rerun affected
+  validation on that exact state; old results no longer count.
+- Review the exact diff for requirement fit, safety, regressions, and scope creep. Do not duplicate a
+  full passing matrix without a risk-based reason.
+- Finish with the outcome, exact changed paths, validation results, material findings, and residual
+  risk. Omit duplicated plans, board JSON, full logs, and role ceremony.
 
-Functions and modules should remain understandable and cohesive. Split code when responsibilities or
-change reasons diverge; do not split merely to satisfy an arbitrary line threshold.
+## Task tiers
 
-## Task execution
+- **Micro:** localized and unambiguous; Sol implements, self-reviews, and runs targeted validation.
+- **Standard:** substantive but not high risk; one Sol work unit plans and implements, followed by one
+  focused review and one complete QA pass.
+- **High risk:** database/schema migration, permissions/security, authoritative external mutation,
+  destructive work, broad architecture change, or unresolved product choice; use independent
+  Planner, Developer, Reviewer, QA, and Integrator contexts with automatic handoffs.
 
-Use GPT-5.6 Sol and the three tiers defined in `docs/project_management/TASK_WORKFLOW.md`:
-
-- micro: direct Sol implementation, self-review, targeted validation;
-- standard: one Sol plan/implementation work unit, independent Reviewer, one independent QA pass,
-  automatic clean integration;
-- high risk: Planner, Developer, Reviewer, QA, and Integrator.
-
-Normal User interactions are Submit and final Close. Do not request routine plan approval. The User's
-request is the behavioral scope; optional path scope only tightens it.
-
-Use `scripts/connlab_sol_task.py` as the sole board writer. Persist only meaningful recovery
-checkpoints. Git supplies HEAD and changed-path facts; do not create role begin/invocation/callback
-microstates or separate evidence files by default.
-
-## Safety and completion
-
-- Preserve unrelated User work and inspect a dirty worktree before touching overlapping paths.
-- Do not silently restore, reset, stash, clean, rebase, delete, push, or overwrite external state.
-- Stop for scope expansion, new destructive authority, a material unresolved product choice, or a
-  repeated failure whose cause cannot be established.
-- Finish with the exact changed paths, validation results, independent review outcome where required,
-  and residual risk.
-- Stop at `ready_for_close`. Only the User's explicit Close releases WIP and permits another task.
+Do not request routine Plan approval. The normal User interactions are the request and final `关闭`.
+Use `scripts/connlab_sol_task.py` as the sole board writer; persist only useful recovery checkpoints.

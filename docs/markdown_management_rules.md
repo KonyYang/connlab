@@ -8,7 +8,8 @@ Never auto-archive:
 
 - `AGENTS.md`;
 - `README.md`, `PRODUCT.md`, `DESIGN.md`, and `DESIGN.json`;
-- `docs/project_management/TASK_WORKFLOW.md`;
+- `docs/project_management/SOL_NATIVE_WORKFLOW.md`;
+- `docs/PROJECT_CONTEXT.md` and `docs/FRONTEND_GUIDE.md`;
 - `docs/task_board.md`;
 - current architecture documents directly relevant to active product behavior.
 

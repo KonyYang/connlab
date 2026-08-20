@@ -1,6 +1,0 @@
-interface:
-  display_name: "ConnLab Sol Orchestrator"
-  short_description: "用三档 Sol 流程自动完成 ConnLab 任务。"
-  default_prompt: "使用 $connlab-lane-orchestrator 按 Sol-native 三档流程执行当前 ConnLab 任务，并自动推进到等待用户最终关闭。"
-policy:
-  allow_implicit_invocation: true

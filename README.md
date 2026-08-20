@@ -32,26 +32,27 @@ Historical MVP baseline (already implemented and extended):
 Project -> Application form -> Precheck -> LTR -> Project Folder
 ```
 
-Current deferred scope (not active in the present stage baseline): AI review, multi-user permissions, LAN deployment, full installer, and PyInstaller packaging.
+Current deferred scope (not active unless a task requests it): AI review, multi-user permissions, LAN deployment, and a managed multi-user installer.
 
 ## Documentation Read Order
 
 Current source-of-truth order:
 
-1. `AGENTS.md`
-2. `docs\task_board.md`
-3. active task scope and state in the `docs\task_board.md` JSON control block (Sol-native; root `tasks\TASK_XXX_*.md` files are archived)
-4. task-specific plan or architecture docs
-5. `docs\INDEX.md`
+1. the User's current request
+2. `AGENTS.md`
+3. current code, tests, configuration, external behavior, and Git state
+4. `docs\task_board.md` for compact WIP/recovery state
+5. `docs\project_management\SOL_NATIVE_WORKFLOW.md` when detailed task routing or recovery is needed
 
 Current governance and product references:
 
-- Product purpose: `PRODUCT.md`
 - Documentation map: `docs\INDEX.md`
-- Domain snapshot: `docs\03_DOMAIN_MODEL.md`
-- API surface snapshot: `docs\04_API_CONTRACTS.md`
+- Product and engineering context: `docs\PROJECT_CONTEXT.md`
+- Product purpose and visual direction: `PRODUCT.md`, `DESIGN.md`, `DESIGN.json`
+- Frontend structure: `docs\FRONTEND_GUIDE.md`
 
-Historical phase plans and packed blueprints are context only unless confirmed by `AGENTS.md`, `docs\task_board.md`, or the active task.
+Historical phase plans, role evidence, dated snapshots, and packed blueprints are searchable context
+only. They never create scope or reactivate retired workflows.
 
 ## Requirements
 

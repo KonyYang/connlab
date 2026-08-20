@@ -1,25 +1,39 @@
 # ConnLab Documentation Index
 
-Not every document under `docs/` is current authority. Read only what the task needs.
+Read only the material required by the current task. Historical Markdown is searchable context, not a
+workflow or authority source.
 
-## Useful current documents
+## Active authority
 
-- `PRODUCT.md`, `DESIGN.md`, `DESIGN.json`: product and visual direction.
-- `docs/02_ARCHITECTURE_RULES.md`: backend and platform boundaries.
-- `docs/frontend_architecture_rules.md`: frontend boundaries.
-- `docs/03_DOMAIN_MODEL.md`: domain snapshot.
-- `docs/04_API_CONTRACTS.md`: API snapshot.
-- `docs/markdown_management_rules.md`: archive guidance.
+1. The User's current request — behavioral scope and requested outcome.
+2. `AGENTS.md` — small always-loaded project facts, autonomy limits, and tier summary.
+3. Real code, tests, configuration, external-file behavior, and Git state.
+4. `docs/task_board.md` — compact WIP and recovery state only.
+5. `docs/project_management/SOL_NATIVE_WORKFLOW.md` — the sole detailed execution workflow, read for
+   standard/high-risk work, board operations, or recovery.
 
-## Historical context
+No dated Plan, task file, evidence file, snapshot, or archive overrides these sources.
 
-Task Plans, completed tasks, lane evidence, validation summaries, and archive files are historical
-context. They do not create scope, require a role chain, or override current code and the
-authorities in `AGENTS.md` and `docs/task_board.md`.
+## Focused current references
 
-The former future-extension map (`docs/07_FUTURE_EXTENSION_MAP.md`) is archived under
-`docs/archive/historical_plans/`; future-scope constraints now live in `AGENTS.md`
-("Do not implement future concepts ... unless the current User request requires them").
+- `docs/PROJECT_CONTEXT.md`: product authority, domain ownership, architecture, Windows, and Office.
+- `PRODUCT.md`, `DESIGN.md`, `DESIGN.json`: product and visual direction for substantive UI work.
+- `docs/FRONTEND_GUIDE.md`: current React/UI seams and proportional validation.
+- `docs/intake_precheck_field_contract.md`: Intake/Precheck field compatibility contract; read only
+  when that workflow or its tests change.
+- `docs/packaging_notes.md`: startup, packaging, release, and runtime-path operations.
+- `docs/markdown_management_rules.md`: history and archive handling.
 
-Use `docs/archive/`, `docs/completed_plans/`, `tasks/completed/`, and `docs/lane_evidence/` only when
-the current task needs historical decisions or evidence.
+Exact API routes, DTOs, database shapes, and frontend state must be inspected from current code. They
+are intentionally not duplicated in a manually maintained snapshot.
+
+## Historical material
+
+- `docs/archive/**`: superseded architecture, specifications, snapshots, and plans.
+- `docs/completed_plans/**` and legacy `tasks/**/*.md`: task artifacts; Sol-native work does not use
+  them as live scope.
+- `docs/lane_evidence/**`: retired role evidence.
+- `docs/task_archive_index.md`, `docs/plan_archive_index.md`, `docs/task_plan_index.md`: lookup indexes.
+
+Open historical material only when the task needs a named past decision. References inside historical
+files remain historical and do not reactivate retired workflows, skills, roles, or scope.
