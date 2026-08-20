@@ -27,6 +27,9 @@ from backend.application.matrix_fee_rebase_promotion_service import (
     MatrixFeeRebasePromotionResult,
 )
 from backend.application.matrix_import_commit_service import MatrixImportCommitResult
+from backend.application.matrix_import_method_authority import (
+    MatrixImportMethodAuthoritySummary,
+)
 from backend.domain import (
     ConfirmedMatrixCell,
     ConfirmedMatrixGroup,
@@ -112,6 +115,76 @@ def test_get_seed_rebuilt_source_preview_payload_preserves_row_mcr() -> None:
     assert row["method"] == "EIA-364-23D"
     assert row["condition"] == "20mV max, 100mA max"
     assert row["requirement"] == "Initial <= 0.25 milliohms"
+
+
+def test_get_seed_restores_latest_source_replacement_draft() -> None:
+    active = _build_active_snapshot()
+    replacement_draft = _source_replacement_draft()
+    replacement_source = _source_replacement_snapshot()
+    service = _service(
+        active=active,
+        source_snapshot=None,
+        source_store=_MappedSourceStore(
+            imports={"smi-2": _source_replacement_import()},
+            snapshots={"sms-2": replacement_source},
+        ),
+        draft_store=_CurrentDraftStore(replacement_draft),
+    )
+
+    seed = service.get_seed(project_id="P1")
+
+    assert seed.active_confirmed_matrix_id == "cmv-1"
+    assert seed.active_source_import_id == "smi-1"
+    assert seed.editor_draft_id == "pmd-replacement"
+    assert seed.editor_draft is not None
+    assert seed.editor_draft.rows[0].test_item == "Imported replacement row"
+    assert seed.editor_source_import_id == "smi-2"
+    assert seed.editor_source_snapshot_id == "sms-2"
+    assert seed.loaded_source == "draft"
+    assert seed.source_preview_payload is not None
+    assert seed.source_preview_payload["source_document_name"] == "replacement.docx"
+
+
+def test_get_seed_restores_unconfirmed_import_draft() -> None:
+    replacement_draft = _source_replacement_draft()
+    service = _service(
+        active=None,
+        source_snapshot=None,
+        source_store=_MappedSourceStore(
+            imports={"smi-2": _source_replacement_import()},
+            snapshots={"sms-2": _source_replacement_snapshot()},
+        ),
+        draft_store=_CurrentDraftStore(replacement_draft),
+    )
+
+    seed = service.get_seed(project_id="P1")
+
+    assert seed.active_confirmed_matrix_id is None
+    assert seed.editor_draft_id == "pmd-replacement"
+    assert seed.editor_source_import_id == "smi-2"
+    assert seed.loaded_source == "draft"
+
+
+def test_get_seed_ignores_source_draft_older_than_active_authority() -> None:
+    active = _build_active_snapshot()
+    replacement_draft = _source_replacement_draft()
+    historical_record = replace(
+        replacement_draft.record,
+        updated_at="2026-05-26T23:59:59Z",
+    )
+    service = _service(
+        active=active,
+        source_snapshot=None,
+        draft_store=_CurrentDraftStore(
+            replace(replacement_draft, record=historical_record)
+        ),
+    )
+
+    seed = service.get_seed(project_id="P1")
+
+    assert seed.editor_draft_id is None
+    assert seed.editor_source_import_id == "smi-1"
+    assert seed.loaded_source == "authority"
 
 
 def test_confirm_session_no_change_returns_http200_semantics() -> None:
@@ -730,6 +803,18 @@ class _SourceStore:
         return self._snapshot if snapshot_id == "sms-1" else None
 
 
+class _MappedSourceStore:
+    def __init__(self, *, imports, snapshots) -> None:
+        self._imports = imports
+        self._snapshots = snapshots
+
+    def get_import(self, import_id: str):
+        return self._imports.get(import_id)
+
+    def get_snapshot(self, snapshot_id: str):
+        return self._snapshots.get(snapshot_id)
+
+
 class _DraftStore:
     def get(self, project_matrix_draft_id: str):
         return None
@@ -744,6 +829,25 @@ class _DraftStore:
         return None
 
     def get_by_project_and_source_import(self, project_id: str, source_import_id: str):
+        return None
+
+
+class _CurrentDraftStore(_DraftStore):
+    def __init__(self, draft: ProjectMatrixDraftSnapshot) -> None:
+        self._draft = draft
+
+    def get(self, project_matrix_draft_id: str):
+        if project_matrix_draft_id == self._draft.record.project_matrix_draft_id:
+            return self._draft
+        return None
+
+    def list_by_project(self, project_id: str):
+        return [self._draft.record] if project_id == self._draft.record.project_id else []
+
+    def get_by_project_and_source_import(self, project_id: str, source_import_id: str):
+        record = self._draft.record
+        if project_id == record.project_id and source_import_id == record.source_import_id:
+            return record
         return None
 
 
@@ -797,6 +901,17 @@ class _RecordingMatrixImportCommitService:
             selected_group_keys_committed=("g1",),
             commit_status="committed",
             project_matrix_draft=self.draft,
+            method_authority_sync=MatrixImportMethodAuthoritySummary(
+                status="current",
+                updated_count=0,
+                current_count=1,
+                review_count=0,
+                standard_resource_id=None,
+                effective_worksheet_name=None,
+                catalog_fingerprint=None,
+                context_fingerprint="test-context",
+                rows=(),
+            ),
         )
 
 
@@ -969,6 +1084,7 @@ def _service(
     *,
     active: ConfirmedMatrixSnapshot | None,
     source_snapshot,
+    source_store=None,
     draft_store=None,
     draft_persistence_service=None,
     matrix_import_commit_service=None,
@@ -980,7 +1096,7 @@ def _service(
     return MatrixEditorSessionService(
         project_store=_ProjectStore(),
         confirmed_store=_ConfirmedStore(active),
-        source_store=_SourceStore(source_snapshot=source_snapshot),
+        source_store=source_store or _SourceStore(source_snapshot=source_snapshot),
         draft_store=draft_store or _DraftStore(),
         draft_persistence_service=draft_persistence_service or _DraftPersistenceService(),
         matrix_import_commit_service=matrix_import_commit_service
@@ -1106,6 +1222,121 @@ def _saved_revision_draft() -> ProjectMatrixDraftSnapshot:
                 cell_value="1",
             ),
         ),
+    )
+
+
+def _source_replacement_draft() -> ProjectMatrixDraftSnapshot:
+    return ProjectMatrixDraftSnapshot(
+        record=ProjectMatrixDraftRecord(
+            project_matrix_draft_id="pmd-replacement",
+            project_id="P1",
+            source_import_id="smi-2",
+            source_snapshot_id="sms-2",
+            status=ProjectMatrixDraftStatus.DRAFT,
+            created_at="2026-05-28T00:00:00Z",
+            updated_at="2026-05-28T00:00:01Z",
+            base_confirmed_matrix_id=None,
+        ),
+        groups=(
+            ProjectMatrixDraftGroup(
+                draft_group_id="dg-2",
+                project_matrix_draft_id="pmd-replacement",
+                source_group_snapshot_id="sg-2",
+                group_order=1,
+                group_key="g2",
+                group_label="H",
+                is_selected=True,
+                sample_quantity_expression="3",
+                sample_note=None,
+            ),
+        ),
+        rows=(
+            ProjectMatrixDraftRow(
+                draft_row_id="dr-2",
+                project_matrix_draft_id="pmd-replacement",
+                source_row_snapshot_id="sr-2",
+                row_order=1,
+                test_item="Imported replacement row",
+                source_section="5.5",
+                method="IEC 60512-1-1",
+                condition="10x min magnification",
+                requirement="No detrimental condition",
+                is_sample_row=False,
+            ),
+        ),
+        cells=(
+            ProjectMatrixDraftCell(
+                draft_cell_id="dc-2",
+                project_matrix_draft_id="pmd-replacement",
+                draft_row_id="dr-2",
+                draft_group_id="dg-2",
+                cell_value="1",
+            ),
+        ),
+    )
+
+
+def _source_replacement_import() -> SourceMatrixImportRecord:
+    return SourceMatrixImportRecord(
+        import_id="smi-2",
+        project_id="P1",
+        draft_id="ptpd-2",
+        source_document_path="C:/replacement.docx",
+        source_document_name="replacement.docx",
+        source_format=".docx",
+        source_asset_id=None,
+        source_case_id=None,
+        source_draft_id=None,
+        import_status=SourceMatrixImportStatus.IMPORTED,
+        source_spec_number=None,
+        source_spec_revision=None,
+        parse_time="2026-05-28T00:00:00Z",
+        parser_version="parser-v1",
+        payload_schema_version="1.0",
+        warnings=(),
+        blockers=(),
+        selected_group_keys_at_import=("g2",),
+        task261_commit_fingerprint=None,
+        created_at="2026-05-28T00:00:00Z",
+    )
+
+
+def _source_replacement_snapshot() -> SourceMatrixSnapshot:
+    return SourceMatrixSnapshot(
+        snapshot_id="sms-2",
+        import_id="smi-2",
+        project_id="P1",
+        source_table_index=1,
+        rows=(
+            SourceMatrixRowSnapshot(
+                row_snapshot_id="sr-2",
+                row_order=1,
+                source_row_index=1,
+                test_item="Imported replacement row",
+                source_section="5.5",
+                method="IEC 60512-1-1",
+                condition="10x min magnification",
+                requirement="No detrimental condition",
+            ),
+        ),
+        groups=(
+            SourceMatrixGroupSnapshot(
+                group_snapshot_id="sg-2",
+                group_order=1,
+                group_key="g2",
+                group_label="H",
+                sample_quantity_expression="3",
+            ),
+        ),
+        cells=(
+            SourceMatrixCellSnapshot(
+                cell_snapshot_id="sc-2",
+                row_snapshot_id="sr-2",
+                group_snapshot_id="sg-2",
+                cell_value="1",
+            ),
+        ),
+        created_at="2026-05-28T00:00:00Z",
     )
 
 

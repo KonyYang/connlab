@@ -108,44 +108,69 @@ class MatrixEditorSessionService(
         self._require_project(project_id)
         active = self._confirmed.get_active_by_project(project_id)
         stale_draft_present = self._has_stale_draft(project_id, active)
-        if active is None:
+        current_draft = (
+            self._get_current_editor_draft(active)
+            if active is not None
+            else self._get_unconfirmed_editor_draft(project_id)
+        )
+        if active is None and current_draft is None:
             return MatrixEditorSessionSeed(
                 project_id=project_id,
                 active_confirmed_matrix_id=None,
                 active_confirmed_revision=None,
                 active_source_import_id=None,
                 active_source_snapshot_id=None,
+                editor_source_import_id=None,
+                editor_source_snapshot_id=None,
                 editor_draft=None,
                 source_preview_payload=None,
                 source_status="not_required",
                 source_unavailable_message=None,
                 stale_draft_present=stale_draft_present,
             )
-        current_draft = self._get_current_editor_draft(active)
         if current_draft is not None:
             editor_draft = _build_editor_draft_from_project_draft(current_draft)
             editor_draft_id = current_draft.record.project_matrix_draft_id
+            editor_source_import_id = current_draft.record.source_import_id
+            editor_source_snapshot_id = current_draft.record.source_snapshot_id
             draft_status: Literal["missing", "current", "stale"] = "current"
             loaded_source: Literal["authority", "draft"] = "draft"
             draft_updated_at = current_draft.record.updated_at
             saved_payload_signature = build_project_matrix_draft_payload_signature(current_draft)
             schedule_source = current_draft.record
         else:
+            assert active is not None
             editor_draft = _build_editor_draft_from_active(active)
             editor_draft_id = None
+            editor_source_import_id = active.version.source_import_id
+            editor_source_snapshot_id = active.version.source_snapshot_id
             draft_status = "missing"
             loaded_source = "authority"
             draft_updated_at = None
             saved_payload_signature = None
             schedule_source = active.version
-        source_snapshot = self._sources.get_snapshot(active.version.source_snapshot_id)
+        active_confirmed_matrix_id = (
+            active.version.confirmed_matrix_id if active is not None else None
+        )
+        active_confirmed_revision = (
+            active.version.confirmed_revision if active is not None else None
+        )
+        active_source_import_id = active.version.source_import_id if active is not None else None
+        active_source_snapshot_id = active.version.source_snapshot_id if active is not None else None
+        source_snapshot = (
+            self._sources.get_snapshot(editor_source_snapshot_id)
+            if editor_source_snapshot_id
+            else None
+        )
         if source_snapshot is None:
             return MatrixEditorSessionSeed(
                 project_id=project_id,
-                active_confirmed_matrix_id=active.version.confirmed_matrix_id,
-                active_confirmed_revision=active.version.confirmed_revision,
-                active_source_import_id=active.version.source_import_id,
-                active_source_snapshot_id=active.version.source_snapshot_id,
+                active_confirmed_matrix_id=active_confirmed_matrix_id,
+                active_confirmed_revision=active_confirmed_revision,
+                active_source_import_id=active_source_import_id,
+                active_source_snapshot_id=active_source_snapshot_id,
+                editor_source_import_id=editor_source_import_id,
+                editor_source_snapshot_id=editor_source_snapshot_id,
                 editor_draft=editor_draft,
                 source_preview_payload=None,
                 source_status="unavailable",
@@ -163,17 +188,23 @@ class MatrixEditorSessionService(
                 draft_updated_at=draft_updated_at,
                 saved_payload_signature=saved_payload_signature,
             )
-        import_record = self._sources.get_import(active.version.source_import_id)
+        import_record = (
+            self._sources.get_import(editor_source_import_id)
+            if editor_source_import_id
+            else None
+        )
         source_preview_payload = _resolve_source_preview_payload(
             source_snapshot=source_snapshot,
             import_record=import_record,
         )
         return MatrixEditorSessionSeed(
             project_id=project_id,
-            active_confirmed_matrix_id=active.version.confirmed_matrix_id,
-            active_confirmed_revision=active.version.confirmed_revision,
-            active_source_import_id=active.version.source_import_id,
-            active_source_snapshot_id=active.version.source_snapshot_id,
+            active_confirmed_matrix_id=active_confirmed_matrix_id,
+            active_confirmed_revision=active_confirmed_revision,
+            active_source_import_id=active_source_import_id,
+            active_source_snapshot_id=active_source_snapshot_id,
+            editor_source_import_id=editor_source_import_id,
+            editor_source_snapshot_id=editor_source_snapshot_id,
             editor_draft=editor_draft,
             source_preview_payload=source_preview_payload,
             source_status="available",

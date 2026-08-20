@@ -1846,8 +1846,12 @@ export function MatrixEditorWorkspace({
         setSourceUnavailableMessage(seed.source_unavailable_message ?? null);
         setActiveConfirmedMatrixId(seed.active_confirmed_matrix_id ?? null);
         setActiveConfirmedRevision(seed.active_confirmed_revision ?? null);
-        setSessionSourceImportId(seed.active_source_import_id ?? null);
-        setSessionSourceSnapshotId(seed.active_source_snapshot_id ?? null);
+        setSessionSourceImportId(
+          seed.editor_source_import_id ?? seed.active_source_import_id ?? null
+        );
+        setSessionSourceSnapshotId(
+          seed.editor_source_snapshot_id ?? seed.active_source_snapshot_id ?? null
+        );
         setActiveAuthoritySourceImportId(seed.active_source_import_id ?? null);
         setImportPreviewPdfToken(null);
         setImportFile(null);

@@ -62,6 +62,8 @@ def get_matrix_editor_session_seed(
         active_confirmed_revision=seed.active_confirmed_revision,
         active_source_import_id=seed.active_source_import_id,
         active_source_snapshot_id=seed.active_source_snapshot_id,
+        editor_source_import_id=seed.editor_source_import_id,
+        editor_source_snapshot_id=seed.editor_source_snapshot_id,
         editor_draft=(
             MatrixEditorSessionDraftResponse(
                 groups=[

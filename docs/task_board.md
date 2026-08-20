@@ -11,8 +11,21 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_IMPORT_SETUP_RETURN_DRAFT_RESTORE",
+    "summary": "Preserve the newly imported Matrix draft when returning from a feature-card Setup workflow.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Fix Matrix Editor navigation-state restoration so Import Matrix results remain active after entering Setup and returning, without changing Matrix authority or unrelated workflows.",
+    "scope_paths": [],
+    "risk_reasons": [],
+    "activation_head": "c9e5343188f04d7b17a9b2927b388d6db7c225ed",
+    "started_at": "2026-08-20T22:38:08.460457Z",
+    "updated_at": "2026-08-20T22:38:08.460457Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_DOCS_ROOT_INFORMATION_ARCHITECTURE_CLEANUP",
     "tier": "standard",

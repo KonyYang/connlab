@@ -1641,6 +1641,8 @@ export type MatrixEditorSessionSeed = {
   active_confirmed_revision?: number | null;
   active_source_import_id?: string | null;
   active_source_snapshot_id?: string | null;
+  editor_source_import_id?: string | null;
+  editor_source_snapshot_id?: string | null;
   editor_draft?: MatrixEditorSessionDraft | null;
   source_preview_payload?: MatrixPreviewResponse | null;
   source_status: "available" | "unavailable" | "not_required";

@@ -1224,6 +1224,78 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.queryByRole("button", { name: "Selected Groups" })).toBeNull();
   });
 
+  it("restores an imported source replacement draft after returning from Setup", async () => {
+    const replacementPreview = buildImportPreview({
+      source_document_name: "replacement.docx",
+      source_document_path: "replacement.docx",
+      groups: [
+        {
+          group_key: "g2",
+          group_label: "H",
+          source_table_index: 0,
+          extraction_status: "loaded",
+          sample_size: null,
+          sample_quantity_expression: "3",
+          sample_note: null,
+          steps: [],
+        },
+      ],
+      rows: [
+        {
+          source_row_index: 1,
+          test_item: "Imported replacement row",
+          source_section: "5.5",
+          method: "IEC 60512-1-1",
+          condition: "10x min magnification",
+          requirement: "No detrimental condition",
+          group_tokens: { g2: "1", H: "1" },
+          is_sample_row: false,
+        },
+      ],
+    });
+    const committed = buildCommitResponse(replacementPreview, "3");
+    committed.project_matrix_draft.cells[0].cell_value = "1";
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...buildSessionSeed(),
+      editor_source_import_id: committed.source_import_id,
+      editor_source_snapshot_id: committed.source_snapshot_id,
+      editor_draft_id: committed.project_matrix_draft.record.project_matrix_draft_id,
+      draft_status: "current",
+      loaded_source: "draft",
+      saved_payload_signature: "replacement-signature",
+      source_preview_payload: replacementPreview,
+      editor_draft: {
+        groups: committed.project_matrix_draft.groups,
+        rows: committed.project_matrix_draft.rows.map((row) => ({
+          ...row,
+          day_expression: null,
+        })),
+        cells: committed.project_matrix_draft.cells.map((cell) => ({
+          draft_row_id: cell.draft_row_id,
+          draft_group_id: cell.draft_group_id,
+          cell_value: cell.cell_value,
+        })),
+      },
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    expect(await screen.findByText("replacement.docx")).toBeTruthy();
+    expect((screen.getByLabelText("Row 1 test item") as HTMLInputElement).value).toBe(
+      "Imported replacement row"
+    );
+    expect(screen.getByRole("columnheader", { name: "Include group H H" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Matrix" }));
+    await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(1));
+    expect(apiMocks.confirmMatrixEditorSession.mock.calls[0][1]).toMatchObject({
+      source_import_id: committed.source_import_id,
+      source_snapshot_id: committed.source_snapshot_id,
+      expected_editor_draft_id: committed.project_matrix_draft.record.project_matrix_draft_id,
+      expected_saved_payload_signature: "replacement-signature",
+    });
+  });
+
   it("auto-reparses stale Replace with the current locator before committing", async () => {
     const firstPreview = buildImportPreview({
       source_document_name: "stale.docx",

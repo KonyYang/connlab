@@ -624,6 +624,13 @@ def test_matrix_editor_session_confirm_after_source_change_updates_active_lineag
         session_seed = client.get("/api/projects/P1/matrix-editor/session")
         assert session_seed.status_code == 200
         seed_payload = session_seed.json()
+        assert seed_payload["active_source_import_id"] == source_import_a
+        assert seed_payload["editor_source_import_id"] == source_import_b
+        assert seed_payload["editor_source_snapshot_id"] == draft_b_payload["record"][
+            "source_snapshot_id"
+        ]
+        assert seed_payload["editor_draft_id"] == draft_b_id
+        assert seed_payload["source_preview_payload"]["source_document_name"] == "spec_b.docx"
 
         response = client.post(
             "/api/projects/P1/matrix-editor/session/confirm",
@@ -653,7 +660,11 @@ def test_matrix_editor_session_confirm_after_source_change_updates_active_lineag
 
         seed_after = client.get("/api/projects/P1/matrix-editor/session")
         assert seed_after.status_code == 200
-        seed_after_payload = seed_after.json()["source_preview_payload"]
+        seed_after_response = seed_after.json()
+        assert seed_after_response["active_source_import_id"] == source_import_b
+        assert seed_after_response["editor_source_import_id"] == source_import_b
+        assert seed_after_response["editor_draft_id"] is None
+        seed_after_payload = seed_after_response["source_preview_payload"]
         groups_after = seed_after_payload["groups"]
         assert [group["group_key"] for group in groups_after] == ["g1", "g2", "g3"]
         first_group_steps = groups_after[0]["steps"]

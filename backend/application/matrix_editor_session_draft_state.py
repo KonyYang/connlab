@@ -119,6 +119,11 @@ from backend.application.matrix_editor_session_signature import (
     build_project_matrix_draft_payload_signature,
 )
 
+
+def _parse_timestamp(value: str) -> datetime:
+    return datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+
+
 class MatrixEditorSessionDraftStateMixin:
     def _get_current_editor_draft_record(
         self,
@@ -127,7 +132,15 @@ class MatrixEditorSessionDraftStateMixin:
         records = [
             record
             for record in self._drafts.list_by_project(active.version.project_id)
-            if record.base_confirmed_matrix_id == active.version.confirmed_matrix_id
+            if (
+                record.base_confirmed_matrix_id == active.version.confirmed_matrix_id
+                or (
+                    record.base_confirmed_matrix_id is None
+                    and record.source_import_id != active.version.source_import_id
+                    and _parse_timestamp(record.updated_at)
+                    > _parse_timestamp(active.version.confirmed_at)
+                )
+            )
             and record.status == ProjectMatrixDraftStatus.DRAFT
         ]
         if not records:
@@ -147,6 +160,27 @@ class MatrixEditorSessionDraftStateMixin:
             return None
         draft = self._drafts.get(record.project_matrix_draft_id)
         if draft is None or draft.record.project_id != active.version.project_id:
+            return None
+        return draft
+    def _get_unconfirmed_editor_draft(
+        self,
+        project_id: str,
+    ) -> ProjectMatrixDraftSnapshot | None:
+        records = [
+            record
+            for record in self._drafts.list_by_project(project_id)
+            if record.base_confirmed_matrix_id is None
+            and record.status == ProjectMatrixDraftStatus.DRAFT
+        ]
+        if not records:
+            return None
+        record = sorted(
+            records,
+            key=lambda item: (item.updated_at, item.project_matrix_draft_id),
+            reverse=True,
+        )[0]
+        draft = self._drafts.get(record.project_matrix_draft_id)
+        if draft is None or draft.record.project_id != project_id:
             return None
         return draft
 

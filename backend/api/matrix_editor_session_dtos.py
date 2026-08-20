@@ -83,6 +83,8 @@ class MatrixEditorSessionSeedResponse(BaseModel):
     active_confirmed_revision: int | None
     active_source_import_id: str | None
     active_source_snapshot_id: str | None
+    editor_source_import_id: str | None = None
+    editor_source_snapshot_id: str | None = None
     editor_draft: MatrixEditorSessionDraftResponse | None
     source_preview_payload: dict | None
     source_status: str
