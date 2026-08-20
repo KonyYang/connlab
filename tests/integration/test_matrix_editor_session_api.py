@@ -679,6 +679,63 @@ def test_matrix_editor_session_confirm_after_source_change_updates_active_lineag
         engine.dispose()
 
 
+def test_matrix_editor_session_discard_removes_imported_source_replacement_draft(
+    tmp_path: Path,
+) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        source_import_a = _seed_source_import("P1", tmp_path)
+        draft_a = client.post(
+            "/api/projects/P1/matrix-drafts",
+            json={"source_import_id": source_import_a, "selected_group_keys": ["g1", "g2"]},
+        )
+        confirmed_a = client.post(
+            f"/api/projects/P1/matrix-drafts/{draft_a.json()['record']['project_matrix_draft_id']}/confirm",
+            json={"confirmed_by": "operator"},
+        )
+        assert confirmed_a.status_code == 201
+
+        source_import_b = _seed_source_import(
+            "P1",
+            tmp_path,
+            source_document_name="replacement.docx",
+        )
+        draft_b = client.post(
+            "/api/projects/P1/matrix-drafts",
+            json={"source_import_id": source_import_b, "selected_group_keys": ["g1"]},
+        )
+        assert draft_b.status_code == 201
+
+        seed = client.get("/api/projects/P1/matrix-editor/session")
+        assert seed.status_code == 200
+        seed_payload = seed.json()
+        assert seed_payload["editor_source_import_id"] == source_import_b
+
+        discard = client.request(
+            "DELETE",
+            "/api/projects/P1/matrix-editor/session/draft",
+            json={
+                "expected_editor_draft_id": seed_payload["editor_draft_id"],
+                "expected_saved_payload_signature": seed_payload[
+                    "saved_payload_signature"
+                ],
+            },
+        )
+
+        assert discard.status_code == 200
+        assert discard.json()["discarded"] is True
+        restored = client.get("/api/projects/P1/matrix-editor/session")
+        assert restored.status_code == 200
+        restored_payload = restored.json()
+        assert restored_payload["loaded_source"] == "authority"
+        assert restored_payload["editor_source_import_id"] == source_import_a
+        assert restored_payload["editor_draft_id"] is None
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_matrix_editor_session_confirm_allows_stale_expected_when_source_is_unchanged(
     tmp_path: Path,
 ) -> None:

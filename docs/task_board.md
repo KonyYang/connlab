@@ -11,8 +11,21 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_EDITOR_CANCEL_DISCARD_IMPORTED_DRAFT",
+    "summary": "Ensure Matrix Editor Cancel discards the exact current imported draft before returning to Workbench.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Matrix Editor session draft discard service, API/frontend behavior, and focused regression tests.",
+    "scope_paths": [],
+    "risk_reasons": [],
+    "activation_head": "8640390fb7704ce9e1f1569652a60eeb2436a04d",
+    "started_at": "2026-08-20T23:24:40.249562Z",
+    "updated_at": "2026-08-20T23:24:40.249562Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_MATRIX_IMPORT_SETUP_RETURN_DRAFT_RESTORE",
     "tier": "standard",

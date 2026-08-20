@@ -291,18 +291,29 @@ class MatrixEditorSessionService(
         )
         self._require_project(command.project_id)
         active = self._confirmed.get_active_by_project(command.project_id)
-        if active is None:
-            return MatrixEditorSessionDraftDiscardResult(
-                discarded=False,
-                active_confirmed_matrix_id=None,
-                active_confirmed_revision=None,
-            )
-        draft = self._get_current_editor_draft(active)
+        expected_draft_id = (command.expected_editor_draft_id or "").strip()
+        if expected_draft_id:
+            draft = self._drafts.get(expected_draft_id)
+            if draft is not None and (
+                draft.record.project_id != command.project_id
+                or draft.record.status != ProjectMatrixDraftStatus.DRAFT
+            ):
+                raise MatrixEditorSessionDraftConflictError(
+                    "Matrix draft changed before cancel. Reload the latest Matrix."
+                )
+        elif active is not None:
+            draft = self._get_current_editor_draft(active)
+        else:
+            draft = self._get_unconfirmed_editor_draft(command.project_id)
         if draft is None:
             return MatrixEditorSessionDraftDiscardResult(
                 discarded=False,
-                active_confirmed_matrix_id=active.version.confirmed_matrix_id,
-                active_confirmed_revision=active.version.confirmed_revision,
+                active_confirmed_matrix_id=(
+                    active.version.confirmed_matrix_id if active is not None else None
+                ),
+                active_confirmed_revision=(
+                    active.version.confirmed_revision if active is not None else None
+                ),
             )
         self._validate_expected_draft_tokens(
             draft=draft,
@@ -342,8 +353,12 @@ class MatrixEditorSessionService(
                 ) from exc
         return MatrixEditorSessionDraftDiscardResult(
             discarded=discarded,
-            active_confirmed_matrix_id=active.version.confirmed_matrix_id,
-            active_confirmed_revision=active.version.confirmed_revision,
+            active_confirmed_matrix_id=(
+                active.version.confirmed_matrix_id if active is not None else None
+            ),
+            active_confirmed_revision=(
+                active.version.confirmed_revision if active is not None else None
+            ),
         )
 
     def confirm_session(

@@ -487,6 +487,57 @@ def test_discard_editor_draft_deletes_pending_fee_rebase() -> None:
     assert pending.deleted_matrix_draft_id == "pmd-edit"
 
 
+def test_discard_editor_draft_uses_expected_import_draft_id() -> None:
+    imported_draft = _source_replacement_draft()
+    historical_draft = replace(
+        imported_draft,
+        record=replace(imported_draft.record, updated_at="2026-05-26T23:59:59Z"),
+    )
+    draft_store = _DiscardDraftStore(historical_draft)
+    service = _service(
+        active=_build_active_snapshot(),
+        source_snapshot=None,
+        draft_store=draft_store,
+    )
+
+    result = service.discard_editor_draft(
+        MatrixEditorSessionDraftDiscardCommand(
+            project_id="P1",
+            expected_editor_draft_id="pmd-replacement",
+            expected_saved_payload_signature=_build_signature_from_project_draft(
+                historical_draft
+            ),
+        )
+    )
+
+    assert result.discarded is True
+    assert draft_store.deleted == "pmd-replacement"
+
+
+def test_discard_editor_draft_deletes_unconfirmed_import_draft() -> None:
+    imported_draft = _source_replacement_draft()
+    draft_store = _DiscardDraftStore(imported_draft)
+    service = _service(
+        active=None,
+        source_snapshot=None,
+        draft_store=draft_store,
+    )
+
+    result = service.discard_editor_draft(
+        MatrixEditorSessionDraftDiscardCommand(
+            project_id="P1",
+            expected_editor_draft_id="pmd-replacement",
+            expected_saved_payload_signature=_build_signature_from_project_draft(
+                imported_draft
+            ),
+        )
+    )
+
+    assert result.discarded is True
+    assert result.active_confirmed_matrix_id is None
+    assert draft_store.deleted == "pmd-replacement"
+
+
 def test_discard_editor_draft_surfaces_pending_delete_failure() -> None:
     pending = _FailingPendingFeeRebaseService()
     service = _service(
