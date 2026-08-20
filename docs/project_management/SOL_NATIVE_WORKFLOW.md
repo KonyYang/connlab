@@ -94,4 +94,3 @@ evidence, commits, or tests merely because the conversation restarted.
 `finish` records the exact subject, changed paths, scope result, proportional review/QA facts, and
 concise validation. Report only the outcome, evidence needed to trust it, material caveats, and next
 action. Stop at `ready_for_close`; only the User's final Close releases WIP.
-

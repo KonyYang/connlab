@@ -81,4 +81,3 @@ schema catalog here.
   channels, or framework migrations without a current demonstrated need.
 - For structure changes, first establish a practical regression seam, then move responsibility without
   mixing unrelated behavior changes.
-

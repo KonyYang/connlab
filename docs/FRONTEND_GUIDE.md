@@ -52,4 +52,3 @@ change reasons, repeated decisions, or independently testable behavior.
   behavior changed; do not require it for behavior already fully proven at a narrower seam.
 - Review for requirement fit, stale async behavior, accessibility, narrow-width operation, direct
   `fetch()` leakage, and accidental business logic in display components.
-
