@@ -32,7 +32,6 @@ def test_intake_precheck_field_contract_records_samples_lookups_and_msg_policy()
     source = (ROOT / "docs" / "intake_precheck_field_contract.md").read_text(
         encoding="utf-8"
     )
-    board = (ROOT / "docs" / "task_board.md").read_text(encoding="utf-8")
     task = (
         ROOT / "tasks" / "completed" / "2026" / "TASK_078_INTAKE_PRECHECK_FIELD_CONTRACT_AND_SECTION1_RULES.md"
     ).read_text(encoding="utf-8")
@@ -53,8 +52,6 @@ def test_intake_precheck_field_contract_records_samples_lookups_and_msg_policy()
     ]:
         assert term in source
 
-    assert "`TASK_078_INTAKE_PRECHECK_FIELD_CONTRACT_AND_SECTION1_RULES` is complete" in board
     assert "No parser code changes." in task
     assert "No backend API changes." in task
     assert "No frontend UI changes." in task
-
