@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_INTAKE_CONTRACT_STALE_BOARD_ASSERTION",
     "summary": "Remove the obsolete TASK_078 compact-board history assertion while preserving product contract checks.",
@@ -25,9 +25,49 @@
     "risk_reasons": [],
     "activation_head": "4f83800f24c6f102b384388b06ea4e14cd518fe0",
     "started_at": "2026-08-20T14:51:39.565361Z",
-    "updated_at": "2026-08-20T14:51:39.565361Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-08-20T14:54:05.281291Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_INTAKE_CONTRACT_STALE_BOARD_ASSERTION",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_INTAKE_CONTRACT_STALE_BOARD_ASSERTION",
+      "subject": "6e234ccd1ee3b7a546f6d712b2ce2141d1173600",
+      "summary": "Removed the obsolete compact-board history assertion while preserving all Intake contract and archived delivery checks.",
+      "scope_ok": true,
+      "changed_paths": [
+        "tests/unit/test_intake_precheck_field_contract.py"
+      ],
+      "validation": [
+        {
+          "name": "Intake contract and Sol-native governance tests",
+          "status": "passed",
+          "result": "18 passed in 8.32s"
+        },
+        {
+          "name": "Exact diff whitespace check",
+          "status": "passed",
+          "result": "No errors"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Reproduced the stale assertion, removed only the board coupling, self-reviewed the three-line deletion, and reran targeted regression."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "direct_primary"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_SOL56_DOCUMENTATION_AND_RULES_OPTIMIZATION",
