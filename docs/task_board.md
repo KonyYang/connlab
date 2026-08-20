@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_INTAKE_CONTRACT_STALE_BOARD_ASSERTION",
+    "summary": "Remove the obsolete TASK_078 compact-board history assertion while preserving product contract checks.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Update only the stale Intake/Precheck document test coupling; do not change product behavior, contract content, or board semantics.",
+    "scope_paths": [
+      "tests/unit/test_intake_precheck_field_contract.py",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "4f83800f24c6f102b384388b06ea4e14cd518fe0",
+    "started_at": "2026-08-20T14:51:39.565361Z",
+    "updated_at": "2026-08-20T14:51:39.565361Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_SOL56_DOCUMENTATION_AND_RULES_OPTIMIZATION",
     "tier": "standard",
