@@ -7,8 +7,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_intake_precheck_field_contract_records_section1_policy() -> None:
-    """TASK_078 documents the authoritative SECTION 1 field contract."""
-    source = (ROOT / "docs" / "intake_precheck_field_contract.md").read_text(
+    """The current contract documents the authoritative SECTION 1 policy."""
+    source = (ROOT / "docs" / "product_contracts" / "INTAKE_PRECHECK.md").read_text(
         encoding="utf-8"
     )
 
@@ -28,8 +28,8 @@ def test_intake_precheck_field_contract_records_section1_policy() -> None:
 
 
 def test_intake_precheck_field_contract_records_samples_lookups_and_msg_policy() -> None:
-    """TASK_078 captures sample editing, lookup soft-coding, and MSG display rules."""
-    source = (ROOT / "docs" / "intake_precheck_field_contract.md").read_text(
+    """The current contract captures sample, lookup, and MSG display rules."""
+    source = (ROOT / "docs" / "product_contracts" / "INTAKE_PRECHECK.md").read_text(
         encoding="utf-8"
     )
     task = (

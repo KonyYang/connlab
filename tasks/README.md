@@ -1,20 +1,22 @@
 # ConnLab Task Files
 
-Last Updated: 2026-08-18
+Last Updated: 2026-08-21
 
-Use this directory for current, planned, recently completed, and not-yet-archived task files.
+Sol-native tasks do not create Task Markdown by default. This directory retains manually published
+task artifacts and their history; it is not a live work queue.
 
 ## Read Order
 
-1. `AGENTS.md`
-2. `docs/task_board.md`
-3. The current `tasks/TASK_XXX_*.md`
-4. The corresponding `docs/task_XXX_*_plan.md`
-5. Task-specific guideline documents referenced by the task
+1. The User's current request
+2. `AGENTS.md`
+3. Real code, tests, configuration, and Git state
+4. `docs/task_board.md` for compact WIP/recovery state
+5. A named Task or Plan artifact only when the current request specifically depends on it
 
 ## File Roles
 
-- `TASK_XXX_*.md`: executable task scope, constraints, acceptance criteria, and validation (created only when a manual publishing flow requires one).
+- `TASK_XXX_*.md`: manually published historical scope or acceptance material; the current User
+  request remains authoritative.
 - `completed/YYYY/`: archive location for archived task files.
 
 ## Archive Rule
@@ -28,4 +30,5 @@ git mv tasks\TASK_XXX.md tasks\completed\2026\
 ```
 
 Confirm the task is closed and no current work references it before moving. Update
-`docs/task_archive_index.md` and `docs/plan_archive_index.md`. See `docs/markdown_management_rules.md`.
+`docs/archive/TASK_HISTORY_INDEX.md` only when a human-readable lookup entry is useful. See
+`docs/markdown_management_rules.md`.

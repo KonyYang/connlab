@@ -2601,9 +2601,9 @@ def test_task098_precheck_confirmed_application_editing_boundary() -> None:
     source_check = (
         FRONTEND_ROOT / "src" / "features" / "precheck" / "PrecheckSourceCheck.tsx"
     ).read_text(encoding="utf-8")
-    contract = (FRONTEND_ROOT.parent / "docs" / "intake_precheck_field_contract.md").read_text(
-        encoding="utf-8"
-    )
+    contract = (
+        FRONTEND_ROOT.parent / "docs" / "product_contracts" / "INTAKE_PRECHECK.md"
+    ).read_text(encoding="utf-8")
 
     assert "Back to Intake" not in case_review_source
     assert "onBack" not in case_review_source

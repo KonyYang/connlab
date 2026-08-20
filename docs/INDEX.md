@@ -19,7 +19,7 @@ No dated Plan, task file, evidence file, snapshot, or archive overrides these so
 - `docs/PROJECT_CONTEXT.md`: product authority, domain ownership, architecture, Windows, and Office.
 - `PRODUCT.md`, `DESIGN.md`, `DESIGN.json`: product and visual direction for substantive UI work.
 - `docs/FRONTEND_GUIDE.md`: current React/UI seams and proportional validation.
-- `docs/intake_precheck_field_contract.md`: Intake/Precheck field compatibility contract; read only
+- `docs/product_contracts/INTAKE_PRECHECK.md`: Intake/Precheck field compatibility contract; read only
   when that workflow or its tests change.
 - `docs/packaging_notes.md`: startup, packaging, release, and runtime-path operations.
 - `docs/markdown_management_rules.md`: history and archive handling.
@@ -33,7 +33,7 @@ are intentionally not duplicated in a manually maintained snapshot.
 - `docs/completed_plans/**` and legacy `tasks/**/*.md`: task artifacts; Sol-native work does not use
   them as live scope.
 - `docs/lane_evidence/**`: retired role evidence.
-- `docs/task_archive_index.md`, `docs/plan_archive_index.md`, `docs/task_plan_index.md`: lookup indexes.
+- `docs/archive/TASK_HISTORY_INDEX.md`: consolidated lookup index for archived Task and Plan files.
 
 Open historical material only when the task needs a named past decision. References inside historical
 files remain historical and do not reactivate retired workflows, skills, roles, or scope.

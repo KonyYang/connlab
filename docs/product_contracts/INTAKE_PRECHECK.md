@@ -1,22 +1,15 @@
 # Intake And Precheck Field Contract
 
-> Task: `TASK_078_INTAKE_PRECHECK_FIELD_CONTRACT_AND_SECTION1_RULES`  
-> Date: 2026-05-03  
-> Scope: field contract and policy only, no runtime code changes
+Status: current compatibility contract. Inspect current code and tests for exact DTO and UI shapes.
 
 ## 1. Purpose
 
-This document defines the field contract for the real-business New Project Intake and Precheck flow. It is the authority for later parser, backend API, draft editing, precheck, and frontend UI tasks.
+This document records durable business compatibility rules for the real New Project Intake and
+Precheck flow. It guides parser, API, draft editing, precheck, and frontend behavior without
+duplicating current DTO or component structure.
 
-The contract is based on:
-
-- `AGENTS.md`
-- `docs/frontend_architecture_rules.md`
-- `docs/archive/historical_plans/intake_precheck_business_gap_audit.md`
-- user-provided business rules on 2026-05-03
-- read-only parser probe of `local/office files samples/E-3718_H Laboratory Test Request-Even.docx`
-
-The sample Word file is local validation material only. Do not commit it into the repository unless the user explicitly approves it.
+Real code and tests define exact implementation. The sample Word files used to establish these rules
+are local validation material and must not be committed unless the User explicitly approves it.
 
 ## 2. Project Creation Boundary
 
@@ -46,11 +39,9 @@ The frontend session is not the source of truth. The backend package/case/draft 
 Current New Project Intake uses one active Precheck review case before Project confirmation:
 
 - Continuing to Precheck with the same selected application form reopens the same case and preserves saved draft corrections.
-- Selecting a different application form before Project confirmation rebinds the reusable unconfirmed case to the new form and clears manual overrides.
+- Before entering Precheck, selecting a different application form rebinds the reusable unconfirmed case to the new form and clears manual overrides.
 - Importing a new email package or direct `.docx` source starts a clean Intake session.
 - The Precheck page must not expose a multi-case switcher for the current New Project workflow.
-
-TASK_098 update:
 
 - Intake is source selection only. It imports or uploads request material, validates the selected application-form source, and creates the active Precheck case.
 - Precheck is the confirmed application-data editing surface. Project creation uses corrected Precheck draft values, not the raw Word file values.
@@ -150,9 +141,9 @@ Sample draft row fields:
 
 Persist policy:
 
-- `SampleInfo.quantity` currently accepts integer or null. Draft should keep original text first.
-- Later implementation must either add a raw quantity field or preserve non-numeric quantity in a draft/audit field before converting to Project sample records.
-- Do not silently coerce `20 pcs` to null without a warning.
+- `SampleInfo.quantity` accepts integer or null; the Intake draft preserves the original text before confirmation.
+- Free-text quantities such as `20 pcs` require a visible review warning before conversion to Project sample records.
+- Do not silently discard a non-numeric quantity.
 
 ## 6. Requested Testing, Disposition, And Recipients
 
@@ -206,7 +197,7 @@ Policy:
 - SQLite lookup table with seed defaults is preferred over frontend constants.
 - If a draft value is not present in the current lookup list, UI must preserve and display the draft value.
 
-Proposed endpoint for the next implementation task:
+Current lookup endpoint:
 
 ```text
 GET /api/lookups/intake-precheck
@@ -279,17 +270,3 @@ Rules:
 - Attachments list should show files extracted from the email package.
 - If an email attachment is itself a `.msg`, display it as an attachment with `MSG` type.
 - Source package metadata belongs in the email/source information panel.
-
-## 12. Next Task Recommendations
-
-Recommended next sequence:
-
-1. `TASK_079_LOOKUP_OPTIONS_BACKEND_AND_API`
-2. `TASK_080_REAL_E3718_REVH_PARSER_CALIBRATION`
-3. `TASK_081_UNIFIED_DIRECT_DOCX_INTAKE_BACKEND`
-4. `TASK_082_DRAFT_REVIEW_AND_SAMPLE_EDIT_BACKEND`
-5. `TASK_083_DRAFT_LEVEL_PRECHECK_BEFORE_PROJECT_CONFIRM`
-6. `TASK_084_INTAKE_PRECHECK_FRONTEND_STRUCTURE_EXTRACTION`
-7. `TASK_085_PRECHECK_BUSINESS_UI_COMPLETION`
-8. `TASK_086_INTAKE_BUSINESS_UI_COMPLETION`
-9. `TASK_087_ROUTE_STATE_AND_WORKFLOW_SESSION_HARDENING`

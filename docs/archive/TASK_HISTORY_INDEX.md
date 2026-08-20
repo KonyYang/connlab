@@ -1,8 +1,9 @@
-# Task Archive Index
+# Archived Task And Plan History Index
 
-Last Updated: 2026-08-18
+Last Updated: 2026-08-21
 
-Completed task files moved to `tasks/completed/YYYY/` are indexed here.
+Historical Task files and their primary Plan paths are indexed here for human lookup only. This file
+is not execution authority. Use Git or `rg` when an exact historical decision is required.
 
 | Task ID | Title | Status | Archived Task File | Archived Plan File | Archived On |
 | --- | --- | --- | --- | --- | --- |
@@ -545,3 +546,31 @@ Completed task files moved to `tasks/completed/YYYY/` are indexed here.
 | TASK_GOVERNANCE_PERSONAL_SERIAL_V2_WRITER_RECOVERY_CORRECTION | TASK_GOVERNANCE_PERSONAL_SERIAL_V2_WRITER_RECOVERY_CORRECTION | closed | tasks/completed/2026/TASK_GOVERNANCE_PERSONAL_SERIAL_V2_WRITER_RECOVERY_CORRECTION.md |  | 2026-08-18 |
 | TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION | TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION | complete | tasks/completed/2026/TASK_GOVERNANCE_PERSONAL_SERIAL_WORKFLOW_SIMPLIFICATION.md |  | 2026-08-18 |
 | TASK_GOVERNANCE_REGATE_EVIDENCE_REUSE_BASELINE_LEDGER_AND_VALIDATION_RUNNER | TASK_GOVERNANCE_REGATE_EVIDENCE_REUSE_BASELINE_LEDGER_AND_VALIDATION_RUNNER | closed | tasks/completed/2026/TASK_GOVERNANCE_REGATE_EVIDENCE_REUSE_BASELINE_LEDGER_AND_VALIDATION_RUNNER.md |  | 2026-08-18 |
+
+## Additional Plan Records
+
+These Plan paths were present in the former reverse Plan index but were not the primary Plan path in
+the table above. They are retained to avoid losing multi-Plan and Plan-only history.
+
+| Task ID | Additional Plan Path | Related Task | Archived On |
+| --- | --- | --- | --- |
+| TASK_188 | docs/completed_plans/2026/task_188_project_workbench_version_and_stale_status_plan.md | tasks/completed/2026/TASK_188_PROJECT_OUTPUT_VERSION_LEDGER_CORRECTION.md | 2026-05-24 |
+| TASK_189 | docs/completed_plans/2026/task_189_matrix_edit_and_freeze_foundation_plan.md | tasks/completed/2026/TASK_189_MATRIX_AUTHORITY_READ_MODEL_AND_GROUP_IDENTITY_CORRECTION.md | 2026-05-24 |
+| TASK_189 | docs/completed_plans/2026/task_189_matrix_edit_freeze_authority_semantics_correction_plan.md | tasks/completed/2026/TASK_189_MATRIX_AUTHORITY_READ_MODEL_AND_GROUP_IDENTITY_CORRECTION.md | 2026-05-24 |
+| TASK_190 | docs/completed_plans/2026/task_190_project_workbench_matrix_authority_workspace_plan.md | tasks/completed/2026/TASK_190_MATRIX_OVERVIEW_CROSS_TABLE_AND_SUPPORTING_COMPACTNESS_CORRECTION.md | 2026-05-24 |
+| TASK_199 | docs/completed_plans/2026/task_199_matrix_overview_runtime_projection_consumption_model_plan.md | abandoned (superseded by implementation-first approach) | 2026-05-24 |
+| TASK_219F | docs/completed_plans/2026/task_219f_runtime_console_responsibility_refinement_plan.md | tasks/completed/2026/TASK_219F_PROJECT_WORKBENCH_LEGACY_SUPPORT_REMOVAL.md | 2026-05-24 |
+| TASK_250 | docs/completed_plans/2026/task_250_matrix_editor_samples_quantity_pcs_feasibility_plan.md | tasks/completed/2026/TASK_250_MATRIX_EDITOR_SAMPLES_QUANTITY_PCS_FEASIBILITY.md | 2026-05-24 |
+| TASK_252CI | docs/completed_plans/2026/task_252ci_import_matrix_label_and_layout_alignment_plan.md | tasks/completed/2026/TASK_252CI_MATRIX_EDITOR_IMPORT_MATRIX_LABEL_AND_LAYOUT_ALIGNMENT.md | 2026-05-24 |
+| TASK_285 | docs/completed_plans/2026/task_285_fee_rule_seed_library_execution_plan.md | tasks/completed/2026/TASK_285_FEE_RULE_SEED_LIBRARY.md | 2026-08-18 |
+| TASK_285 | docs/completed_plans/2026/task_285_fee_rule_seed_library_plan.md | tasks/completed/2026/TASK_285_FEE_RULE_SEED_LIBRARY.md | 2026-08-18 |
+| TASK_298 | docs/completed_plans/2026/task_298_fee_price_reference_rule_refresh_plan.md | tasks/completed/2026/TASK_298_FEE_PRICE_REFERENCE_RULE_REFRESH.md | 2026-08-18 |
+| TASK_306 | docs/completed_plans/2026/task_306_project_folder_panel_workbench_entry_plan.md | tasks/completed/2026/TASK_306_PROJECT_FOLDER_PANEL_WORKBENCH_ENTRY.md | 2026-08-18 |
+| TASK_315D | docs/completed_plans/2026/task_315d_followup_fee_confirm_action_dock_plan.md | tasks/completed/2026/TASK_315D_FEE_UI_PROJECT_FOLDER_REGRESSION.md | 2026-08-18 |
+| TASK_315D | docs/completed_plans/2026/task_315d_followup_fee_rebase_saveable_defaults_plan.md | tasks/completed/2026/TASK_315D_FEE_UI_PROJECT_FOLDER_REGRESSION.md | 2026-08-18 |
+| TASK_315D | docs/completed_plans/2026/task_315d_followup_remove_fee_confirm_status_card_plan.md | tasks/completed/2026/TASK_315D_FEE_UI_PROJECT_FOLDER_REGRESSION.md | 2026-08-18 |
+| TASK_315D | docs/completed_plans/2026/task_315d_followup_remove_fee_confirmed_by_ui_plan.md | tasks/completed/2026/TASK_315D_FEE_UI_PROJECT_FOLDER_REGRESSION.md | 2026-08-18 |
+| TASK_315F | docs/completed_plans/2026/task_315f_followup_project_folder_business_flow_plan.md | tasks/completed/2026/TASK_315F_FEE_CURRENT_VERSION_CANCEL_UPDATE_SEMANTICS.md | 2026-08-18 |
+| TASK_315F | docs/completed_plans/2026/task_315f_followup_project_folder_cta_plan.md | tasks/completed/2026/TASK_315F_FEE_CURRENT_VERSION_CANCEL_UPDATE_SEMANTICS.md | 2026-08-18 |
+| TASK_364B | docs/completed_plans/2026/task_364b_r1_inline_cr_table_corrective_plan.md | tasks/completed/2026/TASK_364B_PROJECT_POINT_PROFILE_CR_COVERAGE_AUTHORITY_AND_UI.md | 2026-08-18 |
+| RELEASE_004 | docs/completed_plans/2026/release_004_browser_release_packaging_performance_plan.md | tasks/completed/2026/RELEASE_004_BROWSER_PACKAGING_PERFORMANCE_RESIDUAL_RECONCILIATION.md | 2026-08-18 |
