@@ -101,7 +101,10 @@ class ProductSpecMatrixParser:
     """Extract group sequences from Matrix-like product specification tables."""
 
     _GROUP_RE = re.compile(r"\bgroup\s*(\d+)\b", re.IGNORECASE)
-    _GROUP_PREFIXED_LETTER_RE = re.compile(r"group\s*[a-z]", re.IGNORECASE)
+    _GROUP_PREFIXED_LETTER_RE = re.compile(
+        r"group\s*(?P<label>[a-z])(?:\s*\([a-z0-9]+\))?",
+        re.IGNORECASE,
+    )
     _GROUP_NUMERIC_RE = re.compile(r"^\s*\d+[a-z]?\s*$", re.IGNORECASE)
     _STEP_TOKEN_RE = re.compile(r"^(?P<number>\d+)(?P<suffix>.*)$")
     _SAMPLE_ROW_RE = re.compile(r"\bsamples?\b", re.IGNORECASE)
@@ -190,11 +193,9 @@ class ProductSpecMatrixParser:
             normalized = [_normalize(cell) for cell in row]
             canonical_headers = [_canonical_header_label(cell) for cell in row]
             group_columns = tuple(
-                (index, _clean(row[index]))
+                (index, label)
                 for index, value in enumerate(normalized)
-                if self._GROUP_RE.search(value)
-                or self._GROUP_PREFIXED_LETTER_RE.fullmatch(value)
-                or self._GROUP_NUMERIC_RE.match(value)
+                if (label := self._group_header_label(row[index], value)) is not None
             )
             if not group_columns:
                 continue
@@ -232,6 +233,15 @@ class ProductSpecMatrixParser:
                 group_columns=group_columns,
             )
         return None
+
+    @classmethod
+    def _group_header_label(cls, source: str, normalized: str) -> str | None:
+        if cls._GROUP_RE.search(normalized) or cls._GROUP_NUMERIC_RE.match(normalized):
+            return _clean(source)
+        prefixed_letter = cls._GROUP_PREFIXED_LETTER_RE.fullmatch(normalized)
+        if prefixed_letter is None:
+            return None
+        return prefixed_letter.group("label").upper()
 
     def _parse_table(
         self,

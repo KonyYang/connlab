@@ -11,8 +11,21 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_PDF_MATRIX_GROUP_PREFIX_FOOTNOTE_NORMALIZATION",
+    "summary": "Include prefixed letter Matrix groups such as Group P(b) when parsing PDF qualification tables.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "PDF Matrix group-header normalization and focused parser/gateway regression coverage.",
+    "scope_paths": [],
+    "risk_reasons": [],
+    "activation_head": "67f8aef4fa94867855030c14910271fcf229df9b",
+    "started_at": "2026-08-21T00:23:01.987356Z",
+    "updated_at": "2026-08-21T00:23:01.987356Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_TEST_SUITE_TRUST_RESTORATION",
     "tier": "standard",

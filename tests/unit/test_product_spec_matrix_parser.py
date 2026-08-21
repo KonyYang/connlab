@@ -34,6 +34,26 @@ def test_product_spec_matrix_parser_extracts_group_steps() -> None:
     assert group_1.steps[0].duration_status == "deferred"
 
 
+def test_product_spec_matrix_parser_normalizes_prefixed_letter_group_marker() -> None:
+    result = ProductSpecMatrixParser().parse_tables(
+        [
+            [
+                ["TEST GROUP ID:", "", "1", "Group P(b)"],
+                ["TEST DESCRIPTION", "SECTION", "Temp Life", "Current Rating"],
+                ["VISUAL EXAMINATION", "7.1", "1,9", "1,8,1(b),1(c)"],
+                ["Current Rating", "6.1", "", "4"],
+                ["SAMPLES QUANTITY (PCS)", "", "5(a)", "6(a)+3(b)"],
+            ]
+        ],
+        table_contexts={1: "9.7 Qualification Test Table"},
+    )
+
+    assert [group.group_label for group in result.groups] == ["1", "P"]
+    group_p = result.groups[1]
+    assert [step.sequence for step in group_p.steps] == [1, 1, 1, 4, 8]
+    assert group_p.sample_quantity_expression == "6(a)+3(b)"
+
+
 def test_product_spec_matrix_parser_prefills_row_method_condition_requirement() -> None:
     result = ProductSpecMatrixParser().parse_tables(
         [
