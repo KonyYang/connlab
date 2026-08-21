@@ -420,6 +420,57 @@ def test_finish_rejects_scope_drift_and_subject_mismatch(repo: Path) -> None:
     assert mismatch["code"] == "BLOCKED_SUBJECT_MISMATCH"
 
 
+def test_standard_finish_allows_reviewed_same_scope_support_path(repo: Path) -> None:
+    submit(repo, "TASK_STANDARD_SCOPE", "standard")
+    commit_activation_and_implementation(repo)
+    (repo / "support.py").write_text("VALUE = 'same-scope support'\n", encoding="utf-8")
+    git(repo, "add", "support.py")
+    git(repo, "commit", "-m", "add same-scope support")
+    subject = git(repo, "rev-parse", "HEAD")
+    value = report("TASK_STANDARD_SCOPE", subject, "standard")
+    value["changed_paths"] = ["impl.py", "support.py"]
+
+    finished = invoke(
+        repo,
+        "finish",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_STANDARD_SCOPE",
+        "--result-json",
+        json.dumps(value),
+    )
+
+    assert finished["code"] == "ALLOW_FINISH"
+    assert finished["state"] == "ready_for_close"
+
+
+def test_high_risk_finish_rejects_path_outside_approved_manifest(repo: Path) -> None:
+    submit(repo, "TASK_HIGH_RISK_SCOPE", "high_risk")
+    commit_activation_and_implementation(repo)
+    (repo / "support.py").write_text("VALUE = 'unapproved path'\n", encoding="utf-8")
+    git(repo, "add", "support.py")
+    git(repo, "commit", "-m", "add unapproved support")
+    subject = git(repo, "rev-parse", "HEAD")
+    value = report("TASK_HIGH_RISK_SCOPE", subject, "high_risk")
+    value["changed_paths"] = ["impl.py", "support.py"]
+
+    blocked = invoke(
+        repo,
+        "finish",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_HIGH_RISK_SCOPE",
+        "--result-json",
+        json.dumps(value),
+        expected_exit=2,
+    )
+
+    assert blocked["code"] == "BLOCKED_SCOPE_DRIFT"
+    assert blocked["changed"] is False
+
+
 def test_only_explicit_close_releases_wip(repo: Path) -> None:
     submit(repo, "TASK_CLOSE", "micro")
     subject = commit_activation_and_implementation(repo)

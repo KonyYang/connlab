@@ -20,6 +20,11 @@ say `关闭`. Proceed autonomously through safe in-scope local work. Stop earlie
 Do not ask for routine Plan, role, test-command, bounded-fix, or clean-local-integration approval.
 WIP is one; only explicit Close or Cancel releases it.
 
+For Micro and Standard tasks, `scope_paths` is an initial navigation aid rather than a frozen file
+allowlist: Sol may touch additional files required by the same User-requested behavior when the exact
+Git diff is reported and review attests `scope_ok`. Material behavior expansion still requires the
+User. High-risk tasks retain an exact approved-path allowlist and fail closed on any extra path.
+
 ## Choose the lightest safe tier
 
 ### Micro

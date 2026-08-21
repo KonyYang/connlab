@@ -459,7 +459,11 @@ def finish(args: argparse.Namespace, root: Path) -> tuple[str, str, dict[str, An
         observed = changed_paths(root, active["activation_head"], head)
         if sorted(payload["changed_paths"]) != observed:
             raise Blocked("BLOCKED_SCOPE_DRIFT", "Reported paths differ from the exact Git diff.")
-        if active["scope_paths"] and not set(observed).issubset(set(active["scope_paths"])):
+        if (
+            active["tier"] == "high_risk"
+            and active["scope_paths"]
+            and not set(observed).issubset(set(active["scope_paths"]))
+        ):
             raise Blocked("BLOCKED_SCOPE_DRIFT", "Exact Git diff exceeds the recorded scope.")
         active["report"] = payload
         active["checkpoint"] = {
