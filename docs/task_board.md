@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FRONTEND_WARNING_MAINTENANCE",
+    "summary": "Remove existing React act warnings and make evidence-based frontend bundle improvements without changing product behavior.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Frontend test synchronization and targeted bundle splitting only; preserve product behavior and avoid warning suppression.",
+    "scope_paths": [
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
+      "frontend/src/App.tsx",
+      "frontend/src/main.tsx",
+      "frontend/vite.config.ts"
+    ],
+    "risk_reasons": [],
+    "activation_head": "5f9a9bd855ca00650efc873b983ef87e252fa4fb",
+    "started_at": "2026-08-21T10:12:06.557776Z",
+    "updated_at": "2026-08-21T10:12:06.557776Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FEE_FOOTNOTED_SAMPLE_QUANTITY_UNITS",
     "tier": "standard",
