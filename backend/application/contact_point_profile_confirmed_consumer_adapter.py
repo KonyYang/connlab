@@ -21,11 +21,11 @@ class EffectiveConfirmedPointProfile:
     fingerprint: str | None
     lineage: str | None
     message: str | None
+    cr_readings_per_sample: str | None = None
 
     @property
     def is_usable(self) -> bool:
         return self.status == "confirmed" and self.readings_per_sample is not None
-
 
 class ContactPointProfileConfirmedConsumerAdapter:
     """Expose only validated active-confirmed Profile authority."""
@@ -54,11 +54,14 @@ class ContactPointProfileConfirmedConsumerAdapter:
         categories = self._repository.categories(revision.contact_point_profile_revision_id)
         payload = tuple(_category_payload(category) for category in categories)
         readings = points_per_sample(payload)
+        custom_category_ids = tuple(
+            self._repository.cr_category_ids(revision.contact_point_profile_revision_id)
+        )
         if readings <= 0 or not _fingerprint_matches(
             root,
             revision,
             payload,
-            tuple(self._repository.cr_category_ids(revision.contact_point_profile_revision_id)),
+            custom_category_ids,
         ):
             return _result("authority_corrupt", "Point Profile authority requires review.")
         latest_root = self._repository.get_root(project_id)
@@ -85,6 +88,9 @@ class ContactPointProfileConfirmedConsumerAdapter:
             fingerprint=revision.revision_fingerprint,
             lineage=lineage,
             message=None,
+            cr_readings_per_sample=str(
+                _cr_points_per_sample(payload, custom_category_ids)
+            ),
         )
 
 
@@ -118,6 +124,20 @@ def _category_payload(category) -> dict[str, object]:
         "included": bool(category.included),
         "point_expression": getattr(category, "point_expression", None),
     }
+
+
+def _cr_points_per_sample(
+    categories: tuple[dict[str, object], ...],
+    custom_category_ids: tuple[str, ...],
+) -> int:
+    if not custom_category_ids:
+        return points_per_sample(categories)
+    selected = set(custom_category_ids)
+    return sum(
+        int(category["count_per_sample"])
+        for category in categories
+        if str(category["category_id"]) in selected and bool(category["included"])
+    )
 
 
 def _fingerprint_matches(

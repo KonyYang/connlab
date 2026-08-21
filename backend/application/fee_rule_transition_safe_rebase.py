@@ -81,10 +81,15 @@ def load_rebase_candidate(
         decoded = decode_pricing_draft_payload(snapshot.payload_json or "")
         if decoded.kind != "v2" or decoded.source_context is None:
             raise FeeRuleRebaseAttestationError("Saved pricing draft V2 attestation is missing.")
-        if _is_attested_measurement_plan_transition(
-            source, current_source_context, current_automatic_build
+        if (
+            _is_attested_measurement_plan_transition(
+                source, current_source_context, current_automatic_build
+            )
+            or _is_attested_point_profile_transition(
+                source, current_source_context, current_automatic_build
+            )
         ):
-            rebased = _rebase_attested_measurement_plan(
+            rebased = _rebase_attested_dependent_authority(
                 snapshot=snapshot,
                 decoded=decoded,
                 current_automatic_build=current_automatic_build,
@@ -166,7 +171,10 @@ def _is_attested_measurement_plan_transition(
         "point_profile_revision_sequence",
         "point_profile_fingerprint",
     )
-    if any(getattr(saved, field, None) != getattr(current, field, None) for field in stable_fields):
+    if any(
+        getattr(saved, field, None) != getattr(current, field, None)
+        for field in stable_fields
+    ):
         return False
     measurement_fields = (
         "measurement_plan_status",
@@ -180,7 +188,37 @@ def _is_attested_measurement_plan_transition(
     )
 
 
-def _rebase_attested_measurement_plan(
+def _is_attested_point_profile_transition(
+    saved: Any,
+    current: Any | None,
+    current_build: Any | None,
+) -> bool:
+    if current is None or current_build is None:
+        return False
+    stable_fields = (
+        "confirmed_matrix_id",
+        "confirmed_revision",
+        "fee_rule_version_id",
+        "measurement_plan_status",
+        "measurement_plan_revision_id",
+        "measurement_plan_revision_sequence",
+        "measurement_plan_fingerprint",
+    )
+    if any(getattr(saved, field, None) != getattr(current, field, None) for field in stable_fields):
+        return False
+    point_profile_fields = (
+        "point_profile_status",
+        "point_profile_revision_id",
+        "point_profile_revision_sequence",
+        "point_profile_fingerprint",
+    )
+    return any(
+        getattr(saved, field, None) != getattr(current, field, None)
+        for field in point_profile_fields
+    )
+
+
+def _rebase_attested_dependent_authority(
     *,
     snapshot: Any,
     decoded: Any,

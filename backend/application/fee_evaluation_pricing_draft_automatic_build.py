@@ -208,4 +208,9 @@ def _missing_line_safety(
 
 
 def _is_confirmed_cr_source(value: str | None) -> bool:
-    return bool(value and value.startswith("Confirmed CR Measurement Plan"))
+    return bool(
+        value
+        and value.startswith(
+            ("Confirmed CR Measurement Plan", "Confirmed Project Point Profile")
+        )
+    )

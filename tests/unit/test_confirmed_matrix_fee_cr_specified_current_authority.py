@@ -201,6 +201,73 @@ def test_production_cr_missing_plan_does_not_fallback_to_legacy_step_quantity() 
     assert "CR Measurement Plan" in (line.review_reason or "")
 
 
+def test_production_cr_uses_confirmed_point_profile_coverage_without_measurement_plan() -> None:
+    snapshot = _two_group_snapshot()
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_Store(snapshot),
+        contact_point_profile_adapter=_Adapter(
+            SimpleNamespace(
+                status="confirmed",
+                is_usable=True,
+                readings_per_sample="9",
+                cr_readings_per_sample="4",
+                revision_id="profile-2",
+                revision_sequence=2,
+                fingerprint="profile-fingerprint-2",
+                lineage="Confirmed Project Point Profile: revision 2",
+                message=None,
+            )
+        ),
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="p1"))
+
+    lines = [group.line_items[0] for group in draft.groups]
+    assert [line.units for line in lines] == [Decimal("20"), Decimal("12")]
+    assert all(line.review_required is False for line in lines)
+    assert all(
+        any(
+            item.field == "units"
+            and "Confirmed Project Point Profile" in (item.source or "")
+            for item in line.field_metadata
+        )
+        for line in lines
+    )
+
+
+def test_production_cr_measurement_plan_precedes_confirmed_point_profile() -> None:
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_Store(_two_group_snapshot()),
+        contact_measurement_adapter=_Adapter(_two_group_plan()),
+        contact_point_profile_adapter=_Adapter(
+            SimpleNamespace(
+                status="confirmed",
+                cr_readings_per_sample="4",
+                revision_id="profile-2",
+                revision_sequence=2,
+                fingerprint="profile-fingerprint-2",
+                lineage="Confirmed Project Point Profile: revision 2",
+            )
+        ),
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="p1"))
+
+    assert [line.units for group in draft.groups for line in group.line_items] == [
+        Decimal("40"),
+        Decimal("36"),
+    ]
+    assert all(
+        any(
+            "Confirmed CR Measurement Plan" in (item.source or "")
+            for item in line.field_metadata
+            if item.field == "units"
+        )
+        for group in draft.groups
+        for line in group.line_items
+    )
+
+
 def test_cr_default_rejects_invalid_owning_sample_quantity() -> None:
     result = build_fee_default_fill(
         rule=_RULE,

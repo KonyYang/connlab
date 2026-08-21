@@ -174,6 +174,7 @@ def build_group_lines(
                 row=row,
                 parsed_tokens=parsed_tokens,
                 effective_plan=effective_contact_plan,
+                effective_point_profile=effective_point_profile,
             )
         else:
             step_quantities = build_step_quantity_contexts(

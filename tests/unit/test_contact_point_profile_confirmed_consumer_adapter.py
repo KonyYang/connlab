@@ -20,6 +20,7 @@ def test_adapter_projects_active_confirmed_profile_total_and_lineage() -> None:
 
     assert result.status == "confirmed"
     assert result.readings_per_sample == "9"
+    assert result.cr_readings_per_sample == "9"
     assert result.revision_id == "revision-1"
     assert result.revision_sequence == 3
     assert result.fingerprint == revision.revision_fingerprint
@@ -72,6 +73,7 @@ def test_adapter_accepts_current_v3_fingerprint_with_custom_cr_coverage() -> Non
 
     assert result.status == "confirmed"
     assert result.readings_per_sample == "9"
+    assert result.cr_readings_per_sample == "5"
 
 
 def test_adapter_reports_draft_without_activating_editable_profile() -> None:

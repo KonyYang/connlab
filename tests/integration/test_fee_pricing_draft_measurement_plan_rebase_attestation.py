@@ -14,6 +14,9 @@ from backend.application.confirmed_matrix_fee_draft_models import (
 from backend.application.confirmed_matrix_fee_draft_service import (
     ConfirmedMatrixFeeDraftService,
 )
+from backend.application.contact_point_profile_confirmed_consumer_adapter import (
+    EffectiveConfirmedPointProfile,
+)
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
     FeeEvaluationPricingDraftConflictError,
     FeeEvaluationPricingDraftPersistenceService,
@@ -38,6 +41,10 @@ from tests.unit.test_fee_evaluation_pricing_draft_persistence_service import (
     _ConfirmedStore,
     _DraftStore,
     _snapshot,
+)
+from tests.unit.test_confirmed_matrix_fee_cr_specified_current_authority import (
+    _Store as _ConfirmedCrStore,
+    _two_group_snapshot,
 )
 
 
@@ -131,6 +138,62 @@ def test_changed_cr_plan_rebases_and_reviewed_save_becomes_current_v2() -> None:
     assert reviewed.saved_snapshot.source_context.measurement_plan_revision_id == "plan-2"
 
 
+def test_changed_point_profile_cr_coverage_rebases_fee_units() -> None:
+    profile = _confirmed_profile(cr_readings="4", fingerprint="profile-fp-1")
+    profile_adapter = _MutableProfileAdapter(profile)
+    provider = _CountingProvider(
+        ConfirmedMatrixFeeDraftService(
+            confirmed_store=_ConfirmedCrStore(_two_group_snapshot()),
+            contact_point_profile_adapter=profile_adapter,
+        )
+    )
+    store = _DraftStore()
+    persistence = FeeEvaluationPricingDraftPersistenceService(
+        basic_fill_service=_ForbiddenBasicFill(),
+        draft_store=store,
+        automatic_defaults_provider=provider,
+    )
+    prior_values = edited_values_from_fee_draft(
+        provider.service.build_draft(
+            BuildConfirmedMatrixFeeDraftCommand(project_id="p1")
+        )
+    )
+    saved = persistence.save(
+        SaveFeeEvaluationPricingDraftCommand(
+            project_id="p1",
+            edited_values=prior_values,
+        )
+    ).saved_snapshot
+    assert saved is not None
+    profile_adapter.profile = _confirmed_profile(
+        cr_readings="6",
+        fingerprint="profile-fp-2",
+    )
+
+    candidate = persistence.load("p1")
+
+    assert candidate.status == "rebase_required"
+    assert candidate.saved_snapshot is not None
+    assert [row.units for row in candidate.saved_snapshot.edited_values.rows] == [
+        "30",
+        "18",
+    ]
+    reviewed = persistence.save(
+        SaveFeeEvaluationPricingDraftCommand(
+            project_id="p1",
+            edited_values=candidate.saved_snapshot.edited_values,
+            expected_pricing_draft_edit_id=saved.draft_edit_id,
+            expected_generation=saved.generation,
+            expected_payload_fingerprint=saved.payload_fingerprint,
+            expected_updated_at=saved.updated_at,
+        )
+    )
+    assert reviewed.status == "current_v2"
+    assert reviewed.saved_snapshot is not None
+    assert reviewed.saved_snapshot.source_context is not None
+    assert reviewed.saved_snapshot.source_context.point_profile_fingerprint == "profile-fp-2"
+
+
 def test_reviewed_save_stale_cas_is_typed_and_does_not_overwrite(tmp_path) -> None:
     engine = create_engine(f"sqlite:///{tmp_path / 'pricing-draft.sqlite3'}", future=True)
     Base.metadata.create_all(engine)
@@ -199,6 +262,15 @@ class _MutableProvider:
         return self.result
 
 
+class _MutableProfileAdapter:
+    def __init__(self, profile: EffectiveConfirmedPointProfile) -> None:
+        self.profile = profile
+
+    def get_effective(self, project_id: str) -> EffectiveConfirmedPointProfile:
+        assert project_id == "p1"
+        return self.profile
+
+
 class _ForbiddenBasicFill:
     def build(self, command):
         raise AssertionError("basic-fill service must not reread Confirmed Matrix")
@@ -235,6 +307,26 @@ def _reviewed_command(saved, values):
         expected_generation=saved.generation,
         expected_payload_fingerprint=saved.payload_fingerprint,
         expected_updated_at=saved.updated_at,
+    )
+
+
+def _confirmed_profile(
+    *,
+    cr_readings: str,
+    fingerprint: str,
+) -> EffectiveConfirmedPointProfile:
+    return EffectiveConfirmedPointProfile(
+        status="confirmed",
+        readings_per_sample="9",
+        revision_id=f"revision-{fingerprint}",
+        revision_sequence=2,
+        fingerprint=fingerprint,
+        lineage=(
+            "Confirmed Project Point Profile: revision 2 "
+            f"(revision-{fingerprint}; {fingerprint})"
+        ),
+        message=None,
+        cr_readings_per_sample=cr_readings,
     )
 
 

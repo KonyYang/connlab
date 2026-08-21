@@ -35,7 +35,7 @@ class FeeFieldMetadata:
 
 @dataclass(frozen=True, slots=True)
 class CrSpecifiedCurrentAuthority:
-    """Typed, exact confirmed CR Measurement Plan authority."""
+    """Typed, exact confirmed authority for specified-current CR quantities."""
 
     confirmed_group_id: str
     confirmed_row_id: str
@@ -47,6 +47,7 @@ class CrSpecifiedCurrentAuthority:
     revision_sequence: int | None
     fingerprint: str | None
     diagnostic: str | None = None
+    source_lineage: str | None = None
 
     @property
     def is_valid(self) -> bool:
@@ -62,6 +63,8 @@ class CrSpecifiedCurrentAuthority:
     @property
     def source(self) -> str:
         """Return deterministic confirmed CR authority lineage metadata."""
+        if self.source_lineage:
+            return self.source_lineage
         return (
             "Confirmed CR Measurement Plan: "
             f"revision {self.revision_sequence} ({self.revision_id}; {self.fingerprint})"

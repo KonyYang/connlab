@@ -8,6 +8,9 @@ from decimal import Decimal, InvalidOperation
 from backend.application.contact_measurement_plan_confirmed_consumer_adapter import (
     EffectiveContactMeasurementPlan,
 )
+from backend.application.contact_point_profile_confirmed_consumer_adapter import (
+    EffectiveConfirmedPointProfile,
+)
 from backend.domain import ConfirmedMatrixGroup, ConfirmedMatrixRow
 from backend.modules.fee_evaluation import FeeStepQuantityContext
 from backend.modules.fee_evaluation import CrSpecifiedCurrentAuthority
@@ -23,8 +26,18 @@ def resolve_cr_specified_current_readings(
     row: ConfirmedMatrixRow,
     parsed_tokens: tuple[ParsedStepToken, ...],
     effective_plan: EffectiveContactMeasurementPlan | None,
+    effective_point_profile: EffectiveConfirmedPointProfile | None = None,
 ) -> tuple[FeeStepQuantityContext, ...]:
-    """Return one homogeneous exact-target authority, never a fallback value."""
+    """Return the formal CR plan, or the confirmed project-profile fallback."""
+    if _profile_fallback_allowed(effective_plan) and _profile_cr_is_usable(
+        effective_point_profile
+    ):
+        return _profile_contexts(
+            group=group,
+            row=row,
+            parsed_tokens=parsed_tokens,
+            profile=effective_point_profile,
+        )
     if effective_plan is None:
         return _blocked(parsed_tokens, "Confirmed CR Measurement Plan authority is unavailable.")
 
@@ -121,11 +134,72 @@ def _context(
         readings_per_point="1" if authority.readings_per_sample is not None else None,
         contact_points_per_sample=authority.readings_per_sample,
         total_readings=authority.readings_per_sample,
-        source="confirmed_cr_measurement_plan",
+        source=authority.source,
         review_required=not authority.is_valid,
         review_reason=authority.diagnostic,
         matched=True,
         cr_authority=authority,
+    )
+
+
+def _profile_fallback_allowed(
+    effective_plan: EffectiveContactMeasurementPlan | None,
+) -> bool:
+    return effective_plan is None or bool(
+        getattr(effective_plan, "legacy_fallback_allowed", False)
+    )
+
+
+def _profile_cr_is_usable(profile: EffectiveConfirmedPointProfile | None) -> bool:
+    return bool(
+        profile is not None
+        and getattr(profile, "status", None) == "confirmed"
+        and getattr(profile, "cr_readings_per_sample", None)
+        and getattr(profile, "revision_id", None)
+        and getattr(profile, "revision_sequence", None) is not None
+        and getattr(profile, "fingerprint", None)
+        and getattr(profile, "lineage", None)
+    )
+
+
+def _profile_contexts(
+    *,
+    group: ConfirmedMatrixGroup,
+    row: ConfirmedMatrixRow,
+    parsed_tokens: tuple[ParsedStepToken, ...],
+    profile: EffectiveConfirmedPointProfile,
+) -> tuple[FeeStepQuantityContext, ...]:
+    value = str(profile.cr_readings_per_sample or "").strip()
+    try:
+        parsed = Decimal(value)
+    except (InvalidOperation, ValueError):
+        return _blocked(
+            parsed_tokens,
+            "Confirmed Project Point Profile CR coverage is invalid.",
+        )
+    if not parsed.is_finite() or parsed <= 0:
+        return _blocked(
+            parsed_tokens,
+            "Confirmed Project Point Profile CR coverage must be positive.",
+        )
+    authorities = tuple(
+        CrSpecifiedCurrentAuthority(
+            confirmed_group_id=group.confirmed_group_id,
+            confirmed_row_id=row.confirmed_row_id,
+            step_sequence=token.sequence,
+            step_suffix_note=_suffix(token.suffix_note),
+            contact_kind="cr_specified_current",
+            readings_per_sample=format(parsed, "f"),
+            revision_id=profile.revision_id,
+            revision_sequence=profile.revision_sequence,
+            fingerprint=profile.fingerprint,
+            source_lineage=profile.lineage,
+        )
+        for token in parsed_tokens
+    )
+    return tuple(
+        _context(token, authority)
+        for token, authority in zip(parsed_tokens, authorities, strict=True)
     )
 
 

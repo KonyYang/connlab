@@ -106,6 +106,33 @@ def test_fee_draft_api_uses_confirmed_point_profile_for_llcr_units(tmp_path: Pat
         engine.dispose()
 
 
+def test_fee_draft_api_uses_confirmed_point_profile_for_cr_units(tmp_path: Path) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        _seed_llcr_snapshot(
+            "P1",
+            tmp_path,
+            test_item="Contact Resistance, Specified Current",
+        )
+        _confirm_point_profile("P1", tmp_path)
+
+        response = client.get("/api/projects/P1/confirmed-matrix/fee-draft")
+
+        assert response.status_code == 200
+        line = response.json()["groups"][0]["line_items"][0]
+        assert line["units"] == "20"
+        assert line["review_required"] is False
+        assert any(
+            item["field"] == "units"
+            and item["source"].startswith("Confirmed Project Point Profile: revision 1")
+            for item in line["field_metadata"]
+        )
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def _client(tmp_path: Path) -> tuple[TestClient, object, object]:
     settings = Settings(
         data_dir=tmp_path / "data",
@@ -215,7 +242,12 @@ def _seed_active_confirmed_snapshot(project_id: str, tmp_path: Path) -> None:
     engine.dispose()
 
 
-def _seed_llcr_snapshot(project_id: str, tmp_path: Path) -> None:
+def _seed_llcr_snapshot(
+    project_id: str,
+    tmp_path: Path,
+    *,
+    test_item: str = "Contact Resistance (Low Level)",
+) -> None:
     settings = _settings(tmp_path)
     engine = create_database_engine(settings)
     session_factory = create_session_factory(engine)
@@ -240,7 +272,7 @@ def _seed_llcr_snapshot(project_id: str, tmp_path: Path) -> None:
                 rows=(ConfirmedMatrixRow(
                     confirmed_row_id="cmr-llcr", confirmed_matrix_id="cmv-llcr",
                     draft_row_id="pmdr-llcr", source_row_snapshot_id="smr-1",
-                    row_order=1, test_item="Contact Resistance (Low Level)",
+                    row_order=1, test_item=test_item,
                     source_section="6.1", method="EIA-364-06", condition="",
                     requirement="",
                 ),),
