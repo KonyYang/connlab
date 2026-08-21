@@ -11,8 +11,27 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_FOOTNOTED_SAMPLE_QUANTITY_UNITS",
+    "summary": "Calculate Fee Evaluation units from simple footnoted Matrix sample quantities such as 5(a).",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Normalize simple numeric sample quantities with alphabetic footnotes at the shared Fee Evaluation boundary while preserving manual review for compound expressions; cover LLCR through the public Fee Draft API.",
+    "scope_paths": [
+      "backend/modules/fee_evaluation/fee_default_fill.py",
+      "backend/modules/fee_evaluation/fee_default_fill_common.py",
+      "backend/modules/fee_evaluation/fee_reviewed_extension_defaults.py",
+      "backend/modules/fee_evaluation/fee_step_quantity_defaults.py",
+      "tests/integration/test_confirmed_matrix_fee_draft_api.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "4189718a899229018a0d63de9e625b498c7daaae",
+    "started_at": "2026-08-21T10:07:42.437565Z",
+    "updated_at": "2026-08-21T10:07:42.437565Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_MATRIX_TEST_POINTS_FEE_EVALUATION_SYNC",
     "tier": "standard",
