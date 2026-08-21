@@ -133,6 +133,32 @@ def test_fee_draft_api_uses_confirmed_point_profile_for_cr_units(tmp_path: Path)
         engine.dispose()
 
 
+def test_fee_draft_api_strips_single_sample_footnote_for_llcr_units(
+    tmp_path: Path,
+) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        _seed_llcr_snapshot(
+            "P1",
+            tmp_path,
+            sample_quantity_expression="5(a)",
+        )
+        _confirm_point_profile("P1", tmp_path)
+
+        response = client.get("/api/projects/P1/confirmed-matrix/fee-draft")
+
+        assert response.status_code == 200
+        line = response.json()["groups"][0]["line_items"][0]
+        assert line["units"] == "20"
+        assert line["unit_price"] == "1.5"
+        assert line["testing_fee"] == "30.0"
+        assert line["review_required"] is False
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def _client(tmp_path: Path) -> tuple[TestClient, object, object]:
     settings = Settings(
         data_dir=tmp_path / "data",
@@ -247,6 +273,7 @@ def _seed_llcr_snapshot(
     tmp_path: Path,
     *,
     test_item: str = "Contact Resistance (Low Level)",
+    sample_quantity_expression: str = "5",
 ) -> None:
     settings = _settings(tmp_path)
     engine = create_database_engine(settings)
@@ -267,7 +294,7 @@ def _seed_llcr_snapshot(
                     confirmed_group_id="cmg-llcr", confirmed_matrix_id="cmv-llcr",
                     draft_group_id="pmdg-1", source_group_snapshot_id="smg-1",
                     group_order=1, group_key="g1", group_label="G1",
-                    sample_quantity_expression="5",
+                    sample_quantity_expression=sample_quantity_expression,
                 ),),
                 rows=(ConfirmedMatrixRow(
                     confirmed_row_id="cmr-llcr", confirmed_matrix_id="cmv-llcr",

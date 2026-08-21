@@ -10,6 +10,7 @@ from backend.modules.fee_evaluation.fee_default_fill_common import (
     auto,
     calculated_result,
     manual_required,
+    parse_simple_sample_quantity,
 )
 from backend.modules.fee_evaluation.fee_default_fill_models import (
     FeeDefaultFillContext,
@@ -25,7 +26,6 @@ from backend.modules.fee_evaluation.fee_step_quantity_defaults import (
 )
 
 
-_PLAIN_NON_NEGATIVE_DECIMAL = re.compile(r"^\d+(?:\.\d+)?$")
 _HOUR_PATTERN = re.compile(r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\b", re.I)
 _READING_DURATION_PATTERN = re.compile(
     r"(?<![a-z0-9.])(?P<value>\d+(?:\.\d+)?)\s*"
@@ -168,7 +168,7 @@ def _mechanical_force_per_sample_result(
     context: FeeDefaultFillContext,
 ) -> FeeDefaultFillResult:
     """Apply the reviewed 50-per-sample mating and latch force path."""
-    sample_quantity = _plain_decimal(context.sample_quantity_expression)
+    sample_quantity = parse_simple_sample_quantity(context.sample_quantity_expression)
     if sample_quantity is None:
         return manual_required(
             rule=rule,
@@ -208,7 +208,7 @@ def _specified_current_resistance_result(
         )
     readings_per_specimen = Decimal(authority.readings_per_sample)
     unit_price = Decimal("10") if readings_per_specimen <= Decimal("10") else Decimal("5")
-    sample_quantity = _plain_decimal(context.sample_quantity_expression)
+    sample_quantity = parse_simple_sample_quantity(context.sample_quantity_expression)
     if sample_quantity is None or sample_quantity <= ZERO or sample_quantity != sample_quantity.to_integral_value():
         return manual_required(
             rule=rule,
@@ -265,14 +265,6 @@ def _combined_text(context: FeeDefaultFillContext) -> str:
         )
         if value
     )
-
-
-def _plain_decimal(value: str | None) -> Decimal | None:
-    """Parse one plain non-negative decimal expression."""
-    normalized = (value or "").strip()
-    if not _PLAIN_NON_NEGATIVE_DECIMAL.fullmatch(normalized):
-        return None
-    return Decimal(normalized)
 
 
 def _first_decimal(pattern: re.Pattern[str], text: str) -> Decimal | None:

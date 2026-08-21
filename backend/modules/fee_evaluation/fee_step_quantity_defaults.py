@@ -9,6 +9,7 @@ from backend.modules.fee_evaluation.fee_default_fill_common import (
     ZERO,
     calculated_result,
     manual_required,
+    parse_simple_sample_quantity,
 )
 from backend.modules.fee_evaluation.fee_default_fill_models import FeeStepQuantityContext
 from backend.modules.fee_evaluation.fee_rule_models import FeeRule
@@ -19,9 +20,7 @@ READING_PATTERN = re.compile(
     r"\s*(?:/|per)\s*(?:specimen|sample)\b",
     re.I,
 )
-
 _PLAIN_NON_NEGATIVE_DECIMAL = re.compile(r"^\d+(?:\.\d+)?$")
-
 
 def build_reading_result(
     *,
@@ -30,7 +29,7 @@ def build_reading_result(
     source_text: str,
     step_quantities: tuple[FeeStepQuantityContext, ...],
 ):
-    sample_qty = _plain_decimal(sample_quantity_expression)
+    sample_qty = parse_simple_sample_quantity(sample_quantity_expression)
     readings_per_specimen, matrix_quantity_review, selected_source = matrix_step_readings_per_sample(
         step_quantities
     )

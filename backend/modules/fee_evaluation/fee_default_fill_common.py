@@ -18,6 +18,15 @@ _HOUR_PATTERN = re.compile(
     r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\b",
     re.I,
 )
+_SIMPLE_SAMPLE_QUANTITY_PATTERN = re.compile(
+    r"^(?P<quantity>\d+(?:\.\d+)?)\s*(?:\([A-Za-z]+\)\s*)*$"
+)
+
+
+def parse_simple_sample_quantity(value: str | None) -> Decimal | None:
+    """Parse one numeric sample count with optional alphabetic footnote markers."""
+    match = _SIMPLE_SAMPLE_QUANTITY_PATTERN.fullmatch((value or "").strip())
+    return Decimal(match.group("quantity")) if match else None
 
 
 def calculated_result(
