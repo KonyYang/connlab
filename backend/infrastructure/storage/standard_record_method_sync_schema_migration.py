@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from sqlalchemy.exc import OperationalError
+
 
 class StandardRecordMethodSyncSchemaError(RuntimeError):
     """Raised when the additive schema cannot be verified safely."""
@@ -55,6 +57,15 @@ def migrate_standard_record_method_sync_schema(engine) -> None:
         except StandardRecordMethodSyncSchemaError:
             connection.rollback()
             raise
+        except OperationalError as exc:
+            connection.rollback()
+            if "locked" in str(exc).lower() or "busy" in str(exc).lower():
+                raise StandardRecordMethodSyncSchemaError(
+                    "Standard record method sync schema bootstrap is locked."
+                ) from exc
+            raise StandardRecordMethodSyncSchemaError(
+                "authority_corrupt: Standard record method sync migration failed."
+            ) from exc
         except Exception as exc:
             connection.rollback()
             raise StandardRecordMethodSyncSchemaError(

@@ -93,7 +93,7 @@ def test_locked_writer_fails_closed_then_recovers(tmp_path) -> None:
     lock = engine.connect()
     lock.exec_driver_sql("BEGIN IMMEDIATE")
     try:
-        with pytest.raises(StandardRecordMethodSyncSchemaError, match="authority_corrupt"):
+        with pytest.raises(StandardRecordMethodSyncSchemaError, match="locked"):
             migrate_standard_record_method_sync_schema(engine)
         assert _column(engine, "external_resources", "worksheet_name") is None
     finally:

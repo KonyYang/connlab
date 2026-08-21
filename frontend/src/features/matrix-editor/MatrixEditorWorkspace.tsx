@@ -1750,6 +1750,7 @@ export function MatrixEditorWorkspace({
   const [isCancelling, setIsCancelling] = useState(false);
   const [sourceUnavailableMessage, setSourceUnavailableMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const sourcePickerRequestRef = useRef(0);
   const autosaveTimeoutRef = useRef<number | null>(null);
   const autosaveGenerationRef = useRef(0);
   const autosaveInFlightRef = useRef<Promise<MatrixEditorSessionDraftSaveResponse | null> | null>(null);
@@ -2680,6 +2681,7 @@ export function MatrixEditorWorkspace({
       setImportError(lifecycleReadonlyView.message);
       return;
     }
+    const requestId = ++sourcePickerRequestRef.current;
     const usingBrowserPicker = !hasMatrixImportSourcePicker();
     if (usingBrowserPicker) {
       setSourceCandidates([]);
@@ -2688,6 +2690,9 @@ export function MatrixEditorWorkspace({
       setSourceCandidateLoading(true);
     }
     const choice = await chooseMatrixImportSource();
+    if (requestId !== sourcePickerRequestRef.current) {
+      return;
+    }
     setSourceCandidateLoading(false);
     if (choice.kind === "browser") {
       if (!Array.isArray(choice.candidates)) {
@@ -2958,6 +2963,11 @@ export function MatrixEditorWorkspace({
     if (!file) {
       return;
     }
+    sourcePickerRequestRef.current += 1;
+    setSourceCandidateLoading(false);
+    setSourceCandidates(null);
+    setSourceCandidateTitle("Project source files");
+    setSourceCandidateError(null);
     setImportFile(file);
     setImportSourcePath(null);
     setLocatorPage("");

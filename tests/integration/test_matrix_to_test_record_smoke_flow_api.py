@@ -70,6 +70,7 @@ def _commit_payload() -> dict[str, object]:
         "source_document_name": "spec.docx",
         "source_format": ".docx",
         "selected_group_keys": ["g1", "g3"],
+        "standard_version_unavailable_action": "preserve_imported_methods",
         "preview_payload": {
             "groups": [
                 {

@@ -54,7 +54,12 @@ class ContactPointProfileConfirmedConsumerAdapter:
         categories = self._repository.categories(revision.contact_point_profile_revision_id)
         payload = tuple(_category_payload(category) for category in categories)
         readings = points_per_sample(payload)
-        if readings <= 0 or not _fingerprint_matches(root, revision, payload):
+        if readings <= 0 or not _fingerprint_matches(
+            root,
+            revision,
+            payload,
+            tuple(self._repository.cr_category_ids(revision.contact_point_profile_revision_id)),
+        ):
             return _result("authority_corrupt", "Point Profile authority requires review.")
         latest_root = self._repository.get_root(project_id)
         latest_revision = self._repository.active_revision(project_id)
@@ -115,7 +120,12 @@ def _category_payload(category) -> dict[str, object]:
     }
 
 
-def _fingerprint_matches(root, revision, categories: tuple[dict[str, object], ...]) -> bool:
+def _fingerprint_matches(
+    root,
+    revision,
+    categories: tuple[dict[str, object], ...],
+    custom_category_ids: tuple[str, ...] = (),
+) -> bool:
     expected = revision.revision_fingerprint
     legacy_categories = tuple(
         {key: value for key, value in category.items() if key != "point_expression"}
@@ -133,5 +143,13 @@ def _fingerprint_matches(root, revision, categories: tuple[dict[str, object], ..
             revision.contact_point_profile_revision_id,
             categories,
             version="point-profile:v2",
+        ),
+        point_profile_fingerprint(
+            root.contact_point_profile_root_id,
+            revision.contact_point_profile_revision_id,
+            categories,
+            version="point-profile:v3",
+            cr_coverage_mode="custom" if custom_category_ids else "follow_llcr",
+            cr_selected_category_ids=custom_category_ids,
         ),
     }

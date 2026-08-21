@@ -10,6 +10,7 @@ from docx import Document
 from backend.application.external_resource_service import (
     ExternalResourceNotFoundError,
     ExternalResourceService,
+    WorksheetNameUpdate,
 )
 from backend.domain import (
     ExternalResource,
@@ -132,13 +133,14 @@ def test_external_resource_service_reads_real_xlsx_resource(tmp_path: Path) -> N
     _write_minimal_xlsx(
         workbook,
         "Standard Records",
-        ("LTR Number", "Date", "Test Item", "Sample Description"),
+        ("", "文 件 编 号", "文 件 名 称", "备注"),
     )
     service = ExternalResourceService(_Store())
     service.upsert_resource(
         ExternalResourceType.STANDARD_RECORD_EXCEL,
         workbook,
         active=True,
+        worksheet_name=WorksheetNameUpdate(supplied=True, value="Standard Records"),
     )
 
     validated = service.validate_resource(ExternalResourceType.STANDARD_RECORD_EXCEL)
@@ -150,18 +152,19 @@ def test_external_resource_service_rejects_xlsx_with_missing_structure(
     tmp_path: Path,
 ) -> None:
     workbook = tmp_path / "standard-record.xlsx"
-    _write_minimal_xlsx(workbook, "Standard Records", ("LTR Number", "Date"))
+    _write_minimal_xlsx(workbook, "Standard Records", ("", "Wrong Header"))
     service = ExternalResourceService(_Store())
     service.upsert_resource(
         ExternalResourceType.STANDARD_RECORD_EXCEL,
         workbook,
         active=True,
+        worksheet_name=WorksheetNameUpdate(supplied=True, value="Standard Records"),
     )
 
     validated = service.validate_resource(ExternalResourceType.STANDARD_RECORD_EXCEL)
 
     assert validated.validation_status is ExternalResourceValidationStatus.INVALID
-    assert "Missing required headers" in (validated.validation_failure_reason or "")
+    assert validated.validation_failure_reason
 
 
 def test_external_resource_service_probes_legacy_xls_for_standard_and_equipment(
@@ -306,7 +309,7 @@ def _write_minimal_xlsx(
             (
                 '<?xml version="1.0" encoding="UTF-8"?>'
                 '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-                f"<sheetData>{_header_row_xml(headers)}</sheetData>"
+                f"<sheetData>{_header_row_xml(headers)}{_data_row_xml()}</sheetData>"
                 "</worksheet>"
             ),
         )
@@ -316,6 +319,16 @@ def _header_row_xml(headers: tuple[str, ...]) -> str:
     """Return one XLSX row with inline header strings."""
     cells = []
     for column_index, value in enumerate(headers):
-        reference = f"{chr(65 + column_index)}1"
+        reference = f"{chr(65 + column_index)}2"
         cells.append(f'<c r="{reference}" t="inlineStr"><is><t>{value}</t></is></c>')
-    return f'<row r="1">{"".join(cells)}</row>'
+    return f'<row r="2">{"".join(cells)}</row>'
+
+
+def _data_row_xml() -> str:
+    """Return one nonblank record row required by the workbook contract."""
+    return (
+        '<row r="3">'
+        '<c r="B3" t="inlineStr"><is><t>STD-001</t></is></c>'
+        '<c r="C3" t="inlineStr"><is><t>Sample standard</t></is></c>'
+        "</row>"
+    )

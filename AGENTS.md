@@ -57,6 +57,9 @@ code and observable behavior outrank historical plans.
 ## Validation and completion
 
 - Add regression protection for substantive behavior when a practical public seam exists.
+- Test observable behavior, public contracts, and durable risk boundaries. Do not freeze historical
+  task IDs, private symbol names, source wording, file layout, or CSS literals unless that artifact is
+  itself the supported contract.
 - Validate proportional to risk. After the final implementation or test byte changes, rerun affected
   validation on that exact state; old results no longer count.
 - Review the exact diff for requirement fit, safety, regressions, and scope creep. Do not duplicate a

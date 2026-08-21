@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_local_run_scripts_exist_and_use_expected_commands() -> None:
-    """TASK_015 local run scripts are present and target the MVP processes."""
+    """Supported local run scripts are present and target the expected processes."""
     scripts = {
         "scripts/init_db.ps1": ["create_database_engine", "init_db"],
         "scripts/run_backend.ps1": ["uvicorn", "backend.api.main:app"],
@@ -33,35 +33,14 @@ def test_readme_documents_setup_run_and_validation() -> None:
         ".\\scripts\\run_backend.ps1",
         ".\\scripts\\run_frontend.ps1",
         ".\\scripts\\run_tests.ps1",
-        ".\\scripts\\run_frontend_build.ps1",
+        "-Suite Frontend",
         "docs\\archive\\validation_summaries\\frontend_smoke_checklist.md",
     ]:
         assert term in readme
 
 
-def test_frontend_smoke_checklist_covers_phase5_mvp_flow() -> None:
-    """TASK_023 documents the manual frontend validation guard."""
-    checklist = (ROOT / "docs" / "archive" / "validation_summaries" / "frontend_smoke_checklist.md").read_text(
-        encoding="utf-8"
-    )
-
-    for term in [
-        "project registry page loads",
-        "Create a project",
-        "project detail page opens",
-        "Application Form",
-        "Precheck",
-        "LTR",
-        "Project Folder",
-        "Matrix is not exposed",
-        "Report generation is not exposed",
-        ".\\scripts\\run_frontend_build.ps1",
-    ]:
-        assert term in checklist
-
-
 def test_frontend_build_script_runs_npm_build_from_repo_root() -> None:
-    """TASK_023 provides a root-level frontend build command."""
+    """The standalone root-level frontend build command remains usable."""
     script = (ROOT / "scripts" / "run_frontend_build.ps1").read_text(
         encoding="utf-8"
     )

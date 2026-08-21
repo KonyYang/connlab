@@ -123,16 +123,24 @@ Open the Vite URL shown by the frontend script. The frontend proxies `/api` to `
 
 ## Verify
 
-Backend tests:
+Trusted full gate (hermetic Python tests, frontend tests, and frontend build):
 
 ```powershell
 .\scripts\run_tests.ps1
 ```
 
-Frontend build:
+Focused suites:
 
 ```powershell
-.\scripts\run_frontend_build.ps1
+.\scripts\run_tests.ps1 -Suite Python
+.\scripts\run_tests.ps1 -Suite Frontend
+```
+
+Tests that intentionally require a locally installed and responsive Microsoft Office runtime are
+kept outside the default gate:
+
+```powershell
+.\scripts\run_tests.ps1 -Suite Office
 ```
 
 Manual frontend smoke checklist:

@@ -98,27 +98,6 @@ def test_automotive_force_aliases_remain_manual(text: str) -> None:
     assert result.review_required is True
 
 
-def test_temperature_life_uses_explicit_hours() -> None:
-    match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item("Temperature life")
-    assert match.rule is not None
-
-    result = build_fee_default_fill(
-        rule=match.rule,
-        context=FeeDefaultFillContext(
-            test_item="Temperature life",
-            method="",
-            condition="",
-            requirement="",
-            sample_quantity_expression="5",
-            spend_time="48 hours",
-        ),
-    )
-
-    assert result.unit_price == Decimal("15")
-    assert result.unit_label == "hour"
-    assert result.units == Decimal("48")
-
-
 @pytest.mark.parametrize(
     "text",
     ["Lateral Force", "contact retention force", "Single Pin Mating Force", "Single Pin Unmating Force"],

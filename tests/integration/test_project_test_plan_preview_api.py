@@ -4,6 +4,7 @@ from pathlib import Path
 
 from docx import Document
 from fastapi.testclient import TestClient
+import pytest
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
@@ -15,6 +16,7 @@ from backend.application.project_test_plan_matrix_preview_service import (
 )
 from backend.infrastructure.office import OfficeAutomationUnavailable
 
+pytestmark = pytest.mark.office_integration
 
 def test_matrix_preview_api_extracts_docx_matrix(tmp_path: Path) -> None:
     docx_path = tmp_path / "product-spec.docx"

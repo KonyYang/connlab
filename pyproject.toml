@@ -37,6 +37,9 @@ release = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+  "office_integration: requires a locally installed and responsive Microsoft Office COM runtime",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["backend"]

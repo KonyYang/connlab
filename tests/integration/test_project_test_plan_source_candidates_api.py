@@ -7,6 +7,7 @@ from pathlib import Path
 
 from docx import Document
 from fastapi.testclient import TestClient
+import pytest
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import (
@@ -33,6 +34,7 @@ from backend.application.project_test_plan_matrix_preview_service import (
 )
 from backend.shared.config import Settings
 
+pytestmark = pytest.mark.office_integration
 
 def test_source_candidates_api_lists_project_docx_and_preview_by_candidate(
     tmp_path: Path,

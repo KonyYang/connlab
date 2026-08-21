@@ -5,6 +5,7 @@ from datetime import date
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from openpyxl import Workbook
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_session, get_settings
@@ -148,9 +149,9 @@ def _seed_project_and_template(
     template_dir = tmp_path / "template-root"
     template_dir.mkdir()
     if include_template:
-        (template_dir / "E-4243_D Customer Feedback Form.xlsx").write_bytes(b"template")
+        _write_feedback_template(template_dir / "E-4243_D Customer Feedback Form.xlsx")
     if extra_template:
-        (template_dir / "copy E-4243 customer feedback.xlsx").write_bytes(b"template")
+        _write_feedback_template(template_dir / "copy E-4243 customer feedback.xlsx")
     with session_factory() as session:
         ProjectRepository(session).create(
             Project(
@@ -184,7 +185,7 @@ def _seed_template_only(tmp_path: Path) -> None:
     session_factory = create_session_factory(engine)
     template_dir = tmp_path / "template-root"
     template_dir.mkdir()
-    (template_dir / "E-4243_D Customer Feedback Form.xlsx").write_bytes(b"template")
+    _write_feedback_template(template_dir / "E-4243_D Customer Feedback Form.xlsx")
     with session_factory() as session:
         ExternalResourceRepository(session).upsert(
             ExternalResource(
@@ -195,3 +196,12 @@ def _seed_template_only(tmp_path: Path) -> None:
         )
         session.commit()
     engine.dispose()
+
+
+def _write_feedback_template(path: Path) -> None:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet["A1"] = "Work Request No."
+    sheet["A2"] = "Project Details"
+    workbook.save(path)
+    workbook.close()

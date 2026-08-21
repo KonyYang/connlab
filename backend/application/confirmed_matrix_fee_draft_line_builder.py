@@ -150,8 +150,12 @@ def build_group_lines(
         is_llcr = rule is not None and rule.rule_id == "fee_rule_llcr"
         uses_profile_default = (
             is_llcr
-            and effective_contact_plan is not None
-            and effective_contact_plan.legacy_fallback_allowed
+            and effective_point_profile is not None
+            and effective_point_profile.is_usable
+            and (
+                effective_contact_plan is None
+                or effective_contact_plan.legacy_fallback_allowed
+            )
         )
         active_lookup = (
             {key: target.contact_plan for key, target in effective_contact_plan.lookup.items()}

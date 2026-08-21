@@ -46,6 +46,34 @@ def test_adapter_accepts_legacy_v1_fingerprint_without_point_expression() -> Non
     assert result.readings_per_sample == "4"
 
 
+def test_adapter_accepts_current_v3_fingerprint_with_custom_cr_coverage() -> None:
+    categories = (
+        _category("ppc-1", 0, "HP", 4, "HP", "1-4"),
+        _category("ppc-2", 1, "LP", 5, "LP", "1-5"),
+    )
+    revision = _revision("root-1", "revision-1", categories)
+    revision.revision_fingerprint = point_profile_fingerprint(
+        "root-1",
+        "revision-1",
+        tuple(_payload(item) for item in categories),
+        version="point-profile:v3",
+        cr_coverage_mode="custom",
+        cr_selected_category_ids=("ppc-2",),
+    )
+
+    result = ContactPointProfileConfirmedConsumerAdapter(
+        repository=_Repository(
+            root=_root("root-1", "revision-1"),
+            revision=revision,
+            categories=categories,
+            cr_category_ids=("ppc-2",),
+        )
+    ).get_effective("P1")
+
+    assert result.status == "confirmed"
+    assert result.readings_per_sample == "9"
+
+
 def test_adapter_reports_draft_without_activating_editable_profile() -> None:
     result = ContactPointProfileConfirmedConsumerAdapter(
         repository=_Repository(
@@ -126,11 +154,12 @@ def _payload(category):
 
 
 class _Repository:
-    def __init__(self, *, root, revision, categories, editable=None) -> None:
+    def __init__(self, *, root, revision, categories, editable=None, cr_category_ids=()) -> None:
         self._root = root
         self._revision = revision
         self._categories = categories
         self._editable = editable
+        self._cr_category_ids = cr_category_ids
 
     def get_root(self, project_id: str):
         return self._root if project_id == "P1" else None
@@ -143,3 +172,6 @@ class _Repository:
 
     def categories(self, revision_id: str):
         return list(self._categories) if revision_id == "revision-1" else []
+
+    def cr_category_ids(self, revision_id: str):
+        return list(self._cr_category_ids) if revision_id == "revision-1" else []
