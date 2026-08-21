@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_TEST_POINTS_FEE_EVALUATION_SYNC",
     "summary": "Ensure Matrix test-point setup is consistently propagated into Fee Evaluation derived pricing data.",
@@ -29,9 +29,75 @@
     "risk_reasons": [],
     "activation_head": "1297fa6f2672e0e6ffa0c75a6a71b25ed16ca5aa",
     "started_at": "2026-08-21T04:41:41.725323Z",
-    "updated_at": "2026-08-21T04:41:41.725323Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-08-21T04:55:00.482260Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_MATRIX_TEST_POINTS_FEE_EVALUATION_SYNC",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_TEST_POINTS_FEE_EVALUATION_SYNC",
+      "subject": "7a69fa028becbfbd96abe51243e71480d1ac5059",
+      "summary": "Confirmed Matrix test-point authority now reaches Fee Evaluation for LLCR and specified-current CR, including attested rebase of existing pricing drafts.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/application/confirmed_matrix_fee_cr_specified_current.py",
+        "backend/application/confirmed_matrix_fee_draft_line_builder.py",
+        "backend/application/contact_point_profile_confirmed_consumer_adapter.py",
+        "backend/application/fee_evaluation_pricing_draft_automatic_build.py",
+        "backend/application/fee_rule_transition_safe_rebase.py",
+        "backend/modules/fee_evaluation/fee_default_fill_models.py",
+        "tests/integration/test_confirmed_matrix_fee_draft_api.py",
+        "tests/integration/test_fee_pricing_draft_measurement_plan_rebase_attestation.py",
+        "tests/unit/test_confirmed_matrix_fee_cr_specified_current_authority.py",
+        "tests/unit/test_contact_point_profile_confirmed_consumer_adapter.py"
+      ],
+      "validation": [
+        {
+          "name": "backend affected unit and integration",
+          "status": "passed",
+          "summary": "81 passed"
+        },
+        {
+          "name": "Fee Evaluation frontend",
+          "status": "passed",
+          "summary": "32 passed"
+        },
+        {
+          "name": "frontend production build",
+          "status": "passed",
+          "summary": "134 modules"
+        },
+        {
+          "name": "Python compilation and diff check",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "TDD implementation and exact-diff self-review completed."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Standards and spec review found no findings; formal Measurement Plan precedence remains intact."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Complete affected backend, frontend, build, compile, and diff validation passed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "direct_primary"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_PDF_MATRIX_GROUP_PREFIX_FOOTNOTE_NORMALIZATION",
