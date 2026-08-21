@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   act,
   cleanup,
@@ -10,6 +10,9 @@ import {
 } from "@testing-library/react";
 import { ApiRequestError, type FeeEvaluationLineItem } from "../../api/client";
 import { FeeEvaluationReviewExportPage } from "./FeeEvaluationReviewExportPage";
+
+const originalConsoleError = console.error.bind(console);
+let unexpectedActWarnings: string[] = [];
 
 const apiMocks = vi.hoisted(() => ({
   fetchConfirmedMatrixFeeDraft: vi.fn(),
@@ -43,12 +46,26 @@ vi.mock("../../api/client", async (importOriginal) => {
 });
 
 describe("FeeEvaluationReviewExportPage", () => {
+  beforeEach(() => {
+    unexpectedActWarnings = [];
+    vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      const message = String(args[0] ?? "");
+      if (message.includes("was not wrapped in act")) {
+        unexpectedActWarnings.push(message);
+        return;
+      }
+      originalConsoleError(...args);
+    });
+  });
+
   afterEach(() => {
     cleanup();
+    const actWarnings = [...unexpectedActWarnings];
     vi.clearAllMocks();
     vi.restoreAllMocks();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    expect(actWarnings).toEqual([]);
   });
 
   it("renders the editable Fee Evaluation preview without the removed review details surface", async () => {
@@ -158,6 +175,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     const previewTable = await screen.findByRole("table", {
       name: "Testing Prices preview rows",
     });
+    await waitForFeeEvaluationPageReady();
     expect(within(previewTable).getByText("Group 2 calculated")).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText("Preview group"), {
@@ -185,6 +203,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     );
 
     await screen.findByRole("table", { name: "Testing Prices preview rows" });
+    await waitForFeeEvaluationPageReady();
     fireEvent.change(screen.getByLabelText("Spend Time for group Group 1 step 1"), {
       target: { value: "1" },
     });
@@ -827,7 +846,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(screen.queryByText("Unconfirmed pricing draft")).toBeNull();
   });
 
-  it("keeps status card hidden while disabling confirm for local pricing changes", async () => {
+  it("keeps status card hidden while autosave disables Update Fee for local pricing changes", async () => {
     arrangeSuccessfulContext({
       pricingDraft: {
         status: "current",
@@ -843,18 +862,38 @@ describe("FeeEvaluationReviewExportPage", () => {
       }),
     });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    let completeAutosave: (() => void) | null = null;
+    const autosave = new Promise<Record<string, unknown>>((resolve) => {
+      completeAutosave = () => resolve(currentPricingDraftResponse());
+    });
+    apiMocks.saveFeeEvaluationPricingDraft.mockReturnValue(autosave);
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
     await screen.findByRole("table", { name: "Testing Prices preview rows" });
+    await waitForFeeEvaluationPageReady();
     expect(screen.queryByText("Confirmed")).toBeNull();
     fireEvent.change(screen.getByLabelText("Unit Price for Visual Examination"), {
       target: { value: "12" },
     });
     expect(screen.queryByText("Unconfirmed local changes")).toBeNull();
+    await waitFor(
+      () => expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1),
+      { timeout: 2_000 }
+    );
     expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
       "disabled",
       true
+    );
+    await act(async () => {
+      completeAutosave?.();
+      await autosave;
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
+        "disabled",
+        false
+      )
     );
   });
 
@@ -1211,6 +1250,18 @@ describe("FeeEvaluationReviewExportPage", () => {
     ).toBeNull();
   });
 });
+
+async function waitForFeeEvaluationPageReady(): Promise<void> {
+  await screen.findByText(
+    "DL-2026-001 Coolpower HDF 3.40mm pin Qualification Testing"
+  );
+  await waitFor(() => {
+    const disabledReason = screen
+      .getByRole("button", { name: "Update Fee" })
+      .getAttribute("title");
+    expect(disabledReason?.startsWith("Waiting for") ?? false).toBe(false);
+  });
+}
 
 function arrangeSuccessfulContext(
   input: {

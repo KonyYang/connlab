@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactElement } from "react";
 import { AppShell } from "./components/layout/AppShell";
 import {
   clearIntakeSession,
@@ -7,18 +7,55 @@ import {
   saveIntakeSession,
   type IntakeSessionState
 } from "./features/intake/intakeSession";
-import { IntakeInboxPage } from "./pages/IntakeInboxPage";
-import { IntakeCaseReviewPage } from "./pages/IntakeCaseReviewPage";
-import { IntakePackageDetailPage } from "./pages/IntakePackageDetailPage";
-import { ProjectMatrixEditorPage } from "./pages/ProjectMatrixEditorPage";
-import { ProjectFeeEvaluationPage } from "./pages/ProjectFeeEvaluationPage";
-import { ProjectBasicInformationPage } from "./pages/ProjectBasicInformationPage";
-import { ProjectContactMeasurementSetupPage } from "./pages/ProjectContactMeasurementSetupPage";
 import { ProjectListPage } from "./pages/ProjectListPage";
-import { ProjectWorkbenchPage } from "./pages/ProjectWorkbenchPage";
-import { RuntimeProjectionPrototypePage } from "./pages/RuntimeProjectionPrototypePage";
-import { SettingsPage } from "./pages/SettingsPage";
 import "./styles.css";
+
+const IntakeInboxPage = lazy(() =>
+  import("./pages/IntakeInboxPage").then((module) => ({ default: module.IntakeInboxPage }))
+);
+const IntakeCaseReviewPage = lazy(() =>
+  import("./pages/IntakeCaseReviewPage").then((module) => ({
+    default: module.IntakeCaseReviewPage,
+  }))
+);
+const IntakePackageDetailPage = lazy(() =>
+  import("./pages/IntakePackageDetailPage").then((module) => ({
+    default: module.IntakePackageDetailPage,
+  }))
+);
+const ProjectMatrixEditorPage = lazy(() =>
+  import("./pages/ProjectMatrixEditorPage").then((module) => ({
+    default: module.ProjectMatrixEditorPage,
+  }))
+);
+const ProjectFeeEvaluationPage = lazy(() =>
+  import("./pages/ProjectFeeEvaluationPage").then((module) => ({
+    default: module.ProjectFeeEvaluationPage,
+  }))
+);
+const ProjectBasicInformationPage = lazy(() =>
+  import("./pages/ProjectBasicInformationPage").then((module) => ({
+    default: module.ProjectBasicInformationPage,
+  }))
+);
+const ProjectContactMeasurementSetupPage = lazy(() =>
+  import("./pages/ProjectContactMeasurementSetupPage").then((module) => ({
+    default: module.ProjectContactMeasurementSetupPage,
+  }))
+);
+const ProjectWorkbenchPage = lazy(() =>
+  import("./pages/ProjectWorkbenchPage").then((module) => ({
+    default: module.ProjectWorkbenchPage,
+  }))
+);
+const RuntimeProjectionPrototypePage = lazy(() =>
+  import("./pages/RuntimeProjectionPrototypePage").then((module) => ({
+    default: module.RuntimeProjectionPrototypePage,
+  }))
+);
+const SettingsPage = lazy(() =>
+  import("./pages/SettingsPage").then((module) => ({ default: module.SettingsPage }))
+);
 
 type Route =
   | { name: "projects" }
@@ -180,6 +217,7 @@ export default function App(): ReactElement {
       topBarTitle={topBarTitle}
       onNavigate={handleShellNavigate}
     >
+      <Suspense fallback={<RouteLoadingFallback />}>
       {route.name === "projects" && (
         <ProjectListPage
           onOpenProject={(id) => navigate(`/projects/${encodeURIComponent(id)}`)}
@@ -283,7 +321,16 @@ export default function App(): ReactElement {
           </button>
         </section>
       )}
+      </Suspense>
     </AppShell>
+  );
+}
+
+function RouteLoadingFallback(): ReactElement {
+  return (
+    <section className="panel" role="status">
+      Loading workspace...
+    </section>
   );
 }
 
