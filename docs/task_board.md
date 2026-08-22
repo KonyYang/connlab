@@ -11,8 +11,31 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_FORM_DRAFT_PREVIEW_AUTHORITY_SEPARATION",
+    "summary": "Make Fee Form an always-available draft preview while preserving Project Workbench as the only official output authority.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Separate Fee Evaluation draft preview generation and download from official Fee Form output registration and project-folder generation; preserve Workbench authority and add focused frontend, API, application, and regression validation.",
+    "scope_paths": [
+      "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
+      "frontend/src/api/client.ts",
+      "backend/api/routes_confirmed_matrix_fee_evaluation_export.py",
+      "backend/application/confirmed_matrix_fee_evaluation_export_service.py",
+      "tests/integration/test_confirmed_matrix_fee_file_download_api.py",
+      "tests/unit/test_confirmed_matrix_fee_evaluation_export_service.py",
+      "tests/unit/test_project_folder_required_forms_service.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "efe6a8a2d2895ad194df805c99011501f4ec22ba",
+    "started_at": "2026-08-22T05:54:02.225018Z",
+    "updated_at": "2026-08-22T05:54:02.225018Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FEE_EVALUATION_DETERMINISTIC_DEFAULT_FILL_EXTENSION",
     "tier": "standard",
