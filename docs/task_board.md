@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_DISCOVERY_AND_PERMISSION_FAST_PATH",
     "summary": "Make repository discovery and known-permission command startup efficient.",
@@ -24,9 +24,49 @@
     "risk_reasons": [],
     "activation_head": "4499ad9a795ef18115211b76db3d0964372f57fe",
     "started_at": "2026-08-22T03:10:40.256051Z",
-    "updated_at": "2026-08-22T03:10:40.256051Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-08-22T03:12:15.092883Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_DISCOVERY_AND_PERMISSION_FAST_PATH",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "integration": {
+        "mode": "direct_primary",
+        "status": "passed"
+      },
+      "validation": [
+        {
+          "status": "passed",
+          "name": "documentation boundary",
+          "summary": "TDD correctly skipped for a rules-only change"
+        },
+        {
+          "status": "passed",
+          "name": "exact diff review",
+          "summary": "Standards 0 findings; Spec 0 findings; git diff --check passed"
+        }
+      ],
+      "subject": "4cd4f00ceb5e258fd1e6fca4fdf76058dcbeb6cd",
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Added compact operational rules and self-reviewed the exact diff."
+        }
+      },
+      "scope_ok": true,
+      "schema": "connlab.sol-task-report",
+      "task_id": "TASK_DISCOVERY_AND_PERMISSION_FAST_PATH",
+      "summary": "Repository discovery now starts from one bounded Git/path/symbol batch, and known Windows Vitest/esbuild permission needs are requested before first execution.",
+      "version": 1,
+      "changed_paths": [
+        "AGENTS.md"
+      ]
+    }
   },
   "last_closed": {
     "task_id": "TASK_STANDARD_VALIDATION_DEDUPLICATION",
