@@ -9,10 +9,8 @@ import {
 
 const apiMocks = vi.hoisted(() => ({
   fetchMatrixEditorSession: vi.fn(),
-  fetchMatrixStepQuantities: vi.fn(),
   createMatrixRevisionDraft: vi.fn(),
   saveMatrixEditorSessionDraft: vi.fn(),
-  saveMatrixStepQuantities: vi.fn(),
   discardMatrixEditorSessionDraft: vi.fn(),
   confirmMatrixEditorSession: vi.fn(),
   generateMatrixEditorTestRecordDraftDownload: vi.fn(),
@@ -81,10 +79,8 @@ vi.mock("../../api/client", () => {
   return {
     ApiRequestError: MockApiRequestError,
     fetchMatrixEditorSession: apiMocks.fetchMatrixEditorSession,
-    fetchMatrixStepQuantities: apiMocks.fetchMatrixStepQuantities,
     createMatrixRevisionDraft: apiMocks.createMatrixRevisionDraft,
     saveMatrixEditorSessionDraft: apiMocks.saveMatrixEditorSessionDraft,
-    saveMatrixStepQuantities: apiMocks.saveMatrixStepQuantities,
     discardMatrixEditorSessionDraft: apiMocks.discardMatrixEditorSessionDraft,
     confirmMatrixEditorSession: apiMocks.confirmMatrixEditorSession,
     generateMatrixEditorTestRecordDraftDownload: apiMocks.generateMatrixEditorTestRecordDraftDownload,
@@ -318,27 +314,6 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     vi.clearAllMocks();
     sourcePickerMocks.hasDesktop.mockReturnValue(false);
     sourcePickerMocks.choose.mockResolvedValue({ kind: "browser" });
-    apiMocks.fetchMatrixStepQuantities.mockResolvedValue({
-      project_id: "P1",
-      project_matrix_draft_id: "draft-test",
-      items: [
-        {
-          draft_group_id: "group-1",
-          draft_row_id: "row-1",
-          step_sequence: 1,
-          step_suffix_note: null,
-          raw_token: "1",
-          test_item: "Visual Examination",
-          test_points_per_sample: "3",
-          readings_per_point: "2",
-          contact_points_per_sample: "4",
-          total_readings: "6",
-          source: "basic_information_confirmed",
-          review_required: false,
-          review_reason: null,
-        },
-      ],
-    });
     apiMocks.fetchContactMeasurementPlanWorkspace.mockResolvedValue({
       status: "not_started",
       project_id: "P1",
@@ -370,17 +345,6 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
       status: "not_started", project_id: "P1", confirmed_revision: null,
       points_per_sample: null, has_unconfirmed_draft: false, diagnostics: [],
     });
-    apiMocks.saveMatrixStepQuantities.mockImplementation(async (_projectId, draftId, input) => ({
-      project_id: "P1",
-      project_matrix_draft_id: draftId,
-      items: input.items.map((item: any) => ({
-        ...item,
-        test_item: "Visual Examination",
-        total_readings: "20",
-        review_required: Boolean(item.review_required),
-        review_reason: item.review_reason ?? null,
-      })),
-    }));
     runtimeModelState.lifecycle = {
       project_id: "P1",
       lifecycle_state: "active",
@@ -485,7 +449,7 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
     expect(screen.queryByRole("button", { name: "Generate workbook" })).toBeNull();
   });
 
-  it("does not expose or load the retired Matrix Step quantity setup", async () => {
+  it("does not expose the retired Matrix Step quantity setup", async () => {
     apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
       ...buildSessionSeed(),
       editor_draft_id: "draft-test",
@@ -496,8 +460,6 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
 
     expect(await screen.findByRole("button", { name: "Confirm Matrix" })).toBeTruthy();
     expect(screen.queryByRole("region", { name: "Step quantity setup" })).toBeNull();
-    expect(apiMocks.fetchMatrixStepQuantities).not.toHaveBeenCalled();
-    expect(apiMocks.saveMatrixStepQuantities).not.toHaveBeenCalled();
   });
 
   it("replaces the legacy contact editor with the dedicated setup entry", async () => {
@@ -506,194 +468,12 @@ describe("MatrixEditorWorkspace TASK_279 flow", () => {
       editor_draft_id: "draft-test",
       saved_payload_signature: "saved-signature",
     });
-    apiMocks.fetchMatrixStepQuantities.mockResolvedValueOnce({
-      project_id: "P1",
-      project_matrix_draft_id: "draft-test",
-      items: [
-        {
-          draft_group_id: "group-1",
-          draft_row_id: "llcr-row",
-          step_sequence: 1,
-          step_suffix_note: null,
-          raw_token: "1",
-          test_item: "LLCR",
-          test_points_per_sample: null,
-          readings_per_point: null,
-          contact_points_per_sample: null,
-          total_readings: null,
-          source: "manual_required",
-          review_required: true,
-          review_reason: "Confirm Step quantity values.",
-        },
-        {
-          draft_group_id: "group-1",
-          draft_row_id: "visual-row",
-          step_sequence: 2,
-          step_suffix_note: null,
-          raw_token: "2",
-          test_item: "Visual Examination",
-          test_points_per_sample: null,
-          readings_per_point: null,
-          contact_points_per_sample: null,
-          total_readings: null,
-          source: "manual_required",
-          review_required: true,
-          review_reason: "Confirm Step quantity values.",
-        },
-      ],
-    });
-
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
     expect(await screen.findByRole("heading", { name: "Test points" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Setup" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Save contact plan" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Apply to blank contact targets" })).toBeNull();
-    expect(apiMocks.fetchMatrixStepQuantities).not.toHaveBeenCalled();
-  });
-
-  it("keeps persisted legacy contact profiles out of the compact Matrix summary", async () => {
-    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
-      ...buildSessionSeed(),
-      editor_draft_id: "draft-contact-plan",
-      saved_payload_signature: "saved-signature",
-    });
-    apiMocks.fetchMatrixStepQuantities.mockResolvedValueOnce({
-      project_id: "P1",
-      project_matrix_draft_id: "draft-contact-plan",
-      items: [
-        {
-          draft_group_id: "group-1",
-          draft_row_id: "llcr-row",
-          step_sequence: 1,
-          step_suffix_note: null,
-          raw_token: "1",
-          test_item: "LLCR",
-          test_points_per_sample: "33",
-          readings_per_point: "1",
-          contact_points_per_sample: "33",
-          total_readings: "33",
-          source: "matrix_contact_plan",
-          review_required: false,
-          review_reason: null,
-          contact_plan: {
-            contact_kind: "llcr",
-            coverage_status: "eligible",
-            included: true,
-            exclusion_reason: null,
-            is_override: false,
-            readings_per_sample: "33",
-            families: [
-              {
-                family_id: "high_power_pin",
-                family_label: "High Power Pin",
-                count_per_sample: "4",
-                record_label: "High Power Pin contact",
-                record_prefix: "HP",
-                included: true,
-                is_custom: false,
-              },
-            ],
-          },
-        },
-      ],
-    });
-
-    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
-
-    expect(await screen.findByRole("heading", { name: "Test points" })).toBeTruthy();
-    expect(screen.queryByLabelText("LLCR High Power Pin count per sample")).toBeNull();
-    expect(screen.getByRole("button", { name: "Setup" })).toBeTruthy();
-    expect(apiMocks.fetchMatrixStepQuantities).not.toHaveBeenCalled();
-  });
-
-  it("does not render persisted overrides as editable Matrix summary inputs", async () => {
-    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
-      ...buildSessionSeed(),
-      editor_draft_id: "draft-contact-plan",
-      saved_payload_signature: "saved-signature",
-    });
-    apiMocks.fetchMatrixStepQuantities.mockResolvedValueOnce({
-      project_id: "P1",
-      project_matrix_draft_id: "draft-contact-plan",
-      items: [
-        {
-          draft_group_id: "group-1",
-          draft_row_id: "llcr-normal",
-          step_sequence: 1,
-          step_suffix_note: null,
-          raw_token: "1",
-          test_item: "LLCR",
-          test_points_per_sample: "4",
-          readings_per_point: "1",
-          contact_points_per_sample: "4",
-          total_readings: "4",
-          source: "matrix_contact_plan",
-          review_required: false,
-          review_reason: null,
-          contact_plan: {
-            contact_kind: "llcr",
-            coverage_status: "eligible",
-            included: true,
-            exclusion_reason: null,
-            is_override: false,
-            readings_per_sample: "4",
-            families: [
-              {
-                family_id: "high_power_pin",
-                family_label: "High Power Pin",
-                count_per_sample: "4",
-                record_label: "High Power Pin contact",
-                record_prefix: "HP",
-                included: true,
-                is_custom: false,
-              },
-            ],
-          },
-        },
-        {
-          draft_group_id: "group-1",
-          draft_row_id: "llcr-override",
-          step_sequence: 2,
-          step_suffix_note: null,
-          raw_token: "2",
-          test_item: "LLCR",
-          test_points_per_sample: "7",
-          readings_per_point: "1",
-          contact_points_per_sample: "7",
-          total_readings: "7",
-          source: "matrix_step_override",
-          review_required: false,
-          review_reason: null,
-          contact_plan: {
-            contact_kind: "llcr",
-            coverage_status: "manual_override",
-            included: true,
-            exclusion_reason: null,
-            is_override: true,
-            readings_per_sample: "7",
-            families: [
-              {
-                family_id: "high_power_pin",
-                family_label: "High Power Pin",
-                count_per_sample: "7",
-                record_label: "High Power Pin contact",
-                record_prefix: "HP",
-                included: true,
-                is_custom: false,
-              },
-            ],
-          },
-        },
-      ],
-    });
-
-    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
-
-    expect(await screen.findByRole("heading", { name: "Test points" })).toBeTruthy();
-    expect(screen.queryByLabelText("LLCR High Power Pin count per sample")).toBeNull();
-    expect(screen.getByRole("button", { name: "Setup" })).toBeTruthy();
-    expect(apiMocks.fetchMatrixStepQuantities).not.toHaveBeenCalled();
   });
 
   it("opens the browser project source chooser without native confirmation", async () => {

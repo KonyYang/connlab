@@ -1399,43 +1399,6 @@ export type ProjectMatrixDraft = {
   duration_authorities?: MatrixDurationAuthority[];
 };
 
-export type MatrixStepQuantityItem = {
-  draft_group_id: string;
-  draft_row_id: string;
-  step_sequence: number;
-  step_suffix_note?: string | null;
-  raw_token?: string | null;
-  test_item: string;
-  test_points_per_sample?: string | null;
-  readings_per_point?: string | null;
-  contact_points_per_sample?: string | null;
-  total_readings?: string | null;
-  source: string;
-  review_required: boolean;
-  review_reason?: string | null;
-  contact_plan?: MatrixStepContactPlan | null;
-};
-
-export type MatrixStepContactFamily = {
-  family_id: string;
-  family_label: string;
-  count_per_sample: string;
-  record_label: string;
-  record_prefix: string;
-  included: boolean;
-  is_custom: boolean;
-};
-
-export type MatrixStepContactPlan = {
-  contact_kind: "llcr" | "cr_specified_current";
-  coverage_status: "eligible" | "excluded" | "manual_override";
-  included: boolean;
-  exclusion_reason?: string | null;
-  is_override: boolean;
-  readings_per_sample?: string | null;
-  families: MatrixStepContactFamily[];
-};
-
 export type LlcrCrRecordWorkbookDiagnostic = {
   code: string;
   severity: "blocked" | "review_required";
@@ -1492,31 +1455,6 @@ export type LlcrCrRecordWorkbookGenerateResponse = {
   artifact_id: string;
   file_name: string;
   download_url: string;
-};
-
-export type MatrixStepQuantityDraftResponse = {
-  project_id: string;
-  project_matrix_draft_id: string;
-  items: MatrixStepQuantityItem[];
-};
-
-export type MatrixStepQuantitySaveItem = {
-  draft_group_id: string;
-  draft_row_id: string;
-  step_sequence: number;
-  step_suffix_note?: string | null;
-  raw_token?: string | null;
-  test_points_per_sample?: string | null;
-  readings_per_point?: string | null;
-  contact_points_per_sample?: string | null;
-  source: string;
-  review_required?: boolean;
-  review_reason?: string | null;
-  contact_plan?: MatrixStepContactPlan | null;
-};
-
-export type MatrixStepQuantitySaveRequest = {
-  items: MatrixStepQuantitySaveItem[];
 };
 
 export type ProjectMatrixDraftSummary = ProjectMatrixDraftRecord;
@@ -3839,29 +3777,6 @@ export function saveProjectMatrixDraft(
 ): Promise<ProjectMatrixDraft> {
   return requestJson<ProjectMatrixDraft>(
     `/api/projects/${encodeURIComponent(projectId)}/matrix-drafts/${encodeURIComponent(projectMatrixDraftId)}`,
-    {
-      method: "PUT",
-      body: JSON.stringify(input)
-    }
-  );
-}
-
-export function fetchMatrixStepQuantities(
-  projectId: string,
-  projectMatrixDraftId: string
-): Promise<MatrixStepQuantityDraftResponse> {
-  return requestJson<MatrixStepQuantityDraftResponse>(
-    `/api/projects/${encodeURIComponent(projectId)}/matrix-drafts/${encodeURIComponent(projectMatrixDraftId)}/step-quantities`
-  );
-}
-
-export function saveMatrixStepQuantities(
-  projectId: string,
-  projectMatrixDraftId: string,
-  input: MatrixStepQuantitySaveRequest
-): Promise<MatrixStepQuantityDraftResponse> {
-  return requestJson<MatrixStepQuantityDraftResponse>(
-    `/api/projects/${encodeURIComponent(projectId)}/matrix-drafts/${encodeURIComponent(projectMatrixDraftId)}/step-quantities`,
     {
       method: "PUT",
       body: JSON.stringify(input)
