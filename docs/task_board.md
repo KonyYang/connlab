@@ -11,8 +11,29 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_DURATION_LABELS_PER_HOUR",
+    "summary": "Ensure reviewed high-temperature and temperature-humidity Matrix labels default Fee Unit Type to per hour.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Match High Temp. Life, Cycling Temperature & Humidity, and Thermal distrubance to their existing authoritative Fee duration rules so Unit Type is per hour, without changing price, duration, Units, or output authority.",
+    "scope_paths": [
+      "backend/modules/fee_evaluation/seeds/active_fee_rule_seed.json",
+      "backend/modules/fee_evaluation/seeds/fee_rule_extensions_v2026_08_23_r9.json",
+      "backend/modules/fee_evaluation/seeds/fee_rules_v2026_08_23_r9.json",
+      "tests/unit/test_fee_rule_matcher.py",
+      "tests/unit/test_fee_default_fill.py",
+      "tests/unit/test_fee_rule_seed_loader.py",
+      "tests/unit/test_confirmed_matrix_fee_draft_service.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "2aa1b7728f10a7b4c1a85dd9cfa11a2d1bed7d1b",
+    "started_at": "2026-08-22T23:45:22.606992Z",
+    "updated_at": "2026-08-22T23:45:22.606992Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FEE_DEFAULT_FILL_REMAINING_RULE_EXTENSIONS",
     "tier": "standard",
