@@ -11,8 +11,31 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_DEFAULT_FILL_REMAINING_RULE_EXTENSIONS",
+    "summary": "Extend deterministic Fee default filling for the four reviewed pricing mappings and other audit-proven unambiguous aliases.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Implement reviewed defaults for Contact Retention Force, Mechanical Shock, Crimping/Wending Tensile Strength, and Current Rating as the Temperature rise alias; audit current coverage and add only unambiguous matches while preserving Pending for ambiguous pricing.",
+    "scope_paths": [
+      "backend/modules/fee_evaluation/fee_default_fill.py",
+      "backend/modules/fee_evaluation/fee_reviewed_extension_defaults.py",
+      "backend/modules/fee_evaluation/seeds/active_fee_rule_seed.json",
+      "backend/modules/fee_evaluation/seeds/fee_rule_extensions_v2026_08_22.json",
+      "backend/modules/fee_evaluation/seeds/fee_rules_v2026_08_22.json",
+      "tests/unit/test_fee_default_fill.py",
+      "tests/unit/test_fee_rule_matcher.py",
+      "tests/unit/test_fee_rule_seed_loader.py",
+      "tests/unit/test_confirmed_matrix_fee_draft_service.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "e02ccfcf1757999d7c09355696e9cb32f33c8ab1",
+    "started_at": "2026-08-22T06:18:55.362811Z",
+    "updated_at": "2026-08-22T06:18:55.362811Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FEE_FORM_DRAFT_PREVIEW_AUTHORITY_SEPARATION",
     "tier": "standard",
