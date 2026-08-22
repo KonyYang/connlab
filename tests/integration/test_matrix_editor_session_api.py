@@ -365,7 +365,7 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
                 confirmed_revision=confirmed_payload["confirmed_snapshot"]["version"][
                     "confirmed_revision"
                 ],
-                fee_rule_version_id="fee_rules_v2026_08_22_r7",
+                fee_rule_version_id="fee_rules_v2026_08_22_r8",
             )
         assert promoted is not None
         assert promoted.edited_values.rows[0].source_line_id.startswith(
@@ -1142,7 +1142,7 @@ def _seed_previous_pricing_draft(session_factory, project_id: str) -> None:
                 project_id=project_id,
                 confirmed_matrix_id=active.version.confirmed_matrix_id,
                 confirmed_revision=active.version.confirmed_revision,
-                fee_rule_version_id="fee_rules_v2026_08_22_r7",
+                fee_rule_version_id="fee_rules_v2026_08_22_r8",
                 edited_values=FeeEvaluationEditedExportValues(
                     rows=(
                         FeeEvaluationEditedExportRow(

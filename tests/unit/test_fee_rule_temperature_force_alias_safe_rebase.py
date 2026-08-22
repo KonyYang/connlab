@@ -20,12 +20,15 @@ def test_manifest_activates_new_seed_without_rewriting_prior_versions() -> None:
     active = load_active_fee_rule_library()
     old_r5 = load_fee_rule_library(_SEEDS / "fee_rules_v2026_07_16.json")
     old_r6 = load_fee_rule_library(_SEEDS / "fee_rules_v2026_07_17.json")
+    old_r7 = load_fee_rule_library(_SEEDS / "fee_rules_v2026_08_22.json")
 
-    assert active.version.version_id == "fee_rules_v2026_08_22_r7"
+    assert active.version.version_id == "fee_rules_v2026_08_22_r8"
     assert old_r5.version.version_id == "fee_rules_v2026_07_16_r5"
     assert old_r6.version.version_id == "fee_rules_v2026_07_17_r6"
+    assert old_r7.version.version_id == "fee_rules_v2026_08_22_r7"
     assert old_r5.version.source_hash == active.version.source_hash
     assert old_r6.version.source_hash == active.version.source_hash
+    assert old_r7.version.source_hash == active.version.source_hash
 
 
 @pytest.mark.parametrize(
@@ -102,10 +105,18 @@ def test_automotive_force_aliases_remain_manual(text: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "text",
-    ["Lateral Force", "contact retention force", "Single Pin Mating Force", "Single Pin Unmating Force"],
+    ("text", "expected_units"),
+    [
+        ("Lateral Force", Decimal("30")),
+        ("contact retention force", Decimal("5")),
+        ("Single Pin Mating Force", Decimal("30")),
+        ("Single Pin Unmating Force", Decimal("30")),
+    ],
 )
-def test_approved_force_aliases_use_reading_defaults(text: str) -> None:
+def test_approved_force_aliases_use_reading_defaults(
+    text: str,
+    expected_units: Decimal,
+) -> None:
     match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(text)
     assert match.rule is not None
 
@@ -137,4 +148,4 @@ def test_approved_force_aliases_use_reading_defaults(text: str) -> None:
 
     assert result.unit_price == Decimal("20")
     assert result.unit_label == "reading"
-    assert result.units == Decimal("30")
+    assert result.units == expected_units

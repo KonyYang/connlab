@@ -626,6 +626,28 @@ def test_temperature_rise_prefills_current_tier_and_flags_base_fee_review() -> N
     assert _field_state(result, "base_fee") == "suggested_review"
 
 
+def test_current_rating_fully_reuses_temperature_rise_defaults() -> None:
+    match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item("Current Rating")
+    assert match.rule is not None
+    assert match.rule.rule_id == "fee_rule_temperature_rise"
+    assert match.rule.source_row == 33
+
+    result = build_fee_default_fill(
+        rule=match.rule,
+        context=_context(
+            test_item="Current Rating",
+            condition="300A",
+            sample_quantity_expression="5",
+        ),
+    )
+
+    assert result.unit_price == Decimal("600")
+    assert result.unit_label == "sample"
+    assert result.units == Decimal("5")
+    assert result.base_fee == Decimal("500")
+    assert result.testing_fee == Decimal("3500")
+
+
 def test_temperature_rise_uses_group_sample_quantity_while_current_is_pending() -> None:
     result = build_fee_default_fill(
         rule=_rule(
@@ -717,6 +739,75 @@ def test_mechanical_force_defaults_to_per_reading_pricing() -> None:
     assert result.units == Decimal("30")
     assert result.base_fee == Decimal("0")
     assert result.testing_fee == Decimal("600")
+
+
+def test_contact_retention_force_uses_sample_quantity_as_reading_units() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_mechanical_force",
+            unit_label="reading",
+            unit_price=Decimal("20"),
+            strategy="per_reading",
+            review_required=False,
+        ),
+        context=_context(
+            test_item="Contact Retention Force",
+            sample_quantity_expression="5",
+        ),
+    )
+
+    assert result.review_required is False
+    assert result.unit_price == Decimal("20")
+    assert result.unit_label == "reading"
+    assert result.units == Decimal("5")
+    assert result.base_fee == Decimal("0")
+    assert result.testing_fee == Decimal("100")
+
+
+def test_crimp_wending_tensile_strength_uses_sample_quantity_as_reading_units() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_mechanical_force",
+            unit_label="reading",
+            unit_price=Decimal("20"),
+            strategy="per_reading",
+            review_required=False,
+        ),
+        context=_context(
+            test_item="Crimping/Wending Tensile Strength",
+            sample_quantity_expression="5",
+        ),
+    )
+
+    assert result.review_required is False
+    assert result.unit_price == Decimal("20")
+    assert result.unit_label == "reading"
+    assert result.units == Decimal("5")
+    assert result.base_fee == Decimal("0")
+    assert result.testing_fee == Decimal("100")
+
+
+def test_mechanical_shock_uses_row_17_price_and_fixed_occurrence_count() -> None:
+    match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(
+        "Mechanical Shock"
+    )
+    assert match.rule is not None
+
+    result = build_fee_default_fill(
+        rule=match.rule,
+        context=_context(test_item="Mechanical Shock"),
+    )
+
+    assert result.review_required is True
+    assert result.review_reason == "Confirm base fee"
+    assert result.unit_price == Decimal("30")
+    assert result.unit_label == "time"
+    assert result.units == Decimal("18")
+    assert result.base_fee is None
+    assert result.testing_fee is None
+    assert _field_state(result, "unit_price") == "auto_filled"
+    assert _field_state(result, "units") == "auto_filled"
+    assert _field_state(result, "base_fee") == "manual_required"
 
 
 def test_mechanical_force_mating_unmating_defaults_to_per_sample_pricing() -> None:

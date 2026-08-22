@@ -202,6 +202,24 @@ def test_fee_rule_matcher_returns_stable_no_match_when_unmatched() -> None:
 
 @pytest.mark.parametrize(
     "test_item",
+    (
+        "Crimping/Wending Tensile Strength",
+        "Crimp/Wending Tensile Strength",
+    ),
+)
+def test_crimp_wending_tensile_strength_matches_mechanical_force(
+    test_item: str,
+) -> None:
+    result = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(test_item)
+
+    assert result.status == "matched"
+    assert result.rule is not None
+    assert result.rule.rule_id == "fee_rule_mechanical_force"
+    assert result.rule.source_row == 22
+
+
+@pytest.mark.parametrize(
+    "test_item",
     [
         "high temperature life",
         "Low temperature life",

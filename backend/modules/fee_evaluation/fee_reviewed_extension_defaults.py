@@ -36,6 +36,13 @@ _DURATION_READING_RULE_IDS = {
     "fee_rule_insulation_resistance",
     "fee_rule_dielectric_withstanding_voltage",
 }
+_SAMPLE_QUANTITY_READING_FORCE_LABELS = {
+    "contact retention force",
+    "crimp wending tensile strength",
+    "crimping wending tensile strength",
+    "crimp tensile strength",
+    "crimping tensile strength",
+}
 
 
 def build_reviewed_extension_default_fill(
@@ -135,6 +142,8 @@ def _mechanical_force_result(
     """Apply the reviewed per-sample or per-reading mechanical-force path."""
     if _is_mechanical_force_per_sample(context):
         return _mechanical_force_per_sample_result(rule=rule, context=context)
+    if _uses_sample_quantity_as_reading_units(context):
+        return _mechanical_force_sample_reading_result(rule=rule, context=context)
     reading_result = build_reading_result(
         rule=rule,
         sample_quantity_expression=context.sample_quantity_expression,
@@ -182,6 +191,33 @@ def _mechanical_force_per_sample_result(
         spend_time=None,
         unit_label="sample",
         unit_price=Decimal("50"),
+        units=sample_quantity,
+        base_fee=rule.base_fee.amount or ZERO,
+        discount_percent=ZERO,
+        source=rule.display_name,
+    )
+
+
+def _mechanical_force_sample_reading_result(
+    *,
+    rule: FeeRule,
+    context: FeeDefaultFillContext,
+) -> FeeDefaultFillResult:
+    """Use one priced reading per Matrix sample for reviewed force labels."""
+    sample_quantity = parse_simple_sample_quantity(context.sample_quantity_expression)
+    if sample_quantity is None:
+        return manual_required(
+            rule=rule,
+            unit_label="reading",
+            unit_price=rule.unit_price.amount or Decimal("20"),
+            base_fee=rule.base_fee.amount or ZERO,
+            review_reason="Confirm sample quantity",
+            manual_fields=("units", "testing_fee"),
+        )
+    return calculated_result(
+        spend_time=None,
+        unit_label="reading",
+        unit_price=rule.unit_price.amount or Decimal("20"),
         units=sample_quantity,
         base_fee=rule.base_fee.amount or ZERO,
         discount_percent=ZERO,
@@ -250,6 +286,14 @@ def _dust_hour_result(
 def _is_mechanical_force_per_sample(context: FeeDefaultFillContext) -> bool:
     """Keep the 50/sample path for the one approved exact business label."""
     return normalize_fee_rule_text(context.test_item) == "mating un mating force"
+
+
+def _uses_sample_quantity_as_reading_units(context: FeeDefaultFillContext) -> bool:
+    """Return whether the reviewed force label charges one reading per sample."""
+    return (
+        normalize_fee_rule_text(context.test_item)
+        in _SAMPLE_QUANTITY_READING_FORCE_LABELS
+    )
 
 
 def _combined_text(context: FeeDefaultFillContext) -> str:

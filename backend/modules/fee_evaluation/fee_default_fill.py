@@ -22,6 +22,7 @@ from backend.modules.fee_evaluation.fee_default_fill_models import (
     FeeFieldMetadata,
 )
 from backend.modules.fee_evaluation.fee_rule_models import FeeRule
+from backend.modules.fee_evaluation.fee_rule_matcher import normalize_fee_rule_text
 from backend.modules.fee_evaluation.fee_reviewed_extension_defaults import (
     build_reviewed_extension_default_fill,
 )
@@ -115,6 +116,19 @@ def build_fee_default_fill(
             base_fee=ZERO,
             review_reason="Confirm units",
             manual_fields=("units", "testing_fee"),
+        )
+    if (
+        rule.rule_id == "fee_rule_shock_half_sine"
+        and normalize_fee_rule_text(context.test_item) in {"mechanical shock", "shock"}
+    ):
+        return manual_required(
+            rule=rule,
+            unit_label="time",
+            unit_price=rule.unit_price.amount or Decimal("30"),
+            base_fee=rule.base_fee.amount,
+            units=Decimal("18"),
+            review_reason="Confirm base fee",
+            manual_fields=("base_fee", "testing_fee"),
         )
     if rule.rule_id == "fee_rule_temperature_rise":
         return _temperature_rise_result(rule=rule, context=context)

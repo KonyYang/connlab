@@ -114,8 +114,18 @@ def test_negative_force_families_do_not_enter_base_sample_exception(text: str) -
     assert result.unit_price != Decimal("50")
 
 
-@pytest.mark.parametrize("text", ["contact retention force", "Lateral Force"])
-def test_existing_mechanical_reading_aliases_remain_unchanged(text: str) -> None:
+@pytest.mark.parametrize(
+    ("text", "expected_units", "expected_review_required"),
+    [
+        ("contact retention force", Decimal("7"), False),
+        ("Lateral Force", None, True),
+    ],
+)
+def test_mechanical_reading_aliases_keep_their_reviewed_unit_policy(
+    text: str,
+    expected_units: Decimal | None,
+    expected_review_required: bool,
+) -> None:
     match = FeeRuleMatcher(_LIBRARY).match_test_item(text)
 
     assert match.rule is not None
@@ -132,5 +142,5 @@ def test_existing_mechanical_reading_aliases_remain_unchanged(text: str) -> None
 
     assert result.unit_price == Decimal("20")
     assert result.unit_label == "reading"
-    assert result.units is None
-    assert result.review_required is True
+    assert result.units == expected_units
+    assert result.review_required is expected_review_required
