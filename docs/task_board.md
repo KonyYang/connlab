@@ -11,8 +11,27 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_REMOVE_MATRIX_STEP_QUANTITY_SETUP_UI",
+    "summary": "Remove the redundant Matrix Step quantity setup UI while preserving downstream and historical compatibility.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Remove the Matrix Editor Step quantity setup card and its page load/edit/save orchestration; keep Test Record unchanged, keep backend/API/storage compatibility, retain Point Profile and group sample authorities, and add regression coverage that the page no longer calls Step quantity APIs.",
+    "scope_paths": [
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
+      "frontend/src/features/matrix-editor/MatrixStepQuantityPanel.tsx",
+      "frontend/src/features/matrix-editor/matrixStepQuantitySelectors.ts",
+      "frontend/src/styles/workbench.css"
+    ],
+    "risk_reasons": [],
+    "activation_head": "136bddef309a690753ab24364dbc397e78e63373",
+    "started_at": "2026-08-22T02:23:57.572083Z",
+    "updated_at": "2026-08-22T02:23:57.572083Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FRONTEND_WARNING_MAINTENANCE",
     "tier": "standard",
