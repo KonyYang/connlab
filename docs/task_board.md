@@ -11,8 +11,23 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_DISCOVERY_AND_PERMISSION_FAST_PATH",
+    "summary": "Make repository discovery and known-permission command startup efficient.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Add compact operational rules for one-batch path/symbol/Git discovery and first-run use of already-proven narrow command permissions.",
+    "scope_paths": [
+      "AGENTS.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "4499ad9a795ef18115211b76db3d0964372f57fe",
+    "started_at": "2026-08-22T03:10:40.256051Z",
+    "updated_at": "2026-08-22T03:10:40.256051Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_STANDARD_VALIDATION_DEDUPLICATION",
     "tier": "micro",
