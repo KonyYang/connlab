@@ -32,6 +32,32 @@ def test_fee_rule_matcher_supports_exact_alias_match() -> None:
     assert result.review_required is True
 
 
+@pytest.mark.parametrize(
+    ("test_item", "expected_rule_id"),
+    [
+        ("Mixed Flowing Gas corrosion (MFG)", "fee_rule_mfg_class_iia"),
+        ("Mixed Flowing Gas Class IIA", "fee_rule_mfg_class_iia"),
+        ("MFG Class IIIA", "fee_rule_mfg_class_iiia"),
+        ("VW75174 TG19", "fee_rule_mfg_class_iiia"),
+        (
+            "CR at Specified Current (HP contacts only)",
+            "fee_rule_contact_resistance_specified_current",
+        ),
+    ],
+)
+def test_fee_rule_matcher_supports_reviewed_fee_evaluation_aliases(
+    test_item: str,
+    expected_rule_id: str,
+) -> None:
+    matcher = FeeRuleMatcher(load_active_fee_rule_library())
+
+    result = matcher.match_test_item(test_item)
+
+    assert result.status == "matched"
+    assert result.rule is not None
+    assert result.rule.rule_id == expected_rule_id
+
+
 def test_fee_rule_matcher_supports_conservative_token_match() -> None:
     matcher = FeeRuleMatcher(load_active_fee_rule_library())
 

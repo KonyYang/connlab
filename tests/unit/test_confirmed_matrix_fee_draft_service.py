@@ -34,7 +34,7 @@ def test_fee_draft_header_uses_confirmed_matrix_version_sample_received_date() -
     assert draft.header.project_id == "P1"
     assert draft.header.confirmed_matrix_id == "cmv-1"
     assert draft.header.confirmed_revision == 1
-    assert draft.header.pricing_rule_version_id == "fee_rules_v2026_07_17_r6"
+    assert draft.header.pricing_rule_version_id == "fee_rules_v2026_08_22_r7"
     assert draft.header.pricing_source_file_name == "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
     assert draft.header.pricing_effective_from == "2026-06-03"
     assert draft.draft_status == "ready"
@@ -69,7 +69,7 @@ def test_fee_draft_autofills_visual_exam_defaults() -> None:
     assert line.status == "calculated"
     assert line.review_required is False
     assert line.matched_rule_id == "fee_rule_visual_exam"
-    assert line.matched_rule_version_id == "fee_rules_v2026_07_17_r6"
+    assert line.matched_rule_version_id == "fee_rules_v2026_08_22_r7"
     assert line.calculation_strategy == "per_photo"
     assert line.unit_price == Decimal("10")
     assert line.units == Decimal("3")
@@ -144,6 +144,76 @@ def test_fee_draft_preserves_explicit_mfg_days() -> None:
     assert line.status == "calculated"
     assert line.units == Decimal("14")
     assert line.testing_fee == Decimal("14000")
+
+
+@pytest.mark.parametrize(
+    ("condition", "expected_base_fee", "expected_testing_fee"),
+    [
+        ("1 day", Decimal("300"), Decimal("1300")),
+        ("2 days", Decimal("0"), Decimal("2000")),
+    ],
+)
+def test_fee_draft_applies_mfg_class_iia_base_fee_threshold(
+    condition: str,
+    expected_base_fee: Decimal,
+    expected_testing_fee: Decimal,
+) -> None:
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                row=_fixture_row("Mixed Flowing Gas corrosion (MFG)", condition=condition)
+            )
+        )
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.status == "calculated"
+    assert line.matched_rule_id == "fee_rule_mfg_class_iia"
+    assert line.unit_price == Decimal("1000")
+    assert line.unit_label == "day"
+    assert line.base_fee == expected_base_fee
+    assert line.testing_fee == expected_testing_fee
+
+
+def test_fee_draft_uses_matched_mfg_class_for_labeled_phase_hours() -> None:
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(
+                row=_fixture_row(
+                    "Mixed Flowing Gas corrosion (MFG)",
+                    condition="unmated 224 hours; mated 112 hours",
+                )
+            )
+        )
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.status == "calculated"
+    assert line.units == Decimal("14")
+    assert line.testing_fee == Decimal("14000")
+
+
+def test_fee_draft_uses_class_iiia_price_for_explicit_class() -> None:
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(row=_fixture_row("MFG Class IIIA", condition="2 days"))
+        )
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.status == "calculated"
+    assert line.matched_rule_id == "fee_rule_mfg_class_iiia"
+    assert line.unit_price == Decimal("1600")
+    assert line.unit_label == "day"
+    assert line.units == Decimal("2")
+    assert line.base_fee == Decimal("0")
+    assert line.testing_fee == Decimal("3200")
 
 
 def test_fee_draft_keeps_incomplete_mfg_phase_duration_pending() -> None:

@@ -14,13 +14,17 @@ _HOUR_VALUE = r"(?P<value>\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\b"
 _HOURS_PER_DAY = Decimal("24")
 
 
-def resolve_mfg_duration_days(text: str) -> Decimal | None:
+def resolve_mfg_duration_days(
+    text: str,
+    *,
+    class_confirmed: bool = False,
+) -> Decimal | None:
     """Return exact MFG days only when the duration authority is complete."""
     normalized = " ".join((text or "").split())
     explicit_days = _DAY_PATTERN.search(normalized)
     if explicit_days:
         return _decimal(explicit_days.group(1))
-    if not _CLASS_IIA_PATTERN.search(normalized):
+    if not class_confirmed and not _CLASS_IIA_PATTERN.search(normalized):
         return None
 
     unmated_hours = _phase_hours(normalized, phase="unmated")

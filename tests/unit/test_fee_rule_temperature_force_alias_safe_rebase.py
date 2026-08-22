@@ -16,13 +16,16 @@ from backend.modules.fee_evaluation.fee_default_fill_models import FeeStepQuanti
 _SEEDS = Path(__file__).parents[2] / "backend" / "modules" / "fee_evaluation" / "seeds"
 
 
-def test_manifest_activates_new_seed_without_rewriting_r5() -> None:
+def test_manifest_activates_new_seed_without_rewriting_prior_versions() -> None:
     active = load_active_fee_rule_library()
-    old = load_fee_rule_library(_SEEDS / "fee_rules_v2026_07_16.json")
+    old_r5 = load_fee_rule_library(_SEEDS / "fee_rules_v2026_07_16.json")
+    old_r6 = load_fee_rule_library(_SEEDS / "fee_rules_v2026_07_17.json")
 
-    assert active.version.version_id == "fee_rules_v2026_07_17_r6"
-    assert old.version.version_id == "fee_rules_v2026_07_16_r5"
-    assert old.version.source_hash == active.version.source_hash
+    assert active.version.version_id == "fee_rules_v2026_08_22_r7"
+    assert old_r5.version.version_id == "fee_rules_v2026_07_16_r5"
+    assert old_r6.version.version_id == "fee_rules_v2026_07_17_r6"
+    assert old_r5.version.source_hash == active.version.source_hash
+    assert old_r6.version.source_hash == active.version.source_hash
 
 
 @pytest.mark.parametrize(

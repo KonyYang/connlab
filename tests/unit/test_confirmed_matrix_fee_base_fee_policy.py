@@ -41,6 +41,40 @@ def test_explicit_rule_zero_retains_rule_specific_source() -> None:
     assert _metadata(result, "base_fee") == ("auto_filled", "Rule display")
 
 
+def test_calculated_base_fee_precedes_common_fallback() -> None:
+    calculation = _calculation(
+        metadata=(
+            _field("unit_price", "auto_filled", "Rule display"),
+            _field("units", "auto_filled", "Rule display"),
+            _field("base_fee", "auto_filled", "MFG duration threshold"),
+            _field("discount_percent", "auto_filled", "Rule display"),
+            _field("testing_fee", "auto_filled", "Rule display"),
+        ),
+    )
+    calculation = FeeCalculationResult(
+        status=calculation.status,
+        review_required=calculation.review_required,
+        review_reason=calculation.review_reason,
+        spend_time=calculation.spend_time,
+        unit_label=calculation.unit_label,
+        unit_price=calculation.unit_price,
+        units=calculation.units,
+        base_fee=Decimal("300"),
+        discount_percent=calculation.discount_percent,
+        testing_fee=Decimal("318"),
+        field_metadata=calculation.field_metadata,
+    )
+
+    result = _apply(calculation, rule=_rule(base_fee=None))
+
+    assert result.base_fee == Decimal("300")
+    assert result.testing_fee == Decimal("318")
+    assert _metadata(result, "base_fee") == (
+        "auto_filled",
+        "MFG duration threshold",
+    )
+
+
 def test_missing_dependency_keeps_testing_fee_pending_without_stale_value() -> None:
     calculation = _calculation(
         units=None,

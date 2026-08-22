@@ -47,7 +47,7 @@ def test_save_then_load_current_pricing_draft_preserves_notes() -> None:
     assert loaded.saved_snapshot is not None
     assert loaded.saved_snapshot.confirmed_matrix_id == "cmv-1"
     assert loaded.saved_snapshot.confirmed_revision == 1
-    assert loaded.saved_snapshot.fee_rule_version_id == "fee_rules_v2026_07_17_r6"
+    assert loaded.saved_snapshot.fee_rule_version_id == "fee_rules_v2026_08_22_r7"
     assert loaded.saved_snapshot.edited_values.rows[0].notes == "discount reason"
     assert loaded.saved_snapshot.edited_values.manual_rows[0].row_kind == (
         "sample_preparation"
@@ -97,7 +97,7 @@ def test_load_blocks_when_only_unknown_fee_rule_version_draft_exists() -> None:
     result = current.load("P1")
 
     assert result.status == "blocked"
-    assert result.current_context.fee_rule_version_id == "fee_rules_v2026_07_17_r6"
+    assert result.current_context.fee_rule_version_id == "fee_rules_v2026_08_22_r7"
     assert result.saved_snapshot is None
 
 
@@ -132,7 +132,7 @@ def test_save_rejects_mismatched_expected_context_before_upsert() -> None:
                 edited_values=_edited_values(),
                 expected_confirmed_matrix_id="cmv-old",
                 expected_confirmed_revision=1,
-                expected_fee_rule_version_id="fee_rules_v2026_07_17_r6",
+                expected_fee_rule_version_id="fee_rules_v2026_08_22_r7",
             )
         )
 
@@ -149,7 +149,7 @@ def test_discard_current_pricing_draft_deletes_matching_context() -> None:
             expected_pricing_draft_edit_id="fed-1",
             expected_confirmed_matrix_id="cmv-1",
             expected_confirmed_revision=1,
-                expected_fee_rule_version_id="fee_rules_v2026_07_17_r6",
+                expected_fee_rule_version_id="fee_rules_v2026_08_22_r7",
         )
     )
 
@@ -158,7 +158,7 @@ def test_discard_current_pricing_draft_deletes_matching_context() -> None:
         "P1",
         "cmv-1",
         1,
-        "fee_rules_v2026_07_17_r6",
+        "fee_rules_v2026_08_22_r7",
     )
 
 
@@ -187,7 +187,7 @@ def test_discard_uses_current_context_when_newer_stale_row_exists() -> None:
     result = service.discard(DiscardFeeEvaluationPricingDraftCommand(project_id="P1"))
 
     assert result.discarded is True
-    assert store.deleted_context == ("P1", "cmv-1", 1, "fee_rules_v2026_07_17_r6")
+    assert store.deleted_context == ("P1", "cmv-1", 1, "fee_rules_v2026_08_22_r7")
 
 
 def test_save_rejects_unknown_row_identity() -> None:
@@ -402,7 +402,7 @@ def _pricing_snapshot(
     project_id: str = "P1",
     confirmed_matrix_id: str = "cmv-1",
     confirmed_revision: int = 1,
-    fee_rule_version_id: str = "fee_rules_v2026_07_17_r6",
+    fee_rule_version_id: str = "fee_rules_v2026_08_22_r7",
     updated_at: str = "2026-06-09T09:10:00+00:00",
 ) -> FeeEvaluationPricingDraftSnapshot:
     return FeeEvaluationPricingDraftSnapshot(
@@ -427,7 +427,7 @@ def _pricing_snapshot_with_values(
         project_id="P1",
         confirmed_matrix_id="cmv-1",
         confirmed_revision=1,
-        fee_rule_version_id="fee_rules_v2026_07_17_r6",
+        fee_rule_version_id="fee_rules_v2026_08_22_r7",
         edited_values=edited_values,
         created_at="2026-06-09T09:00:00+00:00",
         updated_at="2026-06-09T09:10:00+00:00",

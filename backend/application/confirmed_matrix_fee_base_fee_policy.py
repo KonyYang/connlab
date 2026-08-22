@@ -36,7 +36,7 @@ def apply_matrix_fee_line_policies(
     testing_fee_source: str,
 ) -> FeeCalculationResult:
     """Select the automatic Base Fee and derive Testing Fee when safe."""
-    base_fee, base_fee_source = _automatic_base_fee(rule)
+    base_fee, base_fee_source = _automatic_base_fee(calculation, rule)
     testing_fee = _testing_fee(calculation, base_fee)
     metadata = _replace_derived_metadata(
         calculation=calculation,
@@ -60,9 +60,29 @@ def apply_matrix_fee_line_policies(
     )
 
 
-def _automatic_base_fee(rule: FeeRule | None) -> tuple[Decimal, str]:
+def _automatic_base_fee(
+    calculation: FeeCalculationResult,
+    rule: FeeRule | None,
+) -> tuple[Decimal, str]:
     if rule is not None and rule.base_fee.amount is not None:
         return rule.base_fee.amount, rule.display_name
+    calculated_metadata = next(
+        (
+            item
+            for item in calculation.field_metadata
+            if item.field == "base_fee" and item.state == "auto_filled"
+        ),
+        None,
+    )
+    if (
+        calculation.base_fee is not None
+        and calculation.base_fee != ZERO
+        and calculated_metadata is not None
+    ):
+        return (
+            calculation.base_fee,
+            calculated_metadata.source or "Rule calculation",
+        )
     return ZERO, AUTOMATIC_BASE_FEE_FALLBACK_SOURCE
 
 

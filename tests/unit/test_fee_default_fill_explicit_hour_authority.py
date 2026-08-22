@@ -93,6 +93,24 @@ def test_salt_spray_rule_uses_the_same_typed_hour_authority() -> None:
     assert result.testing_fee == Decimal("960")
 
 
+def test_mfg_uses_confirmed_duration_authority_before_conflicting_text() -> None:
+    result = build_fee_default_fill(
+        rule=_rule("fee_rule_mfg_class_iia", "1000"),
+        context=_context(_authority(), condition="Conflicting legacy text: 1 day"),
+    )
+
+    assert result.status == "calculated"
+    assert result.unit_label == "day"
+    assert result.unit_price == Decimal("1000")
+    assert result.units == Decimal("2")
+    assert result.base_fee == Decimal("0")
+    assert result.testing_fee == Decimal("2000")
+    assert {item.field: item.source for item in result.field_metadata}["units"] == (
+        "Confirmed Matrix duration authority: revision 1 "
+        "(confirmed-1; lineage-fp)"
+    )
+
+
 def test_duration_text_never_substitutes_for_missing_typed_authority() -> None:
     result = build_fee_default_fill(
         rule=_rule("fee_rule_high_temperature_life", "15"),
@@ -126,7 +144,38 @@ def test_unusable_typed_authority_is_review_required() -> None:
         ("fee_rule_vibration", "300"),
     ),
 )
-def test_unrelated_duration_rules_keep_legacy_text_hours(
+def test_duration_rules_prefer_confirmed_typed_authority(
+    rule_id: str,
+    unit_price: str,
+) -> None:
+    rule = _rule(rule_id, unit_price)
+    result = build_fee_default_fill(
+        rule=rule,
+        context=_context(_authority(), condition="Legacy text conflicts: 10 hours"),
+    )
+
+    assert result.status == "calculated"
+    assert result.review_required is False
+    assert result.unit_price == Decimal(unit_price)
+    assert result.units == Decimal("48")
+    assert result.base_fee == Decimal("0")
+    assert result.testing_fee == Decimal(unit_price) * Decimal("48")
+    assert {item.field: item.source for item in result.field_metadata}["units"] == (
+        "Confirmed Matrix duration authority: revision 1 "
+        "(confirmed-1; lineage-fp)"
+    )
+
+
+@pytest.mark.parametrize(
+    ("rule_id", "unit_price"),
+    (
+        ("fee_rule_pre_high_temperature_life", "15"),
+        ("fee_rule_thermal_shock", "30"),
+        ("fee_rule_temperature_humidity", "25"),
+        ("fee_rule_vibration", "300"),
+    ),
+)
+def test_duration_rules_keep_legacy_text_fallback_without_typed_authority(
     rule_id: str,
     unit_price: str,
 ) -> None:
@@ -137,11 +186,17 @@ def test_unrelated_duration_rules_keep_legacy_text_hours(
     )
 
     assert result.status == "calculated"
-    assert result.review_required is False
-    assert result.unit_price == Decimal(unit_price)
     assert result.units == Decimal("10")
-    assert result.base_fee == Decimal("0")
-    assert result.testing_fee == Decimal(unit_price) * Decimal("10")
-    assert {item.field: item.source for item in result.field_metadata}["units"] == (
-        rule.display_name
+
+
+def test_legacy_duration_fallback_handles_explicit_missing_authority_result() -> None:
+    result = build_fee_default_fill(
+        rule=_rule("fee_rule_thermal_shock", "30"),
+        context=_context(
+            _authority(status="missing", diagnostic="missing"),
+            condition="Legacy accepted duration: 10 hours",
+        ),
     )
+
+    assert result.status == "calculated"
+    assert result.units == Decimal("10")

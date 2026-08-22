@@ -18,6 +18,7 @@ from backend.modules.fee_evaluation.fee_default_fill_common import (
 from backend.modules.fee_evaluation.fee_default_fill_models import (
     FeeDefaultFillContext,
     FeeDefaultFillResult,
+    FeeDurationAuthority,
     FeeFieldMetadata,
 )
 from backend.modules.fee_evaluation.fee_rule_models import FeeRule
@@ -85,11 +86,16 @@ def build_fee_default_fill(
         "fee_rule_temperature_humidity",
         "fee_rule_vibration",
     }:
+        if (
+            context.duration_authority is not None
+            and context.duration_authority.diagnostic != "missing"
+        ):
+            return _duration_hour_result(rule=rule, context=context)
         return build_legacy_duration_hour_result(
             rule=rule,
             source_text=_combined_text(context),
         )
-    if rule.rule_id == "fee_rule_mfg_class_iia":
+    if rule.rule_id in {"fee_rule_mfg_class_iia", "fee_rule_mfg_class_iiia"}:
         return _duration_day_result(rule=rule, context=context)
     if rule.rule_id == "fee_rule_microsecond_discontinuity":
         return calculated_result(
@@ -191,16 +197,7 @@ def _reseating_cycle_result(*, rule: FeeRule, context: FeeDefaultFillContext) ->
 def _duration_hour_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> FeeDefaultFillResult:
     authority = context.duration_authority
     if authority is None or not authority.is_valid:
-        diagnostic = authority.diagnostic if authority is not None else "missing"
-        review_reason = {
-            "missing": "Missing confirmed duration authority",
-            "stale": "Duration authority is stale",
-            "conflict": "Duration authority is conflicting",
-            "wrong_row": "Duration authority belongs to another Matrix row",
-            "wrong_group": "Duration authority belongs to another Matrix group",
-            "invalid": "Duration authority is invalid",
-            "missing_lineage": "Duration authority lineage is incomplete",
-        }.get(diagnostic or "", "Duration authority is unavailable")
+        review_reason = _duration_authority_review_reason(authority)
         temperature_base_fee = (
             ZERO if re.search(r"\btemperature\b", context.test_item, re.I) else None
         )
@@ -229,25 +226,64 @@ def _duration_hour_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> F
 
 
 def _duration_day_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> FeeDefaultFillResult:
-    days = resolve_mfg_duration_days(_combined_text(context))
+    unit_price = rule.unit_price.amount
+    if unit_price is None:
+        return manual_required(
+            rule=rule,
+            unit_label="day",
+            unit_price=None,
+            base_fee=None,
+            review_reason="Confirm MFG unit price",
+            manual_fields=("unit_price", "units", "base_fee", "testing_fee"),
+        )
+    authority = context.duration_authority
+    if authority is not None and authority.is_valid:
+        days = authority.normalized_hours / Decimal("24")
+        source = authority.source
+    elif authority is not None and authority.diagnostic != "missing":
+        return manual_required(
+            rule=rule,
+            unit_label="day",
+            unit_price=unit_price,
+            base_fee=None,
+            review_reason=_duration_authority_review_reason(authority),
+            manual_fields=("units", "base_fee", "testing_fee"),
+        )
+    else:
+        days = resolve_mfg_duration_days(_combined_text(context), class_confirmed=True)
+        source = rule.display_name
     if days is None:
         return manual_required(
             rule=rule,
             unit_label="day",
-            unit_price=Decimal("1000"),
+            unit_price=unit_price,
             base_fee=None,
             review_reason="Confirm duration",
-            manual_fields=("units", "base_fee", "discount_percent", "testing_fee"),
+            manual_fields=("units", "base_fee", "testing_fee"),
         )
+    base_fee = Decimal("300") if days * Decimal("24") < Decimal("48") else ZERO
     return calculated_result(
         spend_time=None,
         unit_label="day",
-        unit_price=Decimal("1000"),
+        unit_price=unit_price,
         units=days,
-        base_fee=ZERO,
+        base_fee=base_fee,
         discount_percent=ZERO,
-        source=rule.display_name,
+        source=source,
     )
+
+
+def _duration_authority_review_reason(authority: FeeDurationAuthority | None) -> str:
+    diagnostic = authority.diagnostic if authority is not None else "missing"
+    return {
+        "missing": "Missing confirmed duration authority",
+        "stale": "Duration authority is stale",
+        "conflict": "Duration authority is conflicting",
+        "wrong_row": "Duration authority belongs to another Matrix row",
+        "wrong_group": "Duration authority belongs to another Matrix group",
+        "invalid": "Duration authority is invalid",
+        "missing_lineage": "Duration authority lineage is incomplete",
+    }.get(diagnostic or "", "Duration authority is unavailable")
 
 
 def _per_sample_result(
