@@ -32,7 +32,7 @@ REQUIRED_ROLES = {
     "standard": {"developer", "reviewer", "qa"},
     "high_risk": {"planner", "developer", "reviewer", "qa", "integrator"},
 }
-COMMANDS = ("inspect", "submit", "checkpoint", "finish", "close")
+COMMANDS = ("inspect", "submit", "checkpoint", "finish", "close", "close-and-submit")
 
 
 class Blocked(RuntimeError):
@@ -329,6 +329,23 @@ def request_payload(raw: str | None, task_id: str | None) -> dict[str, Any]:
     return payload
 
 
+def activated_task(payload: dict[str, Any], head: str, timestamp: str) -> dict[str, Any]:
+    return {
+        "task_id": payload["task_id"],
+        "summary": payload["summary"],
+        "tier": payload["tier"],
+        "route": ROUTES[payload["tier"]],
+        "scope": payload["scope"],
+        "scope_paths": payload["scope_paths"],
+        "risk_reasons": payload["risk_reasons"],
+        "activation_head": head,
+        "started_at": timestamp,
+        "updated_at": timestamp,
+        "checkpoint": None,
+        "report": None,
+    }
+
+
 def submit(args: argparse.Namespace, root: Path) -> tuple[str, str, dict[str, Any]]:
     payload = request_payload(args.request_json, args.task_id)
     _, snapshot, _, _ = read_board(root)
@@ -342,20 +359,7 @@ def submit(args: argparse.Namespace, root: Path) -> tuple[str, str, dict[str, An
             raise Blocked("BLOCKED_ACTIVE_TASK_RUNNING", "Close the active task before submitting another.")
         timestamp = utc_now()
         control["state"] = "running"
-        control["active"] = {
-            "task_id": payload["task_id"],
-            "summary": payload["summary"],
-            "tier": payload["tier"],
-            "route": ROUTES[payload["tier"]],
-            "scope": payload["scope"],
-            "scope_paths": payload["scope_paths"],
-            "risk_reasons": payload["risk_reasons"],
-            "activation_head": head,
-            "started_at": timestamp,
-            "updated_at": timestamp,
-            "checkpoint": None,
-            "report": None,
-        }
+        control["active"] = activated_task(payload, head, timestamp)
 
     return update_board(root, args.expected_board_sha256, mutate)
 
@@ -481,28 +485,72 @@ def finish(args: argparse.Namespace, root: Path) -> tuple[str, str, dict[str, An
     return update_board(root, args.expected_board_sha256, mutate)
 
 
+def closed_task(
+    active: dict[str, Any],
+    *,
+    disposition: str,
+    decision_ref: str,
+    fallback_subject: str,
+    timestamp: str,
+) -> dict[str, Any]:
+    report = active.get("report")
+    return {
+        "task_id": active["task_id"],
+        "tier": active["tier"],
+        "subject": report.get("subject") if isinstance(report, dict) else fallback_subject,
+        "summary": active["summary"],
+        "disposition": disposition,
+        "decision_ref": decision_ref,
+        "closed_at": timestamp,
+    }
+
+
 def close(args: argparse.Namespace, root: Path) -> tuple[str, str, dict[str, Any]]:
     if not isinstance(args.decision_ref, str) or not args.decision_ref.strip():
         raise Blocked("BLOCKED_DECISION_REQUIRED", "Explicit User close or cancel decision is required.")
     require_clean(root, "Primary must be clean before WIP is released.")
+    head = current_head(root)
 
     def mutate(control: dict[str, Any]) -> None:
         active = require_active(control, args.task_id)
         cancelled = args.disposition == "cancelled"
         if not cancelled and control["state"] != "ready_for_close":
             raise Blocked("BLOCKED_STATE", "Only a completed task can be closed normally.")
-        report = active.get("report")
-        control["last_closed"] = {
-            "task_id": active["task_id"],
-            "tier": active["tier"],
-            "subject": report.get("subject") if isinstance(report, dict) else current_head(root),
-            "summary": active["summary"],
-            "disposition": args.disposition,
-            "decision_ref": args.decision_ref,
-            "closed_at": utc_now(),
-        }
+        control["last_closed"] = closed_task(
+            active,
+            disposition=args.disposition,
+            decision_ref=args.decision_ref,
+            fallback_subject=head,
+            timestamp=utc_now(),
+        )
         control["active"] = None
         control["state"] = "idle"
+
+    return update_board(root, args.expected_board_sha256, mutate)
+
+
+def close_and_submit(args: argparse.Namespace, root: Path) -> tuple[str, str, dict[str, Any]]:
+    if not isinstance(args.decision_ref, str) or not args.decision_ref.strip():
+        raise Blocked("BLOCKED_DECISION_REQUIRED", "Explicit User close or cancel decision is required.")
+    payload = request_payload(args.request_json, args.next_task_id)
+    require_clean(root, "Primary must be clean before completed WIP is replaced.")
+    head = current_head(root)
+
+    def mutate(control: dict[str, Any]) -> None:
+        active = require_active(control, args.task_id)
+        cancelled = args.disposition == "cancelled"
+        if not cancelled and control["state"] != "ready_for_close":
+            raise Blocked("BLOCKED_STATE", "Only a completed task can be closed normally.")
+        timestamp = utc_now()
+        control["last_closed"] = closed_task(
+            active,
+            disposition=args.disposition,
+            decision_ref=args.decision_ref,
+            fallback_subject=head,
+            timestamp=timestamp,
+        )
+        control["active"] = activated_task(payload, head, timestamp)
+        control["state"] = "running"
 
     return update_board(root, args.expected_board_sha256, mutate)
 
@@ -513,6 +561,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--repo-root", required=True)
     value.add_argument("--expected-board-sha256")
     value.add_argument("--task-id")
+    value.add_argument("--next-task-id")
     value.add_argument("--request-json")
     value.add_argument("--checkpoint-json")
     value.add_argument("--result-json")
@@ -538,6 +587,7 @@ def main() -> int:
                 "checkpoint": (checkpoint, "ALLOW_CHECKPOINT"),
                 "finish": (finish, "ALLOW_FINISH"),
                 "close": (close, "ALLOW_CLOSE"),
+                "close-and-submit": (close_and_submit, "ALLOW_CLOSE_AND_SUBMIT"),
             }
             handler, code = handlers[args.command]
             before, after, control = handler(args, root)

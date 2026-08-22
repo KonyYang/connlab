@@ -23,11 +23,17 @@ code and observable behavior outrank historical plans.
 - Start repository work with one bounded discovery batch that obtains Git status, real candidate
   paths from `rg --files`, and relevant symbol/test matches. Resolve discoverable paths before opening
   files or running path-specific commands; do not spend tool rounds guessing directory names.
+- For routine board transitions, use the structured result from `connlab_sol_task.py` or
+  `run_task.ps1` directly. Do not reread workflow prose, command help, or script implementation unless
+  a typed blocker is returned or the task itself changes the workflow.
 - Treat Vitest/esbuild child-process spawning on this Windows Codex host as a known permission case:
   request the narrowest boundary for the complete intended command before its first run. Apply the
   same rule to pytest temporary directories, browsers, or other child processes only after the
   environment has proved the need. Do not knowingly run a setup-only `EPERM` probe; when permission
   needs are genuinely unknown, an ordinary first run remains appropriate.
+- Run Vitest and the Vite production build sequentially on this Windows host; both launch esbuild and
+  must not be started concurrently. Complete implementation and test edits before the final affected
+  validation so a later byte change does not force a duplicate full run.
 
 ## Autonomy and scope
 

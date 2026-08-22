@@ -503,6 +503,71 @@ def test_only_explicit_close_releases_wip(repo: Path) -> None:
     assert control(repo)["last_closed"]["task_id"] == "TASK_CLOSE"
 
 
+def test_close_and_submit_atomically_rolls_completed_wip_to_next_task(repo: Path) -> None:
+    submit(repo, "TASK_DONE", "micro")
+    subject = commit_activation_and_implementation(repo)
+    invoke(
+        repo,
+        "finish",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_DONE",
+        "--result-json",
+        json.dumps(report("TASK_DONE", subject, "micro")),
+    )
+    git(repo, "add", str(BOARD))
+    git(repo, "commit", "-m", "finish first task")
+
+    rolled = invoke(
+        repo,
+        "close-and-submit",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_DONE",
+        "--decision-ref",
+        "User closed the completed task and requested the next task.",
+        "--next-task-id",
+        "TASK_NEXT",
+        "--request-json",
+        request("TASK_NEXT", "standard"),
+    )
+
+    assert rolled["code"] == "ALLOW_CLOSE_AND_SUBMIT"
+    assert rolled["state"] == "running"
+    assert rolled["active_task_id"] == "TASK_NEXT"
+    assert rolled["next_action"] == {"command": "execute", "requires_user": False}
+    assert control(repo)["last_closed"]["task_id"] == "TASK_DONE"
+    assert control(repo)["active"]["activation_head"] == git(repo, "rev-parse", "HEAD")
+
+
+def test_close_and_submit_invalid_next_request_is_zero_write(repo: Path) -> None:
+    submit(repo, "TASK_CURRENT", "micro")
+    before = board_bytes(repo)
+
+    blocked = invoke(
+        repo,
+        "close-and-submit",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_CURRENT",
+        "--decision-ref",
+        "User requested cancellation and replacement.",
+        "--disposition",
+        "cancelled",
+        "--next-task-id",
+        "TASK_NEXT",
+        "--request-json",
+        request("WRONG_TASK", "micro"),
+        expected_exit=2,
+    )
+
+    assert blocked["code"] == "BLOCKED_REQUEST_INVALID"
+    assert board_bytes(repo) == before
+
+
 def test_legacy_approve_command_is_not_exposed(repo: Path) -> None:
     completed = subprocess.run(
         [sys.executable, str(SCRIPT), "approve", "--repo-root", str(repo), "--json"],
@@ -515,7 +580,7 @@ def test_legacy_approve_command_is_not_exposed(repo: Path) -> None:
     assert "invalid choice" in completed.stderr
 
 
-def test_powershell_user_entry_supports_only_submit_and_final_close(repo: Path) -> None:
+def test_powershell_user_entry_supports_lifecycle_actions_without_legacy_approve(repo: Path) -> None:
     submitted = subprocess.run(
         [
             "powershell.exe",
@@ -572,5 +637,55 @@ def test_powershell_user_entry_supports_only_submit_and_final_close(repo: Path) 
     assert control(repo)["state"] == "idle"
 
     source = RUN_TASK.read_text(encoding="utf-8")
-    assert '[ValidateSet("Submit", "Close")]' in source
+    assert '[ValidateSet("Submit", "Close", "CloseAndSubmit")]' in source
     assert "Approve" not in source
+
+
+def test_powershell_user_entry_can_close_and_submit_in_one_transition(repo: Path) -> None:
+    submit(repo, "TASK_PS_DONE", "micro")
+    subject = commit_activation_and_implementation(repo)
+    invoke(
+        repo,
+        "finish",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_PS_DONE",
+        "--result-json",
+        json.dumps(report("TASK_PS_DONE", subject, "micro")),
+    )
+    git(repo, "add", str(BOARD))
+    git(repo, "commit", "-m", "finish task before rollover")
+
+    completed = subprocess.run(
+        [
+            "powershell.exe",
+            "-NoProfile",
+            "-File",
+            str(RUN_TASK),
+            "-Task",
+            "TASK_PS_DONE",
+            "-Action",
+            "CloseAndSubmit",
+            "-NextTask",
+            "TASK_PS_NEXT",
+            "-RequestJson",
+            request("TASK_PS_NEXT", "standard"),
+            "-DecisionRef",
+            "User closed the completed task and requested the next task.",
+            "-ExpectedBoardSha256",
+            board_hash(repo),
+            "-RepositoryRoot",
+            str(repo),
+            "-Json",
+        ],
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    result = json.loads(completed.stdout)
+    assert result["code"] == "ALLOW_CLOSE_AND_SUBMIT"
+    assert result["active_task_id"] == "TASK_PS_NEXT"
+    assert control(repo)["last_closed"]["task_id"] == "TASK_PS_DONE"

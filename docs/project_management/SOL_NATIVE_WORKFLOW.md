@@ -83,13 +83,22 @@ task trigger. They never create a second workflow.
 
 ## Board interface and recovery
 
-Public commands are `Submit` and `Close` through `scripts/run_task.ps1`. Internal commands are:
+Public commands are `Submit`, `Close`, and `CloseAndSubmit` through `scripts/run_task.ps1`. Internal
+commands are:
 
 - `inspect`: compact state and next action;
 - `submit`: activate task, tier, scope, and starting HEAD;
 - `checkpoint`: one meaningful recovery point or typed blocker, only when useful;
 - `finish`: verify the clean exact subject, scope, proportional results, and validation;
 - `close`: record the User decision and return to idle.
+- `close-and-submit`: when one User message explicitly closes or cancels the current task and requests
+  a complete next task, record the old decision and activate the next request in one locked board
+  transition. It preserves WIP=1 and fails without writing on identity, request, state, cleanliness,
+  or board-hash errors.
+
+Routine callers use the compact structured result and `next_action`; they do not reread this document,
+command help, or writer source before each transition. Use separate `Close` and `Submit` only when the
+User supplied them as separate decisions.
 
 Do not persist role begin/callback microstates, duplicate Plans, prompt hashes, model-route prose, or
 separate evidence files by default. Git supplies HEAD and changed paths.

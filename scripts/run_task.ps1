@@ -3,11 +3,12 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Task,
 
-    [ValidateSet("Submit", "Close")]
+    [ValidateSet("Submit", "Close", "CloseAndSubmit")]
     [string]$Action = "Submit",
 
     [string]$RequestJson,
     [string]$DecisionRef,
+    [string]$NextTask,
 
     [ValidateSet("completed", "cancelled")]
     [string]$Disposition = "completed",
@@ -34,7 +35,7 @@ if ($Preview) {
 }
 
 if ([string]::IsNullOrWhiteSpace($ExpectedBoardSha256)) {
-    throw "-ExpectedBoardSha256 is required for Submit and Close."
+    throw "-ExpectedBoardSha256 is required for task transitions."
 }
 
 switch ($Action) {
@@ -57,6 +58,24 @@ switch ($Action) {
             "--expected-board-sha256", $ExpectedBoardSha256,
             "--task-id", $Task, "--decision-ref", $DecisionRef,
             "--disposition", $Disposition, "--json"
+        )
+    }
+    "CloseAndSubmit" {
+        if ([string]::IsNullOrWhiteSpace($DecisionRef)) {
+            throw "-DecisionRef is required for CloseAndSubmit."
+        }
+        if ([string]::IsNullOrWhiteSpace($NextTask)) {
+            throw "-NextTask is required for CloseAndSubmit."
+        }
+        if ([string]::IsNullOrWhiteSpace($RequestJson)) {
+            throw "-RequestJson is required for CloseAndSubmit."
+        }
+        $arguments = @(
+            $helper, "close-and-submit", "--repo-root", $RepositoryRoot,
+            "--expected-board-sha256", $ExpectedBoardSha256,
+            "--task-id", $Task, "--decision-ref", $DecisionRef,
+            "--disposition", $Disposition, "--next-task-id", $NextTask,
+            "--request-json", $RequestJson, "--json"
         )
     }
 }
