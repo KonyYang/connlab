@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FEE_DURATION_LABELS_PER_HOUR",
     "summary": "Ensure reviewed high-temperature and temperature-humidity Matrix labels default Fee Unit Type to per hour.",
@@ -30,9 +30,80 @@
     "risk_reasons": [],
     "activation_head": "2aa1b7728f10a7b4c1a85dd9cfa11a2d1bed7d1b",
     "started_at": "2026-08-22T23:45:22.606992Z",
-    "updated_at": "2026-08-22T23:45:22.606992Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-08-22T23:53:02.766794Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_FEE_DURATION_LABELS_PER_HOUR",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_FEE_DURATION_LABELS_PER_HOUR",
+      "subject": "114366a9949e7351767ee1d2b257d32e930a64f1",
+      "summary": "Matched the reviewed High Temp. Life and Thermal distrubance source labels to existing hourly Fee rules; all three requested labels now default Unit Type to per hour.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/modules/fee_evaluation/seeds/active_fee_rule_seed.json",
+        "backend/modules/fee_evaluation/seeds/fee_rule_extensions_v2026_08_23_r9.json",
+        "backend/modules/fee_evaluation/seeds/fee_rules_v2026_08_23_r9.json",
+        "tests/integration/test_confirmed_matrix_fee_draft_api.py",
+        "tests/integration/test_confirmed_matrix_fee_evaluation_export_api.py",
+        "tests/integration/test_fee_pricing_draft_measurement_plan_rebase_attestation.py",
+        "tests/integration/test_matrix_editor_session_api.py",
+        "tests/unit/test_confirmed_matrix_fee_draft_service.py",
+        "tests/unit/test_fee_default_fill.py",
+        "tests/unit/test_fee_evaluation_pricing_draft_persistence_service.py",
+        "tests/unit/test_fee_rule_matcher.py",
+        "tests/unit/test_fee_rule_seed_loader.py",
+        "tests/unit/test_fee_rule_temperature_force_alias_safe_rebase.py",
+        "tests/unit/test_matrix_fee_rebase_promotion_service.py"
+      ],
+      "validation": [
+        {
+          "name": "backend QA",
+          "status": "passed",
+          "detail": "655 passed"
+        },
+        {
+          "name": "frontend Fee tests",
+          "status": "passed",
+          "detail": "66 passed"
+        },
+        {
+          "name": "frontend build",
+          "status": "passed",
+          "detail": "TypeScript and Vite build succeeded"
+        },
+        {
+          "name": "browser verification",
+          "status": "passed",
+          "detail": "All eight requested-label rows displayed per hour with no console errors"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented with red-green public-seam regression tests."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "No standards or specification findings."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Backend, frontend, build, and live page validation passed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "summary": "Active r9 seed loads through Fee draft, persistence, export, rebase, and Matrix session paths."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_DEFAULT_FILL_REMAINING_RULE_EXTENSIONS",
