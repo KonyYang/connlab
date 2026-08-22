@@ -200,6 +200,26 @@ def test_fee_rule_matcher_returns_stable_no_match_when_unmatched() -> None:
     assert result.review_reason == "No fee rule match."
 
 
+def test_high_temp_life_abbreviation_matches_high_temperature_life() -> None:
+    result = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(
+        "High Temp. Life"
+    )
+
+    assert result.status == "matched"
+    assert result.rule is not None
+    assert result.rule.rule_id == "fee_rule_high_temperature_life"
+
+
+def test_thermal_distrubance_source_spelling_matches_temperature_humidity() -> None:
+    result = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(
+        "Thermal distrubance"
+    )
+
+    assert result.status == "matched"
+    assert result.rule is not None
+    assert result.rule.rule_id == "fee_rule_temperature_humidity"
+
+
 @pytest.mark.parametrize(
     "test_item",
     (

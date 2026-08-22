@@ -575,6 +575,30 @@ def test_temperature_named_duration_rules_default_base_fee_to_zero_without_durat
     assert _field_state(result, "units") == "manual_required"
 
 
+@pytest.mark.parametrize(
+    ("test_item", "expected_rule_id"),
+    (
+        ("High Temp. Life", "fee_rule_high_temperature_life"),
+        ("Cycling Temperature & Humidity", "fee_rule_temperature_humidity"),
+        ("Thermal distrubance", "fee_rule_temperature_humidity"),
+    ),
+)
+def test_reviewed_temperature_duration_labels_default_to_per_hour(
+    test_item: str,
+    expected_rule_id: str,
+) -> None:
+    match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(test_item)
+
+    assert match.rule is not None
+    assert match.rule.rule_id == expected_rule_id
+    result = build_fee_default_fill(
+        rule=match.rule,
+        context=_context(test_item=test_item),
+    )
+
+    assert result.unit_label == "hour"
+
+
 def test_salt_spray_uses_hour_duration_from_matrix_condition() -> None:
     result = build_fee_default_fill(
         rule=_rule(

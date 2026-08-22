@@ -21,7 +21,7 @@ _SEEDS = Path(__file__).parents[2] / "backend" / "modules" / "fee_evaluation" / 
 def test_load_active_fee_rule_library_uses_complete_reference_snapshot() -> None:
     library = load_active_fee_rule_library()
 
-    assert library.version.version_id == "fee_rules_v2026_08_22_r8"
+    assert library.version.version_id == "fee_rules_v2026_08_23_r9"
     assert library.version.source_file_name == "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
     assert library.version.source_sheet == "Unit Price Reference"
     assert library.version.source_hash == (
