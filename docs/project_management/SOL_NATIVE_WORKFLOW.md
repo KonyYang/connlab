@@ -43,7 +43,7 @@ documents or skills.
 Use for substantive product work without a high-risk fact.
 
 ```text
-one Sol work unit: compact plan -> implement -> self-review -> final Developer validation
+one Sol work unit: compact plan -> implement -> self-review -> targeted Developer checks
 -> focused Reviewer -> bounded fix if needed -> one complete QA pass -> integrate -> finish
 ```
 
@@ -65,12 +65,16 @@ inside the request and existing authority.
 
 ## Verification responsibilities
 
-- **Developer:** implement and self-review first; run the final approved validation only after the last
-  code/test change. Any later byte change invalidates affected results.
+- **Developer:** use the smallest affected checks needed for implementation feedback, including TDD
+  red/green checks where applicable. For Standard and High-risk tasks, do not pre-run the complete QA
+  matrix. After the last code/test change, rerun only affected Developer checks; any later byte change
+  invalidates those results.
 - **Reviewer:** inspect requirements, exact diff, boundaries, safety, regressions, and Developer
   evidence. Run only finding- or risk-focused checks; do not repeat the full matrix by default.
-- **QA:** on the clean reviewed state, run the approved complete matrix once. Do not manufacture state
-  or edit fixtures/board data merely to make checks pass.
+- **QA:** on the clean reviewed state, run the risk-proportionate complete matrix once. This is the
+  single final execution of full tests, build, typecheck, and browser checks selected for the task;
+  omit any category that the change cannot affect. Do not manufacture state or edit fixtures/board
+  data merely to make checks pass.
 - **Integrator:** verify subject, scope, evidence, Git parents/tree, cleanliness, and actual integration.
   Do not rerun Developer/QA's full matrix by default. Stop immediately on a deterministic blocker.
 

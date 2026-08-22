@@ -70,8 +70,8 @@ code and observable behavior outrank historical plans.
 ## Task tiers
 
 - **Micro:** localized and unambiguous; Sol implements, self-reviews, and runs targeted validation.
-- **Standard:** substantive but not high risk; one Sol work unit plans and implements, followed by one
-  focused review and one complete QA pass.
+- **Standard:** substantive but not high risk; one Sol work unit plans, implements, self-reviews, and
+  runs targeted feedback checks; one focused review follows, then QA runs the complete matrix once.
 - **High risk:** database/schema migration, permissions/security, authoritative external mutation,
   destructive work, broad architecture change, or unresolved product choice; use independent
   Planner, Developer, Reviewer, QA, and Integrator contexts with automatic handoffs.
