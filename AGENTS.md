@@ -18,6 +18,17 @@ code and observable behavior outrank historical plans.
 - `docs/archive/**`, `docs/completed_plans/**`, `docs/lane_evidence/**`, and legacy `tasks/**/*.md` are
   history, never execution authority. Consult them only for a specifically relevant past decision.
 
+## Efficient discovery and commands
+
+- Start repository work with one bounded discovery batch that obtains Git status, real candidate
+  paths from `rg --files`, and relevant symbol/test matches. Resolve discoverable paths before opening
+  files or running path-specific commands; do not spend tool rounds guessing directory names.
+- Treat Vitest/esbuild child-process spawning on this Windows Codex host as a known permission case:
+  request the narrowest boundary for the complete intended command before its first run. Apply the
+  same rule to pytest temporary directories, browsers, or other child processes only after the
+  environment has proved the need. Do not knowingly run a setup-only `EPERM` probe; when permission
+  needs are genuinely unknown, an ordinary first run remains appropriate.
+
 ## Autonomy and scope
 
 - For explanation, diagnosis, review, or planning, inspect and report; do not implement unless asked.
