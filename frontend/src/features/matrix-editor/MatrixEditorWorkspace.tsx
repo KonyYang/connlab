@@ -9,20 +9,14 @@ import {
   ApiRequestError,
   confirmMatrixEditorSession,
   createMatrixRevisionDraft,
-  discardMatrixEditorSessionDraft,
   fetchMatrixEditorSession,
   generateMatrixEditorTestRecordDraftDownload,
   isProjectLifecycleReadonlyErrorDetail,
-  saveMatrixEditorSessionDraft,
   type MatrixEditorSessionDraft,
   type MatrixEditorSessionDurationAuthority,
   type MatrixEditorSessionSeed,
   type MatrixEditorSessionConfirmResponse,
-  type MatrixEditorSessionDraftSaveRequest,
-  type MatrixEditorSessionDraftSaveResponse,
-  type ProjectMatrixDraft,
   type MatrixPreviewResponse,
-  type MatrixImportCommitResponse,
 } from "../../api/client";
 import { MatrixSchedulePlanningCard } from "./MatrixSchedulePlanningCard";
 import { MatrixEditorXlsxExportButton } from "./MatrixEditorXlsxExportButton";
@@ -36,6 +30,10 @@ import { MatrixMethodVersionSyncPanel } from "./MatrixMethodVersionSyncPanel";
 import { useMatrixMethodVersionSync } from "./useMatrixMethodVersionSync";
 import { MatrixImportStandardVersionChoiceDialog } from "./MatrixImportStandardVersionChoiceDialog";
 import { useMatrixImportWorkflow } from "./useMatrixImportWorkflow";
+import {
+  useMatrixDraftPersistence,
+  type MatrixDraftSaveState,
+} from "./useMatrixDraftPersistence";
 import { ContactMeasurementPlanSummaryCard } from "../contact-measurement-plan/ContactMeasurementPlanSummaryCard";
 import { useProjectPointProfileSummaryModel } from "../contact-measurement-plan/useProjectPointProfileSummaryModel";
 import {
@@ -87,16 +85,14 @@ type MatrixSnapshot = {
   schedulePlan: MatrixSchedulePlan;
 };
 
-type MatrixSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 type MatrixPublishState = "idle" | "loading" | "success" | "error";
 type MatrixTestRecordState = "idle" | "loading" | "success" | "error";
 type MatrixPublishMode = "first_authority" | "revision_authority";
 type MatrixRevisionDraftActionState = "idle" | "opening" | "error";
 
-const AUTOSAVE_CANCEL_WAIT_TIMEOUT_MS = 1500;
 const MVP_REVISION_CONFIRMED_BY = "connlab-operator";
 
-const AUTO_SAVE_STATUS_COPY: Record<MatrixSaveState, string> = {
+const AUTO_SAVE_STATUS_COPY: Record<MatrixDraftSaveState, string> = {
   idle: "",
   dirty: "",
   saving: "",
@@ -205,40 +201,32 @@ export function MatrixEditorWorkspace({
   const [revisionDraftActionState, setRevisionDraftActionState] =
     useState<MatrixRevisionDraftActionState>("idle");
   const [revisionDraftActionMessage, setRevisionDraftActionMessage] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<MatrixSaveState>("idle");
-  const [saveBaselineSignature, setSaveBaselineSignature] = useState<string | null>(null);
   const [confirmActiveState, setConfirmActiveState] = useState<MatrixPublishState>("idle");
   const [confirmActiveMessage, setConfirmActiveMessage] = useState<string>("");
   const [testRecordState, setTestRecordState] = useState<MatrixTestRecordState>("idle");
   const [testRecordMessage, setTestRecordMessage] = useState<string>("");
   const [activeAuthorityConfirmed, setActiveAuthorityConfirmed] = useState(false);
   const [activeAuthorityBaselineSignature, setActiveAuthorityBaselineSignature] = useState<string | null>(null);
-  const [activeConfirmedMatrixId, setActiveConfirmedMatrixId] = useState<string | null>(null);
-  const [activeConfirmedRevision, setActiveConfirmedRevision] = useState<number | null>(null);
-  const [sessionSourceImportId, setSessionSourceImportId] = useState<string | null>(null);
-  const [sessionSourceSnapshotId, setSessionSourceSnapshotId] = useState<string | null>(null);
   const [durationAuthorities, setDurationAuthorities] =
     useState<MatrixEditorSessionDurationAuthority[]>([]);
-  const [activeAuthoritySourceImportId, setActiveAuthoritySourceImportId] = useState<string | null>(null);
-  const [savedEditorDraftId, setSavedEditorDraftId] = useState<string | null>(null);
-  const [savedPayloadSignature, setSavedPayloadSignature] = useState<string | null>(null);
-  const [savedLocalSignature, setSavedLocalSignature] = useState<string | null>(null);
   const pointProfileSummary = useProjectPointProfileSummaryModel(projectId);
-  const [isCancelling, setIsCancelling] = useState(false);
   const [sourceUnavailableMessage, setSourceUnavailableMessage] = useState<string | null>(null);
-  const autosaveTimeoutRef = useRef<number | null>(null);
-  const autosaveGenerationRef = useRef(0);
-  const autosaveInFlightRef = useRef<Promise<MatrixEditorSessionDraftSaveResponse | null> | null>(null);
-  const autosaveAbortControllerRef = useRef<AbortController | null>(null);
-  const latestAutosaveResultRef = useRef<MatrixEditorSessionDraftSaveResponse | null>(null);
-  const cancellingRef = useRef(false);
   const revisionDraftReloadPendingRef = useRef(false);
+
+  const currentSavePayload = buildDraftSavePayload(
+    editableRows,
+    groupColumns,
+    sampleValues,
+    schedulePlan,
+    durationAuthorities
+  );
+  const currentSaveSignature = JSON.stringify(currentSavePayload);
 
   const applyDraftSnapshotToEditor = (
     draft: MatrixEditorSessionDraft,
     sourcePreview: MatrixPreviewResponse | null = null,
     nextSchedulePlan: MatrixSchedulePlan = emptySchedulePlan()
-  ): void => {
+  ): string => {
     const mapped = buildMatrixFromSessionSeedDraft(draft, sourcePreview);
     const nextGroups = mapped.groups.length > 0 ? mapped.groups : buildInitialGroupColumns();
     const nextRows = mapped.rows.length > 0 ? mapped.rows : buildInitialMatrixRows();
@@ -258,29 +246,22 @@ export function MatrixEditorWorkspace({
       nextSchedulePlan,
       draft.duration_authorities ?? []
     );
-    setSaveBaselineSignature(JSON.stringify(baselinePayload));
-    setSaveState("saved");
     setActiveAuthorityConfirmed(false);
     setConfirmActiveState("idle");
     setConfirmActiveMessage("");
+    return JSON.stringify(baselinePayload);
   };
 
   const matrixImport = useMatrixImportWorkflow({
     projectId,
     readonlyMessage: isLifecycleReadonly ? lifecycleReadonlyView.message : null,
     onCommitted: ({ preview, response }) => {
-      applyDraftSnapshotToEditor(
+      const baselineSignature = applyDraftSnapshotToEditor(
         buildSessionDraftFromProjectMatrixDraft(response.project_matrix_draft),
         preview,
         schedulePlanFromProjectMatrixDraft(response.project_matrix_draft)
       );
-      setSessionSourceImportId(response.source_import_id);
-      setSessionSourceSnapshotId(response.source_snapshot_id);
-      setSavedEditorDraftId(null);
-      setSavedPayloadSignature(null);
-      setSavedLocalSignature(null);
-      latestAutosaveResultRef.current = null;
-      setSaveState("saved");
+      draftPersistence.acceptImportedDraft(response, baselineSignature);
     },
   });
   const {
@@ -290,6 +271,30 @@ export function MatrixEditorWorkspace({
     resetSessionSource: resetImportSessionSource,
     sourcePicker: importSourcePicker,
   } = matrixImport;
+
+  const draftPersistence = useMatrixDraftPersistence({
+    currentPayload: currentSavePayload,
+    currentSignature: currentSaveSignature,
+    draftLoading,
+    durationAuthorities,
+    onBackToWorkbench,
+    onError: setConfirmActiveMessage,
+    projectId,
+    readonlyMessage: isLifecycleReadonly ? lifecycleReadonlyView.message : null,
+    sourcePreview: importPreview,
+  });
+  const {
+    activeAuthoritySourceImportId,
+    activeConfirmedMatrixId,
+    activeConfirmedRevision,
+    hasCurrentSavedDraft,
+    hasUnsavedChanges,
+    isCancelling,
+    saveState,
+    savedEditorDraftId,
+    savedPayloadSignature,
+    sourceImportId: sessionSourceImportId,
+  } = draftPersistence;
 
   useEffect(() => {
     let cancelled = false;
@@ -302,20 +307,16 @@ export function MatrixEditorWorkspace({
         }
         if (seed.editor_draft) {
           const loadedSchedulePlan = schedulePlanFromSeed(seed);
-          applyDraftSnapshotToEditor(seed.editor_draft, seed.source_preview_payload ?? null, loadedSchedulePlan);
-          const loadedPayload = buildDraftSavePayload(
-            buildMatrixFromSessionSeedDraft(seed.editor_draft, seed.source_preview_payload ?? null).rows,
-            buildMatrixFromSessionSeedDraft(seed.editor_draft, seed.source_preview_payload ?? null).groups,
-            buildMatrixFromSessionSeedDraft(seed.editor_draft, seed.source_preview_payload ?? null).samples,
-            loadedSchedulePlan,
-            seed.editor_draft.duration_authorities ?? []
+          const loadedSignature = applyDraftSnapshotToEditor(
+            seed.editor_draft,
+            seed.source_preview_payload ?? null,
+            loadedSchedulePlan
           );
-          const loadedSignature = JSON.stringify(loadedPayload);
-          setSavedEditorDraftId(seed.editor_draft_id ?? null);
-          setSavedPayloadSignature(seed.saved_payload_signature ?? null);
-          setSavedLocalSignature(
-            seed.editor_draft_id && seed.saved_payload_signature ? loadedSignature : null
-          );
+          draftPersistence.hydrateSession({
+            baselineSignature: loadedSignature,
+            hasEditorDraft: true,
+            seed,
+          });
           setActiveAuthorityBaselineSignature(
             buildAuthorityComparableSignatureFromDraft(seed.editor_draft, loadedSchedulePlan)
           );
@@ -332,26 +333,18 @@ export function MatrixEditorWorkspace({
           setSchedulePlan(defaultSchedulePlan);
           setSelectedGroupId(defaultGroups[0]?.id ?? null);
           setSelectedRowId(null);
-          setSaveBaselineSignature(
-            JSON.stringify(buildDraftSavePayload(defaultRows, defaultGroups, defaultSamples, defaultSchedulePlan))
+          const defaultSignature = JSON.stringify(
+            buildDraftSavePayload(defaultRows, defaultGroups, defaultSamples, defaultSchedulePlan)
           );
+          draftPersistence.hydrateSession({
+            baselineSignature: defaultSignature,
+            hasEditorDraft: false,
+            seed,
+          });
           setActiveAuthorityBaselineSignature(null);
-          setSaveState("idle");
-          setSavedEditorDraftId(null);
-          setSavedPayloadSignature(null);
-          setSavedLocalSignature(null);
         }
         resetImportSessionSource(seed.source_preview_payload ?? null);
         setSourceUnavailableMessage(seed.source_unavailable_message ?? null);
-        setActiveConfirmedMatrixId(seed.active_confirmed_matrix_id ?? null);
-        setActiveConfirmedRevision(seed.active_confirmed_revision ?? null);
-        setSessionSourceImportId(
-          seed.editor_source_import_id ?? seed.active_source_import_id ?? null
-        );
-        setSessionSourceSnapshotId(
-          seed.editor_source_snapshot_id ?? seed.active_source_snapshot_id ?? null
-        );
-        setActiveAuthoritySourceImportId(seed.active_source_import_id ?? null);
         setShowSelectedGroupsOnly(false);
         setConfirmActiveState("idle");
         setConfirmActiveMessage("");
@@ -372,15 +365,7 @@ export function MatrixEditorWorkspace({
         }
         setSourceUnavailableMessage(null);
         setActiveAuthorityBaselineSignature(null);
-        setActiveConfirmedMatrixId(null);
-        setActiveConfirmedRevision(null);
-        setSessionSourceImportId(null);
-        setSessionSourceSnapshotId(null);
-        setActiveAuthoritySourceImportId(null);
-        setSavedEditorDraftId(null);
-        setSavedPayloadSignature(null);
-        setSavedLocalSignature(null);
-        setSaveState("error");
+        draftPersistence.clearAfterLoadFailure();
         if (revisionDraftReloadPendingRef.current) {
           revisionDraftReloadPendingRef.current = false;
           setRevisionDraftActionState("error");
@@ -601,151 +586,6 @@ export function MatrixEditorWorkspace({
     selectedGroupSampleMergeNote,
   ].filter((note): note is string => Boolean(note));
   const hasProjectId = projectId.trim().length > 0;
-  const currentSavePayload = buildDraftSavePayload(
-    editableRows,
-    groupColumns,
-    sampleValues,
-    schedulePlan,
-    durationAuthorities
-  );
-  const currentSaveSignature = JSON.stringify(currentSavePayload);
-  const hasUnsavedChanges =
-    saveBaselineSignature !== null && currentSaveSignature !== saveBaselineSignature;
-  const buildSessionDraftSaveRequest = (
-    expectedActiveConfirmedMatrixId: string | null,
-    expectedActiveConfirmedRevision: number | null
-  ): MatrixEditorSessionDraftSaveRequest => ({
-    expected_active_confirmed_matrix_id: expectedActiveConfirmedMatrixId,
-    expected_active_confirmed_revision: expectedActiveConfirmedRevision,
-    source_document_path: importPreview?.source_document_path ?? null,
-    source_document_name: importPreview?.source_document_name ?? null,
-    source_format: importPreview?.source_format ?? null,
-    source_import_id: sessionSourceImportId,
-    source_snapshot_id: sessionSourceSnapshotId,
-    pre_test_buffer_days: null,
-    post_test_buffer_days: currentSavePayload.post_test_buffer_days ?? null,
-    sample_received_date: currentSavePayload.sample_received_date ?? null,
-    planned_test_start_date: currentSavePayload.planned_test_start_date ?? null,
-    planned_test_complete_date: currentSavePayload.planned_test_complete_date ?? null,
-    estimated_completion_date: currentSavePayload.estimated_completion_date ?? null,
-    groups: currentSavePayload.groups.map((group, index) => ({
-      draft_group_id:
-        group.draft_group_id ?? `session-group-${index + 1}`,
-      source_group_snapshot_id: group.source_group_snapshot_id ?? null,
-      group_order: group.group_order,
-      group_key: group.group_key,
-      group_label: group.group_label,
-      is_selected: group.is_selected,
-      sample_quantity_expression: group.sample_quantity_expression ?? null,
-      sample_note: group.sample_note ?? null,
-    })),
-    rows: currentSavePayload.rows.map((row, index) => ({
-      draft_row_id: row.draft_row_id ?? `session-row-${index + 1}`,
-      source_row_snapshot_id: row.source_row_snapshot_id ?? null,
-      row_order: row.row_order,
-      test_item: row.test_item,
-      source_section: row.source_section ?? null,
-      method: row.method ?? null,
-      condition: row.condition ?? null,
-      requirement: row.requirement ?? null,
-      day_expression: row.day_expression ?? null,
-      is_sample_row: Boolean(row.is_sample_row),
-    })),
-    cells: currentSavePayload.cells,
-    duration_authorities: durationAuthorities,
-  });
-
-  useEffect(() => {
-    if (autosaveTimeoutRef.current !== null) {
-      window.clearTimeout(autosaveTimeoutRef.current);
-      autosaveTimeoutRef.current = null;
-    }
-    if (
-      !hasUnsavedChanges ||
-      !hasProjectId ||
-      !activeConfirmedMatrixId ||
-      draftLoading ||
-      isLifecycleReadonly ||
-      cancellingRef.current ||
-      isCancelling
-    ) {
-      return;
-    }
-    const generation = autosaveGenerationRef.current + 1;
-    autosaveGenerationRef.current = generation;
-    const signatureToSave = currentSaveSignature;
-    const request = buildSessionDraftSaveRequest(activeConfirmedMatrixId, activeConfirmedRevision);
-    setSaveState("dirty");
-    autosaveTimeoutRef.current = window.setTimeout(() => {
-      if (cancellingRef.current) {
-        return;
-      }
-      setSaveState("saving");
-      autosaveAbortControllerRef.current?.abort();
-      const autosaveAbortController = new AbortController();
-      autosaveAbortControllerRef.current = autosaveAbortController;
-      const saveRequest = saveMatrixEditorSessionDraft(projectId, request, {
-        signal: autosaveAbortController.signal,
-      })
-        .then((response) => {
-          latestAutosaveResultRef.current = response;
-          if (
-            autosaveGenerationRef.current === generation &&
-            !cancellingRef.current
-          ) {
-            setSavedEditorDraftId(response.editor_draft_id);
-            setSavedPayloadSignature(response.saved_payload_signature);
-            setSavedLocalSignature(signatureToSave);
-            setActiveConfirmedMatrixId(response.active_confirmed_matrix_id);
-            setActiveConfirmedRevision(response.active_confirmed_revision);
-            setSaveBaselineSignature(signatureToSave);
-            setSaveState("saved");
-          }
-          return response;
-        })
-        .catch((error) => {
-          if (autosaveAbortController.signal.aborted) {
-            return null;
-          }
-          if (
-            autosaveGenerationRef.current === generation &&
-            !cancellingRef.current
-          ) {
-            setSaveState("error");
-            setConfirmActiveMessage(parseRequestError(error, "Autosave failed."));
-          }
-          return null;
-        })
-        .finally(() => {
-          if (autosaveInFlightRef.current === saveRequest) {
-            autosaveInFlightRef.current = null;
-          }
-          if (autosaveAbortControllerRef.current === autosaveAbortController) {
-            autosaveAbortControllerRef.current = null;
-          }
-        });
-      autosaveInFlightRef.current = saveRequest;
-    }, 800);
-    return () => {
-      if (autosaveTimeoutRef.current !== null) {
-        window.clearTimeout(autosaveTimeoutRef.current);
-        autosaveTimeoutRef.current = null;
-      }
-    };
-  }, [
-    activeConfirmedMatrixId,
-    activeConfirmedRevision,
-    currentSaveSignature,
-    draftLoading,
-    hasProjectId,
-    hasUnsavedChanges,
-    importPreview,
-    isCancelling,
-    isLifecycleReadonly,
-    projectId,
-    sessionSourceImportId,
-    sessionSourceSnapshotId,
-  ]);
   const selectedDraftGroupIds = new Set(
     currentSavePayload.groups
       .filter((group) => group.is_selected)
@@ -816,10 +656,6 @@ export function MatrixEditorWorkspace({
     Boolean(sessionSourceImportId) &&
     Boolean(activeAuthoritySourceImportId) &&
     sessionSourceImportId !== activeAuthoritySourceImportId;
-  const hasCurrentSavedDraft =
-    Boolean(savedEditorDraftId) &&
-    Boolean(savedPayloadSignature) &&
-    savedLocalSignature === currentSaveSignature;
   const methodVersionSync = useMatrixMethodVersionSync({
     projectId,
     draftId: savedEditorDraftId,
@@ -888,9 +724,7 @@ export function MatrixEditorWorkspace({
       return;
     }
     setActiveAuthorityConfirmed(false);
-    if (saveState !== "saving") {
-      setSaveState("dirty");
-    }
+    draftPersistence.markUnsaved();
   };
   const toggleGroupIncluded = (groupId: string, included: boolean): void => {
     markUnsaved();
@@ -1250,68 +1084,6 @@ export function MatrixEditorWorkspace({
     setContextMenu(null);
   };
 
-  const waitForAutosaveBeforeCancel =
-    async (): Promise<MatrixEditorSessionDraftSaveResponse | null> => {
-      const inFlightAutosave = autosaveInFlightRef.current;
-      if (!inFlightAutosave) {
-        return null;
-      }
-      let timeoutId: number | null = null;
-      const cancelWaitTimeout = new Promise<null>((resolve) => {
-        timeoutId = window.setTimeout(() => resolve(null), AUTOSAVE_CANCEL_WAIT_TIMEOUT_MS);
-      });
-      try {
-        return await Promise.race([inFlightAutosave.catch(() => null), cancelWaitTimeout]);
-      } finally {
-        if (timeoutId !== null) {
-          window.clearTimeout(timeoutId);
-        }
-      }
-    };
-
-  const onCancelEditing = async (): Promise<void> => {
-    if (isLifecycleReadonly) {
-      onBackToWorkbench();
-      return;
-    }
-    if (hasUnsavedChanges || savedEditorDraftId) {
-      const shouldDiscard = window.confirm(
-        "Discard current Matrix edits and return to Workbench?"
-      );
-      if (!shouldDiscard) {
-        return;
-      }
-    }
-    cancellingRef.current = true;
-    autosaveGenerationRef.current += 1;
-    autosaveAbortControllerRef.current?.abort();
-    autosaveAbortControllerRef.current = null;
-    if (autosaveTimeoutRef.current !== null) {
-      window.clearTimeout(autosaveTimeoutRef.current);
-      autosaveTimeoutRef.current = null;
-    }
-    setIsCancelling(true);
-    setSaveState("saving");
-    const inFlightResult = await waitForAutosaveBeforeCancel();
-    const discardTokens = inFlightResult ?? latestAutosaveResultRef.current;
-    try {
-      await discardMatrixEditorSessionDraft(projectId, {
-        expected_editor_draft_id:
-          discardTokens?.editor_draft_id ?? savedEditorDraftId ?? null,
-        expected_saved_payload_signature:
-          discardTokens?.saved_payload_signature ?? savedPayloadSignature ?? null,
-      });
-      onBackToWorkbench();
-    } catch (error) {
-      cancellingRef.current = false;
-      setIsCancelling(false);
-      setSaveState("error");
-      setConfirmActiveMessage(
-        parseRequestError(error, "Cancel failed. Matrix draft was not discarded.")
-      );
-    }
-  };
-
   const onGenerateTestRecordPreview = async (): Promise<void> => {
     if (isLifecycleReadonly) {
       setTestRecordState("error");
@@ -1362,26 +1134,13 @@ export function MatrixEditorWorkspace({
       }
       return;
     }
-    const buildConfirmInput = (
-      expectedActiveConfirmedMatrixId: string | null,
-      expectedActiveConfirmedRevision: number | null
-    ) => ({
-      ...buildSessionDraftSaveRequest(
-        expectedActiveConfirmedMatrixId,
-        expectedActiveConfirmedRevision
-      ),
-      expected_editor_draft_id: savedEditorDraftId,
-      expected_saved_payload_signature: savedPayloadSignature,
-      confirmed_by: MVP_REVISION_CONFIRMED_BY,
-    });
     const handleConfirmResponse = (
       response: MatrixEditorSessionConfirmResponse
     ): void => {
       if (response.publish_status === "no_change") {
         setConfirmActiveState("idle");
         setConfirmActiveMessage(response.message);
-        setSaveState("saved");
-        setSaveBaselineSignature(currentSaveSignature);
+        draftPersistence.acceptNoChange(currentSaveSignature);
         onBackToWorkbench();
         return;
       }
@@ -1396,7 +1155,11 @@ export function MatrixEditorWorkspace({
       const response: MatrixEditorSessionConfirmResponse =
         await confirmMatrixEditorSession(
           projectId,
-          buildConfirmInput(activeConfirmedMatrixId, activeConfirmedRevision)
+          draftPersistence.buildConfirmRequest(
+            MVP_REVISION_CONFIRMED_BY,
+            activeConfirmedMatrixId,
+            activeConfirmedRevision
+          )
         );
       handleConfirmResponse(response);
     } catch (error) {
@@ -1411,11 +1174,14 @@ export function MatrixEditorWorkspace({
         try {
           const latestSeed = await fetchMatrixEditorSession(projectId);
           if (latestSeed.active_confirmed_matrix_id) {
-            setActiveConfirmedMatrixId(latestSeed.active_confirmed_matrix_id);
-            setActiveConfirmedRevision(latestSeed.active_confirmed_revision ?? null);
+            draftPersistence.observeAuthority(
+              latestSeed.active_confirmed_matrix_id,
+              latestSeed.active_confirmed_revision ?? null
+            );
             const retryResponse = await confirmMatrixEditorSession(
               projectId,
-              buildConfirmInput(
+              draftPersistence.buildConfirmRequest(
+                MVP_REVISION_CONFIRMED_BY,
                 latestSeed.active_confirmed_matrix_id,
                 latestSeed.active_confirmed_revision ?? null
               )
@@ -2102,7 +1868,7 @@ export function MatrixEditorWorkspace({
       >
         <span>{completionStatusMessage}</span>
         <div className="matrix-editor-completion-actions">
-          <button type="button" onClick={() => void onCancelEditing()}>
+          <button type="button" onClick={() => void draftPersistence.cancel()}>
             Cancel
           </button>
           <button
