@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mapProjectDurationAuthoritiesForSession } from "./MatrixEditorWorkspace";
+import { mapProjectDurationAuthoritiesForSession } from "./matrixEditorDraftModel";
 
 describe("Matrix Editor duration authority preservation", () => {
   it("preserves normalized authority fields from draft seed to save and confirm payloads", () => {
