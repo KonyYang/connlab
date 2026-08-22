@@ -19,9 +19,8 @@ type FeeEvaluationPreviewTableProps = {
   header: FeeEvaluationPreviewHeader;
   identityLine: string;
   downloadState: FeeFileDownloadState;
-  generateDisabledReason: string | null;
+  draftPreviewNotice: string | null;
   readOnly?: boolean;
-  readOnlyReason?: string;
   onCostPreviewChange: (field: keyof FeeEvaluationCostPreviewValues, value: string) => void;
   onGenerateFeeFile: () => void;
   onGroupFilterChange: (value: string) => void;
@@ -77,9 +76,8 @@ export function FeeEvaluationPreviewTable({
   header,
   identityLine,
   downloadState,
-  generateDisabledReason,
+  draftPreviewNotice,
   readOnly = false,
-  readOnlyReason,
   onCostPreviewChange,
   onGenerateFeeFile,
   onGroupFilterChange,
@@ -126,15 +124,15 @@ export function FeeEvaluationPreviewTable({
             className="fee-evaluation-file-button"
             type="button"
             onClick={onGenerateFeeFile}
-            disabled={readOnly || Boolean(generateDisabledReason) || downloadState.kind === "running"}
-            title={readOnly ? readOnlyReason : undefined}
+            disabled={downloadState.kind === "running"}
+            title="Download a draft preview. Official Fee Form output is created from Project Workbench."
           >
             {downloadState.kind === "running" ? "Generating..." : "Fee Form"}
           </button>
         </div>
         <FeeFileDownloadStatus
           state={downloadState}
-          disabledReason={generateDisabledReason}
+          notice={draftPreviewNotice}
         />
         <FeePricingDraftSaveStatus
           state={saveState}
@@ -544,10 +542,10 @@ function editableInputValue(value: string): string {
 }
 
 function FeeFileDownloadStatus({
-  disabledReason,
+  notice,
   state,
 }: {
-  disabledReason: string | null;
+  notice: string | null;
   state: FeeFileDownloadState;
 }): ReactElement | null {
   if (state.kind === "success") {
@@ -565,8 +563,8 @@ function FeeFileDownloadStatus({
       </div>
     );
   }
-  if (disabledReason) {
-    return <p className="fee-evaluation-download-status">{disabledReason}</p>;
+  if (notice) {
+    return <p className="fee-evaluation-download-status">{notice}</p>;
   }
   return null;
 }

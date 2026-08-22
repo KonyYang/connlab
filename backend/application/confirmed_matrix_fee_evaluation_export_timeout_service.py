@@ -103,6 +103,7 @@ def command_to_payload(command: ExportConfirmedMatrixFeeEvaluationCommand) -> di
         "approved_by": command.approved_by,
         "connlab_user": command.connlab_user,
         "fill_mode": command.fill_mode,
+        "output_purpose": command.output_purpose,
         "pricing_draft_edit_id": command.pricing_draft_edit_id,
         "pricing_draft_generation": command.pricing_draft_generation,
         "pricing_draft_payload_fingerprint": command.pricing_draft_payload_fingerprint,
@@ -121,6 +122,11 @@ def command_from_payload(payload: dict[str, Any]) -> ExportConfirmedMatrixFeeEva
     fill_mode = str(payload.get("fill_mode") or "fee_draft")
     if fill_mode not in {"fee_draft", "matrix_basic"}:
         raise ValueError(f"Unsupported fee evaluation export fill mode: {fill_mode}")
+    output_purpose = str(payload.get("output_purpose") or "official")
+    if output_purpose not in {"official", "draft_preview"}:
+        raise ValueError(
+            f"Unsupported fee evaluation export output purpose: {output_purpose}"
+        )
     output_dir = payload.get("output_dir")
     return ExportConfirmedMatrixFeeEvaluationCommand(
         project_id=str(payload["project_id"]),
@@ -133,6 +139,7 @@ def command_from_payload(payload: dict[str, Any]) -> ExportConfirmedMatrixFeeEva
         approved_by=_optional_str(payload.get("approved_by")),
         connlab_user=_optional_str(payload.get("connlab_user")),
         fill_mode=fill_mode,  # type: ignore[arg-type]
+        output_purpose=output_purpose,  # type: ignore[arg-type]
         pricing_draft_edit_id=_optional_str(payload.get("pricing_draft_edit_id")),
         pricing_draft_generation=_optional_int(payload.get("pricing_draft_generation")),
         pricing_draft_payload_fingerprint=_optional_str(

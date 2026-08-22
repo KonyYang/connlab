@@ -152,6 +152,7 @@ def generate_confirmed_matrix_fee_file(
                 overwrite=True,
                 allow_review_required=True,
                 fill_mode="matrix_basic",
+                output_purpose="draft_preview",
                 edited_values=request.to_application() if request else None,
                 pricing_draft_edit_id=(request.pricing_draft_edit_id if request else None),
                 pricing_draft_generation=(request.pricing_draft_generation if request else None),

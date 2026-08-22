@@ -95,6 +95,7 @@ class ExportConfirmedMatrixFeeEvaluationCommand:
     approved_by: str | None = None
     connlab_user: str | None = None
     fill_mode: Literal["fee_draft", "matrix_basic"] = "fee_draft"
+    output_purpose: Literal["official", "draft_preview"] = "official"
     edited_values: FeeEvaluationEditedExportValues | None = None
     basic_information_values: dict[str, str] | None = None
     pricing_draft_edit_id: str | None = None
@@ -180,10 +181,11 @@ class ConfirmedMatrixFeeEvaluationExportService:
     def export(
         self, command: ExportConfirmedMatrixFeeEvaluationCommand
     ) -> ExportConfirmedMatrixFeeEvaluationResult:
-        """Generate one fee evaluation workbook and register output lineage."""
-        command = bind_command_to_current_pricing_draft(
-            command, self._current_pricing_draft_guard
-        )
+        """Generate a workbook and register lineage only for official output."""
+        if command.output_purpose == "official":
+            command = bind_command_to_current_pricing_draft(
+                command, self._current_pricing_draft_guard
+            )
         try:
             template_path = require_template(command.template_path)
             output_dir = require_output_dir(command.output_dir)
@@ -245,11 +247,17 @@ class ConfirmedMatrixFeeEvaluationExportService:
         )
         warnings.extend(write.warnings)
 
-        record_id = self._register_output(
-            project_id=command.project_id,
-            output_path=write.output_path,
-            note=lineage_note(draft),
-        )
+        record_id = None
+        if command.output_purpose == "official":
+            record_id = self._register_output(
+                project_id=command.project_id,
+                output_path=write.output_path,
+                note=lineage_note(draft),
+            )
+        else:
+            warnings.append(
+                "Draft preview only; no official Fee output was registered."
+            )
         return ExportConfirmedMatrixFeeEvaluationResult(
             project_id=command.project_id,
             output_path=write.output_path,
@@ -322,16 +330,22 @@ class ConfirmedMatrixFeeEvaluationExportService:
             warning for warning in write.warnings if warning not in warnings
         )
 
-        record_id = self._register_output(
-            project_id=command.project_id,
-            output_path=write.output_path,
-            note=matrix_basic_lineage_note(
-                basic_fill=basic_fill,
-                pricing_requires_review=pricing_requires_review,
-            ),
-            require_active_draft=False,
-        )
-        if record_id is None:
+        record_id = None
+        if command.output_purpose == "official":
+            record_id = self._register_output(
+                project_id=command.project_id,
+                output_path=write.output_path,
+                note=matrix_basic_lineage_note(
+                    basic_fill=basic_fill,
+                    pricing_requires_review=pricing_requires_review,
+                ),
+                require_active_draft=False,
+            )
+        else:
+            warnings.append(
+                "Draft preview only; no official Fee output was registered."
+            )
+        if command.output_purpose == "official" and record_id is None:
             warnings.append(
                 "Fee output record was not registered because no active reviewed draft exists."
             )

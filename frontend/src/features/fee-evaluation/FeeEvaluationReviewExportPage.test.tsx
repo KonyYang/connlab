@@ -285,7 +285,7 @@ describe("FeeEvaluationReviewExportPage", () => {
       revokeObjectURL: vi.fn(),
     });
 
-    const { unmount } = render(
+    render(
       <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />
     );
 
@@ -327,14 +327,8 @@ describe("FeeEvaluationReviewExportPage", () => {
     ).toBeTruthy();
 
     const feeFormButton = screen.getByRole("button", { name: "Fee Form" });
+    expect((feeFormButton as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(feeFormButton);
-    expect(apiMocks.generateConfirmedMatrixFeeFileDownload).not.toHaveBeenCalled();
-    await waitFor(() => expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1), { timeout: 1600 });
-    unmount();
-    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
-    const reloadedFeeFormButton = await screen.findByRole("button", { name: "Fee Form" });
-    await waitFor(() => expect((reloadedFeeFormButton as HTMLButtonElement).disabled).toBe(false));
-    fireEvent.click(reloadedFeeFormButton);
 
     await waitFor(() => {
       expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalled();
@@ -359,6 +353,7 @@ describe("FeeEvaluationReviewExportPage", () => {
       external_cost_note: "tooling",
       lab_manpower_hourly_rate: "125",
     });
+    expect(payload).not.toHaveProperty("pricing_draft_edit_id");
     expect(payload.manual_rows[0]).toMatchObject({
       row_kind: "sample_preparation",
       confirmed_group_id: "cmg-1",
@@ -957,7 +952,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps closed projects read-only and blocks Fee writes", async () => {
+  it("keeps closed projects read-only while allowing a Fee Form draft preview", async () => {
     arrangeSuccessfulContext({
       pricingDraft: currentPricingDraftResponse(),
       lifecycle: lifecycleResponse({
@@ -969,6 +964,15 @@ describe("FeeEvaluationReviewExportPage", () => {
       }),
     });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
+    apiMocks.generateConfirmedMatrixFeeFileDownload.mockResolvedValue({
+      blob: new Blob(["xls"], { type: "application/vnd.ms-excel" }),
+      fileName: "Fee-P1.xls",
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn(() => "blob:fee-file"),
+      revokeObjectURL: vi.fn(),
+    });
 
     render(
       <FeeEvaluationReviewExportPage
@@ -986,10 +990,17 @@ describe("FeeEvaluationReviewExportPage", () => {
     const updateButton = screen.getByRole("button", { name: "Update Fee" });
     expect(updateButton).toHaveProperty("disabled", true);
     fireEvent.click(updateButton);
-    fireEvent.click(screen.getByRole("button", { name: "Fee Form" }));
+    const feeForm = screen.getByRole("button", { name: "Fee Form" });
+    expect((feeForm as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(feeForm);
     expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
     expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
-    expect(apiMocks.generateConfirmedMatrixFeeFileDownload).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalledWith(
+        "P1",
+        expect.any(Object)
+      )
+    );
   });
 
   it("restores the entry baseline before leaving when autosave already saved edits", async () => {

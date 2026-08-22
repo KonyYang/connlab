@@ -32,7 +32,7 @@ vi.mock("./FeeEvaluationPreviewTable", () => ({
   FeeEvaluationPreviewTable: (props: {
     rows: FeeEvaluationPreviewRow[];
     saveState: { kind: string };
-    generateDisabledReason: string | null;
+    draftPreviewNotice: string | null;
     onGenerateFeeFile: () => void;
     onRowEditChange: (
       lineId: string,
@@ -70,7 +70,6 @@ vi.mock("./FeeEvaluationPreviewTable", () => ({
       </button>
       <button
         type="button"
-        disabled={Boolean(props.generateDisabledReason)}
         onClick={props.onGenerateFeeFile}
       >
         Fee Form
@@ -113,14 +112,14 @@ describe("FeeEvaluationReviewExportPage pricing-draft hydration", () => {
       )
     );
     const feeForm = screen.getByRole("button", { name: "Fee Form" });
-    expect((feeForm as HTMLButtonElement).disabled).toBe(true);
+    expect((feeForm as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(feeForm);
-    expect(apiMocks.generateConfirmedMatrixFeeFileDownload).not.toHaveBeenCalled();
+    expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalled();
     expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
     await waitFor(() => expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1));
-    expect((feeForm as HTMLButtonElement).disabled).toBe(true);
+    expect((feeForm as HTMLButtonElement).disabled).toBe(false);
     expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledWith(
       "P1",
       expect.objectContaining({
@@ -150,7 +149,7 @@ describe("FeeEvaluationReviewExportPage pricing-draft hydration", () => {
     );
 
     await screen.findByTestId("visible-pricing-rows");
-    expect((screen.getByRole("button", { name: "Fee Form" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Fee Form" }) as HTMLButtonElement).disabled).toBe(false);
     await act(async () => {
       await new Promise((resolve) => window.setTimeout(resolve, 900));
     });
@@ -199,7 +198,7 @@ describe("FeeEvaluationReviewExportPage pricing-draft hydration", () => {
     expect(
       await screen.findByText("Fee Evaluation pricing changed. Refresh before leaving.")
     ).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Fee Form" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Fee Form" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("restores the entry payload with the latest session-owned CAS", async () => {

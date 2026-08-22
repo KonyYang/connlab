@@ -624,10 +624,9 @@ export function FeeEvaluationReviewExportPage({
         saveState,
         updateFeeBlockerMessage: firstUpdateFeeBlocker?.message ?? null,
       });
-  const generateDisabledReason = isLifecycleReadonly
-    ? lifecycleReadonlyView.message
-    : feeFileDownloadBlocker(draftState) ??
-      (pricingDraftLoadStatus === "current" && saveState.kind === "saved" ? null : "Save and reload current Fee pricing before generating the Fee form.");
+  const draftPreviewNotice =
+    feeFileDownloadBlocker(draftState) ??
+    "Draft preview only. Official Fee Form output is created from Project Workbench.";
 
   function applySavedPricingDraftResult(
     result: FeeEvaluationPricingDraftResponse,
@@ -740,11 +739,7 @@ export function FeeEvaluationReviewExportPage({
   ]);
 
   async function handleGenerateFeeFile(): Promise<void> {
-    if (isLifecycleReadonly) {
-      setDownloadState({ kind: "error", message: lifecycleReadonlyView.message });
-      return;
-    }
-    if (generateDisabledReason || downloadState.kind === "running") {
+    if (downloadState.kind === "running") {
       return;
     }
     setDownloadState({ kind: "running" });
@@ -753,16 +748,6 @@ export function FeeEvaluationReviewExportPage({
         projectId,
         {
           ...buildEditedExportPayload(previewRows, costPreviewValues),
-          ...(pricingDraftCasRef.current && latestSavedPricingDraftId
-            ? {
-                pricing_draft_edit_id: latestSavedPricingDraftId,
-                pricing_draft_generation: pricingDraftCasRef.current.generation,
-                pricing_draft_payload_fingerprint:
-                  pricingDraftCasRef.current.payloadFingerprint,
-                pricing_draft_validation_token:
-                  pricingDraftCasRef.current.validationToken,
-              }
-            : {}),
         }
       );
       const downloadFileName = feeFileNameFromPageContext({
@@ -1126,13 +1111,12 @@ export function FeeEvaluationReviewExportPage({
         header={previewHeader}
         identityLine={previewIdentityLine}
         downloadState={downloadState}
-        generateDisabledReason={generateDisabledReason}
+        draftPreviewNotice={draftPreviewNotice}
         onCostPreviewChange={handleCostPreviewChange}
         onGenerateFeeFile={handleGenerateFeeFile}
         onGroupFilterChange={setPreviewGroupFilter}
         onRowEditChange={handlePreviewRowEditChange}
         readOnly={isLifecycleReadonly}
-        readOnlyReason={lifecycleReadonlyView.message}
         saveState={saveState}
         suppressedSaveMessage={
           confirmFeeActionState.kind === "error"

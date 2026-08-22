@@ -46,6 +46,7 @@ def test_command_payload_round_trip_preserves_export_options(tmp_path: Path) -> 
         approved_by="Lead",
         connlab_user="ConnLab User",
         fill_mode="matrix_basic",
+        output_purpose="draft_preview",
         pricing_draft_edit_id="fed-2",
         pricing_draft_generation=3,
         pricing_draft_payload_fingerprint="payload-fingerprint",

@@ -162,6 +162,43 @@ def test_matrix_basic_fill_is_explicit_and_allows_review_required_draft(
     assert result.line_traceability[1].cell_value == "abc"
 
 
+def test_draft_preview_uses_client_values_without_registering_official_output(
+    tmp_path: Path,
+) -> None:
+    output_service = _OutputService()
+    edited_values = FeeEvaluationEditedExportValues(
+        rows=(),
+        manual_rows=(),
+        summary=FeeEvaluationEditedExportSummary(
+            condition_confirmation_spend_time="0",
+            external_cost="0",
+            external_cost_note="",
+            lab_manpower_hourly_rate="200",
+        ),
+    )
+    service = _service(
+        draft=_draft(status="needs_review"),
+        output_service=output_service,
+        confirmed_store=_ConfirmedStore(_basic_snapshot()),
+        current_pricing_draft_guard=_UnexpectedPricingDraftGuard(),
+    )
+
+    result = service.export(
+        ExportConfirmedMatrixFeeEvaluationCommand(
+            project_id="P1",
+            template_path=_template(tmp_path),
+            output_dir=tmp_path,
+            fill_mode="matrix_basic",
+            output_purpose="draft_preview",
+            edited_values=edited_values,
+        )
+    )
+
+    assert result.output_record_id is None
+    assert output_service.commands == []
+    assert "Draft preview only; no official Fee output was registered." in result.warnings
+
+
 def test_matrix_basic_fill_note_json_encodes_source_cell_value(
     tmp_path: Path,
 ) -> None:
@@ -563,12 +600,14 @@ def _service(
     output_service: _OutputService | None = None,
     writer: _Writer | None = None,
     confirmed_store: "_ConfirmedStore | None" = None,
+    current_pricing_draft_guard: object | None = None,
 ) -> ConfirmedMatrixFeeEvaluationExportService:
     return ConfirmedMatrixFeeEvaluationExportService(
         fee_draft_service=_DraftService(draft),
         confirmed_store=confirmed_store or _ConfirmedStore(_basic_snapshot()),
         project_output_service=output_service or _OutputService(),
         workbook_writer=writer or _Writer(),
+        current_pricing_draft_guard=current_pricing_draft_guard,
     )
 
 
@@ -810,6 +849,11 @@ class _OutputService:
     ) -> object:
         self.commands.append(command)
         return type("Record", (), {"output_record_id": "por-1"})()
+
+
+class _UnexpectedPricingDraftGuard:
+    def require_current(self, **_: object) -> object:
+        raise AssertionError("Draft previews must not require persisted pricing authority.")
 
 
 class _ConfirmedStore:

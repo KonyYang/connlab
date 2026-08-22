@@ -53,6 +53,7 @@ def test_fee_file_download_route_returns_generated_xls_and_uses_matrix_basic_fil
     command = service.commands[0]
     assert command.project_id == "P1"
     assert command.fill_mode == "matrix_basic"
+    assert command.output_purpose == "draft_preview"
     assert command.allow_review_required is True
     assert command.overwrite is True
     assert command.output_file_name is None
