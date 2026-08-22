@@ -29,12 +29,15 @@ import { MatrixImportSourceCandidatePicker } from "./MatrixImportSourceCandidate
 import { MatrixMethodVersionSyncPanel } from "./MatrixMethodVersionSyncPanel";
 import { useMatrixMethodVersionSync } from "./useMatrixMethodVersionSync";
 import { MatrixImportStandardVersionChoiceDialog } from "./MatrixImportStandardVersionChoiceDialog";
+import { MatrixImportDialog } from "./MatrixImportDialog";
 import { useMatrixImportWorkflow } from "./useMatrixImportWorkflow";
 import {
   useMatrixDraftPersistence,
   type MatrixDraftSaveState,
 } from "./useMatrixDraftPersistence";
 import { ContactMeasurementPlanSummaryCard } from "../contact-measurement-plan/ContactMeasurementPlanSummaryCard";
+import { MatrixAutoGrowTextarea } from "./MatrixAutoGrowTextarea";
+import { MatrixStepWorkspace } from "./MatrixStepWorkspace";
 import { useProjectPointProfileSummaryModel } from "../contact-measurement-plan/useProjectPointProfileSummaryModel";
 import {
   calculateMatrixSchedule,
@@ -104,16 +107,6 @@ type MatrixContextMenu =
   | { kind: "row"; rowIndex: number; x: number; y: number }
   | { kind: "group"; groupId: string; x: number; y: number };
 
-type MatrixAutoGrowTextareaProps = {
-  ariaLabel: string;
-  className?: string;
-  errorMessage?: string;
-  value: string;
-  disabled?: boolean;
-  onFocus?: () => void;
-  onChange: (value: string) => void;
-};
-
 function parseRequestError(error: unknown, fallback: string): string {
   const detail =
     error && typeof error === "object" && "detail" in error
@@ -139,41 +132,6 @@ function triggerBlobDownload(blob: Blob, fileName: string): void {
   anchor.click();
   anchor.remove();
   window.URL.revokeObjectURL(url);
-}
-
-function MatrixAutoGrowTextarea({
-  ariaLabel,
-  className,
-  errorMessage,
-  value,
-  disabled = false,
-  onFocus,
-  onChange
-}: MatrixAutoGrowTextareaProps): ReactElement {
-  const ref = useRef<HTMLTextAreaElement | null>(null);
-
-  useLayoutEffect(() => {
-    const element = ref.current;
-    if (!element) {
-      return;
-    }
-    element.style.height = "auto";
-    element.style.height = `${element.scrollHeight + 4}px`;
-  }, [value]);
-
-  return (
-    <textarea
-      ref={ref}
-      aria-label={ariaLabel}
-      className={className ? `matrix-editor-inline-textarea ${className}` : "matrix-editor-inline-textarea"}
-      rows={1}
-      disabled={disabled}
-      title={errorMessage || undefined}
-      value={value}
-      onFocus={onFocus}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  );
 }
 
 export function MatrixEditorWorkspace({
@@ -1317,68 +1275,7 @@ export function MatrixEditorWorkspace({
         />
       ) : null}
       {importDialog ? (
-        <section className="matrix-editor-import-modal-backdrop">
-          <article className="matrix-editor-import-modal" onClick={(event) => event.stopPropagation()}>
-            <header>
-              <div className="matrix-editor-import-header-inline">
-                <h3>Import Matrix</h3>
-                <p title={importDialog.fileName}>
-                  {importDialog.fileName}
-                </p>
-              </div>
-            </header>
-            <div className="matrix-editor-import-modal-body">
-              <div className="matrix-editor-import-pdf-pane">
-                {importDialog.previewPdfSrc ? (
-                  <iframe title="Source PDF Preview" src={importDialog.previewPdfSrc} />
-                ) : (
-                  <div className="matrix-editor-step-empty">PDF preview unavailable.</div>
-                )}
-              </div>
-              <div className="matrix-editor-import-controls-pane">
-                <div className="matrix-editor-import-controls-row">
-                  <label>
-                    <span>Page</span>
-                    <input disabled={isLifecycleReadonly || importDialog.actionBusy} value={importDialog.locatorPage} onChange={(event) => importDialog.updateLocator({ page: event.target.value })} />
-                  </label>
-                  <label>
-                    <span>Table on page</span>
-                    <input disabled={isLifecycleReadonly || importDialog.actionBusy} value={importDialog.locatorTableOnPage} onChange={(event) => importDialog.updateLocator({ tableOnPage: event.target.value })} />
-                  </label>
-                </div>
-                <label>
-                  <span>Table Title / Content Keyword</span>
-                  <input disabled={isLifecycleReadonly || importDialog.actionBusy} value={importDialog.locatorKeyword} onChange={(event) => importDialog.updateLocator({ keyword: event.target.value })} />
-                </label>
-                {importDialog.importingPreview ? <p>Reparsing...</p> : null}
-                {importDialog.lookupMessage ? (
-                  <p className={importDialog.lookupTone === "success" ? "matrix-editor-import-status-success" : importDialog.lookupTone === "error" ? "matrix-editor-import-status-error" : ""}>
-                    {importDialog.lookupMessage}
-                  </p>
-                ) : null}
-                {importDialog.error ? <p className="error">{importDialog.error}</p> : null}
-                <footer className="matrix-editor-import-controls-footer">
-                  <button className="matrix-editor-import-secondary-button" type="button" disabled={importDialog.actionBusy} onClick={importDialog.close}>Cancel</button>
-                  <button
-                    className="matrix-editor-import-commit-button"
-                    type="button"
-                    disabled={isLifecycleReadonly || importDialog.actionBusy || !importDialog.preview || importDialog.preview.groups.length === 0}
-                    onClick={() => void importDialog.replace()}
-                  >
-                    Replace
-                  </button>
-                  <button
-                    className="matrix-editor-import-commit-button"
-                    type="button"
-                    disabled
-                  >
-                    Append
-                  </button>
-                </footer>
-              </div>
-            </div>
-          </article>
-        </section>
+        <MatrixImportDialog dialog={importDialog} readOnly={isLifecycleReadonly} />
       ) : null}
       <MatrixImportStandardVersionChoiceDialog
         busy={matrixImport.standardVersionChoice.busy}
@@ -1772,95 +1669,29 @@ export function MatrixEditorWorkspace({
           />
         </section>
 
-        <aside className="matrix-editor-step-workspace" aria-label="Group Step Workspace">
-          <header className="matrix-editor-step-header">
-            <h3 className="matrix-editor-step-header-text">
-              {`Group ${selectedGroup ? selectedGroup.name || "Unnamed" : "-"}: ${selectedGroupStepRows.length} steps`}
-            </h3>
-          </header>
-          {!selectedGroup ? (
-            <div className="matrix-editor-step-empty">Select a group header to preview steps.</div>
-          ) : selectedGroupStepRows.length === 0 ? (
-            <div className="matrix-editor-step-empty">No steps in this group.</div>
-          ) : (
-            <>
-              <table className="matrix-editor-step-output-table">
-                <thead>
-                  <tr>
-                    <th>Step</th>
-                    <th>Requirement</th>
-                    <th>Step Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedGroupStepRows.map((row) => (
-                    <tr key={row.key}>
-                      <td>{row.stepNo}</td>
-                      <td>
-                        <MatrixAutoGrowTextarea
-                          ariaLabel={`Step ${row.stepNo} requirement`}
-                          className="matrix-editor-step-output-textarea"
-                          disabled={isLifecycleReadonly}
-                          value={row.requirementValue}
-                          onChange={(value) => updateStepOutputOverride(row.key, "requirement", value)}
-                        />
-                      </td>
-                      <td>
-                        <MatrixAutoGrowTextarea
-                          ariaLabel={`Step ${row.stepNo} description`}
-                          className="matrix-editor-step-output-textarea"
-                          disabled={isLifecycleReadonly}
-                          value={row.descriptionValue}
-                          onChange={(value) => updateStepOutputOverride(row.key, "description", value)}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {selectedGroupStepNotes.length > 0 ? (
-                <section className="matrix-editor-notes-card matrix-editor-notes-card-step">
-                  <h4>Step Notes</h4>
-                  {dedupedSelectedGroupStepNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>)}
-                </section>
-              ) : null}
-              {selectedGroupItemSectionNotes.length > 0 ? (
-                <section className="matrix-editor-notes-card matrix-editor-notes-card-item-section">
-                  <h4>Item/Section Notes</h4>
-                  {selectedGroupItemSectionNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>)}
-                </section>
-              ) : null}
-              <section className="matrix-editor-notes-card matrix-editor-notes-card-samples">
-                <div className="matrix-editor-samples-inline">
-                  <h4>Samples</h4>
-                  <input
-                    className="matrix-editor-inline-input matrix-editor-samples-inline-input"
-                    disabled={isLifecycleReadonly}
-                    value={selectedGroupSamplesValue}
-                    onChange={(event) => {
-                      if (!selectedGroup) {
-                        return;
-                      }
-                      markUnsaved();
-                      const value = event.target.value;
-                      setSampleValues((previous) => ({ ...previous, [selectedGroup.id]: value }));
-                      setSampleMergeNotes((previous) => {
-                        const { [selectedGroup.id]: _removed, ...next } = previous;
-                        return next;
-                      });
-                    }}
-                  />
-                </div>
-                {selectedGroupSampleNotes.length > 0 ? (
-                  <>
-                    <h5>Notes</h5>
-                    {selectedGroupSampleNotes.map((note, index) => <p key={`${note}-${index}`}>{note}</p>)}
-                  </>
-                ) : null}
-              </section>
-            </>
-          )}
-        </aside>
+        <MatrixStepWorkspace
+          readOnly={isLifecycleReadonly}
+          view={{
+            groupName: selectedGroup ? selectedGroup.name || "Unnamed" : null,
+            itemSectionNotes: selectedGroupItemSectionNotes,
+            rows: selectedGroupStepRows,
+            sampleNotes: selectedGroupSampleNotes,
+            sampleValue: selectedGroupSamplesValue,
+            stepNotes: dedupedSelectedGroupStepNotes,
+          }}
+          onChangeStep={updateStepOutputOverride}
+          onChangeSample={(value) => {
+            if (!selectedGroup) {
+              return;
+            }
+            markUnsaved();
+            setSampleValues((previous) => ({ ...previous, [selectedGroup.id]: value }));
+            setSampleMergeNotes((previous) => {
+              const { [selectedGroup.id]: _removed, ...next } = previous;
+              return next;
+            });
+          }}
+        />
       </section>
       <footer
         aria-label="Matrix editor completion actions"

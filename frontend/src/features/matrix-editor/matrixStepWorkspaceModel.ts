@@ -10,7 +10,7 @@ export type StepOutputOverride = {
   description?: string;
 };
 
-type StepPreviewRow = {
+export type StepPreviewRow = {
   key: string;
   stepNo: number;
   rawToken: string;

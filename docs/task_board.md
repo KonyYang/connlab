@@ -11,8 +11,31 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_EDITOR_RENDER_AND_TEST_ORGANIZATION",
+    "summary": "Organize Matrix Editor rendering and split public UI tests into at most three behavioral groups without changing observable behavior.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Extract only render modules with small cohesive interfaces: Import modal and Matrix Step Workspace; keep the high-prop Grid and shallow Completion dock in MatrixEditorWorkspace; split Workspace public-UI tests into import, editing, and save/cancel/confirm lifecycle groups with shared fixtures; do not add private-function or source-text tests.",
+    "scope_paths": [
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+      "frontend/src/features/matrix-editor/useMatrixImportWorkflow.ts",
+      "frontend/src/features/matrix-editor/MatrixImportDialog.tsx",
+      "frontend/src/features/matrix-editor/MatrixStepWorkspace.tsx",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.test.tsx",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.testSupport.tsx",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.import.test.tsx",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.lifecycle.test.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "6ff54f9e0e7ff06e7f23c53b6caccf0f98ce0c4e",
+    "started_at": "2026-08-22T04:52:39.260402Z",
+    "updated_at": "2026-08-22T04:52:39.260402Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_MATRIX_EDITOR_DRAFT_PERSISTENCE_EXTRACTION",
     "tier": "standard",

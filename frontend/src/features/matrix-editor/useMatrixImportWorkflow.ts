@@ -47,7 +47,7 @@ type MatrixImportSourcePickerView = {
   uploadOtherFile: () => void;
 };
 
-type MatrixImportDialogView = {
+export type MatrixImportDialogView = {
   actionBusy: boolean;
   close: () => void;
   error: string | null;
