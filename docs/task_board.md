@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_STANDARD_VALIDATION_DEDUPLICATION",
+    "summary": "Remove duplicated full validation between Developer and QA in standard tasks.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Clarify existing workflow authority so Developer runs targeted feedback checks and QA owns the single final complete matrix.",
+    "scope_paths": [
+      "AGENTS.md",
+      "docs/project_management/SOL_NATIVE_WORKFLOW.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "c3abf84894b7f6fea1963b97b21e4153daf7624e",
+    "started_at": "2026-08-22T02:54:24.716758Z",
+    "updated_at": "2026-08-22T02:54:24.716758Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_REMOVE_LEGACY_MATRIX_STEP_QUANTITY_API",
     "tier": "standard",
