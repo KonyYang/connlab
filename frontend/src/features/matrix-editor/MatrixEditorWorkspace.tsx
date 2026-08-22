@@ -12,7 +12,6 @@ import {
   createMatrixRevisionDraft,
   discardMatrixEditorSessionDraft,
   fetchMatrixEditorSession,
-  fetchMatrixStepQuantities,
   generateMatrixEditorTestRecordDraftDownload,
   isMatrixImportStandardVersionActionRequiredError,
   isProjectLifecycleReadonlyErrorDetail,
@@ -21,9 +20,7 @@ import {
   previewProjectTestPlanMatrixFromSourceCandidate,
   previewProjectTestPlanMatrixFromUpload,
   saveMatrixEditorSessionDraft,
-  saveMatrixStepQuantities,
   type ConfirmedMatrixSnapshot,
-  type MatrixStepQuantityItem,
   type MatrixEditorTestRecordDraftRequest,
   type MatrixEditorSessionDraft,
   type MatrixEditorSessionDurationAuthority,
@@ -49,36 +46,12 @@ import { useMatrixEditorXlsxExport } from "./useMatrixEditorXlsxExport";
 import { useMatrixImportSourcePicker } from "./useMatrixImportSourcePicker";
 import { MatrixImportSourceCandidatePicker } from "./MatrixImportSourceCandidatePicker";
 import { hasMatrixImportSourcePicker } from "../../desktop/pathPickerBridge";
-import { MatrixStepQuantityPanel } from "./MatrixStepQuantityPanel";
 import { MatrixMethodVersionSyncPanel } from "./MatrixMethodVersionSyncPanel";
 import { useMatrixMethodVersionSync } from "./useMatrixMethodVersionSync";
 import { MatrixImportStandardVersionChoiceDialog } from "./MatrixImportStandardVersionChoiceDialog";
 import { useMatrixImportStandardVersionChoice } from "./useMatrixImportStandardVersionChoice";
-import {
-  applyStepQuantityDefaultsToBlankFields,
-  filterStepQuantitiesForGroup,
-  toStepQuantitySaveItems,
-  updateStepQuantityField,
-  type MatrixStepQuantityDefaults,
-  type MatrixStepQuantityEditableField,
-} from "./matrixStepQuantitySelectors";
 import { ContactMeasurementPlanSummaryCard } from "../contact-measurement-plan/ContactMeasurementPlanSummaryCard";
 import { useProjectPointProfileSummaryModel } from "../contact-measurement-plan/useProjectPointProfileSummaryModel";
-import {
-  DEFAULT_CONTACT_PLAN_PROFILES,
-  addCustomContactFamily,
-  applyContactPlanToBlankTargets,
-  filterNonContactStepQuantities,
-  hydrateUniformContactPlanProfiles,
-  removeCustomContactFamily,
-  updateContactFamilyCount,
-  updateContactFamilyIncluded,
-  updateContactFamilyLabel,
-  updateContactFamilyPrefix,
-  updateContactTargetCoverage,
-  type ContactMeasurementKind,
-  type ContactPlanProfiles,
-} from "./matrixContactMeasurementPlanSelectors";
 import {
   calculateMatrixSchedule,
   emptySchedulePlan,
@@ -1732,20 +1705,6 @@ export function MatrixEditorWorkspace({
   const [savedEditorDraftId, setSavedEditorDraftId] = useState<string | null>(null);
   const [savedPayloadSignature, setSavedPayloadSignature] = useState<string | null>(null);
   const [savedLocalSignature, setSavedLocalSignature] = useState<string | null>(null);
-  const [stepQuantityItems, setStepQuantityItems] = useState<MatrixStepQuantityItem[]>([]);
-  const [stepQuantityLoading, setStepQuantityLoading] = useState(false);
-  const [stepQuantitySaving, setStepQuantitySaving] = useState(false);
-  const [stepQuantityMessage, setStepQuantityMessage] = useState<string | null>(null);
-  const [stepQuantityError, setStepQuantityError] = useState<string | null>(null);
-  const [stepQuantityDefaults, setStepQuantityDefaults] =
-    useState<MatrixStepQuantityDefaults>({
-      test_points_per_sample: "",
-      readings_per_point: "",
-      contact_points_per_sample: ""
-    });
-  const [contactPlanProfiles, setContactPlanProfiles] = useState<ContactPlanProfiles>(
-    DEFAULT_CONTACT_PLAN_PROFILES
-  );
   const pointProfileSummary = useProjectPointProfileSummaryModel(projectId);
   const [isCancelling, setIsCancelling] = useState(false);
   const [sourceUnavailableMessage, setSourceUnavailableMessage] = useState<string | null>(null);
@@ -1906,46 +1865,6 @@ export function MatrixEditorWorkspace({
     };
   }, [projectId, sessionReloadGeneration]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadStepQuantities = async (): Promise<void> => {
-      if (!savedEditorDraftId) {
-        setStepQuantityItems([]);
-        setStepQuantityMessage(null);
-        setStepQuantityError(null);
-        return;
-      }
-      setStepQuantityLoading(true);
-      setStepQuantityError(null);
-      try {
-        const response = await fetchMatrixStepQuantities(projectId, savedEditorDraftId);
-        if (cancelled) {
-          return;
-        }
-        setStepQuantityItems(response.items);
-        const hydration = hydrateUniformContactPlanProfiles(response.items);
-        if (hydration.profiles) {
-          setContactPlanProfiles((previous) => ({ ...previous, ...hydration.profiles }));
-        }
-        setStepQuantityMessage(hydration.reviewMessage);
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-        setStepQuantityItems([]);
-        setStepQuantityError(parseRequestError(error, "Unable to load Step quantities."));
-      } finally {
-        if (!cancelled) {
-          setStepQuantityLoading(false);
-        }
-      }
-    };
-    void loadStepQuantities();
-    return () => {
-      cancelled = true;
-    };
-  }, [projectId, savedEditorDraftId]);
-
   useLayoutEffect(() => {
     setSampleValues((previous) => {
       const next: Record<string, string> = {};
@@ -2087,174 +2006,6 @@ export function MatrixEditorWorkspace({
   );
   const selectedGroupPreviewNotes = buildPreviewStepNoteLookup(importPreview, selectedGroup);
   const selectedGroupSamplesValue = selectedGroup ? sampleValues[selectedGroup.id] ?? "" : "";
-  const selectedGroupStepQuantityItems = filterStepQuantitiesForGroup(
-    stepQuantityItems,
-    selectedGroup?.draftGroupId ?? null
-  );
-  const selectedGroupNonContactStepQuantityItems = filterNonContactStepQuantities(
-    selectedGroupStepQuantityItems
-  );
-  const contactGroupLabels = Object.fromEntries(
-    groupColumns.map((group) => [
-      group.draftGroupId ?? group.id,
-      group.name || group.groupKey || "Group",
-    ])
-  );
-  const contactPlanMessage = stepQuantityMessage?.startsWith("Contact plan")
-    ? stepQuantityMessage
-    : null;
-  const genericStepQuantityMessage = contactPlanMessage ? null : stepQuantityMessage;
-  const onStepQuantityFieldChange = (
-    item: MatrixStepQuantityItem,
-    field: MatrixStepQuantityEditableField,
-    value: string
-  ): void => {
-    setStepQuantityItems((previous) =>
-      updateStepQuantityField(previous, item, field, value)
-    );
-    setStepQuantityMessage(null);
-    setStepQuantityError(null);
-  };
-  const onContactFamilyCountChange = (
-    kind: ContactMeasurementKind,
-    familyId: string,
-    value: string
-  ): void => {
-    setContactPlanProfiles((previous) =>
-      updateContactFamilyCount(previous, kind, familyId, value)
-    );
-    setStepQuantityMessage(null);
-    setStepQuantityError(null);
-  };
-  const onContactFamilyIncludedChange = (
-    kind: ContactMeasurementKind,
-    familyId: string,
-    included: boolean
-  ): void => {
-    setContactPlanProfiles((previous) =>
-      updateContactFamilyIncluded(previous, kind, familyId, included)
-    );
-    setStepQuantityMessage(null);
-    setStepQuantityError(null);
-  };
-  const onContactFamilyLabelChange = (
-    kind: ContactMeasurementKind,
-    familyId: string,
-    value: string
-  ): void => {
-    setContactPlanProfiles((previous) =>
-      updateContactFamilyLabel(previous, kind, familyId, value)
-    );
-    setStepQuantityMessage(null);
-    setStepQuantityError(null);
-  };
-  const onContactFamilyPrefixChange = (
-    kind: ContactMeasurementKind,
-    familyId: string,
-    value: string
-  ): void => {
-    setContactPlanProfiles((previous) =>
-      updateContactFamilyPrefix(previous, kind, familyId, value)
-    );
-    setStepQuantityMessage(null);
-    setStepQuantityError(null);
-  };
-  const onAddCustomContactFamily = (kind: ContactMeasurementKind): void => {
-    const persistedFamilyIds = stepQuantityItems.flatMap((item) =>
-      item.contact_plan?.contact_kind === kind
-        ? item.contact_plan.families.map((family) => family.family_id)
-        : []
-    );
-    setContactPlanProfiles((previous) =>
-      addCustomContactFamily(previous, kind, persistedFamilyIds)
-    );
-    setStepQuantityMessage(null);
-    setStepQuantityError(null);
-  };
-  const onRemoveCustomContactFamily = (
-    kind: ContactMeasurementKind,
-    familyId: string
-  ): void => {
-    setContactPlanProfiles((previous) =>
-      removeCustomContactFamily(previous, kind, familyId)
-    );
-    setStepQuantityMessage(null);
-    setStepQuantityError(null);
-  };
-  const onContactTargetIncludedChange = (
-    item: MatrixStepQuantityItem,
-    included: boolean,
-    exclusionReason: string
-  ): void => {
-    setStepQuantityItems((previous) =>
-      updateContactTargetCoverage(previous, item, included, exclusionReason)
-    );
-    setStepQuantityMessage(null);
-    setStepQuantityError(null);
-  };
-  const onContactTargetExclusionReasonChange = (
-    item: MatrixStepQuantityItem,
-    exclusionReason: string
-  ): void => {
-    setStepQuantityItems((previous) =>
-      updateContactTargetCoverage(previous, item, false, exclusionReason)
-    );
-    setStepQuantityMessage(null);
-    setStepQuantityError(null);
-  };
-  const onStepQuantityDefaultChange = (
-    field: MatrixStepQuantityEditableField,
-    value: string
-  ): void => {
-    setStepQuantityDefaults((previous) => ({ ...previous, [field]: value }));
-    setStepQuantityMessage(null);
-    setStepQuantityError(null);
-  };
-  const onApplyStepQuantityDefaults = (): void => {
-    const result = applyStepQuantityDefaultsToBlankFields(
-      stepQuantityItems,
-      selectedGroup?.draftGroupId ?? null,
-      stepQuantityDefaults
-    );
-    setStepQuantityItems(result.items);
-    setStepQuantityMessage(
-      result.changed
-        ? "Defaults applied to blank Step quantities."
-        : "No blank Step quantities to update."
-    );
-    setStepQuantityError(null);
-  };
-  const onApplyContactPlan = (): void => {
-    const result = applyContactPlanToBlankTargets(stepQuantityItems, contactPlanProfiles);
-    setStepQuantityItems(result.items);
-    setStepQuantityMessage(
-      result.changed
-        ? result.reviewRequired
-          ? "Contact plan needs family counts before save."
-          : "Contact plan applied to blank targets."
-        : "No blank contact targets to update."
-    );
-    setStepQuantityError(null);
-  };
-  const onSaveStepQuantities = async (): Promise<void> => {
-    if (!savedEditorDraftId) {
-      setStepQuantityError("Save the Matrix draft before setting Step quantities.");
-      return;
-    }
-    setStepQuantitySaving(true);
-    setStepQuantityError(null);
-    try {
-      const response = await saveMatrixStepQuantities(projectId, savedEditorDraftId, {
-        items: toStepQuantitySaveItems(stepQuantityItems)
-      });
-      setStepQuantityItems(response.items);
-      setStepQuantityMessage("Step quantities saved.");
-    } catch (error) {
-      setStepQuantityError(parseRequestError(error, "Unable to save Step quantities."));
-    } finally {
-      setStepQuantitySaving(false);
-    }
-  };
   const onOpenEditableMatrixDraft = async (): Promise<void> => {
     if (
       isLifecycleReadonly ||
@@ -4183,19 +3934,6 @@ export function MatrixEditorWorkspace({
                   ))}
                 </tbody>
               </table>
-              <MatrixStepQuantityPanel
-                items={selectedGroupNonContactStepQuantityItems}
-                loading={stepQuantityLoading}
-                saving={stepQuantitySaving}
-                readOnly={isLifecycleReadonly}
-                defaults={stepQuantityDefaults}
-                message={genericStepQuantityMessage}
-                error={stepQuantityError}
-                onDefaultChange={onStepQuantityDefaultChange}
-                onApplyDefaults={onApplyStepQuantityDefaults}
-                onFieldChange={onStepQuantityFieldChange}
-                onSave={() => void onSaveStepQuantities()}
-              />
               {selectedGroupStepNotes.length > 0 ? (
                 <section className="matrix-editor-notes-card matrix-editor-notes-card-step">
                   <h4>Step Notes</h4>

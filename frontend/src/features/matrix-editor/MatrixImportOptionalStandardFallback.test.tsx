@@ -7,7 +7,6 @@ import { MatrixEditorWorkspace } from "./MatrixEditorWorkspace";
 const apiMocks = vi.hoisted(() => ({
   commitMatrixImport: vi.fn(),
   fetchMatrixEditorSession: vi.fn(),
-  fetchMatrixStepQuantities: vi.fn(),
   previewProjectTestPlanMatrixFromUpload: vi.fn(),
   saveMatrixEditorSessionDraft: vi.fn(),
 }));
@@ -16,7 +15,6 @@ vi.mock("../../api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../api/client")>()),
   commitMatrixImport: apiMocks.commitMatrixImport,
   fetchMatrixEditorSession: apiMocks.fetchMatrixEditorSession,
-  fetchMatrixStepQuantities: apiMocks.fetchMatrixStepQuantities,
   previewProjectTestPlanMatrixFromUpload: apiMocks.previewProjectTestPlanMatrixFromUpload,
   saveMatrixEditorSessionDraft: apiMocks.saveMatrixEditorSessionDraft,
   matrixPreviewPdfUrl: (token: string) => `/api/pdf/${token}`,
@@ -48,7 +46,6 @@ vi.mock("./MatrixEditorXlsxExportButton", () => ({ MatrixEditorXlsxExportButton:
 vi.mock("./useMatrixEditorXlsxExport", () => ({
   useMatrixEditorXlsxExport: () => ({ busy: false, error: null, message: null, exportSnapshot: vi.fn() }),
 }));
-vi.mock("./MatrixStepQuantityPanel", () => ({ MatrixStepQuantityPanel: () => null }));
 vi.mock("./MatrixMethodVersionSyncPanel", () => ({ MatrixMethodVersionSyncPanel: () => null }));
 vi.mock("./useMatrixMethodVersionSync", () => ({
   useMatrixMethodVersionSync: () => ({
@@ -82,7 +79,6 @@ describe("Matrix Import optional Standard version fallback", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     apiMocks.fetchMatrixEditorSession.mockResolvedValue(sessionSeed());
-    apiMocks.fetchMatrixStepQuantities.mockResolvedValue({ items: [] });
     apiMocks.saveMatrixEditorSessionDraft.mockResolvedValue({
       editor_draft_id: "draft-fallback",
       saved_payload_signature: "saved",
