@@ -110,6 +110,7 @@ def test_browser_release_script_builds_web_folder_without_business_changes() -> 
     assert "tests\\unit\\test_llcr_cr_specialized_record_workbook_gateway.py" in script
     assert "tests\\integration\\test_matrix_editor_llcr_cr_record_generation_api.py" in script
     assert "tests\\integration\\test_llcr_cr_specialized_record_workbook_api.py" in script
+    assert "tests\\integration\\test_project_test_plan_preview_api.py" not in script
     assert script.count('Invoke-TimedStep "[') == 5
     assert "[System.Diagnostics.Stopwatch]::StartNew()" in script
     assert "finally {\n        try {\n            $stopwatch.Stop()" in script

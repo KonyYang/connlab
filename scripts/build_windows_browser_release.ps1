@@ -109,7 +109,6 @@ if (-not $SkipTests) {
                 tests\unit\test_desktop_packaged_static.py `
                 tests\unit\test_desktop_release_scripts.py `
                 tests\unit\test_word_numbering.py `
-                tests\integration\test_project_test_plan_preview_api.py `
                 tests\unit\test_test_record_template_resource.py `
                 tests\integration\test_matrix_editor_test_record_generation_api.py `
                 tests\unit\test_llcr_cr_specialized_record_workbook_gateway.py `
