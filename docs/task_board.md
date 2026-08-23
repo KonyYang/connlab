@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_LLCR_STDEV_COMPATIBILITY",
+    "summary": "Fix LLCR workbook Stdev cells that display #NAME? in Excel-compatible clients.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Replace incompatible STDEV.S formulas with the macro-equivalent STDEV function in both LLCR workbook layouts and add regression coverage.",
+    "scope_paths": [
+      "backend/infrastructure/office/llcr_cr_record_workbook_layout.py",
+      "tests/unit/test_llcr_cr_specialized_record_workbook_gateway.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "e68b42b95f51e4dc283fc3d1c9c95647791c601d",
+    "started_at": "2026-08-23T12:57:20.802051Z",
+    "updated_at": "2026-08-23T12:57:20.802051Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_LLCR_RECORD_WORKBOOK_MACRO_PARITY",
     "tier": "standard",

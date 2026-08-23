@@ -62,7 +62,7 @@ def test_gateway_writes_macro_style_llcr_category_and_summary_formulas(tmp_path)
     assert sheet["K10"].value == '=IF(J10="","",J10)'
     assert sheet["K12"].value == '=IF(OR(J12="",J10=""),"",J12-J10)'
     assert sheet["L10"].value == '=IF(COUNT(K10:K11)=0,"",MIN(K10:K11))'
-    assert sheet["O10"].value == '=IF(COUNT(K10:K11)<2,"",STDEV.S(K10:K11))'
+    assert sheet["O10"].value == '=IF(COUNT(K10:K11)<2,"",STDEV(K10:K11))'
     assert sheet["D10"].number_format == "0.0"
     assert sheet["J10"].number_format == "0.0"
     assert sheet["P10"].number_format == "General"
@@ -226,6 +226,7 @@ def test_gateway_writes_cr_bulk_voltage_and_matrix_current_formula_without_delta
     assert sheet["D16"].value == "Test current (A)"
     assert sheet["E16"].value == 10
     assert sheet["E18"].value == '=IF(OR(D18="",$E$16="",NOT(COUNTIFS($A$9:$A$10,$B18,$B$9:$B$10,"<>")>0)),"",(D18-VLOOKUP($B18,$A$9:$B$10,2,FALSE))/$E$16)'
+    assert sheet["E24"].value == '=IF(COUNT(E18:E19)<2,"",STDEV(E18:E19))'
     assert all("ΔR" not in str(cell.value) for row in sheet.iter_rows() for cell in row if cell.value)
 
 

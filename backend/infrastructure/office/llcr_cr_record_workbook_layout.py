@@ -278,7 +278,7 @@ def write_macro_style_llcr_category_sheet(
                 f'=IF(COUNT({source_range})=0,"",MIN({source_range}))',
                 f'=IF(COUNT({source_range})=0,"",MAX({source_range}))',
                 f'=IF(COUNT({source_range})=0,"",AVERAGE({source_range}))',
-                f'=IF(COUNT({source_range})<2,"",STDEV.S({source_range}))',
+                f'=IF(COUNT({source_range})<2,"",STDEV({source_range}))',
             )
             for offset, formula in enumerate(formulas):
                 column = stats_start + offset
@@ -713,7 +713,7 @@ def _write_group_block(
         sheet.cell(stats_start, numeric_column, f'=IF(COUNT({source})=0,"",MIN({source}))')
         sheet.cell(stats_start + 1, numeric_column, f'=IF(COUNT({source})=0,"",MAX({source}))')
         sheet.cell(stats_start + 2, numeric_column, f'=IF(COUNT({source})=0,"",AVERAGE({source}))')
-        sheet.cell(stats_start + 3, numeric_column, f'=IF(COUNT({source})<2,"",STDEV.S({source}))')
+        sheet.cell(stats_start + 3, numeric_column, f'=IF(COUNT({source})<2,"",STDEV({source}))')
     return stats_start + 6
 
 
