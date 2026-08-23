@@ -3,80 +3,64 @@ import {
   downloadLlcrCrRecordWorkbook,
   generateLlcrCrRecordWorkbook,
   previewLlcrCrRecordWorkbook,
-  type LlcrCrRecordWorkbookGenerateResponse,
-  type LlcrCrRecordWorkbookPreviewResponse,
   type LlcrCrRecordType,
+  type LlcrCrRecordWorkbookPreviewResponse,
 } from "../../api/client";
 
-export function useLlcrCrSpecializedRecordWorkbookModel(projectId: string, recordType: LlcrCrRecordType) {
-  const [preview, setPreview] = useState<LlcrCrRecordWorkbookPreviewResponse | null>(null);
-  const [generated, setGenerated] = useState<LlcrCrRecordWorkbookGenerateResponse | null>(null);
-  const [busy, setBusy] = useState<"preview" | "generate" | "download" | null>(null);
+export function useLlcrCrSpecializedRecordWorkbookModel(
+  projectId: string,
+  recordType: LlcrCrRecordType,
+) {
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const previewWorkbook = async (): Promise<void> => {
-    if (busy) return;
-    setBusy("preview");
-    setError(null);
-    setGenerated(null);
-    try {
-      setPreview(await previewLlcrCrRecordWorkbook(projectId, recordType));
-    } catch {
-      setPreview(null);
-      setError(`Unable to preview the ${recordType.toUpperCase()} record workbook.`);
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const generateWorkbook = async (): Promise<void> => {
-    if (busy || preview?.status !== "ready" || !preview.preview_fingerprint) return;
-    setBusy("generate");
-    setError(null);
-    try {
-      setGenerated(
-        await generateLlcrCrRecordWorkbook(projectId, {
-          record_type: recordType,
-          preview_fingerprint: preview.preview_fingerprint,
-        })
-      );
-    } catch {
-      setGenerated(null);
-      setError("The confirmed Matrix or Point Profile changed. Preview again before generating.");
-    } finally {
-      setBusy(null);
-    }
-  };
+  const [message, setMessage] = useState<string | null>(null);
 
   const downloadWorkbook = async (): Promise<void> => {
-    if (busy || !generated) return;
-    setBusy("download");
+    if (busy) return;
+    setBusy(true);
     setError(null);
+    setMessage(null);
     try {
+      const preview = await previewLlcrCrRecordWorkbook(projectId, recordType);
+      if (preview.status !== "ready" || !preview.preview_fingerprint) {
+        setError(previewFailureMessage(recordType, preview));
+        return;
+      }
+      const generated = await generateLlcrCrRecordWorkbook(projectId, {
+        record_type: recordType,
+        preview_fingerprint: preview.preview_fingerprint,
+      });
       const result = await downloadLlcrCrRecordWorkbook(projectId, generated.artifact_id);
+      const fileName = result.fileName ?? generated.file_name;
       const url = URL.createObjectURL(result.blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = result.fileName ?? generated.file_name;
+      anchor.download = fileName;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      setMessage(`${fileName} downloaded.`);
     } catch {
-      setError(`Unable to download the ${recordType.toUpperCase()} record workbook.`);
+      setError(
+        `Unable to generate the ${recordType.toUpperCase()} file. Confirm the Matrix and Test points, then try again.`,
+      );
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   };
 
-  return {
-    preview,
-    generated,
-    busy,
-    error,
-    canGenerate: preview?.status === "ready" && Boolean(preview.preview_fingerprint),
-    previewWorkbook,
-    generateWorkbook,
-    downloadWorkbook,
-  };
+  return { busy, error, message, downloadWorkbook };
+}
+
+function previewFailureMessage(
+  recordType: LlcrCrRecordType,
+  preview: LlcrCrRecordWorkbookPreviewResponse,
+): string {
+  const label = recordType.toUpperCase();
+  if (preview.status === "empty") {
+    return `${label} is not required by the confirmed Matrix.`;
+  }
+  return preview.diagnostics.map((item) => item.message).join(" ")
+    || `Confirm the Matrix and Test points before downloading ${label}.`;
 }

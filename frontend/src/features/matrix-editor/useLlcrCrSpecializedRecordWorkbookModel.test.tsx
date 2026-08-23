@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useLlcrCrSpecializedRecordWorkbookModel } from "./useLlcrCrSpecializedRecordWorkbookModel";
 
 const apiMocks = vi.hoisted(() => ({
@@ -15,43 +15,30 @@ vi.mock("../../api/client", () => ({
 }));
 
 describe("useLlcrCrSpecializedRecordWorkbookModel", () => {
-  it("requires a ready preview before generating the specialized workbook", async () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it("stops the one-click download when the confirmed Matrix does not require the record", async () => {
     apiMocks.preview.mockResolvedValue({
       project_id: "P1",
-      status: "ready",
-      record_type: "llcr",
+      status: "empty",
+      record_type: "cr",
       confirmed_matrix_id: "cmv-1",
       confirmed_revision: 1,
-      preview_fingerprint: "fingerprint-1",
-      row_count: 2,
+      preview_fingerprint: null,
+      row_count: 0,
       sections: [],
       diagnostics: [],
-      delta_r_enabled: true,
+      delta_r_enabled: false,
     });
-    apiMocks.generate.mockResolvedValue({
-      project_id: "P1",
-      confirmed_matrix_id: "cmv-1",
-      confirmed_revision: 1,
-      artifact_id: "artifact-1",
-      file_name: "record.xlsx",
-      download_url: "/download/artifact-1",
-      record_type: "llcr",
-    });
-    const { result } = renderHook(() => useLlcrCrSpecializedRecordWorkbookModel("P1", "llcr"));
+    const { result } = renderHook(() => useLlcrCrSpecializedRecordWorkbookModel("P1", "cr"));
 
     await act(async () => {
-      await result.current.previewWorkbook();
+      await result.current.downloadWorkbook();
     });
-    expect(apiMocks.preview).toHaveBeenCalledWith("P1", "llcr");
-    expect(result.current.canGenerate).toBe(true);
 
-    await act(async () => {
-      await result.current.generateWorkbook();
-    });
-    expect(apiMocks.generate).toHaveBeenCalledWith("P1", {
-      record_type: "llcr",
-      preview_fingerprint: "fingerprint-1",
-    });
-    expect(result.current.generated?.artifact_id).toBe("artifact-1");
+    expect(apiMocks.preview).toHaveBeenCalledWith("P1", "cr");
+    expect(apiMocks.generate).not.toHaveBeenCalled();
+    expect(apiMocks.download).not.toHaveBeenCalled();
+    expect(result.current.error).toBe("CR is not required by the confirmed Matrix.");
   });
 });

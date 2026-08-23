@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../../api/client";
@@ -13,9 +13,18 @@ vi.mock("../../api/client", async (original) => ({
 const apiMocks = vi.mocked(api);
 
 describe("LlcrCrRecordWorkbookPanel", () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true, value: vi.fn(() => "blob:record"),
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true, value: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+  });
 
-  it("previews and generates LLCR and CR as independent records", async () => {
+  it("downloads each record with one click without exposing preview or generate steps", async () => {
     const user = userEvent.setup();
     apiMocks.previewLlcrCrRecordWorkbook.mockImplementation(async (_projectId, recordType) => ({
       project_id: "P1", status: "ready", record_type: recordType,
@@ -34,22 +43,22 @@ describe("LlcrCrRecordWorkbookPanel", () => {
       project_id: "P1", confirmed_matrix_id: "M1", confirmed_revision: 2,
       record_type: "llcr", artifact_id: "A1", file_name: "P1_llcr_record.xlsx", download_url: "/A1",
     });
+    apiMocks.downloadLlcrCrRecordWorkbook.mockResolvedValue({
+      blob: new Blob(["record"]), fileName: "P1_llcr_record.xlsx",
+    });
 
     render(<LlcrCrRecordWorkbookPanel projectId="P1" />);
     expect(screen.getByRole("heading", { name: "LLCR/CR表" })).toBeTruthy();
+    expect(screen.queryAllByText("Preview")).toHaveLength(0);
+    expect(screen.queryAllByText("Generate file")).toHaveLength(0);
 
-    await user.click(screen.getByRole("button", { name: "Preview LLCR table" }));
-    await user.click(screen.getByRole("button", { name: "Preview CR table" }));
-    expect(apiMocks.previewLlcrCrRecordWorkbook).toHaveBeenNthCalledWith(1, "P1", "llcr");
-    expect(apiMocks.previewLlcrCrRecordWorkbook).toHaveBeenNthCalledWith(2, "P1", "cr");
-    expect(screen.getByText("12 entry rows · ΔR on")).toBeTruthy();
-    expect(screen.getByText("4 entry rows")).toBeTruthy();
-
-    await user.click(screen.getByRole("button", { name: "Generate LLCR file" }));
+    await user.click(screen.getByRole("button", { name: "Download LLCR" }));
+    await waitFor(() => expect(apiMocks.downloadLlcrCrRecordWorkbook).toHaveBeenCalledWith("P1", "A1"));
+    expect(apiMocks.previewLlcrCrRecordWorkbook).toHaveBeenCalledWith("P1", "llcr");
     expect(apiMocks.generateLlcrCrRecordWorkbook).toHaveBeenCalledWith("P1", {
       record_type: "llcr", preview_fingerprint: "llcr-fingerprint",
     });
-    expect(screen.getByRole("button", { name: "Download LLCR file" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Download CR file" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Download CR" })).toBeTruthy();
+    expect(screen.getByText("P1_llcr_record.xlsx downloaded.")).toBeTruthy();
   });
 });
