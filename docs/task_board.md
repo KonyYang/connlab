@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FEE_SAMPLE_PREPARATION_MATRIX_QUANTITY",
     "summary": "Use confirmed Matrix Samples Quantity (PCS) as Sample preparation Units instead of stale saved default 1.",
@@ -27,9 +27,70 @@
     "risk_reasons": [],
     "activation_head": "e41787cf073fb363e0e8a8a0dacb32af31f34453",
     "started_at": "2026-08-23T04:23:26.705709Z",
-    "updated_at": "2026-08-23T04:23:26.705709Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-08-23T04:29:08.725667Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_FEE_SAMPLE_PREPARATION_MATRIX_QUANTITY",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_FEE_SAMPLE_PREPARATION_MATRIX_QUANTITY",
+      "subject": "ab58a3f695d1c44b40b087bb5165c6f6db30998b",
+      "summary": "Sample preparation Units now use the current confirmed Matrix sample quantity across rebase and saved-draft hydration.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/application/fee_evaluation_pricing_draft_v2_rebase.py",
+        "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.test.ts",
+        "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.ts",
+        "tests/unit/test_fee_evaluation_pricing_draft_v2_rebase.py"
+      ],
+      "validation": [
+        {
+          "name": "backend_fee_pricing_qa",
+          "status": "passed",
+          "summary": "56 tests passed"
+        },
+        {
+          "name": "frontend_fee_evaluation_qa",
+          "status": "passed",
+          "summary": "68 tests passed"
+        },
+        {
+          "name": "frontend_production_build",
+          "status": "passed",
+          "summary": "TypeScript and Vite build passed"
+        },
+        {
+          "name": "browser_project_verification",
+          "status": "passed",
+          "summary": "Groups 1-8b show 5 and group 9 shows 10"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "TDD red-green implementation and exact affected checks passed."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Standards and specification review passed after one bounded typing fix."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Complete affected backend, frontend, build, and browser matrix passed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "direct_primary"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_CONTAINMENT_UNIT_TYPES",
