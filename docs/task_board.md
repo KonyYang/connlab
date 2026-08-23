@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_LLCR_REFERENCE_COLUMN_WIDTHS",
     "summary": "Align generated LLCR workbook default column widths with the supplied approved LLCR Record workbook.",
@@ -25,9 +25,60 @@
     "risk_reasons": [],
     "activation_head": "44a4b774e002451e8bbdb5f7924078755fbdc793",
     "started_at": "2026-08-23T23:01:16.458000Z",
-    "updated_at": "2026-08-23T23:01:16.458000Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-08-23T23:13:57.052837Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_LLCR_REFERENCE_COLUMN_WIDTHS",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_LLCR_REFERENCE_COLUMN_WIDTHS",
+      "subject": "dec3314d645c9cae98b1da55dad192164af545f8",
+      "summary": "Aligned generated LLCR Summary and category-sheet widths with the supplied approved LLCR Record workbook, while retaining the existing CR widths and all formulas.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/infrastructure/office/llcr_cr_record_workbook_layout.py",
+        "tests/unit/test_llcr_cr_specialized_record_workbook_gateway.py"
+      ],
+      "validation": [
+        {
+          "name": "reference workbook inspection",
+          "status": "passed",
+          "detail": "Read and rendered the supplied Summary and P sheets; captured the default, step, calculated-stage, date, and ambient-temperature widths."
+        },
+        {
+          "name": "targeted regression and API suite",
+          "status": "passed",
+          "detail": "15 passed across workbook gateway, Matrix Editor generation API, specialized workbook API, and projection tests."
+        },
+        {
+          "name": "generated workbook inspection",
+          "status": "passed",
+          "detail": "Direct gateway output has Summary default 8.73046875/B 20.59765625 and record-sheet default 8.73046875 with the matching stage/date/temperature widths; no formula errors."
+        },
+        {
+          "name": "static checks",
+          "status": "passed",
+          "detail": "py_compile and git diff --check passed."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Added reference-derived widths through the public workbook gateway and regression coverage."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "summary": "Committed as dec3314d645c9cae98b1da55dad192164af545f8."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_CR_MACRO_STYLE_WORKBOOK",
