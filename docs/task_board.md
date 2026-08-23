@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FEE_CONTAINMENT_UNIT_TYPES",
     "summary": "Extend reviewed Fee matching for durability, dust, thermal cycling, and contact retention labels.",
@@ -32,9 +32,73 @@
     "risk_reasons": [],
     "activation_head": "dd6a66ae9e5fd0940ecd77d1a7dc2812de16dc7a",
     "started_at": "2026-08-23T00:31:48.462458Z",
-    "updated_at": "2026-08-23T00:31:48.462458Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-08-23T00:46:31.036052Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_FEE_CONTAINMENT_UNIT_TYPES",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_FEE_CONTAINMENT_UNIT_TYPES",
+      "subject": "7266c99ed26dea506b9ee38434f1aa777f641c3d",
+      "summary": "Extended reviewed Fee matching for durability, Dust (Benign), unqualified thermal cycling, Contact Retention variants, and Vibration Random with the confirmed Unit Types.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/modules/fee_evaluation/fee_default_fill.py",
+        "backend/modules/fee_evaluation/fee_reviewed_extension_defaults.py",
+        "backend/modules/fee_evaluation/fee_rule_matcher.py",
+        "backend/modules/fee_evaluation/seeds/active_fee_rule_seed.json",
+        "backend/modules/fee_evaluation/seeds/fee_rule_extensions_v2026_08_23_r11.json",
+        "backend/modules/fee_evaluation/seeds/fee_rules_v2026_08_23_r11.json",
+        "tests/integration/test_confirmed_matrix_fee_draft_api.py",
+        "tests/integration/test_confirmed_matrix_fee_evaluation_export_api.py",
+        "tests/integration/test_fee_pricing_draft_measurement_plan_rebase_attestation.py",
+        "tests/integration/test_matrix_editor_session_api.py",
+        "tests/unit/test_confirmed_matrix_fee_draft_service.py",
+        "tests/unit/test_fee_default_fill.py",
+        "tests/unit/test_fee_evaluation_pricing_draft_persistence_service.py",
+        "tests/unit/test_fee_rule_matcher.py",
+        "tests/unit/test_fee_rule_seed_loader.py",
+        "tests/unit/test_fee_rule_temperature_force_alias_safe_rebase.py",
+        "tests/unit/test_matrix_fee_rebase_promotion_service.py"
+      ],
+      "validation": [
+        {
+          "name": "backend fee and API matrix",
+          "status": "passed",
+          "detail": "667 passed"
+        },
+        {
+          "name": "browser verification",
+          "status": "passed",
+          "detail": "Verified requested Unit Types and Contact Retention Units on localhost Fee Evaluation with no console warnings or errors"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented through public matcher and default-fill seams with red-green regression tests."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Standards and specification passes found no remaining findings after bounded containment and thermal-rate fixes."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Final backend/API matrix and browser verification passed on the exact implementation state."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "summary": "Active immutable r11 rules load through Fee draft, persistence, export, rebase, and Matrix session paths."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_CONTACT_SOLDER_UNIT_TYPES",
