@@ -106,6 +106,8 @@ class LlcrCrRecordProjection:
     point_profile_fingerprint: str | None = None
     delta_r_enabled: bool = True
     matrix_source: str = "confirmed"
+    ltr_number: str | None = None
+    summary_parameter_labels: tuple[str, ...] = ()
 
     @property
     def row_count(self) -> int:
@@ -458,7 +460,34 @@ def _point_profile_projection(
             if record_type == "llcr"
             else False
         ),
+        summary_parameter_labels=(
+            _summary_parameter_labels(sections) if record_type == "llcr" else ()
+        ),
     )
+
+
+def _summary_parameter_labels(
+    sections: tuple[LlcrCrRecordSection, ...],
+) -> tuple[str, ...]:
+    for section in sections:
+        for stage in section.stages:
+            match = re.search(
+                r"\bInitial\s*:\s*(.*?)(?:;|$)",
+                stage.requirement,
+                re.IGNORECASE,
+            )
+            if match is None:
+                continue
+            labels: list[str] = []
+            for parameter in match.group(1).split(","):
+                label_match = re.match(r"\s*(.+?)\s*(?:≤|<=)", parameter)
+                if label_match is not None:
+                    label = " ".join(label_match.group(1).split())
+                    if label:
+                        labels.append(label)
+            if labels:
+                return tuple(labels)
+    return ()
 
 
 def _point_profile_stages(
@@ -477,7 +506,7 @@ def _point_profile_stages(
         elif index == len(matching) - 1:
             label = "Final"
         else:
-            previous = _previous_non_measurement(quantity, all_quantities, rows)
+            previous = _previous_matrix_row(quantity, all_quantities, rows)
             previous_label = getattr(previous, "test_item", "") if previous else ""
             label = f"After {previous_label.strip() or f'Step {quantity.step_sequence - 1}'}"
         stages.append(
@@ -498,17 +527,17 @@ def _point_profile_stages(
     return tuple(stages)
 
 
-def _previous_non_measurement(
+def _previous_matrix_row(
     current: ConfirmedMatrixStepQuantity,
     all_quantities: list[ConfirmedMatrixStepQuantity],
     rows: dict[str, object],
 ):
-    for quantity in reversed(all_quantities):
-        if quantity.step_sequence >= current.step_sequence:
+    for index, quantity in enumerate(all_quantities):
+        if quantity.confirmed_step_quantity_id != current.confirmed_step_quantity_id:
             continue
-        row = rows.get(quantity.confirmed_row_id)
-        if _matrix_record_type(row, quantity) is None:
-            return row
+        if index > 0:
+            return rows.get(all_quantities[index - 1].confirmed_row_id)
+        return None
     return None
 
 

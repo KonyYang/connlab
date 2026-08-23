@@ -11,8 +11,27 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_LLCR_RECORD_WORKBOOK_MACRO_PARITY",
+    "summary": "Rebuild Matrix Editor LLCR workbook output to match the approved macro and reference workbook structure while preserving draft-download authority.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "LLCR projection metadata and macro-parity workbook generation, tests, and focused documentation if required.",
+    "scope_paths": [
+      "backend/application/confirmed_matrix_llcr_cr_record_projection.py",
+      "backend/infrastructure/office/llcr_cr_specialized_record_workbook_gateway.py",
+      "backend/infrastructure/office/llcr_cr_record_workbook_layout.py",
+      "tests/unit/test_confirmed_matrix_llcr_cr_record_projection.py",
+      "tests/unit/test_llcr_cr_specialized_record_workbook_gateway.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "c987cd5f174c653b95092985dfaf396c74d75a35",
+    "started_at": "2026-08-23T11:02:16.555871Z",
+    "updated_at": "2026-08-23T11:02:16.555871Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_MATRIX_EDITOR_LLCR_CR_DRAFT_DOWNLOAD",
     "tier": "standard",

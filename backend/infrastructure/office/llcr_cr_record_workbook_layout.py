@@ -30,6 +30,17 @@ _BORDER = Border(
     bottom=Side(style="thin", color="B8C2CE"),
 )
 
+_MACRO_BORDER = Border(
+    left=Side(style="thin", color="808080"),
+    right=Side(style="thin", color="808080"),
+    top=Side(style="thin", color="808080"),
+    bottom=Side(style="thin", color="808080"),
+)
+_MACRO_HEADER_FILL = PatternFill("solid", fgColor="DCDCDC")
+_MACRO_INPUT_FILL = PatternFill("solid", fgColor="FFFFC8")
+_MACRO_STATS_FILL = PatternFill("solid", fgColor="99CCFF")
+_MACRO_UNUSED_FILL = PatternFill("solid", fgColor="E7E6E6")
+
 
 def write_record_sheet(sheet, sections, *, banner: str | None = None) -> None:
     """Write fixed Group-Step blocks, manual cells, formulas, and widths."""
@@ -161,6 +172,423 @@ def write_specialized_category_sheet(
     sheet.column_dimensions["C"].width = 22
     for column in range(4, max_columns + 1):
         sheet.column_dimensions[get_column_letter(column)].width = 18
+
+
+def write_macro_style_llcr_category_sheet(
+    sheet,
+    sections,
+    *,
+    delta_r_enabled: bool,
+    ltr_number: str | None,
+) -> dict[tuple[str, int], tuple[int, int]]:
+    """Write the LLCR record shape used by the approved VBA workbook."""
+    sections = tuple(sections)
+    if not sections:
+        return {}
+    max_samples = max(section.sample_count for section in sections)
+    raw_start = 4
+    raw_end = raw_start + max_samples - 1
+    calculated_group = raw_end + 3
+    calculated_step = calculated_group + 1
+    calculated_point = calculated_group + 2
+    corrected_start = calculated_group + 3
+    delta_start = corrected_start + max_samples if delta_r_enabled else None
+    stats_start = (
+        delta_start + max_samples
+        if delta_start is not None
+        else corrected_start + max_samples
+    )
+    environment_start = stats_start + 4
+    last_column = environment_start + 2
+
+    _write_macro_bulk_table(sheet)
+    _write_macro_test_information(
+        sheet,
+        ltr_number=ltr_number,
+        test_condition=_first_test_condition(sections),
+    )
+    _write_macro_record_header(
+        sheet,
+        max_samples=max_samples,
+        calculated_group=calculated_group,
+        corrected_start=corrected_start,
+        delta_start=delta_start,
+        stats_start=stats_start,
+        environment_start=environment_start,
+    )
+
+    stats_cells: dict[tuple[str, int], tuple[int, int]] = {}
+    current_row = 10
+    for section in sections:
+        points = _section_points(section)
+        group_start = current_row
+        initial_corrected_rows: list[int] = []
+        for stage_index, stage in enumerate(section.stages):
+            stage_start = current_row
+            stage_end = stage_start + len(points) - 1
+            stage_label = _record_stage_label(stage.label, stage_index)
+            sheet.cell(stage_start, 2, stage_label)
+            sheet.cell(stage_start, calculated_step, stage_label)
+            _merge_vertical(sheet, stage_start, stage_end, 2)
+            _merge_vertical(sheet, stage_start, stage_end, calculated_step)
+            for point_offset, point_id in enumerate(points):
+                row = stage_start + point_offset
+                sheet.cell(row, 3, point_id)
+                sheet.cell(row, calculated_point, point_id)
+                if stage_index == 0:
+                    initial_corrected_rows.append(row)
+                for sample_index in range(1, max_samples + 1):
+                    raw_column = raw_start + sample_index - 1
+                    corrected_column = corrected_start + sample_index - 1
+                    if sample_index > section.sample_count:
+                        sheet.cell(row, raw_column).fill = _MACRO_UNUSED_FILL
+                        sheet.cell(row, corrected_column).fill = _MACRO_UNUSED_FILL
+                        if delta_start is not None:
+                            sheet.cell(row, delta_start + sample_index - 1).fill = _MACRO_UNUSED_FILL
+                        continue
+                    raw_address = f"{get_column_letter(raw_column)}{row}"
+                    corrected_address = f"{get_column_letter(corrected_column)}{row}"
+                    sheet.cell(
+                        row,
+                        corrected_column,
+                        f'=IF(OR({raw_address}="",$B$5=""),"",{raw_address}-$B$5)',
+                    )
+                    if delta_start is not None:
+                        delta_column = delta_start + sample_index - 1
+                        if stage_index == 0:
+                            formula = f'=IF({corrected_address}="","",{corrected_address})'
+                        else:
+                            initial_row = initial_corrected_rows[point_offset]
+                            initial_address = (
+                                f"{get_column_letter(corrected_column)}{initial_row}"
+                            )
+                            formula = (
+                                f'=IF(OR({corrected_address}="",{initial_address}=""),"",'
+                                f"{corrected_address}-{initial_address})"
+                            )
+                        sheet.cell(row, delta_column, formula)
+
+            source_start = delta_start if delta_start is not None else corrected_start
+            source_end = source_start + section.sample_count - 1
+            source_range = (
+                f"{get_column_letter(source_start)}{stage_start}:"
+                f"{get_column_letter(source_end)}{stage_end}"
+            )
+            formulas = (
+                f'=IF(COUNT({source_range})=0,"",MIN({source_range}))',
+                f'=IF(COUNT({source_range})=0,"",MAX({source_range}))',
+                f'=IF(COUNT({source_range})=0,"",AVERAGE({source_range}))',
+                f'=IF(COUNT({source_range})<2,"",STDEV.S({source_range}))',
+            )
+            for offset, formula in enumerate(formulas):
+                column = stats_start + offset
+                sheet.cell(stage_start, column, formula)
+                _merge_vertical(sheet, stage_start, stage_end, column)
+            for column in range(environment_start, environment_start + 3):
+                _merge_vertical(sheet, stage_start, stage_end, column)
+            stats_cells[(section.confirmed_group_id, stage_index)] = (
+                stage_start,
+                stats_start,
+            )
+            current_row = stage_end + 1
+
+        group_end = current_row - 1
+        sheet.cell(group_start, 1, _group_display_label(section.group_label))
+        sheet.cell(group_start, calculated_group, _group_display_label(section.group_label))
+        _merge_vertical(sheet, group_start, group_end, 1)
+        _merge_vertical(sheet, group_start, group_end, calculated_group)
+
+    _format_macro_llcr_sheet(
+        sheet,
+        end_row=current_row - 1,
+        raw_end=raw_end,
+        calculated_group=calculated_group,
+        stats_start=stats_start,
+        environment_start=environment_start,
+        last_column=last_column,
+    )
+    return stats_cells
+
+
+def write_macro_style_llcr_summary(
+    sheet,
+    category_outputs,
+    *,
+    parameter_labels: tuple[str, ...],
+    delta_r_enabled: bool,
+) -> None:
+    """Write the VBA-style cross-category statistics summary."""
+    category_outputs = tuple(category_outputs)
+    if not category_outputs:
+        return
+    canonical_sections = category_outputs[0][1]
+    sheet.merge_cells(start_row=1, start_column=1, end_row=2, end_column=2)
+    sheet.cell(1, 1, "Test Step")
+    labels = _summary_category_labels(category_outputs, parameter_labels)
+    for category_index, label in enumerate(labels):
+        start_column = 3 + category_index * 4
+        sheet.merge_cells(
+            start_row=1,
+            start_column=start_column,
+            end_row=1,
+            end_column=start_column + 3,
+        )
+        sheet.cell(1, start_column, label)
+        for offset, header in enumerate(("Min", "Max", "Avg", "Stdev")):
+            sheet.cell(2, start_column + offset, header)
+
+    row = 3
+    group_ranges: list[tuple[int, int]] = []
+    for section in canonical_sections:
+        group_start = row
+        for stage_index, stage in enumerate(section.stages):
+            sheet.cell(row, 2, _summary_stage_label(
+                stage.label,
+                stage_index,
+                len(section.stages),
+                delta_r_enabled,
+            ))
+            for category_index, (
+                sheet_name,
+                _sections,
+                stats_cells,
+                _fallback,
+            ) in enumerate(category_outputs):
+                target = stats_cells.get((section.confirmed_group_id, stage_index))
+                if target is None:
+                    continue
+                stats_row, stats_column = target
+                escaped_name = sheet_name.replace("'", "''")
+                for offset in range(4):
+                    source = f"{get_column_letter(stats_column + offset)}{stats_row}"
+                    reference = f"'{escaped_name}'!{source}"
+                    sheet.cell(
+                        row,
+                        3 + category_index * 4 + offset,
+                        f'=IF({reference}="","",{reference})',
+                    )
+            row += 1
+        sheet.cell(group_start, 1, _group_display_label(section.group_label))
+        _merge_vertical(sheet, group_start, row - 1, 1)
+        group_ranges.append((group_start, row - 1))
+
+    last_column = 2 + len(category_outputs) * 4
+    used = sheet.cell(row - 1, last_column).coordinate
+    table = sheet[f"A1:{used}"]
+    for cells in table:
+        for cell in cells:
+            cell.font = Font(name="Arial", size=9, bold=cell.row <= 2 or cell.column <= 2)
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.border = _MACRO_BORDER
+            if cell.row <= 2 or cell.column <= 2:
+                cell.fill = _MACRO_HEADER_FILL
+            if cell.row >= 3 and cell.column >= 3:
+                cell.number_format = "0.0"
+    for group_number, (group_start, group_end) in enumerate(group_ranges, start=1):
+        if group_number % 2 == 0:
+            for cells in sheet.iter_rows(
+                min_row=group_start,
+                max_row=group_end,
+                min_col=3,
+                max_col=last_column,
+            ):
+                for cell in cells:
+                    cell.fill = _MACRO_INPUT_FILL
+    sheet.column_dimensions["A"].width = 13
+    sheet.column_dimensions["B"].width = 34
+    for column in range(3, last_column + 1):
+        sheet.column_dimensions[get_column_letter(column)].width = 12
+    sheet.freeze_panes = "C3"
+    sheet.sheet_view.showGridLines = False
+
+
+def _write_macro_bulk_table(sheet) -> None:
+    values = (
+        ("unit:mΩ", "Resistance"),
+        ("bulk1", None),
+        ("bulk2", None),
+        ("bulk3", None),
+        ("Avg", '=IF(COUNT(B2:B4)=0,"",AVERAGE(B2:B4))'),
+    )
+    for row, (label, value) in enumerate(values, start=1):
+        sheet.cell(row, 1, label)
+        sheet.cell(row, 2, value)
+        for column in (1, 2):
+            cell = sheet.cell(row, column)
+            cell.border = _MACRO_BORDER
+            cell.font = Font(name="Arial", size=9, bold=column == 1 or row == 1)
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        sheet.cell(row, 1).fill = _MACRO_HEADER_FILL
+    sheet.cell(1, 2).fill = _MACRO_HEADER_FILL
+    for row in range(2, 6):
+        sheet.cell(row, 2).number_format = "0.0"
+
+
+def _write_macro_test_information(
+    sheet,
+    *,
+    ltr_number: str | None,
+    test_condition: str,
+) -> None:
+    labels = ("LTR", "Tested By", "Checked by/Date", "Test Equipment ID", "Test Condition")
+    values = (ltr_number or "", "", "", "", test_condition)
+    for row, (label, value) in enumerate(zip(labels, values, strict=True), start=1):
+        sheet.merge_cells(start_row=row, start_column=4, end_row=row, end_column=5)
+        sheet.merge_cells(start_row=row, start_column=6, end_row=row, end_column=9)
+        sheet.cell(row, 4, label)
+        sheet.cell(row, 6, value)
+        for column in range(4, 10):
+            cell = sheet.cell(row, column)
+            cell.border = _MACRO_BORDER
+            cell.fill = _MACRO_INPUT_FILL
+            cell.font = Font(name="Arial", size=9, bold=True)
+            cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+
+def _write_macro_record_header(
+    sheet,
+    *,
+    max_samples: int,
+    calculated_group: int,
+    corrected_start: int,
+    delta_start: int | None,
+    stats_start: int,
+    environment_start: int,
+) -> None:
+    sheet.merge_cells(start_row=9, start_column=1, end_row=9, end_column=2)
+    sheet.cell(9, 1, "=A1")
+    sheet.cell(9, 3, "S/N")
+    for sample in range(1, max_samples + 1):
+        sheet.cell(9, 3 + sample, f"{sample}#")
+    sheet.merge_cells(
+        start_row=9,
+        start_column=calculated_group,
+        end_row=9,
+        end_column=calculated_group + 1,
+    )
+    sheet.cell(9, calculated_group, "unit:mΩ")
+    sheet.cell(9, calculated_group + 2, "S/N")
+    for sample in range(1, max_samples + 1):
+        sheet.cell(9, corrected_start + sample - 1, f"{sample}#")
+        if delta_start is not None:
+            sheet.cell(9, delta_start + sample - 1, f"{sample}#ΔR")
+    for offset, value in enumerate(("Min", "Max", "Avg", "Stdev")):
+        sheet.cell(9, stats_start + offset, value)
+    for offset, value in enumerate(("Test Date", "Amb Temp(°C)", "Rel. Hum.:%")):
+        sheet.cell(9, environment_start + offset, value)
+
+
+def _format_macro_llcr_sheet(
+    sheet,
+    *,
+    end_row: int,
+    raw_end: int,
+    calculated_group: int,
+    stats_start: int,
+    environment_start: int,
+    last_column: int,
+) -> None:
+    for start_column, block_end in ((1, raw_end), (calculated_group, last_column)):
+        for row in range(9, end_row + 1):
+            for column in range(start_column, block_end + 1):
+                cell = sheet.cell(row, column)
+                cell.border = _MACRO_BORDER
+                cell.font = Font(
+                    name="Arial",
+                    size=9,
+                    bold=row == 9 or column in {start_column, start_column + 1},
+                )
+                cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                if row == 9 or column in {start_column, start_column + 1}:
+                    cell.fill = _MACRO_HEADER_FILL
+                if column >= stats_start and column < environment_start:
+                    cell.fill = _MACRO_STATS_FILL
+                if column >= environment_start:
+                    cell.fill = _MACRO_INPUT_FILL
+                if row >= 10 and (
+                    4 <= column <= raw_end
+                    or calculated_group + 3 <= column < environment_start
+                ):
+                    cell.number_format = "0.0"
+    widths = {
+        1: 13,
+        2: 34,
+        3: 11,
+        calculated_group: 13,
+        calculated_group + 1: 34,
+        calculated_group + 2: 11,
+    }
+    for column in range(4, last_column + 1):
+        widths.setdefault(column, 12)
+    for column, width in widths.items():
+        sheet.column_dimensions[get_column_letter(column)].width = width
+    sheet.freeze_panes = "D10"
+    sheet.sheet_view.showGridLines = False
+
+
+def _section_points(section) -> tuple[str, ...]:
+    points: list[str] = []
+    seen: set[str] = set()
+    for row in section.rows:
+        if row.contact_id in seen:
+            continue
+        seen.add(row.contact_id)
+        points.append(row.contact_id)
+    return tuple(points)
+
+
+def _first_test_condition(sections) -> str:
+    for section in sections:
+        for stage in section.stages:
+            if stage.condition.strip():
+                return stage.condition.strip()
+    return ""
+
+
+def _record_stage_label(label: str, stage_index: int) -> str:
+    value = label.strip()
+    if stage_index == 0 and value == "Initial":
+        return "Initial LLCR"
+    if value == "Final":
+        return "Final LLCR"
+    return value
+
+
+def _summary_stage_label(
+    label: str,
+    stage_index: int,
+    stage_count: int,
+    delta_r_enabled: bool,
+) -> str:
+    record_label = _record_stage_label(label, stage_index)
+    if not delta_r_enabled or stage_index == 0:
+        return record_label
+    if stage_index == stage_count - 1 and label.strip() == "Final":
+        return "Final ∆R"
+    return f"∆R {record_label}"
+
+
+def _summary_category_labels(category_outputs, parameter_labels: tuple[str, ...]) -> tuple[str, ...]:
+    if len(category_outputs) == 1:
+        return ("Statistics",)
+    if len(parameter_labels) == len(category_outputs):
+        return parameter_labels
+    return tuple(fallback for _name, _sections, _stats, fallback in category_outputs)
+
+
+def _group_display_label(value: str) -> str:
+    label = value.strip()
+    return label if label.lower().startswith("group") else f"Group {label}"
+
+
+def _merge_vertical(sheet, start_row: int, end_row: int, column: int) -> None:
+    if end_row > start_row:
+        sheet.merge_cells(
+            start_row=start_row,
+            start_column=column,
+            end_row=end_row,
+            end_column=column,
+        )
 
 
 def _write_group_block(

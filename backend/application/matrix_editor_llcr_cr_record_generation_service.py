@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Protocol
 
@@ -23,6 +23,11 @@ class MatrixEditorLlcrCrRecordGenerationError(ValueError):
 class MatrixEditorPointProfileReader(Protocol):
     def get_effective(self, project_id: str) -> object:
         """Return the effective Test points profile for one project."""
+
+
+class MatrixEditorLtrRecordLookup(Protocol):
+    def list_by_project(self, project_id: str) -> list[object]:
+        """Return the locally registered LTR history for one project."""
 
 
 class MatrixEditorLlcrCrWorkbookWriter(Protocol):
@@ -70,10 +75,12 @@ class MatrixEditorLlcrCrRecordGenerationService:
         point_profile_adapter: MatrixEditorPointProfileReader,
         workbook_gateway: MatrixEditorLlcrCrWorkbookWriter,
         artifact_store: MatrixEditorLlcrCrDraftArtifactStore,
+        ltr_store: MatrixEditorLtrRecordLookup | None = None,
     ) -> None:
         self._point_profile_adapter = point_profile_adapter
         self._workbook_gateway = workbook_gateway
         self._artifact_store = artifact_store
+        self._ltr_store = ltr_store
 
     def generate(
         self,
@@ -86,6 +93,10 @@ class MatrixEditorLlcrCrRecordGenerationService:
             groups=command.groups,
             rows=command.rows,
             point_profile=profile,
+        )
+        projection = replace(
+            projection,
+            ltr_number=self._latest_registered_ltr_number(command.project_id),
         )
         if projection.status != "ready" or not projection.sections:
             messages = " ".join(item.message for item in projection.diagnostics).strip()
@@ -111,3 +122,22 @@ class MatrixEditorLlcrCrRecordGenerationService:
             file_name=artifact.file_name,
             output_path=output_path,
         )
+
+    def _latest_registered_ltr_number(self, project_id: str) -> str | None:
+        if self._ltr_store is None:
+            return None
+        registered = []
+        for record in self._ltr_store.list_by_project(project_id):
+            status = getattr(record, "status", None)
+            if getattr(status, "value", status) == "registered":
+                registered.append(record)
+        if not registered:
+            return None
+        latest = max(
+            registered,
+            key=lambda record: (
+                str(getattr(record, "registered_on", "") or ""),
+                str(getattr(record, "ltr_number", "") or ""),
+            ),
+        )
+        return str(getattr(latest, "ltr_number", "") or "").strip() or None

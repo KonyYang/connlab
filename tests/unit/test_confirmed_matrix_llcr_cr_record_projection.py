@@ -163,7 +163,7 @@ def test_point_profile_projection_blocks_when_confirmed_profile_is_unusable() ->
     assert projection.diagnostics[0].code == "point_profile_not_confirmed"
 
 
-def test_point_profile_stage_label_skips_other_resistance_measurements() -> None:
+def test_point_profile_stage_label_uses_immediately_preceding_matrix_step() -> None:
     source = _matrix_with_llcr_and_cr_stages()
     final = source.rows[2]
     cr = source.rows[3]
@@ -219,8 +219,45 @@ def test_point_profile_stage_label_skips_other_resistance_measurements() -> None
     projection = build_point_profile_llcr_cr_record_projection(snapshot, profile, "llcr")
 
     assert [stage.label for stage in projection.sections[0].stages] == [
-        "Initial", "After DURABILITY, 20 Cycles", "Final",
+        "Initial", "After CONTACT RESISTANCE (Power)", "Final",
     ]
+
+
+def test_point_profile_projection_extracts_summary_parameter_labels_from_initial_requirement() -> None:
+    source = _matrix_with_llcr_and_cr_stages()
+    initial = replace(
+        source.rows[0],
+        requirement=(
+            "Initial: Signal Contact ≤ 25 mΩ, Power Contact <= 0.6 mΩ; "
+            "After test: ΔR ≤ 0.17 mΩ"
+        ),
+    )
+    snapshot = replace(source, rows=(initial, *source.rows[1:]))
+    profile = EffectiveConfirmedPointProfile(
+        status="confirmed",
+        readings_per_sample="2",
+        revision_id="profile-1",
+        revision_sequence=1,
+        fingerprint="profile-fingerprint",
+        lineage="Confirmed Project Point Profile",
+        message=None,
+        categories=(
+            {
+                "category_id": "signal", "category_ordinal": 0, "label": "Signal",
+                "count_per_sample": 1, "record_prefix": "SIG", "included": True,
+                "point_expression": "1",
+            },
+            {
+                "category_id": "power", "category_ordinal": 1, "label": "Power",
+                "count_per_sample": 1, "record_prefix": "PWR", "included": True,
+                "point_expression": "1",
+            },
+        ),
+    )
+
+    projection = build_point_profile_llcr_cr_record_projection(snapshot, profile, "llcr")
+
+    assert projection.summary_parameter_labels == ("Signal Contact", "Power Contact")
 
 
 def _snapshot(

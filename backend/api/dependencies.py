@@ -1115,6 +1115,7 @@ def get_matrix_editor_llcr_cr_record_generation_service(
         artifact_store=LlcrCrSpecializedRecordArtifactStore(
             settings.data_dir / "generated_llcr_cr_record_drafts"
         ),
+        ltr_store=LtrRecordRepository(session),
     )
 
 

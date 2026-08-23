@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
@@ -19,6 +20,7 @@ from backend.infrastructure.files.llcr_cr_specialized_record_artifact_store impo
 from backend.infrastructure.office.llcr_cr_specialized_record_workbook_gateway import (
     LlcrCrSpecializedRecordWorkbookGateway,
 )
+from backend.domain.enums import LtrStatus
 
 
 def test_matrix_editor_llcr_download_uses_current_ui_draft_without_confirmed_matrix(
@@ -28,6 +30,7 @@ def test_matrix_editor_llcr_download_uses_current_ui_draft_without_confirmed_mat
         point_profile_adapter=_PointProfileAdapter(),
         workbook_gateway=LlcrCrSpecializedRecordWorkbookGateway(),
         artifact_store=LlcrCrSpecializedRecordArtifactStore(tmp_path / "generated"),
+        ltr_store=_LtrStore(),
     )
     app.dependency_overrides[
         get_matrix_editor_llcr_cr_record_generation_service
@@ -66,12 +69,24 @@ def test_matrix_editor_llcr_download_uses_current_ui_draft_without_confirmed_mat
     output = tmp_path / "matrix-editor-llcr-preview.xlsx"
     output.write_bytes(response.content)
     workbook = load_workbook(output, data_only=False)
-    summary = workbook["Record Summary"]
-    assert summary["A4"].value == "Matrix source"
-    assert summary["B4"].value == "Unconfirmed Matrix draft"
-    assert summary["A5"].value == "Snapshot"
-    assert summary["B5"].value == "Current unconfirmed UI draft"
-    assert summary["D11"].value == 5
+    assert workbook.sheetnames == ["Summary", "SIG"]
+    sheet = workbook["SIG"]
+    assert sheet["F1"].value == "DL-2026-05-999"
+    assert sheet["F5"].value == "20 mV, 100 mA"
+    assert sheet["D9"].value == "1#"
+    assert sheet["K9"].value == "unit:mΩ"
+
+
+class _LtrStore:
+    def list_by_project(self, project_id: str):
+        assert project_id == "P1"
+        return [
+            SimpleNamespace(
+                ltr_number="DL-2026-05-999",
+                status=LtrStatus.REGISTERED,
+                registered_on="2026-05-20",
+            )
+        ]
 
 
 class _PointProfileAdapter:

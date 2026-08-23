@@ -15,6 +15,8 @@ from backend.infrastructure.office.llcr_cr_record_workbook_layout import (
     LLCR_CR_RECORD_LAYOUT_V2,
     set_column_widths,
     write_header_row,
+    write_macro_style_llcr_category_sheet,
+    write_macro_style_llcr_summary,
     write_specialized_category_sheet,
 )
 
@@ -37,6 +39,10 @@ class LlcrCrSpecializedRecordWorkbookGateway:
 
         workbook = Workbook()
         workbook.remove(workbook.active)
+        if projection.record_type == "llcr":
+            self._write_llcr_workbook(workbook, projection)
+            workbook.save(target)
+            return target
         summary = workbook.create_sheet(LLCR_CR_RECORD_LAYOUT_V2["summary_sheet"])
         _write_summary(summary, projection)
         grouped: dict[str, list] = {}
@@ -61,6 +67,42 @@ class LlcrCrSpecializedRecordWorkbookGateway:
             )
         workbook.save(target)
         return target
+
+    def _write_llcr_workbook(self, workbook: Workbook, projection: LlcrCrRecordProjection) -> None:
+        summary = workbook.create_sheet("Summary")
+        grouped: dict[str, list] = {}
+        for section in projection.sections:
+            if section.record_type != "llcr":
+                raise ValueError("Record projection mixes LLCR and CR sections.")
+            key = section.category_id or section.record_prefix or section.category_label or "Points"
+            grouped.setdefault(key, []).append(section)
+        used_names = {"Summary"}
+        category_outputs = []
+        for sections in grouped.values():
+            sheet_name = _sheet_name(
+                sections[0].record_prefix or sections[0].category_label or "Points",
+                used_names,
+            )
+            used_names.add(sheet_name)
+            sheet = workbook.create_sheet(sheet_name)
+            stats_cells = write_macro_style_llcr_category_sheet(
+                sheet,
+                sections,
+                delta_r_enabled=projection.delta_r_enabled,
+                ltr_number=projection.ltr_number,
+            )
+            category_outputs.append((
+                sheet_name,
+                tuple(sections),
+                stats_cells,
+                sections[0].category_label or sections[0].record_prefix or "Statistics",
+            ))
+        write_macro_style_llcr_summary(
+            summary,
+            category_outputs,
+            parameter_labels=projection.summary_parameter_labels,
+            delta_r_enabled=projection.delta_r_enabled,
+        )
 
 
 def _write_summary(sheet, projection: LlcrCrRecordProjection) -> None:
