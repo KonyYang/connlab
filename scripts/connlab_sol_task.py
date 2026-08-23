@@ -32,7 +32,7 @@ REQUIRED_ROLES = {
     "standard": {"developer", "reviewer", "qa"},
     "high_risk": {"planner", "developer", "reviewer", "qa", "integrator"},
 }
-COMMANDS = ("inspect", "submit", "checkpoint", "finish", "close", "close-and-submit")
+COMMANDS = ("inspect", "submit", "checkpoint", "finish", "revise", "close", "close-and-submit")
 
 
 class Blocked(RuntimeError):
@@ -505,9 +505,35 @@ def closed_task(
     }
 
 
+def required_decision_ref(value: str | None, reason: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise Blocked("BLOCKED_DECISION_REQUIRED", reason)
+    return value
+
+
+def revise(args: argparse.Namespace, root: Path) -> tuple[str, str, dict[str, Any]]:
+    feedback = required_decision_ref(args.decision_ref, "User feedback requiring revision is required.")
+
+    def mutate(control: dict[str, Any]) -> None:
+        active = require_active(control, args.task_id, "ready_for_close")
+        active["report"] = None
+        active["checkpoint"] = {
+            "schema": CHECKPOINT_SCHEMA,
+            "version": 1,
+            "task_id": active["task_id"],
+            "stage": "revision",
+            "status": "running",
+            "summary": feedback.strip(),
+            "requires_user": False,
+        }
+        active["updated_at"] = utc_now()
+        control["state"] = "running"
+
+    return update_board(root, args.expected_board_sha256, mutate)
+
+
 def close(args: argparse.Namespace, root: Path) -> tuple[str, str, dict[str, Any]]:
-    if not isinstance(args.decision_ref, str) or not args.decision_ref.strip():
-        raise Blocked("BLOCKED_DECISION_REQUIRED", "Explicit User close or cancel decision is required.")
+    decision_ref = required_decision_ref(args.decision_ref, "Explicit User close or cancel decision is required.")
     require_clean(root, "Primary must be clean before WIP is released.")
     head = current_head(root)
 
@@ -519,7 +545,7 @@ def close(args: argparse.Namespace, root: Path) -> tuple[str, str, dict[str, Any
         control["last_closed"] = closed_task(
             active,
             disposition=args.disposition,
-            decision_ref=args.decision_ref,
+            decision_ref=decision_ref,
             fallback_subject=head,
             timestamp=utc_now(),
         )
@@ -530,8 +556,7 @@ def close(args: argparse.Namespace, root: Path) -> tuple[str, str, dict[str, Any
 
 
 def close_and_submit(args: argparse.Namespace, root: Path) -> tuple[str, str, dict[str, Any]]:
-    if not isinstance(args.decision_ref, str) or not args.decision_ref.strip():
-        raise Blocked("BLOCKED_DECISION_REQUIRED", "Explicit User close or cancel decision is required.")
+    decision_ref = required_decision_ref(args.decision_ref, "Explicit User close or cancel decision is required.")
     payload = request_payload(args.request_json, args.next_task_id)
     require_clean(root, "Primary must be clean before completed WIP is replaced.")
     head = current_head(root)
@@ -545,7 +570,7 @@ def close_and_submit(args: argparse.Namespace, root: Path) -> tuple[str, str, di
         control["last_closed"] = closed_task(
             active,
             disposition=args.disposition,
-            decision_ref=args.decision_ref,
+            decision_ref=decision_ref,
             fallback_subject=head,
             timestamp=timestamp,
         )
@@ -586,6 +611,7 @@ def main() -> int:
                 "submit": (submit, "ALLOW_SUBMIT"),
                 "checkpoint": (checkpoint, "ALLOW_CHECKPOINT"),
                 "finish": (finish, "ALLOW_FINISH"),
+                "revise": (revise, "ALLOW_REVISE"),
                 "close": (close, "ALLOW_CLOSE"),
                 "close-and-submit": (close_and_submit, "ALLOW_CLOSE_AND_SUBMIT"),
             }

@@ -445,6 +445,70 @@ def test_standard_finish_allows_reviewed_same_scope_support_path(repo: Path) -> 
     assert finished["state"] == "ready_for_close"
 
 
+def test_revise_returns_completed_task_to_running_and_invalidates_stale_report(repo: Path) -> None:
+    submit(repo, "TASK_REVISE", "standard")
+    original = control(repo)["active"]
+    subject = commit_activation_and_implementation(repo)
+    invoke(
+        repo,
+        "finish",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_REVISE",
+        "--result-json",
+        json.dumps(report("TASK_REVISE", subject, "standard")),
+    )
+
+    revised = invoke(
+        repo,
+        "revise",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_REVISE",
+        "--decision-ref",
+        "User reported an in-scope acceptance defect.",
+    )
+
+    active = control(repo)["active"]
+    assert revised["code"] == "ALLOW_REVISE"
+    assert revised["state"] == "running"
+    assert revised["next_action"] == {"command": "execute", "requires_user": False}
+    assert active["activation_head"] == original["activation_head"]
+    assert active["started_at"] == original["started_at"]
+    assert active["report"] is None
+    assert active["checkpoint"] == {
+        "schema": "connlab.sol-task-checkpoint",
+        "version": 1,
+        "task_id": "TASK_REVISE",
+        "stage": "revision",
+        "status": "running",
+        "summary": "User reported an in-scope acceptance defect.",
+        "requires_user": False,
+    }
+
+
+def test_revise_rejects_non_completed_task_without_writing(repo: Path) -> None:
+    submit(repo, "TASK_RUNNING", "micro")
+    before = board_bytes(repo)
+
+    blocked = invoke(
+        repo,
+        "revise",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_RUNNING",
+        "--decision-ref",
+        "User requested a change.",
+        expected_exit=2,
+    )
+
+    assert blocked["code"] == "BLOCKED_STATE"
+    assert board_bytes(repo) == before
+
+
 def test_high_risk_finish_rejects_path_outside_approved_manifest(repo: Path) -> None:
     submit(repo, "TASK_HIGH_RISK_SCOPE", "high_risk")
     commit_activation_and_implementation(repo)
@@ -637,8 +701,52 @@ def test_powershell_user_entry_supports_lifecycle_actions_without_legacy_approve
     assert control(repo)["state"] == "idle"
 
     source = RUN_TASK.read_text(encoding="utf-8")
-    assert '[ValidateSet("Submit", "Close", "CloseAndSubmit")]' in source
+    assert '[ValidateSet("Submit", "Revise", "Close", "CloseAndSubmit")]' in source
     assert "Approve" not in source
+
+
+def test_powershell_user_entry_can_revise_completed_task(repo: Path) -> None:
+    submit(repo, "TASK_PS_REVISE", "micro")
+    subject = commit_activation_and_implementation(repo)
+    invoke(
+        repo,
+        "finish",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_PS_REVISE",
+        "--result-json",
+        json.dumps(report("TASK_PS_REVISE", subject, "micro")),
+    )
+
+    completed = subprocess.run(
+        [
+            "powershell.exe",
+            "-NoProfile",
+            "-File",
+            str(RUN_TASK),
+            "-Task",
+            "TASK_PS_REVISE",
+            "-Action",
+            "Revise",
+            "-DecisionRef",
+            "User reported an in-scope acceptance defect.",
+            "-ExpectedBoardSha256",
+            board_hash(repo),
+            "-RepositoryRoot",
+            str(repo),
+            "-Json",
+        ],
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    result = json.loads(completed.stdout)
+    assert result["code"] == "ALLOW_REVISE"
+    assert result["state"] == "running"
+    assert control(repo)["active"]["report"] is None
 
 
 def test_powershell_user_entry_can_close_and_submit_in_one_transition(repo: Path) -> None:

@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Task,
 
-    [ValidateSet("Submit", "Close", "CloseAndSubmit")]
+    [ValidateSet("Submit", "Revise", "Close", "CloseAndSubmit")]
     [string]$Action = "Submit",
 
     [string]$RequestJson,
@@ -47,6 +47,16 @@ switch ($Action) {
             $helper, "submit", "--repo-root", $RepositoryRoot,
             "--expected-board-sha256", $ExpectedBoardSha256,
             "--task-id", $Task, "--request-json", $RequestJson, "--json"
+        )
+    }
+    "Revise" {
+        if ([string]::IsNullOrWhiteSpace($DecisionRef)) {
+            throw "-DecisionRef is required for Revise."
+        }
+        $arguments = @(
+            $helper, "revise", "--repo-root", $RepositoryRoot,
+            "--expected-board-sha256", $ExpectedBoardSha256,
+            "--task-id", $Task, "--decision-ref", $DecisionRef, "--json"
         )
     }
     "Close" {

@@ -8,8 +8,10 @@ do not participate in execution.
 
 ## User contract
 
-Normal work has two User interactions: submit the requirement, then inspect the completed result and
-say `关闭`. Proceed autonomously through safe in-scope local work. Stop earlier only for:
+Normal work starts when the User submits a requirement. After inspecting a completed result, the User
+may say `关闭` or report an in-scope defect or adjustment. In-scope feedback resumes the same task
+automatically; it does not require closing the task or opening a replacement. Proceed autonomously
+through safe in-scope local work. Stop earlier only for:
 
 - material expansion beyond the submitted behavior;
 - a product choice with meaningfully different outcomes that current evidence cannot resolve;
@@ -18,7 +20,13 @@ say `关闭`. Proceed autonomously through safe in-scope local work. Stop earlie
 - a repeated failure whose cause cannot be established safely.
 
 Do not ask for routine Plan, role, test-command, bounded-fix, or clean-local-integration approval.
-WIP is one; only explicit Close or Cancel releases it.
+WIP is one; only explicit Close or Cancel releases it. When a task is `ready_for_close`, interpret the
+next User message as follows:
+
+- final `关闭` or an unmistakable cancellation: close or cancel the task;
+- an in-scope defect, acceptance finding, or adjustment: run `Revise` and continue the same task;
+- a materially unrelated request: keep WIP unless that message also explicitly closes or cancels the
+  current task, in which case `CloseAndSubmit` may perform the atomic rollover.
 
 For Micro and Standard tasks, `scope_paths` is an initial navigation aid rather than a frozen file
 allowlist: Sol may touch additional files required by the same User-requested behavior when the exact
@@ -83,13 +91,15 @@ task trigger. They never create a second workflow.
 
 ## Board interface and recovery
 
-Public commands are `Submit`, `Close`, and `CloseAndSubmit` through `scripts/run_task.ps1`. Internal
-commands are:
+Public commands are `Submit`, `Revise`, `Close`, and `CloseAndSubmit` through
+`scripts/run_task.ps1`. Internal commands are:
 
 - `inspect`: compact state and next action;
 - `submit`: activate task, tier, scope, and starting HEAD;
 - `checkpoint`: one meaningful recovery point or typed blocker, only when useful;
 - `finish`: verify the clean exact subject, scope, proportional results, and validation;
+- `revise`: on in-scope User feedback, return the same task from `ready_for_close` to `running`,
+  invalidate its stale final report, and record a concise revision checkpoint;
 - `close`: record the User decision and return to idle.
 - `close-and-submit`: when one User message explicitly closes or cancels the current task and requests
   a complete next task, record the old decision and activate the next request in one locked board
@@ -97,7 +107,8 @@ commands are:
   or board-hash errors.
 
 Routine callers use the compact structured result and `next_action`; they do not reread this document,
-command help, or writer source before each transition. Use separate `Close` and `Submit` only when the
+command help, or writer source before each transition. They invoke `Revise` automatically before
+editing when feedback stays inside the active task. Use separate `Close` and `Submit` only when the
 User supplied them as separate decisions.
 
 Do not persist role begin/callback microstates, duplicate Plans, prompt hashes, model-route prose, or
@@ -111,4 +122,5 @@ evidence, commits, or tests merely because the conversation restarted.
 
 `finish` records the exact subject, changed paths, scope result, proportional review/QA facts, and
 concise validation. Report only the outcome, evidence needed to trust it, material caveats, and next
-action. Stop at `ready_for_close`; only the User's final Close releases WIP.
+action. At `ready_for_close`, final Close releases WIP; in-scope feedback triggers `Revise` and resumes
+execution without another planning or close ceremony.

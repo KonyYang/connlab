@@ -93,5 +93,7 @@ code and observable behavior outrank historical plans.
   destructive work, broad architecture change, or unresolved product choice; use independent
   Planner, Developer, Reviewer, QA, and Integrator contexts with automatic handoffs.
 
-Do not request routine Plan approval. The normal User interactions are the request and final `关闭`.
-Use `scripts/connlab_sol_task.py` as the sole board writer; persist only useful recovery checkpoints.
+Do not request routine Plan approval. At `ready_for_close`, final `关闭` releases WIP; in-scope User
+feedback must automatically run `Revise` and continue the same task without requiring Close or a new
+task. Use `scripts/connlab_sol_task.py` as the sole board writer; persist only useful recovery
+checkpoints.
