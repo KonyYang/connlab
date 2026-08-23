@@ -311,9 +311,9 @@ def _is_mechanical_force_per_sample(context: FeeDefaultFillContext) -> bool:
 
 def _uses_sample_quantity_as_reading_units(context: FeeDefaultFillContext) -> bool:
     """Return whether the reviewed force label charges one reading per sample."""
-    return (
-        normalize_fee_rule_text(context.test_item)
-        in _SAMPLE_QUANTITY_READING_FORCE_LABELS
+    normalized_test_item = normalize_fee_rule_text(context.test_item)
+    return normalized_test_item in _SAMPLE_QUANTITY_READING_FORCE_LABELS or (
+        " contact retention " in f" {normalized_test_item} "
     )
 
 

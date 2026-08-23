@@ -34,6 +34,10 @@ from backend.modules.fee_evaluation.fee_step_quantity_defaults import (
 _HOUR_PATTERN = re.compile(r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\b", re.I)
 _CYCLE_PATTERN = re.compile(r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:cycle|cycles)\b", re.I)
 _CURRENT_PATTERN = re.compile(r"(?<![a-z])(\d+(?:\.\d+)?)\s*(?:a|amp|amps)\b", re.I)
+_RATE_SPECIFIC_THERMAL_CYCLING_RULE_IDS = {
+    "fee_rule_thermal_cycling_3_5c",
+    "fee_rule_thermal_cycling_5c",
+}
 def build_fee_default_fill(
     *,
     rule: FeeRule,
@@ -68,6 +72,18 @@ def build_fee_default_fill(
             sample_quantity_expression=context.sample_quantity_expression,
             source_text=_combined_text(context),
             step_quantities=context.step_quantities,
+        )
+    if (
+        rule.rule_id in _RATE_SPECIFIC_THERMAL_CYCLING_RULE_IDS
+        and normalize_fee_rule_text(context.test_item) == "thermal cycling"
+    ):
+        return manual_required(
+            rule=rule,
+            unit_label="hour",
+            unit_price=None,
+            base_fee=rule.base_fee.amount,
+            review_reason="Confirm thermal cycling ramp rate and duration",
+            manual_fields=("unit_price", "units", "base_fee", "testing_fee"),
         )
     extension_result = build_reviewed_extension_default_fill(rule=rule, context=context)
     if extension_result is not None:

@@ -25,6 +25,11 @@ _TOKEN_FALLBACK_BLOCKED_RULE_IDS = frozenset(
         "fee_rule_automotive_mechanical_force",
     }
 )
+_REVIEWED_FAMILY_RULE_IDS = (
+    ("contact retention", "fee_rule_mechanical_force"),
+    ("durability", "fee_rule_durability"),
+    ("dust", "fee_rule_dust_benign"),
+)
 
 
 def normalize_fee_rule_text(value: str | None) -> str:
@@ -61,6 +66,7 @@ class FeeRuleMatcher:
     def __init__(self, library: FeeRuleLibrary) -> None:
         self._library = library
         self._exact_alias_map = self._build_exact_alias_map(library.rules)
+        self._rule_by_id = {rule.rule_id: rule for rule in library.rules}
 
     def match_test_item(self, text: str | None) -> FeeRuleMatchResult:
         """Match one Matrix-style test item text against the reviewed fee-rule library."""
@@ -77,6 +83,10 @@ class FeeRuleMatcher:
         exact_match = self._exact_alias_map.get(normalized_text)
         if exact_match is not None:
             return _matched_result(exact_match, "exact_alias_match")
+
+        family_match = self._reviewed_family_match(normalized_text)
+        if family_match is not None:
+            return family_match
 
         token_candidates = self._token_candidates(normalized_text)
         if not token_candidates:
@@ -99,6 +109,16 @@ class FeeRuleMatcher:
                 review_reason="Multiple fee rules matched the same test item text.",
             )
         return _matched_result(token_candidates[0].rule, f"token_alias_match:{token_candidates[0].alias}")
+
+    def _reviewed_family_match(self, normalized_text: str) -> FeeRuleMatchResult | None:
+        padded_text = f" {normalized_text} "
+        for family, rule_id in _REVIEWED_FAMILY_RULE_IDS:
+            if f" {family} " not in padded_text:
+                continue
+            rule = self._rule_by_id.get(rule_id)
+            if rule is not None:
+                return _matched_result(rule, f"reviewed_family_match:{family}")
+        return None
 
     def _token_candidates(self, normalized_text: str) -> list[_TokenCandidate]:
         text_tokens = set(normalized_text.split())

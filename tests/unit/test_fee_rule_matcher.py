@@ -88,7 +88,16 @@ def test_fee_rule_matcher_treats_preconditioning_durability_as_durability() -> N
     assert result.status == "matched"
     assert result.rule is not None
     assert result.rule.rule_id == "fee_rule_durability"
-    assert result.match_reason.startswith("token_alias_match:")
+
+
+def test_fee_rule_matcher_treats_cycle_qualified_preconditioning_as_durability() -> None:
+    matcher = FeeRuleMatcher(load_active_fee_rule_library())
+
+    result = matcher.match_test_item("DURABILITY, 20 Cycles (Preconditioning)")
+
+    assert result.status == "matched"
+    assert result.rule is not None
+    assert result.rule.rule_id == "fee_rule_durability"
 
 
 def test_fee_rule_matcher_treats_reseating_as_reseating_rule() -> None:
@@ -122,6 +131,35 @@ def test_fee_rule_matcher_treats_dust_as_dust_benign_rule() -> None:
     assert result.rule is not None
     assert result.rule.rule_id == "fee_rule_dust_benign"
     assert result.match_reason == "exact_alias_match"
+
+
+def test_fee_rule_matcher_treats_dust_contamination_as_dust_benign_rule() -> None:
+    matcher = FeeRuleMatcher(load_active_fee_rule_library())
+
+    result = matcher.match_test_item("DUST CONTAMINATION")
+
+    assert result.status == "matched"
+    assert result.rule is not None
+    assert result.rule.rule_id == "fee_rule_dust_benign"
+
+
+@pytest.mark.parametrize(
+    ("test_item", "expected_rule_id"),
+    (
+        ("DURABILITY, 50 Cycles (Preconditioning)", "fee_rule_durability"),
+        ("Fine DUST CONTAMINATION", "fee_rule_dust_benign"),
+        ("CONTACT RETENTION (Power Only)", "fee_rule_mechanical_force"),
+    ),
+)
+def test_fee_rule_matcher_supports_reviewed_family_containment(
+    test_item: str,
+    expected_rule_id: str,
+) -> None:
+    result = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(test_item)
+
+    assert result.status == "matched"
+    assert result.rule is not None
+    assert result.rule.rule_id == expected_rule_id
 
 
 def test_fee_rule_matcher_treats_current_rating_as_temperature_rise() -> None:

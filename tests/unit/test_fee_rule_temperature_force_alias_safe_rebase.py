@@ -23,18 +23,21 @@ def test_manifest_activates_new_seed_without_rewriting_prior_versions() -> None:
     old_r7 = load_fee_rule_library(_SEEDS / "fee_rules_v2026_08_22.json")
     old_r8 = load_fee_rule_library(_SEEDS / "fee_rules_v2026_08_22_r8.json")
     old_r9 = load_fee_rule_library(_SEEDS / "fee_rules_v2026_08_23_r9.json")
+    old_r10 = load_fee_rule_library(_SEEDS / "fee_rules_v2026_08_23_r10.json")
 
-    assert active.version.version_id == "fee_rules_v2026_08_23_r10"
+    assert active.version.version_id == "fee_rules_v2026_08_23_r11"
     assert old_r5.version.version_id == "fee_rules_v2026_07_16_r5"
     assert old_r6.version.version_id == "fee_rules_v2026_07_17_r6"
     assert old_r7.version.version_id == "fee_rules_v2026_08_22_r7"
     assert old_r8.version.version_id == "fee_rules_v2026_08_22_r8"
     assert old_r9.version.version_id == "fee_rules_v2026_08_23_r9"
+    assert old_r10.version.version_id == "fee_rules_v2026_08_23_r10"
     assert old_r5.version.source_hash == active.version.source_hash
     assert old_r6.version.source_hash == active.version.source_hash
     assert old_r7.version.source_hash == active.version.source_hash
     assert old_r8.version.source_hash == active.version.source_hash
     assert old_r9.version.source_hash == active.version.source_hash
+    assert old_r10.version.source_hash == active.version.source_hash
 
 
 @pytest.mark.parametrize(

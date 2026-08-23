@@ -581,9 +581,11 @@ def test_temperature_named_duration_rules_default_base_fee_to_zero_without_durat
         ("High Temp. Life", "fee_rule_high_temperature_life"),
         ("Cycling Temperature & Humidity", "fee_rule_temperature_humidity"),
         ("Thermal distrubance", "fee_rule_temperature_humidity"),
+        ("THERMAL CYCLING", "fee_rule_thermal_cycling_3_5c"),
+        ("Vibration Random", "fee_rule_vibration"),
     ),
 )
-def test_reviewed_temperature_duration_labels_default_to_per_hour(
+def test_reviewed_hour_duration_labels_default_to_per_hour(
     test_item: str,
     expected_rule_id: str,
 ) -> None:
@@ -597,6 +599,18 @@ def test_reviewed_temperature_duration_labels_default_to_per_hour(
     )
 
     assert result.unit_label == "hour"
+
+
+def test_unqualified_thermal_cycling_keeps_rate_specific_price_pending() -> None:
+    test_item = "THERMAL CYCLING"
+    match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(test_item)
+
+    assert match.rule is not None
+    result = build_fee_default_fill(rule=match.rule, context=_context(test_item=test_item))
+
+    assert result.unit_label == "hour"
+    assert result.unit_price is None
+    assert result.review_required is True
 
 
 def test_salt_spray_uses_hour_duration_from_matrix_condition() -> None:
@@ -801,6 +815,22 @@ def test_contact_retention_defaults_to_per_reading() -> None:
             test_item="Contact Retention",
             sample_quantity_expression="5",
         ),
+    )
+
+    assert result.unit_price == Decimal("20")
+    assert result.unit_label == "reading"
+    assert result.units == Decimal("5")
+
+
+def test_contact_retention_power_and_signal_defaults_to_per_reading() -> None:
+    test_item = "CONTACT RETENTION (Power & Signal)"
+    match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(test_item)
+
+    assert match.rule is not None
+    assert match.rule.rule_id == "fee_rule_mechanical_force"
+    result = build_fee_default_fill(
+        rule=match.rule,
+        context=_context(test_item=test_item, sample_quantity_expression="5"),
     )
 
     assert result.unit_price == Decimal("20")
