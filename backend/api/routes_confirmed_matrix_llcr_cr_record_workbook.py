@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from backend.api.dependencies import (
     get_llcr_cr_record_workbook_artifact_store,
@@ -37,6 +39,7 @@ router = APIRouter(tags=["confirmed-matrix-llcr-cr-record-workbook"])
 
 class LlcrCrRecordWorkbookGenerateRequest(BaseModel):
     preview_fingerprint: str
+    record_type: Literal["llcr", "cr"] = "llcr"
 
     @field_validator("preview_fingerprint")
     @classmethod
@@ -69,7 +72,7 @@ class LlcrCrRecordRowResponse(BaseModel):
 
 
 class LlcrCrRecordSectionResponse(BaseModel):
-    record_type: str
+    record_type: Literal["llcr", "cr"]
     confirmed_group_id: str
     confirmed_row_id: str
     step_sequence: int
@@ -79,6 +82,21 @@ class LlcrCrRecordSectionResponse(BaseModel):
     sample_count: int
     readings_per_sample: int
     rows: list[LlcrCrRecordRowResponse]
+    category_id: str | None = None
+    category_label: str | None = None
+    point_expression: str | None = None
+    record_prefix: str | None = None
+    stages: list["LlcrCrRecordStageResponse"] = Field(default_factory=list)
+
+
+class LlcrCrRecordStageResponse(BaseModel):
+    label: str
+    source_step: str
+    confirmed_row_id: str
+    test_item: str
+    condition: str
+    requirement: str
+    test_current_ampere: str | None = None
 
 
 class LlcrCrRecordWorkbookPreviewResponse(BaseModel):
@@ -90,6 +108,10 @@ class LlcrCrRecordWorkbookPreviewResponse(BaseModel):
     row_count: int
     sections: list[LlcrCrRecordSectionResponse]
     diagnostics: list[LlcrCrRecordDiagnosticResponse]
+    record_type: Literal["llcr", "cr"]
+    point_profile_revision_id: str | None = None
+    point_profile_revision_sequence: int | None = None
+    delta_r_enabled: bool = False
 
 
 class LlcrCrRecordWorkbookGenerateResponse(BaseModel):
@@ -99,6 +121,7 @@ class LlcrCrRecordWorkbookGenerateResponse(BaseModel):
     artifact_id: str
     file_name: str
     download_url: str
+    record_type: Literal["llcr", "cr"]
 
 
 @router.post(
@@ -107,13 +130,14 @@ class LlcrCrRecordWorkbookGenerateResponse(BaseModel):
 )
 def preview_llcr_cr_record_workbook(
     project_id: str,
+    record_type: Literal["llcr", "cr"] = "llcr",
     service: LlcrCrRecordWorkbookPreviewService = Depends(
         get_llcr_cr_record_workbook_preview_service
     ),
 ) -> LlcrCrRecordWorkbookPreviewResponse:
     """Return a typed no-write projection from active confirmed contact authority."""
     try:
-        projection = service.preview(project_id)
+        projection = service.preview(project_id, record_type)
     except LlcrCrRecordWorkbookPreviewNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return _preview_response(projection)
@@ -136,6 +160,7 @@ def generate_llcr_cr_record_workbook(
             GenerateLlcrCrRecordWorkbookCommand(
                 project_id=project_id,
                 preview_fingerprint=request.preview_fingerprint,
+                record_type=request.record_type,
             )
         )
     except LlcrCrRecordWorkbookGenerationError as exc:
@@ -178,6 +203,10 @@ def _preview_response(projection: LlcrCrRecordProjection) -> LlcrCrRecordWorkboo
         row_count=projection.row_count,
         sections=[_section_response(section) for section in projection.sections],
         diagnostics=[_diagnostic_response(item) for item in projection.diagnostics],
+        record_type=projection.record_type or "llcr",
+        point_profile_revision_id=projection.point_profile_revision_id,
+        point_profile_revision_sequence=projection.point_profile_revision_sequence,
+        delta_r_enabled=projection.delta_r_enabled,
     )
 
 
@@ -199,6 +228,22 @@ def _section_response(section: LlcrCrRecordSection) -> LlcrCrRecordSectionRespon
                 contact_label=row.contact_label,
             )
             for row in section.rows
+        ],
+        category_id=section.category_id,
+        category_label=section.category_label,
+        point_expression=section.point_expression,
+        record_prefix=section.record_prefix,
+        stages=[
+            LlcrCrRecordStageResponse(
+                label=stage.label,
+                source_step=stage.source_step,
+                confirmed_row_id=stage.confirmed_row_id,
+                test_item=stage.test_item,
+                condition=stage.condition,
+                requirement=stage.requirement,
+                test_current_ampere=stage.test_current_ampere,
+            )
+            for stage in section.stages
         ],
     )
 
@@ -233,4 +278,5 @@ def _generate_response(
             f"/api/projects/{result.project_id}/confirmed-matrix/llcr-cr-record-workbook/"
             f"files/{result.artifact_id}"
         ),
+        record_type=result.record_type,
     )

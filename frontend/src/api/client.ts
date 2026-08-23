@@ -1420,8 +1420,20 @@ export type LlcrCrRecordWorkbookRow = {
   contact_label: string;
 };
 
+export type LlcrCrRecordType = "llcr" | "cr";
+
+export type LlcrCrRecordWorkbookStage = {
+  label: string;
+  source_step: string;
+  confirmed_row_id: string;
+  test_item: string;
+  condition: string;
+  requirement: string;
+  test_current_ampere: string | null;
+};
+
 export type LlcrCrRecordWorkbookSection = {
-  record_type: "llcr" | "cr_specified_current";
+  record_type: LlcrCrRecordType;
   confirmed_group_id: string;
   confirmed_row_id: string;
   step_sequence: number;
@@ -1431,6 +1443,11 @@ export type LlcrCrRecordWorkbookSection = {
   sample_count: number;
   readings_per_sample: number;
   rows: LlcrCrRecordWorkbookRow[];
+  category_id: string | null;
+  category_label: string | null;
+  record_prefix: string | null;
+  point_expression: string | null;
+  stages: LlcrCrRecordWorkbookStage[];
 };
 
 export type LlcrCrRecordWorkbookPreviewResponse = {
@@ -1442,9 +1459,14 @@ export type LlcrCrRecordWorkbookPreviewResponse = {
   row_count: number;
   sections: LlcrCrRecordWorkbookSection[];
   diagnostics: LlcrCrRecordWorkbookDiagnostic[];
+  record_type: LlcrCrRecordType;
+  point_profile_revision_id: string | null;
+  point_profile_revision_sequence: number | null;
+  delta_r_enabled: boolean;
 };
 
 export type LlcrCrRecordWorkbookGenerateRequest = {
+  record_type: LlcrCrRecordType;
   preview_fingerprint: string;
 };
 
@@ -1455,6 +1477,7 @@ export type LlcrCrRecordWorkbookGenerateResponse = {
   artifact_id: string;
   file_name: string;
   download_url: string;
+  record_type: LlcrCrRecordType;
 };
 
 export type ProjectMatrixDraftSummary = ProjectMatrixDraftRecord;
@@ -4346,10 +4369,11 @@ export function fetchConfirmedMatrixTestRecordPreview(
 }
 
 export function previewLlcrCrRecordWorkbook(
-  projectId: string
+  projectId: string,
+  recordType: LlcrCrRecordType,
 ): Promise<LlcrCrRecordWorkbookPreviewResponse> {
   return requestJson<LlcrCrRecordWorkbookPreviewResponse>(
-    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/llcr-cr-record-workbook/preview`,
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/llcr-cr-record-workbook/preview?record_type=${recordType}`,
     { method: "POST" }
   );
 }
@@ -4551,6 +4575,7 @@ export type ProjectPointProfileRevision = {
   confirmed_at: string | null;
   categories: ProjectPointProfileCategory[];
   points_per_sample: number;
+  delta_r_enabled: boolean;
   cr_coverage: ProjectPointProfileCrCoverage;
 };
 
@@ -4592,6 +4617,7 @@ export type ProjectPointProfileDirectConfirmCommand = {
   expected_confirmed_revision_id: string | null;
   expected_confirmed_revision_fingerprint: string | null;
   cr_coverage_mode: ProjectPointProfileCrCoverageMode;
+  delta_r_enabled: boolean;
   categories: ProjectPointProfileDirectCategory[];
 };
 

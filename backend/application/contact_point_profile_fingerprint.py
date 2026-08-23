@@ -84,6 +84,7 @@ def point_profile_fingerprint(
     version: str = "point-profile:v1",
     cr_coverage_mode: str | None = None,
     cr_selected_category_ids: Iterable[str] = (),
+    delta_r_enabled: bool | None = None,
 ) -> str:
     """Hash the ordered persisted category snapshot for stale-write detection."""
     payload = {
@@ -97,6 +98,8 @@ def point_profile_fingerprint(
             "mode": cr_coverage_mode,
             "selected_category_ids": list(cr_selected_category_ids),
         }
+    if delta_r_enabled is not None:
+        payload["delta_r_enabled"] = delta_r_enabled
     encoded = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 

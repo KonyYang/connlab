@@ -91,13 +91,23 @@ describe("ProjectPointProfileEditor delete activation", () => {
     expect((screen.getByRole("checkbox", { name: "Include HP in CR" }) as HTMLInputElement).checked).toBe(true);
     expect((screen.getByRole("checkbox", { name: "Include LP in CR" }) as HTMLInputElement).checked).toBe(false);
     expect((screen.getByRole("checkbox", { name: "Include Signal in CR" }) as HTMLInputElement).checked).toBe(true);
-    expect(screen.getAllByRole("checkbox")).toHaveLength(3);
+    expect(screen.getAllByRole("checkbox")).toHaveLength(4);
     expect(screen.queryByRole("heading", { name: "CR coverage" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Customize CR" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Use same as LLCR" })).toBeNull();
 
     await user.click(screen.getByRole("checkbox", { name: "Include Signal in CR" }));
     expect((screen.getByRole("checkbox", { name: "Include Signal in CR" }) as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("shows one global LLCR Delta R option enabled by default", async () => {
+    const user = userEvent.setup();
+    render(<EditorHarness onRemove={vi.fn()} />);
+
+    const option = screen.getByRole("checkbox", { name: "Delta R for LLCR" }) as HTMLInputElement;
+    expect(option.checked).toBe(true);
+    await user.click(option);
+    expect(option.checked).toBe(false);
   });
 });
 
@@ -111,6 +121,7 @@ function EditorHarness({
   onRemove: (index: number) => void;
 }) {
   const [rows, setRows] = useState(initial);
+  const [deltaREnabled, setDeltaREnabled] = useState(true);
   const crCoverageMode = rows.every((row) => row.cr_selected) ? "follow_llcr" : "custom";
   const model = {
     workspace: null,
@@ -123,6 +134,8 @@ function EditorHarness({
     crSelectedCount: rows.filter((row) => row.cr_selected).length,
     crCoverageMode,
     validation: null,
+    deltaREnabled,
+    setDeltaREnabled,
     updateRow: vi.fn(),
     addCategory: vi.fn(),
     setCrSelected: (index: number, selected: boolean) => setRows((current) => current.map(

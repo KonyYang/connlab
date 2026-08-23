@@ -51,7 +51,7 @@ def test_preview_generate_and_contained_download_use_confirmed_authority_only(tm
     try:
         client = TestClient(app)
         preview = client.post(
-            "/api/projects/project-1/confirmed-matrix/llcr-cr-record-workbook/preview"
+            "/api/projects/project-1/confirmed-matrix/llcr-cr-record-workbook/preview?record_type=llcr"
         )
         assert preview.status_code == 200
         assert preview.json()["status"] == "ready"
@@ -59,12 +59,13 @@ def test_preview_generate_and_contained_download_use_confirmed_authority_only(tm
 
         generated = client.post(
             "/api/projects/project-1/confirmed-matrix/llcr-cr-record-workbook/generate",
-            json={"preview_fingerprint": preview.json()["preview_fingerprint"]},
+            json={"record_type": "llcr", "preview_fingerprint": preview.json()["preview_fingerprint"]},
         )
         assert generated.status_code == 200
         payload = generated.json()
         assert "output_path" not in payload
         assert payload["download_url"].endswith(payload["artifact_id"])
+        assert "_llcr_record_" in payload["file_name"]
 
         download = client.get(payload["download_url"])
         assert download.status_code == 200
@@ -73,6 +74,43 @@ def test_preview_generate_and_contained_download_use_confirmed_authority_only(tm
         )
     finally:
         app.dependency_overrides.clear()
+
+
+def test_preview_and_generate_keep_llcr_and_cr_as_independent_files(tmp_path: Path) -> None:
+    artifact_store = LlcrCrSpecializedRecordArtifactStore(tmp_path / "generated")
+    preview_service = LlcrCrRecordWorkbookPreviewService(
+        confirmed_store=_ConfirmedStore(_snapshot_with_both_types())
+    )
+    generation_service = LlcrCrRecordWorkbookGenerationService(
+        preview_service=preview_service,
+        workbook_gateway=LlcrCrSpecializedRecordWorkbookGateway(),
+        artifact_store=artifact_store,
+    )
+    app.dependency_overrides[get_llcr_cr_record_workbook_preview_service] = lambda: preview_service
+    app.dependency_overrides[get_llcr_cr_record_workbook_generation_service] = lambda: generation_service
+    app.dependency_overrides[get_llcr_cr_record_workbook_artifact_store] = lambda: artifact_store
+    try:
+        client = TestClient(app)
+        results = []
+        for record_type in ("llcr", "cr"):
+            preview = client.post(
+                f"/api/projects/project-1/confirmed-matrix/llcr-cr-record-workbook/preview?record_type={record_type}"
+            )
+            assert preview.status_code == 200
+            assert preview.json()["record_type"] == record_type
+            assert {section["record_type"] for section in preview.json()["sections"]} == {record_type}
+            generated = client.post(
+                "/api/projects/project-1/confirmed-matrix/llcr-cr-record-workbook/generate",
+                json={"record_type": record_type, "preview_fingerprint": preview.json()["preview_fingerprint"]},
+            )
+            assert generated.status_code == 200
+            results.append(generated.json())
+    finally:
+        app.dependency_overrides.clear()
+
+    assert results[0]["artifact_id"] != results[1]["artifact_id"]
+    assert "_llcr_record_" in results[0]["file_name"]
+    assert "_cr_record_" in results[1]["file_name"]
 
 
 def test_preview_reports_both_families_for_a_same_section_prefix_collision(tmp_path: Path) -> None:
@@ -167,3 +205,22 @@ def _snapshot() -> ConfirmedMatrixSnapshot:
         version.confirmed_at, plan,
     )
     return ConfirmedMatrixSnapshot(version=version, groups=(group,), rows=(row,), step_quantities=(quantity,))
+
+
+def _snapshot_with_both_types() -> ConfirmedMatrixSnapshot:
+    source = _snapshot()
+    cr_row = replace(
+        source.rows[0], confirmed_row_id="row-cr", draft_row_id="draft-row-cr",
+        row_order=2, test_item="CONTACT RESISTANCE (Power)", condition="10 A max",
+    )
+    cr_plan = replace(source.step_quantities[0].contact_plan, contact_kind="cr_specified_current")
+    cr_quantity = replace(
+        source.step_quantities[0], confirmed_step_quantity_id="quantity-cr",
+        confirmed_row_id=cr_row.confirmed_row_id, draft_row_id=cr_row.draft_row_id,
+        step_sequence=3, raw_token="3", contact_plan=cr_plan,
+    )
+    return replace(
+        source,
+        rows=(source.rows[0], cr_row),
+        step_quantities=(source.step_quantities[0], cr_quantity),
+    )

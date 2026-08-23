@@ -3,7 +3,11 @@ from __future__ import annotations
 from dataclasses import replace
 
 from backend.application.confirmed_matrix_llcr_cr_record_projection import (
+    build_point_profile_llcr_cr_record_projection,
     build_llcr_cr_record_projection,
+)
+from backend.application.contact_point_profile_confirmed_consumer_adapter import (
+    EffectiveConfirmedPointProfile,
 )
 from backend.domain import (
     ConfirmedMatrixGroup,
@@ -101,6 +105,124 @@ def test_projection_permits_same_prefix_in_a_different_confirmed_group_step_sect
     assert [section.group_label for section in projection.sections] == ["Group 1", "Group 2"]
 
 
+def test_point_profile_projection_builds_separate_type_views_from_matrix_stages() -> None:
+    snapshot = _matrix_with_llcr_and_cr_stages()
+    profile = EffectiveConfirmedPointProfile(
+        status="confirmed",
+        readings_per_sample="4",
+        revision_id="profile-1",
+        revision_sequence=3,
+        fingerprint="profile-fingerprint",
+        lineage="Confirmed Project Point Profile",
+        message=None,
+        cr_readings_per_sample="2",
+        categories=(
+            {
+                "category_id": "ppc-1", "category_ordinal": 0, "label": "Signal",
+                "count_per_sample": 2, "record_prefix": "SIG", "included": True,
+                "point_expression": "1,3",
+            },
+            {
+                "category_id": "ppc-2", "category_ordinal": 1, "label": "Power",
+                "count_per_sample": 2, "record_prefix": "PWR", "included": True,
+                "point_expression": "2,4",
+            },
+        ),
+        cr_category_ids=("ppc-2",),
+        delta_r_enabled=False,
+    )
+
+    llcr = build_point_profile_llcr_cr_record_projection(snapshot, profile, "llcr")
+    cr = build_point_profile_llcr_cr_record_projection(snapshot, profile, "cr")
+
+    assert llcr.status == "ready"
+    assert llcr.record_type == "llcr"
+    assert llcr.delta_r_enabled is False
+    assert [section.category_id for section in llcr.sections] == ["ppc-1", "ppc-2"]
+    assert [stage.label for stage in llcr.sections[0].stages] == ["Initial", "Final"]
+    assert [row.contact_id for row in llcr.sections[0].rows] == ["SIG1", "SIG3", "SIG1", "SIG3"]
+
+    assert cr.status == "ready"
+    assert cr.record_type == "cr"
+    assert [section.category_id for section in cr.sections] == ["ppc-2"]
+    assert cr.sections[0].stages[0].test_current_ampere == "10"
+    assert [row.contact_id for row in cr.sections[0].rows] == ["PWR2", "PWR4", "PWR2", "PWR4"]
+
+
+def test_point_profile_projection_blocks_when_confirmed_profile_is_unusable() -> None:
+    profile = EffectiveConfirmedPointProfile(
+        status="draft", readings_per_sample=None, revision_id=None,
+        revision_sequence=None, fingerprint=None, lineage=None,
+        message="Confirm Point Profile before generating test records.",
+    )
+
+    projection = build_point_profile_llcr_cr_record_projection(_snapshot(), profile, "llcr")
+
+    assert projection.status == "blocked"
+    assert projection.preview_fingerprint is None
+    assert projection.diagnostics[0].code == "point_profile_not_confirmed"
+
+
+def test_point_profile_stage_label_skips_other_resistance_measurements() -> None:
+    source = _matrix_with_llcr_and_cr_stages()
+    final = source.rows[2]
+    cr = source.rows[3]
+    shifted_cr = replace(cr, row_order=3)
+    middle = replace(
+        final,
+        confirmed_row_id="row-middle",
+        draft_row_id="draft-row-middle",
+        row_order=4,
+    )
+    shifted_final = replace(final, row_order=5)
+    quantities = tuple(
+        replace(
+            quantity,
+            step_sequence=(
+                5 if quantity.confirmed_row_id == final.confirmed_row_id
+                else 3 if quantity.confirmed_row_id == cr.confirmed_row_id
+                else quantity.step_sequence
+            ),
+        )
+        for quantity in source.step_quantities
+    ) + (
+        replace(
+            source.step_quantities[0],
+            confirmed_step_quantity_id="quantity-middle",
+            confirmed_row_id=middle.confirmed_row_id,
+            draft_row_id=middle.draft_row_id,
+            step_sequence=4,
+            raw_token="4",
+            contact_plan=None,
+        ),
+    )
+    snapshot = replace(
+        source,
+        rows=(source.rows[0], source.rows[1], shifted_cr, middle, shifted_final),
+        step_quantities=quantities,
+    )
+    profile = EffectiveConfirmedPointProfile(
+        status="confirmed",
+        readings_per_sample="1",
+        revision_id="profile-1",
+        revision_sequence=1,
+        fingerprint="profile-fingerprint",
+        lineage="Confirmed Project Point Profile",
+        message=None,
+        categories=({
+            "category_id": "ppc-1", "category_ordinal": 0, "label": "Signal",
+            "count_per_sample": 1, "record_prefix": "SIG", "included": True,
+            "point_expression": "1",
+        },),
+    )
+
+    projection = build_point_profile_llcr_cr_record_projection(snapshot, profile, "llcr")
+
+    assert [stage.label for stage in projection.sections[0].stages] == [
+        "Initial", "After DURABILITY, 20 Cycles", "Final",
+    ]
+
+
 def _snapshot(
     *,
     families: tuple[MatrixStepContactFamily, ...] | None = None,
@@ -185,4 +307,35 @@ def _family(
         record_prefix=prefix,
         included=True,
         is_custom=family_id == "custom",
+    )
+
+
+def _matrix_with_llcr_and_cr_stages() -> ConfirmedMatrixSnapshot:
+    source = _snapshot()
+    group = source.groups[0]
+    llcr_initial = replace(source.rows[0], row_order=1, test_item="LLCR", condition="100 mA max")
+    durability = replace(
+        source.rows[0], confirmed_row_id="row-2", draft_row_id="draft-row-2",
+        row_order=2, test_item="DURABILITY, 20 Cycles", condition=None,
+    )
+    llcr_final = replace(
+        source.rows[0], confirmed_row_id="row-3", draft_row_id="draft-row-3",
+        row_order=3, test_item="CONTACT RESISTANCE AT LOW LEVEL", condition="100 mA max",
+    )
+    cr = replace(
+        source.rows[0], confirmed_row_id="row-4", draft_row_id="draft-row-4",
+        row_order=4, test_item="CONTACT RESISTANCE (Power)", condition="10 A max",
+    )
+    base = source.step_quantities[0]
+    quantities = (
+        replace(base, confirmed_row_id=llcr_initial.confirmed_row_id, draft_row_id=llcr_initial.draft_row_id, step_sequence=1, raw_token="1", contact_plan=None),
+        replace(base, confirmed_step_quantity_id="quantity-2", confirmed_row_id=durability.confirmed_row_id, draft_row_id=durability.draft_row_id, step_sequence=2, raw_token="2", contact_plan=None),
+        replace(base, confirmed_step_quantity_id="quantity-3", confirmed_row_id=llcr_final.confirmed_row_id, draft_row_id=llcr_final.draft_row_id, step_sequence=3, raw_token="3", contact_plan=None),
+        replace(base, confirmed_step_quantity_id="quantity-4", confirmed_row_id=cr.confirmed_row_id, draft_row_id=cr.draft_row_id, step_sequence=4, raw_token="4", contact_plan=None),
+    )
+    return replace(
+        source,
+        groups=(replace(group, sample_quantity_expression="2"),),
+        rows=(llcr_initial, durability, llcr_final, cr),
+        step_quantities=quantities,
     )

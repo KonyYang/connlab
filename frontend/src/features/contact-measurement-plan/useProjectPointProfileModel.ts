@@ -22,10 +22,12 @@ export function useProjectPointProfileModel({ projectId }: { projectId: string }
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deltaREnabled, setDeltaREnabled] = useState(true);
 
   const hydrate = useCallback((next: ProjectPointProfileWorkspace) => {
     setWorkspace(next);
     const coverage = next.confirmed_revision?.cr_coverage;
+    setDeltaREnabled(next.confirmed_revision?.delta_r_enabled ?? true);
     setRows(localPointProfileRows(
       next.confirmed_revision?.categories,
       coverage?.selected_category_ids ?? [],
@@ -75,6 +77,7 @@ export function useProjectPointProfileModel({ projectId }: { projectId: string }
         expected_confirmed_revision_id: workspace?.confirmed_revision?.revision_id ?? null,
         expected_confirmed_revision_fingerprint: workspace?.confirmed_revision?.fingerprint ?? null,
         cr_coverage_mode: crCoverageMode,
+        delta_r_enabled: deltaREnabled,
         categories: rows.map((row) => ({
           category_id: row.category_id,
           prefix: row.prefix.trim(),
@@ -94,7 +97,8 @@ export function useProjectPointProfileModel({ projectId }: { projectId: string }
 
   return {
     workspace, rows, loading, busy, error, total, crTotal, crSelectedCount,
-    crCoverageMode, validation,
+    crCoverageMode, deltaREnabled, validation,
+    setDeltaREnabled,
     updateRow: (index: number, patch: Partial<ProjectPointProfileDraftCategory>) => setRows((current) => current.map((row, itemIndex) => itemIndex === index ? { ...row, ...patch } : row)),
     addCategory: () => setRows((current) => current.length < 256 ? [...current, emptyProjectPointProfileCategory()] : current),
     removeCategory: (index: number) => setRows((current) => {

@@ -1076,12 +1076,11 @@ def get_llcr_cr_record_workbook_artifact_store(
 
 def get_llcr_cr_record_workbook_preview_service(
     session: Session = Depends(get_session),
-    settings: Settings = Depends(get_settings),
 ) -> LlcrCrRecordWorkbookPreviewService:
-    """Build no-write preview from active confirmed Matrix contact authority."""
+    """Build no-write preview from confirmed Matrix and Point Profile authority."""
     return LlcrCrRecordWorkbookPreviewService(
         confirmed_store=ConfirmedMatrixAuthorityRepository(session),
-        consumer_adapter=_confirmed_contact_measurement_consumer_adapter(session, settings),
+        consumer_adapter=_confirmed_contact_point_profile_consumer_adapter(session),
     )
 
 
@@ -1093,7 +1092,7 @@ def get_llcr_cr_record_workbook_generation_service(
     return LlcrCrRecordWorkbookGenerationService(
         preview_service=LlcrCrRecordWorkbookPreviewService(
             confirmed_store=ConfirmedMatrixAuthorityRepository(session),
-            consumer_adapter=_confirmed_contact_measurement_consumer_adapter(session, settings),
+            consumer_adapter=_confirmed_contact_point_profile_consumer_adapter(session),
         ),
         workbook_gateway=LlcrCrSpecializedRecordWorkbookGateway(),
         artifact_store=LlcrCrSpecializedRecordArtifactStore(

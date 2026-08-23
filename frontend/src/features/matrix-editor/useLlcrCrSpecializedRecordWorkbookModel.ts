@@ -5,9 +5,10 @@ import {
   previewLlcrCrRecordWorkbook,
   type LlcrCrRecordWorkbookGenerateResponse,
   type LlcrCrRecordWorkbookPreviewResponse,
+  type LlcrCrRecordType,
 } from "../../api/client";
 
-export function useLlcrCrSpecializedRecordWorkbookModel(projectId: string) {
+export function useLlcrCrSpecializedRecordWorkbookModel(projectId: string, recordType: LlcrCrRecordType) {
   const [preview, setPreview] = useState<LlcrCrRecordWorkbookPreviewResponse | null>(null);
   const [generated, setGenerated] = useState<LlcrCrRecordWorkbookGenerateResponse | null>(null);
   const [busy, setBusy] = useState<"preview" | "generate" | "download" | null>(null);
@@ -19,10 +20,10 @@ export function useLlcrCrSpecializedRecordWorkbookModel(projectId: string) {
     setError(null);
     setGenerated(null);
     try {
-      setPreview(await previewLlcrCrRecordWorkbook(projectId));
+      setPreview(await previewLlcrCrRecordWorkbook(projectId, recordType));
     } catch {
       setPreview(null);
-      setError("Unable to preview the specialized LLCR/CR record workbook.");
+      setError(`Unable to preview the ${recordType.toUpperCase()} record workbook.`);
     } finally {
       setBusy(null);
     }
@@ -35,12 +36,13 @@ export function useLlcrCrSpecializedRecordWorkbookModel(projectId: string) {
     try {
       setGenerated(
         await generateLlcrCrRecordWorkbook(projectId, {
+          record_type: recordType,
           preview_fingerprint: preview.preview_fingerprint,
         })
       );
     } catch {
       setGenerated(null);
-      setError("The contact plan changed. Preview the workbook again before generating.");
+      setError("The confirmed Matrix or Point Profile changed. Preview again before generating.");
     } finally {
       setBusy(null);
     }
@@ -61,7 +63,7 @@ export function useLlcrCrSpecializedRecordWorkbookModel(projectId: string) {
       anchor.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 0);
     } catch {
-      setError("Unable to download the specialized LLCR/CR record workbook.");
+      setError(`Unable to download the ${recordType.toUpperCase()} record workbook.`);
     } finally {
       setBusy(null);
     }

@@ -66,6 +66,7 @@ def _revision_payload(revision, repository) -> dict[str, object]:
         "confirmed_at": revision.confirmed_at,
         "categories": categories,
         "points_per_sample": points_per_sample(categories),
+        "delta_r_enabled": bool(getattr(revision, "delta_r_enabled", True)),
         "cr_coverage": {
             "mode": mode,
             "selected_category_ids": effective_category_ids,

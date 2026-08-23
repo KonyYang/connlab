@@ -18,7 +18,27 @@ describe("useProjectPointProfileModel", () => {
     await act(async () => { await result.current.confirm(); });
     expect(apiMocks.confirmProjectPointProfile).toHaveBeenCalledWith("P1", expect.objectContaining({
       cr_coverage_mode: "follow_llcr",
+      delta_r_enabled: true,
       categories: [{ category_id: null, prefix: "HP", point_expression: "1-4", cr_selected: false }],
+    }));
+  });
+
+  it("hydrates and confirms the global LLCR Delta R option", async () => {
+    const existing = workspaceWithCategories(1);
+    apiMocks.fetchProjectPointProfileWorkspace.mockResolvedValue({
+      ...existing,
+      confirmed_revision: { ...existing.confirmed_revision!, delta_r_enabled: false },
+    });
+    apiMocks.confirmProjectPointProfile.mockResolvedValue(revision());
+    const { result } = renderHook(() => useProjectPointProfileModel({ projectId: "P1" }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.deltaREnabled).toBe(false);
+    act(() => result.current.setDeltaREnabled(true));
+    await act(async () => { await result.current.confirm(); });
+
+    expect(apiMocks.confirmProjectPointProfile).toHaveBeenCalledWith("P1", expect.objectContaining({
+      delta_r_enabled: true,
     }));
   });
 
@@ -84,7 +104,7 @@ describe("useProjectPointProfileModel", () => {
   });
 });
 
-function revision() { return { revision_id: "R1", revision_sequence: 1, state: "confirmed", fingerprint: "F1", created_at: "", confirmed_at: "", categories: [], points_per_sample: 0, cr_coverage: { mode: "follow_llcr" as const, selected_category_ids: [], points_per_sample: 0 } }; }
+function revision() { return { revision_id: "R1", revision_sequence: 1, state: "confirmed", fingerprint: "F1", created_at: "", confirmed_at: "", categories: [], points_per_sample: 0, delta_r_enabled: true, cr_coverage: { mode: "follow_llcr" as const, selected_category_ids: [], points_per_sample: 0 } }; }
 function workspace() { return { status: "not_started", project_id: "P1", editable_revision: null, confirmed_revision: null, has_unconfirmed_draft: false, legacy_uniform_suggestion: null, diagnostics: [] }; }
 function workspaceWithCategories(length: number) {
   const categories = Array.from({ length }, (_, index) => ({

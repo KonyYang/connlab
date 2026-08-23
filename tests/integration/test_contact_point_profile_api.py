@@ -53,6 +53,7 @@ def test_point_profile_direct_confirm_uses_confirmed_fingerprint_boundary() -> N
                 "actor": "operator", "expected_confirmed_revision_id": None,
                 "expected_confirmed_revision_fingerprint": None,
                 "cr_coverage_mode": "custom",
+                "delta_r_enabled": False,
                 "categories": [
                     {"category_id": None, "prefix": "HP", "point_expression": "1-4", "cr_selected": True}
                 ],
@@ -63,6 +64,8 @@ def test_point_profile_direct_confirm_uses_confirmed_fingerprint_boundary() -> N
     assert response.json()["state"] == "confirmed"
     assert response.json()["cr_coverage"]["mode"] == "custom"
     assert lifecycle.cr_coverage_mode == "custom"
+    assert lifecycle.delta_r_enabled is False
+    assert response.json()["delta_r_enabled"] is False
     assert lifecycle.categories[0]["cr_selected"] is True
 
 
@@ -114,16 +117,20 @@ class _DirectLifecycle:
     def __init__(self) -> None:
         self.cr_coverage_mode = ""
         self.categories = []
+        self.delta_r_enabled = True
 
     def confirm_direct(
         self, _project_id, _revision_id, _fingerprint, categories, _actor, *, cr_coverage_mode,
+        delta_r_enabled,
     ):
         self.cr_coverage_mode = cr_coverage_mode
         self.categories = categories
+        self.delta_r_enabled = delta_r_enabled
         return {
             "revision_id": "revision-1", "fingerprint": "fingerprint",
             "categories": [{"category_id": "ppc-1", "category_ordinal": 0, "label": "HP", "count_per_sample": 4, "record_prefix": "HP", "normalized_label_key": "hp", "normalized_prefix_key": "hp", "included": True, "point_expression": "1-4"}],
             "points_per_sample": 4,
+            "delta_r_enabled": delta_r_enabled,
             "cr_coverage": {"mode": "custom", "selected_category_ids": ["ppc-1"], "points_per_sample": 4},
         }
 
@@ -144,6 +151,7 @@ def _revision(state: str, sequence: int):
             {"category_id": "ppc-3", "category_ordinal": 2, "label": "Signal", "count_per_sample": 24, "record_prefix": "SIG", "included": True},
         ],
         "points_per_sample": 33,
+        "delta_r_enabled": True,
         "cr_coverage": {
             "mode": "follow_llcr",
             "selected_category_ids": ["ppc-1", "ppc-2", "ppc-3"],

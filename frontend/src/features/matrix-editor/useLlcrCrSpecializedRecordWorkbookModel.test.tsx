@@ -19,12 +19,14 @@ describe("useLlcrCrSpecializedRecordWorkbookModel", () => {
     apiMocks.preview.mockResolvedValue({
       project_id: "P1",
       status: "ready",
+      record_type: "llcr",
       confirmed_matrix_id: "cmv-1",
       confirmed_revision: 1,
       preview_fingerprint: "fingerprint-1",
       row_count: 2,
       sections: [],
       diagnostics: [],
+      delta_r_enabled: true,
     });
     apiMocks.generate.mockResolvedValue({
       project_id: "P1",
@@ -33,18 +35,21 @@ describe("useLlcrCrSpecializedRecordWorkbookModel", () => {
       artifact_id: "artifact-1",
       file_name: "record.xlsx",
       download_url: "/download/artifact-1",
+      record_type: "llcr",
     });
-    const { result } = renderHook(() => useLlcrCrSpecializedRecordWorkbookModel("P1"));
+    const { result } = renderHook(() => useLlcrCrSpecializedRecordWorkbookModel("P1", "llcr"));
 
     await act(async () => {
       await result.current.previewWorkbook();
     });
+    expect(apiMocks.preview).toHaveBeenCalledWith("P1", "llcr");
     expect(result.current.canGenerate).toBe(true);
 
     await act(async () => {
       await result.current.generateWorkbook();
     });
     expect(apiMocks.generate).toHaveBeenCalledWith("P1", {
+      record_type: "llcr",
       preview_fingerprint: "fingerprint-1",
     });
     expect(result.current.generated?.artifact_id).toBe("artifact-1");

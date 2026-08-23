@@ -58,6 +58,7 @@ class PointProfileDirectConfirmRequest(BaseModel):
     expected_confirmed_revision_id: str | None = Field(default=None, max_length=64)
     expected_confirmed_revision_fingerprint: str | None = Field(default=None, max_length=128)
     cr_coverage_mode: Literal["follow_llcr", "custom"] = "follow_llcr"
+    delta_r_enabled: bool = True
     categories: list[PointProfileDirectCategoryInput] = Field(default_factory=list, max_length=256)
 
 
@@ -76,6 +77,7 @@ class PointProfileRevisionResponse(BaseModel):
     confirmed_at: str | None = None
     categories: list[PointProfileCategoryResponse] = Field(default_factory=list)
     points_per_sample: int
+    delta_r_enabled: bool = True
     cr_coverage: PointProfileCrCoverageResponse
 
 
@@ -120,6 +122,7 @@ def confirm(project_id: str, request: PointProfileDirectConfirmRequest, service=
             project_id, request.expected_confirmed_revision_id, request.expected_confirmed_revision_fingerprint,
             [item.model_dump() for item in request.categories], request.actor,
             cr_coverage_mode=request.cr_coverage_mode,
+            delta_r_enabled=request.delta_r_enabled,
         )
     except (ContactPointProfileLifecycleError, ValueError) as exc:
         _raise_command_error(exc)
@@ -132,6 +135,7 @@ def _command_response(result: dict[str, object], state: str) -> dict[str, object
         "state": state, "fingerprint": result["fingerprint"], "created_at": result.get("created_at", ""),
         "confirmed_at": result.get("confirmed_at"), "categories": result["categories"],
         "points_per_sample": result["points_per_sample"],
+        "delta_r_enabled": result.get("delta_r_enabled", True),
         "cr_coverage": result["cr_coverage"],
     }
 

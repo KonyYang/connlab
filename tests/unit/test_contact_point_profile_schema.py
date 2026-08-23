@@ -3,7 +3,7 @@ import sqlite3
 
 import pytest
 from sqlalchemy import inspect
-from sqlalchemy.schema import CreateTable
+from sqlalchemy.schema import CreateIndex, CreateTable
 from sqlalchemy.dialects.sqlite import dialect as sqlite_dialect
 
 from backend.infrastructure.storage.database import create_database_engine, init_db
@@ -29,6 +29,11 @@ def test_point_profile_schema_registers_three_additive_tables(tmp_path: Path) ->
             "uq_contact_point_profile_confirmed_per_root",
             "uq_contact_point_profile_editable_per_root",
         } <= indexes
+        columns = {
+            item["name"]: item
+            for item in inspector.get_columns("contact_point_profile_revisions")
+        }
+        assert columns["delta_r_enabled"]["nullable"] is False
     finally:
         engine.dispose()
 
@@ -190,6 +195,42 @@ def test_exact_v1_category_table_upgrades_in_place_and_preserves_legacy_row(tmp_
         assert _category_snapshot(engine) == (v2_columns, v2_rows)
     finally:
         engine.dispose()
+
+
+def test_pre_delta_revision_upgrades_in_place_with_delta_enabled(tmp_path: Path) -> None:
+    engine = _partial_engine(tmp_path, include_revision=False)
+    ddl = str(CreateTable(ContactPointProfileRevisionModel.__table__).compile(dialect=sqlite_dialect()))
+    ddl = ddl.replace("\tdelta_r_enabled BOOLEAN DEFAULT 1 NOT NULL, \n", "")
+    with engine.begin() as connection:
+        connection.exec_driver_sql(ddl)
+        for index in ContactPointProfileRevisionModel.__table__.indexes:
+            connection.exec_driver_sql(str(CreateIndex(index).compile(dialect=sqlite_dialect())))
+        connection.exec_driver_sql(
+            "INSERT INTO contact_point_profile_roots "
+            "(contact_point_profile_root_id, project_id, active_confirmed_revision_id, editable_revision_id, created_at, updated_at) "
+            "VALUES ('root-1', 'project-1', NULL, NULL, '2026-07-15T00:00:00Z', '2026-07-15T00:00:00Z')"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO contact_point_profile_revisions "
+            "(contact_point_profile_revision_id, contact_point_profile_root_id, revision_sequence, parent_revision_id, state, "
+            "revision_fingerprint, bootstrap_provenance, created_by, created_at, updated_at, confirmed_by, confirmed_at, superseded_at, superseded_reason) "
+            "VALUES ('revision-1', 'root-1', 1, NULL, 'confirmed', 'legacy-fingerprint', NULL, 'operator', "
+            "'2026-07-15T00:00:00Z', '2026-07-15T00:00:00Z', 'operator', '2026-07-15T00:00:00Z', NULL, NULL)"
+        )
+        connection.exec_driver_sql(
+            "UPDATE contact_point_profile_roots SET active_confirmed_revision_id='revision-1' WHERE project_id='project-1'"
+        )
+
+    init_db(engine)
+
+    with engine.connect() as connection:
+        columns = {row[1] for row in connection.exec_driver_sql("PRAGMA table_info(contact_point_profile_revisions)").all()}
+        revision = connection.exec_driver_sql(
+            "SELECT contact_point_profile_revision_id, delta_r_enabled FROM contact_point_profile_revisions"
+        ).one()
+    assert "delta_r_enabled" in columns
+    assert tuple(revision) == ("revision-1", 1)
+    engine.dispose()
 
 
 def test_malformed_exact_v1_category_shape_fails_before_additive_upgrade(tmp_path: Path) -> None:

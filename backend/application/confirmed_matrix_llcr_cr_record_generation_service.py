@@ -34,6 +34,7 @@ class GenerateLlcrCrRecordWorkbookCommand:
 
     project_id: str
     preview_fingerprint: str
+    record_type: str = "llcr"
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +47,7 @@ class LlcrCrRecordWorkbookGenerationResult:
     artifact_id: str
     file_name: str
     output_path: Path
+    record_type: str = "llcr"
 
 
 class LlcrCrRecordWorkbookGenerationService:
@@ -67,7 +69,7 @@ class LlcrCrRecordWorkbookGenerationService:
         command: GenerateLlcrCrRecordWorkbookCommand,
     ) -> LlcrCrRecordWorkbookGenerationResult:
         """Write one workbook only when the requested preview is still current."""
-        projection = self._preview_service.preview(command.project_id)
+        projection = self._preview_service.preview(command.project_id, command.record_type)
         if projection.status not in {"ready", "complete", "partial_compatible"} or not projection.preview_fingerprint:
             raise LlcrCrRecordWorkbookGenerationError(
                 "LLCR/CR workbook preview requires review before generation."
@@ -79,6 +81,7 @@ class LlcrCrRecordWorkbookGenerationService:
         artifact = self._artifact_store.prepare(
             project_id=projection.project_id,
             confirmed_revision=projection.confirmed_revision,
+            record_type=command.record_type,
         )
         try:
             written = self._workbook_gateway.write(
@@ -96,4 +99,5 @@ class LlcrCrRecordWorkbookGenerationService:
             artifact_id=artifact.artifact_id,
             file_name=artifact.file_name,
             output_path=written,
+            record_type=command.record_type,
         )

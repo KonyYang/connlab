@@ -21,7 +21,7 @@ export function ContactMeasurementPlanSummaryCard({ summary, loading, onOpenSetu
       <button type="button" disabled={loading} onClick={onOpenSetup}>Setup</button>
     </div>
     {confirmed ? <dl className="contact-measurement-summary-points">
-      <div><dt>LLCR</dt><dd>{`${confirmed.points_per_sample} points / sample`}</dd></div>
+      <div><dt>LLCR</dt><dd>{`${confirmed.points_per_sample} points / sample · ΔR ${confirmed.delta_r_enabled ? "on" : "off"}`}</dd></div>
       <div><dt>CR</dt><dd>{crSummary}</dd></div>
       <div><dt>IR</dt><dd>Not set</dd></div>
       <div><dt>DWV</dt><dd>Not set</dd></div>

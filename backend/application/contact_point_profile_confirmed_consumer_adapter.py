@@ -22,6 +22,9 @@ class EffectiveConfirmedPointProfile:
     lineage: str | None
     message: str | None
     cr_readings_per_sample: str | None = None
+    categories: tuple[dict[str, object], ...] = ()
+    cr_category_ids: tuple[str, ...] = ()
+    delta_r_enabled: bool = True
 
     @property
     def is_usable(self) -> bool:
@@ -91,6 +94,9 @@ class ContactPointProfileConfirmedConsumerAdapter:
             cr_readings_per_sample=str(
                 _cr_points_per_sample(payload, custom_category_ids)
             ),
+            categories=payload,
+            cr_category_ids=custom_category_ids,
+            delta_r_enabled=bool(getattr(revision, "delta_r_enabled", True)),
         )
 
 
@@ -171,5 +177,14 @@ def _fingerprint_matches(
             version="point-profile:v3",
             cr_coverage_mode="custom" if custom_category_ids else "follow_llcr",
             cr_selected_category_ids=custom_category_ids,
+        ),
+        point_profile_fingerprint(
+            root.contact_point_profile_root_id,
+            revision.contact_point_profile_revision_id,
+            categories,
+            version="point-profile:v4",
+            cr_coverage_mode="custom" if custom_category_ids else "follow_llcr",
+            cr_selected_category_ids=custom_category_ids,
+            delta_r_enabled=bool(getattr(revision, "delta_r_enabled", True)),
         ),
     }

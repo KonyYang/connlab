@@ -10,7 +10,7 @@ describe("ContactMeasurementPlanSummaryCard", () => {
 
     expect(screen.getByRole("region", { name: "Test points" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Test points" })).toBeTruthy();
-    expect(screen.getByText("33 points / sample")).toBeTruthy();
+    expect(screen.getByText("33 points / sample · ΔR off")).toBeTruthy();
     expect(screen.getByText("1 category · 4 points / sample")).toBeTruthy();
     expect(screen.getAllByText("Not set")).toHaveLength(2);
     expect(Array.from(container.querySelectorAll("dt"), (node) => node.textContent)).toEqual([
@@ -102,6 +102,7 @@ function summary(crCoverage: CrCoverage = {
     confirmed_revision: {
       revision_id: "confirmed-1", revision_sequence: 1, state: "confirmed", fingerprint: "fingerprint-1",
       created_at: "2026-07-14T00:00:00Z", confirmed_at: "2026-07-14T00:00:00Z", points_per_sample: 33,
+      delta_r_enabled: false,
       categories: [{ category_id: "ppc-1", category_ordinal: 0, label: "High Power", count_per_sample: 4, record_prefix: "HP", included: true }],
       cr_coverage: crCoverage,
     },

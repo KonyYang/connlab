@@ -12,9 +12,10 @@ from backend.application.confirmed_matrix_llcr_cr_record_projection import (
 )
 from backend.infrastructure.office.llcr_cr_record_workbook_layout import (
     LLCR_CR_RECORD_LAYOUT_V1,
+    LLCR_CR_RECORD_LAYOUT_V2,
     set_column_widths,
     write_header_row,
-    write_record_sheet,
+    write_specialized_category_sheet,
 )
 
 
@@ -29,63 +30,80 @@ class LlcrCrSpecializedRecordWorkbookGateway:
             raise ValueError("LLCR/CR specialized record output must be .xlsx.")
         if projection.status not in {"ready", "complete", "partial_compatible"}:
             raise ValueError("A ready LLCR/CR record preview is required for generation.")
+        if projection.record_type not in {"llcr", "cr"}:
+            raise ValueError("A single LLCR or CR record type is required for generation.")
         if not target.parent.is_dir():
             raise FileNotFoundError(f"Output directory does not exist: {target.parent}")
 
         workbook = Workbook()
         workbook.remove(workbook.active)
-        summary = workbook.create_sheet(LLCR_CR_RECORD_LAYOUT_V1["summary_sheet"])
-        llcr = workbook.create_sheet(LLCR_CR_RECORD_LAYOUT_V1["llcr_sheet"])
-        cr = workbook.create_sheet(LLCR_CR_RECORD_LAYOUT_V1["cr_sheet"])
+        summary = workbook.create_sheet(LLCR_CR_RECORD_LAYOUT_V2["summary_sheet"])
         _write_summary(summary, projection)
-        write_record_sheet(llcr, tuple(section for section in projection.sections if section.record_type == "llcr"))
-        write_record_sheet(cr, tuple(section for section in projection.sections if section.record_type == "cr_specified_current"))
+        grouped: dict[str, list] = {}
+        for section in projection.sections:
+            if section.record_type != projection.record_type:
+                raise ValueError("Record projection mixes LLCR and CR sections.")
+            key = section.category_id or section.record_prefix or section.category_label or "Points"
+            grouped.setdefault(key, []).append(section)
+        used_names = {LLCR_CR_RECORD_LAYOUT_V2["summary_sheet"]}
+        for sections in grouped.values():
+            sheet_name = _sheet_name(
+                sections[0].record_prefix or sections[0].category_label or "Points",
+                used_names,
+            )
+            used_names.add(sheet_name)
+            sheet = workbook.create_sheet(sheet_name)
+            write_specialized_category_sheet(
+                sheet,
+                sections,
+                record_type=projection.record_type,
+                delta_r_enabled=projection.delta_r_enabled,
+            )
         workbook.save(target)
         return target
 
 
 def _write_summary(sheet, projection: LlcrCrRecordProjection) -> None:
-    sheet["A1"] = "LLCR/CR Specialized Record Workbook"
+    display_type = (projection.record_type or "llcr").upper()
+    sheet["A1"] = f"{display_type} Test Record"
     sheet["A3"] = "Project ID"
     sheet["B3"] = projection.project_id
     sheet["A4"] = "Confirmed Matrix"
     sheet["B4"] = projection.confirmed_matrix_id
     sheet["A5"] = "Confirmed revision"
     sheet["B5"] = projection.confirmed_revision
-    sheet["A6"] = "Generated rows"
-    sheet["B6"] = projection.row_count
-    sheet["A7"] = "Measurement Plan"
-    sheet["B7"] = (
-        "PARTIAL COMPATIBLE"
-        if projection.effective_measurement_plan_status in {"partial_compatible", "needs_review"}
-        else "CONFIRMED"
+    sheet["A6"] = "Point Profile"
+    sheet["B6"] = projection.point_profile_revision_id or "Legacy Matrix contact plan"
+    sheet["A7"] = "Profile revision"
+    sheet["B7"] = projection.point_profile_revision_sequence or ""
+    sheet["A8"] = "ΔR"
+    sheet["B8"] = (
+        "Enabled" if projection.record_type == "llcr" and projection.delta_r_enabled
+        else "Disabled" if projection.record_type == "llcr"
+        else "Not used for CR"
     )
-    sheet["D3"] = "Plan revision"
-    sheet["E3"] = projection.measurement_plan_revision_id or "legacy confirmed Matrix"
-    sheet["D4"] = "Plan sequence"
-    sheet["E4"] = projection.measurement_plan_revision_sequence or ""
-    sheet["D5"] = "Projection status"
-    sheet["E5"] = projection.effective_measurement_plan_status or "legacy confirmed Matrix"
-    sheet["D6"] = "Omissions"
-    sheet["E6"] = "; ".join(projection.omission_diagnostics)
-    headers = (
-        "Type",
-        "Group",
-        "Source Step",
-        "Samples",
-        "Readings / sample",
-        "Generated rows",
-        "Status",
-    )
-    write_header_row(sheet, 8, headers)
-    for index, section in enumerate(projection.sections, start=9):
+    write_header_row(sheet, 10, LLCR_CR_RECORD_LAYOUT_V2["summary_headers"])
+    for index, section in enumerate(projection.sections, start=11):
         sheet.cell(index, 1, _display_type(section.record_type))
-        sheet.cell(index, 2, section.group_label)
-        sheet.cell(index, 3, section.source_step)
+        sheet.cell(index, 2, section.category_label or section.record_prefix or "Points")
+        sheet.cell(index, 3, section.group_label)
         sheet.cell(index, 4, section.sample_count)
         sheet.cell(index, 5, section.readings_per_sample)
-        sheet.cell(index, 6, len(section.rows))
-        sheet.cell(index, 7, "Ready")
+        sheet.cell(index, 6, len(section.stages))
+        sheet.cell(index, 7, len(section.rows))
     set_column_widths(sheet, (18, 24, 18, 12, 18, 16, 14))
 def _display_type(record_type: str) -> str:
-    return "CR" if record_type == "cr_specified_current" else "LLCR"
+    return "CR" if record_type in {"cr", "cr_specified_current"} else "LLCR"
+
+
+def _sheet_name(value: str, used: set[str]) -> str:
+    import re
+
+    base = re.sub(r"[\\/*?:\[\]]+", "_", value.strip())[:31] or "Points"
+    candidate = base
+    suffix = 2
+    while candidate in used:
+        tail = f"_{suffix}"
+        candidate = f"{base[:31 - len(tail)]}{tail}"
+        suffix += 1
+    return candidate

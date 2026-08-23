@@ -78,7 +78,10 @@ class ContactPointProfileLifecycleService:
         actor: str,
         *,
         cr_coverage_mode: str = "follow_llcr",
+        delta_r_enabled: bool = True,
     ) -> dict[str, object]:
+        if not isinstance(delta_r_enabled, bool):
+            raise ContactPointProfileLifecycleError("Delta R option must be true or false.")
         direct_categories = _direct_categories(rows)
         _validate_cr_coverage(cr_coverage_mode, direct_categories)
         categories = [_without_cr_selection(category) for category in direct_categories]
@@ -114,6 +117,7 @@ class ContactPointProfileLifecycleService:
                 revision_sequence=self._repository.highest_revision_sequence(root.contact_point_profile_root_id) + 1,
                 parent_revision_id=active.contact_point_profile_revision_id if active else None,
                 state="confirmed", revision_fingerprint="pending", bootstrap_provenance=None,
+                delta_r_enabled=delta_r_enabled,
                 created_by=actor, created_at=now, updated_at=now, confirmed_by=actor, confirmed_at=now,
                 superseded_at=None, superseded_reason=None,
             )
@@ -133,9 +137,10 @@ class ContactPointProfileLifecycleService:
             )
             revision.revision_fingerprint = point_profile_fingerprint(
                 root.contact_point_profile_root_id, revision.contact_point_profile_revision_id, issued,
-                version="point-profile:v3",
+                version="point-profile:v4",
                 cr_coverage_mode=cr_coverage_mode,
                 cr_selected_category_ids=selected_category_ids,
+                delta_r_enabled=delta_r_enabled,
             )
             root.active_confirmed_revision_id = revision.contact_point_profile_revision_id
             root.editable_revision_id = None
@@ -145,6 +150,7 @@ class ContactPointProfileLifecycleService:
                 revision,
                 issued,
                 cr_coverage=_cr_coverage(cr_coverage_mode, issued, selected_category_ids),
+                delta_r_enabled=delta_r_enabled,
             )
 
     def _save_draft(
@@ -171,6 +177,7 @@ class ContactPointProfileLifecycleService:
                 revision_sequence=(active.revision_sequence if active else 0) + 1,
                 parent_revision_id=active.contact_point_profile_revision_id if active else None,
                 state="draft", revision_fingerprint="pending", bootstrap_provenance=None,
+                delta_r_enabled=bool(active.delta_r_enabled) if active else True,
                 created_by=actor, created_at=now, updated_at=now, confirmed_by=None,
                 confirmed_at=None, superseded_at=None, superseded_reason=None,
             )
@@ -251,6 +258,7 @@ def _result(
     categories: list[dict[str, object]],
     *,
     cr_coverage: dict[str, object] | None = None,
+    delta_r_enabled: bool | None = None,
 ) -> dict[str, object]:
     result = {
         "revision_id": revision.contact_point_profile_revision_id,
@@ -260,6 +268,11 @@ def _result(
         "confirmed_at": revision.confirmed_at,
         "categories": categories,
         "points_per_sample": points_per_sample(categories),
+        "delta_r_enabled": (
+            bool(revision.delta_r_enabled)
+            if delta_r_enabled is None
+            else delta_r_enabled
+        ),
     }
     if cr_coverage is not None:
         result["cr_coverage"] = cr_coverage

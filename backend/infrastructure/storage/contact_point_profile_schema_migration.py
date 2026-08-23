@@ -14,7 +14,8 @@ _TABLE_COLUMNS = {
     "contact_point_profile_revisions": {
         "contact_point_profile_revision_id": ("VARCHAR(64)", 1, 1), "contact_point_profile_root_id": ("VARCHAR(64)", 1, 0),
         "revision_sequence": ("INTEGER", 1, 0), "parent_revision_id": ("VARCHAR(64)", 0, 0), "state": ("VARCHAR(32)", 1, 0),
-        "revision_fingerprint": ("VARCHAR(128)", 1, 0), "bootstrap_provenance": ("TEXT", 0, 0), "created_by": ("VARCHAR(255)", 1, 0),
+        "revision_fingerprint": ("VARCHAR(128)", 1, 0), "delta_r_enabled": ("BOOLEAN", 1, 0),
+        "bootstrap_provenance": ("TEXT", 0, 0), "created_by": ("VARCHAR(255)", 1, 0),
         "created_at": ("VARCHAR(64)", 1, 0), "updated_at": ("VARCHAR(64)", 1, 0), "confirmed_by": ("VARCHAR(255)", 0, 0),
         "confirmed_at": ("VARCHAR(64)", 0, 0), "superseded_at": ("VARCHAR(64)", 0, 0), "superseded_reason": ("TEXT", 0, 0),
     },
@@ -120,6 +121,11 @@ def bootstrap_contact_point_profile_schema(engine) -> None:
                     "CONSTRAINT ck_contact_point_profile_point_expression_nonblank "
                     "CHECK (point_expression IS NULL OR length(trim(point_expression)) > 0)"
                 )
+            if "contact_point_profile_revisions" in names and _is_pre_delta_revision_shape(connection):
+                connection.exec_driver_sql(
+                    "ALTER TABLE contact_point_profile_revisions "
+                    "ADD COLUMN delta_r_enabled BOOLEAN NOT NULL DEFAULT 1"
+                )
             for table in _TABLE_COLUMNS:
                 _validate_table(connection, table)
             connection.commit()
@@ -147,10 +153,60 @@ def _validate_table(connection, table: str) -> None:
 
 
 def _validate_existing_table(connection, table: str) -> None:
+    if table == "contact_point_profile_revisions" and _is_pre_delta_revision_shape(connection):
+        _validate_pre_delta_revision(connection)
+        return
     if table == "contact_point_profile_categories" and _is_v1_category_shape(connection):
         _validate_category_v1(connection)
         return
     _validate_table(connection, table)
+
+
+def _is_pre_delta_revision_shape(connection) -> bool:
+    columns = {
+        str(row[1])
+        for row in connection.exec_driver_sql(
+            "PRAGMA table_info(contact_point_profile_revisions)"
+        ).all()
+    }
+    return columns == set(_TABLE_COLUMNS["contact_point_profile_revisions"]) - {
+        "delta_r_enabled"
+    }
+
+
+def _validate_pre_delta_revision(connection) -> None:
+    expected = dict(_TABLE_COLUMNS["contact_point_profile_revisions"])
+    expected.pop("delta_r_enabled")
+    columns = {
+        str(row[1]): (str(row[2]).upper(), int(row[3]), int(row[5]))
+        for row in connection.exec_driver_sql(
+            "PRAGMA table_info(contact_point_profile_revisions)"
+        ).all()
+    }
+    if columns != expected:
+        _corrupt()
+    foreign_keys = connection.exec_driver_sql(
+        "PRAGMA foreign_key_list(contact_point_profile_revisions)"
+    ).all()
+    actual_fks = {(str(row[3]), str(row[2]), str(row[4])) for row in foreign_keys}
+    if actual_fks != _FOREIGN_KEYS["contact_point_profile_revisions"] or any(
+        str(row[5]).upper() != "NO ACTION"
+        or str(row[6]).upper() != "NO ACTION"
+        or str(row[7]).upper() != "NONE"
+        for row in foreign_keys
+    ):
+        _corrupt()
+    sql = connection.exec_driver_sql(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='contact_point_profile_revisions'"
+    ).scalar_one_or_none() or ""
+    normalized_sql = _canonical_expression(sql)
+    if any(
+        _canonical_expression(name) not in normalized_sql
+        or _canonical_expression(check) not in normalized_sql
+        for name, check in _CHECKS["contact_point_profile_revisions"]
+    ):
+        _corrupt()
+    _validate_indexes(connection, "contact_point_profile_revisions")
 
 
 def _is_v1_category_shape(connection) -> bool:

@@ -198,6 +198,46 @@ def test_direct_confirm_persists_dynamic_custom_cr_categories_atomically(tmp_pat
         engine.dispose()
 
 
+def test_direct_confirm_versions_global_llcr_delta_r_option(tmp_path: Path) -> None:
+    engine = create_database_engine(_settings(tmp_path))
+    init_db(engine)
+    session = create_session_factory(engine)()
+    try:
+        session.add(ProjectModel(project_id="P1", project_no=None, product_name="Demo", requestor="Operator", status="active"))
+        session.commit()
+        repository = ContactPointProfileAuthorityRepository(session)
+        lifecycle = ContactPointProfileLifecycleService(
+            repository,
+            clock=lambda: "2026-07-18T00:00:00Z",
+            id_factory=_ids(),
+        )
+        read = ContactPointProfileReadService(repository)
+
+        first = lifecycle.confirm_direct(
+            "P1", None, None, _direct_rows(), "operator", delta_r_enabled=False,
+        )
+        assert first["delta_r_enabled"] is False
+        assert read.get_workspace("P1")["confirmed_revision"]["delta_r_enabled"] is False
+
+        second = lifecycle.confirm_direct(
+            "P1", first["revision_id"], first["fingerprint"],
+            [
+                {
+                    "category_id": row["category_id"],
+                    "prefix": row["record_prefix"],
+                    "point_expression": row["point_expression"],
+                }
+                for row in first["categories"]
+            ],
+            "operator",
+        )
+        assert second["delta_r_enabled"] is True
+        assert second["fingerprint"] != first["fingerprint"]
+    finally:
+        session.close()
+        engine.dispose()
+
+
 def test_direct_confirm_rejects_empty_custom_cr_without_writes(tmp_path: Path) -> None:
     engine = create_database_engine(_settings(tmp_path))
     init_db(engine)

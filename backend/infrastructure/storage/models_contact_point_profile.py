@@ -54,6 +54,9 @@ class ContactPointProfileRevisionModel(Base):
     )
     state: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     revision_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
+    delta_r_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("1")
+    )
     bootstrap_provenance: Mapped[str | None] = mapped_column(Text, unique=True)
     created_by: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)

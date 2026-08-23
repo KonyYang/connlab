@@ -272,6 +272,123 @@
   margin: 0;
 }
 
+.project-point-profile-delta-r {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.55rem;
+  color: var(--ink-strong);
+  font-weight: 700;
+}
+
+.project-point-profile-delta-r small {
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.llcr-cr-record-panel {
+  background: #f7f9fc;
+  border: 1px solid #d5dee8;
+  border-radius: 12px;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.llcr-cr-record-panel-header h3,
+.llcr-cr-record-panel-header p,
+.llcr-cr-record-card h4,
+.llcr-cr-record-card p {
+  margin: 0;
+}
+
+.llcr-cr-record-panel-header p,
+.llcr-cr-record-card-facts {
+  color: #65758a;
+  font-size: 0.82rem;
+  margin-top: 4px;
+}
+
+.llcr-cr-record-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.llcr-cr-record-card {
+  background: #ffffff;
+  border: 1px solid #dbe3ec;
+  border-radius: 10px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+}
+
+.llcr-cr-record-card-heading,
+.llcr-cr-record-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.llcr-cr-record-status {
+  background: #eef2f6;
+  border-radius: 999px;
+  color: #53657a;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+}
+
+.llcr-cr-record-status.is-ready {
+  background: #e2f3e9;
+  color: #23633e;
+}
+
+.llcr-cr-record-status.is-empty {
+  background: #edf1f5;
+  color: #59697b;
+}
+
+.llcr-cr-record-status.is-blocked,
+.llcr-cr-record-status.is-review_required,
+.llcr-cr-record-error {
+  color: #9b3b35;
+}
+
+.llcr-cr-record-actions {
+  justify-content: flex-start;
+}
+
+.llcr-cr-record-actions button {
+  background: #ffffff;
+  border: 1px solid #b9c6d4;
+  border-radius: 7px;
+  color: #30475f;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 7px 11px;
+}
+
+.llcr-cr-record-actions button.is-primary {
+  background: #315f8c;
+  border-color: #315f8c;
+  color: #ffffff;
+}
+
+.llcr-cr-record-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 900px) {
+  .llcr-cr-record-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .project-point-profile-table {
   width: 100%;
   table-layout: fixed;
