@@ -321,7 +321,7 @@ def test_soft_removed_hidden_rows_survive_autosave_and_restore_when_reselected()
             project_id="P1",
             confirmed_matrix_id="cmv-soft",
             confirmed_revision=2,
-            fee_rule_version_id="fee_rules_v2026_08_23_r9",
+            fee_rule_version_id="fee_rules_v2026_08_23_r10",
             edited_values=soft_removed_values,
             created_at="2026-06-15T00:00:00+00:00",
             updated_at="2026-06-15T00:01:00+00:00",
@@ -363,7 +363,7 @@ def test_soft_removed_hidden_rows_survive_autosave_and_restore_when_reselected()
             active_confirmed_revision=2,
             saved_matrix_draft=_draft(base_confirmed_matrix_id="cmv-soft"),
             saved_payload_signature="sig",
-            fee_rule_version_id="fee_rules_v2026_08_23_r9",
+            fee_rule_version_id="fee_rules_v2026_08_23_r10",
             generation=11,
         )
     )

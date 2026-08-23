@@ -788,6 +788,60 @@ def test_contact_retention_force_uses_sample_quantity_as_reading_units() -> None
     assert result.testing_fee == Decimal("100")
 
 
+def test_contact_retention_defaults_to_per_reading() -> None:
+    match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(
+        "Contact Retention"
+    )
+
+    assert match.rule is not None
+    assert match.rule.rule_id == "fee_rule_mechanical_force"
+    result = build_fee_default_fill(
+        rule=match.rule,
+        context=_context(
+            test_item="Contact Retention",
+            sample_quantity_expression="5",
+        ),
+    )
+
+    assert result.unit_price == Decimal("20")
+    assert result.unit_label == "reading"
+    assert result.units == Decimal("5")
+
+
+def test_solder_ability_defaults_to_per_reading() -> None:
+    match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(
+        "Solder ability"
+    )
+
+    assert match.rule is not None
+    assert match.rule.rule_id == "fee_rule_solderability"
+    result = build_fee_default_fill(
+        rule=match.rule,
+        context=_context(test_item="Solder ability"),
+    )
+
+    assert result.unit_price == Decimal("100")
+    assert result.unit_label == "reading"
+    assert result.units is None
+
+
+def test_resistance_to_soldering_heat_defaults_to_per_sample() -> None:
+    match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item(
+        "Resistance to soldering heat"
+    )
+
+    assert match.rule is not None
+    assert match.rule.rule_id == "fee_rule_resistance_to_solder_heat"
+    result = build_fee_default_fill(
+        rule=match.rule,
+        context=_context(test_item="Resistance to soldering heat"),
+    )
+
+    assert result.unit_price == Decimal("100")
+    assert result.unit_label == "sample"
+    assert result.units is None
+
+
 def test_crimp_wending_tensile_strength_uses_sample_quantity_as_reading_units() -> None:
     result = build_fee_default_fill(
         rule=_rule(

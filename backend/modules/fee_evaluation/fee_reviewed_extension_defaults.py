@@ -37,6 +37,7 @@ _DURATION_READING_RULE_IDS = {
     "fee_rule_dielectric_withstanding_voltage",
 }
 _SAMPLE_QUANTITY_READING_FORCE_LABELS = {
+    "contact retention",
     "contact retention force",
     "crimp wending tensile strength",
     "crimping wending tensile strength",
@@ -57,9 +58,29 @@ def build_reviewed_extension_default_fill(
         return _dust_hour_result(rule=rule, context=context)
     if rule.rule_id == "fee_rule_mechanical_force":
         return _mechanical_force_result(rule=rule, context=context)
+    if rule.rule_id == "fee_rule_solderability":
+        return _reviewed_unit_type_result(rule=rule, unit_label="reading")
+    if rule.rule_id == "fee_rule_resistance_to_solder_heat":
+        return _reviewed_unit_type_result(rule=rule, unit_label="sample")
     if rule.rule_id in _DURATION_READING_RULE_IDS:
         return _duration_reading_result(rule=rule, context=context)
     return None
+
+
+def _reviewed_unit_type_result(
+    *,
+    rule: FeeRule,
+    unit_label: str,
+) -> FeeDefaultFillResult:
+    """Apply a reviewed Unit Type while retaining quantity review requirements."""
+    return manual_required(
+        rule=rule,
+        unit_label=unit_label,
+        unit_price=rule.unit_price.amount,
+        base_fee=rule.base_fee.amount,
+        review_reason=rule.review_reason or "Review pricing",
+        manual_fields=("units", "testing_fee"),
+    )
 
 
 def _duration_reading_result(

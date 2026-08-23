@@ -34,7 +34,7 @@ def test_fee_draft_header_uses_confirmed_matrix_version_sample_received_date() -
     assert draft.header.project_id == "P1"
     assert draft.header.confirmed_matrix_id == "cmv-1"
     assert draft.header.confirmed_revision == 1
-    assert draft.header.pricing_rule_version_id == "fee_rules_v2026_08_23_r9"
+    assert draft.header.pricing_rule_version_id == "fee_rules_v2026_08_23_r10"
     assert draft.header.pricing_source_file_name == "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
     assert draft.header.pricing_effective_from == "2026-06-03"
     assert draft.draft_status == "ready"
@@ -69,7 +69,7 @@ def test_fee_draft_autofills_visual_exam_defaults() -> None:
     assert line.status == "calculated"
     assert line.review_required is False
     assert line.matched_rule_id == "fee_rule_visual_exam"
-    assert line.matched_rule_version_id == "fee_rules_v2026_08_23_r9"
+    assert line.matched_rule_version_id == "fee_rules_v2026_08_23_r10"
     assert line.calculation_strategy == "per_photo"
     assert line.unit_price == Decimal("10")
     assert line.units == Decimal("3")
