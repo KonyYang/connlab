@@ -107,6 +107,9 @@ def test_browser_release_script_builds_web_folder_without_business_changes() -> 
     assert "frontend\\dist\\*" in script
     assert "--basetemp" in script
     assert "tmp\\pytest-browser-release" in script
+    assert "tests\\unit\\test_llcr_cr_specialized_record_workbook_gateway.py" in script
+    assert "tests\\integration\\test_matrix_editor_llcr_cr_record_generation_api.py" in script
+    assert "tests\\integration\\test_llcr_cr_specialized_record_workbook_api.py" in script
     assert script.count('Invoke-TimedStep "[') == 5
     assert "[System.Diagnostics.Stopwatch]::StartNew()" in script
     assert "finally {\n        try {\n            $stopwatch.Stop()" in script
@@ -193,3 +196,17 @@ def test_browser_release_start_script_opens_fixed_local_url() -> None:
     assert "%~dp0" in start_script
     assert "routes_settings" not in start_script
     assert "ltr-workbook" not in start_script
+
+
+def test_browser_release_smoke_starts_and_verifies_the_packaged_server() -> None:
+    """The portable browser release smoke check verifies a live server, not just files."""
+    script = _read_text("scripts/smoke_windows_browser_release.ps1")
+
+    assert "Get-NetTCPConnection" in script
+    assert "Start-Process -FilePath $serverExe" in script
+    assert '"$baseUrl/health"' in script
+    assert '"$baseUrl/"' in script
+    assert "Invoke-WebRequest -UseBasicParsing" in script
+    assert '"status"\\s*:\\s*"ok"' in script
+    assert '<div id="root"></div>' in script
+    assert "Stop-Process -Id $serverProcess.Id -Force" in script

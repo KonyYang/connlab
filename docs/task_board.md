@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_BROWSER_RELEASE_LLCR_GATE_AND_RUNTIME_SMOKE",
+    "summary": "Make the browser release gate current LLCR/CR workbook behavior and make the browser smoke check start and verify the packaged local server.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Update the browser release build and smoke scripts with regression coverage, then build and validate a current portable browser release for today's sharing.",
+    "scope_paths": [
+      "scripts/build_windows_browser_release.ps1",
+      "scripts/smoke_windows_browser_release.ps1",
+      "tests/unit/test_desktop_release_scripts.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "2a0ba538118307f4ab9681bc0e8eaa8fa064d411",
+    "started_at": "2026-08-23T23:30:43.072947Z",
+    "updated_at": "2026-08-23T23:30:43.072947Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_LLCR_REFERENCE_COLUMN_WIDTHS",
     "tier": "micro",

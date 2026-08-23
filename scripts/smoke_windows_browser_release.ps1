@@ -1,6 +1,8 @@
 param(
     [string]$ReleaseFolder = "",
-    [switch]$Launch
+    [switch]$Launch,
+    [ValidateRange(1, 120)][int]$StartupTimeoutSeconds = 20,
+    [ValidateRange(1, 65535)][int]$Port = 8765
 )
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -8,6 +10,31 @@ param(
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Set-Location $repoRoot
+
+function Wait-ForConnLabResponse {
+    param(
+        [Parameter(Mandatory = $true)][string]$Uri,
+        [Parameter(Mandatory = $true)][System.Diagnostics.Process]$ServerProcess,
+        [Parameter(Mandatory = $true)][int]$TimeoutSeconds
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $lastError = "no response"
+    while ((Get-Date) -lt $deadline) {
+        $ServerProcess.Refresh()
+        if ($ServerProcess.HasExited) {
+            throw "ConnLab_Server.exe exited before $Uri became available."
+        }
+        try {
+            return Invoke-WebRequest -UseBasicParsing -Uri $Uri -TimeoutSec 2
+        }
+        catch {
+            $lastError = $_.Exception.Message
+            Start-Sleep -Milliseconds 250
+        }
+    }
+    throw "Timed out waiting for $Uri. Last error: $lastError"
+}
 
 if (-not $ReleaseFolder) {
     $releaseRoot = Join-Path $repoRoot "dist_release"
@@ -34,7 +61,8 @@ Write-Host "===================================="
 Write-Host " ConnLab Browser Release Smoke Check"
 Write-Host "===================================="
 Write-Host "Release folder: $resolvedRelease"
-Write-Host "URL: http://127.0.0.1:8765/"
+$baseUrl = "http://127.0.0.1:$Port"
+Write-Host "URL: $baseUrl/"
 
 if (-not (Test-Path $serverExe)) {
     throw "Missing ConnLab_Server.exe"
@@ -56,7 +84,43 @@ Write-Host "[OK] Browser release folder shape is valid."
 Write-Host "Start script: Start_ConnLab.bat"
 Write-Host "Server EXE: ConnLab_Server.exe"
 
-if ($Launch) {
-    Write-Host "Launching ConnLab local browser server..."
-    Start-Process -FilePath $startScript -WorkingDirectory $resolvedRelease
+$existingListener = Get-NetTCPConnection -LocalAddress "127.0.0.1" -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+if ($existingListener) {
+    throw "Port $Port is already in use. Stop the existing local ConnLab server before running the release smoke check."
+}
+
+$serverProcess = Start-Process -FilePath $serverExe `
+    -ArgumentList @("--host", "127.0.0.1", "--port", "$Port") `
+    -WorkingDirectory $resolvedRelease `
+    -PassThru
+$keepRunning = $Launch.IsPresent
+
+try {
+    $healthResponse = Wait-ForConnLabResponse `
+        -Uri "$baseUrl/health" `
+        -ServerProcess $serverProcess `
+        -TimeoutSeconds $StartupTimeoutSeconds
+    if ($healthResponse.Content -notmatch '"status"\s*:\s*"ok"') {
+        throw "Packaged ConnLab health endpoint did not report status ok."
+    }
+
+    $pageResponse = Wait-ForConnLabResponse `
+        -Uri "$baseUrl/" `
+        -ServerProcess $serverProcess `
+        -TimeoutSeconds $StartupTimeoutSeconds
+    if ($pageResponse.Content -notmatch '<div id="root"></div>') {
+        throw "Packaged ConnLab homepage did not return the browser application shell."
+    }
+
+    Write-Host "[OK] Packaged server, health endpoint, and homepage are reachable."
+    if ($keepRunning) {
+        Write-Host "Launching ConnLab in the default browser..."
+        Start-Process -FilePath "$baseUrl/"
+    }
+}
+finally {
+    if (-not $keepRunning -and -not $serverProcess.HasExited) {
+        Stop-Process -Id $serverProcess.Id -Force
+        Write-Host "Stopped temporary ConnLab smoke server."
+    }
 }
