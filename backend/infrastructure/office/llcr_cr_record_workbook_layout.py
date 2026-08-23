@@ -41,6 +41,13 @@ _MACRO_INPUT_FILL = PatternFill("solid", fgColor="FFFFC8")
 _MACRO_STATS_FILL = PatternFill("solid", fgColor="99CCFF")
 _MACRO_UNUSED_FILL = PatternFill("solid", fgColor="E7E6E6")
 
+_REFERENCE_DEFAULT_COLUMN_WIDTH = 8.73046875
+_REFERENCE_SUMMARY_STEP_WIDTH = 20.59765625
+_REFERENCE_RAW_STEP_WIDTH = 12.59765625
+_REFERENCE_CALCULATED_STEP_WIDTH = 14.1328125
+_REFERENCE_TEST_DATE_WIDTH = 10.53125
+_REFERENCE_AMBIENT_TEMPERATURE_WIDTH = 10.59765625
+
 
 def write_record_sheet(sheet, sections, *, banner: str | None = None) -> None:
     """Write fixed Group-Step blocks, manual cells, formulas, and widths."""
@@ -320,6 +327,7 @@ def write_macro_style_contact_resistance_category_sheet(
         stats_start=stats_start,
         environment_start=environment_start,
         last_column=last_column,
+        record_type=record_type,
         number_format="0.000" if record_type == "cr" else "0.0",
     )
     return stats_cells
@@ -414,10 +422,14 @@ def write_macro_style_contact_resistance_summary(
             ):
                 for cell in cells:
                     cell.fill = _MACRO_INPUT_FILL
-    sheet.column_dimensions["A"].width = 13
-    sheet.column_dimensions["B"].width = 34
-    for column in range(3, last_column + 1):
-        sheet.column_dimensions[get_column_letter(column)].width = 12
+    if record_type == "llcr":
+        sheet.sheet_format.defaultColWidth = _REFERENCE_DEFAULT_COLUMN_WIDTH
+        sheet.column_dimensions["B"].width = _REFERENCE_SUMMARY_STEP_WIDTH
+    else:
+        sheet.column_dimensions["A"].width = 13
+        sheet.column_dimensions["B"].width = 34
+        for column in range(3, last_column + 1):
+            sheet.column_dimensions[get_column_letter(column)].width = 12
     sheet.freeze_panes = "C3"
     sheet.sheet_view.showGridLines = False
 
@@ -517,6 +529,7 @@ def _format_macro_contact_resistance_sheet(
     stats_start: int,
     environment_start: int,
     last_column: int,
+    record_type: str,
     number_format: str,
 ) -> None:
     for start_column, block_end in ((1, raw_end), (calculated_group, last_column)):
@@ -541,18 +554,31 @@ def _format_macro_contact_resistance_sheet(
                     or calculated_group + 3 <= column < environment_start
                 ):
                     cell.number_format = number_format
-    widths = {
-        1: 13,
-        2: 34,
-        3: 11,
-        calculated_group: 13,
-        calculated_group + 1: 34,
-        calculated_group + 2: 11,
-    }
-    for column in range(4, last_column + 1):
-        widths.setdefault(column, 12)
-    for column, width in widths.items():
-        sheet.column_dimensions[get_column_letter(column)].width = width
+    if record_type == "llcr":
+        sheet.sheet_format.defaultColWidth = _REFERENCE_DEFAULT_COLUMN_WIDTH
+        sheet.column_dimensions["B"].width = _REFERENCE_RAW_STEP_WIDTH
+        sheet.column_dimensions[get_column_letter(calculated_group + 1)].width = (
+            _REFERENCE_CALCULATED_STEP_WIDTH
+        )
+        sheet.column_dimensions[get_column_letter(environment_start)].width = (
+            _REFERENCE_TEST_DATE_WIDTH
+        )
+        sheet.column_dimensions[get_column_letter(environment_start + 1)].width = (
+            _REFERENCE_AMBIENT_TEMPERATURE_WIDTH
+        )
+    else:
+        widths = {
+            1: 13,
+            2: 34,
+            3: 11,
+            calculated_group: 13,
+            calculated_group + 1: 34,
+            calculated_group + 2: 11,
+        }
+        for column in range(4, last_column + 1):
+            widths.setdefault(column, 12)
+        for column, width in widths.items():
+            sheet.column_dimensions[get_column_letter(column)].width = width
     sheet.freeze_panes = "D10"
     sheet.sheet_view.showGridLines = False
 

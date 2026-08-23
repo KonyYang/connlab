@@ -36,6 +36,8 @@ def test_gateway_writes_macro_style_llcr_category_and_summary_formulas(tmp_path)
     assert summary["B4"].value == "Final ∆R"
     assert summary["C3"].value == '=IF(\'SIG\'!L10="","",\'SIG\'!L10)'
     assert summary["C4"].value == '=IF(\'SIG\'!L12="","",\'SIG\'!L12)'
+    assert summary.sheet_format.defaultColWidth == 8.73046875
+    assert summary.column_dimensions["B"].width == 20.59765625
     sheet = workbook["SIG"]
     assert sheet["A1"].value == "unit:mΩ"
     assert sheet["B1"].value == "Resistance"
@@ -68,6 +70,11 @@ def test_gateway_writes_macro_style_llcr_category_and_summary_formulas(tmp_path)
     assert sheet["D10"].number_format == "0.0"
     assert sheet["J10"].number_format == "0.0"
     assert sheet["P10"].number_format == "General"
+    assert sheet.sheet_format.defaultColWidth == 8.73046875
+    assert sheet.column_dimensions["B"].width == 12.59765625
+    assert sheet.column_dimensions["H"].width == 14.1328125
+    assert sheet.column_dimensions["P"].width == 10.53125
+    assert sheet.column_dimensions["Q"].width == 10.59765625
 
 
 def test_llcr_summary_uses_delta_r_for_every_post_initial_stage_when_enabled(tmp_path) -> None:
