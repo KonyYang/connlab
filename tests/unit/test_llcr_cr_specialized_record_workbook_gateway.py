@@ -42,6 +42,8 @@ def test_gateway_writes_macro_style_llcr_category_and_summary_formulas(tmp_path)
     assert [sheet.cell(row, 1).value for row in range(2, 6)] == [
         "bulk1", "bulk2", "bulk3", "Avg",
     ]
+    assert [sheet.cell(row, 2).value for row in range(2, 5)] == [0.0, 0.0, 0.0]
+    assert [sheet.cell(row, 2).number_format for row in range(2, 5)] == ["0.0"] * 3
     assert sheet["B5"].value == '=IF(COUNT(B2:B4)=0,"",AVERAGE(B2:B4))'
     assert [sheet.cell(row, 4).value for row in range(1, 6)] == [
         "LTR", "Tested By", "Checked by/Date", "Test Equipment ID", "Test Condition",

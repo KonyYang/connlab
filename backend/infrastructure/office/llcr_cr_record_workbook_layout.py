@@ -405,9 +405,9 @@ def write_macro_style_llcr_summary(
 def _write_macro_bulk_table(sheet) -> None:
     values = (
         ("unit:mΩ", "Resistance"),
-        ("bulk1", None),
-        ("bulk2", None),
-        ("bulk3", None),
+        ("bulk1", 0.0),
+        ("bulk2", 0.0),
+        ("bulk3", 0.0),
         ("Avg", '=IF(COUNT(B2:B4)=0,"",AVERAGE(B2:B4))'),
     )
     for row, (label, value) in enumerate(values, start=1):

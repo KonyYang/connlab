@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_LLCR_BULK_DEFAULT_ZERO",
+    "summary": "Default LLCR bulk1, bulk2, and bulk3 inputs to numeric 0.0 so downstream statistics appear predictably.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Set the macro-style LLCR bulk input cells to numeric zero with one-decimal display and add public workbook-output regression coverage.",
+    "scope_paths": [
+      "backend/infrastructure/office/llcr_cr_record_workbook_layout.py",
+      "tests/unit/test_llcr_cr_specialized_record_workbook_gateway.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "e04f8f876fc0780dd78500c348dd7b24291cfc90",
+    "started_at": "2026-08-23T13:31:55.127998Z",
+    "updated_at": "2026-08-23T13:31:55.127998Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_LLCR_STDEV_COMPATIBILITY",
     "tier": "micro",
