@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_LLCR_STDEV_COMPATIBILITY",
     "summary": "Fix LLCR workbook Stdev cells that display #NAME? in Excel-compatible clients.",
@@ -25,9 +25,68 @@
     "risk_reasons": [],
     "activation_head": "e68b42b95f51e4dc283fc3d1c9c95647791c601d",
     "started_at": "2026-08-23T12:57:20.802051Z",
-    "updated_at": "2026-08-23T12:57:20.802051Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-08-23T13:03:08.014579Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_LLCR_STDEV_COMPATIBILITY",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_LLCR_STDEV_COMPATIBILITY",
+      "subject": "fc0bd9839c909a795a822323253555b77ce3aaf8",
+      "summary": "Replaced STDEV.S with the macro-equivalent STDEV function in both workbook layouts so Stdev cells calculate without #NAME? across Excel-compatible clients.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/infrastructure/office/llcr_cr_record_workbook_layout.py",
+        "tests/unit/test_llcr_cr_specialized_record_workbook_gateway.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "name": "targeted_pytest",
+          "detail": "11 passed"
+        },
+        {
+          "status": "passed",
+          "name": "representative_workbook_calculation",
+          "detail": "Stdev calculated as 1.4142135623730951 with zero formula errors"
+        },
+        {
+          "status": "passed",
+          "name": "visual_verification",
+          "detail": "Summary, SIG, and PWR sheets rendered correctly"
+        },
+        {
+          "status": "passed",
+          "name": "python_compile_and_diff_check",
+          "detail": "Compilation and git diff --check passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "detail": "Red-green regression fix complete"
+        },
+        "reviewer": {
+          "status": "passed",
+          "detail": "Exact diff limited to two formula sites and their public-output tests"
+        },
+        "qa": {
+          "status": "passed",
+          "detail": "Generated workbook calculation and all-sheet render checks passed"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "detail": "Committed as fc0bd9839c909a795a822323253555b77ce3aaf8"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_LLCR_RECORD_WORKBOOK_MACRO_PARITY",
