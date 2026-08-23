@@ -70,6 +70,46 @@ def test_gateway_writes_macro_style_llcr_category_and_summary_formulas(tmp_path)
     assert sheet["P10"].number_format == "General"
 
 
+def test_llcr_summary_uses_delta_r_for_every_post_initial_stage_when_enabled(tmp_path) -> None:
+    source = _projection()
+    initial, final = source.sections[0].stages
+    after_pre_durability = LlcrCrRecordStage(
+        "After Pe-Durability",
+        "2",
+        "row-2",
+        "LLCR",
+        "100 mA max",
+        "",
+        None,
+    )
+    section = replace(
+        source.sections[0],
+        stages=(initial, after_pre_durability, replace(final, source_step="3")),
+    )
+    output_path = tmp_path / "llcr-summary-delta-r-stages.xlsx"
+
+    LlcrCrSpecializedRecordWorkbookGateway().write(
+        output_path=output_path,
+        projection=replace(source, sections=(section,)),
+    )
+
+    workbook = load_workbook(output_path, data_only=False)
+    summary = workbook["Summary"]
+    assert [summary.cell(row, 2).value for row in range(3, 6)] == [
+        "Initial LLCR",
+        "∆R After Pe-Durability",
+        "Final ∆R",
+    ]
+    assert summary["C3"].value == '=IF(\'SIG\'!L10="","",\'SIG\'!L10)'
+    assert summary["C4"].value == '=IF(\'SIG\'!L12="","",\'SIG\'!L12)'
+    assert summary["C5"].value == '=IF(\'SIG\'!L14="","",\'SIG\'!L14)'
+
+    sheet = workbook["SIG"]
+    assert sheet["B12"].value == "After Pe-Durability"
+    assert sheet["K12"].value == '=IF(OR(J12="",J10=""),"",J12-J10)'
+    assert sheet["L12"].value == '=IF(COUNT(K12:K13)=0,"",MIN(K12:K13))'
+
+
 def test_gateway_accepts_partial_compatible_llcr_projection(tmp_path) -> None:
     output_path = tmp_path / "partial-record.xlsx"
     projection = replace(

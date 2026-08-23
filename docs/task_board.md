@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_LLCR_SUMMARY_DELTA_R_SEMANTICS",
+    "summary": "Align generated LLCR Summary descriptions and statistics with the reference workbook: Initial remains LLCR while later stages use delta-R when enabled.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Update only LLCR Summary labels/statistic references and focused workbook regression tests.",
+    "scope_paths": [
+      "backend/infrastructure/office/llcr_cr_record_workbook_layout.py",
+      "tests/unit/test_llcr_cr_specialized_record_workbook_gateway.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "94f91e35ff53b5ea5d856c5924a733c1adafec79",
+    "started_at": "2026-08-23T15:14:31.541535Z",
+    "updated_at": "2026-08-23T15:14:31.541535Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_LLCR_BULK_DEFAULT_ZERO",
     "tier": "micro",
