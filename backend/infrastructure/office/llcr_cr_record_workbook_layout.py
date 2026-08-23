@@ -174,17 +174,21 @@ def write_specialized_category_sheet(
         sheet.column_dimensions[get_column_letter(column)].width = 18
 
 
-def write_macro_style_llcr_category_sheet(
+def write_macro_style_contact_resistance_category_sheet(
     sheet,
     sections,
     *,
+    record_type: str,
     delta_r_enabled: bool,
     ltr_number: str | None,
 ) -> dict[tuple[str, int], tuple[int, int]]:
-    """Write the LLCR record shape used by the approved VBA workbook."""
+    """Write the LLCR/CR record shape used by the approved VBA workbook."""
     sections = tuple(sections)
     if not sections:
         return {}
+    if record_type not in {"llcr", "cr"}:
+        raise ValueError("Macro-style record type must be llcr or cr.")
+    delta_r_enabled = record_type == "llcr" and delta_r_enabled
     max_samples = max(section.sample_count for section in sections)
     raw_start = 4
     raw_end = raw_start + max_samples - 1
@@ -201,7 +205,11 @@ def write_macro_style_llcr_category_sheet(
     environment_start = stats_start + 4
     last_column = environment_start + 2
 
-    _write_macro_bulk_table(sheet)
+    _write_macro_bulk_table(
+        sheet,
+        record_type=record_type,
+        test_current=_first_test_current(sections),
+    )
     _write_macro_test_information(
         sheet,
         ltr_number=ltr_number,
@@ -226,7 +234,7 @@ def write_macro_style_llcr_category_sheet(
         for stage_index, stage in enumerate(section.stages):
             stage_start = current_row
             stage_end = stage_start + len(points) - 1
-            stage_label = _record_stage_label(stage.label, stage_index)
+            stage_label = _record_stage_label(stage.label, stage_index, record_type)
             sheet.cell(stage_start, 2, stage_label)
             sheet.cell(stage_start, calculated_step, stage_label)
             _merge_vertical(sheet, stage_start, stage_end, 2)
@@ -248,11 +256,17 @@ def write_macro_style_llcr_category_sheet(
                         continue
                     raw_address = f"{get_column_letter(raw_column)}{row}"
                     corrected_address = f"{get_column_letter(corrected_column)}{row}"
-                    sheet.cell(
-                        row,
-                        corrected_column,
-                        f'=IF(OR({raw_address}="",$B$5=""),"",{raw_address}-$B$5)',
-                    )
+                    if record_type == "cr":
+                        corrected_formula = (
+                            f'=IF(OR({raw_address}="",$B$6=""),"",'
+                            f'({raw_address}-$B$5)/$B$6)'
+                        )
+                    else:
+                        corrected_formula = (
+                            f'=IF(OR({raw_address}="",$B$5=""),"",'
+                            f'{raw_address}-$B$5)'
+                        )
+                    sheet.cell(row, corrected_column, corrected_formula)
                     if delta_start is not None:
                         delta_column = delta_start + sample_index - 1
                         if stage_index == 0:
@@ -298,7 +312,7 @@ def write_macro_style_llcr_category_sheet(
         _merge_vertical(sheet, group_start, group_end, 1)
         _merge_vertical(sheet, group_start, group_end, calculated_group)
 
-    _format_macro_llcr_sheet(
+    _format_macro_contact_resistance_sheet(
         sheet,
         end_row=current_row - 1,
         raw_end=raw_end,
@@ -306,21 +320,26 @@ def write_macro_style_llcr_category_sheet(
         stats_start=stats_start,
         environment_start=environment_start,
         last_column=last_column,
+        number_format="0.000" if record_type == "cr" else "0.0",
     )
     return stats_cells
 
 
-def write_macro_style_llcr_summary(
+def write_macro_style_contact_resistance_summary(
     sheet,
     category_outputs,
     *,
     parameter_labels: tuple[str, ...],
+    record_type: str,
     delta_r_enabled: bool,
 ) -> None:
-    """Write the VBA-style cross-category statistics summary."""
+    """Write the VBA-style cross-category LLCR/CR statistics summary."""
     category_outputs = tuple(category_outputs)
     if not category_outputs:
         return
+    if record_type not in {"llcr", "cr"}:
+        raise ValueError("Macro-style summary type must be llcr or cr.")
+    delta_r_enabled = record_type == "llcr" and delta_r_enabled
     canonical_sections = category_outputs[0][1]
     sheet.merge_cells(start_row=1, start_column=1, end_row=2, end_column=2)
     sheet.cell(1, 1, "Test Step")
@@ -347,6 +366,7 @@ def write_macro_style_llcr_summary(
                 stage_index,
                 len(section.stages),
                 delta_r_enabled,
+                record_type,
             ))
             for category_index, (
                 sheet_name,
@@ -383,7 +403,7 @@ def write_macro_style_llcr_summary(
             if cell.row <= 2 or cell.column <= 2:
                 cell.fill = _MACRO_HEADER_FILL
             if cell.row >= 3 and cell.column >= 3:
-                cell.number_format = "0.0"
+                cell.number_format = "0.000" if record_type == "cr" else "0.0"
     for group_number, (group_start, group_end) in enumerate(group_ranges, start=1):
         if group_number % 2 == 0:
             for cells in sheet.iter_rows(
@@ -402,14 +422,23 @@ def write_macro_style_llcr_summary(
     sheet.sheet_view.showGridLines = False
 
 
-def _write_macro_bulk_table(sheet) -> None:
-    values = (
-        ("unit:mΩ", "Resistance"),
+def _write_macro_bulk_table(
+    sheet,
+    *,
+    record_type: str,
+    test_current: float | None,
+) -> None:
+    unit = "unit:mV" if record_type == "cr" else "unit:mΩ"
+    measurement = "Voltage" if record_type == "cr" else "Resistance"
+    values = [
+        (unit, measurement),
         ("bulk1", 0.0),
         ("bulk2", 0.0),
         ("bulk3", 0.0),
         ("Avg", '=IF(COUNT(B2:B4)=0,"",AVERAGE(B2:B4))'),
-    )
+    ]
+    if record_type == "cr":
+        values.append(("Current(Unit:A)", test_current))
     for row, (label, value) in enumerate(values, start=1):
         sheet.cell(row, 1, label)
         sheet.cell(row, 2, value)
@@ -420,8 +449,9 @@ def _write_macro_bulk_table(sheet) -> None:
             cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         sheet.cell(row, 1).fill = _MACRO_HEADER_FILL
     sheet.cell(1, 2).fill = _MACRO_HEADER_FILL
+    bulk_number_format = "0.000" if record_type == "cr" else "0.0"
     for row in range(2, 6):
-        sheet.cell(row, 2).number_format = "0.0"
+        sheet.cell(row, 2).number_format = bulk_number_format
 
 
 def _write_macro_test_information(
@@ -478,7 +508,7 @@ def _write_macro_record_header(
         sheet.cell(9, environment_start + offset, value)
 
 
-def _format_macro_llcr_sheet(
+def _format_macro_contact_resistance_sheet(
     sheet,
     *,
     end_row: int,
@@ -487,6 +517,7 @@ def _format_macro_llcr_sheet(
     stats_start: int,
     environment_start: int,
     last_column: int,
+    number_format: str,
 ) -> None:
     for start_column, block_end in ((1, raw_end), (calculated_group, last_column)):
         for row in range(9, end_row + 1):
@@ -509,7 +540,7 @@ def _format_macro_llcr_sheet(
                     4 <= column <= raw_end
                     or calculated_group + 3 <= column < environment_start
                 ):
-                    cell.number_format = "0.0"
+                    cell.number_format = number_format
     widths = {
         1: 13,
         2: 34,
@@ -545,12 +576,21 @@ def _first_test_condition(sections) -> str:
     return ""
 
 
-def _record_stage_label(label: str, stage_index: int) -> str:
+def _first_test_current(sections) -> float | None:
+    for section in sections:
+        for stage in section.stages:
+            current = _number(stage.test_current_ampere)
+            if current is not None:
+                return current
+    return None
+
+
+def _record_stage_label(label: str, stage_index: int, record_type: str) -> str:
     value = label.strip()
     if stage_index == 0 and value == "Initial":
-        return "Initial LLCR"
+        return f"Initial {record_type.upper()}"
     if value == "Final":
-        return "Final LLCR"
+        return f"Final {record_type.upper()}"
     return value
 
 
@@ -559,8 +599,9 @@ def _summary_stage_label(
     stage_index: int,
     stage_count: int,
     delta_r_enabled: bool,
+    record_type: str,
 ) -> str:
-    record_label = _record_stage_label(label, stage_index)
+    record_label = _record_stage_label(label, stage_index, record_type)
     if not delta_r_enabled or stage_index == 0:
         return record_label
     if stage_index == stage_count - 1 and label.strip() == "Final":

@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_CR_MACRO_STYLE_WORKBOOK",
+    "summary": "Replace the legacy CR workbook with the LLCR-aligned macro-style workbook structure while retaining CR voltage/current conversion and omitting delta-R.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Update the specialized workbook gateway/layout and focused workbook regression tests for CR generation only.",
+    "scope_paths": [
+      "backend/infrastructure/office/llcr_cr_specialized_record_workbook_gateway.py",
+      "backend/infrastructure/office/llcr_cr_record_workbook_layout.py",
+      "tests/unit/test_llcr_cr_specialized_record_workbook_gateway.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "e050a5f26425b214643617ca5a299eedcd7a4fd5",
+    "started_at": "2026-08-23T15:28:16.888148Z",
+    "updated_at": "2026-08-23T15:28:16.888148Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_LLCR_SUMMARY_DELTA_R_SEMANTICS",
     "tier": "micro",

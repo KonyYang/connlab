@@ -247,7 +247,7 @@ def test_llcr_without_delta_r_summarizes_corrected_measurements(tmp_path) -> Non
     assert summary["C3"].value == '=IF(\'SIG\'!K10="","",\'SIG\'!K10)'
 
 
-def test_gateway_writes_cr_bulk_voltage_and_matrix_current_formula_without_delta(tmp_path) -> None:
+def test_gateway_writes_macro_style_cr_workbook_without_delta_r(tmp_path) -> None:
     output_path = tmp_path / "cr-record.xlsx"
     source = _projection()
     cr_stages = tuple(
@@ -262,13 +262,41 @@ def test_gateway_writes_cr_bulk_voltage_and_matrix_current_formula_without_delta
     )
 
     workbook = load_workbook(output_path, data_only=False)
-    assert workbook.sheetnames == ["Record Summary", "SIG"]
+    assert workbook.sheetnames == ["Summary", "SIG"]
+    summary = workbook["Summary"]
+    assert summary["A1"].value == "Test Step"
+    assert summary["C1"].value == "Statistics"
+    assert [summary.cell(2, column).value for column in range(3, 7)] == [
+        "Min", "Max", "Avg", "Stdev",
+    ]
+    assert summary["A3"].value == "Group 1"
+    assert summary["B3"].value == "Initial CR"
+    assert summary["B4"].value == "Final CR"
+    assert summary["C3"].value == '=IF(\'SIG\'!K10="","",\'SIG\'!K10)'
+    assert summary["C4"].value == '=IF(\'SIG\'!K12="","",\'SIG\'!K12)'
+    assert summary["C3"].number_format == "0.000"
     sheet = workbook["SIG"]
-    assert sheet["B8"].value == "Bulk Voltage (mV)"
-    assert sheet["D16"].value == "Test current (A)"
-    assert sheet["E16"].value == 10
-    assert sheet["E18"].value == '=IF(OR(D18="",$E$16="",NOT(COUNTIFS($A$9:$A$10,$B18,$B$9:$B$10,"<>")>0)),"",(D18-VLOOKUP($B18,$A$9:$B$10,2,FALSE))/$E$16)'
-    assert sheet["E24"].value == '=IF(COUNT(E18:E19)<2,"",STDEV(E18:E19))'
+    assert [sheet.cell(row, 1).value for row in range(1, 7)] == [
+        "unit:mV", "bulk1", "bulk2", "bulk3", "Avg", "Current(Unit:A)",
+    ]
+    assert sheet["B1"].value == "Voltage"
+    assert [sheet.cell(row, 2).value for row in range(2, 5)] == [0.0, 0.0, 0.0]
+    assert [sheet.cell(row, 2).number_format for row in range(2, 6)] == ["0.000"] * 4
+    assert sheet["B5"].value == '=IF(COUNT(B2:B4)=0,"",AVERAGE(B2:B4))'
+    assert sheet["B6"].value == 10
+    assert [sheet.cell(9, column).value for column in range(1, 18)] == [
+        "=A1", None, "S/N", "1#", None, None,
+        "unit:mΩ", None, "S/N", "1#",
+        "Min", "Max", "Avg", "Stdev", "Test Date", "Amb Temp(°C)", "Rel. Hum.:%",
+    ]
+    assert sheet["A10"].value == "Group 1"
+    assert sheet["B10"].value == "Initial CR"
+    assert sheet["B12"].value == "Final CR"
+    assert sheet["J10"].value == '=IF(OR(D10="",$B$6=""),"",(D10-$B$5)/$B$6)'
+    assert sheet["K10"].value == '=IF(COUNT(J10:J11)=0,"",MIN(J10:J11))'
+    assert sheet["N10"].value == '=IF(COUNT(J10:J11)<2,"",STDEV(J10:J11))'
+    assert sheet["D10"].number_format == "0.000"
+    assert sheet["J10"].number_format == "0.000"
     assert all("ΔR" not in str(cell.value) for row in sheet.iter_rows() for cell in row if cell.value)
 
 
