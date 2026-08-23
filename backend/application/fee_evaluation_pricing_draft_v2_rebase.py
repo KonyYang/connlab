@@ -7,6 +7,7 @@ from collections.abc import Mapping
 
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportRow,
+    FeeEvaluationEditedManualRow,
     FeeEvaluationEditedExportValues,
     edited_row_identity,
     manual_row_identity,
@@ -36,7 +37,10 @@ def rebase_reviewed_values(
     )
     saved_manual = {manual_row_identity(row): row for row in saved.manual_rows}
     manual_rows = tuple(
-        saved_manual.get(manual_row_identity(default_row), default_row)
+        _merge_manual_row(
+            default_row,
+            saved_manual.get(manual_row_identity(default_row)),
+        )
         for default_row in current_defaults.manual_rows
     )
     return FeeEvaluationEditedExportValues(
@@ -58,4 +62,16 @@ def _merge_row(
     return replace(
         default,
         **{field: getattr(saved, field) for field in _MANUAL_FIELDS if field in fields},
+    )
+
+
+def _merge_manual_row(
+    default: FeeEvaluationEditedManualRow,
+    saved: FeeEvaluationEditedManualRow | None,
+) -> FeeEvaluationEditedManualRow:
+    if saved is None or default.row_kind.strip() != "sample_preparation":
+        return saved if saved is not None else default
+    return replace(
+        default,
+        **{field: getattr(saved, field) for field in _MANUAL_FIELDS},
     )

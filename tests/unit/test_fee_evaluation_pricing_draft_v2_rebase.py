@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportRow,
+    FeeEvaluationEditedManualRow,
     FeeEvaluationEditedExportSummary,
     FeeEvaluationEditedExportValues,
 )
@@ -58,6 +59,45 @@ def test_rebase_provenance_refreshes_only_system_fields() -> None:
     assert row.notes == "operator note"
 
 
+def test_rebase_refreshes_sample_preparation_units_from_matrix_defaults() -> None:
+    saved = _values(
+        units="1",
+        testing_fee="0",
+        unit_price="9",
+        base_fee="7",
+        discount="15%",
+        notes="operator note",
+    )
+    defaults = _values(
+        units="15",
+        testing_fee="135",
+        unit_price="3",
+        base_fee="0",
+        discount="0%",
+        notes="",
+    )
+    saved = FeeEvaluationEditedExportValues(
+        rows=saved.rows,
+        summary=saved.summary,
+        manual_rows=(_sample_preparation_row(units="1", testing_fee="0"),),
+    )
+    defaults = FeeEvaluationEditedExportValues(
+        rows=defaults.rows,
+        summary=defaults.summary,
+        manual_rows=(_sample_preparation_row(units="5", testing_fee="45"),),
+    )
+
+    rebased = rebase_reviewed_values(saved=saved, current_defaults=defaults)
+    row = rebased.manual_rows[0]
+
+    assert row.units == "5"
+    assert row.testing_fee == "45"
+    assert row.unit_price == "9"
+    assert row.base_fee == "7"
+    assert row.discount == "15%"
+    assert row.notes == "operator note"
+
+
 def _values(*, units: str, testing_fee: str, unit_price: str, base_fee: str, discount: str, notes: str) -> FeeEvaluationEditedExportValues:
     return FeeEvaluationEditedExportValues(
         rows=(
@@ -78,4 +118,21 @@ def _values(*, units: str, testing_fee: str, unit_price: str, base_fee: str, dis
             ),
         ),
         summary=FeeEvaluationEditedExportSummary("0", "0", "", "200"),
+    )
+
+
+def _sample_preparation_row(*, units: str, testing_fee: str) -> FeeEvaluationEditedManualRow:
+    return FeeEvaluationEditedManualRow(
+        row_kind="sample_preparation",
+        confirmed_group_id="group-1",
+        group_key="g1",
+        group_label="Group 1",
+        spend_time="2",
+        unit_price="9",
+        unit_type="per sample",
+        units=units,
+        base_fee="7",
+        discount="15%",
+        testing_fee=testing_fee,
+        notes="operator note",
     )

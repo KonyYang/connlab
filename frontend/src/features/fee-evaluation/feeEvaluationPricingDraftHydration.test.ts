@@ -124,6 +124,56 @@ describe("feeEvaluationPricingDraftHydration", () => {
     expect(result.appliedRowCount).toBe(0);
     expect(result.unmatchedRowCount).toBe(1);
   });
+
+  it.each(["current_v2_compatibility", "server_rebase_candidate"] as const)(
+    "keeps Sample preparation units aligned with the current Matrix in %s mode",
+    (mode) => {
+      const row = previewRow({
+        lineId: "sample-preparation:g1",
+        sourceLineId: "sample-preparation:g1",
+        confirmedGroupId: "group-1",
+        confirmedRowId: "",
+        stepToken: "0",
+        stepIndex: 0,
+        description: "Sample preparation",
+        unitPrice: "50",
+        unitType: "per sample",
+        units: "5",
+        testingFee: "250",
+        rowKind: "sample_preparation",
+      });
+      const payload = savedPayload();
+      payload.rows = [];
+      payload.manual_rows = [
+        {
+          row_kind: "sample_preparation",
+          confirmed_group_id: "group-1",
+          group_key: "g1",
+          group_label: "Group 1",
+          spend_time: "2",
+          unit_price: "9",
+          unit_type: "per sample",
+          units: "1",
+          base_fee: "7",
+          discount: "15%",
+          testing_fee: "15.15",
+          notes: "operator note",
+        },
+      ];
+
+      const result = hydrateFeeEvaluationPricingDraft([row], payload, mode);
+
+      expect(result.edits[row.lineId]).toEqual({
+        spendTime: "2",
+        unitPrice: "9",
+        unitType: "per sample",
+        units: "5",
+        baseFee: "7",
+        discount: "15%",
+        notes: "operator note",
+      });
+    }
+  );
 });
 
 function previewRow(

@@ -166,12 +166,18 @@ function hydrateRow(
     | NonNullable<FeeEvaluationEditedFileExportRequest["manual_rows"]>[number],
   mode: FeeEvaluationPricingDraftHydrationMode
 ) {
+  const units =
+    previewRow.rowKind === "sample_preparation"
+      ? previewRow.units
+      : mode === "server_rebase_candidate"
+        ? exactCandidateValue(row.units)
+        : hydratedPreviewNumber(row.units, previewRow, "units", "1");
   if (mode === "server_rebase_candidate") {
     return {
       spendTime: exactCandidateValue(row.spend_time),
       unitPrice: exactCandidateValue(row.unit_price),
       unitType: formatUnitTypeForPreview(row.unit_type),
-      units: exactCandidateValue(row.units),
+      units,
       baseFee: exactCandidateValue(row.base_fee),
       discount: exactCandidateValue(row.discount),
       notes: row.notes,
@@ -186,7 +192,7 @@ function hydrateRow(
       "0"
     ),
     unitType: hydratedUnitType(row.unit_type, previewRow.unitType),
-    units: hydratedPreviewNumber(row.units, previewRow, "units", "1"),
+    units,
     baseFee: hydratedPreviewNumber(row.base_fee, previewRow, "baseFee", "0"),
     discount: hydratedEditableDiscount(row.discount, previewRow.discount),
     notes: row.notes,
