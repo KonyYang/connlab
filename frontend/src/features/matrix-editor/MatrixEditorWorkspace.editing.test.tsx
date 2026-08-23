@@ -98,6 +98,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
         group_key: "g1",
         group_label: "1",
         sample_quantity_expression: "5",
+        sample_note: null,
       },
     ]);
     expect(payload.rows[0]).toMatchObject({
@@ -108,6 +109,37 @@ describe("MatrixEditorWorkspace editing behavior", () => {
       group_values: { g1: "1" },
     });
     expect(screen.getByText("Downloaded unconfirmed Test Record preview.")).toBeTruthy();
+  });
+
+  it("downloads an LLCR preview from the current unsaved Matrix Editor state", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText("Samples 1"), {
+      target: { value: "7" },
+    });
+    fireEvent.change(screen.getByLabelText("Row 1 method"), {
+      target: { value: "Unsaved LLCR method" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Download LLCR" }));
+
+    await waitFor(() =>
+      expect(apiMocks.generateMatrixEditorLlcrCrRecordDraftDownload).toHaveBeenCalledTimes(1)
+    );
+    expect(apiMocks.generateMatrixEditorLlcrCrRecordDraftDownload).toHaveBeenCalledWith(
+      "P1",
+      expect.objectContaining({
+        source: "matrix_editor_current_ui_state",
+        record_type: "llcr",
+        groups: [{
+          group_key: "g1",
+          group_label: "1",
+          sample_quantity_expression: "7",
+          sample_note: null,
+        }],
+        rows: [expect.objectContaining({ method: "Unsaved LLCR method" })],
+      }),
+    );
   });
 
   it("prefills Method Condition and Requirement from source preview rows", async () => {

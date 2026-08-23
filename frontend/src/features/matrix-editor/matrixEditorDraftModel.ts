@@ -495,6 +495,7 @@ export function buildMatrixEditorTestRecordDraftRequest(
       group_key: group.groupKey.trim() || `g${index + 1}`,
       group_label: group.name.trim() || `${index + 1}`,
       sample_quantity_expression: samples[group.id]?.trim() ?? "",
+      sample_note: group.sampleNote ?? null,
     })),
     rows: rows.map((row) => {
       const groupValues: Record<string, string> = {};

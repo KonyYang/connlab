@@ -3,42 +3,44 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useLlcrCrSpecializedRecordWorkbookModel } from "./useLlcrCrSpecializedRecordWorkbookModel";
 
 const apiMocks = vi.hoisted(() => ({
-  preview: vi.fn(),
-  generate: vi.fn(),
-  download: vi.fn(),
+  generateDraft: vi.fn(),
 }));
 
 vi.mock("../../api/client", () => ({
-  previewLlcrCrRecordWorkbook: apiMocks.preview,
-  generateLlcrCrRecordWorkbook: apiMocks.generate,
-  downloadLlcrCrRecordWorkbook: apiMocks.download,
+  generateMatrixEditorLlcrCrRecordDraftDownload: apiMocks.generateDraft,
 }));
 
 describe("useLlcrCrSpecializedRecordWorkbookModel", () => {
   beforeEach(() => vi.resetAllMocks());
 
-  it("stops the one-click download when the confirmed Matrix does not require the record", async () => {
-    apiMocks.preview.mockResolvedValue({
-      project_id: "P1",
-      status: "empty",
-      record_type: "cr",
-      confirmed_matrix_id: "cmv-1",
-      confirmed_revision: 1,
-      preview_fingerprint: null,
-      row_count: 0,
-      sections: [],
-      diagnostics: [],
-      delta_r_enabled: false,
-    });
-    const { result } = renderHook(() => useLlcrCrSpecializedRecordWorkbookModel("P1", "cr"));
+  it("shows the current-draft generation error when CR is not required", async () => {
+    apiMocks.generateDraft.mockRejectedValue(
+      new Error("Current Matrix draft does not require CR."),
+    );
+    const draftRequest = {
+      source: "matrix_editor_current_ui_state" as const,
+      groups: [{
+        group_key: "g1",
+        group_label: "1",
+        sample_quantity_expression: "5",
+        sample_note: null,
+      }],
+      rows: [],
+    };
+    const { result } = renderHook(() => useLlcrCrSpecializedRecordWorkbookModel(
+      "P1",
+      "cr",
+      draftRequest,
+    ));
 
     await act(async () => {
       await result.current.downloadWorkbook();
     });
 
-    expect(apiMocks.preview).toHaveBeenCalledWith("P1", "cr");
-    expect(apiMocks.generate).not.toHaveBeenCalled();
-    expect(apiMocks.download).not.toHaveBeenCalled();
-    expect(result.current.error).toBe("CR is not required by the confirmed Matrix.");
+    expect(apiMocks.generateDraft).toHaveBeenCalledWith("P1", {
+      ...draftRequest,
+      record_type: "cr",
+    });
+    expect(result.current.error).toBe("Current Matrix draft does not require CR.");
   });
 });

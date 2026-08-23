@@ -68,10 +68,13 @@ def _write_summary(sheet, projection: LlcrCrRecordProjection) -> None:
     sheet["A1"] = f"{display_type} Test Record"
     sheet["A3"] = "Project ID"
     sheet["B3"] = projection.project_id
-    sheet["A4"] = "Confirmed Matrix"
+    is_live_draft = projection.matrix_source == "matrix_editor_current_ui_state"
+    sheet["A4"] = "Matrix source" if is_live_draft else "Confirmed Matrix"
     sheet["B4"] = projection.confirmed_matrix_id
-    sheet["A5"] = "Confirmed revision"
-    sheet["B5"] = projection.confirmed_revision
+    sheet["A5"] = "Snapshot" if is_live_draft else "Confirmed revision"
+    sheet["B5"] = (
+        "Current unconfirmed UI draft" if is_live_draft else projection.confirmed_revision
+    )
     sheet["A6"] = "Point Profile"
     sheet["B6"] = projection.point_profile_revision_id or "Legacy Matrix contact plan"
     sheet["A7"] = "Profile revision"

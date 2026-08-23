@@ -12,6 +12,7 @@ const apiMocks = vi.hoisted(() => ({
   discardMatrixEditorSessionDraft: vi.fn(),
   confirmMatrixEditorSession: vi.fn(),
   generateMatrixEditorTestRecordDraftDownload: vi.fn(),
+  generateMatrixEditorLlcrCrRecordDraftDownload: vi.fn(),
   previewProjectTestPlanMatrixFromUpload: vi.fn(),
   previewProjectTestPlanMatrixFromPath: vi.fn(),
   previewProjectTestPlanMatrixFromSourceCandidate: vi.fn(),
@@ -82,6 +83,7 @@ vi.mock("../../api/client", () => {
     discardMatrixEditorSessionDraft: apiMocks.discardMatrixEditorSessionDraft,
     confirmMatrixEditorSession: apiMocks.confirmMatrixEditorSession,
     generateMatrixEditorTestRecordDraftDownload: apiMocks.generateMatrixEditorTestRecordDraftDownload,
+    generateMatrixEditorLlcrCrRecordDraftDownload: apiMocks.generateMatrixEditorLlcrCrRecordDraftDownload,
     previewProjectTestPlanMatrixFromUpload: apiMocks.previewProjectTestPlanMatrixFromUpload,
     previewProjectTestPlanMatrixFromPath: apiMocks.previewProjectTestPlanMatrixFromPath,
     previewProjectTestPlanMatrixFromSourceCandidate: apiMocks.previewProjectTestPlanMatrixFromSourceCandidate,
@@ -388,6 +390,12 @@ export function installMatrixEditorWorkspaceTestLifecycle(): void {
         type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       }),
       fileName: "DL-2026 Test Record Preview - Unconfirmed Matrix draft.docx",
+    });
+    apiMocks.generateMatrixEditorLlcrCrRecordDraftDownload.mockResolvedValue({
+      blob: new Blob(["xlsx"], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      fileName: "P1_LLCR_Record_Preview_Unconfirmed_Matrix_draft.xlsx",
     });
     if (!window.URL.createObjectURL) {
       Object.defineProperty(window.URL, "createObjectURL", {

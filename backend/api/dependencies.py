@@ -150,6 +150,9 @@ from backend.application.confirmed_matrix_llcr_cr_record_generation_service impo
 from backend.application.confirmed_matrix_llcr_cr_record_preview_service import (
     LlcrCrRecordWorkbookPreviewService,
 )
+from backend.application.matrix_editor_llcr_cr_record_generation_service import (
+    MatrixEditorLlcrCrRecordGenerationService,
+)
 from backend.application.confirmed_matrix_fee_draft_service import (
     ConfirmedMatrixFeeDraftService,
 )
@@ -1097,6 +1100,20 @@ def get_llcr_cr_record_workbook_generation_service(
         workbook_gateway=LlcrCrSpecializedRecordWorkbookGateway(),
         artifact_store=LlcrCrSpecializedRecordArtifactStore(
             settings.data_dir / "generated_llcr_cr_record_files"
+        ),
+    )
+
+
+def get_matrix_editor_llcr_cr_record_generation_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> MatrixEditorLlcrCrRecordGenerationService:
+    """Build current Matrix Editor draft workbook generation."""
+    return MatrixEditorLlcrCrRecordGenerationService(
+        point_profile_adapter=_confirmed_contact_point_profile_consumer_adapter(session),
+        workbook_gateway=LlcrCrSpecializedRecordWorkbookGateway(),
+        artifact_store=LlcrCrSpecializedRecordArtifactStore(
+            settings.data_dir / "generated_llcr_cr_record_drafts"
         ),
     )
 

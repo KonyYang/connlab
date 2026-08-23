@@ -13,6 +13,9 @@ from backend.application.contact_point_profile_expression import (
     ContactPointExpressionError,
     parse_point_expression,
 )
+from backend.application.matrix_record_sample_quantity import (
+    resolve_matrix_record_sample_count,
+)
 
 _POSITIVE_INTEGER = re.compile(r"^[1-9][0-9]*$")
 _ZERO = re.compile(r"^0$")
@@ -102,6 +105,7 @@ class LlcrCrRecordProjection:
     point_profile_revision_sequence: int | None = None
     point_profile_fingerprint: str | None = None
     delta_r_enabled: bool = True
+    matrix_source: str = "confirmed"
 
     @property
     def row_count(self) -> int:
@@ -167,7 +171,11 @@ def build_point_profile_llcr_cr_record_projection(
     sections: list[LlcrCrRecordSection] = []
     diagnostics: list[LlcrCrRecordDiagnostic] = []
     for group, matching in targets:
-        sample_count = _positive_integer(group.sample_quantity_expression)
+        sample_count = resolve_matrix_record_sample_count(
+            group.sample_quantity_expression,
+            group.sample_note,
+            record_type,
+        )
         if sample_count is None:
             diagnostics.append(
                 LlcrCrRecordDiagnostic(

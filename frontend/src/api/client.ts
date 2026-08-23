@@ -1680,6 +1680,7 @@ export type MatrixEditorTestRecordDraftGroupRequest = {
   group_key: string;
   group_label: string;
   sample_quantity_expression: string;
+  sample_note?: string | null;
 };
 
 export type MatrixEditorTestRecordDraftRowRequest = {
@@ -1944,6 +1945,10 @@ export type MatrixSourceCandidate = {
   candidate_kind: string;
   reason: string;
   stored_file_available: boolean;
+};
+
+export type MatrixEditorLlcrCrRecordDraftRequest = MatrixEditorTestRecordDraftRequest & {
+  record_type: LlcrCrRecordType;
 };
 
 export type MatrixResolvedDirectoryCandidate = {
@@ -4516,6 +4521,20 @@ export function generateMatrixEditorTestRecordDraftDownload(
 ): Promise<BlobDownloadResponse> {
   return requestBlobResponse(
     `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/test-record-draft/generate`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
+  );
+}
+
+export function generateMatrixEditorLlcrCrRecordDraftDownload(
+  projectId: string,
+  input: MatrixEditorLlcrCrRecordDraftRequest
+): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/llcr-cr-record-draft/generate`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

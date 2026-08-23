@@ -1668,7 +1668,10 @@ export function MatrixEditorWorkspace({
             loading={pointProfileSummary.loading}
             onOpenSetup={() => onOpenContactMeasurementSetup?.()}
           />
-          <LlcrCrRecordWorkbookPanel projectId={projectId} />
+          <LlcrCrRecordWorkbookPanel
+            projectId={projectId}
+            draftRequest={testRecordDraftRequest}
+          />
         </section>
 
         <MatrixStepWorkspace

@@ -40,6 +40,29 @@ class LlcrCrSpecializedRecordArtifactStore:
             output_path=project_dir / file_name,
         )
 
+    def prepare_draft(
+        self,
+        *,
+        project_id: str,
+        record_type: str,
+    ) -> LlcrCrSpecializedRecordArtifact:
+        """Reserve one explicitly unconfirmed Matrix Editor preview workbook."""
+        if record_type not in {"llcr", "cr"}:
+            raise ValueError("Record type must be llcr or cr.")
+        artifact_id = uuid4().hex
+        project_dir = self._project_dir(project_id)
+        project_dir.mkdir(parents=True, exist_ok=True)
+        display_project = _safe_file_segment(project_id)
+        file_name = (
+            f"{display_project}_{record_type}_record_Preview_Unconfirmed_Matrix_draft_"
+            f"{artifact_id}.xlsx"
+        )
+        return LlcrCrSpecializedRecordArtifact(
+            artifact_id=artifact_id,
+            file_name=file_name,
+            output_path=project_dir / file_name,
+        )
+
     def resolve(self, *, project_id: str, artifact_id: str) -> LlcrCrSpecializedRecordArtifact:
         """Resolve one existing artifact after strict identifier and containment checks."""
         if not _ARTIFACT_ID.fullmatch(artifact_id):
