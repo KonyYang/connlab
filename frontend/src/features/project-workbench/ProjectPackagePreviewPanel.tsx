@@ -13,6 +13,15 @@ const STATUS_COPY: Record<ProjectPackagePreview["status"], string> = {
   blocked: "Package readiness has blockers.",
 };
 
+const MATRIX_SOURCE_COPY: Record<
+  ProjectPackagePreview["authority_context"]["matrix_source"],
+  string
+> = {
+  confirmed: "Confirmed Matrix",
+  draft: "Matrix draft preview",
+  missing: "No Matrix source",
+};
+
 export function ProjectPackagePreviewPanel({
   preview,
   loading,
@@ -25,7 +34,9 @@ export function ProjectPackagePreviewPanel({
   const statusLabel = error
     ? "Preview unavailable"
     : preview
-      ? STATUS_COPY[preview.status]
+      ? preview.authority_context.matrix_source === "draft"
+        ? "Draft preview is available; formal package generation requires confirmation."
+        : STATUS_COPY[preview.status]
       : loading
         ? "Checking package readiness."
         : "Refresh to inspect package readiness.";
@@ -51,6 +62,14 @@ export function ProjectPackagePreviewPanel({
         <div>
           <span>Target folder</span>
           <strong>{preview?.project_folder.path ?? "Not ready"}</strong>
+        </div>
+        <div>
+          <span>Matrix source</span>
+          <strong>
+            {preview
+              ? MATRIX_SOURCE_COPY[preview.authority_context.matrix_source]
+              : "Not checked"}
+          </strong>
         </div>
       </div>
 

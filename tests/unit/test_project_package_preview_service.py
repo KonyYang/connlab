@@ -35,6 +35,8 @@ from backend.domain import (
     ExternalResourceType,
     Project,
     ProjectFolderRecord,
+    ProjectMatrixDraftRecord,
+    ProjectMatrixDraftStatus,
     ProjectStatus,
 )
 from backend.domain.confirmed_fee import ConfirmedFeeSummary, ConfirmedFeeVersion
@@ -140,8 +142,50 @@ def test_project_package_preview_blocks_missing_confirmed_matrix(tmp_path: Path)
     result = service.preview("P1")
 
     assert result.status == "blocked"
-    assert "Confirm Matrix" in " ".join(result.blockers)
+    assert "Create or import a Matrix draft" in " ".join(result.blockers)
     assert _item_status(result, "test_record") == "blocked"
+
+
+def test_project_package_preview_uses_matrix_draft_without_blocking_or_confirmed_fee_lookup(
+    tmp_path: Path,
+) -> None:
+    service = _service(
+        folder_path=_project_folder(tmp_path),
+        template_folder=_template_folder(tmp_path),
+        snapshot=None,
+        matrix_drafts=[_matrix_draft_record()],
+        fee_status="error",
+    )
+
+    result = service.preview("P1")
+
+    assert result.status == "ready"
+    assert result.blockers == ()
+    assert result.authority_context.matrix_source == "draft"
+    assert result.authority_context.project_matrix_draft_id == "D1"
+    assert "using the latest Matrix draft" in " ".join(result.warnings)
+    assert _item_status(result, "test_record") == "warning"
+    assert _item_status(result, "fee_form") == "warning"
+
+
+def test_project_package_preview_ignores_superseded_matrix_drafts(tmp_path: Path) -> None:
+    service = _service(
+        folder_path=_project_folder(tmp_path),
+        template_folder=_template_folder(tmp_path),
+        snapshot=None,
+        matrix_drafts=[
+            _matrix_draft_record(
+                status=ProjectMatrixDraftStatus.SUPERSEDED,
+                updated_at="2026-06-12T00:00:00+00:00",
+            )
+        ],
+    )
+
+    result = service.preview("P1")
+
+    assert result.status == "blocked"
+    assert result.authority_context.matrix_source == "missing"
+    assert result.authority_context.project_matrix_draft_id is None
 
 
 def test_project_package_preview_blocks_missing_confirmed_fee(tmp_path: Path) -> None:
@@ -307,6 +351,14 @@ class FakeConfirmedMatrixStore:
         return self.snapshot if self.snapshot and self.snapshot.version.project_id == project_id else None
 
 
+class FakeMatrixDraftStore:
+    def __init__(self, drafts: list[ProjectMatrixDraftRecord]) -> None:
+        self.drafts = drafts
+
+    def list_by_project(self, project_id: str) -> list[ProjectMatrixDraftRecord]:
+        return [draft for draft in self.drafts if draft.project_id == project_id]
+
+
 class FakeConfirmedFeeReader:
     def __init__(self, status: str) -> None:
         self.status = status
@@ -435,6 +487,7 @@ def _service(
         status=ProjectStatus.FOLDER_CREATED,
     ),
     snapshot: ConfirmedMatrixSnapshot | None | object = _DEFAULT_SNAPSHOT,
+    matrix_drafts: list[ProjectMatrixDraftRecord] | None = None,
     fee_status: str = "current",
     section2_status: str = "up_to_date",
 ) -> ProjectPackagePreviewService:
@@ -443,6 +496,7 @@ def _service(
         project_store=FakeProjectStore(project),
         folder_store=FakeFolderStore(folder_path),
         confirmed_matrix_store=FakeConfirmedMatrixStore(active_snapshot),
+        matrix_draft_store=FakeMatrixDraftStore(matrix_drafts or []),
         confirmed_fee_reader=FakeConfirmedFeeReader(fee_status),
         section2_previewer=FakeSection2Previewer(section2_status),
         external_resource_store=FakeExternalResourceStore(template_folder),
@@ -464,6 +518,22 @@ def _snapshot() -> ConfirmedMatrixSnapshot:
             confirmed_by="Lab User",
             confirmed_at="2026-06-11T00:00:00+00:00",
         )
+    )
+
+
+def _matrix_draft_record(
+    *,
+    status: ProjectMatrixDraftStatus = ProjectMatrixDraftStatus.DRAFT,
+    updated_at: str = "2026-06-11T00:00:00+00:00",
+) -> ProjectMatrixDraftRecord:
+    return ProjectMatrixDraftRecord(
+        project_matrix_draft_id="D1",
+        project_id="P1",
+        source_import_id="S1",
+        source_snapshot_id="SS1",
+        status=status,
+        created_at="2026-06-10T00:00:00+00:00",
+        updated_at=updated_at,
     )
 
 

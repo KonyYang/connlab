@@ -27,6 +27,7 @@ def test_project_package_preview_api_returns_typed_preview() -> None:
     payload = response.json()
     assert payload["status"] == "blocked"
     assert payload["project_folder"]["status"] == "blocked"
+    assert payload["authority_context"]["matrix_source"] == "missing"
     assert payload["required_items"][0]["key"] == "test_record"
     assert payload["blockers"] == ["Create the project folder before previewing package targets."]
 
@@ -74,6 +75,8 @@ def _blocked_preview() -> ProjectPackagePreview:
         authority_context=ProjectPackageAuthorityContext(
             confirmed_matrix_id=None,
             confirmed_revision=None,
+            matrix_source="missing",
+            project_matrix_draft_id=None,
             confirmed_fee_id=None,
             confirmed_fee_revision=None,
             confirmed_fee_status="missing",

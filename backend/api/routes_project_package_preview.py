@@ -22,6 +22,7 @@ router = APIRouter(tags=["project-package-preview"])
 
 PackagePreviewStatusResponse = Literal["ready", "blocked"]
 PackagePreviewItemStatusResponse = Literal["ready", "blocked", "warning", "deferred"]
+PackagePreviewMatrixSourceResponse = Literal["confirmed", "draft", "missing"]
 
 
 class ProjectPackageFolderPreviewResponse(BaseModel):
@@ -37,6 +38,8 @@ class ProjectPackageAuthorityContextResponse(BaseModel):
 
     confirmed_matrix_id: str | None
     confirmed_revision: int | None
+    matrix_source: PackagePreviewMatrixSourceResponse
+    project_matrix_draft_id: str | None
     confirmed_fee_id: str | None
     confirmed_fee_revision: int | None
     confirmed_fee_status: str
@@ -110,6 +113,8 @@ def _authority_response(
     return ProjectPackageAuthorityContextResponse(
         confirmed_matrix_id=authority.confirmed_matrix_id,
         confirmed_revision=authority.confirmed_revision,
+        matrix_source=authority.matrix_source,
+        project_matrix_draft_id=authority.project_matrix_draft_id,
         confirmed_fee_id=authority.confirmed_fee_id,
         confirmed_fee_revision=authority.confirmed_fee_revision,
         confirmed_fee_status=authority.confirmed_fee_status,

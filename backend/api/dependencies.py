@@ -1219,6 +1219,7 @@ def get_project_package_preview_service(
         project_store=ProjectRepository(session),
         folder_store=ProjectFolderRecordRepository(session),
         confirmed_matrix_store=ConfirmedMatrixAuthorityRepository(session),
+        matrix_draft_store=ProjectMatrixDraftRepository(session),
         confirmed_fee_reader=get_confirmed_fee_version_service(session),
         section2_previewer=get_project_section2_sync_service(session),
         external_resource_store=ExternalResourceRepository(session),

@@ -11,8 +11,27 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_PROJECT_PACKAGE_DRAFT_PREVIEW",
+    "summary": "Allow Project Package preview to remain usable from a Matrix draft; only formal actions require confirmed Matrix authority.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Project Package preview must render a non-authoritative Matrix draft state without requiring Matrix confirmation; confirmed authority remains required for formal actions.",
+    "scope_paths": [
+      "backend/application/project_package_preview_service.py",
+      "backend/application/confirmed_fee_version_service.py",
+      "backend/api/routes_project_package_preview.py",
+      "tests/unit/test_project_package_preview_service.py",
+      "tests/integration/test_project_package_preview_api.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "62887b9ef6d6f2aca242314c04566b7e06f6c9c4",
+    "started_at": "2026-08-23T23:54:46.584360Z",
+    "updated_at": "2026-08-23T23:54:46.584360Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_BROWSER_RELEASE_LLCR_GATE_AND_RUNTIME_SMOKE",
     "tier": "standard",

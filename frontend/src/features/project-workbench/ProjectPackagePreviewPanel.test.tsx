@@ -47,6 +47,38 @@ describe("ProjectPackagePreviewPanel", () => {
 
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
+
+  it("shows a Matrix draft as a usable preview source instead of an error", () => {
+    render(
+      <ProjectPackagePreviewPanel
+        preview={{
+          ...readyPreview,
+          authority_context: {
+            ...readyPreview.authority_context,
+            confirmed_matrix_id: null,
+            confirmed_revision: null,
+            matrix_source: "draft",
+            project_matrix_draft_id: "D1",
+          },
+          required_items: readyPreview.required_items.map((item) => ({
+            ...item,
+            status: "warning",
+            message: "Matrix draft is available for preview.",
+          })),
+          warnings: ["Package preview is using the latest Matrix draft."],
+        }}
+        loading={false}
+        error={null}
+        onRefresh={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Matrix draft preview")).toBeTruthy();
+    expect(
+      screen.getByText("Draft preview is available; formal package generation requires confirmation.")
+    ).toBeTruthy();
+    expect(screen.getByText("Package preview is using the latest Matrix draft.")).toBeTruthy();
+  });
 });
 
 const blockedPreview: ProjectPackagePreview = {
@@ -60,6 +92,8 @@ const blockedPreview: ProjectPackagePreview = {
   authority_context: {
     confirmed_matrix_id: "CM1",
     confirmed_revision: 1,
+    matrix_source: "confirmed",
+    project_matrix_draft_id: "D1",
     confirmed_fee_id: null,
     confirmed_fee_revision: null,
     confirmed_fee_status: "missing",

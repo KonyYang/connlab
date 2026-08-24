@@ -292,6 +292,8 @@ export type ProjectPackageFolderPreview = {
 export type ProjectPackageAuthorityContext = {
   confirmed_matrix_id?: string | null;
   confirmed_revision?: number | null;
+  matrix_source: "confirmed" | "draft" | "missing";
+  project_matrix_draft_id?: string | null;
   confirmed_fee_id?: string | null;
   confirmed_fee_revision?: number | null;
   confirmed_fee_status: string;

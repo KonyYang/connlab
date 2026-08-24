@@ -145,7 +145,10 @@ describe("useProjectWorkbenchModel", () => {
       project_id: "project-1",
       status: "ready",
       project_folder: { status: "ready", path: "D:/Projects", message: "Ready." },
-      authority_context: {},
+      authority_context: {
+        matrix_source: "missing",
+        confirmed_fee_status: "missing",
+      },
       required_items: [],
       optional_items: [],
       blockers: [],

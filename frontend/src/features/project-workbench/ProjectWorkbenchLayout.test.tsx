@@ -1739,6 +1739,8 @@ const readyPackagePreview: ProjectPackagePreview = {
   authority_context: {
     confirmed_matrix_id: "CM1",
     confirmed_revision: 1,
+    matrix_source: "confirmed",
+    project_matrix_draft_id: "D1",
     confirmed_fee_id: "CF1",
     confirmed_fee_revision: 1,
     confirmed_fee_status: "current",

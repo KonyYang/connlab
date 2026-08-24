@@ -13,6 +13,9 @@ from backend.application.confirmed_matrix_fee_template_basic_fill_service import
     ConfirmedMatrixFeeTemplateBasicFillError,
     ConfirmedMatrixFeeTemplateBasicFillNotFoundError,
 )
+from backend.application.confirmed_matrix_fee_draft_service import (
+    ConfirmedMatrixFeeDraftNotFoundError,
+)
 from backend.application.customer_feedback_template_discovery import (
     CustomerFeedbackTemplateDiscoveryError,
     discover_customer_feedback_template,
@@ -31,11 +34,14 @@ from backend.domain import (
     ExternalResourceType,
     Project,
     ProjectFolderRecord,
+    ProjectMatrixDraftRecord,
+    ProjectMatrixDraftStatus,
 )
 
 
 PackagePreviewStatus = Literal["ready", "blocked"]
 PackagePreviewItemStatus = Literal["ready", "blocked", "warning", "deferred"]
+PackagePreviewMatrixSource = Literal["confirmed", "draft", "missing"]
 
 
 class ProjectPackagePreviewProjectNotFoundError(LookupError):
@@ -68,6 +74,13 @@ class ProjectPackageConfirmedMatrixStore(Protocol):
 
     def get_active_by_project(self, project_id: str) -> ConfirmedMatrixSnapshot | None:
         """Return the active Confirmed Matrix authority snapshot."""
+
+
+class ProjectPackageMatrixDraftStore(Protocol):
+    """Matrix draft lookup port for non-authoritative package previews."""
+
+    def list_by_project(self, project_id: str) -> list[ProjectMatrixDraftRecord]:
+        """Return Matrix drafts for one project, newest first."""
 
 
 class ProjectPackageConfirmedFeeReader(Protocol):
@@ -106,6 +119,8 @@ class ProjectPackageAuthorityContext:
 
     confirmed_matrix_id: str | None
     confirmed_revision: int | None
+    matrix_source: PackagePreviewMatrixSource
+    project_matrix_draft_id: str | None
     confirmed_fee_id: str | None
     confirmed_fee_revision: int | None
     confirmed_fee_status: str
@@ -146,6 +161,7 @@ class ProjectPackagePreviewService:
         project_store: ProjectPackageProjectStore,
         folder_store: ProjectPackageFolderStore,
         confirmed_matrix_store: ProjectPackageConfirmedMatrixStore,
+        matrix_draft_store: ProjectPackageMatrixDraftStore,
         confirmed_fee_reader: ProjectPackageConfirmedFeeReader,
         section2_previewer: ProjectPackageSection2Previewer,
         external_resource_store: ProjectPackageExternalResourceStore,
@@ -155,6 +171,7 @@ class ProjectPackagePreviewService:
         self._project_store = project_store
         self._folder_store = folder_store
         self._confirmed_matrix_store = confirmed_matrix_store
+        self._matrix_draft_store = matrix_draft_store
         self._confirmed_fee_reader = confirmed_fee_reader
         self._section2_previewer = section2_previewer
         self._external_resource_store = external_resource_store
@@ -171,14 +188,27 @@ class ProjectPackagePreviewService:
         blockers: list[str] = []
         warnings: list[str] = []
         folder_preview, target_folder = self._folder_preview(project_id, blockers)
-        snapshot = self._confirmed_matrix_preview(project_id, blockers)
-        confirmed_fee = self._confirmed_fee_preview(project_id, blockers)
+        snapshot = self._confirmed_matrix_store.get_active_by_project(project_id)
+        matrix_draft = self._latest_matrix_draft(project_id)
+        matrix_source = _matrix_source(snapshot, matrix_draft)
+        if matrix_source == "draft":
+            warnings.append(
+                "Package preview is using the latest Matrix draft; "
+                "confirm Matrix before formal package generation."
+            )
+        elif matrix_source == "missing":
+            blockers.append("Create or import a Matrix draft before previewing package outputs.")
+        confirmed_fee = (
+            self._confirmed_fee_preview(project_id, blockers)
+            if snapshot is not None
+            else None
+        )
         section2_item = self._section2_item(project_id, target_folder, blockers, warnings)
         customer_feedback_item = self._customer_feedback_item(target_folder, blockers)
 
         required_items = (
-            self._test_record_item(target_folder, snapshot),
-            self._fee_form_item(target_folder, confirmed_fee),
+            self._test_record_item(target_folder, snapshot, matrix_draft),
+            self._fee_form_item(target_folder, confirmed_fee, matrix_draft),
             section2_item,
             customer_feedback_item,
         )
@@ -206,6 +236,10 @@ class ProjectPackagePreviewService:
                 ),
                 confirmed_revision=(
                     snapshot.version.confirmed_revision if snapshot is not None else None
+                ),
+                matrix_source=matrix_source,
+                project_matrix_draft_id=(
+                    matrix_draft.project_matrix_draft_id if matrix_draft is not None else None
                 ),
                 confirmed_fee_id=latest_fee.confirmed_fee_id if latest_fee else None,
                 confirmed_fee_revision=(
@@ -271,15 +305,18 @@ class ProjectPackagePreviewService:
             path,
         )
 
-    def _confirmed_matrix_preview(
-        self,
-        project_id: str,
-        blockers: list[str],
-    ) -> ConfirmedMatrixSnapshot | None:
-        snapshot = self._confirmed_matrix_store.get_active_by_project(project_id)
-        if snapshot is None:
-            blockers.append("Confirm Matrix before preparing the project package.")
-        return snapshot
+    def _latest_matrix_draft(self, project_id: str) -> ProjectMatrixDraftRecord | None:
+        drafts = [
+            draft
+            for draft in self._matrix_draft_store.list_by_project(project_id)
+            if draft.status is ProjectMatrixDraftStatus.DRAFT
+        ]
+        if not drafts:
+            return None
+        return max(
+            drafts,
+            key=lambda item: (item.updated_at, item.project_matrix_draft_id),
+        )
 
     def _confirmed_fee_preview(
         self,
@@ -291,6 +328,7 @@ class ProjectPackagePreviewService:
         except (
             ConfirmedMatrixFeeTemplateBasicFillError,
             ConfirmedMatrixFeeTemplateBasicFillNotFoundError,
+            ConfirmedMatrixFeeDraftNotFoundError,
         ) as exc:
             blockers.append(f"Confirmed Fee readiness is blocked: {exc}")
             return None
@@ -379,13 +417,22 @@ class ProjectPackagePreviewService:
         self,
         target_folder: Path | None,
         snapshot: ConfirmedMatrixSnapshot | None,
+        matrix_draft: ProjectMatrixDraftRecord | None,
     ) -> ProjectPackagePreviewItem:
         if snapshot is None:
+            if matrix_draft is not None:
+                return _warning_item(
+                    "test_record",
+                    "Test Record",
+                    target_folder,
+                    "Matrix draft is available for preview; confirm Matrix "
+                    "before formal Test Record package generation.",
+                )
             return _blocked_item(
                 "test_record",
                 "Test Record",
                 target_folder,
-                "Confirm Matrix before Test Record generation.",
+                "Create or import a Matrix draft before Test Record preview.",
             )
         return ProjectPackagePreviewItem(
             key="test_record",
@@ -400,8 +447,17 @@ class ProjectPackagePreviewService:
         self,
         target_folder: Path | None,
         confirmed_fee: ConfirmedFeeVersionReadResult | None,
+        matrix_draft: ProjectMatrixDraftRecord | None,
     ) -> ProjectPackagePreviewItem:
         if confirmed_fee is None or confirmed_fee.status != "current":
+            if matrix_draft is not None:
+                return _warning_item(
+                    "fee_form",
+                    "Fee Form",
+                    target_folder,
+                    "Matrix draft is available for fee preview; confirm Matrix "
+                    "and Fee before formal Fee Form package generation.",
+                )
             return _blocked_item(
                 "fee_form",
                 "Fee Form",
@@ -432,3 +488,28 @@ def _blocked_item(
         target_path=None,
         message=message,
     )
+
+
+def _warning_item(
+    key: str,
+    label: str,
+    target_folder: Path | None,
+    message: str,
+) -> ProjectPackagePreviewItem:
+    return ProjectPackagePreviewItem(
+        key=key,
+        label=label,
+        status="warning",
+        target_folder=str(target_folder) if target_folder else None,
+        target_path=None,
+        message=message,
+    )
+
+
+def _matrix_source(
+    snapshot: ConfirmedMatrixSnapshot | None,
+    matrix_draft: ProjectMatrixDraftRecord | None,
+) -> PackagePreviewMatrixSource:
+    if snapshot is not None:
+        return "confirmed"
+    return "draft" if matrix_draft is not None else "missing"
