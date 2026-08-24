@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_MANUAL_SAMPLE_QTY_HYDRATION",
+    "summary": "Restore saved manual sample quantities when the current Matrix requires quantity confirmation, so Update Fee is not blocked after a valid reload.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Fix Fee Evaluation saved-draft hydration for manual sample quantities such as 5+5(d), with a focused regression test.",
+    "scope_paths": [
+      "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.ts",
+      "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.test.ts"
+    ],
+    "risk_reasons": [],
+    "activation_head": "ce7539c69dfbaa4be7f7c9b7a54bfcef38ffc393",
+    "started_at": "2026-08-24T11:21:45.816433Z",
+    "updated_at": "2026-08-24T11:21:45.816433Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_PROJECT_PACKAGE_DRAFT_PREVIEW",
     "tier": "standard",

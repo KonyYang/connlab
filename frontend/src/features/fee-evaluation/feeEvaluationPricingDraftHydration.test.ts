@@ -174,6 +174,50 @@ describe("feeEvaluationPricingDraftHydration", () => {
       });
     }
   );
+
+  it("restores a saved Sample preparation quantity when the Matrix requires manual confirmation", () => {
+    const row = previewRow({
+      lineId: "sample-preparation:g6",
+      sourceLineId: "sample-preparation:g6",
+      confirmedGroupId: "group-6",
+      confirmedRowId: "",
+      stepToken: "0",
+      stepIndex: 0,
+      description: "Sample preparation",
+      unitPrice: "50",
+      unitType: "per sample",
+      units: "",
+      testingFee: "Pending",
+      fieldMetadata: [metadata("units", "manual_required")],
+      rowKind: "sample_preparation",
+    });
+    const payload = savedPayload();
+    payload.rows = [];
+    payload.manual_rows = [
+      {
+        row_kind: "sample_preparation",
+        confirmed_group_id: "group-6",
+        group_key: "g6",
+        group_label: "Group 6",
+        spend_time: "0",
+        unit_price: "50",
+        unit_type: "per sample",
+        units: "3",
+        base_fee: "0",
+        discount: "0%",
+        testing_fee: "150",
+        notes: "",
+      },
+    ];
+
+    const result = hydrateFeeEvaluationPricingDraft(
+      [row],
+      payload,
+      "current_v2_compatibility"
+    );
+
+    expect(result.edits[row.lineId]).toMatchObject({ units: "3" });
+  });
 });
 
 function previewRow(

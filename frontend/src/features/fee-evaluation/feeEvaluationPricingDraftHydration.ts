@@ -167,7 +167,8 @@ function hydrateRow(
   mode: FeeEvaluationPricingDraftHydrationMode
 ) {
   const units =
-    previewRow.rowKind === "sample_preparation"
+    previewRow.rowKind === "sample_preparation" &&
+    !fieldIsManualRequired(previewRow, "units")
       ? previewRow.units
       : mode === "server_rebase_candidate"
         ? exactCandidateValue(row.units)
