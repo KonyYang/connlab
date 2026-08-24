@@ -201,6 +201,106 @@ def test_project_matrix_draft_service_update_replaces_sparse_cells_and_keeps_sou
     assert store.replaced_snapshots[-1].record.project_matrix_draft_id == created.record.project_matrix_draft_id
 
 
+def test_project_matrix_draft_service_rejects_duplicate_source_row_lineage_before_persistence() -> None:
+    service, store = _service()
+    created = service.create_from_source_import(
+        CreateProjectMatrixDraftFromSourceImportCommand(
+            project_id="P1",
+            source_import_id="smi-1",
+        )
+    )
+    source_row = created.rows[0]
+    other_row = created.rows[1]
+
+    with pytest.raises(
+        ProjectMatrixDraftPersistenceError,
+        match="Duplicate source row lineage",
+    ):
+        service.update_draft(
+            _update_command_with_rows(
+                created,
+                (
+                    ProjectMatrixDraftRowInput(
+                        draft_row_id=source_row.draft_row_id,
+                        source_row_snapshot_id=source_row.source_row_snapshot_id,
+                        row_order=1,
+                        test_item=source_row.test_item,
+                    ),
+                    ProjectMatrixDraftRowInput(
+                        draft_row_id=other_row.draft_row_id,
+                        source_row_snapshot_id=source_row.source_row_snapshot_id,
+                        row_order=2,
+                        test_item=other_row.test_item,
+                    ),
+                ),
+            )
+        )
+
+    assert len(store.replaced_snapshots) == 0
+
+
+def test_project_matrix_draft_service_rejects_duplicate_draft_row_identity_before_persistence() -> None:
+    service, store = _service()
+    created = service.create_from_source_import(
+        CreateProjectMatrixDraftFromSourceImportCommand(
+            project_id="P1",
+            source_import_id="smi-1",
+        )
+    )
+    source_row = created.rows[0]
+
+    with pytest.raises(
+        ProjectMatrixDraftPersistenceError,
+        match="Duplicate draft row identity",
+    ):
+        service.update_draft(
+            _update_command_with_rows(
+                created,
+                (
+                    ProjectMatrixDraftRowInput(
+                        draft_row_id=source_row.draft_row_id,
+                        source_row_snapshot_id=None,
+                        row_order=1,
+                        test_item=source_row.test_item,
+                    ),
+                    ProjectMatrixDraftRowInput(
+                        draft_row_id=source_row.draft_row_id,
+                        source_row_snapshot_id=None,
+                        row_order=2,
+                        test_item=source_row.test_item,
+                    ),
+                ),
+            )
+        )
+
+    assert len(store.replaced_snapshots) == 0
+
+
+def _update_command_with_rows(
+    created: ProjectMatrixDraftSnapshot,
+    rows: tuple[ProjectMatrixDraftRowInput, ...],
+) -> UpdateProjectMatrixDraftCommand:
+    return UpdateProjectMatrixDraftCommand(
+        project_id="P1",
+        project_matrix_draft_id=created.record.project_matrix_draft_id,
+        groups=tuple(
+            ProjectMatrixDraftGroupInput(
+                draft_group_id=group.draft_group_id,
+                source_group_snapshot_id=group.source_group_snapshot_id,
+                group_order=group.group_order,
+                group_key=group.group_key,
+                group_label=group.group_label,
+                is_selected=group.is_selected,
+                sample_quantity_expression=group.sample_quantity_expression,
+                sample_note=group.sample_note,
+            )
+            for group in created.groups
+        ),
+        rows=rows,
+        cells=(),
+    )
+
+
 def test_project_matrix_draft_service_update_uses_last_write_wins() -> None:
     service, _ = _service()
     created = service.create_from_source_import(

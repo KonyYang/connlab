@@ -145,6 +145,7 @@ def _build_updated_snapshot(
     existing: ProjectMatrixDraftSnapshot,
     command: UpdateProjectMatrixDraftCommand,
 ) -> ProjectMatrixDraftSnapshot:
+    _reject_duplicate_row_identities(command.rows)
     draft_id = existing.record.project_matrix_draft_id
     existing_group_by_id = {group.draft_group_id: group for group in existing.groups}
     existing_row_by_id = {row.draft_row_id: row for row in existing.rows}
@@ -248,6 +249,29 @@ def _build_updated_snapshot(
             now=now,
         ),
     )
+
+
+def _reject_duplicate_row_identities(
+    rows: tuple[ProjectMatrixDraftRowInput, ...],
+) -> None:
+    seen_draft_row_ids: set[str] = set()
+    seen_source_ids: set[str] = set()
+    for row in rows:
+        draft_row_id = (row.draft_row_id or "").strip()
+        if draft_row_id:
+            if draft_row_id in seen_draft_row_ids:
+                raise ProjectMatrixDraftPersistenceError(
+                    f"Duplicate draft row identity: {draft_row_id}"
+                )
+            seen_draft_row_ids.add(draft_row_id)
+        source_id = (row.source_row_snapshot_id or "").strip()
+        if not source_id:
+            continue
+        if source_id in seen_source_ids:
+            raise ProjectMatrixDraftPersistenceError(
+                f"Duplicate source row lineage: {source_id}"
+            )
+        seen_source_ids.add(source_id)
 
 
 def _draft_authorities_from_source(

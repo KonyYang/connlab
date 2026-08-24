@@ -426,6 +426,69 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
         engine.dispose()
 
 
+def test_matrix_editor_session_autosave_rejects_duplicate_row_lineage_without_server_error(
+    tmp_path: Path,
+) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        source_import_id = _seed_source_import("P1", tmp_path)
+        created = client.post(
+            "/api/projects/P1/matrix-drafts",
+            json={"source_import_id": source_import_id, "selected_group_keys": ["g1", "g2"]},
+        )
+        assert created.status_code == 201
+        draft_id = created.json()["record"]["project_matrix_draft_id"]
+        confirmed = client.post(
+            f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
+            json={"confirmed_by": "operator"},
+        )
+        assert confirmed.status_code == 201
+
+        seed = client.get("/api/projects/P1/matrix-editor/session")
+        assert seed.status_code == 200
+        seed_payload = seed.json()
+        editor_draft = seed_payload["editor_draft"]
+        duplicate_row = editor_draft["rows"][0]
+        duplicate_rows = [
+            {**duplicate_row, "row_order": 1},
+            {**duplicate_row, "row_order": 2},
+        ]
+
+        response = client.put(
+            "/api/projects/P1/matrix-editor/session/draft",
+            json={
+                "expected_active_confirmed_matrix_id": seed_payload[
+                    "active_confirmed_matrix_id"
+                ],
+                "expected_active_confirmed_revision": seed_payload[
+                    "active_confirmed_revision"
+                ],
+                "source_document_path": seed_payload["source_preview_payload"][
+                    "source_document_path"
+                ],
+                "source_document_name": seed_payload["source_preview_payload"][
+                    "source_document_name"
+                ],
+                "source_format": seed_payload["source_preview_payload"]["source_format"],
+                "source_import_id": seed_payload["active_source_import_id"],
+                "source_snapshot_id": seed_payload["active_source_snapshot_id"],
+                "groups": editor_draft["groups"],
+                "rows": duplicate_rows,
+                "cells": [],
+            },
+        )
+
+        assert response.status_code == 422
+        assert "Duplicate draft row identity" in response.json()["detail"]
+        restored = client.get("/api/projects/P1/matrix-editor/session")
+        assert restored.status_code == 200
+        assert restored.json()["draft_status"] == "missing"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_matrix_editor_session_confirm_publishes_schedule_planning_fields(
     tmp_path: Path,
 ) -> None:

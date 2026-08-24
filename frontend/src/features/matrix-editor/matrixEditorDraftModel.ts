@@ -295,7 +295,10 @@ export function buildMatrixFromSessionSeedDraft(
   );
   const nextRows: EditableMatrixRow[] = previewRows.map((previewRow, rowIndex) => {
     const identity = previewRowIdentity(previewRow);
-    const existing = currentRowByIdentity.get(identity) ?? mapped.rows[rowIndex] ?? null;
+    const identityMatch = currentRowByIdentity.get(identity) ?? null;
+    const positionalFallback = identityMatch ? null : mapped.rows[rowIndex] ?? null;
+    const candidate = identityMatch ?? positionalFallback;
+    const existing = candidate && !consumedRowIds.has(candidate.id) ? candidate : null;
     if (existing) {
       consumedRowIds.add(existing.id);
     }
