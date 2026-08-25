@@ -1,6 +1,10 @@
 """FastAPI application for the ConnLab backend."""
 
-from fastapi import FastAPI
+import logging
+import time
+import uuid
+
+from fastapi import FastAPI, Request
 
 from backend.api.routes_cleanup import router as cleanup_router
 from backend.api.routes_approval_package import router as approval_package_router
@@ -9,6 +13,7 @@ from backend.api.routes_external_excel_resources import (
     router as external_excel_read_router,
 )
 from backend.api.routes_external_resources import router as external_resources_router
+from backend.api.routes_diagnostics import router as diagnostics_router
 from backend.api.routes_folder import router as folder_router
 from backend.api.routes_intake import router as intake_router
 from backend.api.routes_intake_review import router as intake_review_router
@@ -145,11 +150,50 @@ from backend.api.routes_contact_measurement_plan_draft_workbook import (
 
 
 app = FastAPI(title="ConnLab API")
+_request_logger = logging.getLogger("connlab.api.requests")
+
+
+@app.middleware("http")
+async def log_request_result(request: Request, call_next):
+    """Log bounded request outcome data without query strings or request bodies."""
+    request_id = uuid.uuid4().hex[:12]
+    started = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        duration_ms = round((time.perf_counter() - started) * 1000)
+        _request_logger.exception(
+            "request_failed request_id=%s method=%s path=%s duration_ms=%s",
+            request_id,
+            request.method,
+            _request_route_pattern(request),
+            duration_ms,
+        )
+        raise
+    duration_ms = round((time.perf_counter() - started) * 1000)
+    _request_logger.info(
+        "request_complete request_id=%s method=%s path=%s status=%s duration_ms=%s",
+        request_id,
+        request.method,
+        _request_route_pattern(request),
+        response.status_code,
+        duration_ms,
+    )
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
+def _request_route_pattern(request: Request) -> str:
+    route = request.scope.get("route")
+    return str(getattr(route, "path", request.url.path))
+
+
 app.include_router(cleanup_router)
 app.include_router(approval_package_router)
 app.include_router(evidence_router)
 app.include_router(external_excel_read_router)
 app.include_router(external_resources_router)
+app.include_router(diagnostics_router)
 app.include_router(folder_router)
 app.include_router(intake_router)
 app.include_router(intake_review_router)

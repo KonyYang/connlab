@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactElement } from "react";
 import {
+  downloadSupportDiagnosticBundle,
   listExternalResources,
   saveExternalResource,
   validateExternalResource,
@@ -27,6 +28,8 @@ export function SettingsPage(): ReactElement {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingType, setSavingType] = useState<ExternalResourceType | null>(null);
+  const [exportingDiagnostics, setExportingDiagnostics] = useState(false);
+  const [diagnosticsMessage, setDiagnosticsMessage] = useState<string | null>(null);
   const [pathValidationMessages, setPathValidationMessages] = useState<
     Record<ExternalResourceType, string | null>
   >({} as Record<ExternalResourceType, string | null>);
@@ -121,6 +124,25 @@ export function SettingsPage(): ReactElement {
     return null;
   }
 
+  async function handleExportDiagnostics(): Promise<void> {
+    setExportingDiagnostics(true);
+    setDiagnosticsMessage(null);
+    try {
+      const result = await downloadSupportDiagnosticBundle();
+      const objectUrl = window.URL.createObjectURL(result.blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = result.fileName ?? "ConnLab_Diagnostics.zip";
+      anchor.click();
+      window.URL.revokeObjectURL(objectUrl);
+      setDiagnosticsMessage("Diagnostic package downloaded.");
+    } catch (err) {
+      setDiagnosticsMessage(`Unable to export diagnostics: ${(err as Error).message}`);
+    } finally {
+      setExportingDiagnostics(false);
+    }
+  }
+
   return (
     <section className="settings-page">
       <div className="settings-header">
@@ -148,6 +170,31 @@ export function SettingsPage(): ReactElement {
           }
         />
       )}
+
+      <section className="settings-panel settings-support-panel">
+        <div className="settings-panel-heading">
+          <div>
+            <h2 className="ui-panel-title">Support diagnostics</h2>
+            <p>
+              Export recent application logs and release details for troubleshooting.
+              Project files, the database, and settings files are not included.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="ui-secondary-action"
+            disabled={exportingDiagnostics}
+            onClick={() => void handleExportDiagnostics()}
+          >
+            {exportingDiagnostics ? "Exporting..." : "Export diagnostic package"}
+          </button>
+        </div>
+        {diagnosticsMessage && (
+          <p className="settings-support-message" role="status">
+            {diagnosticsMessage}
+          </p>
+        )}
+      </section>
     </section>
   );
 }

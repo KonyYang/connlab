@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState, type ReactElement } from "react";
 import { AppShell } from "./components/layout/AppShell";
+import { FrontendDiagnosticsReporter } from "./components/support/FrontendDiagnosticsReporter";
 import {
   clearIntakeSession,
   EMPTY_INTAKE_SESSION,
@@ -210,7 +211,9 @@ export default function App(): ReactElement {
         : undefined;
 
   return (
-    <AppShell
+    <>
+      <FrontendDiagnosticsReporter />
+      <AppShell
       activeRoute={activeRoute}
       interactionLocked={Boolean(intakeInteractionLockReason)}
       interactionLockedReason={intakeInteractionLockReason ?? undefined}
@@ -322,7 +325,8 @@ export default function App(): ReactElement {
         </section>
       )}
       </Suspense>
-    </AppShell>
+      </AppShell>
+    </>
   );
 }
 

@@ -73,6 +73,10 @@ def test_packaged_environment_defaults_do_not_override_existing_values(
     assert os.environ["CONNLAB_DATA_DIR"] == str(paths.data_dir)
     assert os.environ["CONNLAB_DATABASE_PATH"] == str(paths.database_path)
     assert os.environ["CONNLAB_LOCAL_CONFIG_PATH"] == str(paths.local_config_path)
+    assert os.environ["CONNLAB_LOGS_DIR"] == str(paths.logs_dir)
+    assert os.environ["CONNLAB_RELEASE_MANIFEST_PATH"] == str(
+        paths.app_root / "release_manifest.json"
+    )
 
 
 def test_packaged_environment_defaults_use_programdata_admin_config_without_creating_it(

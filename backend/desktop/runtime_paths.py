@@ -108,7 +108,9 @@ def apply_packaged_environment_defaults(paths: PackagedRuntimePaths) -> None:
         "CONNLAB_DATA_DIR": paths.data_dir,
         "CONNLAB_PROJECTS_DIR": paths.projects_dir,
         "CONNLAB_TEMPLATES_DIR": paths.templates_dir,
+        "CONNLAB_LOGS_DIR": paths.logs_dir,
         "CONNLAB_DATABASE_PATH": paths.database_path,
+        "CONNLAB_RELEASE_MANIFEST_PATH": paths.app_root / "release_manifest.json",
         "CONNLAB_LOCAL_CONFIG_PATH": paths.local_config_path,
         "CONNLAB_ADMIN_CONFIG_PATH": (
             program_data_root / APP_NAME / "config" / "connlab.admin.toml"

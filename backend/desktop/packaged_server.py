@@ -14,6 +14,7 @@ from backend.desktop.runtime_paths import (
     build_packaged_runtime_paths,
     prepare_packaged_runtime_environment,
 )
+from backend.shared.logging import configure_packaged_logging
 
 
 DEFAULT_HOST = "127.0.0.1"
@@ -39,13 +40,21 @@ def run_packaged_web_server(
     """Run ConnLab as a local browser-accessible server."""
     paths = build_packaged_runtime_paths(app_root=app_root, frontend_dist=frontend_dist)
     prepare_packaged_runtime_environment(paths)
+    configure_packaged_logging(log_path=paths.logs_dir / "connlab.log")
     app = create_packaged_server_app(paths)
     print("")
     print("ConnLab local web server is starting.")
     print(f"Open http://{host}:{port}/ in Microsoft Edge or another browser.")
     print("Close this window to stop ConnLab.")
     print("")
-    uvicorn.run(app, host=host, port=port, log_level="info", access_log=False)
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        log_level="info",
+        access_log=False,
+        log_config=None,
+    )
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

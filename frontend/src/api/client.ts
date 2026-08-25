@@ -2978,6 +2978,38 @@ async function requestBlobResponse(
   return { blob, fileName };
 }
 
+async function requestNoContent(path: string, init?: RequestInit): Promise<void> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...(init?.headers ?? {})
+    }
+  });
+  if (!response.ok) {
+    throw await responseError(response);
+  }
+}
+
+export type FrontendErrorReport = {
+  kind: "window_error" | "unhandled_rejection";
+  message: string;
+  stack?: string | null;
+  page_path?: string | null;
+};
+
+export function reportFrontendError(report: FrontendErrorReport): Promise<void> {
+  return requestNoContent("/api/support/frontend-errors", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(report)
+  });
+}
+
+export function downloadSupportDiagnosticBundle(): Promise<BlobDownloadResponse> {
+  return requestBlobResponse("/api/support/diagnostics");
+}
+
 export function listProjects(): Promise<Project[]> {
   return requestJson<Project[]>("/api/projects");
 }

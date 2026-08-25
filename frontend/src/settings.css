@@ -53,6 +53,20 @@
   margin-bottom: 4px;
 }
 
+.settings-support-panel .settings-panel-heading {
+  align-items: center;
+}
+
+.settings-support-panel .ui-secondary-action {
+  flex: 0 0 auto;
+}
+
+.settings-support-message {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: 14px;
+}
+
 .settings-resource-group {
   display: grid;
   gap: 10px;
@@ -154,5 +168,10 @@
   .settings-resource-row {
     grid-template-columns: 1fr;
     align-items: stretch;
+  }
+
+  .settings-support-panel .settings-panel-heading {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

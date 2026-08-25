@@ -1,17 +1,22 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { listExternalResources } from "../api/client";
+import { downloadSupportDiagnosticBundle, listExternalResources } from "../api/client";
 import { SettingsPage } from "./SettingsPage";
 
 vi.mock("../api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/client")>()),
-  listExternalResources: vi.fn()
+  listExternalResources: vi.fn(),
+  downloadSupportDiagnosticBundle: vi.fn()
 }));
 
 describe("SettingsPage", () => {
   beforeEach(() => {
     vi.mocked(listExternalResources).mockReset();
     vi.mocked(listExternalResources).mockResolvedValue([]);
+    vi.mocked(downloadSupportDiagnosticBundle).mockResolvedValue({
+      blob: new Blob(["diagnostics"]),
+      fileName: "ConnLab_Diagnostics_20260825.zip"
+    });
   });
 
   it("loads only non-secret external resource settings", async () => {
@@ -32,6 +37,26 @@ describe("SettingsPage", () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("LTR workbook password")).toBeNull();
     fetchMock.mockRestore();
+  });
+
+  it("downloads a privacy-bounded diagnostic package from support settings", async () => {
+    const createObjectURL = vi.fn(() => "blob:diagnostics");
+    const revokeObjectURL = vi.fn();
+    const clickDownload = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    Object.defineProperty(window.URL, "createObjectURL", { configurable: true, value: createObjectURL });
+    Object.defineProperty(window.URL, "revokeObjectURL", { configurable: true, value: revokeObjectURL });
+
+    render(<SettingsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Export diagnostic package" }));
+
+    await waitFor(() => expect(downloadSupportDiagnosticBundle).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Diagnostic package downloaded.")).toBeTruthy();
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:diagnostics");
+    expect(clickDownload).toHaveBeenCalledTimes(1);
+    clickDownload.mockRestore();
   });
 
   it("does not repeat a missing file path in the validation message", async () => {

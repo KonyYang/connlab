@@ -108,6 +108,9 @@ if (-not $SkipTests) {
                 tests\unit\test_desktop_packaged_runtime_paths.py `
                 tests\unit\test_desktop_packaged_static.py `
                 tests\unit\test_desktop_release_scripts.py `
+                tests\unit\test_logging.py `
+                tests\unit\test_support_diagnostic_bundle_service.py `
+                tests\integration\test_support_diagnostics_api.py `
                 tests\unit\test_word_numbering.py `
                 tests\unit\test_test_record_template_resource.py `
                 tests\integration\test_matrix_editor_test_record_generation_api.py `
@@ -200,6 +203,27 @@ Invoke-TimedStep "[5/5] Preparing release folder" {
     Copy-Item -LiteralPath "packaging\Start_ConnLab.bat" -Destination (Join-Path $releaseFolder "Start_ConnLab.bat") -Force
     Copy-Item -LiteralPath "packaging\README_FOR_BROWSER_OPERATOR.md" -Destination (Join-Path $releaseFolder "README_FOR_OPERATOR.md") -Force
     Copy-Item -LiteralPath "packaging\RELEASE_NOTES_BROWSER.md" -Destination (Join-Path $releaseFolder "RELEASE_NOTES.md") -Force
+
+    $gitCommit = git rev-parse HEAD
+    if (-not $?) {
+        $gitCommit = "unknown"
+    }
+    else {
+        $gitCommit = $gitCommit.Trim()
+    }
+    $releaseManifest = [ordered]@{
+        release_name = $ReleaseName
+        version = $ProjectVersion
+        git_commit = $gitCommit
+        built_at_utc = (Get-Date).ToUniversalTime().ToString("o")
+        server_sha256 = (Get-FileHash -LiteralPath $stableExe -Algorithm SHA256).Hash.ToLowerInvariant()
+    } | ConvertTo-Json
+    $manifestPath = Join-Path $releaseFolder "_internal\release_manifest.json"
+    [System.IO.File]::WriteAllText(
+        $manifestPath,
+        $releaseManifest,
+        [System.Text.UTF8Encoding]::new($false)
+    )
 }
 
 Write-Host ""

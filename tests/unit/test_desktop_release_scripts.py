@@ -105,8 +105,13 @@ def test_browser_release_script_builds_web_folder_without_business_changes() -> 
     assert "127.0.0.1:8765" in script
     assert "_internal\\frontend_dist" in script
     assert "frontend\\dist\\*" in script
+    assert 'Join-Path $releaseFolder "_internal\\release_manifest.json"' in script
+    assert "git_commit" in script
+    assert "Get-FileHash" in script
     assert "--basetemp" in script
     assert "tmp\\pytest-browser-release" in script
+    assert "tests\\unit\\test_support_diagnostic_bundle_service.py" in script
+    assert "tests\\integration\\test_support_diagnostics_api.py" in script
     assert "tests\\unit\\test_llcr_cr_specialized_record_workbook_gateway.py" in script
     assert "tests\\integration\\test_matrix_editor_llcr_cr_record_generation_api.py" in script
     assert "tests\\integration\\test_llcr_cr_specialized_record_workbook_api.py" in script

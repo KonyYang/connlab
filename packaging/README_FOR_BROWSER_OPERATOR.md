@@ -46,3 +46,12 @@ For a one-time upgrade from a version that stored the password in `connlab.local
 3. Start `Start_ConnLab.bat` from the new folder.
 
 Your existing local settings remain under `%LOCALAPPDATA%\ConnLab`.
+
+## Reporting A Problem
+
+1. Leave ConnLab running after the problem occurs, if practical.
+2. Open **Settings**.
+3. Under **Support diagnostics**, select **Export diagnostic package**.
+4. Send the downloaded `ConnLab_Diagnostics_*.zip` file to support together with a short description of what you clicked.
+
+The package contains recent application logs and release identification only. It excludes project files, the local database, and ConnLab settings files. Local file paths and common secret assignments are redacted during export.

@@ -19,3 +19,7 @@ This release changes only the startup shell. LTR registration, Settings, Project
 ## LTR Workbook Settings
 
 Saving `LTR registration workbook` in Settings now also updates the local workbook write configuration used by LTR number application. Existing local operator settings are preserved.
+
+## Support Diagnostics
+
+The packaged server keeps rotating runtime logs under `%LOCALAPPDATA%\ConnLab\logs`. Use **Settings > Support diagnostics > Export diagnostic package** to download a privacy-bounded ZIP for support. The export does not include project files, the database, or settings files.
