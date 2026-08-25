@@ -41,6 +41,20 @@ def test_projection_expands_confirmed_included_family_counts_in_snapshot_order()
     ]
 
 
+def test_projection_treats_alphabetic_footnote_as_sample_note() -> None:
+    source = _snapshot()
+    snapshot = replace(
+        source,
+        groups=(replace(source.groups[0], sample_quantity_expression="3(a)"),),
+    )
+
+    projection = build_llcr_cr_record_projection(snapshot)
+
+    assert projection.status == "ready"
+    assert projection.diagnostics == ()
+    assert projection.sections[0].sample_count == 3
+
+
 def test_projection_omits_zero_count_and_blocks_fractional_count_without_rounding() -> None:
     snapshot = _snapshot(
         families=(
@@ -147,6 +161,44 @@ def test_point_profile_projection_builds_separate_type_views_from_matrix_stages(
     assert [section.category_id for section in cr.sections] == ["ppc-2"]
     assert cr.sections[0].stages[0].test_current_ampere == "10"
     assert [row.contact_id for row in cr.sections[0].rows] == ["PWR2", "PWR4", "PWR2", "PWR4"]
+
+
+def test_point_profile_projection_treats_alphabetic_footnote_as_sample_note() -> None:
+    source = _snapshot()
+    snapshot = replace(
+        source,
+        groups=(replace(source.groups[0], sample_quantity_expression="3(a)"),),
+    )
+    profile = EffectiveConfirmedPointProfile(
+        status="confirmed",
+        readings_per_sample="1",
+        revision_id="profile-1",
+        revision_sequence=1,
+        fingerprint="profile-fingerprint",
+        lineage="Confirmed Project Point Profile",
+        message=None,
+        categories=(
+            {
+                "category_id": "ppc-1",
+                "category_ordinal": 0,
+                "label": "Signal",
+                "count_per_sample": 1,
+                "record_prefix": "SIG",
+                "included": True,
+                "point_expression": "1",
+            },
+        ),
+        cr_category_ids=(),
+        delta_r_enabled=False,
+    )
+
+    projection = build_point_profile_llcr_cr_record_projection(
+        snapshot, profile, "llcr"
+    )
+
+    assert projection.status == "ready"
+    assert projection.diagnostics == ()
+    assert projection.sections[0].sample_count == 3
 
 
 def test_point_profile_projection_blocks_when_confirmed_profile_is_unusable() -> None:

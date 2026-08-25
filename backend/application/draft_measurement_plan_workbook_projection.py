@@ -7,6 +7,10 @@ from hashlib import sha256
 import json
 import re
 
+from backend.application.matrix_record_sample_quantity import (
+    parse_simple_positive_sample_count,
+)
+
 _POSITIVE_INTEGER = re.compile(r"^[1-9][0-9]*$")
 _SUPPORTED_KINDS = {"llcr", "cr_specified_current"}
 
@@ -117,7 +121,9 @@ def _included_eligible_target(target: dict[str, object]) -> bool:
 
 
 def _section(target: dict[str, object]) -> tuple[DraftWorkbookSection | None, list[DraftWorkbookDiagnostic]]:
-    sample_count = _positive_integer(target.get("sample_quantity_expression"))
+    sample_count = parse_simple_positive_sample_count(
+        target.get("sample_quantity_expression")
+    )
     if sample_count is None:
         return None, [_diagnostic("sample_quantity_not_positive_integer", "blocked", "Use a positive whole-number sample quantity.")]
     materialized: list[tuple[str, str, int]] = []

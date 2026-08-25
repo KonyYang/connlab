@@ -113,6 +113,10 @@ if (-not $SkipTests) {
                 tests\integration\test_support_diagnostics_api.py `
                 tests\unit\test_word_numbering.py `
                 tests\unit\test_test_record_template_resource.py `
+                tests\unit\test_matrix_record_sample_quantity.py `
+                tests\unit\test_matrix_editor_llcr_cr_record_projection.py `
+                tests\unit\test_confirmed_matrix_llcr_cr_record_projection.py `
+                tests\unit\test_draft_measurement_plan_workbook_projection.py `
                 tests\integration\test_matrix_editor_test_record_generation_api.py `
                 tests\unit\test_llcr_cr_specialized_record_workbook_gateway.py `
                 tests\integration\test_matrix_editor_llcr_cr_record_generation_api.py `

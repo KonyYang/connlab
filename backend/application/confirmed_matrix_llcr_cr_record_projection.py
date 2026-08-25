@@ -14,10 +14,10 @@ from backend.application.contact_point_profile_expression import (
     parse_point_expression,
 )
 from backend.application.matrix_record_sample_quantity import (
+    parse_simple_positive_sample_count,
     resolve_matrix_record_sample_count,
 )
 
-_POSITIVE_INTEGER = re.compile(r"^[1-9][0-9]*$")
 _ZERO = re.compile(r"^0$")
 _SUPPORTED_KINDS = {"llcr", "cr_specified_current"}
 _RECORD_TYPES = {"llcr", "cr"}
@@ -595,8 +595,7 @@ def _point_profile_fingerprint(
 
 
 def _positive_integer(value: str | None) -> int | None:
-    text = _text(value)
-    return int(text) if _POSITIVE_INTEGER.fullmatch(text) else None
+    return parse_simple_positive_sample_count(value)
 
 
 def _normalized_prefix(value: str | None) -> str:

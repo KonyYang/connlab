@@ -24,6 +24,17 @@ def test_review_required_plan_remains_generateable_with_review_label() -> None:
     assert projection.preview_fingerprint
 
 
+def test_footnoted_sample_quantity_builds_draft_projection() -> None:
+    workspace = _workspace()
+    workspace["targets"][0]["sample_quantity_expression"] = "3(a)"
+
+    projection = build_draft_measurement_plan_workbook_projection(workspace)
+
+    assert projection.status == "ready"
+    assert projection.sections[0].sample_count == 3
+    assert projection.row_count == 6
+
+
 def test_empty_or_invalid_draft_has_no_fingerprint_or_sections() -> None:
     empty = _workspace()
     empty["targets"][0]["included"] = False

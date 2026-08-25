@@ -26,6 +26,47 @@ from backend.domain.enums import LtrStatus
 def test_matrix_editor_llcr_download_uses_current_ui_draft_without_confirmed_matrix(
     tmp_path: Path,
 ) -> None:
+    response = _post_current_ui_draft(tmp_path, "5", None)
+
+    assert response.status_code == 200
+    assert "Unconfirmed" in response.headers["content-disposition"]
+    output = tmp_path / "matrix-editor-llcr-preview.xlsx"
+    output.write_bytes(response.content)
+    workbook = load_workbook(output, data_only=False)
+    assert workbook.sheetnames == ["Summary", "SIG"]
+    sheet = workbook["SIG"]
+    assert sheet["F1"].value == "DL-2026-05-999"
+    assert sheet["F5"].value == "20 mV, 100 mA"
+    assert sheet["D9"].value == "1#"
+    assert sheet["K9"].value == "unit:mΩ"
+
+
+def test_matrix_editor_llcr_download_accepts_footnoted_sample_quantity(
+    tmp_path: Path,
+) -> None:
+    response = _post_current_ui_draft(
+        tmp_path,
+        "3(a)",
+        "(a) Male connector and Female connector",
+    )
+
+    assert response.status_code == 200
+    output = tmp_path / "matrix-editor-llcr-footnoted-preview.xlsx"
+    output.write_bytes(response.content)
+    sheet = load_workbook(output, data_only=False)["SIG"]
+    assert [sheet.cell(9, column).value for column in range(4, 7)] == [
+        "1#",
+        "2#",
+        "3#",
+    ]
+    assert sheet["I9"].value == "unit:mΩ"
+
+
+def _post_current_ui_draft(
+    tmp_path: Path,
+    sample_quantity_expression: str,
+    sample_note: str | None,
+):
     generation = MatrixEditorLlcrCrRecordGenerationService(
         point_profile_adapter=_PointProfileAdapter(),
         workbook_gateway=LlcrCrSpecializedRecordWorkbookGateway(),
@@ -45,8 +86,8 @@ def test_matrix_editor_llcr_download_uses_current_ui_draft_without_confirmed_mat
                     {
                         "group_key": "group_6",
                         "group_label": "6",
-                        "sample_quantity_expression": "5",
-                        "sample_note": None,
+                        "sample_quantity_expression": sample_quantity_expression,
+                        "sample_note": sample_note,
                     }
                 ],
                 "rows": [
@@ -63,18 +104,7 @@ def test_matrix_editor_llcr_download_uses_current_ui_draft_without_confirmed_mat
         )
     finally:
         app.dependency_overrides.clear()
-
-    assert response.status_code == 200
-    assert "Unconfirmed" in response.headers["content-disposition"]
-    output = tmp_path / "matrix-editor-llcr-preview.xlsx"
-    output.write_bytes(response.content)
-    workbook = load_workbook(output, data_only=False)
-    assert workbook.sheetnames == ["Summary", "SIG"]
-    sheet = workbook["SIG"]
-    assert sheet["F1"].value == "DL-2026-05-999"
-    assert sheet["F5"].value == "20 mV, 100 mA"
-    assert sheet["D9"].value == "1#"
-    assert sheet["K9"].value == "unit:mΩ"
+    return response
 
 
 class _LtrStore:

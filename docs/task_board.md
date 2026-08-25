@@ -11,8 +11,39 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_SAMPLE_QUANTITY_FOOTNOTE_NORMALIZATION",
+    "summary": "Recognize footnoted whole-number Matrix sample quantities such as 3(a) throughout import and confirmation.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Reproduce and fix sample quantity normalization at the existing Matrix import/confirmation authority seam, preserve legitimate expressions and rebuild the ConnLab_Web release.",
+    "scope_paths": [
+      "backend/modules/test_plan",
+      "backend/application",
+      "backend/domain",
+      "backend/api",
+      "frontend/src/features/matrix-editor",
+      "tests/unit",
+      "tests/integration",
+      "scripts/build_windows_browser_release.ps1",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "93c3ee11b91f36948e02331b4c71f73a687387df",
+    "started_at": "2026-08-25T05:02:00.971348Z",
+    "updated_at": "2026-08-25T05:11:40.594471Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_MATRIX_SAMPLE_QUANTITY_FOOTNOTE_NORMALIZATION",
+      "stage": "review-and-qa",
+      "status": "running",
+      "summary": "Standards and spec review found no remaining issue; preserved existing 5-sample workbook coverage, added a separate 3(a) API case, and 62 related parser/projection/API/release tests pass.",
+      "requires_user": false
+    },
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_SUPPORT_DIAGNOSTIC_BUNDLE",
     "tier": "standard",

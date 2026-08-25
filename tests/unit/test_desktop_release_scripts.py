@@ -112,6 +112,8 @@ def test_browser_release_script_builds_web_folder_without_business_changes() -> 
     assert "tmp\\pytest-browser-release" in script
     assert "tests\\unit\\test_support_diagnostic_bundle_service.py" in script
     assert "tests\\integration\\test_support_diagnostics_api.py" in script
+    assert "tests\\unit\\test_matrix_record_sample_quantity.py" in script
+    assert "tests\\unit\\test_matrix_editor_llcr_cr_record_projection.py" in script
     assert "tests\\unit\\test_llcr_cr_specialized_record_workbook_gateway.py" in script
     assert "tests\\integration\\test_matrix_editor_llcr_cr_record_generation_api.py" in script
     assert "tests\\integration\\test_llcr_cr_specialized_record_workbook_api.py" in script

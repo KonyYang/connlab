@@ -40,6 +40,33 @@ def test_current_matrix_editor_draft_sample_quantity_drives_llcr_rows() -> None:
     assert [stage.source_step for stage in projection.sections[0].stages] == ["2", "6"]
 
 
+def test_current_matrix_editor_draft_accepts_footnoted_sample_quantity() -> None:
+    projection = build_matrix_editor_llcr_cr_record_projection(
+        project_id="project-1",
+        record_type="llcr",
+        groups=(
+            MatrixEditorLlcrCrRecordGroupInput(
+                group_key="group_3",
+                group_label="3",
+                sample_quantity_expression="3(a)",
+                sample_note="(a) Male connector and Female connector",
+            ),
+        ),
+        rows=(
+            MatrixEditorLlcrCrRecordRowInput(
+                test_item="Contact Resistance (Low Level)",
+                group_values={"group_3": "2"},
+            ),
+        ),
+        point_profile=_point_profile(),
+    )
+
+    assert projection.status == "ready"
+    assert projection.diagnostics == ()
+    assert projection.sections[0].sample_count == 3
+    assert len(projection.sections[0].rows) == 6
+
+
 def test_ambiguous_composite_sample_quantity_requires_review() -> None:
     projection = build_matrix_editor_llcr_cr_record_projection(
         project_id="project-1",
