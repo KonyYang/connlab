@@ -118,6 +118,43 @@ def test_direct_confirm_canonicalizes_expressions_and_supersedes_prior_confirmed
         engine.dispose()
 
 
+def test_direct_confirm_accepts_explicit_labels_ranges_and_entered_order(tmp_path: Path) -> None:
+    engine = create_database_engine(_settings(tmp_path))
+    init_db(engine)
+    session = create_session_factory(engine)()
+    try:
+        session.add(ProjectModel(project_id="P1", project_no=None, product_name="Demo", requestor="Operator", status="active"))
+        session.commit()
+        repository = ContactPointProfileAuthorityRepository(session)
+        lifecycle = ContactPointProfileLifecycleService(
+            repository,
+            clock=lambda: "2026-08-26T00:00:00Z",
+            id_factory=_ids(),
+        )
+
+        confirmed = lifecycle.confirm_direct(
+            "P1",
+            None,
+            None,
+            [
+                {"category_id": None, "prefix": "HP", "point_expression": "P1,PE,P2,P3"},
+                {"category_id": None, "prefix": "LP", "point_expression": "1-5"},
+                {"category_id": None, "prefix": "Siganl", "point_expression": "1,12,5,2,6,9,4"},
+            ],
+            "operator",
+        )
+
+        assert [row["point_expression"] for row in confirmed["categories"]] == [
+            "P1,PE,P2-3",
+            "1-5",
+            "1,12,5,2,6,9,4",
+        ]
+        assert confirmed["points_per_sample"] == 16
+    finally:
+        session.close()
+        engine.dispose()
+
+
 def test_direct_confirm_rejects_duplicate_retained_ids_without_new_revision(tmp_path: Path) -> None:
     engine = create_database_engine(_settings(tmp_path))
     init_db(engine)

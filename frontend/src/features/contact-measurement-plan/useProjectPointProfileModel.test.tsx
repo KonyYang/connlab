@@ -102,6 +102,35 @@ describe("useProjectPointProfileModel", () => {
       (row) => row.cr_selected === false,
     )).toBe(true);
   });
+
+  it("preserves explicit ids and reports the backend confirmation reason", async () => {
+    apiMocks.fetchProjectPointProfileWorkspace.mockResolvedValue(workspaceWithCategories(3));
+    apiMocks.confirmProjectPointProfile.mockRejectedValue(new api.ApiRequestError(
+      "Test points must use positive integers and ascending ranges.",
+      422,
+      { code: "contact_point_profile_validation" },
+    ));
+    const { result } = renderHook(() => useProjectPointProfileModel({ projectId: "P1" }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    act(() => {
+      result.current.updateRow(0, { prefix: "HP", point_expression: "P1,PE,P2,P3" });
+      result.current.updateRow(1, { prefix: "LP", point_expression: "1-5" });
+      result.current.updateRow(2, { prefix: "Siganl", point_expression: "1,12,5,2,6,9,4" });
+    });
+    await act(async () => { await result.current.confirm(); });
+
+    expect(apiMocks.confirmProjectPointProfile).toHaveBeenCalledWith("P1", expect.objectContaining({
+      categories: [
+        expect.objectContaining({ point_expression: "P1,PE,P2,P3" }),
+        expect.objectContaining({ point_expression: "1-5" }),
+        expect.objectContaining({ point_expression: "1,12,5,2,6,9,4" }),
+      ],
+    }));
+    expect(result.current.error).toBe(
+      "Unable to confirm Point Profile: Test points must use positive integers and ascending ranges.",
+    );
+  });
 });
 
 function revision() { return { revision_id: "R1", revision_sequence: 1, state: "confirmed", fingerprint: "F1", created_at: "", confirmed_at: "", categories: [], points_per_sample: 0, delta_r_enabled: true, cr_coverage: { mode: "follow_llcr" as const, selected_category_ids: [], points_per_sample: 0 } }; }

@@ -11,8 +11,30 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_POINT_PROFILE_CONFIRM_ERROR_DETAIL_AND_EXPLICIT_IDS",
+    "summary": "Accept the displayed explicit point-ID expressions during Point Profile confirmation and surface the backend rejection reason instead of a generic error.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Reproduce the reported three-row confirmation failure, correct the responsible validation or state boundary, and preserve actionable API error details in the Contact Measurement Setup UI.",
+    "scope_paths": [
+      "frontend/src/features/contact-measurement-plan",
+      "frontend/src/api/client.ts",
+      "backend/application/contact_point_profile_expression.py",
+      "backend/application/contact_point_profile_lifecycle_service.py",
+      "backend/api/routes_contact_point_profile.py",
+      "tests/unit",
+      "tests/integration",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "c416f14cfcb898c6bb6c71938184a69d417914c0",
+    "started_at": "2026-08-26T14:47:37.994775Z",
+    "updated_at": "2026-08-26T14:47:37.994775Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_CONTACT_POINT_DELTA_R_COMPACT_CONTROL",
     "tier": "micro",

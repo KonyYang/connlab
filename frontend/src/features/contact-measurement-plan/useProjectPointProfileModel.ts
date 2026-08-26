@@ -88,7 +88,7 @@ export function useProjectPointProfileModel({ projectId }: { projectId: string }
       await reload();
       return true;
     } catch (cause) {
-      setError(cause instanceof Error && cause.message.includes("stale") ? "Point Profile changed. Cancel and reopen the latest confirmed profile." : "Unable to confirm Point Profile.");
+      setError(pointProfileConfirmErrorMessage(cause));
       return false;
     } finally {
       setBusy(false);
@@ -110,4 +110,18 @@ export function useProjectPointProfileModel({ projectId }: { projectId: string }
     )),
     confirm,
   };
+}
+
+function pointProfileConfirmErrorMessage(cause: unknown): string {
+  if (!(cause instanceof Error)) {
+    return "Unable to confirm Point Profile.";
+  }
+  const detail = cause.message.trim();
+  if (/stale/i.test(detail)) {
+    return "Point Profile changed. Cancel and reopen the latest confirmed profile.";
+  }
+  if (!detail || /^Request failed with \d{3}$/i.test(detail)) {
+    return "Unable to confirm Point Profile.";
+  }
+  return `Unable to confirm Point Profile: ${detail}`;
 }
