@@ -764,6 +764,11 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
         "officialWorkspacePreview.afterCreate",
         () => onRefreshOfficialWorkspacePreview()
       );
+      await timeProjectFolderStep(
+        timings,
+        "publicFolderWorkflowContext.afterCreate",
+        () => onRefreshPublicFolderWorkflowContext()
+      );
       const flowResult = await runProjectFolderBusinessFlowAfterCreate(timings);
       if (flowResult.status === "blocked") {
         setMessage(`Project folder update blocked: ${flowResult.message}`);

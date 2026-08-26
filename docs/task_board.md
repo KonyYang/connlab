@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_PROJECT_FOLDER_OPEN_REFRESH_AFTER_CREATE",
+    "summary": "Refresh Folder Actions immediately after successful project-folder creation so Open is available without a page reload.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Project Workbench frontend model create-folder state refresh and focused regression coverage.",
+    "scope_paths": [
+      "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
+      "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "fb9f2c500211672195618c16c76cf6a79115fc81",
+    "started_at": "2026-08-26T22:57:41.086200Z",
+    "updated_at": "2026-08-26T22:57:41.086200Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_LLCR_SN_TEXT_WARNING_SUPPRESSION",
     "tier": "micro",

@@ -377,6 +377,28 @@ describe("useProjectWorkbenchModel", () => {
     expect(result.current.publicFolderWorkflowError).toBeNull();
   });
 
+  it("refreshes Folder Actions after creating the project folder", async () => {
+    apiMocks.getPublicFolderWorkflowContext
+      .mockResolvedValueOnce(
+        publicFolderWorkflowContext({ local_official_folder_path: null })
+      )
+      .mockResolvedValue(publicFolderWorkflowContext());
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+
+    await waitFor(() =>
+      expect(result.current.publicFolderWorkflowContext?.local_official_folder_path).toBeNull()
+    );
+
+    await act(async () => {
+      await result.current.onCreateOfficialWorkspace();
+    });
+
+    expect(apiMocks.getPublicFolderWorkflowContext).toHaveBeenCalledTimes(2);
+    expect(result.current.publicFolderWorkflowContext?.local_official_folder_path).toBe(
+      "D:/Projects/DL-2026-06-001/Official"
+    );
+  });
+
   it("shows the local folder path fallback when the open bridge is blocked", async () => {
     apiMocks.openLocalProjectFolder.mockResolvedValueOnce({
       project_id: "project-1",
