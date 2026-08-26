@@ -11,47 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
-  "active": {
-    "task_id": "TASK_SELECTED_APPLICATION_FORM_PROJECT_FOLDER_BINDING",
-    "summary": "Bind project-folder application-form generation to the application form selected from a multi-form imported email.",
-    "tier": "high_risk",
-    "route": "full_chain",
-    "scope": "Fix selected application-form identity propagation from intake review through project creation and folder generation; add regression coverage for selecting the second of two forms. No schema or API contract expansion.",
-    "scope_paths": [
-      "backend/application",
-      "backend/api",
-      "backend/modules/folder",
-      "frontend/src",
-      "tests/unit",
-      "tests/integration",
-      "docs/task_board.md"
-    ],
-    "risk_reasons": [
-      "The corrected identity controls which existing application-form file is used by project-folder generation; regression coverage will use isolated fixtures and temporary directories."
-    ],
-    "activation_head": "87849d729bdaa98c689434068a1dfcb269878f51",
-    "started_at": "2026-08-26T05:03:44.752650Z",
-    "updated_at": "2026-08-26T05:17:48.615957Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_SELECTED_APPLICATION_FORM_PROJECT_FOLDER_BINDING",
-      "stage": "delivery",
-      "status": "blocked",
-      "summary": "Implementation commit 175a63df and 47-test QA pass are complete, but finish is blocked because the task was registered high-risk with directory-level scope paths while the board requires exact file paths.",
-      "requires_user": true
-    },
-    "report": null
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_CONTACT_POINT_EXPLICIT_IDENTIFIERS_AND_ORDER",
-    "tier": "standard",
-    "subject": "db7f82da52190b6f8141c303cc2326b99717a609",
-    "summary": "Preserve explicit contact point identifiers and input order independently from Point category.",
-    "disposition": "completed",
-    "decision_ref": "user:关闭",
-    "closed_at": "2026-08-26T05:01:07.239546Z"
+    "task_id": "TASK_SELECTED_APPLICATION_FORM_PROJECT_FOLDER_BINDING",
+    "tier": "high_risk",
+    "subject": "d2eb09d99a31b25cf496c746aa84b2f03eb0fd51",
+    "summary": "Bind project-folder application-form generation to the application form selected from a multi-form imported email.",
+    "disposition": "cancelled",
+    "decision_ref": "user:允许取消错误的任务登记并重新登记同一修复",
+    "closed_at": "2026-08-26T12:51:01.694388Z"
   },
   "retained_history": []
 }
