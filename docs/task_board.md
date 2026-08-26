@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_LLCR_SN_TEXT_WARNING_SUPPRESSION",
+    "summary": "Suppress Excel number-stored-as-text warnings for LLCR/CR workbook S/N identifier ranges while preserving identifier text and gray unused-sample cells.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Generated LLCR/CR workbook layout and its focused gateway regression test.",
+    "scope_paths": [
+      "backend/infrastructure/office/llcr_cr_record_workbook_layout.py",
+      "tests/unit/test_llcr_cr_specialized_record_workbook_gateway.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "65c820e840d5526f2bcd50451b6895eae2e0e37e",
+    "started_at": "2026-08-26T16:35:43.560739Z",
+    "updated_at": "2026-08-26T16:35:43.560739Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_POINT_PROFILE_CONFIRM_ERROR_DETAIL_AND_EXPLICIT_IDS",
     "tier": "standard",

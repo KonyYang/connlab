@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
+from tempfile import mkstemp
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
 
 from backend.application.confirmed_matrix_llcr_cr_record_projection import (
     LlcrCrRecordProjection,
@@ -34,7 +38,9 @@ class LlcrCrSpecializedRecordWorkbookGateway:
         workbook = Workbook()
         workbook.remove(workbook.active)
         self._write_macro_style_workbook(workbook, projection)
+        warning_ranges = _number_stored_as_text_warning_ranges(workbook)
         workbook.save(target)
+        _suppress_number_stored_as_text_warnings(target, warning_ranges)
         return target
 
     def _write_macro_style_workbook(
@@ -91,3 +97,76 @@ def _sheet_name(value: str, used: set[str]) -> str:
         candidate = f"{base[:31 - len(tail)]}{tail}"
         suffix += 1
     return candidate
+
+
+def _number_stored_as_text_warning_ranges(workbook: Workbook) -> dict[str, str]:
+    ranges: dict[str, str] = {}
+    for sheet_index, sheet in enumerate(workbook.worksheets, start=1):
+        sn_columns = [
+            column
+            for column in range(1, sheet.max_column + 1)
+            if sheet.cell(9, column).value == "S/N"
+        ]
+        if not sn_columns or sheet.max_row < 10:
+            continue
+        ranges[f"xl/worksheets/sheet{sheet_index}.xml"] = " ".join(
+            f"{get_column_letter(column)}10:{get_column_letter(column)}{sheet.max_row}"
+            for column in sn_columns
+        )
+    return ranges
+
+
+def _suppress_number_stored_as_text_warnings(
+    target: Path,
+    warning_ranges: dict[str, str],
+) -> None:
+    if not warning_ranges:
+        return
+    descriptor, temporary_name = mkstemp(
+        dir=target.parent,
+        prefix=f".{target.stem}-",
+        suffix=target.suffix,
+    )
+    os.close(descriptor)
+    temporary = Path(temporary_name)
+    try:
+        with ZipFile(target, "r") as source, ZipFile(
+            temporary,
+            "w",
+            compression=ZIP_DEFLATED,
+        ) as destination:
+            destination.comment = source.comment
+            for member in source.infolist():
+                payload = source.read(member.filename)
+                sqref = warning_ranges.get(member.filename)
+                if sqref is not None:
+                    payload = _insert_number_stored_as_text_ignored_error(payload, sqref)
+                destination.writestr(member, payload)
+        os.replace(temporary, target)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _insert_number_stored_as_text_ignored_error(sheet_xml: bytes, sqref: str) -> bytes:
+    ignored_errors = (
+        f'<ignoredErrors><ignoredError sqref="{sqref}" '
+        'numberStoredAsText="1"/></ignoredErrors>'
+    ).encode("utf-8")
+    tail_markers = (
+        b"<smartTags",
+        b"<drawing",
+        b"<legacyDrawing",
+        b"<legacyDrawingHF",
+        b"<picture",
+        b"<oleObjects",
+        b"<controls",
+        b"<webPublishItems",
+        b"<tableParts",
+        b"<extLst",
+        b"</worksheet>",
+    )
+    positions = [position for marker in tail_markers if (position := sheet_xml.find(marker)) >= 0]
+    if not positions:
+        raise ValueError("Generated worksheet XML has no valid ignored-errors insertion point.")
+    insert_at = min(positions)
+    return sheet_xml[:insert_at] + ignored_errors + sheet_xml[insert_at:]

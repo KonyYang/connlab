@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from zipfile import ZipFile
 
 from openpyxl import load_workbook
 
@@ -75,6 +76,28 @@ def test_gateway_writes_macro_style_llcr_category_and_summary_formulas(tmp_path)
     assert sheet.column_dimensions["H"].width == 14.1328125
     assert sheet.column_dimensions["P"].width == 10.53125
     assert sheet.column_dimensions["Q"].width == 10.59765625
+
+
+def test_gateway_suppresses_excel_text_number_warnings_for_sn_identifiers(tmp_path) -> None:
+    source = _projection()
+    numeric_points = (
+        LlcrCrRecordRow(sample_index=1, contact_id="1", contact_label="Signal contact"),
+        LlcrCrRecordRow(sample_index=1, contact_id="2", contact_label="Signal contact"),
+    )
+    output_path = tmp_path / "numeric-sn-record.xlsx"
+
+    LlcrCrSpecializedRecordWorkbookGateway().write(
+        output_path=output_path,
+        projection=replace(
+            source,
+            sections=(replace(source.sections[0], rows=numeric_points),),
+        ),
+    )
+
+    with ZipFile(output_path) as package:
+        category_xml = package.read("xl/worksheets/sheet2.xml").decode("utf-8")
+
+    assert '<ignoredError sqref="C10:C13 I10:I13" numberStoredAsText="1"/>' in category_xml
 
 
 def test_llcr_summary_uses_delta_r_for_every_post_initial_stage_when_enabled(tmp_path) -> None:
