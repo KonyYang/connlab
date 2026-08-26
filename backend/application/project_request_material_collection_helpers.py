@@ -103,6 +103,21 @@ def is_application_form(candidate: SourceCandidate) -> bool:
     )
 
 
+def application_form_authority_priority(
+    asset_type: FileAssetType | str,
+    source_role: str | None,
+) -> int:
+    """Rank the typed current form ahead of legacy role-only candidates."""
+    normalized_type = (
+        asset_type.value if isinstance(asset_type, FileAssetType) else str(asset_type)
+    ).casefold()
+    if normalized_type == FileAssetType.APPLICATION_FORM.value:
+        return 0
+    if (source_role or "").casefold() == "selected_application_form":
+        return 1
+    return 2
+
+
 def is_confirmed_request_attachment(candidate: SourceCandidate) -> bool:
     """Return whether an attachment may be copied into Submitted Material."""
     return (candidate.role or "").casefold() in {"supporting_attachment", "specification"}

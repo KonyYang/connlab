@@ -9,6 +9,7 @@ from backend.application import IntakeConfirmationError, IntakeConfirmationServi
 from backend.domain import (
     ApplicationForm,
     FileAsset,
+    FileAssetType,
     IntakeAsset,
     IntakeAssetRole,
     IntakeCase,
@@ -202,6 +203,59 @@ def test_confirm_case_preserves_file_asset_provenance_and_dedupes_email_source()
     assert assets_by_name["request.msg"].source_package_id == "pkg-1"
     assert assets_by_name["drawing.pdf"].source_role == "supporting_attachment"
     assert assets_by_name["drawing.pdf"].source_intake_asset_id == "supporting-pdf"
+
+
+def test_confirm_case_projects_only_the_current_case_form_as_selected() -> None:
+    package = _package()
+    previously_selected = _asset("asset-1")
+    current_selected = _asset("asset-2")
+    current_case = IntakeCase(
+        case_id="case-2",
+        package_id=package.package_id,
+        selected_form_asset_id=current_selected.asset_id,
+        status=IntakeCaseStatus.NEEDS_REVIEW,
+    )
+    current_draft = IntakeDraft(
+        draft_id="draft-2",
+        case_id=current_case.case_id,
+        parsed_fields_json=_complete_section1_json(
+            project_no="P-2",
+            product_name="Second connector",
+        ),
+    )
+    stores = {
+        "packages": Store([package], "package_id"),
+        "intake_assets": Store(
+            [previously_selected, current_selected],
+            "asset_id",
+        ),
+        "cases": Store([current_case], "case_id"),
+        "drafts": Store([current_draft], "draft_id"),
+        "projects": Store([], "project_id"),
+        "forms": Store([], "form_id"),
+        "samples": Store([], "sample_id"),
+        "file_assets": Store([], "asset_id"),
+    }
+    service = IntakeConfirmationService(
+        stores["packages"],
+        stores["intake_assets"],
+        stores["cases"],
+        stores["drafts"],
+        stores["projects"],
+        stores["forms"],
+        stores["samples"],
+        stores["file_assets"],
+    )
+
+    result = service.confirm_case(current_case.case_id)
+
+    assets_by_source = {
+        asset.source_intake_asset_id: asset for asset in result.file_assets
+    }
+    assert assets_by_source["asset-2"].asset_type is FileAssetType.APPLICATION_FORM
+    assert assets_by_source["asset-2"].source_role == "selected_application_form"
+    assert assets_by_source["asset-1"].asset_type is FileAssetType.ATTACHMENT
+    assert assets_by_source["asset-1"].source_role == "application_form_candidate"
 
 
 def test_confirm_case_rejects_missing_required_project_fields() -> None:

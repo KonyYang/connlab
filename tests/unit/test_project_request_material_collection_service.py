@@ -63,6 +63,39 @@ def test_preview_allows_partial_collection_when_request_email_is_missing(
     assert unknown_item.status == "planned"
 
 
+def test_preview_prefers_current_typed_form_over_historical_selected_role(
+    tmp_path: Path,
+) -> None:
+    first = _write(tmp_path / "source" / "first.docx", b"first")
+    second = _write(tmp_path / "source" / "second.docx", b"second")
+    service = _service(
+        tmp_path,
+        [
+            _asset(
+                "first-form",
+                FileAssetType.ATTACHMENT,
+                first,
+                "first.docx",
+                role="selected_application_form",
+            ),
+            _asset(
+                "second-form",
+                FileAssetType.APPLICATION_FORM,
+                second,
+                "second.docx",
+                role="selected_application_form",
+            ),
+        ],
+    )
+
+    preview = service.preview("P1")
+
+    submitted = [
+        item for item in preview.items if item.target_area == "submitted_material"
+    ]
+    assert submitted[0].source_asset_id == "second-form"
+
+
 def test_preview_blocks_multiple_request_email_candidates(tmp_path: Path) -> None:
     app_form = _write(tmp_path / "source" / "application.docx", b"form")
     msg_one = _write(tmp_path / "source" / "request-a.msg", b"mail-a")

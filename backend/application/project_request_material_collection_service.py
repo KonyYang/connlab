@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
 from backend.application.project_request_material_collection_helpers import (
+    application_form_authority_priority,
     canonical_path,
     candidate_from_asset,
     dedupe_target_names,
@@ -90,6 +91,12 @@ class ProjectRequestMaterialCollectionService:
         application_forms = [
             candidate for candidate in candidates if is_application_form(candidate)
         ]
+        application_forms.sort(
+            key=lambda candidate: application_form_authority_priority(
+                candidate.asset.asset_type,
+                candidate.role,
+            )
+        )
         if not application_forms:
             blockers.append("Selected Application Form source file is missing")
         form_candidate = application_forms[0] if application_forms else None

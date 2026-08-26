@@ -13,6 +13,7 @@ from backend.domain import (
     FileAsset,
     FileAssetType,
     IntakeAsset,
+    IntakeAssetRole,
     IntakeCase,
     IntakeCaseStatus,
     IntakeDraft,
@@ -308,7 +309,11 @@ class IntakeConfirmationService:
                     original_name=asset.original_name,
                     source_package_id=package.package_id,
                     source_intake_asset_id=asset.asset_id,
-                    source_role=asset.asset_role.value,
+                    source_role=(
+                        IntakeAssetRole.APPLICATION_FORM_CANDIDATE.value
+                        if asset.asset_role is IntakeAssetRole.SELECTED_APPLICATION_FORM
+                        else asset.asset_role.value
+                    ),
                     sha256=asset.sha256,
                 )
             )

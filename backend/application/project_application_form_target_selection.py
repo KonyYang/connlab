@@ -8,6 +8,7 @@ from typing import Protocol
 
 from backend.application.project_application_form_write_back_support import sha256_file
 from backend.application.project_request_material_collection_helpers import (
+    application_form_authority_priority,
     safe_material_filename,
 )
 from backend.domain import FileAsset, FileAssetType
@@ -55,6 +56,12 @@ def target_application_form(
         if asset.asset_type is FileAssetType.APPLICATION_FORM
         or (asset.source_role or "").casefold() == "selected_application_form"
     ]
+    selected.sort(
+        key=lambda asset: application_form_authority_priority(
+            asset.asset_type,
+            asset.source_role,
+        )
+    )
     if selected:
         name = safe_material_filename(
             selected[0].original_name or selected[0].path.name,
@@ -90,7 +97,14 @@ def _target_from_latest_collection(
     collection_id = getattr(collection, "collection_id", None)
     if not collection_id:
         return None
-    for item in collection_store.list_items(collection_id):
+    items = sorted(
+        collection_store.list_items(collection_id),
+        key=lambda item: application_form_authority_priority(
+            str(getattr(item, "source_asset_type", "") or ""),
+            str(getattr(item, "source_role", "") or ""),
+        ),
+    )
+    for item in items:
         if getattr(item, "target_area", None) != "submitted_material":
             continue
         source_type = str(getattr(item, "source_asset_type", "") or "").casefold()

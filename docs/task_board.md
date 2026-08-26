@@ -11,8 +11,31 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_SELECTED_APPLICATION_FORM_PROJECT_FOLDER_BINDING",
+    "summary": "Bind project-folder application-form generation to the application form selected from a multi-form imported email.",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Fix selected application-form identity propagation from intake review through project creation and folder generation; add regression coverage for selecting the second of two forms. No schema or API contract expansion.",
+    "scope_paths": [
+      "backend/application",
+      "backend/api",
+      "backend/modules/folder",
+      "frontend/src",
+      "tests/unit",
+      "tests/integration",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [
+      "The corrected identity controls which existing application-form file is used by project-folder generation; regression coverage will use isolated fixtures and temporary directories."
+    ],
+    "activation_head": "87849d729bdaa98c689434068a1dfcb269878f51",
+    "started_at": "2026-08-26T05:03:44.752650Z",
+    "updated_at": "2026-08-26T05:03:44.752650Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_CONTACT_POINT_EXPLICIT_IDENTIFIERS_AND_ORDER",
     "tier": "standard",
