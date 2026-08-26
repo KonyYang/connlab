@@ -32,8 +32,16 @@
     ],
     "activation_head": "87849d729bdaa98c689434068a1dfcb269878f51",
     "started_at": "2026-08-26T05:03:44.752650Z",
-    "updated_at": "2026-08-26T05:03:44.752650Z",
-    "checkpoint": null,
+    "updated_at": "2026-08-26T05:17:48.615957Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_SELECTED_APPLICATION_FORM_PROJECT_FOLDER_BINDING",
+      "stage": "delivery",
+      "status": "blocked",
+      "summary": "Implementation commit 175a63df and 47-test QA pass are complete, but finish is blocked because the task was registered high-risk with directory-level scope paths while the board requires exact file paths.",
+      "requires_user": true
+    },
     "report": null
   },
   "last_closed": {
