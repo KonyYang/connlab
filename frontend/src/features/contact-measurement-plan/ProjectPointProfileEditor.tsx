@@ -11,7 +11,7 @@ export function ProjectPointProfileEditor({ model, onCancel, onConfirmed }: Proj
   return <section className="project-point-profile-editor" aria-label="LLCR test point confirmation">
     <div className="project-point-profile-card">
       <header className="project-point-profile-header"><div><h2>LLCR</h2><p>{`${model.total} points / sample`}</p></div>
-        <label className="project-point-profile-delta-r"><input type="checkbox" aria-label="Delta R for LLCR" checked={model.deltaREnabled} disabled={model.busy} onChange={(event) => model.setDeltaREnabled(event.target.checked)} /><span>ΔR <small>(LLCR only)</small></span></label>
+        <label className="project-point-profile-delta-r"><input type="checkbox" aria-label="Delta R for LLCR" checked={model.deltaREnabled} disabled={model.busy} onChange={(event) => model.setDeltaREnabled(event.target.checked)} /><span>ΔR</span></label>
       </header>
       {model.error ? <p className="contact-measurement-setup-alert is-error" role="alert">{model.error}</p> : null}
       <table className="project-point-profile-table"><thead><tr><th scope="col">Point category</th><th scope="col">Test point IDs</th><th scope="col" className="project-point-profile-cr-cell">CR</th><th scope="col" className="project-point-profile-action"><button className="contact-measurement-button is-compact" type="button" disabled={model.busy || model.rows.length >= 256} onClick={model.addCategory}>Add row</button></th></tr></thead>

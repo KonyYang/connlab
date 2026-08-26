@@ -106,6 +106,7 @@ describe("ProjectPointProfileEditor delete activation", () => {
 
     const option = screen.getByRole("checkbox", { name: "Delta R for LLCR" }) as HTMLInputElement;
     expect(option.checked).toBe(true);
+    expect(screen.queryByText("(LLCR only)")).toBeNull();
     await user.click(option);
     expect(option.checked).toBe(false);
   });

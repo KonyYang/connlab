@@ -280,12 +280,6 @@
   font-weight: 700;
 }
 
-.project-point-profile-delta-r small {
-  color: var(--ink-muted);
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
 .llcr-cr-record-panel {
   background: #f7f9fc;
   border: 1px solid #d5dee8;
@@ -438,6 +432,7 @@
   text-align: center !important;
 }
 
+.project-point-profile-delta-r input,
 .project-point-profile-cr-cell input {
   width: 18px;
   height: 18px;
@@ -446,11 +441,13 @@
   cursor: pointer;
 }
 
+.project-point-profile-delta-r input:focus-visible,
 .project-point-profile-cr-cell input:focus-visible {
   outline: 3px solid rgba(110, 162, 239, 0.32);
   outline-offset: 2px;
 }
 
+.project-point-profile-delta-r input:disabled,
 .project-point-profile-cr-cell input:disabled {
   cursor: not-allowed;
 }

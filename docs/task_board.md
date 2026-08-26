@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_CONTACT_POINT_DELTA_R_COMPACT_CONTROL",
+    "summary": "Make the LLCR Delta R checkbox match the CR checkbox size and remove the redundant LLCR-only text.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Update the Contact Measurement Setup Delta R control presentation without changing its behavior.",
+    "scope_paths": [
+      "frontend/src/features/contact-measurement-plan/ProjectPointProfileEditor.tsx",
+      "frontend/src/features/contact-measurement-plan/ProjectPointProfileEditor.test.tsx",
+      "frontend/src/contact-measurement-plan.css",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "8a5c72bcfb169db5a932d9943e3f02fcd71a0f83",
+    "started_at": "2026-08-26T13:33:39.102472Z",
+    "updated_at": "2026-08-26T13:33:39.102472Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_SELECTED_APPLICATION_FORM_PROJECT_FOLDER_BINDING_FINALIZE",
     "tier": "standard",
