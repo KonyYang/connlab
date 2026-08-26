@@ -11,89 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_SELECTED_APPLICATION_FORM_PROJECT_FOLDER_BINDING_FINALIZE",
-    "summary": "Finalize the already-integrated selected application-form project-folder binding fix.",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Verify and close the implemented fix that binds project-folder collection and Word write-back to the application form selected by the confirmed intake case.",
-    "scope_paths": [
-      "backend/application/intake_confirmation_service.py",
-      "backend/application/project_application_form_target_selection.py",
-      "backend/application/project_request_material_collection_helpers.py",
-      "backend/application/project_request_material_collection_service.py",
-      "tests/unit/test_intake_confirmation_service.py",
-      "tests/unit/test_project_application_form_target_selection.py",
-      "tests/unit/test_project_request_material_collection_service.py",
-      "docs/task_board.md"
-    ],
-    "risk_reasons": [],
-    "activation_head": "0b0a9c9e55d36b7e8feafb4c4eb32b364bb07101",
-    "started_at": "2026-08-26T12:51:38.758240Z",
-    "updated_at": "2026-08-26T12:52:34.831869Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_SELECTED_APPLICATION_FORM_PROJECT_FOLDER_BINDING_FINALIZE",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_SELECTED_APPLICATION_FORM_PROJECT_FOLDER_BINDING_FINALIZE",
-      "subject": "b539fe06ceb1308b9ad3961def772f8259847926",
-      "summary": "Finalized the selected application-form binding fix already integrated in commit 175a63df5490052ebacd5e6fb3388d924e81132b.",
-      "scope_ok": true,
-      "changed_paths": [],
-      "validation": [
-        {
-          "status": "passed",
-          "name": "red-green",
-          "summary": "The original failure was reproduced for historical role leakage and first-item target selection before the implementation commit."
-        },
-        {
-          "status": "passed",
-          "name": "backend-related",
-          "summary": "47 affected unit and integration tests passed on the unchanged implementation state."
-        },
-        {
-          "status": "passed",
-          "name": "review",
-          "summary": "Standards and request-spec review found no remaining issues, scope creep, schema changes, or real external-file mutations."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "summary": "Implementation commit 175a63df enforces current-case authority and legacy typed-form precedence."
-        },
-        "reviewer": {
-          "status": "passed",
-          "summary": "Reviewed exact implementation diff against the user-reported two-form scenario and repository standards."
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Confirmation, request-material collection, folder, completion API, and Word target-selection checks passed."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "summary": "The clean master contains the tested fix; this re-registration changed only task metadata, which is excluded from the task diff."
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_SELECTED_APPLICATION_FORM_PROJECT_FOLDER_BINDING",
-    "tier": "high_risk",
-    "subject": "d2eb09d99a31b25cf496c746aa84b2f03eb0fd51",
-    "summary": "Bind project-folder application-form generation to the application form selected from a multi-form imported email.",
-    "disposition": "cancelled",
-    "decision_ref": "user:允许取消错误的任务登记并重新登记同一修复",
-    "closed_at": "2026-08-26T12:51:01.694388Z"
+    "task_id": "TASK_SELECTED_APPLICATION_FORM_PROJECT_FOLDER_BINDING_FINALIZE",
+    "tier": "standard",
+    "subject": "b539fe06ceb1308b9ad3961def772f8259847926",
+    "summary": "Finalize the already-integrated selected application-form project-folder binding fix.",
+    "disposition": "completed",
+    "decision_ref": "user:关闭",
+    "closed_at": "2026-08-26T13:31:19.433848Z"
   },
   "retained_history": []
 }
