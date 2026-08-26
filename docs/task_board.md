@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_POINT_PROFILE_CONFIRM_ERROR_DETAIL_AND_EXPLICIT_IDS",
     "summary": "Accept the displayed explicit point-ID expressions during Point Profile confirmation and surface the backend rejection reason instead of a generic error.",
@@ -31,17 +31,66 @@
     "risk_reasons": [],
     "activation_head": "c416f14cfcb898c6bb6c71938184a69d417914c0",
     "started_at": "2026-08-26T14:47:37.994775Z",
-    "updated_at": "2026-08-26T15:21:38.597080Z",
+    "updated_at": "2026-08-26T15:29:33.557741Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_POINT_PROFILE_CONFIRM_ERROR_DETAIL_AND_EXPLICIT_IDS",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User reproduced the legacy ascending-range rejection after delivery and requested the issue be resolved.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_POINT_PROFILE_CONFIRM_ERROR_DETAIL_AND_EXPLICIT_IDS",
+      "subject": "7585ba0a048ddecd3a81a2917071447f92f5798f",
+      "summary": "Confirmed the explicit point-ID expressions are accepted and actionable errors are surfaced; removed two orphan legacy uvicorn workers, restarted the current backend service chain, and confirmed the user payload through both the API and frontend proxy as a 14-point revision.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/features/contact-measurement-plan/useProjectPointProfileModel.test.tsx",
+        "frontend/src/features/contact-measurement-plan/useProjectPointProfileModel.ts",
+        "tests/unit/test_contact_point_profile_lifecycle.py"
+      ],
+      "validation": [
+        {
+          "name": "point profile backend tests",
+          "status": "passed",
+          "detail": "26 passed"
+        },
+        {
+          "name": "contact measurement frontend tests",
+          "status": "passed",
+          "detail": "56 passed"
+        },
+        {
+          "name": "frontend production build",
+          "status": "passed",
+          "detail": "vite build completed"
+        },
+        {
+          "name": "live explicit point confirmation",
+          "status": "passed",
+          "detail": "HTTP 200, 14 points, revision 6; direct API and Vite proxy agree"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed"
+        },
+        "reviewer": {
+          "status": "passed"
+        },
+        "qa": {
+          "status": "passed"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "detail": "Current backend and frontend proxy both return the same confirmed 14-point profile revision."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_CONTACT_POINT_DELTA_R_COMPACT_CONTROL",
