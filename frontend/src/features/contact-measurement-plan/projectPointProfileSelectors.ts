@@ -45,9 +45,9 @@ export function pointProfileValidation(
   for (const row of rows) {
     const prefix = row.prefix.trim();
     const points = parsePointExpression(row.point_expression);
-    if (!/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(prefix)) return "Each Prefix must use 1-64 letters, digits, _ or -.";
-    if (!points) return "Each Test points value needs positive integers or ascending ranges.";
-    if (prefixes.has(prefix.toLocaleLowerCase())) return "Prefixes must be unique.";
+    if (!/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(prefix)) return "Each Point category must use 1-64 letters, digits, _ or -.";
+    if (!points) return "Each Test points value needs explicit IDs or ascending ranges such as 1-5 or HP1-5.";
+    if (prefixes.has(prefix.toLocaleLowerCase())) return "Point categories must be unique.";
     prefixes.add(prefix.toLocaleLowerCase());
     total += points.length;
   }
@@ -58,21 +58,35 @@ export function pointProfileValidation(
   return null;
 }
 
-export function parsePointExpression(value: string): number[] | null {
+export function parsePointExpression(value: string): string[] | null {
   if (!value.trim() || value.length > 1024) return null;
-  const points = new Set<number>();
+  const points: string[] = [];
+  const seen = new Set<string>();
   for (const token of value.split(",")) {
-    const match = /^\s*([1-9][0-9]*)(?:\s*-\s*([1-9][0-9]*))?\s*$/.exec(token);
-    if (!match) return null;
-    const start = Number(match[1]);
-    const end = Number(match[2] ?? start);
-    if (end < start || end > 9999) return null;
-    for (let point = start; point <= end; point += 1) {
-      points.add(point);
-      if (points.size > 4096) return null;
+    const trimmed = token.trim();
+    const range = /^([A-Za-z]{0,64})([1-9][0-9]*)\s*-\s*([A-Za-z]{0,64})([1-9][0-9]*)$/.exec(trimmed);
+    let expanded: string[];
+    if (range) {
+      const [, prefix, startText, endPrefix, endText] = range;
+      const start = Number(startText);
+      const end = Number(endText);
+      if ((endPrefix && endPrefix.toLocaleLowerCase() !== prefix.toLocaleLowerCase()) || end < start || end > 9999) return null;
+      expanded = Array.from({ length: end - start + 1 }, (_, index) => `${prefix}${start + index}`);
+    } else {
+      const single = /^(?:[A-Za-z]{0,64}[1-9][0-9]*|[A-Za-z]{1,64})$/.exec(trimmed);
+      if (!single) return null;
+      const numericSuffix = /([1-9][0-9]*)$/.exec(trimmed)?.[1];
+      if (numericSuffix && Number(numericSuffix) > 9999) return null;
+      expanded = [trimmed];
+    }
+    for (const point of expanded) {
+      if (seen.has(point)) continue;
+      seen.add(point);
+      points.push(point);
+      if (points.length > 4096) return null;
     }
   }
-  return [...points].sort((left, right) => left - right);
+  return points;
 }
 
 export function localPointProfileRows(

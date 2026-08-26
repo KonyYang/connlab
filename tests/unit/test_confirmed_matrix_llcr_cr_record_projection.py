@@ -154,13 +154,42 @@ def test_point_profile_projection_builds_separate_type_views_from_matrix_stages(
     assert llcr.delta_r_enabled is False
     assert [section.category_id for section in llcr.sections] == ["ppc-1", "ppc-2"]
     assert [stage.label for stage in llcr.sections[0].stages] == ["Initial", "Final"]
-    assert [row.contact_id for row in llcr.sections[0].rows] == ["SIG1", "SIG3", "SIG1", "SIG3"]
+    assert [row.contact_id for row in llcr.sections[0].rows] == ["1", "3", "1", "3"]
 
     assert cr.status == "ready"
     assert cr.record_type == "cr"
     assert [section.category_id for section in cr.sections] == ["ppc-2"]
     assert cr.sections[0].stages[0].test_current_ampere == "10"
-    assert [row.contact_id for row in cr.sections[0].rows] == ["PWR2", "PWR4", "PWR2", "PWR4"]
+    assert [row.contact_id for row in cr.sections[0].rows] == ["2", "4", "2", "4"]
+
+
+def test_point_profile_projection_uses_explicit_ids_in_entered_order_without_category_prefix() -> None:
+    snapshot = _matrix_with_llcr_and_cr_stages()
+    profile = EffectiveConfirmedPointProfile(
+        status="confirmed",
+        readings_per_sample="6",
+        revision_id="profile-1",
+        revision_sequence=3,
+        fingerprint="profile-fingerprint",
+        lineage="Confirmed Project Point Profile",
+        message=None,
+        categories=(
+            {
+                "category_id": "ppc-1", "category_ordinal": 0, "label": "High Power",
+                "count_per_sample": 6, "record_prefix": "HP", "included": True,
+                "point_expression": "1,24,35,2,7,10",
+            },
+        ),
+        cr_category_ids=(),
+        delta_r_enabled=True,
+    )
+
+    projection = build_point_profile_llcr_cr_record_projection(snapshot, profile, "llcr")
+
+    assert projection.status == "ready"
+    assert [row.contact_id for row in projection.sections[0].rows[:6]] == [
+        "1", "24", "35", "2", "7", "10",
+    ]
 
 
 def test_point_profile_projection_treats_alphabetic_footnote_as_sample_note() -> None:

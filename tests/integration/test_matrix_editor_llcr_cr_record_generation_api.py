@@ -11,6 +11,7 @@ from backend.api.main import app
 from backend.application.contact_point_profile_confirmed_consumer_adapter import (
     EffectiveConfirmedPointProfile,
 )
+from backend.application.contact_point_profile_expression import parse_point_expression
 from backend.application.matrix_editor_llcr_cr_record_generation_service import (
     MatrixEditorLlcrCrRecordGenerationService,
 )
@@ -62,13 +63,36 @@ def test_matrix_editor_llcr_download_accepts_footnoted_sample_quantity(
     assert sheet["I9"].value == "unit:mΩ"
 
 
+def test_matrix_editor_llcr_download_preserves_explicit_point_ids_and_order(
+    tmp_path: Path,
+) -> None:
+    response = _post_current_ui_draft(
+        tmp_path,
+        "1",
+        None,
+        point_expression="1,24,35,2,7,10",
+        point_category="HP",
+    )
+
+    assert response.status_code == 200
+    output = tmp_path / "matrix-editor-llcr-explicit-points.xlsx"
+    output.write_bytes(response.content)
+    sheet = load_workbook(output, data_only=False)["HP"]
+    assert [sheet.cell(row, 3).value for row in range(10, 16)] == [
+        "1", "24", "35", "2", "7", "10",
+    ]
+
+
 def _post_current_ui_draft(
     tmp_path: Path,
     sample_quantity_expression: str,
     sample_note: str | None,
+    *,
+    point_expression: str = "1-2",
+    point_category: str = "SIG",
 ):
     generation = MatrixEditorLlcrCrRecordGenerationService(
-        point_profile_adapter=_PointProfileAdapter(),
+        point_profile_adapter=_PointProfileAdapter(point_expression, point_category),
         workbook_gateway=LlcrCrSpecializedRecordWorkbookGateway(),
         artifact_store=LlcrCrSpecializedRecordArtifactStore(tmp_path / "generated"),
         ltr_store=_LtrStore(),
@@ -120,11 +144,16 @@ class _LtrStore:
 
 
 class _PointProfileAdapter:
+    def __init__(self, point_expression: str, point_category: str) -> None:
+        self._point_expression = point_expression
+        self._point_category = point_category
+
     def get_effective(self, project_id: str) -> EffectiveConfirmedPointProfile:
         assert project_id == "P1"
+        point_count = parse_point_expression(self._point_expression).count
         return EffectiveConfirmedPointProfile(
             status="confirmed",
-            readings_per_sample="2",
+            readings_per_sample=str(point_count),
             revision_id="profile-1",
             revision_sequence=1,
             fingerprint="profile-fingerprint",
@@ -134,11 +163,11 @@ class _PointProfileAdapter:
                 {
                     "category_id": "signal",
                     "category_ordinal": 0,
-                    "label": "Signal",
-                    "count_per_sample": 2,
-                    "record_prefix": "SIG",
+                    "label": self._point_category,
+                    "count_per_sample": point_count,
+                    "record_prefix": self._point_category,
                     "included": True,
-                    "point_expression": "1-2",
+                    "point_expression": self._point_expression,
                 },
             ),
         )

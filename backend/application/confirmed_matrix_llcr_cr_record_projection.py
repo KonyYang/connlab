@@ -213,7 +213,7 @@ def build_point_profile_llcr_cr_record_projection(
             materialized_rows = tuple(
                 LlcrCrRecordRow(
                     sample_index=sample,
-                    contact_id=f"{prefix}{point}",
+                    contact_id=point,
                     contact_label=label,
                 )
                 for sample in range(1, sample_count + 1)

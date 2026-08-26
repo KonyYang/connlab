@@ -17,8 +17,8 @@ describe("ProjectPointProfileEditor delete activation", () => {
 
     expect(screen.getByRole("heading", { name: "LLCR" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "LLCR Test Point Confirmation" })).toBeNull();
-    expect(screen.getByLabelText("Prefix 1").classList.contains("project-point-profile-input")).toBe(true);
-    expect(screen.getByLabelText("Test points 1").classList.contains("project-point-profile-input")).toBe(true);
+    expect(screen.getByLabelText("Point category 1").classList.contains("project-point-profile-input")).toBe(true);
+    expect(screen.getByLabelText("Test point IDs 1").classList.contains("project-point-profile-input")).toBe(true);
 
     const deleteButton = screen.getByRole("button", { name: "Delete point profile row HP" });
     expect(deleteButton.classList.contains("project-point-profile-delete")).toBe(true);
@@ -29,10 +29,10 @@ describe("ProjectPointProfileEditor delete activation", () => {
   it("explains that point expressions identify numbers rather than a quantity", () => {
     render(<EditorHarness onRemove={vi.fn()} />);
 
-    expect(screen.getByRole("columnheader", { name: "Range" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Test point IDs" })).toBeTruthy();
     expect(screen.queryByText("Enter point numbers or ranges, for example 1-5. Entering 5 means point 5 only.")).toBeNull();
-    expect(screen.getByLabelText("Test points 1").getAttribute("placeholder")).toBe("Example: 1-5 or 1,3,5");
-    expect(screen.getByLabelText("Test points 1").hasAttribute("aria-describedby")).toBe(false);
+    expect(screen.getByLabelText("Test point IDs 1").getAttribute("placeholder")).toBe("Example: 1,24,2 or HP1-5,PE");
+    expect(screen.getByLabelText("Test point IDs 1").hasAttribute("aria-describedby")).toBe(false);
   });
 
   it.each([
@@ -85,7 +85,7 @@ describe("ProjectPointProfileEditor delete activation", () => {
     render(<EditorHarness onRemove={vi.fn()} />);
 
     expect(screen.getByRole("columnheader", { name: "Point category" })).toBeTruthy();
-    expect(screen.getByRole("columnheader", { name: "Range" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Test point IDs" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "CR" })).toBeTruthy();
     expect(screen.queryByRole("columnheader", { name: "LLCR" })).toBeNull();
     expect((screen.getByRole("checkbox", { name: "Include HP in CR" }) as HTMLInputElement).checked).toBe(true);

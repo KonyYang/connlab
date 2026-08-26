@@ -104,10 +104,15 @@ def test_direct_confirm_canonicalizes_expressions_and_supersedes_prior_confirmed
         }
         second = lifecycle.confirm_direct(
             "P1", first["revision_id"], first["fingerprint"],
-            [{"category_id": first["categories"][0]["category_id"], "prefix": "HP", "point_expression": "1-3,5"}], "operator",
+            [{
+                "category_id": first["categories"][0]["category_id"],
+                "prefix": "HP",
+                "point_expression": "HP1-5,PE,P1,P3,P2",
+            }],
+            "operator",
         )
-        assert second["categories"][0]["point_expression"] == "1-3,5"
-        assert second["categories"][0]["count_per_sample"] == 4
+        assert second["categories"][0]["point_expression"] == "HP1-5,PE,P1,P3,P2"
+        assert second["categories"][0]["count_per_sample"] == 9
     finally:
         session.close()
         engine.dispose()

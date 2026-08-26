@@ -15,8 +15,8 @@ describe("ContactMeasurementSetupWorkspace", () => {
     render(<ContactMeasurementSetupWorkspace projectId="P1" onBackToMatrix={() => {}} />);
 
     expect(screen.queryByRole("heading", { name: "Test Points Setup" })).toBeNull();
-    expect(screen.getByLabelText("Prefix 1")).toBeTruthy();
-    expect(screen.getByLabelText("Test points 1")).toBeTruthy();
+    expect(screen.getByLabelText("Point category 1")).toBeTruthy();
+    expect(screen.getByLabelText("Test point IDs 1")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add row" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Delete point profile row 1" }).getAttribute("title")).toBe("Delete row");
     expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();

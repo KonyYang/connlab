@@ -295,13 +295,13 @@ def _direct_categories(rows) -> list[dict[str, object]]:
             raise ContactPointProfileLifecycleError(str(exc)) from exc
         prefix = row.get("prefix")
         if not isinstance(prefix, str):
-            raise ContactPointProfileLifecycleError("Point Profile prefix is required.")
+            raise ContactPointProfileLifecycleError("Point category is required.")
         prefix = prefix.strip()
         if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", prefix):
-            raise ContactPointProfileLifecycleError("Point Profile prefix is invalid.")
+            raise ContactPointProfileLifecycleError("Point category is invalid.")
         key = prefix.casefold()
         if key in prefixes:
-            raise ContactPointProfileLifecycleError("Point Profile prefixes must be unique.")
+            raise ContactPointProfileLifecycleError("Point categories must be unique.")
         prefixes.add(key)
         total += parsed.count
         if total > 8192:

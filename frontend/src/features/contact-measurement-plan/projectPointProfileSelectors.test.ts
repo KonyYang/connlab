@@ -16,12 +16,18 @@ describe("projectPointProfileSelectors", () => {
       { category_id: null, prefix: "SIG", point_expression: "1-24" },
     ];
     expect(projectPointProfileTotal(rows)).toBe(33);
-    expect(parsePointExpression("1,2,3,4,5")).toEqual([1, 2, 3, 4, 5]);
+    expect(parsePointExpression("1,2,3,4,5")).toEqual(["1", "2", "3", "4", "5"]);
+  });
+
+  it("accepts explicit point IDs and preserves their entered order", () => {
+    expect(parsePointExpression("HP1-5")).toEqual(["HP1", "HP2", "HP3", "HP4", "HP5"]);
+    expect(parsePointExpression("1,24,35,2,7,10")).toEqual(["1", "24", "35", "2", "7", "10"]);
+    expect(parsePointExpression("P1,PE,P2,P3")).toEqual(["P1", "PE", "P2", "P3"]);
   });
 
   it("blocks invalid expressions and duplicate prefixes before confirm", () => {
     expect(pointProfileValidation([{ category_id: null, prefix: "HP", point_expression: "1-3" }, { category_id: null, prefix: "hp", point_expression: "5" }])).toMatch(/unique/i);
-    expect(pointProfileValidation([{ category_id: null, prefix: "HP", point_expression: "1.5" }])).toMatch(/positive/i);
+    expect(pointProfileValidation([{ category_id: null, prefix: "HP", point_expression: "1.5" }])).toMatch(/explicit IDs/i);
   });
 
   it("blocks 257 profile rows before confirm", () => {
