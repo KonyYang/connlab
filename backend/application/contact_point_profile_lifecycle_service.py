@@ -327,14 +327,11 @@ def _direct_categories(rows) -> list[dict[str, object]]:
 def _validate_cr_coverage(mode: str, categories: list[dict[str, object]]) -> None:
     if mode not in {"follow_llcr", "custom"}:
         raise ContactPointProfileLifecycleError("CR coverage mode is invalid.")
-    selected = [category for category in categories if bool(category["cr_selected"])]
-    if mode == "follow_llcr" and selected:
+    if mode == "follow_llcr" and any(
+        bool(category["cr_selected"]) for category in categories
+    ):
         raise ContactPointProfileLifecycleError(
             "CR category selections must be empty while CR follows LLCR."
-        )
-    if mode == "custom" and not selected:
-        raise ContactPointProfileLifecycleError(
-            "Custom CR coverage requires at least one category."
         )
 
 

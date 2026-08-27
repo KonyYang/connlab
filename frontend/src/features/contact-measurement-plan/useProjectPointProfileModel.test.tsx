@@ -80,6 +80,30 @@ describe("useProjectPointProfileModel", () => {
     }));
   });
 
+  it("confirms a valid point profile when CR is not required", async () => {
+    apiMocks.fetchProjectPointProfileWorkspace.mockResolvedValue(workspaceWithCategories(3));
+    apiMocks.confirmProjectPointProfile.mockResolvedValue(revision());
+    const { result } = renderHook(() => useProjectPointProfileModel({ projectId: "P1" }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    act(() => {
+      result.current.rows.forEach((_, index) => result.current.setCrSelected(index, false));
+    });
+
+    expect(result.current.crCoverageMode).toBe("custom");
+    expect(result.current.crTotal).toBe(0);
+    expect(result.current.validation).toBeNull();
+    await act(async () => { await result.current.confirm(); });
+
+    expect(apiMocks.confirmProjectPointProfile).toHaveBeenCalledWith("P1", expect.objectContaining({
+      cr_coverage_mode: "custom",
+    }));
+    expect(apiMocks.confirmProjectPointProfile.mock.calls[0][1].categories).toHaveLength(3);
+    expect(apiMocks.confirmProjectPointProfile.mock.calls[0][1].categories.every(
+      (row) => row.cr_selected === false,
+    )).toBe(true);
+  });
+
   it("normalizes all selected rows back to follow mode", async () => {
     apiMocks.fetchProjectPointProfileWorkspace.mockResolvedValue(workspaceWithCategories(3));
     apiMocks.confirmProjectPointProfile.mockResolvedValue(revision());

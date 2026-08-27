@@ -60,8 +60,8 @@ export function useProjectPointProfileModel({ projectId }: { projectId: string }
     [rows],
   );
   const validation = useMemo(
-    () => pointProfileValidation(rows, crCoverageMode),
-    [crCoverageMode, rows],
+    () => pointProfileValidation(rows),
+    [rows],
   );
 
   async function confirm(): Promise<boolean> {

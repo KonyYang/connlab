@@ -44,8 +44,10 @@ describe("projectPointProfileSelectors", () => {
 
     expect(projectPointProfileCrTotal(rows, "follow_llcr")).toBe(29);
     expect(projectPointProfileCrTotal(rows, "custom")).toBe(24);
-    expect(pointProfileValidation(rows, "custom")).toBeNull();
-    expect(pointProfileValidation(rows.map((row) => ({ ...row, cr_selected: false })), "custom")).toMatch(/at least one/i);
+    expect(pointProfileValidation(rows)).toBeNull();
+    expect(
+      pointProfileValidation(rows.map((row) => ({ ...row, cr_selected: false }))),
+    ).toBeNull();
   });
 
   it("defaults new rows to CR and derives mode from visible row selection", () => {

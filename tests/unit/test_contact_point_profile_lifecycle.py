@@ -280,7 +280,7 @@ def test_direct_confirm_versions_global_llcr_delta_r_option(tmp_path: Path) -> N
         engine.dispose()
 
 
-def test_direct_confirm_rejects_empty_custom_cr_without_writes(tmp_path: Path) -> None:
+def test_direct_confirm_allows_empty_custom_cr_coverage(tmp_path: Path) -> None:
     engine = create_database_engine(_settings(tmp_path))
     init_db(engine)
     session = create_session_factory(engine)()
@@ -290,15 +290,18 @@ def test_direct_confirm_rejects_empty_custom_cr_without_writes(tmp_path: Path) -
         repository = ContactPointProfileAuthorityRepository(session)
         lifecycle = ContactPointProfileLifecycleService(repository, clock=lambda: "2026-07-18T00:00:00Z", id_factory=_ids())
 
-        with pytest.raises(ContactPointProfileLifecycleError, match="at least one"):
-            lifecycle.confirm_direct(
-                "P1", None, None,
-                [{"category_id": None, "prefix": "AUX", "point_expression": "1-4", "cr_selected": False}],
-                "operator",
-                cr_coverage_mode="custom",
-            )
+        confirmed = lifecycle.confirm_direct(
+            "P1", None, None,
+            [{"category_id": None, "prefix": "AUX", "point_expression": "1-4", "cr_selected": False}],
+            "operator",
+            cr_coverage_mode="custom",
+        )
 
-        assert repository.get_root("P1") is None
+        assert confirmed["cr_coverage"] == {
+            "mode": "custom",
+            "selected_category_ids": [],
+            "points_per_sample": 0,
+        }
     finally:
         session.close()
         engine.dispose()

@@ -36,7 +36,6 @@ export function projectPointProfileCrTotal(
 
 export function pointProfileValidation(
   rows: ProjectPointProfileDraftCategory[],
-  crCoverageMode: ProjectPointProfileCrCoverageMode = "follow_llcr",
 ): string | null {
   if (rows.length > 256) return "Point Profile supports at most 256 rows.";
   if (!rows.length) return "Add at least one point profile row.";
@@ -52,9 +51,6 @@ export function pointProfileValidation(
     total += points.length;
   }
   if (total > 8192) return "Point Profile total may not exceed 8192.";
-  if (crCoverageMode === "custom" && !rows.some((row) => Boolean(row.cr_selected))) {
-    return "Select at least one category for custom CR coverage.";
-  }
   return null;
 }
 
