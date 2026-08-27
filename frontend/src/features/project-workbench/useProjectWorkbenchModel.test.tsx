@@ -488,16 +488,17 @@ describe("useProjectWorkbenchModel", () => {
       await result.current.onCreateOfficialWorkspace();
     });
 
-    expect(apiMocks.generateProjectFolderRequiredForms).toHaveBeenCalledTimes(3);
+    expect(apiMocks.generateProjectFolderRequiredForms).toHaveBeenCalledTimes(4);
     expect(
       apiMocks.generateProjectFolderRequiredForms.mock.calls.map(
         ([, request]) => request.expected_targets[0].key
       )
-    ).toEqual(["customer_feedback_form", "fee_form", "test_record"]);
+    ).toEqual(["customer_feedback_form", "fee_form", "test_record", "test_status"]);
     expect(result.current.requiredFormsResult?.items.map((item) => item.key)).toEqual([
       "customer_feedback_form",
       "fee_form",
       "test_record",
+      "test_status",
     ]);
     expect(apiMocks.syncProjectSection2FromConfirmedMatrix).not.toHaveBeenCalled();
   });
@@ -717,6 +718,16 @@ const readyRequiredFormsPreview = {
       action: "generate",
       message: "Ready to generate.",
       output_kind: "test_record_form",
+      existing_sha256: null,
+    },
+    {
+      key: "test_status",
+      label: "Test Status",
+      target_path: "D:/Projects/DL-2026-06-001/Official/Submitted Material/DL test status.xlsx",
+      status: "ready",
+      action: "generate",
+      message: "Ready to generate.",
+      output_kind: "test_status",
       existing_sha256: null,
     },
     {

@@ -11,6 +11,7 @@ import {
   createMatrixRevisionDraft,
   fetchMatrixEditorSession,
   generateMatrixEditorTestRecordDraftDownload,
+  generateMatrixEditorTestStatusDraftDownload,
   isProjectLifecycleReadonlyErrorDetail,
   type MatrixEditorSessionDraft,
   type MatrixEditorSessionDurationAuthority,
@@ -164,6 +165,8 @@ export function MatrixEditorWorkspace({
   const [confirmActiveMessage, setConfirmActiveMessage] = useState<string>("");
   const [testRecordState, setTestRecordState] = useState<MatrixTestRecordState>("idle");
   const [testRecordMessage, setTestRecordMessage] = useState<string>("");
+  const [testStatusState, setTestStatusState] = useState<MatrixTestRecordState>("idle");
+  const [testStatusMessage, setTestStatusMessage] = useState<string>("");
   const [activeAuthorityConfirmed, setActiveAuthorityConfirmed] = useState(false);
   const [activeAuthorityBaselineSignature, setActiveAuthorityBaselineSignature] = useState<string | null>(null);
   const [durationAuthorities, setDurationAuthorities] =
@@ -361,6 +364,11 @@ export function MatrixEditorWorkspace({
     });
   }, [groupColumns]);
 
+  const projectReference = deriveProjectReference({
+    latestLtr: model.latestLtr,
+    projectNo: model.project?.project_no,
+    projectId: model.project?.project_id ?? projectId,
+  });
   const matrixEditorIdentityLine = buildProjectIdentityLine({
     project: model.project,
     latestLtr: model.latestLtr,
@@ -560,6 +568,11 @@ export function MatrixEditorWorkspace({
   );
   const canGenerateTestRecord =
     testRecordDraftRequest.groups.length > 0 && hasAnyStepTokenValue && !hasStepTokenError;
+  const canGenerateTestStatus =
+    testRecordDraftRequest.groups.length > 0 &&
+    testRecordDraftRequest.rows.some(
+      (row) => !row.is_sample_row && row.test_item.trim().length > 0
+    );
   const scheduleCalculation = calculateMatrixSchedule(
     editableRows.map((row) => ({
       id: row.id,
@@ -576,11 +589,7 @@ export function MatrixEditorWorkspace({
   );
   const matrixXlsxExport = useMatrixEditorXlsxExport(projectId);
   const matrixXlsxExportRequest = buildMatrixEditorXlsxExportRequest({
-    projectReference: deriveProjectReference({
-      latestLtr: model.latestLtr,
-      projectNo: model.project?.project_no,
-      projectId: model.project?.project_id ?? projectId,
-    }),
+    projectReference,
     groups: groupColumns,
     rows: editableRows,
     sampleValues,
@@ -1079,6 +1088,36 @@ export function MatrixEditorWorkspace({
     }
   };
 
+  const onGenerateTestStatusPreview = async (): Promise<void> => {
+    if (isLifecycleReadonly) {
+      setTestStatusState("error");
+      setTestStatusMessage(lifecycleReadonlyView.message);
+      return;
+    }
+    if (!canGenerateTestStatus) {
+      setTestStatusState("error");
+      setTestStatusMessage("Select at least one Matrix group before generating Test Status.");
+      return;
+    }
+    setTestStatusState("loading");
+    setTestStatusMessage("Generating Test Status draft...");
+    try {
+      const response = await generateMatrixEditorTestStatusDraftDownload(projectId, {
+        ...testRecordDraftRequest,
+        project_reference: projectReference,
+      });
+      triggerBlobDownload(
+        response.blob,
+        response.fileName ?? `${projectId} test status.xlsx`
+      );
+      setTestStatusState("success");
+      setTestStatusMessage("Downloaded Test Status draft.");
+    } catch (error) {
+      setTestStatusState("error");
+      setTestStatusMessage(parseRequestError(error, "Failed to generate Test Status draft."));
+    }
+  };
+
   const onConfirmMatrix = async (): Promise<void> => {
     if (isLifecycleReadonly) {
       setConfirmActiveMessage(lifecycleReadonlyView.message);
@@ -1207,6 +1246,16 @@ export function MatrixEditorWorkspace({
           >
             {testRecordState === "loading" ? "Generating..." : "Test record"}
           </button>
+          <button
+            type="button"
+            disabled={
+              isLifecycleReadonly || !canGenerateTestStatus || testStatusState === "loading"
+            }
+            title={isLifecycleReadonly ? lifecycleReadonlyView.message : undefined}
+            onClick={() => void onGenerateTestStatusPreview()}
+          >
+            {testStatusState === "loading" ? "Generating..." : "Test Status"}
+          </button>
         </div>
       </section>
 
@@ -1224,6 +1273,15 @@ export function MatrixEditorWorkspace({
           }`}
         >
           {testRecordMessage}
+        </section>
+      ) : null}
+      {testStatusMessage ? (
+        <section
+          className={`matrix-editor-save-status${
+            testStatusState === "error" ? " matrix-editor-save-status-error" : ""
+          }`}
+        >
+          {testStatusMessage}
         </section>
       ) : null}
       {matrixXlsxExport.error || matrixXlsxExport.message ? (

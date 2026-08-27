@@ -177,6 +177,45 @@ def test_required_forms_test_record_uses_settings_template_folder(
     assert test_record_service.command.template_path == template
 
 
+def test_required_forms_test_status_uses_confirmed_matrix_generator(tmp_path: Path) -> None:
+    test_status_service = _TestStatusService()
+    generator = _RequiredFormsStagingGenerator(
+        settings=SimpleNamespace(
+            data_dir=tmp_path / "data",
+            templates_dir=tmp_path / "templates",
+        ),
+        fee_template_resource_store=_TemplateFolderStore(tmp_path / "templates"),
+        test_record_service=SimpleNamespace(),
+        fee_export_service=SimpleNamespace(),
+        customer_feedback_service=SimpleNamespace(),
+        test_status_service=test_status_service,
+    )
+
+    output = generator.generate(
+        project_id="P1",
+        key="test_status",
+        target_name="DL-001 test status.xlsx",
+        basic_information=_basic_information(),
+        confirmed_fee=SimpleNamespace(pricing_snapshot_json="{}"),
+    )
+
+    assert output.name == "DL-001 test status.xlsx"
+    assert test_status_service.command is not None
+    assert test_status_service.command.project_id == "P1"
+
+
+class _TestStatusService:
+    def __init__(self) -> None:
+        self.command = None
+
+    def generate(self, command):
+        self.command = command
+        output = command.output_dir / command.target_name
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(b"test status")
+        return output
+
+
 class _FeeExportService:
     def __init__(self) -> None:
         self.command = None

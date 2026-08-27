@@ -2080,6 +2080,11 @@ function requiredFormsGenerationBatches(
       progressLabel: "Updating Test Record",
       timingLabel: "requiredForms.testRecord.generate",
     },
+    {
+      keys: ["test_status"],
+      progressLabel: "Updating Test Status",
+      timingLabel: "requiredForms.testStatus.generate",
+    },
   ];
   return batches
     .map((batch) => ({

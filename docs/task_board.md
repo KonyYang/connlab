@@ -11,8 +11,31 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_TEST_STATUS_WORKBOOK",
+    "summary": "Add Matrix Editor Test Status draft download and authoritative Submitted Material workbook generation using shared VBA-compatible projection logic.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Implement the User-requested Test Status workbook draft and authoritative project-folder output without changing Matrix authority semantics.",
+    "scope_paths": [
+      "backend/application",
+      "backend/api",
+      "backend/infrastructure/office",
+      "backend/domain/enums.py",
+      "frontend/src/api/client.ts",
+      "frontend/src/features/matrix-editor",
+      "tests/unit",
+      "tests/integration",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "161d4a027affff0d0c91d6d81ea1260d581c2df0",
+    "started_at": "2026-08-26T23:29:40.759240Z",
+    "updated_at": "2026-08-26T23:29:40.759240Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_OPEN_REFRESH_AFTER_CREATE",
     "tier": "micro",

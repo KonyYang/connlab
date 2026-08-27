@@ -197,6 +197,14 @@ from backend.application.confirmed_matrix_test_record_document_generation_servic
 from backend.application.matrix_editor_test_record_document_generation_service import (
     MatrixEditorTestRecordDocumentGenerationService,
 )
+from backend.application.matrix_editor_test_status_workbook_generation_service import (
+    MatrixEditorTestStatusWorkbookGenerationService,
+)
+from backend.application.confirmed_matrix_test_status_workbook_generation_service import (
+    ConfirmedMatrixTestStatusWorkbookGenerationService,
+    GenerateConfirmedMatrixTestStatusWorkbookCommand,
+)
+from backend.infrastructure.office.test_status_workbook_gateway import TestStatusWorkbookGateway
 from backend.application.project_section2_sync_service import (
     ProjectSection2SyncService,
 )
@@ -1104,6 +1112,16 @@ def get_llcr_cr_record_workbook_generation_service(
     )
 
 
+def get_matrix_editor_test_status_workbook_generation_service(
+    session: Session = Depends(get_session),
+) -> MatrixEditorTestStatusWorkbookGenerationService:
+    """Build the current Matrix Editor Test Status preview generator."""
+    return MatrixEditorTestStatusWorkbookGenerationService(
+        project_store=ProjectRepository(session),
+        writer=TestStatusWorkbookGateway(),
+    )
+
+
 def get_matrix_editor_llcr_cr_record_generation_service(
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
@@ -1483,6 +1501,7 @@ class _RequiredFormsStagingGenerator:
         test_record_service: ConfirmedMatrixTestRecordDocumentGenerationService,
         fee_export_service: ConfirmedMatrixFeeEvaluationExportService,
         customer_feedback_service: CustomerFeedbackFormGenerationService,
+        test_status_service: ConfirmedMatrixTestStatusWorkbookGenerationService | None = None,
     ) -> None:
         self._project_id = project_id
         self._settings = settings
@@ -1493,6 +1512,7 @@ class _RequiredFormsStagingGenerator:
         self._test_record_service = test_record_service
         self._fee_export_service = fee_export_service
         self._customer_feedback_service = customer_feedback_service
+        self._test_status_service = test_status_service
 
     def generate(
         self,
@@ -1519,6 +1539,16 @@ class _RequiredFormsStagingGenerator:
                 )
             )
             return _rename_staged_file(result.output_path, target_name)
+        if key == "test_status":
+            if self._test_status_service is None:
+                raise ValueError("Test Status generation is not configured.")
+            return self._test_status_service.generate(
+                GenerateConfirmedMatrixTestStatusWorkbookCommand(
+                    project_id=project_id,
+                    output_dir=output_dir,
+                    target_name=target_name,
+                )
+            )
         if key == "fee_form":
             try:
                 edited_values = edited_values_from_json(
@@ -1629,6 +1659,10 @@ def get_project_folder_required_forms_service(
             settings=settings,
             fee_template_resource_store=ExternalResourceRepository(session),
             test_record_service=test_record_service,
+            test_status_service=ConfirmedMatrixTestStatusWorkbookGenerationService(
+                confirmed_store=confirmed_store,
+                writer=TestStatusWorkbookGateway(),
+            ),
             fee_export_service=fee_service,
             customer_feedback_service=get_customer_feedback_form_generation_service(
                 session,

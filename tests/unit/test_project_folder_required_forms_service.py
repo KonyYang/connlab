@@ -157,6 +157,21 @@ def test_preview_places_test_record_under_submitted_material(tmp_path: Path) -> 
     assert item.action == "generate"
 
 
+def test_preview_places_test_status_under_submitted_material_with_matrix_context(
+    tmp_path: Path,
+) -> None:
+    service = _service(tmp_path)
+
+    preview = service.preview("P1")
+    item = _item(preview.items, "test_status")
+
+    assert item.target_path == (
+        _official_root(tmp_path) / "Submitted Material" / "DL-001 test status.xlsx"
+    )
+    assert item.output_kind is ProjectOutputKind.TEST_STATUS
+    assert item.source_context_signature == "test-status:matrix:CM1@1|layout:v1"
+
+
 def test_preview_places_fee_and_customer_feedback_at_official_root(tmp_path: Path) -> None:
     service = _service(tmp_path)
 
@@ -619,7 +634,7 @@ def test_generate_conflicts_when_managed_target_changes_between_preview_and_writ
     assert _item(result.items, "fee_form").status == "conflict"
 
 
-def test_generate_places_three_files_and_registers_outputs(tmp_path: Path) -> None:
+def test_generate_places_required_files_and_registers_outputs(tmp_path: Path) -> None:
     output_store = _OutputStatusService()
     service = _service(tmp_path, output_service=output_store)
 
@@ -656,6 +671,29 @@ def test_generate_reports_partial_failure_and_does_not_mark_missing_outputs_curr
         output_store.latest(ProjectOutputKind.CUSTOMER_FEEDBACK_FORM).status
         is ProjectOutputStatus.CURRENT
     )
+
+
+def test_generate_places_and_tracks_test_status_with_matrix_only_context(tmp_path: Path) -> None:
+    output_store = _OutputStatusService()
+    service = _service(tmp_path, output_service=output_store)
+
+    result = service.generate(
+        _ready_command(
+            tmp_path,
+            expected_targets=(
+                RequiredFormsGenerateTarget(
+                    "test_status",
+                    _final_path(tmp_path, "test_status"),
+                ),
+            ),
+        )
+    )
+
+    item = _item(result.items, "test_status")
+    assert item.target_path.parent.name == "Submitted Material"
+    tracked = output_store.latest(ProjectOutputKind.TEST_STATUS)
+    assert tracked is not None
+    assert tracked.source_context_signature == "test-status:matrix:CM1@1|layout:v1"
     assert output_store.latest(ProjectOutputKind.TEST_RECORD_FORM) is None
     assert output_store.latest(ProjectOutputKind.FEE_EVALUATION) is None
 
@@ -900,6 +938,7 @@ class _OutputStatusService:
 
         key_by_kind = {
             ProjectOutputKind.TEST_RECORD_FORM: "test_record",
+            ProjectOutputKind.TEST_STATUS: "test_status",
             ProjectOutputKind.FEE_EVALUATION: "fee_form",
             ProjectOutputKind.CUSTOMER_FEEDBACK_FORM: "customer_feedback_form",
         }
@@ -1091,6 +1130,7 @@ def _final_path(tmp_path: Path, key: str) -> Path:
     root = _official_root(tmp_path)
     names = {
         "test_record": root / "Submitted Material" / "DL-001 Test Record.docx",
+        "test_status": root / "Submitted Material" / "DL-001 test status.xlsx",
         "fee_form": root / "DL-001 Fee Form.xls",
         "customer_feedback_form": root / "DL-001 Customer Feedback Form_Even Yang.xlsx",
     }
@@ -1100,6 +1140,7 @@ def _final_path(tmp_path: Path, key: str) -> Path:
 def _kind_for_key(key: str) -> ProjectOutputKind:
     return {
         "test_record": ProjectOutputKind.TEST_RECORD_FORM,
+        "test_status": ProjectOutputKind.TEST_STATUS,
         "fee_form": ProjectOutputKind.FEE_EVALUATION,
         "customer_feedback_form": ProjectOutputKind.CUSTOMER_FEEDBACK_FORM,
     }[key]

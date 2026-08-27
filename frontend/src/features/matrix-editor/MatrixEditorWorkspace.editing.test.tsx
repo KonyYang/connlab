@@ -31,6 +31,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     expect(screen.getByText("spec.docx")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Import Matrix" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Test record" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Test Status" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Fee Evaluation" })).toBeNull();
     const completionDock = screen.getByRole("contentinfo", { name: "Matrix editor completion actions" });
     expect((completionDock as HTMLElement).classList.contains("matrix-editor-completion-dock")).toBe(true);
@@ -109,6 +110,33 @@ describe("MatrixEditorWorkspace editing behavior", () => {
       group_values: { g1: "1" },
     });
     expect(screen.getByText("Downloaded unconfirmed Test Record preview.")).toBeTruthy();
+  });
+
+  it("downloads a Test Status workbook from current unsaved Matrix Editor state", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText("Samples 1"), {
+      target: { value: "5+5(d)" },
+    });
+    fireEvent.change(screen.getByLabelText("Row 1 1"), {
+      target: { value: "1,8" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Test Status" }));
+
+    await waitFor(() =>
+      expect(apiMocks.generateMatrixEditorTestStatusDraftDownload).toHaveBeenCalledTimes(1)
+    );
+    expect(apiMocks.generateMatrixEditorTestStatusDraftDownload).toHaveBeenCalledWith(
+      "P1",
+      expect.objectContaining({
+        source: "matrix_editor_current_ui_state",
+        project_reference: "LTR-0001",
+        groups: [expect.objectContaining({ sample_quantity_expression: "5+5(d)" })],
+        rows: [expect.objectContaining({ group_values: { g1: "1,8" } })],
+      })
+    );
+    expect(screen.getByText("Downloaded Test Status draft.")).toBeTruthy();
   });
 
   it("downloads an LLCR preview from the current unsaved Matrix Editor state", async () => {

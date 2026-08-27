@@ -201,6 +201,7 @@ function formatOutputKind(kind: ProjectOutputStatusItem["output_kind"]): string 
   const labels: Record<ProjectOutputStatusItem["output_kind"], string> = {
     section2_write_back: "Section 2 write-back",
     test_record_form: "Test Record",
+    test_status: "Test Status",
     fee_evaluation: "Fee Evaluation",
     customer_feedback_form: "Customer Feedback",
     approval_package: "Approval Package",

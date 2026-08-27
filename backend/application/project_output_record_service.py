@@ -96,6 +96,7 @@ class ProjectOutputRecordService:
     _ORDERED_KINDS = (
         ProjectOutputKind.SECTION2_WRITE_BACK,
         ProjectOutputKind.TEST_RECORD_FORM,
+        ProjectOutputKind.TEST_STATUS,
         ProjectOutputKind.FEE_EVALUATION,
         ProjectOutputKind.CUSTOMER_FEEDBACK_FORM,
         ProjectOutputKind.APPROVAL_PACKAGE,

@@ -635,6 +635,7 @@ export type ProjectFolderRequiredFormsStatus =
 
 export type ProjectFolderRequiredFormKey =
   | "test_record"
+  | "test_status"
   | "fee_form"
   | "customer_feedback_form";
 
@@ -1949,6 +1950,10 @@ export type MatrixSourceCandidate = {
   stored_file_available: boolean;
 };
 
+export type MatrixEditorTestStatusDraftRequest = MatrixEditorTestRecordDraftRequest & {
+  project_reference?: string | null;
+};
+
 export type MatrixEditorLlcrCrRecordDraftRequest = MatrixEditorTestRecordDraftRequest & {
   record_type: LlcrCrRecordType;
 };
@@ -1997,6 +2002,7 @@ export type ProjectTestPlanDraftCreateRequest = {
 export type ProjectOutputKind =
   | "section2_write_back"
   | "test_record_form"
+  | "test_status"
   | "fee_evaluation"
   | "customer_feedback_form"
   | "approval_package";
@@ -4555,6 +4561,20 @@ export function generateMatrixEditorTestRecordDraftDownload(
 ): Promise<BlobDownloadResponse> {
   return requestBlobResponse(
     `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/test-record-draft/generate`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
+  );
+}
+
+export function generateMatrixEditorTestStatusDraftDownload(
+  projectId: string,
+  input: MatrixEditorTestStatusDraftRequest
+): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/test-status-draft/generate`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

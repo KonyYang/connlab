@@ -36,6 +36,13 @@ REQUIRED_FORM_DEFINITIONS: tuple[tuple[str, str, ProjectOutputKind, str, str | N
         "Submitted Material",
     ),
     (
+        "test_status",
+        "Test Status",
+        ProjectOutputKind.TEST_STATUS,
+        "{dl} test status.xlsx",
+        "Submitted Material",
+    ),
+    (
         "fee_form",
         "Fee Form",
         ProjectOutputKind.FEE_EVALUATION,
@@ -55,6 +62,7 @@ REQUIRED_FORM_GENERATION_ORDER = {
     "customer_feedback_form": 0,
     "fee_form": 1,
     "test_record": 2,
+    "test_status": 3,
 }
 
 
@@ -204,6 +212,7 @@ class RequiredFormPreviewItem:
     message: str
     output_kind: ProjectOutputKind
     existing_sha256: str | None = None
+    source_context_signature: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -358,6 +367,7 @@ class ProjectFolderRequiredFormsService:
             basic_information,
             fee_template_context,
         )
+        test_status_source_context = _test_status_source_context_signature(matrix)
         summary = self._outputs.get_status_summary(project_id)
         by_kind = {item.output_kind: item for item in summary.items}
         items = tuple(
@@ -365,7 +375,11 @@ class ProjectFolderRequiredFormsService:
                 definition=definition,
                 workspace=workspace,
                 owner_suffix=owner_suffix,
-                source_context=source_context,
+                item_source_context=(
+                    test_status_source_context
+                    if definition[0] == "test_status"
+                    else source_context
+                ),
                 output_item=by_kind.get(definition[2]),
             )
             for definition in REQUIRED_FORM_DEFINITIONS
@@ -455,7 +469,7 @@ class ProjectFolderRequiredFormsService:
                     item=item,
                     basic_information=basic_information,
                     confirmed_fee=confirmed_fee,
-                    source_context=preview.source_context_signature,
+                    source_context=item.source_context_signature,
                     timings=timings,
                 )
                 place_start = perf_counter()
@@ -497,7 +511,7 @@ class ProjectFolderRequiredFormsService:
             register_start = perf_counter()
             try:
                 record = self._register_output(
-                    command.project_id, item, preview.source_context_signature
+                    command.project_id, item, item.source_context_signature
                 )
                 output_record_id = str(getattr(record, "output_record_id", "")) or None
             except (ProjectOutputRecordError, ProjectOutputRecordNotFoundError) as exc:
@@ -536,7 +550,7 @@ class ProjectFolderRequiredFormsService:
         definition: tuple[str, str, ProjectOutputKind, str, str | None],
         workspace: OfficialWorkspaceRecord,
         owner_suffix: str | None,
-        source_context: str,
+        item_source_context: str,
         output_item: object | None,
     ) -> RequiredFormPreviewItem:
         key, label, kind, pattern, relative_folder = definition
@@ -555,16 +569,28 @@ class ProjectFolderRequiredFormsService:
                 action="generate",
                 message="Ready to generate.",
                 output_kind=kind,
+                source_context_signature=item_source_context,
             )
         if output_item is None:
-            return _conflict_item(key, label, target_path, kind)
+            return _conflict_item(
+                key, label, target_path, kind, source_context=item_source_context
+            )
         if getattr(output_item, "output_path", None) != str(target_path):
-            return _conflict_item(key, label, target_path, kind)
+            return _conflict_item(
+                key, label, target_path, kind, source_context=item_source_context
+            )
         stored_sha = getattr(output_item, "output_sha256", None)
         if not stored_sha or compute_sha256(target_path) != stored_sha:
-            return _conflict_item(key, label, target_path, kind, "Target was changed outside ConnLab.")
+            return _conflict_item(
+                key,
+                label,
+                target_path,
+                kind,
+                "Target was changed outside ConnLab.",
+                source_context=item_source_context,
+            )
         stored_context = getattr(output_item, "source_context_signature", None)
-        action = "skip" if stored_context == source_context else "update"
+        action = "skip" if stored_context == item_source_context else "update"
         status = "current" if action == "skip" else "ready"
         return RequiredFormPreviewItem(
             key=key,
@@ -579,6 +605,7 @@ class ProjectFolderRequiredFormsService:
             ),
             output_kind=kind,
             existing_sha256=stored_sha,
+            source_context_signature=item_source_context,
         )
 
     def _validate_context(
@@ -599,7 +626,7 @@ class ProjectFolderRequiredFormsService:
         )
         target_context_matches = (
             expected_targets == current_targets or expected_targets == all_current_targets
-            or (expected_paths_match and expected_keys.issubset(current_targets.keys()))
+            or (expected_paths_match and expected_keys.issubset(all_current_targets.keys()))
         )
         if (
             preview.official_project_folder_path != command.expected_official_project_folder_path
@@ -825,6 +852,11 @@ def _source_context_signature(
     )
 
 
+def _test_status_source_context_signature(matrix: object) -> str:
+    """Return the Matrix-only freshness identity for Test Status output."""
+    return f"test-status:matrix:{_matrix_id(matrix)}@{_matrix_revision(matrix)}|layout:v1"
+
+
 def _matrix_id(matrix: object) -> str:
     version = getattr(matrix, "version", matrix)
     return str(getattr(version, "confirmed_matrix_id"))
@@ -869,6 +901,8 @@ def _conflict_item(
     target_path: Path,
     kind: ProjectOutputKind,
     message: str = "Existing file is not a safe ConnLab-managed target.",
+    *,
+    source_context: str | None = None,
 ) -> RequiredFormPreviewItem:
     return RequiredFormPreviewItem(
         key=key,
@@ -878,6 +912,7 @@ def _conflict_item(
         action="conflict",
         message=message,
         output_kind=kind,
+        source_context_signature=source_context,
     )
 
 
