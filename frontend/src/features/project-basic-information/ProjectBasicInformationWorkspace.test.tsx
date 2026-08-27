@@ -345,6 +345,24 @@ describe("ProjectBasicInformationWorkspace", () => {
     );
   });
 
+  it("displays an application-form US completion date in the date input", async () => {
+    api.getProjectBasicInformation.mockResolvedValue(
+      response({ requested_completion_date: "6/19/2023" })
+    );
+
+    render(
+      <ProjectBasicInformationWorkspace
+        projectId="P1"
+        onBackToWorkbench={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByLabelText("Requested Completion Date")).toHaveProperty(
+      "value",
+      "2023-06-19"
+    );
+  });
+
   it("keeps Sample deposition aligned while it still mirrors the disposition", async () => {
     const user = userEvent.setup();
     api.getProjectBasicInformation.mockResolvedValue(

@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_BASIC_INFORMATION_APPLICATION_DEFAULTS",
+    "summary": "Populate Basic Information requested completion date and sample deposition defaults from the selected application form.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Fix the existing Basic Information source mapping and supported application-form date display without changing source authority or persisted user edits.",
+    "scope_paths": [
+      "backend/application/project_basic_information_source.py",
+      "tests/unit/test_project_basic_information_service.py",
+      "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.tsx",
+      "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "2168fbc260c2101a185a24bcb96677cca4119983",
+    "started_at": "2026-08-27T13:06:51.684483Z",
+    "updated_at": "2026-08-27T13:06:51.684483Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_CR_OPTIONAL_SELECTION",
     "tier": "standard",

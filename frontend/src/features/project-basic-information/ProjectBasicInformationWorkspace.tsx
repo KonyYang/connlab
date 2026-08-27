@@ -495,6 +495,13 @@ function normalizeDateInputValue(value: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
     return trimmed;
   }
+  const numericMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (numericMatch) {
+    return `${numericMatch[3]}-${numericMatch[1].padStart(2, "0")}-${numericMatch[2].padStart(
+      2,
+      "0"
+    )}`;
+  }
   const match = trimmed.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/);
   if (!match) {
     return trimmed;

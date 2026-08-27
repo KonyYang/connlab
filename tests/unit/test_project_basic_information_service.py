@@ -40,6 +40,32 @@ def test_existing_project_without_records_returns_assembled_unconfirmed_draft() 
     assert result.latest_confirmed is None
 
 
+def test_application_form_completion_date_and_disposition_are_source_suggestions() -> None:
+    forms = _ApplicationFormStore()
+    forms.forms = [
+        _form(
+            requested_completion_date="6/19/2023",
+            post_testing_disposition="Send Back to Requestor",
+        )
+    ]
+    service = ProjectBasicInformationService(
+        project_store=_ProjectStore(),
+        ltr_store=_LtrStore(),
+        application_form_store=forms,
+        sample_store=_SampleInfoStore(),
+        basic_information_store=_BasicInformationStore(),
+        clock=lambda: "2026-06-20T09:00:00+08:00",
+        id_factory=_id_factory(),
+    )
+
+    result = service.get("P1")
+
+    assert result.draft.values["requested_completion_date"] == "6/19/2023"
+    assert result.draft.values["post_testing_disposition"] == "Send Back to Requestor"
+    assert result.field_suggestions["requested_completion_date"].source == "application_form"
+    assert result.field_suggestions["post_testing_disposition"].source == "application_form"
+
+
 def test_saved_draft_values_survive_later_source_changes() -> None:
     projects = _ProjectStore()
     forms = _ApplicationFormStore()
@@ -430,6 +456,8 @@ def _form(
     *,
     project_type: str = "NPD",
     requester: str = "MP Cao",
+    requested_completion_date: str | None = None,
+    post_testing_disposition: str | None = None,
 ) -> ApplicationForm:
     return ApplicationForm(
         form_id="F1",
@@ -453,6 +481,8 @@ def _form(
         received_date="20 Jun 2026",
         estimated_completion_date="20 Jun 2026",
         sample_condition="Acceptable",
+        requested_completion_date=requested_completion_date,
+        post_testing_disposition=post_testing_disposition,
     )
 
 

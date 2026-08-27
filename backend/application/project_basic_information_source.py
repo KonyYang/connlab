@@ -120,6 +120,14 @@ class ProjectBasicInformationSourceAssembler:
                 "application_form",
                 latest_form.subcontract if latest_form else None,
             ),
+            "requested_completion_date": (
+                "application_form",
+                latest_form.requested_completion_date if latest_form else None,
+            ),
+            "post_testing_disposition": (
+                "application_form",
+                latest_form.post_testing_disposition if latest_form else None,
+            ),
             "condition_of_samples_when_received": (
                 "application_form",
                 latest_form.sample_condition if latest_form else None,
