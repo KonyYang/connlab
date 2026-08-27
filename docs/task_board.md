@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEST_RECORD_DIRECT_PUBLISH",
     "summary": "Publish the current Matrix Editor Test Record directly into an existing official project folder with authoritative headers and explicit archive, recycle-bin, or cancel conflict handling.",
@@ -38,9 +38,82 @@
     ],
     "activation_head": "a91e21a881f600eb73bb170c3768ff505c9ab9be",
     "started_at": "2026-08-27T23:05:04.742557Z",
-    "updated_at": "2026-08-27T23:05:04.742557Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-08-27T23:29:55.358321Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_TEST_RECORD_DIRECT_PUBLISH",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "validation": [
+        {
+          "status": "passed",
+          "summary": "Backend QA: 35 unit and integration tests passed."
+        },
+        {
+          "status": "passed",
+          "summary": "Frontend QA: 48 Matrix Editor Vitest tests passed."
+        },
+        {
+          "status": "passed",
+          "summary": "Frontend production TypeScript and Vite build passed."
+        },
+        {
+          "status": "passed",
+          "summary": "In-app browser smoke: Test record button visible and enabled with no console errors."
+        }
+      ],
+      "schema": "connlab.sol-task-report",
+      "summary": "Matrix Editor Test record now downloads only before an official workspace exists, otherwise publishes the current UI draft to Test results with confirmed Basic Information headers and explicit archive/recycle/cancel conflict handling.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/dependencies.py",
+        "backend/api/routes_matrix_editor_test_record_generation.py",
+        "backend/application/matrix_editor_test_record_document_generation_service.py",
+        "backend/application/matrix_editor_test_record_publication_service.py",
+        "backend/infrastructure/files/test_record_publication_gateway.py",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.testSupport.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/workbench.css",
+        "tests/integration/test_matrix_editor_test_record_generation_api.py",
+        "tests/unit/test_matrix_editor_test_record_publication_service.py"
+      ],
+      "integration": {
+        "status": "passed",
+        "summary": "Commit c509a62a integrates the complete scoped change on master."
+      },
+      "task_id": "TASK_TEST_RECORD_DIRECT_PUBLISH",
+      "version": 1,
+      "subject": "c509a62a3a819402a2beed8fd515ab24551bb413",
+      "roles": {
+        "reviewer": {
+          "status": "passed",
+          "summary": "Standards and specification review found no remaining actionable findings."
+        },
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented through red-green tests and targeted checks."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Risk-proportionate backend, frontend, build, and browser matrices passed."
+        },
+        "integrator": {
+          "status": "passed",
+          "summary": "Exact scoped diff committed cleanly at the reported subject."
+        },
+        "planner": {
+          "status": "passed",
+          "summary": "Confirmed authoritative source, target, conflict, archive, and failure semantics before implementation."
+        }
+      }
+    }
   },
   "last_closed": {
     "task_id": "REPORT-001",
