@@ -40,6 +40,12 @@ vi.mock("./FeeEvaluationStatusSummary", () => ({
   FeeEvaluationStatusSummary: () => <section>Fee summary panel</section>,
 }));
 
+vi.mock("./TestReportDraftButton", () => ({
+  TestReportDraftButton: ({ ready }: { ready: boolean }) => (
+    <button disabled={!ready} type="button">Test Report</button>
+  ),
+}));
+
 vi.mock("../../api/client", () => ({
   previewTemporaryProjectDelete: vi.fn(() => new Promise(() => {})),
   deleteTemporaryProject: vi.fn().mockResolvedValue({
@@ -414,6 +420,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       packagePreview: readyPackagePreview,
       requestMaterialPreview: collectedRequestMaterialPreview,
       folderReady: true,
+      basicInformation: confirmedBasicInformation,
     }, {}, { onOpenBasicInformation });
 
     expect(screen.getByRole("region", { name: "Test Execution Workspace" })).toBeTruthy();
@@ -423,6 +430,10 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByRole("button", { name: "Matrix Editor" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Fee Evaluation" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Basic Information" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Test Report" })).toHaveProperty(
+      "disabled",
+      false
+    );
     expect(actionBar.textContent).toMatch(
       /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Update project folder/
     );

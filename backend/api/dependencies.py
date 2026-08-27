@@ -187,6 +187,10 @@ from backend.application.test_record_template_resource import (
     TestRecordTemplateResourceStore,
     resolve_test_record_template_path,
 )
+from backend.application.test_report_draft_service import TestReportDraftService
+from backend.application.test_report_template_resource import (
+    TestReportTemplateResourceStore,
+)
 from backend.application.confirmed_matrix_authority_history_service import (
     ConfirmedMatrixAuthorityHistoryService,
 )
@@ -205,6 +209,9 @@ from backend.application.confirmed_matrix_test_status_workbook_generation_servic
     GenerateConfirmedMatrixTestStatusWorkbookCommand,
 )
 from backend.infrastructure.office.test_status_workbook_gateway import TestStatusWorkbookGateway
+from backend.infrastructure.office.test_report_document_gateway import (
+    TestReportDocumentGateway,
+)
 from backend.application.project_section2_sync_service import (
     ProjectSection2SyncService,
 )
@@ -683,6 +690,21 @@ def get_confirmed_matrix_test_record_document_generation_service(
         basic_information_reader=ProjectBasicInformationSnapshotReader(
             ProjectBasicInformationRepository(session)
         ),
+    )
+
+
+def get_test_report_draft_service(
+    session: Session = Depends(get_session),
+) -> TestReportDraftService:
+    """Build confirmed-authority E-3707_H report draft generation service."""
+    return TestReportDraftService(
+        preview_service=ConfirmedMatrixTestRecordPreviewService(
+            confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        ),
+        basic_information_reader=ProjectBasicInformationSnapshotReader(
+            ProjectBasicInformationRepository(session)
+        ),
+        writer=TestReportDocumentGateway(),
     )
 
 
@@ -1735,6 +1757,13 @@ def get_test_record_template_resource_store(
     session: Session = Depends(get_session),
 ) -> TestRecordTemplateResourceStore:
     """Build the resource store used to resolve Test Record templates."""
+    return ExternalResourceRepository(session)
+
+
+def get_test_report_template_resource_store(
+    session: Session = Depends(get_session),
+) -> TestReportTemplateResourceStore:
+    """Build the Settings resource store used to resolve E-3707_H."""
     return ExternalResourceRepository(session)
 
 

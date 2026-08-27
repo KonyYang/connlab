@@ -4583,6 +4583,15 @@ export function generateMatrixEditorTestStatusDraftDownload(
   );
 }
 
+export function generateTestReportDraftDownload(
+  projectId: string
+): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(
+    `/api/projects/${encodeURIComponent(projectId)}/test-report-draft/generate`,
+    { method: "POST" }
+  );
+}
+
 export function generateMatrixEditorLlcrCrRecordDraftDownload(
   projectId: string,
   input: MatrixEditorLlcrCrRecordDraftRequest
