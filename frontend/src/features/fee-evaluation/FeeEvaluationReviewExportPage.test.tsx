@@ -701,6 +701,16 @@ describe("FeeEvaluationReviewExportPage", () => {
   });
 
   it("normalizes pending numeric values from promoted pricing draft before confirming", async () => {
+    const pendingPayload = promotedPricingDraftPayload({
+      spend_time: "Pending",
+      unit_price: "Pending",
+      units: "Pending",
+      base_fee: "Pending",
+      discount: "Pending",
+      testing_fee: "Pending",
+      notes: "promoted numeric note",
+    });
+    let normalizedPayload: Record<string, unknown> | null = null;
     arrangeSuccessfulContext({
       pricingDraft: currentPricingDraftResponse({
         status: "current_v2",
@@ -709,18 +719,47 @@ describe("FeeEvaluationReviewExportPage", () => {
         saved_source_context_fingerprint: "context-1",
         saved_payload_fingerprint: "payload-1",
         saved_validation_token: "token-1",
-        payload: promotedPricingDraftPayload({
-          spend_time: "Pending",
-          unit_price: "Pending",
-          units: "Pending",
-          base_fee: "Pending",
-          discount: "Pending",
-          testing_fee: "Pending",
-          notes: "promoted numeric note",
-        }),
+        payload: pendingPayload,
       }),
       confirmedFee: createConfirmedFeeLatest({ status: "missing" }),
     });
+    apiMocks.getFeeEvaluationPricingDraft
+      .mockResolvedValueOnce(
+        currentPricingDraftResponse({
+          status: "current_v2",
+          saved_draft_edit_id: "fed-promoted-pending-numeric",
+          saved_generation: 1,
+          saved_source_context_fingerprint: "context-1",
+          saved_payload_fingerprint: "payload-1",
+          saved_validation_token: "token-1",
+          payload: pendingPayload,
+        })
+      )
+      .mockImplementation(async () =>
+        currentPricingDraftResponse({
+          status: "current_v2",
+          saved_draft_edit_id: "fed-promoted-pending-numeric",
+          saved_generation: 2,
+          saved_source_context_fingerprint: "context-1",
+          saved_payload_fingerprint: "payload-2",
+          saved_validation_token: "token-2",
+          payload: normalizedPayload,
+        })
+      );
+    apiMocks.saveFeeEvaluationPricingDraft.mockImplementation(
+      async (_projectId, payload) => {
+        normalizedPayload = payload;
+        return currentPricingDraftResponse({
+          status: "current_v2",
+          saved_draft_edit_id: "fed-promoted-pending-numeric",
+          saved_generation: 2,
+          saved_source_context_fingerprint: "context-1",
+          saved_payload_fingerprint: "payload-2",
+          saved_validation_token: "token-2",
+          payload,
+        });
+      }
+    );
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
     apiMocks.confirmFeeVersion.mockResolvedValue(
       createConfirmedFeeLatest({

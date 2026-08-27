@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { FeeEvaluationEditedFileExportRequest } from "../../api/client";
 import type { FeeEvaluationPreviewRow } from "./feeEvaluationPreviewModel";
-import { hydrateFeeEvaluationPricingDraft } from "./feeEvaluationPricingDraftHydration";
+import {
+  hydrateFeeEvaluationPricingDraft,
+  savedPricingDraftDerivedFeesMatch,
+} from "./feeEvaluationPricingDraftHydration";
 
 describe("feeEvaluationPricingDraftHydration", () => {
   it("keeps compatibility placeholders from replacing current automatic defaults", () => {
@@ -123,6 +126,20 @@ describe("feeEvaluationPricingDraftHydration", () => {
     expect(result.edits).toEqual({});
     expect(result.appliedRowCount).toBe(0);
     expect(result.unmatchedRowCount).toBe(1);
+  });
+
+  it("compares saved derived fees by stable identity and decimal value", () => {
+    const saved = savedPayload({ testing_fee: "10.00" });
+    const hydrated = savedPayload({ testing_fee: "10" });
+
+    expect(savedPricingDraftDerivedFeesMatch(saved, hydrated)).toBe(true);
+
+    hydrated.rows[0].testing_fee = "11";
+    expect(savedPricingDraftDerivedFeesMatch(saved, hydrated)).toBe(false);
+
+    hydrated.rows[0].testing_fee = "10.00";
+    hydrated.rows[0].confirmed_row_id = "other-row";
+    expect(savedPricingDraftDerivedFeesMatch(saved, hydrated)).toBe(false);
   });
 
   it.each(["current_v2_compatibility", "server_rebase_candidate"] as const)(

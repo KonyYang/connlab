@@ -32,6 +32,7 @@ import {
   deriveReadonlyApiErrorMessage,
 } from "../project-lifecycle/projectLifecycleReadonlyModel";
 import { FeeEvaluationPreviewTable } from "./FeeEvaluationPreviewTable";
+import { savedPricingDraftDerivedFeesMatch } from "./feeEvaluationPricingDraftHydration";
 import {
   buildFeeEvaluationCostRisk,
   buildFeeEvaluationEditedExportPayload as buildEditedExportPayload,
@@ -349,13 +350,25 @@ export function FeeEvaluationReviewExportPage({
             hydrated.costPreviewValues
           );
           const hydratedSignature = pricingDraftSignature(hydratedPayload);
+          const derivedFeesMatch = savedPricingDraftDerivedFeesMatch(
+            result.payload,
+            hydratedPayload
+          );
           baselinePricingPayloadRef.current = hydratedPayload;
-          setSavedLocalPricingSignature(hydratedSignature);
+          setSavedLocalPricingSignature(
+            currentV2 && !derivedFeesMatch ? null : hydratedSignature
+          );
           if (hydrated.unmatchedRowCount > 0) {
             setSaveState({
               kind: "stale",
               message:
                 "Saved pricing draft had rows that no longer match this Matrix. Unmatched rows were not applied.",
+            });
+          } else if (currentV2 && !derivedFeesMatch) {
+            setSaveState({
+              kind: "stale",
+              message:
+                "Saved derived fees are stale and will be normalized before updating Fee.",
             });
           } else if (currentV2) {
             setSaveState({

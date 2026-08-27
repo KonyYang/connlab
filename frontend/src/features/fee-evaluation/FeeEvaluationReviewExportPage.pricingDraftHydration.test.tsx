@@ -138,6 +138,44 @@ describe("FeeEvaluationReviewExportPage pricing-draft hydration", () => {
     await waitFor(() => expect((feeForm as HTMLButtonElement).disabled).toBe(false));
   });
 
+  it("normalizes stale derived fees in a current V2 draft before confirming", async () => {
+    const stale = pricingPayload({ testing_fee: "0" });
+    const normalized = pricingPayload({ testing_fee: "10" });
+    arrangeContext();
+    apiMocks.getFeeEvaluationPricingDraft
+      .mockResolvedValueOnce(pricingResponse("current_v2", 1, stale))
+      .mockResolvedValueOnce(pricingResponse("current_v2", 2, normalized));
+    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue(
+      pricingResponse("current_v2", 2, normalized)
+    );
+    apiMocks.confirmFeeVersion.mockResolvedValue({ status: "current" });
+
+    render(
+      <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />
+    );
+
+    await screen.findByTestId("visible-pricing-rows");
+    await waitFor(() =>
+      expect(screen.getByTestId("pricing-save-state").textContent).toBe("stale")
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
+
+    await waitFor(() =>
+      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledWith(
+        "P1",
+        expect.objectContaining({
+          expected_generation: 1,
+          expected_payload_fingerprint: "payload-1",
+          rows: [expect.objectContaining({ testing_fee: "10" })],
+        })
+      )
+    );
+    await waitFor(() =>
+      expect(apiMocks.getFeeEvaluationPricingDraft).toHaveBeenCalledTimes(2)
+    );
+    await waitFor(() => expect(apiMocks.confirmFeeVersion).toHaveBeenCalledTimes(1));
+  });
+
   it("does not seed-save a missing pricing draft during load", async () => {
     arrangeContext();
     apiMocks.getFeeEvaluationPricingDraft.mockResolvedValue(

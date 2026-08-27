@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_REBASE_DERIVED_TOTAL_RESAVE",
+    "summary": "Ensure Update Fee re-saves normalized derived fees after a Matrix rebase before confirming.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Fix current V2 pricing-draft hydration baseline tracking so server payloads with stale derived testing fees are normalized, saved, reloaded, and only then confirmed; preserve backend summary guard.",
+    "scope_paths": [
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.pricingDraftHydration.test.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "82d831103f64f0d3dc7e42819622077702637d90",
+    "started_at": "2026-08-27T23:44:27.398899Z",
+    "updated_at": "2026-08-27T23:44:27.398899Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_TEST_RECORD_DIRECT_PUBLISH",
     "tier": "high_risk",

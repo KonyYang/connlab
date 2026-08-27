@@ -75,6 +75,67 @@ export function hydrateFeeEvaluationPricingDraft(
   };
 }
 
+export function savedPricingDraftDerivedFeesMatch(
+  savedDraft: FeeEvaluationEditedFileExportRequest,
+  hydratedDraft: FeeEvaluationEditedFileExportRequest
+): boolean {
+  const hydratedRows = new Map(
+    hydratedDraft.rows.map((row) => [savedIdentity(row), row.testing_fee.trim()])
+  );
+  if (savedDraft.rows.length !== hydratedRows.size) {
+    return false;
+  }
+  for (const row of savedDraft.rows) {
+    if (
+      !derivedFeeValuesMatch(
+        row.testing_fee,
+        hydratedRows.get(savedIdentity(row))
+      )
+    ) {
+      return false;
+    }
+  }
+
+  const savedManualRows = savedDraft.manual_rows ?? [];
+  const hydratedManualRows = new Map(
+    (hydratedDraft.manual_rows ?? []).map((row) => [
+      savedManualIdentity(row),
+      row.testing_fee.trim(),
+    ])
+  );
+  return savedManualRows.every(
+    (row) =>
+      derivedFeeValuesMatch(
+        row.testing_fee,
+        hydratedManualRows.get(savedManualIdentity(row))
+      )
+  );
+}
+
+function derivedFeeValuesMatch(
+  savedValue: string,
+  hydratedValue: string | undefined
+): boolean {
+  if (hydratedValue === undefined) {
+    return false;
+  }
+  const saved = savedValue.trim();
+  const hydrated = hydratedValue.trim();
+  if (saved === hydrated) {
+    return true;
+  }
+  if (!saved || !hydrated) {
+    return false;
+  }
+  const savedNumber = Number(saved);
+  const hydratedNumber = Number(hydrated);
+  return (
+    Number.isFinite(savedNumber) &&
+    Number.isFinite(hydratedNumber) &&
+    savedNumber === hydratedNumber
+  );
+}
+
 export function formatUnitTypeForPreview(value: string): string {
   const normalized = value.trim().toLowerCase();
   if (!normalized || normalized === "pending") {
@@ -140,6 +201,17 @@ function savedIdentity(
     row.confirmed_row_id,
     row.step_token,
     row.step_index,
+  ]);
+}
+
+function savedManualIdentity(
+  row: NonNullable<FeeEvaluationEditedFileExportRequest["manual_rows"]>[number]
+): string {
+  return JSON.stringify([
+    row.row_kind,
+    row.confirmed_group_id ?? "",
+    row.group_key ?? "",
+    row.group_label ?? "",
   ]);
 }
 
