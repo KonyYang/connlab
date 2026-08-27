@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_CR_OPTIONAL_SELECTION",
     "summary": "Allow point profiles to confirm with no CR categories selected.",
@@ -28,9 +28,77 @@
     "risk_reasons": [],
     "activation_head": "f4e88cd73cbf9596ddd89b80313e93c8d0176bcf",
     "started_at": "2026-08-27T05:05:23.961008Z",
-    "updated_at": "2026-08-27T05:05:23.961008Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-08-27T05:15:51.514671Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_CR_OPTIONAL_SELECTION",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "changed_paths": [
+        "backend/application/contact_point_profile_lifecycle_service.py",
+        "frontend/src/features/contact-measurement-plan/projectPointProfileSelectors.test.ts",
+        "frontend/src/features/contact-measurement-plan/projectPointProfileSelectors.ts",
+        "frontend/src/features/contact-measurement-plan/useProjectPointProfileModel.test.tsx",
+        "frontend/src/features/contact-measurement-plan/useProjectPointProfileModel.ts",
+        "tests/unit/test_contact_point_profile_lifecycle.py"
+      ],
+      "validation": [
+        {
+          "command": "py -m pytest affected contact point profile matrix",
+          "result": "19 passed",
+          "status": "passed"
+        },
+        {
+          "command": "npm test affected contact measurement setup matrix",
+          "result": "23 passed",
+          "status": "passed"
+        },
+        {
+          "command": "npm run build",
+          "result": "TypeScript and Vite production build passed",
+          "status": "passed"
+        },
+        {
+          "command": "in-app browser zero-CR smoke",
+          "result": "three CR boxes unchecked and Confirm point profile enabled",
+          "status": "passed"
+        },
+        {
+          "command": "py_compile and git diff --check",
+          "result": "passed",
+          "status": "passed"
+        }
+      ],
+      "version": 1,
+      "task_id": "TASK_CR_OPTIONAL_SELECTION",
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Built deterministic frontend and backend red tests, removed the duplicate zero-CR blockers, and preserved all other validation."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Standards and specification review completed with no remaining findings; removed the now-unused validation parameter."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Backend, frontend, production build, browser, compile, and whitespace validation passed."
+        }
+      },
+      "subject": "16a6fedb789a6530ae17b05a748c7e1d777706d6",
+      "scope_ok": true,
+      "schema": "connlab.sol-task-report",
+      "integration": {
+        "status": "passed",
+        "summary": "Committed the exact task change on master with a clean worktree."
+      },
+      "summary": "Point profiles can now be confirmed with every CR category unchecked, representing custom CR coverage with zero selected categories and zero points per sample."
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEST_STATUS_WORKBOOK",
