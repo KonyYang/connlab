@@ -897,6 +897,40 @@
   font-weight: 700;
 }
 
+.matrix-editor-test-record-conflict-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 75;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.matrix-editor-test-record-conflict-panel {
+  width: min(560px, calc(100vw - 48px));
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+  box-shadow: 0 24px 60px rgba(23, 32, 51, 0.2);
+}
+
+.matrix-editor-test-record-conflict-panel h3,
+.matrix-editor-test-record-conflict-panel p {
+  margin: 0;
+}
+
+.matrix-editor-test-record-conflict-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .matrix-editor-test-days-row td {
   background: #f8fbff;
   color: #2e4565;

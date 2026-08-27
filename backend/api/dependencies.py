@@ -201,6 +201,9 @@ from backend.application.confirmed_matrix_test_record_document_generation_servic
 from backend.application.matrix_editor_test_record_document_generation_service import (
     MatrixEditorTestRecordDocumentGenerationService,
 )
+from backend.application.matrix_editor_test_record_publication_service import (
+    MatrixEditorTestRecordPublicationService,
+)
 from backend.application.matrix_editor_test_status_workbook_generation_service import (
     MatrixEditorTestStatusWorkbookGenerationService,
 )
@@ -314,6 +317,9 @@ from backend.infrastructure.files.local_folder_open_gateway import (
 )
 from backend.infrastructure.files.project_folder_required_forms_gateway import (
     ProjectFolderRequiredFormsFileGateway,
+)
+from backend.infrastructure.files.test_record_publication_gateway import (
+    TestRecordPublicationGateway,
 )
 from backend.infrastructure.files.application_form_reusable_artifact_store import (
     FileReusableApplicationFormArtifactStore,
@@ -719,6 +725,31 @@ def get_matrix_editor_test_record_document_generation_service(
         intake_case_store=IntakeCaseRepository(session),
         intake_draft_store=IntakeDraftRepository(session),
         application_form_store=ApplicationFormRepository(session),
+        basic_information_reader=ProjectBasicInformationSnapshotReader(
+            ProjectBasicInformationRepository(session)
+        ),
+    )
+
+
+def get_matrix_editor_test_record_publication_service(
+    session: Session = Depends(get_session),
+) -> MatrixEditorTestRecordPublicationService:
+    """Build direct publication for a current-state Matrix Test Record."""
+    return MatrixEditorTestRecordPublicationService(
+        workspace_store=ProjectOfficialWorkspaceRepository(session),
+        basic_information_reader=ProjectBasicInformationSnapshotReader(
+            ProjectBasicInformationRepository(session)
+        ),
+        document_generation_service=(
+            get_matrix_editor_test_record_document_generation_service(session)
+        ),
+        file_gateway=TestRecordPublicationGateway(),
+        output_service=ProjectOutputRecordService(
+            project_store=ProjectRepository(session),
+            draft_store=ProjectTestPlanDraftRepository(session),
+            output_store=ProjectOutputRecordRepository(session),
+        ),
+        lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
     )
 
 

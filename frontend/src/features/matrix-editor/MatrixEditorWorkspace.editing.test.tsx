@@ -112,6 +112,81 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     expect(screen.getByText("Downloaded unconfirmed Test Record preview.")).toBeTruthy();
   });
 
+  it("saves Test Record directly to Test results when the official folder exists", async () => {
+    apiMocks.previewMatrixEditorTestRecordPublication.mockResolvedValueOnce({
+      project_id: "P1",
+      mode: "official",
+      status: "ready",
+      target_path: "D:/Projects/DL-001/Test results/DL-001 Test Record.docx",
+      existing_file: false,
+      existing_modified_at: null,
+      blockers: [],
+      preview_token: "official-ready-token",
+    });
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Test record" }));
+
+    await waitFor(() =>
+      expect(apiMocks.publishMatrixEditorTestRecord).toHaveBeenCalledWith(
+        "P1",
+        expect.objectContaining({
+          source: "matrix_editor_current_ui_state",
+          preview_token: "official-ready-token",
+          conflict_action: "none",
+        })
+      )
+    );
+    expect(apiMocks.generateMatrixEditorTestRecordDraftDownload).not.toHaveBeenCalled();
+    expect(screen.getByText("Saved DL-001 Test Record.docx to Test results.")).toBeTruthy();
+  });
+
+  it("asks how to handle an existing Test Record and archives it only after choice", async () => {
+    apiMocks.previewMatrixEditorTestRecordPublication.mockResolvedValueOnce({
+      project_id: "P1",
+      mode: "official",
+      status: "conflict",
+      target_path: "D:/Projects/DL-001/Test results/DL-001 Test Record.docx",
+      existing_file: true,
+      existing_modified_at: "2026-08-28T12:00:00+08:00",
+      blockers: [],
+      preview_token: "official-conflict-token",
+    });
+    apiMocks.publishMatrixEditorTestRecord.mockResolvedValueOnce({
+      project_id: "P1",
+      target_path: "D:/Projects/DL-001/Test results/DL-001 Test Record.docx",
+      archive_path: "D:/Projects/DL-001/History/Test Record/DL-001 Test Record_20260828-120000.docx",
+      file_name: "DL-001 Test Record.docx",
+    });
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Test record" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Replace existing Test Record?",
+    });
+    expect(within(dialog).getByRole("button", { name: "Archive old file" })).toBeTruthy();
+    expect(
+      within(dialog).getByRole("button", { name: "Move old file to Recycle Bin" })
+    ).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Archive old file" }));
+
+    await waitFor(() =>
+      expect(apiMocks.publishMatrixEditorTestRecord).toHaveBeenCalledWith(
+        "P1",
+        expect.objectContaining({
+          preview_token: "official-conflict-token",
+          conflict_action: "archive",
+        })
+      )
+    );
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(
+      screen.getByText("Saved DL-001 Test Record.docx; archived the previous file in History.")
+    ).toBeTruthy();
+  });
+
   it("downloads a Test Status workbook from current unsaved Matrix Editor state", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
     await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));

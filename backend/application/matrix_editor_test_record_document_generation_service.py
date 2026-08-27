@@ -25,6 +25,13 @@ from backend.application.confirmed_matrix_test_record_preview_service import (
     ConfirmedMatrixTestRecordPreviewStep,
     _apply_llcr_step_requirement_mapping,
 )
+from backend.application.project_basic_information_output import (
+    ConfirmedBasicInformationReader,
+    ConfirmedBasicInformationSnapshot,
+)
+from backend.application.project_basic_information_output_identity import (
+    test_record_header_identity,
+)
 from backend.domain.enums import LtrStatus
 from backend.modules.test_plan.matrix_step_sequence_validation import parse_step_tokens
 
@@ -68,6 +75,8 @@ class GenerateMatrixEditorTestRecordDocumentCommand:
     template_path: Path
     groups: tuple[MatrixEditorTestRecordGroupInput, ...]
     rows: tuple[MatrixEditorTestRecordRowInput, ...]
+    require_confirmed_header: bool = False
+    output_file_name: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +86,8 @@ class MatrixEditorTestRecordDocumentGenerationResult:
     project_id: str
     output_path: Path
     file_name: str
+    confirmed_basic_information_version: int | None = None
+    confirmed_basic_information_source_signature_hash: str | None = None
 
 
 class MatrixEditorTestRecordDocumentGenerationService:
@@ -91,6 +102,7 @@ class MatrixEditorTestRecordDocumentGenerationService:
         intake_case_store: IntakeCaseLookup | None = None,
         intake_draft_store: IntakeDraftLookup | None = None,
         application_form_store: ApplicationFormLookup | None = None,
+        basic_information_reader: ConfirmedBasicInformationReader | None = None,
     ) -> None:
         self._project_store = project_store
         self._writer = writer
@@ -98,6 +110,7 @@ class MatrixEditorTestRecordDocumentGenerationService:
         self._intake_cases = intake_case_store
         self._intake_drafts = intake_draft_store
         self._forms = application_form_store
+        self._basic_information = basic_information_reader
 
     def generate(
         self, command: GenerateMatrixEditorTestRecordDocumentCommand
@@ -126,11 +139,19 @@ class MatrixEditorTestRecordDocumentGenerationService:
                 "Project not found."
             )
         project_no = str(getattr(project, "project_no", "") or "")
+        basic_information = self._confirmed_basic_information(
+            command.project_id,
+            required=command.require_confirmed_header,
+        )
         header_metadata = self._resolve_header_metadata(
             project_id=command.project_id,
             project=project,
+            basic_information=basic_information,
+            require_confirmed_header=command.require_confirmed_header,
         )
-        file_name = _preview_output_file_name(command.project_id, project_no)
+        file_name = command.output_file_name or _preview_output_file_name(
+            command.project_id, project_no
+        )
         output_path = output_dir / file_name
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -152,11 +173,41 @@ class MatrixEditorTestRecordDocumentGenerationService:
             project_id=command.project_id,
             output_path=written,
             file_name=file_name,
+            confirmed_basic_information_version=(
+                basic_information.version if basic_information is not None else None
+            ),
+            confirmed_basic_information_source_signature_hash=(
+                basic_information.source_signature_hash
+                if basic_information is not None
+                else None
+            ),
         )
 
     def _resolve_header_metadata(
-        self, *, project_id: str, project: object
+        self,
+        *,
+        project_id: str,
+        project: object,
+        basic_information: ConfirmedBasicInformationSnapshot | None = None,
+        require_confirmed_header: bool = False,
     ) -> TestRecordHeaderMetadata:
+        confirmed_identity = None
+        if basic_information is not None:
+            confirmed_identity = test_record_header_identity(basic_information)
+            if (
+                require_confirmed_header
+                and not confirmed_identity.lab_test_request_number.strip()
+            ):
+                raise MatrixEditorTestRecordDocumentGenerationError(
+                    "Confirm Basic Information before generating Test Record: DL/LTR Number is missing."
+                )
+            if (
+                require_confirmed_header
+                and not confirmed_identity.product_description.strip()
+            ):
+                raise MatrixEditorTestRecordDocumentGenerationError(
+                    "Confirm Basic Information before generating Test Record: Product Description is missing."
+                )
         registered_ltr = self._latest_registered_ltr(project_id)
         lab_test_request_number = ""
         product_description = str(getattr(project, "product_name", "") or "")
@@ -166,11 +217,39 @@ class MatrixEditorTestRecordDocumentGenerationService:
             sample_description = str(notes.get("sample_description", "") or "").strip()
             if sample_description:
                 product_description = sample_description
+        applicable_specification = self._resolve_applicable_specification(project_id)
+        if confirmed_identity is not None:
+            lab_test_request_number = (
+                confirmed_identity.lab_test_request_number or lab_test_request_number
+            )
+            product_description = (
+                confirmed_identity.product_description or product_description
+            )
+            applicable_specification = (
+                confirmed_identity.applicable_specification
+                or applicable_specification
+            )
         return TestRecordHeaderMetadata(
             lab_test_request_number=lab_test_request_number,
             product_description=product_description,
-            applicable_specification=self._resolve_applicable_specification(project_id),
+            applicable_specification=applicable_specification,
         )
+
+    def _confirmed_basic_information(
+        self, project_id: str, *, required: bool
+    ) -> ConfirmedBasicInformationSnapshot | None:
+        if self._basic_information is None:
+            if required:
+                raise MatrixEditorTestRecordDocumentGenerationError(
+                    "Confirm Basic Information before saving Test Record to the project folder."
+                )
+            return None
+        snapshot = self._basic_information.get_latest_confirmed(project_id)
+        if snapshot is None and required:
+            raise MatrixEditorTestRecordDocumentGenerationError(
+                "Confirm Basic Information before saving Test Record to the project folder."
+            )
+        return snapshot
 
     def _latest_registered_ltr(self, project_id: str):
         if self._ltrs is None:

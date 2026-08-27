@@ -1950,6 +1950,24 @@ export type MatrixSourceCandidate = {
   stored_file_available: boolean;
 };
 
+export type MatrixEditorTestRecordPublicationPreview = {
+  project_id: string;
+  mode: "download" | "official";
+  status: "ready" | "conflict" | "blocked";
+  target_path: string | null;
+  existing_file: boolean;
+  existing_modified_at: string | null;
+  blockers: string[];
+  preview_token: string;
+};
+
+export type MatrixEditorTestRecordPublicationResult = {
+  project_id: string;
+  target_path: string;
+  archive_path: string | null;
+  file_name: string;
+};
+
 export type MatrixEditorTestStatusDraftRequest = MatrixEditorTestRecordDraftRequest & {
   project_reference?: string | null;
 };
@@ -4564,6 +4582,35 @@ export function generateMatrixEditorTestRecordDraftDownload(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
+  );
+}
+
+export function previewMatrixEditorTestRecordPublication(
+  projectId: string,
+  input: MatrixEditorTestRecordDraftRequest
+): Promise<MatrixEditorTestRecordPublicationPreview> {
+  return requestJson<MatrixEditorTestRecordPublicationPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/test-record-publication/preview`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
+  );
+}
+
+export function publishMatrixEditorTestRecord(
+  projectId: string,
+  input: MatrixEditorTestRecordDraftRequest & {
+    preview_token: string;
+    conflict_action: "none" | "archive" | "recycle";
+  }
+): Promise<MatrixEditorTestRecordPublicationResult> {
+  return requestJson<MatrixEditorTestRecordPublicationResult>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/test-record-publication/publish`,
+    {
+      method: "POST",
       body: JSON.stringify(input),
     }
   );

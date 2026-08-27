@@ -12,6 +12,8 @@ const apiMocks = vi.hoisted(() => ({
   discardMatrixEditorSessionDraft: vi.fn(),
   confirmMatrixEditorSession: vi.fn(),
   generateMatrixEditorTestRecordDraftDownload: vi.fn(),
+  previewMatrixEditorTestRecordPublication: vi.fn(),
+  publishMatrixEditorTestRecord: vi.fn(),
   generateMatrixEditorTestStatusDraftDownload: vi.fn(),
   generateMatrixEditorLlcrCrRecordDraftDownload: vi.fn(),
   previewProjectTestPlanMatrixFromUpload: vi.fn(),
@@ -84,6 +86,8 @@ vi.mock("../../api/client", () => {
     discardMatrixEditorSessionDraft: apiMocks.discardMatrixEditorSessionDraft,
     confirmMatrixEditorSession: apiMocks.confirmMatrixEditorSession,
     generateMatrixEditorTestRecordDraftDownload: apiMocks.generateMatrixEditorTestRecordDraftDownload,
+    previewMatrixEditorTestRecordPublication: apiMocks.previewMatrixEditorTestRecordPublication,
+    publishMatrixEditorTestRecord: apiMocks.publishMatrixEditorTestRecord,
     generateMatrixEditorTestStatusDraftDownload: apiMocks.generateMatrixEditorTestStatusDraftDownload,
     generateMatrixEditorLlcrCrRecordDraftDownload: apiMocks.generateMatrixEditorLlcrCrRecordDraftDownload,
     previewProjectTestPlanMatrixFromUpload: apiMocks.previewProjectTestPlanMatrixFromUpload,
@@ -392,6 +396,22 @@ export function installMatrixEditorWorkspaceTestLifecycle(): void {
         type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       }),
       fileName: "DL-2026 Test Record Preview - Unconfirmed Matrix draft.docx",
+    });
+    apiMocks.previewMatrixEditorTestRecordPublication.mockResolvedValue({
+      project_id: "P1",
+      mode: "download",
+      status: "ready",
+      target_path: null,
+      existing_file: false,
+      existing_modified_at: null,
+      blockers: [],
+      preview_token: "download-preview-token",
+    });
+    apiMocks.publishMatrixEditorTestRecord.mockResolvedValue({
+      project_id: "P1",
+      target_path: "D:/Projects/DL-001/Test results/DL-001 Test Record.docx",
+      archive_path: null,
+      file_name: "DL-001 Test Record.docx",
     });
     apiMocks.generateMatrixEditorTestStatusDraftDownload.mockResolvedValue({
       blob: new Blob(["test-status"]),

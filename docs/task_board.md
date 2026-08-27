@@ -11,8 +11,37 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_TEST_RECORD_DIRECT_PUBLISH",
+    "summary": "Publish the current Matrix Editor Test Record directly into an existing official project folder with authoritative headers and explicit archive, recycle-bin, or cancel conflict handling.",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Test Record generation and publication only: preserve download behavior without an official workspace, publish to Test results when one exists, source headers from confirmed Basic Information, and safely resolve same-name files.",
+    "scope_paths": [
+      "backend/application/matrix_editor_test_record_document_generation_service.py",
+      "backend/application/matrix_editor_test_record_publication_service.py",
+      "backend/api/routes_matrix_editor_test_record_generation.py",
+      "backend/api/dependencies.py",
+      "backend/infrastructure/files/test_record_publication_gateway.py",
+      "frontend/src/api/client.ts",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.testSupport.tsx",
+      "frontend/src/workbench.css",
+      "tests/unit/test_matrix_editor_test_record_publication_service.py",
+      "tests/integration/test_matrix_editor_test_record_generation_api.py"
+    ],
+    "risk_reasons": [
+      "Writes a generated Word document into the authoritative official project folder.",
+      "May archive or move an existing user document to the Windows recycle bin after explicit confirmation."
+    ],
+    "activation_head": "a91e21a881f600eb73bb170c3768ff505c9ab9be",
+    "started_at": "2026-08-27T23:05:04.742557Z",
+    "updated_at": "2026-08-27T23:05:04.742557Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "REPORT-001",
     "tier": "standard",
