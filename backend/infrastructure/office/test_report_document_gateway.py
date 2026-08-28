@@ -146,9 +146,9 @@ class _TemplateAnchors:
 
 
 def _validate_template_contract(document, *, populated: bool = False) -> _TemplateAnchors:
-    paragraphs = {_normalized(paragraph.text): paragraph for paragraph in document.paragraphs}
+    paragraphs = {_heading_key(paragraph.text): paragraph for paragraph in document.paragraphs}
     for heading in _REQUIRED_HEADINGS:
-        if _normalized(heading) not in paragraphs:
+        if _heading_key(heading) not in paragraphs:
             raise ValueError(f"E-3707_H template heading is missing: {heading}")
 
     sample = _find_table(document, _SAMPLE_HEADERS, "Sample Description table")
@@ -157,7 +157,7 @@ def _validate_template_contract(document, *, populated: bool = False) -> _Templa
     results = _find_table(document, _RESULT_HEADERS, "Test Results table")
     _find_table(document, _EQUIPMENT_HEADERS, "Equipment table")
     revision = _find_table(document, _REVISION_HEADERS, "Revision Record table")
-    result_heading = paragraphs.get(_normalized("Group # Test Results"))
+    result_heading = paragraphs.get(_heading_key("Group # Test Results"))
     if result_heading is None and populated:
         result_heading = next(
             (
@@ -174,8 +174,8 @@ def _validate_template_contract(document, *, populated: bool = False) -> _Templa
     ):
         raise ValueError("E-3707_H template report header is missing.")
     if not populated:
-        first_page_text = _header_text_nodes(
-            document.sections[0].first_page_header
+        first_page_text = "".join(
+            _header_text_nodes(document.sections[0].first_page_header)
         )
         for placeholder in _REQUIRED_FIRST_PAGE_HEADER_PLACEHOLDERS:
             if placeholder not in first_page_text:
@@ -225,33 +225,65 @@ def _fill_headers(document, report: TestReportDraftData) -> None:
             section.header,
             section.first_page_header,
         ):
+            seen_cells: set[object] = set()
+            for table in header.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        cell_identity = cell._tc
+                        if cell_identity in seen_cells:
+                            continue
+                        seen_cells.add(cell_identity)
+                        updated = _replace_header_text(cell.text, replacements)
+                        if updated != cell.text:
+                            _set_cell_text(cell, updated)
             for text_node in header._element.xpath(".//w:t"):
                 value = text_node.text or ""
-                if value in replacements:
-                    value = replacements[value]
-                else:
-                    for placeholder in (
-                        "DDMMMYYYY-DDMMMYYYY",
-                        "WW-XXXX-YY-ZZZ",
-                        "XX-YY-ZZZ",
-                        "DDMMMYYYY",
-                    ):
-                        value = value.replace(placeholder, replacements[placeholder])
-                text_node.text = value
+                text_node.text = _replace_header_text(value, replacements)
+
+
+def _replace_header_text(value: str, replacements: dict[str, str]) -> str:
+    if value in replacements:
+        return replacements[value]
+    updated = value
+    for placeholder in (
+        "DDMMMYYYY-DDMMMYYYY",
+        "WW-XXXX-YY-ZZZ",
+        "XX-YY-ZZZ",
+        "DDMMMYYYY",
+    ):
+        updated = updated.replace(placeholder, replacements[placeholder])
+    return updated
 
 
 def _fill_narrative(document, report: TestReportDraftData) -> None:
+    received_date = _display_date(report.received_samples_date)
     replacements = {
         "[TEST DESCRIPTION]": report.test_description,
         "[PRODUCT NAME]": report.product_name,
         "[GS-XX-XXXX (Rev.X, DATE)]": report.applicable_specification,
-        "[RECEIVED SAMPLES DATE]": _display_date(report.received_samples_date),
+        "[RECEIVED SAMPLES DATE]": received_date,
+        "DDMMMYYYY": received_date,
     }
+    purpose_heading_seen = False
     conclusion_heading_seen = False
     for paragraph in document.paragraphs:
-        normalized = _normalized(paragraph.text)
-        if normalized == _normalized("2. CONCLUSIONS"):
+        normalized = _heading_key(paragraph.text)
+        if normalized == _heading_key("1. PURPOSE"):
+            purpose_heading_seen = True
+            continue
+        if normalized == _heading_key("2. CONCLUSIONS"):
             conclusion_heading_seen = True
+            continue
+        if purpose_heading_seen and normalized:
+            _set_paragraph_text(
+                paragraph,
+                (
+                    f"This report summarizes the {report.test_description} conducted on "
+                    f"{report.product_name} to assess the conformance to AFCI product "
+                    f"specification {report.applicable_specification}."
+                ),
+            )
+            purpose_heading_seen = False
             continue
         if conclusion_heading_seen and normalized:
             _set_paragraph_text(
@@ -382,7 +414,8 @@ def _fill_result_blocks(
 
 
 def _fill_result_block(heading: Paragraph, table: Table, group) -> None:
-    _set_paragraph_text(heading, f"{group.group_label} Test Results")
+    group_label = _test_sequence_group_label(group.group_label)
+    _set_paragraph_text(heading, f"Group {group_label} Test Results")
     _resize_rows(table, 1 + len(group.steps))
     llcr_indexes = tuple(
         index
@@ -471,7 +504,7 @@ def _insert_page_break_before_heading(document, heading: str) -> None:
         (
             item
             for item in document.paragraphs
-            if _normalized(item.text) == _normalized(heading)
+            if _heading_key(item.text) == _heading_key(heading)
         ),
         None,
     )
@@ -491,7 +524,7 @@ def _keep_heading_with_following_content(document, heading: str) -> None:
         (
             item
             for item in document.paragraphs
-            if _normalized(item.text) == _normalized(heading)
+            if _heading_key(item.text) == _heading_key(heading)
         ),
         None,
     )
@@ -647,7 +680,7 @@ def _audit_generated_document(path: Path, report: TestReportDraftData) -> None:
     body_text = "\n".join(paragraph.text for paragraph in document.paragraphs)
     if "[PRODUCT NAME]" in body_text or "[TEST DESCRIPTION]" in body_text:
         raise ValueError("Generated report still contains required identity placeholders.")
-    header_text = "\n".join(
+    header_text = "".join(
         text
         for section in document.sections
         for header in (section.header, section.first_page_header)
@@ -675,3 +708,7 @@ def _header_text_nodes(header) -> tuple[str, ...]:
 
 def _normalized(value: str) -> str:
     return re.sub(r"\s+", " ", value or "").strip()
+
+
+def _heading_key(value: str) -> str:
+    return re.sub(r"^(\d+)\.\s*", r"\1. ", _normalized(value))

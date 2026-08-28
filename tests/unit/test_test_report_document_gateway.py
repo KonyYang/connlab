@@ -154,6 +154,109 @@ def test_generates_e3707_draft_without_mutating_approved_template(tmp_path: Path
     assert equipment_heading._p.getprevious().xpath('.//w:br[@w:type="page"]')
 
 
+def test_generates_from_approved_numbered_heading_without_separator_space(
+    tmp_path: Path,
+) -> None:
+    template = _build_template(
+        tmp_path / "E-3707_H.docx",
+        compact_numbered_headings=True,
+    )
+    output = tmp_path / "draft.docx"
+
+    TestReportDocumentGateway().generate(
+        template_path=template,
+        output_path=output,
+        report=_report(),
+    )
+
+    document = Document(output)
+    assert "1.PURPOSE" in [paragraph.text for paragraph in document.paragraphs]
+    test_description_heading = next(
+        paragraph
+        for paragraph in document.paragraphs
+        if paragraph.text == "4.TEST DESCRIPTION"
+    )
+    assert test_description_heading.paragraph_format.keep_with_next is True
+
+
+def test_generates_when_first_page_header_placeholders_are_split_across_runs(
+    tmp_path: Path,
+) -> None:
+    template = _build_template(
+        tmp_path / "E-3707_H.docx",
+        split_first_page_header_placeholders=True,
+    )
+    output = tmp_path / "draft.docx"
+
+    TestReportDocumentGateway().generate(
+        template_path=template,
+        output_path=output,
+        report=_report(),
+    )
+
+    document = Document(output)
+    first_page_text = "".join(
+        text_node.text or ""
+        for text_node in document.sections[0].first_page_header._element.xpath(
+            ".//w:t"
+        )
+    )
+    assert "DL-2026-05-011" in first_page_text
+    assert "WW-XXXX-YY-ZZZ" not in first_page_text
+    assert "28/Aug/2026" in first_page_text
+
+
+def test_populates_legacy_purpose_and_received_date_placeholders(
+    tmp_path: Path,
+) -> None:
+    template = _build_template(
+        tmp_path / "E-3707_H.docx",
+        legacy_body_placeholders=True,
+    )
+    output = tmp_path / "draft.docx"
+
+    TestReportDocumentGateway().generate(
+        template_path=template,
+        output_path=output,
+        report=_report(),
+    )
+
+    paragraphs = [paragraph.text for paragraph in Document(output).paragraphs]
+    assert any(
+        text
+        == (
+            "This report summarizes the qualification testing conducted on Coolpower HDF "
+            "to assess the conformance to AFCI product specification GS-12-2113 Rev.7."
+        )
+        for text in paragraphs
+    )
+    assert any("May 20, 2026" in text for text in paragraphs)
+    assert all("XXXXXXXXXXXXXXXX" not in text for text in paragraphs)
+    assert all("DDMMMYYYY" not in text for text in paragraphs)
+
+
+def test_generates_result_headings_from_numeric_confirmed_group_labels(
+    tmp_path: Path,
+) -> None:
+    template = _build_template(tmp_path / "E-3707_H.docx")
+    output = tmp_path / "draft.docx"
+    report = _report()
+    numeric_groups = tuple(
+        replace(group, group_label=str(index))
+        for index, group in enumerate(report.groups, start=1)
+    )
+
+    TestReportDocumentGateway().generate(
+        template_path=template,
+        output_path=output,
+        report=replace(report, groups=numeric_groups),
+    )
+
+    paragraphs = [paragraph.text for paragraph in Document(output).paragraphs]
+    assert "Group 1 Test Results" in paragraphs
+    assert "Group 2 Test Results" in paragraphs
+
+
 def test_rejects_template_contract_drift_without_replacing_reserved_output(
     tmp_path: Path,
 ) -> None:
@@ -258,7 +361,13 @@ def test_refuses_to_replace_nonempty_output(tmp_path: Path) -> None:
     assert output.read_bytes() == b"manual"
 
 
-def _build_template(path: Path) -> Path:
+def _build_template(
+    path: Path,
+    *,
+    compact_numbered_headings: bool = False,
+    split_first_page_header_placeholders: bool = False,
+    legacy_body_placeholders: bool = False,
+) -> Path:
     document = Document()
     header = document.sections[0].header
     header.add_table(rows=1, cols=2, width=7 * 914400).cell(0, 0).text = "XX-YY-ZZZ"
@@ -280,22 +389,49 @@ def _build_template(path: Path) -> Path:
         strict=True,
     ):
         cell.text = value
+    if split_first_page_header_placeholders:
+        _set_cell_runs(first_page.rows[0].cells[0], "WW-XX", "XX-YY-ZZZ")
+        _set_cell_runs(first_page.rows[0].cells[1], "DD", "MMM", "YYYY")
+        _set_cell_runs(
+            first_page.rows[0].cells[2],
+            "DD",
+            "MMM",
+            "YYYY-DD",
+            "MMM",
+            "YYYY",
+        )
 
-    document.add_paragraph("1. PURPOSE")
-    document.add_paragraph(
-        "This report summarizes the [TEST DESCRIPTION] conducted on [PRODUCT NAME] "
-        "to assess the conformance to AFCI product specification "
-        "[GS-XX-XXXX (Rev.X, DATE)]."
+    heading = (
+        (lambda value: value.replace(". ", "."))
+        if compact_numbered_headings
+        else (lambda value: value)
     )
-    document.add_paragraph("2. CONCLUSIONS")
+
+    document.add_paragraph(heading("1. PURPOSE"))
+    if legacy_body_placeholders:
+        document.add_paragraph(
+            "This report summarizes theXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX assess "
+            "the conformance to product specification GS-XX-XXXX(Rev.)"
+        )
+    else:
+        document.add_paragraph(
+            "This report summarizes the [TEST DESCRIPTION] conducted on [PRODUCT NAME] "
+            "to assess the conformance to AFCI product specification "
+            "[GS-XX-XXXX (Rev.X, DATE)]."
+        )
+    document.add_paragraph(heading("2. CONCLUSIONS"))
     document.add_paragraph(
         "The [PRODUCT NAME] successfully completed the tested items and met the specified "
         "requirements of AFCI product specification [GS-XX-XXXX (Rev.X, DATE)]."
     )
-    document.add_paragraph("3. SAMPLE DESCRIPTION")
+    document.add_paragraph(heading("3. SAMPLE DESCRIPTION"))
+    received_date_placeholder = (
+        "DDMMMYYYY" if legacy_body_placeholders else "[RECEIVED SAMPLES DATE]"
+    )
     document.add_paragraph(
-        "Samples were received at the laboratory on [RECEIVED SAMPLES DATE]. Prior to testing, "
-        "the samples were examined at low magnification and judged to be acceptable for testing."
+        f"Samples were received at the laboratory on {received_date_placeholder}. Prior to "
+        "testing, the samples were examined at low magnification and judged to be acceptable "
+        "for testing."
     )
     sample = document.add_table(rows=2, cols=7)
     for cell, value in zip(
@@ -313,13 +449,13 @@ def _build_template(path: Path) -> Path:
     ):
         cell.text = value
     document.add_paragraph("Figure 1:")
-    document.add_paragraph("4. TEST DESCRIPTION")
+    document.add_paragraph(heading("4. TEST DESCRIPTION"))
     description = document.add_table(rows=3, cols=2)
     description.cell(0, 0).text = "Test Items"
     description.cell(0, 1).text = "Test Sequence"
     for row in description.rows:
         _add_direct_cell_borders(row.cells[1])
-    document.add_paragraph("5. TEST METHODS/REQUIREMENTS")
+    document.add_paragraph(heading("5. TEST METHODS/REQUIREMENTS"))
     methods = document.add_table(rows=2, cols=4)
     for cell, value in zip(
         methods.rows[0].cells,
@@ -327,7 +463,7 @@ def _build_template(path: Path) -> Path:
         strict=True,
     ):
         cell.text = value
-    document.add_paragraph("6. TEST RESULTS")
+    document.add_paragraph(heading("6. TEST RESULTS"))
     document.add_paragraph(
         "Unless otherwise specified, assessment of conformity to requirements is based on "
         "simple acceptance."
@@ -340,7 +476,7 @@ def _build_template(path: Path) -> Path:
         strict=True,
     ):
         cell.text = value
-    document.add_paragraph("7. EQUIPMENTS")
+    document.add_paragraph(heading("7. EQUIPMENTS"))
     equipment = document.add_table(rows=2, cols=5)
     for cell, value in zip(
         equipment.rows[0].cells,
@@ -348,7 +484,7 @@ def _build_template(path: Path) -> Path:
         strict=True,
     ):
         cell.text = value
-    document.add_paragraph("8. REVISION RECORD")
+    document.add_paragraph(heading("8. REVISION RECORD"))
     revision = document.add_table(rows=4, cols=4)
     for cell, value in zip(
         revision.rows[0].cells,
@@ -468,3 +604,11 @@ def _add_direct_cell_borders(cell) -> None:
 def _cell_fill(cell) -> str | None:
     shading = cell._tc.get_or_add_tcPr().find(qn("w:shd"))
     return shading.get(qn("w:fill")) if shading is not None else None
+
+
+def _set_cell_runs(cell, *values: str) -> None:
+    paragraph = cell.paragraphs[0]
+    for run in list(paragraph.runs):
+        paragraph._p.remove(run._r)
+    for value in values:
+        paragraph.add_run(value)
