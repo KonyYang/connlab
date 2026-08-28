@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
 from backend.api.dependencies import (
     get_confirmed_matrix_fee_evaluation_export_service,
     get_fee_evaluation_template_resource_store,
+    get_fee_form_publication_service,
     get_settings,
 )
 from backend.api.main import app
@@ -22,6 +24,10 @@ from backend.application.confirmed_matrix_fee_evaluation_export_service import (
 )
 from backend.application.fee_evaluation_export_lineage import (
     FeeEvaluationExportLineTrace,
+)
+from backend.application.fee_form_publication_service import (
+    ExecuteFeeFormPublicationCommand,
+    PreviewFeeFormPublicationCommand,
 )
 from backend.domain import (
     ExternalResource,
@@ -120,6 +126,65 @@ def test_fee_file_download_route_accepts_edited_payload(
     assert command.edited_values.rows[0].notes == "operator note"
     assert command.edited_values.manual_rows[0].row_kind == "report_preparation"
     assert command.edited_values.summary.external_cost_note == "tooling"
+
+
+def test_fee_form_publication_routes_preserve_preview_and_conflict_contract(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    service = _FakeFeeFormPublicationService()
+    app.dependency_overrides[get_fee_form_publication_service] = lambda: service
+    app.dependency_overrides[get_settings] = lambda: settings
+    payload = {
+        "rows": [],
+        "manual_rows": [],
+        "summary": {
+            "condition_confirmation_spend_time": "0",
+            "external_cost": "0",
+            "external_cost_note": "",
+            "lab_manpower_hourly_rate": "200",
+        },
+    }
+    try:
+        preview_response = TestClient(app).post(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/fee-form-publication/preview",
+            json=payload,
+        )
+        publish_response = TestClient(app).post(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/fee-form-publication/publish",
+            json={
+                **payload,
+                "preview_token": "preview-token",
+                "conflict_action": "archive",
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert preview_response.status_code == 200
+    assert preview_response.json() == {
+        "mode": "official",
+        "status": "conflict",
+        "existing_file": True,
+        "existing_modified_at": "2026-08-28T10:30:00+08:00",
+        "blockers": [],
+        "preview_token": "preview-token",
+    }
+    assert isinstance(service.preview_commands[0], PreviewFeeFormPublicationCommand)
+    assert service.preview_commands[0].project_id == "P1"
+    assert publish_response.status_code == 200
+    assert publish_response.json() == {
+        "file_name": "DL-2026-001 Fee Form.xls",
+        "archive_path": str(
+            Path("D:/Projects/DL-2026-001/History/Fee Form/old.xls")
+        ),
+    }
+    assert isinstance(service.execute_commands[0], ExecuteFeeFormPublicationCommand)
+    assert service.execute_commands[0].preview_token == "preview-token"
+    assert service.execute_commands[0].conflict_action == "archive"
+    assert service.execute_commands[0].staging_dir == (
+        settings.data_dir / "generated_fee_form_publications"
+    )
 
 
 def test_fee_file_download_route_rejects_incomplete_sample_preparation_identity(
@@ -375,6 +440,32 @@ class _FakeDownloadExportService:
         output_path = command.output_dir / f"fee-{command.project_id}.xls"
         output_path.write_bytes(b"fee workbook")
         return _result(command.project_id, output_path)
+
+
+class _FakeFeeFormPublicationService:
+    def __init__(self) -> None:
+        self.preview_commands: list[PreviewFeeFormPublicationCommand] = []
+        self.execute_commands: list[ExecuteFeeFormPublicationCommand] = []
+
+    def preview(self, command: PreviewFeeFormPublicationCommand):
+        self.preview_commands.append(command)
+        return SimpleNamespace(
+            mode="official",
+            status="conflict",
+            existing_file=True,
+            existing_modified_at="2026-08-28T10:30:00+08:00",
+            blockers=(),
+            preview_token="preview-token",
+        )
+
+    def execute(self, command: ExecuteFeeFormPublicationCommand):
+        self.execute_commands.append(command)
+        return SimpleNamespace(
+            file_name="DL-2026-001 Fee Form.xls",
+            archive_path=Path(
+                "D:/Projects/DL-2026-001/History/Fee Form/old.xls"
+            ),
+        )
 
 
 class _PathReturningExportService:

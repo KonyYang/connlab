@@ -36,7 +36,9 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     const completionDock = screen.getByRole("contentinfo", { name: "Matrix editor completion actions" });
     expect((completionDock as HTMLElement).classList.contains("matrix-editor-completion-dock")).toBe(true);
     expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Confirm Matrix" })).toBeTruthy();
+    const confirmMatrix = screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement;
+    expect(confirmMatrix.disabled).toBe(true);
+    expect(confirmMatrix.title).toBe("No Matrix changes to confirm.");
     expect(screen.queryByText("Confirm As Active Matrix")).toBeNull();
     expect(screen.queryByText("Create Revision Draft")).toBeNull();
     expect(screen.queryByText("Confirm Revision")).toBeNull();
@@ -552,7 +554,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
 
     expect((await screen.findByLabelText("Row 1 1") as HTMLInputElement).value).toBe("1,2,3,4(1)");
     expect(screen.getByText("4(1) Circuit continuity monitoring is performed during conditioning.")).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("accepts full-width numeric note tokens and ignores invalid tokens in unselected groups", async () => {
@@ -584,7 +586,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
     expect((await screen.findByLabelText("Row 1 1") as HTMLInputElement).value).toBe("1,2,3,4\uFF081\uFF09");
-    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByText(/Only digits,/)).toBeNull();
   });
 
@@ -604,7 +606,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     expect(screen.getByText("Group 1: 8 steps")).toBeTruthy();
     expect(screen.getByLabelText("Step 4 description")).toBeTruthy();
     expect(screen.getByLabelText("Step 8 description")).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByText(/Only digits,/)).toBeNull();
   });
 

@@ -16,6 +16,8 @@ import {
   getProjectLifecycle,
   isProjectLifecycleReadonlyErrorDetail,
   listProjectLtrs,
+  previewFeeFormPublication,
+  publishFeeForm,
   saveFeeEvaluationPricingDraft,
   type ConfirmedFeeLatestResponse,
   type FeeEvaluationDraft,
@@ -23,6 +25,7 @@ import {
   type FeeEvaluationLineItem,
   type FeeEvaluationPricingDraftResponse,
   type FeeEvaluationPricingDraftSaveRequest,
+  type FeeFormPublicationPreview,
   type Project,
   type ProjectLifecycleResponse,
 } from "../../api/client";
@@ -79,7 +82,7 @@ type FeePageContextState =
 export type FeeFileDownloadState =
   | { kind: "idle" }
   | { kind: "running" }
-  | { kind: "success"; fileName: string | null }
+  | { kind: "success"; fileName: string | null; delivery?: "download" | "official" }
   | { kind: "error"; message: string; manualCleanupWarning?: string | null };
 
 type FeePricingDraftSaveState =
@@ -140,6 +143,8 @@ export function FeeEvaluationReviewExportPage({
   const [downloadState, setDownloadState] = useState<FeeFileDownloadState>({
     kind: "idle",
   });
+  const [feeFormConflict, setFeeFormConflict] =
+    useState<FeeFormPublicationPreview | null>(null);
   const [saveState, setSaveState] = useState<FeePricingDraftSaveState>({
     kind: "loading",
   });
@@ -639,7 +644,7 @@ export function FeeEvaluationReviewExportPage({
       });
   const draftPreviewNotice =
     feeFileDownloadBlocker(draftState) ??
-    "Draft preview only. Official Fee Form output is created from Project Workbench.";
+    "Unconfirmed page values download as draft; confirmed Fee values save to the project folder when available.";
 
   function applySavedPricingDraftResult(
     result: FeeEvaluationPricingDraftResponse,
@@ -756,13 +761,34 @@ export function FeeEvaluationReviewExportPage({
       return;
     }
     setDownloadState({ kind: "running" });
+    setFeeFormConflict(null);
     try {
-      const response = await generateConfirmedMatrixFeeFileDownload(
-        projectId,
-        {
-          ...buildEditedExportPayload(previewRows, costPreviewValues),
+      const payload = buildEditedExportPayload(previewRows, costPreviewValues);
+      if (!isLifecycleReadonly) {
+        const preview = await previewFeeFormPublication(projectId, payload);
+        if (preview.status === "blocked") {
+          throw new Error(preview.blockers[0] ?? "Fee Form cannot be saved.");
         }
-      );
+        if (preview.mode === "official") {
+          if (preview.status === "conflict") {
+            setFeeFormConflict(preview);
+            setDownloadState({ kind: "idle" });
+            return;
+          }
+          const result = await publishFeeForm(projectId, {
+            ...payload,
+            preview_token: preview.preview_token,
+            conflict_action: "none",
+          });
+          setDownloadState({
+            kind: "success",
+            fileName: result.file_name,
+            delivery: "official",
+          });
+          return;
+        }
+      }
+      const response = await generateConfirmedMatrixFeeFileDownload(projectId, payload);
       const downloadFileName = feeFileNameFromPageContext({
         projectId,
         contextState,
@@ -770,7 +796,7 @@ export function FeeEvaluationReviewExportPage({
         responseFileName: response.fileName,
       });
       downloadBlob(response.blob, downloadFileName);
-      setDownloadState({ kind: "success", fileName: downloadFileName });
+      setDownloadState({ kind: "success", fileName: downloadFileName, delivery: "download" });
     } catch (error: unknown) {
       const detail =
         error instanceof ApiRequestError && isErrorDetailObject(error.detail)
@@ -781,7 +807,9 @@ export function FeeEvaluationReviewExportPage({
         message:
           error instanceof ApiRequestError
             ? businessReadableDownloadError(error)
-            : "Fee file generation failed.",
+            : error instanceof Error && error.message.trim().length > 0
+              ? error.message
+              : "Fee file generation failed.",
         manualCleanupWarning: detail?.manual_cleanup_warning ?? null,
       });
     }
@@ -840,6 +868,33 @@ export function FeeEvaluationReviewExportPage({
       );
       setConfirmFeeActionState({ kind: "error", message });
       setSaveState({ kind: "error", message });
+    }
+  }
+
+  async function resolveFeeFormConflict(
+    action: "archive" | "recycle"
+  ): Promise<void> {
+    if (!feeFormConflict) {
+      return;
+    }
+    setDownloadState({ kind: "running" });
+    try {
+      const result = await publishFeeForm(projectId, {
+        ...buildEditedExportPayload(previewRows, costPreviewValues),
+        preview_token: feeFormConflict.preview_token,
+        conflict_action: action,
+      });
+      setFeeFormConflict(null);
+      setDownloadState({
+        kind: "success",
+        fileName: result.file_name,
+        delivery: "official",
+      });
+    } catch (error: unknown) {
+      setDownloadState({
+        kind: "error",
+        message: readonlyAwareErrorMessage(error, "Unable to replace Fee Form."),
+      });
     }
   }
 
@@ -1141,6 +1196,40 @@ export function FeeEvaluationReviewExportPage({
         totals={previewTotals}
         updateFeeBlockersByRowId={updateFeeBlockersByRowId}
       />
+      {feeFormConflict ? (
+        <section
+          aria-describedby="fee-form-conflict-description"
+          aria-labelledby="fee-form-conflict-title"
+          aria-modal="true"
+          className="official-output-conflict-backdrop"
+          role="alertdialog"
+        >
+          <article className="official-output-conflict-panel">
+            <h3 id="fee-form-conflict-title">Replace existing Fee Form?</h3>
+            <p id="fee-form-conflict-description">
+              A file with the same name already exists in the project folder. Choose what
+              to do with the existing workbook before saving the confirmed version.
+            </p>
+            <div className="official-output-conflict-actions">
+              <button type="button" onClick={() => void resolveFeeFormConflict("archive")}>
+                Archive old file
+              </button>
+              <button type="button" onClick={() => void resolveFeeFormConflict("recycle")}>
+                Move old file to Recycle Bin
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFeeFormConflict(null);
+                  setDownloadState({ kind: "idle" });
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </article>
+        </section>
+      ) : null}
       <footer
         aria-label="Fee Evaluation completion actions"
         className="fee-evaluation-completion-dock"
@@ -1380,29 +1469,16 @@ function feeFileNameFromPageContext(input: {
     input.contextState.ltrNumber ??
     input.contextState.project.project_no ??
     input.projectId;
-  return `${safeFeeFileName(identity)} Fee Evaluation Draft ${fileTimestamp()}.xls`;
+  return `${safeFeeFileName(identity)} Fee Form draft.xls`;
 }
 
 function defaultFeeFileName(projectId: string): string {
-  return `${safeFeeFileName(projectId)} Fee Evaluation Draft ${fileTimestamp()}.xls`;
+  return `${safeFeeFileName(projectId)} Fee Form draft.xls`;
 }
 
 function safeFeeFileName(value: string): string {
   const safe = value.replace(/[<>:"/\\|?*\x00-\x1f]+/g, "_").trim();
   return safe || "project";
-}
-
-function fileTimestamp(): string {
-  const now = new Date();
-  const pad = (value: number): string => String(value).padStart(2, "0");
-  return [
-    now.getFullYear(),
-    pad(now.getMonth() + 1),
-    pad(now.getDate()),
-    pad(now.getHours()),
-    pad(now.getMinutes()),
-    pad(now.getSeconds()),
-  ].join("");
 }
 
 function businessReadableDownloadError(error: ApiRequestError): string {

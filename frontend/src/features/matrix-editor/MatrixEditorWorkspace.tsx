@@ -139,6 +139,12 @@ function triggerBlobDownload(blob: Blob, fileName: string): void {
   window.URL.revokeObjectURL(url);
 }
 
+function testRecordDraftFileName(projectReference: string, projectId: string): string {
+  const preferred = projectReference.trim() || projectId;
+  const safeReference = preferred.replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_").trim();
+  return `${safeReference || "ConnLab"} Test Record draft.docx`;
+}
+
 export function MatrixEditorWorkspace({
   projectId,
   onBackToWorkbench,
@@ -629,6 +635,14 @@ export function MatrixEditorWorkspace({
     Boolean(sessionSourceImportId) &&
     Boolean(activeAuthoritySourceImportId) &&
     sessionSourceImportId !== activeAuthoritySourceImportId;
+  const hasMatrixAuthorityChanges =
+    !activeConfirmedMatrixId ||
+    isSourceLineageReplacement ||
+    hasUnsavedChanges ||
+    saveState === "dirty" ||
+    saveState === "saving" ||
+    saveState === "error" ||
+    Boolean(savedEditorDraftId);
   const methodVersionSync = useMatrixMethodVersionSync({
     projectId,
     draftId: savedEditorDraftId,
@@ -663,6 +677,8 @@ export function MatrixEditorWorkspace({
             ? saveState === "error"
               ? "Autosave failed. Retry before confirming."
               : "Saving Matrix draft before confirm..."
+          : !hasMatrixAuthorityChanges
+            ? "No Matrix changes to confirm."
           : !hasAnyStepTokenValue
             ? "Add at least one step token before confirm."
             : "";
@@ -1090,7 +1106,7 @@ export function MatrixEditorWorkspace({
         );
         triggerBlobDownload(
           response.blob,
-          response.fileName ?? `${projectId} Test Record Preview - Unconfirmed Matrix draft.docx`
+          testRecordDraftFileName(projectReference, projectId)
         );
         setTestRecordState("success");
         setTestRecordMessage("Downloaded unconfirmed Test Record preview.");
@@ -1879,7 +1895,7 @@ export function MatrixEditorWorkspace({
           <button
             className="matrix-editor-primary-action"
             disabled={!canPublishActiveMatrix}
-            title={isLifecycleReadonly ? lifecycleReadonlyView.message : undefined}
+            title={publishDisabledReason || undefined}
             type="button"
             onClick={() => void onConfirmMatrix()}
           >

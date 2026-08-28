@@ -204,6 +204,12 @@ from backend.application.matrix_editor_test_record_document_generation_service i
 from backend.application.matrix_editor_test_record_publication_service import (
     MatrixEditorTestRecordPublicationService,
 )
+from backend.application.matrix_editor_test_record_authority import (
+    ConfirmedMatrixTestRecordAuthorityMatcher,
+)
+from backend.application.fee_form_publication_service import (
+    FeeFormPublicationService,
+)
 from backend.application.matrix_editor_test_status_workbook_generation_service import (
     MatrixEditorTestStatusWorkbookGenerationService,
 )
@@ -737,6 +743,9 @@ def get_matrix_editor_test_record_publication_service(
     """Build direct publication for a current-state Matrix Test Record."""
     return MatrixEditorTestRecordPublicationService(
         workspace_store=ProjectOfficialWorkspaceRepository(session),
+        authority_matcher=ConfirmedMatrixTestRecordAuthorityMatcher(
+            ConfirmedMatrixAuthorityRepository(session)
+        ),
         basic_information_reader=ProjectBasicInformationSnapshotReader(
             ProjectBasicInformationRepository(session)
         ),
@@ -749,6 +758,67 @@ def get_matrix_editor_test_record_publication_service(
             draft_store=ProjectTestPlanDraftRepository(session),
             output_store=ProjectOutputRecordRepository(session),
         ),
+        lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
+    )
+
+
+class _ConfirmedFeeFormPublicationGenerator:
+    def __init__(self, fee_export_service, template_resource_store) -> None:
+        self._fee_export = fee_export_service
+        self._templates = template_resource_store
+
+    def generate(
+        self,
+        *,
+        project_id: str,
+        output_dir: Path,
+        output_file_name: str,
+        confirmed_fee: object,
+        basic_information: object,
+    ) -> Path:
+        edited_values = edited_values_from_json(
+            edited_values_json_from_confirmed_fee_snapshot(
+                str(getattr(confirmed_fee, "pricing_snapshot_json"))
+            )
+        )
+        result = self._fee_export.export(
+            ExportConfirmedMatrixFeeEvaluationCommand(
+                project_id=project_id,
+                template_path=resolve_fee_evaluation_template_path(self._templates),
+                output_dir=output_dir,
+                output_file_name=output_file_name,
+                overwrite=True,
+                allow_review_required=True,
+                fill_mode="matrix_basic",
+                output_purpose="draft_preview",
+                edited_values=edited_values,
+                basic_information_values=fee_form_identity(basic_information).as_dict(),
+            )
+        )
+        return result.output_path
+
+
+def get_fee_form_publication_service(
+    session: Session = Depends(get_session),
+) -> FeeFormPublicationService:
+    """Build authority-aware direct Fee Form publication."""
+    output_service = ProjectOutputRecordService(
+        project_store=ProjectRepository(session),
+        draft_store=ProjectTestPlanDraftRepository(session),
+        output_store=ProjectOutputRecordRepository(session),
+    )
+    return FeeFormPublicationService(
+        workspace_store=ProjectOfficialWorkspaceRepository(session),
+        confirmed_fee_reader=get_confirmed_fee_version_service(session),
+        basic_information_reader=ProjectBasicInformationSnapshotReader(
+            ProjectBasicInformationRepository(session)
+        ),
+        generator=_ConfirmedFeeFormPublicationGenerator(
+            get_confirmed_matrix_fee_evaluation_export_service(),
+            ExternalResourceRepository(session),
+        ),
+        file_gateway=TestRecordPublicationGateway(resource_label="Fee Form"),
+        output_service=output_service,
         lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
     )
 

@@ -3022,6 +3022,20 @@ export type FrontendErrorReport = {
   page_path?: string | null;
 };
 
+export type FeeFormPublicationPreview = {
+  mode: "download" | "official";
+  status: "ready" | "blocked" | "conflict";
+  existing_file: boolean;
+  existing_modified_at: string | null;
+  blockers: string[];
+  preview_token: string;
+};
+
+export type FeeFormPublicationResult = {
+  file_name: string;
+  archive_path: string | null;
+};
+
 export function reportFrontendError(report: FrontendErrorReport): Promise<void> {
   return requestNoContent("/api/support/frontend-errors", {
     method: "POST",
@@ -4584,6 +4598,29 @@ export function generateMatrixEditorTestRecordDraftDownload(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     }
+  );
+}
+
+export function previewFeeFormPublication(
+  projectId: string,
+  input: FeeEvaluationEditedFileExportRequest
+): Promise<FeeFormPublicationPreview> {
+  return requestJson<FeeFormPublicationPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/fee-evaluation/fee-form-publication/preview`,
+    { method: "POST", body: JSON.stringify(input) }
+  );
+}
+
+export function publishFeeForm(
+  projectId: string,
+  input: FeeEvaluationEditedFileExportRequest & {
+    preview_token: string;
+    conflict_action: "none" | "archive" | "recycle";
+  }
+): Promise<FeeFormPublicationResult> {
+  return requestJson<FeeFormPublicationResult>(
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/fee-evaluation/fee-form-publication/publish`,
+    { method: "POST", body: JSON.stringify(input) }
   );
 }
 

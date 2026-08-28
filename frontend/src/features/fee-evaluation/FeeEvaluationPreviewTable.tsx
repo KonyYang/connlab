@@ -48,7 +48,11 @@ export type FeeEvaluationCostPreviewValues = {
 type FeeFileDownloadState =
   | { kind: "idle" }
   | { kind: "running" }
-  | { kind: "success"; fileName: string | null }
+  | {
+      kind: "success";
+      fileName: string | null;
+      delivery?: "download" | "official";
+    }
   | { kind: "error"; message: string; manualCleanupWarning?: string | null };
 
 type FeePricingDraftSaveState =
@@ -125,7 +129,7 @@ export function FeeEvaluationPreviewTable({
             type="button"
             onClick={onGenerateFeeFile}
             disabled={downloadState.kind === "running"}
-            title="Download a draft preview. Official Fee Form output is created from Project Workbench."
+            title="Downloads a draft until the current Fee is confirmed; otherwise saves the official Fee Form."
           >
             {downloadState.kind === "running" ? "Generating..." : "Fee Form"}
           </button>
@@ -551,7 +555,8 @@ function FeeFileDownloadStatus({
   if (state.kind === "success") {
     return (
       <p className="fee-evaluation-download-status" role="status">
-        {(state.fileName ?? "Fee file") + " downloaded."}
+        {(state.fileName ?? "Fee file") +
+          (state.delivery === "official" ? " saved to the project folder." : " downloaded.")}
       </p>
     );
   }

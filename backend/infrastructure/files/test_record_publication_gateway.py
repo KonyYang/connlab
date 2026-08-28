@@ -16,10 +16,16 @@ class TestRecordPublicationTargetChangedError(RuntimeError):
 
 
 class TestRecordPublicationGateway:
-    """Publish a staged document without silently overwriting an operator file."""
+    """Publish a staged project output without silently overwriting an operator file."""
 
-    def __init__(self, recycle_file: Callable[[Path], None] | None = None) -> None:
+    def __init__(
+        self,
+        recycle_file: Callable[[Path], None] | None = None,
+        *,
+        resource_label: str = "Test Record",
+    ) -> None:
         self._recycle_file = recycle_file or _move_to_windows_recycle_bin
+        self._resource_label = resource_label
 
     def fingerprint(self, path: Path) -> str:
         digest = hashlib.sha256()
@@ -40,31 +46,37 @@ class TestRecordPublicationGateway:
         staged = Path(staged_path)
         target = Path(target_path)
         if not staged.is_file():
-            raise FileNotFoundError(f"Staged Test Record is missing: {staged}")
+            raise FileNotFoundError(f"Staged {self._resource_label} is missing: {staged}")
         target.parent.mkdir(parents=True, exist_ok=True)
         if expected_target_fingerprint is None:
             if target.exists():
                 raise TestRecordPublicationTargetChangedError(
-                    f"Test Record target appeared after preview: {target}"
+                    f"{self._resource_label} target appeared after preview: {target}"
                 )
             self._place_new_file(staged, target)
             return None
         if not target.is_file() or self.fingerprint(target) != expected_target_fingerprint:
             raise TestRecordPublicationTargetChangedError(
-                f"Test Record target changed after preview: {target}"
+                f"{self._resource_label} target changed after preview: {target}"
             )
         if conflict_action == "archive":
             return self._archive_and_replace(staged, target, history_dir)
         if conflict_action == "recycle":
             self._recycle_and_replace(staged, target)
             return None
-        raise ValueError(f"Unsupported Test Record conflict action: {conflict_action}")
+        raise ValueError(
+            f"Unsupported {self._resource_label} conflict action: {conflict_action}"
+        )
 
     def _archive_and_replace(
         self, staged: Path, target: Path, history_dir: Path
     ) -> Path:
         history_dir.mkdir(parents=True, exist_ok=True)
-        archive = _unique_archive_path(target, history_dir)
+        archive = _unique_archive_path(
+            target,
+            history_dir,
+            resource_label=self._resource_label,
+        )
         os.replace(target, archive)
         try:
             self._place_new_file(staged, target)
@@ -108,7 +120,12 @@ class TestRecordPublicationGateway:
                 staged.unlink()
 
 
-def _unique_archive_path(target: Path, history_dir: Path) -> Path:
+def _unique_archive_path(
+    target: Path,
+    history_dir: Path,
+    *,
+    resource_label: str = "file",
+) -> Path:
     stamp = datetime.fromtimestamp(target.stat().st_mtime).astimezone().strftime(
         "%Y%m%d-%H%M%S"
     )
@@ -119,7 +136,7 @@ def _unique_archive_path(target: Path, history_dir: Path) -> Path:
         candidate = history_dir / f"{target.stem}_{stamp} ({index}){target.suffix}"
         if not candidate.exists():
             return candidate
-    raise RuntimeError(f"Cannot create a unique Test Record archive near: {base}")
+    raise RuntimeError(f"Cannot create a unique {resource_label} archive near: {base}")
 
 
 def _move_to_windows_recycle_bin(path: Path) -> None:
@@ -137,4 +154,4 @@ def _move_to_windows_recycle_bin(path: Path) -> None:
     code = result[0] if isinstance(result, tuple) else result
     aborted = bool(result[1]) if isinstance(result, tuple) and len(result) > 1 else False
     if code or aborted:
-        raise OSError(int(code or 1), f"Unable to move Test Record to Recycle Bin: {path}")
+        raise OSError(int(code or 1), f"Unable to move file to Recycle Bin: {path}")

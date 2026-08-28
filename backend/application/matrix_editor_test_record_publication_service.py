@@ -55,6 +55,13 @@ class OfficialWorkspaceLookup(Protocol):
         """Return the official workspace record when it exists."""
 
 
+class MatrixEditorTestRecordAuthorityMatcher(Protocol):
+    def matches_active_authority(
+        self, project_id: str, draft_signature: str
+    ) -> bool:
+        """Return whether the current Test Record payload matches Matrix authority."""
+
+
 class MatrixEditorTestRecordGenerator(Protocol):
     def generate(self, command: GenerateMatrixEditorTestRecordDocumentCommand):
         """Generate a staged Test Record and return its output path."""
@@ -129,6 +136,7 @@ class MatrixEditorTestRecordPublicationService:
         self,
         *,
         workspace_store: OfficialWorkspaceLookup,
+        authority_matcher: MatrixEditorTestRecordAuthorityMatcher,
         basic_information_reader: ConfirmedBasicInformationReader,
         document_generation_service: MatrixEditorTestRecordGenerator,
         file_gateway: TestRecordPublicationFileGateway,
@@ -136,6 +144,7 @@ class MatrixEditorTestRecordPublicationService:
         lifecycle_write_guard: ProjectLifecycleWriteGuard | None = None,
     ) -> None:
         self._workspaces = workspace_store
+        self._authority_matcher = authority_matcher
         self._basic_information = basic_information_reader
         self._generator = document_generation_service
         self._files = file_gateway
@@ -147,6 +156,19 @@ class MatrixEditorTestRecordPublicationService:
     ) -> MatrixEditorTestRecordPublicationPreview:
         workspace = self._workspaces.get_by_project(command.project_id)
         if workspace is None:
+            return self._preview_result(
+                command=command,
+                mode="download",
+                status="ready",
+                target_path=None,
+                target_fingerprint=None,
+                existing_modified_at=None,
+                blockers=(),
+                basic_information=None,
+            )
+        if not self._authority_matcher.matches_active_authority(
+            command.project_id, command.draft_signature
+        ):
             return self._preview_result(
                 command=command,
                 mode="download",

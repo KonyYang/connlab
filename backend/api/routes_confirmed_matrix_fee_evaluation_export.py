@@ -7,16 +7,19 @@ from typing import Protocol
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
 
 from backend.api.dependencies import (
     get_confirmed_matrix_fee_evaluation_export_service,
     get_fee_evaluation_template_resource_store,
+    get_fee_form_publication_service,
     get_settings,
 )
 from backend.api.fee_evaluation_pricing_draft_http import (
     CurrentFeePricingDraftRequiredError,
     raise_fee_pricing_draft_not_current,
 )
+from backend.api.lifecycle_errors import lifecycle_readonly_conflict
 from backend.api.confirmed_matrix_fee_evaluation_export_dtos import (
     ConfirmedMatrixFeeEvaluationEditedFileRequest,
     ConfirmedMatrixFeeEvaluationExportRequest,
@@ -46,7 +49,19 @@ from backend.application.project_output_record_service import (
     ProjectOutputRecordError,
     ProjectOutputRecordNotFoundError,
 )
+from backend.application.fee_form_publication_service import (
+    ExecuteFeeFormPublicationCommand,
+    FeeFormPublicationBlockedError,
+    FeeFormPublicationConflictError,
+    FeeFormPublicationError,
+    FeeFormPublicationService,
+    PreviewFeeFormPublicationCommand,
+)
+from backend.application.project_lifecycle_write_guard import ProjectLifecycleReadonlyError
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
+from backend.infrastructure.files.test_record_publication_gateway import (
+    TestRecordPublicationTargetChangedError,
+)
 from backend.shared.config import Settings
 
 
@@ -63,6 +78,25 @@ class FeeEvaluationExportServicePort(Protocol):
         self, command: ExportConfirmedMatrixFeeEvaluationCommand
     ) -> ExportConfirmedMatrixFeeEvaluationResult:
         """Export one Fee Evaluation workbook."""
+
+
+class FeeFormPublicationExecuteRequest(ConfirmedMatrixFeeEvaluationEditedFileRequest):
+    preview_token: str = Field(min_length=1)
+    conflict_action: str = Field(pattern="^(none|archive|recycle)$")
+
+
+class FeeFormPublicationPreviewResponse(BaseModel):
+    mode: str
+    status: str
+    existing_file: bool
+    existing_modified_at: str | None
+    blockers: list[str]
+    preview_token: str
+
+
+class FeeFormPublicationResultResponse(BaseModel):
+    file_name: str
+    archive_path: str | None
 
 
 @router.post(
@@ -201,6 +235,64 @@ def generate_confirmed_matrix_fee_file(
         path=resolved_output_path,
         filename=resolved_output_path.name,
         media_type=FEE_FILE_MEDIA_TYPE,
+    )
+
+
+@router.post(
+    "/api/projects/{project_id}/confirmed-matrix/fee-evaluation/fee-form-publication/preview",
+    response_model=FeeFormPublicationPreviewResponse,
+)
+def preview_fee_form_publication(
+    project_id: str,
+    request: ConfirmedMatrixFeeEvaluationEditedFileRequest,
+    service: FeeFormPublicationService = Depends(get_fee_form_publication_service),
+) -> FeeFormPublicationPreviewResponse:
+    preview = service.preview(
+        PreviewFeeFormPublicationCommand(project_id, request.to_application())
+    )
+    return FeeFormPublicationPreviewResponse(
+        mode=preview.mode,
+        status=preview.status,
+        existing_file=preview.existing_file,
+        existing_modified_at=preview.existing_modified_at,
+        blockers=list(preview.blockers),
+        preview_token=preview.preview_token,
+    )
+
+
+@router.post(
+    "/api/projects/{project_id}/confirmed-matrix/fee-evaluation/fee-form-publication/publish",
+    response_model=FeeFormPublicationResultResponse,
+)
+def publish_fee_form(
+    project_id: str,
+    request: FeeFormPublicationExecuteRequest,
+    service: FeeFormPublicationService = Depends(get_fee_form_publication_service),
+    settings: Settings = Depends(get_settings),
+) -> FeeFormPublicationResultResponse:
+    try:
+        result = service.execute(
+            ExecuteFeeFormPublicationCommand(
+                project_id=project_id,
+                current_values=request.to_application(),
+                preview_token=request.preview_token,
+                conflict_action=request.conflict_action,
+                staging_dir=settings.data_dir / "generated_fee_form_publications",
+            )
+        )
+    except ProjectLifecycleReadonlyError as exc:
+        raise lifecycle_readonly_conflict(exc) from exc
+    except FeeFormPublicationConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except TestRecordPublicationTargetChangedError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except FeeFormPublicationBlockedError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (FeeFormPublicationError, OSError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return FeeFormPublicationResultResponse(
+        file_name=result.file_name,
+        archive_path=str(result.archive_path) if result.archive_path else None,
     )
 
 

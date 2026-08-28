@@ -17,6 +17,8 @@ let unexpectedActWarnings: string[] = [];
 const apiMocks = vi.hoisted(() => ({
   fetchConfirmedMatrixFeeDraft: vi.fn(),
   generateConfirmedMatrixFeeFileDownload: vi.fn(),
+  previewFeeFormPublication: vi.fn(),
+  publishFeeForm: vi.fn(),
   confirmFeeVersion: vi.fn(),
   getConfirmedFeeLatest: vi.fn(),
   getFeeEvaluationPricingDraft: vi.fn(),
@@ -35,6 +37,8 @@ vi.mock("../../api/client", async (importOriginal) => {
     fetchConfirmedMatrixFeeDraft: apiMocks.fetchConfirmedMatrixFeeDraft,
     generateConfirmedMatrixFeeFileDownload:
       apiMocks.generateConfirmedMatrixFeeFileDownload,
+    previewFeeFormPublication: apiMocks.previewFeeFormPublication,
+    publishFeeForm: apiMocks.publishFeeForm,
     getConfirmedFeeLatest: apiMocks.getConfirmedFeeLatest,
     getFeeEvaluationPricingDraft: apiMocks.getFeeEvaluationPricingDraft,
     getProjectLifecycle: apiMocks.getProjectLifecycle,
@@ -377,7 +381,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     });
     expect(
       await screen.findByText(
-        /^DL-2026-001 Fee Evaluation Draft \d{14}\.xls downloaded\.$/
+        "DL-2026-001 Fee Form draft.xls downloaded."
       )
     ).toBeTruthy();
   });
@@ -431,6 +435,74 @@ describe("FeeEvaluationReviewExportPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
     expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
     expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
+  });
+
+  it("publishes Fee Form when the current page matches confirmed Fee authority", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    apiMocks.previewFeeFormPublication.mockResolvedValue({
+      mode: "official",
+      status: "ready",
+      existing_file: false,
+      existing_modified_at: null,
+      blockers: [],
+      preview_token: "preview-1",
+    });
+    apiMocks.publishFeeForm.mockResolvedValue({
+      file_name: "DL-2026-001 Fee Form.xls",
+      archive_path: null,
+    });
+
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
+
+    expect(
+      await screen.findByText("DL-2026-001 Fee Form.xls saved to the project folder.")
+    ).toBeTruthy();
+    expect(apiMocks.publishFeeForm).toHaveBeenCalledWith(
+      "P1",
+      expect.objectContaining({ preview_token: "preview-1", conflict_action: "none" })
+    );
+    expect(apiMocks.generateConfirmedMatrixFeeFileDownload).not.toHaveBeenCalled();
+  });
+
+  it("requires an explicit replacement choice for an existing official Fee Form", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    apiMocks.previewFeeFormPublication.mockResolvedValue({
+      mode: "official",
+      status: "conflict",
+      existing_file: true,
+      existing_modified_at: "2026-08-28T10:30:00+08:00",
+      blockers: [],
+      preview_token: "preview-conflict",
+    });
+    apiMocks.publishFeeForm.mockResolvedValue({
+      file_name: "DL-2026-001 Fee Form.xls",
+      archive_path: "D:/Projects/DL-2026-001/History/Fee Form/DL-2026-001 Fee Form_20260828-103000.xls",
+    });
+
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
+
+    expect(await screen.findByRole("alertdialog", { name: "Replace existing Fee Form?" })).toBeTruthy();
+    expect(apiMocks.publishFeeForm).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Archive old file" }));
+
+    await waitFor(() =>
+      expect(apiMocks.publishFeeForm).toHaveBeenCalledWith(
+        "P1",
+        expect.objectContaining({
+          preview_token: "preview-conflict",
+          conflict_action: "archive",
+        })
+      )
+    );
+    expect(
+      await screen.findByText("DL-2026-001 Fee Form.xls saved to the project folder.")
+    ).toBeTruthy();
   });
 
   it("confirms Fee Evaluation with the latest autosaved draft id without saving again", async () => {
@@ -1244,9 +1316,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     });
     expect(clickSpy).toHaveBeenCalledTimes(1);
     expect(
-      await screen.findByText(
-        /^DL-2026-001 Fee Evaluation Draft \d{14}\.xls downloaded\.$/
-      )
+      await screen.findByText("DL-2026-001 Fee Form draft.xls downloaded.")
     ).toBeTruthy();
   });
 
@@ -1348,6 +1418,14 @@ function arrangeSuccessfulContext(
   apiMocks.getConfirmedFeeLatest.mockResolvedValue(
     input.confirmedFee ?? createConfirmedFeeLatest({ status: "missing" })
   );
+  apiMocks.previewFeeFormPublication.mockResolvedValue({
+    mode: "download",
+    status: "ready",
+    existing_file: false,
+    existing_modified_at: null,
+    blockers: [],
+    preview_token: "draft-preview",
+  });
 }
 
 function lifecycleResponse(overrides: Record<string, unknown> = {}): Record<string, unknown> {

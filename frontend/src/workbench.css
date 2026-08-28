@@ -908,6 +908,38 @@
   background: rgba(15, 23, 42, 0.42);
 }
 
+.official-output-conflict-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(23, 32, 51, 0.3);
+}
+
+.official-output-conflict-panel {
+  width: min(560px, 100%);
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-surface);
+  box-shadow: 0 24px 60px rgba(23, 32, 51, 0.2);
+}
+
+.official-output-conflict-panel h3,
+.official-output-conflict-panel p {
+  margin: 0;
+}
+
+.official-output-conflict-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
 .matrix-editor-test-record-conflict-panel {
   width: min(560px, calc(100vw - 48px));
   display: grid;

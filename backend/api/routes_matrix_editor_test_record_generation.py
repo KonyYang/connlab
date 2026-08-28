@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from hashlib import sha256
-import json
-
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -23,6 +20,9 @@ from backend.application.matrix_editor_test_record_document_generation_service i
     MatrixEditorTestRecordDocumentGenerationService,
     MatrixEditorTestRecordGroupInput,
     MatrixEditorTestRecordRowInput,
+)
+from backend.application.matrix_editor_test_record_authority import (
+    build_matrix_editor_test_record_signature,
 )
 from backend.application.matrix_editor_test_record_publication_service import (
     ExecuteMatrixEditorTestRecordPublicationCommand,
@@ -283,14 +283,10 @@ def _resolve_template(
 
 
 def _draft_signature(request: MatrixEditorTestRecordDraftRequest) -> str:
-    payload = request.model_dump(mode="json")
-    encoded = json.dumps(
-        payload,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
-    return sha256(encoded).hexdigest()
+    return build_matrix_editor_test_record_signature(
+        groups=request.groups,
+        rows=request.rows,
+    )
 
 
 def _group_inputs(

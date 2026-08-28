@@ -15,6 +15,8 @@ const apiMocks = vi.hoisted(() => ({
   confirmFeeVersion: vi.fn(),
   fetchConfirmedMatrixFeeDraft: vi.fn(),
   generateConfirmedMatrixFeeFileDownload: vi.fn(),
+  previewFeeFormPublication: vi.fn(),
+  publishFeeForm: vi.fn(),
   getConfirmedFeeLatest: vi.fn(),
   getFeeEvaluationPricingDraft: vi.fn(),
   getProject: vi.fn(),
@@ -114,7 +116,9 @@ describe("FeeEvaluationReviewExportPage pricing-draft hydration", () => {
     const feeForm = screen.getByRole("button", { name: "Fee Form" });
     expect((feeForm as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(feeForm);
-    expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalled()
+    );
     expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
@@ -302,6 +306,18 @@ function arrangeContext(): void {
     warnings: [],
   });
   apiMocks.getConfirmedFeeLatest.mockResolvedValue({ status: "missing" });
+  apiMocks.previewFeeFormPublication.mockResolvedValue({
+    mode: "download",
+    status: "ready",
+    existing_file: false,
+    existing_modified_at: null,
+    blockers: [],
+    preview_token: "draft-preview",
+  });
+  apiMocks.generateConfirmedMatrixFeeFileDownload.mockResolvedValue({
+    blob: new Blob(["fee"]),
+    fileName: "fee.xls",
+  });
 }
 
 function pricingResponse(

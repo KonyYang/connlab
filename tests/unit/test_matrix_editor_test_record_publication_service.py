@@ -33,6 +33,27 @@ def test_preview_uses_download_mode_before_official_workspace_exists(tmp_path: P
     assert preview.target_path is None
 
 
+def test_preview_uses_download_mode_when_current_matrix_is_not_confirmed(
+    tmp_path: Path,
+) -> None:
+    service = _service(
+        tmp_path,
+        workspace=_workspace(tmp_path),
+        authority_matches=False,
+    )
+
+    preview = service.preview(
+        PreviewMatrixEditorTestRecordPublicationCommand(
+            project_id="P1",
+            draft_signature="draft-a",
+        )
+    )
+
+    assert preview.mode == "download"
+    assert preview.status == "ready"
+    assert preview.target_path is None
+
+
 def test_execute_publishes_current_draft_to_test_results_and_registers_output(
     tmp_path: Path,
 ) -> None:
@@ -295,6 +316,7 @@ def _service(
     *,
     workspace,
     basic_information=...,
+    authority_matches: bool = True,
 ) -> MatrixEditorTestRecordPublicationService:
     if basic_information is ...:
         basic_information = SimpleNamespace(
@@ -310,6 +332,7 @@ def _service(
     outputs = _Outputs()
     service = MatrixEditorTestRecordPublicationService(
         workspace_store=_WorkspaceStore(workspace),
+        authority_matcher=_AuthorityMatcher(authority_matches),
         basic_information_reader=_BasicInformationReader(basic_information),
         document_generation_service=generator,
         file_gateway=_FileGateway(),
@@ -318,6 +341,14 @@ def _service(
     service._generator = generator
     service._outputs = outputs
     return service
+
+
+class _AuthorityMatcher:
+    def __init__(self, matches: bool) -> None:
+        self.matches = matches
+
+    def matches_active_authority(self, project_id: str, draft_signature: str) -> bool:
+        return self.matches
 
 
 class _WorkspaceStore:

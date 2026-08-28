@@ -166,7 +166,7 @@ def test_publication_preview_keeps_download_mode_without_project_folder(
         engine.dispose()
 
 
-def test_publication_writes_current_ui_draft_with_authoritative_header(
+def test_publication_downloads_current_ui_draft_when_matrix_is_unconfirmed(
     tmp_path: Path,
 ) -> None:
     client, engine, session_factory = _client(tmp_path)
@@ -189,42 +189,19 @@ def test_publication_writes_current_ui_draft_with_authoritative_header(
             json=payload,
         )
         assert preview.status_code == 200
+        assert preview.json()["mode"] == "download"
         assert preview.json()["status"] == "ready"
-
-        published = client.post(
-            "/api/projects/P1/matrix-editor/test-record-publication/publish",
-            json={
-                **payload,
-                "preview_token": preview.json()["preview_token"],
-                "conflict_action": "none",
-            },
-        )
-
-        assert published.status_code == 200
-        target = workspace.official_folder_path / "Test results" / "DL-2026-05-003 Test Record.docx"
-        assert Path(published.json()["target_path"]) == target
-        assert target.is_file()
-        document = Document(target)
-        header_text = "\n".join(
-            cell.text
-            for section in document.sections
-            for table in section.header.tables
-            for row in table.rows
-            for cell in row.cells
-        )
-        body_text = "\n".join(
-            cell.text for table in document.tables for row in table.rows for cell in row.cells
-        )
-        assert "DL-2026-05-003" in header_text
-        assert "Confirmed Coolpower HDF 3.40mm pin" in header_text
-        assert "GS-12-9999" in header_text
-        assert "Unsaved method from Matrix Editor" in body_text
+        assert not (
+            workspace.official_folder_path
+            / "Test results"
+            / "DL-2026-05-003 Test Record.docx"
+        ).exists()
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
 
 
-def test_publication_archives_existing_test_record_in_workspace_history(
+def test_unconfirmed_matrix_does_not_replace_existing_official_test_record(
     tmp_path: Path,
 ) -> None:
     client, engine, session_factory = _client(tmp_path)
@@ -248,21 +225,9 @@ def test_publication_archives_existing_test_record_in_workspace_history(
             "/api/projects/P1/matrix-editor/test-record-publication/preview",
             json=payload,
         )
-        assert preview.json()["status"] == "conflict"
-        published = client.post(
-            "/api/projects/P1/matrix-editor/test-record-publication/publish",
-            json={
-                **payload,
-                "preview_token": preview.json()["preview_token"],
-                "conflict_action": "archive",
-            },
-        )
-
-        assert published.status_code == 200
-        archive = Path(published.json()["archive_path"])
-        assert archive.parent == workspace.local_workspace_path / "History" / "Test Record"
-        assert archive.read_text(encoding="utf-8") == "operator old record"
-        assert target.is_file()
+        assert preview.json()["mode"] == "download"
+        assert preview.json()["status"] == "ready"
+        assert target.read_text(encoding="utf-8") == "operator old record"
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
