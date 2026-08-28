@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_REPORT_001_DRAFT_FIDELITY_REVISION",
     "summary": "Revise the E-3707_H initialization report draft to match approved-report table typography, fills, result defaults, LLCR descriptions, and heading pagination.",
@@ -25,9 +25,69 @@
     "risk_reasons": [],
     "activation_head": "660b235e6231a957d52251c2cebf2d84d5d836bc",
     "started_at": "2026-08-28T00:05:14.781087Z",
-    "updated_at": "2026-08-28T00:05:14.781087Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-08-28T00:23:01.220535Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_REPORT_001_DRAFT_FIDELITY_REVISION",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "task_id": "TASK_REPORT_001_DRAFT_FIDELITY_REVISION",
+      "changed_paths": [
+        "backend/application/confirmed_matrix_test_record_preview_service.py",
+        "backend/infrastructure/office/test_report_document_gateway.py",
+        "tests/unit/test_test_report_document_gateway.py"
+      ],
+      "roles": {
+        "reviewer": {
+          "detail": "Standards and spec review complete; LLCR alias duplication removed",
+          "status": "passed"
+        },
+        "developer": {
+          "detail": "TDD red-green cycles and affected checks complete",
+          "status": "passed"
+        },
+        "qa": {
+          "detail": "Gateway, preview, service, API, and Word render passed",
+          "status": "passed"
+        }
+      },
+      "subject": "b60b7dd50984a4cd992a09bd81fc986c3d75b3b6",
+      "version": 1,
+      "validation": [
+        {
+          "status": "passed",
+          "name": "Developer affected unit tests",
+          "detail": "16 passed"
+        },
+        {
+          "status": "passed",
+          "name": "Final report QA matrix",
+          "detail": "22 passed"
+        },
+        {
+          "status": "passed",
+          "name": "Microsoft Word visual regression",
+          "detail": "6 pages inspected at full resolution"
+        },
+        {
+          "status": "passed",
+          "name": "Approved template integrity",
+          "detail": "SHA-256 unchanged"
+        }
+      ],
+      "scope_ok": true,
+      "summary": "E-3707_H initialization drafts now use approved-report table typography and fills, editable default results/comments, LLCR stage descriptions, and stable section pagination.",
+      "integration": {
+        "detail": "Commit b60b7dd5 is clean and contains the exact in-scope implementation",
+        "status": "passed"
+      },
+      "schema": "connlab.sol-task-report"
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_REBASE_DERIVED_TOTAL_RESAVE",
