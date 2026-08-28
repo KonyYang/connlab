@@ -12,10 +12,8 @@ import shutil
 from uuid import uuid4
 
 from docx import Document
-from docx.enum.text import WD_BREAK
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Inches
 from docx.table import Table, _Cell
 from docx.text.paragraph import Paragraph
 
@@ -70,6 +68,9 @@ _REQUIRED_FIRST_PAGE_HEADER_PLACEHOLDERS = (
 _TABLE_FONT_NAME = "Arial"
 _HEADER_FILL = "B2B2B2"
 _SAMPLE_SIZE_FILL = "8DB3E2"
+_PREFERRED_TEST_ITEM_WIDTH_DXA = 3024
+_MIN_TEST_ITEM_WIDTH_DXA = 2500
+_MIN_GROUP_WIDTH_DXA = 690
 
 
 class TestReportDocumentGateway:
@@ -316,6 +317,7 @@ def _fill_sample_table(table: Table, report: TestReportDraftData) -> None:
 
 def _fill_test_description_table(table: Table, report: TestReportDraftData) -> None:
     groups = report.groups
+    table_width_dxa = _table_width_dxa(table)
     item_names: list[str] = []
     for group in groups:
         for step in group.steps:
@@ -361,7 +363,7 @@ def _fill_test_description_table(table: Table, report: TestReportDraftData) -> N
         _set_cell_text(final_row.cells[column_index], group.sample_quantity_expression)
     for cell in final_row.cells:
         _set_cell_fill(cell, _SAMPLE_SIZE_FILL)
-    _set_description_widths(table, len(groups))
+    _set_description_widths(table, len(groups), table_width_dxa)
 
 
 def _fill_method_table(table: Table, report: TestReportDraftData) -> None:
@@ -393,13 +395,6 @@ def _fill_result_blocks(
     _fill_result_block(template_heading, template_table, report.groups[0])
     cursor = template_table._tbl
     for group in report.groups[1:]:
-        page_break = document.add_paragraph()
-        page_break.add_run().add_break(WD_BREAK.PAGE)
-        page_xml = page_break._p
-        page_xml.getparent().remove(page_xml)
-        cursor.addnext(page_xml)
-        cursor = page_xml
-
         cloned_heading_xml = deepcopy(heading_xml)
         cursor.addnext(cloned_heading_xml)
         cursor = cloned_heading_xml
@@ -416,6 +411,7 @@ def _fill_result_blocks(
 def _fill_result_block(heading: Paragraph, table: Table, group) -> None:
     group_label = _test_sequence_group_label(group.group_label)
     _set_paragraph_text(heading, f"Group {group_label} Test Results")
+    heading.paragraph_format.keep_with_next = True
     _resize_rows(table, 1 + len(group.steps))
     llcr_indexes = tuple(
         index
@@ -490,13 +486,77 @@ def _resize_columns(table: Table, target: int) -> None:
             row._tr.remove(row.cells[index]._tc)
 
 
-def _set_description_widths(table: Table, group_count: int) -> None:
-    first_width = Inches(2.1)
-    group_width = Inches(max(0.42, 4.7 / max(1, group_count)))
+def _table_width_dxa(table: Table) -> int:
+    table_width = table._tbl.tblPr.find(qn("w:tblW"))
+    if table_width is not None and table_width.get(qn("w:type")) == "dxa":
+        width = int(table_width.get(qn("w:w"), "0"))
+        if width > 0:
+            return width
+    grid_widths = [
+        int(column.get(qn("w:w"), "0"))
+        for column in table._tbl.tblGrid.gridCol_lst
+    ]
+    total_width = sum(grid_widths)
+    if total_width <= 0:
+        raise ValueError("E-3707_H Test Description table has no usable width.")
+    return total_width
+
+
+def _set_description_widths(
+    table: Table,
+    group_count: int,
+    total_width_dxa: int,
+) -> None:
+    if group_count < 1:
+        raise ValueError("E-3707_H Test Description table requires a group column.")
+    first_width = min(
+        _PREFERRED_TEST_ITEM_WIDTH_DXA,
+        max(
+            _MIN_TEST_ITEM_WIDTH_DXA,
+            total_width_dxa - group_count * _MIN_GROUP_WIDTH_DXA,
+        ),
+    )
+    group_area_width = total_width_dxa - first_width
+    if group_area_width < group_count:
+        raise ValueError("E-3707_H Test Description table is too narrow for its groups.")
+    group_width, remainder = divmod(group_area_width, group_count)
+    widths = [first_width]
+    widths.extend(
+        group_width + (1 if index < remainder else 0)
+        for index in range(group_count)
+    )
+
+    table_width = table._tbl.tblPr.find(qn("w:tblW"))
+    if table_width is None:
+        raise ValueError("E-3707_H Test Description table has no width contract.")
+    table_width.set(qn("w:type"), "dxa")
+    table_width.set(qn("w:w"), str(total_width_dxa))
+    table.autofit = False
+
+    grid_columns = table._tbl.tblGrid.gridCol_lst
+    if len(grid_columns) != len(widths):
+        raise ValueError("E-3707_H Test Description table grid is inconsistent.")
+    for column, width in zip(grid_columns, widths, strict=True):
+        column.set(qn("w:w"), str(width))
+
     for row in table.rows:
-        row.cells[0].width = first_width
-        for cell in row.cells[1:]:
-            cell.width = group_width
+        grid_index = 0
+        for cell_xml in row._tr.tc_lst:
+            cell_properties = cell_xml.get_or_add_tcPr()
+            span_xml = cell_properties.find(qn("w:gridSpan"))
+            span = 1 if span_xml is None else int(span_xml.get(qn("w:val"), "1"))
+            next_grid_index = grid_index + span
+            if next_grid_index > len(widths):
+                raise ValueError("E-3707_H Test Description cell span is inconsistent.")
+            cell_width = cell_properties.get_or_add_tcW()
+            cell_width.set(qn("w:type"), "dxa")
+            cell_width.set(
+                qn("w:w"),
+                str(sum(widths[grid_index:next_grid_index])),
+            )
+            grid_index = next_grid_index
+        if grid_index != len(widths):
+            raise ValueError("E-3707_H Test Description row grid is inconsistent.")
 
 
 def _insert_page_break_before_heading(document, heading: str) -> None:

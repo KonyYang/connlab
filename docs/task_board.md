@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "REPORT-001B",
+    "summary": "Fix large-matrix E-3707_H draft pagination gaps and unequal trailing Test Sequence group columns without modifying the approved template.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Test Report Word adapter layout only: natural result-group pagination, exact fixed Test Description table geometry for up to 12 groups, regression tests, and Word visual QA.",
+    "scope_paths": [
+      "backend/infrastructure/office/test_report_document_gateway.py",
+      "tests/unit/test_test_report_document_gateway.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "aae6ed2ac5d09fe955a0c1d63f00ec19f0227f33",
+    "started_at": "2026-08-28T23:49:14.844127Z",
+    "updated_at": "2026-08-28T23:49:14.844127Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_AUTHORITY_AWARE_MATRIX_XLSX_OUTPUT",
     "tier": "high_risk",

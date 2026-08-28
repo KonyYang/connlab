@@ -257,6 +257,96 @@ def test_generates_result_headings_from_numeric_confirmed_group_labels(
     assert "Group 2 Test Results" in paragraphs
 
 
+def test_result_groups_flow_without_forced_page_breaks(tmp_path: Path) -> None:
+    template = _build_template(tmp_path / "E-3707_H.docx")
+    output = tmp_path / "draft.docx"
+
+    TestReportDocumentGateway().generate(
+        template_path=template,
+        output_path=output,
+        report=_report(),
+    )
+
+    document = Document(output)
+    group_headings = [
+        paragraph
+        for paragraph in document.paragraphs
+        if paragraph.text.startswith("Group ")
+        and paragraph.text.endswith(" Test Results")
+    ]
+
+    assert [paragraph.text for paragraph in group_headings] == [
+        "Group 1 Test Results",
+        "Group 2 Test Results",
+    ]
+    assert all(
+        paragraph.paragraph_format.keep_with_next is True
+        for paragraph in group_headings
+    )
+    assert all(
+        not paragraph._p.getprevious().xpath('.//w:br[@w:type="page"]')
+        for paragraph in group_headings[1:]
+    )
+
+
+def test_large_matrix_description_uses_consistent_fixed_geometry(
+    tmp_path: Path,
+) -> None:
+    template = _build_template(tmp_path / "E-3707_H.docx")
+    template_document = Document(template)
+    _set_fixture_table_geometry(template_document.tables[1], (3024, 7857))
+    template_document.save(template)
+    output = tmp_path / "draft.docx"
+    report = _report()
+    groups = tuple(
+        replace(
+            report.groups[0],
+            group_key=f"g{index}",
+            group_label=f"Group {index}",
+        )
+        for index in range(1, 13)
+    )
+
+    TestReportDocumentGateway().generate(
+        template_path=template,
+        output_path=output,
+        report=replace(report, groups=groups),
+    )
+
+    description = Document(output).tables[1]
+    grid_widths = [
+        int(column.get(qn("w:w")))
+        for column in description._tbl.tblGrid.gridCol_lst
+    ]
+    table_width = description._tbl.tblPr.find(qn("w:tblW"))
+    table_layout = description._tbl.tblPr.find(qn("w:tblLayout"))
+
+    assert [cell.text for cell in description.rows[1].cells][-3:] == [
+        "10",
+        "11",
+        "12",
+    ]
+    assert len(grid_widths) == 13
+    assert table_width is not None
+    assert table_width.get(qn("w:type")) == "dxa"
+    assert int(table_width.get(qn("w:w"))) == sum(grid_widths) == 10881
+    assert table_layout is not None
+    assert table_layout.get(qn("w:type")) == "fixed"
+    assert 2500 <= grid_widths[0] <= 3024
+    assert min(grid_widths[1:]) >= 690
+    assert max(grid_widths[1:]) - min(grid_widths[1:]) <= 1
+
+    for row in description.rows:
+        grid_index = 0
+        for cell_xml in row._tr.tc_lst:
+            span_xml = cell_xml.tcPr.find(qn("w:gridSpan"))
+            span = 1 if span_xml is None else int(span_xml.get(qn("w:val")))
+            cell_width = int(cell_xml.tcPr.tcW.get(qn("w:w")))
+            assert cell_width == sum(grid_widths[grid_index : grid_index + span])
+            grid_index += span
+        assert grid_index == len(grid_widths)
+
+
 def test_rejects_template_contract_drift_without_replacing_reserved_output(
     tmp_path: Path,
 ) -> None:
@@ -612,3 +702,21 @@ def _set_cell_runs(cell, *values: str) -> None:
         paragraph._p.remove(run._r)
     for value in values:
         paragraph.add_run(value)
+
+
+def _set_fixture_table_geometry(table, widths: tuple[int, ...]) -> None:
+    table.autofit = False
+    table_width = table._tbl.tblPr.find(qn("w:tblW"))
+    assert table_width is not None
+    table_width.set(qn("w:type"), "dxa")
+    table_width.set(qn("w:w"), str(sum(widths)))
+    for column, width in zip(
+        table._tbl.tblGrid.gridCol_lst,
+        widths,
+        strict=True,
+    ):
+        column.set(qn("w:w"), str(width))
+    for row in table.rows:
+        for cell, width in zip(row.cells, widths, strict=True):
+            cell._tc.tcPr.tcW.set(qn("w:type"), "dxa")
+            cell._tc.tcPr.tcW.set(qn("w:w"), str(width))
