@@ -81,7 +81,7 @@ class MatrixEditorLiveXlsxExportService:
         """Validate, freeze, render, and name one live Matrix export."""
         projection = _validate(request)
         content = self._gateway.render(projection)
-        safe_reference = _safe_windows_segment(request.project_reference)
+        safe_reference = safe_matrix_xlsx_reference(request.project_reference)
         timestamp = self._clock().strftime("%Y%m%d%H%M%S")
         return MatrixEditorLiveXlsxExportResult(
             content=content,
@@ -157,7 +157,8 @@ _INVALID_WINDOWS = re.compile(r'[<>:"/\\|?*\x00-\x1f]+')
 _RESERVED_WINDOWS = re.compile(r"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$", re.IGNORECASE)
 
 
-def _safe_windows_segment(value: str) -> str:
+def safe_matrix_xlsx_reference(value: str) -> str:
+    """Return a Windows-safe project reference for Matrix workbook names."""
     segment = _INVALID_WINDOWS.sub("_", value.strip()).rstrip(" .")
     if _RESERVED_WINDOWS.fullmatch(segment):
         segment = f"_{segment}"

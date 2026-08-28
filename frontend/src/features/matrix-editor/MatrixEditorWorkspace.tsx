@@ -1421,6 +1421,52 @@ export function MatrixEditorWorkspace({
           {matrixXlsxExport.error || matrixXlsxExport.message}
         </section>
       ) : null}
+      {matrixXlsxExport.conflict ? (
+        <section
+          aria-describedby="matrix-xlsx-conflict-description"
+          aria-labelledby="matrix-xlsx-conflict-title"
+          aria-modal="true"
+          className="official-output-conflict-backdrop"
+          role="alertdialog"
+        >
+          <article className="official-output-conflict-panel">
+            <h3 id="matrix-xlsx-conflict-title">Replace existing Matrix workbook?</h3>
+            <p id="matrix-xlsx-conflict-description">
+              A file with the same name already exists in Source Book. Choose what to do
+              with the existing workbook before the confirmed Matrix is saved.
+            </p>
+            {matrixXlsxExport.conflict.existing_modified_at ? (
+              <p className="fine-print">
+                Existing file modified:{" "}
+                {new Date(matrixXlsxExport.conflict.existing_modified_at).toLocaleString()}
+              </p>
+            ) : null}
+            <div className="official-output-conflict-actions">
+              <button
+                type="button"
+                disabled={matrixXlsxExport.busy}
+                onClick={() => void matrixXlsxExport.resolveConflict("archive")}
+              >
+                Archive old file
+              </button>
+              <button
+                type="button"
+                disabled={matrixXlsxExport.busy}
+                onClick={() => void matrixXlsxExport.resolveConflict("recycle")}
+              >
+                Move old file to Recycle Bin
+              </button>
+              <button
+                type="button"
+                disabled={matrixXlsxExport.busy}
+                onClick={matrixXlsxExport.cancelConflict}
+              >
+                Cancel
+              </button>
+            </div>
+          </article>
+        </section>
+      ) : null}
       <input
         ref={matrixImport.fileInputRef}
         accept=".pdf,.doc,.docx"

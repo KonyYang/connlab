@@ -34,6 +34,20 @@ class TestRecordPublicationGateway:
                 digest.update(chunk)
         return digest.hexdigest()
 
+    def stage_bytes(
+        self,
+        *,
+        content: bytes,
+        staging_dir: Path,
+        file_name: str,
+    ) -> Path:
+        """Write one generated output into an isolated staging directory."""
+        staging_dir.mkdir(parents=True, exist_ok=False)
+        staged_path = staging_dir / file_name
+        with staged_path.open("xb") as handle:
+            handle.write(content)
+        return staged_path
+
     def publish(
         self,
         *,

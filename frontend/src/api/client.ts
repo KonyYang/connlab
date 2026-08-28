@@ -1950,6 +1950,25 @@ export type MatrixSourceCandidate = {
   stored_file_available: boolean;
 };
 
+export type MatrixEditorLiveXlsxPublicationPreview = {
+  mode: "download" | "official";
+  status: "ready" | "conflict" | "blocked";
+  existing_file: boolean;
+  existing_modified_at: string | null;
+  blockers: string[];
+  preview_token: string;
+};
+
+export type MatrixEditorLiveXlsxPublicationResult = {
+  file_name: string;
+  archive_path: string | null;
+};
+
+export type MatrixEditorLiveXlsxPublicationRequest = MatrixEditorLiveXlsxExportRequest & {
+  preview_token: string;
+  conflict_action: "none" | "archive" | "recycle";
+};
+
 export type MatrixEditorTestRecordPublicationPreview = {
   project_id: string;
   mode: "download" | "official";
@@ -4696,6 +4715,34 @@ export function exportMatrixEditorLiveXlsx(
 ): Promise<BlobDownloadResponse> {
   return requestBlobResponse(
     `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/live-xlsx-export`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
+  );
+}
+
+export function previewMatrixEditorLiveXlsxPublication(
+  projectId: string,
+  input: MatrixEditorLiveXlsxExportRequest
+): Promise<MatrixEditorLiveXlsxPublicationPreview> {
+  return requestJson<MatrixEditorLiveXlsxPublicationPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/live-xlsx-export/publication/preview`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
+  );
+}
+
+export function publishMatrixEditorLiveXlsx(
+  projectId: string,
+  input: MatrixEditorLiveXlsxPublicationRequest
+): Promise<MatrixEditorLiveXlsxPublicationResult> {
+  return requestJson<MatrixEditorLiveXlsxPublicationResult>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/live-xlsx-export/publication/publish`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

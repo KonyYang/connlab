@@ -22,6 +22,7 @@ class LifecycleWriteOperation(StrEnum):
     MATRIX_EDITOR_DRAFT_SAVE = "matrix_editor_draft_save"
     MATRIX_EDITOR_DRAFT_DISCARD = "matrix_editor_draft_discard"
     MATRIX_EDITOR_CONFIRM = "matrix_editor_confirm"
+    MATRIX_EXPORT_PUBLISH = "matrix_export_publish"
     FEE_PRICING_DRAFT_SAVE = "fee_pricing_draft_save"
     FEE_PRICING_DRAFT_DISCARD = "fee_pricing_draft_discard"
     REQUIRED_FORMS_GENERATE = "required_forms_generate"
