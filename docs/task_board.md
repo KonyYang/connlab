@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_REPORT_001_DRAFT_FIDELITY_REVISION",
+    "summary": "Revise the E-3707_H initialization report draft to match approved-report table typography, fills, result defaults, LLCR descriptions, and heading pagination.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Correct the existing non-overwriting initialization report generator and its regression coverage without changing approved templates or external reports.",
+    "scope_paths": [
+      "backend/infrastructure/office/test_report_document_gateway.py",
+      "tests/unit/test_test_report_document_gateway.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "660b235e6231a957d52251c2cebf2d84d5d836bc",
+    "started_at": "2026-08-28T00:05:14.781087Z",
+    "updated_at": "2026-08-28T00:05:14.781087Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FEE_REBASE_DERIVED_TOTAL_RESAVE",
     "tier": "standard",

@@ -179,7 +179,11 @@ def _build_group_steps(
 
 
 def _apply_llcr_step_requirement_mapping(steps: list[ConfirmedMatrixTestRecordPreviewStep]) -> None:
-    llcr_indexes = [index for index, step in enumerate(steps) if _is_llcr_test_item(step.test_item)]
+    llcr_indexes = [
+        index
+        for index, step in enumerate(steps)
+        if is_llcr_test_item(step.test_item)
+    ]
     if not llcr_indexes:
         return
     split = _split_llcr_requirement(steps[llcr_indexes[0]].requirement)
@@ -216,7 +220,7 @@ def _apply_llcr_step_requirement_mapping(steps: list[ConfirmedMatrixTestRecordPr
             )
 
 
-def _is_llcr_test_item(test_item: str) -> bool:
+def is_llcr_test_item(test_item: str) -> bool:
     normalized = re.sub(r"[^a-z0-9]+", " ", test_item.strip().lower()).strip()
     if not normalized:
         return False

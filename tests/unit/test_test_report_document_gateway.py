@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from hashlib import sha256
 from pathlib import Path
@@ -64,19 +65,52 @@ def test_generates_e3707_draft_without_mutating_approved_template(tmp_path: Path
     description = document.tables[1]
     assert [cell.text for cell in description.rows[1].cells] == [
         "Test Items",
-        "Group 1",
-        "Group 2",
+        "1",
+        "2",
     ]
+    assert _cell_fill(description.cell(1, 1)) == "B2B2B2"
+    assert _cell_fill(description.cell(1, 2)) == "B2B2B2"
     assert [cell.text for cell in description.rows[-1].cells] == [
         "Samples Size(sets)",
         "5",
         "3",
     ]
+    assert all(_cell_fill(cell) == "8DB3E2" for cell in description.rows[-1].cells)
     assert description.cell(2, 2)._tc.tcPr.find(qn("w:tcBorders")) is not None
+
+    all_tables = list(document.tables)
+    for section in document.sections:
+        for header in (section.header, section.first_page_header):
+            all_tables.extend(header.tables)
+        for footer in (section.footer, section.first_page_footer):
+            all_tables.extend(footer.tables)
+    populated_table_runs = [
+        run
+        for table in all_tables
+        for row in table.rows
+        for cell in row.cells
+        for paragraph in cell.paragraphs
+        for run in paragraph.runs
+        if run.text
+    ]
+    assert populated_table_runs
+    assert all(run.font.name == "Arial" for run in populated_table_runs)
+
+    test_description_heading = next(
+        paragraph
+        for paragraph in document.paragraphs
+        if paragraph.text == "4. TEST DESCRIPTION"
+    )
+    assert test_description_heading.paragraph_format.keep_with_next is True
 
     methods = document.tables[2]
     method_rows = [[cell.text for cell in row.cells] for row in methods.rows]
-    assert ["Visual Examination", "EIA-364-18", "10x", "No damage"] in method_rows
+    assert [
+        "Visual Examination",
+        "EIA-364-18",
+        "10x",
+        "No detrimental condition",
+    ] in method_rows
     assert ["LLCR", "EIA-364-23", "20mV max", "Initial ≤0.25mΩ; ΔR ≤0.17mΩ"] in method_rows
 
     result_tables = [
@@ -89,12 +123,19 @@ def test_generates_e3707_draft_without_mutating_approved_template(tmp_path: Path
     assert [cell.text for cell in result_tables[0].rows[1].cells] == [
         "1",
         "Visual Examination",
-        "No damage",
+        "No detrimental condition",
         "Visual Examination",
-        "",
-        "",
+        "No detriment",
+        "Pass",
     ]
-    assert [cell.text for cell in result_tables[1].rows[2].cells][-2:] == ["", ""]
+    assert [cell.text for cell in result_tables[0].rows[2].cells][-2:] == [
+        "Initial ≤_mΩ",
+        "Pass",
+    ]
+    assert [cell.text for cell in result_tables[1].rows[2].cells][-2:] == [
+        "ΔR ≤_mΩ",
+        "Pass",
+    ]
     assert "Group 1 Test Results" in paragraphs
     assert "Group 2 Test Results" in paragraphs
 
@@ -131,6 +172,56 @@ def test_rejects_template_contract_drift_without_replacing_reserved_output(
         )
 
     assert output.read_bytes() == b""
+
+
+def test_generates_llcr_stage_descriptions_and_stage_specific_result_shells(
+    tmp_path: Path,
+) -> None:
+    template = _build_template(tmp_path / "E-3707_H.docx")
+    output = tmp_path / "draft.docx"
+    group = ConfirmedMatrixTestRecordPreviewGroup(
+        group_key="g1",
+        group_label="Group 1",
+        sample_quantity_expression="5",
+        step_count=5,
+        steps=(
+            _step(1, "Contact Resistance (Low Level)", "≤0.25mΩ"),
+            _step(2, "Pe-Durability", "No damage"),
+            _step(3, "Contact Resistance (Low Level)", "ΔR ≤0.17mΩ"),
+            _step(4, "Thermal Shock", "No damage"),
+            _step(5, "Contact Resistance (Low Level)", "ΔR ≤0.17mΩ"),
+        ),
+    )
+
+    TestReportDocumentGateway().generate(
+        template_path=template,
+        output_path=output,
+        report=replace(_report(), groups=(group,)),
+    )
+
+    document = Document(output)
+    results = next(
+        table
+        for table in document.tables
+        if [cell.text for cell in table.rows[0].cells]
+        == ["Step", "Test", "Requirement", "Step Description", "Result", "Comment"]
+    )
+    assert [row.cells[3].text for row in results.rows[1:]] == [
+        "LLCR",
+        "Pe-Durability",
+        "After Pe-Durability",
+        "Thermal Shock",
+        "Final ΔR",
+    ]
+    assert results.rows[1].cells[2].text == "Initial ≤0.25mΩ"
+    assert [row.cells[4].text for row in results.rows[1:]] == [
+        "Initial ≤_mΩ",
+        "No damage",
+        "ΔR ≤_mΩ",
+        "No damage",
+        "ΔR ≤_mΩ",
+    ]
+    assert all(row.cells[5].text == "Pass" for row in results.rows[1:])
 
 
 def test_rejects_first_page_header_contract_drift(tmp_path: Path) -> None:
@@ -293,7 +384,7 @@ def _report() -> TestReportDraftData:
                 section="6.1",
                 method="EIA-364-18",
                 condition="10x",
-                requirement="No damage",
+                requirement="No detrimental condition",
             ),
             ConfirmedMatrixTestRecordPreviewStep(
                 sequence=2,
@@ -319,7 +410,7 @@ def _report() -> TestReportDraftData:
                 section="6.1",
                 method="EIA-364-18",
                 condition="10x",
-                requirement="No damage",
+                requirement="No detrimental condition",
             ),
             ConfirmedMatrixTestRecordPreviewStep(
                 sequence=4,
@@ -348,6 +439,22 @@ def _report() -> TestReportDraftData:
     )
 
 
+def _step(
+    sequence: int,
+    test_item: str,
+    requirement: str,
+) -> ConfirmedMatrixTestRecordPreviewStep:
+    return ConfirmedMatrixTestRecordPreviewStep(
+        sequence=sequence,
+        raw_token=str(sequence),
+        test_item=test_item,
+        section="6.1",
+        method="EIA-364",
+        condition="Condition",
+        requirement=requirement,
+    )
+
+
 def _add_direct_cell_borders(cell) -> None:
     borders = OxmlElement("w:tcBorders")
     for edge_name in ("top", "left", "bottom", "right", "insideH", "insideV"):
@@ -356,3 +463,8 @@ def _add_direct_cell_borders(cell) -> None:
         edge.set(qn("w:sz"), "4")
         borders.append(edge)
     cell._tc.get_or_add_tcPr().append(borders)
+
+
+def _cell_fill(cell) -> str | None:
+    shading = cell._tc.get_or_add_tcPr().find(qn("w:shd"))
+    return shading.get(qn("w:fill")) if shading is not None else None

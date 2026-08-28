@@ -19,6 +19,9 @@ from docx.shared import Inches
 from docx.table import Table, _Cell
 from docx.text.paragraph import Paragraph
 
+from backend.application.confirmed_matrix_test_record_preview_service import (
+    is_llcr_test_item,
+)
 from backend.application.test_report_draft_service import TestReportDraftData
 
 
@@ -64,6 +67,9 @@ _REQUIRED_FIRST_PAGE_HEADER_PLACEHOLDERS = (
     "NAME",
     "PRODUCT NAME/TEST DESCRIPTION ",
 )
+_TABLE_FONT_NAME = "Arial"
+_HEADER_FILL = "B2B2B2"
+_SAMPLE_SIZE_FILL = "8DB3E2"
 
 
 class TestReportDocumentGateway:
@@ -108,8 +114,10 @@ class TestReportDocumentGateway:
                 anchors.result_table,
                 report,
             )
+            _keep_heading_with_following_content(document, "4. TEST DESCRIPTION")
             _insert_page_break_before_heading(document, "7. EQUIPMENTS")
             _fill_revision_table(anchors.revision_table, report)
+            _set_document_table_font(document, _TABLE_FONT_NAME)
             document.save(temporary)
             _audit_generated_document(temporary, report)
             os.replace(temporary, target)
@@ -292,12 +300,19 @@ def _fill_test_description_table(table: Table, report: TestReportDraftData) -> N
             table.cell(0, column_index),
             "Test Sequence" if column_index == 1 else "",
         )
-        _set_cell_text(table.cell(1, column_index), group.group_label)
+        _set_cell_text(
+            table.cell(1, column_index),
+            _test_sequence_group_label(group.group_label),
+        )
     if len(groups) > 1:
         table.cell(0, 1).merge(table.cell(0, len(groups)))
     table.cell(0, 0).merge(table.cell(1, 0))
     _set_cell_text(table.cell(0, 0), "Test Items")
     _set_cell_text(table.cell(0, 1), "Test Sequence")
+    for cell in table.rows[0].cells:
+        _set_cell_fill(cell, _HEADER_FILL)
+    for cell in table.rows[1].cells[1:]:
+        _set_cell_fill(cell, _HEADER_FILL)
 
     for row_index, item_name in enumerate(item_names, start=2):
         _set_cell_text(table.cell(row_index, 0), item_name)
@@ -312,6 +327,8 @@ def _fill_test_description_table(table: Table, report: TestReportDraftData) -> N
     _set_cell_text(final_row.cells[0], "Samples Size(sets)")
     for column_index, group in enumerate(groups, start=1):
         _set_cell_text(final_row.cells[column_index], group.sample_quantity_expression)
+    for cell in final_row.cells:
+        _set_cell_fill(cell, _SAMPLE_SIZE_FILL)
     _set_description_widths(table, len(groups))
 
 
@@ -367,17 +384,35 @@ def _fill_result_blocks(
 def _fill_result_block(heading: Paragraph, table: Table, group) -> None:
     _set_paragraph_text(heading, f"{group.group_label} Test Results")
     _resize_rows(table, 1 + len(group.steps))
-    for row_index, step in enumerate(group.steps, start=1):
-        description = step.test_item
-        if step.suffix_note:
-            description = f"{description} ({step.suffix_note})"
+    llcr_indexes = tuple(
+        index
+        for index, candidate in enumerate(group.steps)
+        if is_llcr_test_item(candidate.test_item)
+    )
+    for step_index, step in enumerate(group.steps):
+        row_index = step_index + 1
+        description = _step_description(
+            group.steps,
+            step_index,
+            llcr_indexes,
+        )
+        display_requirement = _display_requirement(
+            step.requirement,
+            step_index=step_index,
+            llcr_indexes=llcr_indexes,
+        )
+        result_requirement = _stage_result_requirement(
+            display_requirement,
+            step_index=step_index,
+            llcr_indexes=llcr_indexes,
+        )
         values = (
             step.raw_token,
             step.test_item,
-            step.requirement,
+            display_requirement,
             description,
-            "",
-            "",
+            _default_result(result_requirement),
+            "Pass",
         )
         for cell, value in zip(table.rows[row_index].cells, values, strict=True):
             _set_cell_text(cell, value)
@@ -449,6 +484,129 @@ def _insert_page_break_before_heading(document, heading: str) -> None:
     run.append(page_break)
     break_paragraph.append(run)
     paragraph._p.addprevious(break_paragraph)
+
+
+def _keep_heading_with_following_content(document, heading: str) -> None:
+    paragraph = next(
+        (
+            item
+            for item in document.paragraphs
+            if _normalized(item.text) == _normalized(heading)
+        ),
+        None,
+    )
+    if paragraph is None:
+        raise ValueError(f"E-3707_H template heading is missing: {heading}")
+    paragraph.paragraph_format.keep_with_next = True
+
+
+def _set_document_table_font(document, font_name: str) -> None:
+    tables = list(document.tables)
+    for section in document.sections:
+        for header in (section.header, section.first_page_header):
+            tables.extend(header.tables)
+        for footer in (section.footer, section.first_page_footer):
+            tables.extend(footer.tables)
+    for table in tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    for run in paragraph.runs:
+                        run.font.name = font_name
+                        fonts = run._element.get_or_add_rPr().get_or_add_rFonts()
+                        for attribute in ("ascii", "hAnsi", "eastAsia", "cs"):
+                            fonts.set(qn(f"w:{attribute}"), font_name)
+
+
+def _set_cell_fill(cell: _Cell, fill: str) -> None:
+    properties = cell._tc.get_or_add_tcPr()
+    shading = properties.find(qn("w:shd"))
+    if shading is None:
+        shading = OxmlElement("w:shd")
+        properties.append(shading)
+    shading.set(qn("w:val"), "clear")
+    shading.set(qn("w:color"), "auto")
+    shading.set(qn("w:fill"), fill)
+
+
+def _test_sequence_group_label(value: str) -> str:
+    return re.sub(r"^Group\s+", "", value.strip(), flags=re.IGNORECASE)
+
+
+def _default_result(requirement: str) -> str:
+    normalized = _normalized(requirement)
+    if normalized.casefold() == "no detrimental condition":
+        return "No detriment"
+    return re.sub(
+        r"([≤≥])\s*[+-]?(?:\d+(?:\.\d*)?|\.\d+)",
+        r"\1_",
+        requirement.strip(),
+    )
+
+
+def _step_description(steps, step_index: int, llcr_indexes: tuple[int, ...]) -> str:
+    step = steps[step_index]
+    if not is_llcr_test_item(step.test_item):
+        description = step.test_item
+        if step.suffix_note:
+            description = f"{description} ({step.suffix_note})"
+        return description
+    if len(llcr_indexes) <= 1 or step_index == llcr_indexes[0]:
+        return "LLCR"
+    if step_index == llcr_indexes[-1]:
+        return "Final ΔR"
+    previous = next(
+        (
+            candidate
+            for candidate in reversed(steps[:step_index])
+            if not is_llcr_test_item(candidate.test_item)
+        ),
+        None,
+    )
+    return f"After {previous.test_item}" if previous is not None else "LLCR"
+
+
+def _stage_result_requirement(
+    requirement: str,
+    *,
+    step_index: int,
+    llcr_indexes: tuple[int, ...],
+) -> str:
+    if step_index not in llcr_indexes:
+        return requirement
+    clauses = [
+        clause.strip()
+        for clause in re.split(r"[;；\n]+", requirement)
+        if clause.strip()
+    ]
+    if not clauses:
+        return requirement
+    if step_index == llcr_indexes[0]:
+        return next(
+            (clause for clause in clauses if "initial" in clause.casefold()),
+            clauses[0],
+        )
+    return next(
+        (clause for clause in clauses if "ΔR" in clause or "∆R" in clause),
+        clauses[-1],
+    )
+
+
+def _display_requirement(
+    requirement: str,
+    *,
+    step_index: int,
+    llcr_indexes: tuple[int, ...],
+) -> str:
+    normalized = requirement.strip()
+    if (
+        llcr_indexes
+        and step_index == llcr_indexes[0]
+        and "initial" not in normalized.casefold()
+        and re.match(r"^[≤≥]", normalized)
+    ):
+        return f"Initial {normalized}"
+    return normalized
 
 
 def _set_cell_text(cell: _Cell, text: str) -> None:
