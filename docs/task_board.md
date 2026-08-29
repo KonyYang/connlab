@@ -37,8 +37,16 @@
     ],
     "activation_head": "71c519b22eb48baf3685ab70acbfac066d3f3090",
     "started_at": "2026-08-29T04:13:35.511871Z",
-    "updated_at": "2026-08-29T04:13:35.511871Z",
-    "checkpoint": null,
+    "updated_at": "2026-08-29T05:04:20.894248Z",
+    "checkpoint": {
+      "stage": "integration",
+      "task_id": "TASK_MATRIX_XLSX_ROUND_TRIP",
+      "status": "blocked",
+      "requires_user": true,
+      "version": 1,
+      "schema": "connlab.sol-task-checkpoint",
+      "summary": "Implementation commit 8d61444e and all validation passed. Finish is blocked because the high-risk task manifest recorded directory prefixes while the workflow requires exact file paths; no product or implementation work remains."
+    },
     "report": null
   },
   "last_closed": {
