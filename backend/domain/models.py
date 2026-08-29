@@ -178,8 +178,11 @@ class SampleInfo:
     lot_or_traceability: str | None = None
     material: str | None = None
     plating: str | None = None
+    lubricant: str | None = None
     housing_material: str | None = None
     quantity: int | None = None
+    row_index: int = 0
+    source_form_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

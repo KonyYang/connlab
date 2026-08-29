@@ -51,6 +51,8 @@ def to_application_form(
 def to_sample_infos(
     project_id: str,
     samples: tuple[ParsedSampleInfo, ...],
+    *,
+    source_form_id: str | None = None,
 ) -> tuple[SampleInfo, ...]:
     """Convert parsed sample rows to persisted domain sample records."""
     return tuple(
@@ -63,10 +65,13 @@ def to_sample_infos(
             lot_or_traceability=sample.lot_or_traceability,
             material=sample.material,
             plating=sample.plating,
+            lubricant=sample.lubricant,
             housing_material=sample.housing_material,
             quantity=parse_int(sample.quantity),
+            row_index=row_index,
+            source_form_id=source_form_id,
         )
-        for sample in samples
+        for row_index, sample in enumerate(samples)
     )
 
 
@@ -104,6 +109,7 @@ def from_sample(sample: SampleInfo) -> ParsedSampleInfo:
         lot_or_traceability=sample.lot_or_traceability,
         material=sample.material,
         plating=sample.plating,
+        lubricant=sample.lubricant,
         housing_material=sample.housing_material,
         quantity=str(sample.quantity) if sample.quantity is not None else None,
     )

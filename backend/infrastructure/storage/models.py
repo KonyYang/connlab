@@ -110,8 +110,11 @@ class SampleInfoModel(Base):
     lot_or_traceability: Mapped[str | None] = mapped_column(String(255))
     material: Mapped[str | None] = mapped_column(String(255))
     plating: Mapped[str | None] = mapped_column(String(255))
+    lubricant: Mapped[str | None] = mapped_column(String(255))
     housing_material: Mapped[str | None] = mapped_column(String(255))
     quantity: Mapped[int | None] = mapped_column(Integer)
+    row_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source_form_id: Mapped[str | None] = mapped_column(String(64))
 
 
 class PrecheckResultModel(Base):
@@ -662,6 +665,7 @@ class ProjectBasicInformationRecordModel(Base):
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     values_json: Mapped[str] = mapped_column(Text, nullable=False)
     source_signature_json: Mapped[str] = mapped_column(Text, nullable=False)
+    sample_rows_json: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
     confirmed_at: Mapped[str | None] = mapped_column(String(64))

@@ -304,18 +304,39 @@ def _fill_narrative(document, report: TestReportDraftData) -> None:
 
 
 def _fill_sample_table(table: Table, report: TestReportDraftData) -> None:
-    _resize_rows(table, 2)
-    values = [
-        report.product_name,
-        report.description_part_number,
-        "",
-        "",
-        "",
-        "",
-        "",
-    ]
-    for cell, value in zip(table.rows[1].cells, values, strict=False):
-        _set_cell_text(cell, value)
+    sample_rows = report.sample_rows
+    if not sample_rows:
+        _resize_rows(table, 2)
+        fallback_values = [
+            report.product_name,
+            report.description_part_number,
+            "",
+            "",
+            "",
+            "",
+            "",
+        ]
+        for cell, value in zip(
+            table.rows[1].cells,
+            fallback_values,
+            strict=False,
+        ):
+            _set_cell_text(cell, value)
+        return
+
+    _resize_rows(table, 1 + len(sample_rows))
+    for table_row, sample in zip(table.rows[1:], sample_rows, strict=True):
+        values = [
+            sample.product_name,
+            sample.part_number,
+            sample.lot_or_traceability,
+            sample.material,
+            sample.plating,
+            sample.lubricant,
+            sample.housing_material,
+        ]
+        for cell, value in zip(table_row.cells, values, strict=False):
+            _set_cell_text(cell, value)
 
 
 def _fill_test_description_table(table: Table, report: TestReportDraftData) -> None:

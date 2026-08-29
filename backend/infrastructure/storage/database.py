@@ -24,6 +24,7 @@ from backend.infrastructure.storage.database_general_migrations import (
     _migrate_file_asset_provenance_columns,
     _migrate_ltr_duplicate_resolution_tables,
     _migrate_project_basic_information_records_table,
+    _migrate_report_sample_authority_columns,
     _migrate_project_lifecycle_columns,
     _migrate_project_no_optional,
     _migrate_project_output_record_file_metadata,
@@ -111,5 +112,6 @@ def init_db(engine: Engine) -> None:
     _migrate_source_matrix_import_preview_payload(engine)
     _migrate_source_matrix_row_detail_columns(engine)
     _migrate_project_basic_information_records_table(engine)
+    _migrate_report_sample_authority_columns(engine)
     _migrate_project_lifecycle_columns(engine)
     _migrate_ltr_duplicate_resolution_tables(engine)

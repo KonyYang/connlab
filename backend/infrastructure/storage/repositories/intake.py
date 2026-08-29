@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from sqlalchemy import literal_column, select
 from sqlalchemy.orm import Session
 
@@ -29,7 +31,14 @@ class ApplicationFormRepository:
     ) -> ApplicationForm:
         """Persist an application form and its project sample rows together."""
         self._session.add(_form_to_model(form))
-        self._session.add_all(_sample_to_model(sample) for sample in samples)
+        self._session.add_all(
+            _sample_to_model(
+                sample
+                if sample.source_form_id is not None
+                else replace(sample, source_form_id=form.form_id)
+            )
+            for sample in samples
+        )
         self._session.flush()
         return form
 
@@ -108,7 +117,7 @@ class SampleInfoRepository:
         rows = self._session.scalars(
             select(SampleInfoModel)
             .where(SampleInfoModel.project_id == project_id)
-            .order_by(literal_column("rowid"))
+            .order_by(SampleInfoModel.row_index, literal_column("rowid"))
         ).all()
         return [_sample_to_domain(row) for row in rows]
 
@@ -124,8 +133,11 @@ class SampleInfoRepository:
         row.lot_or_traceability = sample.lot_or_traceability
         row.material = sample.material
         row.plating = sample.plating
+        row.lubricant = sample.lubricant
         row.housing_material = sample.housing_material
         row.quantity = sample.quantity
+        row.row_index = sample.row_index
+        row.source_form_id = sample.source_form_id
         self._session.flush()
         return sample
 
@@ -213,8 +225,11 @@ def _sample_to_model(sample: SampleInfo) -> SampleInfoModel:
         lot_or_traceability=sample.lot_or_traceability,
         material=sample.material,
         plating=sample.plating,
+        lubricant=sample.lubricant,
         housing_material=sample.housing_material,
         quantity=sample.quantity,
+        row_index=sample.row_index,
+        source_form_id=sample.source_form_id,
     )
 
 
@@ -229,6 +244,9 @@ def _sample_to_domain(row: SampleInfoModel) -> SampleInfo:
         lot_or_traceability=row.lot_or_traceability,
         material=row.material,
         plating=row.plating,
+        lubricant=row.lubricant,
         housing_material=row.housing_material,
         quantity=row.quantity,
+        row_index=row.row_index,
+        source_form_id=row.source_form_id,
     )

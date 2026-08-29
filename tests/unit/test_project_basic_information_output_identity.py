@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from backend.application.project_basic_information_output import (
     ConfirmedBasicInformationSnapshot,
+    snapshot_from_record,
+)
+from backend.application.project_basic_information_service import (
+    ProjectBasicInformationRecord,
+    ProjectBasicInformationSampleRow,
 )
 from backend.application.project_basic_information_output_identity import (
     application_form_identity,
@@ -66,6 +71,31 @@ def test_output_identity_maps_test_record_header() -> None:
     assert identity.lab_test_request_number == "DL-BI"
     assert identity.product_description == "Connector BI"
     assert identity.applicable_specification == "GS-12-BI"
+
+
+def test_confirmed_output_snapshot_preserves_structured_sample_rows() -> None:
+    sample_rows = (
+        ProjectBasicInformationSampleRow(
+            product_name="Pin",
+            part_number="PN-1",
+            lubricant="No",
+        ),
+    )
+    record = ProjectBasicInformationRecord(
+        record_id="BI-1",
+        project_id="P1",
+        status="confirmed",
+        version=1,
+        values={"dl_number": "DL-BI"},
+        source_signature='{"source":"confirmed"}',
+        created_at="2026-06-21T00:00:00+00:00",
+        updated_at="2026-06-21T00:00:00+00:00",
+        sample_rows=sample_rows,
+    )
+
+    snapshot = snapshot_from_record(record)
+
+    assert snapshot.sample_rows == sample_rows
 
 
 def _snapshot(

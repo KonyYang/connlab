@@ -23,6 +23,7 @@ from backend.application.project_basic_information_service import (
     ProjectBasicInformationProjectNotFoundError,
     ProjectBasicInformationRecord,
     ProjectBasicInformationResult,
+    ProjectBasicInformationSampleRow,
     ProjectBasicInformationService,
     SaveProjectBasicInformationDraftCommand,
 )
@@ -60,12 +61,30 @@ class ProjectBasicInformationRecordResponse(BaseModel):
     updated_at: str
     confirmed_at: str | None
     confirmed_by: str | None
+    sample_rows: list["ProjectBasicInformationSampleRowResponse"]
+
+
+class ProjectBasicInformationSampleRowResponse(BaseModel):
+    """One confirmed application-form sample row."""
+
+    product_name: str
+    part_number: str
+    lot_or_traceability: str
+    material: str
+    plating: str
+    lubricant: str
+    housing_material: str
+    revision: str
+    quantity: int | None
+    row_index: int
+    source_form_id: str | None
 
 
 class ProjectBasicInformationDraftResponse(BaseModel):
     """Response DTO for the current Basic Information draft."""
 
     values: dict[str, str]
+    sample_rows: list[ProjectBasicInformationSampleRowResponse]
 
 
 class ProjectBasicInformationFieldSuggestionResponse(BaseModel):
@@ -192,7 +211,10 @@ def _response(result: ProjectBasicInformationResult) -> ProjectBasicInformationR
     return ProjectBasicInformationResponse(
         project_id=result.project_id,
         status=result.status,
-        draft=ProjectBasicInformationDraftResponse(values=result.draft.values),
+        draft=ProjectBasicInformationDraftResponse(
+            values=result.draft.values,
+            sample_rows=[_sample_row_response(row) for row in result.draft.sample_rows],
+        ),
         latest_confirmed=(
             _record_response(result.latest_confirmed)
             if result.latest_confirmed is not None
@@ -225,6 +247,25 @@ def _record_response(
         updated_at=record.updated_at,
         confirmed_at=record.confirmed_at,
         confirmed_by=record.confirmed_by,
+        sample_rows=[_sample_row_response(row) for row in record.sample_rows],
+    )
+
+
+def _sample_row_response(
+    row: ProjectBasicInformationSampleRow,
+) -> ProjectBasicInformationSampleRowResponse:
+    return ProjectBasicInformationSampleRowResponse(
+        product_name=row.product_name,
+        part_number=row.part_number,
+        lot_or_traceability=row.lot_or_traceability,
+        material=row.material,
+        plating=row.plating,
+        lubricant=row.lubricant,
+        housing_material=row.housing_material,
+        revision=row.revision,
+        quantity=row.quantity,
+        row_index=row.row_index,
+        source_form_id=row.source_form_id,
     )
 
 

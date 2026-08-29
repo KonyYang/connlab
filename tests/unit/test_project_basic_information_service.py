@@ -402,6 +402,55 @@ def test_confirm_creates_new_versions_without_overwriting_old_versions() -> None
     assert records.list_confirmed_by_project("P1")[0].values["project_type"] == "NPD"
 
 
+def test_confirm_freezes_sample_rows_and_detects_later_sample_changes() -> None:
+    samples = _SampleInfoStore()
+    samples.samples[0] = replace(
+        samples.samples[0],
+        lubricant="No",
+        row_index=0,
+        source_form_id="F1",
+    )
+    samples.samples[1] = replace(
+        samples.samples[1],
+        lubricant="Yes",
+        row_index=1,
+        source_form_id="F1",
+    )
+    service = ProjectBasicInformationService(
+        project_store=_ProjectStore(),
+        ltr_store=_LtrStore(),
+        application_form_store=_ApplicationFormStore(),
+        sample_store=samples,
+        basic_information_store=_BasicInformationStore(),
+        clock=lambda: "2026-06-20T09:00:00+08:00",
+        id_factory=_id_factory(),
+    )
+
+    confirmed = service.confirm(
+        ConfirmProjectBasicInformationCommand(
+            project_id="P1",
+            values=_complete_values(),
+            confirmed_by="Lab User",
+        )
+    ).latest_confirmed
+
+    assert confirmed is not None
+    assert [row.product_name for row in confirmed.sample_rows] == [
+        "Coolpower HDF",
+        "Shield",
+    ]
+    assert [row.lubricant for row in confirmed.sample_rows] == ["No", "Yes"]
+    signature = json.loads(confirmed.source_signature)
+    assert signature["sample_rows"][1]["part_number"] == "PN-002"
+
+    samples.samples[1] = replace(samples.samples[1], plating="Changed plating")
+    refreshed = service.get("P1")
+
+    assert refreshed.status == "needs_review"
+    assert "sample_information" in refreshed.changed_source_fields
+    assert refreshed.latest_confirmed == confirmed
+
+
 def _service(records: _BasicInformationStore | None = None) -> ProjectBasicInformationService:
     return ProjectBasicInformationService(
         project_store=_ProjectStore(),

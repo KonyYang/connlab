@@ -18,6 +18,9 @@ from backend.application.confirmed_matrix_test_record_preview_service import (
 from backend.application.project_basic_information_output import (
     ConfirmedBasicInformationReader,
 )
+from backend.application.project_basic_information_service import (
+    ProjectBasicInformationSampleRow,
+)
 
 
 class TestReportDraftGenerationError(ValueError):
@@ -50,6 +53,7 @@ class TestReportDraftData:
     confirmed_matrix_id: str
     groups: tuple[ConfirmedMatrixTestRecordPreviewGroup, ...]
     generated_on: date
+    sample_rows: tuple[ProjectBasicInformationSampleRow, ...] = tuple()
 
     __test__ = False
 
@@ -174,6 +178,7 @@ class TestReportDraftService:
             confirmed_matrix_id=preview.confirmed_matrix_id,
             groups=preview.groups,
             generated_on=date.today(),
+            sample_rows=basic_information.sample_rows,
         )
         project_dir = Path(command.output_dir) / _safe_file_component(command.project_id, 80)
         project_dir.mkdir(parents=True, exist_ok=True)

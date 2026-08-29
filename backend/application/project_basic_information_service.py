@@ -43,6 +43,23 @@ _NON_NEGATIVE_DECIMAL = re.compile(r"^\d+(?:\.\d+)?$")
 
 
 @dataclass(frozen=True, slots=True)
+class ProjectBasicInformationSampleRow:
+    """One immutable Test Sample Information row used by formal outputs."""
+
+    product_name: str
+    part_number: str
+    lot_or_traceability: str = ""
+    material: str = ""
+    plating: str = ""
+    lubricant: str = ""
+    housing_material: str = ""
+    revision: str = ""
+    quantity: int | None = None
+    row_index: int = 0
+    source_form_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ProjectBasicInformationRecord:
     """Persisted Project Basic Information record."""
 
@@ -56,6 +73,7 @@ class ProjectBasicInformationRecord:
     updated_at: str
     confirmed_at: str | None = None
     confirmed_by: str | None = None
+    sample_rows: tuple[ProjectBasicInformationSampleRow, ...] = tuple()
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,6 +81,7 @@ class ProjectBasicInformationDraft:
     """Assembled or saved Basic Information draft."""
 
     values: dict[str, str]
+    sample_rows: tuple[ProjectBasicInformationSampleRow, ...] = tuple()
 
 
 @dataclass(frozen=True, slots=True)
@@ -185,6 +204,7 @@ class ProjectBasicInformationService:
         """Create the service with explicit persistence/source dependencies."""
         self._projects = project_store
         self._records = basic_information_store
+        self._samples = sample_store
         self._clock = clock
         self._id_factory = id_factory or (lambda: uuid4().hex)
         self._lifecycle_write_guard = lifecycle_write_guard
@@ -200,19 +220,31 @@ class ProjectBasicInformationService:
         latest_draft = self._records.get_latest_draft(project_id)
         latest_confirmed = self._records.get_latest_confirmed(project_id)
         suggestions = self._source_assembler.assemble(project)
+        current_sample_rows = self._sample_rows(project_id)
         base_values = self._merge_values(
             draft=latest_draft,
             confirmed=latest_confirmed,
             suggestions=suggestions,
         )
-        changed_fields = _changed_source_fields(latest_confirmed, suggestions)
+        changed_fields = _changed_source_fields(
+            latest_confirmed,
+            suggestions,
+            current_sample_rows,
+        )
         suggestions = _mark_review_suggestions(suggestions, changed_fields)
         status = _result_status(latest_confirmed, changed_fields)
         missing_fields = _missing_required_fields(base_values)
         return ProjectBasicInformationResult(
             project_id=project_id,
             status=status,
-            draft=ProjectBasicInformationDraft(values=base_values),
+            draft=ProjectBasicInformationDraft(
+                values=base_values,
+                sample_rows=_merge_sample_rows(
+                    draft=latest_draft,
+                    confirmed=latest_confirmed,
+                    current=current_sample_rows,
+                ),
+            ),
             latest_confirmed=latest_confirmed,
             field_suggestions=suggestions,
             changed_source_fields=changed_fields,
@@ -234,8 +266,10 @@ class ProjectBasicInformationService:
         now = self._clock()
         existing = self._records.get_latest_draft(command.project_id)
         project = self._require_project(command.project_id)
+        sample_rows = self._sample_rows(command.project_id)
         source_signature = _source_signature(
-            self._source_assembler.assemble(project)
+            self._source_assembler.assemble(project),
+            sample_rows,
         )
         record = ProjectBasicInformationRecord(
             record_id=existing.record_id if existing else self._id_factory(),
@@ -246,6 +280,7 @@ class ProjectBasicInformationService:
             source_signature=source_signature,
             created_at=existing.created_at if existing else now,
             updated_at=now,
+            sample_rows=sample_rows,
         )
         self._records.save_draft(record)
         return self.get(command.project_id)
@@ -277,8 +312,10 @@ class ProjectBasicInformationService:
             )
         now = self._clock()
         project = self._require_project(command.project_id)
+        sample_rows = self._sample_rows(command.project_id)
         source_signature = _source_signature(
-            self._source_assembler.assemble(project)
+            self._source_assembler.assemble(project),
+            sample_rows,
         )
         next_version = self._records.next_confirmed_version(command.project_id)
         self._records.create_confirmed(
@@ -293,6 +330,7 @@ class ProjectBasicInformationService:
                 updated_at=now,
                 confirmed_at=now,
                 confirmed_by=command.confirmed_by,
+                sample_rows=sample_rows,
             )
         )
         return self.get(command.project_id)
@@ -312,6 +350,31 @@ class ProjectBasicInformationService:
                 f"Project not found: {project_id}"
             )
         return project
+
+    def _sample_rows(
+        self,
+        project_id: str,
+    ) -> tuple[ProjectBasicInformationSampleRow, ...]:
+        samples = sorted(
+            self._samples.list_by_project(project_id),
+            key=lambda sample: sample.row_index,
+        )
+        return tuple(
+            ProjectBasicInformationSampleRow(
+                product_name=sample.product_name.strip(),
+                part_number=sample.part_number.strip(),
+                lot_or_traceability=(sample.lot_or_traceability or "").strip(),
+                material=(sample.material or "").strip(),
+                plating=(sample.plating or "").strip(),
+                lubricant=(sample.lubricant or "").strip(),
+                housing_material=(sample.housing_material or "").strip(),
+                revision=(sample.revision or "").strip(),
+                quantity=sample.quantity,
+                row_index=sample.row_index,
+                source_form_id=sample.source_form_id,
+            )
+            for sample in samples
+        )
 
     def _merge_values(
         self,
@@ -345,6 +408,7 @@ def _result_status(
 def _changed_source_fields(
     latest_confirmed: ProjectBasicInformationRecord | None,
     suggestions: dict[str, ProjectBasicInformationFieldSuggestion],
+    current_sample_rows: tuple[ProjectBasicInformationSampleRow, ...],
 ) -> tuple[str, ...]:
     if latest_confirmed is None:
         return tuple()
@@ -352,12 +416,15 @@ def _changed_source_fields(
         latest_confirmed.source_signature
     )
     current_source_values = _source_values_from_suggestions(suggestions)
-    return tuple(
+    changed = [
         key
         for key in sorted(set(confirmed_source_values) | set(current_source_values))
         if confirmed_source_values.get(key, "").strip()
         != current_source_values.get(key, "").strip()
-    )
+    ]
+    if latest_confirmed.sample_rows != current_sample_rows:
+        changed.append("sample_information")
+    return tuple(changed)
 
 
 def _mark_review_suggestions(
@@ -426,8 +493,9 @@ def _normalize_basic_information_values(values: dict[str, str]) -> dict[str, str
 
 def _source_signature(
     suggestions: dict[str, ProjectBasicInformationFieldSuggestion],
+    sample_rows: tuple[ProjectBasicInformationSampleRow, ...],
 ) -> str:
-    return _signature(_source_values_from_suggestions(suggestions))
+    return _signature(_source_values_from_suggestions(suggestions), sample_rows)
 
 
 def _source_values_from_suggestions(
@@ -443,6 +511,9 @@ def _source_values_from_signature(signature: str) -> dict[str, str]:
         return {}
     if not isinstance(loaded, dict):
         return {}
+    fields = loaded.get("fields")
+    if isinstance(fields, dict):
+        loaded = fields
     return _normalize_basic_information_values({
         str(key): str(value).strip()
         for key, value in loaded.items()
@@ -450,5 +521,44 @@ def _source_values_from_signature(signature: str) -> dict[str, str]:
     })
 
 
-def _signature(values: dict[str, str]) -> str:
-    return json.dumps(_clean_values(values), ensure_ascii=False, sort_keys=True)
+def _signature(
+    values: dict[str, str],
+    sample_rows: tuple[ProjectBasicInformationSampleRow, ...],
+) -> str:
+    return json.dumps(
+        {
+            "fields": _clean_values(values),
+            "sample_rows": [_sample_row_payload(row) for row in sample_rows],
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+
+
+def _sample_row_payload(row: ProjectBasicInformationSampleRow) -> dict[str, object]:
+    return {
+        "product_name": row.product_name,
+        "part_number": row.part_number,
+        "lot_or_traceability": row.lot_or_traceability,
+        "material": row.material,
+        "plating": row.plating,
+        "lubricant": row.lubricant,
+        "housing_material": row.housing_material,
+        "revision": row.revision,
+        "quantity": row.quantity,
+        "row_index": row.row_index,
+        "source_form_id": row.source_form_id,
+    }
+
+
+def _merge_sample_rows(
+    *,
+    draft: ProjectBasicInformationRecord | None,
+    confirmed: ProjectBasicInformationRecord | None,
+    current: tuple[ProjectBasicInformationSampleRow, ...],
+) -> tuple[ProjectBasicInformationSampleRow, ...]:
+    if draft is not None and draft.sample_rows:
+        return draft.sample_rows
+    if confirmed is not None and confirmed.sample_rows:
+        return confirmed.sample_rows
+    return current

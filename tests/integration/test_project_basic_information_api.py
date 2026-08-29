@@ -15,6 +15,7 @@ from backend.application.project_basic_information_service import (
     ProjectBasicInformationProjectNotFoundError,
     ProjectBasicInformationRecord,
     ProjectBasicInformationResult,
+    ProjectBasicInformationSampleRow,
 )
 from backend.domain import ProjectLifecycleState
 
@@ -32,6 +33,7 @@ def test_get_basic_information_returns_typed_unconfirmed_draft() -> None:
     assert payload["project_id"] == "P1"
     assert payload["status"] == "unconfirmed"
     assert payload["draft"]["values"]["dl_number"] == "DL-2026-05-011"
+    assert payload["draft"]["sample_rows"][0]["product_name"] == "Pin"
 
 
 def test_put_basic_information_draft_saves_values() -> None:
@@ -65,6 +67,7 @@ def test_post_basic_information_confirm_returns_confirmed_version() -> None:
     payload = response.json()
     assert payload["status"] == "confirmed"
     assert payload["latest_confirmed"]["version"] == 1
+    assert payload["latest_confirmed"]["sample_rows"][0]["lubricant"] == "No"
     assert service.confirmed_by == "Lab User"
 
 
@@ -216,6 +219,13 @@ def _result(
     confirmed: bool = False,
 ) -> ProjectBasicInformationResult:
     draft_values = values or {"dl_number": "DL-2026-05-011"}
+    sample_rows = (
+        ProjectBasicInformationSampleRow(
+            product_name="Pin",
+            part_number="PN-1",
+            lubricant="No",
+        ),
+    )
     latest_confirmed = None
     if confirmed:
         latest_confirmed = ProjectBasicInformationRecord(
@@ -229,11 +239,15 @@ def _result(
             updated_at="2026-06-20T09:00:00+08:00",
             confirmed_at="2026-06-20T09:00:00+08:00",
             confirmed_by="Lab User",
+            sample_rows=sample_rows,
         )
     return ProjectBasicInformationResult(
         project_id=project_id,
         status=status,
-        draft=ProjectBasicInformationDraft(values=draft_values),
+        draft=ProjectBasicInformationDraft(
+            values=draft_values,
+            sample_rows=sample_rows,
+        ),
         latest_confirmed=latest_confirmed,
         field_suggestions={
             "dl_number": ProjectBasicInformationFieldSuggestion(

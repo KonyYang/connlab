@@ -1,4 +1,5 @@
 from pathlib import Path
+from dataclasses import replace
 
 from sqlalchemy import inspect
 from sqlalchemy import text
@@ -209,14 +210,18 @@ def test_store_application_form_with_sample_rows(tmp_path: Path) -> None:
                 project_id="project-1",
                 product_name="Connector",
                 part_number="PN-001",
+                lubricant="Yes",
                 quantity=12,
+                row_index=3,
             )
 
             ApplicationFormRepository(session).create_with_samples(form, (sample,))
             session.commit()
 
             assert ApplicationFormRepository(session).get("form-1") == form
-            assert SampleInfoRepository(session).list_by_project("project-1") == [sample]
+            assert SampleInfoRepository(session).list_by_project("project-1") == [
+                replace(sample, source_form_id="form-1")
+            ]
     finally:
         engine.dispose()
 
@@ -256,6 +261,48 @@ def test_sample_repository_preserves_inserted_sample_row_order(tmp_path: Path) -
             session.commit()
 
             assert SampleInfoRepository(session).list_by_project("project-1") == list(samples)
+    finally:
+        engine.dispose()
+
+
+def test_sample_repository_uses_explicit_application_form_row_order(tmp_path: Path) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+
+    try:
+        with session_factory() as session:
+            ProjectRepository(session).create(
+                Project(
+                    project_id="project-1",
+                    project_no="PRJ-001",
+                    product_name="Connector",
+                    requestor="Alice",
+                )
+            )
+            bottom = SampleInfo(
+                sample_id="sample-bottom",
+                project_id="project-1",
+                product_name="Bottom row",
+                part_number="PN-BOTTOM",
+                row_index=1,
+            )
+            top = SampleInfo(
+                sample_id="sample-top",
+                project_id="project-1",
+                product_name="Top row",
+                part_number="PN-TOP",
+                row_index=0,
+            )
+
+            SampleInfoRepository(session).create(bottom)
+            SampleInfoRepository(session).create(top)
+            session.commit()
+
+            assert SampleInfoRepository(session).list_by_project("project-1") == [
+                top,
+                bottom,
+            ]
     finally:
         engine.dispose()
 

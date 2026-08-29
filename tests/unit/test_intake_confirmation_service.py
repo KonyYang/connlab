@@ -133,6 +133,45 @@ def test_confirm_case_creates_project_records_and_marks_case_confirmed() -> None
     assert len(stores["samples"].items) == 1
 
 
+def test_confirm_case_preserves_report_sample_fields_source_and_row_order() -> None:
+    data = json.loads(
+        _complete_section1_json(project_no="P-1", product_name="Connector")
+    )
+    data["samples"] = [
+        {
+            "product_name": "Pin",
+            "part_number": "PN-PIN",
+            "lot_or_traceability": "LOT-1",
+            "material": "C1100",
+            "plating": "Ag",
+            "lubricant": "No",
+            "housing_material": "NA",
+            "quantity": 2,
+        },
+        {
+            "product_name": "Socket",
+            "part_number": "PN-SOCKET",
+            "lot_or_traceability": "LOT-2",
+            "material": "C19010",
+            "plating": "Au",
+            "lubricant": "Yes",
+            "housing_material": "LCP",
+            "quantity": 3,
+        },
+    ]
+    service, _stores = _service(_draft(json.dumps(data)))
+
+    result = service.confirm_case("case-1")
+
+    assert [sample.product_name for sample in result.sample_infos] == ["Pin", "Socket"]
+    assert [sample.row_index for sample in result.sample_infos] == [0, 1]
+    assert [sample.lubricant for sample in result.sample_infos] == ["No", "Yes"]
+    assert all(
+        sample.source_form_id == result.application_form.form_id
+        for sample in result.sample_infos
+    )
+
+
 def test_confirm_case_preserves_file_asset_provenance_and_dedupes_email_source() -> None:
     package = _package()
     selected_asset = _asset()

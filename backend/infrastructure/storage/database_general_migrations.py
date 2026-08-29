@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from sqlalchemy.engine import Engine
@@ -183,6 +184,183 @@ def _migrate_project_basic_information_records_table(engine: Engine) -> None:
             "CREATE INDEX ix_project_basic_information_records_status "
             "ON project_basic_information_records(status)"
         )
+
+
+def _migrate_report_sample_authority_columns(engine: Engine) -> None:
+    """Add REPORT-001D sample lineage and confirmed-snapshot columns."""
+    if engine.dialect.name != "sqlite":
+        return
+    with engine.begin() as connection:
+        table_names = {
+            row[0]
+            for row in connection.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        if "sample_infos" in table_names:
+            columns = {
+                row[1]
+                for row in connection.exec_driver_sql(
+                    "PRAGMA table_info(sample_infos)"
+                ).all()
+            }
+            column_defs = {
+                "lubricant": "VARCHAR(255)",
+                "row_index": "INTEGER NOT NULL DEFAULT 0",
+                "source_form_id": "VARCHAR(64)",
+            }
+            added_row_index = "row_index" not in columns
+            for column, definition in column_defs.items():
+                if column in columns:
+                    continue
+                connection.exec_driver_sql(
+                    f"ALTER TABLE sample_infos ADD COLUMN {column} {definition}"
+                )
+            if added_row_index:
+                connection.exec_driver_sql(
+                    """
+                    UPDATE sample_infos AS current
+                    SET row_index = (
+                        SELECT COUNT(*) - 1
+                        FROM sample_infos AS preceding
+                        WHERE preceding.project_id = current.project_id
+                          AND preceding.rowid <= current.rowid
+                    )
+                    """
+                )
+            if "application_forms" in table_names:
+                connection.exec_driver_sql(
+                    """
+                    UPDATE sample_infos
+                    SET source_form_id = (
+                        SELECT form_id
+                        FROM application_forms
+                        WHERE application_forms.project_id = sample_infos.project_id
+                        ORDER BY application_forms.rowid DESC
+                        LIMIT 1
+                    )
+                    WHERE source_form_id IS NULL
+                    """
+                )
+            if {"intake_cases", "intake_drafts"} <= table_names:
+                legacy_drafts = connection.exec_driver_sql(
+                    """
+                    SELECT
+                        intake_cases.confirmed_project_id,
+                        intake_drafts.parsed_fields_json,
+                        intake_drafts.manual_overrides_json
+                    FROM intake_cases
+                    JOIN intake_drafts
+                      ON intake_drafts.case_id = intake_cases.case_id
+                    WHERE intake_cases.confirmed_project_id IS NOT NULL
+                    ORDER BY intake_cases.rowid
+                    """
+                ).all()
+                for project_id, parsed_json, overrides_json in legacy_drafts:
+                    try:
+                        parsed = json.loads(parsed_json or "{}")
+                        overrides = json.loads(overrides_json or "{}")
+                    except json.JSONDecodeError:
+                        continue
+                    if not isinstance(parsed, dict) or not isinstance(overrides, dict):
+                        continue
+                    merged = {
+                        **parsed,
+                        **{
+                            key: value
+                            for key, value in overrides.items()
+                            if value not in (None, "")
+                        },
+                    }
+                    source_rows = merged.get("samples")
+                    if not isinstance(source_rows, list):
+                        continue
+                    persisted_rows = connection.exec_driver_sql(
+                        """
+                        SELECT sample_id, lubricant
+                        FROM sample_infos
+                        WHERE project_id = ?
+                        ORDER BY row_index, rowid
+                        """,
+                        (project_id,),
+                    ).all()
+                    for persisted, source in zip(
+                        persisted_rows,
+                        source_rows,
+                        strict=False,
+                    ):
+                        if persisted[1] not in (None, "") or not isinstance(source, dict):
+                            continue
+                        lubricant = str(source.get("lubricant") or "").strip()
+                        if not lubricant:
+                            continue
+                        connection.exec_driver_sql(
+                            "UPDATE sample_infos SET lubricant = ? WHERE sample_id = ?",
+                            (lubricant, persisted[0]),
+                        )
+
+        if "project_basic_information_records" in table_names:
+            columns = {
+                row[1]
+                for row in connection.exec_driver_sql(
+                    "PRAGMA table_info(project_basic_information_records)"
+                ).all()
+            }
+            if "sample_rows_json" not in columns:
+                connection.exec_driver_sql(
+                    "ALTER TABLE project_basic_information_records "
+                    "ADD COLUMN sample_rows_json TEXT"
+                )
+            if "sample_infos" in table_names:
+                rows_by_project: dict[str, list[dict[str, object]]] = {}
+                sample_rows = connection.exec_driver_sql(
+                    """
+                    SELECT
+                        project_id,
+                        product_name,
+                        part_number,
+                        lot_or_traceability,
+                        material,
+                        plating,
+                        lubricant,
+                        housing_material,
+                        revision,
+                        quantity,
+                        row_index,
+                        source_form_id
+                    FROM sample_infos
+                    ORDER BY project_id, row_index, rowid
+                    """
+                ).all()
+                for row in sample_rows:
+                    rows_by_project.setdefault(str(row[0]), []).append(
+                        {
+                            "product_name": row[1] or "",
+                            "part_number": row[2] or "",
+                            "lot_or_traceability": row[3] or "",
+                            "material": row[4] or "",
+                            "plating": row[5] or "",
+                            "lubricant": row[6] or "",
+                            "housing_material": row[7] or "",
+                            "revision": row[8] or "",
+                            "quantity": row[9],
+                            "row_index": row[10],
+                            "source_form_id": row[11],
+                        }
+                    )
+                for project_id, rows in rows_by_project.items():
+                    connection.exec_driver_sql(
+                        """
+                        UPDATE project_basic_information_records
+                        SET sample_rows_json = ?
+                        WHERE project_id = ?
+                          AND (sample_rows_json IS NULL OR sample_rows_json = '')
+                        """,
+                        (
+                            json.dumps(rows, ensure_ascii=False, sort_keys=True),
+                            project_id,
+                        ),
+                    )
 
 def _migrate_project_lifecycle_columns(engine: Engine) -> None:
     """Add TASK_337A lifecycle overlay columns and backfill legacy project rows."""

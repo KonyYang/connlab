@@ -8,6 +8,7 @@ from typing import Protocol
 
 from backend.application.project_basic_information_service import (
     ProjectBasicInformationRecord,
+    ProjectBasicInformationSampleRow,
 )
 
 
@@ -21,6 +22,7 @@ class ConfirmedBasicInformationSnapshot:
     source_signature: str
     confirmed_at: str | None
     confirmed_by: str | None
+    sample_rows: tuple[ProjectBasicInformationSampleRow, ...] = tuple()
 
     @property
     def source_signature_hash(self) -> str:
@@ -107,4 +109,5 @@ def snapshot_from_record(
         source_signature=record.source_signature,
         confirmed_at=record.confirmed_at,
         confirmed_by=record.confirmed_by,
+        sample_rows=record.sample_rows,
     )

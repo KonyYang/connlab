@@ -120,7 +120,11 @@ class IntakeConfirmationService:
         )
         samples = tuple(
             self._sample_store.create(sample)
-            for sample in self._to_sample_infos(project.project_id, draft_data)
+            for sample in self._to_sample_infos(
+                project.project_id,
+                form.form_id,
+                draft_data,
+            )
         )
         assets = tuple(
             self._file_asset_store.create(asset)
@@ -244,12 +248,17 @@ class IntakeConfirmationService:
             sample_condition=self._optional_text(data, "sample_condition"),
         )
 
-    def _to_sample_infos(self, project_id: str, data: dict[str, Any]) -> tuple[SampleInfo, ...]:
+    def _to_sample_infos(
+        self,
+        project_id: str,
+        source_form_id: str,
+        data: dict[str, Any],
+    ) -> tuple[SampleInfo, ...]:
         rows = data.get("samples")
         if not isinstance(rows, list):
             rows = [{}]
         samples: list[SampleInfo] = []
-        for row in rows:
+        for row_index, row in enumerate(rows):
             if not isinstance(row, dict):
                 continue
             samples.append(
@@ -263,8 +272,11 @@ class IntakeConfirmationService:
                     lot_or_traceability=self._optional_text(row, "lot_or_traceability"),
                     material=self._optional_text(row, "material"),
                     plating=self._optional_text(row, "plating"),
+                    lubricant=self._optional_text(row, "lubricant"),
                     housing_material=self._optional_text(row, "housing_material"),
                     quantity=self._optional_int(row, "quantity"),
+                    row_index=row_index,
+                    source_form_id=source_form_id,
                 )
             )
         return tuple(samples)

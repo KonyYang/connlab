@@ -16,6 +16,9 @@ from backend.application.confirmed_matrix_test_record_preview_service import (
     ConfirmedMatrixTestRecordPreviewStep,
 )
 from backend.application.test_report_draft_service import TestReportDraftData
+from backend.application.project_basic_information_service import (
+    ProjectBasicInformationSampleRow,
+)
 from backend.infrastructure.office.test_report_document_gateway import (
     TestReportDocumentGateway,
 )
@@ -61,8 +64,25 @@ def test_generates_e3707_draft_without_mutating_approved_template(tmp_path: Path
     assert all("TBD" not in text for text in headers)
 
     sample = document.tables[0]
-    assert sample.cell(1, 0).text == "Coolpower HDF"
-    assert sample.cell(1, 1).text == "10179696-0001LF"
+    assert len(sample.rows) == 3
+    assert [cell.text for cell in sample.rows[1].cells] == [
+        "Pin",
+        "PN-PIN",
+        "202510",
+        "C1100",
+        "Ag",
+        "No",
+        "NA",
+    ]
+    assert [cell.text for cell in sample.rows[2].cells] == [
+        "Socket",
+        "PN-SOCKET",
+        "202511",
+        "C19010",
+        "Au",
+        "Yes",
+        "LCP",
+    ]
 
     description = document.tables[1]
     assert [cell.text for cell in description.rows[1].cells] == [
@@ -668,6 +688,28 @@ def _report() -> TestReportDraftData:
         confirmed_matrix_id="cmv-1",
         groups=(group1, group2),
         generated_on=date(2026, 8, 28),
+        sample_rows=(
+            ProjectBasicInformationSampleRow(
+                product_name="Pin",
+                part_number="PN-PIN",
+                lot_or_traceability="202510",
+                material="C1100",
+                plating="Ag",
+                lubricant="No",
+                housing_material="NA",
+                row_index=0,
+            ),
+            ProjectBasicInformationSampleRow(
+                product_name="Socket",
+                part_number="PN-SOCKET",
+                lot_or_traceability="202511",
+                material="C19010",
+                plating="Au",
+                lubricant="Yes",
+                housing_material="LCP",
+                row_index=1,
+            ),
+        ),
     )
 
 

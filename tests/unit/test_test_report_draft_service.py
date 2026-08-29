@@ -13,6 +13,9 @@ from backend.application.confirmed_matrix_test_record_preview_service import (
 from backend.application.project_basic_information_output import (
     ConfirmedBasicInformationSnapshot,
 )
+from backend.application.project_basic_information_service import (
+    ProjectBasicInformationSampleRow,
+)
 from backend.application.test_report_draft_service import (
     GenerateTestReportDraftCommand,
     TestReportDraftGenerationError,
@@ -50,6 +53,8 @@ def test_generates_report_model_from_confirmed_basic_information_and_active_matr
     assert report.description_part_number == "10179696-0001LF"
     assert report.requestor == "MP Cao"
     assert report.project_leader == "Even Yang"
+    assert [row.product_name for row in report.sample_rows] == ["Pin", "Socket"]
+    assert [row.lubricant for row in report.sample_rows] == ["No", "Yes"]
     assert report.confirmed_matrix_id == "cmv-1"
     assert report.groups == _preview().groups
     assert result.output_path.parent == tmp_path / "generated_test_reports" / "P1"
@@ -200,6 +205,28 @@ def _basic_information() -> ConfirmedBasicInformationSnapshot:
         source_signature='{"source":"confirmed"}',
         confirmed_at="2026-05-21T00:00:00+00:00",
         confirmed_by="tester",
+        sample_rows=(
+            ProjectBasicInformationSampleRow(
+                product_name="Pin",
+                part_number="PN-PIN",
+                lot_or_traceability="202510",
+                material="C1100",
+                plating="Ag",
+                lubricant="No",
+                housing_material="NA",
+                row_index=0,
+            ),
+            ProjectBasicInformationSampleRow(
+                product_name="Socket",
+                part_number="PN-SOCKET",
+                lot_or_traceability="202510",
+                material="C19010",
+                plating="Au",
+                lubricant="Yes",
+                housing_material="NA",
+                row_index=1,
+            ),
+        ),
     )
 
 
