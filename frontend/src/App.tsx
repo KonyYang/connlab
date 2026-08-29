@@ -49,6 +49,11 @@ const ProjectWorkbenchPage = lazy(() =>
     default: module.ProjectWorkbenchPage,
   }))
 );
+const ProjectReportWorkspacePage = lazy(() =>
+  import("./pages/ProjectReportWorkspacePage").then((module) => ({
+    default: module.ProjectReportWorkspacePage,
+  }))
+);
 const RuntimeProjectionPrototypePage = lazy(() =>
   import("./pages/RuntimeProjectionPrototypePage").then((module) => ({
     default: module.RuntimeProjectionPrototypePage,
@@ -67,6 +72,7 @@ type Route =
   | { name: "projectMatrixEditor"; projectId: string }
   | { name: "projectFeeEvaluation"; projectId: string }
   | { name: "projectBasicInformation"; projectId: string }
+  | { name: "projectReportWorkspace"; projectId: string }
   | { name: "projectContactMeasurementSetup"; projectId: string }
   | { name: "runtimeProjection" }
   | { name: "settings" }
@@ -114,6 +120,14 @@ function parseRoute(pathname: string): Route {
     return {
       name: "projectBasicInformation",
       projectId: decodeURIComponent(basicInformationMatch[1]),
+    };
+  }
+
+  const reportWorkspaceMatch = pathname.match(/^\/projects\/([^/]+)\/report-workspace$/);
+  if (reportWorkspaceMatch) {
+    return {
+      name: "projectReportWorkspace",
+      projectId: decodeURIComponent(reportWorkspaceMatch[1]),
     };
   }
 
@@ -192,6 +206,8 @@ export default function App(): ReactElement {
         ? "workbench"
       : route.name === "projectBasicInformation"
         ? "workbench"
+      : route.name === "projectReportWorkspace"
+        ? "workbench"
       : route.name === "projectContactMeasurementSetup"
         ? "workbench"
       : route.name === "intakePackage" || route.name === "intakeCaseReview"
@@ -206,6 +222,8 @@ export default function App(): ReactElement {
         ? "Fee Evaluation"
       : route.name === "projectBasicInformation"
         ? "Basic Information"
+      : route.name === "projectReportWorkspace"
+        ? "Report Workspace"
       : route.name === "projectContactMeasurementSetup"
         ? "Test Points Setup"
         : undefined;
@@ -281,6 +299,9 @@ export default function App(): ReactElement {
           onOpenBasicInformation={() =>
             navigate(`/projects/${encodeURIComponent(route.projectId)}/basic-information`)
           }
+          onOpenReportWorkspace={() =>
+            navigate(`/projects/${encodeURIComponent(route.projectId)}/report-workspace`)
+          }
           onOpenSettings={() => navigate("/settings")}
         />
       )}
@@ -301,6 +322,12 @@ export default function App(): ReactElement {
       )}
       {route.name === "projectBasicInformation" && (
         <ProjectBasicInformationPage
+          projectId={route.projectId}
+          onBackToWorkbench={() => navigate(`/projects/${encodeURIComponent(route.projectId)}`)}
+        />
+      )}
+      {route.name === "projectReportWorkspace" && (
+        <ProjectReportWorkspacePage
           projectId={route.projectId}
           onBackToWorkbench={() => navigate(`/projects/${encodeURIComponent(route.projectId)}`)}
         />
@@ -343,6 +370,7 @@ function isProjectWorkspaceRoute(route: Route): boolean {
     route.name === "projectDetail" ||
     route.name === "projectMatrixEditor" ||
     route.name === "projectFeeEvaluation" ||
-    route.name === "projectBasicInformation"
+    route.name === "projectBasicInformation" ||
+    route.name === "projectReportWorkspace"
   );
 }

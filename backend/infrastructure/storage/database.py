@@ -80,18 +80,25 @@ def init_db(engine: Engine) -> None:
     from backend.infrastructure.storage import models_matrix_source  # noqa: F401
     from backend.infrastructure.storage import models_contact_measurement_plan_authority  # noqa: F401
     from backend.infrastructure.storage import models_contact_point_profile  # noqa: F401
+    from backend.infrastructure.storage import models_result_dataset  # noqa: F401
     from backend.infrastructure.storage.matrix_duration_authority_schema import (
         MATRIX_DURATION_AUTHORITY_TABLES,
         bootstrap_matrix_duration_authority_schema,
+    )
+    from backend.infrastructure.storage.result_dataset_schema import (
+        RESULT_DATASET_TABLES,
+        bootstrap_result_dataset_schema,
     )
 
     dedicated_tables = {
         "contact_point_profile_roots", "contact_point_profile_revisions", "contact_point_profile_categories",
         "contact_point_profile_cr_category_selections",
         *MATRIX_DURATION_AUTHORITY_TABLES,
+        *RESULT_DATASET_TABLES,
     }
     # Fail closed on an incompatible authority shape before generic startup DDL.
     bootstrap_matrix_duration_authority_schema(engine)
+    bootstrap_result_dataset_schema(engine)
     general_tables = [
         table for table in Base.metadata.tables.values() if table.name not in dedicated_tables
     ]

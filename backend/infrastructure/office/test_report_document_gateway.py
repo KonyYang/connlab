@@ -21,6 +21,7 @@ from backend.application.confirmed_matrix_test_record_preview_service import (
     is_llcr_test_item,
 )
 from backend.application.test_report_draft_service import TestReportDraftData
+from backend.domain.result_dataset_models import ResultDatasetRevision
 
 
 _SAMPLE_HEADERS = ("Description", "Part #")
@@ -121,6 +122,63 @@ class TestReportDocumentGateway:
             _set_document_table_font(document, _TABLE_FONT_NAME)
             document.save(temporary)
             _audit_generated_document(temporary, report)
+            os.replace(temporary, target)
+        finally:
+            temporary.unlink(missing_ok=True)
+        return target
+
+    def synchronize_llcr_results(
+        self,
+        *,
+        source_path: Path,
+        output_path: Path,
+        dataset: ResultDatasetRevision,
+    ) -> Path:
+        """Copy one report revision and update only uniquely matched LLCR cells."""
+        source = Path(source_path)
+        target = Path(output_path)
+        if source.suffix.lower() != ".docx" or not source.is_file():
+            raise FileNotFoundError(f"Internal report draft does not exist: {source}")
+        if target.suffix.lower() != ".docx":
+            raise ValueError("Internal report draft output must be .docx.")
+        if source.resolve() == target.resolve() or target.exists():
+            raise FileExistsError("Report synchronization requires a new output file.")
+        if not target.parent.is_dir():
+            raise FileNotFoundError(f"Output directory does not exist: {target.parent}")
+        if dataset.dataset_type != "llcr" or dataset.validation_status != "confirmed":
+            raise ValueError("A confirmed LLCR ResultDataset revision is required.")
+
+        temporary = target.with_name(f".{target.stem}.{uuid4().hex}.tmp{target.suffix}")
+        try:
+            shutil.copy2(source, temporary)
+            document = Document(temporary)
+            result_tables = _result_tables_by_group(document)
+            updates = []
+            for entry in dataset.payload.entries:
+                group_key = _report_group_key(entry.group_label)
+                tables = result_tables.get(group_key, ())
+                matches = []
+                for table in tables:
+                    for row in table.rows[1:]:
+                        if len(row.cells) < 6:
+                            continue
+                        if (
+                            _normalized(row.cells[0].text) == _normalized(entry.matrix_step_token)
+                            and is_llcr_test_item(row.cells[1].text)
+                            and _normalized(row.cells[2].text) == _normalized(entry.requirement)
+                        ):
+                            matches.append(row)
+                if len(matches) != 1:
+                    raise ValueError(
+                        "Unable to uniquely locate the LLCR report target for "
+                        f"Group {entry.group_label} Step {entry.matrix_step_token}."
+                    )
+                updates.append((matches[0], entry))
+            for row, entry in updates:
+                _set_cell_text(row.cells[4], _llcr_report_result(entry))
+                _set_cell_text(row.cells[5], (entry.confirmed_outcome or "").title())
+            document.save(temporary)
+            _audit_llcr_sync(temporary, dataset)
             os.replace(temporary, target)
         finally:
             temporary.unlink(missing_ok=True)
@@ -481,6 +539,60 @@ def _fill_revision_table(table: Table, report: TestReportDraftData) -> None:
     )
     for cell, value in zip(table.rows[1].cells, values, strict=True):
         _set_cell_text(cell, value)
+
+
+def _result_tables_by_group(document) -> dict[str, tuple[Table, ...]]:
+    collected: dict[str, list[Table]] = {}
+    current_group: str | None = None
+    for child in document.element.body.iterchildren():
+        if child.tag == qn("w:p"):
+            text = Paragraph(child, document._body).text.strip()
+            match = re.fullmatch(r"Group\s+(.+?)\s+Test Results", text, re.IGNORECASE)
+            current_group = _report_group_key(match.group(1)) if match else current_group
+            continue
+        if child.tag != qn("w:tbl") or current_group is None:
+            continue
+        table = Table(child, document._body)
+        if not table.rows:
+            continue
+        headers = tuple(_normalized(cell.text) for cell in table.rows[0].cells)
+        if headers[: len(_RESULT_HEADERS)] == tuple(
+            _normalized(value) for value in _RESULT_HEADERS
+        ):
+            collected.setdefault(current_group, []).append(table)
+            current_group = None
+    return {key: tuple(value) for key, value in collected.items()}
+
+
+def _report_group_key(value: str) -> str:
+    return re.sub(r"^group\s+", "", value.strip(), flags=re.IGNORECASE).casefold()
+
+
+def _llcr_report_result(entry) -> str:
+    value = f"{entry.summary_max:.3f}"
+    return f"Initial ≤{value}mΩ" if entry.stage == "initial" else f"∆R ≤{value}mΩ"
+
+
+def _audit_llcr_sync(path: Path, dataset: ResultDatasetRevision) -> None:
+    document = Document(path)
+    result_tables = _result_tables_by_group(document)
+    for entry in dataset.payload.entries:
+        expected = _llcr_report_result(entry)
+        matches = [
+            row
+            for table in result_tables.get(_report_group_key(entry.group_label), ())
+            for row in table.rows[1:]
+            if len(row.cells) >= 6
+            and _normalized(row.cells[0].text) == _normalized(entry.matrix_step_token)
+            and is_llcr_test_item(row.cells[1].text)
+            and row.cells[4].text == expected
+            and row.cells[5].text == (entry.confirmed_outcome or "").title()
+        ]
+        if len(matches) != 1:
+            raise ValueError(
+                "Generated report failed LLCR synchronization audit for "
+                f"Group {entry.group_label} Step {entry.matrix_step_token}."
+            )
 
 
 def _resize_rows(table: Table, target: int) -> None:

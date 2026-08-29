@@ -188,6 +188,11 @@ from backend.application.test_record_template_resource import (
     resolve_test_record_template_path,
 )
 from backend.application.test_report_draft_service import TestReportDraftService
+from backend.application.llcr_result_dataset_service import (
+    LlcrImportPreviewRegistry,
+    LlcrResultDatasetService,
+)
+from backend.application.report_workspace_service import ReportWorkspaceService
 from backend.application.test_report_template_resource import (
     TestReportTemplateResourceStore,
 )
@@ -220,6 +225,13 @@ from backend.application.confirmed_matrix_test_status_workbook_generation_servic
 from backend.infrastructure.office.test_status_workbook_gateway import TestStatusWorkbookGateway
 from backend.infrastructure.office.test_report_document_gateway import (
     TestReportDocumentGateway,
+)
+from backend.infrastructure.office.llcr_result_workbook_gateway import (
+    LlcrResultWorkbookGateway,
+    LocalLlcrImportSourceStore,
+)
+from backend.infrastructure.storage.repositories.result_dataset import (
+    ResultDatasetRepository,
 )
 from backend.application.project_section2_sync_service import (
     ProjectSection2SyncService,
@@ -722,6 +734,46 @@ def get_test_report_draft_service(
             ProjectBasicInformationRepository(session)
         ),
         writer=TestReportDocumentGateway(),
+    )
+
+
+@lru_cache(maxsize=1)
+def get_llcr_import_preview_registry() -> LlcrImportPreviewRegistry:
+    """Keep non-authoritative LLCR previews available between inspect and confirm."""
+    return LlcrImportPreviewRegistry()
+
+
+def get_llcr_result_dataset_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(lambda: get_settings()),
+) -> LlcrResultDatasetService:
+    """Build the LLCR inspect -> confirm ResultDataset module."""
+    return LlcrResultDatasetService(
+        preview_service=get_llcr_cr_record_workbook_preview_service(session),
+        workbook_gateway=LlcrResultWorkbookGateway(),
+        source_store=LocalLlcrImportSourceStore(
+            settings.data_dir / "report_import_previews"
+        ),
+        preview_registry=get_llcr_import_preview_registry(),
+        repository=ResultDatasetRepository(session),
+        clock=lambda: datetime.now(timezone.utc).isoformat(),
+    )
+
+
+def get_report_workspace_service(
+    session: Session = Depends(get_session),
+) -> ReportWorkspaceService:
+    """Build Internal Report draft revision orchestration."""
+    confirmed_store = ConfirmedMatrixAuthorityRepository(session)
+    return ReportWorkspaceService(
+        repository=ResultDatasetRepository(session),
+        initial_report_service=get_test_report_draft_service(session),
+        llcr_writer=TestReportDocumentGateway(),
+        clock=lambda: datetime.now(timezone.utc).isoformat(),
+        basic_information_reader=ProjectBasicInformationSnapshotReader(
+            ProjectBasicInformationRepository(session)
+        ),
+        confirmed_matrix_store=confirmed_store,
     )
 
 

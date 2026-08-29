@@ -4706,6 +4706,162 @@ export function generateTestReportDraftDownload(
   );
 }
 
+export type LlcrResultEntry = {
+  result_id: string;
+  group_label: string;
+  matrix_step_token: string;
+  stage: "initial" | "delta";
+  stage_label: string;
+  requirement: string;
+  unit: string;
+  measurement_count: number;
+  summary_min: string;
+  summary_max: string;
+  summary_average: string;
+  provisional_outcome: "pass" | "fail" | "not_determined";
+  confirmed_outcome: "pass" | "fail" | "not_determined" | null;
+  override_reason: string | null;
+  source_range: string;
+  report_target: string;
+};
+
+export type LlcrImportPreview = {
+  preview_id: string;
+  project_id: string;
+  confirmed_matrix_id: string;
+  confirmed_matrix_revision: number;
+  source: { file_name: string; sha256: string; size_bytes: number };
+  parser_profile_version: string;
+  detected_sheets: string[];
+  can_confirm: boolean;
+  sample_count: number;
+  test_point_count: number;
+  result_count: number;
+  entries: LlcrResultEntry[];
+  diagnostics: Array<{
+    code: string;
+    severity: string;
+    message: string;
+    group_label: string | null;
+    step_token: string | null;
+  }>;
+};
+
+export type ResultDatasetRevision = {
+  dataset_id: string;
+  dataset_type: "llcr";
+  revision: number;
+  project_id: string;
+  confirmed_matrix_id: string;
+  confirmed_matrix_revision: number;
+  source_file_name: string;
+  source_sha256: string;
+  parser_profile_version: string;
+  validation_status: string;
+  confirmed_at: string;
+  confirmed_by: string;
+  entries: LlcrResultEntry[];
+};
+
+export type ReportDraftRevision = {
+  report_revision_id: string;
+  revision: number;
+  file_name: string;
+  file_sha256: string;
+  size_bytes: number;
+  confirmed_matrix_id: string;
+  result_dataset_id: string | null;
+  base_report_revision_id: string | null;
+  created_at: string;
+  created_by: string;
+  download_url: string;
+};
+
+export type ReportWorkspaceState = {
+  project_id: string;
+  basic_information_status: "confirmed" | "missing";
+  confirmed_basic_information_version: number | null;
+  active_confirmed_matrix_id: string | null;
+  active_confirmed_matrix_revision: number | null;
+  latest_report_revision: ReportDraftRevision | null;
+  datasets: ResultDatasetRevision[];
+  report_revisions: ReportDraftRevision[];
+};
+
+export function fetchReportWorkspace(projectId: string): Promise<ReportWorkspaceState> {
+  return requestJson<ReportWorkspaceState>(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace`
+  );
+}
+
+export function inspectLlcrResultWorkbook(
+  projectId: string,
+  file: File,
+  importedBy = "Lab User"
+): Promise<LlcrImportPreview> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("imported_by", importedBy);
+  return requestJson<LlcrImportPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/llcr/inspect`,
+    { method: "POST", body: form }
+  );
+}
+
+export function confirmLlcrResultImport(
+  projectId: string,
+  input: {
+    preview_id: string;
+    confirmed_by: string;
+    decisions: Array<{ result_id: string; outcome: string; override_reason?: string | null }>;
+  }
+): Promise<ResultDatasetRevision> {
+  return requestJson<ResultDatasetRevision>(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/llcr/confirm`,
+    { method: "POST", body: JSON.stringify(input) }
+  );
+}
+
+export function cancelLlcrResultPreview(
+  projectId: string,
+  previewId: string
+): Promise<void> {
+  return requestNoContent(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/llcr/previews/${encodeURIComponent(previewId)}`,
+    { method: "DELETE" }
+  );
+}
+
+export function generateInitialReportRevision(
+  projectId: string,
+  createdBy = "Lab User"
+): Promise<ReportDraftRevision> {
+  return requestJson<ReportDraftRevision>(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/initial-drafts`,
+    { method: "POST", body: JSON.stringify({ created_by: createdBy }) }
+  );
+}
+
+export function generateLlcrReportRevision(
+  projectId: string,
+  datasetId: string,
+  createdBy = "Lab User"
+): Promise<ReportDraftRevision> {
+  return requestJson<ReportDraftRevision>(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/llcr-drafts`,
+    { method: "POST", body: JSON.stringify({ dataset_id: datasetId, created_by: createdBy }) }
+  );
+}
+
+export function downloadReportDraftRevision(
+  projectId: string,
+  reportRevisionId: string
+): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/drafts/${encodeURIComponent(reportRevisionId)}/download`
+  );
+}
+
 export function generateMatrixEditorLlcrCrRecordDraftDownload(
   projectId: string,
   input: MatrixEditorLlcrCrRecordDraftRequest

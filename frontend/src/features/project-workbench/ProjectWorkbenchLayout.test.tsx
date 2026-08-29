@@ -41,8 +41,8 @@ vi.mock("./FeeEvaluationStatusSummary", () => ({
 }));
 
 vi.mock("./TestReportDraftButton", () => ({
-  TestReportDraftButton: ({ ready }: { ready: boolean }) => (
-    <button disabled={!ready} type="button">Test Report</button>
+  TestReportDraftButton: ({ onOpen }: { onOpen: () => void }) => (
+    <button onClick={onOpen} type="button">Test Report</button>
   ),
 }));
 
@@ -1408,7 +1408,7 @@ function renderWorkbench(
   callbacks: Partial<Pick<
     ProjectWorkbenchLayoutPropsForTest,
     "onBack" | "onOpenMatrixEditor" | "onOpenFeeEvaluation"
-    | "onOpenBasicInformation" | "onOpenSettings"
+    | "onOpenBasicInformation" | "onOpenReportWorkspace" | "onOpenSettings"
   >> = {}
 ): ReturnType<typeof render> {
   const currentProject = { ...project, ...projectOverrides };
@@ -1420,6 +1420,7 @@ function renderWorkbench(
       onOpenMatrixEditor={callbacks.onOpenMatrixEditor ?? vi.fn()}
       onOpenFeeEvaluation={callbacks.onOpenFeeEvaluation ?? vi.fn()}
       onOpenBasicInformation={callbacks.onOpenBasicInformation ?? vi.fn()}
+      onOpenReportWorkspace={callbacks.onOpenReportWorkspace ?? vi.fn()}
       onOpenSettings={callbacks.onOpenSettings ?? vi.fn()}
     />
   );

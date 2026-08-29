@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import replace
 from datetime import date
+from decimal import Decimal
 from hashlib import sha256
 from pathlib import Path
 
@@ -18,6 +20,13 @@ from backend.application.confirmed_matrix_test_record_preview_service import (
 from backend.application.test_report_draft_service import TestReportDraftData
 from backend.application.project_basic_information_service import (
     ProjectBasicInformationSampleRow,
+)
+from backend.domain.result_dataset_models import (
+    LlcrDatasetPayload,
+    LlcrMeasurement,
+    LlcrResultEntry,
+    ResultDatasetRevision,
+    ResultDatasetSourceIdentity,
 )
 from backend.infrastructure.office.test_report_document_gateway import (
     TestReportDocumentGateway,
@@ -174,6 +183,64 @@ def test_generates_e3707_draft_without_mutating_approved_template(tmp_path: Path
         if paragraph.text == "7. EQUIPMENTS"
     )
     assert equipment_heading._p.getprevious().xpath('.//w:br[@w:type="page"]')
+
+
+def test_synchronizes_only_managed_llcr_result_cells_into_a_new_draft(tmp_path: Path) -> None:
+    template = _build_template(tmp_path / "E-3707_H.docx")
+    source = tmp_path / "revision-1.docx"
+    gateway = TestReportDocumentGateway()
+    gateway.generate(template_path=template, output_path=source, report=_report())
+    document = Document(source)
+    for paragraph in document.paragraphs:
+        if "This report summarizes" in paragraph.text:
+            paragraph.text = "Operator-maintained purpose text."
+            break
+    first_results = _result_tables(document)[0]
+    first_results.cell(1, 4).text = "Operator visual result"
+    first_results.cell(1, 5).text = "Reviewed"
+    document.save(source)
+    source_hash = sha256(source.read_bytes()).hexdigest()
+    output = tmp_path / "revision-2.docx"
+
+    written = gateway.synchronize_llcr_results(
+        source_path=source,
+        output_path=output,
+        dataset=_llcr_dataset(),
+    )
+
+    assert written == output
+    assert sha256(source.read_bytes()).hexdigest() == source_hash
+    synchronized = Document(output)
+    assert any(
+        paragraph.text == "Operator-maintained purpose text."
+        for paragraph in synchronized.paragraphs
+    )
+    result_table = _result_tables(synchronized)[0]
+    assert result_table.cell(1, 4).text == "Operator visual result"
+    assert result_table.cell(1, 5).text == "Reviewed"
+    assert result_table.cell(2, 4).text == "Initial ≤0.198mΩ"
+    assert result_table.cell(2, 5).text == "Pass"
+
+
+def test_llcr_sync_fails_without_partial_output_when_target_is_ambiguous(tmp_path: Path) -> None:
+    template = _build_template(tmp_path / "E-3707_H.docx")
+    source = tmp_path / "revision-1.docx"
+    gateway = TestReportDocumentGateway()
+    gateway.generate(template_path=template, output_path=source, report=_report())
+    document = Document(source)
+    first_results = _result_tables(document)[0]
+    first_results._tbl.append(deepcopy(first_results.rows[2]._tr))
+    document.save(source)
+    output = tmp_path / "revision-2.docx"
+
+    with pytest.raises(ValueError, match="uniquely locate"):
+        gateway.synchronize_llcr_results(
+            source_path=source,
+            output_path=output,
+            dataset=_llcr_dataset(),
+        )
+
+    assert not output.exists()
 
 
 def test_generates_from_approved_numbered_heading_without_separator_space(
@@ -751,6 +818,59 @@ def _step(
         condition="Condition",
         requirement=requirement,
     )
+
+
+def _llcr_dataset() -> ResultDatasetRevision:
+    measurement = LlcrMeasurement(
+        1, "SIG1", Decimal("0.198"), "mΩ", "SIG", "K10",
+        Decimal("0.248"), "mΩ", "D10",
+    )
+    entry = LlcrResultEntry(
+        result_id="group-1:row-llcr:2",
+        confirmed_group_id="group-1",
+        group_label="1",
+        confirmed_row_id="row-llcr",
+        matrix_step_sequence=2,
+        matrix_step_token="2",
+        stage="initial",
+        stage_label="Initial LLCR",
+        requirement="Initial ≤0.25mΩ",
+        requirement_comparator="<=",
+        requirement_limit=Decimal("0.25"),
+        requirement_unit="mΩ",
+        measurements=(measurement,),
+        summary_min=Decimal("0.198"),
+        summary_max=Decimal("0.198"),
+        summary_average=Decimal("0.198"),
+        provisional_outcome="pass",
+        confirmed_outcome="pass",
+        source_range="SIG!K10:K10",
+    )
+    return ResultDatasetRevision(
+        dataset_id="dataset-1",
+        dataset_type="llcr",
+        revision=1,
+        project_id="P1",
+        confirmed_matrix_id="cmv-1",
+        confirmed_matrix_revision=1,
+        source=ResultDatasetSourceIdentity("LLCR.xlsx", "a" * 64, 100),
+        imported_at="2026-08-29T08:00:00Z",
+        imported_by="Even Yang",
+        confirmed_at="2026-08-29T08:01:00Z",
+        confirmed_by="Even Yang",
+        parser_profile_version="connlab-llcr-macro-v1",
+        validation_status="confirmed",
+        payload=LlcrDatasetPayload((entry,)),
+    )
+
+
+def _result_tables(document):
+    headers = ["Step", "Test", "Requirement", "Step Description", "Result", "Comment"]
+    return [
+        table
+        for table in document.tables
+        if [cell.text for cell in table.rows[0].cells] == headers
+    ]
 
 
 def _add_direct_cell_borders(cell) -> None:

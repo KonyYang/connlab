@@ -11,6 +11,7 @@ type ProjectWorkbenchPageProps = {
   onOpenMatrixEditor: () => void;
   onOpenFeeEvaluation: () => void;
   onOpenBasicInformation: () => void;
+  onOpenReportWorkspace: () => void;
   onOpenSettings: () => void;
 };
 
@@ -20,6 +21,7 @@ export function ProjectWorkbenchPage({
   onOpenMatrixEditor,
   onOpenFeeEvaluation,
   onOpenBasicInformation,
+  onOpenReportWorkspace,
   onOpenSettings
 }: ProjectWorkbenchPageProps): ReactElement {
   const model = useProjectWorkbenchModel(projectId);
@@ -39,6 +41,7 @@ export function ProjectWorkbenchPage({
           onOpenMatrixEditor={onOpenMatrixEditor}
           onOpenFeeEvaluation={onOpenFeeEvaluation}
           onOpenBasicInformation={onOpenBasicInformation}
+          onOpenReportWorkspace={onOpenReportWorkspace}
           onOpenSettings={onOpenSettings}
           project={model.project}
         />

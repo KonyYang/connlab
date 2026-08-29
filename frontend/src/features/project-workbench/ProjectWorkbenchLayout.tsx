@@ -51,6 +51,7 @@ type ProjectWorkbenchLayoutProps = {
   onOpenMatrixEditor: () => void;
   onOpenFeeEvaluation: () => void;
   onOpenBasicInformation: () => void;
+  onOpenReportWorkspace: () => void;
   onOpenSettings: () => void;
 };
 
@@ -61,6 +62,7 @@ export function ProjectWorkbenchLayout({
   onOpenMatrixEditor,
   onOpenFeeEvaluation,
   onOpenBasicInformation,
+  onOpenReportWorkspace,
   onOpenSettings,
 }: ProjectWorkbenchLayoutProps): ReactElement {
   const [selectedProjectionToken, setSelectedProjectionToken] =
@@ -137,8 +139,6 @@ export function ProjectWorkbenchLayout({
   const projectNumber = deriveRegisteredProjectReference(latestLtr, project.project_no);
   const lifecycleReadonlyView = deriveProjectLifecycleReadonlyView(runtimeModel.lifecycle);
   const activeMatrixAuthorityReady = Boolean(activeConfirmedMatrixSnapshot);
-  const testReportDraftReady =
-    activeMatrixAuthorityReady && Boolean(runtimeModel.basicInformation?.latest_confirmed);
   const effectiveFolderReady =
     folderReady || officialWorkspacePreview?.status === "completed";
   const titleParts = [buildProjectIdentityLine({ project, latestLtr, projectId: project.project_id })];
@@ -489,8 +489,7 @@ export function ProjectWorkbenchLayout({
               {visibleWorkbenchFolderCommand.label}
             </button>
             <TestReportDraftButton
-              projectId={project.project_id}
-              ready={testReportDraftReady}
+              onOpen={onOpenReportWorkspace}
             />
           </div>
         ) : null}
