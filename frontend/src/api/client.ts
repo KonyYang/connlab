@@ -1711,6 +1711,7 @@ export type MatrixEditorLiveXlsxExportRequest = {
     group_label: string;
     sample_size: string;
     time_display: string;
+    sample_note: string;
   }>;
   rows: Array<{
     row_id: string;
@@ -1719,8 +1720,16 @@ export type MatrixEditorLiveXlsxExportRequest = {
     test_method: string;
     condition: string;
     requirement: string;
+    day_expression: string;
     cells: Array<{ group_id: string; step_text: string }>;
   }>;
+  schedule?: {
+    post_test_buffer_days?: string;
+    sample_received_date?: string;
+    planned_test_start_date?: string;
+    planned_test_complete_date?: string;
+    estimated_completion_date?: string;
+  } | null;
 };
 
 export type ConfirmProjectMatrixRevisionDraftInput = {
@@ -1869,6 +1878,7 @@ export type MatrixPreviewResponse = {
     method?: string | null;
     condition?: string | null;
     requirement?: string | null;
+    day_expression?: string | null;
     detail_extraction_status?: string | null;
     detail_extraction_source_section?: string | null;
     detail_extraction_notes?: string[];
@@ -1878,6 +1888,7 @@ export type MatrixPreviewResponse = {
   groups: MatrixPreviewGroup[];
   warnings: string[];
   blockers: string[];
+  schedule?: Record<string, string | null> | null;
 };
 
 export type MatrixImportCommitRequest = {

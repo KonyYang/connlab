@@ -76,6 +76,7 @@ class MatrixRowPreview:
     detail_extraction_status: str | None = None
     detail_extraction_source_section: str | None = None
     detail_extraction_notes: tuple[str, ...] = field(default_factory=tuple)
+    day_expression: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,6 +88,7 @@ class MatrixParseResult:
     blockers: tuple[str, ...] = field(default_factory=tuple)
     selected_table_index: int | None = None
     rows: tuple[MatrixRowPreview, ...] = field(default_factory=tuple)
+    schedule: dict[str, str | None] | None = None
 
 
 @dataclass(frozen=True, slots=True)

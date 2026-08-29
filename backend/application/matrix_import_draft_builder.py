@@ -30,6 +30,8 @@ def build_selected_only_draft(
     created_at: str,
 ) -> ProjectMatrixDraftSnapshot:
     draft_id = f"pmd-{uuid4().hex}"
+    schedule = preview_payload.get("schedule")
+    schedule = schedule if isinstance(schedule, dict) else {}
     record = ProjectMatrixDraftRecord(
         project_matrix_draft_id=draft_id,
         project_id=project_id,
@@ -39,6 +41,11 @@ def build_selected_only_draft(
         created_at=created_at,
         updated_at=created_at,
         base_confirmed_matrix_id=None,
+        post_test_buffer_days=_text(schedule.get("post_test_buffer_days")),
+        sample_received_date=_text(schedule.get("sample_received_date")),
+        planned_test_start_date=_text(schedule.get("planned_test_start_date")),
+        planned_test_complete_date=_text(schedule.get("planned_test_complete_date")),
+        estimated_completion_date=_text(schedule.get("estimated_completion_date")),
     )
     selected = set(selected_group_keys)
     group_id_by_source: dict[str, str] = {}
@@ -80,6 +87,7 @@ def build_selected_only_draft(
                 method=detail["method"] if detail else source_row.method,
                 condition=detail["condition"] if detail else source_row.condition,
                 requirement=detail["requirement"] if detail else source_row.requirement,
+                day_expression=detail["day_expression"] if detail else None,
                 is_sample_row=source_row.is_sample_row,
             )
         )
@@ -146,6 +154,7 @@ def _row_details(payload: dict[str, Any]) -> dict[int, dict[str, str | None]]:
                     "method": _text(raw_row.get("method")),
                     "condition": _text(raw_row.get("condition")),
                     "requirement": _text(raw_row.get("requirement")),
+                    "day_expression": _text(raw_row.get("day_expression")),
                 }
     raw_groups = payload.get("groups")
     if not isinstance(raw_groups, list):
@@ -160,7 +169,13 @@ def _row_details(payload: dict[str, Any]) -> dict[int, dict[str, str | None]]:
             if index is None:
                 continue
             current = details.setdefault(
-                index, {"method": None, "condition": None, "requirement": None}
+                index,
+                {
+                    "method": None,
+                    "condition": None,
+                    "requirement": None,
+                    "day_expression": None,
+                },
             )
             candidates = {
                 "method": ("method_summary", "method", "reference_standard"),

@@ -313,7 +313,7 @@ export function useMatrixImportWorkflow({
       return;
     }
     if (choice.kind === "unsupported") {
-      setError("Choose a PDF or Word document (.doc or .docx).");
+      setError("Choose a PDF, Word document (.doc or .docx), or ConnLab Matrix (.xlsx).");
       return;
     }
     await openPreviewFromPath(choice.path);

@@ -25,6 +25,16 @@ class MatrixEditorLiveXlsxExportGroup:
     group_label: str
     sample_size: str
     time_display: str
+    sample_note: str = ""
+
+
+@dataclass(frozen=True)
+class MatrixEditorLiveXlsxExportSchedule:
+    post_test_buffer_days: str = ""
+    sample_received_date: str = ""
+    planned_test_start_date: str = ""
+    planned_test_complete_date: str = ""
+    estimated_completion_date: str = ""
 
 
 @dataclass(frozen=True)
@@ -36,6 +46,7 @@ class MatrixEditorLiveXlsxExportRow:
     condition: str
     requirement: str
     cells: tuple[MatrixEditorLiveXlsxExportCell, ...]
+    day_expression: str = ""
 
 
 @dataclass(frozen=True)
@@ -44,12 +55,14 @@ class MatrixEditorLiveXlsxExportRequest:
     project_reference: str
     groups: tuple[MatrixEditorLiveXlsxExportGroup, ...]
     rows: tuple[MatrixEditorLiveXlsxExportRow, ...]
+    schedule: MatrixEditorLiveXlsxExportSchedule | None = None
 
 
 @dataclass(frozen=True)
 class MatrixEditorLiveXlsxExportProjection:
     groups: tuple[MatrixEditorLiveXlsxExportGroup, ...]
     rows: tuple[MatrixEditorLiveXlsxExportRow, ...]
+    schedule: MatrixEditorLiveXlsxExportSchedule | None = None
 
 
 @dataclass(frozen=True)
@@ -107,6 +120,7 @@ def _validate(
         _required(group.group_label, 255, "Group label")
         _limited(group.sample_size, 255, "Sample size")
         _limited(group.time_display, 32, "Time")
+        _limited(group.sample_note, 2048, "Sample note")
     row_ids: list[str] = []
     total_cells = 0
     for row in request.rows:
@@ -127,12 +141,23 @@ def _validate(
             _blocked("Every export row must contain a selected-Group step.")
         for cell in row.cells:
             _limited(cell.step_text, 255, "Step text")
+        _limited(row.day_expression, 64, "Day")
     if len(set(row_ids)) != len(row_ids):
         _blocked("Row ids must be unique.")
     if total_cells > 16_384:
         _blocked("Export exceeds the 16,384-cell limit.")
+    schedule = request.schedule
+    if schedule is not None:
+        for label, value in (
+            ("Post-test buffer", schedule.post_test_buffer_days),
+            ("Sample received date", schedule.sample_received_date),
+            ("Planned start date", schedule.planned_test_start_date),
+            ("Planned complete date", schedule.planned_test_complete_date),
+            ("Estimated completion date", schedule.estimated_completion_date),
+        ):
+            _limited(value, 64, label)
     return MatrixEditorLiveXlsxExportProjection(
-        groups=tuple(request.groups), rows=tuple(request.rows)
+        groups=tuple(request.groups), rows=tuple(request.rows), schedule=schedule
     )
 
 

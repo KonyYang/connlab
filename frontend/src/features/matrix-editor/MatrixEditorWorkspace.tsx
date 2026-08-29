@@ -604,6 +604,13 @@ export function MatrixEditorWorkspace({
     groups: groupColumns,
     rows: editableRows,
     sampleValues,
+    schedule: {
+      post_test_buffer_days: schedulePlan.postTestBufferDays,
+      sample_received_date: schedulePlan.sampleReceivedDate,
+      planned_test_start_date: schedulePlan.plannedTestStartDate,
+      planned_test_complete_date: schedulePlan.plannedTestCompleteDate,
+      estimated_completion_date: schedulePlan.estimatedCompletionDate,
+    },
     timeDisplays: Object.fromEntries(
       groupColumns.map((group) => [
         group.id,
@@ -1469,7 +1476,7 @@ export function MatrixEditorWorkspace({
       ) : null}
       <input
         ref={matrixImport.fileInputRef}
-        accept=".pdf,.doc,.docx"
+        accept=".pdf,.doc,.docx,.xlsx"
         disabled={isLifecycleReadonly || matrixImport.actionBusy}
         style={{ display: "none" }}
         type="file"

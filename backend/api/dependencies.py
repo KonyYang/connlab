@@ -520,7 +520,12 @@ def get_project_test_plan_matrix_preview_service(
     session: Session = Depends(get_session),
 ) -> ProjectTestPlanMatrixPreviewService:
     """Build the read-only project test-plan Matrix preview service."""
+    from backend.infrastructure.office.connlab_matrix_xlsx_gateway import (
+        ConnLabMatrixXlsxGateway,
+    )
+
     return ProjectTestPlanMatrixPreviewService(
+        xlsx_gateway=ConnLabMatrixXlsxGateway(),
         basic_information_reader=ProjectBasicInformationSnapshotReader(
             ProjectBasicInformationRepository(session)
         )

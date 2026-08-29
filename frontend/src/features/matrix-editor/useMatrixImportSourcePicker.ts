@@ -52,7 +52,7 @@ export async function chooseMatrixImportSource(
   if (extension === ".doc") {
     return { kind: "browser" };
   }
-  if (extension !== ".pdf" && extension !== ".docx") {
+  if (extension !== ".pdf" && extension !== ".docx" && extension !== ".xlsx") {
     return { kind: "unsupported", path };
   }
   return { kind: "selected", path };

@@ -16,6 +16,7 @@ from backend.application.matrix_editor_live_xlsx_export_service import (
     MatrixEditorLiveXlsxExportProjection,
     MatrixEditorLiveXlsxExportRequest,
     MatrixEditorLiveXlsxExportRow,
+    MatrixEditorLiveXlsxExportSchedule,
     safe_matrix_xlsx_reference,
 )
 from backend.application.matrix_schedule_planning import calculate_group_test_days
@@ -128,6 +129,7 @@ class ConfirmedMatrixLiveXlsxAuthorityMatcher:
                 group.group_label,
                 group.sample_quantity_expression,
                 f"{_decimal_text(group_days[group.confirmed_group_id])} d",
+                getattr(group, "sample_note", None) or "",
             )
             for group in groups
         )
@@ -146,6 +148,7 @@ class ConfirmedMatrixLiveXlsxAuthorityMatcher:
                     )
                     for group in groups
                 ),
+                getattr(row, "day_expression", None) or "",
             )
             for row in snapshot.rows
             if any(
@@ -156,6 +159,13 @@ class ConfirmedMatrixLiveXlsxAuthorityMatcher:
         authority = MatrixEditorLiveXlsxExportProjection(
             groups=projected_groups,
             rows=projected_rows,
+            schedule=MatrixEditorLiveXlsxExportSchedule(
+                post_test_buffer_days=getattr(snapshot.version, "post_test_buffer_days", None) or "",
+                sample_received_date=getattr(snapshot.version, "sample_received_date", None) or "",
+                planned_test_start_date=getattr(snapshot.version, "planned_test_start_date", None) or "",
+                planned_test_complete_date=getattr(snapshot.version, "planned_test_complete_date", None) or "",
+                estimated_completion_date=getattr(snapshot.version, "estimated_completion_date", None) or "",
+            ),
         )
         return (
             build_matrix_editor_live_xlsx_authority_signature(request)
@@ -174,6 +184,7 @@ def build_matrix_editor_live_xlsx_authority_signature(
                 "group_label": _text(group.group_label),
                 "sample_size": _text(group.sample_size),
                 "time_display": _text(group.time_display),
+                "sample_note": _text(group.sample_note),
             }
             for group in value.groups
         ],
@@ -184,10 +195,12 @@ def build_matrix_editor_live_xlsx_authority_signature(
                 "test_method": _text(row.test_method),
                 "condition": _text(row.condition),
                 "requirement": _text(row.requirement),
+                "day_expression": _text(row.day_expression),
                 "steps": [_text(cell.step_text) for cell in row.cells],
             }
             for row in value.rows
         ],
+        "schedule": _schedule_signature(value.schedule),
     }
     encoded = json.dumps(
         payload,
@@ -200,6 +213,22 @@ def build_matrix_editor_live_xlsx_authority_signature(
 
 def _text(value: object | None) -> str:
     return str(value or "").strip()
+
+
+def _schedule_signature(schedule) -> dict[str, str]:
+    if schedule is None:
+        return {}
+    payload = {
+        key: _text(getattr(schedule, key))
+        for key in (
+            "post_test_buffer_days",
+            "sample_received_date",
+            "planned_test_start_date",
+            "planned_test_complete_date",
+            "estimated_completion_date",
+        )
+    }
+    return payload if any(payload.values()) else {}
 
 
 def _decimal_text(value) -> str:

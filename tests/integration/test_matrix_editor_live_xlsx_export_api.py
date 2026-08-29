@@ -27,13 +27,15 @@ def payload():
         "project_reference": "DL-测试",
         "groups": [{
             "group_id": "g1", "group_key": "G1", "group_label": "Group 1",
-            "sample_size": "5", "time_display": "0 d",
+            "sample_size": "5", "time_display": "0 d", "sample_note": "Reserve",
         }],
         "rows": [{
             "row_id": "r1", "test_item": "Item", "section": "", "test_method": "",
             "condition": "", "requirement": "",
+            "day_expression": "2.5x",
             "cells": [{"group_id": "g1", "step_text": "1"}],
         }],
+        "schedule": {"post_test_buffer_days": "2"},
     }
 
 
@@ -108,6 +110,9 @@ def test_publication_routes_preserve_preview_and_conflict_choice(tmp_path: Path)
         "preview_token": "preview-token",
     }
     assert isinstance(publication.preview_commands[0], PreviewMatrixEditorLiveXlsxPublicationCommand)
+    assert publication.preview_commands[0].request.groups[0].sample_note == "Reserve"
+    assert publication.preview_commands[0].request.rows[0].day_expression == "2.5x"
+    assert publication.preview_commands[0].request.schedule.post_test_buffer_days == "2"
     assert publish_response.status_code == 200
     assert publish_response.json() == {
         "file_name": "DL-测试 Matrix.xlsx",

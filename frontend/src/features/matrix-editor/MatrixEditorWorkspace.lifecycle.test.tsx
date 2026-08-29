@@ -113,7 +113,7 @@ describe("MatrixEditorWorkspace save, cancel, and confirm lifecycle", () => {
     await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(0));
   });
 
-  it("returns to Workbench when confirm has no Matrix changes", async () => {
+  it("returns to Workbench when the server canonicalizes an edited Matrix to no changes", async () => {
     apiMocks.confirmMatrixEditorSession.mockResolvedValueOnce({
       publish_status: "no_change",
       message: "No Matrix changes to confirm.",
@@ -121,6 +121,13 @@ describe("MatrixEditorWorkspace save, cancel, and confirm lifecycle", () => {
     });
     const onBackToWorkbench = vi.fn();
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={onBackToWorkbench} />);
+    fireEvent.change(await screen.findByLabelText("Row 1 method"), {
+      target: { value: "Updated method before canonical no-change" },
+    });
+    await waitFor(
+      () => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalledTimes(1),
+      { timeout: 1600 }
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Confirm Matrix" }));
     await waitFor(() => {
       expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(1);
@@ -141,6 +148,13 @@ describe("MatrixEditorWorkspace save, cancel, and confirm lifecycle", () => {
       });
     const onBackToWorkbench = vi.fn();
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={onBackToWorkbench} />);
+    fireEvent.change(await screen.findByLabelText("Row 1 method"), {
+      target: { value: "Updated method before stale confirm" },
+    });
+    await waitFor(
+      () => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalledTimes(1),
+      { timeout: 1600 }
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Confirm Matrix" }));
     await waitFor(() => {
       expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(2);

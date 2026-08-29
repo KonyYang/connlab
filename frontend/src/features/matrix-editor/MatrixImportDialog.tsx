@@ -10,6 +10,9 @@ export function MatrixImportDialog({
   dialog,
   readOnly,
 }: MatrixImportDialogProps): ReactElement {
+  const isXlsx = dialog.preview?.source_format.toLowerCase() === ".xlsx";
+  const groupCount = dialog.preview?.groups.length ?? 0;
+  const rowCount = dialog.preview?.rows.length ?? 0;
   return (
     <section className="matrix-editor-import-modal-backdrop">
       <article
@@ -22,44 +25,67 @@ export function MatrixImportDialog({
             <p title={dialog.fileName}>{dialog.fileName}</p>
           </div>
         </header>
-        <div className="matrix-editor-import-modal-body">
-          <div className="matrix-editor-import-pdf-pane">
-            {dialog.previewPdfSrc ? (
-              <iframe title="Source PDF Preview" src={dialog.previewPdfSrc} />
-            ) : (
-              <div className="matrix-editor-step-empty">PDF preview unavailable.</div>
-            )}
-          </div>
-          <div className="matrix-editor-import-controls-pane">
-            <div className="matrix-editor-import-controls-row">
-              <label>
-                <span>Page</span>
-                <input
-                  disabled={readOnly || dialog.actionBusy}
-                  value={dialog.locatorPage}
-                  onChange={(event) => dialog.updateLocator({ page: event.target.value })}
-                />
-              </label>
-              <label>
-                <span>Table on page</span>
-                <input
-                  disabled={readOnly || dialog.actionBusy}
-                  value={dialog.locatorTableOnPage}
-                  onChange={(event) =>
-                    dialog.updateLocator({ tableOnPage: event.target.value })
-                  }
-                />
-              </label>
+        <div className={`matrix-editor-import-modal-body${isXlsx ? " is-xlsx" : ""}`}>
+          {isXlsx ? (
+            <section className="matrix-editor-import-xlsx-summary" aria-label="Workbook summary">
+              <h4>ConnLab Matrix workbook</h4>
+              <p>
+                {groupCount} Group{groupCount === 1 ? "" : "s"} · {rowCount} test row
+                {rowCount === 1 ? "" : "s"}
+              </p>
+              {dialog.preview?.warnings.length ? (
+                <ul>
+                  {dialog.preview.warnings.map((warning, index) => (
+                    <li key={`${index}-${warning}`}>{warning}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>Workbook details match the visible Matrix table.</p>
+              )}
+            </section>
+          ) : (
+            <div className="matrix-editor-import-pdf-pane">
+              {dialog.previewPdfSrc ? (
+                <iframe title="Source PDF Preview" src={dialog.previewPdfSrc} />
+              ) : (
+                <div className="matrix-editor-step-empty">PDF preview unavailable.</div>
+              )}
             </div>
-            <label>
-              <span>Table Title / Content Keyword</span>
-              <input
-                disabled={readOnly || dialog.actionBusy}
-                value={dialog.locatorKeyword}
-                onChange={(event) => dialog.updateLocator({ keyword: event.target.value })}
-              />
-            </label>
-            {dialog.importingPreview ? <p>Reparsing...</p> : null}
+          )}
+          <div className="matrix-editor-import-controls-pane">
+            {!isXlsx ? (
+              <>
+                <div className="matrix-editor-import-controls-row">
+                  <label>
+                    <span>Page</span>
+                    <input
+                      disabled={readOnly || dialog.actionBusy}
+                      value={dialog.locatorPage}
+                      onChange={(event) => dialog.updateLocator({ page: event.target.value })}
+                    />
+                  </label>
+                  <label>
+                    <span>Table on page</span>
+                    <input
+                      disabled={readOnly || dialog.actionBusy}
+                      value={dialog.locatorTableOnPage}
+                      onChange={(event) =>
+                        dialog.updateLocator({ tableOnPage: event.target.value })
+                      }
+                    />
+                  </label>
+                </div>
+                <label>
+                  <span>Table Title / Content Keyword</span>
+                  <input
+                    disabled={readOnly || dialog.actionBusy}
+                    value={dialog.locatorKeyword}
+                    onChange={(event) => dialog.updateLocator({ keyword: event.target.value })}
+                  />
+                </label>
+                {dialog.importingPreview ? <p>Reparsing...</p> : null}
+              </>
+            ) : null}
             {dialog.lookupMessage ? (
               <p
                 className={

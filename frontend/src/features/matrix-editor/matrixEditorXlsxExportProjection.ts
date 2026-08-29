@@ -5,6 +5,7 @@ export type ExportGroup = {
   groupKey: string;
   name: string;
   isSelected: boolean;
+  sampleNote: string | null;
 };
 
 export type ExportRow = {
@@ -15,6 +16,7 @@ export type ExportRow = {
   method: string;
   condition: string;
   requirement: string;
+  dayExpression: string;
   groups: Record<string, string>;
 };
 
@@ -24,6 +26,7 @@ type ProjectionInput = {
   rows: ExportRow[];
   sampleValues: Record<string, string>;
   timeDisplays: Record<string, string>;
+  schedule: MatrixEditorLiveXlsxExportRequest["schedule"];
 };
 
 export function buildMatrixEditorXlsxExportRequest(
@@ -44,6 +47,7 @@ export function buildMatrixEditorXlsxExportRequest(
       group_label: group.name.trim() || group.groupKey,
       sample_size: input.sampleValues[group.id] ?? "",
       time_display: input.timeDisplays[group.id] ?? "0 d",
+      sample_note: group.sampleNote ?? "",
     })),
     rows: rows.map((row) => ({
       row_id: row.id,
@@ -52,11 +56,13 @@ export function buildMatrixEditorXlsxExportRequest(
       test_method: row.method,
       condition: row.condition,
       requirement: row.requirement,
+      day_expression: row.dayExpression,
       cells: groups.map((group) => ({
         group_id: group.id,
         step_text: row.groups[group.id] ?? "",
       })),
     })),
+    schedule: input.schedule,
   };
 }
 

@@ -7,6 +7,7 @@ from backend.application.matrix_editor_live_xlsx_export_service import (
     MatrixEditorLiveXlsxExportGroup,
     MatrixEditorLiveXlsxExportProjection,
     MatrixEditorLiveXlsxExportRow,
+    MatrixEditorLiveXlsxExportSchedule,
 )
 from backend.infrastructure.office.matrix_editor_live_xlsx_workbook_gateway import (
     MatrixEditorLiveXlsxWorkbookGateway,
@@ -38,6 +39,37 @@ def test_workbook_gateway_writes_reference_layout_and_true_blank_fee_cells():
     assert all(sheet.cell(5, column).value is None for column in range(2, 8))
     assert sheet["A1"].fill.fgColor.rgb == "00CCCCCC"
     assert workbook.defined_names == {}
+
+
+def test_workbook_gateway_embeds_versioned_fingerprint_metadata():
+    projection = MatrixEditorLiveXlsxExportProjection(
+        groups=(
+            MatrixEditorLiveXlsxExportGroup(
+                "g1", "G1", "Group 1", "5", "2.5 d", "Two reserves"
+            ),
+        ),
+        rows=(
+            MatrixEditorLiveXlsxExportRow(
+                "r1", "Thermal Shock", "4", "EIA", "-40/125", "Pass",
+                (MatrixEditorLiveXlsxExportCell("g1", "1"),), "0.5x",
+            ),
+        ),
+        schedule=MatrixEditorLiveXlsxExportSchedule(post_test_buffer_days="1"),
+    )
+
+    content = MatrixEditorLiveXlsxWorkbookGateway().render(projection)
+    workbook = load_workbook(BytesIO(content), data_only=False)
+    metadata = workbook["__ConnLab_Metadata"]
+
+    assert metadata.sheet_state == "veryHidden"
+    assert metadata["A1"].value == "connlab.matrix.xlsx"
+    assert metadata["B1"].value == "1"
+    assert metadata["A2"].value == "visible_sha256"
+    assert isinstance(metadata["B2"].value, str) and len(metadata["B2"].value) == 64
+    assert metadata["A3"].value == "payload_json"
+    assert '"day_expression":"0.5x"' in metadata["B3"].value
+    assert metadata["A4"].value == "payload_sha256"
+    assert isinstance(metadata["B4"].value, str) and len(metadata["B4"].value) == 64
 
 
 def test_workbook_gateway_literalizes_formula_shaped_dynamic_text():

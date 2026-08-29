@@ -21,6 +21,7 @@ from backend.application.matrix_editor_live_xlsx_export_service import (
     MatrixEditorLiveXlsxExportGroup,
     MatrixEditorLiveXlsxExportRequest,
     MatrixEditorLiveXlsxExportRow,
+    MatrixEditorLiveXlsxExportSchedule,
     MatrixEditorLiveXlsxExportService,
 )
 from backend.application.matrix_editor_live_xlsx_publication_service import (
@@ -52,6 +53,7 @@ class GroupRequest(BaseModel):
     group_label: str = Field(min_length=1, max_length=255)
     sample_size: str = Field(default="", max_length=255)
     time_display: str = Field(default="", max_length=32)
+    sample_note: str = Field(default="", max_length=2048)
 
 
 class RowRequest(BaseModel):
@@ -62,6 +64,15 @@ class RowRequest(BaseModel):
     condition: str = Field(default="", max_length=2048)
     requirement: str = Field(default="", max_length=2048)
     cells: list[CellRequest]
+    day_expression: str = Field(default="", max_length=64)
+
+
+class ScheduleRequest(BaseModel):
+    post_test_buffer_days: str = Field(default="", max_length=64)
+    sample_received_date: str = Field(default="", max_length=64)
+    planned_test_start_date: str = Field(default="", max_length=64)
+    planned_test_complete_date: str = Field(default="", max_length=64)
+    estimated_completion_date: str = Field(default="", max_length=64)
 
 
 class LiveXlsxExportRequest(BaseModel):
@@ -69,6 +80,7 @@ class LiveXlsxExportRequest(BaseModel):
     project_reference: str = Field(min_length=1, max_length=255)
     groups: list[GroupRequest]
     rows: list[RowRequest]
+    schedule: ScheduleRequest | None = None
 
 
 class LiveXlsxPublicationExecuteRequest(LiveXlsxExportRequest):
@@ -208,6 +220,7 @@ def _to_application_request(
                 item.group_label,
                 item.sample_size,
                 item.time_display,
+                item.sample_note,
             )
             for item in request.groups
         ),
@@ -223,7 +236,13 @@ def _to_application_request(
                     MatrixEditorLiveXlsxExportCell(cell.group_id, cell.step_text)
                     for cell in item.cells
                 ),
+                item.day_expression,
             )
             for item in request.rows
+        ),
+        schedule=(
+            MatrixEditorLiveXlsxExportSchedule(**request.schedule.model_dump())
+            if request.schedule is not None
+            else None
         ),
     )

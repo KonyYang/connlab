@@ -237,6 +237,7 @@ def _request() -> MatrixEditorLiveXlsxExportRequest:
                 "Normal",
                 "No damage",
                 (MatrixEditorLiveXlsxExportCell("dg1", "1"),),
+                "2",
             ),
         ),
     )

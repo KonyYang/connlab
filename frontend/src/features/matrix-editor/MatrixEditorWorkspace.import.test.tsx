@@ -30,7 +30,7 @@ describe("MatrixEditorWorkspace import flow", () => {
     expect(inputClickSpy).not.toHaveBeenCalled();
     expect(await screen.findByRole("heading", { name: "Project source files" })).toBeTruthy();
     const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
-    expect(input.getAttribute("accept")).toBe(".pdf,.doc,.docx");
+    expect(input.getAttribute("accept")).toBe(".pdf,.doc,.docx,.xlsx");
   });
 
   it("shows the browser source folder loading state while candidates are fetched", async () => {
@@ -319,12 +319,12 @@ describe("MatrixEditorWorkspace import flow", () => {
     expect(screen.queryByText("spec_b.docx")).toBeNull();
   });
 
-  it("allows pdf, legacy doc, and docx files from the import selector", async () => {
+  it("allows pdf, Word, and ConnLab xlsx files from the import selector", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
     await screen.findByRole("button", { name: "Import Matrix" });
 
     const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
-    expect(input.getAttribute("accept")).toBe(".pdf,.doc,.docx");
+    expect(input.getAttribute("accept")).toBe(".pdf,.doc,.docx,.xlsx");
   });
 
   it("imports by Replace directly and does not enter group-selection mode", async () => {

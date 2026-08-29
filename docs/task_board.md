@@ -11,8 +11,36 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_XLSX_ROUND_TRIP",
+    "summary": "Implement two-phase ConnLab Matrix XLSX import: strict visible-format fallback with Day default 0 and non-blocking warning, then hidden metadata with fingerprint-validated lossless round-trip.",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Matrix XLSX import/export, preview UI, source pickers, draft propagation, metadata/fingerprint validation, and focused regression coverage.",
+    "scope_paths": [
+      "backend/application",
+      "backend/api",
+      "backend/desktop",
+      "backend/infrastructure/office",
+      "backend/modules/test_plan",
+      "frontend/src/api",
+      "frontend/src/features/matrix-editor",
+      "tests/unit",
+      "tests/integration",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [
+      "Imports external Excel files into a draft that can later become authoritative through Confirm Matrix.",
+      "Changes the supported Matrix round-trip contract and generated workbook structure.",
+      "Requires coordinated backend, frontend, Office-format, and compatibility behavior."
+    ],
+    "activation_head": "71c519b22eb48baf3685ab70acbfac066d3f3090",
+    "started_at": "2026-08-29T04:13:35.511871Z",
+    "updated_at": "2026-08-29T04:13:35.511871Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "REPORT-001D",
     "tier": "high_risk",

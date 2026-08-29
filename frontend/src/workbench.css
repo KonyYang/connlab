@@ -9064,6 +9064,33 @@
   gap: 12px;
 }
 
+.matrix-editor-import-modal-body.is-xlsx {
+  grid-template-columns: 1fr 1fr;
+}
+
+.matrix-editor-import-xlsx-summary {
+  border: 1px solid #cfd8e7;
+  border-radius: 12px;
+  background: var(--color-surface, #fbfdff);
+  padding: 20px;
+  overflow: auto;
+}
+
+.matrix-editor-import-xlsx-summary h4 {
+  margin: 0 0 8px;
+}
+
+.matrix-editor-import-xlsx-summary p {
+  margin: 0 0 12px;
+  color: var(--color-ink-muted);
+}
+
+.matrix-editor-import-xlsx-summary ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--color-warning, #9a641c);
+}
+
 .matrix-editor-import-pdf-pane {
   border: 1px solid #cfd8e7;
   border-radius: 12px;

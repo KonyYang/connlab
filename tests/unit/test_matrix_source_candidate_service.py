@@ -138,6 +138,7 @@ def test_resolved_directory_candidates_list_direct_supported_files_in_filename_o
     submitted.mkdir(parents=True)
     (submitted / "zeta.PDF").write_bytes(b"pdf")
     (submitted / "Alpha.docx").write_bytes(b"docx")
+    (submitted / "Matrix.xlsx").write_bytes(b"xlsx")
     (submitted / "middle.doc").write_bytes(b"doc")
     (submitted / "ignore.txt").write_bytes(b"text")
     nested = submitted / "nested"
@@ -162,6 +163,7 @@ def test_resolved_directory_candidates_list_direct_supported_files_in_filename_o
     assert result.source_title == "Submitted Material files"
     assert [candidate.file_name for candidate in result.candidates] == [
         "Alpha.docx",
+        "Matrix.xlsx",
         "middle.doc",
         "zeta.PDF",
     ]

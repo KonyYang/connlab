@@ -144,6 +144,7 @@ class MatrixPreviewResponse(BaseModel):
     groups: list[TestGroupPreviewResponse]
     warnings: list[str]
     blockers: list[str]
+    schedule: dict[str, str | None] | None = None
 
 
 @router.post(
@@ -196,8 +197,11 @@ async def preview_matrix_from_upload(
 ) -> MatrixPreviewResponse:
     """Return a read-only Matrix preview for an uploaded source file."""
     suffix = Path(file.filename or "").suffix.lower()
-    if suffix not in {".pdf", ".doc", ".docx"}:
-        raise HTTPException(status_code=400, detail="Only .pdf, .doc, and .docx are supported.")
+    if suffix not in {".pdf", ".doc", ".docx", ".xlsx"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Only .pdf, .doc, .docx, and ConnLab .xlsx files are supported.",
+        )
     original_name = file.filename or f"uploaded{suffix}"
     temp_paths: list[Path] = []
     with NamedTemporaryFile(delete=False, suffix=suffix) as temp:
@@ -300,12 +304,14 @@ def _preview_response(preview: ProjectTestPlanMatrixPreview) -> MatrixPreviewRes
                 "detail_extraction_notes": list(row.detail_extraction_notes),
                 "group_tokens": row.group_tokens,
                 "is_sample_row": row.is_sample_row,
+                "day_expression": row.day_expression,
             }
             for row in preview.rows
         ],
         groups=[_group_response(group) for group in preview.groups],
         warnings=list(preview.warnings),
         blockers=list(preview.blockers),
+        schedule=preview.schedule,
     )
 
 

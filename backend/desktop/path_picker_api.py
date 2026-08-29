@@ -90,7 +90,7 @@ class PyWebViewPathPicker:
             allow_multiple=False,
             directory=str(initial_directory) if initial_directory is not None else "",
             file_types=(
-                "Matrix source documents (*.pdf;*.doc;*.docx)",
+                "Matrix source documents (*.pdf;*.doc;*.docx;*.xlsx)",
                 "All files (*.*)",
             ),
         )

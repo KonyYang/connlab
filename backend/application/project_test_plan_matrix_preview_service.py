@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Protocol
 
 from backend.application.project_basic_information_output import (
     ConfirmedBasicInformationReader,
@@ -16,9 +17,14 @@ from backend.infrastructure.files.pdf_matrix_source_gateway import (
 from backend.infrastructure.office import OfficeFacade
 from backend.modules.test_plan import (
     MatrixGroupPreview,
+    MatrixParseResult,
     MatrixRowPreview,
     ProductSpecMatrixParser,
 )
+
+
+class MatrixXlsxReader(Protocol):
+    def read(self, source_path: Path) -> MatrixParseResult: ...
 
 
 class ProjectTestPlanMatrixPreviewError(ValueError):
@@ -44,6 +50,7 @@ class ProjectTestPlanMatrixPreview:
     candidate_tables: tuple[dict[str, object], ...] = field(default_factory=tuple)
     preview_pdf_token: str | None = None
     rows: tuple[MatrixRowPreview, ...] = field(default_factory=tuple)
+    schedule: dict[str, str | None] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,12 +73,14 @@ class ProjectTestPlanMatrixPreviewService:
         office: OfficeFacade | None = None,
         pdf_gateway: PdfMatrixSourceGateway | None = None,
         parser: ProductSpecMatrixParser | None = None,
+        xlsx_gateway: MatrixXlsxReader | None = None,
         basic_information_reader: ConfirmedBasicInformationReader | None = None,
     ) -> None:
         """Create a Matrix preview service."""
         self._office = office or OfficeFacade()
         self._pdf_gateway = pdf_gateway or PdfMatrixSourceGateway()
         self._parser = parser or ProductSpecMatrixParser()
+        self._xlsx_gateway = xlsx_gateway
         self._basic_information = basic_information_reader
 
     def preview_from_path(
@@ -89,6 +98,32 @@ class ProjectTestPlanMatrixPreviewService:
             )
         suffix = source_path.suffix.lower()
         generated_at = datetime.now(timezone.utc).isoformat()
+        if suffix == ".xlsx":
+            if self._xlsx_gateway is None:
+                return ProjectTestPlanMatrixPreview(
+                    project_id=command.project_id,
+                    source_document_path=source_path,
+                    source_document_name=source_path.name,
+                    source_format=suffix,
+                    capability_status="unsupported",
+                    generated_at=generated_at,
+                    blockers=("ConnLab Matrix XLSX import is unavailable.",),
+                )
+            parsed = self._xlsx_gateway.read(source_path)
+            return ProjectTestPlanMatrixPreview(
+                project_id=command.project_id,
+                source_document_path=source_path,
+                source_document_name=source_path.name,
+                source_format=suffix,
+                capability_status="supported" if not parsed.blockers else "unsupported",
+                generated_at=generated_at,
+                groups=parsed.groups,
+                warnings=parsed.warnings,
+                blockers=parsed.blockers,
+                selected_table_index=parsed.selected_table_index,
+                rows=parsed.rows,
+                schedule=parsed.schedule,
+            )
         if suffix == ".pdf":
             try:
                 snapshot = self._pdf_gateway.read_pdf_document(source_path)
@@ -280,6 +315,7 @@ def _preview_from_snapshot(
         candidate_tables=candidate_tables,
         preview_pdf_token=preview_pdf_token,
         rows=parsed.rows,
+        schedule=parsed.schedule,
     )
 
 

@@ -103,7 +103,7 @@ class ProjectTestPlanSourceCandidateService:
         "test",
         "product",
     )
-    _RESOLVED_DIRECTORY_EXTENSIONS = frozenset({".doc", ".docx", ".pdf"})
+    _RESOLVED_DIRECTORY_EXTENSIONS = frozenset({".doc", ".docx", ".pdf", ".xlsx"})
 
     def __init__(
         self,

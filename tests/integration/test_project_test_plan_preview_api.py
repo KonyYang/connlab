@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from io import BytesIO
 
 from docx import Document
 from fastapi.testclient import TestClient
 import pytest
+from openpyxl import Workbook
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
@@ -17,6 +19,41 @@ from backend.application.project_test_plan_matrix_preview_service import (
 from backend.infrastructure.office import OfficeAutomationUnavailable
 
 pytestmark = pytest.mark.office_integration
+
+
+def test_matrix_preview_upload_accepts_legacy_connlab_xlsx_with_day_fallback() -> None:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.append([
+        "Test Item", "Section", "Test Method", "Condition", "Requirement",
+        "Group 1", "Notes",
+    ])
+    sheet.append(["Visual", "5.1", "EIA-364-18", "10x", "No damage", "1", None])
+    sheet.append(["Sample size", None, None, None, None, "5", None])
+    sheet.append(["Time", None, None, None, None, "0 d", None])
+    sheet.append(["Fee", None, None, None, None, None, None])
+    stream = BytesIO()
+    workbook.save(stream)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/test-plan/matrix-preview-from-upload",
+        files={
+            "file": (
+                "DL-2026-08-004 Matrix.xlsx",
+                stream.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source_format"] == ".xlsx"
+    assert payload["preview_pdf_token"] is None
+    assert payload["blockers"] == []
+    assert payload["rows"][0]["day_expression"] == "0"
+    assert any("Day" in warning for warning in payload["warnings"])
 
 def test_matrix_preview_api_extracts_docx_matrix(tmp_path: Path) -> None:
     docx_path = tmp_path / "product-spec.docx"

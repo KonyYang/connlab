@@ -64,4 +64,14 @@ describe("chooseMatrixImportSource", () => {
     bridgeMocks.pickMatrixImportSourceFromDesktop.mockResolvedValue("D:/source/spec.doc");
     await expect(chooseMatrixImportSource("P1")).resolves.toEqual({ kind: "browser" });
   });
+
+  it("accepts ConnLab xlsx from the desktop picker", async () => {
+    bridgeMocks.pickMatrixImportSourceFromDesktop.mockResolvedValue(
+      "D:/projects/DL/Source Book/DL-2026-08-004 Matrix.xlsx",
+    );
+    await expect(chooseMatrixImportSource("P1")).resolves.toEqual({
+      kind: "selected",
+      path: "D:/projects/DL/Source Book/DL-2026-08-004 Matrix.xlsx",
+    });
+  });
 });

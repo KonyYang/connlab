@@ -79,6 +79,8 @@ def test_commit_creates_selected_only_draft_and_persists_full_source() -> None:
     assert result.project_matrix_draft.rows[0].method == "EIA-364-18B"
     assert result.project_matrix_draft.rows[0].condition == "10x min magnification"
     assert result.project_matrix_draft.rows[0].requirement == "No detrimental condition"
+    assert result.project_matrix_draft.rows[0].day_expression == "0"
+    assert result.project_matrix_draft.record.post_test_buffer_days == "1"
     source_snapshot = source_store.get_snapshot_by_import(result.source_import_id)
     assert source_snapshot is not None
     assert len(source_snapshot.groups) == 2
@@ -228,8 +230,10 @@ def _payload() -> dict:
                 "source_section": "6.1",
                 "group_tokens": {"g1": "1", "g2": "2"},
                 "is_sample_row": False,
+                "day_expression": "0",
             }
         ],
+        "schedule": {"post_test_buffer_days": "1"},
         "warnings": [],
         "blockers": [],
     }
