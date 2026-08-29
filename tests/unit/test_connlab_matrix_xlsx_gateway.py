@@ -85,6 +85,38 @@ def test_reads_legacy_connlab_visible_table_and_defaults_day_to_zero(tmp_path: P
     assert any("default" in warning.lower() and "Day" in warning for warning in result.warnings)
 
 
+def test_visible_group_keys_preserve_numeric_label_gaps(tmp_path: Path) -> None:
+    path = tmp_path / "group-gap.xlsx"
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.append(
+        [
+            "Test Item",
+            "Section",
+            "Test Method",
+            "Condition",
+            "Requirement",
+            "5",
+            "7",
+            "Notes",
+        ]
+    )
+    sheet.append(["Visual", "5.1", "EIA-364-18", "10x", "No damage", "1", "1,5", None])
+    sheet.append(["Sample size", None, None, None, None, "5", "3", None])
+    sheet.append(["Time", None, None, None, None, "0 d", "0 d", None])
+    sheet.append(["Fee", None, None, None, None, None, None, None])
+    workbook.save(path)
+
+    result = ConnLabMatrixXlsxGateway().read(path)
+
+    assert result.blockers == ()
+    assert [(group.group_key, group.group_label) for group in result.groups] == [
+        ("group_5", "5"),
+        ("group_7", "7"),
+    ]
+    assert result.rows[0].group_tokens == {"group_5": "1", "group_7": "1,5"}
+
+
 def test_round_trip_prefers_matching_hidden_metadata(tmp_path: Path) -> None:
     content = MatrixEditorLiveXlsxWorkbookGateway().render(_projection())
     path = tmp_path / "round-trip.xlsx"

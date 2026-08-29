@@ -157,7 +157,14 @@ def repo(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def submit(repo: Path, task_id: str, tier: str, *, risks: list[str] | None = None) -> dict:
+def submit(
+    repo: Path,
+    task_id: str,
+    tier: str,
+    *,
+    risks: list[str] | None = None,
+    scope_paths: list[str] | None = None,
+) -> dict:
     return invoke(
         repo,
         "submit",
@@ -166,7 +173,18 @@ def submit(repo: Path, task_id: str, tier: str, *, risks: list[str] | None = Non
         "--task-id",
         task_id,
         "--request-json",
-        request(task_id, tier, risks=risks),
+        request(task_id, tier, risks=risks, scope_paths=scope_paths),
+    )
+
+
+def scope_amendment(task_id: str, scope_paths: list[str]) -> str:
+    return json.dumps(
+        {
+            "schema": "connlab.sol-task-scope-amendment",
+            "version": 1,
+            "task_id": task_id,
+            "scope_paths": scope_paths,
+        }
     )
 
 
@@ -533,6 +551,100 @@ def test_high_risk_finish_rejects_path_outside_approved_manifest(repo: Path) -> 
 
     assert blocked["code"] == "BLOCKED_SCOPE_DRIFT"
     assert blocked["changed"] is False
+
+
+def test_high_risk_scope_manifest_can_be_reconciled_to_exact_committed_diff(repo: Path) -> None:
+    submit(
+        repo,
+        "TASK_SCOPE_AMEND",
+        "high_risk",
+        risks=["authoritative external mutation"],
+        scope_paths=["backend"],
+    )
+    commit_activation_and_implementation(repo)
+    (repo / "support.py").write_text("VALUE = 'required support'\n", encoding="utf-8")
+    git(repo, "add", "support.py")
+    git(repo, "commit", "-m", "add required support")
+
+    amended = invoke(
+        repo,
+        "amend-scope",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_SCOPE_AMEND",
+        "--request-json",
+        scope_amendment("TASK_SCOPE_AMEND", ["impl.py", "support.py"]),
+        "--decision-ref",
+        "User approved correcting the scope manifest to the exact committed task diff.",
+    )
+
+    assert amended["code"] == "ALLOW_AMEND_SCOPE"
+    assert control(repo)["active"]["scope_paths"] == ["impl.py", "support.py"]
+    assert control(repo)["active"]["checkpoint"]["stage"] == "scope_manifest_correction"
+
+    git(repo, "add", str(BOARD))
+    git(repo, "commit", "-m", "record corrected scope")
+    subject = git(repo, "rev-parse", "HEAD")
+    value = report("TASK_SCOPE_AMEND", subject, "high_risk")
+    value["changed_paths"] = ["impl.py", "support.py"]
+
+    finished = invoke(
+        repo,
+        "finish",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_SCOPE_AMEND",
+        "--result-json",
+        json.dumps(value),
+    )
+
+    assert finished["code"] == "ALLOW_FINISH"
+
+
+def test_scope_manifest_correction_rejects_incomplete_or_unauthorized_manifest(repo: Path) -> None:
+    submit(
+        repo,
+        "TASK_SCOPE_AMEND_BLOCKED",
+        "high_risk",
+        risks=["authoritative external mutation"],
+        scope_paths=["backend"],
+    )
+    commit_activation_and_implementation(repo)
+    (repo / "support.py").write_text("VALUE = 'required support'\n", encoding="utf-8")
+    git(repo, "add", "support.py")
+    git(repo, "commit", "-m", "add required support")
+    before = board_bytes(repo)
+
+    missing_path = invoke(
+        repo,
+        "amend-scope",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_SCOPE_AMEND_BLOCKED",
+        "--request-json",
+        scope_amendment("TASK_SCOPE_AMEND_BLOCKED", ["impl.py"]),
+        "--decision-ref",
+        "User approved correcting the scope manifest.",
+        expected_exit=2,
+    )
+    missing_decision = invoke(
+        repo,
+        "amend-scope",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_SCOPE_AMEND_BLOCKED",
+        "--request-json",
+        scope_amendment("TASK_SCOPE_AMEND_BLOCKED", ["impl.py", "support.py"]),
+        expected_exit=2,
+    )
+
+    assert missing_path["code"] == "BLOCKED_SCOPE_DRIFT"
+    assert missing_decision["code"] == "BLOCKED_DECISION_REQUIRED"
+    assert board_bytes(repo) == before
 
 
 def test_only_explicit_close_releases_wip(repo: Path) -> None:

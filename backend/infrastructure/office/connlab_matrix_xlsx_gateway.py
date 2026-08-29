@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -189,7 +190,7 @@ class ConnLabMatrixXlsxGateway:
             for item in metadata_groups
         ]
         if metadata is None or any(not key for key in group_keys) or len(set(group_keys)) != len(group_keys):
-            group_keys = [f"group_{index}" for index in range(1, len(visible["group_labels"]) + 1)]
+            group_keys = _visible_group_keys(visible["group_labels"])
             metadata = None
             metadata_status = "stale" if metadata_status != "missing" else "missing"
         rows: list[MatrixRowPreview] = []
@@ -288,6 +289,22 @@ def _positive_int(value: str | None) -> int | None:
     except (TypeError, ValueError):
         return None
     return parsed if parsed > 0 else None
+
+
+def _visible_group_keys(labels: list[str]) -> list[str]:
+    """Derive stable identities from visible labels when metadata is unavailable."""
+    keys: list[str] = []
+    used: set[str] = set()
+    for index, label in enumerate(labels, start=1):
+        match = re.fullmatch(r"(?:group[\s_-]*)?(\d+)", label, flags=re.IGNORECASE)
+        candidate = f"group_{int(match.group(1))}" if match else f"group_{index}"
+        suffix = 2
+        while candidate in used:
+            candidate = f"group_{index}_{suffix}"
+            suffix += 1
+        used.add(candidate)
+        keys.append(candidate)
+    return keys
 
 
 def _metadata_values_are_supported(payload: dict[str, Any]) -> bool:

@@ -97,6 +97,9 @@ Public commands are `Submit`, `Revise`, `Close`, and `CloseAndSubmit` through
 - `inspect`: compact state and next action;
 - `submit`: activate task, tier, scope, and starting HEAD;
 - `checkpoint`: one meaningful recovery point or typed blocker, only when useful;
+- `amend-scope`: for a running High-risk task only, replace an incorrect path manifest with the
+  exact committed task diff after explicit User approval. It requires a clean worktree and cannot
+  omit an observed file or pre-authorize a future path;
 - `finish`: verify the clean exact subject, scope, proportional results, and validation;
 - `revise`: on in-scope User feedback, return the same task from `ready_for_close` to `running`,
   invalidate its stale final report, and record a concise revision checkpoint;

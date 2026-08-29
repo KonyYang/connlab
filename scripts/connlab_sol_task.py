@@ -20,6 +20,7 @@ END = "<!-- CONNLAB_EXECUTION_CONTROL_END -->"
 CONTROL_SCHEMA = "connlab.sol-task-control"
 REQUEST_SCHEMA = "connlab.sol-task-request"
 CHECKPOINT_SCHEMA = "connlab.sol-task-checkpoint"
+SCOPE_AMENDMENT_SCHEMA = "connlab.sol-task-scope-amendment"
 REPORT_SCHEMA = "connlab.sol-task-report"
 TIERS = {"micro", "standard", "high_risk"}
 ROUTES = {
@@ -32,7 +33,16 @@ REQUIRED_ROLES = {
     "standard": {"developer", "reviewer", "qa"},
     "high_risk": {"planner", "developer", "reviewer", "qa", "integrator"},
 }
-COMMANDS = ("inspect", "submit", "checkpoint", "finish", "revise", "close", "close-and-submit")
+COMMANDS = (
+    "inspect",
+    "submit",
+    "checkpoint",
+    "amend-scope",
+    "finish",
+    "revise",
+    "close",
+    "close-and-submit",
+)
 
 
 class Blocked(RuntimeError):
@@ -532,6 +542,62 @@ def revise(args: argparse.Namespace, root: Path) -> tuple[str, str, dict[str, An
     return update_board(root, args.expected_board_sha256, mutate)
 
 
+def scope_amendment_payload(raw: str | None, task_id: str | None) -> dict[str, Any]:
+    payload = exact_json(
+        raw,
+        schema=SCOPE_AMENDMENT_SCHEMA,
+        fields={"schema", "version", "task_id", "scope_paths"},
+        code="BLOCKED_SCOPE_AMENDMENT_INVALID",
+    )
+    if payload["task_id"] != task_id:
+        raise Blocked("BLOCKED_TASK_MISMATCH", "Scope amendment task identity does not match the command.")
+    paths = payload["scope_paths"]
+    if not isinstance(paths, list) or not paths or any(not isinstance(path, str) for path in paths):
+        raise Blocked("BLOCKED_SCOPE_AMENDMENT_INVALID", "Scope paths must be a non-empty unique list.")
+    normalized = [repository_path(path, code="BLOCKED_SCOPE_AMENDMENT_INVALID") for path in paths]
+    if len(normalized) != len(set(normalized)):
+        raise Blocked("BLOCKED_SCOPE_AMENDMENT_INVALID", "Scope paths must be a non-empty unique list.")
+    payload["scope_paths"] = sorted(normalized)
+    return payload
+
+
+def amend_scope(args: argparse.Namespace, root: Path) -> tuple[str, str, dict[str, Any]]:
+    payload = scope_amendment_payload(args.request_json, args.task_id)
+    decision_ref = required_decision_ref(
+        args.decision_ref,
+        "Explicit User approval is required to correct a high-risk scope manifest.",
+    )
+    require_clean(root, "Primary must be clean before correcting the scope manifest.")
+    head = current_head(root)
+
+    def mutate(control: dict[str, Any]) -> None:
+        active = require_active(control, args.task_id, "running")
+        if active["tier"] != "high_risk":
+            raise Blocked(
+                "BLOCKED_SCOPE_AMENDMENT_UNSUPPORTED",
+                "Only high-risk tasks use a frozen scope manifest that can require correction.",
+            )
+        observed = changed_paths(root, active["activation_head"], head)
+        if payload["scope_paths"] != observed:
+            raise Blocked(
+                "BLOCKED_SCOPE_DRIFT",
+                "Corrected scope must equal the exact committed task diff.",
+            )
+        active["scope_paths"] = observed
+        active["checkpoint"] = {
+            "schema": CHECKPOINT_SCHEMA,
+            "version": 1,
+            "task_id": active["task_id"],
+            "stage": "scope_manifest_correction",
+            "status": "running",
+            "summary": decision_ref.strip(),
+            "requires_user": False,
+        }
+        active["updated_at"] = utc_now()
+
+    return update_board(root, args.expected_board_sha256, mutate)
+
+
 def close(args: argparse.Namespace, root: Path) -> tuple[str, str, dict[str, Any]]:
     decision_ref = required_decision_ref(args.decision_ref, "Explicit User close or cancel decision is required.")
     require_clean(root, "Primary must be clean before WIP is released.")
@@ -610,6 +676,7 @@ def main() -> int:
             handlers: dict[str, tuple[Callable[..., tuple[str, str, dict[str, Any]]], str]] = {
                 "submit": (submit, "ALLOW_SUBMIT"),
                 "checkpoint": (checkpoint, "ALLOW_CHECKPOINT"),
+                "amend-scope": (amend_scope, "ALLOW_AMEND_SCOPE"),
                 "finish": (finish, "ALLOW_FINISH"),
                 "revise": (revise, "ALLOW_REVISE"),
                 "close": (close, "ALLOW_CLOSE"),
