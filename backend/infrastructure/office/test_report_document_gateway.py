@@ -221,7 +221,6 @@ def _fill_headers(document, report: TestReportDraftData) -> None:
         "PRODUCT NAME/TEST DESCRIPTION ": (
             f"{report.product_name} {report.test_description}"
         ),
-        "Name": project_leader,
         "(s)": "",
     }
     for section in document.sections:

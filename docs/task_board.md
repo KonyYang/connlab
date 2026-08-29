@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "REPORT-001E",
+    "summary": "Preserve the E-3707_H Approved By/Title content from the selected template when generating a report draft.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Only stop report draft header generation from replacing the Approved By/Title template content, with a focused regression test and Word visual verification.",
+    "scope_paths": [
+      "backend/infrastructure/office/test_report_document_gateway.py",
+      "tests/unit/test_test_report_document_gateway.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "08ae44541b7cfc938e9a9bfe1c9535c6a7539cb9",
+    "started_at": "2026-08-29T06:56:41.714505Z",
+    "updated_at": "2026-08-29T06:56:41.714505Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_MATRIX_XLSX_ROUND_TRIP",
     "tier": "high_risk",
