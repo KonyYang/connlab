@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "REPORT-001E",
     "summary": "Preserve the E-3707_H Approved By/Title content from the selected template when generating a report draft.",
@@ -25,56 +25,17 @@
     "risk_reasons": [],
     "activation_head": "08ae44541b7cfc938e9a9bfe1c9535c6a7539cb9",
     "started_at": "2026-08-29T06:56:41.714505Z",
-    "updated_at": "2026-08-29T07:03:15.642225Z",
+    "updated_at": "2026-08-29T07:07:06.663517Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "REPORT-001E",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requested the approved-by default name be Gentle Zeng.",
       "requires_user": false
     },
-    "report": {
-      "changed_paths": [
-        "backend/infrastructure/office/test_report_document_gateway.py",
-        "tests/unit/test_test_report_document_gateway.py"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "name": "report-related regression: 18 passed"
-        },
-        {
-          "status": "passed",
-          "name": "Word header structural assertion"
-        },
-        {
-          "status": "passed",
-          "name": "real Word visual QA"
-        },
-        {
-          "status": "passed",
-          "name": "git diff check"
-        }
-      ],
-      "scope_ok": true,
-      "roles": {
-        "developer": {
-          "summary": "Implemented the narrow header replacement rule with a red-green regression test.",
-          "status": "passed"
-        }
-      },
-      "task_id": "REPORT-001E",
-      "schema": "connlab.sol-task-report",
-      "summary": "Report generation now preserves the template Approved By/Title content while retaining existing automatic Tested By and Prepared By/Title population.",
-      "version": 1,
-      "subject": "8f40775d29cb66f677584c7f43a9d92f3c5d3541",
-      "integration": {
-        "status": "passed",
-        "mode": "verified_local"
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_XLSX_ROUND_TRIP",

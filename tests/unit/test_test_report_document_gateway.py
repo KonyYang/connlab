@@ -230,7 +230,7 @@ def test_generates_when_first_page_header_placeholders_are_split_across_runs(
     assert "TBD" not in first_page_text
 
 
-def test_preserves_approved_by_title_content_from_template(tmp_path: Path) -> None:
+def test_populates_default_approved_by_name_from_template(tmp_path: Path) -> None:
     template = _build_template(tmp_path / "E-3707_H.docx")
     template_document = Document(template)
     approved_by_cell = template_document.sections[0].first_page_header.tables[0].cell(
@@ -248,7 +248,10 @@ def test_preserves_approved_by_title_content_from_template(tmp_path: Path) -> No
     )
 
     generated = Document(output)
-    assert generated.sections[0].first_page_header.tables[0].cell(1, 3).text == "Name"
+    assert (
+        generated.sections[0].first_page_header.tables[0].cell(1, 3).text
+        == "Gentle Zeng"
+    )
 
 
 def test_populates_legacy_purpose_and_received_date_placeholders(
