@@ -45,6 +45,8 @@ def test_generates_report_model_from_confirmed_basic_information_and_active_matr
     assert report.test_description == "Qualification Testing"
     assert report.applicable_specification == "GS-12-2113 Rev.7"
     assert report.received_samples_date == "2026-05-20"
+    assert report.start_test_date == "2026-06-01"
+    assert report.finish_test_date == "2026-07-15"
     assert report.description_part_number == "10179696-0001LF"
     assert report.requestor == "MP Cao"
     assert report.project_leader == "Even Yang"
@@ -189,6 +191,8 @@ def _basic_information() -> ConfirmedBasicInformationSnapshot:
             "test_item": "Qualification Testing",
             "applicable_specifications": "GS-12-2113 Rev.7",
             "date_lab_received_samples": "2026-05-20",
+            "start_test_date": "2026-06-01",
+            "finish_test_date": "2026-07-15",
             "description_pn": "10179696-0001LF",
             "requested_by": "MP Cao",
             "project_leader": "Even Yang",

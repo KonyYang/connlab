@@ -42,6 +42,8 @@ class TestReportDraftData:
     test_description: str
     applicable_specification: str
     received_samples_date: str
+    start_test_date: str
+    finish_test_date: str
     description_part_number: str
     requestor: str
     project_leader: str
@@ -164,6 +166,8 @@ class TestReportDraftService:
             test_description=test_description,
             applicable_specification=specification,
             received_samples_date=_value(values, "date_lab_received_samples"),
+            start_test_date=_value(values, "start_test_date"),
+            finish_test_date=_value(values, "finish_test_date"),
             description_part_number=_value(values, "description_pn"),
             requestor=_value(values, "requested_by"),
             project_leader=_value(values, "project_leader"),

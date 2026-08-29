@@ -209,7 +209,10 @@ def _fill_headers(document, report: TestReportDraftData) -> None:
     report_number = report.report_number
     project_leader = report.project_leader or "[To be assigned]"
     replacements = {
-        "DDMMMYYYY-DDMMMYYYY": "TBD",
+        "DDMMMYYYY-DDMMMYYYY": _display_test_date_range(
+            report.start_test_date,
+            report.finish_test_date,
+        ),
         "WW-XXXX-YY-ZZZ": report_number,
         "XX-YY-ZZZ": report_number,
         "DDMMMYYYY": report.generated_on.strftime("%d/%b/%Y"),
@@ -732,6 +735,22 @@ def _display_date(value: str) -> str:
     except ValueError:
         return normalized
     return parsed.strftime("%b %d, %Y")
+
+
+def _display_test_date_range(start_date: str, finish_date: str) -> str:
+    start = start_date.strip()
+    finish = finish_date.strip()
+    if not start or not finish:
+        return "TBD"
+    return f"{_display_header_date(start)} to {_display_header_date(finish)}"
+
+
+def _display_header_date(value: str) -> str:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return value
+    return parsed.strftime("%d/%b/%Y")
 
 
 def _audit_generated_document(path: Path, report: TestReportDraftData) -> None:

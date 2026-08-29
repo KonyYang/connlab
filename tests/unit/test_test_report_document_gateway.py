@@ -57,6 +57,8 @@ def test_generates_e3707_draft_without_mutating_approved_template(tmp_path: Path
     assert any("MP Cao" in text for text in headers)
     assert any("Even Yang" in text for text in headers)
     assert any("Coolpower HDF qualification testing" in text for text in headers)
+    assert any("05/Dec/2025 to 03/Mar/2026" in text for text in headers)
+    assert all("TBD" not in text for text in headers)
 
     sample = document.tables[0]
     assert sample.cell(1, 0).text == "Coolpower HDF"
@@ -204,6 +206,8 @@ def test_generates_when_first_page_header_placeholders_are_split_across_runs(
     assert "DL-2026-05-011" in first_page_text
     assert "WW-XXXX-YY-ZZZ" not in first_page_text
     assert "28/Aug/2026" in first_page_text
+    assert "05/Dec/2025 to 03/Mar/2026" in first_page_text
+    assert "TBD" not in first_page_text
 
 
 def test_populates_legacy_purpose_and_received_date_placeholders(
@@ -656,6 +660,8 @@ def _report() -> TestReportDraftData:
         test_description="qualification testing",
         applicable_specification="GS-12-2113 Rev.7",
         received_samples_date="2026-05-20",
+        start_test_date="2025-12-05",
+        finish_test_date="2026-03-03",
         description_part_number="10179696-0001LF",
         requestor="MP Cao",
         project_leader="Even Yang",
