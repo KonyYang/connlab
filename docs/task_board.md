@@ -22,6 +22,8 @@
       "backend/api/dependencies.py",
       "backend/api/routes_report_workspace.py",
       "backend/application/current_report_update_service.py",
+      "backend/application/report_workspace_service.py",
+      "backend/application/test_report_draft_service.py",
       "backend/infrastructure/files/report_publication_gateway.py",
       "backend/infrastructure/office/test_report_document_gateway.py",
       "frontend/src/api/client.ts",
@@ -33,7 +35,9 @@
       "tests/integration/test_report_workspace_api.py",
       "tests/unit/test_current_report_update_service.py",
       "tests/unit/test_report_publication_gateway.py",
-      "tests/unit/test_test_report_document_gateway.py"
+      "tests/unit/test_report_workspace_service.py",
+      "tests/unit/test_test_report_document_gateway.py",
+      "tests/unit/test_test_report_draft_service.py"
     ],
     "risk_reasons": [
       "The feature safely replaces a current Word report artifact in an official project workspace.",
@@ -41,15 +45,15 @@
     ],
     "activation_head": "9fdac58dc90487744b91036f38bd8c3fbf1e0844",
     "started_at": "2026-08-30T10:41:55.035452Z",
-    "updated_at": "2026-08-30T11:23:02.209940Z",
+    "updated_at": "2026-08-30T12:01:07.545429Z",
     "checkpoint": {
-      "task_id": "REPORT-003A",
+      "schema": "connlab.sol-task-checkpoint",
       "version": 1,
-      "stage": "acceptance_diagnosis",
-      "summary": "Confirmed that initial report generation always targets data/generated_test_reports and the current-report resolver then falls back to that managed draft even when an official workspace exists but contains no report. Awaiting approval for safe official publication and one-time promotion behavior.",
+      "task_id": "REPORT-003A",
+      "stage": "scope_manifest_correction",
       "status": "running",
-      "requires_user": true,
-      "schema": "connlab.sol-task-checkpoint"
+      "summary": "User approved the safe official publication and one-time managed draft promotion revision.",
+      "requires_user": false
     },
     "report": null
   },
