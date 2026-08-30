@@ -192,6 +192,55 @@ class TestReportDocumentGateway:
             temporary.unlink(missing_ok=True)
         return target
 
+    def synchronize_equipment_list(
+        self,
+        *,
+        source_path: Path,
+        output_path: Path,
+        rows: tuple[object, ...],
+    ) -> Path:
+        """Copy one report revision and replace only the Equipment table body."""
+        source = Path(source_path)
+        target = Path(output_path)
+        if source.suffix.lower() != ".docx" or not source.is_file():
+            raise FileNotFoundError(f"Internal report draft does not exist: {source}")
+        if target.suffix.lower() != ".docx":
+            raise ValueError("Internal report draft output must be .docx.")
+        if source.resolve() == target.resolve() or target.exists():
+            raise FileExistsError("Report synchronization requires a new output file.")
+        if not target.parent.is_dir():
+            raise FileNotFoundError(f"Output directory does not exist: {target.parent}")
+        if not rows:
+            raise ValueError("Equipment List requires at least one row.")
+
+        expected = tuple(
+            (
+                str(row.item).strip(),
+                str(row.manufacturer).strip(),
+                str(row.id_number).strip(),
+                str(row.last_calibration).strip(),
+                str(row.calibration_due).strip(),
+            )
+            for row in rows
+        )
+        temporary = target.with_name(f".{target.stem}.{uuid4().hex}.tmp{target.suffix}")
+        try:
+            shutil.copy2(source, temporary)
+            document = Document(temporary)
+            equipment = _find_table(document, _EQUIPMENT_HEADERS, "Equipment table")
+            actual = tuple(
+                tuple(cell.text.strip() for cell in row.cells[:5])
+                for row in equipment.rows[1:]
+            )
+            if actual != expected:
+                _replace_equipment_table_rows(equipment, expected)
+                document.save(temporary)
+            _audit_equipment_sync(temporary, expected)
+            os.replace(temporary, target)
+        finally:
+            temporary.unlink(missing_ok=True)
+        return target
+
 
 class _TemplateAnchors:
     def __init__(
@@ -269,6 +318,47 @@ def _find_table(document, expected_headers: tuple[str, ...], label: str) -> Tabl
         if actual[: len(expected)] == expected:
             return table
     raise ValueError(f"E-3707_H {label} does not match the approved table contract.")
+
+
+def _replace_equipment_table_rows(
+    table: Table,
+    rows: tuple[tuple[str, str, str, str, str], ...],
+) -> None:
+    template_row = deepcopy(table.rows[1]._tr) if len(table.rows) > 1 else None
+    for row in list(table.rows[1:]):
+        table._tbl.remove(row._tr)
+    for values in rows:
+        if template_row is not None:
+            table._tbl.append(deepcopy(template_row))
+            target_row = table.rows[-1]
+        else:
+            target_row = table.add_row()
+        for cell, value in zip(target_row.cells[:5], values, strict=True):
+            _set_cell_text(cell, value)
+    _set_table_font(table, _TABLE_FONT_NAME)
+
+
+def _set_table_font(table: Table, font_name: str) -> None:
+    for row in table.rows:
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                for run in paragraph.runs:
+                    run.font.name = font_name
+                    run._element.get_or_add_rPr().rFonts.set(qn("w:eastAsia"), font_name)
+
+
+def _audit_equipment_sync(
+    path: Path,
+    expected: tuple[tuple[str, str, str, str, str], ...],
+) -> None:
+    document = Document(path)
+    equipment = _find_table(document, _EQUIPMENT_HEADERS, "Equipment table")
+    actual = tuple(
+        tuple(cell.text.strip() for cell in row.cells[:5])
+        for row in equipment.rows[1:]
+    )
+    if actual != expected:
+        raise ValueError("Generated Equipment List does not match the confirmed preview.")
 
 
 def _fill_headers(document, report: TestReportDraftData) -> None:

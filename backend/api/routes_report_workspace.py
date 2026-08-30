@@ -13,6 +13,7 @@ from starlette.background import BackgroundTask
 
 from backend.api.dependencies import (
     get_current_report_update_service,
+    get_equipment_report_update_service,
     get_llcr_result_dataset_service,
     get_report_workspace_service,
     get_settings,
@@ -27,6 +28,13 @@ from backend.application.current_report_update_service import (
     CurrentReportUpdateService,
     PublishManagedReportCommand,
     UpdateCurrentLlcrReportCommand,
+)
+from backend.application.equipment_report_update_service import (
+    EquipmentListExternalOverride,
+    EquipmentListPreview,
+    EquipmentListUpdateCommand,
+    EquipmentReportUpdateError,
+    EquipmentReportUpdateService,
 )
 from backend.application.llcr_result_dataset_service import (
     ConfirmLlcrImportCommand,
@@ -92,6 +100,28 @@ class UpdateCurrentLlcrReportRequest(BaseModel):
 
 class PublishManagedReportRequest(BaseModel):
     expected_report_sha256: str = Field(min_length=64, max_length=64)
+
+
+class EquipmentExternalOverrideRequest(BaseModel):
+    source_reference: str
+    item: str
+    manufacturer: str
+    id_number: str
+    last_calibration: str
+    calibration_due: str
+    reason: str
+
+
+class PreviewEquipmentListRequest(BaseModel):
+    external_overrides: list[EquipmentExternalOverrideRequest] = Field(default_factory=list)
+
+
+class UpdateEquipmentListRequest(PreviewEquipmentListRequest):
+    expected_report_sha256: str = Field(min_length=64, max_length=64)
+    expected_source_sha256: str = Field(min_length=64, max_length=64)
+    expected_catalog_sha256: str = Field(min_length=64, max_length=64)
+    acknowledge_expired: bool = False
+    updated_by: str = "Lab User"
 
 
 @router.get("/api/projects/{project_id}/report-workspace")
@@ -206,6 +236,59 @@ def download_current_report(
         filename=report.file_name,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )
+
+
+@router.post(
+    "/api/projects/{project_id}/report-workspace/current-report/equipment/preview"
+)
+def preview_current_report_equipment_update(
+    project_id: str,
+    request: PreviewEquipmentListRequest,
+    service: EquipmentReportUpdateService = Depends(get_equipment_report_update_service),
+) -> dict:
+    try:
+        preview = service.preview(
+            project_id=project_id,
+            external_overrides=_equipment_overrides(request.external_overrides),
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
+    return _equipment_preview_response(project_id, preview)
+
+
+@router.post("/api/projects/{project_id}/report-workspace/current-report/equipment")
+def update_current_report_equipment_list(
+    project_id: str,
+    request: UpdateEquipmentListRequest,
+    service: EquipmentReportUpdateService = Depends(get_equipment_report_update_service),
+) -> dict:
+    try:
+        result = service.update(
+            EquipmentListUpdateCommand(
+                project_id=project_id,
+                expected_report_sha256=request.expected_report_sha256,
+                expected_source_sha256=request.expected_source_sha256,
+                expected_catalog_sha256=request.expected_catalog_sha256,
+                acknowledge_expired=request.acknowledge_expired,
+                external_overrides=_equipment_overrides(request.external_overrides),
+                updated_by=request.updated_by,
+            )
+        )
+    except (EquipmentReportUpdateError, CurrentReportFileConflictError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
+    return {
+        "project_id": result.project_id,
+        "file_name": result.file_name,
+        "mode": result.mode,
+        "changed": result.changed,
+        "current_sha256": result.current_sha256,
+        "archive_path": (
+            str(result.archive_path) if result.archive_path is not None else None
+        ),
+        "updated_by": result.updated_by,
+    }
 
 
 @router.post("/api/projects/{project_id}/report-workspace/llcr/inspect")
@@ -543,4 +626,51 @@ def _current_report_update_response(result: CurrentReportUpdateResult) -> dict:
         "current_sha256": result.current_sha256,
         "archive_path": str(result.archive_path) if result.archive_path is not None else None,
         "updated_by": result.updated_by,
+    }
+
+
+def _equipment_overrides(
+    items: list[EquipmentExternalOverrideRequest],
+) -> tuple[EquipmentListExternalOverride, ...]:
+    return tuple(
+        EquipmentListExternalOverride(
+            source_reference=item.source_reference,
+            item=item.item,
+            manufacturer=item.manufacturer,
+            id_number=item.id_number,
+            last_calibration=item.last_calibration,
+            calibration_due=item.calibration_due,
+            reason=item.reason,
+        )
+        for item in items
+    )
+
+
+def _equipment_preview_response(project_id: str, preview: EquipmentListPreview) -> dict:
+    return {
+        "project_id": preview.project_id,
+        "status": preview.status,
+        "current_report": _current_report_response(project_id, preview.current_report),
+        "source_file_name": preview.source_file_name,
+        "source_sha256": preview.source_sha256,
+        "catalog_file_name": preview.catalog_file_name,
+        "catalog_sha256": preview.catalog_sha256,
+        "rows": [
+            {
+                "source_reference": row.source_reference,
+                "status": row.status,
+                "item": row.item,
+                "manufacturer": row.manufacturer,
+                "id_number": row.id_number,
+                "last_calibration": row.last_calibration,
+                "calibration_due": row.calibration_due,
+                "source_sheet": row.source_sheet,
+                "expired": row.expired,
+                "external_reason": row.external_reason,
+            }
+            for row in preview.rows
+        ],
+        "blockers": list(preview.blockers),
+        "warnings": list(preview.warnings),
+        "requires_expired_acknowledgement": preview.requires_expired_acknowledgement,
     }

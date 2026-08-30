@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from backend.api.dependencies import (
     get_current_report_update_service,
+    get_equipment_report_update_service,
     get_llcr_result_dataset_service,
     get_report_workspace_service,
     get_settings,
@@ -17,8 +18,13 @@ from backend.api.main import app
 from backend.application.report_workspace_service import ReportWorkspaceState
 from backend.application.current_report_update_service import (
     CurrentReportArtifact,
+    CurrentEquipmentListUpdateResult,
     CurrentReportUpdatePreview,
     CurrentReportUpdateResult,
+)
+from backend.application.equipment_report_update_service import (
+    EquipmentListPreview,
+    EquipmentListReportRow,
 )
 from backend.domain import ExternalResource, ExternalResourceType, ExternalResourceValidationStatus
 from backend.domain.result_dataset_models import LlcrImportPreview, ReportDraftRevision
@@ -213,6 +219,47 @@ def test_current_managed_report_can_be_published_to_official_project_folder(
     assert current_service.publish_command.expected_report_sha256 == "a" * 64
 
 
+def test_equipment_list_preview_and_controlled_update(tmp_path: Path) -> None:
+    report_path = tmp_path / "DL-001 Qualification Testing Report_Rev_A.docx"
+    report_path.write_bytes(b"current-report")
+    report = CurrentReportArtifact(
+        status="ready",
+        mode="official",
+        file_name=report_path.name,
+        file_path=report_path,
+        file_sha256="a" * 64,
+        history_root=tmp_path / "History" / "Report",
+    )
+    equipment_service = _EquipmentService(report, tmp_path)
+    app.dependency_overrides[get_equipment_report_update_service] = lambda: equipment_service
+    client = TestClient(app)
+    try:
+        preview = client.post(
+            "/api/projects/P1/report-workspace/current-report/equipment/preview",
+            json={"external_overrides": []},
+        )
+        updated = client.post(
+            "/api/projects/P1/report-workspace/current-report/equipment",
+            json={
+                "expected_report_sha256": "a" * 64,
+                "expected_source_sha256": "b" * 64,
+                "expected_catalog_sha256": "c" * 64,
+                "acknowledge_expired": True,
+                "external_overrides": [],
+                "updated_by": "Lab User",
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert preview.status_code == 200
+    assert preview.json()["rows"][0]["id_number"] == "DG-Q-0033"
+    assert preview.json()["requires_expired_acknowledgement"] is True
+    assert updated.status_code == 200
+    assert updated.json()["file_name"] == report_path.name
+    assert equipment_service.command.acknowledge_expired is True
+
+
 class _LlcrService:
     def __init__(self, preview, dataset):
         self.preview = preview
@@ -320,6 +367,52 @@ class _CurrentReportUpdateService:
             history_root=target.parent / "History" / "Report",
             folder_path=target.parent,
             official_folder_path=target.parent,
+        )
+
+
+class _EquipmentService:
+    def __init__(self, report: CurrentReportArtifact, tmp_path: Path) -> None:
+        self.report = report
+        self.tmp_path = tmp_path
+
+    def preview(self, *, project_id, external_overrides=tuple()):
+        self.overrides = external_overrides
+        return EquipmentListPreview(
+            project_id=project_id,
+            status="ready",
+            current_report=self.report,
+            source_file_name="EquipmentID.docx",
+            source_sha256="b" * 64,
+            catalog_file_name="equipment.xlsx",
+            catalog_sha256="c" * 64,
+            rows=(
+                EquipmentListReportRow(
+                    source_reference="DG-Q-0033",
+                    status="matched",
+                    item="Digital multimeter",
+                    manufacturer="Keysight",
+                    id_number="DG-Q-0033",
+                    last_calibration="01 Jan 2025",
+                    calibration_due="01 Jan 2026",
+                    source_sheet="All Equip.",
+                    expired=True,
+                ),
+            ),
+            blockers=tuple(),
+            warnings=("Calibration is expired for DG-Q-0033 (01 Jan 2026).",),
+            requires_expired_acknowledgement=True,
+        )
+
+    def update(self, command):
+        self.command = command
+        return CurrentEquipmentListUpdateResult(
+            project_id=command.project_id,
+            file_name=self.report.file_name or "",
+            mode="official",
+            changed=True,
+            current_sha256="d" * 64,
+            archive_path=self.tmp_path / "History" / "Report" / "old.docx",
+            updated_by=command.updated_by,
         )
 
 

@@ -2,13 +2,36 @@
 
 ## Current delivered boundary
 
-`REPORT-001` provides one deliberately narrow workflow: Project Workbench can generate and download
-an internal E-3707_H initialization-report draft from the latest confirmed Basic Information and the
-Active Confirmed Matrix.
+The delivered report workflow now creates one current E-3707_H Internal Report and updates controlled
+regions without rebuilding the document. Initial generation consumes Confirmed Basic Information and
+the Active Confirmed Matrix. Later section actions preserve manual edits outside their declared region,
+stage changes, fingerprint the current file, archive the previous revision, and replace atomically.
 
-The workflow is a derived preview output. It does not import result files, calculate Pass/Fail, insert
-test photographs, generate a customer report, update an earlier Word report, or write into an official
-project/public-drive folder.
+LLCR Result/Comment synchronization and Section 7 Equipment List synchronization are delivered.
+Temperature-rise and other result adapters, photographs, appendices, and final narrative automation
+remain deferred.
+
+## Equipment List controlled update
+
+`REPORT-003B` uses two read-only external authorities:
+
+- `{project local workspace}/EquipmentID.docx` selects equipment for this project. Paragraph and table
+  values are read in order and deduplicated case-insensitively; `DG-Q-0000`, `Q-0000`, `DG-L-0000`,
+  and `L-0000` references share the legacy match token.
+- Settings `Equipment calibration Excel` supplies `Item`, `Manufacturer`, `ID Number`, `Last Cal.`,
+  and `Cal. Due`. Both the current structured header layout and the legacy `All Equip.` row-5 / A-C-D-E-F
+  layout are supported.
+
+Preview is mandatory. Missing, ambiguous, incomplete, or structurally invalid catalog rows block the
+write. An unmatched customer/external fixture may proceed only after all five report fields and an
+explanation are supplied. Expired calibration is a warning that requires an explicit acknowledgement.
+The preview fingerprints `EquipmentID.docx`, the calibration workbook, and the current report; all are
+rechecked before publication.
+
+Only the body rows of the table headed `Item / Manufacturer / ID Number / Last Cal. / Cal. Due` are
+owned by this action. The approved template, both source files, headings, Purpose, Conclusions, test
+results, images, appendices, and revision record are not changed. The existing report publication
+gateway archives a changed prior report under `History/Report` and performs atomic replacement.
 
 ## Authority and dependency flow
 
@@ -69,10 +92,8 @@ to the Word adapter:
 3. Pass/Fail suggestions derived from structured values and requirements, followed by operator
    confirmation.
 4. Photograph selection, Group/Step linkage, caption rules, and chapter placement.
-5. Safe synchronization into an operator-edited report with explicit managed regions and manual
-   override adoption.
-6. Official project-folder placement and the separate overwrite/archive-to-Source-Book decision.
-7. Independent E-4515_F customer-report projection from the same semantic snapshot.
+5. Additional controlled region adapters for narrative, result, image, and appendix sections.
+6. Independent E-4515_F customer-report synchronization from the same confirmed sources.
 
 These phases are not part of `REPORT-001`.
 

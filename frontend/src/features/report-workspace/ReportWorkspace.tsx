@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type ReactElement,
+  type SetStateAction,
+} from "react";
 import {
   cancelLlcrResultPreview,
   confirmLlcrResultImport,
@@ -9,8 +17,11 @@ import {
   inspectLlcrResultWorkbook,
   publishManagedReport,
   previewCurrentReportLlcrUpdate,
+  previewCurrentReportEquipmentList,
   updateCurrentReportLlcr,
+  updateCurrentReportEquipmentList,
   type CurrentReport,
+  type EquipmentListPreview,
   type LlcrImportPreview,
   type ReportWorkspaceState,
 } from "../../api/client";
@@ -18,9 +29,13 @@ import { ErrorMessage } from "../../components/common/ErrorMessage";
 import { LlcrImportPreviewDialog } from "./LlcrImportPreviewDialog";
 import {
   buildLlcrConfirmationDecisions,
+  buildEquipmentExternalOverrides,
+  createEquipmentOverrideDrafts,
   createLlcrDecisionDrafts,
   deriveReportEntryState,
   deriveReportWorkspaceReadiness,
+  validateEquipmentOverrideDrafts,
+  type EquipmentOverrideDrafts,
   type LlcrDecisionDrafts,
   type LlcrOutcome,
 } from "./reportWorkspaceModel";
@@ -30,7 +45,7 @@ type ReportWorkspaceProps = {
   onBack: () => void;
 };
 
-type BusyAction = "load" | "initial" | "inspect" | "confirm" | "cancel" | "llcr" | "publish" | "download" | null;
+type BusyAction = "load" | "initial" | "inspect" | "confirm" | "cancel" | "llcr" | "equipment-preview" | "equipment-update" | "publish" | "download" | null;
 
 export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): ReactElement {
   const [state, setState] = useState<ReportWorkspaceState | null>(null);
@@ -38,6 +53,9 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<LlcrImportPreview | null>(null);
   const [decisionDrafts, setDecisionDrafts] = useState<LlcrDecisionDrafts>({});
+  const [equipmentPreview, setEquipmentPreview] = useState<EquipmentListPreview | null>(null);
+  const [equipmentDrafts, setEquipmentDrafts] = useState<EquipmentOverrideDrafts>({});
+  const [acknowledgeExpired, setAcknowledgeExpired] = useState(false);
   const [busyAction, setBusyAction] = useState<BusyAction>("load");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -86,6 +104,12 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
   const reportEntry = useMemo(
     () => deriveReportEntryState(currentReport),
     [currentReport]
+  );
+  const equipmentDraftErrors = useMemo(
+    () => equipmentPreview
+      ? validateEquipmentOverrideDrafts(equipmentPreview, equipmentDrafts)
+      : [],
+    [equipmentDrafts, equipmentPreview]
   );
 
   async function runAction(
@@ -191,6 +215,57 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
     });
   }
 
+  async function handleEquipmentPreview(useDrafts = false): Promise<void> {
+    await runAction("equipment-preview", async () => {
+      const overrides = useDrafts && equipmentPreview
+        ? buildEquipmentExternalOverrides(equipmentPreview, equipmentDrafts)
+        : [];
+      const result = await previewCurrentReportEquipmentList(projectId, overrides);
+      setEquipmentPreview(result);
+      setEquipmentDrafts((current) => {
+        const created = createEquipmentOverrideDrafts(result);
+        return Object.fromEntries(
+          Object.entries(created).map(([key, value]) => [key, current[key] ?? value])
+        );
+      });
+      setAcknowledgeExpired(false);
+      return result.status === "ready"
+        ? `Previewed ${result.rows.length} Equipment List row${result.rows.length === 1 ? "" : "s"}.`
+        : null;
+    });
+  }
+
+  async function handleEquipmentUpdate(): Promise<void> {
+    if (
+      !equipmentPreview
+      || !equipmentPreview.current_report.file_sha256
+      || !equipmentPreview.source_sha256
+      || !equipmentPreview.catalog_sha256
+    ) {
+      return;
+    }
+    await runAction("equipment-update", async () => {
+      const result = await updateCurrentReportEquipmentList(projectId, {
+        expected_report_sha256: equipmentPreview.current_report.file_sha256!,
+        expected_source_sha256: equipmentPreview.source_sha256!,
+        expected_catalog_sha256: equipmentPreview.catalog_sha256!,
+        acknowledge_expired: acknowledgeExpired,
+        external_overrides: buildEquipmentExternalOverrides(
+          equipmentPreview,
+          equipmentDrafts
+        ),
+        updated_by: "Lab User",
+      });
+      setEquipmentPreview(null);
+      setEquipmentDrafts({});
+      setAcknowledgeExpired(false);
+      await refresh();
+      return result.changed
+        ? `Updated Equipment List in ${result.file_name}. The previous report was archived automatically.`
+        : `Equipment List in ${result.file_name} was already up to date.`;
+    });
+  }
+
   async function handlePublishManagedReport(): Promise<void> {
     const expectedSha = currentReport?.file_sha256;
     if (!expectedSha || !currentReport.can_publish_to_official) {
@@ -236,7 +311,7 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
 
       {state && readiness ? (
         <div className="report-workspace-grid">
-          <article className="report-workspace-card">
+          <article className="report-workspace-card report-workspace-card-wide">
             <div className="report-workspace-card-heading">
               <span className="report-workspace-step">01</span>
               <div><h2>{reportEntry.title}</h2><p>{reportEntry.description}</p></div>
@@ -332,6 +407,32 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
               <small>Manually edited Purpose and Conclusions are preserved.</small>
             </div>
           </article>
+
+          <article className="report-workspace-card report-workspace-card-wide">
+            <div className="report-workspace-card-heading">
+              <span className="report-workspace-step">04</span>
+              <div>
+                <h2>Update Equipment List</h2>
+                <p>Read EquipmentID.docx from the project folder and match it to the active Equipment calibration Excel configured in Settings.</p>
+              </div>
+            </div>
+            <button
+              className="primary-action"
+              disabled={Boolean(busyAction) || currentReport?.status !== "ready"}
+              onClick={() => void handleEquipmentPreview()}
+              type="button"
+            >
+              {busyAction === "equipment-preview" ? "Previewing..." : "Preview Equipment List"}
+            </button>
+            {currentReport?.status !== "ready" ? (
+              <p className="report-workspace-blocker">Generate or publish the current report before updating Equipment List.</p>
+            ) : null}
+            <div className="report-workspace-owned-regions" aria-label="Equipment update boundary">
+              <strong>This action owns</strong>
+              <span>Section 7 Equipment table body only</span>
+              <small>Purpose, Conclusions, results, images, appendices, and other manual edits are preserved.</small>
+            </div>
+          </article>
         </div>
       ) : null}
 
@@ -348,6 +449,112 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
           }))}
           preview={preview}
         />
+      ) : null}
+
+      {equipmentPreview ? (
+        <div className="report-workspace-dialog-backdrop">
+          <section
+            aria-label="Equipment List preview"
+            aria-modal="true"
+            className="report-workspace-dialog"
+            role="dialog"
+          >
+            <header className="report-workspace-dialog-header">
+              <div>
+                <h2>Equipment List preview</h2>
+                <p>Review every matched or external row before replacing the Section 7 table body.</p>
+              </div>
+              <button
+                disabled={Boolean(busyAction)}
+                onClick={() => {
+                  setEquipmentPreview(null);
+                  setEquipmentDrafts({});
+                  setAcknowledgeExpired(false);
+                }}
+                type="button"
+              >Close</button>
+            </header>
+            <dl className="report-workspace-preview-facts">
+              <div><dt>Selection source</dt><dd>{equipmentPreview.source_file_name ?? "Unavailable"}</dd></div>
+              <div><dt>Calibration source</dt><dd>{equipmentPreview.catalog_file_name ?? "Unavailable"}</dd></div>
+              <div><dt>Rows</dt><dd>{equipmentPreview.rows.length}</dd></div>
+              <div><dt>Preview status</dt><dd>{equipmentPreview.status === "ready" ? "Ready to update" : "Needs attention"}</dd></div>
+            </dl>
+            {equipmentPreview.blockers.length ? (
+              <div className="report-workspace-confirm-errors">
+                {equipmentPreview.blockers.map((item) => <p key={item}>{item}</p>)}
+              </div>
+            ) : null}
+            {equipmentPreview.warnings.length ? (
+              <div className="report-workspace-diagnostics">
+                {equipmentPreview.warnings.map((item) => <p key={item}>{item}</p>)}
+              </div>
+            ) : null}
+            <div className="report-workspace-table-wrap">
+              <table className="report-workspace-table report-workspace-equipment-table">
+                <thead><tr>
+                  <th>Source reference</th><th>Item</th><th>Manufacturer</th><th>ID Number</th><th>Last Cal.</th><th>Cal. Due</th><th>Status</th>
+                </tr></thead>
+                <tbody>
+                  {equipmentPreview.rows.map((row) => {
+                    const draft = equipmentDrafts[row.source_reference];
+                    const editable = (row.status === "unmatched" || row.status === "external") && draft;
+                    return (
+                      <tr key={row.source_reference}>
+                        <td>{row.source_reference}</td>
+                        <td>{editable ? <EquipmentInput label={`Item for ${row.source_reference}`} value={draft.item} onChange={(value) => updateEquipmentDraft(setEquipmentDrafts, row.source_reference, "item", value)} /> : row.item}</td>
+                        <td>{editable ? <EquipmentInput label={`Manufacturer for ${row.source_reference}`} value={draft.manufacturer} onChange={(value) => updateEquipmentDraft(setEquipmentDrafts, row.source_reference, "manufacturer", value)} /> : row.manufacturer}</td>
+                        <td>{editable ? <EquipmentInput label={`ID Number for ${row.source_reference}`} value={draft.idNumber} onChange={(value) => updateEquipmentDraft(setEquipmentDrafts, row.source_reference, "idNumber", value)} /> : row.id_number}</td>
+                        <td>{editable ? <EquipmentInput label={`Last calibration for ${row.source_reference}`} value={draft.lastCalibration} onChange={(value) => updateEquipmentDraft(setEquipmentDrafts, row.source_reference, "lastCalibration", value)} /> : row.last_calibration}</td>
+                        <td>{editable ? <EquipmentInput label={`Calibration due for ${row.source_reference}`} value={draft.calibrationDue} onChange={(value) => updateEquipmentDraft(setEquipmentDrafts, row.source_reference, "calibrationDue", value)} /> : row.calibration_due}</td>
+                        <td>
+                          <span className={`report-workspace-equipment-status ${row.status}`}>{equipmentStatusLabel(row.status)}</span>
+                          {row.expired ? <small>Expired</small> : null}
+                          {editable ? <EquipmentInput label={`Explanation for ${row.source_reference}`} value={draft.reason} onChange={(value) => updateEquipmentDraft(setEquipmentDrafts, row.source_reference, "reason", value)} /> : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {equipmentDraftErrors.length ? (
+              <div className="report-workspace-confirm-errors">
+                {equipmentDraftErrors.map((item) => <p key={item}>{item}</p>)}
+              </div>
+            ) : null}
+            {equipmentPreview.requires_expired_acknowledgement ? (
+              <label className="report-workspace-equipment-ack">
+                <input
+                  checked={acknowledgeExpired}
+                  onChange={(event) => setAcknowledgeExpired(event.target.checked)}
+                  type="checkbox"
+                />
+                I reviewed the expired calibration warning
+              </label>
+            ) : null}
+            <div className="report-workspace-dialog-actions">
+              {equipmentPreview.rows.some((row) => row.status === "unmatched") ? (
+                <button
+                  disabled={Boolean(busyAction) || equipmentDraftErrors.length > 0}
+                  onClick={() => void handleEquipmentPreview(true)}
+                  type="button"
+                >{busyAction === "equipment-preview" ? "Rechecking..." : "Recheck external entries"}</button>
+              ) : null}
+              <button
+                className="primary-action"
+                disabled={
+                  Boolean(busyAction)
+                  || equipmentPreview.status !== "ready"
+                  || equipmentDraftErrors.length > 0
+                  || (equipmentPreview.requires_expired_acknowledgement && !acknowledgeExpired)
+                }
+                onClick={() => void handleEquipmentUpdate()}
+                type="button"
+              >{busyAction === "equipment-update" ? "Updating..." : "Update Equipment List"}</button>
+            </div>
+          </section>
+        </div>
       ) : null}
     </section>
   );
@@ -371,4 +578,48 @@ function downloadBlob(blob: Blob, fileName: string): void {
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function EquipmentInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}): ReactElement {
+  return (
+    <label className="report-workspace-equipment-input">
+      <span>{label}</span>
+      <input
+        aria-label={label}
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
+      />
+    </label>
+  );
+}
+
+function updateEquipmentDraft(
+  setDrafts: Dispatch<SetStateAction<EquipmentOverrideDrafts>>,
+  sourceReference: string,
+  field: keyof EquipmentOverrideDrafts[string],
+  value: string
+): void {
+  setDrafts((current) => ({
+    ...current,
+    [sourceReference]: {
+      ...current[sourceReference],
+      [field]: value,
+    },
+  }));
+}
+
+function equipmentStatusLabel(status: EquipmentListPreview["rows"][number]["status"]): string {
+  if (status === "matched") return "Matched";
+  if (status === "external") return "External";
+  if (status === "ambiguous") return "Ambiguous";
+  if (status === "incomplete") return "Incomplete";
+  return "Not found";
 }

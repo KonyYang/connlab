@@ -6,6 +6,9 @@ import {
   deriveReportWorkspaceReadiness,
   formatLlcrSummary,
   validateLlcrConfirmation,
+  buildEquipmentExternalOverrides,
+  createEquipmentOverrideDrafts,
+  validateEquipmentOverrideDrafts,
 } from "./reportWorkspaceModel";
 
 const state: ReportWorkspaceState = {
@@ -162,5 +165,52 @@ describe("reportWorkspaceModel", () => {
 
     expect(formatLlcrSummary(entry)).toBe("0.004 / 0.004 / 0.004 mΩ");
     expect(entry.summary_max).toBe("0.00400000000000001");
+  });
+
+  it("requires complete external equipment details and a reason for unmatched references", () => {
+    const equipment = {
+      project_id: "project-1",
+      status: "blocked" as const,
+      current_report: null as never,
+      source_file_name: "EquipmentID.docx",
+      source_sha256: "a".repeat(64),
+      catalog_file_name: "equipment.xlsx",
+      catalog_sha256: "b".repeat(64),
+      rows: [{
+        source_reference: "Customer fixture A",
+        status: "unmatched" as const,
+        item: "",
+        manufacturer: "",
+        id_number: "Customer fixture A",
+        last_calibration: "",
+        calibration_due: "",
+        source_sheet: null,
+        expired: false,
+        external_reason: null,
+      }],
+      blockers: ["Equipment reference was not found."],
+      warnings: [],
+      requires_expired_acknowledgement: false,
+    };
+    const drafts = createEquipmentOverrideDrafts(equipment);
+    expect(validateEquipmentOverrideDrafts(equipment, drafts)).toContain(
+      "Complete every field and explanation for Customer fixture A."
+    );
+    const complete = {
+      "Customer fixture A": {
+        item: "Customer fixture",
+        manufacturer: "Customer supplied",
+        idNumber: "N/A",
+        lastCalibration: "N/A",
+        calibrationDue: "N/A",
+        reason: "Customer-owned fixture",
+      },
+    };
+    expect(validateEquipmentOverrideDrafts(equipment, complete)).toEqual([]);
+    expect(buildEquipmentExternalOverrides(equipment, complete)[0]).toMatchObject({
+      source_reference: "Customer fixture A",
+      id_number: "N/A",
+      reason: "Customer-owned fixture",
+    });
   });
 });

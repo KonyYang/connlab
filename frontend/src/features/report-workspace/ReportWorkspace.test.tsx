@@ -15,6 +15,8 @@ vi.mock("../../api/client", async () => {
     generateInitialReportRevision: vi.fn(),
     previewCurrentReportLlcrUpdate: vi.fn(),
     updateCurrentReportLlcr: vi.fn(),
+    previewCurrentReportEquipmentList: vi.fn(),
+    updateCurrentReportEquipmentList: vi.fn(),
     publishManagedReport: vi.fn(),
     downloadCurrentReport: vi.fn(),
     cancelLlcrResultPreview: vi.fn(),
@@ -79,11 +81,48 @@ const preview: api.LlcrImportPreview = {
   ],
 };
 
+const equipmentPreview: api.EquipmentListPreview = {
+  project_id: "project-1",
+  status: "ready",
+  current_report: currentReport,
+  source_file_name: "EquipmentID.docx",
+  source_sha256: "b".repeat(64),
+  catalog_file_name: "equipment.xlsx",
+  catalog_sha256: "c".repeat(64),
+  rows: [
+    {
+      source_reference: "DG-Q-0033",
+      status: "matched",
+      item: "Digital multimeter",
+      manufacturer: "Keysight",
+      id_number: "DG-Q-0033",
+      last_calibration: "01 Jan 2025",
+      calibration_due: "01 Jan 2026",
+      source_sheet: "All Equip.",
+      expired: true,
+      external_reason: null,
+    },
+  ],
+  blockers: [],
+  warnings: ["Calibration is expired for DG-Q-0033 (01 Jan 2026)."],
+  requires_expired_acknowledgement: true,
+};
+
 describe("ReportWorkspace", () => {
   beforeEach(() => {
     vi.mocked(api.fetchReportWorkspace).mockResolvedValue(state);
     vi.mocked(api.fetchCurrentReport).mockResolvedValue(currentReport);
     vi.mocked(api.inspectLlcrResultWorkbook).mockResolvedValue(preview);
+    vi.mocked(api.previewCurrentReportEquipmentList).mockResolvedValue(equipmentPreview);
+    vi.mocked(api.updateCurrentReportEquipmentList).mockResolvedValue({
+      project_id: "project-1",
+      file_name: currentReport.file_name!,
+      mode: "official",
+      changed: true,
+      current_sha256: "d".repeat(64),
+      archive_path: "C:\\Project\\History\\Report\\old.docx",
+      updated_by: "Lab User",
+    });
     vi.mocked(api.confirmLlcrResultImport).mockResolvedValue({
       dataset_id: "dataset-1",
       dataset_type: "llcr",
@@ -297,5 +336,30 @@ describe("ReportWorkspace", () => {
       "a".repeat(64)
     );
     expect(await screen.findByText(/Published the current report to/)).toBeTruthy();
+  });
+
+  it("previews EquipmentID matches and requires expired-calibration acknowledgement", async () => {
+    const user = userEvent.setup();
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+
+    await user.click(await screen.findByRole("button", { name: "Preview Equipment List" }));
+
+    expect(await screen.findByRole("dialog", { name: "Equipment List preview" })).toBeTruthy();
+    expect(screen.getByText("Digital multimeter")).toBeTruthy();
+    const updateButton = screen.getByRole("button", { name: "Update Equipment List" });
+    expect(updateButton).toHaveProperty("disabled", true);
+    await user.click(screen.getByLabelText("I reviewed the expired calibration warning"));
+    expect(updateButton).toHaveProperty("disabled", false);
+    await user.click(updateButton);
+
+    expect(api.updateCurrentReportEquipmentList).toHaveBeenCalledWith("project-1", {
+      expected_report_sha256: "a".repeat(64),
+      expected_source_sha256: "b".repeat(64),
+      expected_catalog_sha256: "c".repeat(64),
+      acknowledge_expired: true,
+      external_overrides: [],
+      updated_by: "Lab User",
+    });
+    expect(await screen.findByText(/Updated Equipment List in/)).toBeTruthy();
   });
 });

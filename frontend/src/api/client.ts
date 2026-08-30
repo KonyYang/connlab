@@ -4820,6 +4820,45 @@ export type CurrentReportUpdateResult = {
   updated_by: string;
 };
 
+export type EquipmentListExternalOverride = {
+  source_reference: string;
+  item: string;
+  manufacturer: string;
+  id_number: string;
+  last_calibration: string;
+  calibration_due: string;
+  reason: string;
+};
+
+export type EquipmentListPreviewRow = {
+  source_reference: string;
+  status: "matched" | "unmatched" | "ambiguous" | "incomplete" | "external";
+  item: string;
+  manufacturer: string;
+  id_number: string;
+  last_calibration: string;
+  calibration_due: string;
+  source_sheet: string | null;
+  expired: boolean;
+  external_reason: string | null;
+};
+
+export type EquipmentListPreview = {
+  project_id: string;
+  status: "ready" | "blocked";
+  current_report: CurrentReport;
+  source_file_name: string | null;
+  source_sha256: string | null;
+  catalog_file_name: string | null;
+  catalog_sha256: string | null;
+  rows: EquipmentListPreviewRow[];
+  blockers: string[];
+  warnings: string[];
+  requires_expired_acknowledgement: boolean;
+};
+
+export type EquipmentListUpdateResult = Omit<CurrentReportUpdateResult, "dataset_id">;
+
 export function fetchReportWorkspace(projectId: string): Promise<ReportWorkspaceState> {
   return requestJson<ReportWorkspaceState>(
     `/api/projects/${encodeURIComponent(projectId)}/report-workspace`
@@ -4924,6 +4963,36 @@ export function updateCurrentReportLlcr(
 ): Promise<CurrentReportUpdateResult> {
   return requestJson<CurrentReportUpdateResult>(
     `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-report/llcr`,
+    { method: "POST", body: JSON.stringify(input) }
+  );
+}
+
+export function previewCurrentReportEquipmentList(
+  projectId: string,
+  externalOverrides: EquipmentListExternalOverride[] = []
+): Promise<EquipmentListPreview> {
+  return requestJson<EquipmentListPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-report/equipment/preview`,
+    {
+      method: "POST",
+      body: JSON.stringify({ external_overrides: externalOverrides }),
+    }
+  );
+}
+
+export function updateCurrentReportEquipmentList(
+  projectId: string,
+  input: {
+    expected_report_sha256: string;
+    expected_source_sha256: string;
+    expected_catalog_sha256: string;
+    acknowledge_expired: boolean;
+    external_overrides: EquipmentListExternalOverride[];
+    updated_by: string;
+  }
+): Promise<EquipmentListUpdateResult> {
+  return requestJson<EquipmentListUpdateResult>(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-report/equipment`,
     { method: "POST", body: JSON.stringify(input) }
   );
 }

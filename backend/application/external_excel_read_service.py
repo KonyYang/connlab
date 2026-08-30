@@ -47,6 +47,8 @@ class EquipmentCalibrationRow:
 
     equipment_id: str
     equipment_name: str | None
+    manufacturer: str | None
+    last_calibration_date: str | None
     calibration_due_date: str | None
     source_sheet: str
 
@@ -126,21 +128,89 @@ class ExternalExcelReadService:
     ) -> EquipmentCalibrationReadResult:
         """Read configured equipment calibration Excel rows with optional query filter."""
         resource = self._require_resource(ExternalResourceType.EQUIPMENT_CALIBRATION_EXCEL)
-        table = self._office.read_excel_tabular_rows(
-            resource.path,
-            expected_headers=("Equipment ID", "Equipment Name", "Calibration Due Date"),
-            expected_sheet_name_patterns=(r".*calibration.*", r".*equipment.*"),
-        )
+        try:
+            table = self._office.read_excel_tabular_rows(
+                resource.path,
+                expected_headers=(
+                    "Equipment ID",
+                    "Equipment Name",
+                    "Manufacturer",
+                    "Last Calibration Date",
+                    "Calibration Due Date",
+                ),
+                expected_sheet_name_patterns=(r".*calibration.*", r".*equipment.*"),
+            )
+            field_names = {
+                "equipment_id": "Equipment ID",
+                "equipment_name": "Equipment Name",
+                "manufacturer": "Manufacturer",
+                "last_calibration": "Last Calibration Date",
+                "calibration_due": "Calibration Due Date",
+            }
+        except ValueError:
+            try:
+                table = self._office.read_excel_tabular_rows(
+                    resource.path,
+                    expected_headers=(
+                        "Equipment ID",
+                        "Equipment Name",
+                        "Calibration Due Date",
+                    ),
+                    expected_sheet_name_patterns=(r".*calibration.*", r".*equipment.*"),
+                )
+                field_names = {
+                    "equipment_id": "Equipment ID",
+                    "equipment_name": "Equipment Name",
+                    "manufacturer": "Manufacturer",
+                    "last_calibration": "Last Calibration Date",
+                    "calibration_due": "Calibration Due Date",
+                }
+            except ValueError:
+                table = self._office.read_excel_tabular_rows(
+                    resource.path,
+                    expected_headers=(
+                        "Item",
+                        "Manufacturer",
+                        "ID Number",
+                        "Last Cal.",
+                        "Cal. Due",
+                    ),
+                    expected_sheet_names=("All Equip.",),
+                    layout=ExcelTabularLayout(
+                        header_row_number=5,
+                        required_header_columns=(
+                            ("Item", 1),
+                            ("Manufacturer", 3),
+                            ("ID Number", 4),
+                            ("Last Cal.", 5),
+                            ("Cal. Due", 6),
+                        ),
+                        require_unique_sheet_match=True,
+                    ),
+                )
+                field_names = {
+                    "equipment_id": "ID Number",
+                    "equipment_name": "Item",
+                    "manufacturer": "Manufacturer",
+                    "last_calibration": "Last Cal.",
+                    "calibration_due": "Cal. Due",
+                }
         rows: list[EquipmentCalibrationRow] = []
         for row in table.rows:
-            equipment_id = row.get("Equipment ID", "").strip()
-            equipment_name = row.get("Equipment Name", "").strip() or None
-            due_date = row.get("Calibration Due Date", "").strip() or None
+            equipment_id = row.get(field_names["equipment_id"], "").strip()
+            equipment_name = row.get(field_names["equipment_name"], "").strip() or None
+            manufacturer = row.get(field_names["manufacturer"], "").strip() or None
+            last_calibration = (
+                row.get(field_names["last_calibration"], "").strip() or None
+            )
+            due_date = row.get(field_names["calibration_due"], "").strip() or None
             if not equipment_id:
                 continue
             mapped = EquipmentCalibrationRow(
                 equipment_id=equipment_id,
                 equipment_name=equipment_name,
+                manufacturer=manufacturer,
+                last_calibration_date=last_calibration,
                 calibration_due_date=due_date,
                 source_sheet=row.get("__sheet_name", ""),
             )
@@ -148,6 +218,8 @@ class ExternalExcelReadService:
                 query,
                 mapped.equipment_id,
                 mapped.equipment_name or "",
+                mapped.manufacturer or "",
+                mapped.last_calibration_date or "",
                 mapped.calibration_due_date or "",
             ):
                 rows.append(mapped)

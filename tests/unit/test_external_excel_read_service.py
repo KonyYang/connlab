@@ -55,8 +55,14 @@ def test_read_equipment_rows_returns_structured_rows(tmp_path: Path) -> None:
         workbook,
         sheet_name="Equipment Calibration",
         rows=[
-            ["Equipment ID", "Equipment Name", "Calibration Due Date"],
-            ["EQ-001", "Load Frame", "2026-08-10"],
+            [
+                "Equipment ID",
+                "Equipment Name",
+                "Manufacturer",
+                "Last Calibration Date",
+                "Calibration Due Date",
+            ],
+            ["EQ-001", "Load Frame", "Instron", "2025-08-10", "2026-08-10"],
         ],
     )
     service = ExternalExcelReadService(
@@ -76,7 +82,48 @@ def test_read_equipment_rows_returns_structured_rows(tmp_path: Path) -> None:
     assert len(result.rows) == 1
     assert result.rows[0].equipment_id == "EQ-001"
     assert result.rows[0].equipment_name == "Load Frame"
+    assert result.rows[0].manufacturer == "Instron"
+    assert result.rows[0].last_calibration_date == "2025-08-10"
     assert result.rows[0].calibration_due_date == "2026-08-10"
+
+
+def test_read_equipment_rows_supports_legacy_all_equip_layout(tmp_path: Path) -> None:
+    workbook = tmp_path / "equipment.xls"
+    workbook.touch()
+    legacy = ExcelTabularReadResult(
+        workbook_path=workbook,
+        matched_sheet_names=("All Equip.",),
+        headers=("Item", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due"),
+        rows=(
+            {
+                "Item": "Digital multimeter",
+                "Manufacturer": "Keysight",
+                "ID Number": "DG-Q-0033",
+                "Last Cal.": "01 Jan 2025",
+                "Cal. Due": "01 Jan 2026",
+                "__sheet_name": "All Equip.",
+            },
+        ),
+    )
+    office = _SequencedOffice(
+        ValueError("Expected headers were not found."),
+        ValueError("Expected headers were not found."),
+        legacy,
+    )
+    service = ExternalExcelReadService(
+        _Store([_resource(ExternalResourceType.EQUIPMENT_CALIBRATION_EXCEL, workbook)]),
+        office=office,
+    )
+
+    result = service.read_equipment_calibrations()
+
+    assert result.matched_sheets == ("All Equip.",)
+    assert result.rows[0].equipment_name == "Digital multimeter"
+    assert result.rows[0].manufacturer == "Keysight"
+    assert result.rows[0].equipment_id == "DG-Q-0033"
+    assert result.rows[0].last_calibration_date == "01 Jan 2025"
+    assert result.rows[0].calibration_due_date == "01 Jan 2026"
+    assert len(office.calls) == 3
 
 
 def test_read_standard_records_maps_legacy_xls_gateway_rows(tmp_path: Path) -> None:
@@ -151,6 +198,20 @@ class _FakeOffice:
     def read_excel_tabular_rows(self, path: Path, **_kwargs: object) -> ExcelTabularReadResult:
         self.paths.append(path)
         return self._result
+
+
+class _SequencedOffice:
+    def __init__(self, *results: object) -> None:
+        self._results = list(results)
+        self.calls: list[dict[str, object]] = []
+
+    def read_excel_tabular_rows(self, path: Path, **kwargs: object) -> ExcelTabularReadResult:
+        self.calls.append({"path": path, **kwargs})
+        result = self._results.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        assert isinstance(result, ExcelTabularReadResult)
+        return result
 
 
 def _resource(resource_type: ExternalResourceType, path: Path) -> ExternalResource:

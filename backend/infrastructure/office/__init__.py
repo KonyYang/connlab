@@ -69,6 +69,11 @@ from backend.infrastructure.office.fee_evaluation_workbook_gateway import FeeEva
 from backend.infrastructure.office.customer_feedback_workbook_gateway import (
     CustomerFeedbackWorkbookGateway,
 )
+from backend.infrastructure.office.equipment_id_document_reader import (
+    EquipmentIdDocumentReadResult,
+    EquipmentIdDocumentReader,
+    equipment_reference_key,
+)
 
 __all__ = [
     "ImportedMailAttachment",
@@ -120,6 +125,9 @@ __all__ = [
     "TestRecordDocumentGateway",
     "FeeEvaluationWorkbookGateway",
     "CustomerFeedbackWorkbookGateway",
+    "EquipmentIdDocumentReadResult",
+    "EquipmentIdDocumentReader",
+    "equipment_reference_key",
     "a1_address",
     "probe_msg_samples",
 ]

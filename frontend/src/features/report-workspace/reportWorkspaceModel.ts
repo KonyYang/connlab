@@ -1,5 +1,7 @@
 import type {
   CurrentReport,
+  EquipmentListExternalOverride,
+  EquipmentListPreview,
   LlcrImportPreview,
   LlcrResultEntry,
   ReportWorkspaceState,
@@ -69,6 +71,17 @@ export type LlcrDecisionDraft = {
 };
 
 export type LlcrDecisionDrafts = Record<string, LlcrDecisionDraft>;
+
+export type EquipmentOverrideDraft = {
+  item: string;
+  manufacturer: string;
+  idNumber: string;
+  lastCalibration: string;
+  calibrationDue: string;
+  reason: string;
+};
+
+export type EquipmentOverrideDrafts = Record<string, EquipmentOverrideDraft>;
 
 export type ReportWorkspaceReadiness = {
   canGenerateInitialDraft: boolean;
@@ -153,6 +166,71 @@ export function buildLlcrConfirmationDecisions(
 
 export function formatLlcrSummary(entry: LlcrResultEntry): string {
   return `${formatSummaryDecimal(entry.summary_min)} / ${formatSummaryDecimal(entry.summary_max)} / ${formatSummaryDecimal(entry.summary_average)} ${entry.unit}`;
+}
+
+export function createEquipmentOverrideDrafts(
+  preview: EquipmentListPreview
+): EquipmentOverrideDrafts {
+  return Object.fromEntries(
+    preview.rows
+      .filter((row) => row.status === "unmatched" || row.status === "external")
+      .map((row) => [
+        row.source_reference,
+        {
+          item: row.item,
+          manufacturer: row.manufacturer,
+          idNumber: row.id_number,
+          lastCalibration: row.last_calibration,
+          calibrationDue: row.calibration_due,
+          reason: row.external_reason ?? "",
+        },
+      ])
+  );
+}
+
+export function validateEquipmentOverrideDrafts(
+  preview: EquipmentListPreview,
+  drafts: EquipmentOverrideDrafts
+): string[] {
+  return preview.rows
+    .filter((row) => row.status === "unmatched" || row.status === "external")
+    .flatMap((row) => {
+      const draft = drafts[row.source_reference];
+      if (
+        !draft
+        || ![
+          draft.item,
+          draft.manufacturer,
+          draft.idNumber,
+          draft.lastCalibration,
+          draft.calibrationDue,
+          draft.reason,
+        ].every((value) => value.trim())
+      ) {
+        return [`Complete every field and explanation for ${row.source_reference}.`];
+      }
+      return [];
+    });
+}
+
+export function buildEquipmentExternalOverrides(
+  preview: EquipmentListPreview,
+  drafts: EquipmentOverrideDrafts
+): EquipmentListExternalOverride[] {
+  return preview.rows
+    .filter((row) => row.status === "unmatched" || row.status === "external")
+    .map((row) => {
+      const draft = drafts[row.source_reference];
+      return {
+        source_reference: row.source_reference,
+        item: draft.item.trim(),
+        manufacturer: draft.manufacturer.trim(),
+        id_number: draft.idNumber.trim(),
+        last_calibration: draft.lastCalibration.trim(),
+        calibration_due: draft.calibrationDue.trim(),
+        reason: draft.reason.trim(),
+      };
+    });
 }
 
 function formatSummaryDecimal(value: string): string {

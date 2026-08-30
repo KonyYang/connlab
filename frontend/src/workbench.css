@@ -9669,7 +9669,11 @@
 .report-workspace-grid {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.report-workspace-card-wide {
+  grid-column: 1 / -1;
 }
 
 .report-workspace-card {
@@ -10011,6 +10015,70 @@
   color: var(--color-ink-muted);
 }
 
+.report-workspace-equipment-table {
+  min-width: 1180px;
+}
+
+.report-workspace-equipment-table td:last-child {
+  min-width: 220px;
+}
+
+.report-workspace-equipment-input {
+  display: block;
+  min-width: 120px;
+}
+
+.report-workspace-equipment-input span {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.report-workspace-equipment-input input {
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 7px;
+  width: 100%;
+}
+
+.report-workspace-equipment-status {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  display: inline-flex;
+  font-weight: 800;
+  padding: 4px 8px;
+}
+
+.report-workspace-equipment-status.matched,
+.report-workspace-equipment-status.external {
+  color: var(--color-success);
+}
+
+.report-workspace-equipment-status.unmatched,
+.report-workspace-equipment-status.ambiguous,
+.report-workspace-equipment-status.incomplete {
+  color: var(--color-danger);
+}
+
+.report-workspace-equipment-ack {
+  align-items: start;
+  color: var(--color-warning);
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 9px;
+}
+
+.report-workspace-equipment-ack input {
+  margin-top: 2px;
+}
+
 .report-workspace-diagnostics,
 .report-workspace-confirm-errors {
   background: var(--color-surface);
@@ -10042,6 +10110,10 @@
   }
 
   .report-workspace-history {
+    grid-column: auto;
+  }
+
+  .report-workspace-card-wide {
     grid-column: auto;
   }
 }

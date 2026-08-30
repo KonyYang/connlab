@@ -11,6 +11,7 @@ from backend.application.current_report_update_service import (
     CurrentReportUpdateError,
     CurrentReportUpdateService,
     PublishManagedReportCommand,
+    UpdateCurrentEquipmentListReportCommand,
     UpdateCurrentLlcrReportCommand,
 )
 from backend.domain.result_dataset_models import ReportDraftRevision
@@ -223,6 +224,39 @@ def test_llcr_update_does_not_create_history_when_report_is_already_current(
     assert not (tmp_path / "History").exists()
 
 
+def test_equipment_update_archives_current_report_and_changes_only_equipment_region(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "official"
+    official.mkdir()
+    report = official / "DL-001 Product Qualification Testing Report_Rev_A.docx"
+    report.write_bytes(b"purpose|conclusion|llcr|old-equipment")
+    writer = _Writer()
+    service = _service(
+        tmp_path,
+        workspace=_workspace(tmp_path, official),
+        reports=(),
+        writer=writer,
+    )
+    current = service.get_current_report("P1")
+    rows = (SimpleNamespace(id_number="DG-Q-0033"),)
+
+    result = service.update_equipment_list(
+        UpdateCurrentEquipmentListReportCommand(
+            project_id="P1",
+            expected_report_sha256=current.file_sha256 or "",
+            rows=rows,
+            updated_by="Lab User",
+        )
+    )
+
+    assert result.changed is True
+    assert report.read_bytes() == b"purpose|conclusion|llcr|new-equipment"
+    assert result.archive_path is not None
+    assert result.archive_path.read_bytes() == b"purpose|conclusion|llcr|old-equipment"
+    assert writer.equipment_rows == rows
+
+
 def test_llcr_update_rejects_dataset_stale_for_active_matrix(tmp_path: Path) -> None:
     draft = tmp_path / "report.docx"
     draft.write_bytes(b"draft")
@@ -323,5 +357,12 @@ class _Writer:
         self.dataset = dataset
         output_path.write_bytes(
             source_path.read_bytes().replace(b"old-llcr", b"new-llcr")
+        )
+        return output_path
+
+    def synchronize_equipment_list(self, *, source_path, output_path, rows):
+        self.equipment_rows = rows
+        output_path.write_bytes(
+            source_path.read_bytes().replace(b"old-equipment", b"new-equipment")
         )
         return output_path

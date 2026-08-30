@@ -19,6 +19,7 @@ from backend.application.confirmed_matrix_test_record_preview_service import (
     ConfirmedMatrixTestRecordPreviewStep,
 )
 from backend.application.test_report_draft_service import TestReportDraftData
+from backend.application.equipment_report_update_service import EquipmentListReportRow
 from backend.application.project_basic_information_service import (
     ProjectBasicInformationSampleRow,
 )
@@ -184,6 +185,86 @@ def test_generates_e3707_draft_without_mutating_approved_template(tmp_path: Path
         if paragraph.text == "7. EQUIPMENTS"
     )
     assert equipment_heading._p.getprevious().xpath('.//w:br[@w:type="page"]')
+
+
+def test_synchronize_equipment_list_updates_only_the_equipment_table(
+    tmp_path: Path,
+) -> None:
+    template = _build_template(tmp_path / "E-3707_H.docx")
+    source = tmp_path / "current.docx"
+    TestReportDocumentGateway().generate(
+        template_path=template,
+        output_path=source,
+        report=_report(),
+    )
+    document = Document(source)
+    purpose = next(
+        paragraph
+        for paragraph in document.paragraphs
+        if "qualification testing" in paragraph.text
+    )
+    purpose.text = "Reviewer-edited purpose text"
+    result_table = _result_tables(document)[0]
+    result_table.cell(1, 4).text = "Reviewer result"
+    document.save(source)
+    source_hash = sha256(source.read_bytes()).hexdigest()
+    output = tmp_path / "updated.docx"
+
+    TestReportDocumentGateway().synchronize_equipment_list(
+        source_path=source,
+        output_path=output,
+        rows=(
+            EquipmentListReportRow(
+                source_reference="DG-Q-0033",
+                status="matched",
+                item="Digital multimeter",
+                manufacturer="Keysight",
+                id_number="DG-Q-0033",
+                last_calibration="01 Jan 2025",
+                calibration_due="01 Jan 2026",
+                source_sheet="All Equip.",
+                expired=True,
+            ),
+            EquipmentListReportRow(
+                source_reference="Customer fixture A",
+                status="external",
+                item="Customer fixture",
+                manufacturer="Customer supplied",
+                id_number="N/A",
+                last_calibration="N/A",
+                calibration_due="N/A",
+                source_sheet=None,
+                expired=False,
+                external_reason="Customer-owned fixture",
+            ),
+        ),
+    )
+
+    assert sha256(source.read_bytes()).hexdigest() == source_hash
+    updated = Document(output)
+    equipment = next(
+        table
+        for table in updated.tables
+        if [cell.text for cell in table.rows[0].cells]
+        == ["Item", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due"]
+    )
+    assert [[cell.text for cell in row.cells] for row in equipment.rows[1:]] == [
+        ["Digital multimeter", "Keysight", "DG-Q-0033", "01 Jan 2025", "01 Jan 2026"],
+        ["Customer fixture", "Customer supplied", "N/A", "N/A", "N/A"],
+    ]
+    assert any(
+        paragraph.text == "Reviewer-edited purpose text"
+        for paragraph in updated.paragraphs
+    )
+    assert _result_tables(updated)[0].cell(1, 4).text == "Reviewer result"
+    assert all(
+        run.font.name == "Arial"
+        for row in equipment.rows
+        for cell in row.cells
+        for paragraph in cell.paragraphs
+        for run in paragraph.runs
+        if run.text
+    )
 
 
 def test_synchronizes_only_managed_llcr_result_cells_into_a_new_draft(tmp_path: Path) -> None:

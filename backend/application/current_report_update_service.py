@@ -44,6 +44,16 @@ class LlcrReportWriter(Protocol):
     ) -> Path: ...
 
 
+class EquipmentReportWriter(Protocol):
+    def synchronize_equipment_list(
+        self,
+        *,
+        source_path: Path,
+        output_path: Path,
+        rows: tuple[object, ...],
+    ) -> Path: ...
+
+
 class CurrentReportFiles(Protocol):
     def discover_internal_reports(
         self,
@@ -114,6 +124,14 @@ class UpdateCurrentLlcrReportCommand:
 
 
 @dataclass(frozen=True, slots=True)
+class UpdateCurrentEquipmentListReportCommand:
+    project_id: str
+    expected_report_sha256: str
+    rows: tuple[object, ...]
+    updated_by: str
+
+
+@dataclass(frozen=True, slots=True)
 class PublishManagedReportCommand:
     project_id: str
     expected_report_sha256: str
@@ -131,8 +149,19 @@ class CurrentReportUpdateResult:
     updated_by: str
 
 
+@dataclass(frozen=True, slots=True)
+class CurrentEquipmentListUpdateResult:
+    project_id: str
+    file_name: str
+    mode: str
+    changed: bool
+    current_sha256: str
+    archive_path: Path | None
+    updated_by: str
+
+
 class CurrentReportUpdateService:
-    """Resolve one current report and publish an isolated LLCR region update."""
+    """Resolve one current report and publish isolated controlled-region updates."""
 
     def __init__(
         self,
@@ -142,11 +171,13 @@ class CurrentReportUpdateService:
         confirmed_matrix_store: ConfirmedMatrixStore,
         llcr_writer: LlcrReportWriter,
         files: CurrentReportFiles,
+        equipment_writer: EquipmentReportWriter | None = None,
     ) -> None:
         self._workspaces = workspace_store
         self._reports = report_store
         self._matrices = confirmed_matrix_store
         self._writer = llcr_writer
+        self._equipment_writer = equipment_writer or llcr_writer
         self._files = files
 
     def preview_llcr_update(
@@ -225,6 +256,47 @@ class CurrentReportUpdateService:
     def get_current_report(self, project_id: str) -> CurrentReportArtifact:
         report, _, _ = self._resolve_current_report(project_id)
         return report
+
+    def update_equipment_list(
+        self,
+        command: UpdateCurrentEquipmentListReportCommand,
+    ) -> CurrentEquipmentListUpdateResult:
+        report, blockers, _warnings = self._resolve_current_report(command.project_id)
+        if blockers:
+            raise CurrentReportUpdateError(" ".join(blockers))
+        if (
+            report.file_path is None
+            or report.file_name is None
+            or report.file_sha256 is None
+            or report.history_root is None
+            or report.mode is None
+        ):
+            raise CurrentReportUpdateError("The current internal report is unavailable.")
+        if command.expected_report_sha256.strip().casefold() != report.file_sha256:
+            raise CurrentReportFileConflictError(
+                "The current report changed after preview. Preview Equipment List again."
+            )
+        if not command.rows:
+            raise CurrentReportUpdateError("Equipment List requires at least one row.")
+        published = self._files.publish_update(
+            current_path=report.file_path,
+            expected_current_sha256=command.expected_report_sha256,
+            history_root=report.history_root,
+            update_document=lambda source, output: self._equipment_writer.synchronize_equipment_list(
+                source_path=source,
+                output_path=output,
+                rows=command.rows,
+            ),
+        )
+        return CurrentEquipmentListUpdateResult(
+            project_id=command.project_id,
+            file_name=report.file_name,
+            mode=report.mode,
+            changed=published.changed,
+            current_sha256=published.current_sha256,
+            archive_path=published.archive_path,
+            updated_by=command.updated_by.strip(),
+        )
 
     def publish_managed_report(
         self,

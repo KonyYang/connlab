@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 
@@ -194,6 +194,7 @@ from backend.application.llcr_result_dataset_service import (
 )
 from backend.application.report_workspace_service import ReportWorkspaceService
 from backend.application.current_report_update_service import CurrentReportUpdateService
+from backend.application.equipment_report_update_service import EquipmentReportUpdateService
 from backend.application.test_report_template_resource import (
     TestReportTemplateResourceStore,
 )
@@ -226,6 +227,9 @@ from backend.application.confirmed_matrix_test_status_workbook_generation_servic
 from backend.infrastructure.office.test_status_workbook_gateway import TestStatusWorkbookGateway
 from backend.infrastructure.office.test_report_document_gateway import (
     TestReportDocumentGateway,
+)
+from backend.infrastructure.office.equipment_id_document_reader import (
+    EquipmentIdDocumentReader,
 )
 from backend.infrastructure.files.report_publication_gateway import (
     ReportPublicationGateway,
@@ -795,7 +799,22 @@ def get_current_report_update_service(
         report_store=ResultDatasetRepository(session),
         confirmed_matrix_store=ConfirmedMatrixAuthorityRepository(session),
         llcr_writer=TestReportDocumentGateway(),
+        equipment_writer=TestReportDocumentGateway(),
         files=ReportPublicationGateway(),
+    )
+
+
+def get_equipment_report_update_service(
+    session: Session = Depends(get_session),
+) -> EquipmentReportUpdateService:
+    """Build EquipmentID/catalog preview and controlled report update orchestration."""
+    resources = ExternalResourceRepository(session)
+    return EquipmentReportUpdateService(
+        workspace_store=ProjectOfficialWorkspaceRepository(session),
+        source_reader=EquipmentIdDocumentReader(),
+        catalog_reader=ExternalExcelReadService(resources),
+        current_report_updates=get_current_report_update_service(session),
+        today=date.today,
     )
 
 
