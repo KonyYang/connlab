@@ -58,7 +58,7 @@ describe("reportWorkspaceModel", () => {
     expect(deriveReportWorkspaceReadiness(state)).toMatchObject({
       canGenerateInitialDraft: true,
       initialDraftBlocker: null,
-      canGenerateLlcrDraft: false,
+      canUpdateLlcr: false,
     });
     expect(
       deriveReportWorkspaceReadiness({ ...state, basic_information_status: "missing" })
@@ -86,8 +86,8 @@ describe("reportWorkspaceModel", () => {
     };
 
     expect(deriveReportWorkspaceReadiness({ ...state, datasets: [dataset] })).toMatchObject({
-      canGenerateLlcrDraft: false,
-      llcrDraftBlocker: "The latest LLCR Result Dataset is stale for the active Confirmed Matrix.",
+      canUpdateLlcr: false,
+      llcrUpdateBlocker: "The latest LLCR Result Dataset is stale for the active Confirmed Matrix.",
     });
   });
 

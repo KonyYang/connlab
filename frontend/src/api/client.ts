@@ -4788,9 +4788,44 @@ export type ReportWorkspaceState = {
   report_revisions: ReportDraftRevision[];
 };
 
+export type CurrentReport = {
+  status: "ready" | "missing" | "ambiguous";
+  mode: "official" | "managed_draft" | null;
+  file_name: string | null;
+  file_sha256: string | null;
+  report_revision_id: string | null;
+  download_url: string | null;
+};
+
+export type CurrentReportLlcrUpdatePreview = {
+  project_id: string;
+  dataset_id: string;
+  status: "ready" | "blocked";
+  current_report: CurrentReport;
+  blockers: string[];
+  warnings: string[];
+};
+
+export type CurrentReportUpdateResult = {
+  project_id: string;
+  dataset_id: string;
+  file_name: string;
+  mode: "official" | "managed_draft";
+  changed: boolean;
+  current_sha256: string;
+  archive_path: string | null;
+  updated_by: string;
+};
+
 export function fetchReportWorkspace(projectId: string): Promise<ReportWorkspaceState> {
   return requestJson<ReportWorkspaceState>(
     `/api/projects/${encodeURIComponent(projectId)}/report-workspace`
+  );
+}
+
+export function fetchCurrentReport(projectId: string): Promise<CurrentReport> {
+  return requestJson<CurrentReport>(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-report`
   );
 }
 
@@ -4850,6 +4885,38 @@ export function generateLlcrReportRevision(
   return requestJson<ReportDraftRevision>(
     `/api/projects/${encodeURIComponent(projectId)}/report-workspace/llcr-drafts`,
     { method: "POST", body: JSON.stringify({ dataset_id: datasetId, created_by: createdBy }) }
+  );
+}
+
+export function previewCurrentReportLlcrUpdate(
+  projectId: string,
+  datasetId: string
+): Promise<CurrentReportLlcrUpdatePreview> {
+  return requestJson<CurrentReportLlcrUpdatePreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-report/llcr/preview`,
+    { method: "POST", body: JSON.stringify({ dataset_id: datasetId }) }
+  );
+}
+
+export function updateCurrentReportLlcr(
+  projectId: string,
+  input: {
+    dataset_id: string;
+    expected_report_sha256: string;
+    updated_by: string;
+  }
+): Promise<CurrentReportUpdateResult> {
+  return requestJson<CurrentReportUpdateResult>(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-report/llcr`,
+    { method: "POST", body: JSON.stringify(input) }
+  );
+}
+
+export function downloadCurrentReport(
+  projectId: string
+): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-report/download`
   );
 }
 

@@ -9788,6 +9788,40 @@
   overflow-wrap: anywhere;
 }
 
+.report-workspace-current-actions,
+.report-workspace-owned-regions {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.report-workspace-current-actions span,
+.report-workspace-owned-regions {
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.report-workspace-current-actions span {
+  display: grid;
+  gap: 3px;
+}
+
+.report-workspace-current-actions strong,
+.report-workspace-owned-regions strong {
+  color: var(--color-ink);
+}
+
+.report-workspace-owned-regions span {
+  color: var(--color-primary-strong);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .report-workspace-history {
   grid-column: 1 / -1;
 }

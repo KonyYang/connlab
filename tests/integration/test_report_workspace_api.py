@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 
 from backend.api.dependencies import (
+    get_current_report_update_service,
     get_llcr_result_dataset_service,
     get_report_workspace_service,
     get_settings,
@@ -14,6 +15,11 @@ from backend.api.dependencies import (
 )
 from backend.api.main import app
 from backend.application.report_workspace_service import ReportWorkspaceState
+from backend.application.current_report_update_service import (
+    CurrentReportArtifact,
+    CurrentReportUpdatePreview,
+    CurrentReportUpdateResult,
+)
 from backend.domain import ExternalResource, ExternalResourceType, ExternalResourceValidationStatus
 from backend.domain.result_dataset_models import LlcrImportPreview, ReportDraftRevision
 from backend.shared.config import Settings
@@ -120,6 +126,53 @@ def test_report_workspace_llcr_preview_confirm_generate_and_download(tmp_path: P
     )
 
 
+def test_current_report_llcr_preview_update_and_download(tmp_path: Path) -> None:
+    report_path = tmp_path / "DL-001 Qualification Testing Report_Rev_A.docx"
+    report_path.write_bytes(b"current-report")
+    current_service = _CurrentReportUpdateService(report_path)
+    app.dependency_overrides[get_current_report_update_service] = lambda: current_service
+    client = TestClient(app)
+    try:
+        current = client.get("/api/projects/P1/report-workspace/current-report")
+        preview = client.post(
+            "/api/projects/P1/report-workspace/current-report/llcr/preview",
+            json={"dataset_id": "dataset-1"},
+        )
+        updated = client.post(
+            "/api/projects/P1/report-workspace/current-report/llcr",
+            json={
+                "dataset_id": "dataset-1",
+                "expected_report_sha256": "a" * 64,
+                "updated_by": "Even Yang",
+            },
+        )
+        downloaded = client.get(
+            "/api/projects/P1/report-workspace/current-report/download"
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert current.status_code == 200
+    assert current.json()["mode"] == "official"
+    assert current.json()["download_url"].endswith("/current-report/download")
+    assert preview.status_code == 200
+    assert preview.json()["status"] == "ready"
+    assert preview.json()["current_report"]["file_sha256"] == "a" * 64
+    assert updated.status_code == 200
+    assert updated.json() == {
+        "project_id": "P1",
+        "dataset_id": "dataset-1",
+        "file_name": report_path.name,
+        "mode": "official",
+        "changed": True,
+        "current_sha256": "b" * 64,
+        "archive_path": str(tmp_path / "History" / "Report" / "old.docx"),
+        "updated_by": "Even Yang",
+    }
+    assert downloaded.content == b"current-report"
+    assert current_service.command.expected_report_sha256 == "a" * 64
+
+
 class _LlcrService:
     def __init__(self, preview, dataset):
         self.preview = preview
@@ -173,6 +226,44 @@ class _WorkspaceService:
             source_report_revision_id=command.report_revision_id,
             file_name=path.name,
             file_path=str(path),
+        )
+
+
+class _CurrentReportUpdateService:
+    def __init__(self, report_path: Path):
+        self.report = CurrentReportArtifact(
+            status="ready",
+            mode="official",
+            file_name=report_path.name,
+            file_path=report_path,
+            file_sha256="a" * 64,
+            history_root=report_path.parent / "History" / "Report",
+        )
+
+    def get_current_report(self, project_id):
+        return self.report
+
+    def preview_llcr_update(self, *, project_id, dataset_id):
+        return CurrentReportUpdatePreview(
+            project_id=project_id,
+            dataset_id=dataset_id,
+            status="ready",
+            current_report=self.report,
+            blockers=tuple(),
+            warnings=tuple(),
+        )
+
+    def update_llcr(self, command):
+        self.command = command
+        return CurrentReportUpdateResult(
+            project_id=command.project_id,
+            dataset_id=command.dataset_id,
+            file_name=self.report.file_name or "",
+            mode=self.report.mode or "",
+            changed=True,
+            current_sha256="b" * 64,
+            archive_path=self.report.file_path.parent / "History" / "Report" / "old.docx",
+            updated_by=command.updated_by,
         )
 
 

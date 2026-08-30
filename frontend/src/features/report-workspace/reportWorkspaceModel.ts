@@ -16,8 +16,8 @@ export type LlcrDecisionDrafts = Record<string, LlcrDecisionDraft>;
 export type ReportWorkspaceReadiness = {
   canGenerateInitialDraft: boolean;
   initialDraftBlocker: string | null;
-  canGenerateLlcrDraft: boolean;
-  llcrDraftBlocker: string | null;
+  canUpdateLlcr: boolean;
+  llcrUpdateBlocker: string | null;
 };
 
 export function deriveReportWorkspaceReadiness(
@@ -31,21 +31,21 @@ export function deriveReportWorkspaceReadiness(
   }
 
   const latestDataset = state.datasets.at(-1) ?? null;
-  let llcrDraftBlocker: string | null = null;
+  let llcrUpdateBlocker: string | null = null;
   if (!latestDataset) {
-    llcrDraftBlocker = "Confirm an LLCR Result Dataset before generating an LLCR report draft.";
+    llcrUpdateBlocker = "Confirm an LLCR Result Dataset before updating the current report.";
   } else if (
     latestDataset.confirmed_matrix_id !== state.active_confirmed_matrix_id
     || latestDataset.confirmed_matrix_revision !== state.active_confirmed_matrix_revision
   ) {
-    llcrDraftBlocker = "The latest LLCR Result Dataset is stale for the active Confirmed Matrix.";
+    llcrUpdateBlocker = "The latest LLCR Result Dataset is stale for the active Confirmed Matrix.";
   }
 
   return {
     canGenerateInitialDraft: initialDraftBlocker === null,
     initialDraftBlocker,
-    canGenerateLlcrDraft: llcrDraftBlocker === null,
-    llcrDraftBlocker,
+    canUpdateLlcr: llcrUpdateBlocker === null,
+    llcrUpdateBlocker,
   };
 }
 

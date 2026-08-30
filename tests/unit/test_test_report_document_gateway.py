@@ -6,6 +6,7 @@ from datetime import date
 from decimal import Decimal
 from hashlib import sha256
 from pathlib import Path
+from time import sleep
 
 from docx import Document
 from docx.enum.section import WD_SECTION
@@ -220,6 +221,33 @@ def test_synchronizes_only_managed_llcr_result_cells_into_a_new_draft(tmp_path: 
     assert result_table.cell(1, 5).text == "Reviewed"
     assert result_table.cell(2, 4).text == "Initial ≤0.198mΩ"
     assert result_table.cell(2, 5).text == "Pass"
+
+
+def test_llcr_sync_is_byte_identical_when_managed_values_are_already_current(
+    tmp_path: Path,
+) -> None:
+    template = _build_template(tmp_path / "E-3707_H.docx")
+    source = tmp_path / "revision-1.docx"
+    first_sync = tmp_path / "revision-2.docx"
+    second_sync = tmp_path / "revision-3.docx"
+    gateway = TestReportDocumentGateway()
+    gateway.generate(template_path=template, output_path=source, report=_report())
+    gateway.synchronize_llcr_results(
+        source_path=source,
+        output_path=first_sync,
+        dataset=_llcr_dataset(),
+    )
+    # DOCX ZIP entry timestamps have two-second resolution. Crossing that boundary
+    # proves a no-op avoids a fresh Word serialization rather than matching by chance.
+    sleep(2.1)
+
+    gateway.synchronize_llcr_results(
+        source_path=first_sync,
+        output_path=second_sync,
+        dataset=_llcr_dataset(),
+    )
+
+    assert second_sync.read_bytes() == first_sync.read_bytes()
 
 
 def test_llcr_sync_fails_without_partial_output_when_target_is_ambiguous(tmp_path: Path) -> None:

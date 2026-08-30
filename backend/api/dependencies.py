@@ -193,6 +193,7 @@ from backend.application.llcr_result_dataset_service import (
     LlcrResultDatasetService,
 )
 from backend.application.report_workspace_service import ReportWorkspaceService
+from backend.application.current_report_update_service import CurrentReportUpdateService
 from backend.application.test_report_template_resource import (
     TestReportTemplateResourceStore,
 )
@@ -225,6 +226,9 @@ from backend.application.confirmed_matrix_test_status_workbook_generation_servic
 from backend.infrastructure.office.test_status_workbook_gateway import TestStatusWorkbookGateway
 from backend.infrastructure.office.test_report_document_gateway import (
     TestReportDocumentGateway,
+)
+from backend.infrastructure.files.report_publication_gateway import (
+    ReportPublicationGateway,
 )
 from backend.infrastructure.office.customer_report_document_gateway import (
     CustomerReportDocumentGateway,
@@ -778,6 +782,19 @@ def get_report_workspace_service(
             ProjectBasicInformationRepository(session)
         ),
         confirmed_matrix_store=confirmed_store,
+    )
+
+
+def get_current_report_update_service(
+    session: Session = Depends(get_session),
+) -> CurrentReportUpdateService:
+    """Build safe, region-scoped current Internal Report updates."""
+    return CurrentReportUpdateService(
+        workspace_store=ProjectOfficialWorkspaceRepository(session),
+        report_store=ResultDatasetRepository(session),
+        confirmed_matrix_store=ConfirmedMatrixAuthorityRepository(session),
+        llcr_writer=TestReportDocumentGateway(),
+        files=ReportPublicationGateway(),
     )
 
 

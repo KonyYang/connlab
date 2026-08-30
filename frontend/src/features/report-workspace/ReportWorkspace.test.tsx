@@ -9,12 +9,13 @@ vi.mock("../../api/client", async () => {
   return {
     ...actual,
     fetchReportWorkspace: vi.fn(),
+    fetchCurrentReport: vi.fn(),
     inspectLlcrResultWorkbook: vi.fn(),
     confirmLlcrResultImport: vi.fn(),
     generateInitialReportRevision: vi.fn(),
-    generateLlcrReportRevision: vi.fn(),
-    downloadReportDraftRevision: vi.fn(),
-    customerReportDraftDownloadUrl: vi.fn(),
+    previewCurrentReportLlcrUpdate: vi.fn(),
+    updateCurrentReportLlcr: vi.fn(),
+    downloadCurrentReport: vi.fn(),
     cancelLlcrResultPreview: vi.fn(),
   };
 });
@@ -28,6 +29,15 @@ const state: api.ReportWorkspaceState = {
   latest_report_revision: null,
   datasets: [],
   report_revisions: [],
+};
+
+const currentReport: api.CurrentReport = {
+  status: "ready",
+  mode: "official",
+  file_name: "DL-001 Qualification Testing Report_Rev_A.docx",
+  file_sha256: "a".repeat(64),
+  report_revision_id: null,
+  download_url: "/api/projects/project-1/report-workspace/current-report/download",
 };
 
 const preview: api.LlcrImportPreview = {
@@ -68,6 +78,7 @@ const preview: api.LlcrImportPreview = {
 describe("ReportWorkspace", () => {
   beforeEach(() => {
     vi.mocked(api.fetchReportWorkspace).mockResolvedValue(state);
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue(currentReport);
     vi.mocked(api.inspectLlcrResultWorkbook).mockResolvedValue(preview);
     vi.mocked(api.confirmLlcrResultImport).mockResolvedValue({
       dataset_id: "dataset-1",
@@ -94,16 +105,16 @@ describe("ReportWorkspace", () => {
     expect(screen.getByRole("status").textContent).toContain("Loading Report Workspace...");
   });
 
-  it("exposes initial generation, LLCR import preview, confirmation, and report history", async () => {
+  it("exposes initial generation, LLCR import preview, confirmation, and the current report", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
     render(<ReportWorkspace projectId="project-1" onBack={onBack} />);
 
     expect(await screen.findByRole("heading", { name: "Report Workspace" })).toBeTruthy();
     expect(screen.getByText("Project project-1")).toBeTruthy();
-    expect(screen.getByText("No report draft yet")).toBeTruthy();
+    expect(screen.getAllByText(currentReport.file_name!).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Confirmed Matrix revision 4")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Generate initial draft" })).toHaveProperty("disabled", false);
+    expect(screen.getByRole("button", { name: "Generate initial report" })).toHaveProperty("disabled", true);
 
     const fileInput = screen.getByLabelText("LLCR result workbook");
     fireEvent.change(fileInput, {
@@ -159,43 +170,59 @@ describe("ReportWorkspace", () => {
     expect(screen.queryByRole("dialog", { name: "LLCR import preview" })).toBeNull();
   });
 
-  it("generates and downloads a customer report from the selected internal revision", async () => {
+  it("updates only the LLCR region of the current report without selecting a revision", async () => {
     const user = userEvent.setup();
-    const revision: api.ReportDraftRevision = {
-      report_revision_id: "report-2",
-      revision: 2,
-      file_name: "DL-2026-08-004 Report_Rev_A.docx",
-      file_sha256: "sha",
-      size_bytes: 123,
+    const dataset = {
+      dataset_id: "dataset-1",
+      dataset_type: "llcr" as const,
+      revision: 1,
+      project_id: "project-1",
       confirmed_matrix_id: "matrix-1",
-      result_dataset_id: "dataset-1",
-      base_report_revision_id: "report-1",
-      created_at: "2026-08-29T09:00:00Z",
-      created_by: "Lab User",
-      download_url: "/download",
+      confirmed_matrix_revision: 4,
+      source_file_name: "LLCR.xlsx",
+      source_sha256: "sha",
+      parser_profile_version: "connlab-llcr-v1",
+      validation_status: "confirmed",
+      confirmed_at: "2026-08-29T09:00:00Z",
+      confirmed_by: "Lab User",
+      entries: [{ ...preview.entries[0], confirmed_outcome: "pass" as const }],
     };
     vi.mocked(api.fetchReportWorkspace).mockResolvedValue({
       ...state,
-      latest_report_revision: revision,
-      report_revisions: [revision],
+      datasets: [dataset],
     });
-    vi.mocked(api.customerReportDraftDownloadUrl).mockReturnValue(
-      "/api/customer-report"
-    );
-    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
-      function captureCustomerDownload(this: HTMLAnchorElement) {
-        expect(this.getAttribute("href")).toBe("/api/customer-report");
-        expect(this.target).toBe("_blank");
-      }
-    );
+    vi.mocked(api.previewCurrentReportLlcrUpdate).mockResolvedValue({
+      project_id: "project-1",
+      dataset_id: "dataset-1",
+      status: "ready",
+      current_report: currentReport,
+      blockers: [],
+      warnings: [],
+    });
+    vi.mocked(api.updateCurrentReportLlcr).mockResolvedValue({
+      project_id: "project-1",
+      dataset_id: "dataset-1",
+      file_name: currentReport.file_name!,
+      mode: "official",
+      changed: true,
+      current_sha256: "b".repeat(64),
+      archive_path: "C:\\Project\\History\\Report\\old.docx",
+      updated_by: "Lab User",
+    });
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Customer report" }));
+    await user.click(await screen.findByRole("button", { name: "Update LLCR results" }));
 
-    expect(api.customerReportDraftDownloadUrl).toHaveBeenCalledWith(
+    expect(api.previewCurrentReportLlcrUpdate).toHaveBeenCalledWith(
       "project-1",
-      "report-2"
+      "dataset-1"
     );
-    expect(click).toHaveBeenCalledTimes(1);
+    expect(api.updateCurrentReportLlcr).toHaveBeenCalledWith("project-1", {
+      dataset_id: "dataset-1",
+      expected_report_sha256: "a".repeat(64),
+      updated_by: "Lab User",
+    });
+    expect(await screen.findByText(/Updated LLCR results in/)).toBeTruthy();
+    expect(screen.queryByText("Report draft history")).toBeNull();
   });
 });

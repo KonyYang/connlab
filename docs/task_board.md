@@ -11,8 +11,39 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "REPORT-003A",
+    "summary": "Implement the current internal report section-update and safe publication kernel, using existing LLCR Result/Comment synchronization as the first adapter.",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Resolve one current report, update only the LLCR managed region through a staging copy, preserve all other report content, archive the prior file automatically, replace atomically with rollback, and remove user-facing report revision selection. Do not modify controlled templates, golden reports, or real external project files.",
+    "scope_paths": [
+      "backend/application/current_report_update_service.py",
+      "backend/infrastructure/files/report_publication_gateway.py",
+      "backend/api/dependencies.py",
+      "backend/api/routes_report_workspace.py",
+      "frontend/src/api/client.ts",
+      "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+      "frontend/src/features/report-workspace/reportWorkspaceModel.ts",
+      "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+      "frontend/src/features/report-workspace/reportWorkspaceModel.test.ts",
+      "frontend/src/workbench.css",
+      "tests/unit/test_current_report_update_service.py",
+      "tests/unit/test_report_publication_gateway.py",
+      "tests/integration/test_report_workspace_api.py",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [
+      "The feature safely replaces a current Word report artifact in an official project workspace.",
+      "The report may contain authoritative manual and reviewer edits that must not be lost outside the selected LLCR region."
+    ],
+    "activation_head": "9fdac58dc90487744b91036f38bd8c3fbf1e0844",
+    "started_at": "2026-08-30T10:41:55.035452Z",
+    "updated_at": "2026-08-30T10:41:55.035452Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_REPORT_WORKSPACE_CUSTOMER_REPORT_DRAFT",
     "tier": "standard",

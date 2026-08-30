@@ -12,10 +12,20 @@ from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
 from backend.api.dependencies import (
+    get_current_report_update_service,
     get_llcr_result_dataset_service,
     get_report_workspace_service,
     get_settings,
     get_test_report_template_resource_store,
+)
+from backend.application.current_report_update_service import (
+    CurrentReportArtifact,
+    CurrentReportFileConflictError,
+    CurrentReportUpdateError,
+    CurrentReportUpdatePreview,
+    CurrentReportUpdateResult,
+    CurrentReportUpdateService,
+    UpdateCurrentLlcrReportCommand,
 )
 from backend.application.llcr_result_dataset_service import (
     ConfirmLlcrImportCommand,
@@ -69,6 +79,16 @@ class GenerateLlcrReportRequest(BaseModel):
     created_by: str = "Lab User"
 
 
+class PreviewCurrentLlcrReportRequest(BaseModel):
+    dataset_id: str
+
+
+class UpdateCurrentLlcrReportRequest(BaseModel):
+    dataset_id: str
+    expected_report_sha256: str = Field(min_length=64, max_length=64)
+    updated_by: str = "Lab User"
+
+
 @router.get("/api/projects/{project_id}/report-workspace")
 def get_report_workspace(
     project_id: str,
@@ -89,6 +109,78 @@ def get_report_workspace(
         "datasets": [_dataset_response(item) for item in state.datasets],
         "report_revisions": [_report_response(item) for item in state.report_revisions],
     }
+
+
+@router.get("/api/projects/{project_id}/report-workspace/current-report")
+def get_current_report(
+    project_id: str,
+    service: CurrentReportUpdateService = Depends(get_current_report_update_service),
+) -> dict:
+    try:
+        report = service.get_current_report(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
+    return _current_report_response(project_id, report)
+
+
+@router.post(
+    "/api/projects/{project_id}/report-workspace/current-report/llcr/preview"
+)
+def preview_current_report_llcr_update(
+    project_id: str,
+    request: PreviewCurrentLlcrReportRequest,
+    service: CurrentReportUpdateService = Depends(get_current_report_update_service),
+) -> dict:
+    try:
+        preview = service.preview_llcr_update(
+            project_id=project_id,
+            dataset_id=request.dataset_id,
+        )
+    except CurrentReportUpdateError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
+    return _current_report_preview_response(project_id, preview)
+
+
+@router.post("/api/projects/{project_id}/report-workspace/current-report/llcr")
+def update_current_report_llcr(
+    project_id: str,
+    request: UpdateCurrentLlcrReportRequest,
+    service: CurrentReportUpdateService = Depends(get_current_report_update_service),
+) -> dict:
+    try:
+        result = service.update_llcr(
+            UpdateCurrentLlcrReportCommand(
+                project_id=project_id,
+                dataset_id=request.dataset_id,
+                expected_report_sha256=request.expected_report_sha256,
+                updated_by=request.updated_by,
+            )
+        )
+    except (CurrentReportUpdateError, CurrentReportFileConflictError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
+    return _current_report_update_response(result)
+
+
+@router.get("/api/projects/{project_id}/report-workspace/current-report/download")
+def download_current_report(
+    project_id: str,
+    service: CurrentReportUpdateService = Depends(get_current_report_update_service),
+) -> FileResponse:
+    try:
+        report = service.get_current_report(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
+    if report.status != "ready" or report.file_path is None or report.file_name is None:
+        raise HTTPException(status_code=409, detail="The current internal report is unavailable.")
+    return FileResponse(
+        report.file_path,
+        filename=report.file_name,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
 
 
 @router.post("/api/projects/{project_id}/report-workspace/llcr/inspect")
@@ -377,4 +469,46 @@ def _report_response(item: ReportDraftRevision) -> dict:
             f"/api/projects/{item.project_id}/report-workspace/drafts/"
             f"{item.report_revision_id}/download"
         ),
+    }
+
+
+def _current_report_response(project_id: str, item: CurrentReportArtifact) -> dict:
+    return {
+        "status": item.status,
+        "mode": item.mode,
+        "file_name": item.file_name,
+        "file_sha256": item.file_sha256,
+        "report_revision_id": item.report_revision_id,
+        "download_url": (
+            f"/api/projects/{project_id}/report-workspace/current-report/download"
+            if item.status == "ready"
+            else None
+        ),
+    }
+
+
+def _current_report_preview_response(
+    project_id: str,
+    preview: CurrentReportUpdatePreview,
+) -> dict:
+    return {
+        "project_id": preview.project_id,
+        "dataset_id": preview.dataset_id,
+        "status": preview.status,
+        "current_report": _current_report_response(project_id, preview.current_report),
+        "blockers": list(preview.blockers),
+        "warnings": list(preview.warnings),
+    }
+
+
+def _current_report_update_response(result: CurrentReportUpdateResult) -> dict:
+    return {
+        "project_id": result.project_id,
+        "dataset_id": result.dataset_id,
+        "file_name": result.file_name,
+        "mode": result.mode,
+        "changed": result.changed,
+        "current_sha256": result.current_sha256,
+        "archive_path": str(result.archive_path) if result.archive_path is not None else None,
+        "updated_by": result.updated_by,
     }

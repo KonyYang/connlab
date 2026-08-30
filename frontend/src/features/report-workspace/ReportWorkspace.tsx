@@ -2,14 +2,15 @@ import { useCallback, useEffect, useMemo, useState, type ReactElement } from "re
 import {
   cancelLlcrResultPreview,
   confirmLlcrResultImport,
-  downloadReportDraftRevision,
+  downloadCurrentReport,
+  fetchCurrentReport,
   fetchReportWorkspace,
-  customerReportDraftDownloadUrl,
   generateInitialReportRevision,
-  generateLlcrReportRevision,
   inspectLlcrResultWorkbook,
+  previewCurrentReportLlcrUpdate,
+  updateCurrentReportLlcr,
+  type CurrentReport,
   type LlcrImportPreview,
-  type ReportDraftRevision,
   type ReportWorkspaceState,
 } from "../../api/client";
 import { ErrorMessage } from "../../components/common/ErrorMessage";
@@ -31,6 +32,7 @@ type BusyAction = "load" | "initial" | "inspect" | "confirm" | "cancel" | "llcr"
 
 export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): ReactElement {
   const [state, setState] = useState<ReportWorkspaceState | null>(null);
+  const [currentReport, setCurrentReport] = useState<CurrentReport | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<LlcrImportPreview | null>(null);
   const [decisionDrafts, setDecisionDrafts] = useState<LlcrDecisionDrafts>({});
@@ -39,8 +41,12 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
   const [message, setMessage] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const nextState = await fetchReportWorkspace(projectId);
+    const [nextState, nextReport] = await Promise.all([
+      fetchReportWorkspace(projectId),
+      fetchCurrentReport(projectId),
+    ]);
     setState(nextState);
+    setCurrentReport(nextReport);
     return nextState;
   }, [projectId]);
 
@@ -48,10 +54,11 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
     let active = true;
     setBusyAction("load");
     setError(null);
-    fetchReportWorkspace(projectId)
-      .then((nextState) => {
+    Promise.all([fetchReportWorkspace(projectId), fetchCurrentReport(projectId)])
+      .then(([nextState, nextReport]) => {
         if (active) {
           setState(nextState);
+          setCurrentReport(nextReport);
         }
       })
       .catch((reason: unknown) => {
@@ -143,32 +150,39 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
     }
   }
 
-  async function handleDownload(revision: ReportDraftRevision): Promise<void> {
+  async function handleDownloadCurrent(): Promise<void> {
     await runAction("download", async () => {
-      const response = await downloadReportDraftRevision(projectId, revision.report_revision_id);
-      downloadBlob(response.blob, response.fileName || revision.file_name);
-      return `Downloaded report draft revision ${revision.revision}.`;
+      const response = await downloadCurrentReport(projectId);
+      downloadBlob(response.blob, response.fileName || currentReport?.file_name || "Internal Report.docx");
+      return "Downloaded the current internal report.";
     });
   }
 
-  function handleCustomerReport(revision: ReportDraftRevision): void {
-    if (busyAction) {
+  async function handleUpdateLlcr(): Promise<void> {
+    if (!latestDataset) {
       return;
     }
-    setError(null);
-    setMessage(
-      `Customer report download requested from internal revision ${revision.revision}.`
-    );
-    const anchor = document.createElement("a");
-    anchor.href = customerReportDraftDownloadUrl(
-      projectId,
-      revision.report_revision_id
-    );
-    anchor.target = "_blank";
-    anchor.rel = "noopener";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
+    await runAction("llcr", async () => {
+      const updatePreview = await previewCurrentReportLlcrUpdate(
+        projectId,
+        latestDataset.dataset_id
+      );
+      const expectedSha = updatePreview.current_report.file_sha256;
+      if (updatePreview.status !== "ready" || !expectedSha) {
+        throw new Error(
+          updatePreview.blockers.join(" ") || "The current internal report cannot be updated."
+        );
+      }
+      const result = await updateCurrentReportLlcr(projectId, {
+        dataset_id: latestDataset.dataset_id,
+        expected_report_sha256: expectedSha,
+        updated_by: "Lab User",
+      });
+      await refresh();
+      return result.changed
+        ? `Updated LLCR results in ${result.file_name}. The previous report was archived automatically.`
+        : `LLCR results in ${result.file_name} were already up to date.`;
+    });
   }
 
   if (!state && busyAction === "load" && !error) {
@@ -184,9 +198,9 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
       <header className="report-workspace-header">
         <div>
           <button className="report-workspace-back" onClick={onBack} type="button">← Project Workbench</button>
-          <p className="report-workspace-eyebrow">Controlled internal report drafts</p>
+          <p className="report-workspace-eyebrow">Controlled current internal report</p>
           <h1>Report Workspace</h1>
-          <p>Import, review, confirm, and synchronize test results without overwriting source files or prior report revisions.</p>
+          <p>Import confirmed test data and update one controlled report region at a time. Successful changes archive the previous report automatically.</p>
         </div>
         {state ? (
           <div className="report-workspace-authority-card">
@@ -194,7 +208,7 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
             <small>Project {state.project_id}</small>
             <strong>{state.active_confirmed_matrix_id ? `Confirmed Matrix revision ${state.active_confirmed_matrix_revision}` : "No active Confirmed Matrix"}</strong>
             <small>{state.basic_information_status === "confirmed" ? `Basic Information version ${state.confirmed_basic_information_version}` : "Basic Information not confirmed"}</small>
-            <small>{state.latest_report_revision ? `Latest report draft revision ${state.latest_report_revision.revision}` : "No report draft yet"}</small>
+            <small>{currentReport?.file_name ?? "No current internal report"}</small>
           </div>
         ) : null}
       </header>
@@ -207,21 +221,23 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
           <article className="report-workspace-card">
             <div className="report-workspace-card-heading">
               <span className="report-workspace-step">01</span>
-              <div><h2>Start or refresh the report</h2><p>Create a new non-overwriting E-3707_H initialization draft from current confirmed authorities.</p></div>
+              <div><h2>Create the initial report</h2><p>Use the approved E-3707_H template only when this project does not yet have a current internal report.</p></div>
             </div>
             <button
               className="primary-action"
-              disabled={!readiness.canGenerateInitialDraft || Boolean(busyAction)}
+              disabled={!readiness.canGenerateInitialDraft || Boolean(busyAction) || currentReport?.status !== "missing"}
               onClick={() => void runAction("initial", async () => {
                 const revision = await generateInitialReportRevision(projectId);
                 await refresh();
-                return `Generated initial report draft revision ${revision.revision}.`;
+                return `Generated the initial internal report (${revision.file_name}).`;
               })}
               type="button"
             >
-              {busyAction === "initial" ? "Generating..." : "Generate initial draft"}
+              {busyAction === "initial" ? "Generating..." : "Generate initial report"}
             </button>
             {readiness.initialDraftBlocker ? <p className="report-workspace-blocker">{readiness.initialDraftBlocker}</p> : null}
+            {currentReport?.status === "ready" ? <p className="report-workspace-note">A current report already exists. Use a section update action below.</p> : null}
+            {currentReport?.status === "ambiguous" ? <p className="report-workspace-blocker">Multiple internal reports were found. Resolve that conflict before creating or updating a report.</p> : null}
           </article>
 
           <article className="report-workspace-card">
@@ -247,7 +263,7 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
           <article className="report-workspace-card">
             <div className="report-workspace-card-heading">
               <span className="report-workspace-step">03</span>
-              <div><h2>Synchronize confirmed LLCR results</h2><p>Copy the latest internal draft and update only controlled LLCR Result and Comment cells.</p></div>
+              <div><h2>Update LLCR report section</h2><p>Update only controlled LLCR Result and Comment cells. Purpose, Conclusions, Equipment, images, and appendices remain unchanged.</p></div>
             </div>
             {latestDataset ? (
               <dl className="report-workspace-dataset-summary">
@@ -259,37 +275,26 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
             ) : <p className="report-workspace-empty">No confirmed LLCR Result Dataset yet.</p>}
             <button
               className="primary-action"
-              disabled={!readiness.canGenerateLlcrDraft || Boolean(busyAction) || !latestDataset}
-              onClick={() => latestDataset && void runAction("llcr", async () => {
-                const revision = await generateLlcrReportRevision(projectId, latestDataset.dataset_id);
-                await refresh();
-                return `Generated LLCR report draft revision ${revision.revision}.`;
-              })}
+              disabled={!readiness.canUpdateLlcr || Boolean(busyAction) || !latestDataset || currentReport?.status !== "ready"}
+              onClick={() => void handleUpdateLlcr()}
               type="button"
             >
-              {busyAction === "llcr" ? "Synchronizing..." : "Generate new LLCR report draft"}
+              {busyAction === "llcr" ? "Updating..." : "Update LLCR results"}
             </button>
-            {readiness.llcrDraftBlocker ? <p className="report-workspace-blocker">{readiness.llcrDraftBlocker}</p> : null}
-          </article>
-
-          <article className="report-workspace-card report-workspace-history">
-            <div className="report-workspace-card-heading">
-              <span className="report-workspace-step">04</span>
-              <div><h2>Report draft history</h2><p>Internal revisions remain authoritative. Customer reports are generated as temporary downloads from the selected revision.</p></div>
+            {readiness.llcrUpdateBlocker ? <p className="report-workspace-blocker">{readiness.llcrUpdateBlocker}</p> : null}
+            {currentReport?.status !== "ready" ? <p className="report-workspace-blocker">{currentReport?.status === "ambiguous" ? "Multiple current internal reports were found. Keep exactly one before updating." : "Generate an initial report before updating LLCR results."}</p> : null}
+            {currentReport?.mode === "managed_draft" ? <p className="report-workspace-note">No official project report is available. This update will use the controlled draft.</p> : null}
+            {currentReport?.status === "ready" ? (
+              <div className="report-workspace-current-actions">
+                <span><strong>Current report</strong>{currentReport.file_name}</span>
+                <button disabled={Boolean(busyAction)} onClick={() => void handleDownloadCurrent()} type="button">Download current report</button>
+              </div>
+            ) : null}
+            <div className="report-workspace-owned-regions" aria-label="Update boundary">
+              <strong>This action owns</strong>
+              <span>LLCR Result and Comment cells only</span>
+              <small>Manually edited Purpose and Conclusions are preserved.</small>
             </div>
-            {state.report_revisions.length ? (
-              <ol>
-                {[...state.report_revisions].reverse().map((revision) => (
-                  <li key={revision.report_revision_id}>
-                    <div><strong>Revision {revision.revision}</strong><span>{revision.file_name}</span><small>{formatDateTime(revision.created_at)} · {revision.result_dataset_id ? "LLCR synchronized" : "Initialization"}</small></div>
-                    <div className="report-workspace-history-actions">
-                      <button disabled={Boolean(busyAction)} onClick={() => void handleDownload(revision)} type="button">Download internal</button>
-                      <button disabled={Boolean(busyAction)} onClick={() => handleCustomerReport(revision)} type="button">Customer report</button>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            ) : <p className="report-workspace-empty">No report draft revisions yet.</p>}
           </article>
         </div>
       ) : null}

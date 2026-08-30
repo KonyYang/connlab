@@ -173,11 +173,19 @@ class TestReportDocumentGateway:
                         "Unable to uniquely locate the LLCR report target for "
                         f"Group {entry.group_label} Step {entry.matrix_step_token}."
                     )
-                updates.append((matches[0], entry))
-            for row, entry in updates:
-                _set_cell_text(row.cells[4], _llcr_report_result(entry))
-                _set_cell_text(row.cells[5], (entry.confirmed_outcome or "").title())
-            document.save(temporary)
+                row = matches[0]
+                expected_result = _llcr_report_result(entry)
+                expected_comment = (entry.confirmed_outcome or "").title()
+                if (
+                    _normalized(row.cells[4].text) != _normalized(expected_result)
+                    or _normalized(row.cells[5].text) != _normalized(expected_comment)
+                ):
+                    updates.append((row, expected_result, expected_comment))
+            for row, expected_result, expected_comment in updates:
+                _set_cell_text(row.cells[4], expected_result)
+                _set_cell_text(row.cells[5], expected_comment)
+            if updates:
+                document.save(temporary)
             _audit_llcr_sync(temporary, dataset)
             os.replace(temporary, target)
         finally:
