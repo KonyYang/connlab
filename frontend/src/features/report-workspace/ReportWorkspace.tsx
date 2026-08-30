@@ -4,6 +4,7 @@ import {
   confirmLlcrResultImport,
   downloadReportDraftRevision,
   fetchReportWorkspace,
+  generateCustomerReportDraftDownload,
   generateInitialReportRevision,
   generateLlcrReportRevision,
   inspectLlcrResultWorkbook,
@@ -26,7 +27,7 @@ type ReportWorkspaceProps = {
   onBack: () => void;
 };
 
-type BusyAction = "load" | "initial" | "inspect" | "confirm" | "cancel" | "llcr" | "download" | null;
+type BusyAction = "load" | "initial" | "inspect" | "confirm" | "cancel" | "llcr" | "download" | "customer" | null;
 
 export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): ReactElement {
   const [state, setState] = useState<ReportWorkspaceState | null>(null);
@@ -150,6 +151,17 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
     });
   }
 
+  async function handleCustomerReport(revision: ReportDraftRevision): Promise<void> {
+    await runAction("customer", async () => {
+      const response = await generateCustomerReportDraftDownload(
+        projectId,
+        revision.report_revision_id
+      );
+      downloadBlob(response.blob, response.fileName || `${revision.file_name}_Customer.docx`);
+      return `Downloaded customer report from internal revision ${revision.revision}.`;
+    });
+  }
+
   if (!state && busyAction === "load" && !error) {
     return (
       <section aria-busy="true" className="report-workspace-page">
@@ -254,14 +266,19 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
           <article className="report-workspace-card report-workspace-history">
             <div className="report-workspace-card-heading">
               <span className="report-workspace-step">04</span>
-              <div><h2>Report draft history</h2><p>Every generation creates a separate downloadable revision.</p></div>
+              <div><h2>Report draft history</h2><p>Internal revisions remain authoritative. Customer reports are generated as temporary downloads from the selected revision.</p></div>
             </div>
             {state.report_revisions.length ? (
               <ol>
                 {[...state.report_revisions].reverse().map((revision) => (
                   <li key={revision.report_revision_id}>
                     <div><strong>Revision {revision.revision}</strong><span>{revision.file_name}</span><small>{formatDateTime(revision.created_at)} · {revision.result_dataset_id ? "LLCR synchronized" : "Initialization"}</small></div>
-                    <button disabled={Boolean(busyAction)} onClick={() => void handleDownload(revision)} type="button">Download</button>
+                    <div className="report-workspace-history-actions">
+                      <button disabled={Boolean(busyAction)} onClick={() => void handleDownload(revision)} type="button">Download internal</button>
+                      <button disabled={Boolean(busyAction)} onClick={() => void handleCustomerReport(revision)} type="button">
+                        {busyAction === "customer" ? "Generating..." : "Customer report"}
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ol>

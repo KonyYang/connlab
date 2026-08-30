@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
@@ -52,6 +53,7 @@ def test_report_workspace_llcr_preview_confirm_generate_and_download(tmp_path: P
     templates = tmp_path / "templates"
     templates.mkdir()
     (templates / "E-3707_H Laboratory Test Report.docx").write_bytes(b"template")
+    (templates / "E-4515_F Customer Test Report.docx").write_bytes(b"customer-template")
     app.dependency_overrides[get_llcr_result_dataset_service] = lambda: llcr_service
     app.dependency_overrides[get_report_workspace_service] = lambda: workspace_service
     app.dependency_overrides[get_settings] = lambda: Settings(
@@ -87,6 +89,9 @@ def test_report_workspace_llcr_preview_confirm_generate_and_download(tmp_path: P
         downloaded = client.get(
             "/api/projects/P1/report-workspace/drafts/report-1/download"
         )
+        customer = client.post(
+            "/api/projects/P1/report-workspace/drafts/report-1/customer-report"
+        )
     finally:
         app.dependency_overrides.clear()
 
@@ -104,6 +109,15 @@ def test_report_workspace_llcr_preview_confirm_generate_and_download(tmp_path: P
     )
     assert state.json()["basic_information_status"] == "confirmed"
     assert downloaded.content == b"report-docx"
+    assert customer.status_code == 200
+    assert customer.content == b"customer-report"
+    assert customer.headers["content-disposition"].endswith(
+        'filename="report-CR_Customer.docx"'
+    )
+    assert workspace_service.customer_command.report_revision_id == "report-1"
+    assert workspace_service.customer_command.template_path == (
+        templates / "E-4515_F Customer Test Report.docx"
+    )
 
 
 class _LlcrService:
@@ -149,6 +163,17 @@ class _WorkspaceService:
 
     def get_report_revision(self, project_id, report_revision_id):
         return self.report
+
+    def generate_customer_report(self, command):
+        self.customer_command = command
+        path = command.output_dir / "P1" / "report-CR_Customer.docx"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"customer-report")
+        return SimpleNamespace(
+            source_report_revision_id=command.report_revision_id,
+            file_name=path.name,
+            file_path=str(path),
+        )
 
 
 class _Store:

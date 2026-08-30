@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from backend.application.report_workspace_service import (
+    GenerateCustomerReportCommand,
     GenerateInitialReportCommand,
     GenerateLlcrReportCommand,
     ReportWorkspaceService,
@@ -59,6 +60,75 @@ def test_workspace_records_initial_and_llcr_report_revisions_without_overwrite(t
     state = service.get_state("P1")
     assert state.latest_report_revision.revision == 2
     assert state.datasets == (dataset,)
+
+
+def test_customer_report_is_derived_from_selected_internal_revision_without_joining_history(
+    tmp_path,
+) -> None:
+    repository = _Repository()
+    initial_file = tmp_path / "generated" / "P1" / "DL-2026-08-004 Report_Rev_A.docx"
+    initial_file.parent.mkdir(parents=True)
+    customer_writer = _CustomerWriter()
+    service = ReportWorkspaceService(
+        repository=repository,
+        initial_report_service=_InitialService(initial_file),
+        llcr_writer=_Writer(),
+        customer_report_writer=customer_writer,
+        clock=lambda: "2026-08-29T09:00:00Z",
+    )
+    internal = service.generate_initial(
+        GenerateInitialReportCommand("P1", tmp_path / "internal-template.docx", tmp_path, "Lab User")
+    )
+    customer_template = tmp_path / "E-4515_F Customer Test Report.docx"
+    customer_template.write_bytes(b"customer-template")
+
+    generated = service.generate_customer_report(
+        GenerateCustomerReportCommand(
+            project_id="P1",
+            report_revision_id=internal.report_revision_id,
+            template_path=customer_template,
+            output_dir=tmp_path / "customer-previews",
+        )
+    )
+
+    assert generated.source_report_revision_id == internal.report_revision_id
+    assert generated.file_name == "DL-2026-08-004-CR Report_Customer_Rev_A.docx"
+    assert Path(generated.file_path).read_bytes() == b"initial|customer"
+    assert customer_writer.source_path == Path(internal.file_path)
+    assert customer_writer.template_path == customer_template
+    assert repository.reports == [internal]
+    assert service.get_state("P1").latest_report_revision == internal
+
+
+def test_failed_customer_report_generation_removes_reserved_output(tmp_path) -> None:
+    repository = _Repository()
+    initial_file = tmp_path / "generated" / "P1" / "DL-2026-08-004 Report_Rev_A.docx"
+    initial_file.parent.mkdir(parents=True)
+    service = ReportWorkspaceService(
+        repository=repository,
+        initial_report_service=_InitialService(initial_file),
+        llcr_writer=_Writer(),
+        customer_report_writer=_FailingCustomerWriter(),
+        clock=lambda: "2026-08-29T09:00:00Z",
+    )
+    internal = service.generate_initial(
+        GenerateInitialReportCommand("P1", tmp_path / "internal-template.docx", tmp_path, "Lab User")
+    )
+    customer_template = tmp_path / "E-4515_F Customer Test Report.docx"
+    customer_template.write_bytes(b"customer-template")
+
+    with pytest.raises(ValueError, match="Customer report generation failed"):
+        service.generate_customer_report(
+            GenerateCustomerReportCommand(
+                "P1",
+                internal.report_revision_id,
+                customer_template,
+                tmp_path / "customer-previews",
+            )
+        )
+
+    assert list((tmp_path / "customer-previews" / "P1").glob("*.docx")) == []
+    assert Path(internal.file_path).read_bytes() == b"initial"
 
 
 def test_llcr_sync_rejects_stale_active_matrix_before_writing(tmp_path) -> None:
@@ -227,6 +297,16 @@ class _Repository:
     def list_report_revisions(self, project_id):
         return tuple(self.reports)
 
+    def get_report_revision(self, report_revision_id):
+        return next(
+            (
+                item
+                for item in self.reports
+                if item.report_revision_id == report_revision_id
+            ),
+            None,
+        )
+
     def get_dataset(self, dataset_id):
         return next((item for item in self.datasets if item.dataset_id == dataset_id), None)
 
@@ -262,6 +342,20 @@ class _FailingWriter:
     def synchronize_llcr_results(self, *, source_path, output_path, dataset):
         output_path.write_bytes(b"partial")
         raise RuntimeError("Word synchronization failed")
+
+
+class _CustomerWriter:
+    def generate_customer_report(self, *, source_path, template_path, output_path):
+        self.source_path = source_path
+        self.template_path = template_path
+        output_path.write_bytes(source_path.read_bytes() + b"|customer")
+        return output_path
+
+
+class _FailingCustomerWriter:
+    def generate_customer_report(self, *, source_path, template_path, output_path):
+        output_path.write_bytes(b"partial")
+        raise ValueError("Customer report generation failed")
 
 
 class _ConfirmedMatrixStore:

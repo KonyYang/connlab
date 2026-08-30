@@ -6,6 +6,7 @@ import pytest
 
 from backend.application.test_report_template_resource import (
     TestReportTemplateResourceError,
+    resolve_customer_report_template_path,
     resolve_test_report_template_path,
 )
 from backend.domain import (
@@ -45,6 +46,30 @@ def test_rejects_missing_or_inactive_template_folder(tmp_path: Path) -> None:
     template_folder.mkdir()
     with pytest.raises(TestReportTemplateResourceError, match="inactive"):
         resolve_test_report_template_path(_Store(_resource(template_folder, active=False)))
+
+
+def test_resolves_unique_e4515_customer_report_template(tmp_path: Path) -> None:
+    template_folder = tmp_path / "templates"
+    template_folder.mkdir()
+    approved = template_folder / "E-4515_F Customer Test Report-Even.docx"
+    approved.write_bytes(b"approved")
+    (template_folder / "E-3707_H Laboratory Test Report.docx").write_bytes(b"internal")
+
+    assert resolve_customer_report_template_path(_Store(_resource(template_folder))) == approved
+
+
+def test_rejects_missing_or_ambiguous_e4515_customer_report_templates(tmp_path: Path) -> None:
+    template_folder = tmp_path / "templates"
+    template_folder.mkdir()
+    store = _Store(_resource(template_folder))
+
+    with pytest.raises(TestReportTemplateResourceError, match="E-4515"):
+        resolve_customer_report_template_path(store)
+
+    (template_folder / "E-4515_F Customer Report.docx").write_bytes(b"one")
+    (template_folder / "E-4515_F Customer Report copy.docx").write_bytes(b"two")
+    with pytest.raises(TestReportTemplateResourceError, match="Multiple E-4515"):
+        resolve_customer_report_template_path(store)
 
 
 class _Store:

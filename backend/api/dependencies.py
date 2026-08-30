@@ -226,6 +226,9 @@ from backend.infrastructure.office.test_status_workbook_gateway import TestStatu
 from backend.infrastructure.office.test_report_document_gateway import (
     TestReportDocumentGateway,
 )
+from backend.infrastructure.office.customer_report_document_gateway import (
+    CustomerReportDocumentGateway,
+)
 from backend.infrastructure.office.llcr_result_workbook_gateway import (
     LlcrResultWorkbookGateway,
     LocalLlcrImportSourceStore,
@@ -769,6 +772,7 @@ def get_report_workspace_service(
         repository=ResultDatasetRepository(session),
         initial_report_service=get_test_report_draft_service(session),
         llcr_writer=TestReportDocumentGateway(),
+        customer_report_writer=CustomerReportDocumentGateway(),
         clock=lambda: datetime.now(timezone.utc).isoformat(),
         basic_information_reader=ProjectBasicInformationSnapshotReader(
             ProjectBasicInformationRepository(session)

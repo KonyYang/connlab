@@ -45,6 +45,16 @@ class LlcrReportWriter(Protocol):
     ) -> Path: ...
 
 
+class CustomerReportWriter(Protocol):
+    def generate_customer_report(
+        self,
+        *,
+        source_path: Path,
+        template_path: Path,
+        output_path: Path,
+    ) -> Path: ...
+
+
 @dataclass(frozen=True, slots=True)
 class GenerateInitialReportCommand:
     project_id: str
@@ -60,6 +70,21 @@ class GenerateLlcrReportCommand:
     output_dir: Path
     created_by: str
     template_path: Path | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class GenerateCustomerReportCommand:
+    project_id: str
+    report_revision_id: str
+    template_path: Path
+    output_dir: Path
+
+
+@dataclass(frozen=True, slots=True)
+class CustomerReportDraftGenerationResult:
+    source_report_revision_id: str
+    file_name: str
+    file_path: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +108,7 @@ class ReportWorkspaceService:
         repository: ReportRevisionStore,
         initial_report_service: TestReportDraftService,
         llcr_writer: LlcrReportWriter,
+        customer_report_writer: CustomerReportWriter | None = None,
         clock: Callable[[], str],
         id_factory: Callable[[], str] = lambda: uuid4().hex,
         basic_information_reader=None,
@@ -91,6 +117,7 @@ class ReportWorkspaceService:
         self._repository = repository
         self._initial = initial_report_service
         self._writer = llcr_writer
+        self._customer_writer = customer_report_writer
         self._clock = clock
         self._ids = id_factory
         self._basic_information = basic_information_reader
@@ -165,6 +192,51 @@ class ReportWorkspaceService:
             self._repository.rollback()
             path.unlink(missing_ok=True)
             raise
+
+    def generate_customer_report(
+        self,
+        command: GenerateCustomerReportCommand,
+    ) -> CustomerReportDraftGenerationResult:
+        """Generate a transient customer-facing draft from one internal revision."""
+        if self._customer_writer is None:
+            raise ReportWorkspaceError("Customer report generation is not configured.")
+        source_revision = self.get_report_revision(
+            command.project_id,
+            command.report_revision_id,
+        )
+        source_path = Path(source_revision.file_path)
+        template_path = Path(command.template_path)
+        if template_path.suffix.lower() != ".docx":
+            raise ReportWorkspaceError("Only .docx customer report templates are supported.")
+        if not template_path.is_file():
+            raise ReportWorkspaceError("Customer report template file is missing.")
+
+        project_dir = Path(command.output_dir) / _safe_component(command.project_id)
+        project_dir.mkdir(parents=True, exist_ok=True)
+        output_path = _reserve_path(
+            project_dir / _customer_report_file_name(source_revision.file_name)
+        )
+        try:
+            written = self._customer_writer.generate_customer_report(
+                source_path=source_path,
+                template_path=template_path,
+                output_path=output_path,
+            )
+        except Exception as exc:
+            output_path.unlink(missing_ok=True)
+            if isinstance(exc, ReportWorkspaceError):
+                raise
+            raise ReportWorkspaceError(str(exc)) from exc
+        if Path(written) != output_path or not output_path.is_file():
+            output_path.unlink(missing_ok=True)
+            raise ReportWorkspaceError(
+                "Customer report writer did not produce the reserved draft."
+            )
+        return CustomerReportDraftGenerationResult(
+            source_report_revision_id=source_revision.report_revision_id,
+            file_name=output_path.name,
+            file_path=str(output_path),
+        )
 
     def generate_llcr_report(
         self,
@@ -287,6 +359,26 @@ class ReportWorkspaceService:
 def _safe_component(value: str) -> str:
     safe = re.sub(r"[^A-Za-z0-9._-]+", "_", value.strip()).strip("._")
     return safe or "project"
+
+
+def _customer_report_file_name(source_name: str) -> str:
+    source = Path(source_name)
+    stem = source.stem
+    first, separator, remainder = stem.partition(" ")
+    if not first.upper().endswith("-CR"):
+        first = f"{first}-CR"
+    customer_stem = first + (separator + remainder if separator else "")
+    if not re.search(r"REPORT_CUSTOMER_REV", customer_stem, flags=re.IGNORECASE):
+        customer_stem, count = re.subn(
+            r"REPORT_REV",
+            "Report_Customer_Rev",
+            customer_stem,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+        if count == 0:
+            customer_stem = f"{customer_stem}_Customer"
+    return f"{customer_stem}.docx"
 
 
 def _reserve_path(path: Path) -> Path:

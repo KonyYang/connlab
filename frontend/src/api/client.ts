@@ -4862,6 +4862,16 @@ export function downloadReportDraftRevision(
   );
 }
 
+export function generateCustomerReportDraftDownload(
+  projectId: string,
+  reportRevisionId: string
+): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/drafts/${encodeURIComponent(reportRevisionId)}/customer-report`,
+    { method: "POST" }
+  );
+}
+
 export function generateMatrixEditorLlcrCrRecordDraftDownload(
   projectId: string,
   input: MatrixEditorLlcrCrRecordDraftRequest

@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+import shutil
+import tempfile
+
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+from starlette.background import BackgroundTask
 
 from backend.api.dependencies import (
     get_llcr_result_dataset_service,
@@ -19,6 +24,7 @@ from backend.application.llcr_result_dataset_service import (
     LlcrResultDatasetService,
 )
 from backend.application.report_workspace_service import (
+    GenerateCustomerReportCommand,
     GenerateInitialReportCommand,
     GenerateLlcrReportCommand,
     ReportWorkspaceError,
@@ -27,6 +33,7 @@ from backend.application.report_workspace_service import (
 from backend.application.test_report_template_resource import (
     TestReportTemplateResourceError,
     TestReportTemplateResourceStore,
+    resolve_customer_report_template_path,
     resolve_test_report_template_path,
 )
 from backend.domain.result_dataset_models import (
@@ -226,6 +233,52 @@ def download_report_revision(
         revision.file_path,
         filename=revision.file_name,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+
+
+@router.post(
+    "/api/projects/{project_id}/report-workspace/drafts/"
+    "{report_revision_id}/customer-report"
+)
+def generate_customer_report(
+    project_id: str,
+    report_revision_id: str,
+    service: ReportWorkspaceService = Depends(get_report_workspace_service),
+    settings: Settings = Depends(get_settings),
+    template_store: TestReportTemplateResourceStore = Depends(
+        get_test_report_template_resource_store
+    ),
+) -> FileResponse:
+    download_root = settings.data_dir / "customer_report_downloads"
+    download_root.mkdir(parents=True, exist_ok=True)
+    temporary_root = Path(tempfile.mkdtemp(prefix="customer-report-", dir=download_root))
+    try:
+        template_path = resolve_customer_report_template_path(template_store)
+        result = service.generate_customer_report(
+            GenerateCustomerReportCommand(
+                project_id=project_id,
+                report_revision_id=report_revision_id,
+                template_path=template_path,
+                output_dir=temporary_root,
+            )
+        )
+    except LookupError as exc:
+        shutil.rmtree(temporary_root, ignore_errors=True)
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        shutil.rmtree(temporary_root, ignore_errors=True)
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
+    except (TestReportTemplateResourceError, ReportWorkspaceError, ValueError) as exc:
+        shutil.rmtree(temporary_root, ignore_errors=True)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception:
+        shutil.rmtree(temporary_root, ignore_errors=True)
+        raise
+    return FileResponse(
+        result.file_path,
+        filename=result.file_name,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        background=BackgroundTask(shutil.rmtree, temporary_root, ignore_errors=True),
     )
 
 

@@ -9815,6 +9815,14 @@
   min-width: 0;
 }
 
+.report-workspace-history .report-workspace-history-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .report-workspace-history li span,
 .report-workspace-history li small {
   color: var(--color-ink-muted);

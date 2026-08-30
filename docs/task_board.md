@@ -11,8 +11,28 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_REPORT_WORKSPACE_CUSTOMER_REPORT_DRAFT",
+    "summary": "Generate a non-overwriting customer report draft from the latest internal report revision in Report Workspace.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Understand the approved legacy and golden-report behavior, then add customer-report draft generation to the current Report Workspace without overwriting internal reports or changing report authority.",
+    "scope_paths": [
+      "backend/application",
+      "backend/infrastructure/office",
+      "backend/api",
+      "frontend/src/features/report-workspace",
+      "frontend/src/api",
+      "tests"
+    ],
+    "risk_reasons": [],
+    "activation_head": "0e93e56141ddc0c81082eda5b9da8fa2945423a8",
+    "started_at": "2026-08-30T00:30:29.368453Z",
+    "updated_at": "2026-08-30T00:30:29.368453Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_MATRIX_TEST_POINT_RECORD_DOWNLOAD_ACTIONS",
     "tier": "standard",
