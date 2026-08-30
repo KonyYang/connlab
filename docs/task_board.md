@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "REPORT-003A",
     "summary": "Implement the current internal report section-update and safe publication kernel, using existing LLCR Result/Comment synchronization as the first adapter.",
@@ -45,89 +45,17 @@
     ],
     "activation_head": "9fdac58dc90487744b91036f38bd8c3fbf1e0844",
     "started_at": "2026-08-30T10:41:55.035452Z",
-    "updated_at": "2026-08-30T12:02:59.748961Z",
+    "updated_at": "2026-08-30T13:34:50.282782Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "REPORT-003A",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User approved replacing the disabled initial action with state-driven generate/publish behavior and optimizing the Report Workspace UI.",
       "requires_user": false
     },
-    "report": {
-      "roles": {
-        "integrator": {
-          "status": "passed",
-          "summary": "Repository composition and API/UI contracts are consistent; no real external report was modified."
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Affected backend, frontend, build, and read-only browser checks passed; live backend process requires restart to load the new API fields."
-        },
-        "reviewer": {
-          "status": "passed",
-          "summary": "Standards and specification review found no unresolved defects."
-        },
-        "developer": {
-          "status": "passed",
-          "summary": "Implemented official initialization, safe copy publication, API contract, and UI controls."
-        },
-        "planner": {
-          "status": "passed",
-          "summary": "Approved destination and promotion behavior remained within the user-authorized revision."
-        }
-      },
-      "changed_paths": [
-        "backend/api/dependencies.py",
-        "backend/api/routes_report_workspace.py",
-        "backend/application/current_report_update_service.py",
-        "backend/application/report_workspace_service.py",
-        "backend/application/test_report_draft_service.py",
-        "backend/infrastructure/files/report_publication_gateway.py",
-        "backend/infrastructure/office/test_report_document_gateway.py",
-        "frontend/src/api/client.ts",
-        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-        "frontend/src/features/report-workspace/reportWorkspaceModel.test.ts",
-        "frontend/src/features/report-workspace/reportWorkspaceModel.ts",
-        "frontend/src/workbench.css",
-        "tests/integration/test_report_workspace_api.py",
-        "tests/unit/test_current_report_update_service.py",
-        "tests/unit/test_report_publication_gateway.py",
-        "tests/unit/test_report_workspace_service.py",
-        "tests/unit/test_test_report_document_gateway.py",
-        "tests/unit/test_test_report_draft_service.py"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "name": "Affected backend report suites: 36 tests"
-        },
-        {
-          "status": "passed",
-          "name": "Report Workspace UI: 6 tests"
-        },
-        {
-          "status": "passed",
-          "name": "Frontend production build"
-        },
-        {
-          "status": "passed",
-          "name": "Read-only live browser inspection"
-        }
-      ],
-      "subject": "ab997998c80f384657e5fd29460d376d418f3f14",
-      "schema": "connlab.sol-task-report",
-      "summary": "Current Internal Report updates now preserve manual content, publish managed drafts safely into an empty official project folder, and generate future initial reports directly at the official destination when available.",
-      "integration": {
-        "status": "passed",
-        "mode": "verified_local"
-      },
-      "task_id": "REPORT-003A",
-      "version": 1,
-      "scope_ok": true
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_REPORT_WORKSPACE_CUSTOMER_REPORT_DRAFT",
