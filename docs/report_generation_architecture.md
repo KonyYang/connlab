@@ -19,8 +19,9 @@ remain deferred.
   values are read in order and deduplicated case-insensitively; `DG-Q-0000`, `Q-0000`, `DG-L-0000`,
   and `L-0000` references share the legacy match token.
 - Settings `Equipment calibration Excel` supplies `Item`, `Manufacturer`, `ID Number`, `Last Cal.`,
-  and `Cal. Due`. Both the current structured header layout and the legacy `All Equip.` row-5 / A-C-D-E-F
-  layout are supported.
+  and `Cal. Due`. Both the current structured header layout and the legacy `All Equip.` row-4
+  `Item (Equipment Name)` / A-C-D-E-F layout are supported. Legacy Excel date values are normalized
+  to `DD-MMM-YYYY`; `Not applicable` remains a valid non-expiring value.
 
 Preview is mandatory. Missing, ambiguous, incomplete, or structurally invalid catalog rows block the
 write. An unmatched customer/external fixture may proceed only after all five report fields and an

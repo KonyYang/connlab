@@ -199,6 +199,37 @@ def test_external_resource_service_probes_legacy_xls_for_standard_and_equipment(
     assert office.excel_probes == [standard, equipment]
 
 
+def test_equipment_resource_validation_accepts_the_legacy_all_equip_layout(
+    tmp_path: Path,
+) -> None:
+    equipment = tmp_path / "equipment.xls"
+    equipment.write_bytes(b"legacy")
+    office = _SequencedProbeOffice(
+        SimpleNamespace(valid=False, failure_reason="No worksheet matched."),
+        SimpleNamespace(valid=True, failure_reason=None),
+    )
+    service = ExternalResourceService(_Store(), office=office)
+    service.upsert_resource(
+        ExternalResourceType.EQUIPMENT_CALIBRATION_EXCEL,
+        equipment,
+        active=True,
+    )
+
+    validated = service.validate_resource(
+        ExternalResourceType.EQUIPMENT_CALIBRATION_EXCEL
+    )
+
+    assert validated.validation_status is ExternalResourceValidationStatus.VALID
+    assert len(office.probe_rules) == 2
+    legacy_rules = office.probe_rules[1]
+    assert legacy_rules["expected_sheet_names"] == ("All Equip.",)
+    assert legacy_rules["layout"].header_row_number == 4
+    assert legacy_rules["layout"].required_header_columns[0] == (
+        "Item (Equipment Name)",
+        1,
+    )
+
+
 def test_external_resource_service_rejects_unregistered_resource() -> None:
     service = ExternalResourceService(_Store(), office=_FakeOffice())
 
@@ -255,6 +286,18 @@ class _FakeOffice:
         """Record structure probes."""
         self.excel_probes.append(source_path)
         return SimpleNamespace(valid=True, failure_reason=None)
+
+
+class _SequencedProbeOffice(_FakeOffice):
+    def __init__(self, *results: object) -> None:
+        super().__init__()
+        self._results = list(results)
+        self.probe_rules: list[dict[str, object]] = []
+
+    def probe_excel_structure(self, source_path: Path, **rules: object) -> object:
+        self.excel_probes.append(source_path)
+        self.probe_rules.append(rules)
+        return self._results.pop(0)
 
 
 def _write_minimal_xlsx(

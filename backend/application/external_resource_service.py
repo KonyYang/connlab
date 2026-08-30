@@ -17,6 +17,16 @@ from backend.infrastructure.office import OfficeFacade
 from backend.infrastructure.office.excel_tabular_layout import ExcelTabularLayout
 
 
+LEGACY_EQUIPMENT_HEADERS = (
+    "Item (Equipment Name)",
+    "Manufacturer",
+    "ID Number",
+    "Last Cal.",
+    "Cal. Due",
+)
+LEGACY_EQUIPMENT_SHEET_NAMES = ("All Equip.",)
+
+
 class ExternalResourceNotFoundError(LookupError):
     """Raised when an external resource is not registered."""
 
@@ -189,6 +199,14 @@ class ExternalResourceService:
             return
         rules = _excel_probe_rules(resource)
         result = self._office.probe_excel_structure(path, **rules)
+        if (
+            resource_type is ExternalResourceType.EQUIPMENT_CALIBRATION_EXCEL
+            and not result.valid
+        ):
+            result = self._office.probe_excel_structure(
+                path,
+                **_legacy_equipment_probe_rules(),
+            )
         if not result.valid:
             raise ValueError(result.failure_reason or "Excel structure probe failed.")
 
@@ -283,3 +301,28 @@ def _excel_probe_rules(resource: ExternalResource) -> dict[str, object]:
             require_unique_sheet_match=True,
         ),
     }
+
+
+def _legacy_equipment_probe_rules() -> dict[str, object]:
+    """Return the approved legacy All Equip. physical layout."""
+    return {
+        "expected_headers": LEGACY_EQUIPMENT_HEADERS,
+        "expected_date_headers": ("Cal. Due",),
+        "expected_sheet_names": LEGACY_EQUIPMENT_SHEET_NAMES,
+        "layout": legacy_equipment_excel_layout(),
+    }
+
+
+def legacy_equipment_excel_layout() -> ExcelTabularLayout:
+    """Return the one approved physical layout shared by validation and reads."""
+    return ExcelTabularLayout(
+        header_row_number=4,
+        required_header_columns=(
+            ("Item (Equipment Name)", 1),
+            ("Manufacturer", 3),
+            ("ID Number", 4),
+            ("Last Cal.", 5),
+            ("Cal. Due", 6),
+        ),
+        require_unique_sheet_match=True,
+    )

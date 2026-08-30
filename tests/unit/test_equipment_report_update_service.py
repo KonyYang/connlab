@@ -117,6 +117,53 @@ def test_preview_matches_equipment_reference_and_warns_when_calibration_expired(
     assert any("expired" in warning.lower() for warning in preview.warnings)
 
 
+def test_preview_formats_legacy_excel_iso_dates_for_the_report(tmp_path: Path) -> None:
+    service, _updates = _service(
+        tmp_path,
+        ("DG-Q-0033",),
+        (
+            EquipmentCalibrationRow(
+                equipment_id="DG-Q-0033",
+                equipment_name="Test Probe",
+                manufacturer="SunHo (SH9113)",
+                last_calibration_date="2024-08-08T00:00:00+00:00",
+                calibration_due_date="2025-08-07T00:00:00+00:00",
+                source_sheet="All Equip.",
+            ),
+        ),
+    )
+
+    preview = service.preview(project_id="P1")
+
+    assert preview.status == "ready"
+    assert preview.rows[0].last_calibration == "08-Aug-2024"
+    assert preview.rows[0].calibration_due == "07-Aug-2025"
+    assert preview.rows[0].expired is True
+
+
+def test_preview_accepts_not_applicable_calibration_dates(tmp_path: Path) -> None:
+    service, _updates = _service(
+        tmp_path,
+        ("DG-L-0002",),
+        (
+            EquipmentCalibrationRow(
+                equipment_id="DG-L-0002",
+                equipment_name="Stereo Microscope",
+                manufacturer="Nikon",
+                last_calibration_date="Not applicable",
+                calibration_due_date="Not applicable",
+                source_sheet="All Equip.",
+            ),
+        ),
+    )
+
+    preview = service.preview(project_id="P1")
+
+    assert preview.status == "ready"
+    assert preview.rows[0].calibration_due == "Not applicable"
+    assert preview.rows[0].expired is False
+
+
 def test_unmatched_reference_requires_complete_external_override(tmp_path: Path) -> None:
     service, _updates = _service(tmp_path, ("Customer fixture A",), tuple())
 

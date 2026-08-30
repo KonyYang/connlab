@@ -8,7 +8,12 @@ from typing import Protocol
 
 from backend.domain import ExternalResource, ExternalResourceType
 from backend.infrastructure.office import OfficeFacade
-from backend.application.external_resource_service import effective_standard_worksheet_name
+from backend.application.external_resource_service import (
+    LEGACY_EQUIPMENT_HEADERS,
+    LEGACY_EQUIPMENT_SHEET_NAMES,
+    effective_standard_worksheet_name,
+    legacy_equipment_excel_layout,
+)
 from backend.infrastructure.office.excel_tabular_layout import ExcelTabularLayout
 
 
@@ -168,29 +173,13 @@ class ExternalExcelReadService:
             except ValueError:
                 table = self._office.read_excel_tabular_rows(
                     resource.path,
-                    expected_headers=(
-                        "Item",
-                        "Manufacturer",
-                        "ID Number",
-                        "Last Cal.",
-                        "Cal. Due",
-                    ),
-                    expected_sheet_names=("All Equip.",),
-                    layout=ExcelTabularLayout(
-                        header_row_number=5,
-                        required_header_columns=(
-                            ("Item", 1),
-                            ("Manufacturer", 3),
-                            ("ID Number", 4),
-                            ("Last Cal.", 5),
-                            ("Cal. Due", 6),
-                        ),
-                        require_unique_sheet_match=True,
-                    ),
+                    expected_headers=LEGACY_EQUIPMENT_HEADERS,
+                    expected_sheet_names=LEGACY_EQUIPMENT_SHEET_NAMES,
+                    layout=legacy_equipment_excel_layout(),
                 )
                 field_names = {
                     "equipment_id": "ID Number",
-                    "equipment_name": "Item",
+                    "equipment_name": "Item (Equipment Name)",
                     "manufacturer": "Manufacturer",
                     "last_calibration": "Last Cal.",
                     "calibration_due": "Cal. Due",

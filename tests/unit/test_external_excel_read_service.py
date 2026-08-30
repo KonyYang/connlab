@@ -96,7 +96,7 @@ def test_read_equipment_rows_supports_legacy_all_equip_layout(tmp_path: Path) ->
         headers=("Item", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due"),
         rows=(
             {
-                "Item": "Digital multimeter",
+                "Item (Equipment Name)": "Digital multimeter",
                 "Manufacturer": "Keysight",
                 "ID Number": "DG-Q-0033",
                 "Last Cal.": "01 Jan 2025",
@@ -124,6 +124,12 @@ def test_read_equipment_rows_supports_legacy_all_equip_layout(tmp_path: Path) ->
     assert result.rows[0].last_calibration_date == "01 Jan 2025"
     assert result.rows[0].calibration_due_date == "01 Jan 2026"
     assert len(office.calls) == 3
+    legacy_layout = office.calls[2]["layout"]
+    assert legacy_layout.header_row_number == 4
+    assert legacy_layout.required_header_columns[0] == (
+        "Item (Equipment Name)",
+        1,
+    )
 
 
 def test_read_standard_records_maps_legacy_xls_gateway_rows(tmp_path: Path) -> None:

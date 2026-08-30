@@ -240,7 +240,11 @@ class EquipmentReportUpdateService:
                     if not (value or "").strip()
                 ]
                 due_date = _parse_date(catalog_row.calibration_due_date)
-                if not missing and due_date is None:
+                if (
+                    not missing
+                    and due_date is None
+                    and not _is_not_applicable(catalog_row.calibration_due_date)
+                ):
                     missing.append("a recognizable Cal. Due date")
                 expired = _is_expired(catalog_row.calibration_due_date, self._today())
                 row = EquipmentListReportRow(
@@ -249,8 +253,12 @@ class EquipmentReportUpdateService:
                     item=catalog_row.equipment_name or "",
                     manufacturer=catalog_row.manufacturer or "",
                     id_number=catalog_row.equipment_id,
-                    last_calibration=catalog_row.last_calibration_date or "",
-                    calibration_due=catalog_row.calibration_due_date or "",
+                    last_calibration=_format_report_date(
+                        catalog_row.last_calibration_date
+                    ),
+                    calibration_due=_format_report_date(
+                        catalog_row.calibration_due_date
+                    ),
                     source_sheet=catalog_row.source_sheet,
                     expired=expired,
                 )
@@ -264,7 +272,7 @@ class EquipmentReportUpdateService:
                 if expired:
                     warnings.append(
                         f"Calibration is expired for {catalog_row.equipment_id} "
-                        f"({catalog_row.calibration_due_date})."
+                        f"({row.calibration_due})."
                     )
                 continue
             if len(matches) > 1:
@@ -304,8 +312,12 @@ class EquipmentReportUpdateService:
                         item=override.item.strip(),
                         manufacturer=override.manufacturer.strip(),
                         id_number=override.id_number.strip(),
-                        last_calibration=override.last_calibration.strip(),
-                        calibration_due=override.calibration_due.strip(),
+                        last_calibration=_format_report_date(
+                            override.last_calibration
+                        ),
+                        calibration_due=_format_report_date(
+                            override.calibration_due
+                        ),
                         source_sheet=None,
                         expired=expired,
                         external_reason=override.reason.strip(),
@@ -314,7 +326,7 @@ class EquipmentReportUpdateService:
                 if expired:
                     warnings.append(
                         f"Calibration is expired for {override.id_number.strip()} "
-                        f"({override.calibration_due.strip()})."
+                        f"({_format_report_date(override.calibration_due)})."
                     )
                 continue
             rows.append(_unresolved_row(reference, "unmatched"))
@@ -391,6 +403,10 @@ def _parse_date(value: str | None) -> date | None:
     cleaned = (value or "").strip()
     if not cleaned or cleaned.casefold() in {"n/a", "na", "not applicable"}:
         return None
+    try:
+        return datetime.fromisoformat(cleaned.replace("Z", "+00:00")).date()
+    except ValueError:
+        pass
     for pattern in (
         "%Y-%m-%d",
         "%Y/%m/%d",
@@ -408,3 +424,9 @@ def _parse_date(value: str | None) -> date | None:
 
 def _is_not_applicable(value: str | None) -> bool:
     return (value or "").strip().casefold() in {"n/a", "na", "not applicable"}
+
+
+def _format_report_date(value: str | None) -> str:
+    cleaned = (value or "").strip()
+    parsed = _parse_date(cleaned)
+    return parsed.strftime("%d-%b-%Y") if parsed is not None else cleaned
