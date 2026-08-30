@@ -4,7 +4,7 @@ import {
   confirmLlcrResultImport,
   downloadReportDraftRevision,
   fetchReportWorkspace,
-  generateCustomerReportDraftDownload,
+  customerReportDraftDownloadUrl,
   generateInitialReportRevision,
   generateLlcrReportRevision,
   inspectLlcrResultWorkbook,
@@ -27,7 +27,7 @@ type ReportWorkspaceProps = {
   onBack: () => void;
 };
 
-type BusyAction = "load" | "initial" | "inspect" | "confirm" | "cancel" | "llcr" | "download" | "customer" | null;
+type BusyAction = "load" | "initial" | "inspect" | "confirm" | "cancel" | "llcr" | "download" | null;
 
 export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): ReactElement {
   const [state, setState] = useState<ReportWorkspaceState | null>(null);
@@ -151,15 +151,24 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
     });
   }
 
-  async function handleCustomerReport(revision: ReportDraftRevision): Promise<void> {
-    await runAction("customer", async () => {
-      const response = await generateCustomerReportDraftDownload(
-        projectId,
-        revision.report_revision_id
-      );
-      downloadBlob(response.blob, response.fileName || `${revision.file_name}_Customer.docx`);
-      return `Downloaded customer report from internal revision ${revision.revision}.`;
-    });
+  function handleCustomerReport(revision: ReportDraftRevision): void {
+    if (busyAction) {
+      return;
+    }
+    setError(null);
+    setMessage(
+      `Customer report download requested from internal revision ${revision.revision}.`
+    );
+    const anchor = document.createElement("a");
+    anchor.href = customerReportDraftDownloadUrl(
+      projectId,
+      revision.report_revision_id
+    );
+    anchor.target = "_blank";
+    anchor.rel = "noopener";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
   }
 
   if (!state && busyAction === "load" && !error) {
@@ -275,9 +284,7 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
                     <div><strong>Revision {revision.revision}</strong><span>{revision.file_name}</span><small>{formatDateTime(revision.created_at)} · {revision.result_dataset_id ? "LLCR synchronized" : "Initialization"}</small></div>
                     <div className="report-workspace-history-actions">
                       <button disabled={Boolean(busyAction)} onClick={() => void handleDownload(revision)} type="button">Download internal</button>
-                      <button disabled={Boolean(busyAction)} onClick={() => void handleCustomerReport(revision)} type="button">
-                        {busyAction === "customer" ? "Generating..." : "Customer report"}
-                      </button>
+                      <button disabled={Boolean(busyAction)} onClick={() => handleCustomerReport(revision)} type="button">Customer report</button>
                     </div>
                   </li>
                 ))}

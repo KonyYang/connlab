@@ -103,15 +103,38 @@ def _generate_with_word(source_path: Path, target_path: Path) -> None:
             AddToRecentFiles=False,
             ConfirmConversions=False,
         )
+        if source is None:
+            raise ValueError(
+                "Microsoft Word did not return the internal report document."
+            )
         target = word.Documents.Open(
             str(target_path.resolve()),
             ReadOnly=False,
             AddToRecentFiles=False,
             ConfirmConversions=False,
         )
-        _validate_document_types(source, target)
-        _copy_customer_header(source, target)
-        _copy_customer_body(source, target)
+        if target is None:
+            raise ValueError(
+                "Microsoft Word did not return the E-4515 customer template document."
+            )
+        try:
+            _validate_document_types(source, target)
+        except Exception as exc:
+            raise ValueError(
+                f"Customer report document validation failed: {_error_summary(exc)}"
+            ) from exc
+        try:
+            _copy_customer_header(source, target)
+        except Exception as exc:
+            raise ValueError(
+                f"Customer report header generation failed: {_error_summary(exc)}"
+            ) from exc
+        try:
+            _copy_customer_body(source, target)
+        except Exception as exc:
+            raise ValueError(
+                f"Customer report body generation failed: {_error_summary(exc)}"
+            ) from exc
         target.Save()
     except Exception as exc:
         summary = " ".join(str(exc).split()) or exc.__class__.__name__
@@ -329,3 +352,7 @@ def _audit_customer_report(path: Path) -> None:
 
 def _file_hash(path: Path) -> str:
     return sha256(path.read_bytes()).hexdigest()
+
+
+def _error_summary(exc: Exception) -> str:
+    return (" ".join(str(exc).split()) or exc.__class__.__name__)[:240]

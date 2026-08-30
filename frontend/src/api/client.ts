@@ -4862,14 +4862,11 @@ export function downloadReportDraftRevision(
   );
 }
 
-export function generateCustomerReportDraftDownload(
+export function customerReportDraftDownloadUrl(
   projectId: string,
   reportRevisionId: string
-): Promise<BlobDownloadResponse> {
-  return requestBlobResponse(
-    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/drafts/${encodeURIComponent(reportRevisionId)}/customer-report`,
-    { method: "POST" }
-  );
+): string {
+  return `${API_BASE}/api/projects/${encodeURIComponent(projectId)}/report-workspace/drafts/${encodeURIComponent(reportRevisionId)}/customer-report`;
 }
 
 export function generateMatrixEditorLlcrCrRecordDraftDownload(

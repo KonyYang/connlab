@@ -89,7 +89,7 @@ def test_report_workspace_llcr_preview_confirm_generate_and_download(tmp_path: P
         downloaded = client.get(
             "/api/projects/P1/report-workspace/drafts/report-1/download"
         )
-        customer = client.post(
+        customer = client.get(
             "/api/projects/P1/report-workspace/drafts/report-1/customer-report"
         )
     finally:

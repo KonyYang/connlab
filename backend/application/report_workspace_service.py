@@ -213,9 +213,11 @@ class ReportWorkspaceService:
 
         project_dir = Path(command.output_dir) / _safe_component(command.project_id)
         project_dir.mkdir(parents=True, exist_ok=True)
-        output_path = _reserve_path(
-            project_dir / _customer_report_file_name(source_revision.file_name)
-        )
+        download_name = _customer_report_file_name(source_revision.file_name)
+        # The API creates an isolated request directory, so the physical file can
+        # stay short even when the user-facing report name is long. Word COM still
+        # fails on traditional MAX_PATH-sized paths on supported lab machines.
+        output_path = _reserve_path(project_dir / "customer-report.docx")
         try:
             written = self._customer_writer.generate_customer_report(
                 source_path=source_path,
@@ -234,7 +236,7 @@ class ReportWorkspaceService:
             )
         return CustomerReportDraftGenerationResult(
             source_report_revision_id=source_revision.report_revision_id,
-            file_name=output_path.name,
+            file_name=download_name,
             file_path=str(output_path),
         )
 

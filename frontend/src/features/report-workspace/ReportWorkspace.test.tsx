@@ -14,7 +14,7 @@ vi.mock("../../api/client", async () => {
     generateInitialReportRevision: vi.fn(),
     generateLlcrReportRevision: vi.fn(),
     downloadReportDraftRevision: vi.fn(),
-    generateCustomerReportDraftDownload: vi.fn(),
+    customerReportDraftDownloadUrl: vi.fn(),
     cancelLlcrResultPreview: vi.fn(),
   };
 });
@@ -179,27 +179,23 @@ describe("ReportWorkspace", () => {
       latest_report_revision: revision,
       report_revisions: [revision],
     });
-    vi.mocked(api.generateCustomerReportDraftDownload).mockResolvedValue({
-      blob: new Blob(["customer"]),
-      fileName: "DL-2026-08-004-CR Report_Customer_Rev_A.docx",
-    });
-    Object.defineProperty(URL, "createObjectURL", {
-      configurable: true,
-      value: vi.fn(() => "blob:customer"),
-    });
-    Object.defineProperty(URL, "revokeObjectURL", {
-      configurable: true,
-      value: vi.fn(),
-    });
-    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    vi.mocked(api.customerReportDraftDownloadUrl).mockReturnValue(
+      "/api/customer-report"
+    );
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+      function captureCustomerDownload(this: HTMLAnchorElement) {
+        expect(this.getAttribute("href")).toBe("/api/customer-report");
+        expect(this.target).toBe("_blank");
+      }
+    );
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     await user.click(await screen.findByRole("button", { name: "Customer report" }));
 
-    await waitFor(() => expect(api.generateCustomerReportDraftDownload).toHaveBeenCalledWith(
+    expect(api.customerReportDraftDownloadUrl).toHaveBeenCalledWith(
       "project-1",
       "report-2"
-    ));
-    expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+    );
+    expect(click).toHaveBeenCalledTimes(1);
   });
 });

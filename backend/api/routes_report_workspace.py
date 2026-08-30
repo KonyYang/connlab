@@ -236,9 +236,10 @@ def download_report_revision(
     )
 
 
-@router.post(
+@router.api_route(
     "/api/projects/{project_id}/report-workspace/drafts/"
-    "{report_revision_id}/customer-report"
+    "{report_revision_id}/customer-report",
+    methods=["GET", "POST"],
 )
 def generate_customer_report(
     project_id: str,

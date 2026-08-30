@@ -93,6 +93,7 @@ def test_customer_report_is_derived_from_selected_internal_revision_without_join
 
     assert generated.source_report_revision_id == internal.report_revision_id
     assert generated.file_name == "DL-2026-08-004-CR Report_Customer_Rev_A.docx"
+    assert Path(generated.file_path).name == "customer-report.docx"
     assert Path(generated.file_path).read_bytes() == b"initial|customer"
     assert customer_writer.source_path == Path(internal.file_path)
     assert customer_writer.template_path == customer_template
