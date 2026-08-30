@@ -1,8 +1,65 @@
 import type {
+  CurrentReport,
   LlcrImportPreview,
   LlcrResultEntry,
   ReportWorkspaceState,
 } from "../../api/client";
+
+export type ReportEntryState = {
+  kind: "generate" | "publish" | "ready" | "managed" | "blocked";
+  title: string;
+  description: string;
+  statusLabel: string;
+  locationLabel: string | null;
+};
+
+export function deriveReportEntryState(
+  report: CurrentReport | null
+): ReportEntryState {
+  if (!report || report.status === "missing") {
+    return {
+      kind: "generate",
+      title: "Create the initial report",
+      description: "Generate the first report from the approved E-3707_H template.",
+      statusLabel: "No current report",
+      locationLabel: null,
+    };
+  }
+  if (report.status === "ambiguous") {
+    return {
+      kind: "blocked",
+      title: "Resolve the report conflict",
+      description: "Keep exactly one current internal report before continuing.",
+      statusLabel: "Multiple reports found",
+      locationLabel: "Official project folder",
+    };
+  }
+  if (report.mode === "official") {
+    return {
+      kind: "ready",
+      title: "Current report ready",
+      description: "The official project report is ready for controlled section updates.",
+      statusLabel: "Official project report",
+      locationLabel: "Official project folder",
+    };
+  }
+  if (report.can_publish_to_official) {
+    return {
+      kind: "publish",
+      title: "Publish current report",
+      description: "Publish the existing initialized draft without rebuilding or moving it.",
+      statusLabel: "ConnLab managed draft",
+      locationLabel: "Destination: Official project folder",
+    };
+  }
+  return {
+    kind: "managed",
+    title: "Current report draft",
+    description: "The initialized report remains in ConnLab until a project folder is available.",
+    statusLabel: "ConnLab managed draft",
+    locationLabel: "ConnLab managed storage",
+  };
+}
 
 export type LlcrOutcome = "pass" | "fail" | "not_determined";
 

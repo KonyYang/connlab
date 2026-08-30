@@ -19,6 +19,7 @@ import { LlcrImportPreviewDialog } from "./LlcrImportPreviewDialog";
 import {
   buildLlcrConfirmationDecisions,
   createLlcrDecisionDrafts,
+  deriveReportEntryState,
   deriveReportWorkspaceReadiness,
   type LlcrDecisionDrafts,
   type LlcrOutcome,
@@ -82,6 +83,10 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
     [state]
   );
   const latestDataset = state?.datasets.at(-1) ?? null;
+  const reportEntry = useMemo(
+    () => deriveReportEntryState(currentReport),
+    [currentReport]
+  );
 
   async function runAction(
     action: Exclude<BusyAction, "load" | null>,
@@ -194,7 +199,7 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
     await runAction("publish", async () => {
       const published = await publishManagedReport(projectId, expectedSha);
       await refresh();
-      return `Published the current report to ${published.folder_path ?? "the project folder"}.`;
+      return `Published the current report to the official project folder (${published.file_name}).`;
     });
   }
 
@@ -221,7 +226,7 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
             <small>Project {state.project_id}</small>
             <strong>{state.active_confirmed_matrix_id ? `Confirmed Matrix revision ${state.active_confirmed_matrix_revision}` : "No active Confirmed Matrix"}</strong>
             <small>{state.basic_information_status === "confirmed" ? `Basic Information version ${state.confirmed_basic_information_version}` : "Basic Information not confirmed"}</small>
-            <small>{currentReport?.file_name ?? "No current internal report"}</small>
+            <small>{reportEntry.statusLabel}</small>
           </div>
         ) : null}
       </header>
@@ -234,23 +239,48 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
           <article className="report-workspace-card">
             <div className="report-workspace-card-heading">
               <span className="report-workspace-step">01</span>
-              <div><h2>Create the initial report</h2><p>Use the approved E-3707_H template only when this project does not yet have a current internal report.</p></div>
+              <div><h2>{reportEntry.title}</h2><p>{reportEntry.description}</p></div>
             </div>
-            <button
-              className="primary-action"
-              disabled={!readiness.canGenerateInitialDraft || Boolean(busyAction) || currentReport?.status !== "missing"}
-              onClick={() => void runAction("initial", async () => {
-                const revision = await generateInitialReportRevision(projectId);
-                await refresh();
-                return `Generated the initial internal report (${revision.file_name}).`;
-              })}
-              type="button"
-            >
-              {busyAction === "initial" ? "Generating..." : "Generate initial report"}
-            </button>
-            {readiness.initialDraftBlocker ? <p className="report-workspace-blocker">{readiness.initialDraftBlocker}</p> : null}
-            {currentReport?.status === "ready" ? <p className="report-workspace-note">A current report already exists. Use a section update action below.</p> : null}
-            {currentReport?.status === "ambiguous" ? <p className="report-workspace-blocker">Multiple internal reports were found. Resolve that conflict before creating or updating a report.</p> : null}
+            <div className="report-workspace-current-report">
+              <span className={`report-workspace-status report-workspace-status-${reportEntry.kind}`}>
+                {reportEntry.statusLabel}
+              </span>
+              {currentReport?.file_name ? <strong>{currentReport.file_name}</strong> : null}
+              {reportEntry.locationLabel ? <small>{reportEntry.locationLabel}</small> : null}
+            </div>
+            <div className="report-workspace-action-row">
+              {reportEntry.kind === "generate" ? (
+                <button
+                  className="primary-action"
+                  disabled={!readiness.canGenerateInitialDraft || Boolean(busyAction)}
+                  onClick={() => void runAction("initial", async () => {
+                    const revision = await generateInitialReportRevision(projectId);
+                    await refresh();
+                    return `Generated the initial internal report (${revision.file_name}).`;
+                  })}
+                  type="button"
+                >
+                  {busyAction === "initial" ? "Generating..." : "Generate initial report"}
+                </button>
+              ) : null}
+              {reportEntry.kind === "publish" ? (
+                <button
+                  className="primary-action"
+                  disabled={Boolean(busyAction)}
+                  onClick={() => void handlePublishManagedReport()}
+                  type="button"
+                >
+                  {busyAction === "publish" ? "Publishing..." : "Publish current draft to project folder"}
+                </button>
+              ) : null}
+              {currentReport?.status === "ready" ? (
+                <button disabled={Boolean(busyAction)} onClick={() => void handleDownloadCurrent()} type="button">Download current report</button>
+              ) : null}
+            </div>
+            {reportEntry.kind === "generate" && readiness.initialDraftBlocker ? <p className="report-workspace-blocker">{readiness.initialDraftBlocker}</p> : null}
+            {reportEntry.kind === "ready" ? <p className="report-workspace-note">Use the section actions below to update test results while preserving manual edits.</p> : null}
+            {reportEntry.kind === "managed" ? <p className="report-workspace-note">Create the official project folder before publishing this draft.</p> : null}
+            {reportEntry.kind === "blocked" ? <p className="report-workspace-blocker">Multiple internal reports were found. Resolve that conflict before creating or updating a report.</p> : null}
           </article>
 
           <article className="report-workspace-card">
@@ -296,34 +326,6 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
             </button>
             {readiness.llcrUpdateBlocker ? <p className="report-workspace-blocker">{readiness.llcrUpdateBlocker}</p> : null}
             {currentReport?.status !== "ready" ? <p className="report-workspace-blocker">{currentReport?.status === "ambiguous" ? "Multiple current internal reports were found. Keep exactly one before updating." : "Generate an initial report before updating LLCR results."}</p> : null}
-            {currentReport?.mode === "managed_draft" ? <p className="report-workspace-note">No official project report is available. This update will use the controlled draft.</p> : null}
-            {currentReport?.status === "ready" ? (
-              <div className="report-workspace-current-actions">
-                <span>
-                  <strong>{currentReport.mode === "official" ? "Official project report" : "ConnLab managed draft"}</strong>
-                  {currentReport.file_name}
-                  {currentReport.folder_path ? <small title={currentReport.folder_path}>{currentReport.folder_path}</small> : null}
-                </span>
-                <button disabled={Boolean(busyAction)} onClick={() => void handleDownloadCurrent()} type="button">Download current report</button>
-                {currentReport.can_publish_to_official ? (
-                  <>
-                    {currentReport.official_folder_path ? (
-                      <small title={currentReport.official_folder_path}>
-                        Publish destination: {currentReport.official_folder_path}
-                      </small>
-                    ) : null}
-                    <button
-                      className="primary-action"
-                      disabled={Boolean(busyAction)}
-                      onClick={() => void handlePublishManagedReport()}
-                      type="button"
-                    >
-                      {busyAction === "publish" ? "Publishing..." : "Publish current draft to project folder"}
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            ) : null}
             <div className="report-workspace-owned-regions" aria-label="Update boundary">
               <strong>This action owns</strong>
               <span>LLCR Result and Comment cells only</span>

@@ -9718,7 +9718,23 @@
 
 .report-workspace-card button,
 .report-workspace-dialog button {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-ink);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
   justify-self: start;
+  min-height: 40px;
+  padding: 8px 14px;
+}
+
+.report-workspace-card button:disabled,
+.report-workspace-dialog button:disabled {
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+  cursor: not-allowed;
 }
 
 .report-workspace-card .primary-action,
@@ -9788,7 +9804,7 @@
   overflow-wrap: anywhere;
 }
 
-.report-workspace-current-actions,
+.report-workspace-current-report,
 .report-workspace-owned-regions {
   background: var(--color-surface-muted);
   border: 1px solid var(--color-border);
@@ -9799,21 +9815,59 @@
   padding: 12px;
 }
 
-.report-workspace-current-actions span,
+.report-workspace-current-report,
 .report-workspace-owned-regions {
   color: var(--color-ink-muted);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
 
-.report-workspace-current-actions span {
-  display: grid;
-  gap: 3px;
-}
-
-.report-workspace-current-actions strong,
+.report-workspace-current-report strong,
 .report-workspace-owned-regions strong {
   color: var(--color-ink);
+}
+
+.report-workspace-current-report strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.report-workspace-current-report small {
+  color: var(--color-ink-muted);
+}
+
+.report-workspace-status {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  justify-self: start;
+  padding: 4px 8px;
+}
+
+.report-workspace-status-generate,
+.report-workspace-status-managed {
+  color: var(--color-ink-muted);
+}
+
+.report-workspace-status-publish {
+  border-color: var(--color-ready);
+  color: var(--color-ready);
+}
+
+.report-workspace-status-ready {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.report-workspace-status-blocked {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.report-workspace-action-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .report-workspace-owned-regions span {

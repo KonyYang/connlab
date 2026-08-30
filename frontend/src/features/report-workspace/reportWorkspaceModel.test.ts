@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { LlcrImportPreview, ReportWorkspaceState } from "../../api/client";
+import type { CurrentReport, LlcrImportPreview, ReportWorkspaceState } from "../../api/client";
 import {
   buildLlcrConfirmationDecisions,
+  deriveReportEntryState,
   deriveReportWorkspaceReadiness,
   formatLlcrSummary,
   validateLlcrConfirmation,
@@ -54,6 +55,32 @@ const preview: LlcrImportPreview = {
 };
 
 describe("reportWorkspaceModel", () => {
+  it("derives one primary report action from the current artifact state", () => {
+    const managed: CurrentReport = {
+      status: "ready",
+      mode: "managed_draft",
+      file_name: "DL-001 Qualification Testing Report_Rev_A_Draft.docx",
+      file_sha256: "a".repeat(64),
+      report_revision_id: "report-revision-1",
+      folder_path: "D:\\ConnLab\\managed",
+      official_folder_path: null,
+      can_publish_to_official: false,
+      download_url: "/download",
+    };
+
+    expect(deriveReportEntryState(null).kind).toBe("generate");
+    expect(deriveReportEntryState(managed).kind).toBe("managed");
+    expect(
+      deriveReportEntryState({
+        ...managed,
+        official_folder_path: "D:\\Test Project\\DL-001",
+        can_publish_to_official: true,
+      }).kind
+    ).toBe("publish");
+    expect(deriveReportEntryState({ ...managed, mode: "official" }).kind).toBe("ready");
+    expect(deriveReportEntryState({ ...managed, status: "ambiguous" }).kind).toBe("blocked");
+  });
+
   it("requires confirmed Basic Information and an active Confirmed Matrix for initial drafts", () => {
     expect(deriveReportWorkspaceReadiness(state)).toMatchObject({
       canGenerateInitialDraft: true,

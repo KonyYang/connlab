@@ -109,7 +109,7 @@ describe("ReportWorkspace", () => {
     expect(screen.getByRole("status").textContent).toContain("Loading Report Workspace...");
   });
 
-  it("exposes initial generation, LLCR import preview, confirmation, and the current report", async () => {
+  it("exposes the current report, LLCR import preview, and confirmation", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
     render(<ReportWorkspace projectId="project-1" onBack={onBack} />);
@@ -118,7 +118,8 @@ describe("ReportWorkspace", () => {
     expect(screen.getByText("Project project-1")).toBeTruthy();
     expect(screen.getAllByText(currentReport.file_name!).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Confirmed Matrix revision 4")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Generate initial report" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("heading", { name: "Current report ready" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Generate initial report" })).toBeNull();
 
     const fileInput = screen.getByLabelText("LLCR result workbook");
     fireEvent.change(fileInput, {
@@ -139,6 +140,42 @@ describe("ReportWorkspace", () => {
         decisions: [{ result_id: "result-1", outcome: "pass", override_reason: null }],
       })
     );
+  });
+
+  it("enables initial generation only when no current report exists", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue({
+      status: "missing",
+      mode: null,
+      file_name: null,
+      file_sha256: null,
+      report_revision_id: null,
+      folder_path: null,
+      official_folder_path: null,
+      can_publish_to_official: false,
+      download_url: null,
+    });
+    vi.mocked(api.generateInitialReportRevision).mockResolvedValue({
+      report_revision_id: "report-revision-1",
+      revision: 1,
+      file_name: "DL-001 Qualification Testing Report_Rev_A.docx",
+      file_sha256: "b".repeat(64),
+      size_bytes: 1024,
+      confirmed_matrix_id: "matrix-1",
+      result_dataset_id: null,
+      base_report_revision_id: null,
+      created_at: "2026-08-30T09:00:00Z",
+      created_by: "Lab User",
+      download_url: "/api/projects/project-1/report-workspace/revisions/report-revision-1/download",
+    });
+
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+
+    const generateButton = await screen.findByRole("button", { name: "Generate initial report" });
+    expect(generateButton).toHaveProperty("disabled", false);
+    await user.click(generateButton);
+
+    expect(api.generateInitialReportRevision).toHaveBeenCalledWith("project-1");
   });
 
   it("blocks an outcome override until a reason is supplied", async () => {
@@ -248,11 +285,9 @@ describe("ReportWorkspace", () => {
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
 
-    expect(await screen.findByText("ConnLab managed draft")).toBeTruthy();
-    expect(screen.getByText(managed.folder_path!)).toBeTruthy();
-    expect(
-      screen.getByText(`Publish destination: ${managed.official_folder_path}`)
-    ).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Publish current report" })).toBeTruthy();
+    expect((await screen.findAllByText("ConnLab managed draft")).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Destination: Official project folder")).toBeTruthy();
     await user.click(
       screen.getByRole("button", { name: "Publish current draft to project folder" })
     );
