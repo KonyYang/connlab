@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "REPORT-003A",
     "summary": "Implement the current internal report section-update and safe publication kernel, using existing LLCR Result/Comment synchronization as the first adapter.",
@@ -45,17 +45,93 @@
     ],
     "activation_head": "9fdac58dc90487744b91036f38bd8c3fbf1e0844",
     "started_at": "2026-08-30T10:41:55.035452Z",
-    "updated_at": "2026-08-30T13:34:50.282782Z",
+    "updated_at": "2026-08-30T13:55:59.295962Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "REPORT-003A",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User approved replacing the disabled initial action with state-driven generate/publish behavior and optimizing the Report Workspace UI.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "REPORT-003A",
+      "subject": "4cbc68bdbb2c08fbd689939f89817c936d54f580",
+      "summary": "Report Workspace now presents one state-driven current-report action: initialize only when missing, publish an existing managed draft when the official project folder is ready, or show the official report as ready. The UI no longer exposes local absolute paths.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/dependencies.py",
+        "backend/api/routes_report_workspace.py",
+        "backend/application/current_report_update_service.py",
+        "backend/application/report_workspace_service.py",
+        "backend/application/test_report_draft_service.py",
+        "backend/infrastructure/files/report_publication_gateway.py",
+        "backend/infrastructure/office/test_report_document_gateway.py",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+        "frontend/src/features/report-workspace/reportWorkspaceModel.test.ts",
+        "frontend/src/features/report-workspace/reportWorkspaceModel.ts",
+        "frontend/src/workbench.css",
+        "tests/integration/test_report_workspace_api.py",
+        "tests/unit/test_current_report_update_service.py",
+        "tests/unit/test_report_publication_gateway.py",
+        "tests/unit/test_report_workspace_service.py",
+        "tests/unit/test_test_report_document_gateway.py",
+        "tests/unit/test_test_report_draft_service.py"
+      ],
+      "validation": [
+        {
+          "name": "Affected backend report suites: 51 tests",
+          "status": "passed"
+        },
+        {
+          "name": "Report Workspace targeted frontend: 13 tests",
+          "status": "passed"
+        },
+        {
+          "name": "Complete frontend suite: 456 tests",
+          "status": "passed"
+        },
+        {
+          "name": "Frontend production build",
+          "status": "passed"
+        },
+        {
+          "name": "Read-only live browser state and visual inspection",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed",
+          "summary": "The approved generate/publish/ready state model stays within the existing report lifecycle and preserves section-specific updates."
+        },
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented the state selector, primary report card behavior, consistent controls, and regression coverage without writing real report files."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Sequential Standards and Spec reviews found no unresolved findings or scope creep."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Affected backend tests, targeted and complete frontend tests, production build, and read-only live browser verification passed."
+        },
+        "integrator": {
+          "status": "passed",
+          "summary": "Verified exact subject, declared paths, clean committed state, and live UI/API composition; no controlled template or real report was modified."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "verified_local"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_REPORT_WORKSPACE_CUSTOMER_REPORT_DRAFT",
