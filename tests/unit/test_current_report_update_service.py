@@ -10,6 +10,7 @@ import pytest
 from backend.application.current_report_update_service import (
     CurrentReportUpdateError,
     CurrentReportUpdateService,
+    PublishManagedReportCommand,
     UpdateCurrentLlcrReportCommand,
 )
 from backend.domain.result_dataset_models import ReportDraftRevision
@@ -81,6 +82,60 @@ def test_preview_uses_latest_managed_draft_when_no_official_report_exists(
     assert preview.warnings == (
         "No official project report is available; the controlled draft will be updated.",
     )
+
+
+def test_managed_draft_can_be_published_into_an_empty_official_project_folder(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "official"
+    official.mkdir()
+    draft = (
+        tmp_path
+        / "generated"
+        / "DL-001 Product Qualification Testing Report_Rev_A_Draft (9).docx"
+    )
+    draft.parent.mkdir()
+    draft.write_bytes(b"manually-edited-draft")
+    service = _service(
+        tmp_path,
+        workspace=_workspace(tmp_path, official),
+        reports=(_report_revision(draft),),
+    )
+    current = service.get_current_report("P1")
+
+    published = service.publish_managed_report(
+        PublishManagedReportCommand(
+            project_id="P1",
+            expected_report_sha256=current.file_sha256 or "",
+        )
+    )
+
+    target = official / "DL-001 Product Qualification Testing Report_Rev_A.docx"
+    assert published.mode == "official"
+    assert published.file_path == target
+    assert target.read_bytes() == b"manually-edited-draft"
+    assert draft.read_bytes() == b"manually-edited-draft"
+
+
+def test_current_managed_draft_exposes_official_publication_availability(
+    tmp_path: Path,
+) -> None:
+    official = tmp_path / "official"
+    official.mkdir()
+    draft = tmp_path / "generated" / "DL-001 Product Report_Rev_A_Draft.docx"
+    draft.parent.mkdir()
+    draft.write_bytes(b"draft")
+    service = _service(
+        tmp_path,
+        workspace=_workspace(tmp_path, official),
+        reports=(_report_revision(draft),),
+    )
+
+    current = service.get_current_report("P1")
+
+    assert current.can_publish_to_official is True
+    assert current.folder_path == draft.parent
+    assert current.official_folder_path == official
 
 
 def test_preview_blocks_a_managed_draft_from_a_different_confirmed_matrix(

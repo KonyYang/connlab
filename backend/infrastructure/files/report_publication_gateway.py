@@ -153,6 +153,69 @@ class ReportPublicationGateway:
                     if directory.is_dir() and not any(directory.iterdir()):
                         directory.rmdir()
 
+    def publish_new_current(
+        self,
+        *,
+        source_path: Path,
+        expected_source_sha256: str,
+        target_path: Path,
+    ) -> ReportFilePublicationResult:
+        """Copy one managed draft into an empty official current-report slot."""
+        source = Path(source_path)
+        target = Path(target_path)
+        if source.suffix.casefold() != ".docx" or not source.is_file():
+            raise FileNotFoundError(f"Managed report draft does not exist: {source}")
+        if target.suffix.casefold() != ".docx" or not target.parent.is_dir():
+            raise FileNotFoundError(
+                f"Official report folder does not exist: {target.parent}"
+            )
+        expected = expected_source_sha256.strip().casefold()
+        if not expected or self.fingerprint(source) != expected:
+            raise ReportPublicationConflictError(
+                "The managed report changed after preview. Preview publication again."
+            )
+        if target.exists():
+            raise ReportPublicationConflictError(
+                f"An official report already exists at the target path: {target}"
+            )
+
+        staging = target.with_name(
+            f".{target.stem}.{self._ids()}.stage{target.suffix}"
+        )
+        owns_target_reservation = False
+        published = False
+        try:
+            shutil.copy2(source, staging)
+            staged_sha256 = self.fingerprint(staging)
+            if staged_sha256 != expected or self.fingerprint(source) != expected:
+                raise ReportPublicationConflictError(
+                    "The managed report changed while it was being copied. Preview publication again."
+                )
+            try:
+                descriptor = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.close(descriptor)
+                owns_target_reservation = True
+                os.replace(staging, target)
+                published = True
+            except FileExistsError as exc:
+                raise ReportPublicationConflictError(
+                    f"An official report already exists at the target path: {target}"
+                ) from exc
+            except PermissionError as exc:
+                raise ReportPublicationConflictError(
+                    "The official report folder is not writable or the target is open in Word."
+                ) from exc
+            return ReportFilePublicationResult(
+                current_path=target,
+                current_sha256=staged_sha256,
+                changed=True,
+                archive_path=None,
+            )
+        finally:
+            staging.unlink(missing_ok=True)
+            if owns_target_reservation and not published:
+                target.unlink(missing_ok=True)
+
 
 def _is_internal_report_name(stem: str, normalized_dl: str) -> bool:
     normalized = " ".join(stem.split()).casefold()

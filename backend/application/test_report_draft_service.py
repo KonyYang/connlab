@@ -7,7 +7,7 @@ from datetime import date
 import os
 from pathlib import Path
 import re
-from typing import Protocol
+from typing import Literal, Protocol
 
 from backend.application.confirmed_matrix_test_record_preview_service import (
     BuildConfirmedMatrixTestRecordPreviewCommand,
@@ -78,6 +78,7 @@ class GenerateTestReportDraftCommand:
     project_id: str
     template_path: Path
     output_dir: Path
+    publication_mode: Literal["managed_draft", "official_current"] = "managed_draft"
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,10 +181,23 @@ class TestReportDraftService:
             generated_on=date.today(),
             sample_rows=basic_information.sample_rows,
         )
-        project_dir = Path(command.output_dir) / _safe_file_component(command.project_id, 80)
-        project_dir.mkdir(parents=True, exist_ok=True)
-        file_name = _report_file_name(report)
-        output_path = _reserve_non_overwriting_path(project_dir / file_name)
+        if command.publication_mode == "official_current":
+            target_dir = Path(command.output_dir)
+            file_name = _report_file_name(report, draft=False)
+        elif command.publication_mode == "managed_draft":
+            target_dir = Path(command.output_dir) / _safe_file_component(
+                command.project_id, 80
+            )
+            file_name = _report_file_name(report, draft=True)
+        else:
+            raise TestReportDraftGenerationError(
+                f"Unsupported report publication mode: {command.publication_mode}"
+            )
+        target_dir.mkdir(parents=True, exist_ok=True)
+        output_path = _reserve_report_path(
+            target_dir / file_name,
+            allow_numbered_copy=command.publication_mode == "managed_draft",
+        )
         try:
             written_path = self._writer.generate(
                 template_path=template_path,
@@ -210,23 +224,25 @@ class TestReportDraftService:
         )
 
 
-def _report_file_name(report: TestReportDraftData) -> str:
+def _report_file_name(report: TestReportDraftData, *, draft: bool) -> str:
     report_number = _safe_file_component(report.report_number, 50)
     product_name = _safe_file_component(report.product_name, 80)
     test_description = _safe_file_component(report.test_description, 60)
-    return (
-        f"{report_number} {product_name} {test_description} "
-        "Report_Rev_A_Draft.docx"
-    )
+    suffix = "Report_Rev_A_Draft.docx" if draft else "Report_Rev_A.docx"
+    return f"{report_number} {product_name} {test_description} {suffix}"
 
 
-def _reserve_non_overwriting_path(path: Path) -> Path:
+def _reserve_report_path(path: Path, *, allow_numbered_copy: bool) -> Path:
     candidate = path
     index = 2
     while True:
         try:
             descriptor = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except FileExistsError:
+            if not allow_numbered_copy:
+                raise TestReportDraftGenerationError(
+                    f"An official report already exists at the target path: {path}"
+                )
             candidate = path.with_name(f"{path.stem} ({index}){path.suffix}")
             index += 1
             continue

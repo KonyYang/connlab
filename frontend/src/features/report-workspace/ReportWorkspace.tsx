@@ -7,6 +7,7 @@ import {
   fetchReportWorkspace,
   generateInitialReportRevision,
   inspectLlcrResultWorkbook,
+  publishManagedReport,
   previewCurrentReportLlcrUpdate,
   updateCurrentReportLlcr,
   type CurrentReport,
@@ -28,7 +29,7 @@ type ReportWorkspaceProps = {
   onBack: () => void;
 };
 
-type BusyAction = "load" | "initial" | "inspect" | "confirm" | "cancel" | "llcr" | "download" | null;
+type BusyAction = "load" | "initial" | "inspect" | "confirm" | "cancel" | "llcr" | "publish" | "download" | null;
 
 export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): ReactElement {
   const [state, setState] = useState<ReportWorkspaceState | null>(null);
@@ -185,6 +186,18 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
     });
   }
 
+  async function handlePublishManagedReport(): Promise<void> {
+    const expectedSha = currentReport?.file_sha256;
+    if (!expectedSha || !currentReport.can_publish_to_official) {
+      return;
+    }
+    await runAction("publish", async () => {
+      const published = await publishManagedReport(projectId, expectedSha);
+      await refresh();
+      return `Published the current report to ${published.folder_path ?? "the project folder"}.`;
+    });
+  }
+
   if (!state && busyAction === "load" && !error) {
     return (
       <section aria-busy="true" className="report-workspace-page">
@@ -286,8 +299,29 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
             {currentReport?.mode === "managed_draft" ? <p className="report-workspace-note">No official project report is available. This update will use the controlled draft.</p> : null}
             {currentReport?.status === "ready" ? (
               <div className="report-workspace-current-actions">
-                <span><strong>Current report</strong>{currentReport.file_name}</span>
+                <span>
+                  <strong>{currentReport.mode === "official" ? "Official project report" : "ConnLab managed draft"}</strong>
+                  {currentReport.file_name}
+                  {currentReport.folder_path ? <small title={currentReport.folder_path}>{currentReport.folder_path}</small> : null}
+                </span>
                 <button disabled={Boolean(busyAction)} onClick={() => void handleDownloadCurrent()} type="button">Download current report</button>
+                {currentReport.can_publish_to_official ? (
+                  <>
+                    {currentReport.official_folder_path ? (
+                      <small title={currentReport.official_folder_path}>
+                        Publish destination: {currentReport.official_folder_path}
+                      </small>
+                    ) : null}
+                    <button
+                      className="primary-action"
+                      disabled={Boolean(busyAction)}
+                      onClick={() => void handlePublishManagedReport()}
+                      type="button"
+                    >
+                      {busyAction === "publish" ? "Publishing..." : "Publish current draft to project folder"}
+                    </button>
+                  </>
+                ) : null}
               </div>
             ) : null}
             <div className="report-workspace-owned-regions" aria-label="Update boundary">

@@ -15,6 +15,7 @@ vi.mock("../../api/client", async () => {
     generateInitialReportRevision: vi.fn(),
     previewCurrentReportLlcrUpdate: vi.fn(),
     updateCurrentReportLlcr: vi.fn(),
+    publishManagedReport: vi.fn(),
     downloadCurrentReport: vi.fn(),
     cancelLlcrResultPreview: vi.fn(),
   };
@@ -37,6 +38,9 @@ const currentReport: api.CurrentReport = {
   file_name: "DL-001 Qualification Testing Report_Rev_A.docx",
   file_sha256: "a".repeat(64),
   report_revision_id: null,
+  folder_path: "D:\\Test Project\\DL-001\\Official Test",
+  official_folder_path: "D:\\Test Project\\DL-001\\Official Test",
+  can_publish_to_official: false,
   download_url: "/api/projects/project-1/report-workspace/current-report/download",
 };
 
@@ -224,5 +228,39 @@ describe("ReportWorkspace", () => {
     });
     expect(await screen.findByText(/Updated LLCR results in/)).toBeTruthy();
     expect(screen.queryByText("Report draft history")).toBeNull();
+  });
+
+  it("publishes the current managed draft to the official project folder explicitly", async () => {
+    const user = userEvent.setup();
+    const managed: api.CurrentReport = {
+      ...currentReport,
+      mode: "managed_draft",
+      file_name: "DL-001 Qualification Testing Report_Rev_A_Draft (9).docx",
+      folder_path: "D:\\PythonProject\\connlab\\data\\generated_test_reports\\project-1",
+      official_folder_path: "D:\\Test Project\\DL-001\\Official Test",
+      can_publish_to_official: true,
+    };
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue(managed);
+    vi.mocked(api.publishManagedReport).mockResolvedValue({
+      ...currentReport,
+      file_name: "DL-001 Qualification Testing Report_Rev_A.docx",
+    });
+
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+
+    expect(await screen.findByText("ConnLab managed draft")).toBeTruthy();
+    expect(screen.getByText(managed.folder_path!)).toBeTruthy();
+    expect(
+      screen.getByText(`Publish destination: ${managed.official_folder_path}`)
+    ).toBeTruthy();
+    await user.click(
+      screen.getByRole("button", { name: "Publish current draft to project folder" })
+    );
+
+    expect(api.publishManagedReport).toHaveBeenCalledWith(
+      "project-1",
+      "a".repeat(64)
+    );
+    expect(await screen.findByText(/Published the current report to/)).toBeTruthy();
   });
 });

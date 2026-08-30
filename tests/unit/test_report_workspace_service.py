@@ -62,6 +62,33 @@ def test_workspace_records_initial_and_llcr_report_revisions_without_overwrite(t
     assert state.datasets == (dataset,)
 
 
+def test_initial_report_targets_existing_official_project_folder(tmp_path) -> None:
+    repository = _Repository()
+    official_folder = tmp_path / "DL-2026-08-004 Official Test"
+    official_folder.mkdir()
+    initial_service = _InitialService(official_folder / "official.docx")
+    service = ReportWorkspaceService(
+        repository=repository,
+        initial_report_service=initial_service,
+        llcr_writer=_Writer(),
+        clock=lambda: "2026-08-29T09:00:00Z",
+        official_workspace_store=_OfficialWorkspaceStore(official_folder),
+    )
+
+    generated = service.generate_initial(
+        GenerateInitialReportCommand(
+            project_id="P1",
+            template_path=tmp_path / "template.docx",
+            output_dir=tmp_path / "managed",
+            created_by="Lab User",
+        )
+    )
+
+    assert initial_service.command.output_dir == official_folder
+    assert initial_service.command.publication_mode == "official_current"
+    assert Path(generated.file_path).parent == official_folder
+
+
 def test_customer_report_is_derived_from_selected_internal_revision_without_joining_history(
     tmp_path,
 ) -> None:
@@ -320,6 +347,7 @@ class _InitialService:
         self.output_path = output_path
 
     def generate(self, command):
+        self.command = command
         self.output_path.write_bytes(b"initial")
         return TestReportDraftGenerationResult(
             project_id="P1",
@@ -329,6 +357,16 @@ class _InitialService:
             confirmed_basic_information_version=1,
             confirmed_basic_information_source_signature_hash="basic-hash",
         )
+
+
+class _OfficialWorkspaceStore:
+    def __init__(self, official_folder_path: Path | None) -> None:
+        self.official_folder_path = official_folder_path
+
+    def get_by_project(self, project_id: str):
+        if self.official_folder_path is None:
+            return None
+        return SimpleNamespace(official_folder_path=self.official_folder_path)
 
 
 class _Writer:

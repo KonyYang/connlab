@@ -25,6 +25,7 @@ from backend.application.current_report_update_service import (
     CurrentReportUpdatePreview,
     CurrentReportUpdateResult,
     CurrentReportUpdateService,
+    PublishManagedReportCommand,
     UpdateCurrentLlcrReportCommand,
 )
 from backend.application.llcr_result_dataset_service import (
@@ -89,6 +90,10 @@ class UpdateCurrentLlcrReportRequest(BaseModel):
     updated_by: str = "Lab User"
 
 
+class PublishManagedReportRequest(BaseModel):
+    expected_report_sha256: str = Field(min_length=64, max_length=64)
+
+
 @router.get("/api/projects/{project_id}/report-workspace")
 def get_report_workspace(
     project_id: str,
@@ -118,6 +123,26 @@ def get_current_report(
 ) -> dict:
     try:
         report = service.get_current_report(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
+    return _current_report_response(project_id, report)
+
+
+@router.post("/api/projects/{project_id}/report-workspace/current-report/publish")
+def publish_managed_report(
+    project_id: str,
+    request: PublishManagedReportRequest,
+    service: CurrentReportUpdateService = Depends(get_current_report_update_service),
+) -> dict:
+    try:
+        report = service.publish_managed_report(
+            PublishManagedReportCommand(
+                project_id=project_id,
+                expected_report_sha256=request.expected_report_sha256,
+            )
+        )
+    except (CurrentReportUpdateError, CurrentReportFileConflictError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except FileNotFoundError as exc:
         raise HTTPException(status_code=410, detail=str(exc)) from exc
     return _current_report_response(project_id, report)
@@ -479,6 +504,13 @@ def _current_report_response(project_id: str, item: CurrentReportArtifact) -> di
         "file_name": item.file_name,
         "file_sha256": item.file_sha256,
         "report_revision_id": item.report_revision_id,
+        "folder_path": str(item.folder_path) if item.folder_path is not None else None,
+        "official_folder_path": (
+            str(item.official_folder_path)
+            if item.official_folder_path is not None
+            else None
+        ),
+        "can_publish_to_official": item.can_publish_to_official,
         "download_url": (
             f"/api/projects/{project_id}/report-workspace/current-report/download"
             if item.status == "ready"

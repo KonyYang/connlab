@@ -173,6 +173,46 @@ def test_current_report_llcr_preview_update_and_download(tmp_path: Path) -> None
     assert current_service.command.expected_report_sha256 == "a" * 64
 
 
+def test_current_managed_report_can_be_published_to_official_project_folder(
+    tmp_path: Path,
+) -> None:
+    managed = tmp_path / "managed" / "DL-001 Report_Rev_A_Draft (9).docx"
+    managed.parent.mkdir()
+    managed.write_bytes(b"managed")
+    official_folder = tmp_path / "official"
+    official_folder.mkdir()
+    current_service = _CurrentReportUpdateService(managed)
+    current_service.report = CurrentReportArtifact(
+        status="ready",
+        mode="managed_draft",
+        file_name=managed.name,
+        file_path=managed,
+        file_sha256="a" * 64,
+        history_root=managed.parent / "History" / "Report",
+        folder_path=managed.parent,
+        official_folder_path=official_folder,
+        can_publish_to_official=True,
+    )
+    app.dependency_overrides[get_current_report_update_service] = lambda: current_service
+    client = TestClient(app)
+    try:
+        current = client.get("/api/projects/P1/report-workspace/current-report")
+        published = client.post(
+            "/api/projects/P1/report-workspace/current-report/publish",
+            json={"expected_report_sha256": "a" * 64},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert current.json()["can_publish_to_official"] is True
+    assert current.json()["folder_path"] == str(managed.parent)
+    assert current.json()["official_folder_path"] == str(official_folder)
+    assert published.status_code == 200
+    assert published.json()["mode"] == "official"
+    assert published.json()["file_name"] == "DL-001 Report_Rev_A.docx"
+    assert current_service.publish_command.expected_report_sha256 == "a" * 64
+
+
 class _LlcrService:
     def __init__(self, preview, dataset):
         self.preview = preview
@@ -264,6 +304,22 @@ class _CurrentReportUpdateService:
             current_sha256="b" * 64,
             archive_path=self.report.file_path.parent / "History" / "Report" / "old.docx",
             updated_by=command.updated_by,
+        )
+
+    def publish_managed_report(self, command):
+        self.publish_command = command
+        assert self.report.official_folder_path is not None
+        target = self.report.official_folder_path / "DL-001 Report_Rev_A.docx"
+        target.write_bytes(self.report.file_path.read_bytes())
+        return CurrentReportArtifact(
+            status="ready",
+            mode="official",
+            file_name=target.name,
+            file_path=target,
+            file_sha256="a" * 64,
+            history_root=target.parent / "History" / "Report",
+            folder_path=target.parent,
+            official_folder_path=target.parent,
         )
 
 

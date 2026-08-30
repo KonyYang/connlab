@@ -782,6 +782,7 @@ def get_report_workspace_service(
             ProjectBasicInformationRepository(session)
         ),
         confirmed_matrix_store=confirmed_store,
+        official_workspace_store=ProjectOfficialWorkspaceRepository(session),
     )
 
 

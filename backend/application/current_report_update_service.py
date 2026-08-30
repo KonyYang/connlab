@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import re
 from typing import Callable, Protocol
 
 from backend.domain.result_dataset_models import (
@@ -62,6 +63,14 @@ class CurrentReportFiles(Protocol):
         update_document: Callable[[Path, Path], Path],
     ) -> "CurrentReportFileUpdateResult": ...
 
+    def publish_new_current(
+        self,
+        *,
+        source_path: Path,
+        expected_source_sha256: str,
+        target_path: Path,
+    ) -> "CurrentReportFileUpdateResult": ...
+
 
 @dataclass(frozen=True, slots=True)
 class CurrentReportFileUpdateResult:
@@ -81,6 +90,9 @@ class CurrentReportArtifact:
     history_root: Path | None
     report_revision_id: str | None = None
     confirmed_matrix_id: str | None = None
+    folder_path: Path | None = None
+    official_folder_path: Path | None = None
+    can_publish_to_official: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,6 +111,12 @@ class UpdateCurrentLlcrReportCommand:
     dataset_id: str
     expected_report_sha256: str
     updated_by: str
+
+
+@dataclass(frozen=True, slots=True)
+class PublishManagedReportCommand:
+    project_id: str
+    expected_report_sha256: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,6 +226,50 @@ class CurrentReportUpdateService:
         report, _, _ = self._resolve_current_report(project_id)
         return report
 
+    def publish_managed_report(
+        self,
+        command: PublishManagedReportCommand,
+    ) -> CurrentReportArtifact:
+        report, blockers, _ = self._resolve_current_report(command.project_id)
+        if blockers:
+            raise CurrentReportUpdateError(" ".join(blockers))
+        if (
+            report.mode != "managed_draft"
+            or not report.can_publish_to_official
+            or report.file_path is None
+            or report.file_sha256 is None
+            or report.official_folder_path is None
+        ):
+            raise CurrentReportUpdateError(
+                "The current managed draft cannot be published to an official project folder."
+            )
+        if command.expected_report_sha256.strip().casefold() != report.file_sha256:
+            raise CurrentReportFileConflictError(
+                "The managed report changed after preview. Preview publication again."
+            )
+        target = report.official_folder_path / _official_file_name(report.file_path.name)
+        published = self._files.publish_new_current(
+            source_path=report.file_path,
+            expected_source_sha256=command.expected_report_sha256,
+            target_path=target,
+        )
+        workspace = self._workspaces.get_by_project(command.project_id)
+        history_root = (
+            Path(workspace.local_workspace_path) / "History" / "Report"
+            if workspace is not None
+            else None
+        )
+        return CurrentReportArtifact(
+            status="ready",
+            mode="official",
+            file_name=published.current_path.name,
+            file_path=published.current_path,
+            file_sha256=published.current_sha256,
+            history_root=history_root,
+            folder_path=published.current_path.parent,
+            official_folder_path=published.current_path.parent,
+        )
+
     def _require_current_llcr_dataset(
         self,
         project_id: str,
@@ -261,6 +323,8 @@ class CurrentReportUpdateService:
                         history_root=Path(workspace.local_workspace_path)
                         / "History"
                         / "Report",
+                        folder_path=official_folder,
+                        official_folder_path=official_folder,
                     ),
                     (blocker,),
                     tuple(),
@@ -277,6 +341,8 @@ class CurrentReportUpdateService:
                         history_root=Path(workspace.local_workspace_path)
                         / "History"
                         / "Report",
+                        folder_path=path.parent,
+                        official_folder_path=official_folder,
                     ),
                     tuple(),
                     tuple(),
@@ -299,6 +365,18 @@ class CurrentReportUpdateService:
                         history_root=path.parent / "History" / "Report",
                         report_revision_id=managed.report_revision_id,
                         confirmed_matrix_id=managed.confirmed_matrix_id,
+                        folder_path=path.parent,
+                        official_folder_path=(
+                            Path(workspace.official_folder_path)
+                            if workspace is not None
+                            and Path(workspace.official_folder_path).is_dir()
+                            else None
+                        ),
+                        can_publish_to_official=(
+                            workspace is not None
+                            and Path(workspace.official_folder_path).is_dir()
+                            and _has_managed_draft_name(path.name)
+                        ),
                     ),
                     tuple(),
                     (warning,),
@@ -317,3 +395,24 @@ class CurrentReportUpdateService:
             (blocker,),
             tuple(),
         )
+
+
+def _has_managed_draft_name(file_name: str) -> bool:
+    return bool(
+        re.search(r"_Draft(?: \(\d+\))?\.docx$", file_name, flags=re.IGNORECASE)
+    )
+
+
+def _official_file_name(managed_file_name: str) -> str:
+    official_name, count = re.subn(
+        r"_Draft(?: \(\d+\))?(\.docx)$",
+        r"\1",
+        managed_file_name,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    if count != 1:
+        raise CurrentReportUpdateError(
+            "The managed report file name cannot be converted to an official report name."
+        )
+    return official_name

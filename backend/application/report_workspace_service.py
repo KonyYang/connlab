@@ -35,6 +35,10 @@ class ReportRevisionStore(Protocol):
     def rollback(self) -> None: ...
 
 
+class OfficialWorkspaceStore(Protocol):
+    def get_by_project(self, project_id: str): ...
+
+
 class LlcrReportWriter(Protocol):
     def synchronize_llcr_results(
         self,
@@ -113,6 +117,7 @@ class ReportWorkspaceService:
         id_factory: Callable[[], str] = lambda: uuid4().hex,
         basic_information_reader=None,
         confirmed_matrix_store=None,
+        official_workspace_store: OfficialWorkspaceStore | None = None,
     ) -> None:
         self._repository = repository
         self._initial = initial_report_service
@@ -122,6 +127,7 @@ class ReportWorkspaceService:
         self._ids = id_factory
         self._basic_information = basic_information_reader
         self._confirmed_matrix = confirmed_matrix_store
+        self._official_workspaces = official_workspace_store
 
     def get_state(self, project_id: str) -> ReportWorkspaceState:
         reports = self._repository.list_report_revisions(project_id)
@@ -169,10 +175,10 @@ class ReportWorkspaceService:
         command: GenerateInitialReportCommand,
     ) -> ReportDraftRevision:
         generated = self._initial.generate(
-            GenerateTestReportDraftCommand(
+            self._initial_generation_command(
                 project_id=command.project_id,
                 template_path=command.template_path,
-                output_dir=command.output_dir,
+                managed_output_dir=command.output_dir,
             )
         )
         path = Path(generated.output_path)
@@ -309,10 +315,10 @@ class ReportWorkspaceService:
         command: GenerateLlcrReportCommand,
     ) -> tuple[ReportDraftRevision, Path]:
         generated = self._initial.generate(
-            GenerateTestReportDraftCommand(
+            self._initial_generation_command(
                 project_id=command.project_id,
                 template_path=command.template_path,
-                output_dir=command.output_dir,
+                managed_output_dir=command.output_dir,
             )
         )
         path = Path(generated.output_path)
@@ -329,6 +335,34 @@ class ReportWorkspaceService:
         except Exception:
             path.unlink(missing_ok=True)
             raise
+
+    def _initial_generation_command(
+        self,
+        *,
+        project_id: str,
+        template_path: Path,
+        managed_output_dir: Path,
+    ) -> GenerateTestReportDraftCommand:
+        workspace = (
+            self._official_workspaces.get_by_project(project_id)
+            if self._official_workspaces is not None
+            else None
+        )
+        official_folder = (
+            Path(workspace.official_folder_path) if workspace is not None else None
+        )
+        if official_folder is not None and official_folder.is_dir():
+            return GenerateTestReportDraftCommand(
+                project_id=project_id,
+                template_path=template_path,
+                output_dir=official_folder,
+                publication_mode="official_current",
+            )
+        return GenerateTestReportDraftCommand(
+            project_id=project_id,
+            template_path=template_path,
+            output_dir=managed_output_dir,
+        )
 
     def _build_report_revision(
         self,

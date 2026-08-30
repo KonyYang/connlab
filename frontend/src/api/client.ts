@@ -4794,6 +4794,9 @@ export type CurrentReport = {
   file_name: string | null;
   file_sha256: string | null;
   report_revision_id: string | null;
+  folder_path: string | null;
+  official_folder_path: string | null;
+  can_publish_to_official: boolean;
   download_url: string | null;
 };
 
@@ -4826,6 +4829,19 @@ export function fetchReportWorkspace(projectId: string): Promise<ReportWorkspace
 export function fetchCurrentReport(projectId: string): Promise<CurrentReport> {
   return requestJson<CurrentReport>(
     `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-report`
+  );
+}
+
+export function publishManagedReport(
+  projectId: string,
+  expectedReportSha256: string
+): Promise<CurrentReport> {
+  return requestJson<CurrentReport>(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-report/publish`,
+    {
+      method: "POST",
+      body: JSON.stringify({ expected_report_sha256: expectedReportSha256 }),
+    }
   );
 }
 

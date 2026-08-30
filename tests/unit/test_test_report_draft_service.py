@@ -92,6 +92,32 @@ def test_uses_non_overwriting_draft_name(tmp_path: Path) -> None:
     assert existing.read_bytes() == b"manual draft"
 
 
+def test_generates_canonical_current_report_directly_in_official_folder(
+    tmp_path: Path,
+) -> None:
+    official_folder = tmp_path / "official-test-folder"
+    service = TestReportDraftService(
+        preview_service=_PreviewService(_preview()),
+        basic_information_reader=_BasicInformationReader(_basic_information()),
+        writer=_Writer(),
+    )
+
+    result = service.generate(
+        GenerateTestReportDraftCommand(
+            project_id="P1",
+            template_path=_template(tmp_path),
+            output_dir=official_folder,
+            publication_mode="official_current",
+        )
+    )
+
+    assert result.output_path.parent == official_folder
+    assert result.file_name == (
+        "DL-2026-05-011 Coolpower HDF 3.40mm Qualification Testing "
+        "Report_Rev_A.docx"
+    )
+
+
 def test_requires_confirmed_basic_information(tmp_path: Path) -> None:
     service = TestReportDraftService(
         preview_service=_PreviewService(_preview()),

@@ -196,6 +196,49 @@ def test_locked_publish_never_removes_the_current_report_and_leaves_no_history(
     assert not history.exists()
 
 
+def test_publishes_managed_draft_as_new_official_report_without_moving_source(
+    tmp_path: Path,
+) -> None:
+    managed = tmp_path / "managed" / "DL-001 Product Report_Rev_A_Draft (9).docx"
+    managed.parent.mkdir()
+    managed.write_bytes(b"operator-maintained-draft")
+    official = tmp_path / "official" / "DL-001 Product Report_Rev_A.docx"
+    official.parent.mkdir()
+    gateway = ReportPublicationGateway(id_factory=lambda: "publish-1")
+
+    result = gateway.publish_new_current(
+        source_path=managed,
+        expected_source_sha256=gateway.fingerprint(managed),
+        target_path=official,
+    )
+
+    assert result.current_path == official
+    assert result.current_sha256 == gateway.fingerprint(official)
+    assert official.read_bytes() == b"operator-maintained-draft"
+    assert managed.read_bytes() == b"operator-maintained-draft"
+    assert not list(official.parent.glob(".*.stage.docx"))
+
+
+def test_publish_new_current_never_overwrites_an_existing_official_report(
+    tmp_path: Path,
+) -> None:
+    managed = tmp_path / "managed.docx"
+    managed.write_bytes(b"managed")
+    official = tmp_path / "official.docx"
+    official.write_bytes(b"reviewed-official")
+    gateway = ReportPublicationGateway()
+
+    with pytest.raises(ReportPublicationConflictError, match="already exists"):
+        gateway.publish_new_current(
+            source_path=managed,
+            expected_source_sha256=gateway.fingerprint(managed),
+            target_path=official,
+        )
+
+    assert official.read_bytes() == b"reviewed-official"
+    assert managed.read_bytes() == b"managed"
+
+
 def _write_update(source: Path, output: Path, content: bytes) -> Path:
     assert source != output
     output.write_bytes(content)
