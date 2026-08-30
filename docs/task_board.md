@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "REPORT-003A",
     "summary": "Implement the current internal report section-update and safe publication kernel, using existing LLCR Result/Comment synchronization as the first adapter.",
@@ -41,89 +41,17 @@
     ],
     "activation_head": "9fdac58dc90487744b91036f38bd8c3fbf1e0844",
     "started_at": "2026-08-30T10:41:55.035452Z",
-    "updated_at": "2026-08-30T11:11:42.355437Z",
+    "updated_at": "2026-08-30T11:23:02.209940Z",
     "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
       "task_id": "REPORT-003A",
-      "stage": "delivery",
+      "version": 1,
+      "stage": "acceptance_diagnosis",
+      "summary": "Confirmed that initial report generation always targets data/generated_test_reports and the current-report resolver then falls back to that managed draft even when an official workspace exists but contains no report. Awaiting approval for safe official publication and one-time promotion behavior.",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
+      "requires_user": true,
+      "schema": "connlab.sol-task-checkpoint"
     },
-    "report": {
-      "validation": [
-        {
-          "status": "passed",
-          "result": "39 passed",
-          "name": "backend report regression"
-        },
-        {
-          "status": "passed",
-          "result": "10 passed",
-          "name": "frontend report workspace tests"
-        },
-        {
-          "status": "passed",
-          "result": "tsc and vite build passed",
-          "name": "frontend production build"
-        },
-        {
-          "status": "passed",
-          "result": "current report state and independent LLCR action rendered without console errors",
-          "name": "local browser verification"
-        }
-      ],
-      "integration": {
-        "status": "passed",
-        "result": "LLCR dataset to current Word report flow verified without modifying real external files"
-      },
-      "schema": "connlab.sol-task-report",
-      "roles": {
-        "planner": {
-          "status": "passed",
-          "result": "approved product decisions translated into current-report and region-ownership boundaries"
-        },
-        "qa": {
-          "status": "passed",
-          "result": "backend, frontend, build, and browser checks passed"
-        },
-        "reviewer": {
-          "status": "passed",
-          "result": "standards and specification diff review completed with findings corrected"
-        },
-        "developer": {
-          "status": "passed",
-          "result": "implemented service, file gateway, API, UI, and tests"
-        },
-        "integrator": {
-          "status": "passed",
-          "result": "dependency wiring, transport contracts, Word adapter, and UI flow verified together"
-        }
-      },
-      "task_id": "REPORT-003A",
-      "subject": "fa7a6631ec50705a005694e1526de41391206c12",
-      "version": 1,
-      "summary": "Implemented current internal report resolution and safe LLCR section publication with staging, automatic History archive, concurrency guards, Word-lock handling, no-op idempotency, and a revision-free Report Workspace action.",
-      "changed_paths": [
-        "backend/api/dependencies.py",
-        "backend/api/routes_report_workspace.py",
-        "backend/application/current_report_update_service.py",
-        "backend/infrastructure/files/report_publication_gateway.py",
-        "backend/infrastructure/office/test_report_document_gateway.py",
-        "frontend/src/api/client.ts",
-        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-        "frontend/src/features/report-workspace/reportWorkspaceModel.test.ts",
-        "frontend/src/features/report-workspace/reportWorkspaceModel.ts",
-        "frontend/src/workbench.css",
-        "tests/integration/test_report_workspace_api.py",
-        "tests/unit/test_current_report_update_service.py",
-        "tests/unit/test_report_publication_gateway.py",
-        "tests/unit/test_test_report_document_gateway.py"
-      ],
-      "scope_ok": true
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_REPORT_WORKSPACE_CUSTOMER_REPORT_DRAFT",
