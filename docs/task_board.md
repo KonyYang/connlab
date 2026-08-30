@@ -19,20 +19,21 @@
     "route": "full_chain",
     "scope": "Resolve one current report, update only the LLCR managed region through a staging copy, preserve all other report content, archive the prior file automatically, replace atomically with rollback, and remove user-facing report revision selection. Do not modify controlled templates, golden reports, or real external project files.",
     "scope_paths": [
-      "backend/application/current_report_update_service.py",
-      "backend/infrastructure/files/report_publication_gateway.py",
       "backend/api/dependencies.py",
       "backend/api/routes_report_workspace.py",
+      "backend/application/current_report_update_service.py",
+      "backend/infrastructure/files/report_publication_gateway.py",
+      "backend/infrastructure/office/test_report_document_gateway.py",
       "frontend/src/api/client.ts",
-      "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-      "frontend/src/features/report-workspace/reportWorkspaceModel.ts",
       "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+      "frontend/src/features/report-workspace/ReportWorkspace.tsx",
       "frontend/src/features/report-workspace/reportWorkspaceModel.test.ts",
+      "frontend/src/features/report-workspace/reportWorkspaceModel.ts",
       "frontend/src/workbench.css",
+      "tests/integration/test_report_workspace_api.py",
       "tests/unit/test_current_report_update_service.py",
       "tests/unit/test_report_publication_gateway.py",
-      "tests/integration/test_report_workspace_api.py",
-      "docs/task_board.md"
+      "tests/unit/test_test_report_document_gateway.py"
     ],
     "risk_reasons": [
       "The feature safely replaces a current Word report artifact in an official project workspace.",
@@ -40,8 +41,16 @@
     ],
     "activation_head": "9fdac58dc90487744b91036f38bd8c3fbf1e0844",
     "started_at": "2026-08-30T10:41:55.035452Z",
-    "updated_at": "2026-08-30T10:41:55.035452Z",
-    "checkpoint": null,
+    "updated_at": "2026-08-30T11:10:44.122935Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "REPORT-003A",
+      "stage": "scope_manifest_correction",
+      "status": "running",
+      "summary": "User approved REPORT-003A including reuse and hardening of the existing LLCR report writer.",
+      "requires_user": false
+    },
     "report": null
   },
   "last_closed": {
