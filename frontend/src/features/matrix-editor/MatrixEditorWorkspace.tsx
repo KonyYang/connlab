@@ -43,7 +43,7 @@ import { ContactMeasurementPlanSummaryCard } from "../contact-measurement-plan/C
 import { MatrixAutoGrowTextarea } from "./MatrixAutoGrowTextarea";
 import { MatrixStepWorkspace } from "./MatrixStepWorkspace";
 import { useProjectPointProfileSummaryModel } from "../contact-measurement-plan/useProjectPointProfileSummaryModel";
-import { LlcrCrRecordWorkbookPanel } from "./LlcrCrRecordWorkbookPanel";
+import { LlcrCrRecordDownloadAction } from "./LlcrCrRecordDownloadAction";
 import {
   calculateMatrixSchedule,
   emptySchedulePlan,
@@ -1905,10 +1905,22 @@ export function MatrixEditorWorkspace({
             summary={pointProfileSummary.summary}
             loading={pointProfileSummary.loading}
             onOpenSetup={() => onOpenContactMeasurementSetup?.()}
-          />
-          <LlcrCrRecordWorkbookPanel
-            projectId={projectId}
-            draftRequest={testRecordDraftRequest}
+            recordActions={{
+              llcr: (
+                <LlcrCrRecordDownloadAction
+                  projectId={projectId}
+                  recordType="llcr"
+                  draftRequest={testRecordDraftRequest}
+                />
+              ),
+              cr: (
+                <LlcrCrRecordDownloadAction
+                  projectId={projectId}
+                  recordType="cr"
+                  draftRequest={testRecordDraftRequest}
+                />
+              ),
+            }}
           />
         </section>
 

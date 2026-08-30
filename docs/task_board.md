@@ -11,8 +11,27 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_TEST_POINT_RECORD_DOWNLOAD_ACTIONS",
+    "summary": "Move LLCR and CR draft workbook downloads into their corresponding Test points rows and remove the redundant standalone panel.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Integrate the existing LLCR and CR draft workbook download actions and per-action status into the Test points summary card without changing generation authority, availability, or download behavior; preserve responsive and accessibility behavior.",
+    "scope_paths": [
+      "frontend/src/features/contact-measurement-plan/ContactMeasurementPlanSummaryCard.tsx",
+      "frontend/src/features/contact-measurement-plan/ContactMeasurementPlanSummaryCard.test.tsx",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+      "frontend/src/features/matrix-editor/LlcrCrRecordWorkbookPanel.tsx",
+      "frontend/src/contact-measurement-plan.css"
+    ],
+    "risk_reasons": [],
+    "activation_head": "a367b7a93f7cae8d9ed6552f1c54b2ffefc92262",
+    "started_at": "2026-08-30T00:00:00.283113Z",
+    "updated_at": "2026-08-30T00:00:00.283113Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "REPORT-002",
     "tier": "high_risk",

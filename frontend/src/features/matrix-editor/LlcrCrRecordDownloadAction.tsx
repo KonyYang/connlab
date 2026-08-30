@@ -5,25 +5,7 @@ import type {
 import "../../contact-measurement-plan.css";
 import { useLlcrCrSpecializedRecordWorkbookModel } from "./useLlcrCrSpecializedRecordWorkbookModel";
 
-export function LlcrCrRecordWorkbookPanel({ projectId, draftRequest }: {
-  projectId: string;
-  draftRequest: MatrixEditorTestRecordDraftRequest;
-}) {
-  return <section className="llcr-cr-record-panel" aria-label="LLCR and CR tables">
-    <header className="llcr-cr-record-panel-header">
-      <div>
-        <h3>LLCR/CR表</h3>
-        <p>Generate and download a preview workbook from the current Matrix draft and Test points.</p>
-      </div>
-    </header>
-    <div className="llcr-cr-record-downloads">
-      <RecordDownload projectId={projectId} recordType="llcr" draftRequest={draftRequest} />
-      <RecordDownload projectId={projectId} recordType="cr" draftRequest={draftRequest} />
-    </div>
-  </section>;
-}
-
-function RecordDownload({ projectId, recordType, draftRequest }: {
+export function LlcrCrRecordDownloadAction({ projectId, recordType, draftRequest }: {
   projectId: string;
   recordType: LlcrCrRecordType;
   draftRequest: MatrixEditorTestRecordDraftRequest;
@@ -36,9 +18,10 @@ function RecordDownload({ projectId, recordType, draftRequest }: {
   const label = recordType.toUpperCase();
   return <div className="llcr-cr-record-download">
     <button
-      className="is-primary"
+      className="contact-measurement-button is-compact"
       type="button"
       disabled={model.busy}
+      title={`Download an unconfirmed ${label} preview workbook from the current Matrix draft and Test points.`}
       onClick={() => void model.downloadWorkbook()}
     >
       {model.busy ? `Generating ${label}...` : `Download ${label}`}

@@ -280,57 +280,22 @@
   font-weight: 700;
 }
 
-.llcr-cr-record-panel {
-  background: #f7f9fc;
-  border: 1px solid #d5dee8;
-  border-radius: 12px;
-  display: grid;
-  gap: 14px;
-  padding: 18px;
-}
-
-.llcr-cr-record-panel-header h3,
-.llcr-cr-record-panel-header p,
 .llcr-cr-record-download p {
   margin: 0;
-}
-
-.llcr-cr-record-panel-header p {
-  color: #65758a;
-  font-size: 0.82rem;
-  margin-top: 4px;
-}
-
-.llcr-cr-record-downloads {
-  align-items: flex-start;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
 }
 
 .llcr-cr-record-download {
   display: grid;
   gap: 6px;
-}
-
-.llcr-cr-record-download button {
-  background: #315f8c;
-  border: 1px solid #315f8c;
-  border-radius: 7px;
-  color: #ffffff;
-  cursor: pointer;
-  font-weight: 700;
-  padding: 7px 11px;
-}
-
-.llcr-cr-record-download button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
+  justify-items: end;
 }
 
 .llcr-cr-record-error,
 .llcr-cr-record-success {
   font-size: 0.78rem;
+  max-width: 28rem;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .llcr-cr-record-error {
@@ -469,9 +434,14 @@
 
 .contact-measurement-summary-points > div {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-columns: 52px minmax(0, 1fr) auto;
   align-items: baseline;
   gap: 8px;
+  min-width: 0;
+}
+
+.contact-measurement-summary-record-action {
+  align-self: center;
   min-width: 0;
 }
 
@@ -543,6 +513,23 @@
     grid-auto-flow: row;
     grid-auto-columns: auto;
     grid-template-columns: repeat(3, max-content);
+  }
+
+  .contact-measurement-summary-points > div {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .contact-measurement-summary-record-action {
+    grid-column: 2;
+  }
+
+  .llcr-cr-record-download {
+    justify-items: start;
+  }
+
+  .llcr-cr-record-error,
+  .llcr-cr-record-success {
+    text-align: left;
   }
 
   .project-point-profile-table th,

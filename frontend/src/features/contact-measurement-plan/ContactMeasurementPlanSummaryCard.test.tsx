@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { ProjectPointProfileSummary } from "../../api/client";
@@ -79,6 +80,19 @@ describe("ContactMeasurementPlanSummaryCard", () => {
     await user.keyboard("{Enter}");
     expect(onOpenSetup).toHaveBeenCalledOnce();
   });
+
+  it("places LLCR and CR record actions in their corresponding Test points rows", () => {
+    const { container } = renderCard(summary(), false, vi.fn(), {
+      llcr: <button type="button">Download LLCR</button>,
+      cr: <button type="button">Download CR</button>,
+    });
+
+    const rows = Array.from(container.querySelectorAll(".contact-measurement-summary-points > div"));
+    const llcrRow = rows.find((row) => row.querySelector("dt")?.textContent === "LLCR");
+    const crRow = rows.find((row) => row.querySelector("dt")?.textContent === "CR");
+    expect(llcrRow?.querySelector("button")?.textContent).toBe("Download LLCR");
+    expect(crRow?.querySelector("button")?.textContent).toBe("Download CR");
+  });
 });
 
 type CrCoverage = NonNullable<NonNullable<ProjectPointProfileSummary["confirmed_revision"]>["cr_coverage"]>;
@@ -87,9 +101,13 @@ function renderCard(
   value: ProjectPointProfileSummary | null,
   loading = false,
   onOpenSetup = vi.fn(),
+  recordActions?: { llcr: ReactNode; cr: ReactNode },
 ) {
   return render(<ContactMeasurementPlanSummaryCard
-    summary={value} loading={loading} onOpenSetup={onOpenSetup}
+    summary={value}
+    loading={loading}
+    onOpenSetup={onOpenSetup}
+    recordActions={recordActions}
   />);
 }
 

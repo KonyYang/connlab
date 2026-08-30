@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../../api/client";
-import { LlcrCrRecordWorkbookPanel } from "./LlcrCrRecordWorkbookPanel";
+import { LlcrCrRecordDownloadAction } from "./LlcrCrRecordDownloadAction";
 
 vi.mock("../../api/client", async (original) => ({
   ...(await original<typeof import("../../api/client")>()),
@@ -10,7 +10,7 @@ vi.mock("../../api/client", async (original) => ({
 }));
 const apiMocks = vi.mocked(api);
 
-describe("LlcrCrRecordWorkbookPanel", () => {
+describe("LlcrCrRecordDownloadAction", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     Object.defineProperty(URL, "createObjectURL", {
@@ -46,8 +46,18 @@ describe("LlcrCrRecordWorkbookPanel", () => {
       }],
     };
 
-    render(<LlcrCrRecordWorkbookPanel projectId="P1" draftRequest={draftRequest} />);
-    expect(screen.getByRole("heading", { name: "LLCR/CR表" })).toBeTruthy();
+    render(<>
+      <LlcrCrRecordDownloadAction
+        projectId="P1"
+        recordType="llcr"
+        draftRequest={draftRequest}
+      />
+      <LlcrCrRecordDownloadAction
+        projectId="P1"
+        recordType="cr"
+        draftRequest={draftRequest}
+      />
+    </>);
     expect(screen.queryAllByText("Preview")).toHaveLength(0);
     expect(screen.queryAllByText("Generate file")).toHaveLength(0);
 

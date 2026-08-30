@@ -220,6 +220,12 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
     await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
 
+    const testPoints = screen.getByRole("region", { name: "Test points" });
+    const llcrRow = within(testPoints).getByText("LLCR").closest("div");
+    expect(llcrRow).toBeTruthy();
+    expect(within(llcrRow as HTMLElement).getByRole("button", { name: "Download LLCR" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "LLCR and CR tables" })).toBeNull();
+
     fireEvent.change(screen.getByLabelText("Samples 1"), {
       target: { value: "7" },
     });
