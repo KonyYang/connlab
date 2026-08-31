@@ -36,6 +36,28 @@ def test_discovers_only_internal_reports_for_the_project(tmp_path: Path) -> None
     assert candidates == (internal,)
 
 
+def test_discovers_only_customer_reports_for_the_project(tmp_path: Path) -> None:
+    official = tmp_path / "official"
+    official.mkdir()
+    expected = official / "DL-001-CR Product Qualification Testing Report_Rev_A.docx"
+    expected.write_bytes(b"customer")
+    legacy = official / "DL-001-CR Product Qualification Testing Report_Customer_Rev_A.docx"
+    legacy.write_bytes(b"legacy-customer")
+    (official / "DL-001 Product Qualification Testing Report_Rev_A.docx").write_bytes(
+        b"internal"
+    )
+    (official / "DL-002-CR Product Qualification Testing Report_Rev_A.docx").write_bytes(
+        b"other"
+    )
+
+    candidates = ReportPublicationGateway().discover_customer_reports(
+        folder=official,
+        dl_number="DL-001",
+    )
+
+    assert candidates == (expected, legacy)
+
+
 def test_changed_report_is_archived_and_atomically_replaced(tmp_path: Path) -> None:
     current = tmp_path / "official" / "DL-001 Report.docx"
     current.parent.mkdir()
@@ -237,6 +259,58 @@ def test_publish_new_current_never_overwrites_an_existing_official_report(
 
     assert official.read_bytes() == b"reviewed-official"
     assert managed.read_bytes() == b"managed"
+
+
+def test_generated_publication_checks_source_before_and_after_generation(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "internal.docx"
+    source.write_bytes(b"previewed-internal")
+    target = tmp_path / "customer.docx"
+    gateway = ReportPublicationGateway(id_factory=lambda: "customer-1")
+
+    result = gateway.publish_generated_current(
+        source_path=source,
+        expected_source_sha256=gateway.fingerprint(source),
+        target_path=target,
+        generate_document=lambda source_path, output_path: _write_update(
+            source_path,
+            output_path,
+            b"generated-customer",
+        ),
+    )
+
+    assert result.current_path == target
+    assert target.read_bytes() == b"generated-customer"
+    assert source.read_bytes() == b"previewed-internal"
+    assert not list(tmp_path.glob(".*.stage.docx"))
+
+
+def test_generated_publication_aborts_when_source_changes_during_generation(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "internal.docx"
+    source.write_bytes(b"previewed-internal")
+    target = tmp_path / "customer.docx"
+    gateway = ReportPublicationGateway(id_factory=lambda: "customer-1")
+    expected = gateway.fingerprint(source)
+
+    def edit_source_while_generating(source_path: Path, output_path: Path) -> Path:
+        output_path.write_bytes(b"generated-customer")
+        source_path.write_bytes(b"operator-edit")
+        return output_path
+
+    with pytest.raises(ReportPublicationConflictError, match="Internal Report changed"):
+        gateway.publish_generated_current(
+            source_path=source,
+            expected_source_sha256=expected,
+            target_path=target,
+            generate_document=edit_source_while_generating,
+        )
+
+    assert not target.exists()
+    assert source.read_bytes() == b"operator-edit"
+    assert not list(tmp_path.glob(".*.stage.docx"))
 
 
 def _write_update(source: Path, output: Path, content: bytes) -> Path:

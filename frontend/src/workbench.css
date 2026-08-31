@@ -9777,7 +9777,8 @@
 .report-workspace-card-heading p,
 .report-workspace-note,
 .report-workspace-empty,
-.report-workspace-blocker {
+.report-workspace-blocker,
+.report-workspace-warning {
   color: var(--color-ink-muted);
   font-size: 13px;
   line-height: 1.45;
@@ -9852,6 +9853,14 @@
 
 .report-workspace-blocker {
   color: var(--color-danger);
+}
+
+.report-workspace-warning {
+  background: #fff9eb;
+  border: 1px solid #e3cf9f;
+  border-radius: 8px;
+  color: var(--color-warning);
+  padding: 9px 11px;
 }
 
 .report-workspace-dataset-summary,

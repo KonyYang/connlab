@@ -7,12 +7,17 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 
 from backend.api.dependencies import (
+    get_customer_report_projection_service,
     get_current_report_update_service,
     get_equipment_report_update_service,
     get_llcr_result_dataset_service,
     get_report_workspace_service,
     get_settings,
     get_test_report_template_resource_store,
+)
+from backend.application.customer_report_projection_service import (
+    CustomerReportGenerationResult,
+    CustomerReportProjectionState,
 )
 from backend.api.main import app
 from backend.application.report_workspace_service import ReportWorkspaceState
@@ -260,6 +265,85 @@ def test_equipment_list_preview_and_controlled_update(tmp_path: Path) -> None:
     assert equipment_service.command.acknowledge_expired is True
 
 
+def test_current_customer_report_state_generate_and_download(tmp_path: Path) -> None:
+    customer_path = tmp_path / "DL-001-CR Qualification Testing Report_Rev_A.docx"
+    customer_path.write_bytes(b"customer-report")
+    customer_service = _CustomerProjectionService(customer_path, mode="official")
+    templates = tmp_path / "templates"
+    templates.mkdir()
+    (templates / "E-4515_F Customer Test Report.docx").write_bytes(b"template")
+    app.dependency_overrides[get_customer_report_projection_service] = (
+        lambda: customer_service
+    )
+    app.dependency_overrides[get_test_report_template_resource_store] = lambda: _Store(
+        templates
+    )
+    client = TestClient(app)
+    try:
+        state = client.get(
+            "/api/projects/P1/report-workspace/current-customer-report"
+        )
+        generated = client.post(
+            "/api/projects/P1/report-workspace/current-customer-report",
+            json={
+                "expected_internal_report_sha256": "a" * 64,
+                "expected_customer_report_sha256": "b" * 64,
+            },
+        )
+        downloaded = client.get(
+            "/api/projects/P1/report-workspace/current-customer-report/download"
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert state.status_code == 200
+    assert state.json()["status"] == "stale"
+    assert state.json()["download_url"].endswith(
+        "/current-customer-report/download"
+    )
+    assert generated.status_code == 200
+    assert generated.json()["file_name"] == customer_path.name
+    assert generated.json()["archive_path"].endswith("old.docx")
+    assert customer_service.command.expected_internal_report_sha256 == "a" * 64
+    assert customer_service.command.expected_customer_report_sha256 == "b" * 64
+    assert downloaded.content == b"customer-report"
+
+
+def test_managed_customer_report_generation_returns_browser_download(
+    tmp_path: Path,
+) -> None:
+    customer_path = tmp_path / "DL-001-CR Qualification Testing Report_Rev_A_Draft.docx"
+    customer_path.write_bytes(b"customer-download")
+    customer_service = _CustomerProjectionService(
+        customer_path,
+        mode="managed_download",
+    )
+    templates = tmp_path / "templates"
+    templates.mkdir()
+    (templates / "E-4515_F Customer Test Report.docx").write_bytes(b"template")
+    app.dependency_overrides[get_customer_report_projection_service] = (
+        lambda: customer_service
+    )
+    app.dependency_overrides[get_test_report_template_resource_store] = lambda: _Store(
+        templates
+    )
+    client = TestClient(app)
+    try:
+        generated = client.post(
+            "/api/projects/P1/report-workspace/current-customer-report",
+            json={
+                "expected_internal_report_sha256": "a" * 64,
+                "expected_customer_report_sha256": None,
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert generated.status_code == 200
+    assert generated.content == b"customer-download"
+    assert "attachment" in generated.headers["content-disposition"]
+
+
 class _LlcrService:
     def __init__(self, preview, dataset):
         self.preview = preview
@@ -413,6 +497,43 @@ class _EquipmentService:
             current_sha256="d" * 64,
             archive_path=self.tmp_path / "History" / "Report" / "old.docx",
             updated_by=command.updated_by,
+        )
+
+
+class _CustomerProjectionService:
+    def __init__(self, path: Path, *, mode: str) -> None:
+        self.path = path
+        self.mode = mode
+
+    def get_state(self, project_id: str):
+        return CustomerReportProjectionState(
+            project_id=project_id,
+            status="stale" if self.mode == "official" else "missing",
+            mode=self.mode,
+            file_name=self.path.name if self.mode == "official" else None,
+            file_path=self.path if self.mode == "official" else None,
+            file_sha256="b" * 64 if self.mode == "official" else None,
+            internal_report_sha256="a" * 64,
+            generated_from_internal_sha256="c" * 64 if self.mode == "official" else None,
+            can_generate=True,
+            download_url_available=self.mode == "official",
+            blockers=tuple(),
+            warnings=("The Internal Report changed.",) if self.mode == "official" else tuple(),
+        )
+
+    def generate(self, command):
+        self.command = command
+        return CustomerReportGenerationResult(
+            project_id=command.project_id,
+            mode=self.mode,
+            file_name=self.path.name,
+            file_path=self.path,
+            file_sha256="d" * 64,
+            source_report_sha256="a" * 64,
+            changed=True,
+            archive_path=(self.path.parent / "History" / "Report" / "old.docx")
+            if self.mode == "official"
+            else None,
         )
 
 

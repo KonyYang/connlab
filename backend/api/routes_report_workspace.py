@@ -12,12 +12,20 @@ from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
 from backend.api.dependencies import (
+    get_customer_report_projection_service,
     get_current_report_update_service,
     get_equipment_report_update_service,
     get_llcr_result_dataset_service,
     get_report_workspace_service,
     get_settings,
     get_test_report_template_resource_store,
+)
+from backend.application.customer_report_projection_service import (
+    CustomerReportGenerationCommand,
+    CustomerReportGenerationResult,
+    CustomerReportProjectionError,
+    CustomerReportProjectionService,
+    CustomerReportProjectionState,
 )
 from backend.application.current_report_update_service import (
     CurrentReportArtifact,
@@ -100,6 +108,15 @@ class UpdateCurrentLlcrReportRequest(BaseModel):
 
 class PublishManagedReportRequest(BaseModel):
     expected_report_sha256: str = Field(min_length=64, max_length=64)
+
+
+class GenerateCurrentCustomerReportRequest(BaseModel):
+    expected_internal_report_sha256: str = Field(min_length=64, max_length=64)
+    expected_customer_report_sha256: str | None = Field(
+        default=None,
+        min_length=64,
+        max_length=64,
+    )
 
 
 class EquipmentExternalOverrideRequest(BaseModel):
@@ -235,6 +252,96 @@ def download_current_report(
         report.file_path,
         filename=report.file_name,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+
+
+@router.get(
+    "/api/projects/{project_id}/report-workspace/current-customer-report"
+)
+def get_current_customer_report(
+    project_id: str,
+    service: CustomerReportProjectionService = Depends(
+        get_customer_report_projection_service
+    ),
+) -> dict:
+    try:
+        state = service.get_state(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
+    return _customer_report_state_response(project_id, state)
+
+
+@router.post(
+    "/api/projects/{project_id}/report-workspace/current-customer-report"
+)
+def generate_current_customer_report(
+    project_id: str,
+    request: GenerateCurrentCustomerReportRequest,
+    service: CustomerReportProjectionService = Depends(
+        get_customer_report_projection_service
+    ),
+    template_store: TestReportTemplateResourceStore = Depends(
+        get_test_report_template_resource_store
+    ),
+):
+    try:
+        result = service.generate(
+            CustomerReportGenerationCommand(
+                project_id=project_id,
+                template_path=resolve_customer_report_template_path(template_store),
+                expected_internal_report_sha256=(
+                    request.expected_internal_report_sha256
+                ),
+                expected_customer_report_sha256=(
+                    request.expected_customer_report_sha256
+                ),
+            )
+        )
+    except (CustomerReportProjectionError, CurrentReportFileConflictError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
+    except (TestReportTemplateResourceError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if result.mode == "managed_download":
+        return FileResponse(
+            result.file_path,
+            filename=result.file_name,
+            media_type=(
+                "application/vnd.openxmlformats-officedocument."
+                "wordprocessingml.document"
+            ),
+            background=BackgroundTask(Path(result.file_path).unlink, missing_ok=True),
+        )
+    return _customer_report_generation_response(result)
+
+
+@router.get(
+    "/api/projects/{project_id}/report-workspace/current-customer-report/download"
+)
+def download_current_customer_report(
+    project_id: str,
+    service: CustomerReportProjectionService = Depends(
+        get_customer_report_projection_service
+    ),
+) -> FileResponse:
+    try:
+        state = service.get_state(project_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=410, detail=str(exc)) from exc
+    if (
+        not state.download_url_available
+        or state.file_path is None
+        or state.file_name is None
+    ):
+        raise HTTPException(status_code=409, detail="The customer report is unavailable.")
+    return FileResponse(
+        state.file_path,
+        filename=state.file_name,
+        media_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "wordprocessingml.document"
+        ),
     )
 
 
@@ -598,6 +705,46 @@ def _current_report_response(project_id: str, item: CurrentReportArtifact) -> di
             f"/api/projects/{project_id}/report-workspace/current-report/download"
             if item.status == "ready"
             else None
+        ),
+    }
+
+
+def _customer_report_state_response(
+    project_id: str,
+    item: CustomerReportProjectionState,
+) -> dict:
+    return {
+        "project_id": item.project_id,
+        "status": item.status,
+        "mode": item.mode,
+        "file_name": item.file_name,
+        "file_sha256": item.file_sha256,
+        "internal_report_sha256": item.internal_report_sha256,
+        "generated_from_internal_sha256": item.generated_from_internal_sha256,
+        "can_generate": item.can_generate,
+        "blockers": list(item.blockers),
+        "warnings": list(item.warnings),
+        "download_url": (
+            f"/api/projects/{project_id}/report-workspace/"
+            "current-customer-report/download"
+            if item.download_url_available
+            else None
+        ),
+    }
+
+
+def _customer_report_generation_response(
+    result: CustomerReportGenerationResult,
+) -> dict:
+    return {
+        "project_id": result.project_id,
+        "mode": result.mode,
+        "file_name": result.file_name,
+        "file_sha256": result.file_sha256,
+        "source_report_sha256": result.source_report_sha256,
+        "changed": result.changed,
+        "archive_path": (
+            str(result.archive_path) if result.archive_path is not None else None
         ),
     }
 

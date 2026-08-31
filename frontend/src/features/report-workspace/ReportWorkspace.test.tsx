@@ -10,6 +10,7 @@ vi.mock("../../api/client", async () => {
     ...actual,
     fetchReportWorkspace: vi.fn(),
     fetchCurrentReport: vi.fn(),
+    fetchCurrentCustomerReport: vi.fn(),
     inspectLlcrResultWorkbook: vi.fn(),
     confirmLlcrResultImport: vi.fn(),
     generateInitialReportRevision: vi.fn(),
@@ -19,6 +20,8 @@ vi.mock("../../api/client", async () => {
     updateCurrentReportEquipmentList: vi.fn(),
     publishManagedReport: vi.fn(),
     downloadCurrentReport: vi.fn(),
+    generateCurrentCustomerReport: vi.fn(),
+    downloadCurrentCustomerReport: vi.fn(),
     cancelLlcrResultPreview: vi.fn(),
   };
 });
@@ -44,6 +47,20 @@ const currentReport: api.CurrentReport = {
   official_folder_path: "D:\\Test Project\\DL-001\\Official Test",
   can_publish_to_official: false,
   download_url: "/api/projects/project-1/report-workspace/current-report/download",
+};
+
+const customerReport: api.CustomerReportState = {
+  project_id: "project-1",
+  status: "stale",
+  mode: "official",
+  file_name: "DL-001-CR Qualification Testing Report_Rev_A.docx",
+  file_sha256: "b".repeat(64),
+  internal_report_sha256: "a".repeat(64),
+  generated_from_internal_sha256: "c".repeat(64),
+  can_generate: true,
+  blockers: [],
+  warnings: ["The current Internal Report changed after this customer report was generated."],
+  download_url: "/api/projects/project-1/report-workspace/current-customer-report/download",
 };
 
 const preview: api.LlcrImportPreview = {
@@ -110,8 +127,18 @@ const equipmentPreview: api.EquipmentListPreview = {
 
 describe("ReportWorkspace", () => {
   beforeEach(() => {
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: vi.fn(() => "blob:customer-report"),
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     vi.mocked(api.fetchReportWorkspace).mockResolvedValue(state);
     vi.mocked(api.fetchCurrentReport).mockResolvedValue(currentReport);
+    vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue(customerReport);
     vi.mocked(api.inspectLlcrResultWorkbook).mockResolvedValue(preview);
     vi.mocked(api.previewCurrentReportEquipmentList).mockResolvedValue(equipmentPreview);
     vi.mocked(api.updateCurrentReportEquipmentList).mockResolvedValue({
@@ -361,5 +388,86 @@ describe("ReportWorkspace", () => {
       updated_by: "Lab User",
     });
     expect(await screen.findByText(/Updated Equipment List in/)).toBeTruthy();
+  });
+
+  it("updates a stale customer report from the current internal report with both fingerprints", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.generateCurrentCustomerReport).mockResolvedValue({
+      kind: "published",
+      result: {
+        project_id: "project-1",
+        mode: "official",
+        file_name: customerReport.file_name!,
+        file_sha256: "d".repeat(64),
+        source_report_sha256: "a".repeat(64),
+        changed: true,
+        archive_path: "D:\\Test Project\\DL-001\\History\\Report\\old.docx",
+      },
+    });
+
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+
+    expect(await screen.findByRole("heading", { name: "Customer report" })).toBeTruthy();
+    expect(screen.getByText("Needs update")).toBeTruthy();
+    expect(screen.getByText(customerReport.warnings[0])).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Update customer report" }));
+
+    expect(api.generateCurrentCustomerReport).toHaveBeenCalledWith("project-1", {
+      expected_internal_report_sha256: "a".repeat(64),
+      expected_customer_report_sha256: "b".repeat(64),
+    });
+    expect(await screen.findByText(/Updated the customer report/)).toBeTruthy();
+  });
+
+  it("does not claim that an unchanged customer report was archived", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.generateCurrentCustomerReport).mockResolvedValue({
+      kind: "published",
+      result: {
+        project_id: "project-1",
+        mode: "official",
+        file_name: customerReport.file_name!,
+        file_sha256: customerReport.file_sha256!,
+        source_report_sha256: customerReport.internal_report_sha256!,
+        changed: false,
+        archive_path: null,
+      },
+    });
+
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Update customer report" }));
+
+    expect(await screen.findByText(/was already current/)).toBeTruthy();
+    expect(screen.queryByText(/archived automatically/)).toBeNull();
+  });
+
+  it("downloads the generated customer report when no official project folder exists", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue({
+      ...customerReport,
+      status: "missing",
+      mode: "managed_download",
+      file_name: null,
+      file_sha256: null,
+      generated_from_internal_sha256: null,
+      warnings: ["No official project folder is available; generation will download a copy."],
+      download_url: null,
+    });
+    vi.mocked(api.generateCurrentCustomerReport).mockResolvedValue({
+      kind: "download",
+      download: {
+        blob: new Blob(["customer"]),
+        fileName: "DL-001-CR Qualification Testing Report_Rev_A_Draft.docx",
+      },
+    });
+
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Generate and download customer report" }));
+
+    expect(api.generateCurrentCustomerReport).toHaveBeenCalledWith("project-1", {
+      expected_internal_report_sha256: "a".repeat(64),
+      expected_customer_report_sha256: null,
+    });
+    expect(await screen.findByText("Generated and downloaded the customer report.")).toBeTruthy();
   });
 });

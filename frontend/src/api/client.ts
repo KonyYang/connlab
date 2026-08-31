@@ -3056,7 +3056,12 @@ async function requestBlobResponse(
     const error = await responseError(response);
     throw error;
   }
+  return blobDownloadFromResponse(response);
+}
 
+async function blobDownloadFromResponse(
+  response: Response
+): Promise<BlobDownloadResponse> {
   const blob = await response.blob();
   const disposition = response.headers.get("content-disposition") ?? "";
   const utf8Name = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
@@ -4855,6 +4860,34 @@ export type CurrentReport = {
   download_url: string | null;
 };
 
+export type CustomerReportState = {
+  project_id: string;
+  status: "blocked" | "missing" | "ready" | "stale" | "untracked" | "ambiguous";
+  mode: "official" | "managed_download" | null;
+  file_name: string | null;
+  file_sha256: string | null;
+  internal_report_sha256: string | null;
+  generated_from_internal_sha256: string | null;
+  can_generate: boolean;
+  blockers: string[];
+  warnings: string[];
+  download_url: string | null;
+};
+
+export type CustomerReportGenerationResult = {
+  project_id: string;
+  mode: "official";
+  file_name: string;
+  file_sha256: string;
+  source_report_sha256: string;
+  changed: boolean;
+  archive_path: string | null;
+};
+
+export type CustomerReportGenerationResponse =
+  | { kind: "published"; result: CustomerReportGenerationResult }
+  | { kind: "download"; download: BlobDownloadResponse };
+
 export type CurrentReportLlcrUpdatePreview = {
   project_id: string;
   dataset_id: string;
@@ -4924,6 +4957,41 @@ export function fetchCurrentReport(projectId: string): Promise<CurrentReport> {
   return requestJson<CurrentReport>(
     `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-report`
   );
+}
+
+export function fetchCurrentCustomerReport(
+  projectId: string
+): Promise<CustomerReportState> {
+  return requestJson<CustomerReportState>(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-customer-report`
+  );
+}
+
+export async function generateCurrentCustomerReport(
+  projectId: string,
+  input: {
+    expected_internal_report_sha256: string;
+    expected_customer_report_sha256: string | null;
+  }
+): Promise<CustomerReportGenerationResponse> {
+  const response = await fetch(
+    `${API_BASE}/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-customer-report`,
+    {
+      method: "POST",
+      headers: { Accept: "*/*", "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
+  );
+  if (!response.ok) {
+    throw await responseError(response);
+  }
+  if ((response.headers.get("content-type") ?? "").includes("application/json")) {
+    return {
+      kind: "published",
+      result: await response.json() as CustomerReportGenerationResult,
+    };
+  }
+  return { kind: "download", download: await blobDownloadFromResponse(response) };
 }
 
 export function publishManagedReport(
@@ -5057,6 +5125,14 @@ export function downloadCurrentReport(
 ): Promise<BlobDownloadResponse> {
   return requestBlobResponse(
     `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-report/download`
+  );
+}
+
+export function downloadCurrentCustomerReport(
+  projectId: string
+): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-customer-report/download`
   );
 }
 

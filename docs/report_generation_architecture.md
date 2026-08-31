@@ -8,8 +8,31 @@ the Active Confirmed Matrix. Later section actions preserve manual edits outside
 stage changes, fingerprint the current file, archive the previous revision, and replace atomically.
 
 LLCR Result/Comment synchronization and Section 7 Equipment List synchronization are delivered.
+The E-4515_F customer report is now a deterministic projection of the current Internal Report.
 Temperature-rise and other result adapters, photographs, appendices, and final narrative automation
 remain deferred.
+
+## Customer report projection
+
+`REPORT-003C` treats the current Internal Report as the only customer-report source. It never merges
+from an older customer report and does not creatively rewrite report content. The Word adapter copies
+the internal report, applies the approved E-4515_F header/footer and page contract, and removes only
+the validated internal-only scope: internal identity fields, internal disclosures, Equipment List,
+appendices, cross-project references, and controlled sample details that the approved customer
+goldens omit. Test-result tables, accepted evidence images, revision data, and customer-visible
+narrative remain source-authored.
+
+The current customer-report state is one of `missing`, `ready`, `stale`, `untracked`, `ambiguous`, or
+`blocked`. A custom DOCX property records the SHA-256 of the Internal Report used for generation, so a
+later Internal Report change is visible as `stale`. Generation requires the previewed Internal Report
+fingerprint and, when a customer report already exists, its fingerprint as well. The source is checked
+before and after Word generation.
+
+With an official project folder, the canonical `{DL}-CR ... .docx` is published beside the Internal
+Report. A changed prior customer report is archived under `History/Report`, and the generated staging
+file replaces it atomically. Without an official project folder, the generated file is returned as a
+browser download and is not promoted into project authority. The approved E-4515_F template and both
+source reports remain read-only.
 
 ## Equipment List controlled update
 
@@ -94,7 +117,7 @@ to the Word adapter:
    confirmation.
 4. Photograph selection, Group/Step linkage, caption rules, and chapter placement.
 5. Additional controlled region adapters for narrative, result, image, and appendix sections.
-6. Independent E-4515_F customer-report synchronization from the same confirmed sources.
+6. Final publication/freeze controls for paired Internal and Customer reports.
 
 These phases are not part of `REPORT-001`.
 
@@ -102,7 +125,9 @@ These phases are not part of `REPORT-001`.
 
 The retained reference template inspected for REPORT-001 has SHA-256
 `5a2c6b1a59df1612a8095028df8681deea6a7477d83196e6e65ed52554e211c5`.
+The retained E-4515_F customer template inspected for REPORT-003C has SHA-256
+`3e0548b1140a189411de9b0a1b00f4c9db03a74da1547a61260c9398e4798e5c`.
 The implementation is protected by template discovery, application-service, Word contract, API,
-download-button, and Project Workbench tests. A real E-3707_H three-group sample is also exported by
-Microsoft Word and visually inspected page by page; the local LibreOffice renderer is unavailable on
-the current Windows host.
+download-button, publication-gateway, and Report Workspace tests. The approved 24-page internal
+golden is converted into a 21-page customer report and exported by Microsoft Word for page-level
+visual inspection; controlled external source and golden files are not modified.

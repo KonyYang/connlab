@@ -194,6 +194,9 @@ from backend.application.llcr_result_dataset_service import (
 )
 from backend.application.report_workspace_service import ReportWorkspaceService
 from backend.application.current_report_update_service import CurrentReportUpdateService
+from backend.application.customer_report_projection_service import (
+    CustomerReportProjectionService,
+)
 from backend.application.equipment_report_update_service import EquipmentReportUpdateService
 from backend.application.test_report_template_resource import (
     TestReportTemplateResourceStore,
@@ -1161,6 +1164,19 @@ def get_no_ltr_project_cleanup_service(
 def get_settings() -> Settings:
     """Return application settings."""
     return Settings.load()
+
+
+def get_customer_report_projection_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> CustomerReportProjectionService:
+    """Build current-Internal-Report customer projection and publication."""
+    return CustomerReportProjectionService(
+        current_reports=get_current_report_update_service(session),
+        files=ReportPublicationGateway(),
+        writer=CustomerReportDocumentGateway(),
+        generated_root=settings.data_dir / "customer_report_downloads",
+    )
 
 
 def get_contact_measurement_plan_projection_service(

@@ -10,10 +10,13 @@ import {
 import {
   cancelLlcrResultPreview,
   confirmLlcrResultImport,
+  downloadCurrentCustomerReport,
   downloadCurrentReport,
+  fetchCurrentCustomerReport,
   fetchCurrentReport,
   fetchReportWorkspace,
   generateInitialReportRevision,
+  generateCurrentCustomerReport,
   inspectLlcrResultWorkbook,
   publishManagedReport,
   previewCurrentReportLlcrUpdate,
@@ -21,6 +24,7 @@ import {
   updateCurrentReportLlcr,
   updateCurrentReportEquipmentList,
   type CurrentReport,
+  type CustomerReportState,
   type EquipmentListPreview,
   type LlcrImportPreview,
   type ReportWorkspaceState,
@@ -45,11 +49,12 @@ type ReportWorkspaceProps = {
   onBack: () => void;
 };
 
-type BusyAction = "load" | "initial" | "inspect" | "confirm" | "cancel" | "llcr" | "equipment-preview" | "equipment-update" | "publish" | "download" | null;
+type BusyAction = "load" | "initial" | "inspect" | "confirm" | "cancel" | "llcr" | "equipment-preview" | "equipment-update" | "publish" | "download" | "customer" | "customer-download" | null;
 
 export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): ReactElement {
   const [state, setState] = useState<ReportWorkspaceState | null>(null);
   const [currentReport, setCurrentReport] = useState<CurrentReport | null>(null);
+  const [customerReport, setCustomerReport] = useState<CustomerReportState | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<LlcrImportPreview | null>(null);
   const [decisionDrafts, setDecisionDrafts] = useState<LlcrDecisionDrafts>({});
@@ -61,12 +66,14 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
   const [message, setMessage] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const [nextState, nextReport] = await Promise.all([
+    const [nextState, nextReport, nextCustomerReport] = await Promise.all([
       fetchReportWorkspace(projectId),
       fetchCurrentReport(projectId),
+      fetchCurrentCustomerReport(projectId),
     ]);
     setState(nextState);
     setCurrentReport(nextReport);
+    setCustomerReport(nextCustomerReport);
     return nextState;
   }, [projectId]);
 
@@ -74,11 +81,16 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
     let active = true;
     setBusyAction("load");
     setError(null);
-    Promise.all([fetchReportWorkspace(projectId), fetchCurrentReport(projectId)])
-      .then(([nextState, nextReport]) => {
+    Promise.all([
+      fetchReportWorkspace(projectId),
+      fetchCurrentReport(projectId),
+      fetchCurrentCustomerReport(projectId),
+    ])
+      .then(([nextState, nextReport, nextCustomerReport]) => {
         if (active) {
           setState(nextState);
           setCurrentReport(nextReport);
+          setCustomerReport(nextCustomerReport);
         }
       })
       .catch((reason: unknown) => {
@@ -185,6 +197,46 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
       const response = await downloadCurrentReport(projectId);
       downloadBlob(response.blob, response.fileName || currentReport?.file_name || "Internal Report.docx");
       return "Downloaded the current internal report.";
+    });
+  }
+
+  async function handleGenerateCustomerReport(): Promise<void> {
+    if (!customerReport?.can_generate || !customerReport.internal_report_sha256) {
+      return;
+    }
+    await runAction("customer", async () => {
+      const generated = await generateCurrentCustomerReport(projectId, {
+        expected_internal_report_sha256: customerReport.internal_report_sha256!,
+        expected_customer_report_sha256: customerReport.file_sha256,
+      });
+      if (generated.kind === "download") {
+        downloadBlob(
+          generated.download.blob,
+          generated.download.fileName || "Customer Report.docx"
+        );
+        return "Generated and downloaded the customer report.";
+      }
+      await refresh();
+      if (!customerReport.file_name) {
+        return `Generated the customer report (${generated.result.file_name}) in the official project folder.`;
+      }
+      if (!generated.result.changed) {
+        return `The customer report (${generated.result.file_name}) was already current.`;
+      }
+      return generated.result.archive_path
+        ? `Updated the customer report (${generated.result.file_name}). The previous customer report was archived automatically.`
+        : `Updated the customer report (${generated.result.file_name}).`;
+    });
+  }
+
+  async function handleDownloadCustomerReport(): Promise<void> {
+    await runAction("customer-download", async () => {
+      const response = await downloadCurrentCustomerReport(projectId);
+      downloadBlob(
+        response.blob,
+        response.fileName || customerReport?.file_name || "Customer Report.docx"
+      );
+      return "Downloaded the current customer report.";
     });
   }
 
@@ -358,9 +410,64 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
             {reportEntry.kind === "blocked" ? <p className="report-workspace-blocker">Multiple internal reports were found. Resolve that conflict before creating or updating a report.</p> : null}
           </article>
 
-          <article className="report-workspace-card">
+          <article className="report-workspace-card report-workspace-card-wide">
             <div className="report-workspace-card-heading">
               <span className="report-workspace-step">02</span>
+              <div>
+                <h2>Customer report</h2>
+                <p>Generate the controlled E-4515_F customer projection from the current Internal Report. Internal-only detail and appendices are excluded.</p>
+              </div>
+            </div>
+            <div className="report-workspace-current-report">
+              <span className={`report-workspace-status report-workspace-status-${customerReportStatusTone(customerReport)}`}>
+                {customerReportStatusLabel(customerReport)}
+              </span>
+              {customerReport?.file_name ? <strong>{customerReport.file_name}</strong> : null}
+              <small>
+                {customerReport?.mode === "official"
+                  ? "Same folder as the current Internal Report"
+                  : "Browser download (no official project folder)"}
+              </small>
+            </div>
+            {customerReport?.warnings.map((warning) => (
+              <p className="report-workspace-warning" key={warning}>{warning}</p>
+            ))}
+            {customerReport?.blockers.map((blocker) => (
+              <p className="report-workspace-blocker" key={blocker}>{blocker}</p>
+            ))}
+            <div className="report-workspace-action-row">
+              <button
+                className="primary-action"
+                disabled={!customerReport?.can_generate || Boolean(busyAction)}
+                onClick={() => void handleGenerateCustomerReport()}
+                type="button"
+              >
+                {busyAction === "customer"
+                  ? "Generating customer report..."
+                  : customerReport?.mode === "managed_download"
+                    ? "Generate and download customer report"
+                    : customerReport?.file_name
+                      ? "Update customer report"
+                      : "Generate customer report"}
+              </button>
+              {customerReport?.download_url ? (
+                <button
+                  disabled={Boolean(busyAction)}
+                  onClick={() => void handleDownloadCustomerReport()}
+                  type="button"
+                >Download customer report</button>
+              ) : null}
+            </div>
+            <div className="report-workspace-owned-regions" aria-label="Customer report projection boundary">
+              <strong>Source authority</strong>
+              <span>Current Internal Report only</span>
+              <small>An existing customer report is archived before a successful replacement. It is never used as the generation source.</small>
+            </div>
+          </article>
+
+          <article className="report-workspace-card">
+            <div className="report-workspace-card-heading">
+              <span className="report-workspace-step">03</span>
               <div><h2>Import LLCR results</h2><p>Inspect a workbook against the active Matrix before creating an immutable Result Dataset.</p></div>
             </div>
             <label className="report-workspace-file-field">
@@ -380,7 +487,7 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
 
           <article className="report-workspace-card">
             <div className="report-workspace-card-heading">
-              <span className="report-workspace-step">03</span>
+              <span className="report-workspace-step">04</span>
               <div><h2>Update LLCR report section</h2><p>Update only controlled LLCR Result and Comment cells. Purpose, Conclusions, Equipment, images, and appendices remain unchanged.</p></div>
             </div>
             {latestDataset ? (
@@ -410,7 +517,7 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
 
           <article className="report-workspace-card report-workspace-card-wide">
             <div className="report-workspace-card-heading">
-              <span className="report-workspace-step">04</span>
+              <span className="report-workspace-step">05</span>
               <div>
                 <h2>Update Equipment List</h2>
                 <p>Read EquipmentID.docx from the project folder and match it to the active Equipment calibration Excel configured in Settings.</p>
@@ -563,6 +670,27 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
 function formatDateTime(value: string): string {
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+}
+
+function customerReportStatusLabel(state: CustomerReportState | null): string {
+  if (!state) return "Checking status";
+  if (state.status === "ready") return "Current";
+  if (state.status === "stale") return "Needs update";
+  if (state.status === "untracked") return "Lineage not recorded";
+  if (state.status === "missing") return "Not generated";
+  if (state.status === "ambiguous") return "Multiple reports found";
+  return "Blocked";
+}
+
+function customerReportStatusTone(
+  state: CustomerReportState | null
+): "ready" | "publish" | "generate" | "blocked" {
+  if (!state || state.status === "blocked" || state.status === "ambiguous") {
+    return "blocked";
+  }
+  if (state.status === "ready") return "ready";
+  if (state.status === "missing") return "generate";
+  return "publish";
 }
 
 function errorMessage(reason: unknown, fallback: string): string {

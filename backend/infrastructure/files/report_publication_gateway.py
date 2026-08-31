@@ -53,6 +53,34 @@ class ReportPublicationGateway:
         ]
         return tuple(sorted(candidates, key=lambda value: value.name.casefold()))
 
+    def discover_customer_reports(
+        self,
+        *,
+        folder: Path,
+        dl_number: str,
+    ) -> tuple[Path, ...]:
+        """Return customer-report candidates beside the current Internal Report."""
+        root = Path(folder)
+        if not root.is_dir():
+            return tuple()
+        normalized_dl = dl_number.strip().casefold()
+        candidates = [
+            path
+            for path in root.iterdir()
+            if path.is_file()
+            and path.suffix.casefold() == ".docx"
+            and _is_customer_report_name(path.stem, normalized_dl)
+        ]
+        return tuple(
+            sorted(
+                candidates,
+                key=lambda value: (
+                    "_customer_" in value.name.casefold(),
+                    value.name.casefold(),
+                ),
+            )
+        )
+
     def fingerprint(self, path: Path) -> str:
         """Return the SHA-256 fingerprint for one report file."""
         report = Path(path)
@@ -216,6 +244,74 @@ class ReportPublicationGateway:
             if owns_target_reservation and not published:
                 target.unlink(missing_ok=True)
 
+    def publish_generated_current(
+        self,
+        *,
+        source_path: Path,
+        expected_source_sha256: str,
+        target_path: Path,
+        generate_document: Callable[[Path, Path], Path],
+    ) -> ReportFilePublicationResult:
+        """Generate a new sibling report while protecting its source fingerprint."""
+        source = Path(source_path)
+        target = Path(target_path)
+        if source.suffix.casefold() != ".docx" or not source.is_file():
+            raise FileNotFoundError(f"Current Internal Report does not exist: {source}")
+        if target.suffix.casefold() != ".docx" or not target.parent.is_dir():
+            raise FileNotFoundError(
+                f"Customer report folder does not exist: {target.parent}"
+            )
+        expected = expected_source_sha256.strip().casefold()
+        if not expected or self.fingerprint(source) != expected:
+            raise ReportPublicationConflictError(
+                "The current Internal Report changed after preview. Preview generation again."
+            )
+        if target.exists():
+            raise ReportPublicationConflictError(
+                f"A customer report already exists at the target path: {target}"
+            )
+
+        staging = target.with_name(
+            f".{target.stem}.{self._ids()}.stage{target.suffix}"
+        )
+        owns_target_reservation = False
+        published = False
+        try:
+            written = Path(generate_document(source, staging))
+            if written != staging or not staging.is_file():
+                raise RuntimeError(
+                    "The customer report generator did not produce the reserved staging file."
+                )
+            staged_sha256 = self.fingerprint(staging)
+            if self.fingerprint(source) != expected:
+                raise ReportPublicationConflictError(
+                    "The current Internal Report changed during customer report generation. Generate again."
+                )
+            try:
+                descriptor = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.close(descriptor)
+                owns_target_reservation = True
+                os.replace(staging, target)
+                published = True
+            except FileExistsError as exc:
+                raise ReportPublicationConflictError(
+                    f"A customer report already exists at the target path: {target}"
+                ) from exc
+            except PermissionError as exc:
+                raise ReportPublicationConflictError(
+                    "The customer report folder is not writable or the target is open in Word."
+                ) from exc
+            return ReportFilePublicationResult(
+                current_path=target,
+                current_sha256=staged_sha256,
+                changed=True,
+                archive_path=None,
+            )
+        finally:
+            staging.unlink(missing_ok=True)
+            if owns_target_reservation and not published:
+                target.unlink(missing_ok=True)
+
 
 def _is_internal_report_name(stem: str, normalized_dl: str) -> bool:
     normalized = " ".join(stem.split()).casefold()
@@ -227,6 +323,16 @@ def _is_internal_report_name(stem: str, normalized_dl: str) -> bool:
         return False
     first_token = re.split(r"\s+", normalized, maxsplit=1)[0]
     return not first_token.endswith("-cr") and "customer" not in normalized
+
+
+def _is_customer_report_name(stem: str, normalized_dl: str) -> bool:
+    normalized = " ".join(stem.split()).casefold()
+    expected_prefix = f"{normalized_dl}-cr"
+    if not normalized_dl or not (
+        normalized == expected_prefix or normalized.startswith(f"{expected_prefix} ")
+    ):
+        return False
+    return "report" in normalized and "test record" not in normalized
 
 
 def _reserve_archive_directory(history_root: Path, timestamp: datetime) -> Path:
