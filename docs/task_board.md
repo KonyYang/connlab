@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "REPORT-003D",
     "summary": "Automatically open DGLAB-protected Word and PowerPoint files across current ConnLab Office workflows while preserving protected report update safety.",
@@ -50,17 +50,96 @@
     ],
     "activation_head": "d8b55ac2038ebd83eb650a85da45993fbee7a5fa",
     "started_at": "2026-08-31T15:42:52.350902Z",
-    "updated_at": "2026-08-31T17:17:44.806763Z",
+    "updated_at": "2026-08-31T17:19:22.080680Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "REPORT-003D",
-      "stage": "scope_manifest_correction",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User explicitly requested automatic DGLAB handling for protected Word and PowerPoint files across the active task; manifest corrected to the exact committed diff.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "version": 1,
+      "roles": {
+        "integrator": {
+          "status": "passed",
+          "summary": "Exact committed diff and corrected high-risk scope manifest are consistent."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Affected tests, focused integration, and isolated real Office workflows passed."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Standards and specification review found no remaining task-scope defect."
+        },
+        "planner": {
+          "status": "passed",
+          "summary": "Mapped existing Office read/write paths and protection-state invariants."
+        },
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented protected package seam, integrations, tests, and documentation."
+        }
+      },
+      "summary": "Protected Word and PowerPoint access is centralized; protected report updates, customer projection, application-form intake, equipment and historical reads preserve safety and protection state.",
+      "changed_paths": [
+        "backend/application/project_file_encryption_service.py",
+        "backend/infrastructure/office/application_form_word_session.py",
+        "backend/infrastructure/office/customer_report_document_gateway.py",
+        "backend/infrastructure/office/equipment_id_document_reader.py",
+        "backend/infrastructure/office/historical_test_report_method_extractor.py",
+        "backend/infrastructure/office/office_file_password_gateway.py",
+        "backend/infrastructure/office/office_protected_document_gateway.py",
+        "backend/infrastructure/office/test_report_document_gateway.py",
+        "backend/infrastructure/office/word_document_gateway.py",
+        "backend/modules/intake/application_form_parser.py",
+        "backend/shared/office_document_password.py",
+        "docs/report_generation_architecture.md",
+        "tests/unit/test_application_form_parser.py",
+        "tests/unit/test_application_form_word_session.py",
+        "tests/unit/test_customer_report_document_gateway.py",
+        "tests/unit/test_equipment_id_document_reader.py",
+        "tests/unit/test_historical_test_report_method_extractor.py",
+        "tests/unit/test_office_file_password_gateway.py",
+        "tests/unit/test_office_protected_document_gateway.py",
+        "tests/unit/test_test_report_document_gateway.py",
+        "tests/unit/test_word_document_gateway.py",
+        "tests/unit/test_word_document_section2_write_gateway.py"
+      ],
+      "task_id": "REPORT-003D",
+      "schema": "connlab.sol-task-report",
+      "validation": [
+        {
+          "status": "passed",
+          "name": "affected Office and report unit tests (97)"
+        },
+        {
+          "status": "passed",
+          "name": "Word project test-plan preview integration tests (13)"
+        },
+        {
+          "status": "passed",
+          "name": "real protected Word and PowerPoint COM smoke"
+        },
+        {
+          "status": "passed",
+          "name": "real protected internal report plus protected E-4515 customer projection"
+        },
+        {
+          "status": "passed",
+          "name": "Python compilation and diff hygiene"
+        }
+      ],
+      "scope_ok": true,
+      "subject": "fb8faf053bec9f8221853ac6cf2d619b08a7636c",
+      "integration": {
+        "status": "passed",
+        "mode": "verified_local"
+      }
+    }
   },
   "last_closed": {
     "task_id": "REPORT-003C",
