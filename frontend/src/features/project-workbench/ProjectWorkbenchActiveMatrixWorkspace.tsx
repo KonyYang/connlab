@@ -77,13 +77,15 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
                   lifecycleReadonlyView.readonly ? lifecycleReadonlyView.message : undefined
                 }
                 footerAction={
-                  <ProjectFileEncryptionAction
-                    projectId={projectId}
-                    available={effectiveFolderReady}
-                    readonlyReason={
-                      lifecycleReadonlyView.readonly ? lifecycleReadonlyView.message : undefined
-                    }
-                  />
+                  effectiveFolderReady ? (
+                    <ProjectFileEncryptionAction
+                      projectId={projectId}
+                      available
+                      readonlyReason={
+                        lifecycleReadonlyView.readonly ? lifecycleReadonlyView.message : undefined
+                      }
+                    />
+                  ) : null
                 }
               />
               <ProjectBasicInformationSummaryCard
