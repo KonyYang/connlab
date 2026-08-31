@@ -1278,7 +1278,10 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       screen
         .getByLabelText("Folder Actions")
         .querySelectorAll("button")
-    ).toHaveLength(3);
+    ).toHaveLength(4);
+    expect(
+      (screen.getByRole("button", { name: "Preview" }) as HTMLButtonElement).disabled
+    ).toBe(true);
     expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
 
     await user.click(folderButton);

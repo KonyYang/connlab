@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import type {
   ProjectFolderRequiredFormsPreview,
   PublicFolderWorkflowOperationType,
@@ -55,6 +55,7 @@ export function ProjectFolderActionsSurface({
   onTaskCancel,
   onAutoSyncChange,
   readonlyReason,
+  footerAction,
 }: {
   tasks: ProjectFolderTaskRow[];
   onTaskAction?: (actionTarget: ProjectFolderTaskActionTarget) => void;
@@ -62,6 +63,7 @@ export function ProjectFolderActionsSurface({
   onTaskCancel?: (operation: PublicFolderWorkflowOperationType) => void;
   onAutoSyncChange?: (enabled: boolean) => void;
   readonlyReason?: string;
+  footerAction?: ReactNode;
 }): ReactElement {
   const panelBlocker = readonlyReason ?? selectPanelBlocker(tasks);
   return (
@@ -82,6 +84,7 @@ export function ProjectFolderActionsSurface({
           />
         ))}
       </div>
+      {footerAction}
       {panelBlocker ? (
         <p className="runtime-console-folder-actions-blocker">{panelBlocker}</p>
       ) : null}

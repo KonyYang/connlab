@@ -1423,6 +1423,39 @@ export type LlcrCrRecordWorkbookRow = {
   contact_label: string;
 };
 
+export type ProjectFileEncryptionItem = {
+  file_name: string;
+  location: "official_root" | "test_results";
+  office_kind: "word" | "excel" | "powerpoint";
+  mode: "replace_in_place" | "secured_copy";
+  conflict: boolean;
+};
+
+export type ProjectFileEncryptionPreview = {
+  project_id: string;
+  status: "ready" | "conflict" | "empty" | "blocked";
+  plan_token: string;
+  conflict_count: number;
+  items: ProjectFileEncryptionItem[];
+  blockers: string[];
+  warnings: string[];
+};
+
+export type ProjectFileEncryptionResultItem = {
+  file_name: string;
+  location: "official_root" | "test_results";
+  status: "encrypted" | "skipped" | "failed";
+  message: string;
+};
+
+export type ProjectFileEncryptionResult = {
+  project_id: string;
+  encrypted_count: number;
+  skipped_count: number;
+  failed_count: number;
+  items: ProjectFileEncryptionResultItem[];
+};
+
 export type LlcrCrRecordType = "llcr" | "cr";
 
 export type LlcrCrRecordWorkbookStage = {
@@ -4095,6 +4128,28 @@ export function listProjectTestPlanSourceCandidates(
   const query = view === "registered_assets" ? "" : "?view=resolved_directory";
   return requestJson<MatrixSourceCandidatesResponse>(
     `/api/projects/${encodeURIComponent(projectId)}/test-plan/source-candidates${query}`
+  );
+}
+
+export function previewProjectFileEncryption(
+  projectId: string
+): Promise<ProjectFileEncryptionPreview> {
+  return requestJson<ProjectFileEncryptionPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/file-encryption/preview`,
+    { method: "POST" }
+  );
+}
+
+export function executeProjectFileEncryption(
+  projectId: string,
+  input: {
+    expected_plan_token: string;
+    conflict_action: "overwrite" | "skip";
+  }
+): Promise<ProjectFileEncryptionResult> {
+  return requestJson<ProjectFileEncryptionResult>(
+    `/api/projects/${encodeURIComponent(projectId)}/file-encryption/execute`,
+    { method: "POST", body: JSON.stringify(input) }
   );
 }
 

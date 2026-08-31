@@ -15,6 +15,9 @@ from backend.api.routes_external_excel_resources import (
 from backend.api.routes_external_resources import router as external_resources_router
 from backend.api.routes_diagnostics import router as diagnostics_router
 from backend.api.routes_folder import router as folder_router
+from backend.api.routes_project_file_encryption import (
+    router as project_file_encryption_router,
+)
 from backend.api.routes_intake import router as intake_router
 from backend.api.routes_intake_review import router as intake_review_router
 from backend.api.routes_lookup import router as lookup_router
@@ -200,6 +203,7 @@ app.include_router(external_excel_read_router)
 app.include_router(external_resources_router)
 app.include_router(diagnostics_router)
 app.include_router(folder_router)
+app.include_router(project_file_encryption_router)
 app.include_router(intake_router)
 app.include_router(intake_review_router)
 app.include_router(lookup_router)

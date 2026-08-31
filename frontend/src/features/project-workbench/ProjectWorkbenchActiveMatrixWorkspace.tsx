@@ -9,6 +9,7 @@ import type {
   ProjectFolderTaskRow,
 } from "./projectFolderTaskSelectors";
 import { ProjectFolderActionsSurface } from "./ProjectFolderTaskList";
+import { ProjectFileEncryptionAction } from "./ProjectFileEncryptionAction";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 
 type ProjectWorkbenchActiveMatrixWorkspaceProps = {
@@ -74,6 +75,15 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
                 onAutoSyncChange={onPublicFolderAutoSyncChange}
                 readonlyReason={
                   lifecycleReadonlyView.readonly ? lifecycleReadonlyView.message : undefined
+                }
+                footerAction={
+                  <ProjectFileEncryptionAction
+                    projectId={projectId}
+                    available={effectiveFolderReady}
+                    readonlyReason={
+                      lifecycleReadonlyView.readonly ? lifecycleReadonlyView.message : undefined
+                    }
+                  />
                 }
               />
               <ProjectBasicInformationSummaryCard

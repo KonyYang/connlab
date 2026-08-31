@@ -270,6 +270,7 @@ from backend.application.official_project_folder_check_service import (
 from backend.application.public_drive_upload_service import PublicDriveUploadService
 from backend.application.public_folder_workflow_service import PublicFolderWorkflowService
 from backend.application.project_folder_open_service import ProjectFolderOpenService
+from backend.application.project_file_encryption_service import ProjectFileEncryptionService
 from backend.application.public_folder_year_resolver import PublicFolderYearResolver
 from backend.application.project_request_material_collection_service import (
     ProjectRequestMaterialCollectionService,
@@ -344,6 +345,9 @@ from backend.infrastructure.files.public_folder_workflow_gateway import (
 from backend.infrastructure.files.local_folder_open_gateway import (
     LocalFolderOpenGateway,
 )
+from backend.infrastructure.files.project_file_encryption_gateway import (
+    LocalProjectFileEncryptionGateway,
+)
 from backend.infrastructure.files.project_folder_required_forms_gateway import (
     ProjectFolderRequiredFormsFileGateway,
 )
@@ -367,6 +371,9 @@ from backend.infrastructure.office import (
 )
 from backend.infrastructure.office.fee_evaluation_export_subprocess_runner import (
     FeeEvaluationExportSubprocessRunner,
+)
+from backend.infrastructure.office.office_file_password_gateway import (
+    OfficeFilePasswordGateway,
 )
 from backend.infrastructure.storage.database import (
     create_database_engine,
@@ -1570,6 +1577,16 @@ def get_project_folder_open_service(
     return ProjectFolderOpenService(
         workflow_service=workflow_service,
         gateway=LocalFolderOpenGateway(),
+    )
+
+
+def get_project_file_encryption_service(
+    session: Session = Depends(get_session),
+) -> ProjectFileEncryptionService:
+    """Build trusted-path project-file encryption service."""
+    return ProjectFileEncryptionService(
+        workspace_repository=ProjectOfficialWorkspaceRepository(session),
+        gateway=LocalProjectFileEncryptionGateway(OfficeFilePasswordGateway()),
     )
 
 
