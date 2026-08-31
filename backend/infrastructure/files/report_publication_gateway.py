@@ -113,7 +113,6 @@ class ReportPublicationGateway:
         staging = current.with_name(
             f".{current.stem}.{self._ids()}.stage{current.suffix}"
         )
-        archive_directory: Path | None = None
         archive_path: Path | None = None
         published = False
         missing_history_parents = _missing_parents(Path(history_root))
@@ -137,12 +136,11 @@ class ReportPublicationGateway:
                     archive_path=None,
                 )
 
-            archive_directory = _reserve_archive_directory(
+            archive_path = _reserve_archive_path(
                 Path(history_root),
+                current,
                 self._clock(),
             )
-            archive_directory.mkdir(parents=True, exist_ok=False)
-            archive_path = archive_directory / current.name
             try:
                 shutil.copy2(current, archive_path)
                 if self.fingerprint(archive_path) != expected:
@@ -170,12 +168,6 @@ class ReportPublicationGateway:
             staging.unlink(missing_ok=True)
             if not published and archive_path is not None:
                 archive_path.unlink(missing_ok=True)
-            if (
-                archive_directory is not None
-                and archive_directory.is_dir()
-                and not any(archive_directory.iterdir())
-            ):
-                archive_directory.rmdir()
             if not published:
                 for directory in missing_history_parents:
                     if directory.is_dir() and not any(directory.iterdir()):
@@ -335,15 +327,41 @@ def _is_customer_report_name(stem: str, normalized_dl: str) -> bool:
     return "report" in normalized and "test record" not in normalized
 
 
-def _reserve_archive_directory(history_root: Path, timestamp: datetime) -> Path:
-    base = Path(history_root) / timestamp.strftime("%Y%m%d-%H%M%S")
-    if not base.exists():
-        return base
-    for suffix in range(2, 10_000):
-        candidate = base.with_name(f"{base.name} ({suffix})")
-        if not candidate.exists():
-            return candidate
-    raise RuntimeError("Unable to reserve a report History directory.")
+def _reserve_archive_path(
+    history_root: Path,
+    current: Path,
+    timestamp: datetime,
+) -> Path:
+    root = Path(history_root)
+    root.mkdir(parents=True, exist_ok=True)
+    stamp = timestamp.strftime("%Y%m%d-%H%M%S")
+    identity_match = re.match(
+        r"^(DL-\d{4}-\d{2}-\d{3}(?:-CR)?)\b",
+        current.stem,
+        flags=re.IGNORECASE,
+    )
+    revision_match = re.search(
+        r"Report(?:_Customer)?_Rev_([A-Za-z0-9]+)$",
+        current.stem,
+        flags=re.IGNORECASE,
+    )
+    if identity_match and revision_match:
+        archive_stem = (
+            f"{identity_match.group(1)} Report_Rev_{revision_match.group(1)} {stamp}"
+        )
+    else:
+        archive_stem = f"{current.stem} {stamp}"
+
+    for suffix in range(1, 10_000):
+        duplicate_suffix = "" if suffix == 1 else f" ({suffix})"
+        candidate = root / f"{archive_stem}{duplicate_suffix}{current.suffix}"
+        try:
+            descriptor = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            continue
+        os.close(descriptor)
+        return candidate
+    raise RuntimeError("Unable to reserve a report History file.")
 
 
 def _missing_parents(path: Path) -> tuple[Path, ...]:

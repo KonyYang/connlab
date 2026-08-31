@@ -54,7 +54,7 @@ def test_preview_uses_download_mode_when_current_matrix_is_not_confirmed(
     assert preview.target_path is None
 
 
-def test_execute_publishes_current_draft_to_test_results_and_registers_output(
+def test_execute_replaces_the_submitted_material_test_record_and_registers_output(
     tmp_path: Path,
 ) -> None:
     workspace = _workspace(tmp_path)
@@ -76,7 +76,11 @@ def test_execute_publishes_current_draft_to_test_results_and_registers_output(
         )
     )
 
-    target = workspace.official_folder_path / "Test results" / "DL-001 Test Record.docx"
+    target = (
+        workspace.official_folder_path
+        / "Submitted Material"
+        / "DL-001 Test Record.docx"
+    )
     assert result.target_path == target
     assert target.read_text(encoding="utf-8") == "current Matrix draft"
     assert service._outputs.commands[-1].output_kind is ProjectOutputKind.TEST_RECORD_FORM
@@ -91,7 +95,11 @@ def test_execute_publishes_current_draft_to_test_results_and_registers_output(
 
 def test_existing_file_requires_archive_or_recycle_choice(tmp_path: Path) -> None:
     workspace = _workspace(tmp_path)
-    target = workspace.official_folder_path / "Test results" / "DL-001 Test Record.docx"
+    target = (
+        workspace.official_folder_path
+        / "Submitted Material"
+        / "DL-001 Test Record.docx"
+    )
     target.write_text("old", encoding="utf-8")
     service = _service(tmp_path, workspace=workspace)
 
@@ -120,7 +128,11 @@ def test_archive_moves_old_file_to_workspace_history_before_replacement(
     tmp_path: Path,
 ) -> None:
     workspace = _workspace(tmp_path)
-    target = workspace.official_folder_path / "Test results" / "DL-001 Test Record.docx"
+    target = (
+        workspace.official_folder_path
+        / "Submitted Material"
+        / "DL-001 Test Record.docx"
+    )
     target.write_text("old", encoding="utf-8")
     service = _service(tmp_path, workspace=workspace)
     preview = service.preview(
@@ -223,7 +235,11 @@ def test_basic_information_dl_must_match_official_workspace(tmp_path: Path) -> N
 
 def test_execute_rejects_stale_preview_when_existing_file_changes(tmp_path: Path) -> None:
     workspace = _workspace(tmp_path)
-    target = workspace.official_folder_path / "Test results" / "DL-001 Test Record.docx"
+    target = (
+        workspace.official_folder_path
+        / "Submitted Material"
+        / "DL-001 Test Record.docx"
+    )
     target.write_text("old", encoding="utf-8")
     service = _service(tmp_path, workspace=workspace)
     preview = service.preview(
@@ -296,7 +312,7 @@ def test_recycle_success_places_new_file_after_old_file_is_recycled(
 def _workspace(tmp_path: Path):
     local = tmp_path / "DL-001"
     official = local / "DL-001 Connector Qualification test"
-    (official / "Test results").mkdir(parents=True)
+    (official / "Submitted Material").mkdir(parents=True)
     return SimpleNamespace(
         project_id="P1",
         dl_number="DL-001",

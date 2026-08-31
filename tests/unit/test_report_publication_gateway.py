@@ -59,7 +59,11 @@ def test_discovers_only_customer_reports_for_the_project(tmp_path: Path) -> None
 
 
 def test_changed_report_is_archived_and_atomically_replaced(tmp_path: Path) -> None:
-    current = tmp_path / "official" / "DL-001 Report.docx"
+    current = (
+        tmp_path
+        / "official"
+        / "DL-2026-08-007 Coolpower HD3.5mm Qualification Testing Report_Rev_A.docx"
+    )
     current.parent.mkdir()
     current.write_bytes(b"operator-maintained|old-llcr")
     history = tmp_path / "History" / "Report"
@@ -82,11 +86,85 @@ def test_changed_report_is_archived_and_atomically_replaced(tmp_path: Path) -> N
     assert result.changed is True
     assert current.read_bytes() == b"operator-maintained|new-llcr"
     assert result.archive_path == (
-        history / "20260830-143522" / "DL-001 Report.docx"
+        history / "DL-2026-08-007 Report_Rev_A 20260830-143522.docx"
     )
+    assert tuple(history.iterdir()) == (result.archive_path,)
     assert result.archive_path.read_bytes() == b"operator-maintained|old-llcr"
     assert result.current_sha256 == gateway.fingerprint(current)
     assert not list(current.parent.glob(".*.stage.docx"))
+
+
+def test_customer_report_history_uses_compact_customer_identity_name(
+    tmp_path: Path,
+) -> None:
+    current = (
+        tmp_path
+        / "official"
+        / "DL-2026-08-007-CR Coolpower HD3.5mm Qualification Testing Report_Rev_A.docx"
+    )
+    current.parent.mkdir()
+    current.write_bytes(b"old-customer")
+    history = tmp_path / "History" / "Report"
+    gateway = ReportPublicationGateway(
+        clock=lambda: datetime(2026, 9, 1, 6, 26, 57)
+    )
+
+    result = gateway.publish_update(
+        current_path=current,
+        expected_current_sha256=gateway.fingerprint(current),
+        history_root=history,
+        update_document=lambda source, output: _write_update(
+            source,
+            output,
+            b"new-customer",
+        ),
+    )
+
+    assert result.archive_path == (
+        history / "DL-2026-08-007-CR Report_Rev_A 20260901-062657.docx"
+    )
+    assert result.archive_path.read_bytes() == b"old-customer"
+
+
+def test_report_history_keeps_both_updates_when_timestamp_collides(
+    tmp_path: Path,
+) -> None:
+    current = tmp_path / "DL-2026-08-007 Product Report_Rev_A.docx"
+    current.write_bytes(b"version-1")
+    history = tmp_path / "History" / "Report"
+    gateway = ReportPublicationGateway(
+        clock=lambda: datetime(2026, 9, 1, 6, 26, 57)
+    )
+
+    first = gateway.publish_update(
+        current_path=current,
+        expected_current_sha256=gateway.fingerprint(current),
+        history_root=history,
+        update_document=lambda source, output: _write_update(
+            source,
+            output,
+            b"version-2",
+        ),
+    )
+    second = gateway.publish_update(
+        current_path=current,
+        expected_current_sha256=gateway.fingerprint(current),
+        history_root=history,
+        update_document=lambda source, output: _write_update(
+            source,
+            output,
+            b"version-3",
+        ),
+    )
+
+    assert first.archive_path == (
+        history / "DL-2026-08-007 Report_Rev_A 20260901-062657.docx"
+    )
+    assert second.archive_path == (
+        history / "DL-2026-08-007 Report_Rev_A 20260901-062657 (2).docx"
+    )
+    assert first.archive_path.read_bytes() == b"version-1"
+    assert second.archive_path.read_bytes() == b"version-2"
 
 
 def test_unchanged_report_does_not_create_history(tmp_path: Path) -> None:

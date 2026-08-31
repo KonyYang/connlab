@@ -560,8 +560,17 @@ describe("FeeEvaluationReviewExportPage", () => {
         },
       }));
     });
-    expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
+    expect(onBackToWorkbench).not.toHaveBeenCalled();
     expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByText(
+        "Fee authority updated. You can now generate Fee Form."
+      )
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Fee Form" })).toHaveProperty(
+      "disabled",
+      false
+    );
     expect(screen.queryByText("Confirmed")).toBeNull();
     expect(screen.queryByText("Fee authority is current.")).toBeNull();
   });
@@ -628,7 +637,7 @@ describe("FeeEvaluationReviewExportPage", () => {
         })
       );
     });
-    expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
+    expect(onBackToWorkbench).not.toHaveBeenCalled();
   });
 
   it("blocks Update Fee at the incomplete Report preparation row without duplicate alerts", async () => {
@@ -871,7 +880,7 @@ describe("FeeEvaluationReviewExportPage", () => {
         },
       }));
     });
-    expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
+    expect(onBackToWorkbench).not.toHaveBeenCalled();
   });
 
   it("allows Update Fee refresh when confirmed fee is stale and promoted draft is current", async () => {
@@ -1036,6 +1045,83 @@ describe("FeeEvaluationReviewExportPage", () => {
         .disabled
     ).toBe(true);
     expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
+  });
+
+  it("saves the current pricing draft before returning to Workbench", async () => {
+    const baseline = promotedPricingDraftPayload({ notes: "baseline note" });
+    const saved = promotedPricingDraftPayload({ notes: "keep this draft" });
+    arrangeSuccessfulContext({
+      pricingDraft: currentPricingDraftResponse({
+        status: "current_v2",
+        saved_generation: 1,
+        saved_source_context_fingerprint: "context-1",
+        saved_payload_fingerprint: "payload-1",
+        saved_validation_token: "token-1",
+        payload: baseline,
+      }),
+    });
+    apiMocks.getFeeEvaluationPricingDraft
+      .mockResolvedValueOnce(
+        currentPricingDraftResponse({
+          status: "current_v2",
+          saved_generation: 1,
+          saved_source_context_fingerprint: "context-1",
+          saved_payload_fingerprint: "payload-1",
+          saved_validation_token: "token-1",
+          payload: baseline,
+        })
+      )
+      .mockResolvedValueOnce(
+        currentPricingDraftResponse({
+          status: "current_v2",
+          saved_generation: 2,
+          saved_source_context_fingerprint: "context-1",
+          saved_payload_fingerprint: "payload-2",
+          saved_validation_token: "token-2",
+          payload: saved,
+        })
+      );
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(
+      createDraftWithEditableSingleLine()
+    );
+    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue(
+      currentPricingDraftResponse({
+        status: "current_v2",
+        saved_generation: 2,
+        saved_source_context_fingerprint: "context-1",
+        saved_payload_fingerprint: "payload-2",
+        saved_validation_token: "token-2",
+        payload: saved,
+      })
+    );
+    const onBackToWorkbench = vi.fn();
+
+    render(
+      <FeeEvaluationReviewExportPage
+        projectId="P1"
+        onBackToWorkbench={onBackToWorkbench}
+      />
+    );
+
+    expect(await screen.findByDisplayValue("baseline note")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Notes for Visual Examination"), {
+      target: { value: "keep this draft" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft & return" }));
+
+    await waitFor(() => {
+      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledWith(
+        "P1",
+        expect.objectContaining({
+          rows: expect.arrayContaining([
+            expect.objectContaining({ notes: "keep this draft" }),
+          ]),
+        })
+      );
+    });
+    expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+    expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
+    expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
   });
 
   it("returns to Workbench without deleting the current pricing draft when unchanged", async () => {

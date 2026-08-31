@@ -193,16 +193,18 @@ class MatrixEditorTestRecordPublicationService:
                 basic_information=None,
             )
 
-        test_results = Path(workspace.official_folder_path) / "Test results"
-        if not test_results.is_dir():
+        submitted_material = Path(workspace.official_folder_path) / "Submitted Material"
+        if not submitted_material.is_dir():
             return self._preview_result(
                 command=command,
                 mode="official",
                 status="blocked",
-                target_path=test_results,
+                target_path=submitted_material,
                 target_fingerprint=None,
                 existing_modified_at=None,
-                blockers=("The official project folder is missing the Test results folder.",),
+                blockers=(
+                    "The official project folder is missing the Submitted Material folder.",
+                ),
                 basic_information=None,
             )
 
@@ -261,7 +263,7 @@ class MatrixEditorTestRecordPublicationService:
             )
 
         file_name = f"{_safe_file_stem(identity.lab_test_request_number)} Test Record.docx"
-        target = test_results / file_name
+        target = submitted_material / file_name
         if target.exists() and not target.is_file():
             return self._preview_result(
                 command=command,

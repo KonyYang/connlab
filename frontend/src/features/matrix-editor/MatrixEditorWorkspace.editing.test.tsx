@@ -114,12 +114,12 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     expect(screen.getByText("Downloaded unconfirmed Test Record preview.")).toBeTruthy();
   });
 
-  it("saves Test Record directly to Test results when the official folder exists", async () => {
+  it("saves Test Record directly to Submitted Material when the official folder exists", async () => {
     apiMocks.previewMatrixEditorTestRecordPublication.mockResolvedValueOnce({
       project_id: "P1",
       mode: "official",
       status: "ready",
-      target_path: "D:/Projects/DL-001/Test results/DL-001 Test Record.docx",
+      target_path: "D:/Projects/DL-001/Submitted Material/DL-001 Test Record.docx",
       existing_file: false,
       existing_modified_at: null,
       blockers: [],
@@ -141,7 +141,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
       )
     );
     expect(apiMocks.generateMatrixEditorTestRecordDraftDownload).not.toHaveBeenCalled();
-    expect(screen.getByText("Saved DL-001 Test Record.docx to Test results.")).toBeTruthy();
+    expect(screen.getByText("Saved DL-001 Test Record.docx to Submitted Material.")).toBeTruthy();
   });
 
   it("asks how to handle an existing Test Record and archives it only after choice", async () => {
@@ -149,7 +149,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
       project_id: "P1",
       mode: "official",
       status: "conflict",
-      target_path: "D:/Projects/DL-001/Test results/DL-001 Test Record.docx",
+      target_path: "D:/Projects/DL-001/Submitted Material/DL-001 Test Record.docx",
       existing_file: true,
       existing_modified_at: "2026-08-28T12:00:00+08:00",
       blockers: [],
@@ -157,7 +157,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     });
     apiMocks.publishMatrixEditorTestRecord.mockResolvedValueOnce({
       project_id: "P1",
-      target_path: "D:/Projects/DL-001/Test results/DL-001 Test Record.docx",
+      target_path: "D:/Projects/DL-001/Submitted Material/DL-001 Test Record.docx",
       archive_path: "D:/Projects/DL-001/History/Test Record/DL-001 Test Record_20260828-120000.docx",
       file_name: "DL-001 Test Record.docx",
     });

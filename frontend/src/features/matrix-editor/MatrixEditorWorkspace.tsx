@@ -1131,7 +1131,7 @@ export function MatrixEditorWorkspace({
         conflict_action: "none",
       });
       setTestRecordState("success");
-      setTestRecordMessage(`Saved ${result.file_name} to Test results.`);
+      setTestRecordMessage(`Saved ${result.file_name} to Submitted Material.`);
     } catch (error) {
       setTestRecordState("error");
       setTestRecordMessage(
@@ -1163,7 +1163,7 @@ export function MatrixEditorWorkspace({
       setTestRecordMessage(
         action === "archive" && result.archive_path
           ? `Saved ${result.file_name}; archived the previous file in History.`
-          : `Saved ${result.file_name} to Test results.`
+          : `Saved ${result.file_name} to Submitted Material.`
       );
     } catch (error) {
       setTestRecordState("error");
@@ -1371,7 +1371,7 @@ export function MatrixEditorWorkspace({
           <article className="matrix-editor-test-record-conflict-panel">
             <h3 id="test-record-conflict-title">Replace existing Test Record?</h3>
             <p id="test-record-conflict-description">
-              A file with the same name already exists in Test results. Choose what to do
+              A file with the same name already exists in Submitted Material. Choose what to do
               with the existing Word document before the new version is saved.
             </p>
             {testRecordConflict.existing_modified_at ? (

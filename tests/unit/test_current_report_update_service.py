@@ -191,7 +191,7 @@ def test_llcr_update_archives_current_report_and_preserves_unmanaged_content(
     assert report.read_bytes() == b"purpose|conclusion|new-llcr|equipment"
     assert result.archive_path is not None
     assert result.archive_path.read_bytes() == b"purpose|conclusion|old-llcr|equipment"
-    assert result.archive_path.parent.parent == tmp_path / "History" / "Report"
+    assert result.archive_path.parent == tmp_path / "History" / "Report"
     assert writer.source_path == report
     assert writer.dataset.dataset_id == "dataset-1"
 

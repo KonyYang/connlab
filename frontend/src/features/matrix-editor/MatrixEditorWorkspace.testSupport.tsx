@@ -409,7 +409,7 @@ export function installMatrixEditorWorkspaceTestLifecycle(): void {
     });
     apiMocks.publishMatrixEditorTestRecord.mockResolvedValue({
       project_id: "P1",
-      target_path: "D:/Projects/DL-001/Test results/DL-001 Test Record.docx",
+      target_path: "D:/Projects/DL-001/Submitted Material/DL-001 Test Record.docx",
       archive_path: null,
       file_name: "DL-001 Test Record.docx",
     });

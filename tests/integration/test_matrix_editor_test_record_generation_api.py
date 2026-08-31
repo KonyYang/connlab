@@ -193,7 +193,7 @@ def test_publication_downloads_current_ui_draft_when_matrix_is_unconfirmed(
         assert preview.json()["status"] == "ready"
         assert not (
             workspace.official_folder_path
-            / "Test results"
+            / "Submitted Material"
             / "DL-2026-05-003 Test Record.docx"
         ).exists()
     finally:
@@ -217,7 +217,11 @@ def test_unconfirmed_matrix_does_not_replace_existing_official_test_record(
         _seed_project("P1", tmp_path)
         _seed_basic_information("P1", tmp_path)
         workspace = _seed_workspace(session_factory, tmp_path)
-        target = workspace.official_folder_path / "Test results" / "DL-2026-05-003 Test Record.docx"
+        target = (
+            workspace.official_folder_path
+            / "Submitted Material"
+            / "DL-2026-05-003 Test Record.docx"
+        )
         target.write_text("operator old record", encoding="utf-8")
         payload = _draft_payload("replacement method")
 
@@ -273,7 +277,7 @@ def _draft_payload(method: str) -> dict[str, object]:
 def _seed_workspace(session_factory, tmp_path: Path) -> OfficialWorkspaceRecord:
     local = tmp_path / "DL-2026-05-003"
     official = local / "DL-2026-05-003 Connector Qualification test"
-    (official / "Test results").mkdir(parents=True)
+    (official / "Submitted Material").mkdir(parents=True)
     record = OfficialWorkspaceRecord(
         workspace_id="workspace-1",
         project_id="P1",

@@ -164,6 +164,8 @@ export function FeeEvaluationReviewExportPage({
   const [hasUserEditedPricingDraft, setHasUserEditedPricingDraft] = useState(false);
   const [isCancellingPricingSession, setIsCancellingPricingSession] =
     useState(false);
+  const [isSavingPricingSessionAndLeaving, setIsSavingPricingSessionAndLeaving] =
+    useState(false);
   const baselinePricingPayloadRef =
     useRef<FeeEvaluationEditedFileExportRequest | null>(null);
   const baselinePricingContextRef = useRef<PricingDraftContext | null>(null);
@@ -860,8 +862,20 @@ export function FeeEvaluationReviewExportPage({
         },
       });
       setConfirmedFeeState({ kind: "ready", data: result });
-      setConfirmFeeActionState({ kind: "success", message: "Fee updated." });
-      onBackToWorkbench();
+      baselinePricingPayloadRef.current = currentPricingDraftPayload;
+      baselinePricingCasRef.current = savedDraft.cas;
+      sessionOwnedPricingCasRef.current = null;
+      hasSessionEditedPricingDraftRef.current = false;
+      setHasUserEditedPricingDraft(false);
+      setSavedLocalPricingSignature(currentPricingDraftSignature);
+      setSaveState({
+        kind: "saved",
+        message: "Fee authority updated. You can now generate Fee Form.",
+      });
+      setConfirmFeeActionState({
+        kind: "success",
+        message: "Fee authority updated. You can now generate Fee Form.",
+      });
     } catch (error: unknown) {
       const message = businessReadableConfirmFeeError(
         readonlyAwareErrorMessage(error, "Unable to update Fee.")
@@ -1160,6 +1174,36 @@ export function FeeEvaluationReviewExportPage({
     }
   }
 
+  async function handleSaveDraftAndBackToWorkbench(): Promise<void> {
+    if (isLifecycleReadonly) {
+      onBackToWorkbench();
+      return;
+    }
+    if (
+      draftState.kind !== "ready" ||
+      confirmFeeActionState.kind === "confirming" ||
+      isCancellingPricingSession ||
+      isSavingPricingSessionAndLeaving
+    ) {
+      return;
+    }
+    setIsSavingPricingSessionAndLeaving(true);
+    try {
+      await ensureCurrentPricingDraftSavedForUpdate();
+      onBackToWorkbench();
+    } catch (error: unknown) {
+      setSaveState({
+        kind: "error",
+        message: readonlyAwareErrorMessage(
+          error,
+          "Unable to save the Fee Evaluation draft before returning."
+        ),
+      });
+    } finally {
+      setIsSavingPricingSessionAndLeaving(false);
+    }
+  }
+
   return (
     <section className="fee-evaluation-page" aria-label="Fee Evaluation review and export">
       {isLifecycleReadonly ? (
@@ -1236,7 +1280,7 @@ export function FeeEvaluationReviewExportPage({
       >
         <span>
           {confirmFeeDisabledReason ??
-            "Update Fee returns to Workbench after authority is updated."}
+            "Update Fee keeps this page open so the confirmed Fee Form can be generated."}
         </span>
         <div className="fee-evaluation-completion-actions">
           <button
@@ -1244,10 +1288,25 @@ export function FeeEvaluationReviewExportPage({
             onClick={() => void handleBackToWorkbench()}
             disabled={
               confirmFeeActionState.kind === "confirming" ||
-              isCancellingPricingSession
+              isCancellingPricingSession ||
+              isSavingPricingSessionAndLeaving
             }
           >
             {isCancellingPricingSession ? "Cancelling..." : "Cancel"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSaveDraftAndBackToWorkbench()}
+            disabled={
+              draftState.kind !== "ready" ||
+              confirmFeeActionState.kind === "confirming" ||
+              isCancellingPricingSession ||
+              isSavingPricingSessionAndLeaving
+            }
+          >
+            {isSavingPricingSessionAndLeaving
+              ? "Saving draft..."
+              : "Save draft & return"}
           </button>
           <button
             className="fee-evaluation-primary-action"
@@ -1255,7 +1314,8 @@ export function FeeEvaluationReviewExportPage({
             onClick={() => void handleConfirmFee()}
             disabled={
               Boolean(confirmFeeDisabledReason) ||
-              confirmFeeActionState.kind === "confirming"
+              confirmFeeActionState.kind === "confirming" ||
+              isSavingPricingSessionAndLeaving
             }
             title={confirmFeeDisabledReason ?? undefined}
           >

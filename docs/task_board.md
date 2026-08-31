@@ -11,8 +11,32 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "REPORT-004A",
+    "summary": "Simplify report History naming, correct Test Record replacement to archive the actual Submitted Material authority, and keep Fee Evaluation open after authority confirmation with a save-draft return action.",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Change only report archive placement/naming, Matrix Editor Test Record target alignment, Fee Evaluation completion navigation, their focused tests, and report architecture documentation. Do not mutate real project files.",
+    "scope_paths": [
+      "backend/application/matrix_editor_test_record_publication_service.py",
+      "backend/infrastructure/files/report_publication_gateway.py",
+      "docs/report_generation_architecture.md",
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+      "tests/unit/test_matrix_editor_test_record_publication_service.py",
+      "tests/unit/test_report_publication_gateway.py"
+    ],
+    "risk_reasons": [
+      "Changes the archival layout for authoritative internal and customer Word reports.",
+      "Changes which existing Test Record file is archived and replaced in an official project folder."
+    ],
+    "activation_head": "585d6302d8aba5849e589656dee009a5e44bbabc",
+    "started_at": "2026-08-31T23:31:26.185774Z",
+    "updated_at": "2026-08-31T23:31:26.185774Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "REPORT-003E",
     "tier": "high_risk",

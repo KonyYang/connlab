@@ -58,6 +58,13 @@ file replaces it atomically. Without an official project folder, the generated f
 browser download and is not promoted into project authority. The approved E-4515_F template and both
 source reports remain read-only.
 
+Report history is intentionally flat. A prior Internal Report is stored directly as
+`History/Report/{DL} Report_Rev_{revision} {YYYYMMDD-HHMMSS}.docx`; a prior Customer Report uses
+`{DL}-CR Report_Rev_{revision} {YYYYMMDD-HHMMSS}.docx`. The product title is omitted from history
+filenames, no timestamp subdirectory is created, and a same-second collision receives `(2)`, `(3)`,
+and so on. Publication reserves the history filename before copying so concurrent updates cannot
+silently overwrite an earlier revision.
+
 ## Equipment List controlled update
 
 `REPORT-003B` uses two read-only external authorities:
@@ -128,6 +135,12 @@ Drafts are stored under `Settings.data_dir/generated_test_reports/{project_id}`.
 Generation reserves the target atomically. Existing drafts are preserved and the next filename uses
 `(2)`, `(3)`, and so on. The API downloads the exact server filename. No official project file or
 approved template is mutated in this phase.
+
+The canonical Test Record authority created by Project Folder is
+`{official qualification folder}/Submitted Material/{DL} Test Record.docx`. Matrix Editor publication
+uses that same path: the existing file is the version archived to `History/Test Record`, and only the
+newly generated file becomes the current Submitted Material document. `Test results` is not a second
+Test Record authority.
 
 ## Deferred phases
 
