@@ -24,6 +24,11 @@
       "docs/report_generation_architecture.md",
       "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
       "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.testSupport.tsx",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+      "tests/integration/test_matrix_editor_test_record_generation_api.py",
+      "tests/unit/test_current_report_update_service.py",
       "tests/unit/test_matrix_editor_test_record_publication_service.py",
       "tests/unit/test_report_publication_gateway.py"
     ],
@@ -33,8 +38,16 @@
     ],
     "activation_head": "585d6302d8aba5849e589656dee009a5e44bbabc",
     "started_at": "2026-08-31T23:31:26.185774Z",
-    "updated_at": "2026-08-31T23:31:26.185774Z",
-    "checkpoint": null,
+    "updated_at": "2026-08-31T23:50:58.186216Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "REPORT-004A",
+      "stage": "scope_manifest_correction",
+      "status": "running",
+      "summary": "User approved implementation of the requested report-history, Test Record, and Fee Evaluation behavior; review showed the exact same behavior also requires its Matrix Editor UI and integration regression paths.",
+      "requires_user": false
+    },
     "report": null
   },
   "last_closed": {
