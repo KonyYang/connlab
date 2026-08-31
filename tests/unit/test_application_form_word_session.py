@@ -19,6 +19,20 @@ def test_session_closes_open_documents_and_quits_owned_word_on_exit() -> None:
         first = session.open_document(Path("first.docx"))
         second = session.open_document(Path("second.docx"))
 
+    assert word.Documents.open_calls == [
+        {
+            "PasswordDocument": "DGLAB",
+            "WritePasswordDocument": "DGLAB",
+            "ReadOnly": False,
+            "AddToRecentFiles": False,
+        },
+        {
+            "PasswordDocument": "DGLAB",
+            "WritePasswordDocument": "DGLAB",
+            "ReadOnly": False,
+            "AddToRecentFiles": False,
+        },
+    ]
     assert first.closed
     assert second.closed
     assert word.quit_called
@@ -89,9 +103,11 @@ def test_session_keeps_document_tracked_when_close_fails() -> None:
 class _FakeDocuments:
     def __init__(self, *, fail_close: bool = False) -> None:
         self.opened: list[_FakeDocument] = []
+        self.open_calls: list[dict[str, object]] = []
         self.fail_close = fail_close
 
     def Open(self, path: str, **kwargs):
+        self.open_calls.append(kwargs)
         document = _FakeDocument(path, fail_close=self.fail_close)
         self.opened.append(document)
         return document

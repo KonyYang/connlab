@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Callable, Literal, Protocol
 
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
+from backend.shared.office_document_password import OFFICE_DOCUMENT_PASSWORD
 
 
 ConflictAction = Literal["overwrite", "skip"]
@@ -28,7 +29,6 @@ _TEST_RESULTS_FILE_KINDS: dict[str, OfficeKind] = {
     ".xls": "excel",
     ".xlsx": "excel",
 }
-_FIXED_DOCUMENT_PASSWORD = "DGLAB"
 
 
 class ProjectFileEncryptionError(RuntimeError):
@@ -237,7 +237,11 @@ class ProjectFileEncryptionService:
                     )
                 )
                 continue
-            password = excel_password if item.office_kind == "excel" else _FIXED_DOCUMENT_PASSWORD
+            password = (
+                excel_password
+                if item.office_kind == "excel"
+                else OFFICE_DOCUMENT_PASSWORD
+            )
             try:
                 self._gateway.encrypt(
                     item=item,

@@ -8,7 +8,6 @@ from datetime import datetime
 import os
 from pathlib import Path
 import re
-import shutil
 from uuid import uuid4
 
 from docx import Document
@@ -22,6 +21,9 @@ from backend.application.confirmed_matrix_test_record_preview_service import (
 )
 from backend.application.test_report_draft_service import TestReportDraftData
 from backend.domain.result_dataset_models import ResultDatasetRevision
+from backend.infrastructure.office.office_protected_document_gateway import (
+    ProtectedWordPackageGateway,
+)
 
 
 _SAMPLE_HEADERS = ("Description", "Part #")
@@ -77,6 +79,13 @@ _MIN_GROUP_WIDTH_DXA = 690
 class TestReportDocumentGateway:
     """Populate a copied E-3707_H template through semantic document anchors."""
 
+    __test__ = False
+
+    def __init__(self, *, protected_package_gateway=None) -> None:
+        self._protected_package_gateway = (
+            protected_package_gateway or ProtectedWordPackageGateway()
+        )
+
     def generate(
         self,
         *,
@@ -102,7 +111,10 @@ class TestReportDocumentGateway:
             f".{target.stem}.{uuid4().hex}.tmp{target.suffix}"
         )
         try:
-            shutil.copy2(template, temporary)
+            protection_state = self._protected_package_gateway.stage_editable_copy(
+                template,
+                temporary,
+            )
             document = Document(temporary)
             anchors = _validate_template_contract(document)
             _fill_headers(document, report)
@@ -122,6 +134,10 @@ class TestReportDocumentGateway:
             _set_document_table_font(document, _TABLE_FONT_NAME)
             document.save(temporary)
             _audit_generated_document(temporary, report)
+            self._protected_package_gateway.restore_password_protection(
+                temporary,
+                protection_state,
+            )
             os.replace(temporary, target)
         finally:
             temporary.unlink(missing_ok=True)
@@ -150,7 +166,10 @@ class TestReportDocumentGateway:
 
         temporary = target.with_name(f".{target.stem}.{uuid4().hex}.tmp{target.suffix}")
         try:
-            shutil.copy2(source, temporary)
+            protection_state = self._protected_package_gateway.stage_editable_copy(
+                source,
+                temporary,
+            )
             document = Document(temporary)
             result_tables = _result_tables_by_group(document)
             updates = []
@@ -187,6 +206,10 @@ class TestReportDocumentGateway:
             if updates:
                 document.save(temporary)
             _audit_llcr_sync(temporary, dataset)
+            self._protected_package_gateway.restore_password_protection(
+                temporary,
+                protection_state,
+            )
             os.replace(temporary, target)
         finally:
             temporary.unlink(missing_ok=True)
@@ -225,7 +248,10 @@ class TestReportDocumentGateway:
         )
         temporary = target.with_name(f".{target.stem}.{uuid4().hex}.tmp{target.suffix}")
         try:
-            shutil.copy2(source, temporary)
+            protection_state = self._protected_package_gateway.stage_editable_copy(
+                source,
+                temporary,
+            )
             document = Document(temporary)
             equipment = _find_table(document, _EQUIPMENT_HEADERS, "Equipment table")
             actual = tuple(
@@ -236,6 +262,10 @@ class TestReportDocumentGateway:
                 _replace_equipment_table_rows(equipment, expected)
                 document.save(temporary)
             _audit_equipment_sync(temporary, expected)
+            self._protected_package_gateway.restore_password_protection(
+                temporary,
+                protection_state,
+            )
             os.replace(temporary, target)
         finally:
             temporary.unlink(missing_ok=True)

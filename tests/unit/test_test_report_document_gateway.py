@@ -6,6 +6,7 @@ from datetime import date
 from decimal import Decimal
 from hashlib import sha256
 from pathlib import Path
+import shutil
 from time import sleep
 
 from docx import Document
@@ -32,6 +33,9 @@ from backend.domain.result_dataset_models import (
 )
 from backend.infrastructure.office.test_report_document_gateway import (
     TestReportDocumentGateway,
+)
+from backend.infrastructure.office.office_protected_document_gateway import (
+    WordPackageProtectionState,
 )
 
 
@@ -265,6 +269,54 @@ def test_synchronize_equipment_list_updates_only_the_equipment_table(
         for run in paragraph.runs
         if run.text
     )
+
+
+def test_report_update_restores_password_protection_after_edit(
+    tmp_path: Path,
+) -> None:
+    template = _build_template(tmp_path / "E-3707_H.docx")
+    source = tmp_path / "protected-current.docx"
+    TestReportDocumentGateway().generate(
+        template_path=template,
+        output_path=source,
+        report=_report(),
+    )
+    calls: list[tuple[str, Path]] = []
+
+    class _ProtectedPackageGateway:
+        def stage_editable_copy(self, source_path: Path, output_path: Path):
+            calls.append(("stage", source_path))
+            shutil.copy2(source_path, output_path)
+            return WordPackageProtectionState(was_password_protected=True)
+
+        def restore_password_protection(self, editable_path: Path, state) -> None:
+            assert state.was_password_protected is True
+            calls.append(("restore", editable_path))
+
+    output = tmp_path / "updated.docx"
+    TestReportDocumentGateway(
+        protected_package_gateway=_ProtectedPackageGateway(),
+    ).synchronize_equipment_list(
+        source_path=source,
+        output_path=output,
+        rows=(
+            EquipmentListReportRow(
+                source_reference="DG-Q-0033",
+                status="matched",
+                item="Digital multimeter",
+                manufacturer="Keysight",
+                id_number="DG-Q-0033",
+                last_calibration="01 Jan 2025",
+                calibration_due="01 Jan 2026",
+                source_sheet="All Equip.",
+                expired=False,
+            ),
+        ),
+    )
+
+    assert calls[0] == ("stage", source)
+    assert calls[1][0] == "restore"
+    assert output.is_file()
 
 
 def test_synchronizes_only_managed_llcr_result_cells_into_a_new_draft(tmp_path: Path) -> None:

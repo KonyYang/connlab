@@ -114,6 +114,8 @@ def test_word_and_excel_save_with_open_password_then_reopen_for_verification(tmp
 
     assert saves[0]["Password"] == "DGLAB"
     assert saves[1]["Password"] == "202608007"
+    assert opens[0]["PasswordDocument"] == "DGLAB"
+    assert opens[0]["WritePasswordDocument"] == "DGLAB"
     assert verified == [
         (tmp_path / "word-stage.docx", "word"),
         (tmp_path / "excel-stage.xlsx", "excel"),
@@ -144,6 +146,14 @@ def test_powerpoint_sets_open_password_and_runs_encrypted_container_verifier(tmp
     )
 
     assert saves == [{"path": str(output), "password": "DGLAB"}]
+    assert opens == [
+        {
+            "FileName": f"{source.resolve()}::DGLAB",
+            "ReadOnly": False,
+            "Untitled": False,
+            "WithWindow": False,
+        }
+    ]
     assert verified == [output]
     assert runtime.initialized == runtime.uninitialized == 1
 
@@ -166,3 +176,36 @@ def test_macro_enabled_files_are_rejected_before_com_initialization(tmp_path: Pa
         )
 
     assert runtime.initialized == runtime.uninitialized == 0
+
+
+def test_office_automation_error_never_exposes_document_password(tmp_path: Path) -> None:
+    runtime = _ComRuntime()
+    source = tmp_path / "slides.pptx"
+    source.write_bytes(b"powerpoint")
+
+    class _FailingPresentations:
+        def Open(self, **kwargs):
+            raise RuntimeError(f"Unable to open {kwargs['FileName']}")
+
+    class _FailingApp:
+        Presentations = _FailingPresentations()
+
+        def Quit(self) -> None:
+            pass
+
+    gateway = OfficeFilePasswordGateway(
+        dispatch=lambda _kind: _FailingApp(),
+        com_runtime=runtime,
+    )
+
+    with pytest.raises(Exception) as error:
+        gateway.encrypt_and_verify(
+            source_path=source,
+            output_path=tmp_path / "stage.pptx",
+            password="DGLAB",
+            office_kind="powerpoint",
+        )
+
+    assert "DGLAB" not in str(error.value)
+    assert str(source.resolve()) not in str(error.value)
+    assert error.value.__cause__ is None

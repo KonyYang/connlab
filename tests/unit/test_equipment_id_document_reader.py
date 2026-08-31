@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
 
 from docx import Document
@@ -40,3 +41,28 @@ def test_rejects_an_empty_equipment_id_document(tmp_path: Path) -> None:
         assert "does not contain equipment references" in str(exc)
     else:
         raise AssertionError("Expected an empty EquipmentID.docx to be rejected")
+
+
+def test_reads_a_password_protected_equipment_document_through_readable_copy(
+    tmp_path: Path,
+) -> None:
+    protected = tmp_path / "EquipmentID.docx"
+    protected.write_bytes(b"encrypted")
+    readable = tmp_path / "readable.docx"
+    document = Document()
+    document.add_paragraph("DG-Q-0033")
+    document.save(readable)
+    calls: list[Path] = []
+
+    class _PackageGateway:
+        @contextmanager
+        def readable_copy(self, source: Path):
+            calls.append(source)
+            yield readable
+
+    result = EquipmentIdDocumentReader(
+        protected_package_gateway=_PackageGateway(),
+    ).read(protected)
+
+    assert calls == [protected]
+    assert result.references == ("DG-Q-0033",)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
 
 from docx import Document
@@ -107,4 +108,42 @@ def test_extractor_chooses_target_table_when_non_target_table_precedes(tmp_path:
 
     assert result.source_table_index == 2
     assert len(result.rows) == 1
+    assert result.rows[0].test_item == "LLCR"
+
+
+def test_extractor_uses_one_readable_copy_for_password_protected_report(
+    tmp_path: Path,
+) -> None:
+    protected = tmp_path / "protected-report.docx"
+    protected.write_bytes(b"encrypted")
+    readable = tmp_path / "readable-report.docx"
+    document = Document()
+    document.add_paragraph("5. TEST METHODS/REQUIREMENTS")
+    table = document.add_table(rows=2, cols=4)
+    for cell, value in zip(
+        table.rows[0].cells,
+        ["Test Item", "Method", "Condition", "Requirement"],
+        strict=True,
+    ):
+        cell.text = value
+    for cell, value in zip(
+        table.rows[1].cells,
+        ["LLCR", "EIA-364-23D", "20mV max", "Initial <= 0.25 mΩ"],
+        strict=True,
+    ):
+        cell.text = value
+    document.save(readable)
+    calls: list[Path] = []
+
+    class _PackageGateway:
+        @contextmanager
+        def readable_copy(self, source: Path):
+            calls.append(source)
+            yield readable
+
+    result = HistoricalTestReportMethodExtractor(
+        protected_package_gateway=_PackageGateway(),
+    ).extract(protected)
+
+    assert calls == [protected]
     assert result.rows[0].test_item == "LLCR"

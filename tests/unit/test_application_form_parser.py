@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from pathlib import Path
 
 from docx import Document
@@ -82,6 +83,37 @@ def test_application_form_parser_extracts_fields_and_sample_row(tmp_path: Path) 
     assert len(parsed.samples) == 1
     assert parsed.samples[0].part_number == "PN-001"
     assert parsed.samples[0].quantity == "12"
+
+
+def test_application_form_parser_uses_readable_copy_for_protected_word_input(
+    tmp_path: Path,
+) -> None:
+    protected = tmp_path / "protected-application-form.docx"
+    protected.write_bytes(b"encrypted")
+    readable = tmp_path / "readable-application-form.docx"
+    document = Document()
+    document.add_paragraph("Lab Test Request Number: DL-2026-01-001")
+    table = document.add_table(rows=1, cols=1)
+    table.cell(0, 0).text = "Requested Testing"
+    document.save(readable)
+    calls: list[Path] = []
+
+    class _ProtectedPackageGateway:
+        @contextmanager
+        def readable_copy(self, source_path: Path):
+            calls.append(source_path)
+            yield readable
+
+    parser = ApplicationFormParser(
+        protected_package_gateway=_ProtectedPackageGateway(),
+    )
+
+    parsed = parser.parse(protected)
+    outline = parser.table_outline(protected)
+
+    assert parsed.lab_test_request_number == "DL-2026-01-001"
+    assert outline == (("Table 1", "Requested Testing"),)
+    assert calls == [protected, protected]
 
 
 def test_application_form_parser_preserves_repeated_sample_placeholder_columns(

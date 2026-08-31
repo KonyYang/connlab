@@ -12,6 +12,9 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 from backend.infrastructure.office.word_document_gateway import WordDocumentGateway
+from backend.infrastructure.office.office_protected_document_gateway import (
+    ProtectedWordPackageGateway,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,12 +38,21 @@ class HistoricalMethodExtractResult:
 class HistoricalTestReportMethodExtractor:
     """Deterministically extract rows from report method/requirement tables."""
 
-    def __init__(self, *, word_gateway: WordDocumentGateway | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        word_gateway: WordDocumentGateway | None = None,
+        protected_package_gateway=None,
+    ) -> None:
         self._word_gateway = word_gateway or WordDocumentGateway()
+        self._protected_package_gateway = (
+            protected_package_gateway or ProtectedWordPackageGateway()
+        )
 
     def extract(self, source_path: Path) -> HistoricalMethodExtractResult:
-        snapshot = self._word_gateway.read_word_document(source_path)
-        table_contexts = _table_contexts(source_path)
+        with self._protected_package_gateway.readable_copy(source_path) as readable_path:
+            snapshot = self._word_gateway.read_word_document(readable_path)
+            table_contexts = _table_contexts(readable_path)
         best_table_index: int | None = None
         best_rows: tuple[HistoricalMethodRow, ...] = ()
         best_score = -1

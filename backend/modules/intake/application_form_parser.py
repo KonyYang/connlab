@@ -82,20 +82,35 @@ class ParsedApplicationForm:
 class ApplicationFormParser:
     """Parse DOCX application forms into structured intake DTOs."""
 
+    def __init__(self, *, protected_package_gateway=None) -> None:
+        if protected_package_gateway is None:
+            # Import lazily because the Office package also composes intake services.
+            from backend.infrastructure.office.office_protected_document_gateway import (
+                ProtectedWordPackageGateway,
+            )
+
+            protected_package_gateway = ProtectedWordPackageGateway()
+        self._protected_package_gateway = protected_package_gateway
+
     def parse(self, path: Path) -> ParsedApplicationForm:
         """Parse one DOCX file into a structured application form DTO."""
-        document = Document(path)
-        label_values = _extract_label_values(document)
-        _merge_footer_form_metadata(label_values, document)
-        samples = _extract_sample_rows(document)
-        requested_testing_rows = _extract_requested_testing_rows(document)
-        if requested_testing_rows and not label_values.get("requested_testing_description"):
-            label_values["requested_testing_description"] = "\n".join(
-                r.test_to_be_performed for r in requested_testing_rows if r.test_to_be_performed
-            )
-        if not label_values.get("requested_testing_description"):
-            _merge_legacy_requested_testing(label_values, document)
-        _merge_additional_information_block(label_values, document)
+        with self._protected_package_gateway.readable_copy(path) as readable_path:
+            document = Document(readable_path)
+            label_values = _extract_label_values(document)
+            _merge_footer_form_metadata(label_values, document)
+            samples = _extract_sample_rows(document)
+            requested_testing_rows = _extract_requested_testing_rows(document)
+            if requested_testing_rows and not label_values.get(
+                "requested_testing_description"
+            ):
+                label_values["requested_testing_description"] = "\n".join(
+                    r.test_to_be_performed
+                    for r in requested_testing_rows
+                    if r.test_to_be_performed
+                )
+            if not label_values.get("requested_testing_description"):
+                _merge_legacy_requested_testing(label_values, document)
+            _merge_additional_information_block(label_values, document)
         return ParsedApplicationForm(
             form_no=_get(label_values, "form_no"),
             form_rev=_get(label_values, "form_rev"),
@@ -135,12 +150,13 @@ class ApplicationFormParser:
 
     def table_outline(self, path: Path, limit: int = 8) -> tuple[tuple[str, str], ...]:
         """Return a compact outline of non-empty Word tables."""
-        document = Document(path)
-        rows: list[tuple[str, str]] = []
-        for index, table in enumerate(document.tables[:limit], start=1):
-            first_text = _first_non_empty_cell(table)
-            if first_text:
-                rows.append((f"Table {index}", first_text[:140]))
+        with self._protected_package_gateway.readable_copy(path) as readable_path:
+            document = Document(readable_path)
+            rows: list[tuple[str, str]] = []
+            for index, table in enumerate(document.tables[:limit], start=1):
+                first_text = _first_non_empty_cell(table)
+                if first_text:
+                    rows.append((f"Table {index}", first_text[:140]))
         return tuple(rows)
 
 

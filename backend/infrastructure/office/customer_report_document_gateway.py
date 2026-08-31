@@ -15,6 +15,10 @@ from zipfile import ZIP_DEFLATED, ZipFile
 from docx import Document
 
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
+from backend.infrastructure.office.office_protected_document_gateway import (
+    ProtectedWordPackageGateway,
+)
+from backend.shared.office_document_password import OFFICE_DOCUMENT_PASSWORD
 
 
 _INTERNAL_REPORT_LABEL = "LABORATORY TEST REPORT"
@@ -88,6 +92,11 @@ class _InternalHeaderValues:
 class CustomerReportDocumentGateway:
     """Create one customer draft without changing its internal-report source."""
 
+    def __init__(self, *, protected_package_gateway=None) -> None:
+        self._protected_package_gateway = (
+            protected_package_gateway or ProtectedWordPackageGateway()
+        )
+
     def generate_customer_report(
         self,
         *,
@@ -104,12 +113,19 @@ class CustomerReportDocumentGateway:
             f".customer-report.{uuid4().hex}.tmp{output.suffix}"
         )
         try:
-            shutil.copy2(template, temporary)
+            protection_state = self._protected_package_gateway.stage_editable_copy(
+                template,
+                temporary,
+            )
             _generate_with_word(source, temporary)
             _write_source_report_sha256(temporary, source_hash)
             _audit_customer_report(temporary)
             if _file_hash(source) != source_hash:
                 raise ValueError("The internal report source changed during customer generation.")
+            self._protected_package_gateway.restore_password_protection(
+                temporary,
+                protection_state,
+            )
             os.replace(temporary, output)
         finally:
             temporary.unlink(missing_ok=True)
@@ -179,6 +195,8 @@ def _generate_with_word(source_path: Path, target_path: Path) -> None:
         word.AutomationSecurity = 3
         source = word.Documents.Open(
             str(source_path.resolve()),
+            PasswordDocument=OFFICE_DOCUMENT_PASSWORD,
+            WritePasswordDocument=OFFICE_DOCUMENT_PASSWORD,
             ReadOnly=True,
             AddToRecentFiles=False,
             ConfirmConversions=False,
@@ -190,6 +208,8 @@ def _generate_with_word(source_path: Path, target_path: Path) -> None:
             )
         target = word.Documents.Open(
             str(target_path.resolve()),
+            PasswordDocument=OFFICE_DOCUMENT_PASSWORD,
+            WritePasswordDocument=OFFICE_DOCUMENT_PASSWORD,
             ReadOnly=False,
             AddToRecentFiles=False,
             ConfirmConversions=False,
@@ -207,6 +227,8 @@ def _generate_with_word(source_path: Path, target_path: Path) -> None:
             ) from exc
         template_reference = word.Documents.Open(
             str(reference_path.resolve()),
+            PasswordDocument=OFFICE_DOCUMENT_PASSWORD,
+            WritePasswordDocument=OFFICE_DOCUMENT_PASSWORD,
             ReadOnly=True,
             AddToRecentFiles=False,
             ConfirmConversions=False,
@@ -228,8 +250,8 @@ def _generate_with_word(source_path: Path, target_path: Path) -> None:
             ) from exc
         target.Save()
     except Exception as exc:
-        summary = " ".join(str(exc).split()) or exc.__class__.__name__
-        raise ValueError(f"Unable to generate customer report: {summary[:320]}") from exc
+        summary = _error_summary(exc)
+        raise ValueError(f"Unable to generate customer report: {summary[:320]}") from None
     finally:
         if template_reference is not None:
             try:
@@ -820,7 +842,13 @@ def _file_hash(path: Path) -> str:
 
 
 def _error_summary(exc: Exception) -> str:
-    return (" ".join(str(exc).split()) or exc.__class__.__name__)[:240]
+    summary = " ".join(str(exc).split()) or exc.__class__.__name__
+    return re.sub(
+        re.escape(OFFICE_DOCUMENT_PASSWORD),
+        "[redacted]",
+        summary,
+        flags=re.IGNORECASE,
+    )[:240]
 
 
 def _write_source_report_sha256(path: Path, fingerprint: str) -> None:

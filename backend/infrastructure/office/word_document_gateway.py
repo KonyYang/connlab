@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
+from uuid import uuid4
 
 from docx import Document
 
@@ -26,7 +28,11 @@ from backend.infrastructure.office.models import (
     WordTableLocation,
 )
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
+from backend.infrastructure.office.office_protected_document_gateway import (
+    ProtectedWordPackageGateway,
+)
 from backend.infrastructure.office.word_numbering import paragraph_texts_with_numbering
+from backend.shared.office_document_password import OFFICE_DOCUMENT_PASSWORD
 
 
 SECTION2_FIELD_LABELS: dict[str, tuple[str, ...]] = {
@@ -49,6 +55,11 @@ SECTION2_FIELD_LABELS: dict[str, tuple[str, ...]] = {
 class WordDocumentGateway:
     """Read Word documents into neutral snapshots without business parsing."""
 
+    def __init__(self, *, protected_package_gateway=None) -> None:
+        self._protected_package_gateway = (
+            protected_package_gateway or ProtectedWordPackageGateway()
+        )
+
     def read_word_document(self, source_path: Path) -> WordDocumentSnapshot:
         """Read a `.docx` file into paragraphs, tables, headers, and footers."""
         path = Path(source_path)
@@ -57,11 +68,12 @@ class WordDocumentGateway:
         if not path.is_file():
             raise FileNotFoundError(f"Word document does not exist: {path}")
 
-        document = Document(path)
-        paragraphs = paragraph_texts_with_numbering(document)
-        tables = [_table_rows(table) for table in document.tables]
-        headers = _section_text(document, part_name="header")
-        footers = _section_text(document, part_name="footer")
+        with self._protected_package_gateway.readable_copy(path) as readable_path:
+            document = Document(readable_path)
+            paragraphs = paragraph_texts_with_numbering(document)
+            tables = [_table_rows(table) for table in document.tables]
+            headers = _section_text(document, part_name="header")
+            footers = _section_text(document, part_name="footer")
         raw_text = _raw_text(paragraphs, tables, headers, footers)
         return WordDocumentSnapshot(
             paragraphs=[text for text in paragraphs if text],
@@ -122,7 +134,8 @@ class WordDocumentGateway:
             raise ValueError(f"Only .docx files are supported by the Word header gate: {path}")
         if not path.is_file():
             raise FileNotFoundError(f"Word document does not exist: {path}")
-        value = _read_header_cell_with_python_docx(path, row, column)
+        with self._protected_package_gateway.readable_copy(path) as readable_path:
+            value = _read_header_cell_with_python_docx(readable_path, row, column)
         if value is not None:
             return WordHeaderCellResult(
                 value=_clean(value or ""),
@@ -146,38 +159,52 @@ class WordDocumentGateway:
         if unknown:
             raise ValueError(f"Unsupported Section 2 field(s): {', '.join(unknown)}")
 
-        document = Document(path)
-        locations = _locate_section2_fields(document, fields)
-        missing = [key for key in fields if key not in locations]
-        if missing:
-            raise ValueError(
-                "Section 2 field location(s) not found: " + ", ".join(sorted(missing))
+        temporary = path.with_name(f".connlab-word-edit-{uuid4().hex}.docx")
+        try:
+            protection_state = self._protected_package_gateway.stage_editable_copy(
+                path,
+                temporary,
             )
+            document = Document(temporary)
+            locations = _locate_section2_fields(document, fields)
+            missing = [key for key in fields if key not in locations]
+            if missing:
+                raise ValueError(
+                    "Section 2 field location(s) not found: "
+                    + ", ".join(sorted(missing))
+                )
 
-        changed: list[WordSection2FieldChange] = []
-        unchanged: list[WordSection2FieldChange] = []
-        for field_key, new_value in fields.items():
-            table_index, row_index, label_column, value_column = locations[field_key]
-            row = document.tables[table_index].rows[row_index]
-            label = _clean(row.cells[label_column].text)
-            cell = row.cells[value_column]
-            old_value = _clean(cell.text)
-            update = WordSection2FieldChange(
-                field_key=field_key,
-                label=label,
-                old_value=old_value,
-                new_value=new_value,
-                location=(
-                    f"table[{table_index}].row[{row_index}].cell[{value_column}]"
-                ),
+            changed: list[WordSection2FieldChange] = []
+            unchanged: list[WordSection2FieldChange] = []
+            for field_key, new_value in fields.items():
+                table_index, row_index, label_column, value_column = locations[field_key]
+                row = document.tables[table_index].rows[row_index]
+                label = _clean(row.cells[label_column].text)
+                cell = row.cells[value_column]
+                old_value = _clean(cell.text)
+                update = WordSection2FieldChange(
+                    field_key=field_key,
+                    label=label,
+                    old_value=old_value,
+                    new_value=new_value,
+                    location=(
+                        f"table[{table_index}].row[{row_index}].cell[{value_column}]"
+                    ),
+                )
+                if old_value == new_value:
+                    unchanged.append(update)
+                else:
+                    cell.text = new_value
+                    changed.append(update)
+
+            document.save(temporary)
+            self._protected_package_gateway.restore_password_protection(
+                temporary,
+                protection_state,
             )
-            if old_value == new_value:
-                unchanged.append(update)
-            else:
-                cell.text = new_value
-                changed.append(update)
-
-        document.save(path)
+            os.replace(temporary, path)
+        finally:
+            temporary.unlink(missing_ok=True)
         return WordSection2WriteResult(
             changed_fields=tuple(changed),
             unchanged_fields=tuple(unchanged),
@@ -202,54 +229,69 @@ class WordDocumentGateway:
             if key in APPLICATION_FORM_FIELD_LABELS and value is not None
         }
         drop_duplicate_application_form_aliases(normalized_fields)
-        if application_form_requires_com(path):
+        with self._protected_package_gateway.readable_copy(path) as readable_path:
+            requires_com = application_form_requires_com(readable_path)
+        if requires_com:
             return write_application_form_fields_with_com(
                 path,
                 normalized_fields,
                 word_session=application_form_word_session,
             )
 
-        document = Document(path)
-        locations = _locate_labeled_fields(
-            document,
-            normalized_fields,
-            APPLICATION_FORM_FIELD_LABELS,
-            next_row_fields=APPLICATION_FORM_NEXT_ROW_FIELDS,
-        )
-
-        changed: list[WordSection2FieldChange] = []
-        unchanged: list[WordSection2FieldChange] = []
-        warnings: list[str] = []
-        for field_key, new_value in normalized_fields.items():
-            location = locations.get(field_key)
-            if location is None:
-                message = f"Application Form field location not found: {field_key}"
-                if field_key in APPLICATION_FORM_CRITICAL_FIELDS:
-                    raise ValueError(message)
-                warnings.append(message)
-                continue
-            table_index, row_index, label_column, value_column = location
-            row = document.tables[table_index].rows[row_index]
-            label = _clean(row.cells[label_column].text)
-            cell = row.cells[value_column]
-            old_value = _clean(cell.text)
-            update = WordSection2FieldChange(
-                field_key=field_key,
-                label=label,
-                old_value=old_value,
-                new_value=new_value,
-                location=(
-                    f"table[{table_index}].row[{row_index}].cell[{value_column}]"
-                ),
+        temporary = path.with_name(f".connlab-word-edit-{uuid4().hex}.docx")
+        try:
+            protection_state = self._protected_package_gateway.stage_editable_copy(
+                path,
+                temporary,
             )
-            if old_value == new_value:
-                unchanged.append(update)
-            else:
-                cell.text = new_value
-                changed.append(update)
+            document = Document(temporary)
+            locations = _locate_labeled_fields(
+                document,
+                normalized_fields,
+                APPLICATION_FORM_FIELD_LABELS,
+                next_row_fields=APPLICATION_FORM_NEXT_ROW_FIELDS,
+            )
 
-        if changed:
-            document.save(path)
+            changed: list[WordSection2FieldChange] = []
+            unchanged: list[WordSection2FieldChange] = []
+            warnings: list[str] = []
+            for field_key, new_value in normalized_fields.items():
+                location = locations.get(field_key)
+                if location is None:
+                    message = f"Application Form field location not found: {field_key}"
+                    if field_key in APPLICATION_FORM_CRITICAL_FIELDS:
+                        raise ValueError(message)
+                    warnings.append(message)
+                    continue
+                table_index, row_index, label_column, value_column = location
+                row = document.tables[table_index].rows[row_index]
+                label = _clean(row.cells[label_column].text)
+                cell = row.cells[value_column]
+                old_value = _clean(cell.text)
+                update = WordSection2FieldChange(
+                    field_key=field_key,
+                    label=label,
+                    old_value=old_value,
+                    new_value=new_value,
+                    location=(
+                        f"table[{table_index}].row[{row_index}].cell[{value_column}]"
+                    ),
+                )
+                if old_value == new_value:
+                    unchanged.append(update)
+                else:
+                    cell.text = new_value
+                    changed.append(update)
+
+            if changed:
+                document.save(temporary)
+            self._protected_package_gateway.restore_password_protection(
+                temporary,
+                protection_state,
+            )
+            os.replace(temporary, path)
+        finally:
+            temporary.unlink(missing_ok=True)
         return WordSection2WriteResult(
             changed_fields=tuple(changed),
             unchanged_fields=tuple(unchanged),
@@ -285,6 +327,8 @@ def _read_header_cell_with_com(path: Path, row: int, column: int) -> str | None:
         word.DisplayAlerts = 0
         document = word.Documents.Open(
             str(path),
+            PasswordDocument=OFFICE_DOCUMENT_PASSWORD,
+            WritePasswordDocument=OFFICE_DOCUMENT_PASSWORD,
             ReadOnly=True,
             AddToRecentFiles=False,
         )
@@ -321,6 +365,8 @@ def _read_table_locations_with_com(path: Path) -> tuple[WordTableLocation, ...]:
         word.DisplayAlerts = 0
         document = word.Documents.Open(
             str(path),
+            PasswordDocument=OFFICE_DOCUMENT_PASSWORD,
+            WritePasswordDocument=OFFICE_DOCUMENT_PASSWORD,
             ReadOnly=True,
             AddToRecentFiles=False,
         )
@@ -372,6 +418,8 @@ def _export_pdf_with_com(source_path: Path, output_pdf_path: Path) -> None:
         word.DisplayAlerts = 0
         document = word.Documents.Open(
             str(source),
+            PasswordDocument=OFFICE_DOCUMENT_PASSWORD,
+            WritePasswordDocument=OFFICE_DOCUMENT_PASSWORD,
             ReadOnly=True,
             AddToRecentFiles=False,
         )
@@ -408,6 +456,8 @@ def _convert_legacy_doc_to_docx_with_com(source_path: Path, output_path: Path) -
         word.DisplayAlerts = 0
         document = word.Documents.Open(
             str(source),
+            PasswordDocument=OFFICE_DOCUMENT_PASSWORD,
+            WritePasswordDocument=OFFICE_DOCUMENT_PASSWORD,
             ReadOnly=True,
             AddToRecentFiles=False,
         )

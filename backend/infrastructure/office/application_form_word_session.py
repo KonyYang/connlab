@@ -7,6 +7,7 @@ from types import TracebackType
 from typing import Callable
 
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
+from backend.shared.office_document_password import OFFICE_DOCUMENT_PASSWORD
 
 
 class ApplicationFormWordSession:
@@ -93,6 +94,8 @@ class ApplicationFormWordSession:
             raise RuntimeError("Word session is not started.")
         document = self._word.Documents.Open(
             str(Path(path).resolve()),
+            PasswordDocument=OFFICE_DOCUMENT_PASSWORD,
+            WritePasswordDocument=OFFICE_DOCUMENT_PASSWORD,
             ReadOnly=False,
             AddToRecentFiles=False,
         )

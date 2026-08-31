@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from pathlib import Path
 from hashlib import sha256
+import shutil
 
 import pytest
 from docx import Document
 
 from backend.infrastructure.office.customer_report_document_gateway import (
     CustomerReportDocumentGateway,
+)
+from backend.infrastructure.office.office_protected_document_gateway import (
+    WordPackageProtectionState,
 )
 
 
@@ -61,6 +65,46 @@ def test_generated_customer_report_records_current_internal_fingerprint(
 
     assert gateway.read_source_report_sha256(output) == sha256(source.read_bytes()).hexdigest()
     assert gateway.read_source_report_sha256(template) is None
+
+
+def test_customer_report_restores_template_password_protection_after_audit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "internal.docx"
+    _minimal_document(source, customer=False)
+    template = tmp_path / "protected-E-4515_F.docx"
+    _minimal_document(template, customer=True)
+    output = tmp_path / "customer.docx"
+    calls: list[tuple[str, Path]] = []
+
+    class _ProtectedPackageGateway:
+        def stage_editable_copy(self, source_path: Path, output_path: Path):
+            calls.append(("stage", source_path))
+            shutil.copy2(source_path, output_path)
+            return WordPackageProtectionState(was_password_protected=True)
+
+        def restore_password_protection(self, editable_path: Path, state) -> None:
+            assert state.was_password_protected is True
+            assert editable_path.is_file()
+            calls.append(("restore", editable_path))
+
+    monkeypatch.setattr(
+        "backend.infrastructure.office.customer_report_document_gateway._generate_with_word",
+        lambda source_path, target_path: None,
+    )
+
+    CustomerReportDocumentGateway(
+        protected_package_gateway=_ProtectedPackageGateway(),
+    ).generate_customer_report(
+        source_path=source,
+        template_path=template,
+        output_path=output,
+    )
+
+    assert calls[0] == ("stage", template)
+    assert calls[1][0] == "restore"
+    assert output.is_file()
 
 
 def test_customer_report_gateway_uses_short_word_working_copy_names(

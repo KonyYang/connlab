@@ -9,6 +9,9 @@ import re
 from docx import Document
 
 from backend.application.equipment_report_update_service import equipment_reference_key
+from backend.infrastructure.office.office_protected_document_gateway import (
+    ProtectedWordPackageGateway,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,18 +23,24 @@ class EquipmentIdDocumentReadResult:
 class EquipmentIdDocumentReader:
     """Extract ordered, case-insensitively unique equipment references."""
 
+    def __init__(self, *, protected_package_gateway=None) -> None:
+        self._protected_package_gateway = (
+            protected_package_gateway or ProtectedWordPackageGateway()
+        )
+
     def read(self, source_path: Path) -> EquipmentIdDocumentReadResult:
         path = Path(source_path)
         if path.suffix.casefold() != ".docx" or not path.is_file():
             raise FileNotFoundError(f"EquipmentID.docx does not exist: {path}")
-        document = Document(path)
-        candidates = [paragraph.text for paragraph in document.paragraphs]
-        candidates.extend(
-            cell.text
-            for table in document.tables
-            for row in table.rows
-            for cell in row.cells
-        )
+        with self._protected_package_gateway.readable_copy(path) as readable_path:
+            document = Document(readable_path)
+            candidates = [paragraph.text for paragraph in document.paragraphs]
+            candidates.extend(
+                cell.text
+                for table in document.tables
+                for row in table.rows
+                for cell in row.cells
+            )
         references: list[str] = []
         seen: set[str] = set()
         for candidate in candidates:
@@ -46,5 +55,7 @@ class EquipmentIdDocumentReader:
         if not references:
             raise ValueError("EquipmentID.docx does not contain equipment references.")
         return EquipmentIdDocumentReadResult(path, tuple(references))
+
+
 def _clean_reference(value: str) -> str:
     return re.sub(r"\s+", " ", value.replace("\x07", " ").strip())

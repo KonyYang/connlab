@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,29 @@ from docx import Document
 import backend.infrastructure.office.word_document_gateway as word_gateway_module
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
 from backend.infrastructure.office.word_document_gateway import WordDocumentGateway
+
+
+def test_read_word_document_uses_protected_package_access(tmp_path: Path) -> None:
+    protected = tmp_path / "protected.docx"
+    protected.write_bytes(b"encrypted")
+    readable = tmp_path / "readable.docx"
+    document = Document()
+    document.add_paragraph("Protected report content")
+    document.save(readable)
+    calls: list[Path] = []
+
+    class _PackageGateway:
+        @contextmanager
+        def readable_copy(self, source: Path):
+            calls.append(source)
+            yield readable
+
+    snapshot = WordDocumentGateway(
+        protected_package_gateway=_PackageGateway(),
+    ).read_word_document(protected)
+
+    assert calls == [protected]
+    assert snapshot.paragraphs == ["Protected report content"]
 
 
 def test_application_form_plain_table_writes_same_row_and_next_row_fields(

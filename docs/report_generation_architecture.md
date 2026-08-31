@@ -12,6 +12,24 @@ The E-4515_F customer report is now a deterministic projection of the current In
 Temperature-rise and other result adapters, photographs, appendices, and final narrative automation
 remain deferred.
 
+## Protected Office document access
+
+`REPORT-003D` centralizes the fixed laboratory Word/PowerPoint open-password policy. App-owned Word
+COM sessions always supply both the document-open and write-reservation password, while PowerPoint
+uses its supported password-qualified file-name form. The password is never returned through the API,
+shown in the UI, written into filesystem names, or copied into exception text.
+
+`python-docx` cannot read an encrypted OOXML container. Readers therefore request a caller-scoped
+readable copy from `ProtectedWordPackageGateway`; the gateway detects encrypted DOCX containers,
+uses an owned hidden Word session to create a temporary unprotected package, and removes it
+deterministically. This access seam also covers intake application-form parsing and EquipmentID or
+historical-report extraction. Report and application-form updates stage an editable copy, perform and
+audit the declared region change, then restore the source document's password-protection state before
+atomic publication. An encrypted Internal Report consequently remains encrypted after LLCR or
+Equipment List updates, and it can still serve as the source for the E-4515_F customer projection.
+An encrypted E-4515_F template is audited while readable and restored to its original protection state
+before publication. Approved templates and source reports remain unmodified.
+
 ## Customer report projection
 
 `REPORT-003C` treats the current Internal Report as the only customer-report source. It never merges

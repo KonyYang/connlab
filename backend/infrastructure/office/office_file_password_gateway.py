@@ -61,7 +61,7 @@ class OfficeFilePasswordGateway:
                 output.unlink()
             if isinstance(exc, (FileNotFoundError, ValueError, OfficeFilePasswordError)):
                 raise
-            raise OfficeFilePasswordError(_safe_office_error(exc)) from exc
+            raise OfficeFilePasswordError(_safe_office_error(exc)) from None
         finally:
             com_runtime.CoUninitialize()
 
@@ -93,6 +93,7 @@ class OfficeFilePasswordGateway:
             document = app.Documents.Open(
                 FileName=str(source),
                 PasswordDocument=password,
+                WritePasswordDocument=password,
                 ReadOnly=False,
                 AddToRecentFiles=False,
                 Visible=False,
@@ -173,7 +174,7 @@ class OfficeFilePasswordGateway:
         presentation = None
         try:
             presentation = app.Presentations.Open(
-                FileName=str(source),
+                FileName=f"{source.resolve()}::{password}",
                 ReadOnly=False,
                 Untitled=False,
                 WithWindow=False,
@@ -240,8 +241,11 @@ def _xls_stream_has_filepass(data: bytes) -> bool:
 
 
 def _safe_office_error(exc: Exception) -> str:
-    message = " ".join(str(exc).split()) or exc.__class__.__name__
-    return f"Microsoft Office could not encrypt and verify the file. {message[:240]}"
+    del exc
+    return (
+        "Microsoft Office could not encrypt and verify the file. "
+        "Close the file in Microsoft Office and try again."
+    )
 
 
 def _close_owned_office_resources(

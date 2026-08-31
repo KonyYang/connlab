@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 
 import pytest
 from docx import Document
 
 from backend.infrastructure.office import WordDocumentGateway
+from backend.infrastructure.office.office_protected_document_gateway import (
+    WordPackageProtectionState,
+)
 
 
 def test_word_gateway_writes_section2_fields(tmp_path: Path) -> None:
@@ -77,6 +81,29 @@ def test_word_gateway_rejects_non_docx(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="Only .docx"):
         WordDocumentGateway().write_section2_fields(path, {"lab": "Connector Lab"})
+
+
+def test_word_gateway_restores_protection_after_section2_write(tmp_path: Path) -> None:
+    path = _section2_docx(tmp_path / "protected-request.docx")
+    calls: list[str] = []
+
+    class _ProtectedPackageGateway:
+        def stage_editable_copy(self, source_path: Path, output_path: Path):
+            calls.append("stage")
+            shutil.copy2(source_path, output_path)
+            return WordPackageProtectionState(was_password_protected=True)
+
+        def restore_password_protection(self, editable_path: Path, state) -> None:
+            assert editable_path.is_file()
+            assert state.was_password_protected is True
+            calls.append("restore")
+
+    WordDocumentGateway(
+        protected_package_gateway=_ProtectedPackageGateway(),
+    ).write_section2_fields(path, {"lab": "Connector Lab"})
+
+    assert calls == ["stage", "restore"]
+    assert _table_values(path)["Lab"] == "Connector Lab"
 
 
 def _section2_docx(
