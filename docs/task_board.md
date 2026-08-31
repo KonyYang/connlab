@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "REPORT-003C",
     "summary": "Implement deterministic E-4515_F customer-report projection from the current internal report, then integrate status, download, and safe publication in Report Workspace.",
@@ -49,9 +49,95 @@
     ],
     "activation_head": "c630c918ebe00a87a6557b721c7be3aebba7aaec",
     "started_at": "2026-08-31T05:07:26.390808Z",
-    "updated_at": "2026-08-31T05:07:26.390808Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-08-31T11:12:51.859849Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "REPORT-003C",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "integration": {
+        "clean": true,
+        "subject": "29fd0e9483350ea7b7fefec6385cd32ea1d0f12e",
+        "status": "passed",
+        "branch": "master"
+      },
+      "task_id": "REPORT-003C",
+      "schema": "connlab.sol-task-report",
+      "subject": "29fd0e9483350ea7b7fefec6385cd32ea1d0f12e",
+      "summary": "Implemented deterministic E-4515_F projection from the current Internal Report with lineage state, managed download, controlled official publication, history, UI, and regression protection.",
+      "version": 1,
+      "validation": [
+        {
+          "detail": "51 tests passed",
+          "name": "backend affected QA",
+          "status": "passed"
+        },
+        {
+          "detail": "18 tests passed",
+          "name": "frontend affected QA",
+          "status": "passed"
+        },
+        {
+          "detail": "TypeScript and Vite build passed",
+          "name": "frontend production build",
+          "status": "passed"
+        },
+        {
+          "detail": "Approved internal golden projected to a verified 21-page customer report",
+          "name": "golden visual regression",
+          "status": "passed"
+        },
+        {
+          "detail": "Customer card, state, button hierarchy, and responsive layout verified without generation",
+          "name": "read-only browser smoke",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "summary": "Implemented application, Office, API, frontend, tests, and architecture documentation.",
+          "status": "passed"
+        },
+        "reviewer": {
+          "summary": "Exact diff reviewed for source authority, external-file safety, lineage, compatibility, and scope.",
+          "status": "passed"
+        },
+        "integrator": {
+          "summary": "Clean task commit and exact approved scope verified.",
+          "status": "passed"
+        },
+        "planner": {
+          "summary": "Bounded current-report projection and publication authority.",
+          "status": "passed"
+        },
+        "qa": {
+          "summary": "Affected backend/frontend suites, build, golden Word/PDF inspection, and browser smoke passed.",
+          "status": "passed"
+        }
+      },
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/dependencies.py",
+        "backend/api/routes_report_workspace.py",
+        "backend/application/customer_report_projection_service.py",
+        "backend/infrastructure/files/report_publication_gateway.py",
+        "backend/infrastructure/office/customer_report_document_gateway.py",
+        "docs/report_generation_architecture.md",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+        "frontend/src/workbench.css",
+        "tests/integration/test_report_workspace_api.py",
+        "tests/unit/test_customer_report_document_gateway.py",
+        "tests/unit/test_customer_report_projection_service.py",
+        "tests/unit/test_report_publication_gateway.py"
+      ]
+    }
   },
   "last_closed": {
     "task_id": "TASK_PROJECT_FILE_ENCRYPTION",
