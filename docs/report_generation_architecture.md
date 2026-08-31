@@ -30,6 +30,12 @@ Equipment List updates, and it can still serve as the source for the E-4515_F cu
 An encrypted E-4515_F template is audited while readable and restored to its original protection state
 before publication. Approved templates and source reports remain unmodified.
 
+If a customer report is deleted or moved after the Report Workspace loaded it, generation fails closed
+with a typed stale-preview conflict. The page refreshes filesystem state and asks the operator whether
+to generate a new customer report from the current Internal Report. Confirmation sends no prior
+customer fingerprint, creates no empty History entry, and still rechecks both the Internal Report and
+customer-report directory before publication. A customer report that reappears is never overwritten.
+
 ## Customer report projection
 
 `REPORT-003C` treats the current Internal Report as the only customer-report source. It never merges

@@ -91,6 +91,45 @@ def test_existing_official_customer_requires_both_preview_fingerprints(
                 expected_customer_report_sha256="0" * 64,
             )
         )
+    assert customer.read_bytes() == b"customer-old"
+
+
+def test_deleted_customer_after_preview_requires_explicit_regeneration_confirmation(
+    tmp_path: Path,
+) -> None:
+    internal = _write(
+        tmp_path / "DL-2026-04-015 Qualification Test Report_Rev_A.docx",
+        b"internal",
+    )
+    customer = _write(
+        tmp_path / "DL-2026-04-015-CR Qualification Test Report_Rev_A.docx",
+        b"customer-old",
+    )
+    template = _write(
+        tmp_path / "E-4515_F Customer Test Report.docx",
+        b"template",
+    )
+    service = _service(
+        tmp_path,
+        internal,
+        writer=_Writer(),
+        files=ReportPublicationGateway(),
+    )
+    preview = service.get_state("project-1")
+    customer.unlink()
+
+    with pytest.raises(CustomerReportProjectionError) as error:
+        service.generate(
+            CustomerReportGenerationCommand(
+                project_id="project-1",
+                template_path=template,
+                expected_internal_report_sha256=preview.internal_report_sha256,
+                expected_customer_report_sha256=preview.file_sha256,
+            )
+        )
+
+    assert getattr(error.value, "code", None) == "customer_report_missing_after_preview"
+    assert not customer.exists()
 
 
 def test_existing_official_customer_is_archived_and_replaced_atomically(

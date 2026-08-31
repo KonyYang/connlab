@@ -14,6 +14,12 @@ class CustomerReportProjectionError(ValueError):
     """Raised when a customer report cannot be projected or published safely."""
 
 
+class CustomerReportMissingAfterPreviewError(CustomerReportProjectionError):
+    """Raised when the previewed customer report was externally removed."""
+
+    code = "customer_report_missing_after_preview"
+
+
 class CurrentReportReader(Protocol):
     def get_current_report(self, project_id: str) -> CurrentReportArtifact: ...
 
@@ -251,8 +257,8 @@ class CustomerReportProjectionService:
             raise CustomerReportProjectionError(" ".join(state.blockers))
         if state.file_path is None:
             if command.expected_customer_report_sha256:
-                raise CustomerReportProjectionError(
-                    "The customer report state changed after preview. Preview the customer report again."
+                raise CustomerReportMissingAfterPreviewError(
+                    "The customer report was deleted or moved after the page was loaded."
                 )
             folder = current.folder_path or current.file_path.parent
             target = folder / customer_report_file_name(current.file_name)

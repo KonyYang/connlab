@@ -11,8 +11,33 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "REPORT-003E",
+    "summary": "Recover safely when a customer report is deleted or moved after page preview by refreshing state and requiring explicit confirmation before generating a new report.",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Add a typed missing-after-preview conflict and an explicit regenerate-or-cancel UI without weakening internal-report or external-file concurrency guards.",
+    "scope_paths": [
+      "backend/application/customer_report_projection_service.py",
+      "backend/api/routes_report_workspace.py",
+      "frontend/src/api/client.ts",
+      "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+      "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+      "tests/unit/test_customer_report_projection_service.py",
+      "tests/integration/test_report_workspace_api.py",
+      "docs/report_generation_architecture.md"
+    ],
+    "risk_reasons": [
+      "The action publishes a formal customer report into the authoritative external project folder.",
+      "Stale browser state must never overwrite a customer report that reappears or use an internal report that changed after confirmation."
+    ],
+    "activation_head": "3c17d3ce589c7cbdebffc3773a395f5105bba1d6",
+    "started_at": "2026-08-31T22:34:32.063356Z",
+    "updated_at": "2026-08-31T22:34:32.063356Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "REPORT-003D",
     "tier": "high_risk",

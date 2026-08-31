@@ -17,6 +17,7 @@ from backend.api.dependencies import (
 )
 from backend.application.customer_report_projection_service import (
     CustomerReportGenerationResult,
+    CustomerReportMissingAfterPreviewError,
     CustomerReportProjectionState,
 )
 from backend.api.main import app
@@ -344,6 +345,43 @@ def test_managed_customer_report_generation_returns_browser_download(
     assert "attachment" in generated.headers["content-disposition"]
 
 
+def test_deleted_customer_after_preview_returns_typed_regeneration_conflict(
+    tmp_path: Path,
+) -> None:
+    customer_path = tmp_path / "DL-001-CR Qualification Testing Report_Rev_A.docx"
+    customer_service = _MissingCustomerProjectionService(
+        customer_path,
+        mode="official",
+    )
+    templates = tmp_path / "templates"
+    templates.mkdir()
+    (templates / "E-4515_F Customer Test Report.docx").write_bytes(b"template")
+    app.dependency_overrides[get_customer_report_projection_service] = (
+        lambda: customer_service
+    )
+    app.dependency_overrides[get_test_report_template_resource_store] = lambda: _Store(
+        templates
+    )
+    client = TestClient(app)
+    try:
+        generated = client.post(
+            "/api/projects/P1/report-workspace/current-customer-report",
+            json={
+                "expected_internal_report_sha256": "a" * 64,
+                "expected_customer_report_sha256": "b" * 64,
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert generated.status_code == 409
+    assert generated.json()["detail"] == {
+        "code": "customer_report_missing_after_preview",
+        "message": "The customer report was deleted or moved after the page was loaded.",
+        "can_regenerate": True,
+    }
+
+
 class _LlcrService:
     def __init__(self, preview, dataset):
         self.preview = preview
@@ -534,6 +572,13 @@ class _CustomerProjectionService:
             archive_path=(self.path.parent / "History" / "Report" / "old.docx")
             if self.mode == "official"
             else None,
+        )
+
+
+class _MissingCustomerProjectionService(_CustomerProjectionService):
+    def generate(self, command):
+        raise CustomerReportMissingAfterPreviewError(
+            "The customer report was deleted or moved after the page was loaded."
         )
 
 

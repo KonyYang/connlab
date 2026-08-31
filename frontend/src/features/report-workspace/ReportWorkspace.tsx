@@ -18,6 +18,7 @@ import {
   generateInitialReportRevision,
   generateCurrentCustomerReport,
   inspectLlcrResultWorkbook,
+  isCustomerReportMissingAfterPreviewError,
   publishManagedReport,
   previewCurrentReportLlcrUpdate,
   previewCurrentReportEquipmentList,
@@ -55,6 +56,7 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
   const [state, setState] = useState<ReportWorkspaceState | null>(null);
   const [currentReport, setCurrentReport] = useState<CurrentReport | null>(null);
   const [customerReport, setCustomerReport] = useState<CustomerReportState | null>(null);
+  const [customerReportRecovery, setCustomerReportRecovery] = useState<CustomerReportState | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<LlcrImportPreview | null>(null);
   const [decisionDrafts, setDecisionDrafts] = useState<LlcrDecisionDrafts>({});
@@ -74,13 +76,14 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
     setState(nextState);
     setCurrentReport(nextReport);
     setCustomerReport(nextCustomerReport);
-    return nextState;
+    return { state: nextState, customerReport: nextCustomerReport };
   }, [projectId]);
 
   useEffect(() => {
     let active = true;
     setBusyAction("load");
     setError(null);
+    setCustomerReportRecovery(null);
     Promise.all([
       fetchReportWorkspace(projectId),
       fetchCurrentReport(projectId),
@@ -201,32 +204,94 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
   }
 
   async function handleGenerateCustomerReport(): Promise<void> {
-    if (!customerReport?.can_generate || !customerReport.internal_report_sha256) {
+    if (
+      busyAction ||
+      customerReportRecovery ||
+      !customerReport?.can_generate ||
+      !customerReport.internal_report_sha256
+    ) {
       return;
     }
-    await runAction("customer", async () => {
-      const generated = await generateCurrentCustomerReport(projectId, {
-        expected_internal_report_sha256: customerReport.internal_report_sha256!,
-        expected_customer_report_sha256: customerReport.file_sha256,
-      });
-      if (generated.kind === "download") {
-        downloadBlob(
-          generated.download.blob,
-          generated.download.fileName || "Customer Report.docx"
-        );
-        return "Generated and downloaded the customer report.";
+    setBusyAction("customer");
+    setError(null);
+    setMessage(null);
+    try {
+      setMessage(await generateCustomerReport(customerReport, false));
+    } catch (reason) {
+      if (isCustomerReportMissingAfterPreviewError(reason)) {
+        try {
+          const refreshed = await refresh();
+          if (
+            refreshed.customerReport.status === "missing" &&
+            refreshed.customerReport.mode === "official" &&
+            refreshed.customerReport.can_generate &&
+            refreshed.customerReport.internal_report_sha256
+          ) {
+            setCustomerReportRecovery(refreshed.customerReport);
+          } else {
+            setError(
+              "The customer report state changed again. Review the current state before continuing."
+            );
+          }
+        } catch (refreshReason) {
+          setError(errorMessage(refreshReason, "Unable to refresh the customer report state."));
+        }
+      } else {
+        setError(errorMessage(reason, "Unable to generate the customer report."));
       }
-      await refresh();
-      if (!customerReport.file_name) {
-        return `Generated the customer report (${generated.result.file_name}) in the official project folder.`;
-      }
-      if (!generated.result.changed) {
-        return `The customer report (${generated.result.file_name}) was already current.`;
-      }
-      return generated.result.archive_path
-        ? `Updated the customer report (${generated.result.file_name}). The previous customer report was archived automatically.`
-        : `Updated the customer report (${generated.result.file_name}).`;
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleConfirmCustomerReportRegeneration(): Promise<void> {
+    const recovery = customerReportRecovery;
+    if (busyAction || !recovery?.internal_report_sha256) {
+      return;
+    }
+    setBusyAction("customer");
+    setError(null);
+    setMessage(null);
+    try {
+      setMessage(await generateCustomerReport(recovery, true));
+      setCustomerReportRecovery(null);
+    } catch (reason) {
+      setError(errorMessage(reason, "Unable to regenerate the customer report."));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function generateCustomerReport(
+    sourceState: CustomerReportState,
+    regeneratingMissingReport: boolean
+  ): Promise<string> {
+    const generated = await generateCurrentCustomerReport(projectId, {
+      expected_internal_report_sha256: sourceState.internal_report_sha256!,
+      expected_customer_report_sha256: regeneratingMissingReport
+        ? null
+        : sourceState.file_sha256,
     });
+    if (generated.kind === "download") {
+      downloadBlob(
+        generated.download.blob,
+        generated.download.fileName || "Customer Report.docx"
+      );
+      return "Generated and downloaded the customer report.";
+    }
+    await refresh();
+    if (regeneratingMissingReport) {
+      return `Generated a new customer report (${generated.result.file_name}). No previous file was archived.`;
+    }
+    if (!sourceState.file_name) {
+      return `Generated the customer report (${generated.result.file_name}) in the official project folder.`;
+    }
+    if (!generated.result.changed) {
+      return `The customer report (${generated.result.file_name}) was already current.`;
+    }
+    return generated.result.archive_path
+      ? `Updated the customer report (${generated.result.file_name}). The previous customer report was archived automatically.`
+      : `Updated the customer report (${generated.result.file_name}).`;
   }
 
   async function handleDownloadCustomerReport(): Promise<void> {
@@ -438,7 +503,11 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
             <div className="report-workspace-action-row">
               <button
                 className="primary-action"
-                disabled={!customerReport?.can_generate || Boolean(busyAction)}
+                disabled={
+                  !customerReport?.can_generate ||
+                  Boolean(busyAction) ||
+                  Boolean(customerReportRecovery)
+                }
                 onClick={() => void handleGenerateCustomerReport()}
                 type="button"
               >
@@ -458,6 +527,40 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
                 >Download customer report</button>
               ) : null}
             </div>
+            {customerReportRecovery ? (
+              <div
+                aria-labelledby="customer-report-recovery-title"
+                className="report-workspace-owned-regions"
+                role="alertdialog"
+              >
+                <strong id="customer-report-recovery-title">Customer report not found</strong>
+                <span>
+                  The customer report was deleted or moved from the project folder. Generate a new
+                  report from the current Internal Report?
+                </span>
+                <small>No previous file exists, so no History copy will be created.</small>
+                <div className="report-workspace-action-row">
+                  <button
+                    autoFocus
+                    className="primary-action"
+                    disabled={Boolean(busyAction)}
+                    onClick={() => void handleConfirmCustomerReportRegeneration()}
+                    type="button"
+                  >
+                    {busyAction === "customer"
+                      ? "Generating customer report..."
+                      : "Generate new customer report"}
+                  </button>
+                  <button
+                    disabled={Boolean(busyAction)}
+                    onClick={() => setCustomerReportRecovery(null)}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : null}
             <div className="report-workspace-owned-regions" aria-label="Customer report projection boundary">
               <strong>Source authority</strong>
               <span>Current Internal Report only</span>

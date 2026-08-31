@@ -419,6 +419,106 @@ describe("ReportWorkspace", () => {
     expect(await screen.findByText(/Updated the customer report/)).toBeTruthy();
   });
 
+  it("refreshes and asks before regenerating a customer report deleted after preview", async () => {
+    const user = userEvent.setup();
+    const missingCustomerReport: api.CustomerReportState = {
+      ...customerReport,
+      status: "missing",
+      file_name: null,
+      file_sha256: null,
+      generated_from_internal_sha256: null,
+      warnings: [],
+      download_url: null,
+    };
+    vi.mocked(api.fetchCurrentCustomerReport)
+      .mockResolvedValueOnce(customerReport)
+      .mockResolvedValue(missingCustomerReport);
+    vi.mocked(api.generateCurrentCustomerReport).mockReset();
+    vi.mocked(api.generateCurrentCustomerReport)
+      .mockRejectedValueOnce(
+        new api.ApiRequestError(
+          "The customer report was deleted or moved after the page was loaded.",
+          409,
+          {
+            code: "customer_report_missing_after_preview",
+            message: "The customer report was deleted or moved after the page was loaded.",
+            can_regenerate: true,
+          }
+        )
+      )
+      .mockResolvedValueOnce({
+        kind: "published",
+        result: {
+          project_id: "project-1",
+          mode: "official",
+          file_name: customerReport.file_name!,
+          file_sha256: "d".repeat(64),
+          source_report_sha256: "a".repeat(64),
+          changed: true,
+          archive_path: null,
+        },
+      });
+
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Update customer report" }));
+
+    expect(
+      await screen.findByRole("alertdialog", { name: "Customer report not found" })
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/deleted or moved from the project folder/i)
+    ).toBeTruthy();
+    expect(screen.queryByText("Report workflow failed.")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Generate new customer report" }));
+
+    expect(api.generateCurrentCustomerReport).toHaveBeenNthCalledWith(2, "project-1", {
+      expected_internal_report_sha256: "a".repeat(64),
+      expected_customer_report_sha256: null,
+    });
+    expect(
+      await screen.findByText(/Generated a new customer report.*No previous file was archived/)
+    ).toBeTruthy();
+  });
+
+  it("cancels customer report regeneration without creating a replacement", async () => {
+    const user = userEvent.setup();
+    const missingCustomerReport: api.CustomerReportState = {
+      ...customerReport,
+      status: "missing",
+      file_name: null,
+      file_sha256: null,
+      generated_from_internal_sha256: null,
+      warnings: [],
+      download_url: null,
+    };
+    vi.mocked(api.fetchCurrentCustomerReport)
+      .mockResolvedValueOnce(customerReport)
+      .mockResolvedValue(missingCustomerReport);
+    vi.mocked(api.generateCurrentCustomerReport).mockReset();
+    vi.mocked(api.generateCurrentCustomerReport).mockRejectedValueOnce(
+      new api.ApiRequestError(
+        "The customer report was deleted or moved after the page was loaded.",
+        409,
+        {
+          code: "customer_report_missing_after_preview",
+          message: "The customer report was deleted or moved after the page was loaded.",
+          can_regenerate: true,
+        }
+      )
+    );
+
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Update customer report" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Cancel" })
+    );
+
+    expect(screen.queryByRole("alertdialog", { name: "Customer report not found" })).toBeNull();
+    expect(api.generateCurrentCustomerReport).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Generate customer report" })).toBeTruthy();
+  });
+
   it("does not claim that an unchanged customer report was archived", async () => {
     const user = userEvent.setup();
     vi.mocked(api.generateCurrentCustomerReport).mockResolvedValue({

@@ -4874,6 +4874,31 @@ export type CustomerReportState = {
   download_url: string | null;
 };
 
+export type CustomerReportMissingAfterPreviewDetail = {
+  code: "customer_report_missing_after_preview";
+  message: string;
+  can_regenerate: true;
+};
+
+export function isCustomerReportMissingAfterPreviewError(
+  error: unknown
+): error is ApiRequestError & { detail: CustomerReportMissingAfterPreviewDetail } {
+  if (!(error instanceof ApiRequestError) || error.status !== 409) {
+    return false;
+  }
+  const detail = error.detail;
+  if (!detail || typeof detail !== "object") {
+    return false;
+  }
+  const candidate = detail as Record<string, unknown>;
+  return (
+    candidate.code === "customer_report_missing_after_preview" &&
+    typeof candidate.message === "string" &&
+    candidate.message.length > 0 &&
+    candidate.can_regenerate === true
+  );
+}
+
 export type CustomerReportGenerationResult = {
   project_id: string;
   mode: "official";

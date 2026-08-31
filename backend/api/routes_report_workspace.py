@@ -23,6 +23,7 @@ from backend.api.dependencies import (
 from backend.application.customer_report_projection_service import (
     CustomerReportGenerationCommand,
     CustomerReportGenerationResult,
+    CustomerReportMissingAfterPreviewError,
     CustomerReportProjectionError,
     CustomerReportProjectionService,
     CustomerReportProjectionState,
@@ -297,6 +298,15 @@ def generate_current_customer_report(
                 ),
             )
         )
+    except CustomerReportMissingAfterPreviewError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": exc.code,
+                "message": str(exc),
+                "can_regenerate": True,
+            },
+        ) from exc
     except (CustomerReportProjectionError, CurrentReportFileConflictError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except FileNotFoundError as exc:
