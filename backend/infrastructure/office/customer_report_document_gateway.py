@@ -101,7 +101,7 @@ class CustomerReportDocumentGateway:
         _validate_paths(source, template, output)
         source_hash = _file_hash(source)
         temporary = output.with_name(
-            f".{output.stem}.{uuid4().hex}.tmp{output.suffix}"
+            f".customer-report.{uuid4().hex}.tmp{output.suffix}"
         )
         try:
             shutil.copy2(template, temporary)
@@ -168,7 +168,7 @@ def _generate_with_word(source_path: Path, target_path: Path) -> None:
     target = None
     template_reference = None
     reference_path = target_path.with_name(
-        f".{target_path.stem}.{uuid4().hex}.reference{target_path.suffix}"
+        f".customer-template.{uuid4().hex}.reference{target_path.suffix}"
     )
     try:
         shutil.copy2(target_path, reference_path)
@@ -257,7 +257,18 @@ def _generate_with_word(source_path: Path, target_path: Path) -> None:
 
 def _validate_document_types(source, target) -> None:
     target_header = _first_page_header_table(target, "E-4515 template")
-    if _find_text(source, _INTERNAL_REPORT_LABEL, required=False) is None:
+    try:
+        source_header = _first_page_header_table(source, "internal report")
+    except ValueError:
+        source_header = None
+    header_is_internal = (
+        source_header is not None
+        and _INTERNAL_REPORT_LABEL in _clean_text(source_header.Range.Text)
+    )
+    if (
+        not header_is_internal
+        and _find_text(source, _INTERNAL_REPORT_LABEL, required=False) is None
+    ):
         raise ValueError("Selected source is not a Laboratory Test Report.")
     if _CUSTOMER_REPORT_LABEL not in _clean_text(target_header.Range.Text):
         raise ValueError("Configured E-4515 template is not a Customer Test Report.")
@@ -274,7 +285,7 @@ def _copy_customer_header(source, target) -> None:
     _set_cell_text(target_table, 5, 2, values.prepared_by)
     _set_cell_text(target_table, 5, 3, values.approved_by)
 
-    for index in range(2, int(target.Sections.Count) + 1):
+    for index in range(1, int(target.Sections.Count) + 1):
         continuation_header = target.Sections(index).Headers(1).Range
         if int(continuation_header.Tables.Count) < 1:
             raise ValueError("E-4515 continuation header table is missing.")
@@ -337,6 +348,8 @@ def _copy_customer_body(source, target) -> None:
 def _normalize_customer_sections(document, template_reference) -> None:
     if int(template_reference.Sections.Count) < 2:
         raise ValueError("E-4515 template requires two report sections.")
+    _trim_customer_section_spacers(document)
+    _normalize_customer_revision_page(document)
     first_donor = template_reference.Sections(1)
     continuation_donor = template_reference.Sections(2)
     for index in range(1, int(document.Sections.Count) + 1):
@@ -367,8 +380,6 @@ def _normalize_customer_sections(document, template_reference) -> None:
             footer.LinkToPrevious = False
             header.Range.FormattedText = donor.Headers(kind).Range.FormattedText
             footer.Range.FormattedText = donor.Footers(kind).Range.FormattedText
-    _trim_customer_section_spacers(document)
-    _normalize_customer_revision_page(document)
 
 
 def _trim_customer_section_spacers(document) -> None:
@@ -774,17 +785,34 @@ def _audit_customer_report(path: Path) -> None:
         for pattern in _INTERNAL_DISCLOSURE_PATTERNS
     ):
         raise ValueError("Generated customer report retained internal-only disclosures.")
-    header_text = " ".join(
+    if (
+        not document.sections
+        or not document.sections[0].different_first_page_header_footer
+    ):
+        raise ValueError("Generated customer report is missing its first-page header.")
+    first_page_header_text = " ".join(
         cell.text
         for section in document.sections
         for table in section.first_page_header.tables
         for row in table.rows
         for cell in row.cells
     )
-    if _CUSTOMER_REPORT_LABEL not in _clean_text(header_text):
+    continuation_header_text = " ".join(
+        cell.text
+        for section in document.sections
+        for table in section.header.tables
+        for row in table.rows
+        for cell in row.cells
+    )
+    header_text = _clean_text(
+        f"{first_page_header_text} {continuation_header_text}"
+    )
+    if _CUSTOMER_REPORT_LABEL not in header_text:
         raise ValueError("Generated customer report header is invalid.")
     if "-CR" not in header_text:
         raise ValueError("Generated customer report number is missing -CR.")
+    if re.search(r"(?:WW-XXXX-YY-ZZZ|XX-YY-ZZZ)", header_text, flags=re.IGNORECASE):
+        raise ValueError("Generated customer report retained a template report-number placeholder.")
 
 
 def _file_hash(path: Path) -> str:

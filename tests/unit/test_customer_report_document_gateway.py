@@ -63,6 +63,36 @@ def test_generated_customer_report_records_current_internal_fingerprint(
     assert gateway.read_source_report_sha256(template) is None
 
 
+def test_customer_report_gateway_uses_short_word_working_copy_names(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "internal.docx"
+    _minimal_document(source, customer=False)
+    template = tmp_path / "E-4515_F.docx"
+    _minimal_document(template, customer=True)
+    output = tmp_path / ("DL-001-CR " + "Long qualification report name " * 5 + ".docx")
+    opened_targets: list[Path] = []
+
+    def capture_word_target(_source_path: Path, target_path: Path) -> None:
+        opened_targets.append(Path(target_path))
+
+    monkeypatch.setattr(
+        "backend.infrastructure.office.customer_report_document_gateway._generate_with_word",
+        capture_word_target,
+    )
+
+    CustomerReportDocumentGateway().generate_customer_report(
+        source_path=source,
+        template_path=template,
+        output_path=output,
+    )
+
+    assert len(opened_targets) == 1
+    assert opened_targets[0].parent == output.parent
+    assert len(opened_targets[0].name) <= 64
+
+
 def test_customer_report_gateway_rejects_internal_disclosure_in_body(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -86,6 +116,32 @@ def test_customer_report_gateway_rejects_internal_disclosure_in_body(
     )
 
     with pytest.raises(ValueError, match="internal-only disclosures"):
+        CustomerReportDocumentGateway().generate_customer_report(
+            source_path=source,
+            template_path=template,
+            output_path=tmp_path / "customer.docx",
+        )
+
+
+def test_customer_report_gateway_rejects_template_report_number_placeholder(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "internal.docx"
+    _minimal_document(source, customer=False)
+    template = tmp_path / "E-4515_F.docx"
+    _minimal_document(template, customer=True)
+    template_document = Document(template)
+    template_document.sections[0].first_page_header.tables[0].cell(2, 0).text = (
+        "WW-XXXX-YY-ZZZ-CR"
+    )
+    template_document.save(template)
+    monkeypatch.setattr(
+        "backend.infrastructure.office.customer_report_document_gateway._generate_with_word",
+        lambda source_path, target_path: None,
+    )
+
+    with pytest.raises(ValueError, match="placeholder"):
         CustomerReportDocumentGateway().generate_customer_report(
             source_path=source,
             template_path=template,
