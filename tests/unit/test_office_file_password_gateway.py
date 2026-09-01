@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import msoffcrypto
 import pytest
+from docx import Document
 
 from backend.infrastructure.office.office_file_password_gateway import (
     OfficeFilePasswordGateway,
@@ -77,7 +79,32 @@ class _App:
         self.quit = True
 
 
-def test_word_and_excel_save_with_open_password_then_reopen_for_verification(tmp_path: Path) -> None:
+def test_docx_password_roundtrip_does_not_start_word_com(tmp_path: Path) -> None:
+    source = tmp_path / "report.docx"
+    Document().save(source)
+    protected = tmp_path / "protected.docx"
+    decrypted = tmp_path / "decrypted.docx"
+    gateway = OfficeFilePasswordGateway(
+        dispatch=lambda _kind: pytest.fail("DOCX encryption must not start Word COM"),
+        com_runtime=_ComRuntime(),
+    )
+
+    gateway.encrypt_and_verify(
+        source_path=source,
+        output_path=protected,
+        password="DGLAB",
+        office_kind="word",
+    )
+    with protected.open("rb") as protected_stream:
+        package = msoffcrypto.OfficeFile(protected_stream)
+        package.load_key(password="DGLAB", verify_password=True)
+        with decrypted.open("wb") as decrypted_stream:
+            package.decrypt(decrypted_stream)
+
+    assert decrypted.read_bytes() == source.read_bytes()
+
+
+def test_legacy_doc_and_excel_save_with_open_password_then_verify(tmp_path: Path) -> None:
     runtime = _ComRuntime()
     saves: list[dict] = []
     opens: list[dict] = []
@@ -94,14 +121,14 @@ def test_word_and_excel_save_with_open_password_then_reopen_for_verification(tmp
         com_runtime=runtime,
         output_verifier=lambda path, kind: verified.append((path, kind)),
     )
-    word = tmp_path / "report.docx"
+    word = tmp_path / "report.doc"
     excel = tmp_path / "data.xlsx"
     word.write_bytes(b"word")
     excel.write_bytes(b"excel")
 
     gateway.encrypt_and_verify(
         source_path=word,
-        output_path=tmp_path / "word-stage.docx",
+        output_path=tmp_path / "word-stage.doc",
         password="DGLAB",
         office_kind="word",
     )
@@ -117,7 +144,7 @@ def test_word_and_excel_save_with_open_password_then_reopen_for_verification(tmp
     assert opens[0]["PasswordDocument"] == "DGLAB"
     assert opens[0]["WritePasswordDocument"] == "DGLAB"
     assert verified == [
-        (tmp_path / "word-stage.docx", "word"),
+        (tmp_path / "word-stage.doc", "word"),
         (tmp_path / "excel-stage.xlsx", "excel"),
     ]
     assert runtime.initialized == runtime.uninitialized == 2

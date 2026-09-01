@@ -318,6 +318,9 @@ describe("ReportWorkspace", () => {
     });
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    expect(
+      await screen.findByText("LLCR Result and Comment cells and Appendix A")
+    ).toBeTruthy();
     await user.click(await screen.findByRole("button", { name: "Update LLCR results" }));
 
     expect(api.previewCurrentReportLlcrUpdate).toHaveBeenCalledWith(

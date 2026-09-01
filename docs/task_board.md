@@ -11,8 +11,34 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "REPORT-004C",
+    "summary": "Fix the Report Workspace LLCR update 500 for password-protected Internal Reports by preventing Word link-update prompts, returning actionable Office errors, and aligning the LLCR controlled-region copy with Appendix A ownership.",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Repair only the protected Word boundary and LLCR report-update error/copy behavior; validate on temporary copies and do not mutate the user's official report or project history.",
+    "scope_paths": [
+      "backend/infrastructure/office/office_protected_document_gateway.py",
+      "backend/infrastructure/office/office_file_password_gateway.py",
+      "backend/api/routes_report_workspace.py",
+      "tests/unit/test_office_protected_document_gateway.py",
+      "tests/unit/test_office_file_password_gateway.py",
+      "tests/integration/test_report_workspace_api.py",
+      "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+      "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [
+      "The fix changes password-protected Word automation used while replacing the authoritative current Internal Report.",
+      "The API must fail safely before publication when Word automation cannot open or re-protect the report."
+    ],
+    "activation_head": "a018cef536fd936e10b8f73382bbe3c1db8c90aa",
+    "started_at": "2026-09-01T11:01:28.782804Z",
+    "updated_at": "2026-09-01T11:01:28.782804Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "REPORT-004B",
     "tier": "high_risk",

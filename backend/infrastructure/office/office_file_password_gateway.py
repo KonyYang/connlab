@@ -1,4 +1,4 @@
-"""Password-protect Word, Excel, and PowerPoint files through owned COM sessions."""
+"""Password-protect Office files through file-level or owned COM automation."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ class OfficeFilePasswordGateway:
         password: str,
         office_kind: str,
     ) -> None:
-        """Write a protected output, then verify that Office can reopen it when possible."""
+        """Write a protected output, then verify its encryption markers."""
         source = Path(source_path)
         output = Path(output_path)
         if not source.is_file():
@@ -45,6 +45,16 @@ class OfficeFilePasswordGateway:
         expected_kind = _kind_from_suffix(source.suffix.lower())
         if expected_kind != office_kind:
             raise ValueError(f"Unsupported or mismatched Office file type: {source.suffix}")
+        if office_kind == "word" and source.suffix.lower() == ".docx":
+            try:
+                _encrypt_ooxml_package(source, output, password)
+                self._output_verifier(output, "word")
+            except Exception as exc:
+                output.unlink(missing_ok=True)
+                if isinstance(exc, (FileNotFoundError, ValueError, OfficeFilePasswordError)):
+                    raise
+                raise OfficeFilePasswordError(_safe_office_error(exc)) from None
+            return
         dispatch, com_runtime = self._automation()
         com_runtime.CoInitialize()
         try:
@@ -199,6 +209,20 @@ def _kind_from_suffix(suffix: str) -> str | None:
     if suffix == ".pptx":
         return "powerpoint"
     return None
+
+
+def _encrypt_ooxml_package(
+    source: Path,
+    output: Path,
+    password: str,
+) -> None:
+    """Encrypt one OOXML package without starting an interactive Office process."""
+    import msoffcrypto
+
+    with source.open("rb") as source_stream:
+        package = msoffcrypto.OfficeFile(source_stream)
+        with output.open("wb") as output_stream:
+            package.encrypt(password, output_stream)
 
 
 def _verify_password_protected_output(path: Path, office_kind: str) -> None:

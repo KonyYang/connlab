@@ -591,7 +591,7 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
           <article className="report-workspace-card">
             <div className="report-workspace-card-heading">
               <span className="report-workspace-step">04</span>
-              <div><h2>Update LLCR report section</h2><p>Update only controlled LLCR Result and Comment cells. Purpose, Conclusions, Equipment, images, and appendices remain unchanged.</p></div>
+              <div><h2>Update LLCR report section</h2><p>Update controlled LLCR Result and Comment cells together with Appendix A. Purpose, Conclusions, Equipment, images, and later appendices remain unchanged.</p></div>
             </div>
             {latestDataset ? (
               <dl className="report-workspace-dataset-summary">
@@ -613,7 +613,7 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
             {currentReport?.status !== "ready" ? <p className="report-workspace-blocker">{currentReport?.status === "ambiguous" ? "Multiple current internal reports were found. Keep exactly one before updating." : "Generate an initial report before updating LLCR results."}</p> : null}
             <div className="report-workspace-owned-regions" aria-label="Update boundary">
               <strong>This action owns</strong>
-              <span>LLCR Result and Comment cells only</span>
+              <span>LLCR Result and Comment cells and Appendix A</span>
               <small>Manually edited Purpose and Conclusions are preserved.</small>
             </div>
           </article>

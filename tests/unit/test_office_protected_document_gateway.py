@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import msoffcrypto
 import pytest
+from docx import Document
 
 from backend.infrastructure.office.office_protected_document_gateway import (
     ProtectedWordPackageGateway,
@@ -35,6 +37,32 @@ def test_plain_word_package_stages_without_office_automation(tmp_path: Path) -> 
     assert state.was_password_protected is False
     assert destination.read_bytes() == b"plain-package"
     assert decrypt_calls == []
+
+
+def test_default_protected_docx_decryption_does_not_start_word_com(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plain = tmp_path / "plain.docx"
+    Document().save(plain)
+    protected = tmp_path / "protected.docx"
+    with plain.open("rb") as plain_stream:
+        package = msoffcrypto.OfficeFile(plain_stream)
+        with protected.open("wb") as protected_stream:
+            package.encrypt("DGLAB", protected_stream)
+    monkeypatch.setattr(
+        "win32com.client.DispatchEx",
+        lambda _kind: pytest.fail("DOCX decryption must not start Word COM"),
+    )
+
+    destination = tmp_path / "editable.docx"
+    state = ProtectedWordPackageGateway().stage_editable_copy(
+        protected,
+        destination,
+    )
+
+    assert state.was_password_protected is True
+    assert destination.read_bytes() == plain.read_bytes()
 
 
 def test_protected_word_package_is_decrypted_and_reprotected_without_exposing_password(

@@ -15,7 +15,6 @@ import zipfile
 from backend.infrastructure.office.office_file_password_gateway import (
     OfficeFilePasswordGateway,
 )
-from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
 from backend.shared.office_document_password import OFFICE_DOCUMENT_PASSWORD
 
 
@@ -72,7 +71,7 @@ class ProtectedWordPackageGateway:
             self._materialize_decrypted(source, readable)
             if not readable.is_file():
                 raise OfficeProtectedDocumentError(
-                    "Microsoft Word did not create a readable document copy."
+                    "The protected Word document did not produce a readable copy."
                 )
             yield readable
 
@@ -91,7 +90,7 @@ class ProtectedWordPackageGateway:
             shutil.copy2(source, output)
         if not output.is_file():
             raise OfficeProtectedDocumentError(
-                "Microsoft Word did not create an editable document copy."
+                "The protected Word document did not produce an editable copy."
             )
         return WordPackageProtectionState(was_password_protected=protected)
 
@@ -104,7 +103,7 @@ class ProtectedWordPackageGateway:
         except Exception:
             output.unlink(missing_ok=True)
             raise OfficeProtectedDocumentError(
-                "Microsoft Word could not open the protected document."
+                "The password-protected Word document could not be decrypted."
             ) from None
 
     def restore_password_protection(
@@ -128,7 +127,7 @@ class ProtectedWordPackageGateway:
             )
             if not protected.is_file():
                 raise OfficeProtectedDocumentError(
-                    "Microsoft Word did not restore document protection."
+                    "The Word document password protection was not restored."
                 )
             os.replace(protected, editable)
         finally:
@@ -160,61 +159,14 @@ def _is_password_protected_docx(path: Path) -> bool:
 
 def _decrypt_word_document(source: Path, output: Path, password: str) -> None:
     try:
-        import pythoncom  # type: ignore[import-not-found]
-        import win32com.client  # type: ignore[import-not-found]
-    except ImportError as exc:  # pragma: no cover - Windows release host dependent
-        raise OfficeAutomationUnavailable(
-            "Protected Word document access requires pywin32 and Microsoft Word."
-        ) from exc
-    word = None
-    document = None
-    pythoncom.CoInitialize()
-    try:
-        word = win32com.client.DispatchEx("Word.Application")
-        word.Visible = False
-        word.DisplayAlerts = 0
-        word.AutomationSecurity = 3
-        document = word.Documents.Open(
-            FileName=str(source.resolve()),
-            PasswordDocument=password,
-            WritePasswordDocument=password,
-            ReadOnly=True,
-            AddToRecentFiles=False,
-            ConfirmConversions=False,
-            Visible=False,
-        )
-        if document is None:
-            raise OfficeProtectedDocumentError(
-                "Microsoft Word did not return the protected document."
-            )
-        document.Password = ""
-        document.WritePassword = ""
-        document.ReadOnlyRecommended = False
-        document.SaveAs2(
-            FileName=str(output.resolve()),
-            FileFormat=16,
-            Password="",
-            WritePassword="",
-            AddToRecentFiles=False,
-            ReadOnlyRecommended=False,
-        )
-    except OfficeProtectedDocumentError:
-        raise
+        import msoffcrypto
+
+        with source.open("rb") as source_stream:
+            package = msoffcrypto.OfficeFile(source_stream)
+            package.load_key(password=password, verify_password=True)
+            with output.open("wb") as output_stream:
+                package.decrypt(output_stream)
     except Exception:
         raise OfficeProtectedDocumentError(
-            "Microsoft Word could not open the protected document."
+            "The password-protected Word document could not be decrypted."
         ) from None
-    finally:
-        if document is not None:
-            try:
-                document.Close(SaveChanges=False)
-            except Exception:
-                pass
-        if word is not None:
-            try:
-                word.Quit()
-            except Exception:
-                pass
-        pythoncom.CoUninitialize()
-        if not output.is_file():
-            output.unlink(missing_ok=True)
