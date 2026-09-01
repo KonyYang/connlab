@@ -19,15 +19,13 @@
     "route": "full_chain",
     "scope": "Repair only the protected Word boundary and LLCR report-update error/copy behavior; validate on temporary copies and do not mutate the user's official report or project history.",
     "scope_paths": [
-      "backend/infrastructure/office/office_protected_document_gateway.py",
       "backend/infrastructure/office/office_file_password_gateway.py",
-      "backend/api/routes_report_workspace.py",
-      "tests/unit/test_office_protected_document_gateway.py",
-      "tests/unit/test_office_file_password_gateway.py",
-      "tests/integration/test_report_workspace_api.py",
-      "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+      "backend/infrastructure/office/office_protected_document_gateway.py",
       "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-      "docs/task_board.md"
+      "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+      "pyproject.toml",
+      "tests/unit/test_office_file_password_gateway.py",
+      "tests/unit/test_office_protected_document_gateway.py"
     ],
     "risk_reasons": [
       "The fix changes password-protected Word automation used while replacing the authoritative current Internal Report.",
@@ -35,8 +33,16 @@
     ],
     "activation_head": "a018cef536fd936e10b8f73382bbe3c1db8c90aa",
     "started_at": "2026-09-01T11:01:28.782804Z",
-    "updated_at": "2026-09-01T11:01:28.782804Z",
-    "checkpoint": null,
+    "updated_at": "2026-09-01T11:30:21.383341Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "REPORT-004C",
+      "stage": "scope_manifest_correction",
+      "status": "running",
+      "summary": "User explicitly approved adding msoffcrypto-tool and pyproject.toml to the protected DOCX fix scope.",
+      "requires_user": false
+    },
     "report": null
   },
   "last_closed": {
