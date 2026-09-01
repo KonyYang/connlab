@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "REPORT-004B",
     "summary": "Import the LLCR workbook Summary sheet as typed evidence and update Appendix A in the current Internal Report within the existing controlled LLCR publication transaction.",
@@ -36,9 +36,83 @@
     ],
     "activation_head": "e13486bc8c6335d3134368aab1eb8a5ec8600fe3",
     "started_at": "2026-09-01T05:15:13.139040Z",
-    "updated_at": "2026-09-01T05:15:13.139040Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-01T05:40:31.396596Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "REPORT-004B",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "REPORT-004B",
+      "subject": "622e03bfbb405ed06d48316c25befd597ff11668",
+      "summary": "LLCR import now persists the workbook Summary sheet as typed evidence, and the controlled LLCR report update creates or replaces Appendix A while preserving later appendices and manual report content.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/application/llcr_result_dataset_service.py",
+        "backend/domain/result_dataset_models.py",
+        "backend/infrastructure/office/llcr_result_workbook_gateway.py",
+        "backend/infrastructure/office/test_report_document_gateway.py",
+        "backend/infrastructure/storage/repositories/result_dataset.py",
+        "tests/unit/test_llcr_result_dataset_service.py",
+        "tests/unit/test_llcr_result_workbook_gateway.py",
+        "tests/unit/test_result_dataset_repository.py",
+        "tests/unit/test_test_report_document_gateway.py"
+      ],
+      "validation": [
+        {
+          "name": "affected LLCR and Word regression suite",
+          "status": "passed",
+          "detail": "34 passed"
+        },
+        {
+          "name": "Report Workspace and current-report integration suite",
+          "status": "passed",
+          "detail": "17 passed"
+        },
+        {
+          "name": "backend compile check",
+          "status": "passed",
+          "detail": "all five changed backend modules compiled"
+        },
+        {
+          "name": "golden-report visual comparison",
+          "status": "passed",
+          "detail": "the real 34-row Summary rendered on one Appendix A page with matching hierarchy, fills, typography, emphasis, and no right-edge clipping"
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed",
+          "detail": "Summary authority, controlled-region ownership, replacement ordering, and compatibility boundaries were defined from the supplied workbook and approved report"
+        },
+        "developer": {
+          "status": "passed",
+          "detail": "typed Summary persistence and Appendix A projection implemented with regression protection"
+        },
+        "reviewer": {
+          "status": "passed",
+          "detail": "exact specification and standards review found no actionable findings"
+        },
+        "qa": {
+          "status": "passed",
+          "detail": "51 focused unit and integration checks plus Word visual regression passed on the final code state"
+        },
+        "integrator": {
+          "status": "passed",
+          "detail": "clean committed diff matches the approved high-risk path allowlist and leaves source attachments and project reports untouched"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "detail": "Current clean HEAD contains the reviewed implementation; Appendix A is updated in the existing archive-and-replace LLCR transaction."
+      }
+    }
   },
   "last_closed": {
     "task_id": "REPORT-004A",
