@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "REPORT-004C",
     "summary": "Fix the Report Workspace LLCR update 500 for password-protected Internal Reports by preventing Word link-update prompts, returning actionable Office errors, and aligning the LLCR controlled-region copy with Appendix A ownership.",
@@ -33,17 +33,81 @@
     ],
     "activation_head": "a018cef536fd936e10b8f73382bbe3c1db8c90aa",
     "started_at": "2026-09-01T11:01:28.782804Z",
-    "updated_at": "2026-09-01T11:30:21.383341Z",
+    "updated_at": "2026-09-01T11:31:20.150234Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "REPORT-004C",
-      "stage": "scope_manifest_correction",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User explicitly approved adding msoffcrypto-tool and pyproject.toml to the protected DOCX fix scope.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "REPORT-004C",
+      "subject": "03541da992c6890555b25af623314d110fd8185c",
+      "summary": "Replaced hanging Word COM DOCX password handling with verified file-level encryption and decryption, preserved legacy Office paths, and aligned Report Workspace Appendix A ownership copy.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/infrastructure/office/office_file_password_gateway.py",
+        "backend/infrastructure/office/office_protected_document_gateway.py",
+        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+        "pyproject.toml",
+        "tests/unit/test_office_file_password_gateway.py",
+        "tests/unit/test_office_protected_document_gateway.py"
+      ],
+      "validation": [
+        {
+          "name": "backend focused regression",
+          "status": "passed",
+          "detail": "45 tests passed"
+        },
+        {
+          "name": "Report Workspace frontend regression",
+          "status": "passed",
+          "detail": "13 tests passed"
+        },
+        {
+          "name": "Vite production build",
+          "status": "passed",
+          "detail": "TypeScript and Vite build succeeded"
+        },
+        {
+          "name": "encrypted report copy smoke",
+          "status": "passed",
+          "detail": "revision 6, 32 summary rows, output remained password protected"
+        },
+        {
+          "name": "dependency integrity",
+          "status": "passed",
+          "detail": "msoffcrypto-tool 6.0.0 and pip check passed"
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed"
+        },
+        "developer": {
+          "status": "passed"
+        },
+        "reviewer": {
+          "status": "passed"
+        },
+        "qa": {
+          "status": "passed"
+        },
+        "integrator": {
+          "status": "passed"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "detail": "Validated LLCR controlled update on a copy of the real encrypted report without changing the official report or history."
+      }
+    }
   },
   "last_closed": {
     "task_id": "REPORT-004B",
