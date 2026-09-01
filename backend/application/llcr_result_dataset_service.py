@@ -145,6 +145,7 @@ class LlcrResultDatasetService:
                 parser_profile_version=inspection.parser_profile_version,
                 detected_sheets=inspection.detected_sheets,
                 entries=inspection.entries,
+                summary_rows=inspection.summary_rows,
                 diagnostics=inspection.diagnostics,
             )
             self._previews.put(
@@ -218,7 +219,10 @@ class LlcrResultDatasetService:
             confirmed_by=command.confirmed_by.strip() or "Lab User",
             parser_profile_version=preview.parser_profile_version,
             validation_status="confirmed",
-            payload=LlcrDatasetPayload(tuple(confirmed_entries)),
+            payload=LlcrDatasetPayload(
+                tuple(confirmed_entries),
+                preview.summary_rows,
+            ),
         )
         try:
             created = self._repository.create_dataset(dataset)

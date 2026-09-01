@@ -4,6 +4,7 @@ from dataclasses import replace
 from decimal import Decimal
 
 from openpyxl import load_workbook
+from openpyxl.styles import PatternFill
 
 from backend.application.confirmed_matrix_llcr_cr_record_projection import (
     LlcrCrRecordProjection,
@@ -32,6 +33,12 @@ def test_inspect_reads_original_precision_and_maps_stages_to_matrix_steps(tmp_pa
     sheet["B2"], sheet["B3"], sheet["B4"] = Decimal("0.05"), Decimal("0.05"), Decimal("0.05")
     sheet["D10"], sheet["D11"] = Decimal("0.219"), Decimal("0.248")
     sheet["D12"], sheet["D13"] = Decimal("0.220"), Decimal("0.270")
+    workbook["Summary"]["B4"] = "Final LLCR"
+    workbook["Summary"]["C3"] = Decimal("0.111")
+    workbook["Summary"]["D3"] = Decimal("0.222")
+    workbook["Summary"]["E3"] = Decimal("0.1665")
+    workbook["Summary"]["F3"] = Decimal("0.078489")
+    workbook["Summary"]["C3"].fill = PatternFill("solid", fgColor="FFFACD")
     workbook.save(source)
 
     inspection = LlcrResultWorkbookGateway().inspect(
@@ -67,6 +74,17 @@ def test_inspect_reads_original_precision_and_maps_stages_to_matrix_steps(tmp_pa
     assert final.summary_max == Decimal("0.022")
     assert final.provisional_outcome == "pass"
     assert final.source_range == "SIG!K12:K13"
+    assert [row.stage_label for row in inspection.summary_rows] == [
+        "Initial LLCR",
+        "Final LLCR",
+    ]
+    assert inspection.summary_rows[0].group_label == "1"
+    assert inspection.summary_rows[0].summary_min == Decimal("0.111")
+    assert inspection.summary_rows[0].summary_max == Decimal("0.222")
+    assert inspection.summary_rows[0].summary_average == Decimal("0.1665")
+    assert inspection.summary_rows[0].summary_stdev == Decimal("0.078489")
+    assert inspection.summary_rows[0].fill_color == "FFFACD"
+    assert inspection.summary_rows[0].source_row == 3
 
 
 def test_inspect_returns_blocking_diagnostic_for_a_corrupt_xlsx(tmp_path) -> None:

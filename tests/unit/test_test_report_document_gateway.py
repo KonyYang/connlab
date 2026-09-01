@@ -28,6 +28,7 @@ from backend.domain.result_dataset_models import (
     LlcrDatasetPayload,
     LlcrMeasurement,
     LlcrResultEntry,
+    LlcrSummaryRow,
     ResultDatasetRevision,
     ResultDatasetSourceIdentity,
 )
@@ -354,6 +355,55 @@ def test_synchronizes_only_managed_llcr_result_cells_into_a_new_draft(tmp_path: 
     assert result_table.cell(1, 5).text == "Reviewed"
     assert result_table.cell(2, 4).text == "Initial ≤0.198mΩ"
     assert result_table.cell(2, 5).text == "Pass"
+    headings = [
+        paragraph
+        for paragraph in synchronized.paragraphs
+        if paragraph.text.startswith("Appendix A:")
+    ]
+    assert len(headings) == 1
+    assert headings[0].text == (
+        "Appendix A: Statistical Summary of LLCR Measurements (Unit: mΩ)"
+    )
+    assert headings[0].paragraph_format.page_break_before is True
+    assert all(run.font.name == "Arial" for run in headings[0].runs)
+    assert all(run.bold is True and run.underline is True for run in headings[0].runs)
+    appendix = _appendix_a_table(synchronized)
+    assert len(appendix.rows) == 4
+    assert [cell.text for cell in appendix.rows[0].cells] == [
+        "Test Step", "Test Step", "Statistics", "Statistics", "Statistics", "Statistics"
+    ]
+    assert [cell.text for cell in appendix.rows[1].cells] == [
+        "Test Step", "Test Step", "Min", "Max", "Avg", "Stdev"
+    ]
+    assert [cell.text for cell in appendix.rows[2].cells] == [
+        "Group 1", "Initial LLCR", "0.158", "0.183", "0.168", "0.010"
+    ]
+    assert [cell.text for cell in appendix.rows[3].cells] == [
+        "Group 1", "Final ∆R", "0.013", "0.039", "0.028", "0.011"
+    ]
+    assert _cell_fill(appendix.cell(2, 2)) in {"auto", "FFFFFF"}
+    assert _cell_fill(appendix.cell(3, 2)) == "FFFFCC"
+    assert appendix.cell(2, 3).paragraphs[0].runs[0].bold is True
+    assert all(
+        run.font.name == "Arial"
+        for row in appendix.rows
+        for cell in row.cells
+        for paragraph in cell.paragraphs
+        for run in paragraph.runs
+    )
+    assert appendix.rows[0]._tr.get_or_add_trPr().find(qn("w:tblHeader")) is not None
+    assert appendix.rows[1]._tr.get_or_add_trPr().find(qn("w:tblHeader")) is not None
+    assert sum(
+        int(column.get(qn("w:w"), "0"))
+        for column in appendix._tbl.tblGrid.gridCol_lst
+    ) <= min(
+        int((section.page_width - section.left_margin - section.right_margin) / 635)
+        for section in synchronized.sections
+    )
+    assert _body_index(synchronized, headings[0]._p) < _body_index(
+        synchronized,
+        next(p._p for p in synchronized.paragraphs if p.text == "*** End of Report ***"),
+    )
 
 
 def test_llcr_sync_is_byte_identical_when_managed_values_are_already_current(
@@ -381,6 +431,50 @@ def test_llcr_sync_is_byte_identical_when_managed_values_are_already_current(
     )
 
     assert second_sync.read_bytes() == first_sync.read_bytes()
+
+
+def test_llcr_sync_replaces_only_appendix_a_and_preserves_later_manual_appendix(
+    tmp_path: Path,
+) -> None:
+    template = _build_template(tmp_path / "E-3707_H.docx")
+    source = tmp_path / "revision-1.docx"
+    first_sync = tmp_path / "revision-2.docx"
+    output = tmp_path / "revision-3.docx"
+    gateway = TestReportDocumentGateway()
+    gateway.generate(template_path=template, output_path=source, report=_report())
+    gateway.synchronize_llcr_results(
+        source_path=source,
+        output_path=first_sync,
+        dataset=_llcr_dataset(),
+    )
+    document = Document(first_sync)
+    _appendix_a_table(document).cell(2, 2).text = "stale"
+    end = next(p for p in document.paragraphs if p.text == "*** End of Report ***")
+    manual_heading = document.add_paragraph("Appendix B: Operator-maintained evidence")
+    manual_table = document.add_table(rows=1, cols=1)
+    manual_table.cell(0, 0).text = "Do not replace"
+    end._p.addprevious(manual_heading._p)
+    end._p.addprevious(manual_table._tbl)
+    document.save(first_sync)
+
+    gateway.synchronize_llcr_results(
+        source_path=first_sync,
+        output_path=output,
+        dataset=_llcr_dataset(),
+    )
+
+    updated = Document(output)
+    assert sum(p.text.startswith("Appendix A:") for p in updated.paragraphs) == 1
+    assert _appendix_a_table(updated).cell(2, 2).text == "0.158"
+    assert any(
+        paragraph.text == "Appendix B: Operator-maintained evidence"
+        for paragraph in updated.paragraphs
+    )
+    assert any(
+        table.cell(0, 0).text == "Do not replace"
+        for table in updated.tables
+        if table.rows and table.columns
+    )
 
 
 def test_llcr_sync_fails_without_partial_output_when_target_is_ambiguous(tmp_path: Path) -> None:
@@ -1021,7 +1115,31 @@ def _llcr_dataset() -> ResultDatasetRevision:
         confirmed_by="Even Yang",
         parser_profile_version="connlab-llcr-macro-v1",
         validation_status="confirmed",
-        payload=LlcrDatasetPayload((entry,)),
+        payload=LlcrDatasetPayload(
+            (entry,),
+            (
+                LlcrSummaryRow(
+                    group_label="1",
+                    stage_label="Initial LLCR",
+                    summary_min=Decimal("0.158"),
+                    summary_max=Decimal("0.183"),
+                    summary_average=Decimal("0.168"),
+                    summary_stdev=Decimal("0.010"),
+                    source_row=3,
+                    fill_color=None,
+                ),
+                LlcrSummaryRow(
+                    group_label="1",
+                    stage_label="Final LLCR",
+                    summary_min=Decimal("0.013"),
+                    summary_max=Decimal("0.039"),
+                    summary_average=Decimal("0.028"),
+                    summary_stdev=Decimal("0.011"),
+                    source_row=4,
+                    fill_color="FFFFCC",
+                ),
+            ),
+        ),
     )
 
 
@@ -1032,6 +1150,21 @@ def _result_tables(document):
         for table in document.tables
         if [cell.text for cell in table.rows[0].cells] == headers
     ]
+
+
+def _appendix_a_table(document):
+    return next(
+        table
+        for table in document.tables
+        if len(table.rows) >= 2
+        and len(table.columns) == 6
+        and table.cell(0, 0).text == "Test Step"
+        and table.cell(0, 2).text == "Statistics"
+    )
+
+
+def _body_index(document, element) -> int:
+    return list(document.element.body.iterchildren()).index(element)
 
 
 def _add_direct_cell_borders(cell) -> None:

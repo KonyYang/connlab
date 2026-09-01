@@ -5,14 +5,23 @@ from __future__ import annotations
 from collections import OrderedDict
 from copy import deepcopy
 from datetime import datetime
+from decimal import Decimal
 import os
 from pathlib import Path
 import re
+from statistics import stdev
 from uuid import uuid4
 
 from docx import Document
+from docx.enum.table import (
+    WD_CELL_VERTICAL_ALIGNMENT,
+    WD_ROW_HEIGHT_RULE,
+    WD_TABLE_ALIGNMENT,
+)
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from docx.shared import Pt
 from docx.table import Table, _Cell
 from docx.text.paragraph import Paragraph
 
@@ -20,7 +29,10 @@ from backend.application.confirmed_matrix_test_record_preview_service import (
     is_llcr_test_item,
 )
 from backend.application.test_report_draft_service import TestReportDraftData
-from backend.domain.result_dataset_models import ResultDatasetRevision
+from backend.domain.result_dataset_models import (
+    LlcrSummaryRow,
+    ResultDatasetRevision,
+)
 from backend.infrastructure.office.office_protected_document_gateway import (
     ProtectedWordPackageGateway,
 )
@@ -74,6 +86,9 @@ _SAMPLE_SIZE_FILL = "8DB3E2"
 _PREFERRED_TEST_ITEM_WIDTH_DXA = 3024
 _MIN_TEST_ITEM_WIDTH_DXA = 2500
 _MIN_GROUP_WIDTH_DXA = 690
+_APPENDIX_A_HEADING = "Appendix A: Statistical Summary of LLCR Measurements (Unit: mΩ)"
+_APPENDIX_A_GRID_DXA = (1519, 3611, 1524, 1524, 1524, 1519)
+_APPENDIX_HEADER_FILL = "DCDCDC"
 
 
 class TestReportDocumentGateway:
@@ -203,7 +218,11 @@ class TestReportDocumentGateway:
             for row, expected_result, expected_comment in updates:
                 _set_cell_text(row.cells[4], expected_result)
                 _set_cell_text(row.cells[5], expected_comment)
-            if updates:
+            summary_rows = _llcr_summary_rows(dataset)
+            appendix_changed = not _appendix_a_is_current(document, summary_rows)
+            if appendix_changed:
+                _replace_appendix_a(document, summary_rows)
+            if updates or appendix_changed:
                 document.save(temporary)
             _audit_llcr_sync(temporary, dataset)
             self._protected_package_gateway.restore_password_protection(
@@ -721,6 +740,365 @@ def _audit_llcr_sync(path: Path, dataset: ResultDatasetRevision) -> None:
                 "Generated report failed LLCR synchronization audit for "
                 f"Group {entry.group_label} Step {entry.matrix_step_token}."
             )
+    summary_rows = _llcr_summary_rows(dataset)
+    if not _appendix_a_is_current(document, summary_rows):
+        raise ValueError("Generated report failed Appendix A synchronization audit.")
+
+
+def _llcr_summary_rows(dataset: ResultDatasetRevision) -> tuple[LlcrSummaryRow, ...]:
+    if dataset.payload.summary_rows:
+        return dataset.payload.summary_rows
+    group_order: list[str] = []
+    rows: list[LlcrSummaryRow] = []
+    for source_row, entry in enumerate(dataset.payload.entries, start=3):
+        group_key = _report_group_key(entry.group_label)
+        if group_key not in group_order:
+            group_order.append(group_key)
+        values = [measurement.value for measurement in entry.measurements]
+        rows.append(
+            LlcrSummaryRow(
+                group_label=entry.group_label,
+                stage_label=entry.stage_label,
+                summary_min=entry.summary_min,
+                summary_max=entry.summary_max,
+                summary_average=entry.summary_average,
+                summary_stdev=stdev(values) if len(values) > 1 else Decimal("0"),
+                source_row=source_row,
+                fill_color=(
+                    "FFFFCC"
+                    if group_order.index(group_key) % 2 == 1
+                    else None
+                ),
+            )
+        )
+    return tuple(rows)
+
+
+def _appendix_a_is_current(
+    document,
+    rows: tuple[LlcrSummaryRow, ...],
+) -> bool:
+    heading, table = _appendix_a_region(document)
+    if heading is None or table is None:
+        return False
+    if heading.text != _APPENDIX_A_HEADING:
+        return False
+    if heading.paragraph_format.page_break_before is not True:
+        return False
+    if any(
+        run.font.name != _TABLE_FONT_NAME
+        or run.bold is not True
+        or run.underline is not True
+        for run in heading.runs
+    ):
+        return False
+    expected = _appendix_a_values(rows)
+    actual = tuple(tuple(cell.text for cell in row.cells) for row in table.rows)
+    if actual != expected:
+        return False
+    expected_grid = _appendix_grid_dxa(document)
+    if len(table._tbl.tblGrid.gridCol_lst) != len(expected_grid):
+        return False
+    if tuple(
+        int(column.get(qn("w:w"), "0"))
+        for column in table._tbl.tblGrid.gridCol_lst
+    ) != expected_grid:
+        return False
+    if any(
+        row._tr.get_or_add_trPr().find(qn("w:tblHeader")) is None
+        for row in table.rows[:2]
+    ):
+        return False
+    for row_index, summary in enumerate(rows, start=2):
+        expected_fill = summary.fill_color or "FFFFFF"
+        if any(
+            _cell_fill_value(table.cell(row_index, column)) != expected_fill
+            for column in range(2, 6)
+        ):
+            return False
+        max_runs = table.cell(row_index, 3).paragraphs[0].runs
+        if not max_runs or any(run.bold is not True for run in max_runs):
+            return False
+    return True
+
+
+def _appendix_a_region(document) -> tuple[Paragraph | None, Table | None]:
+    headings = [
+        paragraph
+        for paragraph in document.paragraphs
+        if re.match(r"^Appendix\s+A\s*:", paragraph.text.strip(), re.IGNORECASE)
+    ]
+    if len(headings) > 1:
+        raise ValueError("Internal report contains more than one Appendix A heading.")
+    if not headings:
+        return None, None
+    heading = headings[0]
+    table = None
+    for sibling in heading._p.itersiblings():
+        if sibling.tag == qn("w:tbl"):
+            table = Table(sibling, document._body)
+            break
+        if sibling.tag == qn("w:p"):
+            text = Paragraph(sibling, document._body).text.strip()
+            if text and (
+                re.match(r"^Appendix\s+[B-Z]\s*:", text, re.IGNORECASE)
+                or _normalized(text) == _normalized("*** End of Report ***")
+            ):
+                break
+    return heading, table
+
+
+def _replace_appendix_a(
+    document,
+    rows: tuple[LlcrSummaryRow, ...],
+) -> None:
+    if not rows:
+        raise ValueError("Appendix A requires at least one LLCR Summary row.")
+    old_heading, old_table = _appendix_a_region(document)
+    if old_heading is not None:
+        anchor = old_heading._p
+    else:
+        anchor = next(
+            (
+                paragraph._p
+                for paragraph in document.paragraphs
+                if re.match(
+                    r"^Appendix\s+[B-Z]\s*:",
+                    paragraph.text.strip(),
+                    re.IGNORECASE,
+                )
+            ),
+            None,
+        )
+        if anchor is None:
+            anchor = next(
+                (
+                    paragraph._p
+                    for paragraph in document.paragraphs
+                    if _normalized(paragraph.text)
+                    == _normalized("*** End of Report ***")
+                ),
+                None,
+            )
+    if anchor is None:
+        raise ValueError("Internal report End of Report anchor is missing.")
+
+    heading = document.add_paragraph()
+    heading.paragraph_format.page_break_before = True
+    heading.paragraph_format.keep_with_next = True
+    heading.paragraph_format.space_after = Pt(4)
+    run = heading.add_run(_APPENDIX_A_HEADING)
+    run.font.name = _TABLE_FONT_NAME
+    run.font.size = Pt(10.5)
+    run.bold = True
+    run.underline = True
+    _set_run_font_family(run, _TABLE_FONT_NAME)
+    table = _build_appendix_a_table(document, rows)
+    anchor.addprevious(heading._p)
+    anchor.addprevious(table._tbl)
+
+    if old_table is not None:
+        old_table._tbl.getparent().remove(old_table._tbl)
+    if old_heading is not None:
+        old_heading._p.getparent().remove(old_heading._p)
+
+
+def _build_appendix_a_table(
+    document,
+    rows: tuple[LlcrSummaryRow, ...],
+) -> Table:
+    table = document.add_table(rows=2 + len(rows), cols=6)
+    table.autofit = False
+    table.alignment = WD_TABLE_ALIGNMENT.LEFT
+    _set_appendix_table_geometry(table, _appendix_grid_dxa(document))
+
+    table.cell(0, 0).merge(table.cell(1, 1))
+    table.cell(0, 2).merge(table.cell(0, 5))
+    _write_appendix_cell(table.cell(0, 0), "Test Step", bold=True, fill=_APPENDIX_HEADER_FILL)
+    _write_appendix_cell(table.cell(0, 2), "Statistics", bold=True, fill=_APPENDIX_HEADER_FILL)
+    for column, label in enumerate(("Min", "Max", "Avg", "Stdev"), start=2):
+        _write_appendix_cell(table.cell(1, column), label, bold=True, fill=_APPENDIX_HEADER_FILL)
+
+    for row_index, summary in enumerate(rows, start=2):
+        _write_appendix_cell(
+            table.cell(row_index, 0),
+            f"Group {_report_group_key(summary.group_label)}",
+            bold=True,
+            fill=_APPENDIX_HEADER_FILL,
+        )
+        _write_appendix_cell(
+            table.cell(row_index, 1),
+            _appendix_stage_label(summary.stage_label),
+            bold=True,
+            fill=_APPENDIX_HEADER_FILL,
+        )
+        fill = summary.fill_color or "FFFFFF"
+        for column, value in enumerate(
+            (
+                summary.summary_min,
+                summary.summary_max,
+                summary.summary_average,
+                summary.summary_stdev,
+            ),
+            start=2,
+        ):
+            _write_appendix_cell(
+                table.cell(row_index, column),
+                f"{value:.3f}",
+                bold=column == 3,
+                fill=fill,
+            )
+
+    group_starts: dict[str, int] = {}
+    group_ends: dict[str, int] = {}
+    for row_index, summary in enumerate(rows, start=2):
+        key = _report_group_key(summary.group_label)
+        group_starts.setdefault(key, row_index)
+        group_ends[key] = row_index
+    for key, start in group_starts.items():
+        end = group_ends[key]
+        if end > start:
+            merged = table.cell(start, 0).merge(table.cell(end, 0))
+            _write_appendix_cell(
+                merged,
+                f"Group {key}",
+                bold=True,
+                fill=_APPENDIX_HEADER_FILL,
+            )
+
+    for row_index, row in enumerate(table.rows):
+        row.height = Pt(15.15)
+        row.height_rule = WD_ROW_HEIGHT_RULE.AT_LEAST
+        properties = row._tr.get_or_add_trPr()
+        cant_split = properties.find(qn("w:cantSplit"))
+        if cant_split is None:
+            properties.append(OxmlElement("w:cantSplit"))
+        if row_index < 2 and properties.find(qn("w:tblHeader")) is None:
+            properties.append(OxmlElement("w:tblHeader"))
+    return table
+
+
+def _appendix_a_values(
+    rows: tuple[LlcrSummaryRow, ...],
+) -> tuple[tuple[str, ...], ...]:
+    values = [
+        ("Test Step", "Test Step", "Statistics", "Statistics", "Statistics", "Statistics"),
+        ("Test Step", "Test Step", "Min", "Max", "Avg", "Stdev"),
+    ]
+    for summary in rows:
+        values.append(
+            (
+                f"Group {_report_group_key(summary.group_label)}",
+                _appendix_stage_label(summary.stage_label),
+                f"{summary.summary_min:.3f}",
+                f"{summary.summary_max:.3f}",
+                f"{summary.summary_average:.3f}",
+                f"{summary.summary_stdev:.3f}",
+            )
+        )
+    return tuple(values)
+
+
+def _appendix_stage_label(value: str) -> str:
+    label = " ".join(value.strip().split())
+    if re.search(r"[Δ∆]\s*R", label, re.IGNORECASE):
+        return label.replace("Δ", "∆")
+    if re.fullmatch(r"Final(?:\s+LLCR)?", label, re.IGNORECASE):
+        return "Final ∆R"
+    if not label.casefold().startswith("initial"):
+        return f"∆R {label}"
+    return label
+
+
+def _appendix_grid_dxa(document) -> tuple[int, ...]:
+    usable_width = min(
+        int((section.page_width - section.left_margin - section.right_margin) / 635)
+        for section in document.sections
+    )
+    reference_width = sum(_APPENDIX_A_GRID_DXA)
+    if usable_width >= reference_width:
+        return _APPENDIX_A_GRID_DXA
+    scaled = [
+        max(1, round(width * usable_width / reference_width))
+        for width in _APPENDIX_A_GRID_DXA
+    ]
+    scaled[-1] += usable_width - sum(scaled)
+    return tuple(scaled)
+
+
+def _set_appendix_table_geometry(table: Table, widths: tuple[int, ...]) -> None:
+    properties = table._tbl.tblPr
+    table_width = properties.find(qn("w:tblW"))
+    if table_width is None:
+        table_width = OxmlElement("w:tblW")
+        properties.insert(0, table_width)
+    table_width.set(qn("w:type"), "dxa")
+    table_width.set(qn("w:w"), str(sum(widths)))
+    layout = properties.find(qn("w:tblLayout"))
+    if layout is None:
+        layout = OxmlElement("w:tblLayout")
+        properties.append(layout)
+    layout.set(qn("w:type"), "fixed")
+    for column, width in zip(
+        table._tbl.tblGrid.gridCol_lst,
+        widths,
+        strict=True,
+    ):
+        column.set(qn("w:w"), str(width))
+    for row in table.rows:
+        for cell, width in zip(row.cells, widths, strict=True):
+            tc_width = cell._tc.get_or_add_tcPr().get_or_add_tcW()
+            tc_width.set(qn("w:type"), "dxa")
+            tc_width.set(qn("w:w"), str(width))
+
+
+def _write_appendix_cell(
+    cell: _Cell,
+    value: str,
+    *,
+    bold: bool,
+    fill: str,
+) -> None:
+    _set_cell_text(cell, value)
+    _set_cell_fill(cell, fill)
+    cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+    _set_cell_borders(cell)
+    for paragraph in cell.paragraphs:
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        paragraph.paragraph_format.space_before = Pt(0)
+        paragraph.paragraph_format.space_after = Pt(0)
+        for run in paragraph.runs:
+            run.font.name = _TABLE_FONT_NAME
+            run.font.size = Pt(10)
+            run.bold = bold
+            _set_run_font_family(run, _TABLE_FONT_NAME)
+
+
+def _set_cell_borders(cell: _Cell) -> None:
+    properties = cell._tc.get_or_add_tcPr()
+    borders = properties.find(qn("w:tcBorders"))
+    if borders is None:
+        borders = OxmlElement("w:tcBorders")
+        properties.append(borders)
+    for edge_name in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        edge = borders.find(qn(f"w:{edge_name}"))
+        if edge is None:
+            edge = OxmlElement(f"w:{edge_name}")
+            borders.append(edge)
+        edge.set(qn("w:val"), "single")
+        edge.set(qn("w:sz"), "4")
+        edge.set(qn("w:color"), "000000")
+
+
+def _set_run_font_family(run, font_name: str) -> None:
+    fonts = run._element.get_or_add_rPr().get_or_add_rFonts()
+    for attribute in ("ascii", "hAnsi", "eastAsia", "cs"):
+        fonts.set(qn(f"w:{attribute}"), font_name)
+
+
+def _cell_fill_value(cell: _Cell) -> str | None:
+    shading = cell._tc.get_or_add_tcPr().find(qn("w:shd"))
+    return shading.get(qn("w:fill")) if shading is not None else None
 
 
 def _resize_rows(table: Table, target: int) -> None:

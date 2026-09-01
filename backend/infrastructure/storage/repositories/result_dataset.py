@@ -13,6 +13,7 @@ from backend.domain.result_dataset_models import (
     LlcrDatasetPayload,
     LlcrMeasurement,
     LlcrResultEntry,
+    LlcrSummaryRow,
     ReportDraftRevision,
     ResultDatasetRevision,
     ResultDatasetSourceIdentity,
@@ -182,7 +183,22 @@ def _dataset_domain(row: ResultDatasetRevisionModel) -> ResultDatasetRevision:
         confirmed_by=row.confirmed_by,
         parser_profile_version=row.parser_profile_version,
         validation_status=row.validation_status,
-        payload=LlcrDatasetPayload(tuple(entries)),
+        payload=LlcrDatasetPayload(
+            tuple(entries),
+            tuple(
+                LlcrSummaryRow(
+                    group_label=item["group_label"],
+                    stage_label=item["stage_label"],
+                    summary_min=Decimal(item["summary_min"]),
+                    summary_max=Decimal(item["summary_max"]),
+                    summary_average=Decimal(item["summary_average"]),
+                    summary_stdev=Decimal(item["summary_stdev"]),
+                    source_row=int(item["source_row"]),
+                    fill_color=item.get("fill_color"),
+                )
+                for item in payload.get("summary_rows", ())
+            ),
+        ),
     )
 
 

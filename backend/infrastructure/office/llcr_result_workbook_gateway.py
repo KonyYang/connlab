@@ -8,7 +8,7 @@ from pathlib import Path
 import os
 import re
 import shutil
-from statistics import mean
+from statistics import mean, stdev
 from uuid import uuid4
 from zipfile import BadZipFile
 
@@ -23,6 +23,7 @@ from backend.domain.result_dataset_models import (
     LlcrImportDiagnostic,
     LlcrMeasurement,
     LlcrResultEntry,
+    LlcrSummaryRow,
 )
 
 
@@ -42,6 +43,7 @@ class LlcrWorkbookInspection:
     detected_sheets: tuple[str, ...]
     entries: tuple[LlcrResultEntry, ...]
     diagnostics: tuple[LlcrImportDiagnostic, ...]
+    summary_rows: tuple[LlcrSummaryRow, ...] = ()
 
 
 class LlcrResultWorkbookGateway:
@@ -73,8 +75,11 @@ class LlcrResultWorkbookGateway:
             )
         authority_diagnostics = _projection_authority_diagnostics(projection)
 
+        workbook = None
+        values_workbook = None
         try:
             workbook = load_workbook(source, data_only=False, read_only=False)
+            values_workbook = load_workbook(source, data_only=True, read_only=False)
         except (BadZipFile, InvalidFileException, OSError, ValueError):
             return _blocked(
                 "unsupported_workbook_structure",
@@ -97,14 +102,23 @@ class LlcrResultWorkbookGateway:
                     (),
                     tuple(authority_diagnostics + parse_diagnostics),
                 )
+            summary_rows, summary_diagnostics = _extract_summary_rows(
+                workbook["Summary"],
+                entries,
+                values_summary=values_workbook["Summary"],
+            )
             return LlcrWorkbookInspection(
                 PARSER_PROFILE_VERSION,
                 tuple(workbook.sheetnames),
-                tuple(entries),
-                tuple(authority_diagnostics),
+                tuple(entries) if not summary_diagnostics else (),
+                tuple(authority_diagnostics + summary_diagnostics),
+                tuple(summary_rows),
             )
         finally:
-            workbook.close()
+            if values_workbook is not None:
+                values_workbook.close()
+            if workbook is not None:
+                workbook.close()
 
 
 class LocalLlcrImportSourceStore:
@@ -423,6 +437,92 @@ def _entry_from_accumulator(key, value) -> LlcrResultEntry:
         provisional_outcome=outcome,
         source_range=", ".join(value["ranges"]),
     )
+
+
+def _extract_summary_rows(summary, entries: list[LlcrResultEntry], *, values_summary):
+    available: dict[tuple[str, str], list[LlcrResultEntry]] = {}
+    for entry in entries:
+        key = (
+            _normalized_group(entry.group_label),
+            _summary_stage_key(entry.stage_label),
+        )
+        available.setdefault(key, []).append(entry)
+
+    rows: list[LlcrSummaryRow] = []
+    diagnostics: list[LlcrImportDiagnostic] = []
+    current_group = ""
+    for source_row in range(3, summary.max_row + 1):
+        group_value = _text(summary.cell(source_row, 1).value)
+        if group_value:
+            current_group = group_value
+        stage_label = _text(summary.cell(source_row, 2).value)
+        if not current_group and not stage_label:
+            continue
+        key = (
+            _normalized_group(current_group),
+            _summary_stage_key(stage_label),
+        )
+        candidates = available.get(key, [])
+        if not candidates:
+            diagnostics.append(
+                _diagnostic(
+                    "summary_mapping_conflict",
+                    f"Summary row {source_row} cannot be matched to an LLCR result.",
+                    _normalized_group(current_group),
+                )
+            )
+            continue
+        entry = candidates.pop(0)
+        values = [measurement.value for measurement in entry.measurements]
+        displayed_statistics = tuple(
+            _decimal(values_summary.cell(source_row, column).value)
+            for column in range(3, 7)
+        )
+        if any(value is None for value in displayed_statistics):
+            displayed_statistics = (
+                entry.summary_min,
+                entry.summary_max,
+                entry.summary_average,
+                stdev(values) if len(values) > 1 else Decimal("0"),
+            )
+        summary_min, summary_max, summary_average, summary_stdev = displayed_statistics
+        rows.append(
+            LlcrSummaryRow(
+                group_label=_normalized_group(current_group),
+                stage_label=stage_label or entry.stage_label,
+                summary_min=summary_min,
+                summary_max=summary_max,
+                summary_average=summary_average,
+                summary_stdev=summary_stdev,
+                source_row=source_row,
+                fill_color=_summary_fill_color(summary.cell(source_row, 3)),
+            )
+        )
+    if any(candidates for candidates in available.values()):
+        diagnostics.append(
+            _diagnostic(
+                "summary_mapping_conflict",
+                "One or more LLCR results are missing from the Summary sheet.",
+            )
+        )
+    return rows, diagnostics
+
+
+def _summary_stage_key(value: str) -> str:
+    normalized = _text(value).replace("∆", "Δ").casefold()
+    normalized = re.sub(r"[Δδ]\s*r", "", normalized)
+    normalized = re.sub(r"\bllcr\b", "", normalized)
+    return " ".join(normalized.split())
+
+
+def _summary_fill_color(cell) -> str | None:
+    fill = cell.fill
+    if fill.fill_type != "solid" or fill.fgColor.type != "rgb":
+        return None
+    color = str(fill.fgColor.rgb or "").upper()
+    if len(color) == 8:
+        color = color[-6:]
+    return color if re.fullmatch(r"[0-9A-F]{6}", color) else None
 
 
 def _parse_requirement(

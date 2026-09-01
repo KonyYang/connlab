@@ -11,8 +11,35 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "REPORT-004B",
+    "summary": "Import the LLCR workbook Summary sheet as typed evidence and update Appendix A in the current Internal Report within the existing controlled LLCR publication transaction.",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "LLCR Summary evidence persistence and Appendix A controlled Word projection only; no source attachment or real project report mutation.",
+    "scope_paths": [
+      "backend/domain/result_dataset_models.py",
+      "backend/application/llcr_result_dataset_service.py",
+      "backend/infrastructure/storage/repositories/result_dataset.py",
+      "backend/infrastructure/office/llcr_result_workbook_gateway.py",
+      "backend/infrastructure/office/test_report_document_gateway.py",
+      "tests/unit/test_llcr_result_workbook_gateway.py",
+      "tests/unit/test_llcr_result_dataset_service.py",
+      "tests/unit/test_result_dataset_repository.py",
+      "tests/unit/test_test_report_document_gateway.py",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [
+      "The feature mutates the authoritative current Internal Report through the existing archive-and-replace workflow.",
+      "The immutable persisted ResultDataset payload is extended and must remain backward-compatible."
+    ],
+    "activation_head": "e13486bc8c6335d3134368aab1eb8a5ec8600fe3",
+    "started_at": "2026-09-01T05:15:13.139040Z",
+    "updated_at": "2026-09-01T05:15:13.139040Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "REPORT-004A",
     "tier": "high_risk",

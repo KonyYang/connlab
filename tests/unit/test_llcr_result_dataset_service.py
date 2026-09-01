@@ -17,6 +17,7 @@ from backend.domain.result_dataset_models import (
     LlcrConfirmationDecision,
     LlcrMeasurement,
     LlcrResultEntry,
+    LlcrSummaryRow,
 )
 from backend.infrastructure.office.llcr_result_workbook_gateway import (
     LocalLlcrImportSourceStore,
@@ -45,6 +46,7 @@ def test_inspect_is_non_authoritative_and_confirm_creates_immutable_revision(tmp
     assert dataset.revision == 1
     assert dataset.source.sha256 == preview.source.sha256
     assert dataset.payload.entries[0].confirmed_outcome == "pass"
+    assert dataset.payload.summary_rows == _summary_rows()
     assert repository.datasets == [dataset]
 
     second = service.inspect(
@@ -256,8 +258,24 @@ class _WorkbookGateway:
                     source_range="SIG!K10:K10",
                 ),
             ),
+            summary_rows=_summary_rows(),
             diagnostics=(),
         )
+
+
+def _summary_rows():
+    return (
+        LlcrSummaryRow(
+            group_label="1",
+            stage_label="Initial LLCR",
+            summary_min=Decimal("0.198"),
+            summary_max=Decimal("0.198"),
+            summary_average=Decimal("0.198"),
+            summary_stdev=Decimal("0"),
+            source_row=3,
+            fill_color="FFFACD",
+        ),
+    )
 
 
 class _Repository:

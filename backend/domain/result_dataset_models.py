@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import Decimal
+import re
 
 
 RESULT_OUTCOMES = {"pass", "fail", "not_determined"}
@@ -76,10 +77,35 @@ class LlcrResultEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class LlcrSummaryRow:
+    """One display-ready row from the imported LLCR Summary authority."""
+
+    group_label: str
+    stage_label: str
+    summary_min: Decimal
+    summary_max: Decimal
+    summary_average: Decimal
+    summary_stdev: Decimal
+    source_row: int
+    fill_color: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.group_label.strip() or not self.stage_label.strip():
+            raise ValueError("LLCR Summary rows require Group and stage labels.")
+        if self.source_row < 3:
+            raise ValueError("LLCR Summary source rows must follow the two-row header.")
+        if self.fill_color is not None and not re.fullmatch(
+            r"[0-9A-Fa-f]{6}", self.fill_color
+        ):
+            raise ValueError("LLCR Summary fill colors must use six hexadecimal digits.")
+
+
+@dataclass(frozen=True, slots=True)
 class LlcrDatasetPayload:
     """Typed payload owned only by the LLCR importer."""
 
     entries: tuple[LlcrResultEntry, ...]
+    summary_rows: tuple[LlcrSummaryRow, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,6 +161,7 @@ class LlcrImportPreview:
     parser_profile_version: str
     detected_sheets: tuple[str, ...]
     entries: tuple[LlcrResultEntry, ...]
+    summary_rows: tuple[LlcrSummaryRow, ...] = field(default_factory=tuple)
     diagnostics: tuple[LlcrImportDiagnostic, ...] = field(default_factory=tuple)
 
     @property

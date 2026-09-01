@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from decimal import Decimal
+import json
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -10,6 +11,7 @@ from backend.domain.result_dataset_models import (
     LlcrDatasetPayload,
     LlcrMeasurement,
     LlcrResultEntry,
+    LlcrSummaryRow,
     ReportDraftRevision,
     ResultDatasetRevision,
     ResultDatasetSourceIdentity,
@@ -19,6 +21,7 @@ from backend.infrastructure.storage.database import (
     create_session_factory,
     init_db,
 )
+from backend.infrastructure.storage.models_result_dataset import ResultDatasetRevisionModel
 from backend.infrastructure.storage.repositories.result_dataset import (
     ResultDatasetRepository,
 )
@@ -50,6 +53,33 @@ def test_repository_persists_immutable_dataset_and_report_revisions(tmp_path) ->
             ResultDatasetRepository(session).create_dataset(
                 replace(first, dataset_id="dataset-duplicate")
             )
+
+
+def test_repository_reads_legacy_llcr_payload_without_summary_rows(tmp_path) -> None:
+    engine = create_database_engine(
+        Settings(
+            data_dir=tmp_path,
+            projects_dir=tmp_path,
+            templates_dir=tmp_path,
+            database_path=tmp_path / "legacy.sqlite3",
+        )
+    )
+    init_db(engine)
+    sessions = create_session_factory(engine)
+    with sessions.begin() as session:
+        ResultDatasetRepository(session).create_dataset(_dataset("legacy-dataset", 1))
+    with sessions.begin() as session:
+        row = session.get(ResultDatasetRevisionModel, "legacy-dataset")
+        payload = json.loads(row.payload_json)
+        payload.pop("summary_rows")
+        row.payload_json = json.dumps(payload)
+
+    with sessions() as session:
+        stored = ResultDatasetRepository(session).get_dataset("legacy-dataset")
+
+    assert stored is not None
+    assert stored.payload.summary_rows == ()
+    assert len(stored.payload.entries) == 1
 
 
 def _dataset(dataset_id: str, revision: int) -> ResultDatasetRevision:
@@ -92,7 +122,21 @@ def _dataset(dataset_id: str, revision: int) -> ResultDatasetRevision:
         confirmed_by="Even Yang",
         parser_profile_version="connlab-llcr-macro-v1",
         validation_status="confirmed",
-        payload=LlcrDatasetPayload((entry,)),
+        payload=LlcrDatasetPayload(
+            (entry,),
+            (
+                LlcrSummaryRow(
+                    group_label="1",
+                    stage_label="Initial LLCR",
+                    summary_min=Decimal("0.198"),
+                    summary_max=Decimal("0.198"),
+                    summary_average=Decimal("0.198"),
+                    summary_stdev=Decimal("0"),
+                    source_row=3,
+                    fill_color="FFFACD",
+                ),
+            ),
+        ),
     )
 
 
