@@ -192,6 +192,18 @@ def test_unmatched_reference_is_published_as_an_id_only_manual_placeholder(
     assert updates.commands[0].rows[0].id_number == "DG-Q-0851"
 
 
+def test_empty_equipment_selection_remains_blocked_to_prevent_erasing_the_table(
+    tmp_path: Path,
+) -> None:
+    service, _updates = _service(tmp_path, tuple(), tuple())
+
+    preview = service.preview(project_id="P1")
+
+    assert preview.status == "blocked"
+    assert preview.rows == tuple()
+    assert any("does not contain any equipment" in blocker for blocker in preview.blockers)
+
+
 def test_unmatched_reference_accepts_a_complete_external_override(tmp_path: Path) -> None:
     service, _updates = _service(tmp_path, ("Customer fixture A",), tuple())
 
@@ -240,7 +252,7 @@ def test_external_equipment_with_expired_calibration_requires_acknowledgement(
     assert any("CF-001" in warning for warning in preview.warnings)
 
 
-def test_external_equipment_rejects_an_unrecognizable_calibration_due_date(
+def test_external_equipment_with_an_invalid_date_falls_back_to_an_id_only_warning(
     tmp_path: Path,
 ) -> None:
     service, _updates = _service(tmp_path, ("Customer fixture A",), tuple())
@@ -260,9 +272,12 @@ def test_external_equipment_rejects_an_unrecognizable_calibration_due_date(
         ),
     )
 
-    assert preview.status == "blocked"
+    assert preview.status == "ready"
+    assert preview.blockers == tuple()
     assert preview.rows[0].status == "unmatched"
-    assert "recognizable Cal. Due date" in preview.blockers[0]
+    assert preview.rows[0].id_number == "Customer fixture A"
+    assert preview.rows[0].calibration_due == ""
+    assert any("invalid Cal. Due" in warning for warning in preview.warnings)
 
 
 def test_preview_can_match_an_exact_equipment_name(tmp_path: Path) -> None:
@@ -287,7 +302,9 @@ def test_preview_can_match_an_exact_equipment_name(tmp_path: Path) -> None:
     assert preview.rows[0].id_number == "DG-Q-0033"
 
 
-def test_preview_blocks_an_incomplete_calibration_catalog_row(tmp_path: Path) -> None:
+def test_preview_warns_and_preserves_safe_cells_from_an_incomplete_catalog_row(
+    tmp_path: Path,
+) -> None:
     service, _updates = _service(
         tmp_path,
         ("DG-Q-0033",),
@@ -305,9 +322,86 @@ def test_preview_blocks_an_incomplete_calibration_catalog_row(tmp_path: Path) ->
 
     preview = service.preview(project_id="P1")
 
-    assert preview.status == "blocked"
+    assert preview.status == "ready"
+    assert preview.blockers == tuple()
     assert preview.rows[0].status == "incomplete"
-    assert "Manufacturer" in preview.blockers[0]
+    assert preview.rows[0].item == "Digital multimeter"
+    assert preview.rows[0].manufacturer == ""
+    assert any("Manufacturer" in warning for warning in preview.warnings)
+
+
+def test_preview_warns_without_blocking_an_ambiguous_catalog_match(tmp_path: Path) -> None:
+    duplicate_rows = tuple(
+        EquipmentCalibrationRow(
+            equipment_id="DG-Q-0033",
+            equipment_name=f"Digital multimeter {index}",
+            manufacturer="Keysight",
+            last_calibration_date="01 Jan 2026",
+            calibration_due_date="01 Jan 2027",
+            source_sheet="All Equip.",
+        )
+        for index in (1, 2)
+    )
+    service, updates = _service(tmp_path, ("DG-Q-0033",), duplicate_rows)
+
+    preview = service.preview(project_id="P1")
+    result = service.update(
+        EquipmentListUpdateCommand(
+            project_id="P1",
+            expected_report_sha256="r" * 64,
+            expected_source_sha256=preview.source_sha256 or "",
+            expected_catalog_sha256=preview.catalog_sha256 or "",
+            acknowledge_expired=False,
+            external_overrides=tuple(),
+            updated_by="Lab User",
+        )
+    )
+
+    assert preview.status == "ready"
+    assert preview.blockers == tuple()
+    assert preview.rows[0].status == "ambiguous"
+    assert preview.rows[0].id_number == "DG-Q-0033"
+    assert any("multiple calibration rows" in warning for warning in preview.warnings)
+    assert result == "updated"
+    assert updates.commands[0].rows[0].item == ""
+
+
+def test_complete_external_correction_can_replace_an_incomplete_catalog_row(
+    tmp_path: Path,
+) -> None:
+    service, _updates = _service(
+        tmp_path,
+        ("DG-Q-0033",),
+        (
+            EquipmentCalibrationRow(
+                equipment_id="DG-Q-0033",
+                equipment_name="Digital multimeter",
+                manufacturer=None,
+                last_calibration_date="01 Jan 2026",
+                calibration_due_date="01 Jan 2027",
+                source_sheet="All Equip.",
+            ),
+        ),
+    )
+
+    preview = service.preview(
+        project_id="P1",
+        external_overrides=(
+            EquipmentListExternalOverride(
+                source_reference="DG-Q-0033",
+                item="Digital multimeter",
+                manufacturer="Keysight",
+                id_number="DG-Q-0033",
+                last_calibration="01 Jan 2026",
+                calibration_due="01 Jan 2027",
+                reason="Confirmed against the calibration certificate.",
+            ),
+        ),
+    )
+
+    assert preview.status == "ready"
+    assert preview.rows[0].status == "external"
+    assert preview.rows[0].manufacturer == "Keysight"
 
 
 def test_update_rechecks_sources_and_requires_expired_acknowledgement(tmp_path: Path) -> None:

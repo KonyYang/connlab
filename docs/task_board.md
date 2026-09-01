@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "REPORT-003B-R1",
     "summary": "Allow Equipment List updates to proceed when a source reference is absent from the calibration workbook by publishing an ID-only placeholder row and warning the operator to complete it manually in Word.",
@@ -34,76 +34,17 @@
     ],
     "activation_head": "6d822c3a0445dc3c1ed34cd95770087695ccf2f8",
     "started_at": "2026-09-01T22:56:08.677490Z",
-    "updated_at": "2026-09-01T23:07:32.591492Z",
+    "updated_at": "2026-09-01T23:09:00.525054Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "REPORT-003B-R1",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requested that row-level incomplete or incorrect equipment data warn without blocking; operators may correct or skip it and update confirmed content.",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "REPORT-003B-R1",
-      "subject": "32cc536380f894e528756611845e0c4551258fc5",
-      "summary": "Allowed an Equipment List update to continue when a selected device is absent from the calibration workbook by publishing an ID-only placeholder, preserving optional complete external overrides, and warning that remaining cells may be completed manually in Word.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/application/equipment_report_update_service.py",
-        "docs/report_generation_architecture.md",
-        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-        "frontend/src/features/report-workspace/reportWorkspaceModel.test.ts",
-        "frontend/src/features/report-workspace/reportWorkspaceModel.ts",
-        "tests/unit/test_equipment_report_update_service.py"
-      ],
-      "validation": [
-        {
-          "name": "backend and API regression",
-          "status": "passed",
-          "detail": "47 Equipment List service, report gateway, current-report service, and Report Workspace API tests passed"
-        },
-        {
-          "name": "frontend regression",
-          "status": "passed",
-          "detail": "21 Report Workspace model and UI tests passed"
-        },
-        {
-          "name": "Vite production build",
-          "status": "passed",
-          "detail": "TypeScript and Vite production build succeeded"
-        },
-        {
-          "name": "exact diff review",
-          "status": "passed",
-          "detail": "No standards or specification findings; ambiguity, incomplete catalog data, invalid complete overrides, expired acknowledgement, fingerprints, and controlled publication remain protected"
-        }
-      ],
-      "roles": {
-        "planner": {
-          "status": "passed"
-        },
-        "developer": {
-          "status": "passed"
-        },
-        "reviewer": {
-          "status": "passed"
-        },
-        "qa": {
-          "status": "passed"
-        },
-        "integrator": {
-          "status": "passed"
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "detail": "The clean single task commit is within the approved path allowlist; regression coverage confirms unmatched rows reach the existing controlled update command as ID-only placeholders without mutating external source files."
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "RELEASE-007A",

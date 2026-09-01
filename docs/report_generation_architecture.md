@@ -77,11 +77,13 @@ silently overwrite an earlier revision.
   `Item (Equipment Name)` / A-C-D-E-F layout are supported. Legacy Excel date values are normalized
   to `DD-MMM-YYYY`; `Not applicable` remains a valid non-expiring value.
 
-Preview is mandatory. Missing source files, an unavailable or structurally invalid catalog, ambiguous
-matches, and incomplete matched catalog rows block the write. A reference absent from the catalog is
-a non-blocking warning: it is written to the report as an ID-only row so the remaining cells can be
-completed manually in Word. Supplying all five report fields and an explanation remains an optional
-external-equipment override. Expired calibration is a warning that requires an explicit
+Preview is mandatory. Missing `EquipmentID.docx`, an unreadable or empty selection, an unavailable
+catalog, and an unavailable current report remain workflow blockers because the update cannot identify
+its source rows or safe target. Row-level data quality never blocks the other selected equipment:
+ambiguous matches are projected as ID-only rows, incomplete catalog rows retain only valid cells, and
+invalid correction values are omitted. Each case is shown as a warning. The operator may supply all
+five report fields plus an explanation as an optional correction, or skip the correction and complete
+blank cells manually in Word. Expired calibration is a warning that still requires an explicit
 acknowledgement. The preview fingerprints `EquipmentID.docx`, the calibration workbook, and the
 current report; all are rechecked before publication.
 

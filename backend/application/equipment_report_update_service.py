@@ -150,13 +150,17 @@ class EquipmentReportUpdateService:
                 catalog = None
 
             if source is not None and catalog is not None:
-                rows, row_blockers, row_warnings = self._project_rows(
-                    source.references,
-                    catalog.rows,
-                    external_overrides,
-                )
-                blockers.extend(row_blockers)
-                warnings.extend(row_warnings)
+                if not source.references:
+                    blockers.append(
+                        "EquipmentID.docx does not contain any equipment references."
+                    )
+                else:
+                    rows, row_warnings = self._project_rows(
+                        source.references,
+                        catalog.rows,
+                        external_overrides,
+                    )
+                    warnings.extend(row_warnings)
 
         requires_ack = any(row.expired for row in rows)
         return EquipmentListPreview(
@@ -209,7 +213,7 @@ class EquipmentReportUpdateService:
         references: tuple[str, ...],
         catalog_rows: tuple[object, ...],
         external_overrides: tuple[EquipmentListExternalOverride, ...],
-    ) -> tuple[list[EquipmentListReportRow], list[str], list[str]]:
+    ) -> tuple[list[EquipmentListReportRow], list[str]]:
         indexed: dict[str, list[object]] = {}
         for catalog_row in catalog_rows:
             keys = {equipment_reference_key(catalog_row.equipment_id)}
@@ -222,53 +226,70 @@ class EquipmentReportUpdateService:
             for item in external_overrides
         }
         rows: list[EquipmentListReportRow] = []
-        blockers: list[str] = []
         warnings: list[str] = []
         for reference in references:
             key = equipment_reference_key(reference)
             matches = indexed.get(key, [])
+            override = overrides.get(key)
             if len(matches) == 1:
                 catalog_row = matches[0]
-                missing = [
-                    label
-                    for label, value in (
-                        ("Item", catalog_row.equipment_name),
-                        ("Manufacturer", catalog_row.manufacturer),
-                        ("Last Cal.", catalog_row.last_calibration_date),
-                        ("Cal. Due", catalog_row.calibration_due_date),
-                    )
-                    if not (value or "").strip()
-                ]
-                due_date = _parse_date(catalog_row.calibration_due_date)
-                if (
-                    not missing
-                    and due_date is None
-                    and not _is_not_applicable(catalog_row.calibration_due_date)
-                ):
-                    missing.append("a recognizable Cal. Due date")
-                expired = _is_expired(catalog_row.calibration_due_date, self._today())
+                issues: list[str] = []
+                item = (catalog_row.equipment_name or "").strip()
+                manufacturer = (catalog_row.manufacturer or "").strip()
+                id_number = (catalog_row.equipment_id or "").strip()
+                if not item:
+                    issues.append("Item")
+                if not manufacturer:
+                    issues.append("Manufacturer")
+                if not id_number:
+                    issues.append("ID Number")
+                last_calibration = _safe_report_date(
+                    catalog_row.last_calibration_date,
+                    label="Last Cal.",
+                    issues=issues,
+                )
+                calibration_due = _safe_report_date(
+                    catalog_row.calibration_due_date,
+                    label="Cal. Due",
+                    issues=issues,
+                )
+                expired = bool(calibration_due) and _is_expired(
+                    calibration_due,
+                    self._today(),
+                )
                 row = EquipmentListReportRow(
                     source_reference=reference,
-                    status="incomplete" if missing else "matched",
-                    item=catalog_row.equipment_name or "",
-                    manufacturer=catalog_row.manufacturer or "",
-                    id_number=catalog_row.equipment_id,
-                    last_calibration=_format_report_date(
-                        catalog_row.last_calibration_date
-                    ),
-                    calibration_due=_format_report_date(
-                        catalog_row.calibration_due_date
-                    ),
+                    status="incomplete" if issues else "matched",
+                    item=item,
+                    manufacturer=manufacturer,
+                    id_number=id_number,
+                    last_calibration=last_calibration,
+                    calibration_due=calibration_due,
                     source_sheet=catalog_row.source_sheet,
                     expired=expired,
                 )
-                rows.append(row)
-                if missing:
-                    blockers.append(
-                        f"Calibration row for {catalog_row.equipment_id!r} is incomplete: "
-                        f"{', '.join(missing)}. Correct the Equipment calibration Excel first."
+                if issues:
+                    external_row, external_warning = _external_override_row(
+                        reference,
+                        override,
+                        self._today(),
                     )
+                    rows.append(external_row or row)
+                    if external_warning:
+                        warnings.append(external_warning)
+                    if external_row is not None:
+                        warnings.append(
+                            f"Calibration row for {catalog_row.equipment_id!r} is incomplete: "
+                            f"{', '.join(issues)}. The confirmed preview correction will be used."
+                        )
+                    else:
+                        warnings.append(
+                            f"Calibration row for {catalog_row.equipment_id!r} is incomplete: "
+                            f"{', '.join(issues)}. Unconfirmed cells will remain blank; "
+                            "correct them in this preview or manually in Word."
+                        )
                     continue
+                rows.append(row)
                 if expired:
                     warnings.append(
                         f"Calibration is expired for {catalog_row.equipment_id} "
@@ -276,65 +297,44 @@ class EquipmentReportUpdateService:
                     )
                 continue
             if len(matches) > 1:
-                rows.append(_unresolved_row(reference, "ambiguous"))
-                blockers.append(
-                    f"Equipment reference {reference!r} matches multiple calibration rows."
+                external_row, external_warning = _external_override_row(
+                    reference,
+                    override,
+                    self._today(),
                 )
-                continue
-            override = overrides.get(key)
-            if override is not None and _valid_external_override(override):
-                due_date = _parse_date(override.calibration_due)
-                if due_date is None and not _is_not_applicable(override.calibration_due):
-                    rows.append(
-                        EquipmentListReportRow(
-                            source_reference=reference,
-                            status="unmatched",
-                            item=override.item.strip(),
-                            manufacturer=override.manufacturer.strip(),
-                            id_number=override.id_number.strip(),
-                            last_calibration=override.last_calibration.strip(),
-                            calibration_due=override.calibration_due.strip(),
-                            source_sheet=None,
-                            expired=False,
-                            external_reason=override.reason.strip(),
-                        )
-                    )
-                    blockers.append(
-                        f"External equipment {override.id_number!r} requires a recognizable "
-                        "Cal. Due date or N/A."
-                    )
-                    continue
-                expired = due_date is not None and due_date < self._today()
-                rows.append(
-                    EquipmentListReportRow(
-                        source_reference=reference,
-                        status="external",
-                        item=override.item.strip(),
-                        manufacturer=override.manufacturer.strip(),
-                        id_number=override.id_number.strip(),
-                        last_calibration=_format_report_date(
-                            override.last_calibration
-                        ),
-                        calibration_due=_format_report_date(
-                            override.calibration_due
-                        ),
-                        source_sheet=None,
-                        expired=expired,
-                        external_reason=override.reason.strip(),
-                    )
-                )
-                if expired:
+                rows.append(external_row or _unresolved_row(reference, "ambiguous"))
+                if external_warning:
+                    warnings.append(external_warning)
+                if external_row is not None:
                     warnings.append(
-                        f"Calibration is expired for {override.id_number.strip()} "
-                        f"({_format_report_date(override.calibration_due)})."
+                        f"Equipment reference {reference!r} matches multiple calibration rows. "
+                        "The confirmed preview correction will be used."
                     )
+                else:
+                    warnings.append(
+                        f"Equipment reference {reference!r} matches multiple calibration rows. "
+                        "Unconfirmed cells will remain blank; correct them in this preview or "
+                        "manually in Word."
+                    )
+                continue
+            external_row, external_warning = _external_override_row(
+                reference,
+                override,
+                self._today(),
+            )
+            if external_row is not None:
+                rows.append(external_row)
+                if external_warning:
+                    warnings.append(external_warning)
                 continue
             rows.append(_unresolved_row(reference, "unmatched"))
+            if external_warning:
+                warnings.append(external_warning)
             warnings.append(
                 f"Equipment reference {reference!r} was not found. "
                 "It will be added with ID only; complete it manually in Word."
             )
-        return rows, blockers, warnings
+        return rows, warnings
 
 
 _EQUIPMENT_TOKEN = re.compile(r"(?:DG-)?[QL]-\d{4}", flags=re.IGNORECASE)
@@ -384,6 +384,69 @@ def _valid_external_override(value: EquipmentListExternalOverride) -> bool:
             value.reason,
         )
     )
+
+
+def _external_override_row(
+    reference: str,
+    override: EquipmentListExternalOverride | None,
+    today: date,
+) -> tuple[EquipmentListReportRow | None, str | None]:
+    if override is None or not _valid_external_override(override):
+        return None, None
+    invalid_dates = [
+        label
+        for label, value in (
+            ("Last Cal.", override.last_calibration),
+            ("Cal. Due", override.calibration_due),
+        )
+        if _parse_date(value) is None and not _is_not_applicable(value)
+    ]
+    if invalid_dates:
+        return (
+            None,
+            f"External correction for {reference!r} has invalid "
+            f"{', '.join(invalid_dates)}. The correction was skipped; complete it in the "
+            "preview or manually in Word.",
+        )
+    calibration_due = _format_report_date(override.calibration_due)
+    expired = _is_expired(calibration_due, today)
+    row = EquipmentListReportRow(
+        source_reference=reference,
+        status="external",
+        item=override.item.strip(),
+        manufacturer=override.manufacturer.strip(),
+        id_number=override.id_number.strip(),
+        last_calibration=_format_report_date(override.last_calibration),
+        calibration_due=calibration_due,
+        source_sheet=None,
+        expired=expired,
+        external_reason=override.reason.strip(),
+    )
+    warning = (
+        f"Calibration is expired for {row.id_number} ({row.calibration_due})."
+        if expired
+        else None
+    )
+    return row, warning
+
+
+def _safe_report_date(
+    value: str | None,
+    *,
+    label: str,
+    issues: list[str],
+) -> str:
+    cleaned = (value or "").strip()
+    if not cleaned:
+        issues.append(label)
+        return ""
+    if _is_not_applicable(cleaned):
+        return cleaned
+    parsed = _parse_date(cleaned)
+    if parsed is None:
+        issues.append(f"invalid {label}")
+        return ""
+    return parsed.strftime("%d-%b-%Y")
 
 
 def _fingerprint(path: Path) -> str:

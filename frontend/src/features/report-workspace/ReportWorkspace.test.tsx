@@ -419,7 +419,7 @@ describe("ReportWorkspace", () => {
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     await user.click(await screen.findByRole("button", { name: "Preview Equipment List" }));
 
-    expect(await screen.findByText(/Unmatched rows are written with ID only/)).toBeTruthy();
+    expect(await screen.findByText(/Rows needing attention keep only confirmed values/)).toBeTruthy();
     await user.type(screen.getByLabelText("Item for DG-Q-0851"), "Thermal shock chamber");
     await user.click(screen.getByRole("button", { name: "Recheck external entries" }));
 

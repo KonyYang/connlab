@@ -173,7 +173,7 @@ export function createEquipmentOverrideDrafts(
 ): EquipmentOverrideDrafts {
   return Object.fromEntries(
     preview.rows
-      .filter((row) => row.status === "unmatched" || row.status === "external")
+      .filter((row) => row.status !== "matched")
       .map((row) => [
         row.source_reference,
         {
@@ -188,27 +188,12 @@ export function createEquipmentOverrideDrafts(
   );
 }
 
-export function validateEquipmentOverrideDrafts(
-  preview: EquipmentListPreview,
-  drafts: EquipmentOverrideDrafts
-): string[] {
-  return preview.rows
-    .filter((row) => row.status === "external")
-    .flatMap((row) => {
-      const draft = drafts[row.source_reference];
-      if (!draft || !isCompleteEquipmentOverrideDraft(draft)) {
-        return [`Complete every field and explanation for ${row.source_reference}.`];
-      }
-      return [];
-    });
-}
-
 export function buildEquipmentExternalOverrides(
   preview: EquipmentListPreview,
   drafts: EquipmentOverrideDrafts
 ): EquipmentListExternalOverride[] {
   return preview.rows
-    .filter((row) => row.status === "unmatched" || row.status === "external")
+    .filter((row) => row.status !== "matched")
     .filter((row) => {
       const draft = drafts[row.source_reference];
       return draft ? isCompleteEquipmentOverrideDraft(draft) : false;

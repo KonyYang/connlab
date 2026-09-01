@@ -39,7 +39,6 @@ import {
   createLlcrDecisionDrafts,
   deriveReportEntryState,
   deriveReportWorkspaceReadiness,
-  validateEquipmentOverrideDrafts,
   type EquipmentOverrideDrafts,
   type LlcrDecisionDrafts,
   type LlcrOutcome,
@@ -120,13 +119,6 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
     () => deriveReportEntryState(currentReport),
     [currentReport]
   );
-  const equipmentDraftErrors = useMemo(
-    () => equipmentPreview
-      ? validateEquipmentOverrideDrafts(equipmentPreview, equipmentDrafts)
-      : [],
-    [equipmentDrafts, equipmentPreview]
-  );
-
   async function runAction(
     action: Exclude<BusyAction, "load" | null>,
     operation: () => Promise<string | null>
@@ -708,7 +700,7 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
                 <tbody>
                   {equipmentPreview.rows.map((row) => {
                     const draft = equipmentDrafts[row.source_reference];
-                    const editable = (row.status === "unmatched" || row.status === "external") && draft;
+                    const editable = row.status !== "matched" && draft;
                     return (
                       <tr key={row.source_reference}>
                         <td>{row.source_reference}</td>
@@ -728,16 +720,12 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
                 </tbody>
               </table>
             </div>
-            {equipmentPreview.rows.some((row) => row.status === "unmatched") ? (
+            {equipmentPreview.rows.some((row) => row.status !== "matched") ? (
               <p className="report-workspace-note">
-                Unmatched rows are written with ID only. Complete every external field and recheck
-                to use those values, or finish the blank cells manually in Word.
+                Rows needing attention keep only confirmed values; unresolved cells remain blank.
+                Complete every field and recheck to use a correction, or skip it and finish the blank
+                cells manually in Word.
               </p>
-            ) : null}
-            {equipmentDraftErrors.length ? (
-              <div className="report-workspace-confirm-errors">
-                {equipmentDraftErrors.map((item) => <p key={item}>{item}</p>)}
-              </div>
             ) : null}
             {equipmentPreview.requires_expired_acknowledgement ? (
               <label className="report-workspace-equipment-ack">
@@ -750,9 +738,9 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
               </label>
             ) : null}
             <div className="report-workspace-dialog-actions">
-              {equipmentPreview.rows.some((row) => row.status === "unmatched") ? (
+              {equipmentPreview.rows.some((row) => row.status !== "matched") ? (
                 <button
-                  disabled={Boolean(busyAction) || equipmentDraftErrors.length > 0}
+                  disabled={Boolean(busyAction)}
                   onClick={() => void handleEquipmentPreview(true)}
                   type="button"
                 >{busyAction === "equipment-preview" ? "Rechecking..." : "Recheck external entries"}</button>
@@ -762,7 +750,6 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
                 disabled={
                   Boolean(busyAction)
                   || equipmentPreview.status !== "ready"
-                  || equipmentDraftErrors.length > 0
                   || (equipmentPreview.requires_expired_acknowledgement && !acknowledgeExpired)
                 }
                 onClick={() => void handleEquipmentUpdate()}
