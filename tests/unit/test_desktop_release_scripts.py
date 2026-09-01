@@ -77,6 +77,7 @@ def test_pyinstaller_spec_uses_packaged_launcher_and_frontend_dist() -> None:
     assert "backend.modules.fee_evaluation.seeds" in spec
     assert "*.json" in spec
     assert "CONNLAB_RELEASE_NAME" in spec
+    assert '"win32timezone"' in spec
     assert "console=False" in spec
 
 
@@ -177,6 +178,7 @@ def test_browser_release_spec_uses_packaged_server_and_frontend_dist() -> None:
     assert "backend.modules.fee_evaluation.seeds" in spec
     assert "*.json" in spec
     assert "CONNLAB_RELEASE_NAME" in spec
+    assert '"win32timezone"' in spec
     assert "console=True" in spec
     assert "backend.desktop.packaged_launcher" in spec
     assert "backend.desktop.path_picker_api" in spec

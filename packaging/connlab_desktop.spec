@@ -24,7 +24,10 @@ datas = [
     ),
 ]
 
-hiddenimports = collect_submodules("backend") + ["backend.desktop.packaged_launcher"]
+hiddenimports = collect_submodules("backend") + [
+    "backend.desktop.packaged_launcher",
+    "win32timezone",
+]
 
 a = Analysis(
     [str(repo_root / "backend" / "desktop" / "packaged_launcher.py")],

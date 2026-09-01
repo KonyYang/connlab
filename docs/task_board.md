@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "RELEASE-007A",
+    "summary": "Bundle the pywin32 win32timezone dependency in portable browser and desktop releases so packaged Excel COM can read the approved legacy equipment calibration workbook.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Change only PyInstaller hidden imports and their regression coverage; build a new browser release and validate the real equipment preview read-only without modifying project reports or external source files.",
+    "scope_paths": [
+      "packaging/connlab_browser_server.spec",
+      "packaging/connlab_desktop.spec",
+      "tests/unit/test_desktop_release_scripts.py",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "2c294abcbc4dc6c8c4323cfcc2464ab310375720",
+    "started_at": "2026-09-01T16:03:50.328148Z",
+    "updated_at": "2026-09-01T16:03:50.328148Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "REPORT-004C",
     "tier": "high_risk",

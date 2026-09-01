@@ -44,6 +44,8 @@ hiddenimports = collect_submodules(
 )
 if "backend.desktop.packaged_server" not in hiddenimports:
     hiddenimports.append("backend.desktop.packaged_server")
+if "win32timezone" not in hiddenimports:
+    hiddenimports.append("win32timezone")
 
 a = Analysis(
     [str(repo_root / "backend" / "desktop" / "packaged_server.py")],
