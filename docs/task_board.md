@@ -11,8 +11,33 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "REPORT-003B-R1",
+    "summary": "Allow Equipment List updates to proceed when a source reference is absent from the calibration workbook by publishing an ID-only placeholder row and warning the operator to complete it manually in Word.",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Change only unmatched-equipment preview, validation, update eligibility, user copy, tests, and current architecture documentation; preserve blockers for ambiguity, incomplete catalog data, invalid complete overrides, and preserve the controlled report publication transaction.",
+    "scope_paths": [
+      "backend/application/equipment_report_update_service.py",
+      "tests/unit/test_equipment_report_update_service.py",
+      "tests/integration/test_report_workspace_api.py",
+      "frontend/src/features/report-workspace/reportWorkspaceModel.ts",
+      "frontend/src/features/report-workspace/reportWorkspaceModel.test.ts",
+      "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+      "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+      "docs/report_generation_architecture.md",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [
+      "The change alters which Equipment List preview conditions may publish rows into the authoritative current Internal Report."
+    ],
+    "activation_head": "6d822c3a0445dc3c1ed34cd95770087695ccf2f8",
+    "started_at": "2026-09-01T22:56:08.677490Z",
+    "updated_at": "2026-09-01T22:56:08.677490Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "RELEASE-007A",
     "tier": "standard",

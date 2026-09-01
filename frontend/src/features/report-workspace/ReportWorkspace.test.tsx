@@ -393,6 +393,56 @@ describe("ReportWorkspace", () => {
     expect(await screen.findByText(/Updated Equipment List in/)).toBeTruthy();
   });
 
+  it("allows an unmatched device to continue as an ID-only Word-manual row", async () => {
+    const user = userEvent.setup();
+    const unmatchedPreview: api.EquipmentListPreview = {
+      ...equipmentPreview,
+      requires_expired_acknowledgement: false,
+      warnings: [
+        "Equipment reference 'DG-Q-0851' was not found. It will be added with ID only; complete it manually in Word.",
+      ],
+      rows: [{
+        source_reference: "DG-Q-0851",
+        status: "unmatched",
+        item: "",
+        manufacturer: "",
+        id_number: "DG-Q-0851",
+        last_calibration: "",
+        calibration_due: "",
+        source_sheet: null,
+        expired: false,
+        external_reason: null,
+      }],
+    };
+    vi.mocked(api.previewCurrentReportEquipmentList).mockResolvedValue(unmatchedPreview);
+
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Preview Equipment List" }));
+
+    expect(await screen.findByText(/Unmatched rows are written with ID only/)).toBeTruthy();
+    await user.type(screen.getByLabelText("Item for DG-Q-0851"), "Thermal shock chamber");
+    await user.click(screen.getByRole("button", { name: "Recheck external entries" }));
+
+    await waitFor(() => {
+      expect(api.previewCurrentReportEquipmentList).toHaveBeenLastCalledWith(
+        "project-1",
+        []
+      );
+    });
+    const updateButton = screen.getByRole("button", { name: "Update Equipment List" });
+    expect(updateButton).toHaveProperty("disabled", false);
+    await user.click(updateButton);
+
+    expect(api.updateCurrentReportEquipmentList).toHaveBeenCalledWith("project-1", {
+      expected_report_sha256: "a".repeat(64),
+      expected_source_sha256: "b".repeat(64),
+      expected_catalog_sha256: "c".repeat(64),
+      acknowledge_expired: false,
+      external_overrides: [],
+      updated_by: "Lab User",
+    });
+  });
+
   it("updates a stale customer report from the current internal report with both fingerprints", async () => {
     const user = userEvent.setup();
     vi.mocked(api.generateCurrentCustomerReport).mockResolvedValue({

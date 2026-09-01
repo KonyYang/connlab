@@ -77,11 +77,13 @@ silently overwrite an earlier revision.
   `Item (Equipment Name)` / A-C-D-E-F layout are supported. Legacy Excel date values are normalized
   to `DD-MMM-YYYY`; `Not applicable` remains a valid non-expiring value.
 
-Preview is mandatory. Missing, ambiguous, incomplete, or structurally invalid catalog rows block the
-write. An unmatched customer/external fixture may proceed only after all five report fields and an
-explanation are supplied. Expired calibration is a warning that requires an explicit acknowledgement.
-The preview fingerprints `EquipmentID.docx`, the calibration workbook, and the current report; all are
-rechecked before publication.
+Preview is mandatory. Missing source files, an unavailable or structurally invalid catalog, ambiguous
+matches, and incomplete matched catalog rows block the write. A reference absent from the catalog is
+a non-blocking warning: it is written to the report as an ID-only row so the remaining cells can be
+completed manually in Word. Supplying all five report fields and an explanation remains an optional
+external-equipment override. Expired calibration is a warning that requires an explicit
+acknowledgement. The preview fingerprints `EquipmentID.docx`, the calibration workbook, and the
+current report; all are rechecked before publication.
 
 Only the body rows of the table headed `Item / Manufacturer / ID Number / Last Cal. / Cal. Due` are
 owned by this action. The approved template, both source files, headings, Purpose, Conclusions, test

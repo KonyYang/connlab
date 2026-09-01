@@ -193,20 +193,10 @@ export function validateEquipmentOverrideDrafts(
   drafts: EquipmentOverrideDrafts
 ): string[] {
   return preview.rows
-    .filter((row) => row.status === "unmatched" || row.status === "external")
+    .filter((row) => row.status === "external")
     .flatMap((row) => {
       const draft = drafts[row.source_reference];
-      if (
-        !draft
-        || ![
-          draft.item,
-          draft.manufacturer,
-          draft.idNumber,
-          draft.lastCalibration,
-          draft.calibrationDue,
-          draft.reason,
-        ].every((value) => value.trim())
-      ) {
+      if (!draft || !isCompleteEquipmentOverrideDraft(draft)) {
         return [`Complete every field and explanation for ${row.source_reference}.`];
       }
       return [];
@@ -219,6 +209,10 @@ export function buildEquipmentExternalOverrides(
 ): EquipmentListExternalOverride[] {
   return preview.rows
     .filter((row) => row.status === "unmatched" || row.status === "external")
+    .filter((row) => {
+      const draft = drafts[row.source_reference];
+      return draft ? isCompleteEquipmentOverrideDraft(draft) : false;
+    })
     .map((row) => {
       const draft = drafts[row.source_reference];
       return {
@@ -231,6 +225,17 @@ export function buildEquipmentExternalOverrides(
         reason: draft.reason.trim(),
       };
     });
+}
+
+function isCompleteEquipmentOverrideDraft(draft: EquipmentOverrideDraft): boolean {
+  return [
+    draft.item,
+    draft.manufacturer,
+    draft.idNumber,
+    draft.lastCalibration,
+    draft.calibrationDue,
+    draft.reason,
+  ].every((value) => value.trim());
 }
 
 function formatSummaryDecimal(value: string): string {

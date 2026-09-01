@@ -728,6 +728,12 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
                 </tbody>
               </table>
             </div>
+            {equipmentPreview.rows.some((row) => row.status === "unmatched") ? (
+              <p className="report-workspace-note">
+                Unmatched rows are written with ID only. Complete every external field and recheck
+                to use those values, or finish the blank cells manually in Word.
+              </p>
+            ) : null}
             {equipmentDraftErrors.length ? (
               <div className="report-workspace-confirm-errors">
                 {equipmentDraftErrors.map((item) => <p key={item}>{item}</p>)}

@@ -164,10 +164,37 @@ def test_preview_accepts_not_applicable_calibration_dates(tmp_path: Path) -> Non
     assert preview.rows[0].expired is False
 
 
-def test_unmatched_reference_requires_complete_external_override(tmp_path: Path) -> None:
+def test_unmatched_reference_is_published_as_an_id_only_manual_placeholder(
+    tmp_path: Path,
+) -> None:
+    service, updates = _service(tmp_path, ("DG-Q-0851",), tuple())
+
+    preview = service.preview(project_id="P1")
+    result = service.update(
+        EquipmentListUpdateCommand(
+            project_id="P1",
+            expected_report_sha256="r" * 64,
+            expected_source_sha256=preview.source_sha256 or "",
+            expected_catalog_sha256=preview.catalog_sha256 or "",
+            acknowledge_expired=False,
+            external_overrides=tuple(),
+            updated_by="Lab User",
+        )
+    )
+
+    assert preview.status == "ready"
+    assert preview.blockers == tuple()
+    assert preview.rows[0].status == "unmatched"
+    assert preview.rows[0].id_number == "DG-Q-0851"
+    assert preview.rows[0].item == ""
+    assert any("complete it manually in Word" in warning for warning in preview.warnings)
+    assert result == "updated"
+    assert updates.commands[0].rows[0].id_number == "DG-Q-0851"
+
+
+def test_unmatched_reference_accepts_a_complete_external_override(tmp_path: Path) -> None:
     service, _updates = _service(tmp_path, ("Customer fixture A",), tuple())
 
-    blocked = service.preview(project_id="P1")
     ready = service.preview(
         project_id="P1",
         external_overrides=(
@@ -183,8 +210,6 @@ def test_unmatched_reference_requires_complete_external_override(tmp_path: Path)
         ),
     )
 
-    assert blocked.status == "blocked"
-    assert blocked.rows[0].status == "unmatched"
     assert ready.status == "ready"
     assert ready.rows[0].status == "external"
     assert ready.rows[0].item == "Customer fixture"

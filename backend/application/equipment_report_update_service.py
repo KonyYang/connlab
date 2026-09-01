@@ -330,9 +330,9 @@ class EquipmentReportUpdateService:
                     )
                 continue
             rows.append(_unresolved_row(reference, "unmatched"))
-            blockers.append(
+            warnings.append(
                 f"Equipment reference {reference!r} was not found. "
-                "Provide a complete external-equipment entry and explanation."
+                "It will be added with ID only; complete it manually in Word."
             )
         return rows, blockers, warnings
 

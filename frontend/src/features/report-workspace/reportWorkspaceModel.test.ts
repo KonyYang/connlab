@@ -167,10 +167,10 @@ describe("reportWorkspaceModel", () => {
     expect(entry.summary_max).toBe("0.00400000000000001");
   });
 
-  it("requires complete external equipment details and a reason for unmatched references", () => {
+  it("treats incomplete unmatched equipment details as an optional Word-manual placeholder", () => {
     const equipment = {
       project_id: "project-1",
-      status: "blocked" as const,
+      status: "ready" as const,
       current_report: null as never,
       source_file_name: "EquipmentID.docx",
       source_sha256: "a".repeat(64),
@@ -188,14 +188,13 @@ describe("reportWorkspaceModel", () => {
         expired: false,
         external_reason: null,
       }],
-      blockers: ["Equipment reference was not found."],
-      warnings: [],
+      blockers: [],
+      warnings: ["Equipment reference was not found; complete it manually in Word."],
       requires_expired_acknowledgement: false,
     };
     const drafts = createEquipmentOverrideDrafts(equipment);
-    expect(validateEquipmentOverrideDrafts(equipment, drafts)).toContain(
-      "Complete every field and explanation for Customer fixture A."
-    );
+    expect(validateEquipmentOverrideDrafts(equipment, drafts)).toEqual([]);
+    expect(buildEquipmentExternalOverrides(equipment, drafts)).toEqual([]);
     const complete = {
       "Customer fixture A": {
         item: "Customer fixture",
