@@ -72,6 +72,7 @@ _REQUIRED_HEADINGS = (
     "8. REVISION RECORD",
     "*** End of Report ***",
 )
+_NUMBERED_CHAPTER_HEADING_KEYS = frozenset(_REQUIRED_HEADINGS[:-1])
 _REQUIRED_FIRST_PAGE_HEADER_PLACEHOLDERS = (
     "WW-XXXX-YY-ZZZ",
     "DDMMMYYYY",
@@ -81,6 +82,8 @@ _REQUIRED_FIRST_PAGE_HEADER_PLACEHOLDERS = (
     "PRODUCT NAME/TEST DESCRIPTION ",
 )
 _TABLE_FONT_NAME = "Arial"
+_BODY_FONT_SIZE = Pt(11)
+_CHAPTER_HEADING_FONT_SIZE = Pt(12)
 _HEADER_FILL = "B2B2B2"
 _SAMPLE_SIZE_FILL = "8DB3E2"
 _PREFERRED_TEST_ITEM_WIDTH_DXA = 3024
@@ -89,6 +92,8 @@ _MIN_GROUP_WIDTH_DXA = 690
 _APPENDIX_A_HEADING = "Appendix A: Statistical Summary of LLCR Measurements (Unit: mΩ)"
 _APPENDIX_A_GRID_DXA = (1519, 3611, 1524, 1524, 1524, 1519)
 _APPENDIX_HEADER_FILL = "DCDCDC"
+_MIN_EQUIPMENT_ID_WIDTH_DXA = 1800
+_MIN_EQUIPMENT_DATE_WIDTH_DXA = 1700
 
 
 class TestReportDocumentGateway:
@@ -143,10 +148,12 @@ class TestReportDocumentGateway:
                 anchors.result_table,
                 report,
             )
-            _keep_heading_with_following_content(document, "4. TEST DESCRIPTION")
             _insert_page_break_before_heading(document, "7. EQUIPMENTS")
             _fill_revision_table(anchors.revision_table, report)
             _set_document_table_font(document, _TABLE_FONT_NAME)
+            equipment = _find_table(document, _EQUIPMENT_HEADERS, "Equipment table")
+            _set_equipment_table_geometry(equipment)
+            _apply_report_body_format(document)
             document.save(temporary)
             _audit_generated_document(temporary, report)
             self._protected_package_gateway.restore_password_protection(
@@ -222,7 +229,8 @@ class TestReportDocumentGateway:
             appendix_changed = not _appendix_a_is_current(document, summary_rows)
             if appendix_changed:
                 _replace_appendix_a(document, summary_rows)
-            if updates or appendix_changed:
+            format_changed = _apply_report_body_format(document)
+            if updates or appendix_changed or format_changed:
                 document.save(temporary)
             _audit_llcr_sync(temporary, dataset)
             self._protected_package_gateway.restore_password_protection(
@@ -277,8 +285,12 @@ class TestReportDocumentGateway:
                 tuple(cell.text.strip() for cell in row.cells[:5])
                 for row in equipment.rows[1:]
             )
+            body_before = document.element.body.xml
             if actual != expected:
                 _replace_equipment_table_rows(equipment, expected)
+            _set_equipment_table_geometry(equipment)
+            _apply_report_body_format(document)
+            if actual != expected or document.element.body.xml != body_before:
                 document.save(temporary)
             _audit_equipment_sync(temporary, expected)
             self._protected_package_gateway.restore_password_protection(
@@ -387,6 +399,51 @@ def _replace_equipment_table_rows(
     _set_table_font(table, _TABLE_FONT_NAME)
 
 
+def _set_equipment_table_geometry(table: Table) -> None:
+    total_width = _table_width_dxa(table)
+    id_width = max(round(total_width * 0.18), _MIN_EQUIPMENT_ID_WIDTH_DXA)
+    date_width = max(
+        round(total_width * 0.16),
+        _MIN_EQUIPMENT_DATE_WIDTH_DXA,
+    )
+    remaining = total_width - id_width - 2 * date_width
+    if remaining < 2:
+        raise ValueError("E-3707_H Equipment table is too narrow for its columns.")
+    item_width = round(remaining * 0.52)
+    widths = (
+        item_width,
+        remaining - item_width,
+        id_width,
+        date_width,
+        date_width,
+    )
+    grid_columns = table._tbl.tblGrid.gridCol_lst
+    if len(grid_columns) != len(widths):
+        raise ValueError("E-3707_H Equipment table grid is inconsistent.")
+    table.autofit = False
+    table_width = table._tbl.tblPr.find(qn("w:tblW"))
+    if table_width is None:
+        table_width = OxmlElement("w:tblW")
+        table._tbl.tblPr.insert(0, table_width)
+    table_width.set(qn("w:type"), "dxa")
+    table_width.set(qn("w:w"), str(total_width))
+    layout = table._tbl.tblPr.find(qn("w:tblLayout"))
+    if layout is None:
+        layout = OxmlElement("w:tblLayout")
+        table._tbl.tblPr.append(layout)
+    layout.set(qn("w:type"), "fixed")
+    for column, width in zip(grid_columns, widths, strict=True):
+        column.set(qn("w:w"), str(width))
+    for row in table.rows:
+        for cell, width in zip(row.cells[:5], widths, strict=True):
+            cell_width = cell._tc.get_or_add_tcPr().get_or_add_tcW()
+            cell_width.set(qn("w:type"), "dxa")
+            cell_width.set(qn("w:w"), str(width))
+        id_properties = row.cells[2]._tc.get_or_add_tcPr()
+        if id_properties.find(qn("w:noWrap")) is None:
+            id_properties.append(OxmlElement("w:noWrap"))
+
+
 def _set_table_font(table: Table, font_name: str) -> None:
     for row in table.rows:
         for cell in row.cells:
@@ -408,6 +465,13 @@ def _audit_equipment_sync(
     )
     if actual != expected:
         raise ValueError("Generated Equipment List does not match the confirmed preview.")
+    id_width = int(equipment._tbl.tblGrid.gridCol_lst[2].get(qn("w:w"), "0"))
+    if id_width < _MIN_EQUIPMENT_ID_WIDTH_DXA or any(
+        row.cells[2]._tc.get_or_add_tcPr().find(qn("w:noWrap")) is None
+        for row in equipment.rows
+    ):
+        raise ValueError("Generated Equipment List ID Number column may wrap lab IDs.")
+    _audit_report_body_format(document)
 
 
 def _fill_headers(document, report: TestReportDraftData) -> None:
@@ -640,7 +704,6 @@ def _fill_result_blocks(
 def _fill_result_block(heading: Paragraph, table: Table, group) -> None:
     group_label = _test_sequence_group_label(group.group_label)
     _set_paragraph_text(heading, f"Group {group_label} Test Results")
-    heading.paragraph_format.keep_with_next = True
     _resize_rows(table, 1 + len(group.steps))
     llcr_indexes = tuple(
         index
@@ -743,6 +806,7 @@ def _audit_llcr_sync(path: Path, dataset: ResultDatasetRevision) -> None:
     summary_rows = _llcr_summary_rows(dataset)
     if not _appendix_a_is_current(document, summary_rows):
         raise ValueError("Generated report failed Appendix A synchronization audit.")
+    _audit_report_body_format(document)
 
 
 def _llcr_summary_rows(dataset: ResultDatasetRevision) -> tuple[LlcrSummaryRow, ...]:
@@ -783,10 +847,12 @@ def _appendix_a_is_current(
         return False
     if heading.text != _APPENDIX_A_HEADING:
         return False
-    if heading.paragraph_format.page_break_before is not True:
+    previous = heading._p.getprevious()
+    if previous is None or not previous.xpath('.//w:br[@w:type="page"]'):
         return False
     if any(
         run.font.name != _TABLE_FONT_NAME
+        or run.font.size != _CHAPTER_HEADING_FONT_SIZE
         or run.bold is not True
         or run.underline is not True
         for run in heading.runs
@@ -807,6 +873,15 @@ def _appendix_a_is_current(
     if any(
         row._tr.get_or_add_trPr().find(qn("w:tblHeader")) is None
         for row in table.rows[:2]
+    ):
+        return False
+    if any(
+        run.font.size != _BODY_FONT_SIZE
+        for row in table.rows
+        for cell in row.cells
+        for paragraph in cell.paragraphs
+        for run in paragraph.runs
+        if run.text
     ):
         return False
     for row_index, summary in enumerate(rows, start=2):
@@ -883,17 +958,22 @@ def _replace_appendix_a(
     if anchor is None:
         raise ValueError("Internal report End of Report anchor is missing.")
 
+    preceding_page_break = (
+        old_heading is not None
+        and old_heading._p.getprevious() is not None
+        and bool(old_heading._p.getprevious().xpath('.//w:br[@w:type="page"]'))
+    )
     heading = document.add_paragraph()
-    heading.paragraph_format.page_break_before = True
-    heading.paragraph_format.keep_with_next = True
     heading.paragraph_format.space_after = Pt(4)
     run = heading.add_run(_APPENDIX_A_HEADING)
     run.font.name = _TABLE_FONT_NAME
-    run.font.size = Pt(10.5)
+    run.font.size = _CHAPTER_HEADING_FONT_SIZE
     run.bold = True
     run.underline = True
     _set_run_font_family(run, _TABLE_FONT_NAME)
     table = _build_appendix_a_table(document, rows)
+    if not preceding_page_break:
+        anchor.addprevious(_page_break_paragraph())
     anchor.addprevious(heading._p)
     anchor.addprevious(table._tbl)
 
@@ -1069,7 +1149,7 @@ def _write_appendix_cell(
         paragraph.paragraph_format.space_after = Pt(0)
         for run in paragraph.runs:
             run.font.name = _TABLE_FONT_NAME
-            run.font.size = Pt(10)
+            run.font.size = _BODY_FONT_SIZE
             run.bold = bold
             _set_run_font_family(run, _TABLE_FONT_NAME)
 
@@ -1221,20 +1301,6 @@ def _insert_page_break_before_heading(document, heading: str) -> None:
     paragraph._p.addprevious(break_paragraph)
 
 
-def _keep_heading_with_following_content(document, heading: str) -> None:
-    paragraph = next(
-        (
-            item
-            for item in document.paragraphs
-            if _heading_key(item.text) == _heading_key(heading)
-        ),
-        None,
-    )
-    if paragraph is None:
-        raise ValueError(f"E-3707_H template heading is missing: {heading}")
-    paragraph.paragraph_format.keep_with_next = True
-
-
 def _set_document_table_font(document, font_name: str) -> None:
     tables = list(document.tables)
     for section in document.sections:
@@ -1251,6 +1317,75 @@ def _set_document_table_font(document, font_name: str) -> None:
                         fonts = run._element.get_or_add_rPr().get_or_add_rFonts()
                         for attribute in ("ascii", "hAnsi", "eastAsia", "cs"):
                             fonts.set(qn(f"w:{attribute}"), font_name)
+
+
+def _apply_report_body_format(document) -> bool:
+    before = document.element.body.xml
+    for keep_next in document.element.body.xpath(".//w:keepNext"):
+        keep_next.getparent().remove(keep_next)
+    for paragraph in document.paragraphs:
+        size = (
+            _CHAPTER_HEADING_FONT_SIZE
+            if _is_report_chapter_heading(paragraph.text)
+            else _BODY_FONT_SIZE
+        )
+        for run in paragraph.runs:
+            run.font.size = size
+    for table in document.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    for run in paragraph.runs:
+                        run.font.size = _BODY_FONT_SIZE
+    return document.element.body.xml != before
+
+
+def _is_report_chapter_heading(value: str) -> bool:
+    normalized = _heading_key(value)
+    return (
+        normalized in _NUMBERED_CHAPTER_HEADING_KEYS
+        or re.fullmatch(r"group\s+.+\s+test results", normalized, re.IGNORECASE)
+        is not None
+        or re.match(r"^appendix\s+[a-z]\s*:", normalized, re.IGNORECASE)
+        is not None
+    )
+
+
+def _page_break_paragraph():
+    paragraph = OxmlElement("w:p")
+    run = OxmlElement("w:r")
+    page_break = OxmlElement("w:br")
+    page_break.set(qn("w:type"), "page")
+    run.append(page_break)
+    paragraph.append(run)
+    return paragraph
+
+
+def _audit_report_body_format(document) -> None:
+    if document.element.body.xpath(".//w:keepNext"):
+        raise ValueError("Generated report still contains keep-with-next pagination controls.")
+    for paragraph in document.paragraphs:
+        expected = (
+            _CHAPTER_HEADING_FONT_SIZE
+            if _is_report_chapter_heading(paragraph.text)
+            else _BODY_FONT_SIZE
+        )
+        if any(
+            run.font.size != expected
+            for run in paragraph.runs
+            if run.text.strip()
+        ):
+            raise ValueError("Generated report body typography is inconsistent.")
+    if any(
+        run.font.size != _BODY_FONT_SIZE
+        for table in document.tables
+        for row in table.rows
+        for cell in row.cells
+        for paragraph in cell.paragraphs
+        for run in paragraph.runs
+        if run.text
+    ):
+        raise ValueError("Generated report table typography is inconsistent.")
 
 
 def _set_cell_fill(cell: _Cell, fill: str) -> None:
@@ -1395,6 +1530,7 @@ def _display_header_date(value: str) -> str:
 def _audit_generated_document(path: Path, report: TestReportDraftData) -> None:
     document = Document(path)
     _validate_template_contract(document, populated=True)
+    _audit_report_body_format(document)
     body_text = "\n".join(paragraph.text for paragraph in document.paragraphs)
     if "[PRODUCT NAME]" in body_text or "[TEST DESCRIPTION]" in body_text:
         raise ValueError("Generated report still contains required identity placeholders.")

@@ -87,10 +87,25 @@ blank cells manually in Word. Expired calibration is a warning that still requir
 acknowledgement. The preview fingerprints `EquipmentID.docx`, the calibration workbook, and the
 current report; all are rechecked before publication.
 
-Only the body rows of the table headed `Item / Manufacturer / ID Number / Last Cal. / Cal. Due` are
-owned by this action. The approved template, both source files, headings, Purpose, Conclusions, test
-results, images, appendices, and revision record are not changed. The existing report publication
-gateway archives a changed prior report under `History/Report` and performs atomic replacement.
+Only the data cells in the body rows of the table headed
+`Item / Manufacturer / ID Number / Last Cal. / Cal. Due` are owned by this action. The approved
+template and both source files are never changed; heading, Purpose, Conclusion, result, image,
+appendix, and revision-record content is preserved. The document-wide formatting baseline described
+below may normalize font size and direct pagination controls without replacing that content. The
+existing report publication gateway archives a changed prior report under `History/Report` and
+performs atomic replacement.
+
+Equipment calibration values marked `Not applicable` are copied to both `Last Cal.` and `Cal. Due`
+without date coercion; this is the approved representation for equipment that does not require
+calibration. The Equipment table uses a fixed five-column layout with at least 1800 dxa allocated to
+`ID Number`, and that column is non-wrapping so standard IDs such as `DG-Q-0033` remain on one line.
+
+Generated report body text uses 11 pt, including every body table. Numbered chapter headings, Group
+result headings, and Appendix headings use 12 pt while retaining the template's bold/underline
+formatting. Controlled initialization, LLCR, and Equipment updates remove direct Word `keepNext`
+paragraph controls from the output copy. Required visual page boundaries use explicit page breaks,
+so pagination remains deterministic without displaying Word's paragraph-pagination marker. Approved
+template files, source workbooks, and header/footer typography remain unchanged.
 
 ## Authority and dependency flow
 

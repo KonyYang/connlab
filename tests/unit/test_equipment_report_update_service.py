@@ -160,6 +160,7 @@ def test_preview_accepts_not_applicable_calibration_dates(tmp_path: Path) -> Non
     preview = service.preview(project_id="P1")
 
     assert preview.status == "ready"
+    assert preview.rows[0].last_calibration == "Not applicable"
     assert preview.rows[0].calibration_due == "Not applicable"
     assert preview.rows[0].expired is False
 

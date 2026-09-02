@@ -13,6 +13,7 @@ from docx import Document
 from docx.enum.section import WD_SECTION
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from docx.shared import Pt
 import pytest
 
 from backend.application.confirmed_matrix_test_record_preview_service import (
@@ -133,13 +134,55 @@ def test_generates_e3707_draft_without_mutating_approved_template(tmp_path: Path
     ]
     assert populated_table_runs
     assert all(run.font.name == "Arial" for run in populated_table_runs)
+    body_table_runs = [
+        run
+        for table in document.tables
+        for row in table.rows
+        for cell in row.cells
+        for paragraph in cell.paragraphs
+        for run in paragraph.runs
+        if run.text
+    ]
+    assert all(run.font.size == Pt(11) for run in body_table_runs)
+
+    chapter_headings = [
+        paragraph
+        for paragraph in document.paragraphs
+        if paragraph.text in {
+            "1. PURPOSE",
+            "2. CONCLUSIONS",
+            "3. SAMPLE DESCRIPTION",
+            "4. TEST DESCRIPTION",
+            "5. TEST METHODS/REQUIREMENTS",
+            "6. TEST RESULTS",
+            "7. EQUIPMENTS",
+            "8. REVISION RECORD",
+            "Group 1 Test Results",
+            "Group 2 Test Results",
+        }
+    ]
+    assert len(chapter_headings) == 10
+    assert all(
+        run.font.size == Pt(12)
+        for paragraph in chapter_headings
+        for run in paragraph.runs
+        if run.text
+    )
+    assert all(
+        run.font.size == Pt(11)
+        for paragraph in document.paragraphs
+        if paragraph.text not in {heading.text for heading in chapter_headings}
+        for run in paragraph.runs
+        if run.text.strip()
+    )
+    assert not document.element.body.xpath(".//w:keepNext")
 
     test_description_heading = next(
         paragraph
         for paragraph in document.paragraphs
         if paragraph.text == "4. TEST DESCRIPTION"
     )
-    assert test_description_heading.paragraph_format.keep_with_next is True
+    assert test_description_heading.paragraph_format.keep_with_next is None
 
     methods = document.tables[2]
     method_rows = [[cell.text for cell in row.cells] for row in methods.rows]
@@ -231,6 +274,17 @@ def test_synchronize_equipment_list_updates_only_the_equipment_table(
                 expired=True,
             ),
             EquipmentListReportRow(
+                source_reference="DG-L-0002",
+                status="matched",
+                item="Stereo Microscope",
+                manufacturer="Nikon (SMZ645)",
+                id_number="DG-L-0002",
+                last_calibration="Not applicable",
+                calibration_due="Not applicable",
+                source_sheet="All Equip.",
+                expired=False,
+            ),
+            EquipmentListReportRow(
                 source_reference="Customer fixture A",
                 status="external",
                 item="Customer fixture",
@@ -255,6 +309,13 @@ def test_synchronize_equipment_list_updates_only_the_equipment_table(
     )
     assert [[cell.text for cell in row.cells] for row in equipment.rows[1:]] == [
         ["Digital multimeter", "Keysight", "DG-Q-0033", "01 Jan 2025", "01 Jan 2026"],
+        [
+            "Stereo Microscope",
+            "Nikon (SMZ645)",
+            "DG-L-0002",
+            "Not applicable",
+            "Not applicable",
+        ],
         ["Customer fixture", "Customer supplied", "N/A", "N/A", "N/A"],
     ]
     assert any(
@@ -270,6 +331,21 @@ def test_synchronize_equipment_list_updates_only_the_equipment_table(
         for run in paragraph.runs
         if run.text
     )
+    assert all(
+        run.font.size == Pt(11)
+        for row in equipment.rows
+        for cell in row.cells
+        for paragraph in cell.paragraphs
+        for run in paragraph.runs
+        if run.text
+    )
+    id_width = int(equipment._tbl.tblGrid.gridCol_lst[2].get(qn("w:w"), "0"))
+    assert id_width >= 1800
+    assert all(
+        row.cells[2]._tc.get_or_add_tcPr().find(qn("w:noWrap")) is not None
+        for row in equipment.rows
+    )
+    assert not updated.element.body.xpath(".//w:keepNext")
 
 
 def test_report_update_restores_password_protection_after_edit(
@@ -364,7 +440,9 @@ def test_synchronizes_only_managed_llcr_result_cells_into_a_new_draft(tmp_path: 
     assert headings[0].text == (
         "Appendix A: Statistical Summary of LLCR Measurements (Unit: mΩ)"
     )
-    assert headings[0].paragraph_format.page_break_before is True
+    assert headings[0].paragraph_format.page_break_before is None
+    assert headings[0]._p.getprevious().xpath('.//w:br[@w:type="page"]')
+    assert all(run.font.size == Pt(12) for run in headings[0].runs if run.text)
     assert all(run.font.name == "Arial" for run in headings[0].runs)
     assert all(run.bold is True and run.underline is True for run in headings[0].runs)
     appendix = _appendix_a_table(synchronized)
@@ -384,6 +462,15 @@ def test_synchronizes_only_managed_llcr_result_cells_into_a_new_draft(tmp_path: 
     assert _cell_fill(appendix.cell(2, 2)) in {"auto", "FFFFFF"}
     assert _cell_fill(appendix.cell(3, 2)) == "FFFFCC"
     assert appendix.cell(2, 3).paragraphs[0].runs[0].bold is True
+    assert all(
+        run.font.size == Pt(11)
+        for row in appendix.rows
+        for cell in row.cells
+        for paragraph in cell.paragraphs
+        for run in paragraph.runs
+        if run.text
+    )
+    assert not synchronized.element.body.xpath(".//w:keepNext")
     assert all(
         run.font.name == "Arial"
         for row in appendix.rows
@@ -466,6 +553,15 @@ def test_llcr_sync_replaces_only_appendix_a_and_preserves_later_manual_appendix(
     updated = Document(output)
     assert sum(p.text.startswith("Appendix A:") for p in updated.paragraphs) == 1
     assert _appendix_a_table(updated).cell(2, 2).text == "0.158"
+    appendix_heading = next(
+        paragraph
+        for paragraph in updated.paragraphs
+        if paragraph.text.startswith("Appendix A:")
+    )
+    assert appendix_heading._p.getprevious().xpath('.//w:br[@w:type="page"]')
+    assert not appendix_heading._p.getprevious().getprevious().xpath(
+        './/w:br[@w:type="page"]'
+    )
     assert any(
         paragraph.text == "Appendix B: Operator-maintained evidence"
         for paragraph in updated.paragraphs
@@ -520,7 +616,7 @@ def test_generates_from_approved_numbered_heading_without_separator_space(
         for paragraph in document.paragraphs
         if paragraph.text == "4.TEST DESCRIPTION"
     )
-    assert test_description_heading.paragraph_format.keep_with_next is True
+    assert test_description_heading.paragraph_format.keep_with_next is None
 
 
 def test_generates_when_first_page_header_placeholders_are_split_across_runs(
@@ -650,7 +746,7 @@ def test_result_groups_flow_without_forced_page_breaks(tmp_path: Path) -> None:
         "Group 2 Test Results",
     ]
     assert all(
-        paragraph.paragraph_format.keep_with_next is True
+        paragraph.paragraph_format.keep_with_next is None
         for paragraph in group_headings
     )
     assert all(
