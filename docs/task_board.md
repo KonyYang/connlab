@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "REPORT-003B-R2",
     "summary": "Align controlled internal-report typography and Equipment List output with the approved business format while preserving calibration waivers.",
@@ -27,9 +27,70 @@
     "risk_reasons": [],
     "activation_head": "c392cf98fc6c6dcd6ea6100e6c3b4cbba32dd8fb",
     "started_at": "2026-09-02T10:34:25.613709Z",
-    "updated_at": "2026-09-02T10:34:25.613709Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-02T10:51:58.695516Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "REPORT-003B-R2",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "REPORT-003B-R2",
+      "subject": "bd0f9b689acdca3c3646e611fb0338873123eefa",
+      "summary": "Preserved calibration waivers, normalized controlled report body typography, widened and protected the Equipment ID column from wrapping, removed direct keep-with-next controls, and verified the result against a real report copy without mutating external authorities.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/infrastructure/office/test_report_document_gateway.py",
+        "docs/report_generation_architecture.md",
+        "tests/unit/test_equipment_report_update_service.py",
+        "tests/unit/test_test_report_document_gateway.py"
+      ],
+      "validation": [
+        {
+          "name": "affected report workflow suite",
+          "status": "passed",
+          "detail": "86 passed"
+        },
+        {
+          "name": "real report structural smoke",
+          "status": "passed",
+          "detail": "DG-L-0002 preserved in both calibration columns; ID width 1959 dxa; noWrap true; keepNext count 0"
+        },
+        {
+          "name": "Word PDF visual regression",
+          "status": "passed",
+          "detail": "All 18 pages inspected; source remained unchanged; no new blank pages; Equipment IDs remain on one line"
+        },
+        {
+          "name": "python compile",
+          "status": "passed",
+          "detail": "test_report_document_gateway.py"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "detail": "TDD and real-copy smoke completed"
+        },
+        "reviewer": {
+          "status": "passed",
+          "detail": "Standards and spec review found no actionable findings"
+        },
+        "qa": {
+          "status": "passed",
+          "detail": "86-test report workflow matrix and 18-page visual verification passed"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "detail": "Clean master commit bd0f9b68 contains the exact four implementation/documentation/test paths."
+      }
+    }
   },
   "last_closed": {
     "task_id": "REPORT-003B-R1",
