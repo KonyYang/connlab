@@ -228,10 +228,10 @@ export function MatrixEditorWorkspace({
   const matrixImport = useMatrixImportWorkflow({
     projectId,
     readonlyMessage: isLifecycleReadonly ? lifecycleReadonlyView.message : null,
-    onCommitted: ({ preview, response }) => {
+    onCommitted: ({ response }) => {
       const baselineSignature = applyDraftSnapshotToEditor(
         buildSessionDraftFromProjectMatrixDraft(response.project_matrix_draft),
-        preview,
+        null,
         schedulePlanFromProjectMatrixDraft(response.project_matrix_draft)
       );
       draftPersistence.acceptImportedDraft(response, baselineSignature);

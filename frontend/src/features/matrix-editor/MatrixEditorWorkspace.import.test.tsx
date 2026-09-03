@@ -417,6 +417,54 @@ describe("MatrixEditorWorkspace import flow", () => {
     expect(screen.queryByRole("button", { name: "Selected Groups" })).toBeNull();
   });
 
+  it("uses the committed replacement draft without restoring stale preview rows", async () => {
+    const currentIrRow = {
+      source_row_index: 7,
+      test_item: "INSULATION RESISTANCE",
+      source_section: "6.2",
+      requirement: "≥1,500MΩ (1.5GΩ)",
+      group_tokens: { "1": "3、9", g1: "3、9" },
+      is_sample_row: false,
+    };
+    const stalePreview = buildImportPreview({
+      source_document_name: "GS-12-2286.pdf",
+      source_document_path: "D:/GS-12-2286.pdf",
+      rows: [
+        currentIrRow,
+        {
+          source_row_index: 8,
+          test_item: "INSULATION RESISTANCE",
+          source_section: "6.2",
+          requirement: "≥5,000MΩ (5GΩ)",
+          group_tokens: { "1": "4、10", g1: "4、10" },
+          is_sample_row: false,
+        },
+      ],
+    });
+    const committedPreview = { ...stalePreview, rows: [currentIrRow] };
+    apiMocks.previewProjectTestPlanMatrixFromUpload.mockResolvedValueOnce(stalePreview);
+    apiMocks.commitMatrixImport.mockResolvedValueOnce(
+      buildCommitResponse(committedPreview, "3+3"),
+    );
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
+    const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
+    fireEvent.change(input, {
+      target: {
+        files: [new File(["pdf"], "GS-12-2286.pdf", { type: "application/pdf" })],
+      },
+    });
+    fireEvent.click((await screen.findAllByRole("button", { name: "Replace" }))[0]);
+
+    await waitFor(() => expect(apiMocks.commitMatrixImport).toHaveBeenCalledTimes(1));
+    expect(screen.getAllByDisplayValue("INSULATION RESISTANCE")).toHaveLength(1);
+    expect(
+      (screen.getByRole("textbox", { name: "Row 1 requirement" }) as HTMLTextAreaElement).value,
+    ).toBe("≥1,500MΩ (1.5GΩ)");
+    expect(screen.queryAllByDisplayValue("≥5,000MΩ (5GΩ)")).toHaveLength(0);
+  });
+
   it("restores an imported source replacement draft after returning from Setup", async () => {
     const replacementPreview = buildImportPreview({
       source_document_name: "replacement.docx",
