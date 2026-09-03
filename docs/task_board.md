@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_MATRIX_DRAFT_DUPLICATE_ROW_IDENTITY",
     "summary": "Prevent Matrix Editor session restoration from duplicating repeated test rows and step sequences.",
@@ -26,72 +26,17 @@
     "risk_reasons": [],
     "activation_head": "e1d24db2ffc0e12f4130036016d048052d1f9286",
     "started_at": "2026-09-03T15:57:58.369750Z",
-    "updated_at": "2026-09-03T16:08:22.903378Z",
+    "updated_at": "2026-09-03T23:26:23.212891Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_DRAFT_DUPLICATE_ROW_IDENTITY",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "user: latest imported PDF does not contain the duplicated Section 6.2 IR rows; investigate stale source/draft carry-over",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_MATRIX_DRAFT_DUPLICATE_ROW_IDENTITY",
-      "subject": "cf6b5d737452db00512a5e9e569b7aa667a21a79",
-      "changed_paths": [
-        "frontend/src/features/matrix-editor/matrixEditorDraftModel.test.ts",
-        "frontend/src/features/matrix-editor/matrixEditorDraftModel.ts"
-      ],
-      "summary": "Matrix Editor now reconciles repeated test-item identities one-to-one, preventing restored drafts from appending duplicate rows and duplicate step sequences.",
-      "scope_ok": true,
-      "validation": [
-        {
-          "name": "red-green matrix draft regression",
-          "status": "passed"
-        },
-        {
-          "name": "Matrix Editor frontend suite (103 tests)",
-          "status": "passed"
-        },
-        {
-          "name": "frontend full suite (470 tests)",
-          "status": "passed"
-        },
-        {
-          "name": "frontend production build",
-          "status": "passed"
-        }
-      ],
-      "roles": {
-        "planner": {
-          "status": "passed",
-          "summary": "Traced draft, source-preview and row-identity flows from attachment evidence."
-        },
-        "developer": {
-          "status": "passed",
-          "summary": "Implemented ordered one-to-one matching for repeated row identities with regression protection."
-        },
-        "reviewer": {
-          "status": "passed",
-          "summary": "Standards and specification review found no remaining issues."
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Targeted, Matrix Editor, full frontend and production build validations passed."
-        },
-        "integrator": {
-          "status": "passed",
-          "summary": "Exact task diff and clean repository state verified."
-        }
-      },
-      "integration": {
-        "mode": "verified_local",
-        "status": "passed"
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "REPORT-003B-R2",
