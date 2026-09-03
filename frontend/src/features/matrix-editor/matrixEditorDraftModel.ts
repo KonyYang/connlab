@@ -286,16 +286,21 @@ export function buildMatrixFromSessionSeedDraft(
   const previewRows = [...sourcePreview.rows]
     .sort((left, right) => left.source_row_index - right.source_row_index)
     .filter((row) => !row.is_sample_row);
-  const currentRowByIdentity = new Map(
-    mapped.rows.map((row) => [editorRowIdentity(row), row])
-  );
+  const currentRowsByIdentity = new Map<string, EditableMatrixRow[]>();
+  mapped.rows.forEach((row) => {
+    const identity = editorRowIdentity(row);
+    const matches = currentRowsByIdentity.get(identity) ?? [];
+    matches.push(row);
+    currentRowsByIdentity.set(identity, matches);
+  });
   const consumedRowIds = new Set<string>();
   const previewGroupByKey = new Map(
     sourcePreview.groups.map((group) => [group.group_key, group])
   );
   const nextRows: EditableMatrixRow[] = previewRows.map((previewRow, rowIndex) => {
     const identity = previewRowIdentity(previewRow);
-    const identityMatch = currentRowByIdentity.get(identity) ?? null;
+    const identityMatch = (currentRowsByIdentity.get(identity) ?? [])
+      .find((row) => !consumedRowIds.has(row.id)) ?? null;
     const positionalFallback = identityMatch ? null : mapped.rows[rowIndex] ?? null;
     const candidate = identityMatch ?? positionalFallback;
     const existing = candidate && !consumedRowIds.has(candidate.id) ? candidate : null;

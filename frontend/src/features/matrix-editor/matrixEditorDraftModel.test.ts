@@ -4,6 +4,104 @@ import type { MatrixEditorSessionDraft, MatrixPreviewResponse } from "../../api/
 import { buildMatrixFromSessionSeedDraft } from "./matrixEditorDraftModel";
 
 describe("buildMatrixFromSessionSeedDraft", () => {
+  it("matches repeated test identities one-to-one without appending a duplicate draft row", () => {
+    const draft: MatrixEditorSessionDraft = {
+      groups: [
+        {
+          draft_group_id: "draft-group-1",
+          source_group_snapshot_id: "source-group-1",
+          group_order: 1,
+          group_key: "g1",
+          group_label: "1",
+          is_selected: true,
+          sample_quantity_expression: "3+3",
+        },
+      ],
+      rows: [
+        {
+          draft_row_id: "draft-ir-initial",
+          source_row_snapshot_id: "source-ir-initial",
+          row_order: 1,
+          test_item: "INSULATION RESISTANCE",
+          source_section: "6.2",
+          requirement: "Initial ≥1500MΩ",
+          is_sample_row: false,
+        },
+        {
+          draft_row_id: "draft-ir-final",
+          source_row_snapshot_id: "source-ir-final",
+          row_order: 2,
+          test_item: "INSULATION RESISTANCE",
+          source_section: "6.2",
+          requirement: "Final ≥5000MΩ",
+          is_sample_row: false,
+        },
+      ],
+      cells: [
+        {
+          draft_row_id: "draft-ir-initial",
+          draft_group_id: "draft-group-1",
+          cell_value: "3,9",
+        },
+        {
+          draft_row_id: "draft-ir-final",
+          draft_group_id: "draft-group-1",
+          cell_value: "4,10",
+        },
+      ],
+    };
+    const preview: MatrixPreviewResponse = {
+      source_document_path: "spec.pdf",
+      source_document_name: "spec.pdf",
+      source_format: "pdf",
+      capability_status: "available",
+      generated_at: "2026-09-03T00:00:00Z",
+      candidate_tables: [],
+      groups: [
+        {
+          group_key: "g1",
+          group_label: "1",
+          source_table_index: 0,
+          extraction_status: "loaded",
+          sample_quantity_expression: "3+3",
+          sample_note: null,
+          steps: [],
+        },
+      ],
+      rows: [
+        {
+          source_row_index: 1,
+          test_item: "INSULATION RESISTANCE",
+          source_section: "6.2",
+          requirement: "Initial ≥1500MΩ",
+          group_tokens: { "1": "3,9" },
+          is_sample_row: false,
+        },
+        {
+          source_row_index: 2,
+          test_item: "INSULATION RESISTANCE",
+          source_section: "6.2",
+          requirement: "Final ≥5000MΩ",
+          group_tokens: { "1": "4,10" },
+          is_sample_row: false,
+        },
+      ],
+      warnings: [],
+      blockers: [],
+    };
+
+    const result = buildMatrixFromSessionSeedDraft(draft, preview);
+
+    expect(result.rows.map((row) => row.id)).toEqual([
+      "draft-ir-initial",
+      "draft-ir-final",
+    ]);
+    expect(result.rows.map((row) => row.groups["draft-group-1"])).toEqual([
+      "3,9",
+      "4,10",
+    ]);
+  });
+
   it("does not reuse a consumed draft row when a re-imported preview falls back by position", () => {
     const draft: MatrixEditorSessionDraft = {
       groups: [],
