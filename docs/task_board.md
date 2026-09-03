@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_DRAFT_DUPLICATE_ROW_IDENTITY",
     "summary": "Prevent Matrix Editor session restoration from duplicating repeated test rows and step sequences.",
@@ -26,17 +26,76 @@
     "risk_reasons": [],
     "activation_head": "e1d24db2ffc0e12f4130036016d048052d1f9286",
     "started_at": "2026-09-03T15:57:58.369750Z",
-    "updated_at": "2026-09-03T23:26:23.212891Z",
+    "updated_at": "2026-09-03T23:39:58.926422Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_DRAFT_DUPLICATE_ROW_IDENTITY",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "user: latest imported PDF does not contain the duplicated Section 6.2 IR rows; investigate stale source/draft carry-over",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_DRAFT_DUPLICATE_ROW_IDENTITY",
+      "subject": "0520f9bcff13fc969d6d6dc78686fb5e72955748",
+      "changed_paths": [
+        "frontend/src/features/matrix-editor/matrixEditorDraftModel.test.ts",
+        "frontend/src/features/matrix-editor/matrixEditorDraftModel.ts"
+      ],
+      "summary": "Matrix Editor reconciles repeated identities one-to-one. Revision audit verified the supplied PDF contains one Section 6.2 IR row at 1500 MΩ with steps 3 and 9; the displayed 5000 MΩ row is not sourced from that PDF and is historical draft data.",
+      "scope_ok": true,
+      "validation": [
+        {
+          "name": "supplied PDF pages 3 and 11 visual and parser inspection",
+          "status": "passed"
+        },
+        {
+          "name": "full-PDF 5000 MΩ search",
+          "status": "passed"
+        },
+        {
+          "name": "Matrix Editor frontend suite (103 tests)",
+          "status": "passed"
+        },
+        {
+          "name": "frontend full suite (470 tests)",
+          "status": "passed"
+        },
+        {
+          "name": "frontend production build",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed",
+          "summary": "Re-evaluated source authority against the supplied PDF and import lineage."
+        },
+        "developer": {
+          "status": "passed",
+          "summary": "Existing one-to-one reconciliation fix remains unchanged; no unsupported cleanup mutation was added."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Confirmed the prior report incorrectly attributed 5000 MΩ to the current specification."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Rendered and parsed the exact source PDF; current parser returns one IR row and no 5000 MΩ value."
+        },
+        "integrator": {
+          "status": "passed",
+          "summary": "Repository implementation remains at the validated task subject."
+        }
+      },
+      "integration": {
+        "mode": "verified_local",
+        "status": "passed"
+      }
+    }
   },
   "last_closed": {
     "task_id": "REPORT-003B-R2",
