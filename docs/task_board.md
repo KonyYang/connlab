@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_DRAFT_DUPLICATE_ROW_IDENTITY",
+    "summary": "Prevent Matrix Editor session restoration from duplicating repeated test rows and step sequences.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Reproduce and fix Matrix Editor draft/source row reconciliation when multiple rows share the same test item and section identity.",
+    "scope_paths": [
+      "docs/task_board.md",
+      "frontend/src/features/matrix-editor/matrixEditorDraftModel.ts",
+      "frontend/src/features/matrix-editor/matrixEditorDraftModel.test.ts"
+    ],
+    "risk_reasons": [],
+    "activation_head": "e1d24db2ffc0e12f4130036016d048052d1f9286",
+    "started_at": "2026-09-03T15:57:58.369750Z",
+    "updated_at": "2026-09-03T15:57:58.369750Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "REPORT-003B-R2",
     "tier": "standard",
