@@ -11,106 +11,37 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
-    "task_id": "TASK_MATRIX_DRAFT_LIFECYCLE_GOVERNANCE",
-    "summary": "Govern Matrix draft lifecycle so only one working draft is current, authority-linked lineage is explicit, and stale unreferenced drafts can be cleaned safely.",
-    "tier": "high_risk",
-    "route": "full_chain",
-    "scope": "Define and implement Matrix draft lifecycle transitions and safe cleanup without weakening confirmed Matrix authority or traceability.",
+    "task_id": "TASK_REPOSITORY_TEST_BASELINE_REPAIR",
+    "summary": "Repair the repository test baseline by resolving Draft Measurement Plan Excel gateway import errors and the Product Spec Matrix Group P label contract mismatch.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Restore test collection and align the Group P parser contract without changing unrelated product behavior.",
     "scope_paths": [
-      "backend/infrastructure/storage/database.py",
-      "backend/infrastructure/storage/matrix_draft_lifecycle_migration.py",
-      "backend/infrastructure/storage/repositories/confirmed_matrix_authority.py",
-      "backend/infrastructure/storage/repositories/project_matrix_draft.py",
-      "docs/PROJECT_CONTEXT.md",
-      "tests/unit/test_confirmed_matrix_authority_repository.py",
-      "tests/unit/test_database.py",
-      "tests/unit/test_project_matrix_draft_repository.py"
+      "backend/infrastructure/office/draft_measurement_plan_workbook_gateway.py",
+      "backend/infrastructure/office/llcr_cr_specialized_record_workbook_gateway.py",
+      "backend/modules/test_plan/product_spec_matrix_parser.py",
+      "backend/modules/test_plan/product_spec_matrix_parser_support.py",
+      "tests/unit/test_draft_measurement_plan_workbook_gateway.py",
+      "tests/unit/test_draft_measurement_plan_workbook_generation_service.py",
+      "tests/unit/test_task_368b_product_spec_matrix_group_p_header.py"
     ],
-    "risk_reasons": [
-      "database lifecycle migration",
-      "destructive cleanup of unreferenced drafts",
-      "confirmed Matrix authority lineage"
-    ],
-    "activation_head": "cd85caadf45e16a39332f93b986dfd70562799d8",
-    "started_at": "2026-09-04T00:09:51.155757Z",
-    "updated_at": "2026-09-04T05:51:46.892521Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_MATRIX_DRAFT_LIFECYCLE_GOVERNANCE",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_MATRIX_DRAFT_LIFECYCLE_GOVERNANCE",
-      "subject": "5122fdd93888992e6c377bf634749fa9ea287945",
-      "summary": "Matrix draft lifecycle now archives authority-linked lineage, keeps one editable draft, and removes only stale unreferenced aggregates.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/infrastructure/storage/database.py",
-        "backend/infrastructure/storage/matrix_draft_lifecycle_migration.py",
-        "backend/infrastructure/storage/repositories/confirmed_matrix_authority.py",
-        "backend/infrastructure/storage/repositories/project_matrix_draft.py",
-        "docs/PROJECT_CONTEXT.md",
-        "tests/unit/test_confirmed_matrix_authority_repository.py",
-        "tests/unit/test_database.py",
-        "tests/unit/test_project_matrix_draft_repository.py"
-      ],
-      "validation": [
-        {
-          "name": "python_compile",
-          "status": "passed",
-          "summary": "Changed Python modules compile."
-        },
-        {
-          "name": "matrix_lifecycle_related_pytest",
-          "status": "passed",
-          "summary": "68 related unit and integration tests passed."
-        }
-      ],
-      "roles": {
-        "planner": {
-          "status": "passed",
-          "summary": "Accepted lifecycle policy mapped to reversible authority-safe transitions."
-        },
-        "developer": {
-          "status": "passed",
-          "summary": "Migration, repository invariants, documentation, and tests implemented."
-        },
-        "reviewer": {
-          "status": "passed",
-          "summary": "Standards and specification review found no in-scope defects."
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Targeted lifecycle regression matrix passed on final code state."
-        },
-        "integrator": {
-          "status": "passed",
-          "summary": "Exact committed diff and database startup integration verified."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "mode": "verified_local",
-        "summary": "Startup reconciliation and repository transitions are wired through existing database and authority seams."
-      }
-    }
+    "risk_reasons": [],
+    "activation_head": "058d7db51dbf4cefffd9faa0278b20db5b545394",
+    "started_at": "2026-09-04T09:54:36.229118Z",
+    "updated_at": "2026-09-04T09:54:36.229118Z",
+    "checkpoint": null,
+    "report": null
   },
   "last_closed": {
-    "task_id": "TASK_MATRIX_DRAFT_DUPLICATE_ROW_IDENTITY",
-    "tier": "standard",
-    "subject": "6747cfffa797890373414e89220ba0aed3e707f7",
-    "summary": "Prevent Matrix Editor session restoration from duplicating repeated test rows and step sequences.",
+    "task_id": "TASK_MATRIX_DRAFT_LIFECYCLE_GOVERNANCE",
+    "tier": "high_risk",
+    "subject": "5122fdd93888992e6c377bf634749fa9ea287945",
+    "summary": "Govern Matrix draft lifecycle so only one working draft is current, authority-linked lineage is explicit, and stale unreferenced drafts can be cleaned safely.",
     "disposition": "completed",
-    "decision_ref": "User explicitly closed the duplicate-row task and requested a separate Matrix draft lifecycle governance task.",
-    "closed_at": "2026-09-04T00:09:51.155757Z"
+    "decision_ref": "User explicitly requested closing the completed Matrix draft lifecycle task and opening the repository test baseline repair task.",
+    "closed_at": "2026-09-04T09:54:36.229118Z"
   },
   "retained_history": []
 }
