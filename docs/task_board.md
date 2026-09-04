@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_ASTRA_USAGE_GUIDE",
     "summary": "Create a Chinese GPT-6 Astra usage guide and align active documentation.",
@@ -27,9 +27,47 @@
     "risk_reasons": [],
     "activation_head": "9dc15b1ddf22dbdcb3a50a7cde3878de5a154cc0",
     "started_at": "2026-09-04T23:17:00.410896Z",
-    "updated_at": "2026-09-04T23:17:00.410896Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-04T23:22:33.703676Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_ASTRA_USAGE_GUIDE",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_ASTRA_USAGE_GUIDE",
+      "subject": "e92488c77c40bbb546dde3eaa3882ad514965b96",
+      "summary": "Astra guide and active documentation aligned; no product or runtime changes. Shared guide body remained unavailable.",
+      "scope_ok": true,
+      "changed_paths": [
+        "AGENTS.md",
+        "docs/INDEX.md",
+        "docs/project_management/GPT6_ASTRA_USAGE_GUIDE.md",
+        "docs/project_management/SOL_NATIVE_WORKFLOW.md"
+      ],
+      "validation": [
+        {
+          "name": "Exact documentation diff, relative links, UTF-8 and whitespace checks",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implementation and self-review; no independent reviewer claimed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "direct_primary",
+        "summary": "Clean local committed documentation subject; no push."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_REPOSITORY_TEST_BASELINE_REPAIR",
