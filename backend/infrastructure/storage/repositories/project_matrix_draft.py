@@ -27,6 +27,10 @@ from backend.infrastructure.storage.models_project_matrix_draft import (
     ProjectMatrixDraftStepQuantityModel,
     ProjectMatrixDraftDurationAuthorityModel,
 )
+from backend.infrastructure.storage.models_confirmed_matrix_authority import (
+    ConfirmedMatrixVersionModel,
+)
+from backend.infrastructure.storage.models import MatrixFeePendingRebaseModel
 
 
 class ProjectMatrixDraftRepository:
@@ -37,6 +41,8 @@ class ProjectMatrixDraftRepository:
 
     def create_snapshot(self, snapshot: ProjectMatrixDraftSnapshot) -> ProjectMatrixDraftSnapshot:
         """Persist one draft root and child rows atomically in one session."""
+        self._retire_other_working_drafts(snapshot.record)
+        self._session.flush()
         self._session.add(_to_record_model(snapshot.record))
         self._session.add_all(_to_group_models(snapshot.groups))
         self._session.add_all(_to_row_models(snapshot.rows))
@@ -54,6 +60,8 @@ class ProjectMatrixDraftRepository:
         )
         if record_row is None:
             raise LookupError("Project matrix draft record not found.")
+        if record_row.status != ProjectMatrixDraftStatus.DRAFT.value:
+            raise LookupError("Project matrix draft is archived and no longer editable.")
         record_row.status = snapshot.record.status.value
         record_row.updated_at = snapshot.record.updated_at
         record_row.pre_test_buffer_days = snapshot.record.pre_test_buffer_days
@@ -212,6 +220,54 @@ class ProjectMatrixDraftRepository:
         record_row = self._session.get(ProjectMatrixDraftRecordModel, project_matrix_draft_id)
         if record_row is None:
             return False
+        self._delete_aggregate(record_row)
+        self._session.flush()
+        return True
+
+    def _retire_other_working_drafts(
+        self,
+        incoming: ProjectMatrixDraftRecord,
+    ) -> None:
+        """Keep referenced lineage and remove superseded unreferenced working copies."""
+        existing_rows = self._session.scalars(
+            select(ProjectMatrixDraftRecordModel).where(
+                ProjectMatrixDraftRecordModel.project_id == incoming.project_id,
+                ProjectMatrixDraftRecordModel.status
+                == ProjectMatrixDraftStatus.DRAFT.value,
+                ProjectMatrixDraftRecordModel.project_matrix_draft_id
+                != incoming.project_matrix_draft_id,
+            )
+        ).all()
+        referenced_ids = set(
+            self._session.scalars(
+                select(ConfirmedMatrixVersionModel.project_matrix_draft_id).where(
+                    ConfirmedMatrixVersionModel.project_id == incoming.project_id
+                )
+            ).all()
+        )
+        for existing in existing_rows:
+            if (
+                incoming.source_import_id is not None
+                and existing.source_import_id == incoming.source_import_id
+            ) or (
+                incoming.base_confirmed_matrix_id is not None
+                and existing.base_confirmed_matrix_id
+                == incoming.base_confirmed_matrix_id
+            ):
+                continue
+            if existing.project_matrix_draft_id in referenced_ids:
+                existing.status = ProjectMatrixDraftStatus.SUPERSEDED.value
+                continue
+            self._delete_aggregate(existing)
+
+    def _delete_aggregate(self, record_row: ProjectMatrixDraftRecordModel) -> None:
+        project_matrix_draft_id = record_row.project_matrix_draft_id
+        self._session.execute(
+            delete(MatrixFeePendingRebaseModel).where(
+                MatrixFeePendingRebaseModel.project_matrix_draft_id
+                == project_matrix_draft_id
+            )
+        )
         self._session.execute(
             delete(ProjectMatrixDraftDurationAuthorityModel).where(
                 ProjectMatrixDraftDurationAuthorityModel.project_matrix_draft_id
@@ -240,8 +296,6 @@ class ProjectMatrixDraftRepository:
             )
         )
         self._session.delete(record_row)
-        self._session.flush()
-        return True
 
     def list_by_project(self, project_id: str) -> list[ProjectMatrixDraftRecord]:
         """List draft records by project, newest first."""

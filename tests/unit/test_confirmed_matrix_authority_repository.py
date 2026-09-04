@@ -74,6 +74,11 @@ def test_confirmed_matrix_authority_repository_create_and_get_active_roundtrip(
             active = repo.get_active_by_project("P1")
             assert active is not None
             assert active.version.confirmed_matrix_id == "cmv-1"
+            archived_source = ProjectMatrixDraftRepository(session).get(
+                draft_snapshot.record.project_matrix_draft_id
+            )
+            assert archived_source is not None
+            assert archived_source.record.status == ProjectMatrixDraftStatus.SUPERSEDED
     finally:
         engine.dispose()
 

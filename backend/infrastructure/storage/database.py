@@ -29,6 +29,9 @@ from backend.infrastructure.storage.database_general_migrations import (
     _migrate_project_no_optional,
     _migrate_project_output_record_file_metadata,
 )
+from backend.infrastructure.storage.matrix_draft_lifecycle_migration import (
+    reconcile_project_matrix_draft_lifecycle,
+)
 from backend.infrastructure.storage.database_matrix_migrations import (
     _migrate_confirmed_matrix_supersession_columns,
     _migrate_project_matrix_draft_lineage_columns_optional,
@@ -122,3 +125,4 @@ def init_db(engine: Engine) -> None:
     _migrate_report_sample_authority_columns(engine)
     _migrate_project_lifecycle_columns(engine)
     _migrate_ltr_duplicate_resolution_tables(engine)
+    reconcile_project_matrix_draft_lifecycle(engine)

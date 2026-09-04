@@ -31,6 +31,15 @@ authority cutover must be an explicit task with migration and recovery behavior.
 When ownership is unclear, trace the current entry point, persisted record, write path, and consumers.
 Do not use a dated snapshot as a substitute for the code.
 
+### Matrix draft lifecycle
+
+- A Project has at most one editable Matrix working draft (`status = draft`).
+- Confirming a Matrix archives its source draft as `superseded`; confirmed authority keeps that
+  lineage record and its immutable confirmed snapshot.
+- Startup reconciliation may physically remove only stale draft aggregates that are not referenced by
+  any confirmed Matrix version. Source-import snapshots and confirmed Matrix history remain intact.
+- Archived drafts are read-only and cannot be reactivated by a stale save request.
+
 ## Architecture seams
 
 ```text

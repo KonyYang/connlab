@@ -592,6 +592,51 @@ def test_project_matrix_draft_repository_replace_snapshot_rolls_back_on_unique_f
         engine.dispose()
 
 
+def test_project_matrix_draft_repository_rejects_replacing_archived_draft(
+    tmp_path: Path,
+) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            _seed_project(session)
+            source_import_id, source_snapshot = _seed_source_snapshot(session)
+            repo = ProjectMatrixDraftRepository(session)
+            snapshot = ProjectMatrixDraftSnapshot(
+                record=ProjectMatrixDraftRecord(
+                    project_matrix_draft_id="pmd-archived",
+                    project_id="P1",
+                    source_import_id=source_import_id,
+                    source_snapshot_id=source_snapshot.snapshot_id,
+                    status=ProjectMatrixDraftStatus.DRAFT,
+                    created_at="2026-05-22T10:00:00+00:00",
+                    updated_at="2026-05-22T10:00:00+00:00",
+                )
+            )
+            repo.create_snapshot(snapshot)
+            session.execute(
+                text(
+                    """
+                    UPDATE project_matrix_draft_records
+                    SET status = 'superseded'
+                    WHERE project_matrix_draft_id = 'pmd-archived'
+                    """
+                )
+            )
+            session.flush()
+            session.expire_all()
+
+            with pytest.raises(LookupError, match="no longer editable"):
+                repo.replace_snapshot(snapshot)
+
+            loaded = repo.get("pmd-archived")
+            assert loaded is not None
+            assert loaded.record.status == ProjectMatrixDraftStatus.SUPERSEDED
+    finally:
+        engine.dispose()
+
+
 def test_project_matrix_draft_repository_supports_revision_draft_nullable_source_import(
     tmp_path: Path,
 ) -> None:
@@ -710,6 +755,60 @@ def test_project_matrix_draft_repository_enforces_revision_base_uniqueness(
         engine.dispose()
 
 
+def test_project_matrix_draft_repository_replaces_stale_unreferenced_working_draft(
+    tmp_path: Path,
+) -> None:
+    engine = _create_temp_engine(tmp_path)
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    try:
+        with session_factory() as session:
+            _seed_project(session)
+            first_import_id, first_source = _seed_source_snapshot(session)
+            second_import_id, second_source = _seed_source_snapshot(
+                session,
+                draft_id="ptpd-seed-2",
+                source_document_path="C:/spec-2.docx",
+                source_asset_id="asset-2",
+            )
+            repo = ProjectMatrixDraftRepository(session)
+            first = ProjectMatrixDraftSnapshot(
+                record=ProjectMatrixDraftRecord(
+                    project_matrix_draft_id="pmd-working-1",
+                    project_id="P1",
+                    source_import_id=first_import_id,
+                    source_snapshot_id=first_source.snapshot_id,
+                    status=ProjectMatrixDraftStatus.DRAFT,
+                    created_at="2026-05-22T10:00:00+00:00",
+                    updated_at="2026-05-22T10:00:00+00:00",
+                )
+            )
+            second = ProjectMatrixDraftSnapshot(
+                record=ProjectMatrixDraftRecord(
+                    project_matrix_draft_id="pmd-working-2",
+                    project_id="P1",
+                    source_import_id=second_import_id,
+                    source_snapshot_id=second_source.snapshot_id,
+                    status=ProjectMatrixDraftStatus.DRAFT,
+                    created_at="2026-05-22T11:00:00+00:00",
+                    updated_at="2026-05-22T11:00:00+00:00",
+                )
+            )
+
+            repo.create_snapshot(first)
+            repo.create_snapshot(second)
+            session.commit()
+
+            assert repo.get("pmd-working-1") is None
+            assert repo.get("pmd-working-2") is not None
+            records = repo.list_by_project("P1")
+            assert [record.project_matrix_draft_id for record in records] == [
+                "pmd-working-2"
+            ]
+    finally:
+        engine.dispose()
+
+
 def _seed_project(session) -> None:
     ProjectRepository(session).create(
         Project(
@@ -724,18 +823,24 @@ def _seed_project(session) -> None:
     session.flush()
 
 
-def _seed_source_snapshot(session) -> tuple[str, object]:
+def _seed_source_snapshot(
+    session,
+    *,
+    draft_id: str = "ptpd-seed",
+    source_document_path: str = "C:/spec.docx",
+    source_asset_id: str = "asset-1",
+) -> tuple[str, object]:
     source_service = SourceMatrixImportPersistenceService(
         store=SourceMatrixImportRepository(session)
     )
     source_import_id = source_service.persist_from_draft(
         PersistSourceMatrixImportCommand(
             project_id="P1",
-            draft_id="ptpd-seed",
-            source_document_path="C:/spec.docx",
-            source_document_name="spec.docx",
+            draft_id=draft_id,
+            source_document_path=source_document_path,
+            source_document_name=Path(source_document_path).name,
             source_format=".docx",
-            source_asset_id="asset-1",
+            source_asset_id=source_asset_id,
             source_case_id="case-1",
             source_draft_id="draft-1",
             payload={

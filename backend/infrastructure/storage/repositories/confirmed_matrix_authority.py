@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from backend.domain import (
@@ -15,6 +15,7 @@ from backend.domain import (
     ConfirmedMatrixStatus,
     ConfirmedMatrixStepQuantity,
     ConfirmedMatrixVersion,
+    ProjectMatrixDraftStatus,
 )
 from backend.domain.confirmed_matrix_authority_models import (
     ConfirmedMatrixDurationAuthority,
@@ -26,6 +27,9 @@ from backend.infrastructure.storage.models_confirmed_matrix_authority import (
     ConfirmedMatrixStepQuantityModel,
     ConfirmedMatrixVersionModel,
     ConfirmedMatrixDurationAuthorityModel,
+)
+from backend.infrastructure.storage.models_project_matrix_draft import (
+    ProjectMatrixDraftRecordModel,
 )
 
 
@@ -43,6 +47,14 @@ class ConfirmedMatrixAuthorityRepository:
         self._session.add_all(_to_cell_models(snapshot.cells))
         self._session.add_all(_to_step_quantity_models(snapshot.step_quantities))
         self._session.add_all(_to_duration_authority_models(snapshot.duration_authorities))
+        self._session.execute(
+            update(ProjectMatrixDraftRecordModel)
+            .where(
+                ProjectMatrixDraftRecordModel.project_matrix_draft_id
+                == snapshot.version.project_matrix_draft_id
+            )
+            .values(status=ProjectMatrixDraftStatus.SUPERSEDED.value)
+        )
         self._session.flush()
         return snapshot
 
