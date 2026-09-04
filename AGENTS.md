@@ -3,6 +3,10 @@
 Keep this file small: it is loaded for every task. The User's current request defines scope. Real
 code and observable behavior outrank historical plans.
 
+The User-selected GPT-6 Astra is the current development model. Historical `sol_*` identifiers in
+the board/writer are compatibility names, not instructions to select GPT-5.6 Sol. The Chinese
+`docs/project_management/GPT6_ASTRA_USAGE_GUIDE.md` is an optional user guide, not another workflow.
+
 ## Read only what the task needs
 
 - Inspect the relevant code and tests. Read the `docs/task_board.md` control block for repository
@@ -44,6 +48,9 @@ code and observable behavior outrank historical plans.
   outcomes, new external/destructive authority, or an action that cannot be made safely reversible.
 - Make ordinary technical decisions—implementation, naming, module placement, tests, and tools—using
   the current code and the smallest coherent change.
+- Treat mid-task corrections as updates to the active request and preserve completed useful work.
+  If a skill causes a pause, identify its exact file and instruction; distinguish a real requirement
+  from an inferred preference. Skills cannot expand scope or require an already-authorized decision again.
 - Preserve unrelated User work. Never silently reset, restore, stash, clean, rebase, push, delete
   unrelated files, or overwrite external data.
 
@@ -74,6 +81,9 @@ code and observable behavior outrank historical plans.
 ## Validation and completion
 
 - Add regression protection for substantive behavior when a practical public seam exists.
+- Use skills as methods, proportional to the task. For ConnLab, a coherent TDD slice may group closely
+  related behavioral tests; it need not be one assertion or one file per cycle. Keep meaningful RED/GREEN
+  evidence for substantive behavior changes. Do not add implementation-mirroring tests for reversible low-impact edits.
 - Test observable behavior, public contracts, and durable risk boundaries. Do not freeze historical
   task IDs, private symbol names, source wording, file layout, or CSS literals unless that artifact is
   itself the supported contract.
@@ -86,12 +96,15 @@ code and observable behavior outrank historical plans.
 
 ## Task tiers
 
-- **Micro:** localized and unambiguous; Sol implements, self-reviews, and runs targeted validation.
-- **Standard:** substantive but not high risk; one Sol work unit plans, implements, self-reviews, and
+- **Micro:** localized and unambiguous; Astra implements, self-reviews, and runs targeted validation.
+- **Standard:** substantive but not high risk; one Astra work unit plans, implements, self-reviews, and
   runs targeted feedback checks; one focused review follows, then QA runs the complete matrix once.
 - **High risk:** database/schema migration, permissions/security, authoritative external mutation,
   destructive work, broad architecture change, or unresolved product choice; use independent
   Planner, Developer, Reviewer, QA, and Integrator contexts with automatic handoffs.
+
+Report actual review/test execution. Sequential passes by one agent are not independent agents.
+Use the detailed workflow for independent high-risk contexts; do not invent role evidence.
 
 Do not request routine Plan approval. At `ready_for_close`, final `关闭` releases WIP; in-scope User
 feedback must automatically run `Revise` and continue the same task without requiring Close or a new

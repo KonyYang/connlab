@@ -16,6 +16,8 @@ No dated Plan, task file, evidence file, snapshot, or archive overrides these so
 
 ## Focused current references
 
+- `docs/project_management/GPT6_ASTRA_USAGE_GUIDE.md`: Chinese user guide, task prompts, and Astra
+  usage advice; read for onboarding or workflow tuning, not as an extra mandatory task stage.
 - `docs/PROJECT_CONTEXT.md`: product authority, domain ownership, architecture, Windows, and Office.
 - `PRODUCT.md`, `DESIGN.md`, `DESIGN.json`: product and visual direction for substantive UI work.
 - `docs/FRONTEND_GUIDE.md`: current React/UI seams and proportional validation.

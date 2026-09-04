@@ -1,6 +1,10 @@
-# ConnLab Sol-Native Workflow
+# ConnLab Task Workflow — GPT-6 Astra
 
 Status: normative. This is ConnLab's only task-execution workflow.
+
+The User-selected model is GPT-6 Astra. This file's historical name and the writer's `sol_*` routes,
+schemas, mode, and command names remain stable for compatibility; they do not select a model.
+The optional [Chinese usage guide](GPT6_ASTRA_USAGE_GUIDE.md) explains this workflow to the User.
 
 `AGENTS.md` contains always-loaded rules, `docs/task_board.md` contains compact machine state, and
 `scripts/connlab_sol_task.py` is the only board writer. Historical task, Plan, role, and evidence files
@@ -29,7 +33,7 @@ next User message as follows:
   current task, in which case `CloseAndSubmit` may perform the atomic rollover.
 
 For Micro and Standard tasks, `scope_paths` is an initial navigation aid rather than a frozen file
-allowlist: Sol may touch additional files required by the same User-requested behavior when the exact
+allowlist: Astra may touch additional files required by the same User-requested behavior when the exact
 Git diff is reported and review attests `scope_ok`. Material behavior expansion still requires the
 User. High-risk tasks retain an exact approved-path allowlist and fail closed on any extra path.
 
@@ -51,12 +55,14 @@ documents or skills.
 Use for substantive product work without a high-risk fact.
 
 ```text
-one Sol work unit: compact plan -> implement -> self-review -> targeted Developer checks
+one Astra work unit: compact plan -> implement -> self-review -> targeted Developer checks
 -> focused Reviewer -> bounded fix if needed -> one complete QA pass -> integrate -> finish
 ```
 
 Planning and implementation remain one continuous unit. A bounded finding returns to that unit; it
 does not recreate planning, approval, or role state.
+The focused review may be a distinct pass by the current agent; record it as such. An independent
+review requires an actual separate context. Do not create role agents merely to populate report keys.
 
 ### High risk
 
@@ -70,6 +76,11 @@ Planner -> Developer -> Reviewer -> QA -> Integrator -> finish
 Use independent contexts and automatic compact handoffs. A worktree is optional isolation chosen from
 actual risk, not a mandatory host. Routine plans still do not require User approval when they stay
 inside the request and existing authority.
+The independent contexts here are a project requirement for high-risk execution. When the environment
+permits delegation, assign bounded roles using its agent tools and pass compact context. A general
+skill's same-agent default does not replace this requirement. If independent contexts are unavailable,
+report the actual limitation and continue only work that does not depend on the missing check; do not
+claim an independent pass occurred. Do not create user-visible tasks for internal role work.
 
 ## Verification responsibilities
 
@@ -88,6 +99,33 @@ inside the request and existing authority.
 
 `code-review`, TDD, diagnosis, codebase-design, and browser tools are methods invoked by their real
 task trigger. They never create a second workflow.
+
+## Astra efficiency and evidence
+
+Use a short outcome, relevant context, scope, and observable acceptance criteria. Select implementation
+details autonomously. Group related tests into coherent behavior slices; preserve useful failure-before-
+fix evidence without requiring one assertion per tool call. Documents and literal edits normally need
+diff/link or focused checks, not new test suites. These project-specific choices take precedence over
+generic skill preferences while respecting higher-priority instructions and actual permissions.
+
+Choose the final test matrix from the affected dependency paths. Complete it once on the final reviewed
+state; new edits or findings justify rerunning affected checks. An unrelated failed test is not a passing
+suite: report it separately and substantiate any claim that it predates this task.
+
+Use `scripts/run_tests.ps1` for the current full gate. It excludes `office_integration` from Python tests,
+then runs frontend tests and build sequentially. `-Suite Python` and `-Suite Frontend` select a side;
+`-Suite Office` explicitly runs installed-Office integration checks when relevant. Narrow public-seam
+tests remain appropriate during implementation. Check the actual interpreter before testing; do not
+recreate Python environments as a routine model-upgrade step.
+
+Batch independent read-only discovery. Use structured argument lists or a serialized payload file for
+complex commands; never hand-compose unescaped JSON in PowerShell. For Git writes, inspect the actual
+permission boundary and request the needed access before executing a known-to-fail command.
+
+User updates steer the existing task. Recovery reads current board/Git and useful evidence, rather than
+replaying successful transitions. Report outcome, verification, and material remaining work in concise
+Chinese. If timing is requested, distinguish tool durations from approximate stage intervals; use existing
+timestamps only. Name self-review and independent review accurately.
 
 ## Board interface and recovery
 

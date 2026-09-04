@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_ASTRA_USAGE_GUIDE",
+    "summary": "Create a Chinese GPT-6 Astra usage guide and align active documentation.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Documentation-only Astra usage and proportional execution guidance.",
+    "scope_paths": [
+      "AGENTS.md",
+      "docs/INDEX.md",
+      "docs/project_management/SOL_NATIVE_WORKFLOW.md",
+      "docs/project_management/GPT6_ASTRA_USAGE_GUIDE.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "9dc15b1ddf22dbdcb3a50a7cde3878de5a154cc0",
+    "started_at": "2026-09-04T23:17:00.410896Z",
+    "updated_at": "2026-09-04T23:17:00.410896Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_REPOSITORY_TEST_BASELINE_REPAIR",
     "tier": "standard",
