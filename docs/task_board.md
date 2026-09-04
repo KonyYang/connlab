@@ -37,15 +37,15 @@
     ],
     "activation_head": "cd85caadf45e16a39332f93b986dfd70562799d8",
     "started_at": "2026-09-04T00:09:51.155757Z",
-    "updated_at": "2026-09-04T00:11:50.118980Z",
+    "updated_at": "2026-09-04T04:36:54.888126Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_DRAFT_LIFECYCLE_GOVERNANCE",
       "stage": "planning",
-      "status": "blocked",
-      "summary": "Choose whether authority-linked draft lineage is archived in place or physically removed through a broad confirmed-authority migration.",
-      "requires_user": true
+      "status": "running",
+      "summary": "User accepted archive authority-linked drafts, keep one working draft, and clean only stale unreferenced drafts.",
+      "requires_user": false
     },
     "report": null
   },
