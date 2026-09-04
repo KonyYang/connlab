@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_DRAFT_LIFECYCLE_GOVERNANCE",
     "summary": "Govern Matrix draft lifecycle so only one working draft is current, authority-linked lineage is explicit, and stale unreferenced drafts can be cleaned safely.",
@@ -35,17 +35,73 @@
     ],
     "activation_head": "cd85caadf45e16a39332f93b986dfd70562799d8",
     "started_at": "2026-09-04T00:09:51.155757Z",
-    "updated_at": "2026-09-04T05:50:28.888011Z",
+    "updated_at": "2026-09-04T05:51:46.892521Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_DRAFT_LIFECYCLE_GOVERNANCE",
-      "stage": "scope_manifest_correction",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User accepted the recommended Matrix draft lifecycle governance policy and its exact implementation scope.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_DRAFT_LIFECYCLE_GOVERNANCE",
+      "subject": "5122fdd93888992e6c377bf634749fa9ea287945",
+      "summary": "Matrix draft lifecycle now archives authority-linked lineage, keeps one editable draft, and removes only stale unreferenced aggregates.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/infrastructure/storage/database.py",
+        "backend/infrastructure/storage/matrix_draft_lifecycle_migration.py",
+        "backend/infrastructure/storage/repositories/confirmed_matrix_authority.py",
+        "backend/infrastructure/storage/repositories/project_matrix_draft.py",
+        "docs/PROJECT_CONTEXT.md",
+        "tests/unit/test_confirmed_matrix_authority_repository.py",
+        "tests/unit/test_database.py",
+        "tests/unit/test_project_matrix_draft_repository.py"
+      ],
+      "validation": [
+        {
+          "name": "python_compile",
+          "status": "passed",
+          "summary": "Changed Python modules compile."
+        },
+        {
+          "name": "matrix_lifecycle_related_pytest",
+          "status": "passed",
+          "summary": "68 related unit and integration tests passed."
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed",
+          "summary": "Accepted lifecycle policy mapped to reversible authority-safe transitions."
+        },
+        "developer": {
+          "status": "passed",
+          "summary": "Migration, repository invariants, documentation, and tests implemented."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Standards and specification review found no in-scope defects."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Targeted lifecycle regression matrix passed on final code state."
+        },
+        "integrator": {
+          "status": "passed",
+          "summary": "Exact committed diff and database startup integration verified."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "verified_local",
+        "summary": "Startup reconciliation and repository transitions are wired through existing database and authority seams."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_DRAFT_DUPLICATE_ROW_IDENTITY",
