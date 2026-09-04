@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_REPOSITORY_TEST_BASELINE_REPAIR",
     "summary": "Repair the repository test baseline by resolving Draft Measurement Plan Excel gateway import errors and the Product Spec Matrix Group P label contract mismatch.",
@@ -30,9 +30,64 @@
     "risk_reasons": [],
     "activation_head": "058d7db51dbf4cefffd9faa0278b20db5b545394",
     "started_at": "2026-09-04T09:54:36.229118Z",
-    "updated_at": "2026-09-04T09:54:36.229118Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-04T10:07:27.800692Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_REPOSITORY_TEST_BASELINE_REPAIR",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_REPOSITORY_TEST_BASELINE_REPAIR",
+      "subject": "7d246edbde386f32581a449a77c969a56debd164",
+      "summary": "Restored the repository test baseline by correcting Draft Measurement Plan workbook layout imports and preserving the supported Group P label contracts.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/infrastructure/office/draft_measurement_plan_workbook_gateway.py",
+        "backend/modules/test_plan/product_spec_matrix_parser.py"
+      ],
+      "validation": [
+        {
+          "name": "targeted_regressions",
+          "status": "passed",
+          "summary": "31 parser and workbook gateway tests passed."
+        },
+        {
+          "name": "full_pytest",
+          "status": "passed",
+          "summary": "2569 passed, 4 skipped, 1 warning."
+        },
+        {
+          "name": "static_checks",
+          "status": "passed",
+          "summary": "git diff --check and Python compilation passed."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented the two minimal production fixes against existing regression tests."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Standards and requirement review found no remaining findings or scope creep."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Targeted and full repository pytest suites passed on the final code state."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "verified_local",
+        "summary": "The corrected imports collect successfully and both Group P label forms remain compatible."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_DRAFT_LIFECYCLE_GOVERNANCE",
