@@ -10,10 +10,8 @@ from openpyxl import Workbook
 from backend.application.draft_measurement_plan_workbook_projection import (
     DraftMeasurementPlanWorkbookProjection,
 )
-from backend.infrastructure.office.llcr_cr_specialized_record_workbook_gateway import (
-    LLCR_CR_RECORD_LAYOUT_V1,
-)
 from backend.infrastructure.office.llcr_cr_record_workbook_layout import (
+    LLCR_CR_RECORD_LAYOUT_V1,
     write_record_sheet,
 )
 

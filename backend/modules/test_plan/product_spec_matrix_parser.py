@@ -104,7 +104,7 @@ class ProductSpecMatrixParser:
 
     _GROUP_RE = re.compile(r"\bgroup\s*(\d+)\b", re.IGNORECASE)
     _GROUP_PREFIXED_LETTER_RE = re.compile(
-        r"group\s*(?P<label>[a-z])(?:\s*\([a-z0-9]+\))?",
+        r"group\s*(?P<label>[a-z])(?P<marker>\s*\([a-z0-9]+\))?",
         re.IGNORECASE,
     )
     _GROUP_NUMERIC_RE = re.compile(r"^\s*\d+[a-z]?\s*$", re.IGNORECASE)
@@ -243,7 +243,9 @@ class ProductSpecMatrixParser:
         prefixed_letter = cls._GROUP_PREFIXED_LETTER_RE.fullmatch(normalized)
         if prefixed_letter is None:
             return None
-        return prefixed_letter.group("label").upper()
+        if prefixed_letter.group("marker"):
+            return prefixed_letter.group("label").upper()
+        return _clean(source)
 
     def _parse_table(
         self,
