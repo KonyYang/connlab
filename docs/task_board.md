@@ -19,16 +19,14 @@
     "route": "full_chain",
     "scope": "Define and implement Matrix draft lifecycle transitions and safe cleanup without weakening confirmed Matrix authority or traceability.",
     "scope_paths": [
-      "backend/application/matrix_draft_lifecycle_service.py",
-      "backend/application/matrix_editor_session_publication.py",
-      "backend/application/matrix_editor_session_contracts.py",
-      "backend/infrastructure/storage/repositories/project_matrix_draft.py",
-      "backend/infrastructure/storage/database_general_migrations.py",
       "backend/infrastructure/storage/database.py",
-      "tests/unit/test_matrix_draft_lifecycle_service.py",
-      "tests/unit/test_matrix_editor_session_service.py",
-      "tests/unit/test_project_matrix_draft_repository.py",
-      "tests/unit/test_database.py"
+      "backend/infrastructure/storage/matrix_draft_lifecycle_migration.py",
+      "backend/infrastructure/storage/repositories/confirmed_matrix_authority.py",
+      "backend/infrastructure/storage/repositories/project_matrix_draft.py",
+      "docs/PROJECT_CONTEXT.md",
+      "tests/unit/test_confirmed_matrix_authority_repository.py",
+      "tests/unit/test_database.py",
+      "tests/unit/test_project_matrix_draft_repository.py"
     ],
     "risk_reasons": [
       "database lifecycle migration",
@@ -37,14 +35,14 @@
     ],
     "activation_head": "cd85caadf45e16a39332f93b986dfd70562799d8",
     "started_at": "2026-09-04T00:09:51.155757Z",
-    "updated_at": "2026-09-04T04:36:54.888126Z",
+    "updated_at": "2026-09-04T05:50:28.888011Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_DRAFT_LIFECYCLE_GOVERNANCE",
-      "stage": "planning",
+      "stage": "scope_manifest_correction",
       "status": "running",
-      "summary": "User accepted archive authority-linked drafts, keep one working draft, and clean only stale unreferenced drafts.",
+      "summary": "User accepted the recommended Matrix draft lifecycle governance policy and its exact implementation scope.",
       "requires_user": false
     },
     "report": null
