@@ -11,102 +11,44 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
-    "task_id": "TASK_MATRIX_DRAFT_DUPLICATE_ROW_IDENTITY",
-    "summary": "Prevent Matrix Editor session restoration from duplicating repeated test rows and step sequences.",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Reproduce and fix Matrix Editor draft/source row reconciliation when multiple rows share the same test item and section identity.",
+    "task_id": "TASK_MATRIX_DRAFT_LIFECYCLE_GOVERNANCE",
+    "summary": "Govern Matrix draft lifecycle so only one working draft is current, authority-linked lineage is explicit, and stale unreferenced drafts can be cleaned safely.",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Define and implement Matrix draft lifecycle transitions and safe cleanup without weakening confirmed Matrix authority or traceability.",
     "scope_paths": [
-      "docs/task_board.md",
-      "frontend/src/features/matrix-editor/matrixEditorDraftModel.ts",
-      "frontend/src/features/matrix-editor/matrixEditorDraftModel.test.ts"
+      "backend/application/matrix_draft_lifecycle_service.py",
+      "backend/application/matrix_editor_session_publication.py",
+      "backend/application/matrix_editor_session_contracts.py",
+      "backend/infrastructure/storage/repositories/project_matrix_draft.py",
+      "backend/infrastructure/storage/database_general_migrations.py",
+      "backend/infrastructure/storage/database.py",
+      "tests/unit/test_matrix_draft_lifecycle_service.py",
+      "tests/unit/test_matrix_editor_session_service.py",
+      "tests/unit/test_project_matrix_draft_repository.py",
+      "tests/unit/test_database.py"
     ],
-    "risk_reasons": [],
-    "activation_head": "e1d24db2ffc0e12f4130036016d048052d1f9286",
-    "started_at": "2026-09-03T15:57:58.369750Z",
-    "updated_at": "2026-09-03T23:54:18.080904Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_MATRIX_DRAFT_DUPLICATE_ROW_IDENTITY",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_MATRIX_DRAFT_DUPLICATE_ROW_IDENTITY",
-      "subject": "6747cfffa797890373414e89220ba0aed3e707f7",
-      "changed_paths": [
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.import.test.tsx",
-        "frontend/src/features/matrix-editor/matrixEditorDraftModel.ts",
-        "frontend/src/features/matrix-editor/matrixEditorDraftModel.test.ts"
-      ],
-      "summary": "Matrix repeated identities reconcile one-to-one, and successful Replace renders the persisted replacement draft directly so stale preview rows cannot be merged back into the editor.",
-      "scope_ok": true,
-      "validation": [
-        {
-          "name": "Matrix import regression suite (17 tests)",
-          "status": "passed"
-        },
-        {
-          "name": "Matrix Editor frontend suite (104 tests)",
-          "status": "passed"
-        },
-        {
-          "name": "frontend full suite (471 tests)",
-          "status": "passed"
-        },
-        {
-          "name": "frontend production build",
-          "status": "passed"
-        },
-        {
-          "name": "focused standards and specification review",
-          "status": "passed"
-        }
-      ],
-      "roles": {
-        "planner": {
-          "status": "passed",
-          "summary": "Isolated row identity reconciliation and post-commit preview merging as the two stale-row boundaries."
-        },
-        "developer": {
-          "status": "passed",
-          "summary": "Kept repeated identities one-to-one and made the committed backend replacement draft authoritative after Replace."
-        },
-        "reviewer": {
-          "status": "passed",
-          "summary": "No standards or specification findings; ordinary session restoration remains unchanged."
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Covered stale 5000 MΩ preview versus clean 1500 MΩ committed response and ran the complete frontend matrix."
-        },
-        "integrator": {
-          "status": "passed",
-          "summary": "Production build passed on the committed task subject."
-        }
-      },
-      "integration": {
-        "mode": "verified_local",
-        "status": "passed"
-      }
-    }
+    "risk_reasons": [
+      "database lifecycle migration",
+      "destructive cleanup of unreferenced drafts",
+      "confirmed Matrix authority lineage"
+    ],
+    "activation_head": "cd85caadf45e16a39332f93b986dfd70562799d8",
+    "started_at": "2026-09-04T00:09:51.155757Z",
+    "updated_at": "2026-09-04T00:09:51.155757Z",
+    "checkpoint": null,
+    "report": null
   },
   "last_closed": {
-    "task_id": "REPORT-003B-R2",
+    "task_id": "TASK_MATRIX_DRAFT_DUPLICATE_ROW_IDENTITY",
     "tier": "standard",
-    "subject": "bd0f9b689acdca3c3646e611fb0338873123eefa",
-    "summary": "Align controlled internal-report typography and Equipment List output with the approved business format while preserving calibration waivers.",
+    "subject": "6747cfffa797890373414e89220ba0aed3e707f7",
+    "summary": "Prevent Matrix Editor session restoration from duplicating repeated test rows and step sequences.",
     "disposition": "completed",
-    "decision_ref": "user:关闭 REPORT-003B-R2 并立即建立回归测试并实施修复",
-    "closed_at": "2026-09-03T15:56:25.654791Z"
+    "decision_ref": "User explicitly closed the duplicate-row task and requested a separate Matrix draft lifecycle governance task.",
+    "closed_at": "2026-09-04T00:09:51.155757Z"
   },
   "retained_history": []
 }
