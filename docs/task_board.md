@@ -11,8 +11,23 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_RELEASE_SMOKE_20260905",
+    "summary": "Build the Matrix reliability browser release and validate its isolated local operator flow; deliver a second-computer smoke checklist.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Package existing verified code in a new directory; isolate all runtime data, preserve current installation and real data; no unrelated UI changes or deployment to other computers.",
+    "scope_paths": [
+      "docs/project_management/MATRIX_RELEASE_SMOKE_20260905.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "ef44aca3986716a4681372a96ed28a3b5e7c8785",
+    "started_at": "2026-09-05T02:08:04.985893Z",
+    "updated_at": "2026-09-05T02:08:04.985893Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_MATRIX_EXPERIENCE_RELIABILITY_BATCH1",
     "tier": "standard",
