@@ -273,7 +273,7 @@ class ProjectTestPlanSourceCandidateService:
                     or path.suffix.casefold() not in self._RESOLVED_DIRECTORY_EXTENSIONS
                 ):
                     continue
-                file_fingerprint = _regular_file_fingerprint(path)
+                file_fingerprint = _regular_file_metadata_fingerprint(path)
                 if file_fingerprint is None:
                     continue
                 if path.resolve(strict=True).parent != canonical_directory:
@@ -385,28 +385,18 @@ def _resolved_directory_title(source: str) -> str:
     return "Project source files"
 
 
-def _regular_file_fingerprint(path: Path) -> str | None:
-    before = path.stat(follow_symlinks=False)
-    if not stat.S_ISREG(before.st_mode):
+def _regular_file_metadata_fingerprint(path: Path) -> str | None:
+    """Picker freshness only: a filename list is not an approved content snapshot.
+
+    Read no document bytes here. Selection goes through the existing complete preview
+    and import validation, including when an external tool preserves file timestamps.
+    """
+    value = path.stat(follow_symlinks=False)
+    if not stat.S_ISREG(value.st_mode):
         return None
-    content_digest = hashlib.sha256()
-    with path.open("rb") as source:
-        for chunk in iter(lambda: source.read(1024 * 1024), b""):
-            content_digest.update(chunk)
-    after = path.stat(follow_symlinks=False)
-    before_identity = _stat_identity(before)
-    if before_identity != _stat_identity(after):
-        raise ProjectTestPlanSourceCandidateError(
-            "A project source file changed while it was being inspected."
-        )
-    return ":".join((*before_identity, content_digest.hexdigest()))
-
-
-def _stat_identity(value: object) -> tuple[str, ...]:
-    return tuple(
-        str(getattr(value, field))
-        for field in ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
-    )
+    return ":".join(str(getattr(value, field)) for field in (
+        "st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns",
+    ))
 
 
 def _opaque_candidate_id(

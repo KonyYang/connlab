@@ -8,9 +8,9 @@ Baseline: clean primary after the completed Workbench feedback task (2026-09-05)
 | Original item | Acceptance | State |
 | --- | --- | --- |
 | 6 | Main table gains usable space; details can collapse/reopen without losing edits; readable typography; validation errors locate the relevant input; browser checks at laptop/narrow widths | Completed in batch 1 |
-| 7 | Record comparable input/derived-work baseline; reduce demonstrated unnecessary whole-table work; export-only payloads built on demand; preserve save/confirm/export results | Implemented; final QA pending |
-| 8 | Candidate listing avoids full content validation; selected source receives full validation before import; errors/stale selection/cancellation remain safe | Pending |
-| 9 | Backend owns continuous output chain, with durable progress and safe interruption/retry; no duplicate outputs or unintended overwrite; preserve conflict previews and business authority | Independent planning in progress |
+| 7 | Record comparable input/derived-work baseline; reduce demonstrated unnecessary whole-table work; export-only payloads built on demand; preserve save/confirm/export results | Completed in batch 2 |
+| 8 | Candidate listing avoids full content validation; selected source receives full validation before import; errors/stale selection/cancellation remain safe | Implemented; final QA pending |
+| 9 | Backend owns continuous output chain, with durable progress and safe interruption/retry; no duplicate outputs or unintended overwrite; preserve conflict previews and business authority | Independent Developer implementing |
 | 10 | Inspect actual dependency/Mixin/migration hotspots; implement only justified cohesive improvements or record evidence for no change; keep needed migration history | Pending |
 
 ## Execution and constraints
@@ -31,7 +31,7 @@ Initial discovery: primary clean, board idle, existing MatrixEditorWorkspace/Mat
 ProjectWorkbenchActiveMatrixWorkspace are the current UI seams. Legacy simulated step statuses were
 already removed and must remain removed. Independent item-9 planner is inspecting the existing chain.
 
-Item 6 completed; item 7 implemented; 8-10 remain pending. Do not finish the overall goal or board yet.
+Items 6-7 completed; item 8 awaits final QA; item 9 implementing; item 10 pending. Do not finish the overall goal or board yet.
 
 ### Item 6 verification
 
@@ -82,7 +82,31 @@ RED: public LLCR component using the new request factory sent missing draft data
 GREEN: 43 affected editing/lifecycle/duration/export tests, plus final profile/component checks passed.
 Added public Workspace/API test verifies unsaved XLSX values and stable request snapshot while the
 operator continues editing during preview. Existing Word, LLCR, Test Status, save and confirm tests retained.
-Standards and spec review: same-agent separate passes, no remaining finding. Final clean-source QA pending.
+Standards and spec review: same-agent separate passes, no remaining finding. Source `c4309299` final
+clean-source QA: full frontend 487 passed, 1 opt-in diagnostic skipped, 46.64s; TypeScript/Vite build
+passed (Vite 1.02s). No layout/observable UI change in this batch; public UI tests cover affected behavior.
+
+### Item 8 lightweight discovery and selected validation
+
+Baseline `c4309299`: eight synthetic 1 MiB files; listing read 8 MiB and resolving one candidate read
+another 8 MiB. Measured listing 102.71 ms. After: both operations read zero document bytes; listing
+1.50 ms on this machine's temporary local directory (not a network-drive latency promise).
+`test_candidate_listing_and_resolution_do_not_read_all_file_contents` supplies reproducible filesystem
+read evidence and was RED on baseline before implementation. Final per-file content parsing remains in
+the selected preview; import validation, authority fingerprints and source snapshots are unchanged.
+
+Picker identifiers now bind project, current directory, filename and file metadata (device/inode/size/
+modification/change time), not an upfront content digest. Metadata changes, rename, directory change,
+missing file, cross-project selection and symlink protections remain. This deliberately moves content
+verification out of the filename list: preserving all metadata can retain an ID, but does NOT approve
+the bytes; the selected source must still pass full preview/commit checks. The old same-metadata test
+was replaced with a real XLSX public-API test: a valid workbook becomes corrupt at identical size and
+restored timestamps, and selected preview blocks it. Ordinary changed-metadata expiry remains tested.
+
+A Windows-native ChangeTime experiment failed the same-tick replacement case and was removed rather
+than adding an OS-specific journal dependency. No new modules, caches, schema or dependencies remain.
+Developer checks: 24 passed, 1 symlink skip (host privilege unavailable), 2 real-Word tests deselected.
+Final clean-source selected/import QA pending. Frontend request cancellation/stale-response logic is unchanged.
 
 ### Item 9 independent planning evidence
 

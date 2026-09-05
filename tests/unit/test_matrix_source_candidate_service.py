@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 import os
 from pathlib import Path
+from time import perf_counter
 
 import pytest
 
@@ -11,6 +12,35 @@ from backend.application.project_test_plan_source_candidate_service import (
     ProjectTestPlanSourceCandidateService,
 )
 from backend.domain import FileAsset, FileAssetType, Project, ProjectStatus
+
+
+def test_candidate_listing_and_resolution_do_not_read_all_file_contents(tmp_path: Path, monkeypatch) -> None:
+    official = tmp_path / "official"
+    submitted = official / "Submitted Material"
+    submitted.mkdir(parents=True)
+    for index in range(8):
+        (submitted / f"matrix-{index}.docx").write_bytes(b"x" * 1024 * 1024)
+    service = _service(assets=[], official_folder=official)
+    original_open = Path.open
+    content_bytes = 0
+
+    def observed_open(path, *args, **kwargs):
+        nonlocal content_bytes
+        if path.parent == submitted and args and args[0] == "rb":
+            content_bytes += path.stat().st_size
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", observed_open)
+    started = perf_counter()
+    listed = service.list_resolved_directory_candidates("P1")
+    listing_ms = (perf_counter() - started) * 1000
+    listing_bytes = content_bytes
+    selected = service.get_resolved_directory_candidate_source_path("P1", listed.candidates[0].candidate_id)
+    print(f"CANDIDATE_PROFILE files=8 size=1MiB listing_ms={listing_ms:.2f} "
+          f"listing_bytes={listing_bytes} resolution_bytes={content_bytes - listing_bytes}")
+    assert selected.name == "matrix-0.docx"
+    assert len(listed.candidates) == 8
+    assert content_bytes == 0, "Candidate discovery must not read document contents; preview validates selection."
 
 
 def test_list_source_candidates_ranks_likely_spec_docx_first(tmp_path: Path) -> None:
@@ -176,7 +206,7 @@ def test_resolved_directory_candidates_list_direct_supported_files_in_filename_o
     } == before
 
 
-def test_resolved_directory_candidate_id_expires_after_same_name_content_replacement(
+def test_resolved_directory_candidate_id_expires_after_changed_file_metadata(
     tmp_path: Path,
 ) -> None:
     official = tmp_path / "official"
@@ -189,7 +219,7 @@ def test_resolved_directory_candidate_id_expires_after_same_name_content_replace
     original_times = (source.stat().st_atime_ns, source.stat().st_mtime_ns)
 
     source.write_bytes(b"other-content")
-    os.utime(source, ns=original_times)
+    os.utime(source, ns=(original_times[0], original_times[1] + 1_000_000_000))
 
     with pytest.raises(ProjectTestPlanSourceCandidateNotFoundError):
         service.get_resolved_directory_candidate_source_path("P1", candidate_id)

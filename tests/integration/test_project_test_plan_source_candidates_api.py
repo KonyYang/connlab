@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from docx import Document
+from openpyxl import Workbook
 from fastapi.testclient import TestClient
 import pytest
 from sqlalchemy.orm import Session
@@ -206,7 +207,7 @@ def test_resolved_directory_preview_generates_pdf_token_for_docx(
         engine.dispose()
 
 
-def test_resolved_directory_preview_rejects_in_place_same_name_replacement(
+def test_resolved_directory_preview_validates_content_even_when_metadata_is_preserved(
     tmp_path: Path,
 ) -> None:
     client, engine = _client(tmp_path)
@@ -215,25 +216,51 @@ def test_resolved_directory_preview_rejects_in_place_same_name_replacement(
         official = tmp_path / "official"
         submitted = official / "Submitted Material"
         submitted.mkdir(parents=True)
-        source = submitted / "matrix.docx"
-        source.write_bytes(b"first-content")
+        source = submitted / "matrix.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.append(["Test Item", "Section", "Test Method", "Condition", "Requirement", "Group 1", "Notes"])
+        sheet.append(["Visual", "5.1", "EIA-364-18", "10x", "No damage", "1", ""])
+        sheet.append(["Sample size", "", "", "", "", "5", ""])
+        sheet.append(["Time", "", "", "", "", "0 d", ""])
+        sheet.append(["Fee", "", "", "", "", "", ""])
+        workbook.save(source)
+        workbook.close()
         _create_workspace("P1", official, tmp_path)
         listed = client.get(
             "/api/projects/P1/test-plan/source-candidates",
             params={"view": "resolved_directory"},
         )
         candidate_id = listed.json()["candidates"][0]["candidate_id"]
+        valid_preview = client.post(
+            f"/api/projects/P1/test-plan/source-candidates/{candidate_id}/matrix-preview",
+            params={"view": "resolved_directory"},
+        )
+        assert valid_preview.status_code == 200
+        assert valid_preview.json()["capability_status"] == "supported"
+        assert valid_preview.json()["rows"][0]["test_item"] == "Visual"
         original_times = (source.stat().st_atime_ns, source.stat().st_mtime_ns)
 
-        source.write_bytes(b"other-content")
+        source.write_bytes(b"x" * source.stat().st_size)
         os.utime(source, ns=original_times)
 
         response = client.post(
             f"/api/projects/P1/test-plan/source-candidates/{candidate_id}/matrix-preview",
             params={"view": "resolved_directory"},
         )
-        assert response.status_code == 404
-        assert "no longer available" in response.json()["detail"]
+        # POSIX ctime may invalidate this picker token; Windows ctime is creation
+        # time. Either way the *selected preview*, not the list, validates content.
+        if response.status_code == 404:
+            current = client.get("/api/projects/P1/test-plan/source-candidates", params={"view": "resolved_directory"})
+            candidate_id = current.json()["candidates"][0]["candidate_id"]
+            response = client.post(
+                f"/api/projects/P1/test-plan/source-candidates/{candidate_id}/matrix-preview",
+                params={"view": "resolved_directory"},
+            )
+        assert response.status_code == 200
+        assert response.json()["capability_status"] == "unsupported"
+        assert response.json()["blockers"]
+        assert response.json()["groups"] == []
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
