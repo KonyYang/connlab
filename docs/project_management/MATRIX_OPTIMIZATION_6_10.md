@@ -7,7 +7,7 @@ Baseline: clean primary after the completed Workbench feedback task (2026-09-05)
 
 | Original item | Acceptance | State |
 | --- | --- | --- |
-| 6 | Main table gains usable space; details can collapse/reopen without losing edits; readable typography; validation errors locate the relevant input; browser checks at laptop/narrow widths | In progress |
+| 6 | Main table gains usable space; details can collapse/reopen without losing edits; readable typography; validation errors locate the relevant input; browser checks at laptop/narrow widths | Completed in batch 1 |
 | 7 | Record comparable input/derived-work baseline; reduce demonstrated unnecessary whole-table work; export-only payloads built on demand; preserve save/confirm/export results | Pending measurement |
 | 8 | Candidate listing avoids full content validation; selected source receives full validation before import; errors/stale selection/cancellation remain safe | Pending |
 | 9 | Backend owns continuous output chain, with durable progress and safe interruption/retry; no duplicate outputs or unintended overwrite; preserve conflict previews and business authority | Independent planning in progress |
@@ -31,7 +31,36 @@ Initial discovery: primary clean, board idle, existing MatrixEditorWorkspace/Mat
 ProjectWorkbenchActiveMatrixWorkspace are the current UI seams. Legacy simulated step statuses were
 already removed and must remain removed. Independent item-9 planner is inspecting the existing chain.
 
-No item is marked complete yet. Test results and immutable source subjects will be appended per batch.
+Item 6 completed; 7-10 remain active/pending. Do not finish the overall goal or board yet.
+
+### Item 6 verification
+
+Source: `e00ffd7c951b8948ab5057f48ecedcdef7f20fc2`.
+- Editor: details toggle keeps current step text; full-width mode; table text 8.5 -> 13px,
+  headers/group inputs 12px, detail inputs 13px. Workbench tokens 11 -> 13px, still initial black.
+- Errors: current step format/sequence, sample quantity, group-name and row-duration errors have
+  clickable input locations and aria-invalid feedback. Targets use stable IDs even with duplicate labels.
+  Existing validation semantics are unchanged; no new requirement or execution state introduced.
+- RED: public UI tests failed because Hide step/workbench details buttons were absent.
+  GREEN: 69 affected editor/layout tests passed. Final full frontend Vitest (`--maxWorkers=2`) and
+  TypeScript/Vite build passed on the committed source (Vite 1.06s); no backend code changed.
+- Browser at 1366px: active Workbench main width 842 -> 1214px (+372px); editor grid 920 -> 1240px
+  (+320px) when details collapsed. Real page only inspected/toggled, never edited.
+- Isolated backend/API fixture at ports 8017/5187: edited step description, collapsed/reopened and verified
+  exact text retained. Invalid Row 1 Group 1 became a clickable issue; click focused that textarea with
+  aria-invalid=true; restoring 1 removed the issue. 616px viewport: document width 601px, no page overflow.
+  Screenshot inspected, temporary viewport reset, isolated browser tab closed.
+- Standards review: no remaining finding after replacing label-based focus with stable input identity.
+  Spec review: no finding; existing design/business actions retained. Same-agent passes, not independent roles.
+
+### Next action: item 7 measurement
+
+Current Workspace reconstructs save payload/signature, step validation, schedule, selected-group details,
+Test Record request and XLSX request during render. Measure first on current committed code. Use a fixed
+synthetic large Matrix and comparable input/selection actions; do not edit the real user's project.
+Both export request builders are current candidates for on-demand construction; distinguish time/calls
+saved from whole-page improvement. Reuse existing testSupport/buildSessionSeed and API seams. Do not
+repeat item-6 full validation without new affected source changes.
 
 ### Item 9 independent planning evidence
 
