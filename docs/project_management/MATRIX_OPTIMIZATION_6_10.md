@@ -10,7 +10,7 @@ Baseline: clean primary after the completed Workbench feedback task (2026-09-05)
 | 6 | Main table gains usable space; details can collapse/reopen without losing edits; readable typography; validation errors locate the relevant input; browser checks at laptop/narrow widths | Completed in batch 1 |
 | 7 | Record comparable input/derived-work baseline; reduce demonstrated unnecessary whole-table work; export-only payloads built on demand; preserve save/confirm/export results | Completed in batch 2 |
 | 8 | Candidate listing avoids full content validation; selected source receives full validation before import; errors/stale selection/cancellation remain safe | Completed in batch 3 |
-| 9 | Backend owns continuous output chain, with durable progress and safe interruption/retry; no duplicate outputs or unintended overwrite; preserve conflict previews and business authority | Independent Developer implementing |
+| 9 | Backend owns continuous output chain, with durable progress and safe interruption/retry; no duplicate outputs or unintended overwrite; preserve conflict previews and business authority | Implemented and independently reviewed; final QA running |
 | 10 | Inspect actual dependency/Mixin/migration hotspots; implement only justified cohesive improvements or record evidence for no change; keep needed migration history | Completed in batch 4; no broad rewrite justified |
 
 ## Execution and constraints
@@ -31,7 +31,7 @@ Initial discovery: primary clean, board idle, existing MatrixEditorWorkspace/Mat
 ProjectWorkbenchActiveMatrixWorkspace are the current UI seams. Legacy simulated step statuses were
 already removed and must remain removed. Independent item-9 planner is inspecting the existing chain.
 
-Items 6-8 and 10 completed; item 9 implementing. Do not finish the overall goal or board yet.
+Items 6-8 and 10 completed; item 9 implemented/reviewed, final QA pending. Do not finish the overall goal or board yet.
 
 ### Item 6 verification
 
@@ -205,3 +205,28 @@ optional-email-missing cases complete; repeated Start/Resume preserve output byt
 exactly five output records. This caught and fixed a real integration regression: missing optional
 email was incorrectly treated as a fatal partial collection. Missing/failed/conflicting files still stop.
 Fixture setup errors were corrected without changing product validation; they are not regression RED evidence.
+
+Item-9 immutable implementation: `90d6d60cb2eb0c3eb7935bf4aadf8355c1e57718`.
+Independent Reviewer reproduced one P1: after the workspace checkpoint, replacing the official
+directory while retaining the sibling manifest could allow subsequent writes into a foreign directory.
+Bounded correction `dd8f8371e21754966e681b722e516bfee5c21bac` binds new and reused workspace,
+official and Source Book directory IDs; checks before recovery and publication allow ordinary content
+growth but refuse substituted directories. Developer: eight replacement/growth tests and 30 adjacent
+recovery/service tests passed. Complete eight-step tests rerun after correction: 2 passed, 4.93s.
+Independent Reviewer passed the exact clean corrected subject: Standards 0, Spec 0; independently
+reran two replacement cases (2 passed, 2.56s). Final QA uses that exact subject in the reused clean
+detached worktree; no product/test edits are permitted while it runs.
+
+Final frontend browser check (unchanged frontend bytes from `90d6d60c`): isolated 5197/8027,
+temporary P1 with actual public Matrix/Fee/Basic Information confirmations, real operation/journal
+but synthetic generation steps. Observed progress dialog, failure message/Resume, disabled new-start
+until fresh preview, then explicit new operation preserving prior history. After the Resume request
+was visibly accepted, closed its tab; backend completed the same operation
+`67405637744a411c92714feaa251af91`, all eight steps exactly once. Reopening had zero error alerts
+and an enabled generation button. Screenshot inspected; no real project mutated. Browser checks were
+performed by the parent, not claimed as independent QA; actual filesystem/SQLite chain is covered by
+the separate complete-chain and hard-exit tests. Owned tabs and both isolated servers were stopped.
+
+Completion audit so far: current Matrix Editor files exactly match item-7 validated source; candidate
+implementation/tests exactly match item-8 validated source; cleaned Mixins exactly match item-10
+validated source. Subsequent item-9 commits did not alter those completed batches or migration files.
