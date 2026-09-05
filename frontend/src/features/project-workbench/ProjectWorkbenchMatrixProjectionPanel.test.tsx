@@ -30,9 +30,9 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
       }],
     });
     render(<ProjectWorkbenchMatrixProjectionPanel projectId="P1" onTokenSelect={onTokenSelect} />);
-    await screen.findByRole("button", { name: "6", exact: true });
+    await screen.findByRole("button", { name: "6" });
     for (const number of ["1", "2", "3", "4", "5", "6"]) {
-      fireEvent.click(screen.getByRole("button", { name: number, exact: true }));
+      fireEvent.click(screen.getByRole("button", { name: number }));
       expect(onTokenSelect).toHaveBeenLastCalledWith(expect.objectContaining({
         rawToken: number, statusTone: "not_started",
       }));
