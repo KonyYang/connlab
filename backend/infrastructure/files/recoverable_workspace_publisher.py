@@ -31,6 +31,36 @@ class RecoverableWorkspacePublisher:
         self.verify_context = verify_context or (lambda: None)
         self.verify_initial_preview = verify_initial_preview or (lambda: None)
 
+    def remember_existing(self, record):
+        """Bind an unchanged, already indexed workspace before later steps use it."""
+        if "workspace_directories" in self.state:
+            self.verify_directories(record)
+            return
+        self.state["workspace_directories"] = {
+            key: {"path": str(getattr(record, key)), "identity": file_identity(getattr(record, key))}
+            for key in ("local_workspace_path", "official_folder_path", "source_book_path")
+        }
+        self.journal.save(self.state)
+
+    def verify_directories(self, record):
+        """Check directory ownership, not the changing contents generated inside it."""
+        effect = self.state["effects"].get("workspace")
+        directories = self.state.get("workspace_directories")
+        if effect is not None:
+            directories = {key: {"path": effect["record"][key], "identity": effect[identity]}
+                           for key, identity in (("local_workspace_path", "workspace_identity"),
+                                                 ("official_folder_path", "identity"),
+                                                 ("source_book_path", "source_book_identity"))}
+        if directories is None:
+            if "workspace" in self.state["completed_steps"]:
+                raise ValueError("Generation workspace directory ownership is unproven; review before continuing.")
+            return
+        for key, saved in directories.items():
+            path = Path(saved["path"])
+            if (record is None or getattr(record, key) != path or path.is_symlink() or not path.is_dir()
+                    or file_identity(path) != saved["identity"]):
+                raise ValueError("Generation workspace directory changed; recovery stopped before writing files.")
+
     def create(self, preview, strategy, repository):
         if "workspace" not in self.state["effects"]:
             target = preview.official_folder_path

@@ -34,6 +34,8 @@ not a replacement for configured external business authority.
 - Managed updates recheck the expected target content and identity before replacement. Application
   Form Office edits operate on a journal-owned temporary copy, never the final or original source file.
 - Workspace contents (including Source Book for new workspaces) are staged before directory rename.
+  Every later step verifies recorded workspace, official-folder and Source Book directory identities
+  before recovery or writes; generated contents may evolve, but replacement directories are refused.
   Manifest intent and the stable workspace record recover move/manifest/DB gaps. Existing conflicts
   move to the operation's recovery backup once; restart never repeats that destructive choice.
 - A hard exit during staging, before intent exists, abandons that unique staging attempt. A subsequent

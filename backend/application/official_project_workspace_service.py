@@ -443,6 +443,8 @@ class OfficialProjectWorkspaceService:
             record = self._workspaces.get_by_project(project_id)
             if record is None:
                 raise OfficialWorkspaceCreateError("Local project workspace record is missing.")
+            if recovery is not None:
+                recovery.remember_existing(record)
             return OfficialWorkspaceCreateResult(
                 record=record,
                 created_paths=tuple(),

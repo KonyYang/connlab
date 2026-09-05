@@ -144,7 +144,8 @@ def test_new_process_recovers_published_output_and_committed_record_without_rege
         session.commit()
     journal = GenerationJournal(settings.data_dir / "project_folder_generation")
     state = journal.create("P1", None, "fixture authority")
-    state.update(step=3, completed_steps=["workspace", "materials", "check"])
+    # This fixture exercises one real form step, not an earlier workspace execution.
+    state.update(step=3, completed_steps=[])
     journal.save(state)
     env = dict(os.environ, PYTHONPATH=str(Path(__file__).parents[2]))
     def run(mode):

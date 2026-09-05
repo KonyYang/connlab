@@ -98,7 +98,11 @@ class ProjectFolderGenerationRunner:
                 def verify_context():
                     if self.context(project_id) != state["context"]:
                         raise ValueError("Generation inputs changed before publication. No further target was written.")
+                    if name != "workspace":
+                        RecoverableWorkspacePublisher(self.journal, state).verify_directories(workspace_record)
                 workspace_record = deps.ProjectOfficialWorkspaceRepository(session).get_by_project(project_id)
+                if name != "workspace":
+                    RecoverableWorkspacePublisher(self.journal, state).verify_directories(workspace_record)
                 publication_root = (workspace_record.local_workspace_path / ".connlab" / "generation" / state["operation_id"]
                                     if workspace_record is not None and name != "workspace" else None)
                 publisher = RecoverableOutputPublisher(self.journal, state, name, verify_context, publication_root)

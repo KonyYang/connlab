@@ -11,7 +11,7 @@ from sqlalchemy import create_engine
 
 from backend.api import dependencies as deps
 from backend.api.project_folder_generation_composition import ProjectFolderGenerationRunner
-from backend.domain import Project, ProjectStatus, LtrRecord, LtrStatus, ExternalResource, ExternalResourceType
+from backend.domain import Project, ProjectStatus, LtrRecord, LtrStatus, ExternalResource, ExternalResourceType, FileAsset, FileAssetType
 from backend.infrastructure.files.recoverable_output_publisher import RecoverableOutputPublisher
 from backend.infrastructure.storage.database import Base, create_session_factory
 from backend.shared.config import Settings
@@ -20,6 +20,63 @@ from backend.shared.config import Settings
 def _settings(root):
     return Settings(data_dir=root / "data", projects_dir=root / "projects", templates_dir=root / "templates",
                     database_path=root / "fixture.sqlite")
+
+
+@pytest.mark.parametrize("replaced", ["local_workspace_path", "official_folder_path", "source_book_path", None])
+@pytest.mark.parametrize("reuse_existing", [False, True])
+def test_later_step_refuses_replaced_workspace_directories_but_allows_new_output_contents(tmp_path, replaced, reuse_existing):
+    settings = _settings(tmp_path)
+    engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
+    Base.metadata.create_all(engine)
+    sessions = create_session_factory(engine)
+    template, destination = tmp_path / "template", tmp_path / "output"
+    destination.mkdir()
+    for name in ("E-mail", "Submitted Material", "Photos", "Test results/Final Examination"):
+        (template / name).mkdir(parents=True)
+    source = tmp_path / "application.docx"
+    source.write_bytes(b"original application")
+    with sessions() as session:
+        deps.ProjectRepository(session).create(Project("P1", "DL-001", "Connector", "Test", ProjectStatus.DRAFT))
+        deps.LtrRecordRepository(session).create(LtrRecord("ltr", "P1", "DL-001", LtrStatus.REGISTERED))
+        deps.FileAssetRepository(session).create(FileAsset("form", "P1", FileAssetType.APPLICATION_FORM,
+            source, original_name=source.name, source_role="selected_application_form"))
+        resources = deps.ExternalResourceRepository(session)
+        resources.upsert(ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, destination))
+        resources.upsert(ExternalResource("template", ExternalResourceType.PROJECT_FOLDER_TEMPLATE, template))
+        session.commit()
+    runner = ProjectFolderGenerationRunner(sessions, settings)
+    service = runner.service()
+    service.dispatch = lambda callback: None
+    try:
+        service.start("P1", None, runner.preview_context("P1"), "request")
+        state = runner.journal.read("P1")
+        runner.run_step(state, "workspace")
+        if reuse_existing:
+            state.update(status="completed")
+            runner.journal.save(state)
+            service.start("P1", None, runner.preview_context("P1"), "reuse")
+            state = runner.journal.read("P1")
+            runner.run_step(state, "workspace")
+        state.update(step=1, completed_steps=["workspace"])
+        runner.journal.save(state)
+        with sessions() as session:
+            record = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
+        if replaced:
+            target = getattr(record, replaced)
+            original = target.with_name(target.name + "-original")
+            target.rename(original)
+            shutil.copytree(original, target, copy_function=os.link)  # Preserve file identity too; only directories change.
+            before = sorted(str(path.relative_to(target)) for path in target.rglob("*"))
+            with pytest.raises(ValueError, match="directory|workspace"):
+                runner.run_step(state, "materials")
+            assert sorted(str(path.relative_to(target)) for path in target.rglob("*")) == before
+        else:
+            (record.official_folder_path / "generated-earlier.txt").write_bytes(b"legitimate evolving output")
+            runner.run_step(state, "materials")
+            assert (record.official_folder_path / "Submitted Material" / source.name).read_bytes() == source.read_bytes()
+    finally:
+        runner.pool.shutdown()
+        engine.dispose()
 
 
 def _child(root, mode):
