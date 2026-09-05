@@ -2,47 +2,23 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import UTC, datetime
 import json
-from typing import Any, Callable, Literal, Protocol
-from uuid import uuid4
 
 from backend.application.confirmed_matrix_authority_service import (
     ConfirmProjectMatrixDraftCommand,
     ConfirmedMatrixAuthorityConflictError,
     ConfirmedMatrixAuthorityError,
     ConfirmedMatrixAuthorityNotFoundError,
-    ConfirmedMatrixAuthorityService,
 )
 from backend.application.matrix_import_commit_service import (
     MatrixImportCommitCommand,
     MatrixImportCommitError,
     MatrixImportCommitNotFoundError,
-    MatrixImportCommitService,
-)
-from backend.application.matrix_schedule_planning import (
-    MatrixScheduleFields,
-    MatrixScheduleValidationError,
-    calculate_group_test_days,
-    validate_planned_schedule,
-)
-from backend.application.matrix_sample_quantity_guard import (
-    find_selected_sample_quantity_violations,
-    format_sample_quantity_violation_message,
-)
-from backend.application.matrix_step_quantity_authority_builder import (
-    build_confirmed_step_quantities,
-)
-from backend.application.matrix_step_quantity_authority_comparison import (
-    step_quantity_authority_matches,
 )
 from backend.application.matrix_revision_flow_service import (
     CreateMatrixRevisionDraftCommand,
     MatrixRevisionFlowConflictError,
-    MatrixRevisionFlowService,
 )
-from backend.application.matrix_fee_draft_rebase_service import MatrixFeeRebaseSummary
 from backend.application.matrix_fee_pending_rebase_service import (
     DeletePendingRebaseForMatrixDraftCommand,
     MatrixFeePendingRebaseResult,
@@ -50,64 +26,16 @@ from backend.application.matrix_fee_pending_rebase_service import (
 )
 from backend.application.matrix_fee_rebase_promotion_service import (
     MatrixFeeRebasePromotionResult,
-    MatrixFeeRebasePromotionStatus,
     PromoteMatrixFeeRebaseCommand,
 )
-from backend.application.project_matrix_draft_persistence_service import (
-    ProjectMatrixDraftCellInput,
-    ProjectMatrixDraftGroupInput,
-    ProjectMatrixDraftPersistenceError,
-    ProjectMatrixDraftPersistenceNotFoundError,
-    ProjectMatrixDraftPersistenceService,
-    ProjectMatrixDraftRowInput,
-    UpdateProjectMatrixDraftCommand,
-)
-from backend.application.project_lifecycle_write_guard import (
-    LifecycleWriteOperation,
-    ProjectLifecycleWriteGuard,
-)
 from backend.domain import (
-    ConfirmedMatrixCell,
-    ConfirmedMatrixGroup,
-    ConfirmedMatrixRow,
     ConfirmedMatrixSnapshot,
-    ConfirmedMatrixStatus,
-    ConfirmedMatrixVersion,
-    Project,
-    ProjectMatrixDraftRecord,
-    ProjectMatrixDraftGroup,
     ProjectMatrixDraftSnapshot,
-    ProjectMatrixDraftRow,
-    ProjectMatrixDraftStatus,
-    SourceMatrixImportRecord,
-    SourceMatrixSnapshot,
 )
-from backend.modules.fee_evaluation import load_active_fee_rule_library
-
-
-
 from backend.application.matrix_editor_session_contracts import (
-    SOURCE_UNAVAILABLE_MESSAGE,
     MatrixEditorSessionError,
-    MatrixEditorSessionNotFoundError,
     MatrixEditorSessionActiveChangedError,
-    MatrixEditorSessionDraftConflictError,
-    ProjectStore,
-    ConfirmedStore,
-    SourceStore,
-    DraftStore,
-    PendingFeeRebaseService,
-    FeeRebasePromotionService,
-    MatrixEditorSessionGroup,
-    MatrixEditorSessionRow,
-    MatrixEditorSessionCell,
-    MatrixEditorSessionDraft,
-    MatrixEditorSessionSeed,
     MatrixEditorSessionConfirmCommand,
-    MatrixEditorSessionDraftSaveCommand,
-    MatrixEditorSessionDraftSaveResult,
-    MatrixEditorSessionDraftDiscardCommand,
-    MatrixEditorSessionDraftDiscardResult,
     MatrixEditorSessionConfirmResult,
 )
 from backend.application.matrix_editor_confirmed_snapshot_builder import (
@@ -117,6 +45,7 @@ from backend.application.matrix_editor_session_signature import (
     _build_manual_preview_payload,
     build_project_matrix_draft_payload_signature,
 )
+
 
 class MatrixEditorSessionPublicationMixin:
     def _initialize_fee_after_first_matrix_confirm(

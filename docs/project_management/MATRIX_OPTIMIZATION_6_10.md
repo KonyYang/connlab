@@ -9,9 +9,9 @@ Baseline: clean primary after the completed Workbench feedback task (2026-09-05)
 | --- | --- | --- |
 | 6 | Main table gains usable space; details can collapse/reopen without losing edits; readable typography; validation errors locate the relevant input; browser checks at laptop/narrow widths | Completed in batch 1 |
 | 7 | Record comparable input/derived-work baseline; reduce demonstrated unnecessary whole-table work; export-only payloads built on demand; preserve save/confirm/export results | Completed in batch 2 |
-| 8 | Candidate listing avoids full content validation; selected source receives full validation before import; errors/stale selection/cancellation remain safe | Implemented; final QA pending |
+| 8 | Candidate listing avoids full content validation; selected source receives full validation before import; errors/stale selection/cancellation remain safe | Completed in batch 3 |
 | 9 | Backend owns continuous output chain, with durable progress and safe interruption/retry; no duplicate outputs or unintended overwrite; preserve conflict previews and business authority | Independent Developer implementing |
-| 10 | Inspect actual dependency/Mixin/migration hotspots; implement only justified cohesive improvements or record evidence for no change; keep needed migration history | Pending |
+| 10 | Inspect actual dependency/Mixin/migration hotspots; implement only justified cohesive improvements or record evidence for no change; keep needed migration history | Import cleanup implemented; final QA pending |
 
 ## Execution and constraints
 
@@ -31,7 +31,7 @@ Initial discovery: primary clean, board idle, existing MatrixEditorWorkspace/Mat
 ProjectWorkbenchActiveMatrixWorkspace are the current UI seams. Legacy simulated step statuses were
 already removed and must remain removed. Independent item-9 planner is inspecting the existing chain.
 
-Items 6-7 completed; item 8 awaits final QA; item 9 implementing; item 10 pending. Do not finish the overall goal or board yet.
+Items 6-8 completed; item 9 implementing; item 10 awaits final QA. Do not finish the overall goal or board yet.
 
 ### Item 6 verification
 
@@ -106,7 +106,37 @@ restored timestamps, and selected preview blocks it. Ordinary changed-metadata e
 A Windows-native ChangeTime experiment failed the same-tick replacement case and was removed rather
 than adding an OS-specific journal dependency. No new modules, caches, schema or dependencies remain.
 Developer checks: 24 passed, 1 symlink skip (host privilege unavailable), 2 real-Word tests deselected.
-Final clean-source selected/import QA pending. Frontend request cancellation/stale-response logic is unchanged.
+Final QA on clean detached source `4f99491d4784a08d73a907117cb7e0c13ad6f186`: 38 passed,
+1 symlink skip, 2 real-Word tests deselected, 14.10s. Covers candidate service/API, actual XLSX parsing,
+import commit, selected groups and method authority. Real Word/COM was not invoked. Frontend request
+cancellation/stale-response logic is unchanged. Standards/spec review: same-agent, no remaining finding.
+
+### Item 10 dependency, Mixin and migration inspection
+
+AST inspection of clean batch-3 source found 33 top-level application modules with 46 explicit
+infrastructure `from` imports. This is a coupling inventory, not proof every import should be abstracted.
+Contact-measurement lifecycle directly creates ORM revision models and mutates repository state inside
+transactions; replacing that seam would change several authority operations, not merely remove imports.
+MSG intake already accepts storage/Office dependencies but defaults to OfficeFacade and translates its
+specific import error. Introducing one-use wrappers here has no demonstrated Matrix performance benefit.
+Keep these working seams; address them when a concrete change needs an alternative implementation.
+
+Two Matrix session Mixins retained copied, unused imports from an earlier split. Remove 125 unused
+named imports: publication 84 -> 23 (415 -> 344 lines), draft-state 85 -> 21 (387 -> 306 lines).
+Their only repository consumer is matrix_editor_session_service; it imports the two classes and the
+timestamp helper, not the removed names. All non-import AST nodes are identical to batch-3 source.
+Both Mixins use the owning session's stores/context and publication calls draft-state helpers; their
+method sets are disjoint. Preserve that inheritance rather than replacing it with a larger pass-through
+interface. No business method, signature, domain type, fee hook or validation changed.
+
+Database startup still calls the eight imported migration modules plus dedicated schema bootstraps.
+Draft lifecycle reconciliation preserves confirmed-source lineage and removes only unreferenced stale
+drafts. These are active compatibility paths, not dead historical files: retain them unchanged. No live
+database was opened or migrated. Existing temporary-DB migration tests provide regression coverage.
+
+Baseline Matrix session unit/API/database suite: 47 passed in 14.11s. Post-cleanup Developer checks:
+22 Matrix session tests passed in 1.01s. Same-agent Standards pass: no finding (unused dependencies only);
+Spec pass: no finding (evidence-led cleanup, no behavior/schema expansion). Final clean-source QA pending.
 
 ### Item 9 independent planning evidence
 
