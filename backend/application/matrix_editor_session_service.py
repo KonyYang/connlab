@@ -121,8 +121,6 @@ class MatrixEditorSessionService(
                 project_id=project_id,
                 active_confirmed_matrix_id=None,
                 active_confirmed_revision=None,
-                source_import_id=saved.record.source_import_id,
-                source_snapshot_id=saved.record.source_snapshot_id,
                 active_source_import_id=None,
                 active_source_snapshot_id=None,
                 editor_source_import_id=None,
@@ -257,6 +255,8 @@ class MatrixEditorSessionService(
                 draft_status="current",
                 draft_updated_at=saved.record.updated_at,
                 saved_payload_signature=build_project_matrix_draft_payload_signature(saved),
+                source_import_id=saved.record.source_import_id,
+                source_snapshot_id=saved.record.source_snapshot_id,
                 active_confirmed_matrix_id=None,
                 active_confirmed_revision=None,
             )
@@ -296,7 +296,9 @@ class MatrixEditorSessionService(
             active_confirmed_matrix_id=active.version.confirmed_matrix_id,
             active_confirmed_revision=active.version.confirmed_revision,
             fee_rebase_status=fee_rebase_result.status,
-            source_import_id=active.version.source_import_id,
+            # Replacement drafts own new source lineage; revision drafts instead
+            # reference their base authority and intentionally omit source_import_id.
+            source_import_id=(saved.record.source_import_id or active.version.source_import_id),
             source_snapshot_id=saved.record.source_snapshot_id,
             fee_rebase_summary=fee_rebase_result.summary,
             fee_rebase_error=fee_rebase_result.error,

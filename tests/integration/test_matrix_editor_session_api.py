@@ -176,6 +176,23 @@ def test_existing_matrix_database_adds_empty_step_text_tables_without_rewriting_
         engine.dispose()
 
 
+def test_fresh_project_matrix_session_opens_without_existing_draft(tmp_path: Path) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        response = client.get("/api/projects/P1/matrix-editor/session")
+        assert response.status_code == 200, response.text
+        seed = response.json()
+        assert seed["editor_draft"] is None
+        assert seed["active_confirmed_matrix_id"] is None
+        assert seed["editor_source_import_id"] is None
+        assert seed["editor_source_snapshot_id"] is None
+        assert seed["source_status"] == "not_required"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_manual_step_text_draft_saves_without_publishing_and_reuses_its_lineage(tmp_path: Path) -> None:
     client, engine, _ = _client(tmp_path)
     try:
@@ -191,6 +208,10 @@ def test_manual_step_text_draft_saves_without_publishing_and_reuses_its_lineage(
         }]
         first = client.put("/api/projects/P1/matrix-editor/session/draft", json=payload)
         assert first.status_code == 200, first.text
+        assert first.json()["source_import_id"]
+        assert first.json()["source_snapshot_id"]
+        payload.update(source_import_id=first.json()["source_import_id"],
+                       source_snapshot_id=first.json()["source_snapshot_id"])
         again = client.put("/api/projects/P1/matrix-editor/session/draft", json=payload)
         assert again.status_code == 200, again.text
         assert again.json()["editor_draft_id"] == first.json()["editor_draft_id"]
@@ -198,6 +219,8 @@ def test_manual_step_text_draft_saves_without_publishing_and_reuses_its_lineage(
         assert reopened["active_confirmed_matrix_id"] is None
         assert reopened["editor_draft"]["step_text_overrides"][0]["description"] == "Manual draft text"
         source_id = reopened["editor_source_import_id"]
+        assert source_id == first.json()["source_import_id"]
+        assert reopened["editor_source_snapshot_id"] == first.json()["source_snapshot_id"]
         confirm = client.post("/api/projects/P1/matrix-editor/session/confirm", json={**payload, "confirmed_by": "operator"})
         assert confirm.status_code in (200, 201), confirm.text
         assert client.get("/api/projects/P1/matrix-editor/session").json()["active_source_import_id"] == source_id
@@ -934,6 +957,18 @@ def test_matrix_editor_session_confirm_after_source_change_updates_active_lineag
         assert seed_payload["editor_draft_id"] == draft_b_id
         assert seed_payload["source_preview_payload"]["source_document_name"] == "spec_b.docx"
 
+        saved_replacement = client.put("/api/projects/P1/matrix-editor/session/draft", json={
+            **seed_payload["editor_draft"],
+            "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
+            "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
+            "source_import_id": source_import_b,
+            "source_snapshot_id": draft_b_payload["record"]["source_snapshot_id"],
+        })
+        assert saved_replacement.status_code == 200, saved_replacement.text
+        saved_lineage = saved_replacement.json()
+        assert saved_lineage["source_import_id"] == source_import_b
+        assert saved_lineage["source_snapshot_id"] == draft_b_payload["record"]["source_snapshot_id"]
+
         response = client.post(
             "/api/projects/P1/matrix-editor/session/confirm",
             json={
@@ -942,8 +977,8 @@ def test_matrix_editor_session_confirm_after_source_change_updates_active_lineag
                 "source_document_path": "C:/spec_b.docx",
                 "source_document_name": "spec_b.docx",
                 "source_format": ".docx",
-                "source_import_id": source_import_b,
-                "source_snapshot_id": draft_b_payload["record"]["source_snapshot_id"],
+                "source_import_id": saved_lineage["source_import_id"],
+                "source_snapshot_id": saved_lineage["source_snapshot_id"],
                 "confirmed_by": "operator",
                 "groups": draft_b_detail.json()["groups"],
                 "rows": draft_b_detail.json()["rows"],
