@@ -10,7 +10,7 @@ Baseline: clean primary after the completed Workbench feedback task (2026-09-05)
 | 6 | Main table gains usable space; details can collapse/reopen without losing edits; readable typography; validation errors locate the relevant input; browser checks at laptop/narrow widths | Completed in batch 1 |
 | 7 | Record comparable input/derived-work baseline; reduce demonstrated unnecessary whole-table work; export-only payloads built on demand; preserve save/confirm/export results | Completed in batch 2 |
 | 8 | Candidate listing avoids full content validation; selected source receives full validation before import; errors/stale selection/cancellation remain safe | Completed in batch 3 |
-| 9 | Backend owns continuous output chain, with durable progress and safe interruption/retry; no duplicate outputs or unintended overwrite; preserve conflict previews and business authority | Implemented and independently reviewed; final QA running |
+| 9 | Backend owns continuous output chain, with durable progress and safe interruption/retry; no duplicate outputs or unintended overwrite; preserve conflict previews and business authority | Completed; independent Review and full QA passed |
 | 10 | Inspect actual dependency/Mixin/migration hotspots; implement only justified cohesive improvements or record evidence for no change; keep needed migration history | Completed in batch 4; no broad rewrite justified |
 
 ## Execution and constraints
@@ -31,7 +31,8 @@ Initial discovery: primary clean, board idle, existing MatrixEditorWorkspace/Mat
 ProjectWorkbenchActiveMatrixWorkspace are the current UI seams. Legacy simulated step statuses were
 already removed and must remain removed. Independent item-9 planner is inspecting the existing chain.
 
-Items 6-8 and 10 completed; item 9 implemented/reviewed, final QA pending. Do not finish the overall goal or board yet.
+All five items have implementation/evidence and completed validation. Final mechanical integration
+verification precedes the sole-writer finish transition; user Close remains separate.
 
 ### Item 6 verification
 
@@ -230,3 +231,42 @@ the separate complete-chain and hard-exit tests. Owned tabs and both isolated se
 Completion audit so far: current Matrix Editor files exactly match item-7 validated source; candidate
 implementation/tests exactly match item-8 validated source; cleaned Mixins exactly match item-10
 validated source. Subsequent item-9 commits did not alter those completed batches or migration files.
+
+### Final independent QA and delivery audit
+
+QA context `generation_recovery_qa`: clean detached reviewed subject
+`dd8f8371e21754966e681b722e516bfee5c21bac` before and after; no code/test/board modifications.
+
+| Gate | Final result | Elapsed |
+| --- | --- | --- |
+| Complete Python `-m "not office_integration" -p no:cacheprovider` using the verified ConnLab interpreter | 2,610 passed, 4 skipped, 19 deselected | 290.54s |
+| Full frontend Vitest, `--maxWorkers=2` | 492 passed, 1 opt-in profile skipped; 76 test files passed | 54.95s |
+| Sequential TypeScript and Vite production build | Passed | 10.96s, including Vite 1.19s |
+
+No failing gate or full-matrix retry. Python skips are explicit host/manual cases: manual COM disabled,
+specified Fee template absent, historical seed manifest absent and unavailable symlink privilege.
+The 19 deselected tests require real Office. Warnings were Starlette/httpx deprecation and duplicate
+OpenAPI operation ID, neither a test failure. Do not describe excluded real-Office checks as passing.
+The clean QA checkout and reusable dependency junction remain; no cleanup or installation was needed.
+
+Integrator preaudit mechanically confirmed all changed paths belong to this task, clean local master,
+linear commits with no merge, and only this report differs from the reviewed/QA implementation.
+Item-6 Workbench/CSS are byte-equivalent to their validated source; items 7, 8 and 10 likewise match
+their cited checkpoints. The final board report records exact paths, subject and raw evidence digest.
+
+### Remaining operator acceptance (not hidden unfinished implementation)
+
+- Exercise the generated build on the operator's actual Windows/Office setup with disposable copies:
+  create/update a project folder, inspect the four Required forms and written-back Application Form.
+  Automated Office gateway fakes validate orchestration and ownership, not document layout or COM availability.
+- On the actual configured drive, confirm stable file IDs and same-volume hard-link/rename support.
+  NTFS is the intended publication environment; unsupported/shared-drive behavior must fail clearly,
+  not silently weaken recovery. Do not concurrently edit output files in external applications.
+- Assess larger real Matrix inputs and network-drive latency; derived-work reductions and local
+  candidate read measurements do not promise the same whole-page speedup on every computer.
+- Recovery deliberately stops when source or target ownership cannot be proven. Existing output bytes,
+  recovery backups and abandoned internal staging are retained for review, never broadly deleted.
+
+Search placeholders, deferred item 2, completed core items 3-5 and black initial Steps remain unchanged.
+No live data, real Office output, schema migration, release deployment, push or destructive Git operation
+was performed. This goal delivers implementation and verified local commits, not unattended live acceptance.
