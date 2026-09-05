@@ -11,8 +11,23 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_OPTIMIZATION_6_10",
+    "summary": "Complete original Matrix optimization items 6-10 in verified batches.",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "6: Matrix space, collapsible details, typography and error navigation; 7: measured input computation and lazy export; 8: lightweight import candidates with full selected validation; 9: backend sequential document/folder generation and safe recovery; 10: evidence-led dependency/Mixin/migration cleanup. User authorizes in-scope file selection without routine technical approval; exact changed paths must be reviewed and reported. Preserve search placeholders, deferred item 2, black initial steps, real data, existing releases and migration history. No live migrations, push, deployment or destructive Git.",
+    "scope_paths": [],
+    "risk_reasons": [
+      "Item 9 changes output orchestration and recovery semantics; independent contexts required for that batch."
+    ],
+    "activation_head": "aec076a5a27839874a30a17c833bb3663b6b308e",
+    "started_at": "2026-09-05T03:32:28.503314Z",
+    "updated_at": "2026-09-05T03:32:28.503314Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_MATRIX_RELEASE_SMOKE_20260905",
     "tier": "standard",
