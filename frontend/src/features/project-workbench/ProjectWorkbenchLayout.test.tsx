@@ -75,6 +75,20 @@ function getWorkbenchActionButton(name: string): HTMLButtonElement {
 }
 
 describe("ProjectWorkbenchLayout lifecycle modes", () => {
+  it("keeps an existing Matrix in the unified workspace before LTR identity arrives", () => {
+    renderWorkbench({
+      latestLtr: null,
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+    });
+
+    expect(screen.queryByRole("region", { name: "Temporary planning" })).toBeNull();
+    expect(screen.queryByText("Shape the request before formal registration")).toBeNull();
+    expect(screen.getByLabelText("Project Workbench actions")).toBeTruthy();
+    expect(screen.getByText("Matrix projection panel")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Create project folder" })).toHaveProperty("disabled", true);
+  });
+
   it("labels the topbar back button as the Projects overview navigation", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
