@@ -24,15 +24,15 @@
     ],
     "activation_head": "aec076a5a27839874a30a17c833bb3663b6b308e",
     "started_at": "2026-09-05T03:32:28.503314Z",
-    "updated_at": "2026-09-05T03:51:02.942403Z",
+    "updated_at": "2026-09-05T04:32:53.770588Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_OPTIMIZATION_6_10",
-      "stage": "item_7_measurement",
+      "stage": "item_9_generation_recovery",
       "status": "running",
       "requires_user": false,
-      "summary": "Item 6 implemented, reviewed and verified: collapsible editor/workbench details, readable fonts, error focus; full frontend tests/build passed on e00ffd7c951b8948ab5057f48ecedcdef7f20fc2, isolated browser verified. Next measure input derivations and export payload work for item 7. Items 8-10 remain; independent item-9 planner evidence is committed in docs/project_management/MATRIX_OPTIMIZATION_6_10.md. Overall goal not complete."
+      "summary": "Items 6-8 and 10 implemented, reviewed and verified. Item 7 c4309299: 487 frontend tests/build pass; item 8 4f99491d: 38 selected/import tests pass; item 10 afbdf76e: 47 Matrix session/API/database tests pass. Evidence: docs/project_management/MATRIX_OPTIMIZATION_6_10.md. Existing independent generation_recovery_developer owns all uncommitted generation/API/workbench paths; resume that agent, do not recreate it. Item 9 backend durable chain/UI reconnect and crash-boundary tests are implementing; independent Reviewer/QA/Integrator still required. Overall goal not complete."
     },
     "report": null
   },

@@ -11,7 +11,7 @@ Baseline: clean primary after the completed Workbench feedback task (2026-09-05)
 | 7 | Record comparable input/derived-work baseline; reduce demonstrated unnecessary whole-table work; export-only payloads built on demand; preserve save/confirm/export results | Completed in batch 2 |
 | 8 | Candidate listing avoids full content validation; selected source receives full validation before import; errors/stale selection/cancellation remain safe | Completed in batch 3 |
 | 9 | Backend owns continuous output chain, with durable progress and safe interruption/retry; no duplicate outputs or unintended overwrite; preserve conflict previews and business authority | Independent Developer implementing |
-| 10 | Inspect actual dependency/Mixin/migration hotspots; implement only justified cohesive improvements or record evidence for no change; keep needed migration history | Import cleanup implemented; final QA pending |
+| 10 | Inspect actual dependency/Mixin/migration hotspots; implement only justified cohesive improvements or record evidence for no change; keep needed migration history | Completed in batch 4; no broad rewrite justified |
 
 ## Execution and constraints
 
@@ -31,7 +31,7 @@ Initial discovery: primary clean, board idle, existing MatrixEditorWorkspace/Mat
 ProjectWorkbenchActiveMatrixWorkspace are the current UI seams. Legacy simulated step statuses were
 already removed and must remain removed. Independent item-9 planner is inspecting the existing chain.
 
-Items 6-8 completed; item 9 implementing; item 10 awaits final QA. Do not finish the overall goal or board yet.
+Items 6-8 and 10 completed; item 9 implementing. Do not finish the overall goal or board yet.
 
 ### Item 6 verification
 
@@ -136,7 +136,9 @@ database was opened or migrated. Existing temporary-DB migration tests provide r
 
 Baseline Matrix session unit/API/database suite: 47 passed in 14.11s. Post-cleanup Developer checks:
 22 Matrix session tests passed in 1.01s. Same-agent Standards pass: no finding (unused dependencies only);
-Spec pass: no finding (evidence-led cleanup, no behavior/schema expansion). Final clean-source QA pending.
+Spec pass: no finding (evidence-led cleanup, no behavior/schema expansion). Final QA on clean detached
+source `afbdf76e19a94090cf12ca9e0b34cb96df7e98a6`: all 47 Matrix session unit/API/database tests passed
+in 13.64s. Existing Starlette/httpx deprecation warning only; no frontend changes or duplicate full suite.
 
 ### Item 9 independent planning evidence
 
