@@ -1,7 +1,7 @@
 # Matrix experience and reliability — batch 1
 
 Task: `TASK_MATRIX_EXPERIENCE_RELIABILITY_BATCH1`. Baseline: `d407f3ffbe8d7fdb4b5a3772b2c4ef19ce68c04c`.
-Status: implementation checkpoint, NOT complete or ready for close.
+Status: implementation, independent Review and final QA complete. The task board records final integration and delivery state.
 
 ## Implemented
 
@@ -46,11 +46,11 @@ the implemented slice. Reused API/adapter/draft boundaries; no database schema, 
 introduced. Further simplification of the first-confirm method's duplicated confirmation/error handling
 can be considered during final review; do not expand into a publication-module rewrite.
 
-## Confirmed step-text requirement and work in progress
+## Confirmed step-text requirement and implementation
 
 Initial browser repro: `Step Description` / `Requirement` were page-local overrides; changing only
 Step 1 description left Confirm disabled and reload discarded it. The implementation below fixes
-that storage/output gap; final independent review and QA still need to validate the complete batch.
+that storage/output gap; independent review and QA validated the complete batch as recorded below.
 
 User decision is resolved: step Description / Requirement are durable, group-local and step-local draft
 values. Saving must leave existing formal authority unchanged. Successful Confirm publishes a new
@@ -60,7 +60,7 @@ explicit blank. Identity includes group, row, sequence and suffix.
 
 Implementation uses additive draft/confirmed child records and the existing transaction/creation
 mechanism, not unrelated JSON storage. Independent planning, backend development and focused review
-contexts are used for this persistence risk; final independent QA/integration are still pending.
+contexts were used for this persistence risk, followed by independent QA and final integration verification.
 No real business database is opened for migration or testing.
 
 Frontend RED/GREEN: step-only changes previously never saved; they now save, reopen and survive a
@@ -84,11 +84,35 @@ with a separate TypeScript check passed. Backend persistence/revision 79 passed 
 last saved-signature change, 42 affected tests passed (25.08 s), with storage bytes unchanged.
 Output tests 132 passed (43.36 s), including real isolated DOCX/XLSX checks, formal-authority matching
 negatives and canonical test-item preservation. Those counts overlap and must not be summed as a
-distinct-test total. Final QA is still pending.
+distinct-test total. Final independent QA results follow.
 
-Next: review exact combined diff; run a risk-proportionate final QA matrix once on the clean
-reviewed state, including browser/real export coverage. Then integrate and finish to ready_for_close.
-This checkpoint is not final QA. No broad architecture redesign or unrelated UI cleanup is authorized.
+## Final independent validation (2026-09-05)
+
+Reviewed and QA-tested code subject: `707e89712e2d9ea801be258bab4a54b4a61024ce`.
+Independent Reviewer approved the combined scope after closing two source-lineage findings:
+fresh editor loading referenced an undefined saved record, and replacement-import save responses
+could mix old source identity with the newly saved snapshot. Three public API regressions failed
+before correction and passed afterward. No blocking review findings remain.
+
+- Python full non-Office gate: 2565 passed, 4 skipped, 19 deselected; 210.83 s test duration.
+- Frontend full gate: 75 files / 482 tests passed, 14.75 s; TypeScript and production build passed.
+  The combined frontend command took 21.43 s; Vite build 0.994 s. No React act or large-chunk warning.
+- Independent isolated browser validation passed save, refresh, Confirm and reopen for step text;
+  another group and canonical Test Item stayed unchanged. A second saved, unconfirmed draft stayed
+  separate from the active confirmed snapshot, checked through public API responses and reload.
+  Browser console had no warnings/errors. Owned browser tab and isolated servers were stopped.
+- The first Python attempt stopped during collection because the project environment lacked the
+  already-declared `msoffcrypto-tool` dependency. Installed cached version 6.0.0 in the existing
+  ConnLab virtual environment, with no dependency-spec or system-Python change, then ran the full
+  gate successfully. No test was edited or bypassed to hide that environment failure.
+- Existing non-blocking Python warnings: Starlette/httpx deprecation and duplicate customer-report
+  OpenAPI operation IDs. Office COM integration tests are outside this gate; isolated DOCX/XLSX
+  output tests passed. Real business data, release installation and other computers were not tested.
+
+The QA subject stayed clean and unchanged throughout verification. Subsequent report/board-only
+commits do not change implementation or test bytes; final integration verifies that fact rather
+than repeating the full suite. No broad architecture redesign, unrelated UI cleanup, push or
+real-data migration is part of this batch.
 
 Recovery: inspect board/Git and this checkpoint. Do not repeat task activation or recreate completed
 work. Temporary browser harnesses are outside the repository in the current Codex work directory.
