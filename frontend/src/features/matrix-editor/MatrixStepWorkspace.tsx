@@ -29,7 +29,7 @@ export function MatrixStepWorkspace({
   view,
 }: MatrixStepWorkspaceProps): ReactElement {
   return (
-    <aside className="matrix-editor-step-workspace" aria-label="Group Step Workspace">
+    <aside id="matrix-step-details" className="matrix-editor-step-workspace" aria-label="Group Step Workspace">
       <header className="matrix-editor-step-header">
         <h3 className="matrix-editor-step-header-text">
           {`Group ${view.groupName ?? "-"}: ${view.rows.length} steps`}

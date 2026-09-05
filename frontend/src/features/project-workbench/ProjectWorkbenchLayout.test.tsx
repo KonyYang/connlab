@@ -75,6 +75,17 @@ function getWorkbenchActionButton(name: string): HTMLButtonElement {
 }
 
 describe("ProjectWorkbenchLayout lifecycle modes", () => {
+  it("can hide workbench details while keeping the Matrix visible", async () => {
+    const user = userEvent.setup();
+    renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot });
+    expect(screen.getByRole("complementary", { name: "Step workspace" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Hide workbench details" }));
+    expect(screen.queryByRole("complementary", { name: "Step workspace" })).toBeNull();
+    expect(screen.getByText("Matrix projection panel")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Show workbench details" }));
+    expect(screen.getByRole("complementary", { name: "Step workspace" })).toBeTruthy();
+  });
+
   it("keeps an existing Matrix in the unified workspace before LTR identity arrives", () => {
     renderWorkbench({
       latestLtr: null,

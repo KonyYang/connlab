@@ -16,6 +16,24 @@ import { MatrixEditorWorkspace } from "./MatrixEditorWorkspace";
 installMatrixEditorWorkspaceTestLifecycle();
 
 describe("MatrixEditorWorkspace editing behavior", () => {
+  it("collapses step details without losing edited text and locates invalid cells", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await screen.findByLabelText("Step 1 description");
+    fireEvent.change(screen.getByLabelText("Step 1 description"), { target: { value: "Keep my draft" } });
+    fireEvent.click(screen.getByRole("button", { name: "Hide step details" }));
+    expect(screen.queryByRole("complementary", { name: "Group Step Workspace" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Show step details" }));
+    expect((screen.getByLabelText("Step 1 description") as HTMLTextAreaElement).value).toBe("Keep my draft");
+
+    fireEvent.change(screen.getByLabelText("Row 1 1"), { target: { value: "invalid" } });
+    const issues = screen.getByRole("region", { name: "Matrix input errors" });
+    fireEvent.click(within(issues).getByRole("button", { name: /Row 1 1/ }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Row 1 1"));
+    expect(screen.getByLabelText("Row 1 1").getAttribute("aria-invalid")).toBe("true");
+    fireEvent.change(screen.getByLabelText("Row 1 1"), { target: { value: "1" } });
+    expect(screen.queryByRole("region", { name: "Matrix input errors" })).toBeNull();
+  });
+
   it("shows Matrix-only header actions and completion actions in a sticky footer", async () => {
     render(
       <MatrixEditorWorkspace

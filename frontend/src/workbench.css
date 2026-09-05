@@ -404,7 +404,7 @@
   border-radius: 12px;
   background: #f8fbff;
   color: var(--color-ink);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1.1;
   min-height: 18px;
@@ -1561,6 +1561,29 @@
   align-items: start;
 }
 
+.matrix-editor-studio.is-details-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.matrix-editor-input-errors {
+  border: 1px solid var(--color-danger);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.matrix-editor-input-errors ul {
+  max-height: 140px;
+  overflow: auto;
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
+
+.matrix-editor-input-errors button {
+  text-align: left;
+  color: var(--color-danger);
+}
+
 .matrix-editor-test-library,
 .matrix-editor-grid-surface,
 .matrix-editor-step-workspace,
@@ -1638,6 +1661,7 @@
 
 .matrix-editor-grid-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -1681,12 +1705,12 @@
 
 .matrix-editor-main-table {
   width: max-content;
-  font-size: 8.5px;
+  font-size: 13px;
   table-layout: fixed;
 }
 
 .matrix-editor-main-table th {
-  font-size: 8.5px;
+  font-size: 12px;
   padding: 3px 4px;
 }
 
@@ -1955,7 +1979,7 @@
   min-height: 28px;
   resize: none;
   padding: 5px 7px;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.35;
 }
 
@@ -4664,6 +4688,19 @@
   z-index: 6;
 }
 
+.runtime-console-active-matrix .runtime-console-workspace.is-details-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.runtime-console-side-column[hidden] {
+  display: none;
+}
+
+.runtime-console-view-controls {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .runtime-console-main,
 .runtime-console-step-workspace {
   display: grid;
@@ -5106,7 +5143,7 @@
   width: 100%;
   min-width: 760px;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .runtime-console-matrix-projection-table th,
@@ -5153,6 +5190,7 @@
 
 .runtime-console-matrix-token {
   cursor: pointer;
+  font-size: 13px;
 }
 
 .runtime-console-matrix-token.is-selected {

@@ -167,6 +167,17 @@ export function MatrixEditorWorkspace({
   const [sampleMergeNotes, setSampleMergeNotes] = useState<Record<string, string>>({});
   const [schedulePlan, setSchedulePlan] = useState<MatrixSchedulePlan>(() => emptySchedulePlan());
   const [showSelectedGroupsOnly, setShowSelectedGroupsOnly] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(true);
+  const editorSurfaceRef = useRef<HTMLElement>(null);
+  const [errorFocusLabel, setErrorFocusLabel] = useState<string | null>(null);
+  useLayoutEffect(() => {
+    if (!errorFocusLabel) return;
+    const target = Array.from(editorSurfaceRef.current?.querySelectorAll<HTMLElement>("[id]") ?? [])
+      .find((element) => element.id === errorFocusLabel);
+    target?.focus();
+    target?.scrollIntoView?.({ block: "center", inline: "center" });
+    setErrorFocusLabel(null);
+  }, [errorFocusLabel, showSelectedGroupsOnly]);
   const [draftLoading, setDraftLoading] = useState(false);
   const [sessionReloadGeneration, setSessionReloadGeneration] = useState(0);
   const [revisionDraftActionState, setRevisionDraftActionState] =
@@ -643,6 +654,23 @@ export function MatrixEditorWorkspace({
     sampleValues
   );
   const hasSelectedSampleQuantityError = invalidSelectedSampleGroupIds.size > 0;
+  const inputIssues: { id: string; label: string; message: string }[] = [];
+  groupColumns.forEach((group) => {
+    if (emptyGroupIds.has(group.id) || duplicateGroupIds.has(group.id)) {
+      inputIssues.push({ id: `group-name-${group.id}`, label: `Group ${group.groupKey} name`, message: groupNameErrorMessage });
+    }
+    if (invalidSelectedSampleGroupIds.has(group.id)) {
+      inputIssues.push({ id: `samples-${group.id}`, label: `Samples ${group.name || "group"}`, message: "Enter a valid sample quantity." });
+    }
+    editableRows.forEach((row, rowIndex) => {
+      const message = stepCellErrorMessageByKey.get(`${group.id}-${rowIndex}`);
+      if (message) inputIssues.push({ id: `step-${group.id}-${row.id}`, label: `Row ${rowIndex + 1} ${group.name || "Group"}`, message });
+    });
+  });
+  editableRows.forEach((row, rowIndex) => {
+    const message = scheduleCalculation.rowErrors[row.id];
+    if (message) inputIssues.push({ id: `day-${row.id}`, label: `Row ${rowIndex + 1} day`, message });
+  });
   const isPublishBusy = confirmActiveState === "loading" || isCancelling;
   const isSourceLineageReplacement =
     Boolean(sessionSourceImportId) &&
@@ -1550,10 +1578,29 @@ export function MatrixEditorWorkspace({
           {matrixImport.commitWarning}
         </p>
       ) : null}
-      <section className="matrix-editor-studio">
+      {inputIssues.length > 0 ? (
+        <section aria-label="Matrix input errors" className="matrix-editor-input-errors">
+          <strong>{inputIssues.length} input issues — select an issue to locate it</strong>
+          <ul>
+            {inputIssues.map((issue) => (
+              <li key={issue.id}>
+                <button type="button" onClick={() => {
+                  setShowSelectedGroupsOnly(false);
+                  setErrorFocusLabel(issue.id);
+                }}>{issue.label}: {issue.message}</button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      <section className={`matrix-editor-studio${detailsOpen ? "" : " is-details-collapsed"}`} ref={editorSurfaceRef}>
         <section className="matrix-editor-grid-surface">
           <div className="matrix-editor-main-table-wrap">
             <div className="matrix-editor-grid-controls">
+              <button type="button" aria-expanded={detailsOpen} aria-controls="matrix-step-details"
+                onClick={() => setDetailsOpen((open) => !open)}>
+                {detailsOpen ? "Hide step details" : "Show step details"}
+              </button>
               <label className="matrix-editor-filter-toggle">
                 <input
                   aria-label="Show selected groups only"
@@ -1604,6 +1651,9 @@ export function MatrixEditorWorkspace({
                         ) : null}
                         <input
                           className={`matrix-editor-group-name-input${group.name.trim() === "" ? " is-empty" : ""}${duplicateGroupIds.has(group.id) ? " is-duplicate" : ""}`}
+                          aria-label={`Group ${group.groupKey} name`}
+                          id={`group-name-${group.id}`}
+                          aria-invalid={emptyGroupIds.has(group.id) || duplicateGroupIds.has(group.id) || undefined}
                           disabled={isLifecycleReadonly}
                           type="text"
                           value={group.name}
@@ -1694,6 +1744,7 @@ export function MatrixEditorWorkspace({
                         <td>
                           <MatrixAutoGrowTextarea
                             ariaLabel={`Row ${rowIndex + 1} day`}
+                            id={`day-${row.id}`}
                             className={scheduleCalculation.rowErrors[row.id] ? "is-invalid" : undefined}
                             disabled={isLifecycleReadonly}
                             errorMessage={scheduleCalculation.rowErrors[row.id]}
@@ -1716,6 +1767,7 @@ export function MatrixEditorWorkspace({
                             >
                               <MatrixAutoGrowTextarea
                                 ariaLabel={`Row ${rowIndex + 1} ${group.name || "Group"}`}
+                                id={`step-${group.id}-${row.id}`}
                                 className={groupCellClass}
                                 disabled={isLifecycleReadonly}
                                 errorMessage={cellErrorMessage}
@@ -1750,6 +1802,8 @@ export function MatrixEditorWorkspace({
                     <td key={`sample-${group.id}`}>
                       <MatrixAutoGrowTextarea
                         ariaLabel={`Samples ${group.name || "group"}`}
+                        id={`samples-${group.id}`}
+                        errorMessage={invalidSelectedSampleGroupIds.has(group.id) ? "Enter a valid sample quantity." : undefined}
                         className={`matrix-editor-sample-textarea${invalidSelectedSampleGroupIds.has(group.id) ? " is-invalid" : ""}`}
                         disabled={isLifecycleReadonly}
                         value={sampleValues[group.id] ?? ""}
@@ -1940,7 +1994,7 @@ export function MatrixEditorWorkspace({
           />
         </section>
 
-        <MatrixStepWorkspace
+        {detailsOpen ? <MatrixStepWorkspace
           readOnly={isLifecycleReadonly}
           view={{
             groupName: selectedGroup ? selectedGroup.name || "Unnamed" : null,
@@ -1962,7 +2016,7 @@ export function MatrixEditorWorkspace({
               return next;
             });
           }}
-        />
+        /> : null}
       </section>
       <footer
         aria-label="Matrix editor completion actions"

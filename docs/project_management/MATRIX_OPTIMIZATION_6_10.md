@@ -32,3 +32,33 @@ ProjectWorkbenchActiveMatrixWorkspace are the current UI seams. Legacy simulated
 already removed and must remain removed. Independent item-9 planner is inspecting the existing chain.
 
 No item is marked complete yet. Test results and immutable source subjects will be appended per batch.
+
+### Item 9 independent planning evidence
+
+Planner `generation_recovery_planner` completed read-only inspection. Current chain lives in
+`useProjectWorkbenchModel.ts` onCreateOfficialWorkspace (create -> collect -> check -> four Required forms
+batches -> Application Form writeback -> display refresh). Browser lifetime currently owns continuation.
+The plan is a dedicated backend generation operation, not a generic workflow engine or new DB schema:
+start/read/resume, project lock, short sessions per step, atomic job journal under Settings.data_dir.
+Bind operation to project/source versions/config/targets and explicit conflict choice. Browser only starts,
+observes/reconnects and resumes. Never run a real user's generation as an acceptance fixture.
+
+Critical recovery windows (must test, not just wrap calls):
+- RequiredForms service places file before output registration; repository flush is committed at request end.
+- OfficialWorkspace moves directory then writes manifest then registers DB; an interrupted own directory
+  currently appears inconsistent.
+- ApplicationForm writeback edits final DOCX via COM before output registration.
+
+Use operation-owned staged outputs and durable publish intent (target prior hash/absence, complete staged
+hash, source context, intended record identity). On restart reconcile matching outputs/records without
+regeneration; only claim a file when provenance is proven. Unknown files, changed inputs/targets, damaged
+journal, closed project and repeated conflicting requests must stop safely. Stage COM edits before publish.
+Do not repeat destructive conflict choices or overwrite unknown artifacts. Preserve existing per-step APIs.
+
+Candidate seams: new project_folder_generation_service, routes_project_folder_generation, generation_journal,
+generation_runner and recoverable_output_publisher; existing dependencies/main, official workspace service/
+manifest, required forms service/gateway, request material service/copy gateway, ApplicationForm writeback,
+output record service, typed frontend client and workbench hook. Inspect exact paths/tests before edits.
+Validation must force interruption around file publish/DB commit/checkpoint and workspace move/manifest,
+then recover in a new process; verify no duplicate records, no partial final files and untouched foreign bytes.
+Independent Developer/Reviewer/QA/Integrator contexts remain required for this high-risk batch.

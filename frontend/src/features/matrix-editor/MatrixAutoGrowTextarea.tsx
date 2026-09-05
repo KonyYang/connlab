@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type ReactElement } from "react";
 
 type MatrixAutoGrowTextareaProps = {
+  id?: string;
   ariaLabel: string;
   className?: string;
   errorMessage?: string;
@@ -11,6 +12,7 @@ type MatrixAutoGrowTextareaProps = {
 };
 
 export function MatrixAutoGrowTextarea({
+  id,
   ariaLabel,
   className,
   errorMessage,
@@ -32,8 +34,11 @@ export function MatrixAutoGrowTextarea({
 
   return (
     <textarea
+      id={id}
       ref={ref}
       aria-label={ariaLabel}
+      aria-invalid={Boolean(errorMessage) || undefined}
+      aria-description={errorMessage || undefined}
       className={
         className
           ? `matrix-editor-inline-textarea ${className}`
