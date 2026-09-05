@@ -184,3 +184,14 @@ operation `5ea88f49d4ff42f3983dc62697db6f5f`, eight recorded steps exactly once;
 Source was still evolving, so final stable-source browser acceptance remains required. Test services/tabs
 were stopped/closed; user services/data were untouched. Helpers remain outside the repository in the
 current Codex workspace (`generation_ui_fixture.py`, `generation-ui-vite.config.mjs`).
+
+Retained-write guard slice: four legacy HTTP mutations (workspace create, material collect,
+required forms generate, Application Form write-back) now acquire the same project lock before
+service/session construction and retain it through request-session commit. Unfinished queued or
+blocked operations refuse separate writes even without a live worker; completed operations allow them.
+Eight public-route bypass regressions were RED, then the final affected 26 API tests passed in 3.88s,
+including actual temporary workspace/SQLite creation, lock lifetime through commit, lock contention,
+damaged journal, and existing API compatibility. Three old API test files now explicitly isolate Settings
+to temporary directories. Independent Reviewer passed this exact slice (Standards 0, Spec 0), without
+repeating tests. Whole-item review/QA still pending; guard source is intentionally not committed alone
+because it imports the new generation journal from the same unfinished batch.
