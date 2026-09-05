@@ -2,7 +2,8 @@
 
 Task: `TASK_MATRIX_RELEASE_SMOKE_20260905`.
 Local build and isolated packaged-runtime acceptance complete; second-computer/operator acceptance remains pending.
-No product code, schema, dependencies, existing release, real database or public-drive material was changed.
+The original release-delivery step changed no product code, schema, dependencies, existing release, real database or public-drive material.
+The subsequent development-environment correction below changes frontend rendering only; the delivered ZIP is unchanged.
 
 ## Delivered artifact
 
@@ -75,3 +76,30 @@ Do not overwrite the old release or replace real data with this synthetic fixtur
 the release identity, exact failed step, screenshot, timing and diagnostic ZIP if a problem occurs.
 
 This task delivers the local accepted artifact and checklist; it does not claim a production deployment or second-PC signoff.
+
+## Development-environment follow-up: legacy Workbench flash
+
+User clarified that this is a bug at `http://localhost:5173/`, not feedback from the distributed release.
+Environment/version transparency remains deferred. No release was rebuilt and no real project data was edited.
+
+- Cause: Matrix and LTR identity arrive asynchronously. The shell selected `active_matrix` from the snapshot,
+  while the layout additionally required an LTR number. A confirmed Matrix with an unresolved LTR therefore
+  fell through to the obsolete Temporary planning cards until identity arrived.
+- Fix: render the unified Matrix workspace when its authority snapshot exists, otherwise the unified no-Matrix
+  workspace. Remove the old stage-banner/mode-tabs/temporary-promotion rendering branch and its local state.
+  Keep registration gating on project-folder creation and preserve closed-project read-only status/actions.
+- Implementation and regression test: `frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx`
+  and its `.test.tsx`. Source subject: `45fc53609a289b5207133ecdcd1dedc557622ac3`.
+- RED: the new public-UI regression reproduced the screenshot's Temporary planning region and old promotion
+  cards with a confirmed snapshot and no LTR; 1 failed / 42 passed before the fix.
+- GREEN: 43 focused layout tests passed. Focused review checked async identity, no-Matrix, closed-project,
+  registration and folder guards; final QA on committed source passed 75 files / 483 frontend tests (16.97 s).
+  TypeScript checks and Vite production build passed (Vite stage 1.02 s). No Python/API/schema changes.
+- Browser: used the existing development tab, returned to Projects and opened DL-2026-08-008 through its
+  real Open Workbench button. Matrix projection and unified actions rendered; browser warning/error log was empty.
+  No real project mutations were performed. The millisecond flash was reproduced by the controlled UI test,
+  not claimed as captured by browser snapshots.
+- Diagnosis, implementation, focused review and QA were sequential passes by the same agent, not independent agents.
+- Residual boundary: unused historical component definitions remain in their existing module, with no runtime
+  callers; this fix removes their live entry path rather than doing unrelated repository-wide dead-code cleanup.
+  The already-distributed ZIP does not contain this follow-up fix; include it in a future explicitly requested release.
