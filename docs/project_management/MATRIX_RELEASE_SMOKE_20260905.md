@@ -103,3 +103,23 @@ Environment/version transparency remains deferred. No release was rebuilt and no
 - Residual boundary: unused historical component definitions remain in their existing module, with no runtime
   callers; this fix removes their live entry path rather than doing unrelated repository-wide dead-code cleanup.
   The already-distributed ZIP does not contain this follow-up fix; include it in a future explicitly requested release.
+
+## Development follow-up: initial Matrix step appearance
+
+- User requested initial black step numbers instead of simulated execution-stage colors.
+- Removed sequence-modulo status generation from `projectWorkbenchMatrixProjectionSelectors.ts`.
+  Preview tokens now carry `not_started` until an actual execution-data integration is implemented.
+  `workbench.css` renders this state with black text and the existing neutral background; selection outline remains.
+  No backend execution records were changed and no execution feature was implemented.
+- Regression in `ProjectWorkbenchMatrixProjectionPanel.test.tsx` selects steps 1–6 through public UI
+  and checks the selected token's initial status. RED failed on step 2's fake `in_progress`; GREEN passed all 10 panel tests.
+- Final source `b918aed60992d830b961f14d05a5bf6aa2d4e4fe`: 75 files / 484 tests passed with two workers
+  (51.52 s); TypeScript and Vite build passed (Vite 1.01 s). Initial high-concurrency suite had one
+  unrelated 256-category contact-measurement test timeout; its isolated run passed in a 1.26 s suite.
+  The new test initially used unsupported Testing Library `exact` options; those were removed before final validation.
+  No timeout or assertion was relaxed. Lower concurrency is a command-local validation choice, not a repository setting.
+- Real development page: all 77 rendered step buttons computed to `rgb(0, 0, 0)` with neutral background.
+  Clicking the user-selected step 4 retained black text and the selected outline.
+- Standards review: no finding; minimal selector/style change, no new abstraction or dependency.
+  Spec review: no finding; simulated statuses removed rather than merely hidden, step selection preserved.
+  Review and QA were same-agent passes. Existing release ZIP remains unchanged.
