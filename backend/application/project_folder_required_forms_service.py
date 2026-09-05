@@ -410,7 +410,7 @@ class ProjectFolderRequiredFormsService:
             warnings=tuple(),
         )
 
-    def generate(self, command: GenerateRequiredFormsCommand) -> RequiredFormsGenerateResult:
+    def generate(self, command: GenerateRequiredFormsCommand, recovery=None) -> RequiredFormsGenerateResult:
         """Generate and place Required forms after rechecking the preview context."""
         self._require_write_allowed(
             command.project_id,
@@ -473,7 +473,18 @@ class ProjectFolderRequiredFormsService:
                     timings=timings,
                 )
                 place_start = perf_counter()
-                if item.action == "update" and item.existing_sha256:
+                if recovery is not None:
+                    summary = self._outputs.get_status_summary(command.project_id)
+                    registration = RegisterProjectOutputCommand(
+                        project_id=command.project_id, output_kind=item.output_kind,
+                        status=ProjectOutputStatus.CURRENT, source=ProjectOutputSource.SYSTEM_GENERATED,
+                        output_path=str(item.target_path), draft_id=summary.active_draft_id,
+                        output_sha256=compute_sha256(source), output_size_bytes=source.stat().st_size,
+                        source_context_signature=item.source_context_signature,
+                    )
+                    recovery.publish_file(item.key, source, item.target_path, item.existing_sha256, registration)
+                    status = "updated" if item.action == "update" else "generated"
+                elif item.action == "update" and item.existing_sha256:
                     self._files.update_managed(
                         source,
                         item.target_path,

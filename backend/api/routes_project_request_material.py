@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from backend.api.project_folder_write_guard import require_project_folder_write_slot
 from backend.api.dependencies import get_project_request_material_collection_service
 from backend.application.project_request_material_collection_service import (
     ProjectRequestMaterialCollectionConflictError,
@@ -84,7 +85,8 @@ def preview_request_material(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@router.post("/collect", response_model=RequestMaterialCollectResponse)
+@router.post("/collect", response_model=RequestMaterialCollectResponse,
+    dependencies=[Depends(require_project_folder_write_slot)])
 def collect_request_material(
     project_id: str,
     service: ProjectRequestMaterialCollectionService = Depends(

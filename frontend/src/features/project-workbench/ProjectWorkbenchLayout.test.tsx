@@ -1357,6 +1357,34 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByLabelText("Folder Actions")).toBeTruthy();
   });
 
+  it("requires a fresh preview before explicitly starting over and retains its conflict approval token", async () => {
+    const user = userEvent.setup();
+    const onRestartOfficialWorkspace = vi.fn();
+    const onRefreshOfficialWorkspacePreview = vi.fn().mockResolvedValue(undefined);
+    renderWorkbench({
+      officialWorkspaceError: "Source changed",
+      officialWorkspaceCanResume: true,
+      officialWorkspaceCanRestart: true,
+      onRestartOfficialWorkspace,
+      onRefreshOfficialWorkspacePreview,
+      officialWorkspacePreview: {
+        project_id: "project-1", dl_number: "DL-001", status: "completed",
+        generation_context: "displayed-preview-token", local_workspace_root: "D:/Projects",
+        local_workspace_path: "D:/Projects/DL-001", source_book_path: "D:/Projects/DL-001/Source Book",
+        template_path: "D:/Template", official_project_folder_path: "D:/Projects/DL-001/Official",
+        manifest_path: "D:/Projects/DL-001/.connlab/manifest.json", template_root_mode: "template_root",
+        blockers: [], warnings: [], planned_paths: [],
+      },
+    });
+    expect(screen.getByRole("button", { name: "Start new generation" })).toHaveProperty("disabled", true);
+    await user.click(screen.getByRole("button", { name: "Refresh generation preview" }));
+    expect(onRefreshOfficialWorkspacePreview).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: "Start new generation" }));
+    expect(onRestartOfficialWorkspace).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Backup and Rebuild" }));
+    expect(onRestartOfficialWorkspace).toHaveBeenCalledWith("backup_and_recreate", "displayed-preview-token");
+  });
+
   it("asks before updating a recorded project folder while preview is still loading", async () => {
     const user = userEvent.setup();
     const onCreateOfficialWorkspace = vi.fn();

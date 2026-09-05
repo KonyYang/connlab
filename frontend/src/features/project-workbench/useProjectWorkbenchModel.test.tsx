@@ -15,6 +15,10 @@ const MockApiRequestError = vi.hoisted(
 );
 
 const apiMocks = vi.hoisted(() => ({
+  getProjectFolderGeneration: vi.fn(),
+  previewProjectFolderGeneration: vi.fn(),
+  startProjectFolderGeneration: vi.fn(),
+  resumeProjectFolderGeneration: vi.fn(),
   activateProjectLifecycle: vi.fn(),
   collectRequestMaterial: vi.fn(),
   closeProjectLifecycle: vi.fn(),
@@ -79,6 +83,14 @@ vi.mock("../../api/client", () => ({
 describe("useProjectWorkbenchModel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    apiMocks.getProjectFolderGeneration.mockResolvedValue(null);
+    apiMocks.previewProjectFolderGeneration.mockImplementation(async () => ({ expected_context: "preview",
+      workspace_preview: { ...await apiMocks.fetchOfficialWorkspacePreview(), generation_context: "preview" },
+    }));
+    apiMocks.startProjectFolderGeneration.mockResolvedValue({
+      project_id: "project-1", operation_id: "operation", status: "completed", step: 8,
+      completed_steps: [], message: "Project folder generation completed.",
+    });
     apiMocks.getProject.mockResolvedValue({
       project_id: "project-1",
       product_name: "Connector Sample",
@@ -420,87 +432,21 @@ describe("useProjectWorkbenchModel", () => {
     expect(result.current.publicFolderWorkflowError).toBeNull();
   });
 
-  it("stops the one-click project folder chain when Required forms preview is blocked", async () => {
-    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
-
-    await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
-    const section2CallsBefore = apiMocks.fetchProjectSection2SyncPreview.mock.calls.length;
-    const packageCallsBefore = apiMocks.fetchProjectPackagePreview.mock.calls.length;
-    const publicDriveCallsBefore = apiMocks.fetchPublicDriveUploadPreview.mock.calls.length;
-
-    await act(async () => {
-      await result.current.onCreateOfficialWorkspace();
+  it("shows backend blockers without driving any generation writes in the browser", async () => {
+    apiMocks.startProjectFolderGeneration.mockResolvedValueOnce({
+      project_id: "project-1", operation_id: "op", status: "blocked", step: 3,
+      completed_steps: ["workspace", "materials", "check"], message: "Confirm Basic Information.",
     });
-
-    await waitFor(() =>
-      expect(result.current.message).toBe(
-        "Project folder update blocked: Confirm Basic Information before generating Project Folder outputs."
-      )
-    );
-    expect(result.current.requiredFormsError).toBe(
-      "Confirm Basic Information before generating Project Folder outputs."
-    );
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+    await waitFor(() => expect(result.current.officialWorkspacePreview?.generation_context).toBeTruthy());
+    await act(async () => { await result.current.onCreateOfficialWorkspace(); });
+    expect(result.current.officialWorkspaceError).toBe("Confirm Basic Information.");
+    expect(result.current.officialWorkspaceCanResume).toBe(true);
+    expect(apiMocks.createOfficialWorkspace).not.toHaveBeenCalled();
+    expect(apiMocks.collectRequestMaterial).not.toHaveBeenCalled();
     expect(apiMocks.generateProjectFolderRequiredForms).not.toHaveBeenCalled();
     expect(apiMocks.writeBackProjectApplicationForm).not.toHaveBeenCalled();
-    expect(apiMocks.fetchProjectSection2SyncPreview).toHaveBeenCalledTimes(
-      section2CallsBefore
-    );
-    expect(apiMocks.fetchProjectPackagePreview).toHaveBeenCalledTimes(
-      packageCallsBefore
-    );
-    expect(apiMocks.fetchPublicDriveUploadPreview).toHaveBeenCalledTimes(
-      publicDriveCallsBefore
-    );
-  });
-
-  it("generates project folder Required forms in separate timed batches", async () => {
-    apiMocks.generateProjectFolderRequiredForms.mockImplementation(
-      async (_projectId: string, request: { expected_targets: Array<{ key: string }> }) => {
-        const key = request.expected_targets[0]?.key ?? "unknown";
-        return {
-          project_id: "project-1",
-          status: "generated",
-          official_project_folder_path: "D:/Projects/DL-2026-06-001/Official",
-          items: [
-            {
-              key,
-              label: key,
-              target_path: `D:/Projects/DL-2026-06-001/Official/${key}`,
-              status: "generated",
-              source_path: `D:/Temp/${key}`,
-              output_record_id: `${key}-output`,
-              message: "Placed in the Official project folder.",
-            },
-          ],
-          warnings: [],
-          timings: [{ label: `${key}.generate`, elapsed_ms: 7 }],
-        };
-      }
-    );
-    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
-
-    await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
-    apiMocks.fetchProjectFolderRequiredFormsPreview
-      .mockResolvedValueOnce(readyRequiredFormsPreview)
-      .mockResolvedValueOnce(currentRequiredFormsPreview);
-
-    await act(async () => {
-      await result.current.onCreateOfficialWorkspace();
-    });
-
-    expect(apiMocks.generateProjectFolderRequiredForms).toHaveBeenCalledTimes(4);
-    expect(
-      apiMocks.generateProjectFolderRequiredForms.mock.calls.map(
-        ([, request]) => request.expected_targets[0].key
-      )
-    ).toEqual(["customer_feedback_form", "fee_form", "test_record", "test_status"]);
-    expect(result.current.requiredFormsResult?.items.map((item) => item.key)).toEqual([
-      "customer_feedback_form",
-      "fee_form",
-      "test_record",
-      "test_status",
-    ]);
-    expect(apiMocks.syncProjectSection2FromConfirmedMatrix).not.toHaveBeenCalled();
+    expect(apiMocks.startProjectFolderGeneration).toHaveBeenCalledTimes(1);
   });
 
   it("activates lifecycle in place and refreshes project status", async () => {

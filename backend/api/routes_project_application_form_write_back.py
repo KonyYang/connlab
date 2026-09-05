@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from backend.api.project_folder_write_guard import require_project_folder_write_slot
 from backend.api.dependencies import get_project_application_form_write_back_service
 from backend.application.project_application_form_write_back_service import (
     ProjectApplicationFormWriteBackError,
@@ -51,7 +52,8 @@ class ApplicationFormWriteBackResponse(BaseModel):
     office_timings: list[ApplicationFormWriteBackTimingResponse] = Field(default_factory=list)
 
 
-@router.post("/write-back", response_model=ApplicationFormWriteBackResponse)
+@router.post("/write-back", response_model=ApplicationFormWriteBackResponse,
+    dependencies=[Depends(require_project_folder_write_slot)])
 def write_back_application_form(
     project_id: str,
     service: ProjectApplicationFormWriteBackService = Depends(

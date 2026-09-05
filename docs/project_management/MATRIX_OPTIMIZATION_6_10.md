@@ -195,3 +195,13 @@ damaged journal, and existing API compatibility. Three old API test files now ex
 to temporary directories. Independent Reviewer passed this exact slice (Standards 0, Spec 0), without
 repeating tests. Whole-item review/QA still pending; guard source is intentionally not committed alone
 because it imports the new generation journal from the same unfinished batch.
+
+Item-9 Developer handoff: 11 lifecycle/API tests, 10 hard-exit/new-process recovery tests,
+79 existing generation-service tests, 60 frontend observer/model/layout tests and TypeScript passed.
+Independent final review and QA remain pending. Parent added public Start acceptance with real
+context, eight application steps, temporary SQLite/files, confirmed Matrix/Fee/Basic Information,
+and only Office gateways replaced (Test Status creates a real workbook). Both complete-material and
+optional-email-missing cases complete; repeated Start/Resume preserve output bytes, timestamps and
+exactly five output records. This caught and fixed a real integration regression: missing optional
+email was incorrectly treated as a fatal partial collection. Missing/failed/conflicting files still stop.
+Fixture setup errors were corrected without changing product validation; they are not regression RED evidence.

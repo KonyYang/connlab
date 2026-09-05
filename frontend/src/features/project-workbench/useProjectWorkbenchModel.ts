@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useProjectFolderGeneration } from "./useProjectFolderGeneration";
 import {
   ApiRequestError,
   collectRequestMaterial,
@@ -14,7 +15,7 @@ import {
   fetchPublicDriveUploadPreview,
   fetchProjectFolderRequiredFormsPreview,
   fetchProjectPackagePreview,
-  fetchOfficialWorkspacePreview,
+  previewProjectFolderGeneration,
   fetchRequestMaterialPreview,
   getLatestProjectFolder,
   getProjectOutputStatusSummary,
@@ -32,7 +33,6 @@ import {
   getRuntimeProjectionReadOnlySnapshot,
   listProjectTestPlanSourceCandidates,
   previewProjectTestPlanMatrixFromSourceCandidate,
-  createOfficialWorkspace,
   previewProjectTestPlanMatrixFromPath,
   listProjectTestPlanDrafts,
   listExternalResources,
@@ -49,7 +49,6 @@ import {
   updateProjectTestPlanMatrixDraft,
   uploadPublicDriveProjectFolder,
   validateProjectTestPlanMatrixDraft,
-  writeBackProjectApplicationForm,
   type ApprovalPackageRequest,
   type ApprovalPackageResponse,
   type ConfirmedMatrixSnapshot,
@@ -108,11 +107,6 @@ export type WorkbenchBaselineItem = {
   value: string;
 };
 
-type ProjectFolderBusinessFlowResult =
-  | { status: "completed" }
-  | { status: "skipped" }
-  | { status: "blocked"; message: string };
-
 type RequiredFormsTargetKey = ProjectFolderRequiredFormsPreview["items"][number]["key"];
 
 type PublicFolderWorkflowOperationMap<T> = Record<
@@ -153,6 +147,8 @@ export type ProjectWorkbenchModel = {
   officialWorkspacePreview: OfficialWorkspacePreview | null;
   officialWorkspaceLoading: boolean;
   officialWorkspaceCreating: boolean;
+  officialWorkspaceCanResume?: boolean;
+  officialWorkspaceCanRestart?: boolean;
   officialWorkspaceProgressLabel: string | null;
   officialWorkspaceError: string | null;
   officialWorkspaceResult: OfficialWorkspaceCreateResponse | null;
@@ -255,8 +251,10 @@ export type ProjectWorkbenchModel = {
   onRefreshPackagePreview: () => Promise<void>;
   onRefreshOfficialWorkspacePreview: () => Promise<void>;
   onCreateOfficialWorkspace: (
-    conflictStrategy?: OfficialWorkspaceConflictStrategy
+    conflictStrategy?: OfficialWorkspaceConflictStrategy,
+    expectedContext?: string
   ) => Promise<void>;
+  onRestartOfficialWorkspace?: (strategy?: OfficialWorkspaceConflictStrategy, expectedContext?: string) => Promise<void>;
   onRefreshOfficialFolderCheck: () => Promise<void>;
   onRepairOfficialFolderStructure: () => Promise<void>;
   onRefreshPublicDriveUploadPreview: () => Promise<void>;
@@ -382,11 +380,10 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [officialWorkspacePreview, setOfficialWorkspacePreview] =
     useState<OfficialWorkspacePreview | null>(null);
   const [officialWorkspaceLoading, setOfficialWorkspaceLoading] = useState(false);
-  const [officialWorkspaceCreating, setOfficialWorkspaceCreating] = useState(false);
-  const [officialWorkspaceProgressLabel, setOfficialWorkspaceProgressLabel] =
+  const [legacyWorkspaceProgressLabel, setOfficialWorkspaceProgressLabel] =
     useState<string | null>(null);
   const [officialWorkspaceError, setOfficialWorkspaceError] = useState<string | null>(null);
-  const [officialWorkspaceResult, setOfficialWorkspaceResult] =
+  const [officialWorkspaceResult] =
     useState<OfficialWorkspaceCreateResponse | null>(null);
   const [officialFolderCheckPreview, setOfficialFolderCheckPreview] =
     useState<OfficialFolderCheckPreview | null>(null);
@@ -445,6 +442,18 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   const [section2SyncLoading, setSection2SyncLoading] = useState(false);
   const [section2SyncSyncing, setSection2SyncSyncing] = useState(false);
   const [section2SyncError, setSection2SyncError] = useState<string | null>(null);
+
+  const generation = useProjectFolderGeneration(projectId, async () => {
+    await Promise.all([
+      onRefreshOfficialWorkspacePreview(), onRefreshPublicFolderWorkflowContext(),
+      onRefreshRequestMaterial(), onRefreshRequiredForms(), onRefreshOfficialFolderCheck(),
+      onRefreshPackagePreview(), onRefreshPublicDriveUploadPreview(),
+      refreshOutputStatus(projectId, setOutputStatusSummary),
+    ]);
+    setMessage("Project folder generation completed.");
+  }, officialWorkspacePreview?.generation_context ?? null);
+  const officialWorkspaceCreating = generation.busy;
+  const officialWorkspaceProgressLabel = generation.progressLabel ?? legacyWorkspaceProgressLabel;
 
   useEffect(() => {
     void loadWorkbench(
@@ -723,8 +732,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   async function onRefreshOfficialWorkspacePreview(): Promise<void> {
     setOfficialWorkspaceLoading(true);
     try {
-      const preview = await fetchOfficialWorkspacePreview(projectId);
-      setOfficialWorkspacePreview(preview);
+      const preview = await previewProjectFolderGeneration(projectId);
+      setOfficialWorkspacePreview(preview.workspace_preview);
       setOfficialWorkspaceError(null);
     } catch (err) {
       setOfficialWorkspacePreview(null);
@@ -734,171 +743,8 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     }
   }
 
-  async function onCreateOfficialWorkspace(
-    conflictStrategy?: OfficialWorkspaceConflictStrategy
-  ): Promise<void> {
-    setOfficialWorkspaceCreating(true);
-    setOfficialWorkspaceProgressLabel("Creating or updating project folder");
-    const timings: ProjectFolderFlowTiming[] = [];
-    try {
-      const result = await timeProjectFolderStep(
-        timings,
-        "createOfficialWorkspace",
-        () =>
-          createOfficialWorkspace(
-            projectId,
-            conflictStrategy ? { conflict_strategy: conflictStrategy } : {}
-          )
-      );
-      setOfficialWorkspaceResult(result);
-      setMessage(
-        conflictStrategy
-          ? "Project folder rebuilt."
-          : "Project folder workflow updated."
-      );
-      setError(null);
-      setOfficialWorkspaceError(null);
-      setOfficialWorkspaceProgressLabel("Checking project folder paths");
-      await timeProjectFolderStep(
-        timings,
-        "officialWorkspacePreview.afterCreate",
-        () => onRefreshOfficialWorkspacePreview()
-      );
-      await timeProjectFolderStep(
-        timings,
-        "publicFolderWorkflowContext.afterCreate",
-        () => onRefreshPublicFolderWorkflowContext()
-      );
-      const flowResult = await runProjectFolderBusinessFlowAfterCreate(timings);
-      if (flowResult.status === "blocked") {
-        setMessage(`Project folder update blocked: ${flowResult.message}`);
-      }
-    } catch (err) {
-      setOfficialWorkspaceError((err as Error).message);
-    } finally {
-      logProjectFolderFlowTiming(projectId, conflictStrategy ?? "direct", timings);
-      setOfficialWorkspaceCreating(false);
-      setOfficialWorkspaceProgressLabel(null);
-    }
-  }
-
-  async function runProjectFolderBusinessFlowAfterCreate(
-    timings?: ProjectFolderFlowTiming[]
-  ): Promise<ProjectFolderBusinessFlowResult> {
-    await timeProjectFolderStep(timings, "requestMaterial.collect", () =>
-      collectRequestMaterialAfterFolderCreate()
-    );
-    await timeProjectFolderStep(timings, "officialFolderCheck.afterCollect", () =>
-      refreshOfficialFolderCheckAfterFolderCreate()
-    );
-    const requiredFormsResult = await generateRequiredFormsAfterFolderCreate(timings);
-    if (requiredFormsResult.status === "blocked") {
-      return requiredFormsResult;
-    }
-    await timeProjectFolderStep(timings, "applicationForm.writeBack", () =>
-      writeBackApplicationFormAfterFolderCreate()
-    );
-    await timeProjectFolderStep(timings, "projectPackage.preview", () =>
-      onRefreshPackagePreview()
-    );
-    await timeProjectFolderStep(timings, "publicDrive.preview", () =>
-      onRefreshPublicDriveUploadPreview()
-    );
-    return { status: "completed" };
-  }
-
-  async function collectRequestMaterialAfterFolderCreate(): Promise<void> {
-    setOfficialWorkspaceProgressLabel("Archiving request materials");
-    try {
-      const result = await collectRequestMaterial(projectId);
-      setRequestMaterialPreview(result);
-      setRequestMaterialError(null);
-    } catch (err) {
-      setRequestMaterialError((err as Error).message);
-      try {
-        setRequestMaterialPreview(await fetchRequestMaterialPreview(projectId));
-      } catch {
-        setRequestMaterialPreview(null);
-      }
-    }
-  }
-
-  async function refreshOfficialFolderCheckAfterFolderCreate(): Promise<void> {
-    setOfficialWorkspaceProgressLabel("Checking project folder structure");
-    try {
-      setOfficialFolderCheckPreview(await fetchOfficialFolderCheck(projectId));
-      setOfficialFolderCheckError(null);
-    } catch (err) {
-      setOfficialFolderCheckPreview(null);
-      setOfficialFolderCheckError((err as Error).message);
-    }
-  }
-
-  async function generateRequiredFormsAfterFolderCreate(
-    timings?: ProjectFolderFlowTiming[]
-  ): Promise<ProjectFolderBusinessFlowResult> {
-    setOfficialWorkspaceProgressLabel("Checking Fee Form and Customer Feedback");
-    try {
-      const preview = await timeProjectFolderStep(
-        timings,
-        "requiredForms.preview",
-        () => fetchProjectFolderRequiredFormsPreview(projectId)
-      );
-      setRequiredFormsPreview(preview);
-      setRequiredFormsError(null);
-      if (preview.status === "blocked") {
-        const blocker = formatRequiredFormsPreviewBlocker(preview);
-        setRequiredFormsError(blocker);
-        return { status: "blocked", message: blocker };
-      }
-      if (preview.status !== "ready" && preview.status !== "conflict") {
-        return { status: "skipped" };
-      }
-      if (!preview.items.some((item) => item.action === "generate" || item.action === "update")) {
-        return { status: "skipped" };
-      }
-      const generationResults: ProjectFolderRequiredFormsGenerateResponse[] = [];
-      for (const batch of requiredFormsGenerationBatches(preview)) {
-        setOfficialWorkspaceProgressLabel(batch.progressLabel);
-        const result = await timeProjectFolderStep(
-          timings,
-          batch.timingLabel,
-          () =>
-            generateProjectFolderRequiredForms(
-              projectId,
-              buildRequiredFormsGenerateRequest(preview, batch.keys)
-            )
-        );
-        if (result.timings?.length) {
-          console.info("[required-forms-generate]", {
-            projectId,
-            targetKeys: batch.keys,
-            timings: result.timings,
-          });
-        }
-        generationResults.push(result);
-      }
-      const mergedResult = mergeRequiredFormsGenerateResults(generationResults);
-      if (mergedResult) {
-        setRequiredFormsResult(mergedResult);
-      }
-      setRequiredFormsPreview(
-        await timeProjectFolderStep(timings, "requiredForms.previewAfterGenerate", () =>
-          fetchProjectFolderRequiredFormsPreview(projectId)
-        )
-      );
-      await timeProjectFolderStep(timings, "officialFolderCheck.afterRequiredForms", () =>
-        refreshOfficialFolderCheckAfterFolderCreate()
-      );
-      await timeProjectFolderStep(timings, "outputStatus.afterRequiredForms", () =>
-        refreshOutputStatus(projectId, setOutputStatusSummary)
-      );
-      return { status: "completed" };
-    } catch (err) {
-      const message = (err as Error).message;
-      setRequiredFormsError(message);
-      return { status: "blocked", message };
-    }
+  async function onCreateOfficialWorkspace(conflictStrategy?: OfficialWorkspaceConflictStrategy, expectedContext?: string): Promise<void> {
+    await generation.start(conflictStrategy, expectedContext);
   }
 
   async function syncSection2AfterFolderCreate(): Promise<void> {
@@ -925,16 +771,6 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     }
   }
 
-  async function writeBackApplicationFormAfterFolderCreate(): Promise<void> {
-    setOfficialWorkspaceProgressLabel("Updating Application Form");
-    try {
-      await writeBackProjectApplicationForm(projectId);
-      setSection2SyncError(null);
-      await refreshOutputStatus(projectId, setOutputStatusSummary);
-    } catch (err) {
-      setSection2SyncError((err as Error).message);
-    }
-  }
 
   async function onRefreshOfficialFolderCheck(): Promise<void> {
     setOfficialFolderCheckLoading(true);
@@ -1679,8 +1515,10 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     officialWorkspacePreview,
     officialWorkspaceLoading,
     officialWorkspaceCreating,
+    officialWorkspaceCanResume: generation.canResume,
+    officialWorkspaceCanRestart: generation.canRestart,
     officialWorkspaceProgressLabel,
-    officialWorkspaceError,
+    officialWorkspaceError: generation.error ?? officialWorkspaceError,
     officialWorkspaceResult,
     officialFolderCheckPreview,
     officialFolderCheckLoading,
@@ -1767,6 +1605,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onRefreshPackagePreview,
     onRefreshOfficialWorkspacePreview,
     onCreateOfficialWorkspace,
+    onRestartOfficialWorkspace: generation.restart,
     onRefreshOfficialFolderCheck,
     onRepairOfficialFolderStructure,
     onRefreshPublicDriveUploadPreview,
@@ -1955,40 +1794,6 @@ async function refreshOutputStatus(
   }
 }
 
-type ProjectFolderFlowTiming = {
-  label: string;
-  elapsedMs: number;
-};
-
-async function timeProjectFolderStep<T>(
-  timings: ProjectFolderFlowTiming[] | undefined,
-  label: string,
-  action: () => Promise<T>
-): Promise<T> {
-  const startedAt = performance.now();
-  try {
-    return await action();
-  } finally {
-    timings?.push({
-      label,
-      elapsedMs: Math.round(performance.now() - startedAt),
-    });
-  }
-}
-
-function logProjectFolderFlowTiming(
-  projectId: string,
-  mode: string,
-  timings: ProjectFolderFlowTiming[]
-): void {
-  const totalMs = timings.reduce((total, item) => total + item.elapsedMs, 0);
-  console.info("[project-folder-flow]", {
-    projectId,
-    mode,
-    totalMs,
-    timings,
-  });
-}
 
 function buildRequiredFormsGenerateRequest(
   preview: ProjectFolderRequiredFormsPreview,
@@ -2048,76 +1853,6 @@ function buildRequiredFormsGenerateRequest(
   };
 }
 
-function requiredFormsGenerationBatches(
-  preview: ProjectFolderRequiredFormsPreview
-): Array<{
-  keys: RequiredFormsTargetKey[];
-  progressLabel: string;
-  timingLabel: string;
-}> {
-  const writableKeys = new Set(
-    preview.items
-      .filter((item) => item.action === "generate" || item.action === "update")
-      .map((item) => item.key)
-  );
-  const batches: Array<{
-    keys: RequiredFormsTargetKey[];
-    progressLabel: string;
-    timingLabel: string;
-  }> = [
-    {
-      keys: ["customer_feedback_form"],
-      progressLabel: "Updating Customer Feedback Form",
-      timingLabel: "requiredForms.customerFeedback.generate",
-    },
-    {
-      keys: ["fee_form"],
-      progressLabel: "Updating Fee Form",
-      timingLabel: "requiredForms.feeForm.generate",
-    },
-    {
-      keys: ["test_record"],
-      progressLabel: "Updating Test Record",
-      timingLabel: "requiredForms.testRecord.generate",
-    },
-    {
-      keys: ["test_status"],
-      progressLabel: "Updating Test Status",
-      timingLabel: "requiredForms.testStatus.generate",
-    },
-  ];
-  return batches
-    .map((batch) => ({
-      ...batch,
-      keys: batch.keys.filter((key) => writableKeys.has(key)),
-    }))
-    .filter((batch) => batch.keys.length > 0);
-}
-
-function mergeRequiredFormsGenerateResults(
-  results: ProjectFolderRequiredFormsGenerateResponse[]
-): ProjectFolderRequiredFormsGenerateResponse | null {
-  if (results.length === 0) {
-    return null;
-  }
-  const last = results[results.length - 1];
-  const statuses = results.map((result) => result.status);
-  const status: ProjectFolderRequiredFormsGenerateResponse["status"] =
-    statuses.includes("blocked")
-      ? "blocked"
-      : statuses.includes("conflict")
-        ? "conflict"
-        : statuses.includes("partial")
-          ? "partial"
-          : "generated";
-  return {
-    ...last,
-    status,
-    items: results.flatMap((result) => result.items),
-    warnings: results.flatMap((result) => result.warnings),
-    timings: results.flatMap((result) => result.timings ?? []),
-  };
-}
 
 function formatRequiredFormsPreviewBlocker(
   preview: ProjectFolderRequiredFormsPreview

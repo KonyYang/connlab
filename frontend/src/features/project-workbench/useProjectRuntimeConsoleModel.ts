@@ -32,6 +32,9 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "officialWorkspacePreview"
   | "officialWorkspaceLoading"
   | "officialWorkspaceCreating"
+  | "officialWorkspaceCanResume"
+  | "officialWorkspaceCanRestart"
+  | "onRestartOfficialWorkspace"
   | "officialWorkspaceProgressLabel"
   | "officialWorkspaceError"
   | "officialWorkspaceResult"
@@ -134,6 +137,9 @@ export function selectProjectRuntimeConsoleModel(
     officialWorkspacePreview: model.officialWorkspacePreview,
     officialWorkspaceLoading: model.officialWorkspaceLoading,
     officialWorkspaceCreating: model.officialWorkspaceCreating,
+    officialWorkspaceCanResume: model.officialWorkspaceCanResume,
+    officialWorkspaceCanRestart: model.officialWorkspaceCanRestart,
+    onRestartOfficialWorkspace: model.onRestartOfficialWorkspace,
     officialWorkspaceProgressLabel: model.officialWorkspaceProgressLabel,
     officialWorkspaceError: model.officialWorkspaceError,
     officialWorkspaceResult: model.officialWorkspaceResult,

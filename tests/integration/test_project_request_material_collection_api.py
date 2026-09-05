@@ -3,8 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+import pytest
 
-from backend.api.dependencies import get_project_request_material_collection_service
+from backend.api.dependencies import get_project_request_material_collection_service, get_settings
+from backend.shared.config import Settings
 from backend.api.main import app
 from backend.application.project_request_material_collection_service import (
     ProjectRequestMaterialCollectionConflictError,
@@ -12,6 +14,15 @@ from backend.application.project_request_material_collection_service import (
     RequestMaterialPreview,
     RequestMaterialPreviewItem,
 )
+
+
+@pytest.fixture(autouse=True)
+def _isolated_generation_storage(tmp_path):
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        data_dir=tmp_path / "data", projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates", database_path=tmp_path / "fixture.sqlite")
+    yield
+    app.dependency_overrides.pop(get_settings, None)
 
 
 def test_request_material_preview_api_returns_business_state() -> None:

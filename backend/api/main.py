@@ -5,6 +5,7 @@ import time
 import uuid
 
 from fastapi import FastAPI, Request
+from backend.api.routes_project_folder_generation import router as project_folder_generation_router
 
 from backend.api.routes_cleanup import router as cleanup_router
 from backend.api.routes_approval_package import router as approval_package_router
@@ -253,6 +254,7 @@ app.include_router(official_project_folder_check_router)
 app.include_router(public_drive_upload_router)
 app.include_router(public_folder_workflow_router)
 app.include_router(project_folder_required_forms_router)
+app.include_router(project_folder_generation_router)
 app.include_router(project_application_form_write_back_router)
 app.include_router(test_record_fee_dataset_preview_router)
 app.include_router(test_record_fee_document_generation_router)

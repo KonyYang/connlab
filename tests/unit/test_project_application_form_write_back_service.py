@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from backend.infrastructure.files.project_folder_required_forms_gateway import ProjectFolderRequiredFormsFileGateway
 from types import SimpleNamespace
 
 from docx import Document
@@ -36,6 +37,7 @@ def test_application_form_write_back_updates_copied_submitted_material_docx(
     _write_docx(target)
     output_store = _OutputStore()
     service = ProjectApplicationFormWriteBackService(
+        file_gateway=ProjectFolderRequiredFormsFileGateway(),
         project_store=_ProjectStore(),
         workspace_store=_WorkspaceStore(official),
         application_form_store=_ApplicationFormStore(),
@@ -74,6 +76,7 @@ def test_application_form_write_back_blocks_without_confirmed_basic_information(
     target = official / "Submitted Material" / "application.docx"
     _write_docx(target)
     service = ProjectApplicationFormWriteBackService(
+        file_gateway=ProjectFolderRequiredFormsFileGateway(),
         project_store=_ProjectStore(),
         workspace_store=_WorkspaceStore(official),
         application_form_store=_ApplicationFormStore(),
@@ -118,6 +121,7 @@ def test_application_form_write_back_blocks_user_changed_managed_target(
     )
     office = _RejectingOffice()
     service = ProjectApplicationFormWriteBackService(
+        file_gateway=ProjectFolderRequiredFormsFileGateway(),
         project_store=_ProjectStore(),
         workspace_store=_WorkspaceStore(official),
         application_form_store=_ApplicationFormStore(),
@@ -162,6 +166,7 @@ def test_application_form_write_back_skips_current_matching_target(
     )
     office = _RejectingOffice()
     service = ProjectApplicationFormWriteBackService(
+        file_gateway=ProjectFolderRequiredFormsFileGateway(),
         project_store=_ProjectStore(),
         workspace_store=_WorkspaceStore(official),
         application_form_store=_ApplicationFormStore(),
@@ -194,6 +199,7 @@ def test_application_form_write_back_reuses_verified_artifact_without_office(
     output_store = _OutputStore()
     artifact_store = _ReusableStore(reusable)
     service = ProjectApplicationFormWriteBackService(
+        file_gateway=ProjectFolderRequiredFormsFileGateway(),
         project_store=_ProjectStore(),
         workspace_store=_WorkspaceStore(official),
         application_form_store=_ApplicationFormStore(),
@@ -225,6 +231,7 @@ def test_application_form_write_back_does_not_reuse_cache_when_source_hash_unkno
     artifact_store = _ReusableStore(reusable)
     office = _CapturingOffice()
     service = ProjectApplicationFormWriteBackService(
+        file_gateway=ProjectFolderRequiredFormsFileGateway(),
         project_store=_ProjectStore(),
         workspace_store=_WorkspaceStore(official),
         application_form_store=_ApplicationFormStore(),
@@ -250,6 +257,7 @@ def test_application_form_write_back_uses_basic_information_without_project_fall
     _write_docx(target)
     office = _CapturingOffice()
     service = ProjectApplicationFormWriteBackService(
+        file_gateway=ProjectFolderRequiredFormsFileGateway(),
         project_store=_ProjectStore(),
         workspace_store=_WorkspaceStore(official),
         application_form_store=_ApplicationFormStore(),
@@ -286,6 +294,7 @@ def test_application_form_write_back_uses_parsed_assigned_personnel_only_as_fall
     _write_docx(target)
     office = _CapturingOffice()
     service = ProjectApplicationFormWriteBackService(
+        file_gateway=ProjectFolderRequiredFormsFileGateway(),
         project_store=_ProjectStore(),
         workspace_store=_WorkspaceStore(official),
         application_form_store=_ApplicationFormStore(assigned_personnel="Parsed Engineer"),
@@ -311,6 +320,7 @@ def test_application_form_write_back_blocks_missing_required_value_before_office
     _write_docx(target)
     office = _RejectingOffice()
     service = ProjectApplicationFormWriteBackService(
+        file_gateway=ProjectFolderRequiredFormsFileGateway(),
         project_store=_ProjectStore(),
         workspace_store=_WorkspaceStore(official),
         application_form_store=_ApplicationFormStore(),
@@ -337,6 +347,7 @@ def test_application_form_write_back_blocks_gateway_critical_failure(
     _write_docx(target)
     output_store = _OutputStore()
     service = ProjectApplicationFormWriteBackService(
+        file_gateway=ProjectFolderRequiredFormsFileGateway(),
         project_store=_ProjectStore(),
         workspace_store=_WorkspaceStore(official),
         application_form_store=_ApplicationFormStore(),
@@ -366,6 +377,7 @@ def test_application_form_write_back_uses_selected_request_material_target(
     _write_docx(other_target)
     office = _CapturingOffice()
     service = ProjectApplicationFormWriteBackService(
+        file_gateway=ProjectFolderRequiredFormsFileGateway(),
         project_store=_ProjectStore(),
         workspace_store=_WorkspaceStore(official),
         application_form_store=_ApplicationFormStore(),
@@ -410,6 +422,7 @@ def test_application_form_write_back_allows_rebuilt_target_restored_to_source(
     )
     office = _CapturingOffice()
     service = ProjectApplicationFormWriteBackService(
+        file_gateway=ProjectFolderRequiredFormsFileGateway(),
         project_store=_ProjectStore(),
         workspace_store=_WorkspaceStore(official),
         application_form_store=_ApplicationFormStore(),

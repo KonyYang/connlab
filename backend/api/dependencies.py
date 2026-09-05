@@ -456,6 +456,13 @@ def get_session() -> Generator[Session, None, None]:
             raise
 
 
+@lru_cache(maxsize=1)
+def get_project_folder_generation_service():
+    """Own backend worker/session lifetime independently of browser requests."""
+    from backend.api.project_folder_generation_composition import ProjectFolderGenerationRunner
+    return ProjectFolderGenerationRunner(get_session_factory(), get_settings()).service()
+
+
 def _ltr_duplicate_resolution_service(
     session: Session,
     *,
@@ -1510,6 +1517,7 @@ def get_project_application_form_write_back_service(
     """Build the Project Folder Application Form write-back service."""
     output_service = get_project_output_record_service(session)
     return ProjectApplicationFormWriteBackService(
+        file_gateway=ProjectFolderRequiredFormsFileGateway(),
         project_store=ProjectRepository(session),
         workspace_store=ProjectOfficialWorkspaceRepository(session),
         application_form_store=ApplicationFormRepository(session),

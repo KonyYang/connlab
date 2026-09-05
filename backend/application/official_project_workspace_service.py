@@ -435,6 +435,7 @@ class OfficialProjectWorkspaceService:
         self,
         project_id: str,
         conflict_strategy: str | None = None,
+        recovery=None,
     ) -> OfficialWorkspaceCreateResult:
         """Create or continue the local official project workspace."""
         preview = self.preview(project_id)
@@ -461,6 +462,9 @@ class OfficialProjectWorkspaceService:
         assert preview.template_path is not None
         assert preview.official_folder_path is not None
         assert preview.manifest_path is not None
+
+        if recovery is not None:
+            return recovery.create(preview, conflict_strategy, self._workspaces)
 
         created_paths: list[Path] = []
         restore_path: Path | None = None

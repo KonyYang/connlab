@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
+from backend.api.project_folder_write_guard import require_project_folder_write_slot
 from backend.api.dependencies import get_official_project_workspace_service
 from backend.application.official_project_workspace_service import (
     OfficialWorkspaceConflictOption,
@@ -93,6 +94,7 @@ def preview_official_workspace(
     "/create",
     response_model=OfficialWorkspaceCreateResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_project_folder_write_slot)],
 )
 def create_official_workspace(
     project_id: str,

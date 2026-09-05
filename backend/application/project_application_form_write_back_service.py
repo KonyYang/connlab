@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+from tempfile import TemporaryDirectory
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
@@ -32,6 +33,7 @@ from backend.application.project_application_form_write_back_support import (
 )
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
 from backend.application.project_output_record_service import RegisterProjectOutputCommand
+from backend.application.project_folder_required_forms_service import RequiredFormsFileGateway
 from backend.domain import (
     ApplicationForm,
     FileAsset,
@@ -154,6 +156,7 @@ class ProjectApplicationFormWriteBackService:
         request_material_collection_store: RequestMaterialCollectionStore | None = None,
         basic_information_reader: ConfirmedBasicInformationReader,
         output_record_service: OutputRecordService,
+        file_gateway: RequiredFormsFileGateway,
         office: ApplicationFormWordWriter | None = None,
         reusable_artifact_store: ReusableApplicationFormArtifactStore | None = None,
     ) -> None:
@@ -164,12 +167,13 @@ class ProjectApplicationFormWriteBackService:
         self._request_material_collections = request_material_collection_store
         self._basic_information = basic_information_reader
         self._outputs = output_record_service
+        self._files = file_gateway
         self._office = office or OfficeFacade()
         self._reusable_artifacts = (
             reusable_artifact_store or NullReusableApplicationFormArtifactStore()
         )
 
-    def write_back(self, project_id: str) -> ProjectApplicationFormWriteBackResult:
+    def write_back(self, project_id: str, recovery=None) -> ProjectApplicationFormWriteBackResult:
         """Write known project/application fields into the copied Word form."""
         total_start = perf_counter()
         timings: list[ApplicationFormWriteBackTiming] = []
@@ -219,6 +223,12 @@ class ProjectApplicationFormWriteBackService:
             source_sha256=selected_target.source_sha256,
         )
         current_item = _latest_section_write_back_item(summary, target)
+        if recovery is not None and current_item is None and (
+            not selected_target.source_sha256 or sha256_file(target) != selected_target.source_sha256
+        ):
+            raise ProjectApplicationFormWriteBackError(
+                "Application Form target has no proven source or managed output identity. Review it before generation."
+            )
         append_timing(timings, "application_form.safety_check", safety_start)
         reuse_start = perf_counter()
         if is_current_target_reusable(current_item, target, context_signature):
@@ -245,7 +255,7 @@ class ProjectApplicationFormWriteBackService:
         append_timing(timings, "application_form.reuse_lookup", reuse_start)
         if reusable is not None:
             copy_start = perf_counter()
-            shutil.copy2(reusable, target)
+            self._publish_staged(project_id, reusable, target, summary, context_signature, recovery)
             append_timing(timings, "application_form.reuse_copy", copy_start)
             register_start = perf_counter()
             record = self._register_output(
@@ -269,12 +279,15 @@ class ProjectApplicationFormWriteBackService:
             )
         office_start = perf_counter()
         try:
-            write_result = (
-                self._office.write_word_application_form_fields_with_owned_session(
-                    target,
-                    fields,
+            staging_root = recovery.staging_directory if recovery is not None else target.parent
+            with TemporaryDirectory(prefix=".connlab-application-", dir=staging_root) as directory:
+                staged = Path(directory) / target.name
+                prior = sha256_file(target)
+                shutil.copy2(target, staged)
+                write_result = self._office.write_word_application_form_fields_with_owned_session(
+                    staged, fields,
                 )
-            )
+                self._publish_staged(project_id, staged, target, summary, context_signature, recovery, prior)
         except OfficeAutomationUnavailable as exc:
             raise ProjectApplicationFormWriteBackError(str(exc)) from exc
         except ValueError as exc:
@@ -312,6 +325,22 @@ class ProjectApplicationFormWriteBackService:
             timings=tuple(timings),
             office_timings=office_timings(write_result),
         )
+
+    def _publish_staged(self, project_id, staged, target, summary, context, recovery, prior=None):
+        prior = prior or sha256_file(target)
+        if recovery is None:
+            self._files.update_managed(
+                staged, target, key="application_form", expected_existing_sha256=prior,
+            )
+            return
+        command = RegisterProjectOutputCommand(
+            project_id=project_id, output_kind=ProjectOutputKind.SECTION2_WRITE_BACK,
+            status=ProjectOutputStatus.CURRENT, source=ProjectOutputSource.SYSTEM_GENERATED,
+            output_path=str(target), draft_id=getattr(summary, "active_draft_id", None),
+            output_sha256=sha256_file(staged), output_size_bytes=staged.stat().st_size,
+            source_context_signature=context,
+        )
+        recovery.publish_file("application_form", staged, target, prior, command)
 
     def _register_output(
         self,

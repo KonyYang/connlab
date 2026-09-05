@@ -1,3 +1,36 @@
+export type ProjectFolderGeneration = {
+  project_id: string;
+  operation_id: string;
+  status: "queued" | "running" | "blocked" | "interrupted" | "completed";
+  step: number;
+  completed_steps: string[];
+  message: string | null;
+  can_restart?: boolean;
+};
+
+export function getProjectFolderGeneration(projectId: string): Promise<ProjectFolderGeneration | null> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/project-folder/generation`);
+}
+
+export function previewProjectFolderGeneration(projectId: string): Promise<{ expected_context: string; workspace_preview: OfficialWorkspacePreview }> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/project-folder/generation/preview`);
+}
+
+export function startProjectFolderGeneration(projectId: string, request: {
+  expected_context: string; request_id: string; conflict_strategy?: OfficialWorkspaceConflictStrategy;
+  replaces_operation_id?: string;
+}): Promise<ProjectFolderGeneration> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/project-folder/generation/start`, {
+    method: "POST", body: JSON.stringify(request),
+  });
+}
+
+export function resumeProjectFolderGeneration(projectId: string, operationId: string): Promise<ProjectFolderGeneration> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/project-folder/generation/resume`, {
+    method: "POST", body: JSON.stringify({ operation_id: operationId }),
+  });
+}
+
 export type Project = {
   project_id: string;
   project_no?: string | null;
@@ -329,6 +362,7 @@ export type OfficialWorkspacePreviewStatus =
   | "inconsistent";
 
 export type OfficialWorkspacePreview = {
+  generation_context?: string;
   project_id: string;
   dl_number?: string | null;
   local_workspace_root?: string | null;

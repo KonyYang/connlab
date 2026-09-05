@@ -65,6 +65,9 @@ export function ProjectWorkbenchLayout({
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
   const [showFolderConflictDialog, setShowFolderConflictDialog] = useState(false);
+  const [folderConflictContext, setFolderConflictContext] = useState<string | undefined>();
+  const [folderConflictRestart, setFolderConflictRestart] = useState(false);
+  const [restartPreviewReady, setRestartPreviewReady] = useState(false);
 
   const {
     activeConfirmedMatrixSnapshot,
@@ -77,6 +80,10 @@ export function ProjectWorkbenchLayout({
     packagePreviewError,
     officialWorkspacePreview,
     officialWorkspaceCreating,
+    officialWorkspaceCanResume,
+    officialWorkspaceCanRestart,
+    onRestartOfficialWorkspace,
+    onRefreshOfficialWorkspacePreview,
     officialWorkspaceProgressLabel,
     officialWorkspaceError,
     onCreateOfficialWorkspace,
@@ -401,11 +408,13 @@ export function ProjectWorkbenchLayout({
   }
 
   function handleProjectFolderCreateClick(): void {
+    setFolderConflictRestart(false);
     if (lifecycleReadonlyView.readonly) {
       setLifecycleError(lifecycleReadonlyView.message);
       return;
     }
-    if (hasOfficialWorkspaceConflict) {
+    if (hasOfficialWorkspaceConflict && !officialWorkspaceCanResume) {
+      setFolderConflictContext(officialWorkspacePreview?.generation_context);
       setShowFolderConflictDialog(true);
       return;
     }
@@ -416,7 +425,16 @@ export function ProjectWorkbenchLayout({
     strategy: OfficialWorkspaceConflictStrategy
   ): void {
     setShowFolderConflictDialog(false);
-    void onCreateOfficialWorkspace(strategy);
+    if (folderConflictRestart) {
+      setRestartPreviewReady(false);
+      void onRestartOfficialWorkspace?.(strategy, folderConflictContext);
+      return;
+    }
+    if (folderConflictContext) {
+      void onCreateOfficialWorkspace(strategy, folderConflictContext);
+    } else {
+      void onCreateOfficialWorkspace(strategy);
+    }
   }
 
   return (
@@ -475,6 +493,26 @@ export function ProjectWorkbenchLayout({
         <div className="runtime-console-workflow-alert is-danger" role="alert">
           <strong>Project folder workflow</strong>
           <span>{officialWorkspaceError}</span>
+          {officialWorkspaceCanResume ? (
+            <button type="button" disabled={lifecycleReadonlyView.readonly || officialWorkspaceCreating}
+              onClick={() => void onCreateOfficialWorkspace()}>Resume generation</button>
+          ) : null}
+          {officialWorkspaceCanRestart ? <>
+            <span>After correcting inputs, review a fresh preview to start a new operation. Previous completed files and recovery history are kept.</span>
+            <button type="button" disabled={officialWorkspaceCreating || lifecycleReadonlyView.readonly}
+              onClick={() => { setRestartPreviewReady(false); void onRefreshOfficialWorkspacePreview().then(() => setRestartPreviewReady(true)).catch(() => setRestartPreviewReady(false)); }}>Refresh generation preview</button>
+            <button type="button" disabled={!restartPreviewReady || !officialWorkspacePreview?.generation_context || officialWorkspaceCreating || lifecycleReadonlyView.readonly}
+              onClick={() => {
+                if (hasOfficialWorkspaceConflict) {
+                  setFolderConflictRestart(true);
+                  setFolderConflictContext(officialWorkspacePreview?.generation_context);
+                  setShowFolderConflictDialog(true);
+                } else {
+                  setRestartPreviewReady(false);
+                  void onRestartOfficialWorkspace?.(undefined, officialWorkspacePreview?.generation_context);
+                }
+              }}>Start new generation</button>
+          </> : null}
         </div>
       ) : null}
 

@@ -132,14 +132,14 @@ class ProjectRequestMaterialCollectionService:
             warnings=tuple(dict.fromkeys(warnings)),
         )
 
-    def collect(self, project_id: str) -> RequestMaterialCollectResult:
+    def collect(self, project_id: str, recovery=None, collection_id=None) -> RequestMaterialCollectResult:
         """Copy request material after re-running preview and conflict checks."""
         preview = self.preview(project_id)
         if preview.status in {"blocked", "conflict"}:
             detail = preview.blockers[0] if preview.blockers else "Target file conflict"
             raise ProjectRequestMaterialCollectionConflictError(detail)
         assert preview.local_workspace_path is not None
-        collection_id = uuid4().hex
+        collection_id = collection_id or uuid4().hex
         staging_root = (
             preview.local_workspace_path
             / ".connlab"
@@ -152,11 +152,16 @@ class ProjectRequestMaterialCollectionService:
             if item.action == "copy" and item.status in {"planned", "needs_review"}
         ]
         try:
-            copied_paths = self._copy_gateway.copy_items(
-                items=copy_items,
-                staging_root=staging_root,
-            )
+            if recovery is None:
+                copied_paths = self._copy_gateway.copy_items(items=copy_items, staging_root=staging_root)
+            else:
+                copied_paths = []
+                for item in copy_items:
+                    recovery.publish_file(item.dedupe_key + item.target_area, item.source_path, item.target_path, None)
+                    copied_paths.append(item.target_path)
         except ProjectRequestMaterialCollectionCopyFailureError as exc:
+            if recovery is not None:
+                raise
             after = self.preview(project_id)
             copied_paths = _copied_paths_after_partial_failure(
                 before=copy_items,
@@ -178,6 +183,8 @@ class ProjectRequestMaterialCollectionService:
             self._persist_result(result)
             return result
         except OSError as exc:
+            if recovery is not None:
+                raise
             after = self.preview(project_id)
             copied_paths = _copied_paths_after_partial_failure(
                 before=copy_items,

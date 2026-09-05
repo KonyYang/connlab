@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from backend.api.project_folder_write_guard import require_project_folder_write_slot
 from backend.api.dependencies import get_project_folder_required_forms_service
 from backend.api.lifecycle_errors import (
     lifecycle_guard_not_found,
@@ -133,7 +134,8 @@ def preview_required_forms(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@router.post("/generate", response_model=RequiredFormsGenerateResponse)
+@router.post("/generate", response_model=RequiredFormsGenerateResponse,
+    dependencies=[Depends(require_project_folder_write_slot)])
 def generate_required_forms(
     project_id: str,
     request: RequiredFormsGenerateRequest,

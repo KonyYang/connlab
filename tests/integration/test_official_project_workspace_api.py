@@ -3,8 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+import pytest
 
-from backend.api.dependencies import get_official_project_workspace_service
+from backend.api.dependencies import get_official_project_workspace_service, get_settings
+from backend.shared.config import Settings
 from backend.api.main import app
 from backend.application.official_project_workspace_service import (
     OfficialWorkspaceConflictOption,
@@ -14,6 +16,15 @@ from backend.application.official_project_workspace_service import (
     OfficialWorkspacePreview,
     OfficialWorkspaceRecord,
 )
+
+
+@pytest.fixture(autouse=True)
+def _isolated_generation_storage(tmp_path):
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        data_dir=tmp_path / "data", projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates", database_path=tmp_path / "fixture.sqlite")
+    yield
+    app.dependency_overrides.pop(get_settings, None)
 
 
 def test_official_workspace_preview_api_returns_typed_preview() -> None:
