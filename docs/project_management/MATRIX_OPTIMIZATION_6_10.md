@@ -169,3 +169,18 @@ output record service, typed frontend client and workbench hook. Inspect exact p
 Validation must force interruption around file publish/DB commit/checkpoint and workspace move/manifest,
 then recover in a new process; verify no duplicate records, no partial final files and untouched foreign bytes.
 Independent Developer/Reviewer/QA/Integrator contexts remain required for this high-risk batch.
+
+Item-9 in-progress checkpoint (not final acceptance): independent Reviewer
+`generation_recovery_reviewer` found preview-token drift after conflict choice, pre-intent partial
+workspace staging blocking recovery, missing configured Test Record template binding, published staging
+links polluting output folders, project-switch start-state leakage, and unhandled completion-refresh errors.
+Developer is fixing these in the same batch. Also check actual chain composition, subprocess crash windows,
+legacy XLS metadata behavior, and supported file identity/concurrent-writer assumptions before approval.
+
+Preliminary browser feedback used isolated ports 5197/8027, temporary project P1, actual operation
+service/journal and synthetic generation steps (not the real file-generation chain). UI displayed progress,
+then a synthetic step-3 failure with Resume. Resume followed by closing the tab completed the same
+operation `5ea88f49d4ff42f3983dc62697db6f5f`, eight recorded steps exactly once; reopened UI was no longer busy.
+Source was still evolving, so final stable-source browser acceptance remains required. Test services/tabs
+were stopped/closed; user services/data were untouched. Helpers remain outside the repository in the
+current Codex workspace (`generation_ui_fixture.py`, `generation-ui-vite.config.mjs`).
