@@ -17,6 +17,20 @@ from sqlalchemy.orm import Mapped, mapped_column
 from backend.infrastructure.storage.database import Base
 
 
+class ProjectMatrixDraftStepTextOverrideModel(Base):
+    """Additive child table: explicit per-step draft text, never shared row text."""
+
+    __tablename__ = "project_matrix_draft_step_text_overrides"
+    __table_args__ = (CheckConstraint("step_sequence > 0", name="ck_draft_step_text_positive"),)
+    project_matrix_draft_id: Mapped[str] = mapped_column(String(64), ForeignKey("project_matrix_draft_records.project_matrix_draft_id"), primary_key=True)
+    draft_group_id: Mapped[str] = mapped_column(String(64), ForeignKey("project_matrix_draft_groups.draft_group_id"), primary_key=True)
+    draft_row_id: Mapped[str] = mapped_column(String(64), ForeignKey("project_matrix_draft_rows.draft_row_id"), primary_key=True)
+    step_sequence: Mapped[int] = mapped_column(Integer, primary_key=True)
+    step_suffix_note: Mapped[str] = mapped_column(String(128), primary_key=True, default="")
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    requirement: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class ProjectMatrixDraftRecordModel(Base):
     """Database row for one Project Matrix draft root."""
 

@@ -72,10 +72,12 @@ import {
 import {
   buildPreviewStepNoteLookup,
   buildSelectedGroupStepPreviewRows,
+  buildStepTextOverrides,
   extractMarkerKey,
   formatConciseItemSectionNote,
   parseStepTokens,
   replaceItemSectionNoteSection,
+  restoreStepTextOverrides,
   stripLeadingMarkerPrefix,
   type StepOutputOverride,
 } from "./matrixStepWorkspaceModel";
@@ -191,7 +193,8 @@ export function MatrixEditorWorkspace({
     groupColumns,
     sampleValues,
     schedulePlan,
-    durationAuthorities
+    durationAuthorities,
+    buildStepTextOverrides(editableRows, groupColumns, stepOutputOverrides),
   );
   const currentSaveSignature = JSON.stringify(currentSavePayload);
 
@@ -204,10 +207,12 @@ export function MatrixEditorWorkspace({
     const nextGroups = mapped.groups.length > 0 ? mapped.groups : buildInitialGroupColumns();
     const nextRows = mapped.rows.length > 0 ? mapped.rows : buildInitialMatrixRows();
     const nextSamples = mapped.samples;
+    const nextStepOverrides = restoreStepTextOverrides(draft.step_text_overrides ?? [], nextRows, nextGroups);
     setGroupColumns(nextGroups);
     setEditableRows(nextRows);
     setSampleValues(nextSamples);
     setDurationAuthorities(draft.duration_authorities ?? []);
+    setStepOutputOverrides(nextStepOverrides);
     setSampleMergeNotes({});
     setSchedulePlan(nextSchedulePlan);
     setSelectedGroupId(nextGroups[0]?.id ?? null);
@@ -217,7 +222,8 @@ export function MatrixEditorWorkspace({
       nextGroups,
       nextSamples,
       nextSchedulePlan,
-      draft.duration_authorities ?? []
+      draft.duration_authorities ?? [],
+      buildStepTextOverrides(nextRows, nextGroups, nextStepOverrides),
     );
     setActiveAuthorityConfirmed(false);
     setConfirmActiveState("idle");
@@ -303,6 +309,7 @@ export function MatrixEditorWorkspace({
           setSampleValues(defaultSamples);
           setSampleMergeNotes({});
           setDurationAuthorities([]);
+          setStepOutputOverrides({});
           setSchedulePlan(defaultSchedulePlan);
           setSelectedGroupId(defaultGroups[0]?.id ?? null);
           setSelectedRowId(null);
@@ -573,7 +580,8 @@ export function MatrixEditorWorkspace({
   const testRecordDraftRequest = buildMatrixEditorTestRecordDraftRequest(
     editableRows,
     groupColumns,
-    sampleValues
+    sampleValues,
+    currentSavePayload.step_text_overrides,
   );
   const canGenerateTestRecord =
     testRecordDraftRequest.groups.length > 0 && hasAnyStepTokenValue && !hasStepTokenError;
@@ -658,8 +666,6 @@ export function MatrixEditorWorkspace({
     },
   });
   const requiresCurrentSavedDraft =
-    Boolean(activeConfirmedMatrixId) &&
-    !isSourceLineageReplacement &&
     (hasUnsavedChanges ||
       saveState === "dirty" ||
       saveState === "saving" ||
@@ -795,6 +801,8 @@ export function MatrixEditorWorkspace({
     field: keyof StepOutputOverride,
     value: string
   ): void => {
+    if (isLifecycleReadonly) return;
+    markUnsaved();
     setStepOutputOverrides((previous) => ({
       ...previous,
       [key]: {

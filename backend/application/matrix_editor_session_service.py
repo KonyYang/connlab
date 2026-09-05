@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import datetime
+from dataclasses import replace
+from backend.application.matrix_step_text_overrides import updated_step_text_overrides
 from typing import Callable, Literal
 
 from backend.application.confirmed_matrix_authority_service import (
@@ -54,6 +56,7 @@ from backend.application.matrix_editor_session_signature import (
     _is_source_lineage_replaced,
     _validate_session_schedule,
     build_project_matrix_draft_payload_signature,
+    build_matrix_editor_saved_payload_signature,
 )
 from backend.application.matrix_editor_session_publication import (
     MatrixEditorSessionPublicationMixin,
@@ -118,6 +121,8 @@ class MatrixEditorSessionService(
                 project_id=project_id,
                 active_confirmed_matrix_id=None,
                 active_confirmed_revision=None,
+                source_import_id=saved.record.source_import_id,
+                source_snapshot_id=saved.record.source_snapshot_id,
                 active_source_import_id=None,
                 active_source_snapshot_id=None,
                 editor_source_import_id=None,
@@ -238,10 +243,11 @@ class MatrixEditorSessionService(
         self._validate_expected_active(expected_command, active)
         if active is None:
             draft = self._get_unconfirmed_editor_draft(command.project_id)
-            if draft is None or (
-                draft.record.source_import_id != command.source_import_id
-                or draft.record.source_snapshot_id != command.source_snapshot_id
-            ):
+            if draft is None and not command.source_import_id and not command.source_snapshot_id:
+                draft = self._create_manual_editor_draft(expected_command, tuple(
+                    group.group_key for group in command.groups if group.is_selected
+                ))
+            if draft is None or not self._matches_unconfirmed_editor_draft(command, draft):
                 raise MatrixEditorSessionDraftConflictError(
                     "Imported Matrix draft changed. Reload the current draft before saving."
                 )
@@ -290,6 +296,8 @@ class MatrixEditorSessionService(
             active_confirmed_matrix_id=active.version.confirmed_matrix_id,
             active_confirmed_revision=active.version.confirmed_revision,
             fee_rebase_status=fee_rebase_result.status,
+            source_import_id=active.version.source_import_id,
+            source_snapshot_id=saved.record.source_snapshot_id,
             fee_rebase_summary=fee_rebase_result.summary,
             fee_rebase_error=fee_rebase_result.error,
         )
@@ -390,6 +398,18 @@ class MatrixEditorSessionService(
             raise MatrixEditorSessionError("confirmed_by is required.")
         active = self._confirmed.get_active_by_project(command.project_id)
         self._validate_expected_active(command, active)
+        if command.step_text_overrides is None and active is not None:
+            # Legacy partial clients omit this field. Preserve its existing authority,
+            # including the current saved draft, rather than implicitly clearing it.
+            current = self._get_current_editor_draft(active)
+            previous = (_build_editor_draft_from_project_draft(current) if current is not None
+                        else _build_editor_draft_from_active(active))
+            group_map = _map_preserved_editor_ids(previous.groups, command.groups, "draft_group_id", "source_group_snapshot_id")
+            row_map = _map_preserved_editor_ids(previous.rows, command.rows, "draft_row_id", "source_row_snapshot_id")
+            command = replace(command, step_text_overrides=updated_step_text_overrides(
+                existing=previous.step_text_overrides, incoming=None, groups=command.groups,
+                rows=command.rows, cells=command.cells, group_id_map=group_map, row_id_map=row_map,
+            ))
         if len(command.groups) == 0:
             raise MatrixEditorSessionError("At least one group is required.")
         if len(command.rows) == 0:
@@ -408,6 +428,14 @@ class MatrixEditorSessionService(
             )
         if not _has_any_step_tokens(command.cells):
             raise MatrixEditorSessionError("At least one step token is required.")
+        if command.step_text_overrides is not None:
+            try:
+                command = replace(command, step_text_overrides=updated_step_text_overrides(
+                    existing=(), incoming=command.step_text_overrides, groups=command.groups,
+                    rows=command.rows, cells=command.cells, group_id_map={}, row_id_map={},
+                ))
+            except ValueError as exc:
+                raise MatrixEditorSessionError(str(exc)) from exc
         _validate_session_schedule(command)
         payload_signature = _build_signature_from_session_payload(command)
         if active is not None:
@@ -416,7 +444,7 @@ class MatrixEditorSessionService(
                 if _has_expected_saved_draft(command):
                     saved_draft = self._load_expected_saved_draft(command, active)
                     if not step_quantity_authority_matches(saved_draft, active):
-                        if payload_signature != (
+                        if build_matrix_editor_saved_payload_signature(command) != (
                             command.expected_saved_payload_signature or ""
                         ).strip():
                             raise MatrixEditorSessionDraftConflictError(
@@ -445,7 +473,7 @@ class MatrixEditorSessionService(
                     confirmed_snapshot=confirmed,
                 )
             saved_draft = self._load_expected_saved_draft(command, active)
-            if payload_signature != (command.expected_saved_payload_signature or "").strip():
+            if build_matrix_editor_saved_payload_signature(command) != (command.expected_saved_payload_signature or "").strip():
                 raise MatrixEditorSessionDraftConflictError(
                     "Confirm payload differs from the saved Matrix draft. Save again before confirming."
                 )
@@ -476,6 +504,15 @@ def _active_fee_rule_version_id() -> str:
 
 
 _build_signature_from_project_draft = build_project_matrix_draft_payload_signature
+
+
+def _map_preserved_editor_ids(previous, incoming, id_field, source_field):
+    incoming_ids = {getattr(item, id_field) for item in incoming}
+    by_source = {getattr(item, source_field): getattr(item, id_field) for item in incoming
+                 if getattr(item, source_field)}
+    return {getattr(item, id_field): (getattr(item, id_field) if getattr(item, id_field) in incoming_ids
+                                    else by_source.get(getattr(item, source_field), getattr(item, id_field)))
+            for item in previous}
 
 
 def _generation_from_updated_at(updated_at: str) -> int:

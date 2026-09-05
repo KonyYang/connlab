@@ -38,6 +38,7 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
               sequence: 1,
               raw_token: "1",
               test_item: "Visual",
+              description: "Confirmed group-one description",
               section: "6.1",
               method: "EIA-364-18B",
               condition: "10x",
@@ -110,6 +111,7 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     expect(screen.queryByText("Selected token: Group 1 / 1")).toBeNull();
     expect(onTokenSelect.mock.calls.length).toBeGreaterThanOrEqual(2);
     const lastCall = onTokenSelect.mock.calls[onTokenSelect.mock.calls.length - 1];
+    expect(lastCall[0].description).toBe("Confirmed group-one description");
     expect(lastCall?.[0]?.groupLabel).toBe("Group 1");
     expect(lastCall?.[0]?.rawToken).toBe("1");
   });

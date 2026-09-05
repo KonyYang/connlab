@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Protocol
 from uuid import uuid4
 
+from backend.application.matrix_step_text_output import MatrixStepTextOutputOverride
+
 from backend.application.matrix_editor_test_record_document_generation_service import (
     GenerateMatrixEditorTestRecordDocumentCommand,
     MatrixEditorTestRecordGroupInput,
@@ -104,6 +106,7 @@ class ExecuteMatrixEditorTestRecordPublicationCommand:
     template_path: Path
     groups: tuple[MatrixEditorTestRecordGroupInput, ...]
     rows: tuple[MatrixEditorTestRecordRowInput, ...]
+    step_text_overrides: tuple[MatrixStepTextOutputOverride, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -327,6 +330,7 @@ class MatrixEditorTestRecordPublicationService:
         try:
             generated = self._generator.generate(
                 GenerateMatrixEditorTestRecordDocumentCommand(
+                    step_text_overrides=command.step_text_overrides,
                     project_id=command.project_id,
                     output_dir=operation_dir,
                     template_path=Path(command.template_path),

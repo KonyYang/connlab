@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Mapping
 
+from backend.application.matrix_step_text_output import MatrixStepTextOutputOverride, draft_step_text_lookup
+from backend.domain.confirmed_matrix_authority_models import ConfirmedMatrixStepTextOverride
+
 from backend.application.confirmed_matrix_llcr_cr_record_projection import (
     LlcrCrRecordProjection,
     build_point_profile_llcr_cr_record_projection,
@@ -52,12 +55,14 @@ def build_matrix_editor_llcr_cr_record_projection(
     groups: tuple[MatrixEditorLlcrCrRecordGroupInput, ...],
     rows: tuple[MatrixEditorLlcrCrRecordRowInput, ...],
     point_profile,
+    step_text_overrides: tuple[MatrixStepTextOutputOverride, ...] = (),
 ) -> LlcrCrRecordProjection:
     """Build a no-authority workbook projection from the supplied live draft."""
     snapshot = _draft_snapshot(
         project_id=project_id,
         groups=groups,
         rows=rows,
+        step_text_overrides=step_text_overrides,
     )
     projection = build_point_profile_llcr_cr_record_projection(
         snapshot,
@@ -77,6 +82,7 @@ def _draft_snapshot(
     project_id: str,
     groups: tuple[MatrixEditorLlcrCrRecordGroupInput, ...],
     rows: tuple[MatrixEditorLlcrCrRecordRowInput, ...],
+    step_text_overrides: tuple[MatrixStepTextOutputOverride, ...] = (),
 ) -> ConfirmedMatrixSnapshot:
     version = ConfirmedMatrixVersion(
         confirmed_matrix_id=_DRAFT_MATRIX_ID,
@@ -160,4 +166,15 @@ def _draft_snapshot(
         groups=projected_groups,
         rows=tuple(projected_rows),
         step_quantities=tuple(quantities),
+        step_text_overrides=tuple(
+            ConfirmedMatrixStepTextOverride(
+                confirmed_group_id=group_by_key[group].confirmed_group_id,
+                confirmed_row_id=f"draft-row-{row_order}",
+                step_sequence=sequence, step_suffix_note=suffix,
+                description=item.description, requirement=item.requirement,
+            )
+            for (group, row_order, sequence, suffix), item in draft_step_text_lookup(
+                groups=groups, rows=rows, overrides=step_text_overrides,
+            ).items()
+        ),
     )

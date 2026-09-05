@@ -33,6 +33,7 @@ export type MatrixProjectionTokenCell = {
   statusTone: MatrixProjectionStatusTone;
   sampleQuantityExpression: string;
   testItem: string;
+  description?: string | null;
   section: string;
   method: string;
   condition: string;
@@ -121,6 +122,7 @@ function buildTokenCell(
     statusTone: deriveMatrixProjectionStatusTone(step.sequence),
     sampleQuantityExpression: group.sample_quantity_expression || "-",
     testItem: step.test_item,
+    description: step.description,
     section: step.section,
     method: step.method,
     condition: step.condition,

@@ -39,28 +39,54 @@ Status: implementation checkpoint, NOT complete or ready for close.
 - No real business data used or changed. Temporary frontend/backend listeners on 5187/8017 were
   stopped after validation. No release build was installed, no real-data migration, no push.
 
-## Standards review
+## Initial-slice Standards review
 
 Same-agent focused pass, not an independent Reviewer. No blocking standards defect identified in
 the implemented slice. Reused API/adapter/draft boundaries; no database schema, dependency or framework
 introduced. Further simplification of the first-confirm method's duplicated confirmation/error handling
 can be considered during final review; do not expand into a publication-module rewrite.
 
-## Spec review and remaining work
+## Confirmed step-text requirement and work in progress
 
-The full goal remains incomplete. `Step Description` / `Requirement` in the Group Step Workspace
-are page-local overrides. Browser repro: changing only Step 1 description leaves Confirm disabled;
-reloading restores `Visual Examination`, discarding the temporary change. They are absent from draft,
-confirmed and export payloads. Do not declare all Matrix edits durable based on the row-field tests.
+Initial browser repro: `Step Description` / `Requirement` were page-local overrides; changing only
+Step 1 description left Confirm disabled and reload discarded it. The implementation below fixes
+that storage/output gap; final independent review and QA still need to validate the complete batch.
 
-Awaiting User decision: are these **formal per-group/per-step Matrix values**, or **export-only text
-adjustments**? This changes authority, persistence and downstream outputs. Do not silently apply a
-step edit to the whole source row/all groups, disable the inputs to claim a fix, or pack the fields into
-unrelated storage. If schema work is required, use the existing high-risk workflow and isolated migration
-tests; real-data migration still needs explicit authority.
+User decision is resolved: step Description / Requirement are durable, group-local and step-local draft
+values. Saving must leave existing formal authority unchanged. Successful Confirm publishes a new
+immutable version; failure keeps the draft and prior authority and reports the error. No propagation
+to another group, step, or shared source row. Null inherits the derived default; an empty string is an
+explicit blank. Identity includes group, row, sequence and suffix.
 
-After that decision: complete the chosen step-edit round trip; assess navigation before the autosave
-delay expires; review exact combined diff; run a risk-proportionate final QA matrix once on the clean
+Implementation uses additive draft/confirmed child records and the existing transaction/creation
+mechanism, not unrelated JSON storage. Independent planning, backend development and focused review
+contexts are used for this persistence risk; final independent QA/integration are still pending.
+No real business database is opened for migration or testing.
+
+Frontend RED/GREEN: step-only changes previously never saved; they now save, reopen and survive a
+confirmation error. Targeted checks cover two groups, repeated LLCR steps, suffixes and explicit blanks.
+Live Test Record requests now include the step-local edits without rewriting the shared test item.
+Independent review also identified late autosave A overwriting newly loaded draft B identity; the
+deferred-response regression failed before isolation and now passes along with existing Cancel checks.
+These are Developer feedback checks, not the final QA claim.
+
+Matrix XLSX remains the existing shared-row grid. Per-step text must not overwrite that row for all
+groups or silently introduce a new worksheet/template format. Step-specific formal outputs use the
+confirmed step projection; live draft outputs must be distinguished from confirmed authority.
+
+Additional Developer checks: manually entered Matrix autosaves and keeps new source lineage; Confirm
+waits for the current save, and browser refresh/close requests warn while edits are unsaved. This is
+not a claim that every application-level navigation has a global route guard. Excluded groups keep
+their draft text and invalidate the saved-draft signature without changing formal authority.
+
+Developer evidence on the completed implementation: frontend 73 affected tests passed (9.08 s),
+with a separate TypeScript check passed. Backend persistence/revision 79 passed (47.76 s); after the
+last saved-signature change, 42 affected tests passed (25.08 s), with storage bytes unchanged.
+Output tests 132 passed (43.36 s), including real isolated DOCX/XLSX checks, formal-authority matching
+negatives and canonical test-item preservation. Those counts overlap and must not be summed as a
+distinct-test total. Final QA is still pending.
+
+Next: review exact combined diff; run a risk-proportionate final QA matrix once on the clean
 reviewed state, including browser/real export coverage. Then integrate and finish to ready_for_close.
 This checkpoint is not final QA. No broad architecture redesign or unrelated UI cleanup is authorized.
 

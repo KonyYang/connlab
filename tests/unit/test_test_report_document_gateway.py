@@ -1062,6 +1062,21 @@ def _build_template(
     return path
 
 
+def test_report_preserves_explicit_step_text_instead_of_deriving_llcr_defaults(tmp_path: Path):
+    report = _report()
+    group = report.groups[0]
+    changed_step = replace(group.steps[1], description="Custom final-stage description",
+                           requirement="Initial custom; Delta custom", requirement_is_override=True)
+    report = replace(report, groups=(replace(group, steps=(group.steps[0], changed_step)),))
+    output = tmp_path / "report.docx"
+    TestReportDocumentGateway().generate(
+        template_path=_build_template(tmp_path / "template.docx"), output_path=output, report=report)
+    texts = [cell.text for table in Document(output).tables for row in table.rows for cell in row.cells]
+    assert "Custom final-stage description" in texts
+    assert "Initial custom; Delta custom" in texts
+    assert "LLCR" in texts
+
+
 def _report() -> TestReportDraftData:
     group1 = ConfirmedMatrixTestRecordPreviewGroup(
         group_key="g1",

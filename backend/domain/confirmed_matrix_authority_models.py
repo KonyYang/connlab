@@ -129,6 +129,18 @@ class ConfirmedMatrixDurationAuthority:
 
 
 @dataclass(frozen=True, slots=True)
+class ConfirmedMatrixStepTextOverride:
+    """Immutable text for one confirmed group/row/token, without row-wide mutation."""
+
+    confirmed_group_id: str
+    confirmed_row_id: str
+    step_sequence: int
+    step_suffix_note: str = ""
+    description: str | None = None
+    requirement: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ConfirmedMatrixSnapshot:
     """Aggregate immutable confirmed Matrix authority snapshot."""
 
@@ -142,3 +154,4 @@ class ConfirmedMatrixSnapshot:
     duration_authorities: tuple[ConfirmedMatrixDurationAuthority, ...] = field(
         default_factory=tuple
     )
+    step_text_overrides: tuple[ConfirmedMatrixStepTextOverride, ...] = ()

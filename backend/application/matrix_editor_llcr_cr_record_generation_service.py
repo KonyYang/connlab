@@ -6,6 +6,8 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Protocol
 
+from backend.application.matrix_step_text_output import MatrixStepTextOutputOverride
+
 from backend.application.confirmed_matrix_llcr_cr_record_projection import (
     LlcrCrRecordProjection,
 )
@@ -56,6 +58,7 @@ class GenerateMatrixEditorLlcrCrRecordCommand:
     record_type: str
     groups: tuple[MatrixEditorLlcrCrRecordGroupInput, ...]
     rows: tuple[MatrixEditorLlcrCrRecordRowInput, ...]
+    step_text_overrides: tuple[MatrixStepTextOutputOverride, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,6 +96,7 @@ class MatrixEditorLlcrCrRecordGenerationService:
             groups=command.groups,
             rows=command.rows,
             point_profile=profile,
+            step_text_overrides=command.step_text_overrides,
         )
         projection = replace(
             projection,

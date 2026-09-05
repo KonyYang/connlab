@@ -241,7 +241,10 @@ def write_macro_style_contact_resistance_category_sheet(
         for stage_index, stage in enumerate(section.stages):
             stage_start = current_row
             stage_end = stage_start + len(points) - 1
-            stage_label = _record_stage_label(stage.label, stage_index, record_type)
+            stage_label = _record_stage_label(
+                stage.label, stage_index, record_type,
+                explicit=getattr(stage, "description_is_override", False),
+            )
             sheet.cell(stage_start, 2, stage_label)
             sheet.cell(stage_start, calculated_step, stage_label)
             _merge_vertical(sheet, stage_start, stage_end, 2)
@@ -375,6 +378,7 @@ def write_macro_style_contact_resistance_summary(
                 len(section.stages),
                 delta_r_enabled,
                 record_type,
+                explicit=getattr(stage, "description_is_override", False),
             ))
             for category_index, (
                 sheet_name,
@@ -611,7 +615,9 @@ def _first_test_current(sections) -> float | None:
     return None
 
 
-def _record_stage_label(label: str, stage_index: int, record_type: str) -> str:
+def _record_stage_label(label: str, stage_index: int, record_type: str, *, explicit: bool = False) -> str:
+    if explicit:
+        return label
     value = label.strip()
     if stage_index == 0 and value == "Initial":
         return f"Initial {record_type.upper()}"
@@ -626,7 +632,10 @@ def _summary_stage_label(
     stage_count: int,
     delta_r_enabled: bool,
     record_type: str,
+    *, explicit: bool = False,
 ) -> str:
+    if explicit:
+        return label
     record_label = _record_stage_label(label, stage_index, record_type)
     if not delta_r_enabled or stage_index == 0:
         return record_label

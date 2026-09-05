@@ -31,15 +31,15 @@
     "risk_reasons": [],
     "activation_head": "d407f3ffbe8d7fdb4b5a3772b2c4ef19ce68c04c",
     "started_at": "2026-09-05T00:23:15.197219Z",
-    "updated_at": "2026-09-05T00:52:43.306033Z",
+    "updated_at": "2026-09-05T01:31:13.714290Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_EXPERIENCE_RELIABILITY_BATCH1",
-      "stage": "step_edit_authority_decision",
-      "status": "blocked",
-      "requires_user": true,
-      "summary": "Loading, registry status, imported pre-confirmation autosave and confirm recovery implemented. Targeted frontend 74/backend 57 tests and build pass; isolated browser checked. Await User choice: step text as formal per-step authority or export-only adjustment. Full goal and final QA remain open. See docs/project_management/MATRIX_RELIABILITY_BATCH1.md."
+      "stage": "independent_review_qa",
+      "status": "running",
+      "requires_user": false,
+      "summary": "Step-local draft/confirmed text persistence and downstream output implemented; manual/imported autosave, excluded-group retention, exact signature, failed-confirm recovery and late-response isolation covered by Developer checks. Preserve completed changes; independent final review, clean-subject QA/browser and integration remain. See docs/project_management/MATRIX_RELIABILITY_BATCH1.md."
     },
     "report": null
   },

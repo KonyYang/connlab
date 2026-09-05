@@ -310,10 +310,7 @@ class MatrixEditorSessionPublicationMixin:
         # Import already established source/method authority. Confirm its working draft
         # instead of importing it again and losing lineage or requiring source files anew.
         existing = self._get_unconfirmed_editor_draft(command.project_id)
-        if existing is not None and (
-            existing.record.source_import_id == command.source_import_id
-            and existing.record.source_snapshot_id == command.source_snapshot_id
-        ):
+        if existing is not None and self._matches_unconfirmed_editor_draft(command, existing):
             draft_id = existing.record.project_matrix_draft_id
             self._save_payload_to_draft(command, draft_id)
             try:
@@ -330,6 +327,34 @@ class MatrixEditorSessionPublicationMixin:
                 ConfirmedMatrixAuthorityNotFoundError,
             ) as exc:
                 raise MatrixEditorSessionError(str(exc)) from exc
+        draft = self._create_manual_editor_draft(command, selected_group_keys)
+        draft_id = draft.record.project_matrix_draft_id
+        self._save_payload_to_draft(command, draft_id)
+        try:
+            return self._confirmed_authority.confirm_draft(
+                ConfirmProjectMatrixDraftCommand(
+                    project_id=command.project_id,
+                    project_matrix_draft_id=draft_id,
+                    confirmed_by=confirmed_by,
+                )
+            )
+        except (
+            ConfirmedMatrixAuthorityError,
+            ConfirmedMatrixAuthorityConflictError,
+            ConfirmedMatrixAuthorityNotFoundError,
+        ) as exc:
+            raise MatrixEditorSessionError(str(exc)) from exc
+
+    def _matches_unconfirmed_editor_draft(self, command, draft) -> bool:
+        if (draft.record.source_import_id == command.source_import_id
+                and draft.record.source_snapshot_id == command.source_snapshot_id):
+            return True
+        if command.source_import_id or command.source_snapshot_id:
+            return False
+        source = self._sources.get_import(draft.record.source_import_id) if draft.record.source_import_id else None
+        return source is not None and source.source_format == "manual"
+
+    def _create_manual_editor_draft(self, command, selected_group_keys):
         preview_payload = _build_manual_preview_payload(command)
         source_document_path = (
             (command.source_document_path or "").strip() or "manual://matrix-editor"
@@ -347,26 +372,16 @@ class MatrixEditorSessionPublicationMixin:
                     source_format=source_format,
                     preview_payload=preview_payload,
                     selected_group_keys=selected_group_keys,
+                    # A manual working draft already contains operator-entered Methods;
+                    # storing it must not require an external import catalog to be online.
+                    standard_version_unavailable_action=(
+                        "preserve_imported_methods" if source_format == "manual" else "prompt_if_unavailable"
+                    ),
                 )
             )
         except (MatrixImportCommitError, MatrixImportCommitNotFoundError) as exc:
             raise MatrixEditorSessionError(str(exc)) from exc
-        draft_id = committed.project_matrix_draft.record.project_matrix_draft_id
-        self._save_payload_to_draft(command, draft_id)
-        try:
-            return self._confirmed_authority.confirm_draft(
-                ConfirmProjectMatrixDraftCommand(
-                    project_id=command.project_id,
-                    project_matrix_draft_id=draft_id,
-                    confirmed_by=confirmed_by,
-                )
-            )
-        except (
-            ConfirmedMatrixAuthorityError,
-            ConfirmedMatrixAuthorityConflictError,
-            ConfirmedMatrixAuthorityNotFoundError,
-        ) as exc:
-            raise MatrixEditorSessionError(str(exc)) from exc
+        return committed.project_matrix_draft
 
 
 class _NullPendingFeeRebaseService:

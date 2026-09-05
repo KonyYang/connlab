@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from backend.application.matrix_step_text_overrides import draft_step_text_overrides
+
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import json
@@ -167,6 +169,7 @@ def _build_editor_draft_from_active(
         groups=groups,
         rows=rows,
         cells=cells,
+        step_text_overrides=draft_step_text_overrides(active.step_text_overrides, group_by_confirmed, row_by_confirmed),
         duration_authorities=tuple(
             MatrixEditorSessionDurationAuthority(
                 draft_duration_authority_id=None,
@@ -235,6 +238,7 @@ def _build_editor_draft_from_project_draft(
         groups=groups,
         rows=rows,
         cells=cells,
+        step_text_overrides=draft.step_text_overrides,
         duration_authorities=tuple(
             MatrixEditorSessionDurationAuthority(
                 draft_duration_authority_id=item.draft_duration_authority_id,
@@ -277,6 +281,7 @@ def _confirm_command_from_save_command(
         rows=command.rows,
         cells=command.cells,
         duration_authorities=command.duration_authorities,
+        step_text_overrides=command.step_text_overrides,
         pre_test_buffer_days=command.pre_test_buffer_days,
         post_test_buffer_days=command.post_test_buffer_days,
         sample_received_date=command.sample_received_date,

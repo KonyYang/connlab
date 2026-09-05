@@ -727,6 +727,9 @@ def _fill_result_block(heading: Paragraph, table: Table, group) -> None:
             step_index=step_index,
             llcr_indexes=llcr_indexes,
         )
+        if getattr(step, "requirement_is_override", False):
+            display_requirement = step.requirement
+            result_requirement = step.requirement
         values = (
             step.raw_token,
             step.test_item,
@@ -1416,6 +1419,8 @@ def _default_result(requirement: str) -> str:
 
 def _step_description(steps, step_index: int, llcr_indexes: tuple[int, ...]) -> str:
     step = steps[step_index]
+    if getattr(step, "description", None) is not None:
+        return step.description
     if not is_llcr_test_item(step.test_item):
         description = step.test_item
         if step.suffix_note:

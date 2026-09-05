@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Protocol
 
+from backend.domain.project_matrix_draft_models import ProjectMatrixDraftStepTextOverride
+
 from backend.application.project_matrix_duration_authority_payload import (
     ProjectMatrixDraftPersistenceError,
     _build_draft_snapshot,
@@ -154,6 +156,7 @@ class UpdateProjectMatrixDraftCommand:
     estimated_completion_date: str | None = None
     duration_authorities_present: bool = False
     duration_authorities: tuple[ProjectMatrixDurationAuthorityInput, ...] | None = None
+    step_text_overrides: tuple[ProjectMatrixDraftStepTextOverride, ...] | None = None
 
 
 class ProjectMatrixDraftPersistenceService:

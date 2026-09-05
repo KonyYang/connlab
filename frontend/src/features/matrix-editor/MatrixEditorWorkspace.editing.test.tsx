@@ -88,6 +88,9 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     fireEvent.change(screen.getByLabelText("Row 1 method"), {
       target: { value: "Updated unsaved UI method" },
     });
+    fireEvent.change(screen.getByLabelText("Step 1 description"), {
+      target: { value: "Draft-only step description" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Test record" }));
 
     await waitFor(() =>
@@ -96,6 +99,10 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     const [projectId, payload] = apiMocks.generateMatrixEditorTestRecordDraftDownload.mock.calls[0];
     expect(projectId).toBe("P1");
     expect(payload.source).toBe("matrix_editor_current_ui_state");
+    expect(payload.step_text_overrides).toEqual([{
+      group_key: "g1", row_order: 1, step_sequence: 1, step_suffix_note: "",
+      description: "Draft-only step description", requirement: null,
+    }]);
     expect(payload.groups).toEqual([
       {
         group_key: "g1",

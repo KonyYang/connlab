@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
+from backend.domain.project_matrix_draft_models import ProjectMatrixDraftStepTextOverride
+
 from fastapi import APIRouter, Body, Depends, HTTPException
 
 from backend.api.dependencies import get_matrix_editor_session_service
@@ -66,6 +69,7 @@ def get_matrix_editor_session_seed(
         editor_source_snapshot_id=seed.editor_source_snapshot_id,
         editor_draft=(
             MatrixEditorSessionDraftResponse(
+                step_text_overrides=[MatrixEditorSessionStepTextOverride(**asdict(item)) for item in seed.editor_draft.step_text_overrides],
                 groups=[
                     MatrixEditorSessionGroupResponse(
                         draft_group_id=group.draft_group_id,
@@ -157,6 +161,8 @@ def save_matrix_editor_session_draft(
                 groups=_to_session_groups(request.groups),
                 rows=_to_session_rows(request.rows),
                 cells=_to_session_cells(request.cells),
+                step_text_overrides=(tuple(ProjectMatrixDraftStepTextOverride(**item.model_dump()) for item in request.step_text_overrides)
+                                     if request.step_text_overrides is not None else None),
                 duration_authorities=_to_session_duration_authorities(
                     request.duration_authorities
                 ),
@@ -187,6 +193,8 @@ def save_matrix_editor_session_draft(
     except MatrixEditorSessionError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return MatrixEditorSessionDraftSaveResponse(
+        source_import_id=result.source_import_id,
+        source_snapshot_id=result.source_snapshot_id,
         editor_draft_id=result.editor_draft_id,
         draft_status=result.draft_status,
         draft_updated_at=result.draft_updated_at,
@@ -274,6 +282,8 @@ def confirm_matrix_editor_session(
                 groups=_to_session_groups(request.groups),
                 rows=_to_session_rows(request.rows),
                 cells=_to_session_cells(request.cells),
+                step_text_overrides=(tuple(ProjectMatrixDraftStepTextOverride(**item.model_dump()) for item in request.step_text_overrides)
+                                     if request.step_text_overrides is not None else None),
                 duration_authorities=_to_session_duration_authorities(
                     request.duration_authorities
                 ),

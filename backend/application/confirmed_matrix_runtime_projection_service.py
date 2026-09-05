@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from backend.application.matrix_step_text_output import confirmed_step_text_lookup
 from backend.application.runtime_projection_read_only_service import (
     RuntimeProjectionReadOnlyService,
 )
@@ -80,6 +81,7 @@ def _build_input_from_confirmed(
     groups_by_id = {group.confirmed_group_id: group for group in confirmed.groups}
     rows_by_id = {row.confirmed_row_id: row for row in confirmed.rows}
     row_inputs: list[SnapshotMatrixRowInput] = []
+    text_lookup = confirmed_step_text_lookup(confirmed)
     for cell in confirmed.cells:
         cell_value = cell.cell_value.strip()
         if not cell_value:
@@ -109,6 +111,17 @@ def _build_input_from_confirmed(
                     requirement=(row.requirement or "").strip(),
                 ),
                 raw_step_token_value=cell_value,
+                step_text_contexts={
+                    (sequence, suffix): MatrixRowTechnicalContext(
+                        test_item_label=test_item_label if item.description is None else item.description,
+                        section=(row.source_section or "").strip(),
+                        method=(row.method or "").strip(),
+                        condition=(row.condition or "").strip(),
+                        requirement=(row.requirement or "").strip() if item.requirement is None else item.requirement,
+                    )
+                    for (group_id, row_id, sequence, suffix), item in text_lookup.items()
+                    if group_id == group.confirmed_group_id and row_id == row.confirmed_row_id
+                },
             )
         )
     return SnapshotBuildInput(

@@ -32,6 +32,7 @@ from backend.domain.confirmed_matrix_authority_models import (
     ConfirmedMatrixRow,
     ConfirmedMatrixSnapshot,
     ConfirmedMatrixStepQuantity,
+    ConfirmedMatrixStepTextOverride,
     ConfirmedMatrixVersion,
 )
 from backend.domain.matrix_contact_measurement_models import (
@@ -76,9 +77,12 @@ from backend.domain.project_matrix_draft_models import (
     ProjectMatrixDraftRow,
     ProjectMatrixDraftSnapshot,
     ProjectMatrixDraftStepQuantity,
+    ProjectMatrixDraftStepTextOverride,
 )
 
 __all__ = [
+    "ConfirmedMatrixStepTextOverride",
+    "ProjectMatrixDraftStepTextOverride",
     "ApplicationForm",
     "ConfirmedMatrixCell",
     "ConfirmedMatrixGroup",

@@ -97,6 +97,7 @@ function buildSessionDraftSaveRequest(
       is_sample_row: Boolean(row.is_sample_row),
     })),
     cells: currentPayload.cells,
+    step_text_overrides: currentPayload.step_text_overrides ?? [],
     duration_authorities: durationAuthorities,
   };
 }
@@ -146,6 +147,19 @@ export function useMatrixDraftPersistence({
     Boolean(savedEditorDraftId) &&
     Boolean(savedPayloadSignature) &&
     savedLocalSignature === currentSignature;
+  const hasManualMatrixContent = currentPayload.groups.length > 0 &&
+    currentPayload.rows.some((row) => !row.is_sample_row && row.test_item.trim().length > 0) &&
+    currentPayload.cells.some((cell) => cell.cell_value.trim().length > 0);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges && saveState !== "saving" && saveState !== "error") return;
+    const warnBeforeLeaving = (event: BeforeUnloadEvent): void => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+    return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
+  }, [hasUnsavedChanges, saveState]);
 
   useEffect(() => {
     if (autosaveTimeoutRef.current !== null) {
@@ -155,7 +169,7 @@ export function useMatrixDraftPersistence({
     if (
       !hasUnsavedChanges ||
       !projectId.trim() ||
-      (!activeConfirmedMatrixId && (!sourceImportId || !sourceSnapshotId)) ||
+      (!activeConfirmedMatrixId && (!sourceImportId || !sourceSnapshotId) && !hasManualMatrixContent) ||
       draftLoading ||
       Boolean(readonlyMessage) ||
       cancellingRef.current ||
@@ -188,16 +202,18 @@ export function useMatrixDraftPersistence({
         signal: autosaveAbortController.signal,
       })
         .then((response) => {
-          latestAutosaveResultRef.current = response;
           if (
             autosaveGenerationRef.current === generation &&
             !cancellingRef.current
           ) {
+            latestAutosaveResultRef.current = response;
             setSavedEditorDraftId(response.editor_draft_id);
             setSavedPayloadSignature(response.saved_payload_signature);
             setSavedLocalSignature(signatureToSave);
             setActiveConfirmedMatrixId(response.active_confirmed_matrix_id);
             setActiveConfirmedRevision(response.active_confirmed_revision);
+            if (response.source_import_id !== undefined) setSourceImportId(response.source_import_id);
+            if (response.source_snapshot_id !== undefined) setSourceSnapshotId(response.source_snapshot_id);
             setBaselineSignature(signatureToSave);
             setSaveState("saved");
           }
@@ -238,6 +254,7 @@ export function useMatrixDraftPersistence({
     currentSignature,
     draftLoading,
     hasUnsavedChanges,
+    hasManualMatrixContent,
     isCancelling,
     projectId,
     readonlyMessage,
@@ -245,11 +262,26 @@ export function useMatrixDraftPersistence({
     sourceSnapshotId,
   ]);
 
+  const invalidatePendingAutosave = (): void => {
+    autosaveGenerationRef.current += 1;
+    if (autosaveTimeoutRef.current !== null) {
+      window.clearTimeout(autosaveTimeoutRef.current);
+      autosaveTimeoutRef.current = null;
+    }
+    autosaveAbortControllerRef.current?.abort();
+    autosaveAbortControllerRef.current = null;
+    autosaveInFlightRef.current = null;
+    latestAutosaveResultRef.current = null;
+  };
+
+  useEffect(() => () => invalidatePendingAutosave(), []);
+
   const hydrateSession = ({
     baselineSignature: nextBaselineSignature,
     hasEditorDraft,
     seed,
   }: HydrateSessionOptions): void => {
+    invalidatePendingAutosave();
     setBaselineSignature(nextBaselineSignature);
     setSaveState(hasEditorDraft ? "saved" : "idle");
     setActiveConfirmedMatrixId(seed.active_confirmed_matrix_id ?? null);
@@ -268,6 +300,7 @@ export function useMatrixDraftPersistence({
   };
 
   const clearAfterLoadFailure = (): void => {
+    invalidatePendingAutosave();
     setActiveConfirmedMatrixId(null);
     setActiveConfirmedRevision(null);
     setSourceImportId(null);
@@ -283,6 +316,7 @@ export function useMatrixDraftPersistence({
     response: MatrixImportCommitResponse,
     nextBaselineSignature: string,
   ): void => {
+    invalidatePendingAutosave();
     setSourceImportId(response.source_import_id);
     setSourceSnapshotId(response.source_snapshot_id);
     setSavedEditorDraftId(null);

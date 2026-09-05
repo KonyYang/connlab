@@ -29,6 +29,7 @@ class ConfirmedMatrixTestRecordPreviewStepResponse(BaseModel):
     method: str
     condition: str
     requirement: str
+    description: str | None = None
     quantity: "ConfirmedMatrixTestRecordStepQuantityResponse | None" = None
 
 
@@ -113,6 +114,7 @@ def _to_step_response(
         method=step.method,
         condition=step.condition,
         requirement=step.requirement,
+        description=step.description,
         quantity=_to_quantity_response(step.quantity),
     )
 

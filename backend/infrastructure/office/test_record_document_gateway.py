@@ -192,7 +192,10 @@ class TestRecordDocumentGateway:
             if len(row) < 9:
                 raise ValueError("Template step table must contain at least 9 columns.")
             _set_cell_text_preserve_format(row[0], _step_display_text(step))
-            _set_cell_text_preserve_format(row[1], _as_text(getattr(step, "test_item", "")))
+            description = getattr(step, "description", None)
+            _set_cell_text_preserve_format(
+                row[1], description if description is not None else _as_text(getattr(step, "test_item", ""))
+            )
             _set_cell_text_preserve_format(row[2], _as_text(getattr(step, "method", "")))
             _set_cell_text_preserve_format(row[3], _as_text(getattr(step, "condition", "")))
             _set_cell_text_preserve_format(row[4], "")
@@ -200,7 +203,10 @@ class TestRecordDocumentGateway:
             _set_cell_text_preserve_format(row[6], "")
             _set_cell_text_preserve_format(row[7], "")
             requirement_text = _as_text(getattr(step, "requirement", ""))
-            _set_cell_text_preserve_format(row[8], _remark_requirement_only_if_numeric(requirement_text))
+            _set_cell_text_preserve_format(
+                row[8], getattr(step, "requirement", "") if getattr(step, "requirement_is_override", False)
+                else _remark_requirement_only_if_numeric(requirement_text)
+            )
 
 
 def _remark_requirement_only_if_numeric(requirement_text: str) -> str:

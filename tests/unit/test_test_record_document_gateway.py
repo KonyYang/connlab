@@ -104,6 +104,26 @@ def test_gateway_generates_confirmed_matrix_test_record_docx(tmp_path: Path) -> 
     assert equipment_table.rows[1].cells[0].text == "EQUIPMENT USED 使用的设备:"
 
 
+def test_gateway_renders_explicit_step_description_and_non_numeric_requirement(tmp_path: Path):
+    from backend.application.confirmed_matrix_test_record_preview_service import ConfirmedMatrixTestRecordPreviewStep
+
+    output = tmp_path / "record.docx"
+    step = ConfirmedMatrixTestRecordPreviewStep(
+        sequence=1, raw_token="1", test_item="LLCR", section="", method="", condition="",
+        requirement="Check this specific stage", description="Specific stage description",
+        requirement_is_override=True,
+    )
+    TestRecordDocumentGateway().generate_from_confirmed_matrix(
+        template_path=_build_confirmed_matrix_template(tmp_path / "template.docx"),
+        output_path=output, project_id="P1", project_no="DL-1", product_description="Connector",
+        applicable_specification="SPEC", confirmed_matrix_id="v1",
+        groups=(_ConfirmedGroup(steps=(step,)),), header_metadata=TestRecordHeaderMetadata(),
+    )
+    cells = Document(output).tables[0].rows[1].cells
+    assert cells[1].text == "Specific stage description"
+    assert cells[8].text == "Check this specific stage"
+
+
 def test_gateway_repeats_template_group_blocks_for_multiple_groups(tmp_path: Path) -> None:
     template = _build_confirmed_matrix_template(tmp_path / "template.docx")
     output = tmp_path / "confirmed-record.docx"

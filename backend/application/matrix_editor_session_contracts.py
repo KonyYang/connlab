@@ -9,6 +9,8 @@ import json
 from typing import Any, Callable, Literal, Protocol
 from uuid import uuid4
 
+from backend.domain.project_matrix_draft_models import ProjectMatrixDraftStepTextOverride
+
 from backend.application.confirmed_matrix_authority_service import (
     ConfirmProjectMatrixDraftCommand,
     ConfirmedMatrixAuthorityConflictError,
@@ -271,6 +273,7 @@ class MatrixEditorSessionDraft:
     rows: tuple[MatrixEditorSessionRow, ...]
     cells: tuple[MatrixEditorSessionCell, ...]
     duration_authorities: tuple[MatrixEditorSessionDurationAuthority, ...] = ()
+    step_text_overrides: tuple[ProjectMatrixDraftStepTextOverride, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -319,6 +322,7 @@ class MatrixEditorSessionConfirmCommand:
     rows: tuple[MatrixEditorSessionRow, ...]
     cells: tuple[MatrixEditorSessionCell, ...]
     duration_authorities: tuple[MatrixEditorSessionDurationAuthority, ...] = ()
+    step_text_overrides: tuple[ProjectMatrixDraftStepTextOverride, ...] | None = None
     pre_test_buffer_days: str | None = None
     post_test_buffer_days: str | None = None
     sample_received_date: str | None = None
@@ -345,6 +349,7 @@ class MatrixEditorSessionDraftSaveCommand:
     rows: tuple[MatrixEditorSessionRow, ...]
     cells: tuple[MatrixEditorSessionCell, ...]
     duration_authorities: tuple[MatrixEditorSessionDurationAuthority, ...] = ()
+    step_text_overrides: tuple[ProjectMatrixDraftStepTextOverride, ...] | None = None
     pre_test_buffer_days: str | None = None
     post_test_buffer_days: str | None = None
     sample_received_date: str | None = None
@@ -363,6 +368,8 @@ class MatrixEditorSessionDraftSaveResult:
     saved_payload_signature: str
     active_confirmed_matrix_id: str | None
     active_confirmed_revision: int | None
+    source_import_id: str | None = None
+    source_snapshot_id: str | None = None
     fee_rebase_status: Literal["not_required", "current", "failed"] = "not_required"
     fee_rebase_summary: MatrixFeeRebaseSummary | None = None
     fee_rebase_error: str | None = None

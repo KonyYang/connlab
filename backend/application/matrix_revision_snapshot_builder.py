@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from backend.application.matrix_step_text_overrides import confirmed_step_text_overrides, draft_step_text_overrides
+
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -136,6 +138,7 @@ def _build_revision_draft_from_active(
     )
     return ProjectMatrixDraftSnapshot(
         record=record,
+        step_text_overrides=draft_step_text_overrides(active.step_text_overrides, group_id_map, row_id_map),
         groups=groups,
         rows=rows,
         cells=tuple(cells),
@@ -257,6 +260,7 @@ def _build_confirmed_snapshot_from_revision_draft(
     )
     return ConfirmedMatrixSnapshot(
         version=version,
+        step_text_overrides=confirmed_step_text_overrides(draft.step_text_overrides, confirmed_group_id_by_draft_group, confirmed_row_id_by_draft_row),
         groups=tuple(groups),
         rows=tuple(rows),
         cells=tuple(cells),

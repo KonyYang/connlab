@@ -6,6 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from backend.application.matrix_step_text_output import MatrixStepTextOutputOverride
+from backend.api.matrix_step_text_output_dtos import MatrixStepTextOutputOverrideRequest
+
 from backend.api.dependencies import (
     get_matrix_editor_test_record_document_generation_service,
     get_matrix_editor_test_record_publication_service,
@@ -75,6 +78,7 @@ class MatrixEditorTestRecordDraftRequest(BaseModel):
     source: str = "matrix_editor_current_ui_state"
     groups: list[MatrixEditorTestRecordGroupRequest]
     rows: list[MatrixEditorTestRecordRowRequest]
+    step_text_overrides: list[MatrixStepTextOutputOverrideRequest] = Field(default_factory=list)
 
 
 class MatrixEditorTestRecordPublicationExecuteRequest(
@@ -154,7 +158,7 @@ def publish_matrix_editor_test_record(
     _require_current_ui_source(request.source)
     template_path = _resolve_template(settings, template_resource_store)
     draft_request = MatrixEditorTestRecordDraftRequest.model_validate(
-        request.model_dump(include={"source", "groups", "rows"})
+        request.model_dump(include={"source", "groups", "rows", "step_text_overrides"})
     )
     try:
         result = service.execute(
@@ -167,6 +171,7 @@ def publish_matrix_editor_test_record(
                 template_path=template_path,
                 groups=_group_inputs(request),
                 rows=_row_inputs(request),
+                step_text_overrides=_step_text_inputs(request),
             )
         )
     except ProjectLifecycleReadonlyError as exc:
@@ -224,6 +229,7 @@ def generate_matrix_editor_test_record_draft_preview(
     try:
         result = service.generate(
             GenerateMatrixEditorTestRecordDocumentCommand(
+                step_text_overrides=_step_text_inputs(request),
                 project_id=project_id,
                 output_dir=settings.data_dir / "generated_test_record_previews",
                 template_path=template_path,
@@ -283,10 +289,17 @@ def _resolve_template(
 
 
 def _draft_signature(request: MatrixEditorTestRecordDraftRequest) -> str:
-    return build_matrix_editor_test_record_signature(
-        groups=request.groups,
-        rows=request.rows,
-    )
+    try:
+        return build_matrix_editor_test_record_signature(
+            groups=request.groups, rows=request.rows,
+            step_text_overrides=request.step_text_overrides,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def _step_text_inputs(request):
+    return tuple(MatrixStepTextOutputOverride(**item.model_dump()) for item in request.step_text_overrides)
 
 
 def _group_inputs(

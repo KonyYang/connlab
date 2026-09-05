@@ -1,4 +1,4 @@
-import type { MatrixPreviewResponse } from "../../api/client";
+import type { MatrixPreviewResponse, MatrixStepTextOverride } from "../../api/client";
 import {
   normalizeGroupDisplayName,
   type EditableMatrixRow,
@@ -79,8 +79,45 @@ export function parseStepTokens(rawValue: string): { isValid: boolean; numbers: 
   };
 }
 
-function stepOutputKey(groupId: string, stepNo: number, rowId: string): string {
-  return `${groupId}:${stepNo}:${rowId}`;
+function stepOutputKey(groupId: string, stepNo: number, rowId: string, suffixNote: string | null): string {
+  return JSON.stringify([groupId, rowId, stepNo, suffixNote ?? ""]);
+}
+
+export function restoreStepTextOverrides(
+  items: MatrixStepTextOverride[], rows: EditableMatrixRow[], groups: GroupColumn[],
+): Record<string, StepOutputOverride> {
+  const result: Record<string, StepOutputOverride> = {};
+  for (const item of items) {
+    const group = groups.find((candidate) => (candidate.draftGroupId ?? candidate.id) === item.draft_group_id);
+    const row = rows.find((candidate) => (candidate.draftRowId ?? candidate.id) === item.draft_row_id);
+    if (!group || !row) continue;
+    result[stepOutputKey(group.id, item.step_sequence, row.id, item.step_suffix_note)] = {
+      description: item.description ?? undefined, requirement: item.requirement ?? undefined,
+    };
+  }
+  return result;
+}
+
+export function buildStepTextOverrides(
+  rows: EditableMatrixRow[], groups: GroupColumn[], overrides: Record<string, StepOutputOverride>,
+): MatrixStepTextOverride[] {
+  if (Object.keys(overrides).length === 0) return [];
+  const result: MatrixStepTextOverride[] = [];
+  for (const group of groups) {
+    for (const row of rows.filter((candidate) => !candidate.isSampleRow)) {
+      const parsed = parseStepTokens(row.groups[group.id] ?? "");
+      for (const token of parsed.tokens) {
+        const override = overrides[stepOutputKey(group.id, token.sequence, row.id, token.suffixNote)];
+        if (!override || (override.description === undefined && override.requirement === undefined)) continue;
+        result.push({
+          draft_group_id: group.draftGroupId ?? group.id, draft_row_id: row.draftRowId ?? row.id,
+          step_sequence: token.sequence, step_suffix_note: token.suffixNote ?? "",
+          description: override.description ?? null, requirement: override.requirement ?? null,
+        });
+      }
+    }
+  }
+  return result;
 }
 
 const STEP_DESCRIPTION_FAMILY_ALIASES: Record<StepDescriptionFamily, string[]> = {
@@ -222,7 +259,7 @@ export function buildSelectedGroupStepPreviewRows(
       }
       return parsed.numbers.map((stepNo) => {
         const token = parsed.tokens.find((item) => item.sequence === stepNo);
-        const key = stepOutputKey(selectedGroup.id, stepNo, row.id);
+        const key = stepOutputKey(selectedGroup.id, stepNo, row.id, token?.suffixNote ?? null);
         const override = stepOutputOverrides[key];
         const itemSectionMarker = row.section.match(/([*#]|[\uFF08(](?:\d+|[a-zA-Z])[\uFF09)])/)?.[1] ?? row.item.match(/([*#]|[\uFF08(](?:\d+|[a-zA-Z])[\uFF09)])/)?.[1] ?? null;
         const stepMarker = token?.suffixNote ?? token?.rawToken.match(/([*#]|[\uFF08(](?:\d+|[a-zA-Z])[\uFF09)])/)?.[1] ?? null;
@@ -280,10 +317,10 @@ export function buildSelectedGroupStepPreviewRows(
     if (indexes.length === 1) {
       const rowIndex = indexes[0];
       const row = dedupedBaseRows[rowIndex];
-      if (!stepOutputOverrides[row.key]?.description) {
+      if (stepOutputOverrides[row.key]?.description === undefined) {
         row.descriptionValue = familyLabel;
       }
-      if (!stepOutputOverrides[row.key]?.requirement) {
+      if (stepOutputOverrides[row.key]?.requirement === undefined) {
         const split = splitByRowId.get(row.rowId);
         if (split) {
           row.requirementValue = split.initialPart;
@@ -294,7 +331,7 @@ export function buildSelectedGroupStepPreviewRows(
     indexes.forEach((rowIndex, indexInFamily) => {
       const row = dedupedBaseRows[rowIndex];
       const split = splitByRowId.get(row.rowId);
-      if (stepOutputOverrides[row.key]?.description) {
+      if (stepOutputOverrides[row.key]?.description !== undefined) {
       } else if (indexInFamily === 0) {
         row.descriptionValue = `Initial ${familyLabel}`;
       } else if (indexInFamily === indexes.length - 1) {
@@ -304,7 +341,7 @@ export function buildSelectedGroupStepPreviewRows(
         row.descriptionValue =
           previousStepItem && previousStepItem.length > 0 ? `After ${previousStepItem}` : familyLabel;
       }
-      if (stepOutputOverrides[row.key]?.requirement || !split) {
+      if (stepOutputOverrides[row.key]?.requirement !== undefined || !split) {
         return;
       }
       row.requirementValue = indexInFamily === 0 ? split.initialPart : split.followPart;

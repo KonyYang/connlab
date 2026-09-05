@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from backend.application.matrix_step_text_overrides import updated_step_text_overrides
+
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -233,8 +235,17 @@ def _build_updated_snapshot(
         planned_test_complete_date=_normalize_optional_text(command.planned_test_complete_date),
         estimated_completion_date=_normalize_optional_text(command.estimated_completion_date),
     )
+    try:
+        step_text_overrides = updated_step_text_overrides(
+            existing=existing.step_text_overrides, incoming=command.step_text_overrides,
+            groups=groups, rows=rows, cells=cells,
+            group_id_map=group_id_map, row_id_map=row_id_map,
+        )
+    except ValueError as exc:
+        raise ProjectMatrixDraftPersistenceError(str(exc)) from exc
     return ProjectMatrixDraftSnapshot(
         record=updated_record,
+        step_text_overrides=step_text_overrides,
         groups=tuple(groups),
         rows=tuple(rows),
         cells=tuple(cells),

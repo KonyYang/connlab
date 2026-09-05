@@ -304,6 +304,7 @@ class MatrixEditorSessionDraftStateMixin:
                         for cell in command.cells
                     ),
                     duration_authorities_present=True,
+                    step_text_overrides=command.step_text_overrides,
                     duration_authorities=tuple(
                         ProjectMatrixDurationAuthorityInput(
                             draft_duration_authority_id=(

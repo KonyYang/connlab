@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
+
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
@@ -18,6 +20,7 @@ from backend.domain import (
 )
 from backend.domain.project_matrix_draft_models import (
     ProjectMatrixDraftDurationAuthority,
+    ProjectMatrixDraftStepTextOverride,
 )
 from backend.infrastructure.storage.models_project_matrix_draft import (
     ProjectMatrixDraftCellModel,
@@ -26,6 +29,7 @@ from backend.infrastructure.storage.models_project_matrix_draft import (
     ProjectMatrixDraftRowModel,
     ProjectMatrixDraftStepQuantityModel,
     ProjectMatrixDraftDurationAuthorityModel,
+    ProjectMatrixDraftStepTextOverrideModel,
 )
 from backend.infrastructure.storage.models_confirmed_matrix_authority import (
     ConfirmedMatrixVersionModel,
@@ -49,6 +53,9 @@ class ProjectMatrixDraftRepository:
         self._session.add_all(_to_cell_models(snapshot.cells))
         self._session.add_all(_to_step_quantity_models(snapshot.step_quantities))
         self._session.add_all(_to_duration_authority_models(snapshot.duration_authorities))
+        self._session.add_all(ProjectMatrixDraftStepTextOverrideModel(
+            project_matrix_draft_id=snapshot.record.project_matrix_draft_id, **asdict(item)
+        ) for item in snapshot.step_text_overrides)
         self._session.flush()
         return snapshot
 
@@ -71,6 +78,9 @@ class ProjectMatrixDraftRepository:
         record_row.planned_test_complete_date = snapshot.record.planned_test_complete_date
         record_row.estimated_completion_date = snapshot.record.estimated_completion_date
         record_row.method_sync_context_json = snapshot.record.method_sync_context_json
+        self._session.execute(delete(ProjectMatrixDraftStepTextOverrideModel).where(
+            ProjectMatrixDraftStepTextOverrideModel.project_matrix_draft_id == snapshot.record.project_matrix_draft_id
+        ))
         self._session.execute(
             delete(ProjectMatrixDraftDurationAuthorityModel).where(
                 ProjectMatrixDraftDurationAuthorityModel.project_matrix_draft_id
@@ -106,6 +116,9 @@ class ProjectMatrixDraftRepository:
         self._session.add_all(_to_cell_models(snapshot.cells))
         self._session.add_all(_to_step_quantity_models(snapshot.step_quantities))
         self._session.add_all(_to_duration_authority_models(snapshot.duration_authorities))
+        self._session.add_all(ProjectMatrixDraftStepTextOverrideModel(
+            project_matrix_draft_id=snapshot.record.project_matrix_draft_id, **asdict(item)
+        ) for item in snapshot.step_text_overrides)
         self._session.flush()
         return snapshot
 
@@ -213,6 +226,12 @@ class ProjectMatrixDraftRepository:
             cells=tuple(_to_cell_domain(row) for row in cell_rows),
             step_quantities=tuple(_to_step_quantity_domain(row) for row in quantity_rows),
             duration_authorities=tuple(_to_duration_authority_domain(row) for row in duration_rows),
+            step_text_overrides=tuple(ProjectMatrixDraftStepTextOverride(
+                **{name: getattr(item, name) for name in ProjectMatrixDraftStepTextOverride.__dataclass_fields__}
+            ) for item in self._session.scalars(select(ProjectMatrixDraftStepTextOverrideModel).where(
+                ProjectMatrixDraftStepTextOverrideModel.project_matrix_draft_id == project_matrix_draft_id
+            ).order_by(ProjectMatrixDraftStepTextOverrideModel.draft_group_id,
+                       ProjectMatrixDraftStepTextOverrideModel.step_sequence))),
         )
 
     def delete(self, project_matrix_draft_id: str) -> bool:
@@ -261,6 +280,9 @@ class ProjectMatrixDraftRepository:
             self._delete_aggregate(existing)
 
     def _delete_aggregate(self, record_row: ProjectMatrixDraftRecordModel) -> None:
+        self._session.execute(delete(ProjectMatrixDraftStepTextOverrideModel).where(
+            ProjectMatrixDraftStepTextOverrideModel.project_matrix_draft_id == record_row.project_matrix_draft_id
+        ))
         project_matrix_draft_id = record_row.project_matrix_draft_id
         self._session.execute(
             delete(MatrixFeePendingRebaseModel).where(

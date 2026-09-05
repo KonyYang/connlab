@@ -54,6 +54,158 @@ from backend.infrastructure.storage.repositories import (
 from backend.shared.config import Settings
 
 
+def test_step_text_edits_are_durable_local_drafts_and_versioned_only_on_confirm(tmp_path: Path) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        source_import_id = _seed_source_import("P1", tmp_path)
+        assert client.post("/api/projects/P1/matrix-drafts", json={
+            "source_import_id": source_import_id, "selected_group_keys": ["g1", "g2"]
+        }).status_code == 201
+        seed = client.get("/api/projects/P1/matrix-editor/session").json()
+        draft = seed["editor_draft"]
+        row_id = draft["rows"][0]["draft_row_id"]
+        group_id = draft["groups"][0]["draft_group_id"]
+        draft["cells"] = [
+            {"draft_row_id": row_id, "draft_group_id": group["draft_group_id"], "cell_value": "1, 2"}
+            for group in draft["groups"]
+        ]
+        override = {"draft_group_id": group_id, "draft_row_id": row_id,
+                    "step_sequence": 1, "step_suffix_note": "", "description": "Only group one step one", "requirement": ""}
+        payload = {**draft, "source_import_id": seed["editor_source_import_id"],
+                   "source_snapshot_id": seed["editor_source_snapshot_id"],
+                   "step_text_overrides": [override]}
+        saved = client.put("/api/projects/P1/matrix-editor/session/draft", json=payload)
+        assert saved.status_code == 200, saved.text
+        reopened = client.get("/api/projects/P1/matrix-editor/session").json()
+        assert reopened["editor_draft"]["step_text_overrides"] == [override]
+        assert reopened["active_confirmed_matrix_id"] is None
+        excluded_payload = {**payload, "groups": [{**group, "is_selected": group["draft_group_id"] != group_id}
+                                                    for group in payload["groups"]]}
+        excluded = client.put("/api/projects/P1/matrix-editor/session/draft", json=excluded_payload)
+        assert excluded.status_code == 200, excluded.text
+        assert client.get("/api/projects/P1/matrix-editor/session").json()["editor_draft"]["step_text_overrides"] == [override]
+        excluded_edit = client.put("/api/projects/P1/matrix-editor/session/draft", json={
+            **excluded_payload, "step_text_overrides": [{**override, "description": "Retained while excluded"}]})
+        assert excluded_edit.status_code == 200, excluded_edit.text
+        assert excluded_edit.json()["saved_payload_signature"] != excluded.json()["saved_payload_signature"]
+        first = client.post("/api/projects/P1/matrix-editor/session/confirm", json={**payload, "confirmed_by": "operator"})
+        assert first.status_code in (200, 201), first.text
+        authority = client.get("/api/projects/P1/matrix-editor/session").json()
+        assert authority["editor_draft"]["step_text_overrides"] == [override]
+        active_id = authority["active_confirmed_matrix_id"]
+        original_authority = client.get("/api/projects/P1/confirmed-matrix/active-snapshot").json()
+        assert original_authority["step_text_overrides"][0]["requirement"] == ""
+        revised = {**authority["editor_draft"], "source_import_id": authority["editor_source_import_id"],
+                   "source_snapshot_id": authority["editor_source_snapshot_id"],
+                   "expected_active_confirmed_matrix_id": active_id,
+                   "expected_active_confirmed_revision": authority["active_confirmed_revision"],
+                   "step_text_overrides": [{**override, "description": "Revised step", "requirement": "Exact requirement"}]}
+        saved = client.put("/api/projects/P1/matrix-editor/session/draft", json=revised)
+        assert saved.status_code == 200, saved.text
+        reopened = client.get("/api/projects/P1/matrix-editor/session").json()
+        assert reopened["active_confirmed_matrix_id"] == active_id
+        assert reopened["editor_draft"]["step_text_overrides"][0]["description"] == "Revised step"
+        assert client.get("/api/projects/P1/confirmed-matrix/active-snapshot").json() == original_authority
+        confirm_payload = {**revised, "confirmed_by": "operator",
+                           "expected_editor_draft_id": reopened["editor_draft_id"],
+                           "expected_saved_payload_signature": reopened["saved_payload_signature"]}
+        rejected = client.post("/api/projects/P1/matrix-editor/session/confirm", json={
+            **confirm_payload, "expected_saved_payload_signature": "stale-signature"})
+        assert rejected.status_code == 409, rejected.text
+        retained = client.get("/api/projects/P1/matrix-editor/session").json()
+        assert retained["active_confirmed_matrix_id"] == active_id
+        assert retained["editor_draft"] == reopened["editor_draft"]
+        assert client.get("/api/projects/P1/confirmed-matrix/active-snapshot").json() == original_authority
+        confirmed = client.post("/api/projects/P1/matrix-editor/session/confirm", json=confirm_payload)
+        assert confirmed.status_code in (200, 201), confirmed.text
+        assert confirmed.json()["publish_status"] != "no_change"
+        final = client.get("/api/projects/P1/matrix-editor/session").json()
+        assert final["active_confirmed_matrix_id"] != active_id
+        assert final["active_confirmed_revision"] == authority["active_confirmed_revision"] + 1
+        assert len(final["editor_draft"]["step_text_overrides"]) == 1
+        assert final["editor_draft"]["step_text_overrides"][0]["description"] == "Revised step"
+        legacy_payload = {**final["editor_draft"], "source_import_id": final["editor_source_import_id"],
+                          "source_snapshot_id": final["editor_source_snapshot_id"],
+                          "expected_active_confirmed_matrix_id": final["active_confirmed_matrix_id"],
+                          "expected_active_confirmed_revision": final["active_confirmed_revision"]}
+        legacy_payload.pop("step_text_overrides")
+        unchanged = client.post("/api/projects/P1/matrix-editor/session/confirm", json={**legacy_payload, "confirmed_by": "legacy"})
+        assert unchanged.status_code == 200, unchanged.text
+        assert unchanged.json()["publish_status"] == "no_change"
+        assert client.put("/api/projects/P1/matrix-editor/session/draft", json=legacy_payload).status_code == 200
+        preserved = client.get("/api/projects/P1/matrix-editor/session").json()
+        assert preserved["editor_draft"]["step_text_overrides"][0]["description"] == "Revised step"
+        current_override = preserved["editor_draft"]["step_text_overrides"][0]
+        current_payload = {**legacy_payload, **preserved["editor_draft"]}
+        for invalid in ([current_override, current_override], [{**current_override, "step_sequence": 99}]):
+            rejected = client.put("/api/projects/P1/matrix-editor/session/draft", json={**current_payload, "step_text_overrides": invalid})
+            assert rejected.status_code == 422, rejected.text
+            assert client.get("/api/projects/P1/matrix-editor/session").json()["saved_payload_signature"] == preserved["saved_payload_signature"]
+        assert client.put("/api/projects/P1/matrix-editor/session/draft", json={**current_payload, "step_text_overrides": []}).status_code == 200
+        cleared = client.get("/api/projects/P1/matrix-editor/session").json()
+        assert cleared["editor_draft"]["step_text_overrides"] == []
+        assert client.get("/api/projects/P1/confirmed-matrix/active-snapshot").json()["step_text_overrides"][0]["description"] == "Revised step"
+        discarded = client.request("DELETE", "/api/projects/P1/matrix-editor/session/draft", json={
+            "expected_editor_draft_id": cleared["editor_draft_id"],
+            "expected_saved_payload_signature": cleared["saved_payload_signature"]})
+        assert discarded.status_code == 200, discarded.text
+        assert client.get("/api/projects/P1/matrix-editor/session").json()["editor_draft"]["step_text_overrides"][0]["description"] == "Revised step"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_existing_matrix_database_adds_empty_step_text_tables_without_rewriting_drafts(tmp_path: Path) -> None:
+    from backend.infrastructure.storage.models_project_matrix_draft import ProjectMatrixDraftStepTextOverrideModel
+    from backend.infrastructure.storage.models_confirmed_matrix_authority import ConfirmedMatrixStepTextOverrideModel
+
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        source_import_id = _seed_source_import("P1", tmp_path)
+        assert client.post("/api/projects/P1/matrix-drafts", json={"source_import_id": source_import_id}).status_code == 201
+        original = client.get("/api/projects/P1/matrix-editor/session").json()
+        # Only this test-owned database: emulate the pre-feature schema with no new tables.
+        ProjectMatrixDraftStepTextOverrideModel.__table__.drop(engine)
+        ConfirmedMatrixStepTextOverrideModel.__table__.drop(engine)
+        init_db(engine)
+        assert client.get("/api/projects/P1/matrix-editor/session").json() == original
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_manual_step_text_draft_saves_without_publishing_and_reuses_its_lineage(tmp_path: Path) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        payload = _matrix_editor_payload()
+        payload.update(expected_active_confirmed_matrix_id=None, expected_active_confirmed_revision=None,
+                       source_import_id=None, source_snapshot_id=None, source_format="manual",
+                       source_document_path=None, source_document_name=None)
+        payload["step_text_overrides"] = [{
+            "draft_group_id": payload["groups"][0]["draft_group_id"],
+            "draft_row_id": payload["rows"][0]["draft_row_id"],
+            "step_sequence": 1, "description": "Manual draft text", "requirement": None,
+        }]
+        first = client.put("/api/projects/P1/matrix-editor/session/draft", json=payload)
+        assert first.status_code == 200, first.text
+        again = client.put("/api/projects/P1/matrix-editor/session/draft", json=payload)
+        assert again.status_code == 200, again.text
+        assert again.json()["editor_draft_id"] == first.json()["editor_draft_id"]
+        reopened = client.get("/api/projects/P1/matrix-editor/session").json()
+        assert reopened["active_confirmed_matrix_id"] is None
+        assert reopened["editor_draft"]["step_text_overrides"][0]["description"] == "Manual draft text"
+        source_id = reopened["editor_source_import_id"]
+        confirm = client.post("/api/projects/P1/matrix-editor/session/confirm", json={**payload, "confirmed_by": "operator"})
+        assert confirm.status_code in (200, 201), confirm.text
+        assert client.get("/api/projects/P1/matrix-editor/session").json()["active_source_import_id"] == source_id
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_unconfirmed_import_edits_survive_save_reopen_and_first_confirm(tmp_path: Path) -> None:
     client, engine, _session_factory = _client(tmp_path)
     try:

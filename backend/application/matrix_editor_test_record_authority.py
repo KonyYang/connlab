@@ -6,6 +6,8 @@ from hashlib import sha256
 import json
 from typing import Iterable, Protocol
 
+from backend.application.matrix_step_text_output import MatrixStepTextOutputOverride, draft_step_text_lookup
+
 
 class ConfirmedMatrixStore(Protocol):
     def get_active_by_project(self, project_id: str):
@@ -32,6 +34,7 @@ class ConfirmedMatrixTestRecordAuthorityMatcher:
             group.confirmed_group_id: group.group_key for group in snapshot.groups
         }
         groups = tuple(snapshot.groups)
+        row_order_by_id = {row.confirmed_row_id: index for index, row in enumerate(snapshot.rows, 1)}
         rows = tuple(
             _ConfirmedRowProjection(
                 row=row,
@@ -47,6 +50,17 @@ class ConfirmedMatrixTestRecordAuthorityMatcher:
         return draft_signature == build_matrix_editor_test_record_signature(
             groups=groups,
             rows=rows,
+            step_text_overrides=tuple(
+                MatrixStepTextOutputOverride(
+                    group_key=group_key_by_id[item.confirmed_group_id],
+                    row_order=row_order_by_id[item.confirmed_row_id],
+                    step_sequence=item.step_sequence,
+                    step_suffix_note=item.step_suffix_note,
+                    description=item.description,
+                    requirement=item.requirement,
+                )
+                for item in getattr(snapshot, "step_text_overrides", ())
+            ),
         )
 
 
@@ -62,10 +76,14 @@ class _ConfirmedRowProjection:
 
 
 def build_matrix_editor_test_record_signature(
-    *, groups: Iterable[object], rows: Iterable[object]
+    *, groups: Iterable[object], rows: Iterable[object], step_text_overrides=()
 ) -> str:
     """Return a stable signature for fields consumed by Test Record generation."""
     group_items = tuple(groups)
+    rows = tuple(rows)
+    row_positions = {original: canonical for canonical, (original, _) in enumerate(
+        ((index, row) for index, row in enumerate(rows, 1) if not row.is_sample_row), 1)}
+    overrides = draft_step_text_lookup(groups=group_items, rows=rows, overrides=step_text_overrides)
     payload = {
         "groups": [
             {
@@ -96,6 +114,11 @@ def build_matrix_editor_test_record_signature(
             if not bool(getattr(row, "is_sample_row", False))
         ],
     }
+    payload["step_text_overrides"] = [
+        [group, row_positions[row], sequence, suffix, item.description, item.requirement]
+        for (group, row, sequence, suffix), item in sorted(overrides.items())
+        if item.description is not None or item.requirement is not None
+    ]
     encoded = json.dumps(
         payload,
         ensure_ascii=False,

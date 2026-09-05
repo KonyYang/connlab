@@ -5,7 +5,10 @@ from __future__ import annotations
 from decimal import Decimal
 from pydantic import BaseModel, Field
 
-from backend.api.project_matrix_draft_dtos import ConfirmedMatrixSnapshotResponse
+from backend.api.project_matrix_draft_dtos import (
+    ConfirmedMatrixSnapshotResponse,
+    ProjectMatrixDraftStepTextOverrideDTO as MatrixEditorSessionStepTextOverride,
+)
 
 
 class MatrixEditorSessionGroupResponse(BaseModel):
@@ -70,6 +73,7 @@ class MatrixEditorSessionDraftResponse(BaseModel):
     groups: list[MatrixEditorSessionGroupResponse]
     rows: list[MatrixEditorSessionRowResponse]
     cells: list[MatrixEditorSessionCellResponse]
+    step_text_overrides: list[MatrixEditorSessionStepTextOverride] = Field(default_factory=list)
     duration_authorities: list[MatrixEditorSessionDurationAuthorityResponse] = Field(
         default_factory=list
     )
@@ -173,6 +177,7 @@ class MatrixEditorSessionConfirmRequest(BaseModel):
     groups: list[MatrixEditorSessionGroupRequest]
     rows: list[MatrixEditorSessionRowRequest]
     cells: list[MatrixEditorSessionCellRequest]
+    step_text_overrides: list[MatrixEditorSessionStepTextOverride] | None = None
     duration_authorities: list[MatrixEditorSessionDurationAuthorityRequest] = Field(
         default_factory=list
     )
@@ -199,6 +204,7 @@ class MatrixEditorSessionDraftSaveRequest(BaseModel):
     groups: list[MatrixEditorSessionGroupRequest]
     rows: list[MatrixEditorSessionRowRequest]
     cells: list[MatrixEditorSessionCellRequest]
+    step_text_overrides: list[MatrixEditorSessionStepTextOverride] | None = None
     duration_authorities: list[MatrixEditorSessionDurationAuthorityRequest] = Field(
         default_factory=list
     )
@@ -219,6 +225,8 @@ class MatrixEditorSessionDraftSaveResponse(BaseModel):
     saved_payload_signature: str
     active_confirmed_matrix_id: str | None
     active_confirmed_revision: int | None
+    source_import_id: str | None = None
+    source_snapshot_id: str | None = None
     fee_rebase_status: str = "not_required"
     fee_rebase_summary: "MatrixFeeRebaseSummaryResponse | None" = None
     fee_rebase_error: str | None = None

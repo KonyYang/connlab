@@ -34,7 +34,7 @@ describe("RecordStepWorkspacePanel", () => {
   it("renders selected token context needed for Test Record preparation", () => {
     render(
       <RecordStepWorkspacePanel
-        selectedToken={selectedToken}
+        selectedToken={{ ...selectedToken, description: "Confirmed step description" }}
         statusLabel="Not started"
       />
     );
@@ -46,6 +46,7 @@ describe("RecordStepWorkspacePanel", () => {
       "Not started",
       "3",
       "Visual",
+      "Confirmed step description",
       "6.1",
       "EIA-364-18B",
       "10x",

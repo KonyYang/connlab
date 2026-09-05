@@ -8,6 +8,8 @@ from hashlib import sha256
 import json
 import re
 
+from backend.application.matrix_step_text_output import confirmed_step_text_lookup
+
 from backend.domain import ConfirmedMatrixSnapshot, ConfirmedMatrixStepQuantity
 from backend.application.contact_point_profile_expression import (
     ContactPointExpressionError,
@@ -62,6 +64,7 @@ class LlcrCrRecordStage:
     condition: str
     requirement: str
     test_current_ampere: str | None = None
+    description_is_override: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -193,6 +196,7 @@ def build_point_profile_llcr_cr_record_projection(
             quantities_by_group.get(group.confirmed_group_id, []),
             rows,
             record_type,
+            confirmed_step_text_lookup(snapshot),
         )
         for category in categories:
             try:
@@ -495,6 +499,7 @@ def _point_profile_stages(
     all_quantities: list[ConfirmedMatrixStepQuantity],
     rows: dict[str, object],
     record_type: str,
+    text_lookup=None,
 ) -> tuple[LlcrCrRecordStage, ...]:
     stages: list[LlcrCrRecordStage] = []
     for index, quantity in enumerate(matching):
@@ -509,14 +514,22 @@ def _point_profile_stages(
             previous = _previous_matrix_row(quantity, all_quantities, rows)
             previous_label = getattr(previous, "test_item", "") if previous else ""
             label = f"After {previous_label.strip() or f'Step {quantity.step_sequence - 1}'}"
+        override = (text_lookup or {}).get((
+            quantity.confirmed_group_id, quantity.confirmed_row_id,
+            quantity.step_sequence, (quantity.step_suffix_note or "").strip(),
+        ))
+        if override is not None and override.description is not None:
+            label = override.description
         stages.append(
             LlcrCrRecordStage(
                 label=label,
+                description_is_override=override is not None and override.description is not None,
                 source_step=_source_step(quantity),
                 confirmed_row_id=quantity.confirmed_row_id,
                 test_item=str(getattr(row, "test_item", "") or "").strip(),
                 condition=str(getattr(row, "condition", "") or "").strip(),
-                requirement=str(getattr(row, "requirement", "") or "").strip(),
+                requirement=override.requirement if override is not None and override.requirement is not None
+                else str(getattr(row, "requirement", "") or "").strip(),
                 test_current_ampere=(
                     _test_current_ampere(str(getattr(row, "condition", "") or ""))
                     if record_type == "cr"

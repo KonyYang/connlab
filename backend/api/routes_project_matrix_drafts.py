@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from backend.domain.project_matrix_draft_models import ProjectMatrixDraftStepTextOverride
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.api.dependencies import (
@@ -141,6 +143,8 @@ def save_project_matrix_draft(
                 planned_test_complete_date=request.planned_test_complete_date,
                 estimated_completion_date=request.estimated_completion_date,
                 duration_authorities_present="duration_authorities" in request.model_fields_set,
+                step_text_overrides=(tuple(ProjectMatrixDraftStepTextOverride(**item.model_dump()) for item in request.step_text_overrides)
+                                     if request.step_text_overrides is not None else None),
                 duration_authorities=(
                     tuple(
                         ProjectMatrixDurationAuthorityInput(**item.model_dump())

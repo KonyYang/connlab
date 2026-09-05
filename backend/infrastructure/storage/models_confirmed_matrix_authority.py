@@ -19,6 +19,20 @@ from sqlalchemy.orm import Mapped, mapped_column
 from backend.infrastructure.storage.database import Base
 
 
+class ConfirmedMatrixStepTextOverrideModel(Base):
+    """Immutable text child records created in the authority publication transaction."""
+
+    __tablename__ = "confirmed_matrix_step_text_overrides"
+    __table_args__ = (CheckConstraint("step_sequence > 0", name="ck_confirmed_step_text_positive"),)
+    confirmed_matrix_id: Mapped[str] = mapped_column(String(64), ForeignKey("confirmed_matrix_versions.confirmed_matrix_id"), primary_key=True)
+    confirmed_group_id: Mapped[str] = mapped_column(String(64), ForeignKey("confirmed_matrix_groups.confirmed_group_id"), primary_key=True)
+    confirmed_row_id: Mapped[str] = mapped_column(String(64), ForeignKey("confirmed_matrix_rows.confirmed_row_id"), primary_key=True)
+    step_sequence: Mapped[int] = mapped_column(Integer, primary_key=True)
+    step_suffix_note: Mapped[str] = mapped_column(String(128), primary_key=True, default="")
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    requirement: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class ConfirmedMatrixVersionModel(Base):
     """Database row for one confirmed Matrix authority root."""
 

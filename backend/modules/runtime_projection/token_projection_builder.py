@@ -48,6 +48,7 @@ def build_step_token_projections(
     row_context: MatrixRowTechnicalContext,
     raw_step_token_value: str | None,
     projection_state: ProjectionState | None = None,
+    step_text_contexts: dict[tuple[int, str], MatrixRowTechnicalContext] | None = None,
 ) -> tuple[tuple[InteractiveStepTokenProjection, ...], tuple[str, ...]]:
     """Build minimal Interactive Step Token projections from parsed tokens."""
     parsed_tokens, warnings = parse_step_tokens(raw_step_token_value)
@@ -57,6 +58,7 @@ def build_step_token_projections(
     state = projection_state or DEFAULT_FAKE_PROJECTION_STATE
     projections: list[InteractiveStepTokenProjection] = []
     for token in parsed_tokens:
+        context = (step_text_contexts or {}).get((token.sequence, token.suffix_note or ""), row_context)
         reference = build_token_reference(
             project_reference=project_reference,
             matrix_reference=matrix_reference,
@@ -76,11 +78,11 @@ def build_step_token_projections(
                 sequence_number=reference.sequence_number,
                 suffix_note=reference.suffix_note,
                 token_reference=reference.stable_reference,
-                test_item_label=row_context.test_item_label,
-                section=row_context.section,
-                method=row_context.method,
-                condition=row_context.condition,
-                requirement=row_context.requirement,
+                test_item_label=context.test_item_label,
+                section=context.section,
+                method=context.method,
+                condition=context.condition,
+                requirement=context.requirement,
                 lifecycle_projection=state.lifecycle,
                 evidence_projection=state.evidence,
                 report_sync_projection=state.report_sync,
@@ -89,4 +91,3 @@ def build_step_token_projections(
             )
         )
     return tuple(projections), warnings
-

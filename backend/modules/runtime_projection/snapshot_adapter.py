@@ -30,6 +30,7 @@ class SnapshotMatrixRowInput:
     row_context: MatrixRowTechnicalContext
     raw_step_token_value: str | None
     projection_state: ProjectionState | None = None
+    step_text_contexts: dict[tuple[int, str], MatrixRowTechnicalContext] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +68,7 @@ def build_runtime_projection_snapshot(build_input: SnapshotBuildInput) -> Runtim
             row_context=row.row_context,
             raw_step_token_value=row.raw_step_token_value,
             projection_state=row.projection_state,
+            step_text_contexts=row.step_text_contexts,
         )
         projections.extend(row_projections)
         warnings.extend(row_warnings)

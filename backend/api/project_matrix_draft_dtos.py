@@ -4,7 +4,25 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class ProjectMatrixDraftStepTextOverrideDTO(BaseModel):
+    draft_group_id: str
+    draft_row_id: str
+    step_sequence: int = Field(gt=0)
+    step_suffix_note: str = ""
+    description: str | None = None
+    requirement: str | None = None
+
+
+class ConfirmedMatrixStepTextOverrideResponse(BaseModel):
+    confirmed_group_id: str
+    confirmed_row_id: str
+    step_sequence: int
+    step_suffix_note: str = ""
+    description: str | None = None
+    requirement: str | None = None
 
 
 class ProjectMatrixDraftCreateRequest(BaseModel):
@@ -86,6 +104,7 @@ class ProjectMatrixDraftResponse(BaseModel):
     rows: list[ProjectMatrixDraftRowResponse]
     cells: list[ProjectMatrixDraftCellResponse]
     duration_authorities: list[MatrixDurationAuthorityResponse]
+    step_text_overrides: list[ProjectMatrixDraftStepTextOverrideDTO] = Field(default_factory=list)
 
 
 class ProjectMatrixDraftSummaryResponse(ProjectMatrixDraftRecordResponse):
@@ -149,6 +168,7 @@ class ProjectMatrixDraftSaveRequest(BaseModel):
     planned_test_complete_date: str | None = None
     estimated_completion_date: str | None = None
     duration_authorities: list[ProjectMatrixDurationAuthoritySaveRequest] | None = None
+    step_text_overrides: list[ProjectMatrixDraftStepTextOverrideDTO] | None = None
 
 
 class ConfirmProjectMatrixDraftRequest(BaseModel):
@@ -221,3 +241,4 @@ class ConfirmedMatrixSnapshotResponse(BaseModel):
     rows: list[ConfirmedMatrixRowResponse]
     cells: list[ConfirmedMatrixCellResponse]
     duration_authorities: list[MatrixDurationAuthorityResponse]
+    step_text_overrides: list[ConfirmedMatrixStepTextOverrideResponse] = Field(default_factory=list)

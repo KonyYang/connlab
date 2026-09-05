@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from backend.application.matrix_step_text_overrides import confirmed_step_text_overrides
+
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import json
@@ -221,6 +223,7 @@ def _build_confirmed_snapshot_from_session_draft(
         )
     return ConfirmedMatrixSnapshot(
         version=version,
+        step_text_overrides=confirmed_step_text_overrides(draft.step_text_overrides, confirmed_group_id_by_draft_group, confirmed_row_id_by_draft_row),
         groups=tuple(groups),
         rows=tuple(rows),
         cells=tuple(cells),

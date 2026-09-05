@@ -152,8 +152,47 @@ describe("useMatrixDraftPersistence", () => {
     expect(view.result.current.hasCurrentSavedDraft).toBe(true);
   });
 
-  it("does not autosave an empty editor without an imported or confirmed Matrix", async () => {
+  it("warns before leaving while a draft edit is not yet saved", async () => {
     const view = renderPersistence({ payload: basePayload, signature: "base" });
+    act(() => view.result.current.hydrateSession({ baselineSignature: "base", hasEditorDraft: false, seed }));
+    view.rerender({ payload: { ...basePayload, post_test_buffer_days: "1" }, signature: "changed" });
+    const pendingLeave = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(pendingLeave);
+    expect(pendingLeave.defaultPrevented).toBe(true);
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    const savedLeave = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(savedLeave);
+    expect(savedLeave.defaultPrevented).toBe(false);
+  });
+
+  it("ignores an older autosave response after a different draft is loaded", async () => {
+    let resolveSave!: (value: typeof savedResponse) => void;
+    apiMocks.save.mockImplementationOnce(() => new Promise<typeof savedResponse>((resolve) => {
+      resolveSave = resolve;
+    }));
+    const view = renderPersistence({ payload: basePayload, signature: "base" });
+    act(() => view.result.current.hydrateSession({ baselineSignature: "base", hasEditorDraft: false, seed }));
+    view.rerender({ payload: { ...basePayload, post_test_buffer_days: "1" }, signature: "old-change" });
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    act(() => {
+      view.rerender({ payload: { ...basePayload, post_test_buffer_days: "2" }, signature: "new-draft" });
+      view.result.current.hydrateSession({ baselineSignature: "new-draft", hasEditorDraft: true,
+        seed: { ...seed, editor_draft_id: "new-draft", saved_payload_signature: "new-signature",
+          editor_source_import_id: "new-import", editor_source_snapshot_id: "new-snapshot" },
+      });
+    });
+    await act(async () => { resolveSave(savedResponse); });
+    expect(view.result.current.savedEditorDraftId).toBe("new-draft");
+    expect(view.result.current.savedPayloadSignature).toBe("new-signature");
+    expect(view.result.current.hasUnsavedChanges).toBe(false);
+    expect(view.result.current.hasCurrentSavedDraft).toBe(true);
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(apiMocks.save).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not autosave an empty editor without an imported or confirmed Matrix", async () => {
+    const emptyPayload = { ...basePayload, rows: [], cells: [] };
+    const view = renderPersistence({ payload: emptyPayload, signature: "base" });
     act(() =>
       view.result.current.hydrateSession({
         baselineSignature: "base",
@@ -169,12 +208,29 @@ describe("useMatrixDraftPersistence", () => {
     );
 
     view.rerender({
-      payload: { ...basePayload, post_test_buffer_days: "2" },
+      payload: { ...emptyPayload, post_test_buffer_days: "2" },
       signature: "changed",
     });
     await act(() => vi.advanceTimersByTimeAsync(2000));
 
     expect(apiMocks.save).not.toHaveBeenCalled();
+  });
+
+  it("autosaves a manually entered Matrix and retains its newly assigned source lineage", async () => {
+    const view = renderPersistence({ payload: basePayload, signature: "base" });
+    act(() => view.result.current.hydrateSession({ baselineSignature: "base", hasEditorDraft: false,
+      seed: { ...seed, active_confirmed_matrix_id: null, active_confirmed_revision: null,
+        active_source_import_id: null, active_source_snapshot_id: null },
+    }));
+    apiMocks.save.mockResolvedValueOnce({ ...savedResponse, active_confirmed_matrix_id: null,
+      active_confirmed_revision: null, source_import_id: "manual-import", source_snapshot_id: "manual-snapshot" });
+    view.rerender({ payload: { ...basePayload, post_test_buffer_days: "1" }, signature: "manual-edit" });
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    expect(apiMocks.save).toHaveBeenCalledTimes(1);
+    expect(view.result.current.sourceImportId).toBe("manual-import");
+    expect(view.result.current.sourceSnapshotId).toBe("manual-snapshot");
+    expect(view.result.current.buildConfirmRequest("operator").source_import_id).toBe("manual-import");
+    expect(view.result.current.hasCurrentSavedDraft).toBe(true);
   });
 
   it("uses an in-flight autosave result when Cancel discards the draft", async () => {

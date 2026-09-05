@@ -142,3 +142,37 @@ def _point_profile() -> EffectiveConfirmedPointProfile:
             },
         ),
     )
+
+
+def test_exact_draft_step_text_reaches_llcr_stages_without_changing_record_type(tmp_path):
+    from backend.application.matrix_step_text_output import MatrixStepTextOutputOverride
+
+    projection = build_matrix_editor_llcr_cr_record_projection(
+        project_id="project-1", record_type="llcr",
+        groups=(MatrixEditorLlcrCrRecordGroupInput("g1", "1", "5"),),
+        rows=(MatrixEditorLlcrCrRecordRowInput("sample", is_sample_row=True),
+              MatrixEditorLlcrCrRecordRowInput("LLCR", requirement="<= 10 mOhm",
+                                               group_values={"g1": "1,2(a),3"})),
+        point_profile=_point_profile(),
+        step_text_overrides=(MatrixStepTextOutputOverride("g1", 2, 2, "(a)", "Custom stage", ""),),
+    )
+    assert projection.status == "ready"
+    stages = projection.sections[0].stages
+    assert stages[1].label == "Custom stage"
+    assert stages[1].test_item == "LLCR"
+    assert stages[1].requirement == ""
+    assert stages[0].label == "Initial"
+    assert stages[2].label == "Final"
+    from backend.infrastructure.office.llcr_cr_specialized_record_workbook_gateway import (
+        LlcrCrSpecializedRecordWorkbookGateway,
+    )
+    from openpyxl import load_workbook
+
+    path = LlcrCrSpecializedRecordWorkbookGateway().write(
+        output_path=tmp_path / "record.xlsx", projection=projection)
+    workbook = load_workbook(path)
+    try:
+        assert workbook["Summary"]["B4"].value == "Custom stage"
+        assert workbook["SIG"]["B12"].value == "Custom stage"
+    finally:
+        workbook.close()

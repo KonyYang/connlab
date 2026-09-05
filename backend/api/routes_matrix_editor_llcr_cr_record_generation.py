@@ -8,6 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from backend.api.matrix_step_text_output_dtos import MatrixStepTextOutputOverrideRequest
+from backend.application.matrix_step_text_output import MatrixStepTextOutputOverride
+
 from backend.api.dependencies import (
     get_matrix_editor_llcr_cr_record_generation_service,
 )
@@ -47,6 +50,7 @@ class MatrixEditorLlcrCrRecordDraftRequest(BaseModel):
     record_type: Literal["llcr", "cr"]
     groups: list[MatrixEditorLlcrCrRecordGroupRequest]
     rows: list[MatrixEditorLlcrCrRecordRowRequest]
+    step_text_overrides: list[MatrixStepTextOutputOverrideRequest] = Field(default_factory=list)
 
 
 @router.post(
@@ -63,6 +67,8 @@ def generate_matrix_editor_llcr_cr_record_draft(
     try:
         result = service.generate(
             GenerateMatrixEditorLlcrCrRecordCommand(
+                step_text_overrides=tuple(MatrixStepTextOutputOverride(**item.model_dump())
+                                          for item in request.step_text_overrides),
                 project_id=project_id,
                 record_type=request.record_type,
                 groups=tuple(
@@ -88,7 +94,7 @@ def generate_matrix_editor_llcr_cr_record_draft(
                 ),
             )
         )
-    except MatrixEditorLlcrCrRecordGenerationError as exc:
+    except (MatrixEditorLlcrCrRecordGenerationError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return FileResponse(
         path=result.output_path,

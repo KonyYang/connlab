@@ -51,6 +51,12 @@ export function RecordStepWorkspacePanel({
               <dt>Test item</dt>
               <dd>{displayValue(selectedToken.testItem)}</dd>
             </div>
+            {selectedToken.description != null ? (
+              <div>
+                <dt>Step description</dt>
+                <dd>{displayValue(selectedToken.description)}</dd>
+              </div>
+            ) : null}
             <div>
               <dt>Section</dt>
               <dd>{displayValue(selectedToken.section)}</dd>

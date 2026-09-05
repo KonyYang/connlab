@@ -86,6 +86,42 @@ def test_matrix_editor_test_record_generation_uses_current_ui_payload(
         engine.dispose()
 
 
+def test_matrix_editor_step_text_draft_docx_and_invalid_identity_are_scoped(tmp_path: Path):
+    from io import BytesIO
+
+    client, engine, _ = _client(tmp_path)
+    try:
+        template = _build_template(tmp_path / "template.docx")
+        app.dependency_overrides[get_settings] = lambda: Settings(
+            data_dir=tmp_path / "data", projects_dir=tmp_path / "projects",
+            templates_dir=tmp_path / "templates", database_path=tmp_path / "connlab.sqlite3",
+            test_record=TestRecordSettings(template_path=template),
+        )
+        _seed_project("P1", tmp_path)
+        payload = {
+            "source": "matrix_editor_current_ui_state",
+            "groups": [{"group_key": "g1", "group_label": "1", "sample_quantity_expression": "5"}],
+            "rows": [{"test_item": "samples", "is_sample_row": True},
+                     {"test_item": "LLCR", "requirement": "<= 10", "group_values": {"g1": "1,2(a)"}}],
+            "step_text_overrides": [{"group_key": "g1", "row_order": 2, "step_sequence": 2,
+                                     "step_suffix_note": "(a)", "description": "Stage-only description",
+                                     "requirement": "Specific nonnumeric requirement"}],
+        }
+        response = client.post("/api/projects/P1/matrix-editor/test-record-draft/generate", json=payload)
+        assert response.status_code == 200, response.text
+        assert "Unconfirmed" in response.headers["content-disposition"]
+        table = Document(BytesIO(response.content)).tables[0]
+        assert table.rows[1].cells[1].text == "LLCR"
+        assert table.rows[2].cells[1].text == "Stage-only description"
+        assert table.rows[2].cells[8].text == "Specific nonnumeric requirement"
+        payload["step_text_overrides"][0]["row_order"] = 1
+        response = client.post("/api/projects/P1/matrix-editor/test-record-publication/preview", json=payload)
+        assert response.status_code == 422
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_matrix_editor_test_record_generation_uses_settings_template_folder(
     tmp_path: Path,
 ) -> None:

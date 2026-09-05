@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from backend.application.matrix_step_text_overrides import step_text_signature
+
 from typing import Any
 
 from backend.application.matrix_schedule_planning import (
@@ -123,6 +125,7 @@ def _build_signature_from_session_payload(
             for row_idx, row in enumerate(rows)
         ],
         "schedule": _schedule_signature_from_command(command),
+        "step_text_overrides": step_text_signature(command.step_text_overrides, group_index, row_index),
         "duration_authorities": sorted(
             (
                 group_index[item.draft_group_id],
@@ -151,6 +154,21 @@ def _has_expected_saved_draft(command: MatrixEditorSessionConfirmCommand) -> boo
         (command.expected_editor_draft_id or "").strip()
         and (command.expected_saved_payload_signature or "").strip()
     )
+
+
+def build_matrix_editor_saved_payload_signature(command: MatrixEditorSessionConfirmCommand) -> str:
+    """Draft CAS includes retained text in excluded groups, unlike formal no-change."""
+    groups = sorted(command.groups, key=lambda item: item.group_order)
+    rows = sorted(command.rows, key=lambda item: item.row_order)
+    return repr({
+        "matrix": _build_signature_from_session_payload(command),
+        "draft_step_text_overrides": step_text_signature(
+            command.step_text_overrides,
+            {item.draft_group_id: index for index, item in enumerate(groups)},
+            {item.draft_row_id: index for index, item in enumerate(rows)},
+        ),
+        "draft_group_selection": [item.is_selected for item in groups],
+    })
 
 def _schedule_signature_from_command(
     command: MatrixEditorSessionConfirmCommand,
@@ -226,6 +244,7 @@ def _build_signature_from_confirmed(snapshot: ConfirmedMatrixSnapshot) -> str:
             for row_idx, row in enumerate(rows)
         ],
         "schedule": _schedule_signature_from_confirmed(snapshot),
+        "step_text_overrides": step_text_signature(snapshot.step_text_overrides, group_index, row_index, confirmed=True),
         "duration_authorities": sorted(
             (
                 group_index[item.confirmed_group_id],
@@ -264,6 +283,7 @@ def build_project_matrix_draft_payload_signature(
         source_import_id=draft.record.source_import_id,
         source_snapshot_id=draft.record.source_snapshot_id,
         confirmed_by="signature",
+        step_text_overrides=draft.step_text_overrides,
         groups=tuple(
             MatrixEditorSessionGroup(
                 draft_group_id=group.draft_group_id,
@@ -327,7 +347,7 @@ def build_project_matrix_draft_payload_signature(
         planned_test_complete_date=draft.record.planned_test_complete_date,
         estimated_completion_date=draft.record.estimated_completion_date,
     )
-    return _build_signature_from_session_payload(command)
+    return build_matrix_editor_saved_payload_signature(command)
 
 
 _build_signature_from_project_draft = build_project_matrix_draft_payload_signature

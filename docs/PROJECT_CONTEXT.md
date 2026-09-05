@@ -43,6 +43,13 @@ Do not use a dated snapshot as a substitute for the code.
 - Startup reconciliation may physically remove only stale draft aggregates that are not referenced by
   any confirmed Matrix version. Source-import snapshots and confirmed Matrix history remain intact.
 - Archived drafts are read-only and cannot be reactivated by a stale save request.
+- Step Description / Requirement edits are draft content scoped to group, row, step sequence and
+  suffix. Saving leaves active authority unchanged; successful Confirm copies selected-group values
+  into a new immutable version. Failed confirmation retains the saved draft and prior authority.
+- An excluded group keeps its text in the working draft. Null inherits defaults; an explicit empty
+  string clears that step's text. Description does not change the canonical test-item classification.
+- Manual Matrix drafts can autosave without importing a file; first save establishes reusable manual
+  source lineage. Original methods are preserved when no external Standard catalog is available.
 
 ## Architecture seams
 

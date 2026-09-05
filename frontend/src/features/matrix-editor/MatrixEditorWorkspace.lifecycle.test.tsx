@@ -17,6 +17,76 @@ import { MatrixEditorWorkspace } from "./MatrixEditorWorkspace";
 installMatrixEditorWorkspaceTestLifecycle();
 
 describe("MatrixEditorWorkspace save, cancel, and confirm lifecycle", () => {
+  it("saves step-local text, restores it on reopen, and retains it when confirmation fails", async () => {
+    const seed = buildSessionSeed();
+    seed.source_preview_payload.rows[0].group_tokens = { "1": "1,2", g1: "1,2" };
+    seed.editor_draft.cells[0].cell_value = "1,2";
+    apiMocks.fetchMatrixEditorSession.mockResolvedValue(seed);
+    const onBack = vi.fn();
+    const first = render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={onBack} />);
+    fireEvent.change(await screen.findByLabelText("Step 1 description"), {
+      target: { value: "Only this step" },
+    });
+    fireEvent.change(screen.getByLabelText("Step 1 requirement"), {
+      target: { value: "Local requirement" },
+    });
+    expect(screen.getByLabelText("Step 2 description")).toHaveProperty("value", "Visual Examination");
+    expect(screen.getByLabelText("Row 1 test item")).toHaveProperty("value", "Visual Examination");
+    await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalledTimes(1),
+      { timeout: 1600 });
+    const saved = apiMocks.saveMatrixEditorSessionDraft.mock.calls[0][1];
+    expect(saved.step_text_overrides).toEqual([{
+      draft_group_id: "group-1", draft_row_id: "row-1", step_sequence: 1,
+      step_suffix_note: "", description: "Only this step", requirement: "Local requirement",
+    }]);
+    expect(apiMocks.confirmMatrixEditorSession).not.toHaveBeenCalled();
+    first.unmount();
+    apiMocks.fetchMatrixEditorSession.mockResolvedValue({ ...seed,
+      editor_draft_id: "editor-draft-1", saved_payload_signature: "saved-signature-1",
+      editor_draft: { ...seed.editor_draft, step_text_overrides: saved.step_text_overrides },
+    });
+    apiMocks.confirmMatrixEditorSession.mockRejectedValueOnce(new Error("Confirmation unavailable. Please retry."));
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={onBack} />);
+    expect(await screen.findByLabelText("Step 1 description")).toHaveProperty("value", "Only this step");
+    expect(screen.getByLabelText("Step 1 requirement")).toHaveProperty("value", "Local requirement");
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Matrix" }));
+    expect(await screen.findByText("Confirmation unavailable. Please retry.")).toBeTruthy();
+    expect(onBack).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Step 1 description")).toHaveProperty("value", "Only this step");
+    expect(apiMocks.confirmMatrixEditorSession.mock.calls[0][1].step_text_overrides)
+      .toEqual(saved.step_text_overrides);
+  });
+
+  it("keeps explicit blank step text local to one group and one repeated LLCR step", async () => {
+    const seed = buildSessionSeed();
+    seed.editor_draft.rows[0].test_item = "Contact Resistance (Low Level)";
+    seed.editor_draft.rows[0].requirement = "Initial <= 0.25 mΩ; R<= 0.17 mΩ";
+    seed.editor_draft.groups.push({ ...seed.editor_draft.groups[0],
+      draft_group_id: "group-2", source_group_snapshot_id: "sg-2", group_order: 2,
+      group_key: "g2", group_label: "2",
+    });
+    seed.editor_draft.cells = [
+      { draft_row_id: "row-1", draft_group_id: "group-1", cell_value: "1(a),2" },
+      { draft_row_id: "row-1", draft_group_id: "group-2", cell_value: "1(a),2" },
+    ];
+    apiMocks.fetchMatrixEditorSession.mockResolvedValue({ ...seed, source_preview_payload: null });
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={vi.fn()} />);
+    fireEvent.change(await screen.findByLabelText("Step 1 description"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Step 1 requirement"), { target: { value: "" } });
+    expect(screen.getByLabelText("Step 1 description")).toHaveProperty("value", "");
+    expect(screen.getByLabelText("Step 1 requirement")).toHaveProperty("value", "");
+    expect(screen.getByLabelText("Step 2 description")).toHaveProperty("value", "Final LLCR");
+    fireEvent.click(screen.getByLabelText("Include group 2").closest("th")!);
+    expect(screen.getByLabelText("Step 1 description")).toHaveProperty("value", "Initial LLCR");
+    expect(screen.getByLabelText("Step 1 requirement")).toHaveProperty("value", "<= 0.25 mΩ");
+    await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalledTimes(1),
+      { timeout: 1600 });
+    expect(apiMocks.saveMatrixEditorSessionDraft.mock.calls[0][1].step_text_overrides).toEqual([{
+      draft_group_id: "group-1", draft_row_id: "row-1", step_sequence: 1,
+      step_suffix_note: "(a)", description: "", requirement: "",
+    }]);
+  });
+
   it("keeps closed projects read-only and blocks Matrix confirmation", async () => {
     runtimeModelState.lifecycle = {
       ...runtimeModelState.lifecycle,

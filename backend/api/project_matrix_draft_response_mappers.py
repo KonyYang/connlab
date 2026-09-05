@@ -1,6 +1,10 @@
 """Response mappers for Project Matrix draft routes."""
 
+from dataclasses import asdict
+
 from backend.api.project_matrix_draft_dtos import (
+    ProjectMatrixDraftStepTextOverrideDTO,
+    ConfirmedMatrixStepTextOverrideResponse,
     ConfirmedMatrixCellResponse,
     ConfirmedMatrixGroupResponse,
     ConfirmedMatrixRowResponse,
@@ -20,6 +24,7 @@ def to_project_matrix_draft_response(
     draft: ProjectMatrixDraftSnapshot,
 ) -> ProjectMatrixDraftResponse:
     return ProjectMatrixDraftResponse(
+        step_text_overrides=[ProjectMatrixDraftStepTextOverrideDTO(**asdict(item)) for item in draft.step_text_overrides],
         record=ProjectMatrixDraftRecordResponse(
             **{
                 field: getattr(draft.record, field)
@@ -71,6 +76,7 @@ def to_confirmed_matrix_response(
     snapshot: ConfirmedMatrixSnapshot,
 ) -> ConfirmedMatrixSnapshotResponse:
     return ConfirmedMatrixSnapshotResponse(
+        step_text_overrides=[ConfirmedMatrixStepTextOverrideResponse(**asdict(item)) for item in snapshot.step_text_overrides],
         version=ConfirmedMatrixVersionResponse(
             **{
                 field: (

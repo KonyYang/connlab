@@ -1400,6 +1400,7 @@ export type ProjectMatrixDraft = {
   groups: ProjectMatrixDraftGroup[];
   rows: ProjectMatrixDraftRow[];
   cells: ProjectMatrixDraftCell[];
+  step_text_overrides?: MatrixStepTextOverride[];
   duration_authorities?: MatrixDurationAuthority[];
 };
 
@@ -1554,6 +1555,7 @@ export type ProjectMatrixDraftSaveRequest = {
   rows: ProjectMatrixDraftSaveRowInput[];
   cells: ProjectMatrixDraftSaveCellInput[];
   duration_authorities?: ProjectMatrixDraftDurationAuthorityInput[] | null;
+  step_text_overrides?: MatrixStepTextOverride[];
   pre_test_buffer_days?: string | null;
   post_test_buffer_days?: string | null;
   sample_received_date?: string | null;
@@ -1631,6 +1633,16 @@ export type MatrixEditorSessionDraft = {
   rows: MatrixEditorSessionDraftRow[];
   cells: MatrixEditorSessionDraftCell[];
   duration_authorities?: MatrixEditorSessionDurationAuthority[];
+  step_text_overrides?: MatrixStepTextOverride[];
+};
+
+export type MatrixStepTextOverride = {
+  draft_group_id: string;
+  draft_row_id: string;
+  step_sequence: number;
+  step_suffix_note: string;
+  description: string | null;
+  requirement: string | null;
 };
 
 export type MatrixEditorSessionSeed = {
@@ -1674,6 +1686,7 @@ export type MatrixEditorSessionConfirmRequest = {
   rows: MatrixEditorSessionDraftRow[];
   cells: MatrixEditorSessionDraftCell[];
   duration_authorities?: MatrixEditorSessionDurationAuthority[];
+  step_text_overrides?: MatrixStepTextOverride[];
   pre_test_buffer_days?: string | null;
   post_test_buffer_days?: string | null;
   sample_received_date?: string | null;
@@ -1689,6 +1702,8 @@ export type MatrixEditorSessionDraftSaveRequest = Omit<
 
 export type MatrixEditorSessionDraftSaveResponse = {
   editor_draft_id: string;
+  source_import_id?: string | null;
+  source_snapshot_id?: string | null;
   draft_status: "current";
   draft_updated_at: string;
   saved_payload_signature: string;
@@ -1734,6 +1749,14 @@ export type MatrixEditorTestRecordDraftRequest = {
   source: "matrix_editor_current_ui_state";
   groups: MatrixEditorTestRecordDraftGroupRequest[];
   rows: MatrixEditorTestRecordDraftRowRequest[];
+  step_text_overrides?: Array<{
+    group_key: string;
+    row_order: number;
+    step_sequence: number;
+    step_suffix_note: string;
+    description: string | null;
+    requirement: string | null;
+  }>;
 };
 
 export type MatrixEditorLiveXlsxExportRequest = {
@@ -2436,6 +2459,7 @@ export type ConfirmedMatrixTestRecordPreviewStep = {
   sequence: number;
   raw_token: string;
   test_item: string;
+  description?: string | null;
   section: string;
   method: string;
   condition: string;

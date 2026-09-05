@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import re
 from typing import Protocol
 
+from backend.application.matrix_step_text_output import apply_step_text, confirmed_step_text_lookup
 from backend.application.confirmed_matrix_step_quantity_projection import (
     ConfirmedMatrixTestRecordStepQuantity,
     StepQuantityProjectionLookup,
@@ -52,6 +53,8 @@ class ConfirmedMatrixTestRecordPreviewStep:
     requirement: str
     suffix_note: str | None = None
     quantity: ConfirmedMatrixTestRecordStepQuantity | None = None
+    description: str | None = None
+    requirement_is_override: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,12 +152,18 @@ def _build_group_steps(
     quantity_lookup: StepQuantityProjectionLookup,
 ) -> list[ConfirmedMatrixTestRecordPreviewStep]:
     steps: list[ConfirmedMatrixTestRecordPreviewStep] = []
+    step_sources = []
+    text_lookup = confirmed_step_text_lookup(snapshot)
     for row in snapshot.rows:
         cell_value = _normalize_text(cell_lookup.get((group.confirmed_group_id, row.confirmed_row_id)))
         if not cell_value:
             continue
         parsed_tokens, _warnings = parse_step_tokens(cell_value)
         for token in parsed_tokens:
+            step_sources.append((token.sequence, token.raw_token, text_lookup.get((
+                group.confirmed_group_id, row.confirmed_row_id,
+                token.sequence, (token.suffix_note or "").strip(),
+            ))))
             steps.append(
                 ConfirmedMatrixTestRecordPreviewStep(
                     sequence=token.sequence,
@@ -174,8 +183,9 @@ def _build_group_steps(
                 )
             )
     steps.sort(key=lambda step: (step.sequence, step.raw_token))
+    step_sources.sort(key=lambda item: (item[0], item[1]))
     _apply_llcr_step_requirement_mapping(steps)
-    return steps
+    return [apply_step_text(step, source[2]) for step, source in zip(steps, step_sources, strict=True)]
 
 
 def _apply_llcr_step_requirement_mapping(steps: list[ConfirmedMatrixTestRecordPreviewStep]) -> None:

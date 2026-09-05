@@ -164,6 +164,7 @@ def _delete_unreferenced_draft(
 ) -> None:
     for table_name in (
         "matrix_fee_pending_rebases",
+        "project_matrix_draft_step_text_overrides",
         "project_matrix_draft_duration_authorities",
         "project_matrix_draft_step_quantities",
         "project_matrix_draft_cells",

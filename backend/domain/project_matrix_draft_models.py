@@ -121,6 +121,18 @@ class ProjectMatrixDraftDurationAuthority:
 
 
 @dataclass(frozen=True, slots=True)
+class ProjectMatrixDraftStepTextOverride:
+    """Exact per-step draft text; None inherits while an empty string clears."""
+
+    draft_group_id: str
+    draft_row_id: str
+    step_sequence: int
+    step_suffix_note: str = ""
+    description: str | None = None
+    requirement: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ProjectMatrixDraftSnapshot:
     """Aggregate structured Project Matrix draft snapshot."""
 
@@ -134,3 +146,4 @@ class ProjectMatrixDraftSnapshot:
     duration_authorities: tuple[ProjectMatrixDraftDurationAuthority, ...] = field(
         default_factory=tuple
     )
+    step_text_overrides: tuple[ProjectMatrixDraftStepTextOverride, ...] = ()

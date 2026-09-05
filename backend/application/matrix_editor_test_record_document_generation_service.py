@@ -6,6 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
+from backend.application.matrix_step_text_output import (
+    MatrixStepTextOutputOverride, apply_step_text, draft_step_text_lookup,
+)
+
 from backend.application.confirmed_matrix_test_record_document_generation_service import (
     ApplicationFormLookup,
     ConfirmedMatrixTestRecordDocumentWriter,
@@ -77,6 +81,7 @@ class GenerateMatrixEditorTestRecordDocumentCommand:
     rows: tuple[MatrixEditorTestRecordRowInput, ...]
     require_confirmed_header: bool = False
     output_file_name: str | None = None
+    step_text_overrides: tuple[MatrixStepTextOutputOverride, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,7 +130,13 @@ class MatrixEditorTestRecordDocumentGenerationService:
             raise MatrixEditorTestRecordDocumentGenerationError(
                 f"Test Record template does not exist: {template_path}"
             )
-        preview_groups = _build_preview_groups(groups=command.groups, rows=command.rows)
+        try:
+            preview_groups = _build_preview_groups(
+                groups=command.groups, rows=command.rows,
+                step_text_overrides=command.step_text_overrides,
+            )
+        except ValueError as exc:
+            raise MatrixEditorTestRecordDocumentGenerationError(str(exc)) from exc
         if not preview_groups:
             raise MatrixEditorTestRecordDocumentGenerationError(
                 "Current Matrix Editor state has no previewable Test Record steps."
@@ -311,11 +322,14 @@ def _build_preview_groups(
     *,
     groups: tuple[MatrixEditorTestRecordGroupInput, ...],
     rows: tuple[MatrixEditorTestRecordRowInput, ...],
+    step_text_overrides: tuple[MatrixStepTextOutputOverride, ...] = (),
 ) -> list[ConfirmedMatrixTestRecordPreviewGroup]:
     preview_groups: list[ConfirmedMatrixTestRecordPreviewGroup] = []
+    text_lookup = draft_step_text_lookup(groups=groups, rows=rows, overrides=step_text_overrides)
     for group in groups:
         steps: list[ConfirmedMatrixTestRecordPreviewStep] = []
-        for row in rows:
+        step_sources = []
+        for row_order, row in enumerate(rows, 1):
             if row.is_sample_row:
                 continue
             cell_value = _normalize_text((row.group_values or {}).get(group.group_key))
@@ -323,10 +337,14 @@ def _build_preview_groups(
                 continue
             parsed_tokens, _warnings = parse_step_tokens(cell_value)
             for token in parsed_tokens:
+                step_sources.append((token.sequence, token.raw_token, text_lookup.get((
+                    group.group_key, row_order, token.sequence, (token.suffix_note or "").strip(),
+                ))))
                 steps.append(
                     ConfirmedMatrixTestRecordPreviewStep(
                         sequence=token.sequence,
                         raw_token=token.raw_token,
+                        suffix_note=token.suffix_note,
                         test_item=_normalize_text(row.test_item),
                         section=_normalize_text(row.section),
                         method=_normalize_text(row.method),
@@ -335,7 +353,9 @@ def _build_preview_groups(
                     )
                 )
         steps.sort(key=lambda step: (step.sequence, step.raw_token))
+        step_sources.sort(key=lambda item: (item[0], item[1]))
         _apply_llcr_step_requirement_mapping(steps)
+        steps = [apply_step_text(step, source[2]) for step, source in zip(steps, step_sources, strict=True)]
         if not steps:
             continue
         preview_groups.append(

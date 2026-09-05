@@ -5,6 +5,7 @@ import type {
   MatrixEditorSessionSeed,
   MatrixEditorTestRecordDraftRequest,
   MatrixPreviewResponse,
+  MatrixStepTextOverride,
   ProjectMatrixDraft,
   ProjectMatrixDraftSaveRequest,
 } from "../../api/client";
@@ -396,6 +397,7 @@ export function buildSessionDraftFromProjectMatrixDraft(
     duration_authorities: mapProjectDurationAuthoritiesForSession(
       draft.duration_authorities
     ),
+    step_text_overrides: draft.step_text_overrides ?? [],
   };
 }
 
@@ -426,7 +428,8 @@ export function buildDraftSavePayload(
   groups: GroupColumn[],
   samples: Record<string, string>,
   schedulePlan: MatrixSchedulePlan,
-  durationAuthorities: MatrixEditorSessionDurationAuthority[] = []
+  durationAuthorities: MatrixEditorSessionDurationAuthority[] = [],
+  stepTextOverrides: MatrixStepTextOverride[] = [],
 ): ProjectMatrixDraftSaveRequest {
   const payloadGroups = groups.map((group, index) => ({
     draft_group_id: group.draftGroupId ?? group.id,
@@ -473,6 +476,7 @@ export function buildDraftSavePayload(
     groups: payloadGroups,
     rows: payloadRows,
     cells: payloadCells,
+    step_text_overrides: stepTextOverrides,
     duration_authorities: durationAuthorities.map((item) => ({
       draft_duration_authority_id: item.draft_duration_authority_id ?? null,
       draft_group_id: item.draft_group_id,
@@ -494,11 +498,23 @@ export function buildDraftSavePayload(
 export function buildMatrixEditorTestRecordDraftRequest(
   rows: EditableMatrixRow[],
   groups: GroupColumn[],
-  samples: Record<string, string>
+  samples: Record<string, string>,
+  stepTextOverrides: MatrixStepTextOverride[] = [],
 ): MatrixEditorTestRecordDraftRequest {
   const selectedGroups = groups.filter((group) => group.isSelected);
   return {
     source: "matrix_editor_current_ui_state",
+    step_text_overrides: stepTextOverrides.flatMap((item) => {
+      const groupIndex = selectedGroups.findIndex((group) => (group.draftGroupId ?? group.id) === item.draft_group_id);
+      const rowIndex = rows.findIndex((row) => (row.draftRowId ?? row.id) === item.draft_row_id);
+      if (groupIndex < 0 || rowIndex < 0) return [];
+      return [{
+        group_key: selectedGroups[groupIndex].groupKey.trim() || `g${groupIndex + 1}`,
+        row_order: rowIndex + 1, step_sequence: item.step_sequence,
+        step_suffix_note: item.step_suffix_note,
+        description: item.description, requirement: item.requirement,
+      }];
+    }),
     groups: selectedGroups.map((group, index) => ({
       group_key: group.groupKey.trim() || `g${index + 1}`,
       group_label: group.name.trim() || `${index + 1}`,

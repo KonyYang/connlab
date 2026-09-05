@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
+
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
@@ -19,6 +21,7 @@ from backend.domain import (
 )
 from backend.domain.confirmed_matrix_authority_models import (
     ConfirmedMatrixDurationAuthority,
+    ConfirmedMatrixStepTextOverride,
 )
 from backend.infrastructure.storage.models_confirmed_matrix_authority import (
     ConfirmedMatrixCellModel,
@@ -27,6 +30,7 @@ from backend.infrastructure.storage.models_confirmed_matrix_authority import (
     ConfirmedMatrixStepQuantityModel,
     ConfirmedMatrixVersionModel,
     ConfirmedMatrixDurationAuthorityModel,
+    ConfirmedMatrixStepTextOverrideModel,
 )
 from backend.infrastructure.storage.models_project_matrix_draft import (
     ProjectMatrixDraftRecordModel,
@@ -47,6 +51,9 @@ class ConfirmedMatrixAuthorityRepository:
         self._session.add_all(_to_cell_models(snapshot.cells))
         self._session.add_all(_to_step_quantity_models(snapshot.step_quantities))
         self._session.add_all(_to_duration_authority_models(snapshot.duration_authorities))
+        self._session.add_all(ConfirmedMatrixStepTextOverrideModel(
+            confirmed_matrix_id=snapshot.version.confirmed_matrix_id, **asdict(item)
+        ) for item in snapshot.step_text_overrides)
         self._session.execute(
             update(ProjectMatrixDraftRecordModel)
             .where(
@@ -164,6 +171,12 @@ class ConfirmedMatrixAuthorityRepository:
             duration_authorities=tuple(
                 _to_duration_authority_domain(row) for row in duration_rows
             ),
+            step_text_overrides=tuple(ConfirmedMatrixStepTextOverride(
+                **{name: getattr(item, name) for name in ConfirmedMatrixStepTextOverride.__dataclass_fields__}
+            ) for item in self._session.scalars(select(ConfirmedMatrixStepTextOverrideModel).where(
+                ConfirmedMatrixStepTextOverrideModel.confirmed_matrix_id == version_row.confirmed_matrix_id
+            ).order_by(ConfirmedMatrixStepTextOverrideModel.confirmed_group_id,
+                       ConfirmedMatrixStepTextOverrideModel.step_sequence))),
         )
 
 
