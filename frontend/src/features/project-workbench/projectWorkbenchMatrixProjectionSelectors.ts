@@ -71,27 +71,6 @@ function buildRowKey(step: ConfirmedMatrixTestRecordPreviewStep): string {
   ].join("::");
 }
 
-export function deriveMatrixProjectionStatusTone(
-  sequence: number
-): MatrixProjectionStatusTone {
-  if (sequence % 6 === 0) {
-    return "review";
-  }
-  if (sequence % 5 === 0) {
-    return "retest";
-  }
-  if (sequence % 4 === 0) {
-    return "failed";
-  }
-  if (sequence % 3 === 0) {
-    return "passed";
-  }
-  if (sequence % 2 === 0) {
-    return "in_progress";
-  }
-  return "not_started";
-}
-
 export function toVisibleMatrixProjectionStatusTone(
   tone: MatrixProjectionStatusTone
 ): MatrixProjectionVisibleStatusTone {
@@ -119,7 +98,8 @@ function buildTokenCell(
     groupLabel: group.group_label,
     rawToken: visibleToken,
     sequence: step.sequence,
-    statusTone: deriveMatrixProjectionStatusTone(step.sequence),
+    // The preview has no execution results; sequence numbers are not status data.
+    statusTone: "not_started",
     sampleQuantityExpression: group.sample_quantity_expression || "-",
     testItem: step.test_item,
     description: step.description,

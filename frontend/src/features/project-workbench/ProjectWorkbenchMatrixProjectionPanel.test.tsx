@@ -16,6 +16,29 @@ vi.mock("../../api/client", async (importOriginal) => {
 });
 
 describe("ProjectWorkbenchMatrixProjectionPanel", () => {
+  it("keeps every preview step at its initial status until execution data exists", async () => {
+    const onTokenSelect = vi.fn();
+    apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
+      project_id: "P1", confirmed_matrix_id: "cm-1", preview_status: "ready",
+      groups: [{
+        group_key: "g1", group_label: "Group 1", sample_quantity_expression: "3",
+        step_count: 6,
+        steps: [1, 2, 3, 4, 5, 6].map((sequence) => ({
+          sequence, raw_token: String(sequence), test_item: "Visual",
+          section: "6.1", method: "Visual", condition: "Ambient", requirement: "No damage",
+        })),
+      }],
+    });
+    render(<ProjectWorkbenchMatrixProjectionPanel projectId="P1" onTokenSelect={onTokenSelect} />);
+    await screen.findByRole("button", { name: "6", exact: true });
+    for (const number of ["1", "2", "3", "4", "5", "6"]) {
+      fireEvent.click(screen.getByRole("button", { name: number, exact: true }));
+      expect(onTokenSelect).toHaveBeenLastCalledWith(expect.objectContaining({
+        rawToken: number, statusTone: "not_started",
+      }));
+    }
+  });
+
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
