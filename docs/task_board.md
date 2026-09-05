@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_RELEASE_SMOKE_20260905",
     "summary": "Build the Matrix reliability browser release and validate its isolated local operator flow; deliver a second-computer smoke checklist.",
@@ -24,17 +24,94 @@
     "risk_reasons": [],
     "activation_head": "ef44aca3986716a4681372a96ed28a3b5e7c8785",
     "started_at": "2026-09-05T02:08:04.985893Z",
-    "updated_at": "2026-09-05T03:04:31.774038Z",
+    "updated_at": "2026-09-05T03:10:10.804895Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_RELEASE_SMOKE_20260905",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "user: default Workbench step numbers to initial black state; remove simulated status colors",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_RELEASE_SMOKE_20260905",
+      "subject": "92eab6953b4916d0dc9f62a2940d491841e49b85",
+      "summary": "Development Workbench feedback resolved: obsolete planning fallback removed and sequence-based simulated execution statuses removed. Preview steps default to initial black text with selection preserved. No release rebuild or real-data mutation; environment transparency remains deferred.",
+      "scope_ok": true,
+      "changed_paths": [
+        "docs/project_management/MATRIX_RELEASE_SMOKE_20260905.md",
+        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+        "frontend/src/features/project-workbench/ProjectWorkbenchMatrixProjectionPanel.test.tsx",
+        "frontend/src/features/project-workbench/projectWorkbenchMatrixProjectionSelectors.ts",
+        "frontend/src/workbench.css"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "check": "Layout public UI RED/GREEN",
+          "result": "Reproduced obsolete cards before fix; 43 focused tests passed after fix"
+        },
+        {
+          "status": "passed",
+          "check": "Final complete frontend suite with two workers",
+          "subject": "b918aed60992d830b961f14d05a5bf6aa2d4e4fe",
+          "files": 75,
+          "tests": 484
+        },
+        {
+          "status": "passed",
+          "check": "TypeScript and Vite build",
+          "subject": "b918aed60992d830b961f14d05a5bf6aa2d4e4fe"
+        },
+        {
+          "status": "passed",
+          "check": "Initial token state RED/GREEN and browser computed styles",
+          "coverage": "Six step numbers selected with not_started status; real page 77 tokens black on neutral backgrounds; step 4 remains black with selection outline"
+        },
+        {
+          "status": "passed",
+          "check": "Existing localhost:5173 browser navigation",
+          "coverage": "Projects -> Open Workbench DL-2026-08-008; unified Matrix and toolbar visible; warning/error log empty; no project mutations"
+        },
+        {
+          "status": "passed",
+          "check": "Original release delivery evidence retained",
+          "report": "docs/project_management/MATRIX_RELEASE_SMOKE_20260905.md",
+          "note": "Previous packaged acceptance remains historical; ZIP does not include development follow-up"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "execution": "same-agent diagnosis, implementation, self-review and targeted tests"
+        },
+        "reviewer": {
+          "status": "passed",
+          "execution": "same-agent focused diff review; no independent agent",
+          "coverage": "async identity, retired entry path, closed/read-only and registration guards, scope"
+        },
+        "qa": {
+          "status": "passed",
+          "execution": "same-agent final complete frontend tests/build and development browser check; not independent",
+          "limitations": "No backend change; no release rebuilt; no millisecond browser capture claim"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "subject": "92eab6953b4916d0dc9f62a2940d491841e49b85",
+        "tree": "e395c7d01ab98c43a276f063bbbb86fa3f764481",
+        "parents": [
+          "b918aed60992d830b961f14d05a5bf6aa2d4e4fe"
+        ],
+        "clean": true,
+        "report_raw_sha256": "115eb349e7c53475863407a7ca8c6a33e3db2428b3890339fc545f26c3ed0dad",
+        "fact": "Source and report committed on local primary. Final source bytes match validated commit. No push, deployment or merge needed."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_EXPERIENCE_RELIABILITY_BATCH1",
