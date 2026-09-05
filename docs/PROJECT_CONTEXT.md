@@ -34,6 +34,10 @@ Do not use a dated snapshot as a substitute for the code.
 ### Matrix draft lifecycle
 
 - A Project has at most one editable Matrix working draft (`status = draft`).
+- Imported working drafts can autosave before the first confirmation. Saving does not establish
+  confirmed authority; first confirmation reuses the imported draft and preserves source lineage.
+- Registry Matrix confirmation is derived from active confirmed authority, not legacy Project status;
+  it does not imply that all prerequisites for test execution are satisfied.
 - Confirming a Matrix archives its source draft as `superseded`; confirmed authority keeps that
   lineage record and its immutable confirmed snapshot.
 - Startup reconciliation may physically remove only stale draft aggregates that are not referenced by

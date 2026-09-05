@@ -117,8 +117,8 @@ vi.mock("../../api/client", () => {
   };
 });
 
-vi.mock("../project-workbench/useProjectRuntimeConsoleModel", () => ({
-  useProjectRuntimeConsoleModel: () => ({
+vi.mock("./useMatrixEditorContext", () => ({
+  useMatrixEditorContext: () => ({
     project: {
       product_name: "Connector A",
       sample_description: "Coolpower HDF 3.40mm pin",

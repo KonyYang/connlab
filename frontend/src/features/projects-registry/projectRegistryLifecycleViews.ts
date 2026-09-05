@@ -20,6 +20,7 @@ type RegistryLifecycleState =
 
 type OperationalQueue =
   | "planning"
+  | "matrix_confirmed"
   | "matrix_needed"
   | "ready_to_test"
   | "folder_blocked"
@@ -27,6 +28,7 @@ type OperationalQueue =
 
 const OPERATIONAL_STATUS_LABELS: Record<OperationalQueue, string> = {
   planning: "Planning",
+  matrix_confirmed: "Matrix Confirmed",
   matrix_needed: "Matrix Needed",
   ready_to_test: "Ready to Test",
   folder_blocked: "Folder Blocked",
@@ -167,6 +169,9 @@ function isClosedLifecycleState(state: RegistryLifecycleState): boolean {
 }
 
 function classifyOperationalQueue(row: ProjectRegistryRow): OperationalQueue {
+  if (row.has_confirmed_matrix) {
+    return "matrix_confirmed";
+  }
   if (row.status === "folder_created") {
     return "folder_created";
   }
@@ -181,6 +186,8 @@ function classifyOperationalQueue(row: ProjectRegistryRow): OperationalQueue {
 
 function operationalNextStepLabel(row: ProjectRegistryRow): string {
   switch (classifyOperationalQueue(row)) {
+    case "matrix_confirmed":
+      return "Open Matrix in Workbench";
     case "planning":
       return "Continue planning in Workbench";
     case "matrix_needed":

@@ -14,6 +14,7 @@ export type Project = {
 
 export type ProjectRegistryRow = {
   project_id: string;
+  has_confirmed_matrix?: boolean;
   ltr_number?: string | null;
   sample_description?: string | null;
   test_item?: string | null;
@@ -1691,8 +1692,8 @@ export type MatrixEditorSessionDraftSaveResponse = {
   draft_status: "current";
   draft_updated_at: string;
   saved_payload_signature: string;
-  active_confirmed_matrix_id: string;
-  active_confirmed_revision: number;
+  active_confirmed_matrix_id: string | null;
+  active_confirmed_revision: number | null;
 };
 
 export type MatrixEditorSessionDraftDiscardRequest = {

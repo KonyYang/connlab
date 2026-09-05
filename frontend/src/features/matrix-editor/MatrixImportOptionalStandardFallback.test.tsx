@@ -20,8 +20,8 @@ vi.mock("../../api/client", async (importOriginal) => ({
   matrixPreviewPdfUrl: (token: string) => `/api/pdf/${token}`,
 }));
 
-vi.mock("../project-workbench/useProjectRuntimeConsoleModel", () => ({
-  useProjectRuntimeConsoleModel: () => ({
+vi.mock("./useMatrixEditorContext", () => ({
+  useMatrixEditorContext: () => ({
     project: { project_id: "P1", product_name: "Connector", requestor: "Alice" },
     latestLtr: "LTR-0001",
     matrixAuthorityDraft: { source_document_name: "source.docx" },

@@ -234,12 +234,26 @@ class MatrixEditorSessionService(
         )
         self._require_project(command.project_id)
         active = self._confirmed.get_active_by_project(command.project_id)
-        if active is None:
-            raise MatrixEditorSessionError(
-                "Active confirmed matrix is required before Matrix autosave."
-            )
         expected_command = _confirm_command_from_save_command(command, confirmed_by="autosave")
         self._validate_expected_active(expected_command, active)
+        if active is None:
+            draft = self._get_unconfirmed_editor_draft(command.project_id)
+            if draft is None or (
+                draft.record.source_import_id != command.source_import_id
+                or draft.record.source_snapshot_id != command.source_snapshot_id
+            ):
+                raise MatrixEditorSessionDraftConflictError(
+                    "Imported Matrix draft changed. Reload the current draft before saving."
+                )
+            saved = self._save_payload_to_draft(expected_command, draft.record.project_matrix_draft_id)
+            return MatrixEditorSessionDraftSaveResult(
+                editor_draft_id=saved.record.project_matrix_draft_id,
+                draft_status="current",
+                draft_updated_at=saved.record.updated_at,
+                saved_payload_signature=build_project_matrix_draft_payload_signature(saved),
+                active_confirmed_matrix_id=None,
+                active_confirmed_revision=None,
+            )
         draft_record = self._get_current_editor_draft_record(active)
         if draft_record is None:
             try:

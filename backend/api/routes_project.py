@@ -190,6 +190,7 @@ class ProjectRegistryRowResponse(BaseModel):
     """Typed row returned by the Project registry summary endpoint."""
 
     project_id: str
+    has_confirmed_matrix: bool = False
     ltr_number: str | None = None
     sample_description: str | None = None
     test_item: str | None = None
@@ -587,6 +588,7 @@ def _to_registry_response(row: ProjectRegistryRow) -> ProjectRegistryRowResponse
     """Convert a registry application row to an API response DTO."""
     return ProjectRegistryRowResponse(
         project_id=row.project_id,
+        has_confirmed_matrix=row.has_confirmed_matrix,
         ltr_number=row.ltr_number,
         sample_description=row.sample_description,
         test_item=row.test_item,

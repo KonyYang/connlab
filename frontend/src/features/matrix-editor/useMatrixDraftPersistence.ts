@@ -155,7 +155,7 @@ export function useMatrixDraftPersistence({
     if (
       !hasUnsavedChanges ||
       !projectId.trim() ||
-      !activeConfirmedMatrixId ||
+      (!activeConfirmedMatrixId && (!sourceImportId || !sourceSnapshotId)) ||
       draftLoading ||
       Boolean(readonlyMessage) ||
       cancellingRef.current ||

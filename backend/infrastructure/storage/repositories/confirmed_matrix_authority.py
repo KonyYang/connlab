@@ -86,6 +86,14 @@ class ConfirmedMatrixAuthorityRepository:
             return None
         return self._build_snapshot(version_row)
 
+    def list_active_project_ids(self) -> set[str]:
+        """Read registry authority presence without loading each Matrix aggregate."""
+        return set(self._session.scalars(
+            select(ConfirmedMatrixVersionModel.project_id).where(
+                ConfirmedMatrixVersionModel.is_active_authority.is_(True),
+            )
+        ))
+
     def get_active_by_project(self, project_id: str) -> ConfirmedMatrixSnapshot | None:
         """Return one active confirmed authority aggregate in one project."""
         version_row = self._session.scalar(

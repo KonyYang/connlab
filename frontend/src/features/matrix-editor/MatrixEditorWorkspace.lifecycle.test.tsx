@@ -135,6 +135,28 @@ describe("MatrixEditorWorkspace save, cancel, and confirm lifecycle", () => {
     });
   });
 
+  it("keeps edits visible and reports failure when stale confirmation cannot be recovered", async () => {
+    apiMocks.confirmMatrixEditorSession
+      .mockRejectedValueOnce(new ApiRequestError("stale", 409, { code: "active_matrix_changed" }))
+      .mockRejectedValueOnce(new Error("Confirmation unavailable. Please retry."));
+    apiMocks.fetchMatrixEditorSession
+      .mockResolvedValueOnce(buildSessionSeed())
+      .mockResolvedValueOnce({ ...buildSessionSeed(), active_confirmed_matrix_id: "confirmed-2",
+        active_confirmed_revision: 4 });
+    const onBackToWorkbench = vi.fn();
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={onBackToWorkbench} />);
+    fireEvent.change(await screen.findByLabelText("Row 1 method"), {
+      target: { value: "Unsaved confirmation must stay visible" },
+    });
+    await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalledTimes(1),
+      { timeout: 1600 });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Matrix" }));
+    expect(await screen.findByText("Confirmation unavailable. Please retry.")).toBeTruthy();
+    expect(onBackToWorkbench).not.toHaveBeenCalled();
+    expect((screen.getByLabelText("Row 1 method") as HTMLTextAreaElement).value)
+      .toBe("Unsaved confirmation must stay visible");
+  });
+
   it("rebases stale confirm and returns to workbench", async () => {
     apiMocks.confirmMatrixEditorSession
       .mockRejectedValueOnce(new ApiRequestError("stale", 409, { code: "active_matrix_changed", message: "stale" }))

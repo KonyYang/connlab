@@ -307,6 +307,29 @@ class MatrixEditorSessionPublicationMixin:
         selected_group_keys: tuple[str, ...],
         confirmed_by: str,
     ) -> ConfirmedMatrixSnapshot:
+        # Import already established source/method authority. Confirm its working draft
+        # instead of importing it again and losing lineage or requiring source files anew.
+        existing = self._get_unconfirmed_editor_draft(command.project_id)
+        if existing is not None and (
+            existing.record.source_import_id == command.source_import_id
+            and existing.record.source_snapshot_id == command.source_snapshot_id
+        ):
+            draft_id = existing.record.project_matrix_draft_id
+            self._save_payload_to_draft(command, draft_id)
+            try:
+                return self._confirmed_authority.confirm_draft(
+                    ConfirmProjectMatrixDraftCommand(
+                        project_id=command.project_id,
+                        project_matrix_draft_id=draft_id,
+                        confirmed_by=confirmed_by,
+                    )
+                )
+            except (
+                ConfirmedMatrixAuthorityError,
+                ConfirmedMatrixAuthorityConflictError,
+                ConfirmedMatrixAuthorityNotFoundError,
+            ) as exc:
+                raise MatrixEditorSessionError(str(exc)) from exc
         preview_payload = _build_manual_preview_payload(command)
         source_document_path = (
             (command.source_document_path or "").strip() or "manual://matrix-editor"

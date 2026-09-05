@@ -179,6 +179,11 @@ def save_matrix_editor_session_draft(
             status_code=409,
             detail={"code": "active_matrix_changed", "message": str(exc)},
         ) from exc
+    except MatrixEditorSessionDraftConflictError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "matrix_editor_draft_changed", "message": str(exc)},
+        ) from exc
     except MatrixEditorSessionError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return MatrixEditorSessionDraftSaveResponse(

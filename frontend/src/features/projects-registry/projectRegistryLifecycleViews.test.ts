@@ -14,6 +14,19 @@ import {
 } from "./projectRegistryLifecycleViews";
 
 describe("project registry lifecycle views", () => {
+  it("shows confirmed Matrix authority without claiming tests are ready or changing lifecycle priority", () => {
+    const row = registryRow({ status: "ltr_registered", has_confirmed_matrix: true });
+    expect(registryStatusLabel(row, projectLifecycle())).toBe("Matrix Confirmed");
+    expect(registryNextStepLabel(row, projectLifecycle())).toBe("Open Matrix in Workbench");
+    expect(registryStatusLabel({ ...row, status: "folder_created" }, projectLifecycle()))
+      .toBe("Matrix Confirmed");
+    expect(registryStatusLabel(row, projectLifecycle({ lifecycle_state: "stopped" }))).toBe("Stopped");
+    expect(registryStatusLabel(row, projectLifecycle({ lifecycle_state: "closed", closure_type: "completed" })))
+      .toBe("Closed: Completed");
+    expect(registryStatusLabel({ ...row, has_confirmed_matrix: false }, projectLifecycle()))
+      .toBe("Matrix Needed");
+  });
+
   it("keeps stopped temporary projects in Planning", () => {
     const row = registryRow({
       display_project_id: "TMP-AABBCCDD",

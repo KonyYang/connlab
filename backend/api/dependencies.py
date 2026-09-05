@@ -488,6 +488,7 @@ def get_project_registry_summary_service(
         ltr_store=LtrRecordRepository(session),
         temporary_context_store=ProjectTemporaryContextRepository(session),
         basic_information_store=ProjectBasicInformationRepository(session),
+        matrix_store=ConfirmedMatrixAuthorityRepository(session),
     )
 
 

@@ -3,8 +3,10 @@ from __future__ import annotations
 from collections.abc import Generator
 from datetime import date
 from pathlib import Path
+from io import BytesIO
 
 from fastapi.testclient import TestClient
+from openpyxl import load_workbook
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
@@ -50,6 +52,91 @@ from backend.infrastructure.storage.repositories import (
     SourceMatrixImportRepository,
 )
 from backend.shared.config import Settings
+
+
+def test_unconfirmed_import_edits_survive_save_reopen_and_first_confirm(tmp_path: Path) -> None:
+    client, engine, _session_factory = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        source_import_id = _seed_source_import("P1", tmp_path)
+        created = client.post("/api/projects/P1/matrix-drafts",
+            json={"source_import_id": source_import_id, "selected_group_keys": ["g1", "g2"]})
+        assert created.status_code == 201
+        seed = client.get("/api/projects/P1/matrix-editor/session").json()
+        payload = {**seed["editor_draft"],
+            "source_import_id": seed["editor_source_import_id"],
+            "source_snapshot_id": seed["editor_source_snapshot_id"],
+            "expected_active_confirmed_matrix_id": None,
+            "expected_active_confirmed_revision": None}
+        payload["rows"][0]["method"] = "Edited before first confirm"
+        payload["rows"][0]["condition"] = "23 C"
+        payload["rows"][0]["requirement"] = "No damage after testing"
+        saved = client.put("/api/projects/P1/matrix-editor/session/draft", json=payload)
+        assert saved.status_code == 200, saved.text
+        assert saved.json()["active_confirmed_matrix_id"] is None
+        reopened = client.get("/api/projects/P1/matrix-editor/session").json()
+        assert reopened["editor_draft"]["rows"][0]["method"] == "Edited before first confirm"
+        assert reopened["active_confirmed_matrix_id"] is None
+        rejected = client.put("/api/projects/P1/matrix-editor/session/draft",
+            json={**payload, "source_import_id": "different-import"})
+        assert rejected.status_code == 409
+        assert client.get("/api/projects/P1/matrix-editor/session").json()["saved_payload_signature"] == reopened["saved_payload_signature"]
+        confirmed = client.post("/api/projects/P1/matrix-editor/session/confirm",
+            json={**payload, "confirmed_by": "operator"})
+        assert confirmed.status_code in (200, 201), confirmed.text
+        authority = client.get("/api/projects/P1/matrix-editor/session").json()
+        assert authority["active_confirmed_matrix_id"] is not None
+        assert authority["editor_draft"]["rows"][0]["method"] == "Edited before first confirm"
+        assert authority["active_source_import_id"] == source_import_id
+        draft = authority["editor_draft"]
+        export = client.post("/api/projects/P1/matrix-editor/live-xlsx-export", json={
+            "source": "matrix_editor_current_ui_state", "project_reference": "ISOLATED-P1",
+            "groups": [{"group_id": g["draft_group_id"], "group_key": g["group_key"],
+                "group_label": g["group_label"], "sample_size": g["sample_quantity_expression"] or ""}
+                for g in draft["groups"]],
+            "rows": [{"row_id": r["draft_row_id"], "test_item": r["test_item"],
+                "test_method": r["method"] or "", "condition": r["condition"] or "",
+                "requirement": r["requirement"] or "",
+                "cells": [{"group_id": g["draft_group_id"], "step_text": next(
+                    (c["cell_value"] for c in draft["cells"]
+                     if c["draft_row_id"] == r["draft_row_id"] and c["draft_group_id"] == g["draft_group_id"]), "")}
+                    for g in draft["groups"]]}
+                for r in draft["rows"]]})
+        assert export.status_code == 200, export.text
+        workbook = load_workbook(BytesIO(export.content), read_only=True)
+        try:
+            values = [value for row in workbook.active.iter_rows(values_only=True) for value in row]
+            assert "Edited before first confirm" in values
+            assert "23 C" in values
+            assert "No damage after testing" in values
+        finally:
+            workbook.close()
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_registry_tracks_confirmed_matrix_authority_without_changing_project_status(tmp_path: Path) -> None:
+    client, engine, _session_factory = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        source_import_id = _seed_source_import("P1", tmp_path)
+        before = client.get("/api/projects/registry").json()[0]
+        assert before.get("has_confirmed_matrix") is False
+        created = client.post("/api/projects/P1/matrix-drafts",
+            json={"source_import_id": source_import_id, "selected_group_keys": ["g1", "g2"]})
+        assert created.status_code == 201
+        draft_id = created.json()["record"]["project_matrix_draft_id"]
+        assert client.get("/api/projects/registry").json()[0]["has_confirmed_matrix"] is False
+        confirmed = client.post(f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
+            json={"confirmed_by": "operator"})
+        assert confirmed.status_code == 201
+        after = client.get("/api/projects/registry").json()[0]
+        assert after["has_confirmed_matrix"] is True
+        assert after["status"] == before["status"]
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
 
 
 def test_matrix_editor_session_seed_handles_missing_source_snapshot(

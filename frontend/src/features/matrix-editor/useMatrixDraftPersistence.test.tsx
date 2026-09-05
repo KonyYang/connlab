@@ -139,7 +139,20 @@ describe("useMatrixDraftPersistence", () => {
     expect(view.result.current.saveState).toBe("saved");
   });
 
-  it("does not autosave before the first confirmed Matrix authority", async () => {
+  it("autosaves an imported draft before the first confirmation", async () => {
+    const view = renderPersistence({ payload: basePayload, signature: "base" });
+    act(() => view.result.current.hydrateSession({ baselineSignature: "base", hasEditorDraft: true,
+      seed: { ...seed, active_confirmed_matrix_id: null, active_confirmed_revision: null,
+        editor_source_import_id: "import-1", editor_source_snapshot_id: "snapshot-1" } }));
+    apiMocks.save.mockResolvedValueOnce({ ...savedResponse, active_confirmed_matrix_id: null,
+      active_confirmed_revision: null });
+    view.rerender({ payload: { ...basePayload, post_test_buffer_days: "2" }, signature: "changed" });
+    await act(() => vi.advanceTimersByTimeAsync(800));
+    expect(apiMocks.save).toHaveBeenCalledTimes(1);
+    expect(view.result.current.hasCurrentSavedDraft).toBe(true);
+  });
+
+  it("does not autosave an empty editor without an imported or confirmed Matrix", async () => {
     const view = renderPersistence({ payload: basePayload, signature: "base" });
     act(() =>
       view.result.current.hydrateSession({
@@ -149,6 +162,8 @@ describe("useMatrixDraftPersistence", () => {
           ...seed,
           active_confirmed_matrix_id: null,
           active_confirmed_revision: null,
+          active_source_import_id: null,
+          active_source_snapshot_id: null,
         },
       }),
     );

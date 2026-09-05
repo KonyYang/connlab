@@ -361,8 +361,8 @@ class MatrixEditorSessionDraftSaveResult:
     draft_status: Literal["current"]
     draft_updated_at: str
     saved_payload_signature: str
-    active_confirmed_matrix_id: str
-    active_confirmed_revision: int
+    active_confirmed_matrix_id: str | None
+    active_confirmed_revision: int | None
     fee_rebase_status: Literal["not_required", "current", "failed"] = "not_required"
     fee_rebase_summary: MatrixFeeRebaseSummary | None = None
     fee_rebase_error: str | None = None

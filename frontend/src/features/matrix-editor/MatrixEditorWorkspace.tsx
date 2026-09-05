@@ -1,5 +1,5 @@
 ﻿import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactElement } from "react";
-import { useProjectRuntimeConsoleModel } from "../project-workbench/useProjectRuntimeConsoleModel";
+import { useMatrixEditorContext } from "./useMatrixEditorContext";
 import { buildProjectIdentityLine, deriveProjectReference } from "../projectIdentity";
 import {
   deriveProjectLifecycleReadonlyView,
@@ -150,7 +150,7 @@ export function MatrixEditorWorkspace({
   onBackToWorkbench,
   onOpenContactMeasurementSetup,
 }: MatrixEditorWorkspaceProps): ReactElement {
-  const model = useProjectRuntimeConsoleModel(projectId);
+  const model = useMatrixEditorContext(projectId);
   const lifecycleReadonlyView = deriveProjectLifecycleReadonlyView(model.lifecycle);
   const isLifecycleReadonly = lifecycleReadonlyView.readonly;
   const [editableRows, setEditableRows] = useState<EditableMatrixRow[]>(() => buildInitialMatrixRows());
@@ -386,9 +386,7 @@ export function MatrixEditorWorkspace({
     projectId,
   });
   const currentSourceDocumentName =
-    committedSourceDocumentName ||
-    model.matrixAuthorityDraft?.source_document_name?.trim() ||
-    null;
+    committedSourceDocumentName || null;
   const normalizedNameMap = new Map<string, string[]>();
   const emptyGroupIds = new Set<string>();
   groupColumns.forEach((group) => {
@@ -733,8 +731,15 @@ export function MatrixEditorWorkspace({
     setSelectedRowId(null);
   };
 
-  if ((!model.project && !model.error) || draftLoading) {
-    return <></>;
+  if (model.error) {
+    return <section role="alert">
+      <p>{model.error}</p>
+      <button type="button" onClick={model.retry}>Retry project information</button>
+      <button type="button" onClick={onBackToWorkbench}>Back to Workbench</button>
+    </section>;
+  }
+  if (model.loading || !model.project || draftLoading) {
+    return <p role="status">Loading Matrix…</p>;
   }
 
   const pushSnapshot = (): void => {
@@ -1273,9 +1278,12 @@ export function MatrixEditorWorkspace({
             return;
           }
         } catch (retryError) {
-          console.warn("Matrix confirm retry did not publish; returning to Workbench with latest authority.", retryError);
+          setConfirmActiveState("error");
+          setConfirmActiveMessage(parseRequestError(retryError, "Confirm failed. Your edits remain here; retry confirmation."));
+          return;
         }
-        onBackToWorkbench();
+        setConfirmActiveState("error");
+        setConfirmActiveMessage("Matrix authority changed. Your edits remain here; reload the current Matrix before confirming.");
         return;
       }
       setConfirmActiveState("error");

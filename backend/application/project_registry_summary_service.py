@@ -64,6 +64,14 @@ class ProjectRegistryRow:
     temporary_project_id: str | None
     registered_ltr_number: str | None
     temporary_source_asset_ids: tuple[str, ...] = ()
+    has_confirmed_matrix: bool = False
+
+
+class ProjectRegistryMatrixStore(Protocol):
+    """Read active Matrix presence without loading full Matrix aggregates."""
+
+    def list_active_project_ids(self) -> set[str]:
+        """Return project ids with an active confirmed Matrix in one read."""
 
 
 class ProjectRegistrySummaryService:
@@ -76,16 +84,19 @@ class ProjectRegistrySummaryService:
         ltr_store: ProjectRegistryLtrStore,
         temporary_context_store: ProjectRegistryTemporaryContextStore | None = None,
         basic_information_store: ProjectRegistryBasicInformationStore | None = None,
+        matrix_store: ProjectRegistryMatrixStore | None = None,
     ) -> None:
         """Create the service with read-only stores."""
         self._projects = project_store
         self._ltrs = ltr_store
         self._temporary_contexts = temporary_context_store
         self._basic_information = basic_information_store
+        self._matrices = matrix_store
 
     def list_rows(self) -> list[ProjectRegistryRow]:
         """Return registry summary rows for all projects."""
         rows: list[ProjectRegistryRow] = []
+        confirmed_project_ids = self._matrices.list_active_project_ids() if self._matrices else set()
         for project in self._projects.list():
             basic_information = (
                 self._basic_information.get_latest_confirmed(project.project_id)
@@ -108,6 +119,7 @@ class ProjectRegistrySummaryService:
             rows.append(
                 ProjectRegistryRow(
                     project_id=project.project_id,
+                    has_confirmed_matrix=project.project_id in confirmed_project_ids,
                     ltr_number=identity.ltr_number,
                     sample_description=_first_text(
                         identity_override.sample_description if identity_override else None,
