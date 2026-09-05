@@ -5,15 +5,15 @@ import type {
 import "../../contact-measurement-plan.css";
 import { useLlcrCrSpecializedRecordWorkbookModel } from "./useLlcrCrSpecializedRecordWorkbookModel";
 
-export function LlcrCrRecordDownloadAction({ projectId, recordType, draftRequest }: {
+export function LlcrCrRecordDownloadAction({ projectId, recordType, getDraftRequest }: {
   projectId: string;
   recordType: LlcrCrRecordType;
-  draftRequest: MatrixEditorTestRecordDraftRequest;
+  getDraftRequest: () => MatrixEditorTestRecordDraftRequest;
 }) {
   const model = useLlcrCrSpecializedRecordWorkbookModel(
     projectId,
     recordType,
-    draftRequest,
+    getDraftRequest,
   );
   const label = recordType.toUpperCase();
   return <div className="llcr-cr-record-download">

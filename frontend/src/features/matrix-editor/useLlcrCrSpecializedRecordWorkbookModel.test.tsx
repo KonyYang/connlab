@@ -30,7 +30,7 @@ describe("useLlcrCrSpecializedRecordWorkbookModel", () => {
     const { result } = renderHook(() => useLlcrCrSpecializedRecordWorkbookModel(
       "P1",
       "cr",
-      draftRequest,
+      () => draftRequest,
     ));
 
     await act(async () => {

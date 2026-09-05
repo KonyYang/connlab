@@ -1,4 +1,4 @@
-﻿import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactElement } from "react";
+﻿import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactElement } from "react";
 import { useMatrixEditorContext } from "./useMatrixEditorContext";
 import { buildProjectIdentityLine, deriveProjectReference } from "../projectIdentity";
 import {
@@ -199,15 +199,15 @@ export function MatrixEditorWorkspace({
   const [sourceUnavailableMessage, setSourceUnavailableMessage] = useState<string | null>(null);
   const revisionDraftReloadPendingRef = useRef(false);
 
-  const currentSavePayload = buildDraftSavePayload(
+  const currentSavePayload = useMemo(() => buildDraftSavePayload(
     editableRows,
     groupColumns,
     sampleValues,
     schedulePlan,
     durationAuthorities,
     buildStepTextOverrides(editableRows, groupColumns, stepOutputOverrides),
-  );
-  const currentSaveSignature = JSON.stringify(currentSavePayload);
+  ), [editableRows, groupColumns, sampleValues, schedulePlan, durationAuthorities, stepOutputOverrides]);
+  const currentSaveSignature = useMemo(() => JSON.stringify(currentSavePayload), [currentSavePayload]);
 
   const applyDraftSnapshotToEditor = (
     draft: MatrixEditorSessionDraft,
@@ -405,118 +405,127 @@ export function MatrixEditorWorkspace({
   });
   const currentSourceDocumentName =
     committedSourceDocumentName || null;
-  const normalizedNameMap = new Map<string, string[]>();
-  const emptyGroupIds = new Set<string>();
-  groupColumns.forEach((group) => {
-    const normalized = normalizeGroupName(group.name);
-    if (normalized === "") {
-      emptyGroupIds.add(group.id);
-      return;
-    }
-    const existing = normalizedNameMap.get(normalized);
-    if (existing) {
-      existing.push(group.id);
-      return;
-    }
-    normalizedNameMap.set(normalized, [group.id]);
-  });
-  const duplicateGroupIds = new Set<string>();
-  const duplicateNames: string[] = [];
-  normalizedNameMap.forEach((groupIds, normalizedName) => {
-    if (groupIds.length <= 1) {
-      return;
-    }
-    groupIds.forEach((groupId) => duplicateGroupIds.add(groupId));
-    duplicateNames.push(normalizedName.toUpperCase());
-  });
-  const hasGroupNameError = emptyGroupIds.size > 0 || duplicateGroupIds.size > 0;
-  const groupNameErrorMessage =
-    duplicateNames.length > 0
-      ? `Group names duplicated: ${duplicateNames.join(", ")}`
-      : emptyGroupIds.size > 0
-        ? "Group name is required"
-        : "";
-  const invalidStepFormatCellKeys = new Set<string>();
-  const stepCellErrorMessageByKey = new Map<string, string>();
-  const groupStepSequenceErrorIds = new Set<string>();
-  const groupStepSequenceErrorCellKeys = new Set<string>();
-  const groupStepSequenceErrorMessageById = new Map<string, string>();
-  groupColumns.forEach((group) => {
-    if (!group.isSelected) {
-      return;
-    }
-    const validNonEmptyCellKeys: string[] = [];
-    const groupNumbers: number[] = [];
-    editableRows.forEach((row, rowIndex) => {
-      if (row.isSampleRow) {
+  const { emptyGroupIds, duplicateGroupIds, hasGroupNameError, groupNameErrorMessage } = useMemo(() => {
+    const normalizedNameMap = new Map<string, string[]>();
+    const emptyGroupIds = new Set<string>();
+    groupColumns.forEach((group) => {
+      const normalized = normalizeGroupName(group.name);
+      if (normalized === "") {
+        emptyGroupIds.add(group.id);
         return;
       }
-      const value = row.groups[group.id] ?? "";
-      const parsed = parseStepTokens(value);
-      const cellKey = `${group.id}-${rowIndex}`;
-      if (!parsed.isValid) {
-        invalidStepFormatCellKeys.add(cellKey);
-        stepCellErrorMessageByKey.set(cellKey, parsed.errorMessage);
+      const existing = normalizedNameMap.get(normalized);
+      if (existing) {
+        existing.push(group.id);
         return;
       }
-      if (parsed.numbers.length === 0) {
-        return;
-      }
-      validNonEmptyCellKeys.push(cellKey);
-      groupNumbers.push(...parsed.numbers);
+      normalizedNameMap.set(normalized, [group.id]);
     });
-    if (groupNumbers.length === 0) {
-      return;
-    }
-    const sortedNumbers = [...groupNumbers].sort((a, b) => a - b);
-    const hasDuplicate = sortedNumbers.some((value, index) => index > 0 && value === sortedNumbers[index - 1]);
-    const uniqueSortedNumbers = [...new Set(sortedNumbers)];
-    const startsFromOne = uniqueSortedNumbers[0] === 1;
-    const hasGap = uniqueSortedNumbers.some((value, index) => index > 0 && value !== uniqueSortedNumbers[index - 1] + 1);
-    if (!startsFromOne || hasGap || hasDuplicate) {
-      const duplicates = sortedNumbers.filter((value, index) => index > 0 && value === sortedNumbers[index - 1]);
-      const duplicateSet = [...new Set(duplicates)];
-      const max = uniqueSortedNumbers[uniqueSortedNumbers.length - 1];
-      const expected = new Set<number>();
-      for (let value = 1; value <= max; value += 1) {
-        expected.add(value);
+    const duplicateGroupIds = new Set<string>();
+    const duplicateNames: string[] = [];
+    normalizedNameMap.forEach((groupIds, normalizedName) => {
+      if (groupIds.length <= 1) {
+        return;
       }
-      uniqueSortedNumbers.forEach((value) => expected.delete(value));
-      const missing = [...expected];
-      const detailParts: string[] = [];
-      if (!startsFromOne) {
-        detailParts.push("must start at 1");
+      groupIds.forEach((groupId) => duplicateGroupIds.add(groupId));
+      duplicateNames.push(normalizedName.toUpperCase());
+    });
+    const hasGroupNameError = emptyGroupIds.size > 0 || duplicateGroupIds.size > 0;
+    const groupNameErrorMessage =
+      duplicateNames.length > 0
+        ? `Group names duplicated: ${duplicateNames.join(", ")}`
+        : emptyGroupIds.size > 0
+          ? "Group name is required"
+          : "";
+    return { emptyGroupIds, duplicateGroupIds, hasGroupNameError, groupNameErrorMessage };
+  }, [groupColumns]);
+  const { invalidStepFormatCellKeys, stepCellErrorMessageByKey, groupStepSequenceErrorIds,
+    groupStepSequenceErrorCellKeys, groupStepSequenceErrorMessageById } = useMemo(() => {
+    const invalidStepFormatCellKeys = new Set<string>();
+    const stepCellErrorMessageByKey = new Map<string, string>();
+    const groupStepSequenceErrorIds = new Set<string>();
+    const groupStepSequenceErrorCellKeys = new Set<string>();
+    const groupStepSequenceErrorMessageById = new Map<string, string>();
+    groupColumns.forEach((group) => {
+      if (!group.isSelected) {
+        return;
       }
-      if (missing.length > 0) {
-        detailParts.push(`missing: ${missing.join(",")}`);
-      }
-      if (duplicateSet.length > 0) {
-        detailParts.push(`duplicates: ${duplicateSet.join(",")}`);
-      }
-      const groupDisplay = group.name.trim() || "(unnamed group)";
-      const detailText = detailParts.join("; ");
-      const sequenceErrorMessage = `${groupDisplay} sequence error: ${detailText}`;
-      groupStepSequenceErrorIds.add(group.id);
-      validNonEmptyCellKeys.forEach((cellKey) => groupStepSequenceErrorCellKeys.add(cellKey));
-      groupStepSequenceErrorMessageById.set(group.id, sequenceErrorMessage);
-      validNonEmptyCellKeys.forEach((cellKey) => {
-        if (!stepCellErrorMessageByKey.has(cellKey)) {
-          stepCellErrorMessageByKey.set(cellKey, sequenceErrorMessage);
+      const validNonEmptyCellKeys: string[] = [];
+      const groupNumbers: number[] = [];
+      editableRows.forEach((row, rowIndex) => {
+        if (row.isSampleRow) {
+          return;
         }
+        const value = row.groups[group.id] ?? "";
+        const parsed = parseStepTokens(value);
+        const cellKey = `${group.id}-${rowIndex}`;
+        if (!parsed.isValid) {
+          invalidStepFormatCellKeys.add(cellKey);
+          stepCellErrorMessageByKey.set(cellKey, parsed.errorMessage);
+          return;
+        }
+        if (parsed.numbers.length === 0) {
+          return;
+        }
+        validNonEmptyCellKeys.push(cellKey);
+        groupNumbers.push(...parsed.numbers);
       });
-    }
-  });
+      if (groupNumbers.length === 0) {
+        return;
+      }
+      const sortedNumbers = [...groupNumbers].sort((a, b) => a - b);
+      const hasDuplicate = sortedNumbers.some((value, index) => index > 0 && value === sortedNumbers[index - 1]);
+      const uniqueSortedNumbers = [...new Set(sortedNumbers)];
+      const startsFromOne = uniqueSortedNumbers[0] === 1;
+      const hasGap = uniqueSortedNumbers.some((value, index) => index > 0 && value !== uniqueSortedNumbers[index - 1] + 1);
+      if (!startsFromOne || hasGap || hasDuplicate) {
+        const duplicates = sortedNumbers.filter((value, index) => index > 0 && value === sortedNumbers[index - 1]);
+        const duplicateSet = [...new Set(duplicates)];
+        const max = uniqueSortedNumbers[uniqueSortedNumbers.length - 1];
+        const expected = new Set<number>();
+        for (let value = 1; value <= max; value += 1) {
+          expected.add(value);
+        }
+        uniqueSortedNumbers.forEach((value) => expected.delete(value));
+        const missing = [...expected];
+        const detailParts: string[] = [];
+        if (!startsFromOne) {
+          detailParts.push("must start at 1");
+        }
+        if (missing.length > 0) {
+          detailParts.push(`missing: ${missing.join(",")}`);
+        }
+        if (duplicateSet.length > 0) {
+          detailParts.push(`duplicates: ${duplicateSet.join(",")}`);
+        }
+        const groupDisplay = group.name.trim() || "(unnamed group)";
+        const detailText = detailParts.join("; ");
+        const sequenceErrorMessage = `${groupDisplay} sequence error: ${detailText}`;
+        groupStepSequenceErrorIds.add(group.id);
+        validNonEmptyCellKeys.forEach((cellKey) => groupStepSequenceErrorCellKeys.add(cellKey));
+        groupStepSequenceErrorMessageById.set(group.id, sequenceErrorMessage);
+        validNonEmptyCellKeys.forEach((cellKey) => {
+          if (!stepCellErrorMessageByKey.has(cellKey)) {
+            stepCellErrorMessageByKey.set(cellKey, sequenceErrorMessage);
+          }
+        });
+      }
+    });
+    return { invalidStepFormatCellKeys, stepCellErrorMessageByKey, groupStepSequenceErrorIds,
+      groupStepSequenceErrorCellKeys, groupStepSequenceErrorMessageById };
+  }, [editableRows, groupColumns]);
   const hasStepTokenError = invalidStepFormatCellKeys.size > 0 || groupStepSequenceErrorIds.size > 0;
   const hasMatrixValidationError = hasGroupNameError || hasStepTokenError;
   const firstStepCellError = [...stepCellErrorMessageByKey.values()][0] ?? "";
   const stepTokenErrorMessage = hasStepTokenError ? firstStepCellError : "";
   const selectedGroup = groupColumns.find((group) => group.id === selectedGroupId) ?? null;
-  const selectedGroupStepRows = buildSelectedGroupStepPreviewRows(
+  const selectedGroupStepRows = useMemo(() => buildSelectedGroupStepPreviewRows(
     editableRows,
     selectedGroup,
     stepOutputOverrides
-  );
-  const selectedGroupPreviewNotes = buildPreviewStepNoteLookup(importPreview, selectedGroup);
+  ), [editableRows, selectedGroup, stepOutputOverrides]);
+  const selectedGroupPreviewNotes = useMemo(() => buildPreviewStepNoteLookup(importPreview, selectedGroup),
+    [importPreview, selectedGroup]);
   const selectedGroupSamplesValue = selectedGroup ? sampleValues[selectedGroup.id] ?? "" : "";
   const onOpenEditableMatrixDraft = async (): Promise<void> => {
     if (
@@ -588,20 +597,21 @@ export function MatrixEditorWorkspace({
   const hasAnyStepTokenValue = currentSavePayload.cells.some(
     (cell) => selectedDraftGroupIds.has(cell.draft_group_id) && (cell.cell_value ?? "").trim().length > 0
   );
-  const testRecordDraftRequest = buildMatrixEditorTestRecordDraftRequest(
+  // Resolve an export snapshot only when the operator requests an output.
+  const getTestRecordDraftRequest = () => buildMatrixEditorTestRecordDraftRequest(
     editableRows,
     groupColumns,
     sampleValues,
     currentSavePayload.step_text_overrides,
   );
   const canGenerateTestRecord =
-    testRecordDraftRequest.groups.length > 0 && hasAnyStepTokenValue && !hasStepTokenError;
+    selectedDraftGroupIds.size > 0 && hasAnyStepTokenValue && !hasStepTokenError;
   const canGenerateTestStatus =
-    testRecordDraftRequest.groups.length > 0 &&
-    testRecordDraftRequest.rows.some(
-      (row) => !row.is_sample_row && row.test_item.trim().length > 0
+    selectedDraftGroupIds.size > 0 &&
+    editableRows.some(
+      (row) => !row.isSampleRow && row.item.trim().length > 0
     );
-  const scheduleCalculation = calculateMatrixSchedule(
+  const scheduleCalculation = useMemo(() => calculateMatrixSchedule(
     editableRows.map((row) => ({
       id: row.id,
       isSampleRow: row.isSampleRow,
@@ -614,9 +624,12 @@ export function MatrixEditorWorkspace({
       isSelected: group.isSelected,
     })),
     schedulePlan
-  );
+  ), [editableRows, groupColumns, schedulePlan]);
   const matrixXlsxExport = useMatrixEditorXlsxExport(projectId);
-  const matrixXlsxExportRequest = buildMatrixEditorXlsxExportRequest({
+  const hasXlsxExportRows = useMemo(() => editableRows.some((row) => !row.isSampleRow &&
+    groupColumns.some((group) => group.isSelected && (row.groups[group.id] ?? "").trim().length > 0)),
+  [editableRows, groupColumns]);
+  const getMatrixXlsxExportRequest = () => buildMatrixEditorXlsxExportRequest({
     projectReference,
     groups: groupColumns,
     rows: editableRows,
@@ -638,10 +651,10 @@ export function MatrixEditorWorkspace({
   const matrixXlsxExportDisabledReason = getMatrixEditorXlsxExportDisabledReason({
     lifecycleMessage: isLifecycleReadonly ? lifecycleReadonlyView.message : "",
     busy: matrixXlsxExport.busy,
-    selectedGroupCount: matrixXlsxExportRequest.groups.length,
+    selectedGroupCount: selectedDraftGroupIds.size,
     hasStepError: hasStepTokenError,
     stepErrorMessage: stepTokenErrorMessage,
-    qualifyingRowCount: matrixXlsxExportRequest.rows.length,
+    qualifyingRowCount: hasXlsxExportRows ? 1 : 0,
   });
   const hasSchedulePlanningError = !scheduleCalculation.isValid;
   const schedulePlanningErrorMessage =
@@ -1140,6 +1153,7 @@ export function MatrixEditorWorkspace({
     setTestRecordConflict(null);
     setTestRecordMessage("Checking Test Record destination...");
     try {
+      const testRecordDraftRequest = getTestRecordDraftRequest();
       const preview = await previewMatrixEditorTestRecordPublication(
         projectId,
         testRecordDraftRequest
@@ -1195,7 +1209,7 @@ export function MatrixEditorWorkspace({
     );
     try {
       const result = await publishMatrixEditorTestRecord(projectId, {
-        ...testRecordDraftRequest,
+        ...getTestRecordDraftRequest(),
         preview_token: testRecordConflict.preview_token,
         conflict_action: action,
       });
@@ -1229,7 +1243,7 @@ export function MatrixEditorWorkspace({
     setTestStatusMessage("Generating Test Status draft...");
     try {
       const response = await generateMatrixEditorTestStatusDraftDownload(projectId, {
-        ...testRecordDraftRequest,
+        ...getTestRecordDraftRequest(),
         project_reference: projectReference,
       });
       triggerBlobDownload(
@@ -1361,7 +1375,7 @@ export function MatrixEditorWorkspace({
             busy={matrixXlsxExport.busy}
             onExport={() => {
               if (!matrixXlsxExportDisabledReason) {
-                void matrixXlsxExport.exportSnapshot(matrixXlsxExportRequest);
+                void matrixXlsxExport.exportSnapshot(getMatrixXlsxExportRequest());
               }
             }}
           />
@@ -1980,14 +1994,14 @@ export function MatrixEditorWorkspace({
                 <LlcrCrRecordDownloadAction
                   projectId={projectId}
                   recordType="llcr"
-                  draftRequest={testRecordDraftRequest}
+                  getDraftRequest={getTestRecordDraftRequest}
                 />
               ),
               cr: (
                 <LlcrCrRecordDownloadAction
                   projectId={projectId}
                   recordType="cr"
-                  draftRequest={testRecordDraftRequest}
+                  getDraftRequest={getTestRecordDraftRequest}
                 />
               ),
             }}

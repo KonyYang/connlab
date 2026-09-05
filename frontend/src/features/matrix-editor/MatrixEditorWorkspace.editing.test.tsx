@@ -16,6 +16,28 @@ import { MatrixEditorWorkspace } from "./MatrixEditorWorkspace";
 installMatrixEditorWorkspaceTestLifecycle();
 
 describe("MatrixEditorWorkspace editing behavior", () => {
+  it("exports the current unsaved Matrix and keeps its snapshot while preview is pending", async () => {
+    const preview = createDeferred();
+    apiMocks.previewMatrixEditorLiveXlsxPublication.mockReturnValueOnce(preview.promise);
+    apiMocks.exportMatrixEditorLiveXlsx.mockResolvedValueOnce({ blob: new Blob(["xlsx"]), fileName: "Matrix.xlsx" });
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    const method = await screen.findByLabelText("Row 1 method");
+    fireEvent.change(method, { target: { value: "Unsaved export method" } });
+    fireEvent.change(screen.getByLabelText("Samples 1"), { target: { value: "7" } });
+    expect(apiMocks.previewMatrixEditorLiveXlsxPublication).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Export Matrix" }));
+    expect(apiMocks.previewMatrixEditorLiveXlsxPublication).toHaveBeenCalledWith("P1", expect.objectContaining({
+      groups: [expect.objectContaining({ sample_size: "7" })],
+      rows: [expect.objectContaining({ test_method: "Unsaved export method" })],
+    }));
+    fireEvent.change(method, { target: { value: "Next edit" } });
+    await act(async () => preview.resolve({ mode: "download", status: "ready" }));
+    await waitFor(() => expect(apiMocks.exportMatrixEditorLiveXlsx).toHaveBeenCalledWith("P1", expect.objectContaining({
+      rows: [expect.objectContaining({ test_method: "Unsaved export method" })],
+    })));
+    expect((method as HTMLTextAreaElement).value).toBe("Next edit");
+  });
+
   it("collapses step details without losing edited text and locates invalid cells", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
     await screen.findByLabelText("Step 1 description");

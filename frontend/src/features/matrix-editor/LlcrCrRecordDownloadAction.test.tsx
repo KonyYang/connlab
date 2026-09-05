@@ -27,7 +27,7 @@ describe("LlcrCrRecordDownloadAction", () => {
     apiMocks.generateMatrixEditorLlcrCrRecordDraftDownload.mockResolvedValue({
       blob: new Blob(["record"]), fileName: "P1_llcr_record.xlsx",
     });
-    const draftRequest = {
+    let draftRequest = {
       source: "matrix_editor_current_ui_state" as const,
       groups: [{
         group_key: "group_6",
@@ -50,16 +50,19 @@ describe("LlcrCrRecordDownloadAction", () => {
       <LlcrCrRecordDownloadAction
         projectId="P1"
         recordType="llcr"
-        draftRequest={draftRequest}
+        getDraftRequest={() => draftRequest}
       />
       <LlcrCrRecordDownloadAction
         projectId="P1"
         recordType="cr"
-        draftRequest={draftRequest}
+        getDraftRequest={() => draftRequest}
       />
     </>);
     expect(screen.queryAllByText("Preview")).toHaveLength(0);
     expect(screen.queryAllByText("Generate file")).toHaveLength(0);
+
+    // Resolve the live draft at the click, not at mount or during unrelated renders.
+    draftRequest = { ...draftRequest, groups: [{ ...draftRequest.groups[0], sample_quantity_expression: "7" }] };
 
     await user.click(screen.getByRole("button", { name: "Download LLCR" }));
     await waitFor(() => expect(

@@ -8,7 +8,7 @@ Baseline: clean primary after the completed Workbench feedback task (2026-09-05)
 | Original item | Acceptance | State |
 | --- | --- | --- |
 | 6 | Main table gains usable space; details can collapse/reopen without losing edits; readable typography; validation errors locate the relevant input; browser checks at laptop/narrow widths | Completed in batch 1 |
-| 7 | Record comparable input/derived-work baseline; reduce demonstrated unnecessary whole-table work; export-only payloads built on demand; preserve save/confirm/export results | Pending measurement |
+| 7 | Record comparable input/derived-work baseline; reduce demonstrated unnecessary whole-table work; export-only payloads built on demand; preserve save/confirm/export results | Implemented; final QA pending |
 | 8 | Candidate listing avoids full content validation; selected source receives full validation before import; errors/stale selection/cancellation remain safe | Pending |
 | 9 | Backend owns continuous output chain, with durable progress and safe interruption/retry; no duplicate outputs or unintended overwrite; preserve conflict previews and business authority | Independent planning in progress |
 | 10 | Inspect actual dependency/Mixin/migration hotspots; implement only justified cohesive improvements or record evidence for no change; keep needed migration history | Pending |
@@ -31,7 +31,7 @@ Initial discovery: primary clean, board idle, existing MatrixEditorWorkspace/Mat
 ProjectWorkbenchActiveMatrixWorkspace are the current UI seams. Legacy simulated step statuses were
 already removed and must remain removed. Independent item-9 planner is inspecting the existing chain.
 
-Item 6 completed; 7-10 remain active/pending. Do not finish the overall goal or board yet.
+Item 6 completed; item 7 implemented; 8-10 remain pending. Do not finish the overall goal or board yet.
 
 ### Item 6 verification
 
@@ -53,14 +53,36 @@ Source: `e00ffd7c951b8948ab5057f48ecedcdef7f20fc2`.
 - Standards review: no remaining finding after replacing label-based focus with stable input identity.
   Spec review: no finding; existing design/business actions retained. Same-agent passes, not independent roles.
 
-### Next action: item 7 measurement
+### Item 7 measurement and implementation
 
-Current Workspace reconstructs save payload/signature, step validation, schedule, selected-group details,
-Test Record request and XLSX request during render. Measure first on current committed code. Use a fixed
-synthetic large Matrix and comparable input/selection actions; do not edit the real user's project.
-Both export request builders are current candidates for on-demand construction; distinguish time/calls
-saved from whole-page improvement. Reuse existing testSupport/buildSessionSeed and API seams. Do not
-repeat item-6 full validation without new affected source changes.
+Baseline source: `2907b9da` (same implementation as item-6 source). Opt-in diagnostic
+`frontend/src/features/matrix-editor/MatrixEditorWorkspace.profile.test.tsx` uses the real Workspace,
+80 synthetic rows x 8 groups, ten description edits then ten cell edits. React Profiler measures render
+work; call-through wrappers count selected derived functions without replacing their behavior.
+Run with `VITE_MATRIX_PROFILE=1`, `npm.cmd exec -- vitest run src/features/matrix-editor/MatrixEditorWorkspace.profile.test.tsx --maxWorkers=1 --reporter=dot`
+from frontend. It is skipped by default; no machine-dependent timing gate or telemetry framework.
+
+| Ten changes | Before | After |
+| --- | --- | --- |
+| Description: save payload / record payload / XLSX payload / schedule calls | 20 / 20 / 20 / 20 | 10 / 0 / 0 / 0 |
+| Description: validation parse calls | 12,800 | 0 |
+| Cell: save payload / record payload / XLSX payload / schedule calls | 20 / 20 / 20 / 20 | 10 / 0 / 0 / 10 |
+| Cell: validation parse calls | 12,800 | 6,400 |
+
+Baseline Profiler render total/median: description 406.17/13.20 ms, cell 135.74/12.86 ms.
+After runs: description 243.47/12.30 and 196.60/11.65 ms; cell 148.36/13.38 and 249.44/11.49 ms.
+Totals are noisy (JSDOM, warmup/GC); do NOT claim consistent whole-page/input latency improvement.
+Deterministic evidence is removal of export-only work and reuse of unchanged validation/schedule/save data.
+Rendering itself is not virtualized or rewritten. Realistic browser responsiveness still needs operator feedback.
+
+Word/Test Status/LLCR/CR/XLSX construct live requests on demand. XLSX availability checks only existence
+of a selected, non-sample populated row, preserving the original export predicate. Memo dependencies
+include all data they consume; no stale caches or changed business validation rules.
+RED: public LLCR component using the new request factory sent missing draft data before implementation.
+GREEN: 43 affected editing/lifecycle/duration/export tests, plus final profile/component checks passed.
+Added public Workspace/API test verifies unsaved XLSX values and stable request snapshot while the
+operator continues editing during preview. Existing Word, LLCR, Test Status, save and confirm tests retained.
+Standards and spec review: same-agent separate passes, no remaining finding. Final clean-source QA pending.
 
 ### Item 9 independent planning evidence
 

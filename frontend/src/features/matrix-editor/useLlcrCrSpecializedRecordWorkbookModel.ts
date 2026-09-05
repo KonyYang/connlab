@@ -8,7 +8,7 @@ import {
 export function useLlcrCrSpecializedRecordWorkbookModel(
   projectId: string,
   recordType: LlcrCrRecordType,
-  draftRequest: MatrixEditorTestRecordDraftRequest,
+  getDraftRequest: () => MatrixEditorTestRecordDraftRequest,
 ) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +21,7 @@ export function useLlcrCrSpecializedRecordWorkbookModel(
     setMessage(null);
     try {
       const result = await generateMatrixEditorLlcrCrRecordDraftDownload(projectId, {
-        ...draftRequest,
+        ...getDraftRequest(),
         record_type: recordType,
       });
       const fileName = result.fileName
