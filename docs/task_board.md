@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_IMPORT_SAMPLE_SIZE_CASE_COMPATIBILITY",
+    "summary": "Accept a legacy ConnLab Matrix XLSX footer labeled Sample Size without weakening the controlled footer structure.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Fix the reproduced Import Matrix rejection for 9.7matrix.xlsx by making the controlled Sample size footer label case-insensitive, with regression coverage.",
+    "scope_paths": [
+      "backend/infrastructure/office/connlab_matrix_xlsx_gateway.py",
+      "tests/unit/test_connlab_matrix_xlsx_gateway.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "7af05a382159fdf994a78ec8331da7242c24b0b5",
+    "started_at": "2026-09-07T15:53:14.687615Z",
+    "updated_at": "2026-09-07T15:53:14.687615Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_MATRIX_OPTIMIZATION_6_10",
     "tier": "high_risk",

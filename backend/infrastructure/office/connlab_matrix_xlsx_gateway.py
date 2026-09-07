@@ -87,12 +87,12 @@ class ConnLabMatrixXlsxGateway:
             return {}, "ConnLab Matrix Group headers must be non-empty and unique."
         footer_rows: dict[str, int] = {}
         for row_number in range(2, sheet.max_row + 1):
-            label = _text(sheet.cell(row_number, 1).value)
-            if label in {"Sample size", "Time", "Fee"}:
+            label = _text(sheet.cell(row_number, 1).value).casefold()
+            if label in {"sample size", "time", "fee"}:
                 footer_rows[label] = row_number
-        sample_row = footer_rows.get("Sample size")
-        time_row = footer_rows.get("Time")
-        fee_row = footer_rows.get("Fee")
+        sample_row = footer_rows.get("sample size")
+        time_row = footer_rows.get("time")
+        fee_row = footer_rows.get("fee")
         if not sample_row or time_row != sample_row + 1 or fee_row != sample_row + 2:
             return {}, "ConnLab Matrix footer must contain consecutive Sample size, Time, and Fee rows."
         if any(

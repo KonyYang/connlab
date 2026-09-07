@@ -85,6 +85,21 @@ def test_reads_legacy_connlab_visible_table_and_defaults_day_to_zero(tmp_path: P
     assert any("default" in warning.lower() and "Day" in warning for warning in result.warnings)
 
 
+def test_reads_legacy_connlab_footer_labels_case_insensitively(tmp_path: Path) -> None:
+    path = tmp_path / "legacy-footer-case.xlsx"
+    _write_visible_workbook(path)
+    workbook = load_workbook(path, data_only=False)
+    workbook.active["A4"] = "Sample Size"
+    workbook.save(path)
+    workbook.close()
+
+    result = ConnLabMatrixXlsxGateway().read(path)
+
+    assert result.blockers == ()
+    assert [group.group_label for group in result.groups] == ["Group 1", "Group 2"]
+    assert result.groups[0].sample_quantity_expression == "5"
+
+
 def test_visible_group_keys_preserve_numeric_label_gaps(tmp_path: Path) -> None:
     path = tmp_path / "group-gap.xlsx"
     workbook = Workbook()
