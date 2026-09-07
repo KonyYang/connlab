@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_IMPORT_SAMPLE_SIZE_CASE_COMPATIBILITY",
     "summary": "Accept a legacy ConnLab Matrix XLSX footer labeled Sample Size without weakening the controlled footer structure.",
@@ -25,9 +25,58 @@
     "risk_reasons": [],
     "activation_head": "7af05a382159fdf994a78ec8331da7242c24b0b5",
     "started_at": "2026-09-07T15:53:14.687615Z",
-    "updated_at": "2026-09-07T15:53:14.687615Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-07T15:59:19.800685Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_MATRIX_IMPORT_SAMPLE_SIZE_CASE_COMPATIBILITY",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "task_id": "TASK_MATRIX_IMPORT_SAMPLE_SIZE_CASE_COMPATIBILITY",
+      "validation": [
+        {
+          "status": "passed",
+          "name": "TDD RED: title-case footer regression"
+        },
+        {
+          "name": "Gateway and XLSX upload related pytest",
+          "detail": "8 passed",
+          "status": "passed"
+        },
+        {
+          "name": "Real 9.7matrix.xlsx parse",
+          "detail": "12 groups, 24 rows, no blockers",
+          "status": "passed"
+        },
+        {
+          "status": "passed",
+          "name": "git diff --check"
+        }
+      ],
+      "changed_paths": [
+        "backend/infrastructure/office/connlab_matrix_xlsx_gateway.py",
+        "tests/unit/test_connlab_matrix_xlsx_gateway.py"
+      ],
+      "summary": "Matrix XLSX import now accepts title-case Sample Size, Time, and Fee footer labels while preserving the required order and structure.",
+      "subject": "9e4bcda7666e7277e50520b4c74f244980fdafbe",
+      "integration": {
+        "mode": "direct_primary",
+        "status": "passed"
+      },
+      "roles": {
+        "developer": {
+          "summary": "Implemented the minimal case-insensitive footer-label compatibility and self-reviewed the exact diff.",
+          "status": "passed"
+        }
+      },
+      "schema": "connlab.sol-task-report",
+      "scope_ok": true,
+      "version": 1
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_OPTIMIZATION_6_10",
