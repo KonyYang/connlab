@@ -76,7 +76,8 @@ def test_rejected_temperature_alias_remains_review_only(test_item: str) -> None:
     assert line.review_required is True
     assert line.matched_rule_id is None
     assert line.unit_price is None
-    assert line.units is None
+    assert line.unit_label == "sample"
+    assert line.units == Decimal("5")
     assert line.base_fee == Decimal("0")
     assert line.testing_fee is None
     assert _source(line, "base_fee") == _FALLBACK_SOURCE
