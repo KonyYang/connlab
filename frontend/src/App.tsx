@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState, type ReactElement } from "react";
 import { AppShell } from "./components/layout/AppShell";
+import { RouteLoadBoundary } from "./components/layout/RouteLoadBoundary";
 import { FrontendDiagnosticsReporter } from "./components/support/FrontendDiagnosticsReporter";
 import {
   clearIntakeSession,
@@ -238,6 +239,7 @@ export default function App(): ReactElement {
       topBarTitle={topBarTitle}
       onNavigate={handleShellNavigate}
     >
+      <RouteLoadBoundary key={JSON.stringify(route)}>
       <Suspense fallback={<RouteLoadingFallback />}>
       {route.name === "projects" && (
         <ProjectListPage
@@ -352,6 +354,7 @@ export default function App(): ReactElement {
         </section>
       )}
       </Suspense>
+      </RouteLoadBoundary>
       </AppShell>
     </>
   );

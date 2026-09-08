@@ -34,7 +34,7 @@ export function FrontendDiagnosticsReporter(): ReactElement | null {
   return null;
 }
 
-function diagnosticPagePath(pathname: string): string {
+export function diagnosticPagePath(pathname: string): string {
   return pathname
     .replace(/^\/projects\/[^/]+/, "/projects/{project_id}")
     .replace(/^\/intake\/[^/]+/, "/intake/{package_id}");
