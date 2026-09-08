@@ -1,4 +1,4 @@
-"""Sync structured Application Form Section 2 dates from Confirmed Matrix authority."""
+"""Sync structured Application Form Section 2 dates from confirmed authorities."""
 
 from __future__ import annotations
 
@@ -7,6 +7,10 @@ from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from typing import Literal, Protocol
 
+from backend.application.project_schedule_output import (
+    ConfirmedProjectScheduleReader,
+    ConfirmedProjectScheduleSnapshot,
+)
 from backend.domain import ApplicationForm, ConfirmedMatrixSnapshot, Project
 
 
@@ -39,7 +43,7 @@ class ProjectSection2SyncAmbiguousTargetError(ProjectSection2SyncReadinessError)
 
 
 class ProjectSection2SyncConflictError(ProjectSection2SyncError):
-    """Raised when previewed Confirmed Matrix identity is no longer current."""
+    """Raised when a previewed authority identity is no longer current."""
 
 
 class ProjectSection2SyncValidationError(ProjectSection2SyncError):
@@ -53,6 +57,7 @@ class ProjectSection2SyncCommand:
     project_id: str
     expected_confirmed_matrix_id: str | None = None
     expected_confirmed_revision: int | None = None
+    expected_source_context_signature: str | None = None
     operator: str | None = None
 
 
@@ -79,6 +84,7 @@ class ProjectSection2SyncResult:
     confirmed_revision: int
     fields: tuple[ProjectSection2FieldSync, ...]
     status: Section2SyncStatus
+    source_context_signature: str = ""
     synced_at: str | None = None
     operator: str | None = None
 
@@ -108,35 +114,41 @@ class Section2SyncApplicationFormStore(Protocol):
 
 
 class ProjectSection2SyncService:
-    """Preview and sync structured Section 2 dates from active Confirmed Matrix."""
+    """Preview and sync Section 2 from Basic Information and Project Schedule."""
 
     def __init__(
         self,
         *,
         project_store: Section2SyncProjectStore,
         confirmed_matrix_store: Section2SyncConfirmedMatrixStore,
+        project_schedule_reader: ConfirmedProjectScheduleReader,
         application_form_store: Section2SyncApplicationFormStore,
         clock: Callable[[], str] | None = None,
     ) -> None:
         self._project_store = project_store
         self._confirmed_matrix_store = confirmed_matrix_store
+        self._project_schedule_reader = project_schedule_reader
         self._application_form_store = application_form_store
         self._clock = clock or _utc_now_iso
 
     def preview(self, command: ProjectSection2SyncCommand) -> ProjectSection2SyncResult:
         """Return field-level Section 2 sync decisions without mutation."""
-        snapshot, form = self._load_context(command.project_id)
-        return self._build_result(command.project_id, snapshot, form, synced=False, operator=None)
+        snapshot, schedule, form = self._load_context(command.project_id)
+        return self._build_result(
+            command.project_id, snapshot, schedule, form, synced=False, operator=None
+        )
 
     def sync(self, command: ProjectSection2SyncCommand) -> ProjectSection2SyncResult:
         """Sync valid changed Section 2 fields after preview identity is confirmed."""
-        snapshot, form = self._load_context(command.project_id)
-        self._validate_expected_identity(command, snapshot)
-        preview = self._build_result(command.project_id, snapshot, form, synced=False, operator=None)
+        snapshot, schedule, form = self._load_context(command.project_id)
+        self._validate_expected_identity(command, snapshot, schedule)
+        preview = self._build_result(
+            command.project_id, snapshot, schedule, form, synced=False, operator=None
+        )
         blocked_fields = [field for field in preview.fields if field.status == "blocked_invalid_source"]
         if blocked_fields:
             raise ProjectSection2SyncValidationError(
-                "Confirmed Matrix contains invalid Section 2 date values."
+                "Confirmed Project Schedule contains invalid Section 2 date values."
             )
 
         updates: dict[str, str] = {
@@ -160,6 +172,7 @@ class ProjectSection2SyncService:
             application_form_id=preview.application_form_id,
             confirmed_matrix_id=preview.confirmed_matrix_id,
             confirmed_revision=preview.confirmed_revision,
+            source_context_signature=preview.source_context_signature,
             fields=fields,
             status=status,
             synced_at=self._clock() if updates else None,
@@ -169,7 +182,11 @@ class ProjectSection2SyncService:
     def _load_context(
         self,
         project_id: str,
-    ) -> tuple[ConfirmedMatrixSnapshot, ApplicationForm]:
+    ) -> tuple[
+        ConfirmedMatrixSnapshot,
+        ConfirmedProjectScheduleSnapshot,
+        ApplicationForm,
+    ]:
         project = self._project_store.get(project_id)
         if project is None:
             raise ProjectSection2SyncProjectNotFoundError(f"Project not found: {project_id}")
@@ -177,6 +194,11 @@ class ProjectSection2SyncService:
         if snapshot is None:
             raise ProjectSection2SyncReadinessError(
                 "Confirm Matrix authority before syncing Section 2 dates."
+            )
+        schedule = self._project_schedule_reader.get_latest_confirmed(project_id)
+        if schedule is None:
+            raise ProjectSection2SyncReadinessError(
+                "Confirm Project Schedule before syncing Section 2 dates."
             )
         forms = self._application_form_store.list_by_project(project_id)
         if not forms:
@@ -187,12 +209,13 @@ class ProjectSection2SyncService:
             raise ProjectSection2SyncAmbiguousTargetError(
                 "Multiple Application Forms exist. Select the current Application Form before syncing Section 2 dates."
             )
-        return snapshot, forms[0]
+        return snapshot, schedule, forms[0]
 
     def _build_result(
         self,
         project_id: str,
         snapshot: ConfirmedMatrixSnapshot,
+        schedule: ConfirmedProjectScheduleSnapshot,
         form: ApplicationForm,
         *,
         synced: bool,
@@ -202,13 +225,13 @@ class ProjectSection2SyncService:
             _field_sync(
                 field_key="received_date",
                 source_field_key="sample_received_date",
-                source_value=snapshot.version.sample_received_date,
+                source_value=schedule.sample_received_date,
                 current_value=form.received_date,
             ),
             _field_sync(
                 field_key="estimated_completion_date",
                 source_field_key="estimated_completion_date",
-                source_value=snapshot.version.estimated_completion_date,
+                source_value=schedule.estimated_completion_date,
                 current_value=form.estimated_completion_date,
             ),
         )
@@ -217,6 +240,7 @@ class ProjectSection2SyncService:
             application_form_id=form.form_id,
             confirmed_matrix_id=snapshot.version.confirmed_matrix_id,
             confirmed_revision=snapshot.version.confirmed_revision,
+            source_context_signature=schedule.context_signature,
             fields=fields,
             status=_preview_status(fields),
             synced_at=self._clock() if synced else None,
@@ -227,18 +251,24 @@ class ProjectSection2SyncService:
         self,
         command: ProjectSection2SyncCommand,
         snapshot: ConfirmedMatrixSnapshot,
+        schedule: ConfirmedProjectScheduleSnapshot,
     ) -> None:
-        if not command.expected_confirmed_matrix_id or command.expected_confirmed_revision is None:
+        if (
+            not command.expected_confirmed_matrix_id
+            or command.expected_confirmed_revision is None
+            or not command.expected_source_context_signature
+        ):
             raise ProjectSection2SyncValidationError(
-                "Expected Confirmed Matrix id and revision are required for Section 2 sync."
+                "Expected Matrix and Project Schedule identities are required for Section 2 sync."
             )
         version = snapshot.version
         if (
             command.expected_confirmed_matrix_id != version.confirmed_matrix_id
             or command.expected_confirmed_revision != version.confirmed_revision
+            or command.expected_source_context_signature != schedule.context_signature
         ):
             raise ProjectSection2SyncConflictError(
-                "Confirmed Matrix changed after preview. Refresh Section 2 dates before syncing."
+                "Matrix or Project Schedule changed after preview. Refresh Section 2 dates before syncing."
             )
 
 
@@ -259,7 +289,7 @@ def _field_sync(
             current_value=current_value,
             next_value=current_value,
             status="skipped_missing_source",
-            message="Confirmed Matrix source date is blank; existing Section 2 value is preserved.",
+            message="Confirmed source date is blank; existing Section 2 value is preserved.",
         )
     try:
         next_value = date.fromisoformat(normalized_source).isoformat()
@@ -271,7 +301,7 @@ def _field_sync(
             current_value=current_value,
             next_value=current_value,
             status="blocked_invalid_source",
-            message="Confirmed Matrix source date must use YYYY-MM-DD.",
+            message="Confirmed source date must use YYYY-MM-DD.",
         )
     if normalized_current == next_value:
         return ProjectSection2FieldSync(
@@ -290,7 +320,7 @@ def _field_sync(
         current_value=current_value,
         next_value=next_value,
         status="will_change",
-        message="Section 2 will be updated from Confirmed Matrix.",
+        message="Section 2 will be updated from confirmed Project Schedule authority.",
     )
 
 

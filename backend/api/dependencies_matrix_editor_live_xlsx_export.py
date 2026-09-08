@@ -3,7 +3,7 @@
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_session
+from backend.api.dependencies import get_project_schedule_output_reader, get_session
 from backend.application.matrix_editor_live_xlsx_export_service import (
     MatrixEditorLiveXlsxExportService,
 )
@@ -39,7 +39,8 @@ def get_matrix_editor_live_xlsx_publication_service(
     return MatrixEditorLiveXlsxPublicationService(
         workspace_store=ProjectOfficialWorkspaceRepository(session),
         authority_matcher=ConfirmedMatrixLiveXlsxAuthorityMatcher(
-            ConfirmedMatrixAuthorityRepository(session)
+            ConfirmedMatrixAuthorityRepository(session),
+            get_project_schedule_output_reader(session),
         ),
         export_service=get_matrix_editor_live_xlsx_export_service(),
         file_gateway=TestRecordPublicationGateway(resource_label="Matrix"),

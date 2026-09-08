@@ -17,6 +17,7 @@ from backend.application.project_basic_information_output import (
 from backend.application.project_basic_information_output_identity import (
     customer_feedback_identity,
 )
+from backend.application.project_schedule_output import ConfirmedProjectScheduleReader
 from backend.domain import ExternalResource, ExternalResourceType, Project
 
 
@@ -94,12 +95,14 @@ class CustomerFeedbackFormGenerationService:
         external_resource_store: CustomerFeedbackExternalResourceStore,
         workbook_gateway: CustomerFeedbackWorkbookWriter,
         generated_root: Path,
+        project_schedule_reader: ConfirmedProjectScheduleReader | None = None,
     ) -> None:
         """Create the service with explicit persistence and gateway ports."""
         self._project_store = project_store
         self._external_resource_store = external_resource_store
         self._workbook_gateway = workbook_gateway
         self._generated_root = Path(generated_root)
+        self._project_schedule = project_schedule_reader
 
     def generate(
         self,
@@ -118,6 +121,13 @@ class CustomerFeedbackFormGenerationService:
         identity = _identity_from_basic_information(
             command.basic_information_values
         ) or _identity_from_project(project)
+        if self._project_schedule is not None:
+            schedule = self._project_schedule.get_latest_confirmed(command.project_id)
+            if schedule is None:
+                raise CustomerFeedbackReadinessError(
+                    "Confirm Project Schedule before generating Customer Feedback."
+                )
+            identity["estimated_completion_date"] = schedule.estimated_completion_date
         try:
             generated_path, warnings = self._workbook_gateway.generate(
                 template_path=template_path,

@@ -65,8 +65,24 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
             "dl_number": "DL-2026-05-P1", "project_type": "NPD", "product_description": "Connector",
             "tests_to_be_performed": "Qualification Testing", "requested_by": "Alice", "project_leader": "Engineer",
             "test_item": "Qualification Testing",
-            "lab_performing_tests": "Dongguan", "date_lab_received_samples": "05 Sep 2026",
-            "estimated_completion_date": "15 Sep 2026", "condition_of_samples_when_received": "Acceptable"}}))
+            "lab_performing_tests": "Dongguan", "date_lab_received_samples": "2026-09-05",
+            "condition_of_samples_when_received": "Acceptable"}}))
+        schedule = _ok(client.get("/api/projects/P1/project-schedule"))
+        _ok(client.post("/api/projects/P1/project-schedule/confirm", json={
+            "actor": "operator",
+            "expected_revision_id": (
+                schedule["confirmed_revision"]["revision_id"]
+                if schedule["confirmed_revision"] else None
+            ),
+            "expected_fingerprint": (
+                schedule["confirmed_revision"]["fingerprint"]
+                if schedule["confirmed_revision"] else None
+            ),
+            "post_test_buffer_days": "0",
+            "test_start_date": "2026-09-06",
+            "test_complete_date": "2026-09-15",
+            "estimated_completion_date": "2026-09-15",
+        }))
         pricing = _ok(client.put("/api/projects/P1/confirmed-matrix/fee-evaluation/pricing-draft",
                                  json={"rows": [], "summary": {}}))
         _ok(client.post("/api/projects/P1/confirmed-fee/versions", json={

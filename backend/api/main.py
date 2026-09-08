@@ -36,6 +36,7 @@ from backend.api.routes_project import router as project_router
 from backend.api.routes_project_basic_information import (
     router as project_basic_information_router,
 )
+from backend.api.routes_project_schedule import router as project_schedule_router
 from backend.api.routes_project_test_plan import router as project_test_plan_router
 from backend.api.routes_matrix_import_commit import router as matrix_import_commit_router
 from backend.api.routes_project_test_plan_drafts import (
@@ -216,6 +217,7 @@ app.include_router(ltr_workbook_compatibility_router)
 app.include_router(new_project_router)
 app.include_router(project_router)
 app.include_router(project_basic_information_router)
+app.include_router(project_schedule_router)
 app.include_router(project_test_plan_router)
 app.include_router(matrix_import_commit_router)
 app.include_router(project_test_plan_drafts_router)

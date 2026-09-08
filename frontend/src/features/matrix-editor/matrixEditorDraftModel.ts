@@ -567,7 +567,7 @@ type AuthorityComparableDraftRow = AuthorityComparableRow & {
   draftRowId: string;
 };
 
-function buildAuthorityComparableSignatureFromDraftPayload(
+export function buildAuthorityComparableSignatureFromDraftPayload(
   payload: ProjectMatrixDraftSaveRequest
 ): string {
   const groups: AuthorityComparableDraftGroup[] = payload.groups
@@ -638,13 +638,42 @@ function buildAuthorityComparableSignatureFromDraftPayload(
       dayExpression: row.dayExpression.trim(),
       cells: groups.map((_, groupIndex) => cellMap.get(`${rowIndex}:${groupIndex}`) ?? ""),
     })),
-    schedule: {
-      postTestBufferDays: payload.post_test_buffer_days ?? "",
-      sampleReceivedDate: payload.sample_received_date ?? "",
-      plannedTestStartDate: payload.planned_test_start_date ?? "",
-      plannedTestCompleteDate: payload.planned_test_complete_date ?? "",
-      estimatedCompletionDate: payload.estimated_completion_date ?? "",
-    },
+    stepTextOverrides: [...(payload.step_text_overrides ?? [])]
+      .map((item) => ({
+        draftGroupId: item.draft_group_id,
+        draftRowId: item.draft_row_id,
+        stepSequence: item.step_sequence,
+        stepSuffixNote: (item.step_suffix_note ?? "").trim(),
+        description: item.description,
+        requirement: item.requirement,
+      }))
+      .sort((left, right) =>
+        `${left.draftGroupId}:${left.draftRowId}:${left.stepSequence}:${left.stepSuffixNote}`
+          .localeCompare(
+            `${right.draftGroupId}:${right.draftRowId}:${right.stepSequence}:${right.stepSuffixNote}`
+          )
+      ),
+    durationAuthorities: [...(payload.duration_authorities ?? [])]
+      .map((item) => ({
+        draftGroupId: item.draft_group_id,
+        draftRowId: item.draft_row_id,
+        stepSequence: item.step_sequence,
+        stepSuffixNote: (item.step_suffix_note ?? "").trim(),
+        durationValue: item.duration_value.trim(),
+        durationUnit: item.duration_unit.trim(),
+        sourceKind: item.source_kind,
+        sourceField: item.source_field.trim(),
+        sourceImportId: item.source_import_id ?? "",
+        sourceFingerprint: item.source_fingerprint,
+        lineageFingerprint: item.lineage_fingerprint,
+        authorityRevision: item.authority_revision,
+      }))
+      .sort((left, right) =>
+        `${left.draftGroupId}:${left.draftRowId}:${left.stepSequence}:${left.stepSuffixNote}`
+          .localeCompare(
+            `${right.draftGroupId}:${right.draftRowId}:${right.stepSequence}:${right.stepSuffixNote}`
+          )
+      ),
   });
 }
 
@@ -653,7 +682,14 @@ export function buildAuthorityComparableSignatureFromDraft(
   schedulePlan: MatrixSchedulePlan
 ): string {
   const mapped = buildMatrixFromProjectMatrixDraft(draft);
-  const payload = buildDraftSavePayload(mapped.rows, mapped.groups, mapped.samples, schedulePlan);
+  const payload = buildDraftSavePayload(
+    mapped.rows,
+    mapped.groups,
+    mapped.samples,
+    schedulePlan,
+    draft.duration_authorities ?? [],
+    draft.step_text_overrides ?? [],
+  );
   return buildAuthorityComparableSignatureFromDraftPayload(payload);
 }
 

@@ -14,9 +14,9 @@ type ProjectSection2SyncPanelProps = {
 };
 
 const STATUS_COPY: Record<ProjectSection2SyncResponse["status"], string> = {
-  ready: "Confirmed Matrix has newer Section 2 dates.",
-  up_to_date: "Section 2 dates match Confirmed Matrix.",
-  partial: "One Confirmed Matrix date is missing. Available dates can still sync.",
+  ready: "Confirmed project authorities have newer Section 2 dates.",
+  up_to_date: "Section 2 dates match confirmed project authorities.",
+  partial: "One confirmed source date is missing. Available dates can still sync.",
   blocked: "Section 2 dates are blocked.",
   synced: "Section 2 dates synced.",
 };
@@ -55,6 +55,7 @@ export function ProjectSection2SyncPanel({
     onSync({
       expected_confirmed_matrix_id: preview.confirmed_matrix_id,
       expected_confirmed_revision: preview.confirmed_revision,
+      expected_source_context_signature: preview.source_context_signature,
     });
   }
 
@@ -85,7 +86,10 @@ export function ProjectSection2SyncPanel({
           ))}
         </dl>
       ) : null}
-      <small>Updates structured Section 2 dates only. Word file update remains separate.</small>
+      <small>
+        Received date comes from Basic Information; estimated completion comes from Project Schedule.
+        Word file update remains separate.
+      </small>
     </section>
   );
 }

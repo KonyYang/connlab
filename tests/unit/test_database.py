@@ -40,6 +40,7 @@ def test_create_engine_session_and_init_db_with_temp_file() -> None:
 
         assert database_path.is_file()
         assert set(inspect(engine).get_table_names()) == set(Base.metadata.tables.keys())
+        assert "project_schedule_revisions" in inspect(engine).get_table_names()
         engine.dispose()
     finally:
         shutil.rmtree(workspace_tmp, ignore_errors=True)

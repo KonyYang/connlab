@@ -20,6 +20,9 @@ from backend.infrastructure.storage.contact_measurement_plan_authority_schema_mi
 from backend.infrastructure.storage.contact_point_profile_schema_migration import (
     bootstrap_contact_point_profile_schema, migrate_contact_point_profile_schema,
 )
+from backend.infrastructure.storage.project_schedule_schema_migration import (
+    bootstrap_project_schedule_schema,
+)
 from backend.infrastructure.storage.database_general_migrations import (
     _migrate_file_asset_provenance_columns,
     _migrate_ltr_duplicate_resolution_tables,
@@ -84,6 +87,7 @@ def init_db(engine: Engine) -> None:
     from backend.infrastructure.storage import models_contact_measurement_plan_authority  # noqa: F401
     from backend.infrastructure.storage import models_contact_point_profile  # noqa: F401
     from backend.infrastructure.storage import models_result_dataset  # noqa: F401
+    from backend.infrastructure.storage import models_project_schedule  # noqa: F401
     from backend.infrastructure.storage.matrix_duration_authority_schema import (
         MATRIX_DURATION_AUTHORITY_TABLES,
         bootstrap_matrix_duration_authority_schema,
@@ -96,12 +100,14 @@ def init_db(engine: Engine) -> None:
     dedicated_tables = {
         "contact_point_profile_roots", "contact_point_profile_revisions", "contact_point_profile_categories",
         "contact_point_profile_cr_category_selections",
+        "project_schedule_revisions",
         *MATRIX_DURATION_AUTHORITY_TABLES,
         *RESULT_DATASET_TABLES,
     }
     # Fail closed on an incompatible authority shape before generic startup DDL.
     bootstrap_matrix_duration_authority_schema(engine)
     bootstrap_result_dataset_schema(engine)
+    bootstrap_project_schedule_schema(engine)
     general_tables = [
         table for table in Base.metadata.tables.values() if table.name not in dedicated_tables
     ]

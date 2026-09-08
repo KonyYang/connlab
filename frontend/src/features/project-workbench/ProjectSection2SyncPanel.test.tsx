@@ -22,7 +22,9 @@ describe("ProjectSection2SyncPanel", () => {
     );
 
     expect(screen.getByText("Section 2 dates")).toBeTruthy();
-    expect(screen.getByText("Confirmed Matrix has newer Section 2 dates.")).toBeTruthy();
+    expect(
+      screen.getByText("Confirmed project authorities have newer Section 2 dates.")
+    ).toBeTruthy();
     expect(screen.getByText("Received date")).toBeTruthy();
     expect(screen.getByText("2026-05-01 -> 2026-06-01")).toBeTruthy();
     expect(screen.getByText("Estimated completion")).toBeTruthy();
@@ -46,7 +48,8 @@ describe("ProjectSection2SyncPanel", () => {
 
     expect(onSync).toHaveBeenCalledWith({
       expected_confirmed_matrix_id: "CM1",
-      expected_confirmed_revision: 3
+      expected_confirmed_revision: 3,
+      expected_source_context_signature: "schedule:PS1@fingerprint"
     });
   });
 
@@ -75,6 +78,7 @@ function preview(status: ProjectSection2SyncResponse["status"]): ProjectSection2
     application_form_id: "FORM1",
     confirmed_matrix_id: "CM1",
     confirmed_revision: 3,
+    source_context_signature: "schedule:PS1@fingerprint",
     status,
     fields: [
       {

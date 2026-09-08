@@ -383,30 +383,10 @@ function selectDateValidation(values: Record<string, string>): DateValidationRes
       value: values.date_lab_received_samples,
       date: parseBasicInformationDate(values.date_lab_received_samples),
     },
-    startTestDate: {
-      label: "Start Test Date",
-      value: values.start_test_date,
-      date: parseBasicInformationDate(values.start_test_date),
-    },
     requestedCompletionDate: {
       label: "Requested Completion Date",
       value: values.requested_completion_date,
       date: parseBasicInformationDate(values.requested_completion_date),
-    },
-    estimatedCompletionDate: {
-      label: "Estimated Completion",
-      value: values.estimated_completion_date,
-      date: parseBasicInformationDate(values.estimated_completion_date),
-    },
-    finishTestDate: {
-      label: "Finish Test Date",
-      value: values.finish_test_date,
-      date: parseBasicInformationDate(values.finish_test_date),
-    },
-    reportDate: {
-      label: "Report Date",
-      value: values.report_date,
-      date: parseBasicInformationDate(values.report_date),
     },
   };
 
@@ -432,43 +412,8 @@ function selectDateValidation(values: Record<string, string>): DateValidationRes
 
   markIfAfter(
     "dateLabReceivedSamples",
-    "startTestDate",
-    "Lab Received Samples must not be later than Start Test Date."
-  );
-  markIfAfter(
-    "dateLabReceivedSamples",
     "requestedCompletionDate",
     "Lab Received Samples must not be later than Requested Completion Date."
-  );
-  markIfAfter(
-    "startTestDate",
-    "requestedCompletionDate",
-    "Start Test Date must not be later than Requested Completion Date."
-  );
-  markIfAfter(
-    "dateLabReceivedSamples",
-    "estimatedCompletionDate",
-    "Lab Received Samples must not be later than Estimated Completion."
-  );
-  markIfAfter(
-    "startTestDate",
-    "estimatedCompletionDate",
-    "Start Test Date must not be later than Estimated Completion."
-  );
-  markIfAfter(
-    "startTestDate",
-    "finishTestDate",
-    "Finish Test Date must not be earlier than Start Test Date."
-  );
-  markIfAfter(
-    "finishTestDate",
-    "reportDate",
-    "Finish Test Date must not be later than Report Date."
-  );
-  markIfAfter(
-    "startTestDate",
-    "reportDate",
-    "Report Date must not be earlier than Start Test Date."
   );
 
   return {

@@ -38,10 +38,11 @@ ProjectSection2SyncStatusResponse = Literal["ready", "up_to_date", "partial", "b
 
 
 class ProjectSection2SyncRequest(BaseModel):
-    """Request body for syncing previewed Confirmed Matrix dates."""
+    """Request body for syncing previewed confirmed authority dates."""
 
     expected_confirmed_matrix_id: str = Field(min_length=1)
     expected_confirmed_revision: int = Field(ge=1)
+    expected_source_context_signature: str = Field(min_length=1)
     operator: str | None = None
 
 
@@ -64,6 +65,7 @@ class ProjectSection2SyncResponse(BaseModel):
     application_form_id: str
     confirmed_matrix_id: str
     confirmed_revision: int
+    source_context_signature: str
     fields: list[ProjectSection2FieldSyncResponse]
     status: ProjectSection2SyncStatusResponse
     synced_at: str | None = None
@@ -98,6 +100,7 @@ def sync_project_section2(
                 project_id=project_id,
                 expected_confirmed_matrix_id=request.expected_confirmed_matrix_id,
                 expected_confirmed_revision=request.expected_confirmed_revision,
+                expected_source_context_signature=request.expected_source_context_signature,
                 operator=request.operator,
             )
         )
@@ -118,6 +121,7 @@ def _to_response(result: ProjectSection2SyncResult) -> ProjectSection2SyncRespon
         application_form_id=result.application_form_id,
         confirmed_matrix_id=result.confirmed_matrix_id,
         confirmed_revision=result.confirmed_revision,
+        source_context_signature=result.source_context_signature,
         fields=[_field_response(field) for field in result.fields],
         status=result.status,
         synced_at=result.synced_at,

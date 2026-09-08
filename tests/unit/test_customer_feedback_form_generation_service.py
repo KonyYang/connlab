@@ -11,6 +11,7 @@ from backend.application.customer_feedback_form_generation_service import (
     CustomerFeedbackReadinessError,
     CustomerFeedbackTemplateAmbiguousError,
 )
+from backend.application.project_schedule_output import ConfirmedProjectScheduleSnapshot
 from backend.domain import ExternalResource, ExternalResourceType, Project, ProjectStatus
 
 
@@ -46,7 +47,12 @@ def test_customer_feedback_generation_uses_basic_information_identity(
     template = template_dir / "E-4243_D Customer Feedback Form.xlsx"
     template.write_bytes(b"template")
     gateway = FakeCustomerFeedbackGateway()
-    service = _service(tmp_path, template_dir=template_dir, gateway=gateway)
+    service = _service(
+        tmp_path,
+        template_dir=template_dir,
+        gateway=gateway,
+        schedule_reader=_ScheduleReader(),
+    )
 
     service.generate(
         CustomerFeedbackFormGenerationCommand(
@@ -62,7 +68,7 @@ def test_customer_feedback_generation_uses_basic_information_identity(
                 "project_leader": "Even Yang",
                 "lab_performing_tests": "Dongguan",
                 "date_lab_received_samples": "20 Jun 2026",
-                "estimated_completion_date": "02 Jul 2026",
+                "estimated_completion_date": "15 Jul 2026",
             },
         )
     )
@@ -234,10 +240,22 @@ def _service(
         status=ProjectStatus.LTR_REGISTERED,
     ),
     gateway: FakeCustomerFeedbackGateway | None = None,
+    schedule_reader=None,
 ) -> CustomerFeedbackFormGenerationService:
     return CustomerFeedbackFormGenerationService(
         project_store=FakeProjectStore(project),
         external_resource_store=FakeExternalResourceStore(template_dir),
         workbook_gateway=gateway or FakeCustomerFeedbackGateway(),
         generated_root=tmp_path / "data" / "generated_customer_feedback",
+        project_schedule_reader=schedule_reader,
     )
+
+
+class _ScheduleReader:
+    def get_latest_confirmed(self, project_id: str):
+        return ConfirmedProjectScheduleSnapshot(
+            project_id=project_id, revision_id="psr-1", revision_sequence=1,
+            sample_received_date="20 Jun 2026", post_test_buffer_days="2",
+            test_start_date="22 Jun 2026", test_complete_date="30 Jun 2026",
+            estimated_completion_date="02 Jul 2026", context_signature="schedule:psr-1@fp",
+        )

@@ -12,15 +12,18 @@ type MatrixSchedulePlanningCardProps = {
   calculation: MatrixScheduleCalculation;
   readOnly?: boolean;
   onChange: (plan: MatrixSchedulePlan) => void;
+  confirmationStatus?: string;
+  confirmDisabledReason?: string;
+  confirming?: boolean;
+  onConfirm?: () => void;
 };
 
 const DATE_FIELDS: Array<
   keyof Pick<
     MatrixSchedulePlan,
-    "sampleReceivedDate" | "plannedTestStartDate" | "plannedTestCompleteDate" | "estimatedCompletionDate"
+    "plannedTestStartDate" | "plannedTestCompleteDate" | "estimatedCompletionDate"
   >
 > = [
-  "sampleReceivedDate",
   "plannedTestStartDate",
   "plannedTestCompleteDate",
   "estimatedCompletionDate",
@@ -34,6 +37,10 @@ export function MatrixSchedulePlanningCard({
   calculation,
   readOnly = false,
   onChange,
+  confirmationStatus = "",
+  confirmDisabledReason = "",
+  confirming = false,
+  onConfirm,
 }: MatrixSchedulePlanningCardProps): ReactElement {
   const selectedGroups = groups.filter((group) => group.isSelected);
   const criticalGroup = selectedGroups.find((group) => group.id === calculation.criticalGroupId) ?? null;
@@ -58,11 +65,12 @@ export function MatrixSchedulePlanningCard({
       <header className="matrix-editor-schedule-header">
         <div>
           <h3>Project Schedule</h3>
-          <p>Calendar days for planning only.</p>
+          <p>Confirmed dates are used in project outputs; update them when actual timing changes.</p>
         </div>
         <strong>
           Longest Test Group {criticalLabel}: {formatPlanningDays(calculation.criticalGroupDays)} d
         </strong>
+        <p>Sample received: {plan.sampleReceivedDate || "Not available"} (confirmed Basic Information)</p>
       </header>
 
       <div className="matrix-editor-schedule-fields">
@@ -80,18 +88,6 @@ export function MatrixSchedulePlanningCard({
             value={plan.postTestBufferDays}
             aria-label="Post-test buffer"
             onChange={(event) => updateField("postTestBufferDays", event.target.value)}
-          />
-        </label>
-        <label>
-          <span>Sample received</span>
-          <input
-            className={`matrix-editor-schedule-date-input ${dateInputClass("sampleReceivedDate") ?? ""}`.trim()}
-            aria-invalid={dateAriaInvalid("sampleReceivedDate")}
-            aria-label="Sample received"
-            disabled={readOnly}
-            type="date"
-            value={plan.sampleReceivedDate}
-            onChange={(event) => updateField("sampleReceivedDate", event.target.value)}
           />
         </label>
         <label>
@@ -138,6 +134,19 @@ export function MatrixSchedulePlanningCard({
       {calculation.dateError ? (
         <p className="matrix-editor-schedule-error">{calculation.dateError}</p>
       ) : null}
+      <div className="matrix-editor-schedule-actions">
+        <button
+          type="button"
+          disabled={readOnly || confirming || Boolean(confirmDisabledReason)}
+          title={confirmDisabledReason}
+          onClick={onConfirm}
+        >
+          {confirming ? "Saving schedule…" : "Confirm schedule"}
+        </button>
+        {confirmationStatus || confirmDisabledReason ? (
+          <p role="status">{confirmationStatus || confirmDisabledReason}</p>
+        ) : null}
+      </div>
     </section>
   );
 }

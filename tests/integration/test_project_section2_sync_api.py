@@ -9,6 +9,9 @@ from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_session, get_settings
 from backend.api.main import app
+from backend.application.project_basic_information_service import (
+    ProjectBasicInformationRecord,
+)
 from backend.domain import (
     ApplicationForm,
     ConfirmedMatrixSnapshot,
@@ -25,6 +28,7 @@ from backend.infrastructure.storage.database import (
 from backend.infrastructure.storage.repositories import (
     ApplicationFormRepository,
     ConfirmedMatrixAuthorityRepository,
+    ProjectBasicInformationRepository,
     ProjectRepository,
 )
 from backend.shared.config import Settings
@@ -42,6 +46,9 @@ def test_section2_sync_preview_returns_field_status(tmp_path: Path) -> None:
         assert payload["status"] == "ready"
         assert payload["confirmed_matrix_id"] == "CM1"
         assert payload["confirmed_revision"] == 3
+        assert payload["source_context_signature"].startswith(
+            "schedule:legacy-matrix:CM1@3:basic-received:"
+        )
         assert [(field["field_key"], field["status"], field["next_value"]) for field in payload["fields"]] == [
             ("received_date", "will_change", "2026-06-01"),
             ("estimated_completion_date", "will_change", "2026-06-08"),
@@ -57,12 +64,16 @@ def test_section2_sync_post_updates_application_form_when_expected_identity_matc
     client, engine, session_factory = _client(tmp_path)
     try:
         _seed_project_context(tmp_path)
+        source_context_signature = client.get(
+            "/api/projects/P1/section2-sync/preview"
+        ).json()["source_context_signature"]
 
         response = client.post(
             "/api/projects/P1/section2-sync",
             json={
                 "expected_confirmed_matrix_id": "CM1",
                 "expected_confirmed_revision": 3,
+                "expected_source_context_signature": source_context_signature,
                 "operator": "MP Cao",
             },
         )
@@ -104,7 +115,11 @@ def test_section2_sync_multiple_forms_returns_409_and_leaves_forms_unchanged(
 
         response = client.post(
             "/api/projects/P1/section2-sync",
-            json={"expected_confirmed_matrix_id": "CM1", "expected_confirmed_revision": 3},
+            json={
+                "expected_confirmed_matrix_id": "CM1",
+                "expected_confirmed_revision": 3,
+                "expected_source_context_signature": "unused",
+            },
         )
 
         assert response.status_code == 409
@@ -126,10 +141,17 @@ def test_section2_sync_expected_revision_mismatch_returns_409_and_leaves_form_un
     client, engine, session_factory = _client(tmp_path)
     try:
         _seed_project_context(tmp_path)
+        source_context_signature = client.get(
+            "/api/projects/P1/section2-sync/preview"
+        ).json()["source_context_signature"]
 
         response = client.post(
             "/api/projects/P1/section2-sync",
-            json={"expected_confirmed_matrix_id": "CM1", "expected_confirmed_revision": 2},
+            json={
+                "expected_confirmed_matrix_id": "CM1",
+                "expected_confirmed_revision": 2,
+                "expected_source_context_signature": source_context_signature,
+            },
         )
 
         assert response.status_code == 409
@@ -150,10 +172,17 @@ def test_section2_sync_invalid_source_date_returns_422_and_leaves_form_unchanged
     client, engine, session_factory = _client(tmp_path)
     try:
         _seed_project_context(tmp_path, sample_received_date="06/01/2026")
+        source_context_signature = client.get(
+            "/api/projects/P1/section2-sync/preview"
+        ).json()["source_context_signature"]
 
         response = client.post(
             "/api/projects/P1/section2-sync",
-            json={"expected_confirmed_matrix_id": "CM1", "expected_confirmed_revision": 3},
+            json={
+                "expected_confirmed_matrix_id": "CM1",
+                "expected_confirmed_revision": 3,
+                "expected_source_context_signature": source_context_signature,
+            },
         )
 
         assert response.status_code == 422
@@ -223,6 +252,22 @@ def _seed_project_context(
         form_repo.create(_form("FORM1", received_date="2026-05-01", estimated_completion_date="2026-05-10"))
         if extra_form:
             form_repo.create(_form("FORM2", received_date="2026-05-02", estimated_completion_date="2026-05-11"))
+        ProjectBasicInformationRepository(session).create_confirmed(
+            ProjectBasicInformationRecord(
+                record_id="BI1",
+                project_id="P1",
+                status="confirmed",
+                version=1,
+                values={
+                    "date_lab_received_samples": sample_received_date or "",
+                },
+                source_signature='{"project":"P1"}',
+                created_at="2026-06-01T00:00:00Z",
+                updated_at="2026-06-01T00:00:00Z",
+                confirmed_at="2026-06-01T00:00:00Z",
+                confirmed_by="operator",
+            )
+        )
         if include_matrix:
             ConfirmedMatrixAuthorityRepository(session).create_snapshot(
                 ConfirmedMatrixSnapshot(
@@ -237,7 +282,10 @@ def _seed_project_context(
                         status=ConfirmedMatrixStatus.CONFIRMED,
                         confirmed_by="operator",
                         confirmed_at="2026-06-01T00:00:00Z",
+                        post_test_buffer_days="2",
                         sample_received_date=sample_received_date,
+                        planned_test_start_date="2026-06-02",
+                        planned_test_complete_date="2026-06-06",
                         estimated_completion_date="2026-06-08",
                     )
                 )

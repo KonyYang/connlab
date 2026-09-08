@@ -16,6 +16,7 @@ from backend.application.project_basic_information_output import (
 from backend.application.project_basic_information_output_identity import (
     application_form_identity,
 )
+from backend.application.project_schedule_output import ConfirmedProjectScheduleReader
 from backend.application.project_application_form_target_selection import (
     ApplicationFormTargetSelectionError,
     RequestMaterialCollectionStore,
@@ -155,6 +156,7 @@ class ProjectApplicationFormWriteBackService:
         file_asset_store: FileAssetStore,
         request_material_collection_store: RequestMaterialCollectionStore | None = None,
         basic_information_reader: ConfirmedBasicInformationReader,
+        project_schedule_reader: ConfirmedProjectScheduleReader | None = None,
         output_record_service: OutputRecordService,
         file_gateway: RequiredFormsFileGateway,
         office: ApplicationFormWordWriter | None = None,
@@ -166,6 +168,7 @@ class ProjectApplicationFormWriteBackService:
         self._assets = file_asset_store
         self._request_material_collections = request_material_collection_store
         self._basic_information = basic_information_reader
+        self._project_schedule = project_schedule_reader
         self._outputs = output_record_service
         self._files = file_gateway
         self._office = office or OfficeFacade()
@@ -208,12 +211,23 @@ class ProjectApplicationFormWriteBackService:
             raise ProjectApplicationFormWriteBackError(
                 "Confirm Basic Information before writing the Application Form."
             )
+        schedule = (
+            self._project_schedule.get_latest_confirmed(project_id)
+            if self._project_schedule is not None
+            else None
+        )
+        if self._project_schedule is not None and schedule is None:
+            raise ProjectApplicationFormWriteBackError(
+                "Confirm Project Schedule before writing the Application Form."
+            )
         context_signature = source_context_signature(
             form,
             basic_information,
             source_sha256=selected_target.source_sha256,
         )
-        fields = _fields(project, form, basic_information)
+        if schedule is not None:
+            context_signature += f"|{schedule.context_signature}"
+        fields = _fields(project, form, basic_information, schedule=schedule)
         append_timing(timings, "application_form.basic_information", basic_start)
         safety_start = perf_counter()
         summary = self._outputs.get_status_summary(project_id)
@@ -385,10 +399,14 @@ def _fields(
     project: Project,
     form: ApplicationForm,
     basic_information: ConfirmedBasicInformationSnapshot,
+    *,
+    schedule=None,
 ) -> dict[str, str]:
     values = application_form_identity(basic_information).fields
     if not str(values.get("project_leader", "") or "").strip():
         values["project_leader"] = form.assigned_personnel
+    if schedule is not None:
+        values["estimated_completion_date"] = schedule.estimated_completion_date
     fields = {
         key: str(values.get(key, "") or "").strip()
         for key in _APPLICATION_FORM_WRITE_BACK_FIELDS

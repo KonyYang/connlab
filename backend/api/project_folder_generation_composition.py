@@ -38,6 +38,7 @@ class ProjectFolderGenerationRunner:
                 # Missing/ambiguous templates remain a Required Forms business blocker, not a folder-creation blocker.
                 fee_template = None
             matrix = deps.ConfirmedMatrixAuthorityRepository(session).get_active_by_project(project_id)
+            schedule = deps.get_project_schedule_output_reader(session).get_latest_confirmed(project_id)
             template_files = []
             relevant_resources = []
             for resource in resources:
@@ -55,6 +56,7 @@ class ProjectFolderGenerationRunner:
                 "forms": deps.ApplicationFormRepository(session).list_by_project(project_id),
                 "ltrs": deps.LtrRecordRepository(session).list_by_project(project_id),
                 "matrix": matrix,
+                "schedule": schedule,
                 "basic": deps.ProjectBasicInformationSnapshotReader(deps.ProjectBasicInformationRepository(session)).get_latest_confirmed(project_id),
                 "fee": (deps.get_confirmed_fee_version_service(session).get_latest(project_id)
                         if matrix is not None else deps.ConfirmedFeeAuthorityRepository(session).get_latest_by_project(project_id)),

@@ -273,6 +273,7 @@ export type ProjectSection2SyncResponse = {
   application_form_id: string;
   confirmed_matrix_id: string;
   confirmed_revision: number;
+  source_context_signature: string;
   fields: ProjectSection2SyncField[];
   status: ProjectSection2SyncStatus;
   synced_at?: string | null;
@@ -282,6 +283,7 @@ export type ProjectSection2SyncResponse = {
 export type ProjectSection2SyncRequest = {
   expected_confirmed_matrix_id: string;
   expected_confirmed_revision: number;
+  expected_source_context_signature: string;
   operator?: string | null;
 };
 
@@ -4192,6 +4194,64 @@ export function listProjectTestPlanSourceCandidates(
   const query = view === "registered_assets" ? "" : "?view=resolved_directory";
   return requestJson<MatrixSourceCandidatesResponse>(
     `/api/projects/${encodeURIComponent(projectId)}/test-plan/source-candidates${query}`
+  );
+}
+
+export type ProjectScheduleSuggestion = {
+  post_test_buffer_days: string;
+  test_start_date: string;
+  test_complete_date: string;
+  estimated_completion_date: string;
+};
+
+export type ProjectScheduleRevision = ProjectScheduleSuggestion & {
+  revision_id: string;
+  project_id: string;
+  revision_sequence: number;
+  state: "confirmed" | "superseded";
+  fingerprint: string;
+  matrix_input_fingerprint: string;
+  based_on_confirmed_matrix_id: string;
+  based_on_confirmed_matrix_revision: number;
+  based_on_basic_information_version: number;
+  sample_received_date: string;
+  confirmed_by: string;
+  confirmed_at: string;
+  superseded_at?: string | null;
+  superseded_reason?: string | null;
+};
+
+export type ProjectScheduleWorkspace = {
+  status: "not_started" | "confirmed" | "stale_inputs";
+  project_id: string;
+  sample_received_date: string;
+  critical_group_id: string | null;
+  critical_group_days: string;
+  suggestion: ProjectScheduleSuggestion;
+  confirmed_revision: ProjectScheduleRevision | null;
+};
+
+export function fetchProjectSchedule(projectId: string): Promise<ProjectScheduleWorkspace> {
+  return requestJson<ProjectScheduleWorkspace>(
+    `/api/projects/${encodeURIComponent(projectId)}/project-schedule`
+  );
+}
+
+export function confirmProjectSchedule(
+  projectId: string,
+  input: {
+    actor: string;
+    expected_revision_id: string | null;
+    expected_fingerprint: string | null;
+    post_test_buffer_days: string;
+    test_start_date: string;
+    test_complete_date: string;
+    estimated_completion_date: string;
+  }
+): Promise<ProjectScheduleRevision> {
+  return requestJson<ProjectScheduleRevision>(
+    `/api/projects/${encodeURIComponent(projectId)}/project-schedule/confirm`,
+    { method: "POST", body: JSON.stringify(input) }
   );
 }
 

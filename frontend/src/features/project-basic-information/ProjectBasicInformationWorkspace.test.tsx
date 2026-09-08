@@ -65,7 +65,10 @@ describe("ProjectBasicInformationWorkspace", () => {
     expect(screen.getByText("Tests to be Performed *")).toBeTruthy();
     expect(screen.getByText("Applicable Specifications *")).toBeTruthy();
     expect(screen.getByText("Lab Received Samples *")).toBeTruthy();
-    expect(screen.getByText("Estimated Completion *")).toBeTruthy();
+    expect(screen.queryByLabelText("Estimated Completion")).toBeNull();
+    expect(screen.queryByLabelText("Start Test Date")).toBeNull();
+    expect(screen.queryByLabelText("Finish Test Date")).toBeNull();
+    expect(screen.queryByLabelText("Report Date")).toBeNull();
     expect(screen.getByDisplayValue("2026-06-20")).toHaveProperty("type", "date");
     const projectTypeSelect = screen.getByLabelText("Project Type");
     expect(projectTypeSelect.tagName).toBe("SELECT");
@@ -206,8 +209,6 @@ describe("ProjectBasicInformationWorkspace", () => {
         location: "Nantong",
         lab_performing_tests: "Valley Green",
         condition_of_samples_when_received: "Acceptable",
-        finish_test_date: "2026-07-02",
-        report_date: "2026-07-02",
         sample_deposition: "Send Back to Requestor",
         sub_contract: "Yes",
         project_leader: "Even Yang",
@@ -228,8 +229,6 @@ describe("ProjectBasicInformationWorkspace", () => {
           location: "Nantong",
           lab_performing_tests: "Valley Green",
           condition_of_samples_when_received: "Acceptable",
-          finish_test_date: "2026-07-02",
-          report_date: "2026-07-02",
           sample_deposition: "Send Back to Requestor",
           sub_contract: "Yes",
           project_leader: "Even Yang",
@@ -429,7 +428,7 @@ describe("ProjectBasicInformationWorkspace", () => {
     );
   });
 
-  it("defaults Finish Test Date and Report Date to Estimated Completion", async () => {
+  it("keeps execution and report dates out of Basic Information", async () => {
     api.getProjectBasicInformation.mockResolvedValue(
       response({ finish_test_date: "", report_date: "" })
     );
@@ -441,18 +440,11 @@ describe("ProjectBasicInformationWorkspace", () => {
       />
     );
 
-    expect(await screen.findByLabelText("Estimated Completion")).toHaveProperty(
-      "value",
-      "2026-07-02"
-    );
-    expect(screen.getByLabelText("Finish Test Date")).toHaveProperty(
-      "value",
-      "2026-07-02"
-    );
-    expect(screen.getByLabelText("Report Date")).toHaveProperty(
-      "value",
-      "2026-07-02"
-    );
+    await screen.findByLabelText("Lab Received Samples");
+    expect(screen.queryByLabelText("Estimated Completion")).toBeNull();
+    expect(screen.queryByLabelText("Start Test Date")).toBeNull();
+    expect(screen.queryByLabelText("Finish Test Date")).toBeNull();
+    expect(screen.queryByLabelText("Report Date")).toBeNull();
   });
 
   it("disables confirm while an automatic draft save is pending", async () => {
@@ -631,14 +623,7 @@ describe("ProjectBasicInformationWorkspace", () => {
       />
     );
 
-    const invalidDateLabels = [
-      "Lab Received Samples",
-      "Start Test Date",
-      "Requested Completion Date",
-      "Estimated Completion",
-      "Finish Test Date",
-      "Report Date",
-    ];
+    const invalidDateLabels = ["Lab Received Samples", "Requested Completion Date"];
     for (const label of invalidDateLabels) {
       const field = await screen.findByLabelText(label);
       expect(
@@ -649,16 +634,7 @@ describe("ProjectBasicInformationWorkspace", () => {
     }
     const dateChecks = screen.getByRole("status", { name: "Date validation" });
     expect(dateChecks.textContent).toContain(
-      "Lab Received Samples must not be later than Start Test Date."
-    );
-    expect(dateChecks.textContent).toContain(
-      "Start Test Date must not be later than Requested Completion Date."
-    );
-    expect(dateChecks.textContent).toContain(
-      "Finish Test Date must not be earlier than Start Test Date."
-    );
-    expect(dateChecks.textContent).toContain(
-      "Finish Test Date must not be later than Report Date."
+      "Lab Received Samples must not be later than Requested Completion Date."
     );
     expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty(
       "disabled",
@@ -694,7 +670,7 @@ describe("ProjectBasicInformationWorkspace", () => {
     );
   });
 
-  it("blocks empty required dates while optional empty dates only warn", async () => {
+  it("blocks empty required received date and omits schedule-owned dates", async () => {
     api.getProjectBasicInformation.mockResolvedValue(
       response({
         date_lab_received_samples: "",
@@ -713,48 +689,25 @@ describe("ProjectBasicInformationWorkspace", () => {
     );
 
     const requiredDate = await screen.findByLabelText("Lab Received Samples");
-    const requiredEstimatedDate = await screen.findByLabelText(
-      "Estimated Completion"
-    );
     expect(screen.getByText("Lab Received Samples *")).toBeTruthy();
-    expect(screen.getByText("Estimated Completion *")).toBeTruthy();
     expect(
       requiredDate
         .closest(".basic-information-field")
         ?.classList.contains("is-missing-required")
     ).toBe(true);
     expect(
-      requiredEstimatedDate
-        .closest(".basic-information-field")
-        ?.classList.contains("is-missing-required")
-    ).toBe(true);
-    expect(
       requiredDate
-        .closest(".basic-information-field")
-        ?.classList.contains("is-missing-date")
-    ).toBe(true);
-    expect(
-      requiredEstimatedDate
         .closest(".basic-information-field")
         ?.classList.contains("is-missing-date")
     ).toBe(true);
     const missingDateLabels = [
+      "Estimated Completion",
       "Start Test Date",
       "Finish Test Date",
       "Report Date",
     ];
     for (const label of missingDateLabels) {
-      const field = await screen.findByLabelText(label);
-      expect(
-        field
-          .closest(".basic-information-field")
-          ?.classList.contains("is-missing-date")
-      ).toBe(true);
-      expect(
-        field
-          .closest(".basic-information-field")
-          ?.classList.contains("is-invalid-sequence")
-      ).toBe(false);
+      expect(screen.queryByLabelText(label)).toBeNull();
     }
     expect(screen.queryByRole("status", { name: "Date validation" })).toBeNull();
     expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty(
@@ -857,20 +810,8 @@ describe("ProjectBasicInformationWorkspace", () => {
     const dateLabReceivedSamplesField = screen
       .getByLabelText("Lab Received Samples")
       .closest(".basic-information-field");
-    const estimatedCompletionDateField = screen
-      .getByLabelText("Estimated Completion")
-      .closest(".basic-information-field");
     const testFeeField = screen
       .getByLabelText("Test Fee")
-      .closest(".basic-information-field");
-    const startTestDateField = screen
-      .getByLabelText("Start Test Date")
-      .closest(".basic-information-field");
-    const finishTestDateField = screen
-      .getByLabelText("Finish Test Date")
-      .closest(".basic-information-field");
-    const reportDateField = screen
-      .getByLabelText("Report Date")
       .closest(".basic-information-field");
     const remarksPoField = screen
       .getByLabelText("Remarks (PO)")
@@ -914,13 +855,7 @@ describe("ProjectBasicInformationWorkspace", () => {
     expect(sampleConditionField?.classList.contains("is-quarter")).toBe(true);
     expect(testResultField?.classList.contains("is-quarter")).toBe(true);
     expect(dateLabReceivedSamplesField?.classList.contains("is-quarter")).toBe(true);
-    expect(estimatedCompletionDateField?.classList.contains("is-quarter")).toBe(
-      true
-    );
     expect(testFeeField?.classList.contains("is-quarter")).toBe(true);
-    expect(startTestDateField?.classList.contains("is-quarter")).toBe(true);
-    expect(finishTestDateField?.classList.contains("is-quarter")).toBe(true);
-    expect(reportDateField?.classList.contains("is-quarter")).toBe(true);
     expect(remarksPoField?.classList.contains("is-quarter")).toBe(true);
     expect(failedItemField?.classList.contains("is-wide-remainder")).toBe(true);
     expect(testTypeInSheetField?.classList.contains("is-narrow-quarter")).toBe(true);
@@ -1000,24 +935,12 @@ describe("ProjectBasicInformationWorkspace", () => {
       laboratoryPanelText.indexOf("Lab Received Samples")
     );
     expect(laboratoryPanelText.indexOf("Lab Received Samples")).toBeLessThan(
-      laboratoryPanelText.indexOf("Estimated Completion")
-    );
-    expect(laboratoryPanelText.indexOf("Estimated Completion")).toBeLessThan(
       laboratoryPanelText.indexOf("Sample deposition")
     );
     expect(laboratoryPanelText.indexOf("Sample deposition")).toBeLessThan(
       laboratoryPanelText.indexOf("Test Fee")
     );
     expect(laboratoryPanelText.indexOf("Test Fee")).toBeLessThan(
-      laboratoryPanelText.indexOf("Start Test Date")
-    );
-    expect(laboratoryPanelText.indexOf("Start Test Date")).toBeLessThan(
-      laboratoryPanelText.indexOf("Finish Test Date")
-    );
-    expect(laboratoryPanelText.indexOf("Finish Test Date")).toBeLessThan(
-      laboratoryPanelText.indexOf("Report Date")
-    );
-    expect(laboratoryPanelText.indexOf("Report Date")).toBeLessThan(
       laboratoryPanelText.indexOf("Remarks (PO)")
     );
     expect(laboratoryPanelText).not.toContain("Quantity defaults");
@@ -1051,7 +974,10 @@ describe("ProjectBasicInformationWorkspace", () => {
     expect(laboratoryPanel.textContent).toContain("Project Leader");
     expect(laboratoryPanel.textContent).toContain("Test Result");
     expect(laboratoryPanel.textContent).toContain("Test Type in sheet");
-    expect(laboratoryPanel.textContent).toContain("Estimated Completion");
+    expect(laboratoryPanel.textContent).not.toContain("Estimated Completion");
+    expect(laboratoryPanel.textContent).not.toContain("Start Test Date");
+    expect(laboratoryPanel.textContent).not.toContain("Finish Test Date");
+    expect(laboratoryPanel.textContent).not.toContain("Report Date");
   });
 
   it("keeps closed projects readable while blocking Basic Information writes", async () => {

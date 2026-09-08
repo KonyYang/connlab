@@ -48,6 +48,11 @@ describe("MatrixSchedulePlanningCard", () => {
     );
 
     expect(screen.getByText("Longest Test Group 8a: 2.5 d")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Confirmed dates are used in project outputs; update them when actual timing changes."
+      )
+    ).toBeTruthy();
     expect(screen.getByLabelText("Test complete").classList.contains("is-invalid")).toBe(true);
     expect(screen.getByLabelText("Test complete").getAttribute("aria-invalid")).toBe("true");
     expect(screen.getByLabelText("Planned start").classList.contains("is-invalid")).toBe(false);
@@ -69,7 +74,8 @@ describe("MatrixSchedulePlanningCard", () => {
       />
     );
 
-    expect(screen.getByLabelText("Sample received").getAttribute("value")).toBe("2026-06-01");
+    expect(screen.queryByLabelText("Sample received")).toBeNull();
+    expect(screen.getByText("Sample received: 2026-06-01 (confirmed Basic Information)")).toBeTruthy();
     expect(screen.getByLabelText("Planned start").getAttribute("value")).toBe("2026-06-02");
     expect(screen.getByLabelText("Test complete").getAttribute("value")).toBe("2026-06-03");
     expect(screen.getByLabelText("Estimated completion").getAttribute("value")).toBe("2026-06-04");
@@ -85,10 +91,28 @@ describe("MatrixSchedulePlanningCard", () => {
       />
     );
 
-    expect(screen.getByLabelText("Sample received").classList.contains("is-invalid")).toBe(true);
     expect(screen.getByLabelText("Planned start").classList.contains("is-invalid")).toBe(true);
     expect(screen.getByLabelText("Test complete").classList.contains("is-invalid")).toBe(true);
     expect(screen.getByLabelText("Estimated completion").classList.contains("is-invalid")).toBe(true);
+  });
+
+  it("shows why schedule confirmation is unavailable", () => {
+    render(
+      <MatrixSchedulePlanningCard
+        plan={emptyPlan}
+        groups={[{ id: "g1", name: "1", isSelected: true }]}
+        calculation={{ ...buildCalculation(), invalidDateFields: {}, dateError: null, isValid: true }}
+        confirmDisabledReason="Confirm Matrix changes before updating Project Schedule."
+        onChange={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByText("Confirm Matrix changes before updating Project Schedule.")
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Confirm schedule" }).hasAttribute("disabled")
+    ).toBe(true);
   });
 
   it("preselects complete and estimated dates from planned start", () => {

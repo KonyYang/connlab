@@ -748,7 +748,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   }
 
   async function syncSection2AfterFolderCreate(): Promise<void> {
-    setOfficialWorkspaceProgressLabel("Syncing Matrix Section 2 dates");
+    setOfficialWorkspaceProgressLabel("Syncing confirmed Section 2 dates");
     try {
       const preview = await fetchProjectSection2SyncPreview(projectId);
       setSection2SyncPreview(preview);
@@ -763,6 +763,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       const result = await syncProjectSection2FromConfirmedMatrix(projectId, {
         expected_confirmed_matrix_id: preview.confirmed_matrix_id,
         expected_confirmed_revision: preview.confirmed_revision,
+        expected_source_context_signature: preview.source_context_signature,
         operator: null,
       });
       setSection2SyncPreview(result);
@@ -1189,7 +1190,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
       const result = await syncProjectSection2FromConfirmedMatrix(projectId, input);
       setSection2SyncPreview(result);
       setSection2SyncError(null);
-      setMessage("Section 2 dates synced from Confirmed Matrix.");
+      setMessage("Section 2 dates synced from confirmed project authorities.");
       await onRefreshPackagePreview();
       setError(null);
     } catch (err) {

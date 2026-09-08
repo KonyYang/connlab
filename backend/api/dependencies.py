@@ -573,6 +573,45 @@ def get_project_test_plan_matrix_preview_service(
     )
 
 
+def get_project_schedule_service(
+    session: Session = Depends(get_session),
+):
+    """Build the independent Project Schedule authority service."""
+    from backend.application.project_basic_information_output import (
+        ProjectBasicInformationSnapshotReader,
+    )
+    from backend.application.project_schedule_service import ProjectScheduleService
+    from backend.infrastructure.storage.repositories.project_schedule import (
+        ProjectScheduleRepository,
+    )
+
+    return ProjectScheduleService(
+        repository=ProjectScheduleRepository(session),
+        basic_information_reader=ProjectBasicInformationSnapshotReader(
+            ProjectBasicInformationRepository(session)
+        ),
+        confirmed_matrix_store=ConfirmedMatrixAuthorityRepository(session),
+        clock=lambda: datetime.now(timezone.utc).isoformat(),
+    )
+
+
+def get_project_schedule_output_reader(session: Session):
+    """Build the confirmed schedule read boundary used by formal outputs."""
+    from backend.application.project_basic_information_output import (
+        ProjectBasicInformationSnapshotReader,
+    )
+    from backend.application.project_schedule_output import ProjectScheduleOutputReader
+    from backend.infrastructure.storage.repositories.project_schedule import (
+        ProjectScheduleRepository,
+    )
+
+    return ProjectScheduleOutputReader(
+        ProjectScheduleRepository(session),
+        ProjectBasicInformationSnapshotReader(ProjectBasicInformationRepository(session)),
+        ConfirmedMatrixAuthorityRepository(session),
+    )
+
+
 def get_matrix_import_commit_service(
     session: Session = Depends(get_session),
 ) -> MatrixImportCommitService:
@@ -762,6 +801,7 @@ def get_test_report_draft_service(
         basic_information_reader=ProjectBasicInformationSnapshotReader(
             ProjectBasicInformationRepository(session)
         ),
+        project_schedule_reader=get_project_schedule_output_reader(session),
         writer=TestReportDocumentGateway(),
     )
 
@@ -1109,6 +1149,7 @@ def get_project_section2_sync_service(
     return ProjectSection2SyncService(
         project_store=ProjectRepository(session),
         confirmed_matrix_store=ConfirmedMatrixAuthorityRepository(session),
+        project_schedule_reader=get_project_schedule_output_reader(session),
         application_form_store=ApplicationFormRepository(session),
     )
 
@@ -1478,6 +1519,7 @@ def get_customer_feedback_form_generation_service(
         external_resource_store=ExternalResourceRepository(session),
         workbook_gateway=CustomerFeedbackWorkbookGateway(),
         generated_root=settings.data_dir / "generated_customer_feedback",
+        project_schedule_reader=get_project_schedule_output_reader(session),
     )
 
 
@@ -1528,6 +1570,7 @@ def get_project_application_form_write_back_service(
         basic_information_reader=ProjectBasicInformationSnapshotReader(
             ProjectBasicInformationRepository(session)
         ),
+        project_schedule_reader=get_project_schedule_output_reader(session),
         output_record_service=output_service,
         reusable_artifact_store=FileReusableApplicationFormArtifactStore(
             output_service,

@@ -416,22 +416,12 @@ export const BASIC_INFORMATION_FIELD_GROUPS: BasicInformationFieldGroup[] = [
         layout: "quarter",
       },
       {
-        key: "estimated_completion_date",
-        label: "Estimated Completion",
-        kind: "date",
-        required: true,
-        layout: "quarter",
-      },
-      {
         key: "sample_deposition",
         label: "Sample deposition",
         kind: "textarea",
         layout: "quarter",
       },
       { key: "test_fee", label: "Test Fee", kind: "text", layout: "quarter" },
-      { key: "start_test_date", label: "Start Test Date", kind: "date", layout: "quarter" },
-      { key: "finish_test_date", label: "Finish Test Date", kind: "date", layout: "quarter" },
-      { key: "report_date", label: "Report Date", kind: "date", layout: "quarter" },
       { key: "remarks_po", label: "Remarks (PO)", kind: "textarea", layout: "quarter" },
     ],
   },
@@ -477,16 +467,6 @@ export function normalizeBasicInformationFieldValues(
   const sampleDeposition = normalizedValues.sample_deposition?.trim() ?? "";
   if (postTestingDisposition && !sampleDeposition) {
     normalizedValues.sample_deposition = postTestingDisposition;
-  }
-  const estimatedCompletionDate =
-    normalizedValues.estimated_completion_date?.trim() ?? "";
-  if (estimatedCompletionDate) {
-    if (!normalizedValues.finish_test_date?.trim()) {
-      normalizedValues.finish_test_date = estimatedCompletionDate;
-    }
-    if (!normalizedValues.report_date?.trim()) {
-      normalizedValues.report_date = estimatedCompletionDate;
-    }
   }
   const fields = BASIC_INFORMATION_FIELD_PANELS.flatMap((panel) =>
     panel.groups.flatMap((group) => group.fields)

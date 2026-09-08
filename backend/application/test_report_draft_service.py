@@ -21,6 +21,7 @@ from backend.application.project_basic_information_output import (
 from backend.application.project_basic_information_service import (
     ProjectBasicInformationSampleRow,
 )
+from backend.application.project_schedule_output import ConfirmedProjectScheduleReader
 
 
 class TestReportDraftGenerationError(ValueError):
@@ -105,10 +106,12 @@ class TestReportDraftService:
         *,
         preview_service: ConfirmedMatrixTestRecordPreviewService,
         basic_information_reader: ConfirmedBasicInformationReader,
+        project_schedule_reader: ConfirmedProjectScheduleReader | None = None,
         writer: TestReportDraftWriter,
     ) -> None:
         self._preview_service = preview_service
         self._basic_information = basic_information_reader
+        self._project_schedule = project_schedule_reader
         self._writer = writer
 
     def generate(
@@ -134,6 +137,15 @@ class TestReportDraftService:
                 "Confirm Basic Information before generating a Test Report draft."
             )
         values = basic_information.values
+        schedule = (
+            self._project_schedule.get_latest_confirmed(command.project_id)
+            if self._project_schedule is not None
+            else None
+        )
+        if self._project_schedule is not None and schedule is None:
+            raise TestReportDraftGenerationError(
+                "Confirm Project Schedule before generating a Test Report draft."
+            )
         report_number = _required_value(values, "dl_number", "DL/LTR Number")
         product_name = _first_value(
             values,
@@ -171,14 +183,17 @@ class TestReportDraftService:
             test_description=test_description,
             applicable_specification=specification,
             received_samples_date=_value(values, "date_lab_received_samples"),
-            start_test_date=_value(values, "start_test_date"),
-            finish_test_date=_value(values, "finish_test_date"),
+            start_test_date=(schedule.test_start_date if schedule else _value(values, "start_test_date")),
+            finish_test_date=(schedule.test_complete_date if schedule else _value(values, "finish_test_date")),
             description_part_number=_value(values, "description_pn"),
             requestor=_value(values, "requested_by"),
             project_leader=_value(values, "project_leader"),
             confirmed_matrix_id=preview.confirmed_matrix_id,
             groups=preview.groups,
-            generated_on=date.today(),
+            generated_on=(
+                _parse_report_date(schedule.estimated_completion_date)
+                if schedule else date.today()
+            ),
             sample_rows=basic_information.sample_rows,
         )
         if command.publication_mode == "official_current":
@@ -222,6 +237,19 @@ class TestReportDraftService:
                 basic_information.source_signature_hash
             ),
         )
+
+
+def _parse_report_date(value: str) -> date:
+    from datetime import datetime
+
+    for parser in (date.fromisoformat, lambda text: datetime.strptime(text, "%d %b %Y").date()):
+        try:
+            return parser(value.strip())
+        except ValueError:
+            continue
+    raise TestReportDraftGenerationError(
+        "Confirmed Project Schedule has an invalid Estimated Completion date."
+    )
 
 
 def _report_file_name(report: TestReportDraftData, *, draft: bool) -> str:

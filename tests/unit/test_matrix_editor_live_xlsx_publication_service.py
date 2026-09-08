@@ -10,6 +10,7 @@ from backend.application.matrix_editor_live_xlsx_export_service import (
     MatrixEditorLiveXlsxExportGroup,
     MatrixEditorLiveXlsxExportRequest,
     MatrixEditorLiveXlsxExportRow,
+    MatrixEditorLiveXlsxExportSchedule,
 )
 from backend.application.matrix_editor_live_xlsx_publication_service import (
     ConfirmedMatrixLiveXlsxAuthorityMatcher,
@@ -67,6 +68,27 @@ def test_authority_matcher_rejects_changed_matrix_content() -> None:
             current.groups,
             (changed_row,),
         ),
+    )
+
+
+def test_authority_matcher_composes_confirmed_project_schedule() -> None:
+    schedule = SimpleNamespace(
+        post_test_buffer_days="2",
+        sample_received_date="2026-09-01",
+        test_start_date="2026-09-02",
+        test_complete_date="2026-09-05",
+        estimated_completion_date="2026-09-07",
+    )
+    matcher = ConfirmedMatrixLiveXlsxAuthorityMatcher(
+        _ConfirmedStore(_snapshot()),
+        _ScheduleReader(schedule),
+    )
+    request = _request(schedule=_schedule())
+
+    assert matcher.matches_active_authority("P1", request)
+    assert not matcher.matches_active_authority(
+        "P1",
+        _request(schedule=_schedule(estimated_completion_date="2026-09-08")),
     )
 
 
@@ -221,7 +243,10 @@ def test_execute_checks_project_lifecycle_before_writing(tmp_path: Path) -> None
     assert guard.calls == [("P1", LifecycleWriteOperation.MATRIX_EXPORT_PUBLISH)]
 
 
-def _request() -> MatrixEditorLiveXlsxExportRequest:
+def _request(
+    *,
+    schedule: MatrixEditorLiveXlsxExportSchedule | None = None,
+) -> MatrixEditorLiveXlsxExportRequest:
     return MatrixEditorLiveXlsxExportRequest(
         source="matrix_editor_current_ui_state",
         project_reference="DL-2026-08-004",
@@ -240,6 +265,20 @@ def _request() -> MatrixEditorLiveXlsxExportRequest:
                 "2",
             ),
         ),
+        schedule=schedule,
+    )
+
+
+def _schedule(
+    *,
+    estimated_completion_date: str = "2026-09-07",
+) -> MatrixEditorLiveXlsxExportSchedule:
+    return MatrixEditorLiveXlsxExportSchedule(
+        post_test_buffer_days="2",
+        sample_received_date="2026-09-01",
+        planned_test_start_date="2026-09-02",
+        planned_test_complete_date="2026-09-05",
+        estimated_completion_date=estimated_completion_date,
     )
 
 
@@ -299,6 +338,22 @@ class _ConfirmedStore:
 
     def get_active_by_project(self, project_id: str):
         return self.snapshot
+
+
+class _ScheduleReader:
+    def __init__(self, schedule) -> None:
+        self.schedule = schedule
+
+    def get_latest_confirmed(self, project_id: str):
+        return self.schedule
+
+
+class _ScheduleReader:
+    def __init__(self, schedule) -> None:
+        self.schedule = schedule
+
+    def get_latest_confirmed(self, project_id: str):
+        return self.schedule
 
 
 class _AuthorityMatcher:

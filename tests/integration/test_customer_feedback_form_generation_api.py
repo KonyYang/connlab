@@ -10,14 +10,27 @@ from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_session, get_settings
 from backend.api.main import app
-from backend.domain import ExternalResource, ExternalResourceType, Project, ProjectStatus
+from backend.application.project_basic_information_service import (
+    ProjectBasicInformationRecord,
+)
+from backend.domain import (
+    ConfirmedMatrixSnapshot,
+    ConfirmedMatrixStatus,
+    ConfirmedMatrixVersion,
+    ExternalResource,
+    ExternalResourceType,
+    Project,
+    ProjectStatus,
+)
 from backend.infrastructure.storage.database import (
     create_database_engine,
     create_session_factory,
     init_db,
 )
 from backend.infrastructure.storage.repositories import (
+    ConfirmedMatrixAuthorityRepository,
     ExternalResourceRepository,
+    ProjectBasicInformationRepository,
     ProjectRepository,
 )
 from backend.shared.config import Settings
@@ -161,6 +174,41 @@ def _seed_project_and_template(
                 requestor="MP Cao",
                 status=ProjectStatus.LTR_REGISTERED,
                 created_on=date(2026, 6, 1),
+            )
+        )
+        ProjectBasicInformationRepository(session).create_confirmed(
+            ProjectBasicInformationRecord(
+                record_id="BI1",
+                project_id="P1",
+                status="confirmed",
+                version=1,
+                values={"date_lab_received_samples": "2026-06-01"},
+                source_signature='{"project":"P1"}',
+                created_at="2026-06-01T00:00:00Z",
+                updated_at="2026-06-01T00:00:00Z",
+                confirmed_at="2026-06-01T00:00:00Z",
+                confirmed_by="operator",
+            )
+        )
+        ConfirmedMatrixAuthorityRepository(session).create_snapshot(
+            ConfirmedMatrixSnapshot(
+                version=ConfirmedMatrixVersion(
+                    confirmed_matrix_id="CM1",
+                    project_id="P1",
+                    project_matrix_draft_id="DRAFT1",
+                    source_import_id="IMPORT1",
+                    source_snapshot_id="SNAP1",
+                    confirmed_revision=1,
+                    is_active_authority=True,
+                    status=ConfirmedMatrixStatus.CONFIRMED,
+                    confirmed_by="operator",
+                    confirmed_at="2026-06-01T00:00:00Z",
+                    post_test_buffer_days="2",
+                    sample_received_date="2026-06-01",
+                    planned_test_start_date="2026-06-02",
+                    planned_test_complete_date="2026-06-06",
+                    estimated_completion_date="2026-06-08",
+                )
             )
         )
         ExternalResourceRepository(session).upsert(

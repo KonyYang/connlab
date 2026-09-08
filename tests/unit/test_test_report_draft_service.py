@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from datetime import date
 
 import pytest
 
@@ -16,6 +17,7 @@ from backend.application.project_basic_information_output import (
 from backend.application.project_basic_information_service import (
     ProjectBasicInformationSampleRow,
 )
+from backend.application.project_schedule_output import ConfirmedProjectScheduleSnapshot
 from backend.application.test_report_draft_service import (
     GenerateTestReportDraftCommand,
     TestReportDraftGenerationError,
@@ -31,6 +33,7 @@ def test_generates_report_model_from_confirmed_basic_information_and_active_matr
     service = TestReportDraftService(
         preview_service=_PreviewService(_preview()),
         basic_information_reader=_BasicInformationReader(_basic_information()),
+        project_schedule_reader=_ScheduleReader(),
         writer=writer,
     )
 
@@ -48,8 +51,9 @@ def test_generates_report_model_from_confirmed_basic_information_and_active_matr
     assert report.test_description == "Qualification Testing"
     assert report.applicable_specification == "GS-12-2113 Rev.7"
     assert report.received_samples_date == "2026-05-20"
-    assert report.start_test_date == "2026-06-01"
-    assert report.finish_test_date == "2026-07-15"
+    assert report.start_test_date == "2026-06-02"
+    assert report.finish_test_date == "2026-07-16"
+    assert report.generated_on == date(2026, 7, 20)
     assert report.description_part_number == "10179696-0001LF"
     assert report.requestor == "MP Cao"
     assert report.project_leader == "Even Yang"
@@ -194,6 +198,18 @@ class _BasicInformationReader:
 
     def get_latest_confirmed(self, project_id: str):
         return self._snapshot if project_id == "P1" else None
+
+
+class _ScheduleReader:
+    def get_latest_confirmed(self, project_id: str):
+        if project_id != "P1":
+            return None
+        return ConfirmedProjectScheduleSnapshot(
+            project_id="P1", revision_id="psr-1", revision_sequence=1,
+            sample_received_date="2026-05-20", post_test_buffer_days="4",
+            test_start_date="2026-06-02", test_complete_date="2026-07-16",
+            estimated_completion_date="2026-07-20", context_signature="schedule:psr-1@fp",
+        )
 
 
 class _Writer:

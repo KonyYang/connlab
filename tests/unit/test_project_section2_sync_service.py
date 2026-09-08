@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from backend.application.project_schedule_output import ConfirmedProjectScheduleSnapshot
 from backend.application.project_section2_sync_service import (
     ProjectSection2SyncAmbiguousTargetError,
     ProjectSection2SyncCommand,
@@ -21,7 +22,7 @@ from backend.domain import (
 )
 
 
-def test_preview_reports_will_change_for_valid_confirmed_matrix_dates() -> None:
+def test_preview_reports_will_change_for_confirmed_schedule_dates() -> None:
     service, forms = _service(
         form=_form(received_date="2026-05-01", estimated_completion_date="2026-05-10"),
         snapshot=_snapshot(sample_received_date="2026-06-01", estimated_completion_date="2026-06-08"),
@@ -33,6 +34,7 @@ def test_preview_reports_will_change_for_valid_confirmed_matrix_dates() -> None:
     assert result.application_form_id == "FORM1"
     assert result.confirmed_matrix_id == "CM1"
     assert result.confirmed_revision == 2
+    assert result.source_context_signature == "schedule:PS1@fingerprint"
     assert [(field.field_key, field.status, field.next_value) for field in result.fields] == [
         ("received_date", "will_change", "2026-06-01"),
         ("estimated_completion_date", "will_change", "2026-06-08"),
@@ -51,6 +53,7 @@ def test_sync_updates_structured_application_form_dates() -> None:
             project_id="P1",
             expected_confirmed_matrix_id="CM1",
             expected_confirmed_revision=2,
+            expected_source_context_signature="schedule:PS1@fingerprint",
             operator="MP Cao",
         )
     )
@@ -89,6 +92,7 @@ def test_empty_source_dates_are_skipped_and_do_not_clear_targets() -> None:
             project_id="P1",
             expected_confirmed_matrix_id="CM1",
             expected_confirmed_revision=2,
+            expected_source_context_signature="schedule:PS1@fingerprint",
         )
     )
 
@@ -116,6 +120,7 @@ def test_invalid_source_date_blocks_sync_and_does_not_mutate() -> None:
                 project_id="P1",
                 expected_confirmed_matrix_id="CM1",
                 expected_confirmed_revision=2,
+                expected_source_context_signature="schedule:PS1@fingerprint",
             )
         )
     assert forms.updated == []
@@ -125,6 +130,13 @@ def test_missing_confirmed_matrix_is_readiness_blocker() -> None:
     service, _ = _service(form=_form(), snapshot=None)
 
     with pytest.raises(ProjectSection2SyncReadinessError, match="Confirm Matrix authority"):
+        service.preview(ProjectSection2SyncCommand(project_id="P1"))
+
+
+def test_missing_confirmed_schedule_is_readiness_blocker() -> None:
+    service, _ = _service(form=_form(), snapshot=_snapshot(), schedule=None)
+
+    with pytest.raises(ProjectSection2SyncReadinessError, match="Project Schedule"):
         service.preview(ProjectSection2SyncCommand(project_id="P1"))
 
 
@@ -157,6 +169,7 @@ def test_expected_confirmed_matrix_mismatch_rejects_before_mutation() -> None:
                 project_id="P1",
                 expected_confirmed_matrix_id="OLD",
                 expected_confirmed_revision=2,
+                expected_source_context_signature="schedule:PS1@fingerprint",
             )
         )
 
@@ -202,11 +215,22 @@ class _FormStore:
         return form
 
 
+class _ScheduleReader:
+    def __init__(self, snapshot: ConfirmedProjectScheduleSnapshot | None) -> None:
+        self._snapshot = snapshot
+
+    def get_latest_confirmed(self, project_id: str):
+        if self._snapshot and self._snapshot.project_id == project_id:
+            return self._snapshot
+        return None
+
+
 def _service(
     *,
     project: Project | None = Project(project_id="P1", project_no="DL-1", product_name="Product", requestor="MP Cao"),
     form: ApplicationForm | list[ApplicationForm] | None = None,
     snapshot: ConfirmedMatrixSnapshot | None = None,
+    schedule: ConfirmedProjectScheduleSnapshot | None | object = ...,
 ) -> tuple[ProjectSection2SyncService, _FormStore]:
     forms = form if isinstance(form, list) else ([] if form is None else [form])
     form_store = _FormStore(forms)
@@ -214,6 +238,14 @@ def _service(
         ProjectSection2SyncService(
             project_store=_ProjectStore(project),
             confirmed_matrix_store=_MatrixStore(snapshot),
+            project_schedule_reader=_ScheduleReader(
+                _schedule(
+                    sample_received_date=snapshot.version.sample_received_date,
+                    estimated_completion_date=snapshot.version.estimated_completion_date,
+                )
+                if schedule is ... and snapshot is not None
+                else schedule
+            ),
             application_form_store=form_store,
             clock=lambda: "2026-06-10T12:00:00Z",
         ),
@@ -258,4 +290,22 @@ def _snapshot(
             sample_received_date=sample_received_date,
             estimated_completion_date=estimated_completion_date,
         )
+    )
+
+
+def _schedule(
+    *,
+    sample_received_date: str | None = "2026-06-01",
+    estimated_completion_date: str | None = "2026-06-08",
+) -> ConfirmedProjectScheduleSnapshot:
+    return ConfirmedProjectScheduleSnapshot(
+        project_id="P1",
+        revision_id="PS1",
+        revision_sequence=1,
+        sample_received_date=sample_received_date or "",
+        post_test_buffer_days="2",
+        test_start_date="2026-06-02",
+        test_complete_date="2026-06-06",
+        estimated_completion_date=estimated_completion_date or "",
+        context_signature="schedule:PS1@fingerprint",
     )

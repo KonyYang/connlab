@@ -24,6 +24,7 @@ from backend.application.project_lifecycle_write_guard import (
     LifecycleWriteOperation,
     ProjectLifecycleWriteGuard,
 )
+from backend.application.project_schedule_output import ConfirmedProjectScheduleReader
 
 
 class WorkspaceLookup(Protocol):
@@ -85,10 +86,15 @@ class MatrixEditorLiveXlsxPublicationConflictError(
 
 
 class ConfirmedMatrixLiveXlsxAuthorityMatcher:
-    """Compare the exported Matrix fields with active confirmed authority."""
+    """Compare workbook fields with active Matrix and Project Schedule authority."""
 
-    def __init__(self, confirmed_store: ConfirmedMatrixStore) -> None:
+    def __init__(
+        self,
+        confirmed_store: ConfirmedMatrixStore,
+        schedule_reader: ConfirmedProjectScheduleReader | None = None,
+    ) -> None:
         self._confirmed = confirmed_store
+        self._schedule = schedule_reader
 
     def matches_active_authority(
         self,
@@ -97,6 +103,13 @@ class ConfirmedMatrixLiveXlsxAuthorityMatcher:
     ) -> bool:
         snapshot = self._confirmed.get_active_by_project(project_id)
         if snapshot is None:
+            return False
+        schedule = (
+            self._schedule.get_latest_confirmed(project_id)
+            if self._schedule is not None
+            else None
+        )
+        if self._schedule is not None and schedule is None:
             return False
         groups = tuple(snapshot.groups)
         cells = {
@@ -159,13 +172,7 @@ class ConfirmedMatrixLiveXlsxAuthorityMatcher:
         authority = MatrixEditorLiveXlsxExportProjection(
             groups=projected_groups,
             rows=projected_rows,
-            schedule=MatrixEditorLiveXlsxExportSchedule(
-                post_test_buffer_days=getattr(snapshot.version, "post_test_buffer_days", None) or "",
-                sample_received_date=getattr(snapshot.version, "sample_received_date", None) or "",
-                planned_test_start_date=getattr(snapshot.version, "planned_test_start_date", None) or "",
-                planned_test_complete_date=getattr(snapshot.version, "planned_test_complete_date", None) or "",
-                estimated_completion_date=getattr(snapshot.version, "estimated_completion_date", None) or "",
-            ),
+            schedule=_publication_schedule(snapshot.version, schedule),
         )
         return (
             build_matrix_editor_live_xlsx_authority_signature(request)
@@ -176,7 +183,7 @@ class ConfirmedMatrixLiveXlsxAuthorityMatcher:
 def build_matrix_editor_live_xlsx_authority_signature(
     value: MatrixEditorLiveXlsxExportRequest | MatrixEditorLiveXlsxExportProjection,
 ) -> str:
-    """Hash only workbook fields owned by confirmed Matrix authority."""
+    """Hash workbook fields composed from confirmed Matrix and Schedule authority."""
     payload = {
         "groups": [
             {
@@ -209,6 +216,24 @@ def build_matrix_editor_live_xlsx_authority_signature(
         separators=(",", ":"),
     ).encode("utf-8")
     return sha256(encoded).hexdigest()
+
+
+def _publication_schedule(matrix_version, schedule) -> MatrixEditorLiveXlsxExportSchedule:
+    if schedule is not None:
+        return MatrixEditorLiveXlsxExportSchedule(
+            post_test_buffer_days=schedule.post_test_buffer_days,
+            sample_received_date=schedule.sample_received_date,
+            planned_test_start_date=schedule.test_start_date,
+            planned_test_complete_date=schedule.test_complete_date,
+            estimated_completion_date=schedule.estimated_completion_date,
+        )
+    return MatrixEditorLiveXlsxExportSchedule(
+        post_test_buffer_days=getattr(matrix_version, "post_test_buffer_days", None) or "",
+        sample_received_date=getattr(matrix_version, "sample_received_date", None) or "",
+        planned_test_start_date=getattr(matrix_version, "planned_test_start_date", None) or "",
+        planned_test_complete_date=getattr(matrix_version, "planned_test_complete_date", None) or "",
+        estimated_completion_date=getattr(matrix_version, "estimated_completion_date", None) or "",
+    )
 
 
 def _text(value: object | None) -> str:

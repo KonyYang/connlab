@@ -7,6 +7,8 @@ import {
 
 const apiMocks = vi.hoisted(() => ({
   fetchMatrixEditorSession: vi.fn(),
+  fetchProjectSchedule: vi.fn(),
+  confirmProjectSchedule: vi.fn(),
   createMatrixRevisionDraft: vi.fn(),
   saveMatrixEditorSessionDraft: vi.fn(),
   discardMatrixEditorSessionDraft: vi.fn(),
@@ -84,6 +86,8 @@ vi.mock("../../api/client", () => {
   return {
     ApiRequestError: MockApiRequestError,
     fetchMatrixEditorSession: apiMocks.fetchMatrixEditorSession,
+    fetchProjectSchedule: apiMocks.fetchProjectSchedule,
+    confirmProjectSchedule: apiMocks.confirmProjectSchedule,
     createMatrixRevisionDraft: apiMocks.createMatrixRevisionDraft,
     saveMatrixEditorSessionDraft: apiMocks.saveMatrixEditorSessionDraft,
     discardMatrixEditorSessionDraft: apiMocks.discardMatrixEditorSessionDraft,
@@ -371,6 +375,32 @@ export function installMatrixEditorWorkspaceTestLifecycle(): void {
       warnings: [],
     };
     apiMocks.fetchMatrixEditorSession.mockResolvedValue(buildSessionSeed());
+    apiMocks.fetchProjectSchedule.mockResolvedValue({
+      status: "confirmed", project_id: "P1", sample_received_date: "2026-06-01",
+      critical_group_id: "group-1", critical_group_days: "0",
+      suggestion: {
+        post_test_buffer_days: "", test_start_date: "2026-06-02",
+        test_complete_date: "2026-06-02", estimated_completion_date: "2026-06-02",
+      },
+      confirmed_revision: {
+        revision_id: "psr-1", project_id: "P1", revision_sequence: 1,
+        state: "confirmed", fingerprint: "schedule-fp", matrix_input_fingerprint: "matrix-fp",
+        based_on_confirmed_matrix_id: "confirmed-1", based_on_confirmed_matrix_revision: 3,
+        based_on_basic_information_version: 2, sample_received_date: "2026-06-01",
+        post_test_buffer_days: "", test_start_date: "2026-06-02",
+        test_complete_date: "2026-06-02", estimated_completion_date: "2026-06-02",
+        confirmed_by: "Lab User", confirmed_at: "2026-06-01T00:00:00Z",
+      },
+    });
+    apiMocks.confirmProjectSchedule.mockResolvedValue({
+      revision_id: "psr-2", project_id: "P1", revision_sequence: 2,
+      state: "confirmed", fingerprint: "schedule-fp-2", matrix_input_fingerprint: "matrix-fp",
+      based_on_confirmed_matrix_id: "confirmed-1", based_on_confirmed_matrix_revision: 3,
+      based_on_basic_information_version: 2, sample_received_date: "2026-06-01",
+      post_test_buffer_days: "", test_start_date: "2026-06-03",
+      test_complete_date: "2026-06-03", estimated_completion_date: "2026-06-03",
+      confirmed_by: "Lab User", confirmed_at: "2026-06-02T00:00:00Z",
+    });
     apiMocks.createMatrixRevisionDraft.mockResolvedValue({});
     apiMocks.previewLlcrCrRecordWorkbook.mockResolvedValue({
       status: "ready",

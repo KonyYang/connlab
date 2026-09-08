@@ -16,6 +16,32 @@ import { MatrixEditorWorkspace } from "./MatrixEditorWorkspace";
 installMatrixEditorWorkspaceTestLifecycle();
 
 describe("MatrixEditorWorkspace editing behavior", () => {
+  it("confirms Project Schedule independently without activating Confirm Matrix", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    const plannedStart = await screen.findByLabelText("Planned start");
+    const confirmMatrix = screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement;
+    expect(confirmMatrix.disabled).toBe(true);
+    expect(screen.queryByLabelText("Sample received")).toBeNull();
+
+    fireEvent.change(plannedStart, { target: { value: "2026-06-03" } });
+
+    expect(confirmMatrix.disabled).toBe(true);
+    const confirmSchedule = screen.getByRole("button", { name: "Confirm schedule" }) as HTMLButtonElement;
+    expect(confirmSchedule.disabled).toBe(false);
+    fireEvent.click(confirmSchedule);
+    await waitFor(() => expect(apiMocks.confirmProjectSchedule).toHaveBeenCalledWith(
+      "P1",
+      expect.objectContaining({
+        test_start_date: "2026-06-03",
+        test_complete_date: "2026-06-03",
+        estimated_completion_date: "2026-06-03",
+      })
+    ));
+    expect(apiMocks.saveMatrixEditorSessionDraft).not.toHaveBeenCalled();
+    expect(apiMocks.confirmMatrixEditorSession).not.toHaveBeenCalled();
+  });
+
   it("exports the current unsaved Matrix and keeps its snapshot while preview is pending", async () => {
     const preview = createDeferred();
     apiMocks.previewMatrixEditorLiveXlsxPublication.mockReturnValueOnce(preview.promise);

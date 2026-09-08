@@ -9,6 +9,7 @@ from docx import Document
 from backend.application.project_basic_information_output import (
     ConfirmedBasicInformationSnapshot,
 )
+from backend.application.project_schedule_output import ConfirmedProjectScheduleSnapshot
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
 from backend.application.project_application_form_write_back_service import (
     ProjectApplicationFormWriteBackError,
@@ -43,6 +44,7 @@ def test_application_form_write_back_updates_copied_submitted_material_docx(
         application_form_store=_ApplicationFormStore(),
         file_asset_store=_FileAssetStore(target),
         basic_information_reader=_BasicInformationReader(_basic_information()),
+        project_schedule_reader=_ScheduleReader(),
         output_record_service=output_store,
     )
 
@@ -55,14 +57,14 @@ def test_application_form_write_back_updates_copied_submitted_material_docx(
     assert values["Lab Performing the Tests"] == "Dongguan"
     assert values["Lab Personnel Assigned"] == "BI Leader"
     assert values["Date Lab Received Samples"] == "20 Jun 2026"
-    assert values["Estimated Completion Date"] == "30 Jun 2026"
+    assert values["Estimated Completion Date"] == "02 Jul 2026"
     assert values["Condition of Samples when Received"] == "Acceptable"
     assert output_store.commands
     assert str(target) == output_store.commands[-1].output_path
     assert output_store.commands[-1].source_context_signature == (
         "application-form:F1@source:unknown|"
         "basic:2@394f0d9772b800b7086b0d43d7a5bb748f33efafc474c39e9e25d4dc481712fe"
-        "|application-form-output:lab_section_v1"
+        "|application-form-output:lab_section_v1|schedule:psr-1@fp"
     )
     assert output_store.commands[-1].status is ProjectOutputStatus.CURRENT
     assert output_store.commands[-1].source is ProjectOutputSource.SYSTEM_GENERATED
@@ -643,6 +645,16 @@ class _BasicInformationReader:
         self, project_id: str
     ) -> ConfirmedBasicInformationSnapshot | None:
         return self.snapshot
+
+
+class _ScheduleReader:
+    def get_latest_confirmed(self, project_id: str):
+        return ConfirmedProjectScheduleSnapshot(
+            project_id=project_id, revision_id="psr-1", revision_sequence=1,
+            sample_received_date="20 Jun 2026", post_test_buffer_days="2",
+            test_start_date="22 Jun 2026", test_complete_date="30 Jun 2026",
+            estimated_completion_date="02 Jul 2026", context_signature="schedule:psr-1@fp",
+        )
 
 
 class _RejectingOffice:
