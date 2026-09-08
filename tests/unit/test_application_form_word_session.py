@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import pytest
 
 from backend.infrastructure.office.application_form_word_session import (
     ApplicationFormWordSession,
@@ -52,6 +53,15 @@ def test_session_closes_documents_and_quits_owned_word_on_exception() -> None:
         raise AssertionError("Expected caller exception.")
 
     assert document.closed
+    assert word.quit_called
+
+
+def test_session_rejects_null_word_open_and_still_quits():
+    word = _FakeWordApplication()
+    word.Documents.Open = lambda *args, **kwargs: None
+    with pytest.raises(ValueError, match='Word could not open Application Form'):
+        with ApplicationFormWordSession(dispatch_factory=lambda: word) as session:
+            session.open_document(Path('request.docx'))
     assert word.quit_called
 
 

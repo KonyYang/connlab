@@ -99,6 +99,12 @@ class ApplicationFormWordSession:
             ReadOnly=False,
             AddToRecentFiles=False,
         )
+        if document is None:
+            raise ValueError(
+                f"Word could not open Application Form '{Path(path).name}' "
+                f"(path length: {len(str(Path(path).resolve()))}). "
+                "Check the document and use a shorter working path before retrying."
+            )
         self._opened_documents.append(document)
         return document
 

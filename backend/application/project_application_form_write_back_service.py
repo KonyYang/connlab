@@ -279,9 +279,10 @@ class ProjectApplicationFormWriteBackService:
             )
         office_start = perf_counter()
         try:
-            staging_root = recovery.staging_directory if recovery is not None else target.parent
-            with TemporaryDirectory(prefix=".connlab-application-", dir=staging_root) as directory:
-                staged = Path(directory) / target.name
+            # Word COM can return None for long paths. Keep its working copy short;
+            # the publisher still owns durable staging and target conflict checks.
+            with TemporaryDirectory(prefix="connlab-word-") as directory:
+                staged = Path(directory) / ("form" + target.suffix)
                 prior = sha256_file(target)
                 shutil.copy2(target, staged)
                 write_result = self._office.write_word_application_form_fields_with_owned_session(

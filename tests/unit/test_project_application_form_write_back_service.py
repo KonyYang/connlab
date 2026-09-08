@@ -69,6 +69,31 @@ def test_application_form_write_back_updates_copied_submitted_material_docx(
     assert any(item.label == "application_form.office_write" for item in result.timings)
 
 
+def test_application_form_write_back_keeps_word_path_short_for_deep_project(tmp_path):
+    official = tmp_path / ('project-' + 'a' * 90)
+    target = official / 'Submitted Material' / ('request-' + 'b' * 65 + '.docx')
+    _write_docx(target)
+    opened_paths = []
+
+    class PathLimitedOffice(_CapturingOffice):
+        def write_word_application_form_fields_with_owned_session(self, source_path, fields):
+            opened_paths.append(source_path)
+            assert len(str(source_path.resolve())) < 240, 'Word cannot open long staging paths'
+            assert source_path.read_bytes() == target.read_bytes()
+            return self._write(fields)
+
+    service = ProjectApplicationFormWriteBackService(
+        file_gateway=ProjectFolderRequiredFormsFileGateway(),
+        project_store=_ProjectStore(), workspace_store=_WorkspaceStore(official),
+        application_form_store=_ApplicationFormStore(), file_asset_store=_FileAssetStore(target),
+        basic_information_reader=_BasicInformationReader(_basic_information()),
+        output_record_service=_OutputStore(), office=PathLimitedOffice(),
+    )
+    assert service.write_back('P1').status == 'current'
+    assert target.is_file()
+    assert opened_paths and not opened_paths[0].exists()
+
+
 def test_application_form_write_back_blocks_without_confirmed_basic_information(
     tmp_path: Path,
 ) -> None:
