@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_IMPORT_SAMPLE_SIZE_CASE_COMPATIBILITY",
     "summary": "Accept a legacy ConnLab Matrix XLSX footer labeled Sample Size without weakening the controlled footer structure.",
@@ -25,17 +25,68 @@
     "risk_reasons": [],
     "activation_head": "7af05a382159fdf994a78ec8331da7242c24b0b5",
     "started_at": "2026-09-07T15:53:14.687615Z",
-    "updated_at": "2026-09-08T00:05:26.705304Z",
+    "updated_at": "2026-09-08T00:12:43.147111Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_IMPORT_SAMPLE_SIZE_CASE_COMPATIBILITY",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "user: approved release refresh recovery and UI parity investigation",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "summary": "Accepted release feedback: manual route-load recovery; verified current release contains Aptos styling and workbench details toggle.",
+      "task_id": "TASK_MATRIX_IMPORT_SAMPLE_SIZE_CASE_COMPATIBILITY",
+      "validation": [
+        {
+          "status": "passed",
+          "detail": "8 passed; unchanged",
+          "name": "Prior XLSX regression"
+        },
+        {
+          "status": "passed",
+          "detail": "50 passed",
+          "name": "Route recovery, diagnostics, workbench layout"
+        },
+        {
+          "name": "Production frontend build",
+          "status": "passed"
+        },
+        {
+          "status": "passed",
+          "detail": "404 shows actionable fallback; explicit refresh recovers fee page",
+          "name": "Built frontend retired chunk browser smoke"
+        },
+        {
+          "status": "passed",
+          "detail": "Aptos computed font and hide/show details verified on port 8765",
+          "name": "Existing release UI parity"
+        }
+      ],
+      "schema": "connlab.sol-task-report",
+      "integration": {
+        "mode": "direct_primary",
+        "status": "passed"
+      },
+      "version": 1,
+      "changed_paths": [
+        "backend/infrastructure/office/connlab_matrix_xlsx_gateway.py",
+        "tests/unit/test_connlab_matrix_xlsx_gateway.py",
+        "frontend/src/App.tsx",
+        "frontend/src/components/layout/RouteLoadBoundary.tsx",
+        "frontend/src/components/layout/RouteLoadBoundary.test.tsx",
+        "frontend/src/components/support/FrontendDiagnosticsReporter.tsx"
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented and self-reviewed exact changes against user request and repository standards; no independent agent used."
+        }
+      },
+      "subject": "6908dc52695bc64ae081a50d564fa6e1316ada8c",
+      "scope_ok": true
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_OPTIMIZATION_6_10",
