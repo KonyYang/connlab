@@ -164,10 +164,7 @@ export function deriveActiveMatrixFolderCommand({
       label,
     };
   }
-  if (
-    (effectiveFolderReady || officialWorkspaceStatus === "completed") &&
-    projectFolderBlocker
-  ) {
+  if (projectFolderBlocker) {
     return {
       disabled: true,
       disabledReason: projectFolderBlocker,

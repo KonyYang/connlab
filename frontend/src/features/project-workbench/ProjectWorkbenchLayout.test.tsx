@@ -844,6 +844,92 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     );
   });
 
+  it("blocks initial project folder creation with the authoritative Basic Information preview reason", () => {
+    const blocker =
+      "Basic Information is complete but not confirmed. Open Basic Information and click Confirm before generating Project Folder outputs.";
+    renderWorkbench({
+      latestLtr: "DL-2026-06-001",
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      matrixAuthorityDraft: testPlanDraft,
+      basicInformation: {
+        ...confirmedBasicInformation,
+        status: "unconfirmed",
+        latest_confirmed: null,
+      },
+      officialWorkspacePreview: {
+        project_id: "project-1",
+        dl_number: "DL-001",
+        status: "blocked",
+        generation_context: "blocked-preview-token",
+        local_workspace_root: "D:/Projects",
+        local_workspace_path: "D:/Projects/DL-001",
+        source_book_path: "D:/Projects/DL-001/Source Book",
+        template_path: "D:/Template",
+        official_project_folder_path: "D:/Projects/DL-001/Official",
+        manifest_path: "D:/Projects/DL-001/.connlab/manifest.json",
+        template_root_mode: "template_root",
+        blockers: [blocker],
+        warnings: [],
+        planned_paths: [],
+      },
+    });
+
+    const folderButton = screen.getByRole("button", { name: "Create project folder" });
+    expect(folderButton).toHaveProperty("disabled", true);
+    expect(folderButton.getAttribute("title")).toBe(blocker);
+  });
+
+  it("explains a saved Basic Information failure and opens the form instead of offering resume", async () => {
+    const user = userEvent.setup();
+    const onOpenBasicInformation = vi.fn();
+    const onRefreshOfficialWorkspacePreview = vi.fn().mockResolvedValue(undefined);
+    const blocker =
+      "Basic Information is complete but not confirmed. Open Basic Information and click Confirm before generating Project Folder outputs.";
+    renderWorkbench(
+      {
+        basicInformation: {
+          ...confirmedBasicInformation,
+          status: "unconfirmed",
+          latest_confirmed: null,
+        },
+        officialWorkspaceError:
+          "Confirm Basic Information before generating Project Folder outputs.",
+        officialWorkspaceCanResume: true,
+        officialWorkspaceCanRestart: true,
+        onRefreshOfficialWorkspacePreview,
+        officialWorkspacePreview: {
+          project_id: "project-1",
+          dl_number: "DL-001",
+          status: "blocked",
+          generation_context: "blocked-preview-token",
+          local_workspace_root: "D:/Projects",
+          local_workspace_path: "D:/Projects/DL-001",
+          source_book_path: "D:/Projects/DL-001/Source Book",
+          template_path: "D:/Template",
+          official_project_folder_path: "D:/Projects/DL-001/Official",
+          manifest_path: "D:/Projects/DL-001/.connlab/manifest.json",
+          template_root_mode: "template_root",
+          blockers: [blocker],
+          warnings: [],
+          planned_paths: [],
+        },
+      },
+      {},
+      { onOpenBasicInformation }
+    );
+
+    expect(screen.getByRole("alert").textContent).toContain(blocker);
+    expect(screen.queryByRole("button", { name: "Resume generation" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Open Basic Information" }));
+    expect(onOpenBasicInformation).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole("button", { name: "Refresh generation preview" }));
+    expect(screen.getByRole("button", { name: "Start new generation" })).toHaveProperty(
+      "disabled",
+      true
+    );
+  });
+
   it("keeps the project folder button enabled when package template readiness is blocked", () => {
     const onOpenSettings = vi.fn();
     renderWorkbench(

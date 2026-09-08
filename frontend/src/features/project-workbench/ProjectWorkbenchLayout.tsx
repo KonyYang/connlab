@@ -217,10 +217,10 @@ export function ProjectWorkbenchLayout({
     creatingFolder: officialWorkspaceCreating,
     effectiveFolderReady,
     officialWorkspaceStatus: officialWorkspacePreview?.status,
-    projectFolderBlocker: selectProjectFolderOneClickBlocker(
-      projectFolderTasks,
-      effectiveFolderReady
-    ),
+    projectFolderBlocker:
+      officialWorkspacePreview?.blockers?.find((blocker) =>
+        blocker.includes("Basic Information")
+      ) ?? selectProjectFolderOneClickBlocker(projectFolderTasks, effectiveFolderReady),
   });
   const visibleActiveMatrixFolderCommand = lifecycleReadonlyView.readonly
     ? {
@@ -237,6 +237,13 @@ export function ProjectWorkbenchLayout({
     officialWorkspaceConflictPaths.length > 0 ||
     officialWorkspacePreview?.status === "exists" ||
     officialWorkspacePreview?.status === "completed";
+  const basicInformationGenerationGuidance = deriveBasicInformationGenerationGuidance(
+    officialWorkspaceError,
+    runtimeModel.basicInformation
+  );
+  const isBasicInformationGenerationBlocker = Boolean(
+    basicInformationGenerationGuidance
+  );
   const hasMatrixDraftForPlanning =
     activeMatrixAuthorityReady || Boolean(matrixCandidateDraft ?? matrixDraft);
   const visibleFeeEvaluationButtonState =
@@ -492,8 +499,14 @@ export function ProjectWorkbenchLayout({
       {officialWorkspaceError ? (
         <div className="runtime-console-workflow-alert is-danger" role="alert">
           <strong>Project folder workflow</strong>
-          <span>{officialWorkspaceError}</span>
-          {officialWorkspaceCanResume ? (
+          <span>{basicInformationGenerationGuidance ?? officialWorkspaceError}</span>
+          {isBasicInformationGenerationBlocker &&
+          runtimeModel.basicInformation?.status !== "confirmed" ? (
+            <button type="button" onClick={onOpenBasicInformation}>
+              Open Basic Information
+            </button>
+          ) : null}
+          {officialWorkspaceCanResume && !isBasicInformationGenerationBlocker ? (
             <button type="button" disabled={lifecycleReadonlyView.readonly || officialWorkspaceCreating}
               onClick={() => void onCreateOfficialWorkspace()}>Resume generation</button>
           ) : null}
@@ -501,7 +514,7 @@ export function ProjectWorkbenchLayout({
             <span>After correcting inputs, review a fresh preview to start a new operation. Previous completed files and recovery history are kept.</span>
             <button type="button" disabled={officialWorkspaceCreating || lifecycleReadonlyView.readonly}
               onClick={() => { setRestartPreviewReady(false); void onRefreshOfficialWorkspacePreview().then(() => setRestartPreviewReady(true)).catch(() => setRestartPreviewReady(false)); }}>Refresh generation preview</button>
-            <button type="button" disabled={!restartPreviewReady || !officialWorkspacePreview?.generation_context || officialWorkspaceCreating || lifecycleReadonlyView.readonly}
+            <button type="button" disabled={!restartPreviewReady || !officialWorkspacePreview?.generation_context || Boolean(officialWorkspacePreview?.blockers?.length) || officialWorkspaceCreating || lifecycleReadonlyView.readonly}
               onClick={() => {
                 if (hasOfficialWorkspaceConflict) {
                   setFolderConflictRestart(true);
@@ -649,6 +662,25 @@ function deriveBasicInformationShellStatus(
     return "draft";
   }
   return "unknown";
+}
+
+function deriveBasicInformationGenerationGuidance(
+  workflowError: string | null,
+  basicInformation: ProjectRuntimeConsoleModel["basicInformation"]
+): string | null {
+  if (!workflowError?.includes("Basic Information") || !basicInformation) {
+    return null;
+  }
+  if (basicInformation.missing_required_labels.length > 0) {
+    return `Basic Information is incomplete. Complete these required fields before generating Project Folder outputs: ${basicInformation.missing_required_labels.join(", ")}.`;
+  }
+  if (basicInformation.status === "needs_review") {
+    return "Basic Information source data changed after confirmation. Review and confirm the current Basic Information before generating Project Folder outputs.";
+  }
+  if (basicInformation.status === "unconfirmed") {
+    return "Basic Information is complete but not confirmed. Open Basic Information and click Confirm before generating Project Folder outputs.";
+  }
+  return "Basic Information is now confirmed. Refresh the generation preview and start a new generation.";
 }
 
 function deriveOfficialWorkspaceConflictPaths(

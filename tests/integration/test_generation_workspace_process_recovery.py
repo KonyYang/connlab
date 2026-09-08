@@ -11,6 +11,9 @@ from sqlalchemy import create_engine
 
 from backend.api import dependencies as deps
 from backend.api.project_folder_generation_composition import ProjectFolderGenerationRunner
+from backend.application.project_basic_information_service import (
+    ConfirmProjectBasicInformationCommand,
+)
 from backend.domain import Project, ProjectStatus, LtrRecord, LtrStatus, ExternalResource, ExternalResourceType, FileAsset, FileAssetType
 from backend.infrastructure.files.recoverable_output_publisher import RecoverableOutputPublisher
 from backend.infrastructure.storage.database import Base, create_session_factory
@@ -20,6 +23,25 @@ from backend.shared.config import Settings
 def _settings(root):
     return Settings(data_dir=root / "data", projects_dir=root / "projects", templates_dir=root / "templates",
                     database_path=root / "fixture.sqlite")
+
+
+def _confirm_basic_information(session):
+    deps.get_project_basic_information_service(session).confirm(
+        ConfirmProjectBasicInformationCommand(
+            project_id="P1",
+            values={
+                "dl_number": "DL-001",
+                "project_type": "NPD",
+                "product_description": "Connector",
+                "test_item": "Qualification Testing",
+                "tests_to_be_performed": "Qualification Testing",
+                "requested_by": "Test",
+                "project_leader": "Engineer",
+                "lab_performing_tests": "Dongguan",
+            },
+            confirmed_by="operator",
+        )
+    )
 
 
 @pytest.mark.parametrize("replaced", ["local_workspace_path", "official_folder_path", "source_book_path", None])
@@ -43,6 +65,7 @@ def test_later_step_refuses_replaced_workspace_directories_but_allows_new_output
         resources = deps.ExternalResourceRepository(session)
         resources.upsert(ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, destination))
         resources.upsert(ExternalResource("template", ExternalResourceType.PROJECT_FOLDER_TEMPLATE, template))
+        _confirm_basic_information(session)
         session.commit()
     runner = ProjectFolderGenerationRunner(sessions, settings)
     service = runner.service()
@@ -134,6 +157,7 @@ def test_fresh_process_recovers_workspace_without_replaying_conflict_or_copy(tmp
         resources = deps.ExternalResourceRepository(session)
         resources.upsert(ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, destination))
         resources.upsert(ExternalResource("template", ExternalResourceType.PROJECT_FOLDER_TEMPLATE, template))
+        _confirm_basic_information(session)
         session.commit()
     if window == "backup":
         (destination / "DL-001").mkdir()

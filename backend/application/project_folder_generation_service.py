@@ -1,5 +1,6 @@
 """Backend-owned Project Folder chain with explicit, durable interruption recovery."""
 
+from collections.abc import Sequence
 from uuid import uuid4
 import logging
 
@@ -25,9 +26,13 @@ class ProjectFolderGenerationService:
             if existing and existing["status"] != "completed":
                 if replaces_operation_id != existing["operation_id"] or not self._can_replace(existing):
                     raise ValueError("Resume the existing operation, or review a fresh preview before explicitly replacing a safely checkpointed operation.")
+            current_preview = self.preview(project_id)
             context = self.context(project_id)
-            if self.preview_context(project_id) != expected_context:
+            if current_preview.get("expected_context") != expected_context:
                 raise ValueError("Project folder preview changed. Refresh the preview before starting.")
+            blockers = current_preview.get("start_blockers", ())
+            if blockers:
+                raise ValueError(str(blockers[0]))
             state = self.journal.create(project_id, strategy, context)
             state.update(request_id=request_id, owner=self.owner, preview_context=expected_context)
             self.journal.save(state)
@@ -102,3 +107,27 @@ class ProjectFolderGenerationService:
     def _can_replace(state):
         return state["status"] in {"blocked", "running"} and all(
             effect["step"] in state["completed_steps"] for effect in state["effects"].values())
+
+
+def basic_information_generation_blocker(
+    *, status: str, missing_required_labels: Sequence[str]
+) -> str | None:
+    """Return actionable Project Folder guidance for Basic Information authority."""
+    if status == "confirmed":
+        return None
+    if missing_required_labels:
+        return (
+            "Basic Information is incomplete. Complete these required fields before "
+            "generating Project Folder outputs: "
+            + ", ".join(missing_required_labels)
+            + "."
+        )
+    if status == "needs_review":
+        return (
+            "Basic Information source data changed after confirmation. Review and confirm "
+            "the current Basic Information before generating Project Folder outputs."
+        )
+    return (
+        "Basic Information is complete but not confirmed. Open Basic Information and "
+        "click Confirm before generating Project Folder outputs."
+    )

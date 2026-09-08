@@ -1,6 +1,35 @@
-from backend.application.project_folder_generation_service import ProjectFolderGenerationService, GENERATION_STEPS
+from backend.application.project_folder_generation_service import (
+    GENERATION_STEPS,
+    ProjectFolderGenerationService,
+    basic_information_generation_blocker,
+)
 from backend.infrastructure.files.generation_journal import GenerationJournal
 import pytest
+
+
+def test_basic_information_preflight_distinguishes_missing_unconfirmed_and_changed_data():
+    assert basic_information_generation_blocker(
+        status="unconfirmed",
+        missing_required_labels=("Project Leader", "Lab Performing the Tests"),
+    ) == (
+        "Basic Information is incomplete. Complete these required fields before "
+        "generating Project Folder outputs: Project Leader, Lab Performing the Tests."
+    )
+    assert basic_information_generation_blocker(
+        status="unconfirmed", missing_required_labels=()
+    ) == (
+        "Basic Information is complete but not confirmed. Open Basic Information "
+        "and click Confirm before generating Project Folder outputs."
+    )
+    assert basic_information_generation_blocker(
+        status="needs_review", missing_required_labels=()
+    ) == (
+        "Basic Information source data changed after confirmation. Review and confirm "
+        "the current Basic Information before generating Project Folder outputs."
+    )
+    assert basic_information_generation_blocker(
+        status="confirmed", missing_required_labels=()
+    ) is None
 
 
 def test_backend_runs_chain_without_browser_and_resumes_at_failed_step(tmp_path):

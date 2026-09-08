@@ -5,7 +5,10 @@ from dataclasses import replace
 from pathlib import Path
 
 from backend.api import dependencies as deps
-from backend.application.project_folder_generation_service import ProjectFolderGenerationService
+from backend.application.project_folder_generation_service import (
+    ProjectFolderGenerationService,
+    basic_information_generation_blocker,
+)
 from backend.application.project_folder_required_forms_service import GenerateRequiredFormsCommand, RequiredFormsGenerateTarget
 from backend.application.project_output_record_service import RegisterProjectOutputCommand
 from backend.application.project_lifecycle_write_guard import LifecycleWriteOperation
@@ -83,12 +86,32 @@ class ProjectFolderGenerationRunner:
         from backend.api.routes_official_project_workspace import _preview_response
         with self.sessions() as session:
             preview = deps.get_official_project_workspace_service(session).preview(project_id)
+            basic_information = deps.get_project_basic_information_service(session).get(project_id)
+            basic_information_blocker = basic_information_generation_blocker(
+                status=basic_information.status,
+                missing_required_labels=basic_information.missing_required_labels,
+            )
             paths = preview.conflict_paths or ((preview.official_folder_path,) if preview.official_folder_path else ())
             token = fingerprint({"context": self.context(project_id), "preview": preview,
                                 "targets": [(str(path), tree_hash(path)) for path in paths],
                                 "manifest": file_hash(preview.manifest_path) if preview.manifest_path else None})
-            return {"expected_context": token, "workspace_preview": {
-                **_preview_response(preview).model_dump(), "generation_context": token}}
+            workspace_preview = _preview_response(preview).model_dump()
+            if basic_information_blocker:
+                workspace_preview["status"] = "blocked"
+                workspace_preview["blockers"] = [
+                    *workspace_preview["blockers"],
+                    basic_information_blocker,
+                ]
+            return {
+                "expected_context": token,
+                "start_blockers": (
+                    [basic_information_blocker] if basic_information_blocker else []
+                ),
+                "workspace_preview": {
+                    **workspace_preview,
+                    "generation_context": token,
+                },
+            }
 
     def run_step(self, state, name):
         project_id = state["project_id"]

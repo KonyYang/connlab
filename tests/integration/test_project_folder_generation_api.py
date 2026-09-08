@@ -7,9 +7,117 @@ from sqlalchemy import create_engine
 from backend.api import dependencies as deps
 from backend.api.main import app
 from backend.api.project_folder_generation_composition import ProjectFolderGenerationRunner
+from backend.application.project_basic_information_service import (
+    ConfirmProjectBasicInformationCommand,
+    SaveProjectBasicInformationDraftCommand,
+)
 from backend.domain import Project, ProjectStatus, ExternalResource, ExternalResourceType, LtrRecord, LtrStatus, ProjectLifecycleState
 from backend.infrastructure.storage.database import Base, create_session_factory
 from backend.shared.config import Settings
+
+
+def _complete_basic_information_values() -> dict[str, str]:
+    return {
+        "dl_number": "DL-001",
+        "project_type": "NPD",
+        "product_description": "Connector",
+        "test_item": "Qualification Testing",
+        "tests_to_be_performed": "Qualification Testing",
+        "requested_by": "Test",
+        "project_leader": "Engineer",
+        "lab_performing_tests": "Dongguan",
+    }
+
+
+def test_start_is_blocked_before_writes_when_complete_basic_information_is_unconfirmed(
+    tmp_path,
+):
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "fixture.sqlite",
+    )
+    engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
+    Base.metadata.create_all(engine)
+    sessions = create_session_factory(engine)
+    template, destination = tmp_path / "template", tmp_path / "output"
+    destination.mkdir()
+    for name in ("E-mail", "Submitted Material", "Photos", "Test results/Final Examination"):
+        (template / name).mkdir(parents=True)
+    with sessions() as session:
+        deps.ProjectRepository(session).create(
+            Project(
+                project_id="P1",
+                project_no="DL-001",
+                product_name="Connector",
+                requestor="Test",
+                status=ProjectStatus.DRAFT,
+            )
+        )
+        deps.LtrRecordRepository(session).create(
+            LtrRecord(
+                ltr_id="ltr",
+                project_id="P1",
+                ltr_number="DL-001",
+                status=LtrStatus.REGISTERED,
+            )
+        )
+        resources = deps.ExternalResourceRepository(session)
+        resources.upsert(
+            ExternalResource(
+                "root", ExternalResourceType.PROJECT_OUTPUT_ROOT, destination
+            )
+        )
+        resources.upsert(
+            ExternalResource(
+                "template", ExternalResourceType.PROJECT_FOLDER_TEMPLATE, template
+            )
+        )
+        deps.get_project_basic_information_service(session).save_draft(
+            SaveProjectBasicInformationDraftCommand(
+                project_id="P1",
+                values=_complete_basic_information_values(),
+            )
+        )
+        session.commit()
+    runner = ProjectFolderGenerationRunner(sessions, settings)
+    service = runner.service()
+    queued = []
+    service.dispatch = queued.append
+    app.dependency_overrides[deps.get_project_folder_generation_service] = lambda: service
+    try:
+        client = TestClient(app)
+        url = "/api/projects/P1/project-folder/generation"
+        preview = client.get(url + "/preview")
+        assert preview.status_code == 200, preview.text
+        payload = preview.json()
+        guidance = (
+            "Basic Information is complete but not confirmed. Open Basic Information "
+            "and click Confirm before generating Project Folder outputs."
+        )
+        assert payload["workspace_preview"]["status"] == "blocked"
+        assert payload["workspace_preview"]["blockers"] == [guidance]
+
+        started = client.post(
+            url + "/start",
+            json={
+                "expected_context": payload["expected_context"],
+                "request_id": "unconfirmed-basic-information",
+            },
+        )
+        assert started.status_code == 409
+        assert started.json()["detail"] == guidance
+        assert client.get(url).json() is None
+        assert queued == []
+        assert list(destination.iterdir()) == []
+    finally:
+        dependency_override = app.dependency_overrides.pop(
+            deps.get_project_folder_generation_service, None
+        )
+        assert dependency_override is not None
+        runner.pool.shutdown()
+        engine.dispose()
 
 
 def test_real_context_and_routes_start_continue_after_request_and_reconnect(tmp_path):
@@ -30,6 +138,13 @@ def test_real_context_and_routes_start_continue_after_request_and_reconnect(tmp_
         resources = deps.ExternalResourceRepository(session)
         resources.upsert(ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, destination))
         resources.upsert(ExternalResource("template", ExternalResourceType.PROJECT_FOLDER_TEMPLATE, template))
+        deps.get_project_basic_information_service(session).confirm(
+            ConfirmProjectBasicInformationCommand(
+                project_id="P1",
+                values=_complete_basic_information_values(),
+                confirmed_by="operator",
+            )
+        )
         session.commit()
     runner = ProjectFolderGenerationRunner(sessions, settings)
     service = runner.service()
