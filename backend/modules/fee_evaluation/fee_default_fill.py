@@ -13,6 +13,7 @@ from backend.modules.fee_evaluation.fee_default_fill_common import (
     calculated_result,
     hour_unit_price,
     manual_required,
+    parse_sample_preparation_quantity,
     parse_simple_sample_quantity,
 )
 from backend.modules.fee_evaluation.fee_default_fill_models import (
@@ -348,7 +349,7 @@ def _sample_preparation_result(
     rule: FeeRule,
     context: FeeDefaultFillContext,
 ) -> FeeDefaultFillResult:
-    sample_qty = parse_simple_sample_quantity(context.sample_quantity_expression)
+    sample_qty = parse_sample_preparation_quantity(context.sample_quantity_expression)
     if sample_qty is None:
         return manual_required(
             rule=rule,

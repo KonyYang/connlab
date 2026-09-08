@@ -21,12 +21,31 @@ _HOUR_PATTERN = re.compile(
 _SIMPLE_SAMPLE_QUANTITY_PATTERN = re.compile(
     r"^(?P<quantity>\d+(?:\.\d+)?)\s*(?:\([A-Za-z]+\)\s*)*$"
 )
+_SAMPLE_QUANTITY_TERM = r"\d+(?:\.\d+)?\s*(?:\([A-Za-z]+\)\s*)*"
+_ADDITIVE_SAMPLE_QUANTITY_PATTERN = re.compile(
+    rf"^{_SAMPLE_QUANTITY_TERM}(?:\+\s*{_SAMPLE_QUANTITY_TERM})+$"
+)
+_SAMPLE_QUANTITY_VALUE_PATTERN = re.compile(r"\d+(?:\.\d+)?")
 
 
 def parse_simple_sample_quantity(value: str | None) -> Decimal | None:
     """Parse one numeric sample count with optional alphabetic footnote markers."""
     match = _SIMPLE_SAMPLE_QUANTITY_PATTERN.fullmatch((value or "").strip())
     return Decimal(match.group("quantity")) if match else None
+
+
+def parse_sample_preparation_quantity(value: str | None) -> Decimal | None:
+    """Parse the total specimens prepared, including explicit additive counts."""
+    simple = parse_simple_sample_quantity(value)
+    if simple is not None:
+        return simple
+    text = (value or "").strip()
+    if _ADDITIVE_SAMPLE_QUANTITY_PATTERN.fullmatch(text) is None:
+        return None
+    return sum(
+        (Decimal(match.group(0)) for match in _SAMPLE_QUANTITY_VALUE_PATTERN.finditer(text)),
+        start=ZERO,
+    )
 
 
 def calculated_result(

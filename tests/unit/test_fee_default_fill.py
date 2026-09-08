@@ -1007,6 +1007,24 @@ def test_sample_preparation_default_fill_uses_group_sample_quantity() -> None:
     assert _field_state(result, "units") == "auto_filled"
 
 
+def test_sample_preparation_default_fill_sums_additive_group_sample_quantity() -> None:
+    result = build_fee_default_fill(
+        rule=_rule(
+            "fee_rule_sample_preparation",
+            unit_label="sample",
+            unit_price=Decimal("50"),
+            strategy="per_sample",
+            review_required=False,
+        ),
+        context=_context(test_item="Sample preparation", sample_quantity_expression="3+3"),
+    )
+
+    assert result.review_required is False
+    assert result.units == Decimal("6")
+    assert result.discount_percent == Decimal("100")
+    assert result.testing_fee == Decimal("0")
+
+
 def test_report_preparation_default_fill_is_backend_owned() -> None:
     result = build_fee_default_fill(
         rule=_rule(

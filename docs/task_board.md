@@ -11,8 +11,27 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_ADDITIVE_SAMPLE_QUANTITY_DEFAULTS",
+    "summary": "Fee Evaluation automatically sums additive Matrix sample quantity expressions such as 3+3 for Units and keeps Sample preparation fully discounted by default.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Fee draft default calculation, safe draft rebase behavior, and focused frontend/API verification for additive sample quantities and Sample preparation discount.",
+    "scope_paths": [
+      "backend/modules/fee_evaluation",
+      "backend/application",
+      "tests/unit",
+      "tests/integration",
+      "frontend/src/features/fee-evaluation"
+    ],
+    "risk_reasons": [],
+    "activation_head": "53d063e35ce570a2735226c708e5496b96372e07",
+    "started_at": "2026-09-08T22:43:11.360327Z",
+    "updated_at": "2026-09-08T22:43:11.360327Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_PROJECT_SCHEDULE_AUTHORITY",
     "tier": "high_risk",

@@ -71,6 +71,30 @@ def test_confirmed_matrix_fee_draft_api_happy_path(tmp_path: Path) -> None:
         engine.dispose()
 
 
+def test_fee_draft_api_sums_additive_sample_preparation_quantity(tmp_path: Path) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        _seed_active_confirmed_snapshot(
+            "P1",
+            tmp_path,
+            sample_quantity_expression="3+3",
+        )
+
+        response = client.get("/api/projects/P1/confirmed-matrix/fee-draft")
+
+        assert response.status_code == 200
+        sample_line = response.json()["groups"][0]["manual_line_items"][0]
+        assert sample_line["status"] == "calculated"
+        assert sample_line["review_required"] is False
+        assert sample_line["units"] == "6"
+        assert sample_line["discount_percent"] == "100"
+        assert sample_line["testing_fee"] == "0"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_confirmed_matrix_fee_draft_api_returns_404_when_no_active_confirmed(
     tmp_path: Path,
 ) -> None:
@@ -203,7 +227,12 @@ def _seed_project(project_id: str, tmp_path: Path) -> None:
     engine.dispose()
 
 
-def _seed_active_confirmed_snapshot(project_id: str, tmp_path: Path) -> None:
+def _seed_active_confirmed_snapshot(
+    project_id: str,
+    tmp_path: Path,
+    *,
+    sample_quantity_expression: str = "5",
+) -> None:
     settings = _settings(tmp_path)
     engine = create_database_engine(settings)
     session_factory = create_session_factory(engine)
@@ -233,7 +262,7 @@ def _seed_active_confirmed_snapshot(project_id: str, tmp_path: Path) -> None:
                         group_order=1,
                         group_key="g1",
                         group_label="G1",
-                        sample_quantity_expression="5",
+                        sample_quantity_expression=sample_quantity_expression,
                     ),
                 ),
                 rows=(
