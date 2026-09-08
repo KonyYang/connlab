@@ -48,6 +48,9 @@ from backend.modules.fee_evaluation import (
     FeeStepQuantityContext,
     build_fee_default_fill,
 )
+from backend.modules.fee_evaluation.fee_default_fill_common import (
+    parse_primary_sample_quantity,
+)
 from backend.modules.fee_evaluation.fee_default_fill_models import FeeDurationAuthority
 from backend.modules.test_plan.matrix_step_sequence_validation import parse_step_tokens
 
@@ -258,7 +261,10 @@ def _build_line_item(
 ) -> FeeEvaluationLineItem:
     cr_authority = step_quantities[0].cr_authority if step_quantities else None
     calculation = (
-        _no_rule_match(unmatched_review_reason)
+        _no_rule_match(
+            unmatched_review_reason,
+            sample_quantity_expression=_text(group.sample_quantity_expression),
+        )
         if rule is None
         else _calculate_line(
             rule=rule,
@@ -379,15 +385,19 @@ def _review(reason: str, rule: FeeRule) -> _CalculationResult:
     )
 
 
-def _no_rule_match(review_reason: str | None) -> _CalculationResult:
+def _no_rule_match(
+    review_reason: str | None,
+    *,
+    sample_quantity_expression: str,
+) -> _CalculationResult:
     return _CalculationResult(
         status="no_rule_match",
         review_required=True,
         review_reason=review_reason or "No fee rule match.",
         spend_time=None,
-        unit_label="",
+        unit_label="sample",
         unit_price=None,
-        units=None,
+        units=parse_primary_sample_quantity(sample_quantity_expression),
         base_fee=None,
         discount_percent=None,
         testing_fee=None,

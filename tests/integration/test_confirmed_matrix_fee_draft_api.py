@@ -95,6 +95,34 @@ def test_fee_draft_api_sums_additive_sample_preparation_quantity(tmp_path: Path)
         engine.dispose()
 
 
+def test_fee_draft_api_defaults_unmatched_row_to_first_sample_quantity_term(
+    tmp_path: Path,
+) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        _seed_active_confirmed_snapshot(
+            "P1",
+            tmp_path,
+            sample_quantity_expression="3+3",
+            test_item="Pull Ring Lateral Force",
+        )
+
+        response = client.get("/api/projects/P1/confirmed-matrix/fee-draft")
+
+        assert response.status_code == 200
+        line = response.json()["groups"][0]["line_items"][0]
+        assert line["status"] == "no_rule_match"
+        assert line["review_required"] is True
+        assert line["unit_label"] == "sample"
+        assert line["units"] == "3"
+        assert line["unit_price"] is None
+        assert line["testing_fee"] is None
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_confirmed_matrix_fee_draft_api_returns_404_when_no_active_confirmed(
     tmp_path: Path,
 ) -> None:
@@ -232,6 +260,7 @@ def _seed_active_confirmed_snapshot(
     tmp_path: Path,
     *,
     sample_quantity_expression: str = "5",
+    test_item: str = "Visual Examination",
 ) -> None:
     settings = _settings(tmp_path)
     engine = create_database_engine(settings)
@@ -272,7 +301,7 @@ def _seed_active_confirmed_snapshot(
                         draft_row_id="pmdr-visual",
                         source_row_snapshot_id="smr-visual",
                         row_order=1,
-                        test_item="Visual Examination",
+                        test_item=test_item,
                         source_section="6.1",
                         method="EIA-364-18",
                         condition="Visual Inspection",

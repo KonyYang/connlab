@@ -375,6 +375,36 @@ def test_fee_draft_marks_unmatched_row_as_no_rule_match() -> None:
     assert line.review_reason == "No fee rule match."
 
 
+def test_fee_draft_defaults_unmatched_row_to_first_sample_quantity_term() -> None:
+    row = ConfirmedMatrixRow(
+        confirmed_row_id="cmr-pull-ring-force",
+        confirmed_matrix_id="cmv-1",
+        draft_row_id="pmdr-pull-ring-force",
+        source_row_snapshot_id="smr-pull-ring-force",
+        row_order=1,
+        test_item="Pull Ring Lateral Force",
+        source_section="9.9",
+        method="",
+        condition="",
+        requirement="",
+    )
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(
+            active=_snapshot(row=row, sample_quantity_expression="3+3")
+        )
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.status == "no_rule_match"
+    assert line.review_required is True
+    assert line.unit_label == "sample"
+    assert line.units == Decimal("3")
+    assert line.unit_price is None
+    assert line.testing_fee is None
+
+
 def test_fee_draft_defaults_insulation_resistance_without_duration() -> None:
     service = ConfirmedMatrixFeeDraftService(
         confirmed_store=_ConfirmedStore(
@@ -485,7 +515,13 @@ def test_fee_draft_defaults_non_rise_temperature_items_to_per_hour(
         assert line.status == "no_rule_match"
         assert line.review_required is True
         assert line.review_reason == "No fee rule match."
-        assert (line.unit_price, line.units, line.base_fee, line.testing_fee) == (None, None, Decimal("0"), None)
+        assert line.unit_label == "sample"
+        assert (line.unit_price, line.units, line.base_fee, line.testing_fee) == (
+            None,
+            Decimal("5"),
+            Decimal("0"),
+            None,
+        )
         return
     assert line.matched_rule_id == "fee_rule_high_temperature_life"
     assert (line.status, line.review_reason) == ("review_required", "Missing confirmed duration authority")

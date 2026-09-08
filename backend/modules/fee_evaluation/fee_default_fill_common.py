@@ -48,6 +48,18 @@ def parse_sample_preparation_quantity(value: str | None) -> Decimal | None:
     )
 
 
+def parse_primary_sample_quantity(value: str | None) -> Decimal | None:
+    """Parse the first specimen count from a valid simple or additive expression."""
+    simple = parse_simple_sample_quantity(value)
+    if simple is not None:
+        return simple
+    text = (value or "").strip()
+    if _ADDITIVE_SAMPLE_QUANTITY_PATTERN.fullmatch(text) is None:
+        return None
+    match = _SAMPLE_QUANTITY_VALUE_PATTERN.match(text)
+    return Decimal(match.group(0)) if match else None
+
+
 def calculated_result(
     *,
     spend_time: Decimal | None,
