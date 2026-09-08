@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_PROJECT_SCHEDULE_AUTHORITY",
     "summary": "Establish Project Schedule as an independent authority, remove duplicate schedule inputs from Basic Information, and source official document dates from the confirmed schedule.",
@@ -71,17 +71,106 @@
     ],
     "activation_head": "fd01d8af9fc6b5c963f144f021f74a517fbf7827",
     "started_at": "2026-09-08T15:09:32.891637Z",
-    "updated_at": "2026-09-08T18:08:38.456086Z",
+    "updated_at": "2026-09-08T18:23:00.632709Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_PROJECT_SCHEDULE_AUTHORITY",
-      "stage": "scope_manifest_correction",
+      "stage": "delivery",
       "status": "running",
-      "summary": "用户批准按讨论实施 Project Schedule 权威迁移，技术发现的精确路径一并纳入当前高风险任务。",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_PROJECT_SCHEDULE_AUTHORITY",
+      "subject": "e05cc7594605e6d2a38a50951978cf5d534830bc",
+      "summary": "Project Schedule authority implementation is complete.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/dependencies.py",
+        "backend/api/dependencies_matrix_editor_live_xlsx_export.py",
+        "backend/api/main.py",
+        "backend/api/project_folder_generation_composition.py",
+        "backend/api/routes_project_schedule.py",
+        "backend/api/routes_project_section2_sync.py",
+        "backend/application/customer_feedback_form_generation_service.py",
+        "backend/application/matrix_editor_live_xlsx_publication_service.py",
+        "backend/application/project_application_form_write_back_service.py",
+        "backend/application/project_schedule_output.py",
+        "backend/application/project_schedule_service.py",
+        "backend/application/project_section2_sync_service.py",
+        "backend/application/test_report_draft_service.py",
+        "backend/domain/project_schedule_models.py",
+        "backend/infrastructure/storage/database.py",
+        "backend/infrastructure/storage/models_project_schedule.py",
+        "backend/infrastructure/storage/project_schedule_schema_migration.py",
+        "backend/infrastructure/storage/repositories/project_schedule.py",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.lifecycle.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.testSupport.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.tsx",
+        "frontend/src/features/matrix-editor/matrixEditorDraftModel.ts",
+        "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
+        "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.tsx",
+        "frontend/src/features/project-basic-information/basicInformationFieldConfig.ts",
+        "frontend/src/features/project-workbench/ProjectSection2SyncPanel.test.tsx",
+        "frontend/src/features/project-workbench/ProjectSection2SyncPanel.tsx",
+        "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
+        "tests/integration/test_customer_feedback_form_generation_api.py",
+        "tests/integration/test_project_folder_generation_complete_chain.py",
+        "tests/integration/test_project_schedule_api.py",
+        "tests/integration/test_project_section2_sync_api.py",
+        "tests/unit/test_customer_feedback_form_generation_service.py",
+        "tests/unit/test_database.py",
+        "tests/unit/test_matrix_editor_live_xlsx_publication_service.py",
+        "tests/unit/test_project_application_form_write_back_service.py",
+        "tests/unit/test_project_schedule_repository.py",
+        "tests/unit/test_project_schedule_schema_migration.py",
+        "tests/unit/test_project_schedule_service.py",
+        "tests/unit/test_project_section2_sync_service.py",
+        "tests/unit/test_test_report_draft_service.py"
+      ],
+      "validation": [
+        {
+          "name": "backend",
+          "status": "passed"
+        },
+        {
+          "name": "frontend",
+          "status": "passed"
+        },
+        {
+          "name": "build",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed"
+        },
+        "developer": {
+          "status": "passed"
+        },
+        "reviewer": {
+          "status": "passed"
+        },
+        "qa": {
+          "status": "passed"
+        },
+        "integrator": {
+          "status": "passed"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "verified_local"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_BASIC_INFORMATION_PREFLIGHT",
