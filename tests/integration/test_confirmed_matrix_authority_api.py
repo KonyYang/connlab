@@ -320,7 +320,7 @@ def test_confirm_project_matrix_draft_api_validation_errors(tmp_path: Path) -> N
         engine.dispose()
 
 
-def test_confirm_project_matrix_draft_api_rejects_invalid_schedule(tmp_path: Path) -> None:
+def test_confirm_project_matrix_draft_api_ignores_legacy_schedule_duration(tmp_path: Path) -> None:
     client, engine, _ = _client(tmp_path)
     try:
         _seed_project("P1", tmp_path)
@@ -359,8 +359,8 @@ def test_confirm_project_matrix_draft_api_rejects_invalid_schedule(tmp_path: Pat
             json={"confirmed_by": "operator"},
         )
 
-        assert confirmed.status_code == 422
-        assert "planned_test_complete_date is earlier" in confirmed.text
+        assert confirmed.status_code == 201
+        assert confirmed.json()["version"]["confirmed_revision"] == 1
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

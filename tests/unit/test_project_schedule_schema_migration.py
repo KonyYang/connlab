@@ -1,6 +1,8 @@
+import sqlite3
+
 import pytest
 from sqlalchemy import create_engine, event, inspect, text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from backend.infrastructure.storage.project_schedule_schema_migration import (
     bootstrap_project_schedule_schema,
@@ -22,6 +24,47 @@ def test_bootstrap_rejects_incompatible_existing_project_schedule_table() -> Non
 
     with pytest.raises(RuntimeError, match="authority_corrupt: Project Schedule"):
         bootstrap_project_schedule_schema(engine)
+
+
+def test_schedule_migration_reports_locked_writer_and_can_retry(tmp_path):
+    engine = _legacy_engine(url=f"sqlite:///{tmp_path / 'schedule-locked.sqlite'}")
+    before = _snapshot(engine)
+    try:
+        with engine.connect() as writer:
+            writer.exec_driver_sql("BEGIN IMMEDIATE")
+            try:
+                with pytest.raises(RuntimeError, match="locked") as failure:
+                    bootstrap_project_schedule_schema(engine)
+                assert "authority_corrupt" not in str(failure.value)
+                assert _snapshot(engine) == before
+            finally:
+                writer.rollback()
+        bootstrap_project_schedule_schema(engine)
+        assert _snapshot(engine)[1:] == before[1:]
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize("error_code,recoverable", [
+    (sqlite3.SQLITE_LOCKED, True), (sqlite3.SQLITE_BUSY_SNAPSHOT, True), (sqlite3.SQLITE_ERROR, False),
+])
+def test_migration_preserves_rollback_and_distinguishes_sqlite_lock_errors(error_code, recoverable):
+    engine = _legacy_engine()
+    before = _snapshot(engine)
+
+    def fail_rename(connection, cursor, statement, parameters, context, executemany):
+        if statement.startswith("ALTER TABLE"):
+            original = sqlite3.OperationalError("injected database operation failure")
+            original.sqlite_errorcode = error_code
+            raise OperationalError(statement, parameters, original)
+
+    event.listen(engine, "before_cursor_execute", fail_rename)
+    try:
+        with pytest.raises(RuntimeError, match="locked" if recoverable else "authority_corrupt"):
+            bootstrap_project_schedule_schema(engine)
+    finally:
+        event.remove(engine, "before_cursor_execute", fail_rename)
+    assert _snapshot(engine) == before
 
 
 def test_legacy_migration_preserves_history_indexes_constraints_and_allows_missing_lineage():
@@ -103,8 +146,8 @@ _LEGACY_DDL = """CREATE TABLE project_schedule_revisions (
 )"""
 
 
-def _legacy_engine(variant=None):
-    engine = create_engine("sqlite://", future=True)
+def _legacy_engine(variant=None, *, url="sqlite://"):
+    engine = create_engine(url, future=True, connect_args={"timeout": 0})
     ddl = _LEGACY_DDL
     if variant == "missing_unique":
         ddl = ddl.replace("CONSTRAINT uq_project_schedule_revision_sequence UNIQUE (project_id, revision_sequence),", "")

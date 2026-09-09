@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import re
+import sqlite3
 
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.schema import CreateIndex, CreateTable
 
 _COLUMNS = {
@@ -61,6 +63,13 @@ def bootstrap_project_schedule_schema(engine) -> None:
             connection.commit()
         except Exception as exc:
             connection.rollback()
+            if isinstance(exc, OperationalError):
+                # Extended SQLite result codes retain their primary code in the low byte.
+                code = getattr(exc.orig, "sqlite_errorcode", 0) or 0
+                if code & 0xFF in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+                    raise RuntimeError(
+                        "Project Schedule database is locked; retry bootstrap after the writer completes."
+                    ) from exc
             raise RuntimeError("authority_corrupt: Project Schedule bootstrap failed.") from exc
 
 
