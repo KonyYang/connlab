@@ -39,6 +39,7 @@
       "frontend/src/features/matrix-editor/matrixEditorDraftModel.ts",
       "frontend/src/features/matrix-editor/matrixSchedulePlanning.test.ts",
       "frontend/src/features/matrix-editor/matrixSchedulePlanning.ts",
+      "tests/integration/test_confirmed_matrix_authority_api.py",
       "tests/integration/test_matrix_editor_session_api.py",
       "tests/integration/test_project_schedule_api.py",
       "tests/unit/test_confirmed_matrix_authority_service.py",
@@ -53,14 +54,14 @@
     ],
     "activation_head": "f3e5ddc81e8ecf7947bae58d152b595f1d277fd1",
     "started_at": "2026-09-09T15:39:07.292887Z",
-    "updated_at": "2026-09-09T16:11:51.924133Z",
+    "updated_at": "2026-09-09T22:41:49.765923Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_SCHEDULE_CONFIRM_INDEPENDENCE",
       "stage": "scope_manifest_correction",
       "status": "running",
-      "summary": "User 2026-09-10 explicitly approved adding remaining Matrix services and project existence guard to current task scope",
+      "summary": "User 2026-09-10 approved remaining Matrix confirmation services and related regression tests including legacy authority API expectation",
       "requires_user": false
     },
     "report": null
