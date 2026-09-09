@@ -8,12 +8,18 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.domain.project_schedule_models import ProjectScheduleRevision
+from backend.infrastructure.storage.models import ProjectModel
 from backend.infrastructure.storage.models_project_schedule import ProjectScheduleRevisionModel
 
 
 class ProjectScheduleRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
+
+    def project_exists(self, project_id: str) -> bool:
+        return self._session.scalar(
+            select(ProjectModel.project_id).where(ProjectModel.project_id == project_id)
+        ) is not None
 
     def active_revision(self, project_id: str) -> ProjectScheduleRevision | None:
         row = self._session.query(ProjectScheduleRevisionModel).filter_by(

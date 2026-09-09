@@ -45,7 +45,6 @@ type DateValidationResult = {
 };
 
 const DATE_FIELDS: DateField[] = [
-  "sampleReceivedDate",
   "plannedTestStartDate",
   "plannedTestCompleteDate",
   "estimatedCompletionDate",
@@ -125,7 +124,7 @@ export function calculateMatrixSchedule(
   const dateValidation =
     Object.keys(bufferErrors).length > 0
       ? { message: null, invalidFields: {} }
-      : validateDatePlan(plan, critical.days, postBuffer.value ?? 0);
+      : validateDatePlan(plan, postBuffer.value ?? 0);
 
   return {
     groupDays,
@@ -181,12 +180,10 @@ function countStepTokens(value: string): number {
 
 function validateDatePlan(
   plan: MatrixSchedulePlan,
-  criticalGroupDays: number,
   postBufferDays: number,
 ): DateValidationResult {
   const noError: DateValidationResult = { message: null, invalidFields: {} };
   const values = [
-    plan.sampleReceivedDate,
     plan.plannedTestStartDate,
     plan.plannedTestCompleteDate,
     plan.estimatedCompletionDate,
@@ -200,27 +197,20 @@ function validateDatePlan(
       invalidFields: buildInvalidDateFields(values.map((value) => !value)),
     };
   }
-  const [received, start, complete, estimated] = values.map(parseDateValue);
-  if (received == null || start == null || complete == null || estimated == null) {
+  const [start, complete, estimated] = values.map(parseDateValue);
+  if (start == null || complete == null || estimated == null) {
     return {
       message: "Planned dates must use YYYY-MM-DD format.",
       invalidFields: buildInvalidDateFields([
-        received == null,
         start == null,
         complete == null,
         estimated == null,
       ]),
     };
   }
-  if (start < received) {
+  if (complete < start) {
     return {
-      message: "Planned start is earlier than sample received date.",
-      invalidFields: { plannedTestStartDate: true },
-    };
-  }
-  if (complete < addCalendarDays(start, Math.ceil(criticalGroupDays))) {
-    return {
-      message: "Test complete is earlier than planned start plus critical group days.",
+      message: "Test complete is earlier than planned start.",
       invalidFields: { plannedTestCompleteDate: true },
     };
   }

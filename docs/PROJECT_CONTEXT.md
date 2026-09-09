@@ -69,6 +69,20 @@ Do not use a dated snapshot as a substitute for the code.
 
 ## Architecture seams
 
+### Independent Project Schedule
+
+- `Confirm schedule` confirms the three schedule dates and post-test buffer independently of
+  `Confirm Matrix` and Basic Information confirmation. It validates its own required ISO dates,
+  chronology and buffer; sample receipt and calculated Matrix days are reference/defaulting inputs.
+- Upstream Basic/Matrix references on a schedule revision are optional provenance, not prerequisites.
+  Later upstream changes do not revoke an explicitly confirmed schedule. Output consumers read that
+  revision; the legacy Matrix-date fallback remains only when no independent revision exists.
+- Matrix confirmation validates Matrix rows, groups, quantities and Day expressions, not legacy
+  schedule completeness. Loading a saved draft preserves its rows, order and cleared text; a source
+  preview may supply review metadata and excluded-group context, never reinsert deleted test rows.
+- Existing schedule tables migrate transactionally to nullable lineage with history and constraints
+  preserved. Operator databases and external project outputs must not be replaced to deploy this fix.
+
 ```text
 React frontend -> FastAPI routes -> application modules -> domain/interfaces
                                                         ^

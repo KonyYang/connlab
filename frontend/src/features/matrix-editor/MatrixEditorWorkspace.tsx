@@ -228,7 +228,7 @@ export function MatrixEditorWorkspace({
   ): string => {
     const mapped = buildMatrixFromSessionSeedDraft(draft, sourcePreview);
     const nextGroups = mapped.groups.length > 0 ? mapped.groups : buildInitialGroupColumns();
-    const nextRows = mapped.rows.length > 0 ? mapped.rows : buildInitialMatrixRows();
+    const nextRows = mapped.rows;
     const nextSamples = mapped.samples;
     const nextStepOverrides = restoreStepTextOverrides(draft.step_text_overrides ?? [], nextRows, nextGroups);
     setGroupColumns(nextGroups);
@@ -768,11 +768,10 @@ export function MatrixEditorWorkspace({
     ? lifecycleReadonlyView.message
     : !scheduleWorkspace
       ? scheduleMessage || "Project Schedule is not ready."
-      : hasMatrixAuthorityChanges
-        ? "Confirm Matrix changes before updating Project Schedule."
-        : !scheduleCalculation.isValid
-          ? Object.values(scheduleCalculation.rowErrors)[0] ??
-            Object.values(scheduleCalculation.bufferErrors)[0] ??
+      : !schedulePlan.plannedTestStartDate || !schedulePlan.plannedTestCompleteDate || !schedulePlan.estimatedCompletionDate
+        ? "Complete Planned start, Test complete and Estimated completion before confirming Project Schedule."
+        : Object.keys(scheduleCalculation.bufferErrors).length > 0 || scheduleCalculation.dateError
+          ? Object.values(scheduleCalculation.bufferErrors)[0] ??
             scheduleCalculation.dateError ??
             "Complete Project Schedule."
           : !scheduleHasChanges

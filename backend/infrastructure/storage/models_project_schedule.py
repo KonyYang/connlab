@@ -28,11 +28,11 @@ class ProjectScheduleRevisionModel(Base):
     state: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
     matrix_input_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
-    based_on_confirmed_matrix_id: Mapped[str] = mapped_column(
-        ForeignKey("confirmed_matrix_versions.confirmed_matrix_id"), nullable=False
+    based_on_confirmed_matrix_id: Mapped[str | None] = mapped_column(
+        ForeignKey("confirmed_matrix_versions.confirmed_matrix_id"), nullable=True
     )
-    based_on_confirmed_matrix_revision: Mapped[int] = mapped_column(Integer, nullable=False)
-    based_on_basic_information_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    based_on_confirmed_matrix_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    based_on_basic_information_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sample_received_date: Mapped[str] = mapped_column(String(32), nullable=False)
     post_test_buffer_days: Mapped[str] = mapped_column(String(64), nullable=False)
     test_start_date: Mapped[str] = mapped_column(String(32), nullable=False)

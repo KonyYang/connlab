@@ -11,6 +11,7 @@ from backend.api.dependencies import get_project_schedule_service
 from backend.application.project_schedule_service import (
     ConfirmProjectScheduleCommand,
     ProjectScheduleConflictError,
+    ProjectScheduleProjectNotFoundError,
     ProjectScheduleReadinessError,
 )
 
@@ -35,9 +36,9 @@ class ProjectScheduleRevisionResponse(BaseModel):
     state: str
     fingerprint: str
     matrix_input_fingerprint: str
-    based_on_confirmed_matrix_id: str
-    based_on_confirmed_matrix_revision: int
-    based_on_basic_information_version: int
+    based_on_confirmed_matrix_id: str | None
+    based_on_confirmed_matrix_revision: int | None
+    based_on_basic_information_version: int | None
     sample_received_date: str
     post_test_buffer_days: str
     test_start_date: str
@@ -73,6 +74,8 @@ class ConfirmProjectScheduleRequest(BaseModel):
 def get_project_schedule(project_id: str, service=Depends(get_project_schedule_service)):
     try:
         return asdict(service.get_workspace(project_id))
+    except ProjectScheduleProjectNotFoundError as exc:
+        _raise_project_not_found(exc)
     except ProjectScheduleReadinessError as exc:
         _raise_readiness(exc)
 
@@ -96,6 +99,8 @@ def confirm_project_schedule(
                 confirmed_by=request.actor,
             )
         )
+    except ProjectScheduleProjectNotFoundError as exc:
+        _raise_project_not_found(exc)
     except ProjectScheduleConflictError as exc:
         raise HTTPException(
             409,
@@ -104,6 +109,13 @@ def confirm_project_schedule(
     except (ProjectScheduleReadinessError, ValueError) as exc:
         _raise_readiness(exc)
     return asdict(revision)
+
+
+def _raise_project_not_found(exc: Exception) -> None:
+    raise HTTPException(
+        404,
+        detail={"code": "project_not_found", "message": str(exc)},
+    ) from exc
 
 
 def _raise_readiness(exc: Exception) -> None:

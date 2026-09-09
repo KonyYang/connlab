@@ -74,7 +74,7 @@ describe("matrixSchedulePlanning", () => {
     expect(result.isValid).toBe(true);
   });
 
-  it("validates calendar date anchors using rounded-up critical group days", () => {
+  it("allows actual completion earlier than the suggested Matrix duration", () => {
     const result = calculateMatrixSchedule(
       [
         {
@@ -94,9 +94,8 @@ describe("matrixSchedulePlanning", () => {
       }
     );
 
-    expect(result.dateError).toContain("Test complete is earlier");
-    expect(result.invalidDateFields).toEqual({ plannedTestCompleteDate: true });
-    expect(result.isValid).toBe(false);
+    expect(result.dateError).toBeNull();
+    expect(result.isValid).toBe(true);
   });
 
   it("rejects impossible date strings without browser normalization", () => {
@@ -105,18 +104,18 @@ describe("matrixSchedulePlanning", () => {
       [{ id: "g1", name: "1", isSelected: true }],
       {
         postTestBufferDays: "",
-        sampleReceivedDate: "2026-02-31",
-        plannedTestStartDate: "2026-03-01",
+        sampleReceivedDate: "",
+        plannedTestStartDate: "2026-02-31",
         plannedTestCompleteDate: "2026-03-01",
         estimatedCompletionDate: "2026-03-01",
       }
     );
 
     expect(result.dateError).toContain("YYYY-MM-DD");
-    expect(result.invalidDateFields).toEqual({ sampleReceivedDate: true });
+    expect(result.invalidDateFields).toEqual({ plannedTestStartDate: true });
   });
 
-  it("requires planned start to be on or after sample received", () => {
+  it("treats sample receipt as information rather than a schedule prerequisite", () => {
     const result = calculateMatrixSchedule(
       [
         {
@@ -136,9 +135,8 @@ describe("matrixSchedulePlanning", () => {
       }
     );
 
-    expect(result.dateError).toContain("Planned start is earlier than sample received date.");
-    expect(result.invalidDateFields).toEqual({ plannedTestStartDate: true });
-    expect(result.isValid).toBe(false);
+    expect(result.dateError).toBeNull();
+    expect(result.isValid).toBe(true);
   });
 
   it("requires estimated completion to include post-test buffer", () => {

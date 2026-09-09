@@ -15,9 +15,9 @@ class ProjectScheduleRevision:
     state: str
     fingerprint: str
     matrix_input_fingerprint: str
-    based_on_confirmed_matrix_id: str
-    based_on_confirmed_matrix_revision: int
-    based_on_basic_information_version: int
+    based_on_confirmed_matrix_id: str | None
+    based_on_confirmed_matrix_revision: int | None
+    based_on_basic_information_version: int | None
     sample_received_date: str
     post_test_buffer_days: str
     test_start_date: str

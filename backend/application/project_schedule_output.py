@@ -6,11 +6,6 @@ from dataclasses import dataclass
 from hashlib import sha256
 from typing import Protocol
 
-from backend.application.project_schedule_service import (
-    calculate_schedule_group_days,
-    schedule_matrix_input_fingerprint,
-)
-
 
 @dataclass(frozen=True, slots=True)
 class ConfirmedProjectScheduleSnapshot:
@@ -44,19 +39,6 @@ class ProjectScheduleOutputReader:
     ) -> ConfirmedProjectScheduleSnapshot | None:
         active = self._repository.active_revision(project_id)
         if active is not None:
-            basic = self._basic_information.get_latest_confirmed(project_id)
-            matrix = self._confirmed_matrix.get_active_by_project(project_id)
-            if basic is None or matrix is None:
-                return None
-            received = (basic.values.get("date_lab_received_samples") or "").strip()
-            matrix_fingerprint = schedule_matrix_input_fingerprint(
-                calculate_schedule_group_days(matrix)
-            )
-            if (
-                active.sample_received_date != received
-                or active.matrix_input_fingerprint != matrix_fingerprint
-            ):
-                return None
             return ConfirmedProjectScheduleSnapshot(
                 project_id=active.project_id,
                 revision_id=active.revision_id,

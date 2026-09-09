@@ -261,11 +261,7 @@ export function buildMatrixFromSessionSeedDraft(
   const nextGroups: GroupColumn[] = sourcePreview.groups.map((previewGroup, index) => {
     const existing = currentGroupByKey.get(previewGroup.group_key);
     if (existing) {
-      return {
-        ...existing,
-        name: normalizeGroupDisplayName(previewGroup.group_label, existing.name),
-        sampleNote: previewGroup.sample_note ?? existing.sampleNote,
-      };
+      return existing;
     }
     return {
       id: `source-group-${index + 1}`,
@@ -287,66 +283,36 @@ export function buildMatrixFromSessionSeedDraft(
   const previewRows = [...sourcePreview.rows]
     .sort((left, right) => left.source_row_index - right.source_row_index)
     .filter((row) => !row.is_sample_row);
-  const currentRowsByIdentity = new Map<string, EditableMatrixRow[]>();
-  mapped.rows.forEach((row) => {
-    const identity = editorRowIdentity(row);
-    const matches = currentRowsByIdentity.get(identity) ?? [];
+  const previewRowsByIdentity = new Map<string, typeof previewRows>();
+  previewRows.forEach((row) => {
+    const identity = previewRowIdentity(row);
+    const matches = previewRowsByIdentity.get(identity) ?? [];
     matches.push(row);
-    currentRowsByIdentity.set(identity, matches);
+    previewRowsByIdentity.set(identity, matches);
   });
-  const consumedRowIds = new Set<string>();
   const previewGroupByKey = new Map(
     sourcePreview.groups.map((group) => [group.group_key, group])
   );
-  const nextRows: EditableMatrixRow[] = previewRows.map((previewRow, rowIndex) => {
-    const identity = previewRowIdentity(previewRow);
-    const identityMatch = (currentRowsByIdentity.get(identity) ?? [])
-      .find((row) => !consumedRowIds.has(row.id)) ?? null;
-    const positionalFallback = identityMatch ? null : mapped.rows[rowIndex] ?? null;
-    const candidate = identityMatch ?? positionalFallback;
-    const existing = candidate && !consumedRowIds.has(candidate.id) ? candidate : null;
-    if (existing) {
-      consumedRowIds.add(existing.id);
-    }
+  // A saved draft is the complete edited row set. Source previews may supply
+  // metadata/unselected group cells, never restore deleted rows or cleared text.
+  const nextRows: EditableMatrixRow[] = mapped.rows.map((existing) => {
+    const previewRow = previewRowsByIdentity.get(editorRowIdentity(existing))?.shift();
     const groupValues: Record<string, string> = {};
     nextGroups.forEach((group) => {
       const existingGroup = currentGroupByKey.get(group.groupKey);
-      if (existing && existingGroup && existing.groups[existingGroup.id] !== undefined) {
+      if (existingGroup && existing.groups[existingGroup.id] !== undefined) {
         groupValues[group.id] = existing.groups[existingGroup.id];
         return;
       }
       const previewGroup = previewGroupByKey.get(group.groupKey);
-      groupValues[group.id] = previewGroup ? readPreviewGroupToken(previewRow, previewGroup) : "";
+      groupValues[group.id] = previewGroup && previewRow ? readPreviewGroupToken(previewRow, previewGroup) : "";
     });
     return {
-      id: existing?.id ?? `source-row-${rowIndex + 1}`,
-      draftRowId: existing?.draftRowId ?? null,
-      sourceRowSnapshotId: existing?.sourceRowSnapshotId ?? null,
-      isSampleRow: false,
-      item: existing?.item ?? previewRow.test_item,
-      section: existing?.section ?? previewRow.source_section ?? "",
-      method: existing?.method?.trim() ? existing.method : previewRow.method ?? "",
-      condition: existing?.condition?.trim() ? existing.condition : previewRow.condition ?? "",
-      requirement: existing?.requirement?.trim() ? existing.requirement : previewRow.requirement ?? "",
-      dayExpression: existing?.dayExpression ?? "",
-      initialMethod: existing?.initialMethod ?? (existing?.method?.trim() ? existing.method : previewRow.method ?? ""),
-      initialCondition: existing?.initialCondition ?? (existing?.condition?.trim() ? existing.condition : previewRow.condition ?? ""),
-      initialRequirement: existing?.initialRequirement ?? (existing?.requirement?.trim() ? existing.requirement : previewRow.requirement ?? ""),
-      detailExtractionStatus: previewRow.detail_extraction_status ?? existing?.detailExtractionStatus ?? null,
-      detailExtractionNotes: previewRow.detail_extraction_notes ?? existing?.detailExtractionNotes ?? [],
+      ...existing,
+      detailExtractionStatus: previewRow?.detail_extraction_status ?? existing.detailExtractionStatus,
+      detailExtractionNotes: previewRow?.detail_extraction_notes ?? existing.detailExtractionNotes,
       groups: groupValues,
     };
-  });
-  mapped.rows.forEach((row) => {
-    if (consumedRowIds.has(row.id)) {
-      return;
-    }
-    const groupValues: Record<string, string> = {};
-    nextGroups.forEach((group) => {
-      const existingGroup = currentGroupByKey.get(group.groupKey);
-      groupValues[group.id] = existingGroup ? row.groups[existingGroup.id] ?? "" : "";
-    });
-    nextRows.push({ ...row, groups: groupValues });
   });
 
   const samples: Record<string, string> = {};

@@ -75,7 +75,7 @@ describe("MatrixSchedulePlanningCard", () => {
     );
 
     expect(screen.queryByLabelText("Sample received")).toBeNull();
-    expect(screen.getByText("Sample received: 2026-06-01 (confirmed Basic Information)")).toBeTruthy();
+    expect(screen.getByText(/Sample received: 2026-06-01/)).toBeTruthy();
     expect(screen.getByLabelText("Planned start").getAttribute("value")).toBe("2026-06-02");
     expect(screen.getByLabelText("Test complete").getAttribute("value")).toBe("2026-06-03");
     expect(screen.getByLabelText("Estimated completion").getAttribute("value")).toBe("2026-06-04");

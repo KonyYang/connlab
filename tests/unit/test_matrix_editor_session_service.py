@@ -469,6 +469,21 @@ def test_confirm_first_authority_initializes_default_fee_authority() -> None:
     assert promotion.initial_confirmed_matrix is result.confirmed_snapshot
 
 
+@pytest.mark.parametrize("schedule", [
+    {"sample_received_date": "2026-07-24"},
+    {"planned_test_start_date": "2026-09-09"},
+])
+def test_first_matrix_confirm_is_not_blocked_by_partial_legacy_schedule(schedule) -> None:
+    service = _service(
+        active=None, source_snapshot=None,
+        draft_persistence_service=_RecordingDraftPersistenceService(),
+        matrix_import_commit_service=_RecordingMatrixImportCommitService(),
+        confirmed_matrix_authority_service=_RecordingConfirmedAuthorityService(),
+    )
+    result = service.confirm_session(replace(_first_confirm_command(), **schedule))
+    assert result.publish_status == "published"
+
+
 def test_discard_editor_draft_deletes_pending_fee_rebase() -> None:
     draft_store = _DiscardDraftStore(_active_editor_draft())
     pending = _RecordingPendingFeeRebaseService(MatrixFeePendingRebaseResult(status="not_required"))

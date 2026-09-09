@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import replace
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -77,6 +78,22 @@ def test_confirm_revision_draft_happy_path_supersedes_previous_active() -> None:
     assert confirmed.version.project_id == "P1"
     assert stores.confirmed_store.superseded_previous_id == "cmv-1"
     assert stores.confirmed_store.superseded_reason == "Update matrix groups"
+
+
+def test_matrix_revision_confirmation_ignores_partial_legacy_schedule() -> None:
+    service, stores = _service()
+    draft = service.create_revision_draft(CreateMatrixRevisionDraftCommand(project_id="P1"))
+    draft = replace(draft, record=replace(draft.record,
+        sample_received_date="2026-07-24", planned_test_start_date=None,
+        planned_test_complete_date=None, estimated_completion_date=None,
+    ))
+    stores.draft_store.snapshot_by_id[draft.record.project_matrix_draft_id] = draft
+    confirmed = service.confirm_revision_draft(ConfirmMatrixRevisionDraftCommand(
+        project_id="P1", project_matrix_draft_id=draft.record.project_matrix_draft_id,
+        confirmed_by="operator",
+    ))
+    assert confirmed.version.confirmed_revision == 2
+    assert confirmed.version.sample_received_date == "2026-07-24"
 
 
 def test_confirm_revision_draft_rejects_stale_base_lineage() -> None:

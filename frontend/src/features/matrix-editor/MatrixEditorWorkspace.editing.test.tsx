@@ -16,6 +16,23 @@ import { MatrixEditorWorkspace } from "./MatrixEditorWorkspace";
 installMatrixEditorWorkspaceTestLifecycle();
 
 describe("MatrixEditorWorkspace editing behavior", () => {
+  it("confirms schedule before Matrix authority even with invalid Matrix edits and no received date", async () => {
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({ ...buildSessionSeed(),
+      active_confirmed_matrix_id: null, active_confirmed_revision: null });
+    apiMocks.fetchProjectSchedule.mockResolvedValue({ status: "not_started", project_id: "P1",
+      sample_received_date: "", critical_group_id: null, critical_group_days: "0",
+      suggestion: {post_test_buffer_days: "", test_start_date: "", test_complete_date: "", estimated_completion_date: ""},
+      confirmed_revision: null });
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    const start = await screen.findByLabelText("Planned start");
+    fireEvent.change(screen.getByLabelText("Row 1 day"), {target: {value: "invalid"}});
+    fireEvent.change(start, {target: {value: "2026-09-09"}});
+    const confirm = screen.getByRole("button", {name: "Confirm schedule"}) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(false);
+    fireEvent.click(confirm);
+    await waitFor(() => expect(apiMocks.confirmProjectSchedule).toHaveBeenCalled());
+    expect(apiMocks.confirmMatrixEditorSession).not.toHaveBeenCalled();
+  });
   it("confirms Project Schedule independently without activating Confirm Matrix", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
@@ -326,7 +343,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     );
   });
 
-  it("prefills Method Condition and Requirement from source preview rows", async () => {
+  it("loads imported Method Condition and Requirement from the saved draft", async () => {
     const seed = buildSessionSeed();
     apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
       ...seed,
@@ -345,8 +362,9 @@ describe("MatrixEditorWorkspace editing behavior", () => {
       },
       editor_draft: {
         ...seed.editor_draft,
-        rows: [],
-        cells: [],
+        rows: [{ ...seed.editor_draft.rows[0], test_item: "Contact Resistance (Low Level)",
+          source_section: "6.1", method: "EIA-364-23D", condition: "20mV max, 100mA max",
+          requirement: "Initial <= 0.25 milliohms" }],
       },
     });
 
@@ -404,8 +422,6 @@ describe("MatrixEditorWorkspace editing behavior", () => {
       },
       editor_draft: {
         ...seed.editor_draft,
-        rows: [],
-        cells: [],
       },
     });
 

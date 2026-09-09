@@ -70,7 +70,7 @@ export function MatrixSchedulePlanningCard({
         <strong>
           Longest Test Group {criticalLabel}: {formatPlanningDays(calculation.criticalGroupDays)} d
         </strong>
-        <p>Sample received: {plan.sampleReceivedDate || "Not available"} (confirmed Basic Information)</p>
+        <p>Sample received: {plan.sampleReceivedDate || "Not available"} (reference only)</p>
       </header>
 
       <div className="matrix-editor-schedule-fields">

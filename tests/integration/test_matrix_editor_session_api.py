@@ -5,6 +5,8 @@ from datetime import date
 from pathlib import Path
 from io import BytesIO
 
+import pytest
+
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
 from sqlalchemy import delete
@@ -229,7 +231,9 @@ def test_manual_step_text_draft_saves_without_publishing_and_reuses_its_lineage(
         engine.dispose()
 
 
-def test_unconfirmed_import_edits_survive_save_reopen_and_first_confirm(tmp_path: Path) -> None:
+@pytest.mark.parametrize("legacy_dates", [{}, {"sample_received_date": "2026-07-24"},
+                                          {"planned_test_start_date": "2026-09-09"}])
+def test_unconfirmed_import_edits_survive_save_reopen_and_first_confirm(tmp_path: Path, legacy_dates) -> None:
     client, engine, _session_factory = _client(tmp_path)
     try:
         _seed_project("P1", tmp_path)
@@ -238,7 +242,7 @@ def test_unconfirmed_import_edits_survive_save_reopen_and_first_confirm(tmp_path
             json={"source_import_id": source_import_id, "selected_group_keys": ["g1", "g2"]})
         assert created.status_code == 201
         seed = client.get("/api/projects/P1/matrix-editor/session").json()
-        payload = {**seed["editor_draft"],
+        payload = {**seed["editor_draft"], **legacy_dates,
             "source_import_id": seed["editor_source_import_id"],
             "source_snapshot_id": seed["editor_source_snapshot_id"],
             "expected_active_confirmed_matrix_id": None,
@@ -846,7 +850,7 @@ def test_matrix_editor_session_confirm_publishes_schedule_planning_fields(
         engine.dispose()
 
 
-def test_matrix_editor_session_confirm_rejects_invalid_schedule(
+def test_matrix_editor_session_confirm_still_rejects_invalid_matrix_day(
     tmp_path: Path,
 ) -> None:
     client, engine, _ = _client(tmp_path)
@@ -871,7 +875,7 @@ def test_matrix_editor_session_confirm_rejects_invalid_schedule(
         editor_draft = seed_payload["editor_draft"]
         assert editor_draft is not None
         rows = [
-            {**row, "day_expression": "3"}
+            {**row, "day_expression": "invalid"}
             if row["test_item"] == "Visual Examination"
             else row
             for row in editor_draft["rows"]
@@ -901,7 +905,7 @@ def test_matrix_editor_session_confirm_rejects_invalid_schedule(
         )
 
         assert response.status_code == 422
-        assert "planned_test_complete_date is earlier" in response.text
+        assert "Day must be a non-negative decimal" in response.text
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

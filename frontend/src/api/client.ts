@@ -4217,9 +4217,9 @@ export type ProjectScheduleRevision = ProjectScheduleSuggestion & {
   state: "confirmed" | "superseded";
   fingerprint: string;
   matrix_input_fingerprint: string;
-  based_on_confirmed_matrix_id: string;
-  based_on_confirmed_matrix_revision: number;
-  based_on_basic_information_version: number;
+  based_on_confirmed_matrix_id: string | null;
+  based_on_confirmed_matrix_revision: number | null;
+  based_on_basic_information_version: number | null;
   sample_received_date: string;
   confirmed_by: string;
   confirmed_at: string;

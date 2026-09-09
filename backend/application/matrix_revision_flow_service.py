@@ -10,10 +10,8 @@ from uuid import uuid4
 from sqlalchemy.exc import IntegrityError
 
 from backend.application.matrix_schedule_planning import (
-    MatrixScheduleFields,
     MatrixScheduleValidationError,
     calculate_group_test_days,
-    validate_planned_schedule,
 )
 from backend.application.matrix_sample_quantity_guard import (
     find_selected_sample_quantity_violations,
@@ -210,7 +208,7 @@ def _validate_draft_schedule(
 ) -> None:
     """Validate Matrix planning fields before confirming a revision."""
     try:
-        totals = calculate_group_test_days(
+        calculate_group_test_days(
             rows=(
                 {
                     "row_id": row.draft_row_id,
@@ -228,17 +226,6 @@ def _validate_draft_schedule(
                 for cell in draft.cells
             ),
             selected_group_ids=[group.draft_group_id for group in selected_groups],
-        )
-        validate_planned_schedule(
-            fields=MatrixScheduleFields(
-                pre_test_buffer_days=draft.record.pre_test_buffer_days,
-                post_test_buffer_days=draft.record.post_test_buffer_days,
-                sample_received_date=draft.record.sample_received_date,
-                planned_test_start_date=draft.record.planned_test_start_date,
-                planned_test_complete_date=draft.record.planned_test_complete_date,
-                estimated_completion_date=draft.record.estimated_completion_date,
-            ),
-            group_test_days=totals,
         )
     except MatrixScheduleValidationError as exc:
         raise MatrixRevisionFlowError(str(exc)) from exc

@@ -102,7 +102,7 @@ describe("buildMatrixFromSessionSeedDraft", () => {
     ]);
   });
 
-  it("does not reuse a consumed draft row when a re-imported preview falls back by position", () => {
+  it("keeps the saved row order and never restores rows from an older source preview", () => {
     const draft: MatrixEditorSessionDraft = {
       groups: [],
       rows: [
@@ -156,19 +156,41 @@ describe("buildMatrixFromSessionSeedDraft", () => {
     const result = buildMatrixFromSessionSeedDraft(draft, preview);
 
     expect(result.rows.map((row) => row.item)).toEqual([
-      "Reseating.",
-      "Crimping/Wending Tensile Strength",
       "VISUAL EXAMINATION",
+      "Reseating.",
     ]);
     expect(result.rows.map((row) => row.id)).toEqual([
-      "draft-reseating",
-      "source-row-2",
       "draft-visual",
+      "draft-reseating",
     ]);
     expect(result.rows.map((row) => row.sourceRowSnapshotId)).toEqual([
-      "source-reseating",
-      null,
       "source-visual",
+      "source-reseating",
     ]);
+  });
+
+  it("does not resurrect deleted IPX7 or overwrite cleared fields and renamed groups", () => {
+    const draft: MatrixEditorSessionDraft = {
+      groups: [{ draft_group_id: "g", group_key: "g1", group_order: 1,
+        group_label: "Edited", is_selected: true, sample_quantity_expression: "5" }],
+      rows: [{ draft_row_id: "r", row_order: 1, test_item: "Visual", method: "",
+        condition: "", requirement: "", is_sample_row: false }],
+      cells: [{ draft_row_id: "r", draft_group_id: "g", cell_value: "1" }],
+    };
+    const preview: MatrixPreviewResponse = {
+      source_document_path: "matrix.xlsx", source_document_name: "matrix.xlsx", source_format: "xlsx",
+      capability_status: "available", generated_at: "", candidate_tables: [], warnings: [], blockers: [],
+      groups: [{ group_key: "g1", group_label: "Original", source_table_index: 0,
+        extraction_status: "loaded", sample_quantity_expression: "3", sample_note: null, steps: [] }],
+      rows: [
+        { source_row_index: 1, test_item: "Visual", method: "Original", group_tokens: {g1: "1"}, is_sample_row: false },
+        { source_row_index: 2, test_item: "IPX7 testing", group_tokens: {g1: "2"}, is_sample_row: false },
+      ],
+    };
+    const result = buildMatrixFromSessionSeedDraft(draft, preview);
+    expect(result.rows.map(row => row.item)).toEqual(["Visual"]);
+    expect(result.rows[0].method).toBe("");
+    expect(result.groups[0].name).toBe("Edited");
+    expect(buildMatrixFromSessionSeedDraft({...draft, rows: [], cells: []}, preview).rows).toEqual([]);
   });
 });

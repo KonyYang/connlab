@@ -1,3 +1,4 @@
+from dataclasses import replace
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -38,6 +39,21 @@ def test_repository_supersedes_active_revision() -> None:
         repository.flush()
 
         assert repository.active_revision("P1") is None
+
+
+def test_repository_round_trips_schedule_without_optional_lineage():
+    engine = create_engine("sqlite:///:memory:", future=True)
+    init_db(engine)
+    with Session(engine) as session:
+        session.add(ProjectModel(project_id="P1", project_no="DL-1", product_name="Product", requestor="User", status="registered"))
+        session.flush()
+        revision = replace(_revision("S1", 1, state="confirmed"), based_on_confirmed_matrix_id=None,
+            based_on_confirmed_matrix_revision=None, based_on_basic_information_version=None, sample_received_date="")
+        repository = ProjectScheduleRepository(session)
+        repository.add(revision)
+        repository.flush()
+        session.expire_all()
+        assert repository.active_revision("P1") == revision
 
 
 def _revision(revision_id: str, sequence: int, *, state: str) -> ProjectScheduleRevision:

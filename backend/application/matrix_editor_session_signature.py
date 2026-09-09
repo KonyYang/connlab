@@ -7,10 +7,8 @@ from backend.application.matrix_step_text_overrides import step_text_signature
 from typing import Any
 
 from backend.application.matrix_schedule_planning import (
-    MatrixScheduleFields,
     MatrixScheduleValidationError,
     calculate_group_test_days,
-    validate_planned_schedule,
 )
 from backend.domain import (
     ConfirmedMatrixSnapshot,
@@ -31,13 +29,14 @@ from backend.application.matrix_editor_confirmed_snapshot_builder import (
 )
 
 def _validate_session_schedule(command: MatrixEditorSessionConfirmCommand) -> None:
+    # Matrix owns row Day expressions, not independently confirmed Project Schedule dates.
     selected_group_ids = [
         group.draft_group_id
         for group in command.groups
         if group.is_selected and group.draft_group_id.strip()
     ]
     try:
-        totals = calculate_group_test_days(
+        calculate_group_test_days(
             rows=(
                 {
                     "row_id": row.draft_row_id,
@@ -55,17 +54,6 @@ def _validate_session_schedule(command: MatrixEditorSessionConfirmCommand) -> No
                 for cell in command.cells
             ),
             selected_group_ids=selected_group_ids,
-        )
-        validate_planned_schedule(
-            fields=MatrixScheduleFields(
-                pre_test_buffer_days=command.pre_test_buffer_days,
-                post_test_buffer_days=command.post_test_buffer_days,
-                sample_received_date=command.sample_received_date,
-                planned_test_start_date=command.planned_test_start_date,
-                planned_test_complete_date=command.planned_test_complete_date,
-                estimated_completion_date=command.estimated_completion_date,
-            ),
-            group_test_days=totals,
         )
     except MatrixScheduleValidationError as exc:
         raise MatrixEditorSessionError(str(exc)) from exc
