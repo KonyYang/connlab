@@ -26,6 +26,7 @@
       "backend/application/project_schedule_output.py",
       "backend/application/project_schedule_service.py",
       "backend/domain/project_schedule_models.py",
+      "backend/infrastructure/office/fee_evaluation_workbook_gateway.py",
       "backend/infrastructure/storage/models_project_schedule.py",
       "backend/infrastructure/storage/project_schedule_schema_migration.py",
       "backend/infrastructure/storage/repositories/project_schedule.py",
@@ -44,6 +45,7 @@
       "tests/integration/test_matrix_editor_session_api.py",
       "tests/integration/test_project_schedule_api.py",
       "tests/unit/test_confirmed_matrix_authority_service.py",
+      "tests/unit/test_fee_evaluation_workbook_gateway.py",
       "tests/unit/test_matrix_editor_session_service.py",
       "tests/unit/test_matrix_revision_flow_service.py",
       "tests/unit/test_project_schedule_repository.py",
@@ -55,14 +57,14 @@
     ],
     "activation_head": "f3e5ddc81e8ecf7947bae58d152b595f1d277fd1",
     "started_at": "2026-09-09T15:39:07.292887Z",
-    "updated_at": "2026-09-09T23:19:02.600121Z",
+    "updated_at": "2026-09-09T23:35:09.484798Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_SCHEDULE_CONFIRM_INDEPENDENCE",
-      "stage": "excel_short_path_fix",
+      "stage": "scope_manifest_correction",
       "status": "running",
-      "summary": "User approved expanding current task to Fee Excel short local staging, close-before-publish, regression protection and rebuilt release smoke. Original operator data remains untouched.",
+      "summary": "user-approved-fee-long-path-extension-20260910",
       "requires_user": false
     },
     "report": null
