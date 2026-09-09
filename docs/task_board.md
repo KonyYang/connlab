@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_PROJECT_FOLDER_SCHEDULE_PREFLIGHT",
+    "summary": "Validate confirmed Project Schedule before Project Folder generation starts so the workflow never reaches Customer Feedback with a missing date authority.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Project Folder schedule preflight and public API regression coverage.",
+    "scope_paths": [
+      "backend/api/project_folder_generation_composition.py",
+      "tests/integration/test_project_folder_generation_api.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "76c3326049132ac5c8f4a91291c70f42b40ee595",
+    "started_at": "2026-09-09T05:03:10.214492Z",
+    "updated_at": "2026-09-09T05:03:10.214492Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_PROJECT_REGISTRY_RECOVERY",
     "tier": "high_risk",
