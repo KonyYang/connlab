@@ -74,7 +74,6 @@ class ProjectRepository:
         row.closed_by = project.closed_by
         row.completion_summary_json = project.completion_summary_json
         # Ordinary business updates cannot move a project between registry locations.
-        row.registry_revision += 1
         self._session.flush()
         return project
 

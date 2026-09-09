@@ -8,6 +8,7 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_session, get_settings
+from backend.api.project_folder_write_guard import require_project_folder_write_slot
 from backend.infrastructure.files.generation_journal import GenerationJournal
 from backend.infrastructure.storage.models import (
     ApplicationFormModel, IntakeAssetModel, IntakeCaseModel, PrecheckIssueModel,
@@ -37,7 +38,12 @@ def protect_project_mutations(router: APIRouter) -> APIRouter:
         if not (_BOUND_PARAMETERS.intersection(route.param_convertors) or route.path in _BODY_PROJECT_FIELDS):
             continue
         if not any(item.dependency is require_registry_write_access for item in route.dependencies):
-            route.dependencies.insert(0, Depends(require_registry_write_access))
+            dependency = Depends(require_registry_write_access)
+            if _has_folder_write_slot(route):
+                # Existing folder guards own the outer lock through session teardown.
+                route.dependencies.append(dependency)
+            else:
+                route.dependencies.insert(0, dependency)
     return router
 
 
@@ -62,10 +68,11 @@ async def require_registry_write_access(
         "/api/projects/{project_id}/project-folder/generation/start",
         "/api/projects/{project_id}/project-folder/generation/resume",
     }
+    folder_slot_owns_lock = _has_folder_write_slot(request.scope["route"])
     revisions = {}
     with ExitStack() as locks:
         for project_id in sorted(project_ids):
-            if not generation_owns_lock:
+            if not generation_owns_lock and not folder_slot_owns_lock:
                 try:
                     locks.enter_context(journal.lock(project_id))
                     state = journal.read(project_id)
@@ -84,6 +91,10 @@ async def require_registry_write_access(
                 revisions[project_id] = project.registry_revision
         with _commit_project_writes(session, revisions):
             yield
+
+
+def _has_folder_write_slot(route: APIRoute) -> bool:
+    return any(item.dependency is require_project_folder_write_slot for item in route.dependencies)
 
 
 @contextmanager

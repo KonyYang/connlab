@@ -152,11 +152,15 @@ def _set_project_status(
 
 
 @pytest.mark.parametrize("location", ["trash", "history"])
-def test_hidden_project_rejects_old_tab_write_without_changing_lifecycle(tmp_path, location):
+@pytest.mark.parametrize("path,payload", [
+    ("/stop", {"reason": "Old tab"}),
+    ("/official-workspace/create", {}),
+])
+def test_hidden_project_rejects_old_tab_write_without_changing_lifecycle(tmp_path, location, path, payload):
     client, engine = _client(tmp_path)
     try:
         project_id = _registry_project(client, engine, location)
-        response = client.post(f"/api/projects/{project_id}/stop", json={"reason": "Old tab"})
+        response = client.post(f"/api/projects/{project_id}{path}", json=payload)
         assert response.status_code == 409
         assert response.json()["detail"]["code"] == "project_registry_read_only"
         with create_session_factory(engine)() as session:

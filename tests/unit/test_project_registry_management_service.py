@@ -176,13 +176,16 @@ def test_failed_commit_rolls_back_every_conflict_and_audit_event(context):
     assert ProjectRegistryRepository(session).list_events("new") == []
 
 
-def test_changed_business_identifier_invalidates_preview_even_when_display_is_temporary(context):
+def test_changed_display_ltr_identifier_invalidates_preview(context):
     session, projects, ltrs, service = context
     projects.create(project("old"))
+    registered_ltr(ltrs, "old")
     session.commit()
     preview = service.preview("old", "trash")
-    projects.update(replace(projects.get("old"), project_no="DL-2026-01-003"))
+    assert preview.project.display_project_id == "DL-2026-01-002"
+    ltrs.update(replace(ltrs.get("ltr-old"), ltr_number="DL-2026-01-003"))
     session.commit()
+    assert service.preview("old", "trash").project.display_project_id == "DL-2026-01-003"
     with pytest.raises(ProjectRegistryConflict, match="changed"):
         service.trash("old", token=preview.token, reason="Mistake")
 
