@@ -32,6 +32,7 @@
       "docs/PROJECT_CONTEXT.md",
       "frontend/src/api/client.ts",
       "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.lifecycle.test.tsx",
       "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
       "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.test.tsx",
       "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.tsx",
@@ -54,14 +55,14 @@
     ],
     "activation_head": "f3e5ddc81e8ecf7947bae58d152b595f1d277fd1",
     "started_at": "2026-09-09T15:39:07.292887Z",
-    "updated_at": "2026-09-09T22:41:49.765923Z",
+    "updated_at": "2026-09-09T22:49:22.848226Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_SCHEDULE_CONFIRM_INDEPENDENCE",
       "stage": "scope_manifest_correction",
       "status": "running",
-      "summary": "User 2026-09-10 approved remaining Matrix confirmation services and related regression tests including legacy authority API expectation",
+      "summary": "User approved current task related regression scope; align lifecycle regression with independent schedule chronology",
       "requires_user": false
     },
     "report": null
