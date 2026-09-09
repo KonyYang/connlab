@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_PROJECT_FOLDER_BLOCKER_VISIBILITY",
     "summary": "Keep Project Folder generation blockers visible until the user corrects the input or explicitly starts a new recovery action.",
@@ -27,17 +27,68 @@
     "risk_reasons": [],
     "activation_head": "d139cac7dc07ed0d2b6cef1b1f09beafe145f42c",
     "started_at": "2026-09-09T11:08:32.976159Z",
-    "updated_at": "2026-09-09T11:28:12.969985Z",
+    "updated_at": "2026-09-09T14:25:51.067752Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_PROJECT_FOLDER_BLOCKER_VISIBILITY",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "用户实际冒烟测试确认阻塞提示仍一闪而过，要求在指定项目上点击复现并继续修复。",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_PROJECT_FOLDER_BLOCKER_VISIBILITY",
+      "summary": "Project Folder action blockers now remain visible across connection failures and polling of older completed generation records.",
+      "integration": {
+        "status": "passed",
+        "summary": "The committed change is limited to the generation error lifetime model and its regression tests."
+      },
+      "scope_ok": true,
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Reproduced both overwrite paths and implemented typed error-source priority."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Sequential standards and request review found no actionable finding or scope expansion."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Focused hook tests, complete frontend suite, production build, and real-browser smoke passed."
+        }
+      },
+      "subject": "0a5b7355291310c390fa022f523c6809cc583164",
+      "changed_paths": [
+        "frontend/src/features/project-workbench/useProjectFolderGeneration.ts",
+        "frontend/src/features/project-workbench/useProjectFolderGeneration.test.tsx"
+      ],
+      "validation": [
+        {
+          "name": "red_green_regressions",
+          "status": "passed",
+          "result": "Both reproduced overwrite sequences failed before their fixes and passed after."
+        },
+        {
+          "name": "frontend_full_suite",
+          "status": "passed",
+          "result": "520 passed, 1 skipped."
+        },
+        {
+          "name": "frontend_production_build",
+          "status": "passed",
+          "result": "TypeScript and Vite production build passed."
+        },
+        {
+          "name": "real_browser_smoke",
+          "status": "passed",
+          "result": "Specified project blocker remained visible after 0.7, 5, and 15 seconds."
+        }
+      ]
+    }
   },
   "last_closed": {
     "task_id": "TASK_BASIC_INFORMATION_LEGACY_CLEANUP",
