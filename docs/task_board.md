@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_BASIC_INFORMATION_LEGACY_CLEANUP",
     "summary": "Remove verified dead Basic Information schedule UI configuration and unused application-form date projections without changing legacy compatibility behavior.",
@@ -27,9 +27,57 @@
     "risk_reasons": [],
     "activation_head": "5760e0050b9a8987c94615d5f2a105218e6f3b7e",
     "started_at": "2026-09-09T10:56:31.963765Z",
-    "updated_at": "2026-09-09T10:56:31.963765Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-09T11:02:40.939435Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_BASIC_INFORMATION_LEGACY_CLEANUP",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "task_id": "TASK_BASIC_INFORMATION_LEGACY_CLEANUP",
+      "summary": "Removed the empty Basic Information Schedule UI group, corrected stale panel metadata, and stopped projecting three unused schedule-owned legacy dates while preserving compatibility fallbacks.",
+      "scope_ok": true,
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented and self-reviewed the bounded dead-code cleanup."
+        }
+      },
+      "validation": [
+        {
+          "result": "19 passed",
+          "status": "passed",
+          "name": "backend_targeted"
+        },
+        {
+          "result": "21 passed",
+          "status": "passed",
+          "name": "frontend_targeted"
+        },
+        {
+          "result": "No scope drift or compatibility-layer removal found",
+          "status": "passed",
+          "name": "diff_review"
+        }
+      ],
+      "schema": "connlab.sol-task-report",
+      "changed_paths": [
+        "backend/application/project_basic_information_output_identity.py",
+        "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.tsx",
+        "frontend/src/features/project-basic-information/basicInformationFieldConfig.ts",
+        "tests/unit/test_project_basic_information_output_identity.py"
+      ],
+      "integration": {
+        "status": "passed",
+        "summary": "Exact committed diff is limited to four approved code/test paths; historical compatibility and recovery paths remain present."
+      },
+      "version": 1,
+      "subject": "b47d51e412054ef02f8df07afc489e92567c8d4e"
+    }
   },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_SCHEDULE_PREFLIGHT",
