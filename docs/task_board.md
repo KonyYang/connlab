@@ -57,15 +57,15 @@
     ],
     "activation_head": "f3e5ddc81e8ecf7947bae58d152b595f1d277fd1",
     "started_at": "2026-09-09T15:39:07.292887Z",
-    "updated_at": "2026-09-09T23:35:09.484798Z",
+    "updated_at": "2026-09-09T23:43:46.739716Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_SCHEDULE_CONFIRM_INDEPENDENCE",
-      "stage": "scope_manifest_correction",
-      "status": "running",
-      "summary": "user-approved-fee-long-path-extension-20260910",
-      "requires_user": false
+      "stage": "business_data_required_for_final_smoke",
+      "status": "blocked",
+      "summary": "Technical fixes reviewed and integrated at abfb0d085179cb93678709760c9adf22cf47fd09. Followup QA109 passed; real Excel275char output passed. Release ConnLab_Web_20260910073613_v0.1.0 verified. Isolated operation2ec4000bdd264c7fb4a763eeb10507ff resumed through Customer Feedback, Fee, Test Record, Test Status; step7 Application Form correctly requires missing confirmed Basic received_date and sample_condition. Await real business values; do not fabricate or claim8step completion. Operator data untouched.",
+      "requires_user": true
     },
     "report": null
   },
