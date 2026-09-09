@@ -11,8 +11,22 @@ from backend.application.project_basic_information_service import (
     ConfirmProjectBasicInformationCommand,
     SaveProjectBasicInformationDraftCommand,
 )
-from backend.domain import Project, ProjectStatus, ExternalResource, ExternalResourceType, LtrRecord, LtrStatus, ProjectLifecycleState
+from backend.domain import (
+    ConfirmedMatrixSnapshot,
+    ConfirmedMatrixStatus,
+    ConfirmedMatrixVersion,
+    ExternalResource,
+    ExternalResourceType,
+    LtrRecord,
+    LtrStatus,
+    Project,
+    ProjectLifecycleState,
+    ProjectStatus,
+)
 from backend.infrastructure.storage.database import Base, create_session_factory
+from backend.infrastructure.storage.project_schedule_schema_migration import (
+    bootstrap_project_schedule_schema,
+)
 from backend.shared.config import Settings
 
 
@@ -104,6 +118,121 @@ def test_start_is_blocked_before_writes_when_complete_basic_information_is_uncon
             json={
                 "expected_context": payload["expected_context"],
                 "request_id": "unconfirmed-basic-information",
+            },
+        )
+        assert started.status_code == 409
+        assert started.json()["detail"] == guidance
+        assert client.get(url).json() is None
+        assert queued == []
+        assert list(destination.iterdir()) == []
+    finally:
+        dependency_override = app.dependency_overrides.pop(
+            deps.get_project_folder_generation_service, None
+        )
+        assert dependency_override is not None
+        runner.pool.shutdown()
+        engine.dispose()
+
+
+def test_start_is_blocked_before_writes_when_project_schedule_is_unconfirmed(
+    tmp_path,
+):
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "fixture.sqlite",
+    )
+    engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
+    Base.metadata.create_all(engine)
+    bootstrap_project_schedule_schema(engine)
+    sessions = create_session_factory(engine)
+    template, destination = tmp_path / "template", tmp_path / "output"
+    destination.mkdir()
+    for name in ("E-mail", "Submitted Material", "Photos", "Test results/Final Examination"):
+        (template / name).mkdir(parents=True)
+    with sessions() as session:
+        deps.ProjectRepository(session).create(
+            Project(
+                project_id="P1",
+                project_no="DL-001",
+                product_name="Connector",
+                requestor="Test",
+                status=ProjectStatus.DRAFT,
+            )
+        )
+        deps.LtrRecordRepository(session).create(
+            LtrRecord(
+                ltr_id="ltr",
+                project_id="P1",
+                ltr_number="DL-001",
+                status=LtrStatus.REGISTERED,
+            )
+        )
+        resources = deps.ExternalResourceRepository(session)
+        resources.upsert(
+            ExternalResource(
+                "root", ExternalResourceType.PROJECT_OUTPUT_ROOT, destination
+            )
+        )
+        resources.upsert(
+            ExternalResource(
+                "template", ExternalResourceType.PROJECT_FOLDER_TEMPLATE, template
+            )
+        )
+        deps.get_project_basic_information_service(session).confirm(
+            ConfirmProjectBasicInformationCommand(
+                project_id="P1",
+                values={
+                    **_complete_basic_information_values(),
+                    "date_lab_received_samples": "2026-09-01",
+                },
+                confirmed_by="operator",
+            )
+        )
+        deps.ConfirmedMatrixAuthorityRepository(session).create_snapshot(
+            ConfirmedMatrixSnapshot(
+                version=ConfirmedMatrixVersion(
+                    confirmed_matrix_id="CM1",
+                    project_id="P1",
+                    project_matrix_draft_id="DRAFT1",
+                    source_import_id="IMPORT1",
+                    source_snapshot_id="SNAP1",
+                    confirmed_revision=1,
+                    is_active_authority=True,
+                    status=ConfirmedMatrixStatus.CONFIRMED,
+                    confirmed_by="operator",
+                    confirmed_at="2026-09-01T00:00:00Z",
+                )
+            )
+        )
+        session.commit()
+    runner = ProjectFolderGenerationRunner(sessions, settings)
+    service = runner.service()
+    queued = []
+    service.dispatch = queued.append
+    app.dependency_overrides[deps.get_project_folder_generation_service] = lambda: service
+    try:
+        client = TestClient(app)
+        url = "/api/projects/P1/project-folder/generation"
+        preview = client.get(url + "/preview")
+        assert preview.status_code == 200, preview.text
+        payload = preview.json()
+        guidance = (
+            "Project Schedule is not confirmed. Open Matrix Editor, complete Project "
+            "Schedule, and click Confirm schedule before generating Project Folder outputs. "
+            "This date authority is required for Customer Feedback, Application Form, and "
+            "Test Report."
+        )
+        assert payload["workspace_preview"]["status"] == "blocked"
+        assert payload["workspace_preview"]["blockers"] == [guidance]
+        assert payload["start_blockers"] == [guidance]
+
+        started = client.post(
+            url + "/start",
+            json={
+                "expected_context": payload["expected_context"],
+                "request_id": "unconfirmed-project-schedule",
             },
         )
         assert started.status_code == 409

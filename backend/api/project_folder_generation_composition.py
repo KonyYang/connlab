@@ -18,6 +18,14 @@ from backend.infrastructure.files.recoverable_output_publisher import Recoverabl
 from backend.infrastructure.files.recoverable_workspace_publisher import RecoverableWorkspacePublisher, tree_hash
 
 
+PROJECT_SCHEDULE_GENERATION_BLOCKER = (
+    "Project Schedule is not confirmed. Open Matrix Editor, complete Project "
+    "Schedule, and click Confirm schedule before generating Project Folder outputs. "
+    "This date authority is required for Customer Feedback, Application Form, and "
+    "Test Report."
+)
+
+
 class ProjectFolderGenerationRunner:
     def __init__(self, sessions, settings):
         self.sessions, self.settings = sessions, settings
@@ -93,22 +101,31 @@ class ProjectFolderGenerationRunner:
                 status=basic_information.status,
                 missing_required_labels=basic_information.missing_required_labels,
             )
+            confirmed_matrix = deps.ConfirmedMatrixAuthorityRepository(session).get_active_by_project(project_id)
+            schedule_blocker = None
+            if basic_information_blocker is None and confirmed_matrix is not None:
+                confirmed_schedule = deps.get_project_schedule_output_reader(session).get_latest_confirmed(project_id)
+                if confirmed_schedule is None:
+                    schedule_blocker = PROJECT_SCHEDULE_GENERATION_BLOCKER
+            start_blockers = [
+                blocker
+                for blocker in (basic_information_blocker, schedule_blocker)
+                if blocker is not None
+            ]
             paths = preview.conflict_paths or ((preview.official_folder_path,) if preview.official_folder_path else ())
             token = fingerprint({"context": self.context(project_id), "preview": preview,
                                 "targets": [(str(path), tree_hash(path)) for path in paths],
                                 "manifest": file_hash(preview.manifest_path) if preview.manifest_path else None})
             workspace_preview = _preview_response(preview).model_dump()
-            if basic_information_blocker:
+            if start_blockers:
                 workspace_preview["status"] = "blocked"
                 workspace_preview["blockers"] = [
                     *workspace_preview["blockers"],
-                    basic_information_blocker,
+                    *start_blockers,
                 ]
             return {
                 "expected_context": token,
-                "start_blockers": (
-                    [basic_information_blocker] if basic_information_blocker else []
-                ),
+                "start_blockers": start_blockers,
                 "workspace_preview": {
                     **workspace_preview,
                     "generation_context": token,
