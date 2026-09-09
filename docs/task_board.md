@@ -55,14 +55,14 @@
     ],
     "activation_head": "f3e5ddc81e8ecf7947bae58d152b595f1d277fd1",
     "started_at": "2026-09-09T15:39:07.292887Z",
-    "updated_at": "2026-09-09T22:49:22.848226Z",
+    "updated_at": "2026-09-09T23:19:02.600121Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_SCHEDULE_CONFIRM_INDEPENDENCE",
-      "stage": "scope_manifest_correction",
+      "stage": "excel_short_path_fix",
       "status": "running",
-      "summary": "User approved current task related regression scope; align lifecycle regression with independent schedule chronology",
+      "summary": "User approved expanding current task to Fee Excel short local staging, close-before-publish, regression protection and rebuilt release smoke. Original operator data remains untouched.",
       "requires_user": false
     },
     "report": null
