@@ -171,7 +171,6 @@ function BasicInformationFieldGroupView({
         "Application details",
         "Laboratory ownership",
         "Result and commercial",
-        "Schedule",
       ].includes(group.title) ? null : (
         <h4>{group.title}</h4>
       )}

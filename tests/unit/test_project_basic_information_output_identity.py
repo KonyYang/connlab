@@ -65,6 +65,22 @@ def test_output_identity_keeps_optional_values_empty_without_fallback() -> None:
     assert "Connector from Project" not in identity.fields.values()
 
 
+def test_application_form_identity_omits_schedule_owned_legacy_dates() -> None:
+    identity = application_form_identity(
+        _snapshot(
+            {
+                "start_test_date": "2026-06-19",
+                "finish_test_date": "2026-06-20",
+                "report_date": "2026-06-21",
+            }
+        )
+    )
+
+    assert "start_test_date" not in identity.fields
+    assert "finish_test_date" not in identity.fields
+    assert "report_date" not in identity.fields
+
+
 def test_output_identity_maps_test_record_header() -> None:
     identity = test_record_header_identity(_snapshot())
 

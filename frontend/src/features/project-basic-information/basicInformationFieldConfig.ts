@@ -439,10 +439,6 @@ export const BASIC_INFORMATION_FIELD_GROUPS: BasicInformationFieldGroup[] = [
       },
     ],
   },
-  {
-    title: "Schedule",
-    fields: [],
-  },
 ];
 
 export const BASIC_INFORMATION_FIELD_PANELS: BasicInformationFieldPanel[] = [
@@ -453,7 +449,7 @@ export const BASIC_INFORMATION_FIELD_PANELS: BasicInformationFieldPanel[] = [
   },
   {
     title: "Laboratory execution",
-    summary: "Lab ownership, result/commercial status, and schedule dates.",
+    summary: "Lab ownership, result/commercial status, and received-sample details.",
     groups: BASIC_INFORMATION_FIELD_GROUPS.slice(3),
   },
 ];
