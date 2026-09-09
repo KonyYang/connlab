@@ -164,16 +164,16 @@ describe("MatrixEditorWorkspace save, cancel, and confirm lifecycle", () => {
     expect(request.rows[0].day_expression).toBe("0.5x");
   });
 
-  it("blocks Schedule confirmation when planning dates are insufficient", async () => {
+  it("blocks Schedule confirmation when completion precedes start", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
     fireEvent.change(await screen.findByLabelText("Row 1 day"), { target: { value: "3" } });
     fireEvent.change(screen.getByLabelText("Planned start"), { target: { value: "2026-06-01" } });
-    fireEvent.change(screen.getByLabelText("Test complete"), { target: { value: "2026-06-02" } });
+    fireEvent.change(screen.getByLabelText("Test complete"), { target: { value: "2026-05-31" } });
     fireEvent.change(screen.getByLabelText("Estimated completion"), { target: { value: "2026-06-02" } });
 
     expect((screen.getByRole("button", { name: "Confirm schedule" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getAllByText("Test complete is earlier than planned start plus critical group days.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Test complete is earlier than planned start.").length).toBeGreaterThan(0);
     expect(apiMocks.confirmProjectSchedule).toHaveBeenCalledTimes(0);
   });
 
