@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import {
   deleteTemporaryProject,
   type OfficialWorkspaceConflictStrategy,
@@ -128,6 +128,29 @@ export function ProjectWorkbenchLayout({
     section2SyncPreview,
     confirmedFeeLatest,
   } = runtimeModel;
+  const refreshOfficialWorkspacePreview = useRef(onRefreshOfficialWorkspacePreview);
+  refreshOfficialWorkspacePreview.current = onRefreshOfficialWorkspacePreview;
+
+  useEffect(() => {
+    let active = true;
+    if (!officialWorkspaceCanRestart) {
+      setRestartPreviewReady(false);
+      return () => {
+        active = false;
+      };
+    }
+    setRestartPreviewReady(false);
+    void refreshOfficialWorkspacePreview.current()
+      .then(() => {
+        if (active) setRestartPreviewReady(true);
+      })
+      .catch(() => {
+        if (active) setRestartPreviewReady(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [officialWorkspaceCanRestart, project.project_id]);
 
   const projectNumber = deriveRegisteredProjectReference(latestLtr, project.project_no);
   const lifecycleReadonlyView = deriveProjectLifecycleReadonlyView(runtimeModel.lifecycle);
@@ -244,6 +267,15 @@ export function ProjectWorkbenchLayout({
   const isBasicInformationGenerationBlocker = Boolean(
     basicInformationGenerationGuidance
   );
+  const correctedGenerationReady = Boolean(
+    officialWorkspaceCanRestart &&
+      restartPreviewReady &&
+      officialWorkspacePreview?.generation_context &&
+      !officialWorkspacePreview.blockers?.length
+  );
+  const displayedOfficialWorkspaceError = correctedGenerationReady
+    ? "Project inputs are now ready. Start a new generation to continue from the saved project folder."
+    : basicInformationGenerationGuidance ?? officialWorkspaceError;
   const hasMatrixDraftForPlanning =
     activeMatrixAuthorityReady || Boolean(matrixCandidateDraft ?? matrixDraft);
   const visibleFeeEvaluationButtonState =
@@ -497,21 +529,26 @@ export function ProjectWorkbenchLayout({
       </header>
 
       {officialWorkspaceError ? (
-        <div className="runtime-console-workflow-alert is-danger" role="alert">
+        <div
+          className={`runtime-console-workflow-alert${correctedGenerationReady ? "" : " is-danger"}`}
+          role="alert"
+        >
           <strong>Project folder workflow</strong>
-          <span>{basicInformationGenerationGuidance ?? officialWorkspaceError}</span>
+          <span>{displayedOfficialWorkspaceError}</span>
           {isBasicInformationGenerationBlocker &&
           runtimeModel.basicInformation?.status !== "confirmed" ? (
             <button type="button" onClick={onOpenBasicInformation}>
               Open Basic Information
             </button>
           ) : null}
-          {officialWorkspaceCanResume && !isBasicInformationGenerationBlocker ? (
+          {officialWorkspaceCanResume && !isBasicInformationGenerationBlocker && !correctedGenerationReady ? (
             <button type="button" disabled={lifecycleReadonlyView.readonly || officialWorkspaceCreating}
               onClick={() => void onCreateOfficialWorkspace()}>Resume generation</button>
           ) : null}
           {officialWorkspaceCanRestart ? <>
-            <span>After correcting inputs, review a fresh preview to start a new operation. Previous completed files and recovery history are kept.</span>
+            <span>{correctedGenerationReady
+              ? "The latest preview is clear. Previous completed files and recovery history are kept."
+              : "After correcting inputs, review a fresh preview to start a new operation. Previous completed files and recovery history are kept."}</span>
             <button type="button" disabled={officialWorkspaceCreating || lifecycleReadonlyView.readonly}
               onClick={() => { setRestartPreviewReady(false); void onRefreshOfficialWorkspacePreview().then(() => setRestartPreviewReady(true)).catch(() => setRestartPreviewReady(false)); }}>Refresh generation preview</button>
             <button type="button" disabled={!restartPreviewReady || !officialWorkspacePreview?.generation_context || Boolean(officialWorkspacePreview?.blockers?.length) || officialWorkspaceCreating || lifecycleReadonlyView.readonly}

@@ -1465,7 +1465,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByLabelText("Folder Actions")).toBeTruthy();
   });
 
-  it("requires a fresh preview before explicitly starting over and retains its conflict approval token", async () => {
+  it("refreshes a safely restartable operation and retains its conflict approval token", async () => {
     const user = userEvent.setup();
     const onRestartOfficialWorkspace = vi.fn();
     const onRefreshOfficialWorkspacePreview = vi.fn().mockResolvedValue(undefined);
@@ -1484,9 +1484,21 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
         blockers: [], warnings: [], planned_paths: [],
       },
     });
-    expect(screen.getByRole("button", { name: "Start new generation" })).toHaveProperty("disabled", true);
-    await user.click(screen.getByRole("button", { name: "Refresh generation preview" }));
-    expect(onRefreshOfficialWorkspacePreview).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(onRefreshOfficialWorkspacePreview).toHaveBeenCalledTimes(1)
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Start new generation" })).toHaveProperty(
+        "disabled",
+        false
+      )
+    );
+    expect(screen.getByRole("alert").textContent).toContain(
+      "Project inputs are now ready. Start a new generation to continue from the saved project folder."
+    );
+    expect(screen.getByRole("alert").textContent).not.toContain("Source changed");
+    expect(screen.getByRole("alert").classList.contains("is-danger")).toBe(false);
+    expect(screen.queryByRole("button", { name: "Resume generation" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Start new generation" }));
     expect(onRestartOfficialWorkspace).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Backup and Rebuild" }));
