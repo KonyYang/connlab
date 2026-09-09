@@ -31,6 +31,22 @@ authority cutover must be an explicit task with migration and recovery behavior.
 When ownership is unclear, trace the current entry point, persisted record, write path, and consumers.
 Do not use a dated snapshot as a substitute for the code.
 
+### Project closure and registry location
+
+- Business lifecycle and registry location are independent. A closed project is still a normal
+  record; a project in the recycle bin (`trash`) or retained history (`history`) keeps its lifecycle.
+- The immutable internal `project_id` identifies the retained aggregate. A displayed DL number does
+  not identify a unique database record and must never be used as a replacement or deletion key.
+- Registry moves retain Matrix, fee and output records, LTR associations and ownership, and external
+  files. Conflict-aware restore can move the current records into history; it never overwrites them.
+- Normal lists, selectors, counts and work queues exclude hidden records. Read-only inspection and
+  audit can still resolve them; ordinary writes require restoration first.
+- Registry transitions and business writes share the project-generation lock. A queued or running
+  generation prevents a registry move; transitions revalidate all conflicts in one transaction.
+- New closure actions require an explicit reason; only Other requires a note. Output exceptions are
+  reminders, and reopening is separate from restoring a hidden record.
+- [Management behavior and acceptance](project_registry_management.md) defines this boundary.
+
 ### Matrix draft lifecycle
 
 - A Project has at most one editable Matrix working draft (`status = draft`).

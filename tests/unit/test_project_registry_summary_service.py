@@ -298,6 +298,9 @@ class _ProjectStore:
         return self._projects
 
 
+    def get(self, project_id: str):
+        return next((project for project in self._projects if project.project_id == project_id), None)
+
 class _LtrStore:
     def __init__(self, records: dict[str, list[LtrRecord]]) -> None:
         self._records = records

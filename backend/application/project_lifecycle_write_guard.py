@@ -144,6 +144,8 @@ class ProjectLifecycleWriteGuard:
 def _readonly_message_and_actions(
     project: Project,
 ) -> tuple[str | None, tuple[str, ...]]:
+    if project.registry_state != "active":
+        return ("This project is retained in the recycle bin or history. Restore it before making changes.", ())
     if project.lifecycle_state is ProjectLifecycleState.STOPPED:
         return (
             "This project is stopped. Activate it before making changes.",

@@ -96,6 +96,7 @@ export type WorkbenchLifecycleViewModel = {
 export type WorkbenchLifecycleActionPrimary = "close" | "activate" | "none";
 
 export type WorkbenchLifecycleActionsViewModel = {
+  projectRecordId?: string;
   primaryAction: WorkbenchLifecycleActionPrimary;
   canStop: boolean;
   canResume: boolean;
@@ -227,22 +228,26 @@ export function deriveProjectWorkbenchLifecycleActions(
   const canStop = false;
   const canResume = false;
   const canClose =
+    Boolean(lifecycle?.project_id) &&
+    (!lifecycle?.registry_state || lifecycle.registry_state === "active") &&
     lifecycle?.lifecycle_state === "active" &&
     !lifecycle.readonly &&
     allowedActions.includes("close");
   const canActivate =
+    (!lifecycle?.registry_state || lifecycle.registry_state === "active") &&
     (lifecycle?.lifecycle_state === "stopped" ||
       lifecycle?.lifecycle_state === "closed") &&
     allowedActions.includes("activate");
 
   return {
+    projectRecordId: lifecycle?.project_id,
     primaryAction: canClose ? "close" : canActivate ? "activate" : "none",
     canStop,
     canResume,
     canClose,
     canActivate,
     closeActionLabel: "Close project",
-    activateActionLabel: "Activate project",
+    activateActionLabel: "Reopen project",
     defaultCloseReasonCategory: options.hasRegisteredProject ? "completed" : "other",
     closeReasonLabel: lifecycle?.close_reason_label ?? null,
     readonlyReason,

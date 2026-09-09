@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useProjectFolderGeneration } from "./useProjectFolderGeneration";
 import {
   ApiRequestError,
@@ -303,6 +303,8 @@ const DEFAULT_APPROVAL_INPUT_SOURCES: ApprovalInputSources = {
 };
 
 export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchModel {
+  const lifecycleEpoch = useRef(0);
+  useEffect(() => () => {lifecycleEpoch.current += 1;}, [projectId]);
   const [project, setProject] = useState<Project | null>(null);
   const [ltrs, setLtrs] = useState<LtrRecord[]>([]);
   const [resources, setResources] = useState<ExternalResource[]>([]);
@@ -1083,18 +1085,21 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
   }
 
   async function onRefreshLifecycle(): Promise<void> {
+    const request = lifecycleEpoch.current;
     setLifecycleLoading(true);
     try {
       const nextLifecycle = await getProjectLifecycle(projectId);
+      if (request !== lifecycleEpoch.current) return;
       setLifecycle(nextLifecycle);
       setLifecycleError(null);
     } catch (err) {
+      if (request !== lifecycleEpoch.current) return;
       setLifecycle(null);
       setLifecycleError(
         err instanceof Error ? err.message : "Failed to load project lifecycle."
       );
     } finally {
-      setLifecycleLoading(false);
+      if (request === lifecycleEpoch.current) setLifecycleLoading(false);
     }
   }
 
@@ -1127,10 +1132,10 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     reasonCategory: ProjectCloseReasonCategory,
     note: string
   ): Promise<void> {
-    const normalizedNote = normalizeRequiredLifecycleText(
-      note,
-      "Close note is required."
-    );
+    const request = lifecycleEpoch.current;
+    const normalizedNote = reasonCategory === "other"
+      ? normalizeRequiredLifecycleText(note, "Close note is required.")
+      : note.trim();
     setLifecycleLoading(true);
     try {
       const nextLifecycle = await closeProjectLifecycle(projectId, {
@@ -1138,16 +1143,21 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
         note: normalizedNote,
         operator: null,
       });
+      if (request !== lifecycleEpoch.current) return;
       setLifecycle(nextLifecycle);
-      setProject(await getProject(projectId));
-      await refreshOutputStatus(projectId, setOutputStatusSummary);
+      const refreshedProject = await getProject(projectId);
+      if (request !== lifecycleEpoch.current) return;
+      setProject(refreshedProject);
+      await refreshOutputStatus(projectId, (value) => {if (request === lifecycleEpoch.current) setOutputStatusSummary(value);});
+      if (request !== lifecycleEpoch.current) return;
       setLifecycleError(null);
-      setMessage("Project closed with a business reason. Activate it if work should continue later.");
+      setMessage("Project closed. Reopen it if work should continue later.");
     } catch (err) {
+      if (request !== lifecycleEpoch.current) return;
       setLifecycleError((err as Error).message);
       throw err;
     } finally {
-      setLifecycleLoading(false);
+      if (request === lifecycleEpoch.current) setLifecycleLoading(false);
     }
   }
 

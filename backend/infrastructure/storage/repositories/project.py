@@ -33,12 +33,19 @@ class ProjectRepository:
         row = self._session.get(ProjectModel, project_id)
         return _to_domain(row) if row else None
 
-    def list(self) -> list[Project]:
-        """Return all projects ordered by optional project number and product."""
-        rows = self._session.scalars(
-            select(ProjectModel).order_by(ProjectModel.project_no, ProjectModel.product_name)
-        ).all()
+    def list(self, *, registry_state: str = "active") -> list[Project]:
+        """Return normal projects by default; archival reads opt into their location."""
+        if registry_state not in {"active", "trash", "history", "all"}:
+            raise ValueError("Unknown project registry location.")
+        statement = select(ProjectModel).order_by(ProjectModel.project_no, ProjectModel.product_name)
+        if registry_state != "all":
+            statement = statement.where(ProjectModel.registry_state == registry_state)
+        rows = self._session.scalars(statement).all()
         return [_to_domain(row) for row in rows]
+
+    def list_all(self) -> list[Project]:
+        """Include retained projects for ownership and orphan audits."""
+        return self.list(registry_state="all")
 
     def update(self, project: Project) -> Project:
         """Update an existing project from a domain record."""
@@ -66,6 +73,8 @@ class ProjectRepository:
         row.closed_at = project.closed_at
         row.closed_by = project.closed_by
         row.completion_summary_json = project.completion_summary_json
+        # Ordinary business updates cannot move a project between registry locations.
+        row.registry_revision += 1
         self._session.flush()
         return project
 
@@ -104,6 +113,10 @@ def _to_model(project: Project) -> ProjectModel:
         closed_at=project.closed_at,
         closed_by=project.closed_by,
         completion_summary_json=project.completion_summary_json,
+        registry_state=project.registry_state,
+        registry_revision=project.registry_revision,
+        registry_changed_at=project.registry_changed_at,
+        registry_reason=project.registry_reason,
     )
 
 
@@ -134,4 +147,8 @@ def _to_domain(row: ProjectModel) -> Project:
         closed_at=row.closed_at,
         closed_by=row.closed_by,
         completion_summary_json=row.completion_summary_json,
+        registry_state=row.registry_state,
+        registry_revision=row.registry_revision,
+        registry_changed_at=row.registry_changed_at,
+        registry_reason=row.registry_reason,
     )

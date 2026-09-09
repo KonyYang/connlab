@@ -195,7 +195,7 @@ def test_close_stopped_project_preserves_original_status_for_activation() -> Non
     service.close_project(
         CloseProjectLifecycleCommand(
             project_id="P1",
-            reason_category=ProjectCloseReasonCategory.FAILED,
+            reason_category=ProjectCloseReasonCategory.CANNOT_TEST,
             note="Cannot continue.",
         )
     )
@@ -214,6 +214,44 @@ def test_close_administrative_requires_reason() -> None:
         service.close_administrative(
             CloseAdministrativeProjectCommand(project_id="P1", reason=" ")
         )
+
+
+@pytest.mark.parametrize("reason", ["completed", "cancelled", "cannot_test"])
+def test_explicit_business_close_reason_allows_empty_note_without_fabricating_it(reason: str) -> None:
+    stores = _Stores(project=_project())
+    result = stores.service().close_project(
+        CloseProjectLifecycleCommand(project_id="P1", reason_category=reason, note=" ")
+    )
+    assert result.lifecycle_state is ProjectLifecycleState.CLOSED
+    assert result.closed_reason == ""
+    assert stores.events.items[-1].reason == ""
+
+
+def test_other_close_reason_still_requires_an_explanation() -> None:
+    with pytest.raises(ProjectLifecycleStateError, match="Close note is required"):
+        _Stores(project=_project()).service().close_project(
+            CloseProjectLifecycleCommand(project_id="P1", reason_category="other", note=" ")
+        )
+
+
+@pytest.mark.parametrize("reason", ["failed", "duplicate"])
+def test_new_closure_rejects_legacy_only_reason_without_changing_project(reason):
+    stores = _Stores(project=_project())
+    with pytest.raises(ProjectLifecycleStateError, match="Unsupported close reason"):
+        stores.service().close_project(CloseProjectLifecycleCommand(
+            project_id="P1", reason_category=reason, note="Legacy label"))
+    assert stores.projects.project.lifecycle_state is ProjectLifecycleState.ACTIVE
+    assert stores.events.items == []
+
+
+@pytest.mark.parametrize("reason,label", [("failed", "Failed"), ("duplicate", "Duplicate")])
+def test_historical_close_reasons_remain_readable(reason, label):
+    legacy = _project(status=ProjectStatus.CLOSED).with_lifecycle(
+        lifecycle_state=ProjectLifecycleState.CLOSED, close_reason_category=ProjectCloseReasonCategory(reason),
+        closed_reason="Historical explanation")
+    view = _Stores(project=legacy).service().get_lifecycle("P1")
+    assert view.close_reason_label == label
+    assert view.closed_reason == "Historical explanation"
 
 
 def test_closed_project_cannot_resume() -> None:

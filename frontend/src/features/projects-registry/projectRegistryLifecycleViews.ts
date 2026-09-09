@@ -39,10 +39,11 @@ export function filterRegistryRowsForView(
   rows: ProjectRegistryLifecycleRow[],
   view: ProjectRegistryView
 ): ProjectRegistryLifecycleRow[] {
+  const currentRows = rows.filter(({row}) => !row.registry_state || row.registry_state === "active");
   if (view === "all") {
-    return rows;
+    return currentRows;
   }
-  return rows.filter(({ row, lifecycle }) => registryViewForRow(row, lifecycle) === view);
+  return currentRows.filter(({ row, lifecycle }) => registryViewForRow(row, lifecycle) === view);
 }
 
 export function registryViewForRow(

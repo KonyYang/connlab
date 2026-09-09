@@ -261,14 +261,11 @@ export function TemporaryPlanningMode({
 }
 
 export function ProjectLifecycleManagementPanel({
-  allowDelete,
   compactBottom = false,
-  deletePreview,
   lifecycleActions,
   lifecycleBusy,
   lifecycleError,
   outputStatusSummary,
-  onDeleteTemporaryProject,
   onActivateProject,
   onCloseProject,
   projectIdentity,
@@ -290,37 +287,20 @@ export function ProjectLifecycleManagementPanel({
   const [pendingAction, setPendingAction] =
     useState<WorkbenchLifecycleActionsViewModel["primaryAction"]>("none");
   const [reason, setReason] = useState("");
-  const blockers = deletePreview?.blockers ?? [];
-  const deleteAvailable = allowDelete && deletePreview?.can_delete === true;
-  const deleteUnavailable = allowDelete && deletePreview?.can_delete === false;
-  const visibleBlockers = blockers.map((blocker) =>
-    getTemporaryDeleteBlockerCopy(blocker, allowDelete)
-  );
-  const deleteUnavailableCopy =
-    "Temporary deletion is unavailable for this project state.";
   const lifecycleTitle = lifecycleActions.canActivate
-    ? "Activate project"
+    ? "Reopen project"
     : lifecycleActions.canClose
       ? "Close project"
-    : deleteAvailable
-      ? "Remove temporary record"
-      : allowDelete
-        ? "Temporary project controls"
-        : "Project lifecycle";
+      : "Project lifecycle";
   const lifecycleDescription = lifecycleActions.canActivate
-    ? "Activate restores editing and project work when business work should continue."
+    ? "Reopen restores editing and project work when business work should continue."
     : lifecycleActions.canClose
-      ? "Close records a business reason and keeps the project traceable for later activation."
-    : deleteAvailable
-      ? "Delete is only available for mistaken temporary records with no formal or workspace blockers."
-      : allowDelete
-        ? deleteUnavailableCopy
-        : "No lifecycle action is currently available.";
+      ? "Close records a business reason. Reopen the project if work needs to continue."
+      : "No lifecycle action is currently available.";
   const hasLifecycleAction = lifecycleActions.canActivate || lifecycleActions.canClose;
   const hasPanelContent =
     hasLifecycleAction ||
-    allowDelete ||
-    blockers.length > 0 ||
+    Boolean(lifecycleActions.readonlyReason) ||
     Boolean(lifecycleError);
 
   if (!hasPanelContent) {
@@ -367,18 +347,9 @@ export function ProjectLifecycleManagementPanel({
             {lifecycleActions.activateActionLabel}
           </button>
         ) : null}
-        {allowDelete ? (
-          <button
-            type="button"
-            disabled={lifecycleBusy || !deletePreview?.can_delete}
-            title={deleteUnavailable ? deleteUnavailableCopy : undefined}
-            onClick={onDeleteTemporaryProject}
-          >
-            Delete temporary project
-          </button>
-        ) : null}
       </div>
       <ProjectWorkbenchCloseConfirmation
+        key={lifecycleActions.projectRecordId}
         compact={compactBottom}
         lifecycleActions={lifecycleActions}
         lifecycleBusy={lifecycleBusy}
@@ -389,10 +360,10 @@ export function ProjectLifecycleManagementPanel({
       />
       {pendingAction !== "none" ? (
         <div className="runtime-console-lifecycle-confirmation">
-          <strong>Confirm activate project</strong>
+          <strong>Confirm reopen project</strong>
           <p>Record why project work should continue before editing is restored.</p>
           <label>
-            <span>Activation note</span>
+            <span>Reopening note</span>
             <textarea
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -405,7 +376,7 @@ export function ProjectLifecycleManagementPanel({
               disabled={lifecycleBusy || !reason.trim()}
               onClick={handleConfirmAction}
             >
-              Confirm activate project
+              Confirm reopen project
             </button>
             <button type="button" disabled={lifecycleBusy} onClick={handleCancelAction}>
               Cancel
@@ -417,13 +388,6 @@ export function ProjectLifecycleManagementPanel({
         <p className="runtime-console-readonly-note">
           {lifecycleActions.readonlyReason}
         </p>
-      ) : null}
-      {!compactBottom && visibleBlockers.length > 0 ? (
-        <ul className="runtime-console-blocker-list">
-          {visibleBlockers.map((blocker) => (
-            <li key={blocker}>{blocker}</li>
-          ))}
-        </ul>
       ) : null}
       {lifecycleError ? (
         <p className="runtime-console-error">{lifecycleError}</p>
@@ -464,13 +428,6 @@ export function RegisteredSetupMode({
       </div>
     </section>
   );
-}
-
-function getTemporaryDeleteBlockerCopy(blocker: string, allowDelete: boolean): string {
-  if (allowDelete && blocker === "Project is not a temporary planning project.") {
-    return "Temporary deletion is unavailable for this project state.";
-  }
-  return blocker;
 }
 
 export function NoMatrixWorkspaceEmptyState({

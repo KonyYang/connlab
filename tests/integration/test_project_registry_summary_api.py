@@ -51,6 +51,8 @@ def test_project_registry_api_returns_summary_rows_and_project_identity_fields(
         assert registry.json() == [
             {
                 "project_id": "P1",
+                "registry_state": "active",
+                "registry_revision": 0,
                 "has_confirmed_matrix": False,
                 "ltr_number": "DL-2026-05-001",
                 "sample_description": "CoolPower connector samples",

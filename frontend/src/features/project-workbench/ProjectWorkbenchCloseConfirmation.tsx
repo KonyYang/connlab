@@ -1,20 +1,13 @@
-import { useState, type ReactElement } from "react";
-import type {
-  ProjectCloseReasonCategory,
-  ProjectOutputStatusItem,
-  ProjectOutputStatusSummary,
-} from "../../api/client";
+import { useRef, useState, type ReactElement } from "react";
+import type { ProjectCloseReasonCategory, ProjectOutputStatusItem, ProjectOutputStatusSummary } from "../../api/client";
+import { ProjectManagementDialog } from "../projects-registry/ProjectRegistryManagementDialog";
 import type { WorkbenchLifecycleActionsViewModel } from "./projectWorkbenchLifecycleSelectors";
+import "../../project-dashboard.css";
 
-const CLOSE_REASON_OPTIONS: Array<{
-  value: ProjectCloseReasonCategory;
-  label: string;
-}> = [
+const CLOSE_REASON_OPTIONS: Array<{value: ProjectCloseReasonCategory; label: string}> = [
   { value: "completed", label: "Completed" },
-  { value: "failed", label: "Failed" },
   { value: "cancelled", label: "Cancelled" },
-  { value: "cannot_test", label: "Cannot test" },
-  { value: "duplicate", label: "Duplicate" },
+  { value: "cannot_test", label: "Cannot continue testing" },
   { value: "other", label: "Other" },
 ];
 
@@ -25,197 +18,76 @@ type ProjectWorkbenchCloseConfirmationProps = {
   outputStatusSummary: ProjectOutputStatusSummary | null;
   projectIdentity: string;
   projectReference: string | null;
-  onCloseProject: (
-    reasonCategory: ProjectCloseReasonCategory,
-    note: string
-  ) => void | Promise<void>;
+  onCloseProject: (reasonCategory: ProjectCloseReasonCategory, note: string) => void | Promise<void>;
+  initiallyOpen?: boolean;
+  onDismiss?: () => void;
 };
 
 export function ProjectWorkbenchCloseConfirmation({
-  compact = false,
-  lifecycleActions,
-  lifecycleBusy,
-  outputStatusSummary,
-  projectIdentity,
-  projectReference,
-  onCloseProject,
+  compact = false, lifecycleActions, lifecycleBusy, outputStatusSummary, projectIdentity,
+  projectReference, onCloseProject, initiallyOpen = false, onDismiss,
 }: ProjectWorkbenchCloseConfirmationProps): ReactElement | null {
-  const [confirming, setConfirming] = useState(false);
-  const [reasonCategory, setReasonCategory] = useState<ProjectCloseReasonCategory>(
-    lifecycleActions.defaultCloseReasonCategory
-  );
+  const [confirming, setConfirming] = useState(initiallyOpen);
+  const [reasonCategory, setReasonCategory] = useState<ProjectCloseReasonCategory | "">("");
   const [note, setNote] = useState("");
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
-
-  if (!lifecycleActions.canClose) {
-    return null;
-  }
-
-  const normalizedNote = note.trim();
-  const canSubmit = Boolean(normalizedNote) && !lifecycleBusy;
-
+  const [submitting, setSubmitting] = useState(false);
+  const submitLock = useRef(false);
+  if (!lifecycleActions.canClose) return null;
+  const busy = lifecycleBusy || submitting;
+  const canSubmit = Boolean(reasonCategory) && (reasonCategory !== "other" || Boolean(note.trim())) && !busy;
   function resetConfirmation(): void {
-    setConfirming(false);
-    setReasonCategory(lifecycleActions.defaultCloseReasonCategory);
-    setNote("");
-    setValidationMessage(null);
+    setConfirming(false); setReasonCategory(""); setNote(""); setValidationMessage(null); onDismiss?.();
   }
-
   async function handleCloseProject(): Promise<void> {
-    if (!normalizedNote) {
-      setValidationMessage("Close note is required.");
-      return;
-    }
-    await onCloseProject(reasonCategory, normalizedNote);
-    resetConfirmation();
+    if (!canSubmit || !reasonCategory || submitLock.current) return;
+    submitLock.current = true; setSubmitting(true); setValidationMessage(null);
+    try {
+      await onCloseProject(reasonCategory, note.trim());
+      resetConfirmation();
+    } catch (error) {
+      setValidationMessage(error instanceof Error ? error.message : "Could not close this project. Review and retry.");
+    } finally {submitLock.current = false; setSubmitting(false);}
   }
-
-  return (
-    <section
-      className={`runtime-console-close-actions${compact ? " is-compact" : ""}`}
-      aria-label="Project close action"
-    >
-      {compact ? null : (
-        <div className="runtime-console-close-actions-heading">
-          <strong>Close project</strong>
-          <p>
-            Close records a business reason and keeps the project traceable for later
-            activation if work needs to continue.
-          </p>
-        </div>
-      )}
-      <div className="runtime-console-lifecycle-actions">
-        <button
-          type="button"
-          disabled={lifecycleBusy}
-          className="runtime-console-close-action"
-          onClick={() => {
-            setConfirming(true);
-            setValidationMessage(null);
-          }}
-        >
-          {lifecycleActions.closeActionLabel}
-        </button>
+  return <section className={`runtime-console-close-actions${compact ? " is-compact" : ""}`} aria-label="Project close action">
+    {!initiallyOpen && <button type="button" className="runtime-console-close-action" disabled={busy}
+      onClick={() => setConfirming(true)}>Close project</button>}
+    {confirming && <ProjectManagementDialog title={`Close project ${projectReference ?? projectIdentity}`} busy={busy} onCancel={resetConfirmation}>
+      <p>Closing makes this project read-only and keeps all its records. Reopen it when work needs to continue.</p>
+      <label><span>Close reason</span><select data-dialog-initial-focus value={reasonCategory} disabled={busy}
+        onChange={(event) => setReasonCategory(event.target.value as ProjectCloseReasonCategory | "")}>
+        <option value="">Select a reason</option>
+        {CLOSE_REASON_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select></label>
+      <label><span>Additional note ({reasonCategory === "other" ? "required" : "optional"})</span>
+        <textarea value={note} disabled={busy} onChange={(event) => setNote(event.target.value)} rows={2} />
+      </label>
+      {reasonCategory === "other" && !note.trim() && <p className="project-management-help">Explain the reason when choosing Other.</p>}
+      <OutputStatusSummaryPanel outputStatusSummary={outputStatusSummary} />
+      {validationMessage && <p className="runtime-console-error" role="alert">{validationMessage}</p>}
+      <div className="project-management-dialog-actions">
+        <button type="button" disabled={!canSubmit} onClick={() => void handleCloseProject()}>{submitting ? "Closing…" : "Close project"}</button>
+        <button type="button" disabled={busy} onClick={resetConfirmation}>Cancel</button>
       </div>
-      {confirming ? (
-        <div className="runtime-console-lifecycle-confirmation">
-          <strong>Confirm close project</strong>
-          <p>
-            This records why {projectReference ?? projectIdentity} is closing. It does
-            not erase the project history, and the project can be activated later when
-            business work should continue.
-          </p>
-          <OutputStatusSummaryPanel outputStatusSummary={outputStatusSummary} />
-          <label>
-            <span>Close reason</span>
-            <select
-              value={reasonCategory}
-              onChange={(event) =>
-                setReasonCategory(event.target.value as ProjectCloseReasonCategory)
-              }
-            >
-              {CLOSE_REASON_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Close note</span>
-            <textarea
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              rows={3}
-            />
-          </label>
-          <CloseValidationMessage message={validationMessage} />
-          <div className="runtime-console-lifecycle-confirm-actions">
-            <button
-              type="button"
-              disabled={!canSubmit}
-              onClick={() => void handleCloseProject()}
-            >
-              Confirm close project
-            </button>
-            <button type="button" disabled={lifecycleBusy} onClick={resetConfirmation}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : null}
-    </section>
-  );
+    </ProjectManagementDialog>}
+  </section>;
 }
 
-function OutputStatusSummaryPanel({
-  outputStatusSummary,
-}: {
-  outputStatusSummary: ProjectOutputStatusSummary | null;
-}): ReactElement {
-  if (!outputStatusSummary) {
-    return (
-      <div className="runtime-console-output-status-summary">
-        <strong>Output status summary</strong>
-        <p>Output status is not available. Review current Workbench outputs before closing.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="runtime-console-output-status-summary">
-      <strong>Output status summary</strong>
-      {outputStatusSummary.items.length > 0 ? (
-        <ul>
-          {outputStatusSummary.items.map((item) => (
-            <li key={`${item.output_kind}-${item.output_path ?? item.reason}`}>
-              <span>{formatOutputKind(item.output_kind)}</span>
-              <strong>{formatOutputStatus(item.status)}</strong>
-              <p>{item.reason}</p>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>No output status items are currently reported.</p>
-      )}
-    </div>
-  );
+function OutputStatusSummaryPanel({outputStatusSummary}: {outputStatusSummary: ProjectOutputStatusSummary | null}): ReactElement {
+  if (!outputStatusSummary) return <p className="project-management-help">Output status is currently unavailable. You can still close the project after reviewing your records.</p>;
+  const exceptions = outputStatusSummary.items.filter((item) => item.status !== "current");
+  if (!exceptions.length) return <p className="project-management-help">{outputStatusSummary.items.length ? "Recorded outputs are current." : "No output status is recorded. Review your records before closing."}</p>;
+  return <div className="project-management-output-summary">
+    <p>{exceptions.length} {exceptions.length === 1 ? "output needs" : "outputs need"} review</p>
+    <details><summary>View output details</summary><ul>{exceptions.map((item) =>
+      <li key={item.output_kind}><strong>{formatOutputKind(item.output_kind)}: {formatOutputStatus(item.status)}</strong><p>{item.reason}</p></li>
+    )}</ul></details>
+  </div>;
 }
-
-function CloseValidationMessage({
-  message,
-}: {
-  message: string | null;
-}): ReactElement | null {
-  if (!message) {
-    return null;
-  }
-  return (
-    <p className="runtime-console-error" role="alert">
-      {message}
-    </p>
-  );
-}
-
 function formatOutputKind(kind: ProjectOutputStatusItem["output_kind"]): string {
-  const labels: Record<ProjectOutputStatusItem["output_kind"], string> = {
-    section2_write_back: "Section 2 write-back",
-    test_record_form: "Test Record",
-    test_status: "Test Status",
-    fee_evaluation: "Fee Evaluation",
-    customer_feedback_form: "Customer Feedback",
-    approval_package: "Approval Package",
-  };
-  return labels[kind];
+  return ({section2_write_back: "Section 2 write-back", test_record_form: "Test Record", test_status: "Test Status",
+    fee_evaluation: "Fee Evaluation", customer_feedback_form: "Customer Feedback", approval_package: "Approval Package"})[kind];
 }
-
 function formatOutputStatus(status: ProjectOutputStatusItem["status"]): string {
-  const labels: Record<ProjectOutputStatusItem["status"], string> = {
-    missing: "Missing",
-    current: "Current",
-    stale: "Needs refresh",
-    manual: "Manual",
-    failed: "Failed",
-  };
-  return labels[status];
+  return ({missing: "Not generated", current: "Current", stale: "Needs refresh", manual: "Manually maintained", failed: "Failed"})[status];
 }

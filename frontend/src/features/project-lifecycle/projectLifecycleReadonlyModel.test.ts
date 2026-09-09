@@ -5,6 +5,15 @@ import {
 } from "./projectLifecycleReadonlyModel";
 
 describe("project lifecycle readonly model", () => {
+  it.each(["trash", "history"] as const)("keeps %s records read-only even when their original lifecycle is active", (location) => {
+    const view = deriveProjectLifecycleReadonlyView({project_id: "A", registry_state: location,
+      lifecycle_state: "active", closure_type: null, status_label: "Active", readonly: true,
+      allowed_actions: [], status: "active", warnings: []});
+    expect(view.readonly).toBe(true);
+    expect(view.canWriteBusinessData).toBe(false);
+    expect(view.canClose).toBe(false);
+    expect(view.message).toContain("Restore");
+  });
   it("keeps active projects writable", () => {
     const view = deriveProjectLifecycleReadonlyView({
       project_id: "P1",
@@ -38,7 +47,7 @@ describe("project lifecycle readonly model", () => {
     expect(view.canResume).toBe(false);
     expect(view.canClose).toBe(true);
     expect(view.canWriteBusinessData).toBe(false);
-    expect(view.message).toContain("Activate it before making changes");
+    expect(view.message).toContain("Reopen it before making changes");
   });
 
   it("marks completed close as activatable readonly", () => {
@@ -59,7 +68,7 @@ describe("project lifecycle readonly model", () => {
     expect(view.canResume).toBe(false);
     expect(view.canClose).toBe(false);
     expect(view.title).toBe("Project closed: Completed");
-    expect(view.message).toContain("Activate it before making changes");
+    expect(view.message).toContain("Reopen it before making changes");
   });
 
   it("maps legacy non-completed close to business readonly copy", () => {
@@ -94,6 +103,6 @@ describe("project lifecycle readonly model", () => {
         message: "This project is closed administratively and is readonly.",
         allowed_actions: ["activate"],
       })
-    ).toBe("This project is closed. Activate it before making changes.");
+    ).toBe("This project is closed. Reopen it before making changes.");
   });
 });

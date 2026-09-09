@@ -55,6 +55,10 @@ class Project:
     closed_at: str | None = None
     closed_by: str | None = None
     completion_summary_json: str | None = None
+    registry_state: str = "active"
+    registry_revision: int = 0
+    registry_changed_at: str | None = None
+    registry_reason: str | None = None
 
     def can_generate_folder(self) -> bool:
         """Return whether the project is ready for safe folder generation."""

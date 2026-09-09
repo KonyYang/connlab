@@ -1,10 +1,18 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import {
+  closeProjectLifecycle,
+  getProjectOutputStatusSummary,
   getProjectLifecycle,
   listProjectRegistryRows,
   type ProjectLifecycleResponse,
-  type ProjectRegistryRow
+  type ProjectRegistryRow,
+  type ProjectOutputStatusSummary,
 } from "../api/client";
+import { ProjectWorkbenchCloseConfirmation } from "../features/project-workbench/ProjectWorkbenchCloseConfirmation";
+import { deriveProjectWorkbenchLifecycleActions } from "../features/project-workbench/projectWorkbenchLifecycleSelectors";
+import { ProjectRegistryManagementPanel } from "../features/projects-registry/ProjectRegistryManagementPanel";
+import { ProjectRegistryManagementDialog } from "../features/projects-registry/ProjectRegistryManagementDialog";
+import { useProjectRegistryManagement } from "../features/projects-registry/useProjectRegistryManagement";
 import { EmptyState } from "../components/common/EmptyState";
 import { ErrorMessage } from "../components/common/ErrorMessage";
 import { LoadingState } from "../components/common/LoadingState";
@@ -69,13 +77,29 @@ export function ProjectListPage({
   const [selectedView, setSelectedView] = useState<RegistryView>(initialViewState.selectedView);
   const [projectIdSort, setProjectIdSort] = useState<ProjectIdSortDirection>(initialViewState.projectIdSort);
   const [lastLtrApplyResult, setLastLtrApplyResult] = useState<LastLtrApplyResult | null>(null);
+  const [area, setArea] = useState<"active" | "trash" | "history">("active");
+  const [managedRevision, setManagedRevision] = useState(0);
+  const [menuProjectId, setMenuProjectId] = useState<string | null>(null);
+  const [closeTarget, setCloseTarget] = useState<ProjectRegistryLifecycleRow | null>(null);
+  const [closeOutputSummary, setCloseOutputSummary] = useState<ProjectOutputStatusSummary | null>(null);
+  const [closeBusy, setCloseBusy] = useState(false);
+  const refreshEpoch = useRef(0);
+  const closeEpoch = useRef(0);
+  const management = useProjectRegistryManagement(area, () => {
+    setManagedRevision((value) => value + 1);
+    setMenuProjectId(null);
+    void refreshProjects();
+  });
   const deferredSearch = useDeferredValue(search);
   const pageSize = 20;
 
   useEffect(() => {
     void refreshProjects();
     setLastLtrApplyResult(readLastLtrApplyResult());
+    return () => {refreshEpoch.current += 1; closeEpoch.current += 1;};
   }, []);
+
+  useEffect(() => {setMenuProjectId(null); setCloseTarget(null); closeEpoch.current += 1;}, [area]);
 
   useEffect(() => {
     if (!didHydrateViewState.current) {
@@ -130,21 +154,24 @@ export function ProjectListPage({
   }, [sortedRows, page, pageSize]);
 
   async function refreshProjects(): Promise<void> {
+    const request = ++refreshEpoch.current;
     setLoading(true);
     try {
       const nextRows = await listProjectRegistryRows();
+      if (request !== refreshEpoch.current) return;
       setRows(nextRows);
       setLifecycleByProjectId({});
       setError(null);
-      void refreshLifecycleOverlays(nextRows);
+      void refreshLifecycleOverlays(nextRows, request);
     } catch (err) {
+      if (request !== refreshEpoch.current) return;
       setError((err as Error).message);
     } finally {
-      setLoading(false);
+      if (request === refreshEpoch.current) setLoading(false);
     }
   }
 
-  async function refreshLifecycleOverlays(registryRows: RegistryRow[]): Promise<void> {
+  async function refreshLifecycleOverlays(registryRows: RegistryRow[], request: number): Promise<void> {
     const entries = await Promise.all(
       registryRows.map(async (row) => {
         try {
@@ -161,7 +188,16 @@ export function ProjectListPage({
         }
       })
     );
-    setLifecycleByProjectId(Object.fromEntries(entries));
+    if (request === refreshEpoch.current) setLifecycleByProjectId(Object.fromEntries(entries));
+  }
+
+  async function openClose(entry: ProjectRegistryLifecycleRow): Promise<void> {
+    const request = ++closeEpoch.current;
+    setCloseTarget(entry); setCloseOutputSummary(null);
+    try {
+      const output = await getProjectOutputStatusSummary(entry.row.project_id);
+      if (request === closeEpoch.current) setCloseOutputSummary(output);
+    } catch { /* Output availability is advisory; the dialog shows unavailable. */ }
   }
 
   function toggleProjectIdSort(): void {
@@ -171,6 +207,16 @@ export function ProjectListPage({
   return (
     <section className="project-dashboard">
       <div className="project-register-panel">
+        <nav className="project-registry-areas" aria-label="Project management areas">
+          {(["active", "trash", "history"] as const).map((location) => <button key={location} type="button"
+            aria-pressed={area === location} disabled={management.busy || closeBusy}
+            onClick={() => setArea(location)}>{location === "active" ? "Projects" : location === "trash" ? "Recycle bin" : "Retained history"}</button>)}
+        </nav>
+        {management.lastChange && <div className="registry-result-banner" role="status">
+          <span>{management.lastChange.display_project_id} {management.lastChange.registry_state === "trash" ? "moved to the recycle bin." : management.lastChange.registry_state === "history" ? "restored to retained history." : "restored to projects."}</span>
+          {management.lastChange.registry_state === "trash" && <button type="button" onClick={() => void management.open(management.lastChange!.project_id, "restore")}>Undo</button>}
+          <button type="button" onClick={management.clearLastChange}>Dismiss</button>
+        </div>}
         {lastLtrApplyResult ? (
           <div className="registry-result-banner" role="status" aria-live="polite">
             <div className="registry-result-banner-text">
@@ -202,7 +248,7 @@ export function ProjectListPage({
                 />
               </span>
             </label>
-            <label className="registry-view-select">
+            {area === "active" && <label className="registry-view-select">
               <span className="registry-control-sr-only">Project view</span>
               <select
                 aria-label="Project view"
@@ -215,9 +261,11 @@ export function ProjectListPage({
                   </option>
                 ))}
               </select>
-            </label>
+            </label>}
           </div>
         </div>
+        {area !== "active" ? <ProjectRegistryManagementPanel location={area} search={deferredSearch} revision={managedRevision}
+          onManage={(id, action) => void management.open(id, action)} onOpenProject={onOpenProject} /> : <>
         {loading && <LoadingState label="Loading project registry..." />}
         {error && <ErrorMessage message={error} />}
         {!loading && !error && lifecycleOverlayErrorCount > 0 ? (
@@ -315,6 +363,16 @@ export function ProjectListPage({
                       >
                         {registryRowActionLabel(row, lifecycle)}
                       </button>
+                      <div className="project-registry-manage">
+                        <button type="button" className="row-action" aria-label={`Manage project ${row.display_project_id}`}
+                          aria-expanded={menuProjectId === row.project_id}
+                          onClick={() => setMenuProjectId((current) => current === row.project_id ? null : row.project_id)}>⋯</button>
+                        {menuProjectId === row.project_id && <div className="project-registry-management-menu" aria-label={`Actions for ${row.display_project_id}`}>
+                          {deriveProjectWorkbenchLifecycleActions(lifecycle).canClose && <button type="button" className="row-action"
+                            onClick={() => void openClose({row, lifecycle})}>Close project</button>}
+                          <button type="button" className="row-action" onClick={() => void management.open(row.project_id, "trash")}>Delete project</button>
+                        </div>}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -347,6 +405,22 @@ export function ProjectListPage({
             </div>
           </div>
         )}
+        </>}
+        {management.target && <ProjectRegistryManagementDialog key={`${management.target.projectId}:${management.target.action}`}
+          action={management.target.action} preview={management.preview} loading={management.loading} busy={management.busy}
+          error={management.error} stale={management.stale} onCancel={management.dismiss} onRefresh={() => void management.refresh()}
+          onTrash={management.trash} onRestore={management.restore} />}
+        {closeTarget && <ProjectWorkbenchCloseConfirmation key={closeTarget.row.project_id} initiallyOpen compact
+          lifecycleActions={deriveProjectWorkbenchLifecycleActions(closeTarget.lifecycle)} lifecycleBusy={closeBusy}
+          projectIdentity={closeTarget.row.sample_description || closeTarget.row.display_project_id}
+          projectReference={closeTarget.row.display_project_id} outputStatusSummary={closeOutputSummary}
+          onDismiss={() => {setCloseTarget(null); closeEpoch.current += 1;}}
+          onCloseProject={async (reason, note) => {
+            setCloseBusy(true);
+            try {await closeProjectLifecycle(closeTarget.row.project_id, {reason_category: reason, note, operator: null});
+              await refreshProjects();
+            } finally {setCloseBusy(false);}
+          }} />}
       </div>
     </section>
   );

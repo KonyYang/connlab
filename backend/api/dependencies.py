@@ -2612,3 +2612,19 @@ def get_evidence_placement_service(
         file_asset_repository=FileAssetRepository(session),
         lifecycle_guard=ProjectLifecycleService(project_repository),
     )
+
+
+def get_project_registry_management_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+):
+    """Build one atomic registry management unit without starting background workers."""
+    from backend.application.project_registry_management_service import ProjectRegistryManagementService
+    from backend.infrastructure.storage.repositories.project_registry import ProjectRegistryRepository
+    from backend.infrastructure.files.generation_journal import GenerationJournal
+    return ProjectRegistryManagementService(
+        ProjectRegistryRepository(session), LtrRecordRepository(session),
+        GenerationJournal(settings.data_dir / "project_folder_generation"),
+        basic_information=ProjectBasicInformationRepository(session),
+        temporary_context=ProjectTemporaryContextRepository(session),
+    )

@@ -176,8 +176,8 @@ def test_unified_close_and_activate_closed_project_api(tmp_path: Path) -> None:
         closed = client.post(
             f"/api/projects/{project_id}/lifecycle/close",
             json={
-                "reason_category": "failed",
-                "note": "Qualification failed.",
+                "reason_category": "cannot_test",
+                "note": "Insufficient sample material.",
                 "operator": "Lab User",
             },
         )
@@ -193,8 +193,8 @@ def test_unified_close_and_activate_closed_project_api(tmp_path: Path) -> None:
         assert closed.status_code == 200
         assert closed.json()["lifecycle_state"] == "closed"
         assert closed.json()["closure_type"] is None
-        assert closed.json()["close_reason_category"] == "failed"
-        assert closed.json()["close_reason_label"] == "Failed"
+        assert closed.json()["close_reason_category"] == "cannot_test"
+        assert closed.json()["close_reason_label"] == "Cannot test"
         assert closed.json()["allowed_actions"] == ["activate"]
         assert active_conflict.status_code == 409
         assert "Activation reason is required" in active_conflict.json()["detail"]["message"]

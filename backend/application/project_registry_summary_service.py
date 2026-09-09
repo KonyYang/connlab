@@ -19,7 +19,10 @@ class ProjectRegistryProjectStore(Protocol):
     """Project read behavior required by the registry summary service."""
 
     def list(self) -> list[Project]:
-        """Return all projects."""
+        """Return normal projects."""
+
+    def get(self, project_id: str) -> Project | None:
+        """Read an independent project including retained records."""
 
 
 class ProjectRegistryLtrStore(Protocol):
@@ -65,6 +68,8 @@ class ProjectRegistryRow:
     registered_ltr_number: str | None
     temporary_source_asset_ids: tuple[str, ...] = ()
     has_confirmed_matrix: bool = False
+    registry_state: str = "active"
+    registry_revision: int = 0
 
 
 class ProjectRegistryMatrixStore(Protocol):
@@ -94,10 +99,13 @@ class ProjectRegistrySummaryService:
         self._matrices = matrix_store
 
     def list_rows(self) -> list[ProjectRegistryRow]:
-        """Return registry summary rows for all projects."""
+        """Return registry summary rows for normal projects."""
+        return self._rows_for(self._projects.list())
+
+    def _rows_for(self, projects: list[Project]) -> list[ProjectRegistryRow]:
         rows: list[ProjectRegistryRow] = []
         confirmed_project_ids = self._matrices.list_active_project_ids() if self._matrices else set()
-        for project in self._projects.list():
+        for project in projects:
             basic_information = (
                 self._basic_information.get_latest_confirmed(project.project_id)
                 if self._basic_information is not None
@@ -119,6 +127,8 @@ class ProjectRegistrySummaryService:
             rows.append(
                 ProjectRegistryRow(
                     project_id=project.project_id,
+                    registry_state=project.registry_state,
+                    registry_revision=project.registry_revision,
                     has_confirmed_matrix=project.project_id in confirmed_project_ids,
                     ltr_number=identity.ltr_number,
                     sample_description=_first_text(
@@ -153,10 +163,8 @@ class ProjectRegistrySummaryService:
 
     def get_row(self, project_id: str) -> ProjectRegistryRow | None:
         """Return one registry summary row by project id."""
-        for row in self.list_rows():
-            if row.project_id == project_id:
-                return row
-        return None
+        project = self._projects.get(project_id)
+        return self._rows_for([project])[0] if project is not None else None
 
 
 def _status_progress(status: str) -> int:

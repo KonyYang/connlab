@@ -130,5 +130,7 @@ def init_db(engine: Engine) -> None:
     _migrate_project_basic_information_records_table(engine)
     _migrate_report_sample_authority_columns(engine)
     _migrate_project_lifecycle_columns(engine)
+    from backend.infrastructure.storage.project_registry_schema_migration import migrate_project_registry_schema
+    migrate_project_registry_schema(engine)
     _migrate_ltr_duplicate_resolution_tables(engine)
     reconcile_project_matrix_draft_lifecycle(engine)

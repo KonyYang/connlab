@@ -39,6 +39,25 @@ class ProjectModel(Base):
     closed_at: Mapped[str | None] = mapped_column(String(64))
     closed_by: Mapped[str | None] = mapped_column(String(255))
     completion_summary_json: Mapped[str | None] = mapped_column(Text)
+    registry_state: Mapped[str] = mapped_column(String(16), nullable=False, default="active", server_default="active")
+    registry_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    registry_changed_at: Mapped[str | None] = mapped_column(String(64))
+    registry_reason: Mapped[str | None] = mapped_column(Text)
+
+
+class ProjectRegistryEventModel(Base):
+    """Append-only local audit; registry moves never rewrite business records."""
+
+    __tablename__ = "project_registry_events"
+    event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    operation_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id"), nullable=False)
+    previous_state: Mapped[str] = mapped_column(String(16), nullable=False)
+    new_state: Mapped[str] = mapped_column(String(16), nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    actor: Mapped[str | None] = mapped_column(String(255))
+    changed_at: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
 class ProjectTemporaryContextModel(Base):

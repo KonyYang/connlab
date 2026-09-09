@@ -99,7 +99,7 @@ class CloseProjectLifecycleCommand:
 
     project_id: str
     reason_category: ProjectCloseReasonCategory | str
-    note: str
+    note: str = ""
     operator: str | None = None
     compatibility_metadata: dict[str, object] | None = None
 
@@ -134,6 +134,7 @@ class ProjectLifecycleView:
     warnings: tuple[str, ...] = ()
     previous_status: str | None = None
     audit_recorded: bool = False
+    registry_state: str = "active"
 
 
 class ProjectLifecycleStateError(RuntimeError):
@@ -166,7 +167,7 @@ class ProjectLifecycleStateService:
 
     def get_lifecycle(self, project_id: str) -> ProjectLifecycleView:
         """Return lifecycle state for one project."""
-        return self._view(self._get_project(project_id))
+        return self._view(self._get_project(project_id, writable=False))
 
     def stop_project(
         self,
@@ -364,7 +365,11 @@ class ProjectLifecycleStateService:
             raise ProjectLifecycleStateError("Project is already closed.")
 
         reason_category = _coerce_close_reason_category(command.reason_category)
-        note = _required_text(command.note, "Close note")
+        if reason_category in {ProjectCloseReasonCategory.FAILED, ProjectCloseReasonCategory.DUPLICATE}:
+            raise ProjectLifecycleStateError("Unsupported close reason category for a new closure.")
+        note = (command.note or "").strip()
+        if reason_category is ProjectCloseReasonCategory.OTHER:
+            note = _required_text(note, "Close note")
         now = self._clock()
         legacy_closure_type = _legacy_closure_type(reason_category)
         previous_project_status = (
@@ -485,10 +490,12 @@ class ProjectLifecycleStateService:
         """Compatibility alias for administrative closure."""
         return self.close_administrative_project(command)
 
-    def _get_project(self, project_id: str) -> Project:
+    def _get_project(self, project_id: str, *, writable: bool = True) -> Project:
         project = self._project_store.get(project_id)
         if project is None:
             raise ProjectLifecycleStateNotFoundError(f"Project not found: {project_id}")
+        if writable and project.registry_state != "active":
+            raise ProjectLifecycleStateError("Restore this project from its retained location before changing its lifecycle.")
         return project
 
     def _has_formal_identity(self, project: Project) -> bool:
@@ -598,7 +605,8 @@ class ProjectLifecycleStateService:
             ),
             status=project.status.value,
             status_label=_status_label(project),
-            readonly=project.lifecycle_state is not ProjectLifecycleState.ACTIVE,
+            readonly=project.registry_state != "active" or project.lifecycle_state is not ProjectLifecycleState.ACTIVE,
+            registry_state=project.registry_state,
             allowed_actions=_allowed_actions(project),
             stopped_at=project.stopped_at,
             stopped_reason=project.stopped_reason,
@@ -669,7 +677,7 @@ def _legacy_closure_type(
     return ProjectClosureType.ADMINISTRATIVE
 
 
-def _close_reason_label(reason_category: ProjectCloseReasonCategory) -> str:
+def project_close_reason_label(reason_category: ProjectCloseReasonCategory) -> str:
     labels = {
         ProjectCloseReasonCategory.COMPLETED: "Completed",
         ProjectCloseReasonCategory.FAILED: "Failed",
@@ -679,6 +687,9 @@ def _close_reason_label(reason_category: ProjectCloseReasonCategory) -> str:
         ProjectCloseReasonCategory.OTHER: "Other",
     }
     return labels[reason_category]
+
+
+_close_reason_label = project_close_reason_label
 
 
 def _status_label(project: Project) -> str:
@@ -695,6 +706,8 @@ def _status_label(project: Project) -> str:
 
 
 def _allowed_actions(project: Project) -> tuple[str, ...]:
+    if project.registry_state != "active":
+        return ()
     if project.lifecycle_state is ProjectLifecycleState.CLOSED:
         return ("activate",)
     if project.lifecycle_state is ProjectLifecycleState.STOPPED:

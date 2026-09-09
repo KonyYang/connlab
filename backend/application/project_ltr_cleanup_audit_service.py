@@ -13,7 +13,7 @@ from backend.modules.ltr import LtrNumberError, parse_ltr_number
 class ProjectCleanupStore(Protocol):
     """Project lookup behavior required by cleanup dry-run."""
 
-    def list(self) -> list[Project]:
+    def list_all(self) -> list[Project]:
         """Return all projects."""
 
 
@@ -63,7 +63,7 @@ class ProjectLtrCleanupAuditService:
 
     def dry_run(self) -> ProjectLtrCleanupAuditReport:
         """Return a read-only cleanup report without mutating storage."""
-        projects = self._projects.list()
+        projects = self._projects.list_all()
         ltrs = self._ltrs.list()
         projects_by_id = {project.project_id: project for project in projects}
         ltrs_by_project: dict[str, list[LtrRecord]] = {}

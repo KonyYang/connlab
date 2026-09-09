@@ -5,6 +5,7 @@ import type {
 
 export type ProjectLifecycleReadonlyMode =
   | "active"
+  | "registry_readonly"
   | "stopped_readonly"
   | "closed_readonly";
 
@@ -35,6 +36,11 @@ const ACTIVE_VIEW: ProjectLifecycleReadonlyView = {
 export function deriveProjectLifecycleReadonlyView(
   lifecycle: ProjectLifecycleResponse | null
 ): ProjectLifecycleReadonlyView {
+  if (lifecycle?.registry_state === "trash" || lifecycle?.registry_state === "history") {
+    const area = lifecycle.registry_state === "trash" ? "the recycle bin" : "retained history";
+    return closedView("registry_readonly", lifecycle.registry_state === "trash" ? "Project in recycle bin" : "Project in retained history",
+      `This independent project record is in ${area}. Restore it from the project list before making changes. Its original business lifecycle is preserved.`, []);
+  }
   if (!lifecycle || lifecycle.lifecycle_state === "active") {
     return ACTIVE_VIEW;
   }
@@ -44,7 +50,7 @@ export function deriveProjectLifecycleReadonlyView(
       readonly: true,
       title: "Project stopped",
       message:
-        "This project is stopped. Activate it before making changes. Review and preview actions remain available.",
+        "This project is stopped. Reopen it before making changes. Review and preview actions remain available.",
       allowedActions: lifecycle.allowed_actions,
       canResume: false,
       canClose: lifecycle.allowed_actions.includes("close"),
@@ -56,7 +62,7 @@ export function deriveProjectLifecycleReadonlyView(
     return closedView(
       "closed_readonly",
       "Project closed: Completed",
-      "This project is closed with reason Completed. Activate it before making changes.",
+      "This project is closed with reason Completed. Reopen it before making changes.",
       lifecycle.allowed_actions
     );
   }
@@ -64,14 +70,14 @@ export function deriveProjectLifecycleReadonlyView(
     return closedView(
       "closed_readonly",
       `Project closed: ${lifecycle.close_reason_label}`,
-      "This project is closed. Activate it before making changes.",
+      "This project is closed. Reopen it before making changes.",
       lifecycle.allowed_actions
     );
   }
   return closedView(
     "closed_readonly",
     "Project closed",
-    "This project is closed. Activate it before making changes.",
+    "This project is closed. Reopen it before making changes.",
     lifecycle.allowed_actions
   );
 }
@@ -80,10 +86,10 @@ export function deriveReadonlyApiErrorMessage(
   detail: ProjectLifecycleReadonlyErrorDetail
 ): string {
   if (detail.lifecycle_state === "stopped") {
-    return "This project is stopped. Activate it before making changes.";
+    return "This project is stopped. Reopen it before making changes.";
   }
   if (detail.lifecycle_state === "closed") {
-    return "This project is closed. Activate it before making changes.";
+    return "This project is closed. Reopen it before making changes.";
   }
   return detail.message.replace("readonly", "read-only");
 }

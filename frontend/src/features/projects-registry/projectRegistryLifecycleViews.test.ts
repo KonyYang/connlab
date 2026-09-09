@@ -14,6 +14,12 @@ import {
 } from "./projectRegistryLifecycleViews";
 
 describe("project registry lifecycle views", () => {
+  it("excludes recycle bin and retained history from every normal view including All", () => {
+    const rows = ["active", "trash", "history"].map((state) => ({row: registryRow({project_id: state,
+      registry_state: state as "active" | "trash" | "history"}), lifecycle: projectLifecycle()}));
+    expect(filterRegistryRowsForView(rows, "all").map(({row}) => row.project_id)).toEqual(["active"]);
+    expect(filterRegistryRowsForView(rows, "ongoing").map(({row}) => row.project_id)).toEqual(["active"]);
+  });
   it("shows confirmed Matrix authority without claiming tests are ready or changing lifecycle priority", () => {
     const row = registryRow({ status: "ltr_registered", has_confirmed_matrix: true });
     expect(registryStatusLabel(row, projectLifecycle())).toBe("Matrix Confirmed");

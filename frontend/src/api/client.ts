@@ -33,6 +33,8 @@ export function resumeProjectFolderGeneration(projectId: string, operationId: st
 
 export type Project = {
   project_id: string;
+  registry_state?: "active" | "trash" | "history";
+  registry_revision?: number;
   project_no?: string | null;
   product_name: string;
   sample_description?: string | null;
@@ -47,6 +49,9 @@ export type Project = {
 
 export type ProjectRegistryRow = {
   project_id: string;
+  registry_state?: "active" | "trash" | "history";
+  registry_revision?: number;
+  created_on?: string | null;
   has_confirmed_matrix?: boolean;
   ltr_number?: string | null;
   sample_description?: string | null;
@@ -131,6 +136,7 @@ export type ProjectCloseReasonCategory =
 
 export type ProjectLifecycleResponse = {
   project_id: string;
+  registry_state?: "active" | "trash" | "history";
   lifecycle_state: ProjectLifecycleState;
   closure_type: ProjectClosureType | null;
   close_reason_category?: ProjectCloseReasonCategory | null;
@@ -3045,7 +3051,7 @@ function isProjectClosureType(value: unknown): value is ProjectClosureType {
   return value === "completed" || value === "administrative";
 }
 
-async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+export async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {

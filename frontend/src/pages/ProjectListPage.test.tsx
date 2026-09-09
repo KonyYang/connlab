@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
@@ -6,10 +6,14 @@ import type {
   ProjectRegistryRow,
 } from "../api/client";
 import {
+  closeProjectLifecycle,
+  getProjectOutputStatusSummary,
   getProjectLifecycle,
   listProjectRegistryRows,
 } from "../api/client";
 import { ProjectListPage } from "./ProjectListPage";
+import * as managementApi from "../api/projectRegistryManagement";
+vi.mock("../api/projectRegistryManagement", () => ({listManagedProjects: vi.fn(), previewProjectRegistryAction: vi.fn(), moveProjectToTrash: vi.fn(), restoreManagedProject: vi.fn()}));
 
 vi.mock("../api/client", async () => {
   const actual = await vi.importActual<typeof import("../api/client")>("../api/client");
@@ -17,6 +21,8 @@ vi.mock("../api/client", async () => {
     ...actual,
     listProjectRegistryRows: vi.fn(),
     getProjectLifecycle: vi.fn(),
+    closeProjectLifecycle: vi.fn(),
+    getProjectOutputStatusSummary: vi.fn(),
   };
 });
 
@@ -28,6 +34,58 @@ describe("ProjectListPage lifecycle registry views", () => {
     window.sessionStorage.clear();
     listProjectRegistryRowsMock.mockReset();
     getProjectLifecycleMock.mockReset();
+    vi.mocked(managementApi.listManagedProjects).mockResolvedValue([]);
+    vi.mocked(getProjectOutputStatusSummary).mockResolvedValue({project_id: "A", active_draft_id: null, active_draft_version: null, items: []});
+  });
+
+  it("moves an exact record into the recycle bin, exits the normal view and safely previews Undo", async () => {
+    const user = userEvent.setup();
+    mockRows([registryRow({project_id: "original-A", display_project_id: "DL-2026-01-002"})]);
+    mockLifecycle({"original-A": lifecycle({project_id: "original-A", allowed_actions: ["close"]})});
+    const entry: managementApi.ProjectRegistryEntry = {project_id: "original-A", display_project_id: "DL-2026-01-002",
+      sample_description: "Original connector", test_item: "LLCR", requestor: "Lab", created_on: "2026-01-01",
+      lifecycle_state: "active", close_reason_label: null, registry_state: "active", registry_revision: 0, changed_at: null, reason: null};
+    vi.mocked(managementApi.previewProjectRegistryAction).mockResolvedValue({project: entry, action: "trash", token: "token-A", conflicts: [], blockers: [], warnings: [], retained_data: []});
+    vi.mocked(managementApi.moveProjectToTrash).mockResolvedValue({...entry, registry_state: "trash", registry_revision: 1});
+    render(<ProjectListPage onOpenProject={vi.fn()} />);
+    await user.click(await screen.findByRole("button", {name: "Manage project DL-2026-01-002"}));
+    await user.click(screen.getByRole("button", {name: "Delete project"}));
+    const dialog = within(await screen.findByRole("dialog"));
+    await user.selectOptions(await dialog.findByLabelText("Deletion reason"), "Created by mistake");
+    listProjectRegistryRowsMock.mockResolvedValue([]);
+    await user.click(dialog.getByRole("button", {name: "Move to recycle bin"}));
+    expect(managementApi.moveProjectToTrash).toHaveBeenCalledWith("original-A", {token: "token-A", reason: "Created by mistake"});
+    await waitFor(() => expect(screen.queryByRole("table")).toBeNull());
+    await user.click(screen.getByRole("button", {name: "Undo"}));
+    expect(managementApi.previewProjectRegistryAction).toHaveBeenLastCalledWith("original-A", "restore");
+  });
+
+  it("offers a recycle bin with separate record identities and history restore", async () => {
+    const user = userEvent.setup(); mockRows([]);
+    vi.mocked(managementApi.listManagedProjects).mockResolvedValue([{project_id: "unique-deleted-A", display_project_id: "DL-2026-01-002",
+      sample_description: "Old connector", test_item: "LLCR", requestor: "Lab", created_on: "2026-01-01",
+      lifecycle_state: "closed", close_reason_label: "Completed", registry_state: "trash", registry_revision: 1, changed_at: "2026-01-02", reason: "Duplicate"}]);
+    render(<ProjectListPage onOpenProject={vi.fn()} />);
+    await user.click(screen.getByRole("button", {name: "Recycle bin"}));
+    expect(await screen.findByText("Old connector")).toBeTruthy();
+    expect(screen.getByText(/Record unique-delet/)).toBeTruthy();
+    expect(screen.getByRole("button", {name: "View read-only details"})).toBeTruthy();
+    await user.click(screen.getByRole("button", {name: "Retained history"}));
+    await waitFor(() => expect(managementApi.listManagedProjects).toHaveBeenLastCalledWith("history"));
+  });
+
+  it("uses the same conditional-note close dialog from the list", async () => {
+    const user = userEvent.setup();
+    mockRows([registryRow({project_id: "A", display_project_id: "DL-2026-01-002"})]);
+    mockLifecycle({"A": lifecycle({project_id: "A", allowed_actions: ["close"]})});
+    vi.mocked(closeProjectLifecycle).mockResolvedValue(lifecycle({project_id: "A", lifecycle_state: "closed"}));
+    render(<ProjectListPage onOpenProject={vi.fn()} />);
+    await user.click(await screen.findByRole("button", {name: "Manage project DL-2026-01-002"}));
+    await user.click(await screen.findByRole("button", {name: "Close project"}));
+    const dialog = within(screen.getByRole("dialog"));
+    await user.selectOptions(dialog.getByLabelText("Close reason"), "completed");
+    await user.click(dialog.getByRole("button", {name: "Close project"}));
+    expect(closeProjectLifecycle).toHaveBeenCalledWith("A", {reason_category: "completed", note: "", operator: null});
   });
 
   it("defaults to the On-going view for active operational projects", async () => {

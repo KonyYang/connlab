@@ -1,4 +1,4 @@
-﻿import { render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -147,7 +147,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText(/This project has no registered LTR Number yet/)).toBeNull();
     expect(screen.queryByText("Project lifecycle")).toBeNull();
     expect(screen.getByRole("button", { name: "Close project" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Delete temporary project" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
     expect(onOpenFeeEvaluation).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Matrix Editor" }));
     expect(onOpenMatrixEditor).toHaveBeenCalledTimes(1);
@@ -200,20 +200,13 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     });
 
     expect(screen.getByText("Visual Examination")).toBeTruthy();
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Delete temporary project" })).toHaveProperty(
-        "disabled",
-        true
-      );
-    });
+    await waitFor(() => expect(previewTemporaryProjectDelete).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Delete temporary project" })).toBeNull();
 
     expect(screen.queryByText("Stop or safely remove this temporary record")).toBeNull();
     expect(screen.queryByText("Project is not a temporary planning project.")).toBeNull();
     expect(screen.queryByText("Stop this temporary project lifecycle")).toBeNull();
-    expect(
-      screen.getByRole("button", { name: "Delete temporary project" }).getAttribute("title")
-    ).toBe("Temporary deletion is unavailable for this project state.");
+    expect(screen.queryByText("Temporary deletion is unavailable for this project state.")).toBeNull();
   });
 
   it("enables temporary Fee planning only when a Matrix draft exists", async () => {
@@ -256,7 +249,24 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("button", { name: "Convert to Formal Project" })).toBeNull();
   });
 
-  it("opens one inline close confirmation and keeps the operator in the Workbench", async () => {
+  it("discards a close form when navigation selects another independent record with the same display identity", async () => {
+    const user = userEvent.setup();
+    const first = buildRuntimeModel({lifecycle: lifecycleResponse({project_id: "record-A", allowed_actions: ["close"]})}, {...project, project_id: "record-A"});
+    const props = {runtimeModel: first, project: first.project!, onBack: vi.fn(), onOpenMatrixEditor: vi.fn(),
+      onOpenFeeEvaluation: vi.fn(), onOpenBasicInformation: vi.fn(), onOpenReportWorkspace: vi.fn(), onOpenSettings: vi.fn()};
+    const {rerender} = render(<ProjectWorkbenchLayout {...props} />);
+    await user.click(screen.getByRole("button", {name: "Close project"}));
+    await user.selectOptions(screen.getByLabelText("Close reason"), "other");
+    await user.type(screen.getByLabelText(/Additional note/), "For first record");
+    const second = buildRuntimeModel({lifecycle: lifecycleResponse({project_id: "record-B", allowed_actions: ["close"]})}, {...project, project_id: "record-B"});
+    rerender(<ProjectWorkbenchLayout {...props} runtimeModel={second} project={second.project!} />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await user.click(screen.getByRole("button", {name: "Close project"}));
+    expect(screen.getByLabelText("Close reason")).toHaveProperty("value", "");
+    expect(screen.getByLabelText(/Additional note/)).toHaveProperty("value", "");
+  });
+
+  it("opens one close dialog and keeps the operator in the Workbench", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
     const onCloseLifecycle = vi.fn().mockResolvedValue(undefined);
@@ -272,9 +282,10 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     await user.click(screen.getByRole("button", { name: "Close project" }));
 
-    expect(screen.getAllByText("Confirm close project").length).toBeGreaterThan(0);
-    await user.type(screen.getByLabelText("Close note"), "Business work ended.");
-    await user.click(screen.getByRole("button", { name: "Confirm close project" }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    await user.selectOptions(screen.getByLabelText("Close reason"), "completed");
+    await user.type(screen.getByLabelText(/Additional note/), "Business work ended.");
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Close project" }));
 
     expect(onCloseLifecycle).toHaveBeenCalledWith("completed", "Business work ended.");
     expect(onBack).not.toHaveBeenCalled();
@@ -291,6 +302,16 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
     expect(screen.getByRole("button", { name: "Close project" })).toBeTruthy();
+  });
+
+  it.each(["trash", "history"] as const)("opens %s records as read-only without offering Reopen or Close", (registryState) => {
+    renderWorkbench({activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, matrixAuthorityDraft: testPlanDraft,
+      lifecycle: lifecycleResponse({registry_state: registryState, readonly: true, allowed_actions: []})});
+    expect(screen.queryByRole("button", {name: "Reopen project"})).toBeNull();
+    expect(screen.queryByRole("button", {name: "Close project"})).toBeNull();
+    const writeAction = getWorkbenchActionButton("Create project folder");
+    expect(writeAction).toHaveProperty("disabled", true);
+    expect(writeAction.getAttribute("title")).toContain("Restore it from the project list");
   });
 
   it("uses lifecycle readonly state to block active Matrix write actions", async () => {
@@ -331,7 +352,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     const folderButton = getWorkbenchActionButton("Create project folder");
     expect(folderButton).toHaveProperty("disabled", true);
     expect(folderButton.getAttribute("title")).toBe(
-      "This project is closed with reason Completed. Activate it before making changes."
+      "This project is closed with reason Completed. Reopen it before making changes."
     );
     await user.click(folderButton);
     expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
@@ -364,11 +385,11 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByText("Read-only project")).toBeTruthy();
     expect(
       screen.getAllByText(
-        "This project is closed with reason Completed. Activate it before making changes."
+        "This project is closed with reason Completed. Reopen it before making changes."
       ).length
     ).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Activate project" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Reopen project" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Edit Matrix" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Confirm Matrix authority" })).toBeNull();
     expect(screen.getByText("Project lifecycle")).toBeTruthy();
@@ -542,7 +563,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       true
     );
     expect(screen.getByRole("button", { name: "Fee Evaluation" }).getAttribute("title")).toBe(
-      "This project is stopped. Activate it before making changes. Review and preview actions remain available."
+      "This project is stopped. Reopen it before making changes. Review and preview actions remain available."
     );
     expect(screen.getByRole("region", { name: "Matrix" }).textContent).toContain(
       "Visual Examination"
@@ -586,11 +607,11 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(projectState.textContent).toContain("DL-2026-06-001");
     expect(screen.queryByLabelText("Workbench state")).toBeNull();
     expect(projectState.querySelector(".runtime-console-state-context")).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Activate project" }));
+    await user.click(screen.getByRole("button", { name: "Reopen project" }));
 
-    expect(screen.getAllByText("Confirm activate project").length).toBeGreaterThan(0);
-    await user.type(screen.getByLabelText("Activation note"), "Customer restarted work.");
-    await user.click(screen.getByRole("button", { name: "Confirm activate project" }));
+    expect(screen.getAllByText("Confirm reopen project").length).toBeGreaterThan(0);
+    await user.type(screen.getByLabelText("Reopening note"), "Customer restarted work.");
+    await user.click(screen.getByRole("button", { name: "Confirm reopen project" }));
 
     expect(onActivateLifecycle).toHaveBeenCalledWith("Customer restarted work.");
     expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
@@ -628,13 +649,12 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     await user.click(screen.getByRole("button", { name: "Close project" }));
 
-    expect(screen.getByText("Output status summary")).toBeTruthy();
-    expect(screen.getByText("Test Record")).toBeTruthy();
-    await user.selectOptions(screen.getByLabelText("Close reason"), "failed");
-    await user.type(screen.getByLabelText("Close note"), "Outputs reviewed.");
-    await user.click(screen.getByRole("button", { name: "Confirm close project" }));
+    expect(screen.getByText("Recorded outputs are current.")).toBeTruthy();
+    await user.selectOptions(screen.getByLabelText("Close reason"), "cannot_test");
+    await user.type(screen.getByLabelText(/Additional note/), "Outputs reviewed.");
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Close project" }));
 
-    expect(onCloseLifecycle).toHaveBeenCalledWith("failed", "Outputs reviewed.");
+    expect(onCloseLifecycle).toHaveBeenCalledWith("cannot_test", "Outputs reviewed.");
   });
 
   it("uses unified Other close as the temporary no-LTR close path", async () => {
@@ -654,10 +674,11 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Close as completed")).toBeNull();
     expect(screen.queryByText("Close administratively")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Close project" }));
-    expect((screen.getByLabelText("Close reason") as HTMLSelectElement).value).toBe("other");
+    expect((screen.getByLabelText("Close reason") as HTMLSelectElement).value).toBe("");
+    await user.selectOptions(screen.getByLabelText("Close reason"), "other");
 
-    await user.type(screen.getByLabelText("Close note"), "Duplicate request.");
-    await user.click(screen.getByRole("button", { name: "Confirm close project" }));
+    await user.type(screen.getByLabelText(/Additional note/), "Duplicate request.");
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Close project" }));
 
     expect(onCloseLifecycle).toHaveBeenCalledWith("other", "Duplicate request.");
   });
@@ -692,7 +713,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("button", { name: "Resume" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Resume project" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Stop project" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Activate project" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Reopen project" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Close project" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Close as completed" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Close administratively" })).toBeNull();
@@ -725,7 +746,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     const projectState = screen.getByRole("region", { name: "Project State" });
     expect(projectState.textContent).toContain("DL-2026-06-001");
     expect(screen.queryByLabelText("Workbench state")).toBeNull();
-    expect(screen.getByRole("button", { name: "Activate project" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Reopen project" })).toBeTruthy();
     expect(container.textContent).not.toMatch(
       /closed_completed|closed_administrative|lifecycle_state|closure_type/
     );
@@ -1149,8 +1170,9 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     });
 
     await user.click(screen.getByRole("button", { name: "Close project" }));
-    expect(screen.getAllByText("Confirm close project").length).toBeGreaterThan(0);
+    expect(screen.getByRole("dialog")).toBeTruthy();
 
+    await user.keyboard("{Escape}");
     const folderActions = screen.getByLabelText("Folder Actions");
     await user.click(within(folderActions).getByRole("button", { name: "Open" }));
 

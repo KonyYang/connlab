@@ -86,6 +86,8 @@ class ProjectResponse(BaseModel):
     test_item: str | None = None
     temporary_source_asset_ids: list[str] = Field(default_factory=list)
     temporary_notes: str | None = None
+    registry_state: str = "active"
+    registry_revision: int = 0
 
 
 class TemporaryProjectCreateResponse(BaseModel):
@@ -162,7 +164,7 @@ class ProjectLifecycleCloseRequest(BaseModel):
     """Request body for unified project closure."""
 
     reason_category: str = Field(min_length=1)
-    note: str = Field(min_length=1)
+    note: str = ""
     operator: str | None = None
 
 
@@ -171,6 +173,7 @@ class ProjectLifecycleResponse(BaseModel):
 
     project_id: str
     lifecycle_state: str
+    registry_state: str = "active"
     closure_type: str | None = None
     close_reason_category: str | None = None
     close_reason_label: str | None = None
@@ -190,6 +193,8 @@ class ProjectRegistryRowResponse(BaseModel):
     """Typed row returned by the Project registry summary endpoint."""
 
     project_id: str
+    registry_state: str = "active"
+    registry_revision: int = 0
     has_confirmed_matrix: bool = False
     ltr_number: str | None = None
     sample_description: str | None = None
@@ -565,6 +570,8 @@ def _to_response(
     """Convert a project domain object to an API response DTO."""
     return ProjectResponse(
         project_id=project.project_id,
+        registry_state=project.registry_state,
+        registry_revision=project.registry_revision,
         project_no=project.project_no,
         product_name=project.product_name,
         requestor=project.requestor,
@@ -588,6 +595,8 @@ def _to_registry_response(row: ProjectRegistryRow) -> ProjectRegistryRowResponse
     """Convert a registry application row to an API response DTO."""
     return ProjectRegistryRowResponse(
         project_id=row.project_id,
+        registry_state=row.registry_state,
+        registry_revision=row.registry_revision,
         has_confirmed_matrix=row.has_confirmed_matrix,
         ltr_number=row.ltr_number,
         sample_description=row.sample_description,
@@ -646,6 +655,7 @@ def _to_lifecycle_response(view: ProjectLifecycleView) -> ProjectLifecycleRespon
     """Convert lifecycle service view into an API response."""
     return ProjectLifecycleResponse(
         project_id=view.project_id,
+        registry_state=view.registry_state,
         lifecycle_state=view.lifecycle_state.value,
         closure_type=_api_closure_type(view),
         close_reason_category=(

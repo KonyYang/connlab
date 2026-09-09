@@ -65,7 +65,7 @@ class _ProjectStore:
     def __init__(self, projects: list[Project]) -> None:
         self._projects = projects
 
-    def list(self) -> list[Project]:
+    def list_all(self) -> list[Project]:
         return self._projects
 
 

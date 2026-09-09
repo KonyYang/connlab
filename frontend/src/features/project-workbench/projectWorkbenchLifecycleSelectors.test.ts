@@ -353,9 +353,9 @@ describe("deriveProjectWorkbenchLifecycleActions", () => {
       canResume: false,
       canClose: false,
       canActivate: true,
-      activateActionLabel: "Activate project",
+      activateActionLabel: "Reopen project",
       readonlyReason:
-        "This project is stopped. Activate it before making changes. Review and preview actions remain available.",
+        "This project is stopped. Reopen it before making changes. Review and preview actions remain available.",
     });
   });
 
@@ -410,7 +410,7 @@ describe("deriveProjectWorkbenchLifecycleActions", () => {
       /lifecycle_state|closure_type|closed_completed|closed_administrative|cancelled/
     );
     expect(actions.closeActionLabel).toBe("Close project");
-    expect(actions.activateActionLabel).toBe("Activate project");
+    expect(actions.activateActionLabel).toBe("Reopen project");
   });
 });
 
@@ -456,7 +456,7 @@ const stoppedReadonlyView: ProjectLifecycleReadonlyView = {
   readonly: true,
   title: "Project stopped",
   message:
-    "This project is stopped. Activate it before making changes. Review and preview actions remain available.",
+    "This project is stopped. Reopen it before making changes. Review and preview actions remain available.",
   allowedActions: ["activate", "resume", "close"],
   canResume: false,
   canClose: true,
@@ -468,7 +468,7 @@ const closedCompletedReadonlyView: ProjectLifecycleReadonlyView = {
   mode: "closed_readonly",
   readonly: true,
   title: "Project closed: Completed",
-  message: "This project is closed with reason Completed. Activate it before making changes.",
+  message: "This project is closed with reason Completed. Reopen it before making changes.",
   allowedActions: ["activate"],
   canResume: false,
   canClose: false,

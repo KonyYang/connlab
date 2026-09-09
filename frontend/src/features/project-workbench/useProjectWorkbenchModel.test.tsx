@@ -522,7 +522,32 @@ describe("useProjectWorkbenchModel", () => {
     expect(result.current.lifecycle?.close_reason_category).toBe("failed");
   });
 
-  it("rejects blank close notes before calling the close API", async () => {
+  it("does not apply a late close response to another project", async () => {
+    let resolveClose!: (value: ReturnType<typeof lifecycleResponse>) => void;
+    apiMocks.closeProjectLifecycle.mockImplementationOnce(() => new Promise((resolve) => {resolveClose = resolve;}));
+    const {result, rerender} = renderHook(({id}) => useProjectWorkbenchModel(id), {initialProps: {id: "project-1"}});
+    await waitFor(() => expect(result.current.project?.project_id).toBe("project-1"));
+    let closing!: Promise<void>;
+    act(() => {closing = result.current.onCloseLifecycle("completed", "");});
+    apiMocks.getProject.mockResolvedValue({project_id: "project-2", product_name: "Second", requestor: "Lab", status: "active"});
+    apiMocks.getProjectLifecycle.mockResolvedValue(lifecycleResponse({project_id: "project-2"}));
+    rerender({id: "project-2"});
+    await waitFor(() => expect(result.current.lifecycle?.project_id).toBe("project-2"));
+    await act(async () => {resolveClose(lifecycleResponse({project_id: "project-1", lifecycle_state: "closed"})); await closing;});
+    expect(result.current.lifecycle?.project_id).toBe("project-2");
+    expect(result.current.lifecycle?.lifecycle_state).toBe("active");
+  });
+
+  it("closes with a standard reason without requiring a redundant note", async () => {
+    const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
+    await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
+    await act(async () => { await result.current.onCloseLifecycle("completed", "   "); });
+    expect(apiMocks.closeProjectLifecycle).toHaveBeenCalledWith("project-1", {
+      reason_category: "completed", note: "", operator: null,
+    });
+  });
+
+  it("rejects blank close notes for Other before calling the close API", async () => {
     const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
 
     await waitFor(() => expect(apiMocks.getProject).toHaveBeenCalledTimes(1));
