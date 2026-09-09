@@ -77,6 +77,62 @@ it("keeps a start blocker visible while polling finds no saved operation", async
   unmount();
 });
 
+it("keeps a start blocker visible through a failed poll and later reconnect", async () => {
+  vi.useFakeTimers();
+  api.getProjectFolderGeneration
+    .mockResolvedValueOnce(null)
+    .mockResolvedValueOnce(null)
+    .mockRejectedValueOnce(new Error("offline"))
+    .mockResolvedValue(null);
+  api.startProjectFolderGeneration.mockRejectedValue(
+    new Error("Project Schedule is not confirmed.")
+  );
+  const { result, unmount } = renderHook(() =>
+    useProjectFolderGeneration("p", vi.fn(), "shown-preview")
+  );
+
+  await act(async () => {
+    await result.current.start();
+  });
+  expect(result.current.error).toBe("Project Schedule is not confirmed.");
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+  expect(result.current.error).toBe("Project Schedule is not confirmed.");
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+  expect(result.current.error).toBe("Project Schedule is not confirmed.");
+
+  unmount();
+});
+
+it("keeps a start blocker visible when polling returns an older completed operation", async () => {
+  vi.useFakeTimers();
+  const completed = { ...operation, status: "completed" };
+  api.getProjectFolderGeneration.mockResolvedValue(completed);
+  api.startProjectFolderGeneration.mockRejectedValue(
+    new Error("Project Schedule is not confirmed.")
+  );
+  const { result, unmount } = renderHook(() =>
+    useProjectFolderGeneration("p", vi.fn(), "shown-preview")
+  );
+
+  await act(async () => {
+    await result.current.start();
+  });
+  expect(result.current.error).toBe("Project Schedule is not confirmed.");
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+  expect(result.current.error).toBe("Project Schedule is not confirmed.");
+
+  unmount();
+});
+
 it("clears a transient connection warning after polling reconnects", async () => {
   vi.useFakeTimers();
   api.getProjectFolderGeneration

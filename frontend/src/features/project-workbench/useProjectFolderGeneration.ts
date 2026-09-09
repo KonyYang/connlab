@@ -7,10 +7,14 @@ import {
 const labels = ["Creating project folder", "Archiving request materials", "Checking project folder structure",
   "Updating Customer Feedback Form", "Updating Fee Form", "Updating Test Record", "Updating Test Status", "Updating Application Form"];
 const connectionInterruptedMessage = "Connection interrupted. Generation may still be running; reconnecting to its saved progress.";
+type GenerationError = {
+  message: string;
+  source: "action" | "connection" | "operation" | "completion";
+};
 
 export function useProjectFolderGeneration(projectId: string, onCompleted: () => Promise<void> | void, expectedContext: string | null) {
   const [operation, setOperation] = useState<ProjectFolderGeneration | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [errorState, setErrorState] = useState<GenerationError | null>(null);
   const [starting, setStarting] = useState(false);
   const currentProject = useRef(projectId);
   currentProject.current = projectId;
@@ -24,12 +28,15 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
   function accept(next: ProjectFolderGeneration | null) {
     if (!alive.current || currentProject.current !== projectId) return;
     setOperation(next);
-    setError(previous => {
+    setErrorState(previous => {
+      // The current user action is newer than any operation returned by polling.
+      if (previous?.source === "action") return previous;
       if (next === null) {
-        return previous === connectionInterruptedMessage ? null : previous;
+        return previous?.source === "connection" ? null : previous;
       }
-      return ["blocked", "interrupted"].includes(next.status) ? next.message
-        : next.status === "completed" && previous?.startsWith("Generation completed, but") ? previous : null;
+      return ["blocked", "interrupted"].includes(next.status)
+        ? { message: next.message ?? "Project folder generation is blocked.", source: "operation" }
+        : next.status === "completed" && previous?.source === "completion" ? previous : null;
     });
     if (next?.status === "completed" && seenCompletion.current !== next.operation_id) {
       seenCompletion.current = next.operation_id;
@@ -37,7 +44,10 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
       const refresh = completion.current;
       void Promise.resolve().then(() => alive.current && currentProject.current === projectId ? refresh() : undefined).catch(() => {
         if (alive.current && currentProject.current === projectId) {
-          setError("Generation completed, but the displayed folder status could not refresh. Refresh this page to reconnect.");
+          setErrorState(previous => previous?.source === "action" ? previous : {
+            message: "Generation completed, but the displayed folder status could not refresh. Refresh this page to reconnect.",
+            source: "completion",
+          });
         }
       });
     }
@@ -48,7 +58,7 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
     let timer: ReturnType<typeof setTimeout>;
     alive.current = true;
     setOperation(null);
-    setError(null);
+    setErrorState(null);
     setStarting(false);
     requestSequence.current += 1;
     seenCompletion.current = null;
@@ -59,7 +69,11 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
         const next = await getProjectFolderGeneration(projectId);
         if (!disposed && sequence === requestSequence.current) accept(next);
       } catch {
-        if (!disposed) setError(connectionInterruptedMessage);
+        if (!disposed) {
+          setErrorState(previous => previous && previous.source !== "connection"
+            ? previous
+            : { message: connectionInterruptedMessage, source: "connection" });
+        }
       }
       if (!disposed) timer = setTimeout(poll, 1000);
     }
@@ -70,7 +84,7 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
   async function start(strategy?: OfficialWorkspaceConflictStrategy, contextOverride?: string, replace = false) {
     if (starting) return;
     setStarting(true);
-    setError(null);
+    setErrorState(null);
     requestSequence.current += 1;
     try {
       // Re-read before dispatch so an earlier lost response cannot create another operation.
@@ -93,13 +107,15 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
         }));
       }
     } catch (err) {
-      if (alive.current && currentProject.current === projectId) setError((err as Error).message);
+      if (alive.current && currentProject.current === projectId) {
+        setErrorState({ message: (err as Error).message, source: "action" });
+      }
     } finally {
       if (alive.current && currentProject.current === projectId) setStarting(false);
     }
   }
 
-  return { operation, error, start,
+  return { operation, error: errorState?.message ?? null, start,
     restart: (strategy?: OfficialWorkspaceConflictStrategy, context?: string) => start(strategy, context, true),
     busy: starting || operation?.status === "queued" || operation?.status === "running",
     canResume: operation?.status === "blocked" || operation?.status === "interrupted",
