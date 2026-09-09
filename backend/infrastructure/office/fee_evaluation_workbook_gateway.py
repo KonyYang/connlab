@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
+import os
+import shutil
+import tempfile
 
 from backend.application.confirmed_matrix_fee_draft_service import FeeEvaluationDraft
 from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
@@ -36,6 +40,7 @@ _EXCEL_FILE_FORMATS = {
 }
 _EXCEL_CALCULATION_MANUAL = -4135
 
+
 class FeeEvaluationWorkbookGateway:
     """Generate fee-evaluation workbooks through a COM-only Excel boundary."""
 
@@ -52,21 +57,8 @@ class FeeEvaluationWorkbookGateway:
         """Write fee-evaluation content using Excel COM when available."""
         template = Path(template_path)
         target = Path(output_path)
-        if template.suffix.lower() not in {".xls", ".xlsx"}:
-            raise ValueError(f"Unsupported fee template type: {template}")
-        if not template.is_file():
-            raise FileNotFoundError(f"Template does not exist: {template}")
-        if not target.parent.exists():
-            raise FileNotFoundError(f"Output directory does not exist: {target.parent}")
 
-        excel, pythoncom_module = self._open_excel_application()
-        workbook = None
-        excel_state = None
-        try:
-            excel.Visible = False
-            excel.DisplayAlerts = False
-            excel_state = _begin_excel_batch(excel)
-            workbook = excel.Workbooks.Open(str(template))
+        def write(workbook: Any) -> None:
             summary = preview.fee_dataset.summary if preview.fee_dataset is not None else None
             sheet = workbook.Worksheets.Item(1)
             sheet.Cells(1, 1).Value = "ConnLab Generated Fee Evaluation"
@@ -78,15 +70,8 @@ class FeeEvaluationWorkbookGateway:
                 sheet.Cells(6, 1).Value = (
                     f"Explicit duration days: {summary.explicit_duration_days}"
                 )
-            _save_as(workbook, target)
-        finally:
-            if workbook is not None:
-                workbook.Close(SaveChanges=False)
-            try:
-                _restore_excel_batch(excel, excel_state)
-                excel.Quit()
-            finally:
-                _uninitialize_com(pythoncom_module)
+
+        self._generate_workbook(template, target, write)
 
         return FeeEvaluationWorkbookWriteResult(
             output_path=target,
@@ -106,24 +91,8 @@ class FeeEvaluationWorkbookGateway:
         """Write structured fee draft rows to the workbook Testing Prices sheet."""
         template = Path(template_path)
         target = Path(output_path)
-        if template.suffix.lower() not in {".xls", ".xlsx"}:
-            raise ValueError(f"Unsupported fee template type: {template}")
-        if target.suffix.lower() not in {".xls", ".xlsx"}:
-            raise ValueError(f"Unsupported fee output type: {target}")
-        if not template.is_file():
-            raise FileNotFoundError(f"Template does not exist: {template}")
-        if not target.parent.exists():
-            raise FileNotFoundError(f"Output directory does not exist: {target.parent}")
 
-        excel, pythoncom_module = self._open_excel_application()
-        workbook = None
-        excel_state = None
-        gateway_warnings: tuple[str, ...] = ()
-        try:
-            excel.Visible = False
-            excel.DisplayAlerts = False
-            excel_state = _begin_excel_batch(excel)
-            workbook = excel.Workbooks.Open(str(template))
+        def write(workbook: Any) -> None:
             sheet = _testing_prices_sheet(workbook)
             _write_structured_fee_draft(
                 sheet=sheet,
@@ -131,15 +100,8 @@ class FeeEvaluationWorkbookGateway:
                 prepared_by=prepared_by,
                 approved_by=approved_by,
             )
-            _save_as(workbook, target)
-        finally:
-            if workbook is not None:
-                workbook.Close(SaveChanges=False)
-            try:
-                _restore_excel_batch(excel, excel_state)
-                excel.Quit()
-            finally:
-                _uninitialize_com(pythoncom_module)
+
+        self._generate_workbook(template, target, write)
 
         return FeeEvaluationWorkbookWriteResult(
             output_path=target,
@@ -162,43 +124,21 @@ class FeeEvaluationWorkbookGateway:
         """Write Matrix basic-fill A/C rows to the Testing Prices sheet."""
         template = Path(template_path)
         target = Path(output_path)
-        if template.suffix.lower() not in {".xls", ".xlsx"}:
-            raise ValueError(f"Unsupported fee template type: {template}")
-        if target.suffix.lower() not in {".xls", ".xlsx"}:
-            raise ValueError(f"Unsupported fee output type: {target}")
-        if not template.is_file():
-            raise FileNotFoundError(f"Template does not exist: {template}")
-        if not target.parent.exists():
-            raise FileNotFoundError(f"Output directory does not exist: {target.parent}")
 
-        excel, pythoncom_module = self._open_excel_application()
-        workbook = None
-        excel_state = None
-        try:
-            excel.Visible = False
-            excel.DisplayAlerts = False
-            excel_state = _begin_excel_batch(excel)
-            workbook = excel.Workbooks.Open(str(template))
+        def write(workbook: Any) -> tuple[str, ...]:
             sheet = _testing_prices_sheet(workbook)
             anchors = FeeEvaluationAnchorSnapshot.from_sheet(sheet)
             write_basic_information_identity(
                 sheet, basic_information_values, anchors=anchors
             )
-            gateway_warnings = write_matrix_basic_fill(
+            return write_matrix_basic_fill(
                 sheet=sheet,
                 basic_fill=basic_fill,
                 edited_values=edited_values,
                 anchors=anchors,
             )
-            _save_as(workbook, target)
-        finally:
-            if workbook is not None:
-                workbook.Close(SaveChanges=False)
-            try:
-                _restore_excel_batch(excel, excel_state)
-                excel.Quit()
-            finally:
-                _uninitialize_com(pythoncom_module)
+
+        gateway_warnings = self._generate_workbook(template, target, write)
 
         warnings = ["Matrix basic fill only."]
         warnings.extend(gateway_warnings)
@@ -209,6 +149,39 @@ class FeeEvaluationWorkbookGateway:
             status="generated",
             warnings=tuple(warnings),
         )
+
+    def _generate_workbook(
+        self, template: Path, target: Path, write: Callable[[Any], Any],
+    ) -> Any:
+        if template.suffix.lower() not in _EXCEL_FILE_FORMATS:
+            raise ValueError(f"Unsupported fee template type: {template}")
+        if target.suffix.lower() not in _EXCEL_FILE_FORMATS:
+            raise ValueError(f"Unsupported fee output type: {target}")
+        if not template.is_file():
+            raise FileNotFoundError(f"Template does not exist: {template}")
+        if not target.parent.is_dir():
+            raise FileNotFoundError(f"Output directory does not exist: {target.parent}")
+
+        # Excel SaveAs has a stricter path limit than Python filesystem operations.
+        with _short_excel_output(target.suffix.lower()) as staged:
+            excel, pythoncom_module = self._open_excel_application()
+            workbook = None
+            excel_state = None
+            with _cleanup_on_exit((
+                ("Close fee workbook", lambda: workbook.Close(SaveChanges=False)
+                 if workbook is not None else None),
+                ("Restore Excel settings", lambda: _restore_excel_batch(excel, excel_state)),
+                ("Quit Excel", lambda: excel.Quit()),
+                ("Release COM", lambda: _uninitialize_com(pythoncom_module)),
+            )):
+                excel.Visible = False
+                excel.DisplayAlerts = False
+                excel_state = _begin_excel_batch(excel)
+                workbook = excel.Workbooks.Open(str(template))
+                result = write(workbook)
+                _save_as(workbook, staged)
+            _publish_workbook(staged, target)
+            return result
 
     def _open_excel_application(self) -> tuple[Any, Any | None]:
         if self._excel_app_factory is not None:
@@ -232,6 +205,60 @@ class FeeEvaluationWorkbookGateway:
 def _uninitialize_com(pythoncom_module: Any | None) -> None:
     if pythoncom_module is not None:
         pythoncom_module.CoUninitialize()
+
+
+def _publish_workbook(staged: Path, target: Path) -> None:
+    if not staged.is_file() or staged.stat().st_size == 0:
+        raise RuntimeError(
+            "Excel generated fee workbook is missing or empty; output was not replaced."
+        )
+    # The sibling is private to this invocation; the old target survives failed copies.
+    descriptor, name = tempfile.mkstemp(
+        prefix=".clfee-", suffix=target.suffix, dir=target.parent,
+    )
+    sibling = Path(name)
+    with _cleanup_on_exit((
+        ("Remove fee publication temporary file", lambda: sibling.unlink(missing_ok=True)),
+    )):
+        with os.fdopen(descriptor, "wb") as destination, staged.open("rb") as source:
+            shutil.copyfileobj(source, destination)
+        os.replace(sibling, target)
+
+
+@contextmanager
+def _short_excel_output(suffix: str) -> Iterator[Path]:
+    root = Path(tempfile.gettempdir())
+    # Do not silently send SaveAs to a redirected network or overlong TEMP path.
+    if root.anchor.startswith("\\\\") or len(str(root / "clfee-xxxxxxxx" / "fee.xlsx")) > 200:
+        raise ValueError(
+            "Fee generation requires a short local TEMP directory; configure Windows TEMP locally."
+        )
+    directory = Path(tempfile.mkdtemp(prefix="clfee-", dir=root))
+    with _cleanup_on_exit((("Remove fee staging directory", lambda: shutil.rmtree(directory)),)):
+        yield directory / ("fee" + suffix)
+
+
+@contextmanager
+def _cleanup_on_exit(actions: tuple[tuple[str, Callable[[], Any]], ...]) -> Iterator[None]:
+    """Attempt every owned cleanup, preserving the first failure and its context."""
+    primary = None
+    try:
+        yield
+    except BaseException as exc:
+        primary = exc
+        raise
+    finally:
+        error = primary
+        for label, action in actions:
+            try:
+                action()
+            except BaseException as exc:
+                if error is None:
+                    error = exc
+                else:
+                    error.add_note(f"{label} also failed: {exc}")
+        if primary is None and error is not None:
+            raise error
 
 
 def _testing_prices_sheet(workbook: Any) -> Any:

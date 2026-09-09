@@ -3,7 +3,11 @@ from __future__ import annotations
 from decimal import Decimal
 from pathlib import Path
 import sys
+import os
+import shutil
+import tempfile
 import types
+from types import SimpleNamespace
 
 import pytest
 
@@ -29,6 +33,198 @@ from backend.infrastructure.office.fee_evaluation_workbook_gateway import (
     FeeEvaluationWorkbookGateway,
 )
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
+
+
+@pytest.mark.parametrize("entrypoint", ["preview", "draft", "matrix"])
+@pytest.mark.parametrize("suffix,file_format", [(".xls", 56), (".xlsx", 51)])
+def test_fee_gateway_publishes_long_path_after_excel_releases_file(
+    tmp_path: Path, entrypoint: str, suffix: str, file_format: int,
+) -> None:
+    template = tmp_path / ("template" + suffix)
+    template.write_bytes(b"original template")
+    parent = tmp_path / ("project-" + "p" * 70) / ("results-" + "r" * 70)
+    parent.mkdir(parents=True)
+    target = parent / ("Fee Form-" + "f" * 65 + suffix)
+    target.write_bytes(b"old fee")
+    workbook = _FakeWorkbook(("Testing Prices",))
+    workbook.sheet.cells.update({
+        (5, 3): "Sample preparation", (7, 3): "Report preparation",
+        (8, 1): "条件确认", (9, 7): "Total", (11, 3): "Grand Cost",
+    })
+    excel = _FakeExcel(workbook)
+    save = workbook.SaveAs
+
+    def save_short(path: str, FileFormat: int | None = None) -> None:
+        if len(path) > 218:
+            raise RuntimeError("Excel cannot save long paths")
+        save(path, FileFormat)
+
+    def close(SaveChanges: bool = False) -> None:
+        assert target.read_bytes() == b"old fee"
+        workbook.closed = True
+
+    def quit_excel() -> None:
+        assert target.read_bytes() == b"old fee"
+        excel.quit = True
+
+    workbook.SaveAs = save_short
+    workbook.Close = close
+    excel.Quit = quit_excel
+    result = _generate_for_entrypoint(
+        FeeEvaluationWorkbookGateway(excel_app_factory=lambda: excel),
+        entrypoint, template, target,
+    )
+    assert result.output_path == target
+    assert target.read_bytes() == b"generated Excel workbook"
+    assert template.read_bytes() == b"original template"
+    assert workbook.saved_file_format == file_format
+    assert workbook.closed and excel.quit
+    assert not Path(workbook.saved_path).exists()
+    assert list(parent.iterdir()) == [target]
+
+
+def _generate_for_entrypoint(gateway, entrypoint, template, target):
+    if entrypoint == "preview":
+        return gateway.generate(
+            template_path=template, output_path=target,
+            preview=SimpleNamespace(fee_dataset=None, project_id="P1", draft_id="d1"),
+        )
+    if entrypoint == "draft":
+        return gateway.generate_from_draft(
+            template_path=template, output_path=target, draft=_draft(),
+            prepared_by="Operator", approved_by=None,
+        )
+    return gateway.generate_matrix_basic_fill(
+        template_path=template, output_path=target, basic_fill=_basic_fill(),
+        review_required=False, prepared_by="Operator", approved_by=None,
+    )
+
+
+@pytest.mark.parametrize("failure", [
+    "save", "close", "quit", "uninitialize", "copy", "replace", "save_and_close",
+    "missing", "empty",
+])
+@pytest.mark.parametrize("inside_error_handler", [False, True])
+def test_fee_gateway_failure_preserves_target_and_releases_owned_resources(
+    tmp_path: Path, monkeypatch, failure: str, inside_error_handler: bool,
+) -> None:
+    template = tmp_path / "template.xls"
+    template.write_bytes(b"template")
+    target = tmp_path / "Fee Form.xls"
+    target.write_bytes(b"old fee")
+    workbook = _FakeWorkbook(("Testing Prices",))
+    excel = _FakeExcel(workbook)
+    released: list[str] = []
+    save = workbook.SaveAs
+
+    def save_as(path, FileFormat=None):
+        if failure in {"save", "save_and_close"}:
+            raise RuntimeError("save failed")
+        if failure == "missing":
+            return
+        save(path, FileFormat)
+        if failure == "empty":
+            Path(path).write_bytes(b"")
+
+    def close(SaveChanges=False):
+        released.append("close")
+        if failure in {"close", "save_and_close"}:
+            raise RuntimeError("close failed")
+
+    def quit_excel():
+        released.append("quit")
+        if failure == "quit":
+            raise RuntimeError("quit failed")
+
+    def uninitialize():
+        assert target.read_bytes() == b"old fee"
+        released.append("uninitialize")
+        if failure == "uninitialize":
+            raise RuntimeError("uninitialize failed")
+
+    workbook.SaveAs, workbook.Close, excel.Quit = save_as, close, quit_excel
+    monkeypatch.setitem(sys.modules, "pythoncom", SimpleNamespace(
+        CoInitialize=lambda: None, CoUninitialize=uninitialize,
+    ))
+    client = SimpleNamespace(DispatchEx=lambda name: excel)
+    monkeypatch.setitem(sys.modules, "win32com", SimpleNamespace(client=client))
+    monkeypatch.setitem(sys.modules, "win32com.client", client)
+    if failure == "copy":
+        def broken_copy(source, destination):
+            destination.write(b"partial")
+            raise OSError("copy failed")
+        monkeypatch.setattr(shutil, "copyfileobj", broken_copy)
+    if failure == "replace":
+        replace = os.replace
+        def broken_replace(source, destination):
+            if Path(destination) == target:
+                raise OSError("replace failed")
+            return replace(source, destination)
+        monkeypatch.setattr(os, "replace", broken_replace)
+
+    expected = "save failed" if failure == "save_and_close" else (
+        "missing or empty" if failure in {"missing", "empty"} else f"{failure} failed"
+    )
+    with pytest.raises((RuntimeError, OSError), match=expected):
+        if inside_error_handler:
+            try:
+                raise ValueError("unrelated previously handled error")
+            except ValueError:
+                _generate_for_entrypoint(FeeEvaluationWorkbookGateway(), "draft", template, target)
+        else:
+            _generate_for_entrypoint(FeeEvaluationWorkbookGateway(), "draft", template, target)
+    assert target.read_bytes() == b"old fee"
+    assert released == ["close", "quit", "uninitialize"]
+    assert set(tmp_path.iterdir()) == {template, target}
+    if workbook.saved_path is not None:
+        assert not Path(workbook.saved_path).parent.exists()
+
+
+def test_fee_gateway_rejects_long_temp_root_before_opening_excel(tmp_path, monkeypatch):
+    template = tmp_path / "template.xls"
+    template.write_bytes(b"template")
+    temp_root = tmp_path / ("local-" + "t" * 140)
+    temp_root.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(temp_root))
+    opened = []
+    excel = _FakeExcel(_FakeWorkbook(("Testing Prices",)))
+    with pytest.raises(ValueError, match="short local TEMP"):
+        _generate_for_entrypoint(
+            FeeEvaluationWorkbookGateway(excel_app_factory=lambda: opened.append(True) or excel),
+            "draft", template, tmp_path / "out.xls",
+        )
+    assert not opened
+    assert not list(temp_root.iterdir())
+
+
+def test_fee_gateway_rejects_unc_temp_before_opening_excel(tmp_path, monkeypatch):
+    template = tmp_path / "template.xls"
+    template.write_bytes(b"template")
+    monkeypatch.setattr(tempfile, "gettempdir", lambda: r"\\server\share\temp")
+    opened = []
+    with pytest.raises(ValueError, match="short local TEMP"):
+        _generate_for_entrypoint(
+            FeeEvaluationWorkbookGateway(excel_app_factory=lambda: opened.append(True)),
+            "draft", template, tmp_path / "out.xls",
+        )
+    assert not opened
+
+
+@pytest.mark.parametrize("entrypoint", ["preview", "draft", "matrix"])
+@pytest.mark.parametrize("invalid", ["suffix", "parent"])
+def test_fee_gateway_rejects_invalid_destination_before_excel(
+    tmp_path, entrypoint, invalid,
+):
+    template = tmp_path / "template.xls"
+    template.write_bytes(b"template")
+    target = tmp_path / "out.csv" if invalid == "suffix" else tmp_path / "missing" / "out.xls"
+    opened = []
+    with pytest.raises((ValueError, FileNotFoundError)):
+        _generate_for_entrypoint(
+            FeeEvaluationWorkbookGateway(excel_app_factory=lambda: opened.append(True)),
+            entrypoint, template, target,
+        )
+    assert not opened
 
 
 def test_fee_gateway_rejects_unsupported_template_type(tmp_path: Path) -> None:
@@ -94,7 +290,7 @@ def test_fee_gateway_structured_writer_maps_draft_rows_to_testing_prices_sheet(
     sheet = excel.workbook.sheet
     assert result.output_path == output
     assert excel.workbook.opened_path == str(template)
-    assert excel.workbook.saved_path == str(output)
+    assert output.read_bytes() == b"generated Excel workbook"
     assert excel.workbook.saved_file_format == 56
     assert sheet.cells[(2, 1)] == "Project ID: P1"
     assert sheet.cells[(3, 1)] == "Confirmed Matrix: cmv-1 / rev 1"
@@ -153,7 +349,7 @@ def test_fee_gateway_structured_writer_uses_com_saveas_for_xlsx_output(
         approved_by=None,
     )
 
-    assert excel.workbook.saved_path == str(output)
+    assert output.read_bytes() == b"generated Excel workbook"
     assert excel.workbook.saved_file_format == 51
 
 
@@ -998,6 +1194,7 @@ class _FakeWorkbook:
         self.save_count += 1
         self.saved_path = path
         self.saved_file_format = FileFormat
+        Path(path).write_bytes(b"generated Excel workbook")
 
     def Close(self, SaveChanges: bool = False) -> None:
         self.closed = True
