@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useProjectFolderGeneration } from "./useProjectFolderGeneration";
 
 const api = vi.hoisted(() => ({ getProjectFolderGeneration: vi.fn(), previewProjectFolderGeneration: vi.fn(),
@@ -7,6 +7,7 @@ const api = vi.hoisted(() => ({ getProjectFolderGeneration: vi.fn(), previewProj
 vi.mock("../../api/client", () => api);
 const operation = { project_id: "p", operation_id: "operation", status: "running", step: 3, completed_steps: [], message: null };
 beforeEach(() => { vi.resetAllMocks(); api.getProjectFolderGeneration.mockResolvedValue(null); });
+afterEach(() => { vi.useRealTimers(); });
 
 it("starts one backend operation and reconnects without browser-owned writes", async () => {
   api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "preview" });
@@ -52,6 +53,50 @@ it("reports a failed completion refresh without an unhandled promise", async () 
   api.getProjectFolderGeneration.mockResolvedValue({ ...operation, status: "completed" });
   const { result } = renderHook(() => useProjectFolderGeneration("p", () => Promise.reject(new Error("offline")), "shown"));
   await waitFor(() => expect(result.current.error).toContain("could not refresh"));
+});
+
+it("keeps a start blocker visible while polling finds no saved operation", async () => {
+  vi.useFakeTimers();
+  api.startProjectFolderGeneration.mockRejectedValue(
+    new Error("Project Schedule is not confirmed.")
+  );
+  const { result, unmount } = renderHook(() =>
+    useProjectFolderGeneration("p", vi.fn(), "shown-preview")
+  );
+
+  await act(async () => {
+    await result.current.start();
+  });
+  expect(result.current.error).toBe("Project Schedule is not confirmed.");
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+  expect(result.current.error).toBe("Project Schedule is not confirmed.");
+
+  unmount();
+});
+
+it("clears a transient connection warning after polling reconnects", async () => {
+  vi.useFakeTimers();
+  api.getProjectFolderGeneration
+    .mockRejectedValueOnce(new Error("offline"))
+    .mockResolvedValue(null);
+  const { result, unmount } = renderHook(() =>
+    useProjectFolderGeneration("p", vi.fn(), "shown-preview")
+  );
+
+  await act(async () => {
+    await Promise.resolve();
+  });
+  expect(result.current.error).toContain("Connection interrupted");
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+  expect(result.current.error).toBeNull();
+
+  unmount();
 });
 
 it("explicitly restarts corrected inputs with the newly shown preview and no old conflict choice", async () => {

@@ -6,6 +6,7 @@ import {
 
 const labels = ["Creating project folder", "Archiving request materials", "Checking project folder structure",
   "Updating Customer Feedback Form", "Updating Fee Form", "Updating Test Record", "Updating Test Status", "Updating Application Form"];
+const connectionInterruptedMessage = "Connection interrupted. Generation may still be running; reconnecting to its saved progress.";
 
 export function useProjectFolderGeneration(projectId: string, onCompleted: () => Promise<void> | void, expectedContext: string | null) {
   const [operation, setOperation] = useState<ProjectFolderGeneration | null>(null);
@@ -23,8 +24,13 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
   function accept(next: ProjectFolderGeneration | null) {
     if (!alive.current || currentProject.current !== projectId) return;
     setOperation(next);
-    setError(previous => next && ["blocked", "interrupted"].includes(next.status) ? next.message
-      : next?.status === "completed" && previous?.startsWith("Generation completed, but") ? previous : null);
+    setError(previous => {
+      if (next === null) {
+        return previous === connectionInterruptedMessage ? null : previous;
+      }
+      return ["blocked", "interrupted"].includes(next.status) ? next.message
+        : next.status === "completed" && previous?.startsWith("Generation completed, but") ? previous : null;
+    });
     if (next?.status === "completed" && seenCompletion.current !== next.operation_id) {
       seenCompletion.current = next.operation_id;
       requestId.current = null;
@@ -53,7 +59,7 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
         const next = await getProjectFolderGeneration(projectId);
         if (!disposed && sequence === requestSequence.current) accept(next);
       } catch {
-        if (!disposed) setError("Connection interrupted. Generation may still be running; reconnecting to its saved progress.");
+        if (!disposed) setError(connectionInterruptedMessage);
       }
       if (!disposed) timer = setTimeout(poll, 1000);
     }
@@ -64,6 +70,7 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
   async function start(strategy?: OfficialWorkspaceConflictStrategy, contextOverride?: string, replace = false) {
     if (starting) return;
     setStarting(true);
+    setError(null);
     requestSequence.current += 1;
     try {
       // Re-read before dispatch so an earlier lost response cannot create another operation.
