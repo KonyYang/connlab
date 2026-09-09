@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_PROJECT_FOLDER_BLOCKER_VISIBILITY",
     "summary": "Keep Project Folder generation blockers visible until the user corrects the input or explicitly starts a new recovery action.",
@@ -27,9 +27,68 @@
     "risk_reasons": [],
     "activation_head": "d139cac7dc07ed0d2b6cef1b1f09beafe145f42c",
     "started_at": "2026-09-09T11:08:32.976159Z",
-    "updated_at": "2026-09-09T11:08:32.976159Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-09T11:18:59.152730Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_PROJECT_FOLDER_BLOCKER_VISIBILITY",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "summary": "Project Folder start blockers now remain visible across empty background polls, while explicit retries clear stale action errors and transient connection warnings still clear after reconnection.",
+      "integration": {
+        "summary": "Exact committed diff is limited to the generation hook and its public regression tests.",
+        "status": "passed"
+      },
+      "scope_ok": true,
+      "schema": "connlab.sol-task-report",
+      "roles": {
+        "reviewer": {
+          "summary": "Focused standards and request review found no actionable finding or backend behavior change.",
+          "status": "passed"
+        },
+        "qa": {
+          "summary": "Targeted and complete frontend validation plus production build passed on the final code state.",
+          "status": "passed"
+        },
+        "developer": {
+          "summary": "Reproduced the one-second poll overwrite and implemented the minimal error-lifetime fix.",
+          "status": "passed"
+        }
+      },
+      "subject": "b6372cf6046b9bf93b3e7c444fac5cfe6102fb62",
+      "changed_paths": [
+        "frontend/src/features/project-workbench/useProjectFolderGeneration.test.tsx",
+        "frontend/src/features/project-workbench/useProjectFolderGeneration.ts"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "name": "red_green_regression",
+          "result": "Regression failed before fix and passed after fix"
+        },
+        {
+          "status": "passed",
+          "name": "targeted_project_workbench",
+          "result": "57 passed"
+        },
+        {
+          "status": "passed",
+          "name": "frontend_suite",
+          "result": "520 passed, 1 skipped"
+        },
+        {
+          "status": "passed",
+          "name": "vite_production_build",
+          "result": "156 modules transformed"
+        }
+      ],
+      "task_id": "TASK_PROJECT_FOLDER_BLOCKER_VISIBILITY",
+      "version": 1
+    }
   },
   "last_closed": {
     "task_id": "TASK_BASIC_INFORMATION_LEGACY_CLEANUP",
