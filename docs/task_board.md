@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_PROJECT_REGISTRY_ACTION_ICON_BUTTONS",
     "summary": "Project registry actions are compact icon buttons placed directly beside Open Workbench.",
@@ -26,9 +26,66 @@
     "risk_reasons": [],
     "activation_head": "a86deccd2da4142f95498384ae354b30e5bb10e5",
     "started_at": "2026-09-10T23:23:23.949643Z",
-    "updated_at": "2026-09-10T23:23:23.949643Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-10T23:40:17.834176Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_PROJECT_REGISTRY_ACTION_ICON_BUTTONS",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_PROJECT_REGISTRY_ACTION_ICON_BUTTONS",
+      "subject": "975f0e2d0f11333c9eec519de5670d071755f5db",
+      "summary": "Replaced registry text/menu actions with compact accessible icon buttons beside Open Workbench; preserved close/delete guards, confirmations, and handlers.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/pages/ProjectListPage.test.tsx",
+        "frontend/src/pages/ProjectListPage.tsx",
+        "frontend/src/project-dashboard.css"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "command": "npm test -- --run src/pages/ProjectListPage.test.tsx",
+          "result": "11 tests passed"
+        },
+        {
+          "status": "passed",
+          "command": "npm test",
+          "result": "533 tests passed, 1 skipped"
+        },
+        {
+          "status": "passed",
+          "command": "npm run build",
+          "result": "TypeScript and Vite production build passed"
+        },
+        {
+          "status": "passed",
+          "command": "Browser smoke at http://localhost:5173/projects",
+          "result": "Each active row shows Open Workbench, Close, and Delete icon buttons with accessible labels"
+        },
+        {
+          "status": "passed",
+          "command": "git diff --check",
+          "result": "No whitespace errors"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented and self-reviewed the scoped UI change."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "summary": "Clean HEAD contains only the task implementation plus the task-board transition."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_CONFIRM_RETURN",
