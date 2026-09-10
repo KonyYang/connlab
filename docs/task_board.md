@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_PROJECT_REGISTRY_ACTION_ICON_BUTTONS",
+    "summary": "Project registry actions are compact icon buttons placed directly beside Open Workbench.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Replace the project registry text action controls with compact accessible icon buttons placed side by side, preserving lifecycle conditions, tooltips, confirmation dialogs, and handlers.",
+    "scope_paths": [
+      "frontend/src/pages/ProjectListPage.tsx",
+      "frontend/src/pages/ProjectListPage.test.tsx",
+      "frontend/src/project-dashboard.css"
+    ],
+    "risk_reasons": [],
+    "activation_head": "a86deccd2da4142f95498384ae354b30e5bb10e5",
+    "started_at": "2026-09-10T23:23:23.949643Z",
+    "updated_at": "2026-09-10T23:23:23.949643Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FEE_CONFIRM_RETURN",
     "tier": "micro",

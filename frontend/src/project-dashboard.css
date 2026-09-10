@@ -482,6 +482,14 @@
     width: 100%;
   }
 
+  .registry-action-cell .project-registry-action-buttons {
+    width: 100%;
+  }
+
+  .registry-action-cell .project-registry-icon-action {
+    width: 40px;
+  }
+
   .registry-footer {
     display: grid;
     gap: 10px;
@@ -517,6 +525,9 @@
 .project-management-retained-list { display: grid; margin-top: 10px; }
 .project-management-retained-row { display: grid; grid-template-columns: minmax(240px, 1.5fr) minmax(130px, 1fr) auto; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--color-border); }
 .project-management-row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.project-registry-manage { display: inline-block; margin-left: 6px; }
-.project-registry-management-menu { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.project-registry-action-buttons { display: inline-flex; align-items: center; gap: 8px; }
+.project-registry-icon-action { display: inline-flex; align-items: center; justify-content: center; width: 40px; min-width: 40px; min-height: 40px; padding: 8px; }
+.project-registry-icon-action .ui-icon { width: 20px; height: 20px; }
+.project-registry-icon-action:hover:not(:disabled) { border-color: var(--color-primary, #1f66d1); background: #e8f0fc; color: var(--color-primary-strong, #164aa3); }
+.project-registry-icon-action:focus-visible { outline: 3px solid rgba(31, 102, 209, 0.26); outline-offset: 2px; }
 @media (max-width: 760px) { .project-management-retained-row { grid-template-columns: 1fr; gap: 10px; } .project-registry-areas { gap: 5px; } }

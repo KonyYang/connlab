@@ -79,7 +79,6 @@ export function ProjectListPage({
   const [lastLtrApplyResult, setLastLtrApplyResult] = useState<LastLtrApplyResult | null>(null);
   const [area, setArea] = useState<"active" | "trash" | "history">("active");
   const [managedRevision, setManagedRevision] = useState(0);
-  const [menuProjectId, setMenuProjectId] = useState<string | null>(null);
   const [closeTarget, setCloseTarget] = useState<ProjectRegistryLifecycleRow | null>(null);
   const [closeOutputSummary, setCloseOutputSummary] = useState<ProjectOutputStatusSummary | null>(null);
   const [closeBusy, setCloseBusy] = useState(false);
@@ -87,7 +86,6 @@ export function ProjectListPage({
   const closeEpoch = useRef(0);
   const management = useProjectRegistryManagement(area, () => {
     setManagedRevision((value) => value + 1);
-    setMenuProjectId(null);
     void refreshProjects();
   });
   const deferredSearch = useDeferredValue(search);
@@ -99,7 +97,7 @@ export function ProjectListPage({
     return () => {refreshEpoch.current += 1; closeEpoch.current += 1;};
   }, []);
 
-  useEffect(() => {setMenuProjectId(null); setCloseTarget(null); closeEpoch.current += 1;}, [area]);
+  useEffect(() => {setCloseTarget(null); closeEpoch.current += 1;}, [area]);
 
   useEffect(() => {
     if (!didHydrateViewState.current) {
@@ -355,23 +353,34 @@ export function ProjectListPage({
                       {registryNextStepLabel(row, lifecycle)}
                     </td>
                     <td className="registry-action-cell" data-label="Action">
-                      <button
-                        className="row-action"
-                        type="button"
-                        aria-label={registryRowActionAriaLabel(row, lifecycle)}
-                        onClick={() => onOpenProject(row.project_id)}
-                      >
-                        {registryRowActionLabel(row, lifecycle)}
-                      </button>
-                      <div className="project-registry-manage">
-                        <button type="button" className="row-action" aria-label={`Manage project ${row.display_project_id}`}
-                          aria-expanded={menuProjectId === row.project_id}
-                          onClick={() => setMenuProjectId((current) => current === row.project_id ? null : row.project_id)}>⋯</button>
-                        {menuProjectId === row.project_id && <div className="project-registry-management-menu" aria-label={`Actions for ${row.display_project_id}`}>
-                          {deriveProjectWorkbenchLifecycleActions(lifecycle).canClose && <button type="button" className="row-action"
-                            onClick={() => void openClose({row, lifecycle})}>Close project</button>}
-                          <button type="button" className="row-action" onClick={() => void management.open(row.project_id, "trash")}>Delete project</button>
-                        </div>}
+                      <div className="project-registry-action-buttons" role="group" aria-label={`Actions for ${row.display_project_id}`}>
+                        <button
+                          className="row-action project-registry-icon-action"
+                          type="button"
+                          aria-label={registryRowActionAriaLabel(row, lifecycle)}
+                          title={registryRowActionLabel(row, lifecycle)}
+                          onClick={() => onOpenProject(row.project_id)}
+                        >
+                          <UiIcon name="project-overview" />
+                        </button>
+                        {deriveProjectWorkbenchLifecycleActions(lifecycle).canClose && <button
+                          className="row-action project-registry-icon-action"
+                          type="button"
+                          aria-label={`Close project ${row.display_project_id}`}
+                          title="Close project"
+                          onClick={() => void openClose({row, lifecycle})}
+                        >
+                          <UiIcon name="folder-move" />
+                        </button>}
+                        {Boolean(lifecycle && !lifecycle.readonly && (!lifecycle.registry_state || lifecycle.registry_state === "active")) && <button
+                          className="row-action project-registry-icon-action"
+                          type="button"
+                          aria-label={`Delete project ${row.display_project_id}`}
+                          title="Delete project"
+                          onClick={() => void management.open(row.project_id, "trash")}
+                        >
+                          <UiIcon name="trash" />
+                        </button>}
                       </div>
                     </td>
                   </tr>

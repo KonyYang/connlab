@@ -48,8 +48,7 @@ describe("ProjectListPage lifecycle registry views", () => {
     vi.mocked(managementApi.previewProjectRegistryAction).mockResolvedValue({project: entry, action: "trash", token: "token-A", conflicts: [], blockers: [], warnings: [], retained_data: []});
     vi.mocked(managementApi.moveProjectToTrash).mockResolvedValue({...entry, registry_state: "trash", registry_revision: 1});
     render(<ProjectListPage onOpenProject={vi.fn()} />);
-    await user.click(await screen.findByRole("button", {name: "Manage project DL-2026-01-002"}));
-    await user.click(screen.getByRole("button", {name: "Delete project"}));
+    await user.click(await screen.findByRole("button", {name: "Delete project DL-2026-01-002"}));
     const dialog = within(await screen.findByRole("dialog"));
     await user.selectOptions(await dialog.findByLabelText("Deletion reason"), "Created by mistake");
     listProjectRegistryRowsMock.mockResolvedValue([]);
@@ -80,8 +79,7 @@ describe("ProjectListPage lifecycle registry views", () => {
     mockLifecycle({"A": lifecycle({project_id: "A", allowed_actions: ["close"]})});
     vi.mocked(closeProjectLifecycle).mockResolvedValue(lifecycle({project_id: "A", lifecycle_state: "closed"}));
     render(<ProjectListPage onOpenProject={vi.fn()} />);
-    await user.click(await screen.findByRole("button", {name: "Manage project DL-2026-01-002"}));
-    await user.click(await screen.findByRole("button", {name: "Close project"}));
+    await user.click(await screen.findByRole("button", {name: "Close project DL-2026-01-002"}));
     const dialog = within(screen.getByRole("dialog"));
     await user.selectOptions(dialog.getByLabelText("Close reason"), "completed");
     await user.click(dialog.getByRole("button", {name: "Close project"}));
@@ -279,8 +277,9 @@ describe("ProjectListPage lifecycle registry views", () => {
     expect(row?.querySelector(".registry-status-cell")?.getAttribute("data-label")).toBe("Status");
     expect(row?.querySelector(".registry-next-step-cell")?.getAttribute("data-label")).toBe("Next Step");
     expect(row?.querySelector(".registry-action-cell")?.getAttribute("data-label")).toBe("Action");
-    expect(row?.querySelector(".registry-action-cell .row-action")).toBe(actionButton);
-    expect(screen.queryByRole("button", { name: /Stop|Resume|Close|Delete/i })).toBeNull();
+    expect(row?.querySelector(".registry-action-cell .project-registry-action-buttons")).toBeTruthy();
+    expect(row?.querySelector(".registry-action-cell .project-registry-icon-action")).toBe(actionButton);
+    expect(screen.queryByRole("button", { name: "Manage project DL-2026-06-020" })).toBeNull();
 
     await userEvent.click(actionButton);
     expect(onOpenProject).toHaveBeenCalledWith("P-NARROW");
