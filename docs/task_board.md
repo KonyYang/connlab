@@ -19,13 +19,19 @@
     "route": "full_chain",
     "scope": "Diagnose and replace the fragile whole-directory rename path with a data-safe publication/recovery strategy, provide recovery from non-restartable step-0 checkpoints, preserve authoritative project files, and add focused regression coverage. Do not adopt lossy skip-and-delete behavior or junction migration without evidence.",
     "scope_paths": [
-      "backend/infrastructure/files/recoverable_workspace_publisher.py",
+      "backend/api/routes_project_folder_generation.py",
+      "backend/application/official_project_workspace_service.py",
       "backend/application/project_folder_generation_service.py",
-      "backend/api/project_folder_generation_composition.py",
-      "backend/api/routes",
-      "frontend/src",
-      "tests",
-      "docs/task_board.md"
+      "backend/infrastructure/files/recoverable_workspace_publisher.py",
+      "docs/PROJECT_CONTEXT.md",
+      "frontend/src/api/client.ts",
+      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+      "frontend/src/workbench.css",
+      "tests/integration/test_project_folder_generation_api.py",
+      "tests/unit/test_generation_workspace_recovery.py",
+      "tests/unit/test_official_project_workspace_service.py",
+      "tests/unit/test_project_folder_generation_service.py"
     ],
     "risk_reasons": [
       "authoritative external project-folder mutation",
@@ -34,15 +40,15 @@
     ],
     "activation_head": "365a9d0cb9136e298b54e651dcead038bc472b22",
     "started_at": "2026-09-10T09:53:57.576209Z",
-    "updated_at": "2026-09-10T10:55:11.451794Z",
+    "updated_at": "2026-09-10T11:32:37.541507Z",
     "checkpoint": {
-      "requires_user": false,
-      "status": "running",
-      "stage": "implementation_validation",
-      "task_id": "TASK_PROJECT_FOLDER_LOCK_RESILIENT_UPDATE",
-      "summary": "Reproduced WinError 5 as whole-directory rename fragility. Added non-destructive continue_existing strategy that adds only missing template content, preserves same-name operator files, avoids reading or moving existing files, and recovers after interruption. A failed first backup rename now removes only its verified owned stage and effect so the operation becomes safely replaceable. Added actionable lock guidance and a recommended Workbench conflict action with restart access. Final affected validation and review remain.",
+      "schema": "connlab.sol-task-checkpoint",
       "version": 1,
-      "schema": "connlab.sol-task-checkpoint"
+      "task_id": "TASK_PROJECT_FOLDER_LOCK_RESILIENT_UPDATE",
+      "stage": "scope_manifest_correction",
+      "status": "running",
+      "summary": "User requested closing the prior task and implementing the attached source-level project-folder lock fix; these are the exact committed implementation and regression paths.",
+      "requires_user": false
     },
     "report": null
   },
