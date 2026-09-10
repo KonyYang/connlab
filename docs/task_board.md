@@ -13,61 +13,47 @@
   "wip_limit": 1,
   "state": "running",
   "active": {
-    "task_id": "TASK_FEEDBACK_PATH_AND_CONFIRMED_WORKSPACE_NAME",
-    "summary": "Fix Customer Feedback Windows long staging paths and official folder names not following confirmed Basic Information.",
+    "task_id": "TASK_PROJECT_FOLDER_LOCK_RESILIENT_UPDATE",
+    "summary": "Make Update project folder safe and recoverable when the existing official workspace contains files held open by Windows processes.",
     "tier": "high_risk",
     "route": "full_chain",
-    "scope": "Use attached reports as evidence, reproduce both defects and implement safe path handling plus confirmed Basic naming. Preserve operator data and prior generation recovery; existing folder rename policy awaits explicit user choice. Do not execute report SQL, registry changes or manual moves.",
+    "scope": "Diagnose and replace the fragile whole-directory rename path with a data-safe publication/recovery strategy, provide recovery from non-restartable step-0 checkpoints, preserve authoritative project files, and add focused regression coverage. Do not adopt lossy skip-and-delete behavior or junction migration without evidence.",
     "scope_paths": [
-      "backend/infrastructure/office/customer_feedback_workbook_gateway.py",
-      "backend/application/customer_feedback_form_generation_service.py",
-      "backend/api/dependencies.py",
-      "backend/api/project_folder_generation_composition.py",
-      "backend/application/official_project_workspace_service.py",
-      "backend/application/official_project_workspace_naming.py",
-      "backend/application/project_identity.py",
+      "backend/infrastructure/files/recoverable_workspace_publisher.py",
       "backend/application/project_folder_generation_service.py",
-      "backend/infrastructure/official_workspace_manifest.py",
-      "backend/api/routes_official_project_workspace.py",
-      "backend/api/routes_project_folder_generation.py",
-      "tests/unit/test_customer_feedback_workbook_gateway.py",
-      "tests/unit/test_customer_feedback_form_generation_service.py",
-      "tests/integration/test_customer_feedback_form_generation_api.py",
-      "tests/unit/test_official_project_workspace_service.py",
-      "tests/unit/test_official_project_workspace_naming.py",
-      "tests/integration/test_official_project_workspace_api.py",
-      "tests/unit/test_project_folder_generation_service.py",
-      "tests/integration/test_project_folder_generation_complete_chain.py",
-      "tests/integration/test_project_folder_generation_recovery.py",
-      "tests/integration/test_project_folder_generation_api.py",
-      "tests/unit/test_required_forms_staging_generator.py",
-      "docs/PROJECT_CONTEXT.md"
+      "backend/api/project_folder_generation_composition.py",
+      "backend/api/routes",
+      "frontend/src",
+      "tests",
+      "docs/task_board.md"
     ],
     "risk_reasons": [
-      "Official folder name changes affect filesystem ownership and persisted paths; preserve existing data and recovery lineage."
+      "authoritative external project-folder mutation",
+      "Windows file-lock and crash-recovery behavior",
+      "checkpoint lifecycle and API/UI recovery semantics"
     ],
-    "activation_head": "4b9e0ce54288672f3d46f0e9e9ad6c7bc74a0d84",
-    "started_at": "2026-09-10T05:07:13.004725Z",
-    "updated_at": "2026-09-10T05:28:24.405212Z",
+    "activation_head": "365a9d0cb9136e298b54e651dcead038bc472b22",
+    "started_at": "2026-09-10T09:53:57.576209Z",
+    "updated_at": "2026-09-10T10:55:11.451794Z",
     "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
+      "requires_user": false,
+      "status": "running",
+      "stage": "implementation_validation",
+      "task_id": "TASK_PROJECT_FOLDER_LOCK_RESILIENT_UPDATE",
+      "summary": "Reproduced WinError 5 as whole-directory rename fragility. Added non-destructive continue_existing strategy that adds only missing template content, preserves same-name operator files, avoids reading or moving existing files, and recovers after interruption. A failed first backup rename now removes only its verified owned stage and effect so the operation becomes safely replaceable. Added actionable lock guidance and a recommended Workbench conflict action with restart access. Final affected validation and review remain.",
       "version": 1,
-      "task_id": "TASK_FEEDBACK_PATH_AND_CONFIRMED_WORKSPACE_NAME",
-      "stage": "existing_folder_policy",
-      "status": "blocked",
-      "summary": "Committed implemented slice 4860a12dc1e641c4bad792c76dd7baf3af2fdb07: Customer Feedback WinError3 regression PASS at 275 chars; compact operation staging preserves journal/recovery; new official folders use latest confirmed Basic, never drafts. Independent Reviewer Standards0/Spec0; independent QA 79 passed (11 affected files,34.09s); Integrator verified clean subject,parent and all9 approved paths. Existing indexed folders are intentionally retained. Await user choice: prompt-confirmed safe rename plus indexes (preserve files, refuse target conflicts/locks), or new-folder-only and defer existing renames. No operator DB/folders/registry modified, no new release built; whole request incomplete.",
-      "requires_user": true
+      "schema": "connlab.sol-task-checkpoint"
     },
     "report": null
   },
   "last_closed": {
-    "task_id": "TASK_MATRIX_SCHEDULE_CONFIRM_INDEPENDENCE",
+    "task_id": "TASK_FEEDBACK_PATH_AND_CONFIRMED_WORKSPACE_NAME",
     "tier": "high_risk",
-    "subject": "4b9e0ce54288672f3d46f0e9e9ad6c7bc74a0d84",
-    "summary": "Fix Matrix confirmation and deleted-row restoration; confirm Project Schedule independently and keep outputs usable.",
+    "subject": "365a9d0cb9136e298b54e651dcead038bc472b22",
+    "summary": "Fix Customer Feedback Windows long staging paths and official folder names not following confirmed Basic Information.",
     "disposition": "cancelled",
-    "decision_ref": "user-close-prior-and-fix-two-reports-20260910",
-    "closed_at": "2026-09-10T05:07:13.004725Z"
+    "decision_ref": "user: close the pending existing-folder rename task and solve the attached project-folder update failure",
+    "closed_at": "2026-09-10T09:53:57.576209Z"
   },
   "retained_history": []
 }
