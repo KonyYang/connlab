@@ -541,7 +541,7 @@ export function buildFeeEvaluationUpdateBlockers(input: {
         rowLabel: field,
         fields: [field],
         message: updateBlockerMessage(field, [field]),
-        rowMessage: `Complete ${field} before Update Fee.`,
+        rowMessage: `Complete ${field} before Confirm.`,
       });
     }
   }
@@ -894,7 +894,7 @@ function formatGroupLabel(group: string): string {
 }
 
 function updateBlockerMessage(rowLabel: string, fields: string[]): string {
-  return `Complete Fee Evaluation pricing before Update Fee. First blocker: ${rowLabel} has incomplete ${formatFieldList(fields)}.`;
+  return `Complete Fee Evaluation pricing before Confirm. First blocker: ${rowLabel} has incomplete ${formatFieldList(fields)}.`;
 }
 
 function formatFieldList(fields: string[]): string {

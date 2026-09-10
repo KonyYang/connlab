@@ -875,11 +875,12 @@ export function FeeEvaluationReviewExportPage({
       });
       setConfirmFeeActionState({
         kind: "success",
-        message: "Fee authority updated. You can now generate Fee Form.",
+        message: "Fee authority confirmed.",
       });
+      onBackToWorkbench();
     } catch (error: unknown) {
       const message = businessReadableConfirmFeeError(
-        readonlyAwareErrorMessage(error, "Unable to update Fee.")
+        readonlyAwareErrorMessage(error, "Unable to confirm Fee.")
       );
       setConfirmFeeActionState({ kind: "error", message });
       setSaveState({ kind: "error", message });
@@ -1294,7 +1295,7 @@ export function FeeEvaluationReviewExportPage({
       >
         <span>
           {confirmFeeDisabledReason ??
-            "Update Fee keeps this page open so the confirmed Fee Form can be generated."}
+            "Confirm saves the current Fee authority and returns to Project Workbench."}
         </span>
         <div className="fee-evaluation-completion-actions">
           <button
@@ -1333,7 +1334,7 @@ export function FeeEvaluationReviewExportPage({
             }
             title={confirmFeeDisabledReason ?? undefined}
           >
-            {confirmFeeActionState.kind === "confirming" ? "Updating..." : "Update Fee"}
+            {confirmFeeActionState.kind === "confirming" ? "Confirming..." : "Confirm"}
           </button>
         </div>
       </footer>
@@ -1472,7 +1473,7 @@ function businessReadableConfirmFeeError(message: string): string {
     /must be numeric\.$/.test(message) ||
     message === "Saved Fee Evaluation pricing draft totals are incomplete."
   ) {
-    return "Fee Evaluation pricing is incomplete. Review highlighted rows before Update Fee.";
+    return "Fee Evaluation pricing is incomplete. Review highlighted rows before Confirm.";
   }
   return message;
 }

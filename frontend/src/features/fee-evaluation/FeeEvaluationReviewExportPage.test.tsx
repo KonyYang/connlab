@@ -150,7 +150,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     const cancelButton = within(completionDock).getByRole("button", {
       name: "Cancel",
     });
-    expect(within(completionDock).getByRole("button", { name: "Update Fee" })).toBeTruthy();
+    expect(within(completionDock).getByRole("button", { name: "Confirm" })).toBeTruthy();
     fireEvent.click(cancelButton);
     expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
     const headerBand = screen.getByLabelText("Testing Prices header");
@@ -455,8 +455,8 @@ describe("FeeEvaluationReviewExportPage", () => {
     );
 
     await screen.findByRole("table", { name: "Testing Prices preview rows" });
-    expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty("disabled", true);
-    fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
+    expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty("disabled", true);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
     expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
     expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
   });
@@ -529,7 +529,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     ).toBeTruthy();
   });
 
-  it("confirms Fee Evaluation with the latest autosaved draft id without saving again", async () => {
+  it("confirms Fee Evaluation with the latest autosaved draft id and returns to Workbench", async () => {
     let savedPayload: Record<string, unknown> | null = null;
     arrangeSuccessfulContext();
     apiMocks.getFeeEvaluationPricingDraft
@@ -566,10 +566,10 @@ describe("FeeEvaluationReviewExportPage", () => {
       target: { value: "5" },
     });
     expect(
-      (screen.getByRole("button", { name: "Update Fee" }) as HTMLButtonElement)
+      (screen.getByRole("button", { name: "Confirm" }) as HTMLButtonElement)
         .disabled
     ).toBe(false);
-    fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
     await waitFor(() => {
       expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith("P1", expect.objectContaining({
@@ -584,19 +584,38 @@ describe("FeeEvaluationReviewExportPage", () => {
         },
       }));
     });
-    expect(onBackToWorkbench).not.toHaveBeenCalled();
+    expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
     expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
-    expect(
-      await screen.findByText(
-        "Fee authority updated. You can now generate Fee Form."
-      )
-    ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Fee Form" })).toHaveProperty(
-      "disabled",
-      false
+  });
+
+  it("stays on Fee Evaluation when Confirm fails", async () => {
+    arrangeSuccessfulContext({
+      pricingDraft: currentPricingDraftResponse({
+        payload: promotedPricingDraftPayload(),
+      }),
+    });
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(
+      createDraftWithEditableSingleLine()
     );
-    expect(screen.queryByText("Confirmed")).toBeNull();
-    expect(screen.queryByText("Fee authority is current.")).toBeNull();
+    apiMocks.confirmFeeVersion.mockRejectedValue(
+      new Error("Fee authority confirmation failed.")
+    );
+    const onBackToWorkbench = vi.fn();
+
+    render(
+      <FeeEvaluationReviewExportPage
+        projectId="P1"
+        onBackToWorkbench={onBackToWorkbench}
+      />
+    );
+
+    const confirmButton = await screen.findByRole("button", { name: "Confirm" });
+    await waitFor(() => expect(confirmButton).toHaveProperty("disabled", false));
+    fireEvent.click(confirmButton);
+
+    expect(await screen.findAllByText("Unable to confirm Fee.")).toHaveLength(2);
+    expect(onBackToWorkbench).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Confirm" })).toBeTruthy();
   });
 
   it("saves a reviewed rebase candidate before updating Fee", async () => {
@@ -623,7 +642,7 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />);
 
-    const updateButton = await screen.findByRole("button", { name: "Update Fee" });
+    const updateButton = await screen.findByRole("button", { name: "Confirm" });
     await waitFor(() => {
       expect(screen.getByLabelText("Unit Price for Visual Examination")).toHaveProperty("value", "10");
       expect(screen.getByLabelText("Units for Visual Examination")).toHaveProperty("value", "15");
@@ -661,10 +680,10 @@ describe("FeeEvaluationReviewExportPage", () => {
         })
       );
     });
-    expect(onBackToWorkbench).not.toHaveBeenCalled();
+    expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
   });
 
-  it("blocks Update Fee at the incomplete Report preparation row without duplicate alerts", async () => {
+  it("blocks Confirm at the incomplete Report preparation row without duplicate alerts", async () => {
     arrangeSuccessfulContext({
       pricingDraft: currentPricingDraftResponse({ status: "current_v2", saved_generation: 1, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-1", saved_validation_token: "token-1" }),
     });
@@ -678,17 +697,17 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
 
     const blockerMessage =
-      "Complete Fee Evaluation pricing before Update Fee. First blocker: Report preparation has incomplete Unit Type.";
+      "Complete Fee Evaluation pricing before Confirm. First blocker: Report preparation has incomplete Unit Type.";
     await screen.findByText(blockerMessage);
     expect(screen.getAllByText(blockerMessage)).toHaveLength(1);
     expect(screen.getByText("Review: Complete Unit Type.")).toBeTruthy();
     expect(screen.queryByText("testing_fee_total must be numeric.")).toBeNull();
-    expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
+    expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty(
       "disabled",
       true
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
     expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
   });
 
@@ -715,7 +734,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(screen.queryByText("Unconfirmed saved changes")).toBeNull();
   });
 
-  it("loads a promoted current pricing draft and allows Update Fee when authority is missing", async () => {
+  it("loads a promoted current pricing draft and allows Confirm when authority is missing", async () => {
     arrangeSuccessfulContext({
       pricingDraft: currentPricingDraftResponse({
         status: "current_v2",
@@ -755,12 +774,12 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(screen.queryByText("Not confirmed")).toBeNull();
     expect(screen.queryByText("Save pricing draft before updating Fee.")).toBeNull();
     expect(screen.queryByText(/fee_rebase|payload_signature|\/api\//i)).toBeNull();
-    expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
+    expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty(
       "disabled",
       false
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
     await waitFor(() => {
       expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith(
@@ -883,13 +902,13 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(await screen.findByDisplayValue("promoted numeric note")).toBeTruthy();
     expect(screen.getByLabelText("Selected group fee").textContent).toContain("10.00");
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
+      expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty(
         "disabled",
         false
       )
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
     await waitFor(() => {
       expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith("P1", expect.objectContaining({
@@ -904,10 +923,10 @@ describe("FeeEvaluationReviewExportPage", () => {
         },
       }));
     });
-    expect(onBackToWorkbench).not.toHaveBeenCalled();
+    expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
   });
 
-  it("allows Update Fee refresh when confirmed fee is stale and promoted draft is current", async () => {
+  it("allows Confirm refresh when confirmed fee is stale and promoted draft is current", async () => {
     arrangeSuccessfulContext({
       pricingDraft: currentPricingDraftResponse({
         status: "current_v2",
@@ -944,13 +963,13 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(await screen.findByDisplayValue("stale authority refresh")).toBeTruthy();
     expect(screen.queryByText("Confirmed Fee stale")).toBeNull();
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
+      expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty(
         "disabled",
         false
       );
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
     await waitFor(() => {
       expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith(
@@ -985,7 +1004,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(screen.queryByText("Unconfirmed pricing draft")).toBeNull();
   });
 
-  it("keeps status card hidden while autosave disables Update Fee for local pricing changes", async () => {
+  it("keeps status card hidden while autosave disables Confirm for local pricing changes", async () => {
     arrangeSuccessfulContext({
       pricingDraft: {
         status: "current",
@@ -1020,7 +1039,7 @@ describe("FeeEvaluationReviewExportPage", () => {
       () => expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1),
       { timeout: 2_000 }
     );
-    expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
+    expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty(
       "disabled",
       true
     );
@@ -1029,7 +1048,7 @@ describe("FeeEvaluationReviewExportPage", () => {
       await autosave;
     });
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Update Fee" })).toHaveProperty(
+      expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty(
         "disabled",
         false
       )
@@ -1065,7 +1084,7 @@ describe("FeeEvaluationReviewExportPage", () => {
       )
     ).toHaveLength(2);
     expect(
-      (screen.getByRole("button", { name: "Update Fee" }) as HTMLButtonElement)
+      (screen.getByRole("button", { name: "Confirm" }) as HTMLButtonElement)
         .disabled
     ).toBe(true);
     expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
@@ -1208,7 +1227,7 @@ describe("FeeEvaluationReviewExportPage", () => {
         .getAllByLabelText("Unit Price for Visual Examination")
         .every((input) => (input as HTMLInputElement).disabled)
     ).toBe(true);
-    const updateButton = screen.getByRole("button", { name: "Update Fee" });
+    const updateButton = screen.getByRole("button", { name: "Confirm" });
     expect(updateButton).toHaveProperty("disabled", true);
     fireEvent.click(updateButton);
     const feeForm = screen.getByRole("button", { name: "Fee Form" });
@@ -1487,7 +1506,7 @@ async function waitForFeeEvaluationPageReady(): Promise<void> {
   );
   await waitFor(() => {
     const disabledReason = screen
-      .getByRole("button", { name: "Update Fee" })
+      .getByRole("button", { name: "Confirm" })
       .getAttribute("title");
     expect(disabledReason?.startsWith("Waiting for") ?? false).toBe(false);
   });

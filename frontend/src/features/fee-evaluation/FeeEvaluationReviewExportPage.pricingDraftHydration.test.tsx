@@ -121,7 +121,7 @@ describe("FeeEvaluationReviewExportPage pricing-draft hydration", () => {
     );
     expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
     await waitFor(() => expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1));
     expect((feeForm as HTMLButtonElement).disabled).toBe(false);
     expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledWith(
@@ -162,7 +162,7 @@ describe("FeeEvaluationReviewExportPage pricing-draft hydration", () => {
     await waitFor(() =>
       expect(screen.getByTestId("pricing-save-state").textContent).toBe("stale")
     );
-    fireEvent.click(screen.getByRole("button", { name: "Update Fee" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
     await waitFor(() =>
       expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledWith(

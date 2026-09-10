@@ -582,7 +582,7 @@ describe("feeEvaluationPreviewModel", () => {
     });
   });
 
-  it("names the first incomplete Report preparation blocker before Update Fee", () => {
+  it("names the first incomplete Report preparation blocker before Confirm", () => {
     const rows = applyFeeEvaluationPreviewEdits(
       buildFeeEvaluationPreviewRows({
         ...createDraft(),
@@ -620,7 +620,7 @@ describe("feeEvaluationPreviewModel", () => {
       rowLabel: "Report preparation",
       fields: ["Unit Type"],
       message:
-        "Complete Fee Evaluation pricing before Update Fee. First blocker: Report preparation has incomplete Unit Type.",
+        "Complete Fee Evaluation pricing before Confirm. First blocker: Report preparation has incomplete Unit Type.",
     });
     expect(blockers).not.toEqual(
       expect.arrayContaining([

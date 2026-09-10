@@ -61,7 +61,7 @@ export function FeeFormImportControl({projectId, rows, disabled, onApply}: {
     <dialog ref={dialog} className="fee-form-import-dialog" aria-labelledby="fee-import-title"
       onCancel={close} onClose={() => { if (open) close(); }}>
       <h3 id="fee-import-title">Import Fee Form</h3>
-      <p>Review before applying. Only the current draft changes; Update Fee is still required to confirm.</p>
+      <p>Review before applying. Only the current draft changes; Confirm is still required for Fee authority.</p>
       <label>Import mode<select aria-label="Import mode" value={mode}
         onChange={event => { setMode(event.target.value as FeeImportMode); setSelections({}); }}>
         <option value="matrix">Same Matrix — restore fee rows</option>
@@ -94,7 +94,7 @@ export function FeeFormImportControl({projectId, rows, disabled, onApply}: {
             </div>)}</td>
           </tr>)}</tbody></table></div>
         <button type="button" className="is-primary" disabled={disabled || stale || busy || !plan.changes.length}
-          onClick={() => { if (disabled || stale) return; onApply(plan.changes); setMessage(`${plan.changes.length} rows imported into draft. Review and use Update Fee to confirm.`); close(); }}>
+          onClick={() => { if (disabled || stale) return; onApply(plan.changes); setMessage(`${plan.changes.length} rows imported into draft. Review and use Confirm for Fee authority.`); close(); }}>
           Apply {plan.changes.length} rows to draft
         </button>
       </>}
