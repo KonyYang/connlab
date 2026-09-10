@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FEE_CONFIRM_RETURN",
     "summary": "Rename Update Fee to Confirm and return to Project Workbench after successful Fee authority confirmation.",
@@ -25,9 +25,60 @@
     "risk_reasons": [],
     "activation_head": "e80471ddf16bd65a8675871390dc521d9ad5898c",
     "started_at": "2026-09-10T22:42:51.748771Z",
-    "updated_at": "2026-09-10T22:42:51.748771Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-10T22:54:30.542957Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_FEE_CONFIRM_RETURN",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_FEE_CONFIRM_RETURN",
+      "subject": "68311a4c8340a387e728f9eb6198d1e3c9bb8d6d",
+      "summary": "Kept all three Fee actions, renamed the authority action to Confirm, and return to Project Workbench only after successful draft persistence and Fee authority confirmation.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.pricingDraftHydration.test.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+        "frontend/src/features/fee-evaluation/FeeFormImportControl.tsx",
+        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.test.ts",
+        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts"
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "context": "Current agent completed TDD implementation and exact-diff self-review. Standards: 0 findings. Spec: 0 findings."
+        }
+      },
+      "validation": [
+        {
+          "status": "passed",
+          "command": "Vitest targeted RED test before implementation",
+          "result": "Failed because Confirm button did not yet exist."
+        },
+        {
+          "status": "passed",
+          "command": "Vitest Fee Evaluation related suite --maxWorkers=1",
+          "result": "69 tests passed across 4 files, including successful return and failure retention."
+        },
+        {
+          "status": "passed",
+          "command": "npm run build",
+          "result": "TypeScript and Vite production build passed."
+        }
+      ],
+      "integration": {
+        "status": "passed",
+        "subject": "68311a4c8340a387e728f9eb6198d1e3c9bb8d6d",
+        "summary": "Committed micro frontend behavior change; repository clean before finish."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FOLDER_WARNING_INITIAL_FLASH",
