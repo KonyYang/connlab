@@ -11,8 +11,29 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_FORM_IMPORT",
+    "summary": "Import Fee Form into editable draft with same-Matrix restoration and cross-project price reuse.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Read ConnLab xls/xlsx Fee Forms, preview matches and conflicts, explicitly apply to current draft only. Same-Matrix groups require identical ordered descriptions; cross-project imports only unit price/type/base fee with explicit ambiguous price selection. Preserve unmatched rows, totals recomputation and Update Fee authority.",
+    "scope_paths": [
+      "backend/infrastructure/office/fee_form_import_gateway.py",
+      "backend/api/routes_fee_form_import.py",
+      "backend/api/main.py",
+      "frontend/src/api/client.ts",
+      "frontend/src/features/fee-evaluation",
+      "tests/unit/test_fee_form_import_gateway.py",
+      "tests/integration/test_fee_form_import_api.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "160b4dade8f2d4b6633f4030de33f49ff50ab5ca",
+    "started_at": "2026-09-10T13:00:20.656265Z",
+    "updated_at": "2026-09-10T13:00:20.656265Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_LOCK_RESILIENT_UPDATE",
     "tier": "high_risk",

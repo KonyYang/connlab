@@ -5158,6 +5158,20 @@ export function publishManagedReport(
   );
 }
 
+export type FeeFormImportRow = {
+  group: string;
+  description: string;
+  rowKind: string;
+  values: {spendTime: string; unitPrice: string; unitType: string; units: string; baseFee: string; discount: string; notes: string};
+};
+
+export function inspectFeeForm(projectId: string, file: File): Promise<{rows: FeeFormImportRow[]}> {
+  const form = new FormData();
+  form.append("file", file);
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/fee-evaluation/import/inspect`,
+    {method: "POST", body: form});
+}
+
 export function inspectLlcrResultWorkbook(
   projectId: string,
   file: File,

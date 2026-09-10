@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import type {
   FeeEvaluationEditableField,
   FeeEvaluationPreviewHeader,
@@ -10,6 +10,7 @@ import type {
 import { FEE_UNIT_TYPE_OPTIONS } from "./feeEvaluationPreviewModel";
 
 type FeeEvaluationPreviewTableProps = {
+  importControl?: ReactNode;
   costPreviewValues: FeeEvaluationCostPreviewValues;
   costRisk: FeeEvaluationCostRisk;
   confirmFeeActionState: ConfirmFeeActionState;
@@ -71,6 +72,7 @@ type ConfirmFeeActionState =
   | { kind: "error"; message: string };
 
 export function FeeEvaluationPreviewTable({
+  importControl,
   costPreviewValues,
   costRisk,
   confirmFeeActionState,
@@ -133,6 +135,7 @@ export function FeeEvaluationPreviewTable({
           >
             {downloadState.kind === "running" ? "Generating..." : "Fee Form"}
           </button>
+          {importControl}
         </div>
         <FeeFileDownloadStatus
           state={downloadState}

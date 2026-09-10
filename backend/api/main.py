@@ -74,6 +74,7 @@ from backend.api.routes_confirmed_matrix_fee_draft import (
 from backend.api.routes_confirmed_matrix_fee_evaluation_export import (
     router as confirmed_matrix_fee_evaluation_export_router,
 )
+from backend.api.routes_fee_form_import import router as fee_form_import_router
 from backend.api.routes_confirmed_matrix_fee_evaluation_pricing_draft import (
     router as confirmed_matrix_fee_evaluation_pricing_draft_router,
 )
@@ -238,6 +239,7 @@ _include_project_router(confirmed_matrix_test_record_preview_router)
 _include_project_router(confirmed_matrix_llcr_cr_record_workbook_router)
 _include_project_router(confirmed_matrix_fee_draft_router)
 _include_project_router(confirmed_matrix_fee_evaluation_export_router)
+_include_project_router(fee_form_import_router)
 _include_project_router(confirmed_matrix_fee_evaluation_pricing_draft_router)
 _include_project_router(confirmed_fee_version_router)
 _include_project_router(confirmed_matrix_test_record_generation_router)

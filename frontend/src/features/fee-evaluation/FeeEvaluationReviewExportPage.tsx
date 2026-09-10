@@ -35,6 +35,7 @@ import {
   deriveReadonlyApiErrorMessage,
 } from "../project-lifecycle/projectLifecycleReadonlyModel";
 import { FeeEvaluationPreviewTable } from "./FeeEvaluationPreviewTable";
+import { FeeFormImportControl } from "./FeeFormImportControl";
 import { savedPricingDraftDerivedFeesMatch } from "./feeEvaluationPricingDraftHydration";
 import {
   buildFeeEvaluationCostRisk,
@@ -1213,6 +1214,19 @@ export function FeeEvaluationReviewExportPage({
         </div>
       ) : null}
       <FeeEvaluationPreviewTable
+        importControl={<FeeFormImportControl key={projectId} projectId={projectId} rows={previewRows}
+          disabled={isLifecycleReadonly || draftState.kind !== "ready" || pricingDraftLoadStatus === "loading" ||
+            pricingDraftLoadStatus === "error" || pricingDraftLoadStatus === "stale" || pricingDraftLoadStatus === "rebase_required" ||
+            confirmFeeActionState.kind === "confirming" || isCancellingPricingSession || isSavingPricingSessionAndLeaving}
+          onApply={changes => {
+            if (isLifecycleReadonly) return;
+            setPreviewEdits(current => {
+              const next = {...current};
+              changes.forEach(({row, values}) => { next[row.lineId] = {...next[row.lineId], ...values}; });
+              return next;
+            });
+            markPricingDraftDirty();
+          }} />}
         costPreviewValues={costPreviewValues}
         costRisk={costRisk}
         confirmFeeActionState={confirmFeeActionState}

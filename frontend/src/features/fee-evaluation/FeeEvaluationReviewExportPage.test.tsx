@@ -15,6 +15,7 @@ const originalConsoleError = console.error.bind(console);
 let unexpectedActWarnings: string[] = [];
 
 const apiMocks = vi.hoisted(() => ({
+  inspectFeeForm: vi.fn(),
   fetchConfirmedMatrixFeeDraft: vi.fn(),
   generateConfirmedMatrixFeeFileDownload: vi.fn(),
   previewFeeFormPublication: vi.fn(),
@@ -33,6 +34,7 @@ vi.mock("../../api/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../api/client")>();
   return {
     ...actual,
+    inspectFeeForm: apiMocks.inspectFeeForm,
     confirmFeeVersion: apiMocks.confirmFeeVersion,
     fetchConfirmedMatrixFeeDraft: apiMocks.fetchConfirmedMatrixFeeDraft,
     generateConfirmedMatrixFeeFileDownload:
@@ -50,6 +52,28 @@ vi.mock("../../api/client", async (importOriginal) => {
 });
 
 describe("FeeEvaluationReviewExportPage", () => {
+  it("applies reused prices to editable draft and autosaves without confirming Fee", async () => {
+    HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+    HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    apiMocks.inspectFeeForm.mockResolvedValue({rows: [{group: "Other", description: "Visual Examination", rowKind: "matrix_step",
+      values: {unitPrice: "37", unitType: "per photo", baseFee: "0", units: "999", spendTime: "99", discount: "20", notes: "source"}}]});
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+    const price = await screen.findByLabelText("Unit Price for Visual Examination");
+    const units = (screen.getByLabelText("Units for Visual Examination") as HTMLInputElement).value;
+    await waitFor(() => expect(screen.getByRole("button", {name: "Import Fee Form"})).toHaveProperty("disabled", false));
+    fireEvent.click(screen.getByRole("button", {name: "Import Fee Form"}));
+    fireEvent.change(screen.getByLabelText("Import mode"), {target: {value: "prices"}});
+    fireEvent.change(screen.getByLabelText("Fee Form file"), {target: {files: [new File(["xls"], "fee.xls")]}});
+    fireEvent.click(screen.getByRole("button", {name: "Inspect file"}));
+    fireEvent.click(await screen.findByRole("button", {name: "Apply 1 rows to draft"}));
+    expect(price).toHaveProperty("value", "37");
+    expect(screen.getByLabelText("Units for Visual Examination")).toHaveProperty("value", units);
+    await waitFor(() => expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalled(), {timeout: 3000});
+    expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
+    expect(apiMocks.publishFeeForm).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     unexpectedActWarnings = [];
     vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {

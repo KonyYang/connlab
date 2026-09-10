@@ -1,0 +1,18 @@
+.fee-form-import-dialog {
+  width: min(900px, calc(100vw - 48px));
+  max-height: 85vh;
+  overflow: auto;
+  box-sizing: border-box;
+  border: 1px solid #d8e0ea;
+  border-radius: 16px;
+  padding: 24px;
+  color: #172033;
+  background: #fbfdff;
+}
+.fee-form-import-dialog::backdrop { background: rgba(23, 32, 51, .35); }
+.fee-form-import-dialog label { display: grid; gap: 8px; margin: 12px 0; }
+.fee-form-import-dialog button { margin: 8px 8px 0 0; }
+.fee-form-import-dialog [role="alert"] { color: #c2413a; }
+.fee-form-import-preview { overflow: auto; margin: 16px 0; max-height: 40vh; }
+.fee-form-import-preview table { width: 100%; border-collapse: collapse; }
+.fee-form-import-preview th, .fee-form-import-preview td { padding: 8px; border: 1px solid #d8e0ea; text-align: left; vertical-align: top; }
