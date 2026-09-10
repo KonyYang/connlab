@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 
 export type UiIconName =
+  | "archive"
   | "bell"
   | "chevron-down"
   | "clock"
@@ -40,6 +41,13 @@ type UiIconProps = {
 };
 
 const PATHS: Record<UiIconName, ReactElement> = {
+  archive: (
+    <>
+      <path d="M4 8h16v12H4z" />
+      <path d="M3 4h18v4H3z" />
+      <path d="M9 13h6" />
+    </>
+  ),
   bell: (
     <>
       <path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9" />
