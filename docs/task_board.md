@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FOLDER_WARNING_INITIAL_FLASH",
     "summary": "Avoid flashing historic generation errors while the latest recovery preview is loading.",
@@ -25,9 +25,56 @@
     "risk_reasons": [],
     "activation_head": "94d73a7934cbc2d14ad6183fa55d1dfbdad5f08a",
     "started_at": "2026-09-10T14:06:05.718092Z",
-    "updated_at": "2026-09-10T14:06:05.718092Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-10T14:16:32.525581Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_FOLDER_WARNING_INITIAL_FLASH",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_FOLDER_WARNING_INITIAL_FLASH",
+      "subject": "3669c32bbdc7c962d6a8a683400fb0ff3dfb7a26",
+      "summary": "Initial recovery preview shows neutral checking status before current readiness; historic errors and recovery guards remain intact.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx"
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "context": "Current agent implemented and self-reviewed exact diff. Standards: 0 findings. Spec: 0 findings."
+        }
+      },
+      "validation": [
+        {
+          "status": "passed",
+          "command": "Vitest ProjectWorkbenchLayout/useProjectFolderGeneration/useProjectWorkbenchModel --maxWorkers=1",
+          "result": "73 tests passed; initial new regression cases failed before implementation."
+        },
+        {
+          "status": "passed",
+          "command": "npm run build",
+          "result": "TypeScript and Vite production build passed."
+        },
+        {
+          "status": "passed",
+          "command": "In-app browser refresh of project 638bb45740f64a0085b2fa203c9d014c",
+          "result": "Observed neutral checking status, no old storage warning during refresh, then current ready message. No generation triggered."
+        }
+      ],
+      "integration": {
+        "status": "passed",
+        "subject": "3669c32bbdc7c962d6a8a683400fb0ff3dfb7a26",
+        "summary": "Clean committed micro fix, only two frontend paths plus task board."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_FORM_IMPORT",
