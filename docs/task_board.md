@@ -48,8 +48,16 @@
     ],
     "activation_head": "4b9e0ce54288672f3d46f0e9e9ad6c7bc74a0d84",
     "started_at": "2026-09-10T05:07:13.004725Z",
-    "updated_at": "2026-09-10T05:07:13.004725Z",
-    "checkpoint": null,
+    "updated_at": "2026-09-10T05:28:24.405212Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_FEEDBACK_PATH_AND_CONFIRMED_WORKSPACE_NAME",
+      "stage": "existing_folder_policy",
+      "status": "blocked",
+      "summary": "Committed implemented slice 4860a12dc1e641c4bad792c76dd7baf3af2fdb07: Customer Feedback WinError3 regression PASS at 275 chars; compact operation staging preserves journal/recovery; new official folders use latest confirmed Basic, never drafts. Independent Reviewer Standards0/Spec0; independent QA 79 passed (11 affected files,34.09s); Integrator verified clean subject,parent and all9 approved paths. Existing indexed folders are intentionally retained. Await user choice: prompt-confirmed safe rename plus indexes (preserve files, refuse target conflicts/locks), or new-folder-only and defer existing renames. No operator DB/folders/registry modified, no new release built; whole request incomplete.",
+      "requires_user": true
+    },
     "report": null
   },
   "last_closed": {
