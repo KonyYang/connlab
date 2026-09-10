@@ -68,6 +68,7 @@ export function ProjectWorkbenchLayout({
   const [folderConflictContext, setFolderConflictContext] = useState<string | undefined>();
   const [folderConflictRestart, setFolderConflictRestart] = useState(false);
   const [restartPreviewReady, setRestartPreviewReady] = useState(false);
+  const [recoveryPreviewCheckedProject, setRecoveryPreviewCheckedProject] = useState<string | null>(null);
 
   const {
     activeConfirmedMatrixSnapshot,
@@ -133,6 +134,7 @@ export function ProjectWorkbenchLayout({
 
   useEffect(() => {
     let active = true;
+    setRecoveryPreviewCheckedProject(null);
     if (!officialWorkspaceCanRestart) {
       setRestartPreviewReady(false);
       return () => {
@@ -146,6 +148,9 @@ export function ProjectWorkbenchLayout({
       })
       .catch(() => {
         if (active) setRestartPreviewReady(false);
+      })
+      .finally(() => {
+        if (active) setRecoveryPreviewCheckedProject(project.project_id);
       });
     return () => {
       active = false;
@@ -272,6 +277,11 @@ export function ProjectWorkbenchLayout({
       restartPreviewReady &&
       officialWorkspacePreview?.generation_context &&
       !officialWorkspacePreview.blockers?.length
+  );
+  // A persisted failure is history until the initial recovery preview has settled.
+  // Derive the initial pending state during render so no error paints before the effect runs.
+  const checkingRecoveryPreview = Boolean(
+    officialWorkspaceCanRestart && recoveryPreviewCheckedProject !== project.project_id
   );
   const reviewedConflictRestartReady = Boolean(
     officialWorkspacePreview?.status === "exists" &&
@@ -522,8 +532,8 @@ export function ProjectWorkbenchLayout({
           <button
             type="button"
             className="is-primary"
-            disabled={visibleWorkbenchFolderCommand.disabled}
-            title={visibleWorkbenchFolderCommand.disabledReason}
+            disabled={visibleWorkbenchFolderCommand.disabled || checkingRecoveryPreview}
+            title={checkingRecoveryPreview ? "Checking project folder generation status..." : visibleWorkbenchFolderCommand.disabledReason}
             onClick={handleProjectFolderCreateClick}
           >
             {visibleWorkbenchFolderCommand.label}
@@ -532,7 +542,12 @@ export function ProjectWorkbenchLayout({
         </div>
       </header>
 
-      {officialWorkspaceError ? (
+      {checkingRecoveryPreview ? (
+        <div className="runtime-console-workflow-alert" role="status" aria-busy="true">
+          <strong>Project folder workflow</strong>
+          <span>Checking project folder generation status...</span>
+        </div>
+      ) : officialWorkspaceError ? (
         <div
           className={`runtime-console-workflow-alert${correctedGenerationReady ? "" : " is-danger"}`}
           role="alert"

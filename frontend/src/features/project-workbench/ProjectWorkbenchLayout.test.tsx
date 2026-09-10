@@ -939,7 +939,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       { onOpenBasicInformation }
     );
 
-    expect(screen.getByRole("alert").textContent).toContain(blocker);
+    expect((await screen.findByRole("alert")).textContent).toContain(blocker);
     expect(screen.queryByRole("button", { name: "Resume generation" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Open Basic Information" }));
     expect(onOpenBasicInformation).toHaveBeenCalledTimes(1);
@@ -1469,7 +1469,8 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
   it("refreshes a safely restartable operation and retains its conflict approval token", async () => {
     const user = userEvent.setup();
     const onRestartOfficialWorkspace = vi.fn();
-    const onRefreshOfficialWorkspacePreview = vi.fn().mockResolvedValue(undefined);
+    let finishPreview!: () => void;
+    const onRefreshOfficialWorkspacePreview = vi.fn(() => new Promise<void>(resolve => { finishPreview = resolve; }));
     renderWorkbench({
       officialWorkspaceError: "Source changed",
       officialWorkspaceCanResume: true,
@@ -1488,6 +1489,10 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     await waitFor(() =>
       expect(onRefreshOfficialWorkspacePreview).toHaveBeenCalledTimes(1)
     );
+    expect(screen.getByRole("status").textContent).toContain("Checking project folder generation status...");
+    expect(screen.queryByText("Source changed")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Resume generation" })).toBeNull();
+    finishPreview();
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Start new generation" })).toHaveProperty(
         "disabled",
@@ -1504,6 +1509,22 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(onRestartOfficialWorkspace).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Backup and Rebuild" }));
     expect(onRestartOfficialWorkspace).toHaveBeenCalledWith("backup_and_recreate", "displayed-preview-token");
+  });
+
+  it("keeps the recovery blocker visible when the initial preview check fails", async () => {
+    let rejectPreview!: (error: Error) => void;
+    renderWorkbench({
+      officialWorkspaceError: "Folder storage is unavailable or changed. Review the configured folder before resuming.",
+      officialWorkspaceCanResume: true,
+      officialWorkspaceCanRestart: true,
+      onRefreshOfficialWorkspacePreview: () => new Promise<void>((_resolve, reject) => { rejectPreview = reject; }),
+    });
+    expect(screen.getByRole("status").textContent).toContain("Checking project folder generation status...");
+    expect(screen.queryByText(/Folder storage is unavailable/)).toBeNull();
+    rejectPreview(new Error("Preview unavailable"));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Folder storage is unavailable"));
+    expect(screen.getByRole("button", { name: "Resume generation" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Start new generation" })).toHaveProperty("disabled", true);
   });
 
   it("lets a lock-blocked operation restart by continuing the existing folder", async () => {
