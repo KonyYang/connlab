@@ -454,7 +454,10 @@ class OfficialProjectWorkspaceService:
     ) -> OfficialWorkspaceCreateResult:
         """Create or continue the local official project workspace."""
         preview = self.preview(project_id)
-        if preview.status == "completed" and conflict_strategy is None:
+        if preview.status == "completed" and conflict_strategy in {
+            None,
+            "continue_existing",
+        }:
             record = self._workspaces.get_by_project(project_id)
             if record is None:
                 raise OfficialWorkspaceCreateError("Local project workspace record is missing.")
@@ -467,7 +470,11 @@ class OfficialProjectWorkspaceService:
             )
         allowed_conflict_strategies = {option.key for option in preview.conflict_options}
         if preview.status == "completed":
-            allowed_conflict_strategies = {"backup_and_recreate", "overwrite_rebuild"}
+            allowed_conflict_strategies = {
+                "continue_existing",
+                "backup_and_recreate",
+                "overwrite_rebuild",
+            }
         if preview.status in {"exists", "completed"} and conflict_strategy in allowed_conflict_strategies:
             pass
         elif preview.status not in {"ready", "adoptable"}:
@@ -498,7 +505,11 @@ class OfficialProjectWorkspaceService:
         copied_root = operation_tmp / preview.template_path.name
         try:
             operation_tmp.mkdir(parents=True, exist_ok=True)
-            if preview.status == "exists" and workspace_conflict:
+            if conflict_strategy == "continue_existing":
+                workspace_path.mkdir(parents=True, exist_ok=True)
+                source_book_path.mkdir(parents=True, exist_ok=True)
+                merge_missing_workspace_tree(preview.template_path, preview.official_folder_path)
+            elif preview.status == "exists" and workspace_conflict:
                 assert conflict_strategy is not None
                 resolution = _resolve_existing_path(
                     existing_path=workspace_path,
@@ -508,14 +519,19 @@ class OfficialProjectWorkspaceService:
                 created_paths.extend(resolution.created_paths)
                 restore_path = resolution.restore_path
                 restore_target = resolution.restore_target
-            if not workspace_path.exists():
+            if conflict_strategy != "continue_existing" and not workspace_path.exists():
                 workspace_path.mkdir(parents=True)
                 created_paths.append(workspace_path)
-            if not source_book_path.exists():
+            if conflict_strategy != "continue_existing" and not source_book_path.exists():
                 source_book_path.mkdir(parents=True)
                 created_paths.append(source_book_path)
-            _copytree_no_overwrite(preview.template_path, copied_root)
-            if preview.status in {"exists", "completed"} and not workspace_conflict:
+            if conflict_strategy != "continue_existing":
+                _copytree_no_overwrite(preview.template_path, copied_root)
+            if (
+                conflict_strategy != "continue_existing"
+                and preview.status in {"exists", "completed"}
+                and not workspace_conflict
+            ):
                 assert conflict_strategy is not None
                 resolution = _resolve_existing_path(
                     existing_path=preview.official_folder_path,
@@ -525,8 +541,9 @@ class OfficialProjectWorkspaceService:
                 created_paths.extend(resolution.created_paths)
                 restore_path = resolution.restore_path
                 restore_target = resolution.restore_target
-            shutil.move(str(copied_root), str(preview.official_folder_path))
-            created_paths.append(preview.official_folder_path)
+            if conflict_strategy != "continue_existing":
+                shutil.move(str(copied_root), str(preview.official_folder_path))
+                created_paths.append(preview.official_folder_path)
         except Exception as exc:
             _restore_overwrite_source(restore_path, restore_target)
             shutil.rmtree(operation_tmp, ignore_errors=True)
@@ -698,9 +715,52 @@ def _copytree_no_overwrite(source: Path, target: Path) -> None:
     shutil.copytree(source, target)
 
 
+def merge_missing_workspace_tree(source: Path, target: Path) -> None:
+    """Add missing template entries without replacing operator-owned content."""
+    if source.is_symlink() or target.is_symlink():
+        raise OfficialWorkspaceCreateError(
+            "Project folder templates and targets cannot be symbolic links."
+        )
+    target.mkdir(parents=True, exist_ok=True)
+    for source_path in sorted(source.rglob("*")):
+        if source_path.is_symlink():
+            raise OfficialWorkspaceCreateError("Project folder template contains a symbolic link.")
+        destination = target / source_path.relative_to(source)
+        if source_path.is_dir():
+            if destination.exists() and not destination.is_dir():
+                raise OfficialWorkspaceCreateError(
+                    f"Existing project content conflicts with a required folder: {destination}"
+                )
+            destination.mkdir(parents=True, exist_ok=True)
+            continue
+        if destination.exists():
+            if not destination.is_file():
+                raise OfficialWorkspaceCreateError(
+                    f"Existing project content conflicts with a required file: {destination}"
+                )
+            continue
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with (
+                source_path.open("rb") as source_handle,
+                destination.open("xb") as target_handle,
+            ):
+                shutil.copyfileobj(source_handle, target_handle)
+        except FileExistsError:
+            if not destination.is_file():
+                raise OfficialWorkspaceCreateError(
+                    f"Existing project content conflicts with a required file: {destination}"
+                )
+
+
 def _conflict_options() -> tuple[OfficialWorkspaceConflictOption, ...]:
     """Return the operator choices for an existing official project folder."""
     return (
+        OfficialWorkspaceConflictOption(
+            key="continue_existing",
+            label="Continue Existing Folder",
+            description="Keep existing files and add only missing template content.",
+        ),
         OfficialWorkspaceConflictOption(
             key="backup_and_recreate",
             label="Backup and Rebuild",

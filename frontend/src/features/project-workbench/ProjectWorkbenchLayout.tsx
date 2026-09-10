@@ -273,6 +273,10 @@ export function ProjectWorkbenchLayout({
       officialWorkspacePreview?.generation_context &&
       !officialWorkspacePreview.blockers?.length
   );
+  const reviewedConflictRestartReady = Boolean(
+    officialWorkspacePreview?.status === "exists" &&
+      officialWorkspacePreview.conflict_options?.length
+  );
   const displayedOfficialWorkspaceError = correctedGenerationReady
     ? "Project inputs are now ready. Start a new generation to continue from the saved project folder."
     : basicInformationGenerationGuidance ?? officialWorkspaceError;
@@ -551,7 +555,13 @@ export function ProjectWorkbenchLayout({
               : "After correcting inputs, review a fresh preview to start a new operation. Previous completed files and recovery history are kept."}</span>
             <button type="button" disabled={officialWorkspaceCreating || lifecycleReadonlyView.readonly}
               onClick={() => { setRestartPreviewReady(false); void onRefreshOfficialWorkspacePreview().then(() => setRestartPreviewReady(true)).catch(() => setRestartPreviewReady(false)); }}>Refresh generation preview</button>
-            <button type="button" disabled={!restartPreviewReady || !officialWorkspacePreview?.generation_context || Boolean(officialWorkspacePreview?.blockers?.length) || officialWorkspaceCreating || lifecycleReadonlyView.readonly}
+            <button type="button" disabled={
+              !restartPreviewReady ||
+              !officialWorkspacePreview?.generation_context ||
+              (Boolean(officialWorkspacePreview?.blockers?.length) && !reviewedConflictRestartReady) ||
+              officialWorkspaceCreating ||
+              lifecycleReadonlyView.readonly
+            }
               onClick={() => {
                 if (hasOfficialWorkspaceConflict) {
                   setFolderConflictRestart(true);
@@ -661,6 +671,7 @@ export function ProjectWorkbenchLayout({
           conflictPaths={officialWorkspaceConflictPaths}
           onBackup={() => handleProjectFolderConflictChoice("backup_and_recreate")}
           onCancel={() => setShowFolderConflictDialog(false)}
+          onContinue={() => handleProjectFolderConflictChoice("continue_existing")}
           onOverwrite={() => handleProjectFolderConflictChoice("overwrite_rebuild")}
         />
       ) : null}
@@ -755,11 +766,13 @@ function ProjectFolderConflictDialog({
   conflictPaths,
   onBackup,
   onCancel,
+  onContinue,
   onOverwrite,
 }: {
   conflictPaths: string[];
   onBackup: () => void;
   onCancel: () => void;
+  onContinue: () => void;
   onOverwrite: () => void;
 }): ReactElement {
   const visiblePath = conflictPaths[0] ?? "Existing project folder";
@@ -776,7 +789,14 @@ function ProjectFolderConflictDialog({
           <strong>{visiblePath}</strong>
           {extraPathCount > 0 ? <em>+{extraPathCount} more</em> : null}
         </div>
+        <p>
+          Recommended keeps every existing file and adds only missing template content.
+          Files that are not being updated can remain open.
+        </p>
         <div className="runtime-console-conflict-actions">
+          <button type="button" className="is-primary" onClick={onContinue}>
+            Continue existing folder (Recommended)
+          </button>
           <button type="button" onClick={onBackup}>
             Backup and Rebuild
           </button>

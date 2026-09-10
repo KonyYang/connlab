@@ -1309,10 +1309,11 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog", { name: "Project folder already exists" })).toBeTruthy();
+    expect(screen.getByText(/keeps every existing file/i)).toBeTruthy();
 
-    await user.click(screen.getByRole("button", { name: "Backup and Rebuild" }));
+    await user.click(screen.getByRole("button", { name: "Continue existing folder (Recommended)" }));
 
-    expect(onCreateOfficialWorkspace).toHaveBeenCalledWith("backup_and_recreate");
+    expect(onCreateOfficialWorkspace).toHaveBeenCalledWith("continue_existing");
   });
 
   it("disables the permanent project folder action until current Fee authority exists", () => {
@@ -1503,6 +1504,42 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(onRestartOfficialWorkspace).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Backup and Rebuild" }));
     expect(onRestartOfficialWorkspace).toHaveBeenCalledWith("backup_and_recreate", "displayed-preview-token");
+  });
+
+  it("lets a lock-blocked operation restart by continuing the existing folder", async () => {
+    const user = userEvent.setup();
+    const onRestartOfficialWorkspace = vi.fn();
+    const onRefreshOfficialWorkspacePreview = vi.fn().mockResolvedValue(undefined);
+    renderWorkbench({
+      officialWorkspaceError: "The existing project folder is in use by another program.",
+      officialWorkspaceCanResume: true,
+      officialWorkspaceCanRestart: true,
+      onRestartOfficialWorkspace,
+      onRefreshOfficialWorkspacePreview,
+      officialWorkspacePreview: {
+        project_id: "project-1", dl_number: "DL-001", status: "exists",
+        generation_context: "locked-preview-token", local_workspace_root: "D:/Projects",
+        local_workspace_path: "D:/Projects/DL-001", source_book_path: "D:/Projects/DL-001/Source Book",
+        template_path: "D:/Template", official_project_folder_path: "D:/Projects/DL-001/Official",
+        manifest_path: "D:/Projects/DL-001/.connlab/manifest.json", template_root_mode: "template_root",
+        blockers: ["Official project folder already exists."], warnings: [], planned_paths: [],
+        conflict_paths: ["D:/Projects/DL-001/Official"],
+        conflict_options: [{
+          key: "continue_existing", label: "Continue Existing Folder",
+          description: "Keep existing files and add only missing template content.",
+        }],
+      },
+    });
+
+    await waitFor(() => expect(onRefreshOfficialWorkspacePreview).toHaveBeenCalledTimes(1));
+    const restart = screen.getByRole("button", { name: "Start new generation" });
+    await waitFor(() => expect(restart).toHaveProperty("disabled", false));
+    await user.click(restart);
+    await user.click(screen.getByRole("button", { name: "Continue existing folder (Recommended)" }));
+
+    expect(onRestartOfficialWorkspace).toHaveBeenCalledWith(
+      "continue_existing", "locked-preview-token"
+    );
   });
 
   it("asks before updating a recorded project folder while preview is still loading", async () => {

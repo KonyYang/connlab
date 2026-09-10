@@ -110,6 +110,12 @@ over a new pass-through layer. Introduce an adapter seam only when behavior actu
 - Test development and packaged path resolution when resources or configuration change.
 - Never overwrite an authoritative workbook or existing project folder without the explicit conflict
   and recovery policy authorized by the task.
+- When an unindexed project folder already contains operator files, `Continue existing folder` is the
+  recommended conflict policy: retain every existing file and add only missing template entries.
+  It does not hash or rename the existing tree, so an open Word/Excel/PDF file is not itself a blocker.
+  Backup-and-rebuild and overwrite remain explicit alternatives. If Windows rejects their first
+  directory move before any external change, the operation releases its owned stage and becomes
+  safely replaceable instead of leaving a dead checkpoint.
 - New official project folders use the latest confirmed Basic Information product description and
   test item, with existing Project/LTR/application-form fallbacks when absent. The registered LTR
   remains the DL-number authority. Unconfirmed Basic drafts never name official folders. Existing

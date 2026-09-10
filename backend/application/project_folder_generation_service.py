@@ -8,6 +8,13 @@ GENERATION_STEPS = ("workspace", "materials", "check", "customer_feedback_form",
                     "test_record", "test_status", "application_form")
 
 
+class ProjectFolderInUseError(PermissionError):
+    """Windows refused the initial move of a reviewed existing project folder."""
+
+    def __init__(self, path: str):
+        super().__init__(5, "Access is denied", path)
+
+
 class ProjectFolderGenerationService:
     """Start, observe and resume one project operation; callers never drive its steps."""
 
@@ -90,8 +97,19 @@ class ProjectFolderGenerationService:
                 except Exception as exc:
                     logging.getLogger(__name__).warning("Folder generation stopped: project=%s operation=%s step=%s",
                                                         project_id, operation_id, state["step"], exc_info=True)
-                    message = ("Folder storage is unavailable or changed. Review the configured folder before resuming."
-                               if isinstance(exc, OSError) else str(exc))
+                    if isinstance(exc, ProjectFolderInUseError):
+                        message = (
+                            "The existing project folder is in use by another program. "
+                            "Close open files and resume, or start a new generation and "
+                            "choose Continue existing folder."
+                        )
+                    elif isinstance(exc, OSError):
+                        message = (
+                            "Folder storage is unavailable or changed. Review the "
+                            "configured folder before resuming."
+                        )
+                    else:
+                        message = str(exc)
                     state.update(status="blocked", message=message)
                     self.journal.save(state)
         except ValueError:

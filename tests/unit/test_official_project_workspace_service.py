@@ -203,6 +203,7 @@ def test_preview_existing_official_folder_reports_conflict_choices(
     assert preview.status == "exists"
     assert preview.conflict_paths == (official_folder,)
     assert {option.key for option in preview.conflict_options} == {
+        "continue_existing",
         "backup_and_recreate",
         "overwrite_rebuild",
     }
@@ -234,6 +235,39 @@ def test_create_with_backup_strategy_preserves_existing_official_folder(
     assert len(backups) == 1
     assert (backups[0] / "old.txt").read_text(encoding="utf-8") == "old"
     assert (result.official_folder_path / "template.txt").read_text(encoding="utf-8") == "new"
+    assert repo.saved is not None
+
+
+def test_continue_existing_strategy_preserves_operator_files_and_adds_missing_template_content(
+    tmp_path: Path,
+) -> None:
+    template = _make_template(tmp_path / "template")
+    (template / "template.txt").write_text("new", encoding="utf-8")
+    (template / "shared.txt").write_text("template", encoding="utf-8")
+    workspace = tmp_path / "workspaces" / "DL-2025-11-074"
+    official_folder = workspace / "DL-2025-11-074 Coolpower Qualification test"
+    official_folder.mkdir(parents=True)
+    (official_folder / "operator.txt").write_text("keep", encoding="utf-8")
+    (official_folder / "shared.txt").write_text("manual", encoding="utf-8")
+    repo = _WorkspaceRepo()
+    service = _service(
+        tmp_path,
+        repository=repo,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=template,
+            public_drive_root=tmp_path / "public",
+        ),
+    )
+
+    result = service.create("project-1", conflict_strategy="continue_existing")
+
+    assert result.official_folder_path == official_folder
+    assert (official_folder / "operator.txt").read_text(encoding="utf-8") == "keep"
+    assert (official_folder / "template.txt").read_text(encoding="utf-8") == "new"
+    assert (official_folder / "shared.txt").read_text(encoding="utf-8") == "manual"
+    assert (workspace / "Source Book").is_dir()
+    assert not list(workspace.glob("*Backup*"))
     assert repo.saved is not None
 
 
@@ -323,6 +357,7 @@ def test_existing_ltr_workspace_reports_conflict_choices(
     assert preview.status == "exists"
     assert workspace in preview.conflict_paths
     assert {option.key for option in preview.conflict_options} == {
+        "continue_existing",
         "backup_and_recreate",
         "overwrite_rebuild",
     }

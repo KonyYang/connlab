@@ -389,6 +389,7 @@ export type OfficialWorkspacePreview = {
 };
 
 export type OfficialWorkspaceConflictStrategy =
+  | "continue_existing"
   | "backup_and_recreate"
   | "overwrite_rebuild";
 

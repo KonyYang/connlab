@@ -1,5 +1,6 @@
 from backend.application.project_folder_generation_service import (
     GENERATION_STEPS,
+    ProjectFolderInUseError,
     ProjectFolderGenerationService,
     basic_information_generation_blocker,
 )
@@ -97,3 +98,42 @@ def test_cannot_replace_an_operation_with_uncheckpointed_publication(tmp_path):
     with pytest.raises(ValueError, match="safely checkpointed"):
         service.start("p", None, "same", "two", replaces_operation_id=original["operation_id"])
     assert journal.read("p")["operation_id"] == original["operation_id"]
+
+
+def test_locked_existing_folder_explains_resume_and_safe_continue_choices(tmp_path):
+    queued = []
+
+    def locked_step(_state, _name):
+        raise ProjectFolderInUseError("official-folder")
+
+    service = ProjectFolderGenerationService(
+        GenerationJournal(tmp_path), lambda _: "same", locked_step, queued.append
+    )
+    service.start("p", "backup_and_recreate", "same", "one")
+    queued.pop()()
+
+    result = service.read("p")
+    assert result["status"] == "blocked"
+    assert result["can_restart"] is True
+    assert result["message"] == (
+        "The existing project folder is in use by another program. Close open files "
+        "and resume, or start a new generation and choose Continue existing folder."
+    )
+
+
+def test_unrelated_permission_error_keeps_generic_storage_guidance(tmp_path):
+    queued = []
+    service = ProjectFolderGenerationService(
+        GenerationJournal(tmp_path),
+        lambda _: "same",
+        lambda _state, _name: (_ for _ in ()).throw(
+            PermissionError(5, "Access is denied", "generated-form")
+        ),
+        queued.append,
+    )
+    service.start("p", None, "same", "one")
+    queued.pop()()
+
+    assert service.read("p")["message"] == (
+        "Folder storage is unavailable or changed. Review the configured folder before resuming."
+    )

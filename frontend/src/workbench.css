@@ -2722,6 +2722,18 @@
   outline: none;
 }
 
+.runtime-console-conflict-actions button.is-primary {
+  border-color: var(--color-primary-strong);
+  background: var(--color-primary-strong);
+  color: var(--color-surface);
+}
+
+.runtime-console-conflict-actions button.is-primary:hover:not(:disabled),
+.runtime-console-conflict-actions button.is-primary:focus-visible:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
 .runtime-console-conflict-actions button.is-danger {
   border-color: color-mix(in srgb, var(--color-danger) 52%, var(--color-border));
   background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));

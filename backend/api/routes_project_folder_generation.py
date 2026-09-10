@@ -13,7 +13,9 @@ router = APIRouter(prefix="/api/projects/{project_id}/project-folder/generation"
 class GenerationStartRequest(BaseModel):
     expected_context: str
     request_id: str = Field(min_length=1, max_length=100)
-    conflict_strategy: Literal["backup_and_recreate", "overwrite_rebuild"] | None = None
+    conflict_strategy: Literal[
+        "continue_existing", "backup_and_recreate", "overwrite_rebuild"
+    ] | None = None
     replaces_operation_id: str | None = None
 
 

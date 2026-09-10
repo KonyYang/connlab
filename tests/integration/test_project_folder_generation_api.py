@@ -43,6 +43,47 @@ def _complete_basic_information_values() -> dict[str, str]:
     }
 
 
+def test_start_accepts_continue_existing_conflict_strategy() -> None:
+    captured = []
+
+    class Service:
+        def start(
+            self, project_id, strategy, expected_context, request_id,
+            replaces_operation_id=None,
+        ):
+            captured.append(
+                (project_id, strategy, expected_context, request_id, replaces_operation_id)
+            )
+            return {
+                "project_id": project_id,
+                "operation_id": "replacement",
+                "status": "queued",
+                "step": 0,
+                "completed_steps": [],
+                "message": None,
+                "can_restart": False,
+            }
+
+    app.dependency_overrides[deps.get_project_folder_generation_service] = Service
+    try:
+        response = TestClient(app).post(
+            "/api/projects/P1/project-folder/generation/start",
+            json={
+                "expected_context": "fresh-preview",
+                "request_id": "continue-request",
+                "conflict_strategy": "continue_existing",
+                "replaces_operation_id": "locked-operation",
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(deps.get_project_folder_generation_service, None)
+
+    assert response.status_code == 202, response.text
+    assert captured == [
+        ("P1", "continue_existing", "fresh-preview", "continue-request", "locked-operation")
+    ]
+
+
 def test_start_is_blocked_before_writes_when_complete_basic_information_is_unconfirmed(
     tmp_path,
 ):
