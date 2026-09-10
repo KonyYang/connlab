@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_FEE_FORM_IMPORT",
     "summary": "Import Fee Form into editable draft with same-Matrix restoration and cross-project price reuse.",
@@ -30,88 +30,17 @@
     "risk_reasons": [],
     "activation_head": "160b4dade8f2d4b6633f4030de33f49ff50ab5ca",
     "started_at": "2026-09-10T13:00:20.656265Z",
-    "updated_at": "2026-09-10T13:33:41.400553Z",
+    "updated_at": "2026-09-10T13:38:57.718426Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_FEE_FORM_IMPORT",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User reports development backend startup failure; reproduce missing xlrd in run_backend interpreter and correct dependency validation.",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_FEE_FORM_IMPORT",
-      "subject": "163642b6d457bbb48829ffe9574fbab7a7086123",
-      "summary": "Implemented preview-and-apply Fee Form import: same-Matrix ordered-group restoration and cross-project price-only reuse, preserving Update Fee authority. Browser click smoke remains unverified due browser-tool error-page navigation failure; existing Windows release was not rebuilt.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/api/main.py",
-        "backend/api/routes_fee_form_import.py",
-        "backend/infrastructure/office/fee_form_import_gateway.py",
-        "docs/fee_form_import.md",
-        "frontend/src/api/client.ts",
-        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
-        "frontend/src/features/fee-evaluation/FeeFormImportControl.test.tsx",
-        "frontend/src/features/fee-evaluation/FeeFormImportControl.tsx",
-        "frontend/src/features/fee-evaluation/feeFormImport.css",
-        "frontend/src/features/fee-evaluation/feeFormImportModel.test.ts",
-        "frontend/src/features/fee-evaluation/feeFormImportModel.ts",
-        "pyproject.toml",
-        "tests/integration/test_fee_form_import_api.py",
-        "tests/unit/test_fee_form_import_gateway.py"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "command": "npm test -- --run src/features/fee-evaluation --maxWorkers=1",
-          "result": "80 tests passed; earlier concurrent autosave timeout passed individually and in final serial suite."
-        },
-        {
-          "status": "passed",
-          "command": "pytest fee import gateway/API, pricing draft API/v2 API, confirmed fee file download API",
-          "result": "32 tests passed."
-        },
-        {
-          "status": "passed",
-          "command": "npm run build",
-          "result": "TypeScript and Vite production build passed."
-        },
-        {
-          "status": "passed",
-          "command": "read_fee_form on existing DL-2026-08-007 Fee Form draft.xls",
-          "result": "89 rows parsed read-only; no operator workbook modified."
-        },
-        {
-          "status": "passed",
-          "command": "git diff --check",
-          "result": "No whitespace errors."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "context": "Current agent; coherent TDD RED/GREEN and integration checks."
-        },
-        "reviewer": {
-          "status": "passed",
-          "context": "Current agent sequential standards/spec review, not independent. No remaining blocking findings."
-        },
-        "qa": {
-          "status": "passed",
-          "context": "Current agent final affected automated matrix. Browser smoke attempted but blocked by browser tool; no browser pass claimed."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "subject": "163642b6d457bbb48829ffe9574fbab7a7086123",
-        "context": "Exact local commit; clean worktree verified; no release deployment or real project data mutation."
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_LOCK_RESILIENT_UPDATE",

@@ -49,3 +49,10 @@ applying, and verify the saved draft after reopening. Then use another project's
 workbook in price-only mode and confirm that current quantities stay unchanged.
 The Windows browser release must be rebuilt to include the new route, UI and xlrd
 dependency; existing release directories are not updated by source changes.
+
+Development startup uses `C:/PythonEnvs/connlab/.venv/Scripts/python.exe` from
+`scripts/run_backend.ps1`, not necessarily the `python` found on PATH. Install
+the declared dependencies in that environment after pulling this change. An
+`xlrd` installation in another Python environment does not satisfy this backend;
+a missing installation stops API startup and Vite then reports ECONNREFUSED on
+port 8000. Verify backend imports and tests with the startup interpreter.
