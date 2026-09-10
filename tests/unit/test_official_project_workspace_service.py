@@ -16,6 +16,72 @@ from backend.application.official_project_workspace_service import (
 )
 from backend.domain import ApplicationForm, LtrRecord, LtrStatus, Project, ProjectStatus
 from backend.shared.config import OfficialWorkspaceSettings
+from backend.application.project_basic_information_output import ConfirmedBasicInformationSnapshot
+
+
+class _BasicReader:
+    def __init__(self, values=None):
+        self.values = values
+
+    def get_latest_confirmed(self, project_id):
+        if self.values is None:
+            return None
+        return ConfirmedBasicInformationSnapshot(
+            project_id, 3, self.values, "confirmed-source", None, None
+        )
+
+    def get_preview_snapshot(self, project_id):
+        raise AssertionError("Official folder naming must not read unconfirmed drafts")
+
+
+@pytest.mark.parametrize("values, expected", [
+    ({"product_description": "Customized PBU Connector with 14P",
+      "test_item": "Solderability  and Mechanical Testing", "dl_number": "WRONG"},
+     "DL-2025-11-074 Customized PBU Connector with 14P Solderability and Mechanical Testing"),
+    (None, "DL-2025-11-074 Coolpower Qualification test"),
+    ({"product_description": "", "test_item": ""},
+     "DL-2025-11-074 Coolpower Qualification test"),
+])
+def test_workspace_names_use_confirmed_basic_information_only(tmp_path, values, expected):
+    template = _make_template(tmp_path / "template")
+    (tmp_path / "workspaces").mkdir()
+    service = _service(
+        tmp_path, basic_information_reader=_BasicReader(values),
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces", template_path=template,
+            public_drive_root=None,
+        ),
+    )
+    preview = service.preview("project-1")
+    assert preview.official_folder_path.name == expected
+    result = service.create("project-1")
+    assert result.official_folder_path.name == expected
+    assert result.official_folder_path.is_dir()
+    assert json.loads(result.record.manifest_path.read_text(encoding="utf-8"))[
+        "official_project_folder_path"
+    ] == str(result.official_folder_path)
+
+
+def test_confirmed_name_change_does_not_silently_move_existing_files(tmp_path):
+    template = _make_template(tmp_path / "template")
+    (tmp_path / "workspaces").mkdir()
+    reader = _BasicReader()
+    service = _service(
+        tmp_path, basic_information_reader=reader,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces", template_path=template,
+            public_drive_root=None,
+        ),
+    )
+    original = service.create("project-1")
+    operator_file = original.official_folder_path / "Test results" / "operator.txt"
+    operator_file.write_text("retained", encoding="utf-8")
+    reader.values = {"product_description": "New connector", "test_item": "New testing"}
+    preview = service.preview("project-1")
+    assert preview.official_folder_path == original.official_folder_path
+    assert any("different official folder name" in warning for warning in preview.warnings)
+    assert operator_file.read_text(encoding="utf-8") == "retained"
+    assert not (original.record.local_workspace_path / "DL-2025-11-074 New connector New testing").exists()
 
 
 def test_preview_ready_for_new_workspace(tmp_path: Path) -> None:
@@ -759,6 +825,7 @@ def _service(
     repository: _WorkspaceRepo | None = None,
     ltr_repository: _LtrRepo | None = None,
     forms: list[ApplicationForm] | None = None,
+    basic_information_reader=None,
     settings: OfficialWorkspaceSettings,
 ) -> OfficialProjectWorkspaceService:
     return OfficialProjectWorkspaceService(
@@ -775,6 +842,7 @@ def _service(
         workspace_repository=repository or _WorkspaceRepo(),
         ltr_repository=ltr_repository or _default_ltr_repo(),
         application_form_repository=_ApplicationFormRepo(forms),
+        basic_information_reader=basic_information_reader,
         settings=settings,
     )
 

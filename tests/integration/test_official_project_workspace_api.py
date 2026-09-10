@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import runpy
 
 from fastapi.testclient import TestClient
 import pytest
@@ -8,6 +9,8 @@ import pytest
 from backend.api.dependencies import get_official_project_workspace_service, get_settings
 from backend.shared.config import Settings
 from backend.api.main import app
+from backend.api import dependencies as deps
+from backend.domain import ExternalResource, ExternalResourceType, LtrRecord, LtrStatus
 from backend.application.official_project_workspace_service import (
     OfficialWorkspaceConflictOption,
     OfficialWorkspaceCreateError,
@@ -25,6 +28,54 @@ def _isolated_generation_storage(tmp_path):
         templates_dir=tmp_path / "templates", database_path=tmp_path / "fixture.sqlite")
     yield
     app.dependency_overrides.pop(get_settings, None)
+
+
+def test_real_workspace_preview_tracks_confirmations_not_basic_drafts(tmp_path):
+    fixture = runpy.run_path(str(Path(__file__).with_name("test_matrix_editor_session_api.py")))
+    client, engine, sessions = fixture["_client"](tmp_path)
+    try:
+        fixture["_seed_project"]("P1", tmp_path)
+        template, output = tmp_path / "template", tmp_path / "output"
+        output.mkdir()
+        for name in ("E-mail", "Submitted Material", "Photos", "Test results/Final Examination"):
+            (template / name).mkdir(parents=True)
+        with sessions() as session:
+            deps.LtrRecordRepository(session).create(
+                LtrRecord("ltr", "P1", "DL-2026-08-079", LtrStatus.REGISTERED)
+            )
+            resources = deps.ExternalResourceRepository(session)
+            resources.upsert(ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, output))
+            resources.upsert(ExternalResource("template", ExternalResourceType.PROJECT_FOLDER_TEMPLATE, template))
+            session.commit()
+        values = {
+            "dl_number": "DL-2026-08-079", "project_type": "NPD",
+            "product_description": "Confirmed connector", "test_item": "Mechanical Testing",
+            "tests_to_be_performed": "Mechanical Testing",
+            "requested_by": "Alice", "project_leader": "Engineer", "lab_performing_tests": "Dongguan",
+        }
+        response = client.post("/api/projects/P1/basic-information/confirm", json={"values": values, "confirmed_by": "operator"})
+        assert response.status_code == 200, response.text
+
+        def folder_name():
+            response = client.get("/api/projects/P1/official-workspace/preview")
+            assert response.status_code == 200, response.text
+            return Path(response.json()["official_project_folder_path"]).name
+
+        original = "DL-2026-08-079 Confirmed connector Mechanical Testing"
+        assert folder_name() == original
+        revised = {**values, "product_description": "Customized PBU Connector with 14P",
+                   "test_item": "Solderability  and Mechanical Testing"}
+        response = client.put("/api/projects/P1/basic-information/draft", json={"values": revised})
+        assert response.status_code == 200, response.text
+        assert folder_name() == original
+        response = client.post("/api/projects/P1/basic-information/confirm", json={"values": revised, "confirmed_by": "operator"})
+        assert response.status_code == 200, response.text
+        assert folder_name() == (
+            "DL-2026-08-079 Customized PBU Connector with 14P Solderability and Mechanical Testing"
+        )
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
 
 
 def test_official_workspace_preview_api_returns_typed_preview() -> None:

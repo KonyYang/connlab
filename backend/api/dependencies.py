@@ -1469,6 +1469,9 @@ def get_official_project_workspace_service(
         workspace_repository=ProjectOfficialWorkspaceRepository(session),
         ltr_repository=LtrRecordRepository(session),
         application_form_repository=ApplicationFormRepository(session),
+        basic_information_reader=ProjectBasicInformationSnapshotReader(
+            ProjectBasicInformationRepository(session)
+        ),
         settings=_official_workspace_settings_from_registry(
             external_resources,
         ),

@@ -13,7 +13,11 @@ from backend.application.official_project_workspace_naming import (
     OfficialWorkspaceNamingError,
     build_official_project_folder_name,
 )
-from backend.application.project_identity import resolve_project_identity
+from backend.application.project_identity import (
+    display_identity_override_from_values,
+    resolve_project_identity,
+)
+from backend.application.project_basic_information_output import ConfirmedBasicInformationReader
 from backend.domain import ApplicationForm, LtrRecord, Project
 from backend.infrastructure.official_workspace_manifest import (
     OfficialWorkspaceManifest,
@@ -161,6 +165,7 @@ class OfficialProjectWorkspaceService:
         ltr_repository: LtrRecordRepositoryPort | None = None,
         application_form_repository: ApplicationFormRepositoryPort | None = None,
         manifest_gateway: OfficialWorkspaceManifestGateway | None = None,
+        basic_information_reader: ConfirmedBasicInformationReader | None = None,
     ) -> None:
         """Create the workspace service."""
         self._projects = project_repository
@@ -169,12 +174,22 @@ class OfficialProjectWorkspaceService:
         self._forms = application_form_repository
         self._settings = settings
         self._manifests = manifest_gateway or OfficialWorkspaceManifestGateway()
+        self._basic_information = basic_information_reader
 
     def preview(self, project_id: str) -> OfficialWorkspacePreview:
         """Return a safe preview for local official project workspace creation."""
         project = self._get_project(project_id)
         ltrs = self._ltrs.list_by_project(project.project_id) if self._ltrs else []
-        identity = resolve_project_identity(project, ltrs)
+        confirmed_basic = (
+            self._basic_information.get_latest_confirmed(project_id)
+            if self._basic_information else None
+        )
+        identity = resolve_project_identity(
+            project, ltrs,
+            identity_override=display_identity_override_from_values(
+                confirmed_basic.values if confirmed_basic else None
+            ),
+        )
         dl_number = identity.ltr_number
         blockers: list[str] = []
         warnings: list[str] = []

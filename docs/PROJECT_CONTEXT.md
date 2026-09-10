@@ -110,8 +110,17 @@ over a new pass-through layer. Introduce an adapter seam only when behavior actu
 - Test development and packaged path resolution when resources or configuration change.
 - Never overwrite an authoritative workbook or existing project folder without the explicit conflict
   and recovery policy authorized by the task.
+- New official project folders use the latest confirmed Basic Information product description and
+  test item, with existing Project/LTR/application-form fallbacks when absent. The registered LTR
+  remains the DL-number authority. Unconfirmed Basic drafts never name official folders. Existing
+  indexed folders retain their paths and report name differences; changing confirmed text alone does
+  not rename operator directories or rewrite stored output paths.
 - Include file, operation, and external-context details in actionable errors without exposing local
   paths unnecessarily in the UI.
+- Project-folder required-form work files use an operation-isolated `data_dir/stage/<operation_id>`
+  root; durable journal hashes, locks and recovery locations remain unchanged. Customer Feedback uses
+  extended Windows paths throughout its filesystem/openpyxl boundary, including UNC inputs, rather
+  than requiring a machine-wide long-path policy change. Returned/indexed paths keep their normal form.
 
 ## Technical baseline
 

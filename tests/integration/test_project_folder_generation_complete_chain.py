@@ -92,8 +92,11 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
             "expected_validation_token": pricing["saved_validation_token"],
             "summary": {key: "0" for key in ("testing_fee_total", "working_hours", "lab_manpower_cost", "external_cost", "grand_cost")}}))
 
+        staged_paths = []
+
         def write_document(self, **kwargs):
             path = kwargs["output_path"]
+            staged_paths.append(path)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"fake Office record with confirmed Matrix")
             return path
@@ -125,6 +128,12 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
         assert completed["status"] == "completed", completed
         assert completed["completed_steps"] == ["workspace", "materials", "check", "customer_feedback_form",
                                                   "fee_form", "test_record", "test_status", "application_form"]
+        # Regenerable Office inputs must not inherit the durable journal's deep hash path.
+        assert staged_paths
+        for path in staged_paths:
+            relative_parent = path.parent.relative_to(settings.data_dir)
+            assert len(str(relative_parent)) < 100, relative_parent
+            assert started["operation_id"] in relative_parent.parts
         with sessions() as session:
             records = deps.get_project_output_record_service(session).list_records("P1")
             assert len(records) == 5
@@ -132,6 +141,7 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
                      for record in records}
             workspace = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
             assert workspace.official_folder_path.is_dir()
+            assert workspace.official_folder_path.name == "DL-2026-05-P1 Connector Qualification Testing"
             collected = deps.ProjectRequestMaterialCollectionRepository(session).latest_by_project("P1")
             assert collected is not None
         assert source.read_bytes() == b"original submitted application"

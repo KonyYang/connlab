@@ -178,7 +178,13 @@ class ProjectFolderGenerationRunner:
                 elif name == "application_form":
                     deps.get_project_application_form_write_back_service(session, self.settings).write_back(project_id, recovery=publisher)
                 else:
-                    operation_settings = replace(self.settings, data_dir=self.journal.project_path(project_id) / state["operation_id"])
+                    # Generated Office inputs are reproducible; they do not need the
+                    # durable journal's deep project-hash path. Keep operation isolation
+                    # while preserving all existing journal/recovery locations.
+                    operation_settings = replace(
+                        self.settings,
+                        data_dir=self.settings.data_dir / "stage" / state["operation_id"],
+                    )
                     service = deps.get_project_folder_required_forms_service(session, operation_settings)
                     preview = service.preview(project_id)
                     self._require_result(preview)

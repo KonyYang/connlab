@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 
@@ -33,18 +34,32 @@ class CustomerFeedbackWorkbookGateway:
             raise CustomerFeedbackWorkbookGatewayError(
                 f"Customer Feedback output must be an .xlsx file: {target}"
             )
-        if not template.is_file():
+        template_io = _filesystem_path(template)
+        target_io = _filesystem_path(target)
+        if not template_io.is_file():
             raise CustomerFeedbackWorkbookGatewayError(
                 f"Customer Feedback template does not exist: {template}"
             )
-        if template.resolve() == target.resolve():
+        if template_io.resolve() == target_io.resolve():
             raise CustomerFeedbackWorkbookGatewayError(
                 "Customer Feedback output must not overwrite the source template."
             )
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(template, target)
-        warnings = _fill_identity_fields(target, identity)
+        target_io.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(template_io, target_io)
+        warnings = _fill_identity_fields(target_io, identity)
         return target, tuple(warnings)
+
+
+def _filesystem_path(path: Path) -> Path:
+    """Use Win32 extended paths for every I/O, without requiring machine policy changes."""
+    if os.name != "nt":
+        return path
+    absolute = os.path.abspath(path)
+    if absolute.startswith("\\\\?\\"):
+        return Path(absolute)
+    if absolute.startswith("\\\\"):
+        return Path("\\\\?\\UNC\\" + absolute[2:])
+    return Path("\\\\?\\" + absolute)
 
 
 def _fill_identity_fields(path: Path, identity: dict[str, str]) -> list[str]:
