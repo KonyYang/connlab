@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import shutil
 import stat
+from backend.shared.operation_diagnostics import stage
 from uuid import uuid4
 
 from backend.application.official_project_workspace_service import (
@@ -85,7 +86,8 @@ class RecoverableWorkspacePublisher:
             # current files. Directory identity is sufficient; hashing the whole
             # tree would make an open Office/PDF file an unnecessary blocker.
             try:
-                prior = None if strategy == "continue_existing" else tree_hash(conflict)
+                with stage("inspect_existing_folder", target=conflict):
+                    prior = None if strategy == "continue_existing" else tree_hash(conflict)
             except PermissionError as exc:
                 raise ProjectFolderInUseError(str(conflict)) from exc
             if prior is not None and strategy not in {
@@ -191,7 +193,8 @@ class RecoverableWorkspacePublisher:
                             )
                         raise ValueError("Workspace conflict target changed before rebuild.")
                     try:
-                        conflict.rename(backup)
+                        with stage("move_existing_folder_to_backup", target=conflict, backup=backup):
+                            conflict.rename(backup)
                     except PermissionError as exc:
                         # Nothing outside the operation-owned stage changed when
                         # Windows refused the first publication move. Discard the

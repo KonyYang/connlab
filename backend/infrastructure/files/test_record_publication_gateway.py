@@ -9,6 +9,7 @@ from pathlib import Path
 import shutil
 from typing import Callable
 from uuid import uuid4
+from backend.shared.operation_diagnostics import stage
 
 
 class TestRecordPublicationTargetChangedError(RuntimeError):
@@ -85,13 +86,14 @@ class TestRecordPublicationGateway:
     def _archive_and_replace(
         self, staged: Path, target: Path, history_dir: Path
     ) -> Path:
-        history_dir.mkdir(parents=True, exist_ok=True)
-        archive = _unique_archive_path(
-            target,
-            history_dir,
-            resource_label=self._resource_label,
-        )
-        os.replace(target, archive)
+        with stage("archive_old_file", target=target, history=history_dir):
+            history_dir.mkdir(parents=True, exist_ok=True)
+            archive = _unique_archive_path(
+                target,
+                history_dir,
+                resource_label=self._resource_label,
+            )
+            os.replace(target, archive)
         try:
             self._place_new_file(staged, target)
         except Exception:
@@ -117,6 +119,10 @@ class TestRecordPublicationGateway:
                 rollback.unlink()
 
     def _place_new_file(self, staged: Path, target: Path) -> None:
+        with stage("publish_new_file", staging=staged, target=target):
+            self._copy_new_file(staged, target)
+
+    def _copy_new_file(self, staged: Path, target: Path) -> None:
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
         if hasattr(os, "O_BINARY"):
             flags |= os.O_BINARY

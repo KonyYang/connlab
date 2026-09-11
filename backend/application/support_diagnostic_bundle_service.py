@@ -5,9 +5,9 @@ from __future__ import annotations
 import io
 import json
 import platform
-import re
 import sys
 import zipfile
+from backend.shared.operation_diagnostics import safe_text, safe_value
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -19,13 +19,6 @@ _RELEASE_FIELDS = (
     "git_commit",
     "built_at_utc",
     "server_sha256",
-)
-_WINDOWS_PATH_TO_LINE_END = re.compile(r"(?im)(?:[a-z]:[\\/]|\\\\).*$")
-_SECRET_ASSIGNMENT = re.compile(
-    r"(?i)\b(password|passwd|token|api[_-]?key|secret)\s*[=:]\s*([^\s,;]+)"
-)
-_JSON_SECRET_ASSIGNMENT = re.compile(
-    r'''(?i)(["'])(password|passwd|token|api[_-]?key|secret)\1\s*:\s*(["'])[^"'\r\n]*\3'''
 )
 
 
@@ -118,12 +111,14 @@ class SupportDiagnosticBundleService:
 
 
 def _redact_log_text(text: str) -> str:
-    redacted = _JSON_SECRET_ASSIGNMENT.sub(
-        lambda match: f'{match.group(1)}{match.group(2)}{match.group(1)}:'
-        f'{match.group(3)}<REDACTED>{match.group(3)}',
-        text,
-    )
-    redacted = _SECRET_ASSIGNMENT.sub(
-        lambda match: f"{match.group(1)}=<REDACTED>", redacted
-    )
-    return _WINDOWS_PATH_TO_LINE_END.sub("<LOCAL_PATH>", redacted)
+    # Redact individual lines/quoted paths, preserving following diagnostic fields.
+    lines = []
+    for line in text.splitlines():
+        prefix, marker, payload = line.partition("{")
+        try:
+            record = json.loads(marker + payload)
+        except (ValueError, TypeError):
+            lines.append(safe_text(line))
+        else:
+            lines.append(safe_text(prefix) + json.dumps(safe_value(record), ensure_ascii=False))
+    return "\n".join(lines) + ("\n" if text.endswith("\n") else "")

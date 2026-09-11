@@ -63,6 +63,47 @@ from backend.infrastructure.storage.repositories import (
 from backend.shared.config import Settings
 
 
+def test_unexpected_fee_publication_failure_has_safe_diagnostic_reference(tmp_path, caplog):
+    import logging
+    caplog.set_level(logging.INFO, logger="connlab.operations")
+    class FailedPublication:
+        def execute(self, command):
+            raise TypeError("password=private-secret unexpected database response")
+    app.dependency_overrides[get_fee_form_publication_service] = lambda: FailedPublication()
+    app.dependency_overrides[get_settings] = lambda: _settings(tmp_path)
+    try:
+        response = TestClient(app, raise_server_exceptions=False).post(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/fee-form-publication/publish",
+            json={"rows": [], "summary": {}, "preview_token": "reviewed", "conflict_action": "archive"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 500
+    detail = response.json()["detail"]
+    assert "Diagnostic ID:" in detail and "Stage:" in detail
+    identifier = detail.split("Diagnostic ID: ")[1].rstrip("]")
+    assert identifier in caplog.text and "TypeError" in caplog.text
+    assert "private-secret" not in detail + caplog.text
+
+
+def test_publication_dependency_failure_also_has_diagnostic_reference(tmp_path):
+    def broken_dependency():
+        raise TypeError("private configuration failure")
+    app.dependency_overrides[get_fee_form_publication_service] = broken_dependency
+    app.dependency_overrides[get_settings] = lambda: _settings(tmp_path)
+    try:
+        response = TestClient(app, raise_server_exceptions=False).post(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/fee-form-publication/publish",
+            json={"rows": [], "summary": {}, "preview_token": "reviewed", "conflict_action": "archive"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 500
+    assert "Diagnostic ID:" in response.json()["detail"]
+    assert "request_dependencies" in response.json()["detail"]
+    assert "private configuration" not in response.text
+
+
 @pytest.mark.parametrize("error, expected_status", [
     (ConfirmedMatrixFeeEvaluationExportNotFoundError("Fee template is missing."), 404),
     (ConfirmedMatrixFeeEvaluationExportError("Fee authority needs review."), 422),

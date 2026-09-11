@@ -129,6 +129,26 @@ operator's project directory or generation journal to bypass these checks.
 
 ## Runtime Assumptions
 
+### Publication diagnostics
+
+Browser releases record operation-scoped diagnostics in the existing rotating `connlab.log`
+(5 MiB per file, five backups). Fee publication, its Office subprocess, and project-folder stages
+carry a correlation ID, stage durations, original exception chains/WinError/COM codes, and safe
+path metadata (role, length, location/drive type, attributes), not file contents or request payloads.
+Child stdout remains UTF-8 JSON; the parent retains bounded diagnostic events before deleting its
+transient command file. SQL bound values and traceback source lines are excluded.
+
+The UI reports the failing stage and Diagnostic ID. Dependency-initialization failures are covered,
+too. Expected HTTP/validation failures retain their existing status/response contracts and do not
+log submitted form bodies. Folder access-denied messages no longer assert that a file must be open.
+Support ZIP redaction preserves fields following quoted paths rather than dropping the whole line.
+
+Acceptance includes injected Office SaveAs failures, actual Windows sharing violations, original-file
+preservation, dependency failures, and ZIP privacy/correlation checks. A frozen-server smoke must
+check a deliberate failure and its matching exported log, not just `/health`. These diagnostics do
+not themselves establish the cause of a failure on an unavailable operator workstation and do not
+change any overwrite/recovery authority, external configuration, or database schema.
+
 - Windows is the primary target.
 - Python 3.11+ is required.
 - Node.js/npm are required for frontend development.

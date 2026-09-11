@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 from uuid import uuid4
-import logging
+from backend.shared.operation_diagnostics import operation, stage, record_failure, diagnostic_message
 
 GENERATION_STEPS = ("workspace", "materials", "check", "customer_feedback_form", "fee_form",
                     "test_record", "test_status", "application_form")
@@ -75,6 +75,10 @@ class ProjectFolderGenerationService:
         return self._view(state)
 
     def run(self, project_id, operation_id):
+        with operation("project_folder_generation", operation_id=operation_id, project_id=project_id):
+            self._run(project_id, operation_id)
+
+    def _run(self, project_id, operation_id):
         try:
             with self.journal.lock(project_id):
                 state = self.journal.read(project_id)
@@ -87,7 +91,8 @@ class ProjectFolderGenerationService:
                         if self.context(project_id) != state["context"]:
                             raise ValueError("Generation inputs changed. No further files were written; review before recovery.")
                         name = GENERATION_STEPS[state["step"]]
-                        self.run_step(state, name)
+                        with stage("folder_" + name):
+                            self.run_step(state, name)
                         # run_step returns only after its own session commits.
                         state["completed_steps"].append(name)
                         state["step"] += 1
@@ -95,12 +100,11 @@ class ProjectFolderGenerationService:
                     state.update(status="completed", message="Project folder generation completed.")
                     self.journal.save(state)
                 except Exception as exc:
-                    logging.getLogger(__name__).warning("Folder generation stopped: project=%s operation=%s step=%s",
-                                                        project_id, operation_id, state["step"], exc_info=True)
+                    record_failure(exc)
                     if isinstance(exc, ProjectFolderInUseError):
                         message = (
-                            "The existing project folder is in use by another program. "
-                            "Close open files and resume, or start a new generation and "
+                            "Windows denied access to the existing project folder. "
+                            "Check permissions or file locks, then resume, or start a new generation and "
                             "choose Continue existing folder."
                         )
                     elif isinstance(exc, OSError):
@@ -110,7 +114,7 @@ class ProjectFolderGenerationService:
                         )
                     else:
                         message = str(exc)
-                    state.update(status="blocked", message=message)
+                    state.update(status="blocked", message=diagnostic_message(exc, message))
                     self.journal.save(state)
         except ValueError:
             # Another backend worker owns the same project; it alone may advance it.

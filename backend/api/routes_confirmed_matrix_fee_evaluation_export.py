@@ -63,9 +63,11 @@ from backend.infrastructure.files.test_record_publication_gateway import (
     TestRecordPublicationTargetChangedError,
 )
 from backend.shared.config import Settings
+from backend.shared.operation_diagnostics import operation, context_payload, diagnostic_message
+from backend.api.diagnostic_route import DiagnosticRoute
 
 
-router = APIRouter(tags=["confirmed-matrix-fee-evaluation-export"])
+router = APIRouter(tags=["confirmed-matrix-fee-evaluation-export"], route_class=DiagnosticRoute)
 
 FEE_FILE_DOWNLOAD_DIR_NAME = "generated_fee_files"
 FEE_FILE_MEDIA_TYPE = "application/vnd.ms-excel"
@@ -271,41 +273,47 @@ def publish_fee_form(
     settings: Settings = Depends(get_settings),
 ) -> FeeFormPublicationResultResponse:
     try:
-        result = service.execute(
-            ExecuteFeeFormPublicationCommand(
-                project_id=project_id,
-                current_values=request.to_application(),
-                preview_token=request.preview_token,
-                conflict_action=request.conflict_action,
-                staging_dir=settings.data_dir / "generated_fee_form_publications",
+        with operation("fee_form_publication_request", project_id=project_id,
+                       operation_id=context_payload().get("operation_id")):
+            result = service.execute(
+                ExecuteFeeFormPublicationCommand(
+                    project_id=project_id,
+                    current_values=request.to_application(),
+                    preview_token=request.preview_token,
+                    conflict_action=request.conflict_action,
+                    staging_dir=settings.data_dir / "generated_fee_form_publications",
+                )
             )
-        )
+            return FeeFormPublicationResultResponse(
+                file_name=result.file_name,
+                archive_path=str(result.archive_path) if result.archive_path else None,
+            )
     except ProjectLifecycleReadonlyError as exc:
         raise lifecycle_readonly_conflict(exc) from exc
     except FeeFormPublicationConflictError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise HTTPException(status_code=409, detail=diagnostic_message(exc)) from exc
     except TestRecordPublicationTargetChangedError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise HTTPException(status_code=409, detail=diagnostic_message(exc)) from exc
     except FeeFormPublicationBlockedError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise HTTPException(status_code=422, detail=diagnostic_message(exc)) from exc
     except ConfirmedMatrixFeeEvaluationExportNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=404, detail=diagnostic_message(exc)) from exc
     except ConfirmedMatrixFeeEvaluationExportTimeoutError as exc:
         raise HTTPException(status_code=503, detail={
-            "message": str(exc),
+            "message": diagnostic_message(exc),
             "elapsed_seconds": exc.elapsed_seconds,
             "manual_cleanup_warning": exc.manual_cleanup_warning,
         }) from exc
     except (ConfirmedMatrixFeeEvaluationExportUnavailableError, OfficeAutomationUnavailable) as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+        raise HTTPException(status_code=503, detail=diagnostic_message(exc)) from exc
     except ConfirmedMatrixFeeEvaluationExportError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise HTTPException(status_code=422, detail=diagnostic_message(exc)) from exc
     except (FeeFormPublicationError, OSError, RuntimeError) as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return FeeFormPublicationResultResponse(
-        file_name=result.file_name,
-        archive_path=str(result.archive_path) if result.archive_path else None,
-    )
+        raise HTTPException(status_code=422, detail=diagnostic_message(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=diagnostic_message(
+            exc, "Fee Form publication failed. Export the diagnostic package from Settings."
+        )) from exc
 
 
 def _validate_fee_file_download_path(output_path: Path, output_dir: Path) -> Path:

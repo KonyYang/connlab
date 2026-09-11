@@ -30,6 +30,7 @@ from backend.application.project_lifecycle_write_guard import (
 )
 from backend.application.project_output_record_service import RegisterProjectOutputCommand
 from backend.domain import ProjectOutputKind, ProjectOutputSource, ProjectOutputStatus
+from backend.shared.operation_diagnostics import operation, stage, context_payload
 
 
 class FeeFormPublicationError(ValueError):
@@ -211,6 +212,10 @@ class FeeFormPublicationService:
         )
 
     def execute(self, command: ExecuteFeeFormPublicationCommand) -> FeeFormPublicationResult:
+        with operation("fee_form_publication", operation_id=context_payload().get("operation_id"), project_id=command.project_id):
+            return self._execute(command)
+
+    def _execute(self, command: ExecuteFeeFormPublicationCommand) -> FeeFormPublicationResult:
         if self._lifecycle_write_guard is not None:
             self._lifecycle_write_guard.require_write_allowed(
                 command.project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE
@@ -244,31 +249,36 @@ class FeeFormPublicationService:
         operation_dir = Path(command.staging_dir) / uuid4().hex
         staged: Path | None = None
         try:
-            operation_dir.mkdir(parents=True, exist_ok=False)
-            staged = self._generator.generate(
-                project_id=command.project_id,
-                output_dir=operation_dir,
-                output_file_name=current.target_path.name,
-                confirmed_fee=fee,
-                basic_information=basic,
-            )
-            output_hash = self._files.fingerprint(staged)
-            archive = self._files.publish(
-                staged_path=staged,
-                target_path=current.target_path,
-                conflict_action=action,
-                history_dir=(
-                    Path(workspace.local_workspace_path) / "History" / "Fee Form"
-                ),
-                expected_target_fingerprint=current.target_fingerprint,
-            )
+            with stage("create_staging_directory", staging=operation_dir):
+                operation_dir.mkdir(parents=True, exist_ok=False)
+            with stage("generate_fee_workbook", output=operation_dir):
+                staged = self._generator.generate(
+                    project_id=command.project_id,
+                    output_dir=operation_dir,
+                    output_file_name=current.target_path.name,
+                    confirmed_fee=fee,
+                    basic_information=basic,
+                )
+            with stage("inspect_generated_fee", staging=staged):
+                output_hash = self._files.fingerprint(staged)
+            with stage("publish_fee_form", target=current.target_path):
+                archive = self._files.publish(
+                    staged_path=staged,
+                    target_path=current.target_path,
+                    conflict_action=action,
+                    history_dir=(
+                        Path(workspace.local_workspace_path) / "History" / "Fee Form"
+                    ),
+                    expected_target_fingerprint=current.target_fingerprint,
+                )
         finally:
-            if staged is not None and staged.exists():
-                staged.unlink()
-            if operation_dir.is_dir() and not any(operation_dir.iterdir()):
-                operation_dir.rmdir()
-        self._outputs.register_output(
-            RegisterProjectOutputCommand(
+            with stage("cleanup_fee_staging", staging=operation_dir):
+                if staged is not None and staged.exists():
+                    staged.unlink()
+                if operation_dir.is_dir() and not any(operation_dir.iterdir()):
+                    operation_dir.rmdir()
+        with stage("register_fee_output", target=current.target_path):
+            self._outputs.register_output(RegisterProjectOutputCommand(
                 project_id=command.project_id,
                 output_kind=ProjectOutputKind.FEE_EVALUATION,
                 status=ProjectOutputStatus.CURRENT,
@@ -279,8 +289,7 @@ class FeeFormPublicationService:
                 output_size_bytes=current.target_path.stat().st_size,
                 source_context_signature=_source_context(fee, basic),
                 note="Published from current confirmed Fee authority.",
-            )
-        )
+            ))
         return FeeFormPublicationResult(
             command.project_id, current.target_path, archive, current.target_path.name
         )

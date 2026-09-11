@@ -100,6 +100,28 @@ def _generate_for_entrypoint(gateway, entrypoint, template, target):
     )
 
 
+def test_excel_save_failure_retains_specific_stage_and_com_details(tmp_path):
+    import pywintypes
+    from backend.shared.operation_diagnostics import operation, failure_details
+    template = tmp_path / "template.xls"
+    template.write_bytes(b"template")
+    target = tmp_path / "fee.xls"
+    target.write_bytes(b"old fee")
+    workbook = _FakeWorkbook(("Testing Prices",))
+    excel = _FakeExcel(workbook)
+    def fail_save(*args, **kwargs):
+        raise pywintypes.com_error(-2147352567, "Excel SaveAs failed", (0, "Excel", "SaveAs failed", None, 0, -2146827284), None)
+    workbook.SaveAs = fail_save
+    with pytest.raises(pywintypes.com_error) as caught:
+        with operation("fee_form_publication", operation_id="office-diagnostic"):
+            _generate_for_entrypoint(FeeEvaluationWorkbookGateway(excel_app_factory=lambda: excel), "preview", template, target)
+    details = failure_details(caught.value)
+    assert details["stage"] == "excel_save_workbook"
+    assert details["exceptions"][0]["hresult"] == -2147352567
+    assert details["operation_id"] == "office-diagnostic"
+    assert target.read_bytes() == b"old fee" and workbook.closed and excel.quit
+
+
 @pytest.mark.parametrize("failure", [
     "save", "close", "quit", "uninitialize", "copy", "replace", "save_and_close",
     "missing", "empty",

@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import time
 from uuid import uuid4
+from backend.shared.operation_diagnostics import operation, stage, context_payload, emit
 
 from backend.application.confirmed_matrix_fee_evaluation_export_service import (
     ExportConfirmedMatrixFeeEvaluationCommand,
@@ -39,12 +41,25 @@ class FeeEvaluationExportSubprocessRunner:
         self, command: ExportConfirmedMatrixFeeEvaluationCommand
     ) -> FeeEvaluationExportProcessResult:
         """Run one export command through the child entry point."""
+        with operation("fee_export_process", operation_id=context_payload().get("operation_id"), project_id=command.project_id) as evidence:
+            with stage("office_subprocess"):
+                result = self._run(command)
+                evidence["failed"] = result.status != "success"
+                result.payload.setdefault("diagnostic_context", context_payload())
+                emit("office_process_result", status=result.status, exit_code=result.exit_code,
+                     elapsed_seconds=result.elapsed_seconds, timed_out=result.timed_out,
+                     child_diagnostic=result.payload.get("diagnostic"),
+                     child_events=result.payload.get("diagnostic_events", []),
+                     stderr=result.stderr[:4000])
+                return result
+
+    def _run(self, command):
         output_root = self._output_root.resolve()
         run_dir = output_root / f"run-{uuid4().hex}"
         run_dir.mkdir(parents=True, exist_ok=False)
         command_json = run_dir / "command.json"
         command_json.write_text(
-            json.dumps(command_to_payload(command), ensure_ascii=False),
+            json.dumps({**command_to_payload(command), "diagnostic_context": context_payload()}, ensure_ascii=False),
             encoding="utf-8",
         )
         argv = _child_command(command_json)
@@ -55,6 +70,9 @@ class FeeEvaluationExportSubprocessRunner:
                 cwd=Path.cwd(),
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
+                env={**os.environ, "PYTHONIOENCODING": "utf-8"},
                 timeout=self._timeout_seconds,
                 check=False,
             )

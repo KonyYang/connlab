@@ -32,6 +32,7 @@ from backend.infrastructure.office.fee_evaluation_matrix_basic_fill_writer impor
 )
 from backend.infrastructure.office.models import FeeEvaluationWorkbookWriteResult
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
+from backend.shared.operation_diagnostics import stage, emit
 
 
 _EXCEL_FILE_FORMATS = {
@@ -164,7 +165,12 @@ class FeeEvaluationWorkbookGateway:
 
         # Excel SaveAs has a stricter path limit than Python filesystem operations.
         with _short_excel_output(target.suffix.lower()) as staged:
-            excel, pythoncom_module = self._open_excel_application()
+            with stage("excel_start"):
+                excel, pythoncom_module = self._open_excel_application()
+                try:
+                    emit("office_environment", version=str(excel.Version), operating_system=str(excel.OperatingSystem))
+                except Exception:
+                    emit("office_environment_unavailable")
             workbook = None
             excel_state = None
             with _cleanup_on_exit((
@@ -177,10 +183,14 @@ class FeeEvaluationWorkbookGateway:
                 excel.Visible = False
                 excel.DisplayAlerts = False
                 excel_state = _begin_excel_batch(excel)
-                workbook = excel.Workbooks.Open(str(template))
-                result = write(workbook)
-                _save_as(workbook, staged)
-            _publish_workbook(staged, target)
+                with stage("excel_open_template", template=template):
+                    workbook = excel.Workbooks.Open(str(template))
+                with stage("excel_fill_workbook"):
+                    result = write(workbook)
+                with stage("excel_save_workbook", output=staged):
+                    _save_as(workbook, staged)
+            with stage("excel_publish_staged_workbook", staging=staged, output=target):
+                _publish_workbook(staged, target)
             return result
 
     def _open_excel_application(self) -> tuple[Any, Any | None]:
@@ -251,7 +261,8 @@ def _cleanup_on_exit(actions: tuple[tuple[str, Callable[[], Any]], ...]) -> Iter
         error = primary
         for label, action in actions:
             try:
-                action()
+                with stage(label.lower().replace(" ", "_")):
+                    action()
             except BaseException as exc:
                 if error is None:
                     error = exc

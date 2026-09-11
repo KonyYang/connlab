@@ -6,8 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.api.dependencies import get_project_folder_generation_service
+from backend.api.diagnostic_route import DiagnosticRoute
 
-router = APIRouter(prefix="/api/projects/{project_id}/project-folder/generation", tags=["project-folder-generation"])
+router = APIRouter(prefix="/api/projects/{project_id}/project-folder/generation", tags=["project-folder-generation"], route_class=DiagnosticRoute)
 
 
 class GenerationStartRequest(BaseModel):

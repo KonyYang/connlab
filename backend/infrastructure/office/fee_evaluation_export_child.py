@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable
 import json
+import sys
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -47,6 +48,7 @@ from backend.infrastructure.storage.repositories import (
     ProjectTestPlanDraftRepository,
 )
 from backend.shared.config import Settings
+from backend.shared.operation_diagnostics import operation, stage, failure_details, record_failure
 
 
 class _ExportService(Protocol):
@@ -58,39 +60,41 @@ class _ExportService(Protocol):
 
 def main(argv: list[str] | None = None) -> int:
     """Run a production Fee Evaluation export and emit one JSON object."""
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     args = _parse_args(argv)
+    # The request file remains transient and is never copied into support logs.
+    diagnostic_id = None
     try:
-        payload = json.loads(args.command_json.read_text(encoding="utf-8"))
-        command = command_from_payload(payload)
-        settings = Settings.load()
-        engine = create_database_engine(settings)
-        init_db(engine)
-        session_factory = create_session_factory(engine)
-        result = _run_export_with_session(
-            command=command,
-            session_factory=session_factory,
-            service_builder=_build_direct_export_service,
-        )
-        _emit(result)
-        return 0 if result.get("status") == "success" else 1
+        diagnostic_id = json.loads(args.command_json.read_text(encoding="utf-8")).get("diagnostic_context", {}).get("operation_id")
+    except (OSError, ValueError, AttributeError):
+        pass
+    with operation("fee_export_child", operation_id=diagnostic_id) as evidence:
+        result = _execute_request(args)
+    result["diagnostic_events"] = evidence["events"]
+    _emit(result)
+    return 0 if result.get("status") == "success" else 1
+
+
+def _execute_request(args):
+    try:
+        with stage("office_child_initialize"):
+            payload = json.loads(args.command_json.read_text(encoding="utf-8"))
+            command = command_from_payload(payload)
+            settings = Settings.load()
+            engine = create_database_engine(settings)
+        try:
+            with stage("office_child_database"):
+                init_db(engine)
+                session_factory = create_session_factory(engine)
+            return _run_export_with_session(command=command, session_factory=session_factory,
+                                            service_builder=_build_direct_export_service)
+        finally:
+            engine.dispose()
     except ValueError as exc:
-        _emit(
-            {
-                "status": "value_error",
-                "error_type": type(exc).__name__,
-                "error_message": str(exc),
-            }
-        )
-        return 1
+        return _error_payload("value_error", exc)
     except Exception as exc:
-        _emit(
-            {
-                "status": "execution_failure",
-                "error_type": type(exc).__name__,
-                "error_message": f"{type(exc).__name__}: {exc}",
-            }
-        )
-        return 1
+        return _error_payload("execution_failure", exc)
 
 
 def _run_export_with_session(
@@ -103,8 +107,10 @@ def _run_export_with_session(
     with session_factory() as session:
         service = service_builder(session)
         try:
-            result = service.export(command)
-            session.commit()
+            with stage("office_export"):
+                result = service.export(command)
+            with stage("office_child_commit"):
+                session.commit()
             return {
                 "status": "success",
                 "result": result_to_payload(result),  # type: ignore[arg-type]
@@ -199,11 +205,13 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _error_payload(status: str, exc: Exception) -> dict[str, str]:
+def _error_payload(status: str, exc: Exception) -> dict[str, Any]:
+    record_failure(exc)
     return {
         "status": status,
         "error_type": type(exc).__name__,
         "error_message": str(exc),
+        "diagnostic": failure_details(exc),
     }
 
 

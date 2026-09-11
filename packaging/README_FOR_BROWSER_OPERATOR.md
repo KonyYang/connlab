@@ -54,4 +54,14 @@ Your existing local settings remain under `%LOCALAPPDATA%\ConnLab`.
 3. Under **Support diagnostics**, select **Export diagnostic package**.
 4. Send the downloaded `ConnLab_Diagnostics_*.zip` file to support together with a short description of what you clicked.
 
+Fee Form publication and Project Folder failures now show a **Stage** and **Diagnostic ID**.
+Include that ID or a screenshot with the ZIP. Export soon after the failure, before logs rotate.
+Windows error 32 indicates a sharing violation; access denied (5) alone does not prove an open file.
+Do not delete project folders, recovery journals, or your local database to bypass an error.
+
+The diagnostics include bounded stage timings, original Windows/Office error codes and safe stack
+frames, plus the release identity. Full paths, request/form contents, and passwords are not intentionally
+recorded by operation diagnostics. A folder or file permission problem is reported, never automatically
+repaired by changing permissions or terminating an operator's Office process.
+
 The package contains recent application logs and release identification only. It excludes project files, the local database, and ConnLab settings files. Local file paths and common secret assignments are redacted during export.

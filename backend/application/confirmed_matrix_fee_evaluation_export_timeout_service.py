@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
+from backend.shared.operation_diagnostics import attach_failure, failure_details
 
 from backend.application.confirmed_matrix_fee_evaluation_export_service import (
     ConfirmedMatrixFeeEvaluationExportError,
@@ -63,6 +64,16 @@ class ConfirmedMatrixFeeEvaluationExportTimeoutService:
     ) -> ExportConfirmedMatrixFeeEvaluationResult:
         """Run one export through the configured process runner."""
         result = self._runner.run(command)
+        try:
+            return self._interpret(result)
+        except Exception as exc:
+            details = result.payload.get("diagnostic")
+            if not isinstance(details, dict):
+                details = {**failure_details(exc), **result.payload.get("diagnostic_context", {})}
+            attach_failure(exc, details)
+            raise
+
+    def _interpret(self, result):
         if result.status == "success":
             payload = result.payload.get("result", result.payload)
             return result_from_payload(payload)

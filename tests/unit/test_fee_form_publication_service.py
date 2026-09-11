@@ -77,7 +77,10 @@ def test_execute_publishes_confirmed_fee_form_and_registers_final_path(
     assert list((tmp_path / "staging").iterdir()) == []
 
 
-def test_failed_generation_releases_empty_stage_and_preserves_official_file(tmp_path):
+def test_failed_generation_releases_empty_stage_and_preserves_official_file(tmp_path, caplog):
+    import logging
+    from backend.shared.operation_diagnostics import failure_details
+    caplog.set_level(logging.INFO, logger="connlab.operations")
     workspace = _workspace(tmp_path)
     target = workspace.official_folder_path / "DL-001 Fee Form.xls"
     target.write_text("operator original", encoding="utf-8")
@@ -90,13 +93,15 @@ def test_failed_generation_releases_empty_stage_and_preserves_official_file(tmp_
 
     service._generator = FailingGenerator()
     preview = service.preview(PreviewFeeFormPublicationCommand("P1", _values()))
-    with pytest.raises(RuntimeError, match="Excel unavailable"):
+    with pytest.raises(RuntimeError, match="Excel unavailable") as caught:
         service.execute(ExecuteFeeFormPublicationCommand(
             "P1", _values(), preview.preview_token, "archive", tmp_path / "staging"
         ))
     assert target.read_text(encoding="utf-8") == "operator original"
     assert service._outputs.commands == []
     assert list((tmp_path / "staging").iterdir()) == []
+    assert failure_details(caught.value)["stage"] == "generate_fee_workbook"
+    assert "operation_failed" in caplog.text
 
 
 def test_official_fee_archive_keeps_previous_file_and_registers_new_output(tmp_path):

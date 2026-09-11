@@ -136,3 +136,25 @@ def _command(tmp_path: Path) -> ExportConfirmedMatrixFeeEvaluationCommand:
         output_dir=tmp_path,
         fill_mode="matrix_basic",
     )
+def test_runner_carries_operation_to_child_and_persists_safe_failure(tmp_path, monkeypatch, caplog):
+    import json
+    import logging
+    import subprocess
+    from types import SimpleNamespace
+    from backend.shared.operation_diagnostics import operation
+    caplog.set_level(logging.INFO, logger="connlab.operations")
+    def run(argv, **kwargs):
+        payload = json.loads(Path(argv[-1]).read_text(encoding="utf-8"))
+        assert payload["diagnostic_context"]["operation_id"] == "parent-operation"
+        assert kwargs["encoding"] == "utf-8"
+        return SimpleNamespace(returncode=1, stderr="password=secret", stdout=json.dumps({
+            "status": "execution_failure", "error_message": "Excel failed",
+            "diagnostic": {"operation_id": "parent-operation", "stage": "excel_save_workbook",
+                           "exceptions": [{"type": "com_error", "hresult": -2147352567}]},
+        }))
+    monkeypatch.setattr(subprocess, "run", run)
+    with operation("fee_form_publication", operation_id="parent-operation"):
+        result = FeeEvaluationExportSubprocessRunner(output_root=tmp_path / "runs").run(_command(tmp_path))
+    assert result.status == "execution_failure"
+    assert "excel_save_workbook" in caplog.text and "-2147352567" in caplog.text
+    assert "secret" not in caplog.text

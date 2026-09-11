@@ -57,3 +57,17 @@ def test_bundle_contains_only_redacted_logs_and_safe_release_metadata(tmp_path: 
     assert exported_manifest["release"]["git_commit"] == "abc123"
     assert "unexpected_secret" not in exported_manifest["release"]
     assert bundle.filename.startswith("ConnLab_Diagnostics_")
+
+
+def test_bundle_preserves_fields_after_redacted_path(tmp_path):
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    (logs / "connlab.log").write_text(
+        'failure {"path": "C:\\\\Users\\\\Private\\\\Fee Secret.xls", "winerror": 5, "operation_id": "op-123"}\n'
+        'target=C:\\Users\\Private\\Fee Secret.xls winerror=32 stage=archive_old_file\n', encoding="utf-8")
+    bundle = SupportDiagnosticBundleService(logs_dir=logs).build_bundle()
+    with zipfile.ZipFile(io.BytesIO(bundle.content)) as archive:
+        text = archive.read("logs/connlab.log").decode()
+    assert "Fee Secret" not in text and "Private" not in text
+    assert '"winerror": 5' in text and '"operation_id": "op-123"' in text
+    assert "winerror=32 stage=archive_old_file" in text

@@ -122,3 +122,15 @@ def _command() -> ExportConfirmedMatrixFeeEvaluationCommand:
         template_path=Path("C:/tmp/template.xls"),
         output_dir=Path("C:/tmp"),
     )
+def test_child_error_preserves_com_code_and_operation_reference():
+    from backend.shared.operation_diagnostics import operation
+    from backend.infrastructure.office.fee_evaluation_export_child import _error_payload
+    import pywintypes
+    error = pywintypes.com_error(-2147352567, "Excel failed", (0, "Excel", "password=secret", None, 0, -2146827284), None)
+    with operation("fee_export_child", operation_id="parent-operation"):
+        result = _error_payload("execution_failure", error)
+    assert result["diagnostic"]["operation_id"] == "parent-operation"
+    exception = result["diagnostic"]["exceptions"][0]
+    assert exception["hresult"] == -2147352567
+    assert exception["com"]["scode"] == -2146827284
+    assert "secret" not in str(result["diagnostic"])
