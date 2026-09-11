@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_PROJECT_REGISTRY_ACTION_ICON_BUTTONS",
     "summary": "Project registry actions are compact icon buttons placed directly beside Open Workbench.",
@@ -26,17 +26,62 @@
     "risk_reasons": [],
     "activation_head": "a86deccd2da4142f95498384ae354b30e5bb10e5",
     "started_at": "2026-09-10T23:23:23.949643Z",
-    "updated_at": "2026-09-11T00:03:50.629475Z",
+    "updated_at": "2026-09-11T00:12:33.595770Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_PROJECT_REGISTRY_ACTION_ICON_BUTTONS",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requests a more distinctive folder-and-gear icon for Open Workbench.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_PROJECT_REGISTRY_ACTION_ICON_BUTTONS",
+      "subject": "4e81a97759ea6f5d83ed55bee9a512a24c1dce99",
+      "summary": "Replaced the Open Workbench folder glyph with a distinctive folder-and-gear workbench icon inspired by the supplied reference while preserving the compact action layout and existing Close/Delete semantics.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/components/common/UiIcon.tsx",
+        "frontend/src/pages/ProjectListPage.test.tsx",
+        "frontend/src/pages/ProjectListPage.tsx",
+        "frontend/src/project-dashboard.css"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "command": "npm test -- --run src/pages/ProjectListPage.test.tsx",
+          "result": "11 tests passed"
+        },
+        {
+          "status": "passed",
+          "command": "npm run build",
+          "result": "TypeScript and Vite production build passed"
+        },
+        {
+          "status": "passed",
+          "command": "git diff --check",
+          "result": "No whitespace errors"
+        },
+        {
+          "status": "passed",
+          "command": "In-app browser smoke on http://localhost:5173/projects",
+          "result": "Open Workbench renders the folder-and-gear icon; accessible labels and adjacent archive/trash controls remain present"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented and self-reviewed the semantic workbench icon refinement."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "summary": "Committed implementation and task-state revision in a clean, reviewable commit."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_CONFIRM_RETURN",
