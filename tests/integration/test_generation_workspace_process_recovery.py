@@ -17,6 +17,7 @@ from backend.application.project_basic_information_service import (
 from backend.domain import Project, ProjectStatus, LtrRecord, LtrStatus, ExternalResource, ExternalResourceType, FileAsset, FileAssetType
 from backend.infrastructure.files.recoverable_output_publisher import RecoverableOutputPublisher
 from backend.infrastructure.storage.database import Base, create_session_factory
+from backend.infrastructure.storage.models_project_schedule import ProjectScheduleRevisionModel  # noqa: F401
 from backend.shared.config import Settings
 
 
@@ -117,9 +118,11 @@ def _child(root, mode):
             shutil.copytree = original_tree
             return original_tree(source, target, copy_function=interrupted_copy)
         shutil.copytree = interrupted_tree
-    if mode in {"move", "backup"}:
+    if mode in {"move", "backup", "before_backup"}:
         original = Path.rename
         def interrupted_move(path, target):
+            if mode == "before_backup" and path.name == "DL-001":
+                os._exit(35)
             result = original(path, target)
             if (mode == "move" and Path(target).name == "DL-001") or (mode == "backup" and path.name == "DL-001"):
                 os._exit(32)
@@ -198,6 +201,64 @@ def test_fresh_process_recovers_workspace_without_replaying_conflict_or_copy(tmp
         assert len(list(destination.glob("*.connlab-backup-*"))) == 1
     runner.pool.shutdown()
     engine.dispose()
+
+
+def test_changed_folder_after_process_exit_allows_fresh_continue_existing_review(tmp_path):
+    settings = _settings(tmp_path)
+    engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
+    Base.metadata.create_all(engine)
+    sessions = create_session_factory(engine)
+    template, destination = tmp_path / "template", tmp_path / "output"
+    for name in ("E-mail", "Submitted Material", "Photos", "Test results/Final Examination"):
+        (template / name).mkdir(parents=True)
+    workspace = destination / "DL-001"
+    workspace.mkdir(parents=True)
+    operator_file = workspace / "operator.txt"
+    operator_file.write_text("before save", encoding="utf-8")
+    with sessions() as session:
+        deps.ProjectRepository(session).create(Project("P1", "DL-001", "Connector", "Test", ProjectStatus.DRAFT))
+        deps.LtrRecordRepository(session).create(LtrRecord("ltr", "P1", "DL-001", LtrStatus.REGISTERED))
+        resources = deps.ExternalResourceRepository(session)
+        resources.upsert(ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, destination))
+        resources.upsert(ExternalResource("template", ExternalResourceType.PROJECT_FOLDER_TEMPLATE, template))
+        _confirm_basic_information(session)
+        session.commit()
+    runner = ProjectFolderGenerationRunner(sessions, settings)
+    service = runner.service()
+    service.dispatch = lambda callback: None
+    try:
+        started = service.start("P1", "backup_and_recreate", runner.preview_context("P1"), "initial")
+        crashed = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve()), str(tmp_path), "before_backup"],
+            env=dict(os.environ, PYTHONPATH=str(Path(__file__).parents[2])),
+            capture_output=True, text=True, timeout=40,
+        )
+        assert crashed.returncode == 35, crashed.stdout + crashed.stderr
+        operator_file.write_text("operator saved edits", encoding="utf-8")
+
+        service.run("P1", started["operation_id"])
+        blocked = service.read("P1")
+        assert blocked["status"] == "blocked"
+        assert blocked["can_restart"] is True
+        assert "fresh preview" in blocked["message"]
+        assert operator_file.read_text(encoding="utf-8") == "operator saved edits"
+        assert not list(destination.glob("*.connlab-backup-*"))
+        assert not list((destination / ".connlab" / "generation").rglob("*-workspace"))
+
+        restarted = service.start(
+            "P1", "continue_existing", runner.preview_context("P1"), "reviewed-again",
+            replaces_operation_id=started["operation_id"],
+        )
+        runner.run_step(runner.journal.read("P1"), "workspace")
+        assert restarted["operation_id"] != started["operation_id"]
+        assert operator_file.read_text(encoding="utf-8") == "operator saved edits"
+        with sessions() as session:
+            record = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
+            assert record.local_workspace_path == workspace
+            assert record.source_book_path.is_dir()
+    finally:
+        runner.pool.shutdown()
+        engine.dispose()
 
 
 if __name__ == "__main__":

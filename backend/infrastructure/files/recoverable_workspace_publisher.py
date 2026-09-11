@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
 from uuid import uuid4
 
 from backend.application.official_project_workspace_service import (
@@ -17,6 +18,13 @@ from backend.application.project_folder_generation_service import (
 )
 from backend.infrastructure.files.generation_journal import fingerprint, json_value
 from backend.infrastructure.files.recoverable_output_publisher import file_hash, file_identity, RecoverableOutputPublisher
+
+
+def _is_redirected(path: Path):
+    # lstat also identifies Windows junctions on supported Python 3.11 runtimes.
+    return path.is_symlink() or bool(
+        getattr(path.lstat(), "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+    )
 
 
 def tree_hash(path: Path):
@@ -174,6 +182,13 @@ class RecoverableWorkspacePublisher:
                         raise ValueError("Workspace conflict target changed during recovery.")
                 else:
                     if tree_hash(conflict) != effect["prior"]:
+                        if self._discard_unpublished_stage(effect, record, staged):
+                            raise ValueError(
+                                "The existing project folder changed before rebuilding. "
+                                "Your files were preserved. Review a fresh preview and "
+                                "start a new generation; choose Continue existing folder "
+                                "to keep its current contents."
+                            )
                         raise ValueError("Workspace conflict target changed before rebuild.")
                     try:
                         conflict.rename(backup)
@@ -183,25 +198,7 @@ class RecoverableWorkspacePublisher:
                         # effect so the caller may explicitly choose a different
                         # conflict strategy instead of being trapped in a
                         # non-replaceable checkpoint.
-                        if (
-                            not backup.exists()
-                            and tree_hash(conflict) == effect["prior"]
-                        ):
-                            try:
-                                if (
-                                    staged.is_dir()
-                                    and not staged.is_symlink()
-                                    and file_identity(staged) == effect["publish_identity"]
-                                ):
-                                    shutil.rmtree(staged)
-                            except OSError:
-                                # Retain the effect when its owned stage cannot be
-                                # removed; recovery is safer than abandoning
-                                # uncertain operation state.
-                                pass
-                            if not staged.exists():
-                                self.state["effects"].pop("workspace", None)
-                                self.journal.save(self.state)
+                        self._discard_unpublished_stage(effect, record, staged)
                         raise ProjectFolderInUseError(str(conflict)) from exc
             if publish_target.exists():
                 raise ValueError("Workspace target has unknown provenance; recovery stopped.")
@@ -222,6 +219,59 @@ class RecoverableWorkspacePublisher:
                 or file_identity(record.source_book_path) != effect["source_book_identity"]):
             raise ValueError("Published workspace changed before recovery completed.")
         return self._publish_manifest_and_record(effect, record, repository)
+
+    def _discard_unpublished_stage(self, effect, record, staged):
+        """Release a pre-move checkpoint without touching the operator's folder."""
+        if "workspace" in self.state["completed_steps"] or set(self.state["effects"]) != {"workspace"}:
+            return False
+        conflict, backup = Path(effect["conflict"]), Path(effect["backup"])
+        expected_conflict = record.local_workspace_path if effect["whole"] else record.official_folder_path
+        expected_identity = effect.get("existing_workspace_identity" if effect["whole"] else "existing_target_identity")
+        root = record.local_workspace_path.parent / ".connlab" / "generation" / self.state["operation_id"]
+        try:
+            # A backup (including a dangling link), changed directory identity, or
+            # a foreign stage means publication cannot be proven not to have run.
+            if (os.path.lexists(backup) or conflict != expected_conflict
+                    or Path(effect["publish_target"]) != expected_conflict
+                    or expected_identity is None or _is_redirected(conflict) or not conflict.is_dir()
+                    or file_identity(conflict) != expected_identity
+                    or file_identity(conflict) == effect["publish_identity"]):
+                return False
+            if any(_is_redirected(path) for path in (root, *root.parents)):
+                return False
+            owned_paths = [(staged, effect["publish_identity"])]
+            if effect.get("source_book_stage"):
+                owned_paths.append((Path(effect["source_book_stage"]), effect["source_book_identity"]))
+            for path, identity in owned_paths:
+                if (_is_redirected(path) or not path.is_dir()
+                        or path.resolve().parent != root.resolve()
+                        or file_identity(path) != identity):
+                    return False
+            staged_official = staged / record.official_folder_path.name if effect["whole"] else staged
+            if (any(_is_redirected(path) for path in staged.rglob("*"))
+                    or tree_hash(staged_official) != effect["sha"]):
+                return False
+            source_stage = staged / "Source Book" if effect["whole"] else (
+                Path(effect["source_book_stage"]) if effect.get("source_book_stage") else None
+            )
+            if source_stage is not None and (
+                _is_redirected(source_stage) or not source_stage.is_dir()
+                or file_identity(source_stage) != effect["source_book_identity"]
+                or any(source_stage.iterdir())
+            ):
+                return False
+            if effect["whole"] and set(staged.iterdir()) != {staged_official, source_stage}:
+                return False
+            self.verify_context()
+            # Only the absolute, identity-checked operation stages above are removed.
+            # Fail closed if cleanup cannot finish; never abandon unknown state.
+            for path, _identity in owned_paths:
+                shutil.rmtree(path.resolve())
+        except (OSError, ValueError):
+            return False
+        self.state["effects"].pop("workspace")
+        self.journal.save(self.state)
+        return True
 
     def _continue_existing(self, effect, record, staged):
         """Adopt a reviewed folder and add only missing template entries."""

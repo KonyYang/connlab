@@ -4,11 +4,14 @@ from collections.abc import Generator
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from fastapi import Depends
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from backend.api.dependencies import (
+    get_fee_form_publication_service,
     get_confirmed_matrix_fee_evaluation_export_service,
     get_session,
     get_settings,
@@ -58,6 +61,35 @@ from backend.infrastructure.storage.repositories import (
     ProjectTestPlanDraftRepository,
 )
 from backend.shared.config import Settings
+
+
+@pytest.mark.parametrize("error, expected_status", [
+    (ConfirmedMatrixFeeEvaluationExportNotFoundError("Fee template is missing."), 404),
+    (ConfirmedMatrixFeeEvaluationExportError("Fee authority needs review."), 422),
+    (ConfirmedMatrixFeeEvaluationExportTimeoutError(
+        "Fee generation timed out.", elapsed_seconds=90,
+        manual_cleanup_warning="Check Excel before retrying.",
+    ), 503),
+])
+def test_fee_publication_returns_readable_export_errors(tmp_path, error, expected_status):
+    class FailedPublication:
+        def execute(self, command):
+            raise error
+
+    app.dependency_overrides[get_fee_form_publication_service] = lambda: FailedPublication()
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        data_dir=tmp_path, projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates", database_path=tmp_path / "test.sqlite3",
+    )
+    try:
+        response = TestClient(app).post(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/fee-form-publication/publish",
+            json={"rows": [], "summary": {}, "preview_token": "reviewed", "conflict_action": "none"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == expected_status
+    assert str(error) in str(response.json()["detail"])
 
 
 def test_confirmed_matrix_fee_evaluation_export_api_returns_result(

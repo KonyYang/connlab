@@ -64,12 +64,16 @@ vi.mock("./FeeEvaluationPreviewTable", () => ({
         onClick={() => {
           const row = props.rows.find((candidate) => candidate.rowKind === "matrix_step");
           if (row) {
-            props.onRowEditChange(row.lineId, "notes", "session edit");
+            props.onRowEditChange(row.lineId, "notes", row.notes === "session edit" ? "latest edit" : "session edit");
           }
         }}
       >
         Edit matrix note
       </button>
+      <button type="button" onClick={() => {
+        const row = props.rows.find((candidate) => candidate.rowKind === "matrix_step");
+        if (row) props.onRowEditChange(row.lineId, "notes", "entry note");
+      }}>Restore entry note</button>
       <button
         type="button"
         onClick={props.onGenerateFeeFile}
@@ -83,8 +87,100 @@ vi.mock("./FeeEvaluationPreviewTable", () => ({
 describe("FeeEvaluationReviewExportPage pricing-draft hydration", () => {
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.clearAllMocks();
     vi.restoreAllMocks();
+  });
+
+  it.each([100, 801])("serializes edits when the preceding save responds %i ms after another edit", async (delay) => {
+    const baseline = pricingPayload({ notes: "entry note" });
+    const firstSave = deferred<Record<string, unknown>>();
+    arrangeContext();
+    apiMocks.getFeeEvaluationPricingDraft.mockResolvedValue(
+      pricingResponse("current_v2", 1, baseline)
+    );
+    apiMocks.saveFeeEvaluationPricingDraft
+      .mockReturnValueOnce(firstSave.promise)
+      .mockResolvedValue(pricingResponse("current_v2", 3, pricingPayload({ notes: "latest edit" })));
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("visible-pricing-rows").textContent).toContain("entry note"));
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("button", { name: "Edit matrix note" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(801); });
+    expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit matrix note" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(delay); });
+    expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      firstSave.resolve(pricingResponse("current_v2", 2, pricingPayload({ notes: "session edit" })));
+      await vi.advanceTimersByTimeAsync(801);
+    });
+    expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(2);
+    expect(apiMocks.saveFeeEvaluationPricingDraft.mock.calls[1]?.[1]).toMatchObject({
+      expected_generation: 2,
+      expected_payload_fingerprint: "payload-2",
+      rows: [expect.objectContaining({ notes: "latest edit" })],
+    });
+    expect(screen.getByTestId("visible-pricing-rows").textContent).toContain("latest edit");
+    expect(screen.getByTestId("pricing-save-state").textContent).toBe("saved");
+  });
+
+  it("does not issue another write when Save draft & return times out waiting for autosave", async () => {
+    const firstSave = deferred<Record<string, unknown>>();
+    const edited = pricingPayload({ notes: "session edit" });
+    arrangeContext();
+    apiMocks.getFeeEvaluationPricingDraft
+      .mockResolvedValueOnce(pricingResponse("current_v2", 1, pricingPayload({ notes: "entry note" })))
+      .mockResolvedValue(pricingResponse("current_v2", 3, edited));
+    apiMocks.saveFeeEvaluationPricingDraft
+      .mockReturnValueOnce(firstSave.promise)
+      .mockResolvedValue(pricingResponse("current_v2", 3, edited));
+    const onBack = vi.fn();
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBack} />);
+    await waitFor(() => expect(screen.getByTestId("visible-pricing-rows").textContent).toContain("entry note"));
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("button", { name: "Edit matrix note" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(801); });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft & return" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(1501); });
+    expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+    expect(onBack).not.toHaveBeenCalled();
+    expect(screen.getByTestId("pricing-save-state").textContent).toBe("error");
+    await act(async () => { firstSave.resolve(pricingResponse("current_v2", 2, edited)); });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save draft & return" })); });
+    expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(2);
+    expect(apiMocks.saveFeeEvaluationPricingDraft.mock.calls[1]?.[1]).toMatchObject({ expected_generation: 2 });
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves reviewed values after an in-flight edit even when the user restored the entry values", async () => {
+    const firstSave = deferred<Record<string, unknown>>();
+    const baseline = pricingPayload({ notes: "entry note" });
+    arrangeContext();
+    apiMocks.getFeeEvaluationPricingDraft
+      .mockResolvedValueOnce(pricingResponse("current_v2", 1, baseline))
+      .mockResolvedValue(pricingResponse("current_v2", 3, baseline));
+    apiMocks.saveFeeEvaluationPricingDraft
+      .mockReturnValueOnce(firstSave.promise)
+      .mockResolvedValue(pricingResponse("current_v2", 3, baseline));
+    const onBack = vi.fn();
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBack} />);
+    await waitFor(() => expect(screen.getByTestId("visible-pricing-rows").textContent).toContain("entry note"));
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("button", { name: "Edit matrix note" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(801); });
+    fireEvent.click(screen.getByRole("button", { name: "Restore entry note" }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save draft & return" })); });
+    expect(onBack).not.toHaveBeenCalled();
+    await act(async () => {
+      firstSave.resolve(pricingResponse("current_v2", 2, pricingPayload({ notes: "session edit" })));
+    });
+    expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(2);
+    expect(apiMocks.saveFeeEvaluationPricingDraft.mock.calls[1]?.[1]).toMatchObject({
+      expected_generation: 2, rows: [expect.objectContaining({ notes: "entry note" })],
+    });
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 
   it("renders the server rebase candidate and reloads current_v2 before confirming", async () => {

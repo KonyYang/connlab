@@ -176,6 +176,8 @@ export function FeeEvaluationReviewExportPage({
   const hasSessionEditedPricingDraftRef = useRef(false);
   const autosaveTimeoutRef = useRef<number | null>(null);
   const autosaveGenerationRef = useRef(0);
+  const pricingSessionRef = useRef(0);
+  const explicitSaveRef = useRef(false);
   const autosaveInFlightRef =
     useRef<Promise<FeeEvaluationPricingDraftResponse | null> | null>(null);
   const cancellingRef = useRef(false);
@@ -226,6 +228,9 @@ export function FeeEvaluationReviewExportPage({
   useEffect(() => {
     let active = true;
     setDraftState({ kind: "loading" });
+    pricingSessionRef.current += 1;
+    autosaveGenerationRef.current += 1;
+    cancellingRef.current = false;
     setPreviewEdits({});
     setCostPreviewValues(EMPTY_COST_PREVIEW_VALUES);
     setSaveState({ kind: "loading" });
@@ -272,6 +277,7 @@ export function FeeEvaluationReviewExportPage({
       });
     return () => {
       active = false;
+      pricingSessionRef.current += 1;
     };
   }, [projectId]);
 
@@ -693,6 +699,7 @@ export function FeeEvaluationReviewExportPage({
       pricingDraftLoadStatus === "rebase_required" ||
       isLifecycleReadonly ||
       cancellingRef.current ||
+      explicitSaveRef.current ||
       isCancellingPricingSession
     ) {
       return;
@@ -701,21 +708,37 @@ export function FeeEvaluationReviewExportPage({
     autosaveGenerationRef.current = generation;
     const payload = currentPricingDraftPayload;
     const signature = currentPricingDraftSignature;
+    const session = pricingSessionRef.current;
     setSaveState({ kind: "dirty" });
     autosaveTimeoutRef.current = window.setTimeout(() => {
-      if (cancellingRef.current) {
+      if (cancellingRef.current || explicitSaveRef.current) {
         return;
       }
       setSaveState({ kind: "saving" });
       const abortController = new AbortController();
-      const saveRequest = saveFeeEvaluationPricingDraft(projectId, {
-        ...payload,
-        ...pricingDraftCasRequest(pricingDraftCasRef.current),
-      }, {
-        signal: abortController.signal,
-      })
+      // Serialize this page's writes and read CAS only after the preceding
+      // response. A newer edit must not discard a successful server generation.
+      const predecessor = autosaveInFlightRef.current;
+      const saveRequest = Promise.resolve(predecessor)
+        .then(() => {
+          if (cancellingRef.current || explicitSaveRef.current ||
+              pricingSessionRef.current !== session ||
+              autosaveGenerationRef.current !== generation) {
+            return null;
+          }
+          return saveFeeEvaluationPricingDraft(projectId, {
+            ...payload,
+            ...pricingDraftCasRequest(pricingDraftCasRef.current),
+          }, { signal: abortController.signal });
+        })
         .then((result) => {
-          if (autosaveGenerationRef.current === generation && !cancellingRef.current) {
+          if (!result || pricingSessionRef.current !== session) return result;
+          if (isCurrentV2PricingDraftResponse(result)) {
+            const savedCas = pricingDraftCasStateFromResponse(result);
+            pricingDraftCasRef.current = savedCas;
+            sessionOwnedPricingCasRef.current = savedCas;
+          }
+          if (pricingSessionRef.current === session && autosaveGenerationRef.current === generation && !cancellingRef.current) {
             applySavedPricingDraftResult(result, signature);
           }
           return result;
@@ -918,25 +941,30 @@ export function FeeEvaluationReviewExportPage({
     savedDraftId: string;
     cas: PricingDraftCasState | null;
   }> {
-    if (
-      pricingDraftLoadStatus === "current" &&
-      latestSavedPricingDraftId &&
-      savedLocalPricingSignature === currentPricingDraftSignature
-    ) {
-      return {
-        savedDraftId: latestSavedPricingDraftId,
-        cas: pricingDraftCasRef.current,
-      };
+    explicitSaveRef.current = true;
+    autosaveGenerationRef.current += 1;
+    try {
+      return await saveCurrentPricingDraftForUpdate();
+    } finally {
+      explicitSaveRef.current = false;
     }
+  }
+
+  async function saveCurrentPricingDraftForUpdate(): Promise<{
+    savedDraftId: string;
+    cas: PricingDraftCasState | null;
+  }> {
     if (autosaveTimeoutRef.current !== null) {
       window.clearTimeout(autosaveTimeoutRef.current);
       autosaveTimeoutRef.current = null;
     }
-    const autosaveSettlement = await waitForAutosaveSettlement(
-      autosaveInFlightRef.current
-    );
+    const pendingAutosave = autosaveInFlightRef.current;
+    const autosaveSettlement = await waitForAutosaveSettlement(pendingAutosave);
+    if (autosaveSettlement.status === "timeout") {
+      throw new Error("Fee Evaluation is still saving. Wait a moment and retry.");
+    }
     if (
-      autosaveSettlement.status === "settled" &&
+      pendingAutosave === null &&
       pricingDraftLoadStatus === "current" &&
       latestSavedPricingDraftId &&
       savedLocalPricingSignature === currentPricingDraftSignature
@@ -1243,7 +1271,8 @@ export function FeeEvaluationReviewExportPage({
         onGenerateFeeFile={handleGenerateFeeFile}
         onGroupFilterChange={setPreviewGroupFilter}
         onRowEditChange={handlePreviewRowEditChange}
-        readOnly={isLifecycleReadonly}
+        readOnly={isLifecycleReadonly || isSavingPricingSessionAndLeaving ||
+          isCancellingPricingSession || confirmFeeActionState.kind === "confirming"}
         saveState={saveState}
         suppressedSaveMessage={
           confirmFeeActionState.kind === "error"

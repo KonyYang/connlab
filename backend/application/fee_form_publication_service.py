@@ -244,6 +244,7 @@ class FeeFormPublicationService:
         operation_dir = Path(command.staging_dir) / uuid4().hex
         staged: Path | None = None
         try:
+            operation_dir.mkdir(parents=True, exist_ok=False)
             staged = self._generator.generate(
                 project_id=command.project_id,
                 output_dir=operation_dir,

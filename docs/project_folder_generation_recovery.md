@@ -41,6 +41,13 @@ not a replacement for configured external business authority.
 - A hard exit during staging, before intent exists, abandons that unique staging attempt. A subsequent
   attempt uses a new path. Unjournaled files are retained, not guessed to be safe to delete. Workspace
   stages live in the configured output root's `.connlab/generation` area, outside final project content.
+- A blocked initial rebuild can release its unpublished checkpoint when the original directory still
+  has its recorded identity, no backup or other publication effect exists, and its unchanged staged
+  directories are proven to belong to this operation. This also handles an older persisted checkpoint
+  when an operator saved files after a locked-folder error. Only these internal stages are discarded;
+  the edited original remains untouched. A changed folder requires a fresh preview and explicit new
+  generation; Continue existing folder preserves its contents. Missing ownership evidence, changed
+  stages, backups, links/junctions, or incomplete cleanup retain the checkpoint for review.
 - A file published before its record commits is reconciled into exactly one matching lineage record.
   A record committed before the progress checkpoint is recognized without generating or publishing again.
 
@@ -50,8 +57,9 @@ Changed inputs, a stopped/closed project, changed targets, missing/unproven stag
 journal stop the operation. Resume cannot approve different inputs or overwrite foreign files; these
 cases require operator/support review. Recovery backups and abandoned internal stages are retained for
 that review. Safely checkpointed blocked operations may be explicitly replaced as described above;
-uncheckpointed publication requires recovery or support review first. Nothing automatically discards
-an unfinished operation or deletes data.
+uncheckpointed publication requires recovery or support review first. An unfinished operation is never
+automatically replaced; the proven pre-publication staging cleanup described above does not remove
+project files or recovery backups.
 
 The existing Fee Form `.xls` template identity policy is retained: controlled revision/path plus size
 allow legacy Excel OLE metadata churn. Other input/template bytes are hashed. Configured Test Record

@@ -288,6 +288,18 @@ def publish_fee_form(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except FeeFormPublicationBlockedError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ConfirmedMatrixFeeEvaluationExportNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ConfirmedMatrixFeeEvaluationExportTimeoutError as exc:
+        raise HTTPException(status_code=503, detail={
+            "message": str(exc),
+            "elapsed_seconds": exc.elapsed_seconds,
+            "manual_cleanup_warning": exc.manual_cleanup_warning,
+        }) from exc
+    except (ConfirmedMatrixFeeEvaluationExportUnavailableError, OfficeAutomationUnavailable) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ConfirmedMatrixFeeEvaluationExportError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except (FeeFormPublicationError, OSError, RuntimeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return FeeFormPublicationResultResponse(

@@ -52,6 +52,27 @@ vi.mock("../../api/client", async (importOriginal) => {
 });
 
 describe("FeeEvaluationReviewExportPage", () => {
+  it("locks editable values during explicit save and unlocks them if saving fails", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    let rejectSave!: (reason: Error) => void;
+    apiMocks.saveFeeEvaluationPricingDraft.mockReturnValue(new Promise((_resolve, reject) => { rejectSave = reject; }));
+    const onBack = vi.fn();
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBack} />);
+    const price = await screen.findByLabelText("Unit Price for Visual Examination");
+    await waitFor(() => expect(apiMocks.getFeeEvaluationPricingDraft).toHaveBeenCalled());
+    fireEvent.change(price, { target: { value: "37" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft & return" }));
+    await waitFor(() => expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1));
+    expect(price).toHaveProperty("disabled", true);
+    expect(screen.getByLabelText("External Cost preview")).toHaveProperty("disabled", true);
+    expect(onBack).not.toHaveBeenCalled();
+    await act(async () => { rejectSave(new Error("Save unavailable")); });
+    expect(price).toHaveProperty("disabled", false);
+    expect(price).toHaveProperty("value", "37");
+    expect(screen.getByLabelText("External Cost preview")).toHaveProperty("disabled", false);
+  });
+
   it("applies reused prices to editable draft and autosaves without confirming Fee", async () => {
     HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
     HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };

@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportSummary,
     FeeEvaluationEditedExportValues,
@@ -15,6 +17,7 @@ from backend.application.fee_form_publication_service import (
     FeeFormPublicationService,
     PreviewFeeFormPublicationCommand,
 )
+from backend.infrastructure.files.test_record_publication_gateway import TestRecordPublicationGateway as PublicationGateway
 
 
 def test_preview_downloads_draft_when_no_official_workspace_exists(tmp_path: Path) -> None:
@@ -71,6 +74,44 @@ def test_execute_publishes_confirmed_fee_form_and_registers_final_path(
 
     assert result.target_path.read_text(encoding="utf-8") == "confirmed fee"
     assert service._outputs.commands[-1].output_path == str(result.target_path)
+    assert list((tmp_path / "staging").iterdir()) == []
+
+
+def test_failed_generation_releases_empty_stage_and_preserves_official_file(tmp_path):
+    workspace = _workspace(tmp_path)
+    target = workspace.official_folder_path / "DL-001 Fee Form.xls"
+    target.write_text("operator original", encoding="utf-8")
+    service = _service(tmp_path, workspace=workspace)
+
+    class FailingGenerator:
+        def generate(self, **kwargs):
+            assert kwargs["output_dir"].is_dir()
+            raise RuntimeError("Excel unavailable")
+
+    service._generator = FailingGenerator()
+    preview = service.preview(PreviewFeeFormPublicationCommand("P1", _values()))
+    with pytest.raises(RuntimeError, match="Excel unavailable"):
+        service.execute(ExecuteFeeFormPublicationCommand(
+            "P1", _values(), preview.preview_token, "archive", tmp_path / "staging"
+        ))
+    assert target.read_text(encoding="utf-8") == "operator original"
+    assert service._outputs.commands == []
+    assert list((tmp_path / "staging").iterdir()) == []
+
+
+def test_official_fee_archive_keeps_previous_file_and_registers_new_output(tmp_path):
+    workspace = _workspace(tmp_path)
+    target = workspace.official_folder_path / "DL-001 Fee Form.xls"
+    target.write_text("operator original", encoding="utf-8")
+    service = _service(tmp_path, workspace=workspace)
+    preview = service.preview(PreviewFeeFormPublicationCommand("P1", _values()))
+    result = service.execute(ExecuteFeeFormPublicationCommand(
+        "P1", _values(), preview.preview_token, "archive", tmp_path / "staging"
+    ))
+    assert result.archive_path.read_text(encoding="utf-8") == "operator original"
+    assert target.read_text(encoding="utf-8") == "confirmed fee"
+    assert service._outputs.commands[-1].output_path == str(target)
+    assert list((tmp_path / "staging").iterdir()) == []
 
 
 def _values(*, external_cost: str = "0") -> FeeEvaluationEditedExportValues:
@@ -108,7 +149,7 @@ def _service(tmp_path: Path, *, workspace) -> FeeFormPublicationService:
         confirmed_fee_reader=_FeeReader(fee),
         basic_information_reader=_BasicInformationReader(),
         generator=_Generator(),
-        file_gateway=_FileGateway(),
+        file_gateway=PublicationGateway(resource_label="Fee Form"),
         output_service=outputs,
     )
     service._outputs = outputs
@@ -142,19 +183,12 @@ class _BasicInformationReader:
 
 class _Generator:
     def generate(self, *, project_id, output_dir, output_file_name, confirmed_fee, basic_information):
-        output_dir.mkdir(parents=True, exist_ok=True)
+        from backend.application.confirmed_matrix_fee_evaluation_export_policy import require_output_dir
+
+        require_output_dir(output_dir)
         path = output_dir / output_file_name
         path.write_text("confirmed fee", encoding="utf-8")
         return path
-
-
-class _FileGateway:
-    def fingerprint(self, path: Path) -> str:
-        return "fingerprint"
-
-    def publish(self, *, staged_path, target_path, conflict_action, history_dir, expected_target_fingerprint):
-        staged_path.replace(target_path)
-        return None
 
 
 class _Outputs:

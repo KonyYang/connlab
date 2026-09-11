@@ -111,6 +111,22 @@ Smoke-check the latest browser release folder:
 .\scripts\smoke_windows_browser_release.ps1
 ```
 
+## Fee publication and folder recovery repair (2026-09-11)
+
+The `ConnLab_Web_202609110806_v0.1.0` build predates fixes for a missing Fee Form
+publication staging directory and overlapping Fee Evaluation autosaves. Install a
+newly built package containing these fixes; changing the workstation's configured
+library paths or deleting its local database is not required. Stop the old server
+before starting the replacement, then reload the browser page.
+
+For a folder operation stopped before its first directory move, resume once in the
+fixed build. If the original directory still has the recorded identity and the
+unpublished staging contents are intact, ConnLab can release that staging and
+offer a fresh generation preview. Choose `Continue existing folder` to preserve
+operator files. A changed/replaced staging directory, an existing backup, or a
+partially published operation remains blocked for review. Never delete the
+operator's project directory or generation journal to bypass these checks.
+
 ## Runtime Assumptions
 
 - Windows is the primary target.
