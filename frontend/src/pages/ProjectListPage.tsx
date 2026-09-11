@@ -361,7 +361,7 @@ export function ProjectListPage({
                           title={registryRowActionLabel(row, lifecycle)}
                           onClick={() => onOpenProject(row.project_id)}
                         >
-                          <UiIcon name="folder" />
+                          <UiIcon name="workbench" />
                         </button>
                         {deriveProjectWorkbenchLifecycleActions(lifecycle).canClose && <button
                           className="row-action project-registry-icon-action"

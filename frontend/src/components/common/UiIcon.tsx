@@ -34,7 +34,8 @@ export type UiIconName =
   | "templates"
   | "library"
   | "outlook"
-  | "upload";
+  | "upload"
+  | "workbench";
 
 type UiIconProps = {
   name: UiIconName;
@@ -113,6 +114,14 @@ const PATHS: Record<UiIconName, ReactElement> = {
   ),
   folder: (
     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+  ),
+  workbench: (
+    <>
+      <path d="M3 8v9a2 2 0 0 0 2 2h8" />
+      <path d="M3 8a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v2" />
+      <path d="M17.5 13.8v1M17.5 20.2v1M14.3 17.5h-1M21.7 17.5h-1M15.2 15.2l-.7-.7M20.5 20.5l-.7-.7M19.8 15.2l.7-.7M15.2 19.8l.7.7" />
+      <circle cx="17.9" cy="17.5" r="2.4" />
+    </>
   ),
   "folder-move": (
     <>

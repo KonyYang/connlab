@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_PROJECT_REGISTRY_ACTION_ICON_BUTTONS",
     "summary": "Project registry actions are compact icon buttons placed directly beside Open Workbench.",
@@ -26,62 +26,17 @@
     "risk_reasons": [],
     "activation_head": "a86deccd2da4142f95498384ae354b30e5bb10e5",
     "started_at": "2026-09-10T23:23:23.949643Z",
-    "updated_at": "2026-09-10T23:53:17.483616Z",
+    "updated_at": "2026-09-11T00:03:50.629475Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_PROJECT_REGISTRY_ACTION_ICON_BUTTONS",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requests a more distinctive folder-and-gear icon for Open Workbench.",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_PROJECT_REGISTRY_ACTION_ICON_BUTTONS",
-      "subject": "17bde7e0e7c96afc5444cb520cace113a7564605",
-      "summary": "Replaced registry text/menu actions with compact accessible icon buttons beside Open Workbench; refined Open to a folder icon and Close to an archive icon while preserving guards, confirmations, and handlers.",
-      "scope_ok": true,
-      "changed_paths": [
-        "frontend/src/components/common/UiIcon.tsx",
-        "frontend/src/pages/ProjectListPage.test.tsx",
-        "frontend/src/pages/ProjectListPage.tsx",
-        "frontend/src/project-dashboard.css"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "command": "npm test -- --run src/pages/ProjectListPage.test.tsx",
-          "result": "11 tests passed after icon refinement"
-        },
-        {
-          "status": "passed",
-          "command": "npm test",
-          "result": "533 tests passed, 1 skipped before icon-only refinement"
-        },
-        {
-          "status": "passed",
-          "command": "npm run build",
-          "result": "TypeScript and Vite production build passed after icon refinement"
-        },
-        {
-          "status": "passed",
-          "command": "git diff --check",
-          "result": "No whitespace errors"
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "summary": "Implemented semantic icon refinement and self-reviewed the exact diff."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "summary": "Clean HEAD contains the refined icon implementation and task-board transition."
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_FEE_CONFIRM_RETURN",
