@@ -174,6 +174,9 @@ class RequiredFormsFileGateway(Protocol):
 class OutputStatusServicePort(Protocol):
     """Project output status and registration dependency."""
 
+    def list_records(self, project_id: str) -> list:
+        """Return output history in chronological order."""
+
     def get_status_summary(self, project_id: str) -> ProjectOutputStatusSummary:
         """Return current project output status."""
 
@@ -402,6 +405,7 @@ class ProjectFolderRequiredFormsService:
                     errors[key] = str(exc)
         summary = self._outputs.get_status_summary(project_id)
         by_kind = {item.output_kind: item for item in summary.items}
+        output_history = None
         items = []
         for definition in REQUIRED_FORM_DEFINITIONS:
             key, label, kind, pattern, relative_folder = definition
@@ -412,12 +416,22 @@ class ProjectFolderRequiredFormsService:
                     status="blocked", action="blocked", message=errors[key]))
                 continue
             try:
+                output_item = by_kind.get(kind)
+                target = _target_path(workspace, pattern, relative_folder,
+                                      owner_suffix=owner_suffix if key == "customer_feedback_form" else None)
+                if output_item is not None and Path(getattr(output_item, "output_path", None) or "") != target:
+                    # Another output location must not hide this target's own
+                    # latest record. Byte and input checks still apply below.
+                    if output_history is None:
+                        output_history = self._outputs.list_records(project_id)
+                    output_item = next((record for record in reversed(output_history)
+                                        if record.output_kind == kind and Path(record.output_path or "") == target), output_item)
                 item = self._preview_item(
                     definition=definition,
                     workspace=workspace,
                     owner_suffix=owner_suffix,
                     item_source_context=contexts[key],
-                    output_item=by_kind.get(definition[2]),
+                    output_item=output_item,
                 )
             except OSError as exc:
                 errors[key] = f"Cannot read {label}; check file access or locks: {exc}"
@@ -451,7 +465,10 @@ class ProjectFolderRequiredFormsService:
             customer_feedback_template_path=template_path,
             source_context_signature=source_context,
             items=tuple(items),
-            blockers=tuple(dict.fromkeys(errors.values())),
+            blockers=tuple(dict.fromkeys([
+                *errors.values(),
+                *(f"{item.label}: {item.message}" for item in items if item.status == "conflict"),
+            ])),
             warnings=tuple(),
         )
 
@@ -631,12 +648,19 @@ class ProjectFolderRequiredFormsService:
             return _conflict_item(
                 key, label, target_path, kind, source_context=item_source_context
             )
-        if getattr(output_item, "output_path", None) != str(target_path):
+        if Path(getattr(output_item, "output_path", None) or "") != target_path:
             return _conflict_item(
-                key, label, target_path, kind, source_context=item_source_context
+                key, label, target_path, kind,
+                "The latest output record points to another location. Review both files before updating.",
+                source_context=item_source_context
             )
         stored_sha = getattr(output_item, "output_sha256", None)
-        if not stored_sha or compute_sha256(target_path) != stored_sha:
+        if not stored_sha:
+            return _conflict_item(
+                key, label, target_path, kind,
+                "The output record has no file fingerprint. Existing contents cannot be verified; review before updating.",
+                source_context=item_source_context)
+        if compute_sha256(target_path) != stored_sha:
             return _conflict_item(
                 key,
                 label,

@@ -196,6 +196,16 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
         assert _ok(client.post(url + "/resume", json={"operation_id": started["operation_id"]}))["status"] == "completed"
         assert not callbacks
         assert files == {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in files}
+        fee_target = next(path for path in files if "Fee Form" in path.name)
+        fee_target.write_bytes(b"operator changes must be retained")
+        conflict = _ok(client.get(url + "/preview"))
+        assert any("Fee Form" in message for message in conflict["start_blockers"])
+        rejected = client.post(url + "/start", json={
+            "expected_context": conflict["expected_context"], "request_id": "conflicting-update"})
+        assert rejected.status_code == 409
+        assert "Fee Form" in rejected.json()["detail"]
+        assert not callbacks
+        assert fee_target.read_bytes() == b"operator changes must be retained"
     finally:
         app.dependency_overrides.clear()
         runner.pool.shutdown()

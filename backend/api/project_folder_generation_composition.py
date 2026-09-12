@@ -136,6 +136,12 @@ class ProjectFolderGenerationRunner:
                                 "manifest": file_hash(preview.manifest_path) if preview.manifest_path else None})
             workspace_preview = _preview_response(preview).model_dump()
             file_preflight = package_preflight(project_id, preview, session, self.settings)
+            file_conflicts = [
+                f"{item['label']}: {item['message']}"
+                for item in file_preflight["items"] if item["status"] == "conflict"
+            ]
+            if file_conflicts:
+                start_blockers.append("; ".join(file_conflicts))
             if start_blockers:
                 workspace_preview["status"] = "blocked"
                 workspace_preview["blockers"] = [
@@ -251,4 +257,4 @@ class ProjectFolderGenerationRunner:
     def _require_result(result):
         if result.status in {"blocked", "conflict", "partial"}:
             blockers = getattr(result, "blockers", ())
-            raise ValueError(blockers[0] if blockers else "Project folder generation needs review before continuing.")
+            raise ValueError("; ".join(blockers) if blockers else "Project folder generation needs review before continuing.")

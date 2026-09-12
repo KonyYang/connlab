@@ -127,6 +127,21 @@ def test_file_template_failure_is_local_to_preview_item(tmp_path: Path) -> None:
     assert _item(result.items, "customer_feedback_form").action == "generate"
 
 
+def test_other_location_record_does_not_hide_managed_target_history(tmp_path: Path) -> None:
+    from dataclasses import replace
+    outputs = _OutputStatusService()
+    service = _service(tmp_path, output_service=outputs)
+    service.generate(_ready_command(tmp_path))
+    original = next(item for item in outputs.items if item.output_kind is ProjectOutputKind.TEST_RECORD_FORM)
+    outputs.items[outputs.items.index(original)] = replace(original, output_path=original.output_path.replace("\\", "\\\\"))
+    outputs.items.append(replace(original, output_path=str(tmp_path / "other" / "record.docx")))
+    result = service.preview("P1")
+    assert _item(result.items, "test_record").action == "skip"
+    target = _item(result.items, "test_record").target_path
+    target.write_bytes(b"operator edit")
+    assert _item(service.preview("P1").items, "test_record").status == "conflict"
+
+
 def test_unreadable_output_preserves_other_file_preflight(tmp_path: Path, monkeypatch) -> None:
     service = _service(tmp_path)
     service.generate(_ready_command(tmp_path))
@@ -277,6 +292,7 @@ def test_preview_conflicts_untracked_existing_business_form_target(tmp_path: Pat
     assert _item(preview.items, "fee_form").action == "conflict"
     assert _item(preview.items, "fee_form").status == "conflict"
     assert _item(preview.items, "fee_form").existing_sha256 is None
+    assert any("Fee Form" in message for message in preview.blockers)
 
 
 def test_preview_conflicts_existing_business_form_when_record_path_differs(
@@ -998,6 +1014,9 @@ class _FileGateway:
 
 
 class _OutputStatusService:
+    def list_records(self, project_id):
+        return list(self.items)
+
     def __init__(
         self,
         items: tuple[ProjectOutputStatusItem, ...] = tuple(),

@@ -7,6 +7,12 @@ point-in-time assessment, not a guarantee against later file locks or input chan
 Unreadable generated files are reported as blocked individually while other file
 results remain visible. If the target-tree fingerprint cannot be verified, preflight
 returns a start blocker rather than permitting generation with incomplete safety facts.
+File conflicts are also exposed before a new operation starts, with file labels and
+reasons. Resume retains the existing publication-recovery order; after recovery,
+required-form conflicts report their actual file reasons rather than a generic stage error.
+For multiple outputs of one kind, readiness uses the latest record at the exact target
+path; a newer record at another location must not hide that target's provenance.
+No historical record is adopted without the existing byte and input-signature checks.
 
 ## Output dependencies
 
