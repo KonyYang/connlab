@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_FOLDER_PREFLIGHT_REUSE",
     "summary": "Per-file folder preflight and dependency-specific output reuse",
@@ -26,82 +26,17 @@
     "risk_reasons": [],
     "activation_head": "6cc509a2c62922c475987c156a499e86dabf9bdf",
     "started_at": "2026-09-12T14:07:46.601776Z",
-    "updated_at": "2026-09-12T14:30:45.763228Z",
+    "updated_at": "2026-09-12T14:55:31.279247Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_FOLDER_PREFLIGHT_REUSE",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requested fixing per-file preflight read errors within Phase 1",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_FOLDER_PREFLIGHT_REUSE",
-      "subject": "a83716f72105a7ff5468c0a445671b9dea00fc11",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/api/dependencies.py",
-        "backend/api/project_folder_generation_composition.py",
-        "backend/api/project_folder_preflight.py",
-        "backend/application/confirmed_matrix_test_record_document_generation_service.py",
-        "backend/application/project_application_form_write_back_service.py",
-        "backend/application/project_folder_required_forms_service.py",
-        "backend/application/project_request_material_collection_service.py",
-        "docs/project_management/PROJECT_FOLDER_PREFLIGHT_REUSE.md",
-        "frontend/src/api/client.ts",
-        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-        "tests/integration/test_project_folder_generation_complete_chain.py",
-        "tests/unit/test_project_folder_required_forms_service.py"
-      ],
-      "summary": "Phase 1 per-file readiness and dependency-aware reuse; fail-stop execution unchanged. No real project folder operations or push. Await user acceptance.",
-      "validation": [
-        {
-          "name": "Affected backend unit/integration matrix",
-          "status": "passed",
-          "tests": 152,
-          "seconds": 56.01
-        },
-        {
-          "name": "Workbench layout/model/generation tests",
-          "status": "passed",
-          "tests": 82,
-          "seconds": 7.64
-        },
-        {
-          "name": "TypeScript and production build",
-          "status": "passed"
-        },
-        {
-          "name": "Exact diff whitespace check",
-          "status": "passed"
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "method": "Implementation and isolated regression tests"
-        },
-        "reviewer": {
-          "status": "passed",
-          "method": "Same-agent focused exact diff review; mandatory input context, scope and publication protection checked"
-        },
-        "qa": {
-          "status": "passed",
-          "method": "Same-agent affected matrix on clean reviewed subject; no real Office or user data"
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "branch": "master",
-        "subject": "a83716f72105a7ff5468c0a445671b9dea00fc11",
-        "clean": true,
-        "pushed": false
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_SINGLE_ENTRY",
