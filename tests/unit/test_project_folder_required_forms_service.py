@@ -87,6 +87,66 @@ def test_preview_blocks_when_confirmed_fee_authority_is_stale(tmp_path: Path) ->
     assert any("Fee" in blocker for blocker in preview.blockers)
 
 
+def test_missing_fee_does_not_hide_independent_file_readiness(tmp_path: Path) -> None:
+    service = _service(tmp_path, fee_result=_FeeResult(status="missing", latest_confirmed_fee=None))
+    preview = service.preview("P1")
+    assert _item(preview.items, "fee_form").status == "blocked"
+    assert _item(preview.items, "test_status").action == "generate"
+    assert _item(preview.items, "test_record").action == "generate"
+    assert _item(preview.items, "customer_feedback_form").action == "generate"
+
+
+def test_fee_changes_do_not_invalidate_independent_file_signatures(tmp_path: Path) -> None:
+    first = _service(tmp_path).preview("P1")
+    changed = _FeeVersion(revision=2)
+    second = _service(tmp_path, fee_result=_FeeResult(status="current", latest_confirmed_fee=changed)).preview("P1")
+    for key in ("test_record", "test_status", "customer_feedback_form"):
+        assert _item(first.items, key).source_context_signature == _item(second.items, key).source_context_signature
+    assert _item(first.items, "fee_form").source_context_signature != _item(second.items, "fee_form").source_context_signature
+
+
+def test_planned_folder_preflight_does_not_require_or_create_directory(tmp_path: Path) -> None:
+    from dataclasses import replace
+    service = _service(tmp_path, workspace=None)
+    planned = replace(_workspace(tmp_path), official_folder_path=tmp_path / "not-created")
+    result = service.preview("P1", planned_workspace=planned)
+    assert len(result.items) == 4
+    assert _item(result.items, "test_status").action == "generate"
+    assert not planned.official_folder_path.exists()
+
+
+def test_file_template_failure_is_local_to_preview_item(tmp_path: Path) -> None:
+    class Contexts:
+        def context(self, project_id, key):
+            if key == "test_record":
+                raise ValueError("Test Record template missing")
+            return "feedback-template-A|schedule-1"
+    result = _service(tmp_path, file_context_reader=Contexts()).preview("P1")
+    assert _item(result.items, "test_record").status == "blocked"
+    assert _item(result.items, "test_status").action == "generate"
+    assert _item(result.items, "customer_feedback_form").action == "generate"
+
+
+def test_schedule_change_updates_feedback_without_rewriting_test_record(tmp_path: Path) -> None:
+    class Contexts:
+        schedule = "schedule-1"
+        def context(self, project_id, key):
+            return "record-template-1" if key == "test_record" else "feedback-template-1|" + self.schedule
+    contexts = Contexts()
+    service = _service(tmp_path, file_context_reader=contexts)
+    service.generate(_ready_command(tmp_path))
+    before = service.preview("P1")
+    files = {item.target_path: (item.target_path.read_bytes(), item.target_path.stat().st_mtime_ns)
+             for item in before.items if item.target_path.exists()}
+    assert _item(before.items, "customer_feedback_form").action == "skip"
+    assert _item(before.items, "test_record").action == "skip"
+    contexts.schedule = "schedule-2"
+    after = service.preview("P1")
+    assert _item(after.items, "customer_feedback_form").action == "update"
+    assert _item(after.items, "test_record").action == "skip"
+    assert files == {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in files}
+
+
 def test_preview_blocks_when_confirmed_basic_information_is_missing(
     tmp_path: Path,
 ) -> None:
@@ -514,7 +574,8 @@ def test_generate_recreates_business_forms_when_legacy_underscore_records_exist(
 
     preview = service.preview("P1")
     assert preview.status == "ready"
-    assert _item(preview.items, "test_record").action == "skip"
+    # A legacy shared Fee signature cannot prove the new per-file dependencies.
+    assert _item(preview.items, "test_record").action == "update"
     assert _item(preview.items, "fee_form").action == "generate"
     assert _item(preview.items, "customer_feedback_form").action == "generate"
 
@@ -1005,6 +1066,7 @@ def _service(
     generator: _Generator | None = None,
     reusable_fee_form_reader: _ReusableFeeFormReader | None = None,
     fee_template_reader: _FeeTemplateReader | None = None,
+    file_context_reader=None,
 ) -> ProjectFolderRequiredFormsService:
     _prepare_official_folder(tmp_path)
     output_service = output_service or _OutputStatusService()
@@ -1063,7 +1125,13 @@ def _service(
         ),
         file_gateway=file_gateway or _FileGateway(),
         output_status_service=output_service,
+        file_context_reader=file_context_reader or _FileInputContexts(),
     )
+
+
+class _FileInputContexts:
+    def context(self, project_id: str, key: str) -> str:
+        return f"{key}:template-fixture-v1|schedule-fixture-v1"
 
 
 def _ready_command(

@@ -1479,6 +1479,21 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
   });
 });
 
+it("separates folder readiness from file readiness without offering individual retry", async () => {
+  renderWorkbench({ officialWorkspacePreview: {
+    ...folderReview().preview.workspace_preview,
+    file_preflight: { directory_status: "ready", package_ready: false, items: [
+      { key: "fee_form", label: "Fee Form", status: "blocked", action: "blocked", message: "Fee template is missing." },
+      { key: "test_status", label: "Test Status", status: "ready", action: "generate", message: "Ready to generate." },
+    ] },
+  } });
+  await userEvent.click(screen.getByText("Project folder readiness — Review file requirements"));
+  expect(screen.getByText(/Directory readiness does not mean all files/)).toBeTruthy();
+  expect(screen.getByText(/Fee template is missing/)).toBeTruthy();
+  expect(screen.getByText("Test Status", {selector: "strong"})).toBeTruthy();
+  expect(screen.queryByRole("button", {name: /retry this|retry failed/i})).toBeNull();
+});
+
 function folderReview() {
   return {
     operationId: null, resumeRebuild: false,

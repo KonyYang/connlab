@@ -120,6 +120,12 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
 
         url = "/api/projects/P1/project-folder/generation"
         preview = _ok(client.get(url + "/preview"))
+        readiness = preview["workspace_preview"]["file_preflight"]
+        assert readiness["directory_status"] == "ready"
+        assert readiness["package_ready"] is False  # The Application Form still needs archiving.
+        assert len(readiness["items"]) == 6
+        assert not tuple(output.iterdir()), "Preflight must not create a project folder"
+        assert next(item for item in readiness["items"] if item["key"] == "test_status")["status"] == "ready"
         request = {"expected_context": preview["expected_context"], "request_id": "whole-chain"}
         started = _ok(client.post(url + "/start", json=request))
         assert len(callbacks) == 1
@@ -145,6 +151,28 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
             collected = deps.ProjectRequestMaterialCollectionRepository(session).latest_by_project("P1")
             assert collected is not None
         assert source.read_bytes() == b"original submitted application"
+        after_preview = _ok(client.get(url + "/preview"))
+        after_items = {item["key"]: item for item in after_preview["workspace_preview"]["file_preflight"]["items"]}
+        for key in ("customer_feedback_form", "fee_form", "test_record", "test_status", "application_form"):
+            assert after_items[key]["status"] == "current", after_items[key]
+        confirmed_schedule = _ok(client.get("/api/projects/P1/project-schedule"))["confirmed_revision"]
+        _ok(client.post("/api/projects/P1/project-schedule/confirm", json={
+            "actor": "operator", "expected_revision_id": confirmed_schedule["revision_id"],
+            "expected_fingerprint": confirmed_schedule["fingerprint"], "post_test_buffer_days": "0",
+            "test_start_date": "2026-09-06", "test_complete_date": "2026-09-16",
+            "estimated_completion_date": "2026-09-16"}))
+        changed = _ok(client.get(url + "/preview"))["workspace_preview"]["file_preflight"]
+        changed_items = {item["key"]: item for item in changed["items"]}
+        assert changed_items["customer_feedback_form"]["action"] == "update"
+        assert changed_items["application_form"]["action"] == "update"
+        for key in ("fee_form", "test_record", "test_status"):
+            assert changed_items[key]["action"] == "skip", changed_items[key]
+        record_template = template / "FDQF-E-036 Test Record.docx"
+        record_template.write_bytes(b"controlled template revision 2")
+        changed = _ok(client.get(url + "/preview"))["workspace_preview"]["file_preflight"]
+        changed_items = {item["key"]: item for item in changed["items"]}
+        assert changed_items["test_record"]["action"] == "update"
+        assert changed_items["test_status"]["action"] == "skip"
         assert _ok(client.post(url + "/start", json=request))["operation_id"] == started["operation_id"]
         assert _ok(client.post(url + "/resume", json={"operation_id": started["operation_id"]}))["status"] == "completed"
         assert not callbacks

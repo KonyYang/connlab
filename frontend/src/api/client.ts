@@ -376,6 +376,11 @@ export type OfficialWorkspacePreviewStatus =
   | "inconsistent";
 
 export type OfficialWorkspacePreview = {
+  file_preflight?: {
+    directory_status: string;
+    package_ready: boolean;
+    items: { key: string; label: string; status: string; action: string; message: string }[];
+  };
   generation_context?: string;
   project_id: string;
   dl_number?: string | null;

@@ -59,15 +59,15 @@ class ProjectRequestMaterialCollectionService:
         self._collections = collection_repository
         self._copy_gateway = copy_gateway
 
-    def preview(self, project_id: str) -> RequestMaterialPreview:
+    def preview(self, project_id: str, *, planned_workspace=None) -> RequestMaterialPreview:
         """Return a read-only preview of request-material collection."""
         project = self._projects.get(project_id)
         if project is None:
             raise ProjectRequestMaterialCollectionNotFoundError(
                 f"Project not found: {project_id}"
             )
-        workspace = self._workspaces.get_by_project(project_id)
-        if workspace is None or not workspace.official_folder_path.is_dir():
+        workspace = planned_workspace or self._workspaces.get_by_project(project_id)
+        if workspace is None or (planned_workspace is None and not workspace.official_folder_path.is_dir()):
             return RequestMaterialPreview(
                 project_id=project_id,
                 local_workspace_path=None,

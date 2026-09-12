@@ -5,6 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from backend.api import dependencies as deps
+from backend.api.project_folder_preflight import package_preflight
 from backend.application.project_folder_generation_service import (
     ProjectFolderGenerationService,
     basic_information_generation_blocker,
@@ -127,6 +128,7 @@ class ProjectFolderGenerationRunner:
                                 "targets": [(str(path), tree_hash(path)) for path in paths],
                                 "manifest": file_hash(preview.manifest_path) if preview.manifest_path else None})
             workspace_preview = _preview_response(preview).model_dump()
+            file_preflight = package_preflight(project_id, preview, session, self.settings)
             if start_blockers:
                 workspace_preview["status"] = "blocked"
                 workspace_preview["blockers"] = [
@@ -140,6 +142,7 @@ class ProjectFolderGenerationRunner:
                 "workspace_preview": {
                     **workspace_preview,
                     "generation_context": token,
+                    "file_preflight": file_preflight,
                 },
             }
 

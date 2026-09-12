@@ -525,6 +525,16 @@ export function ProjectWorkbenchLayout({
         </div>
       </header>
 
+      {officialWorkspacePreview?.file_preflight ? (
+        <details className="runtime-console-workflow-alert">
+          <summary>Project folder readiness — {officialWorkspacePreview.file_preflight.package_ready ? "Files ready" : "Review file requirements"}</summary>
+          <p>Directory: {officialWorkspacePreview.file_preflight.directory_status}. Directory readiness does not mean all files can be generated.</p>
+          <ul>{officialWorkspacePreview.file_preflight.items.map(item => (
+            <li key={item.key}><strong>{item.label}</strong>: {item.status === "current" ? "Current — reuse" : item.status === "ready" ? "Ready" : item.status === "waiting" ? "Waiting for preparation" : "Needs attention"}. {item.message}</li>
+          ))}</ul>
+          <p>Generation stops at the first unmet requirement or failure. No partial-success or individual retry is enabled.</p>
+        </details>
+      ) : null}
       {checkingRecoveryPreview ? (
         <div className="runtime-console-workflow-alert" role="status" aria-busy="true">
           <strong>Project folder workflow</strong>

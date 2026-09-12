@@ -1797,6 +1797,30 @@ def _fee_form_template_context(template: Path) -> str:
     return f"fee-template:{resolved}@sha256:{compute_sha256(template)}"
 
 
+class _RequiredFormsInputContextReader:
+    """Bind each form to its own template and additional document inputs."""
+
+    def __init__(self, resources, settings, schedules, test_record):
+        self.resources, self.settings = resources, settings
+        self.schedules, self.test_record = schedules, test_record
+
+    def context(self, project_id, key):
+        import json
+        if key == "test_record":
+            template = resolve_test_record_template_path(
+                self.resources, configured_template_path=self.settings.test_record.template_path)
+            inputs = self.test_record.preview_inputs(project_id)
+        elif key == "customer_feedback_form":
+            template = _CustomerFeedbackTemplateReader(self.resources).preview_template(project_id)
+            schedule = self.schedules.get_latest_confirmed(project_id)
+            if schedule is None:
+                raise ValueError("Confirm Project Schedule before generating Customer Feedback.")
+            inputs = {"schedule": schedule.context_signature}
+        else:
+            raise ValueError("Unsupported form input context.")
+        return f"template:{template.resolve()}@sha256:{compute_sha256(template)}|{json.dumps(inputs, sort_keys=True)}"
+
+
 class _RequiredFormsStagingGenerator:
     """Generate Required forms into controlled staging without final output records."""
 
@@ -1982,6 +2006,9 @@ def get_project_folder_required_forms_service(
         output_status_service=output_service,
         reusable_fee_form_reader=_ReusableFeeFormArtifactReader(output_service),
         lifecycle_write_guard=ProjectLifecycleWriteGuard(ProjectRepository(session)),
+        file_context_reader=_RequiredFormsInputContextReader(
+            ExternalResourceRepository(session), settings,
+            get_project_schedule_output_reader(session), test_record_service),
     )
 
 

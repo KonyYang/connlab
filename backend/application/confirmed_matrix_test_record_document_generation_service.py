@@ -143,6 +143,18 @@ class ConfirmedMatrixTestRecordDocumentGenerationService:
         self._forms = application_form_store
         self._basic_information = basic_information_reader
 
+    def preview_inputs(self, project_id: str) -> dict:
+        """Resolve the actual document inputs without creating an output directory."""
+        from dataclasses import asdict
+        preview = self._load_preview(project_id)
+        if preview.preview_status != "ready" or not preview.groups:
+            raise ConfirmedMatrixTestRecordDocumentGenerationError(
+                "Active confirmed matrix has no previewable Test Record steps.")
+        project = self._project_store.get(project_id)
+        basic = self._confirmed_basic_information(project_id)
+        header = self._resolve_header_metadata(project_id=project_id, project=project, basic_information=basic)
+        return {"header": asdict(header), "project_no": str(getattr(project, "project_no", "") or "")}
+
     def generate(
         self,
         command: GenerateConfirmedMatrixTestRecordDocumentCommand,

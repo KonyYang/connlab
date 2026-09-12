@@ -9,6 +9,7 @@ from time import perf_counter
 from typing import Protocol
 
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
+from backend.application.customer_feedback_template_discovery import CustomerFeedbackTemplateDiscoveryError
 from backend.application.project_basic_information_output import (
     ConfirmedBasicInformationReader,
     ConfirmedBasicInformationSnapshot,
@@ -122,6 +123,13 @@ class FeeFormTemplateContextReader(Protocol):
 
     def preview_template_context(self, project_id: str) -> str:
         """Return a stable Fee Form template context token."""
+
+
+class RequiredFormInputContextReader(Protocol):
+    """Resolve actual document inputs and template content before reuse."""
+
+    def context(self, project_id: str, key: str) -> str:
+        """Return a stable token, or raise when this file cannot be generated."""
 
 
 class ApplicationFormReader(Protocol):
@@ -313,6 +321,7 @@ class ProjectFolderRequiredFormsService:
         output_status_service: OutputStatusServicePort,
         reusable_fee_form_reader: ReusableFeeFormArtifactReader | None = None,
         lifecycle_write_guard: ProjectLifecycleWriteGuard | None = None,
+        file_context_reader: RequiredFormInputContextReader,
     ) -> None:
         """Create the Required forms service with explicit ports."""
         self._workspaces = workspace_repository
@@ -330,62 +339,89 @@ class ProjectFolderRequiredFormsService:
         self._files = file_gateway
         self._outputs = output_status_service
         self._lifecycle_write_guard = lifecycle_write_guard
+        self._file_context_reader = file_context_reader
 
-    def preview(self, project_id: str) -> RequiredFormsPreview:
+    def preview(self, project_id: str, *, planned_workspace=None) -> RequiredFormsPreview:
         """Return the current Required forms preview."""
-        workspace = self._workspaces.get_by_project(project_id)
-        if workspace is None or not workspace.official_folder_path.exists():
+        workspace = planned_workspace or self._workspaces.get_by_project(project_id)
+        if workspace is None or (planned_workspace is None and not workspace.official_folder_path.exists()):
             return _blocked_preview(project_id, "Create the Official project folder first.")
-        folder_check = self._folder_check.preview(project_id)
-        if getattr(folder_check, "status", "blocked") in {"blocked", "conflict"}:
+        folder_check = self._folder_check.preview(project_id) if planned_workspace is None else None
+        if folder_check is not None and getattr(folder_check, "status", "blocked") in {"blocked", "conflict"}:
             return _blocked_preview(project_id, "Resolve Project Folder check blockers first.")
 
         matrix = self._matrices.get_active_snapshot(project_id)
-        if matrix is None:
-            return _blocked_preview(project_id, "Confirm Matrix authority before generating Required forms.")
-        fee_result = self._fees.get_latest(project_id)
-        if getattr(fee_result, "status", None) != "current":
-            return _blocked_preview(project_id, "Confirm Fee before generating Required forms.")
+        try:
+            fee_result = self._fees.get_latest(project_id) if matrix is not None else None
+        except (ValueError, LookupError):
+            fee_result = None
         fee = getattr(fee_result, "latest_confirmed_fee", None)
-        if fee is None:
-            return _blocked_preview(project_id, "Confirmed Fee is missing.")
         basic_information = self._basic_information.get_latest_confirmed(project_id)
+        template_path = None
+        errors = {}
+        if matrix is None:
+            for key in ("test_record", "test_status", "fee_form"):
+                errors[key] = "Confirm Matrix authority before generating this file."
+        if fee is None or getattr(fee_result, "status", None) != "current":
+            errors["fee_form"] = "Confirm Fee before generating Fee Form."
         if basic_information is None:
-            return _blocked_preview(
-                project_id,
-                "Confirm Basic Information before generating Project Folder outputs.",
-            )
-        template_path = self._feedback_templates.preview_template(project_id)
+            for key in ("test_record", "fee_form", "customer_feedback_form"):
+                errors[key] = "Confirm Basic Information before generating this file."
+        try:
+            template_path = self._feedback_templates.preview_template(project_id)
+        except (ValueError, LookupError, OSError, CustomerFeedbackTemplateDiscoveryError) as exc:
+            errors["customer_feedback_form"] = f"Customer Feedback template unavailable: {exc}"
+        fee_template_context = None
+        try:
+            fee_template_context = self._fee_form_templates.preview_template_context(project_id)
+        except (ValueError, LookupError, OSError) as exc:
+            errors["fee_form"] = f"Fee template unavailable: {exc}"
         owner_suffix = _owner_suffix(
             self._application_forms.list_by_project(project_id),
             basic_information,
         )
-        fee_template_context = self._fee_form_templates.preview_template_context(project_id)
-        source_context = _source_context_signature(
+        source_context = (_source_context_signature(
             matrix,
             fee,
             basic_information,
             fee_template_context,
-        )
-        test_status_source_context = _test_status_source_context_signature(matrix)
+        ) if "fee_form" not in errors else None)
+        contexts = {
+            "fee_form": source_context,
+            "test_status": _test_status_source_context_signature(matrix) if matrix else None,
+            "test_record": (f"test-record:v2|matrix:{_matrix_id(matrix)}@{_matrix_revision(matrix)}|{basic_information.context_signature}"
+                            if matrix and basic_information else None),
+            "customer_feedback_form": (f"customer-feedback:v2|{basic_information.context_signature}"
+                                       if basic_information else None),
+        }
+        for key in ("test_record", "customer_feedback_form"):
+            if key not in errors:
+                try:
+                    contexts[key] += "|" + self._file_context_reader.context(project_id, key)
+                except (ValueError, LookupError, OSError, CustomerFeedbackTemplateDiscoveryError) as exc:
+                    errors[key] = str(exc)
         summary = self._outputs.get_status_summary(project_id)
         by_kind = {item.output_kind: item for item in summary.items}
-        items = tuple(
-            self._preview_item(
+        items = []
+        for definition in REQUIRED_FORM_DEFINITIONS:
+            key, label, kind, pattern, relative_folder = definition
+            if key in errors:
+                items.append(RequiredFormPreviewItem(
+                    key=key, label=label, output_kind=kind,
+                    target_path=_target_path(workspace, pattern, relative_folder, owner_suffix=owner_suffix),
+                    status="blocked", action="blocked", message=errors[key]))
+                continue
+            items.append(self._preview_item(
                 definition=definition,
                 workspace=workspace,
                 owner_suffix=owner_suffix,
-                item_source_context=(
-                    test_status_source_context
-                    if definition[0] == "test_status"
-                    else source_context
-                ),
+                item_source_context=contexts[key],
                 output_item=by_kind.get(definition[2]),
-            )
-            for definition in REQUIRED_FORM_DEFINITIONS
-        )
+            ))
         if any(item.status == "conflict" for item in items):
             status = "conflict"
+        elif errors:
+            status = "blocked"
         elif all(item.status == "current" for item in items):
             status = "current"
         else:
@@ -394,19 +430,19 @@ class ProjectFolderRequiredFormsService:
             project_id=project_id,
             status=status,
             official_project_folder_path=workspace.official_folder_path,
-            confirmed_matrix_id=_matrix_id(matrix),
-            confirmed_revision=_matrix_revision(matrix),
-            confirmed_fee_id=_fee_id(fee),
-            confirmed_fee_revision=_fee_revision(fee),
-            confirmed_fee_pricing_draft_edit_id=str(getattr(fee, "pricing_draft_edit_id")),
-            confirmed_basic_information_version=basic_information.version,
+            confirmed_matrix_id=_matrix_id(matrix) if matrix else None,
+            confirmed_revision=_matrix_revision(matrix) if matrix else None,
+            confirmed_fee_id=_fee_id(fee) if fee else None,
+            confirmed_fee_revision=_fee_revision(fee) if fee else None,
+            confirmed_fee_pricing_draft_edit_id=str(getattr(fee, "pricing_draft_edit_id")) if fee else None,
+            confirmed_basic_information_version=basic_information.version if basic_information else None,
             confirmed_basic_information_source_signature_hash=(
-                basic_information.source_signature_hash
+                basic_information.source_signature_hash if basic_information else None
             ),
             customer_feedback_template_path=template_path,
             source_context_signature=source_context,
-            items=items,
-            blockers=tuple(),
+            items=tuple(items),
+            blockers=tuple(dict.fromkeys(errors.values())),
             warnings=tuple(),
         )
 
@@ -837,7 +873,7 @@ def _owner_suffix(
     basic_information: ConfirmedBasicInformationSnapshot,
 ) -> str | None:
     """Return the Project Leader suffix for Customer Feedback file names."""
-    project_leader = basic_information.values.get("project_leader", "").strip()
+    project_leader = basic_information.values.get("project_leader", "").strip() if basic_information else ""
     if project_leader:
         return project_leader
     form = forms[-1] if forms else None

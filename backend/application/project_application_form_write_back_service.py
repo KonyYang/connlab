@@ -177,6 +177,13 @@ class ProjectApplicationFormWriteBackService:
         )
 
     def write_back(self, project_id: str, recovery=None) -> ProjectApplicationFormWriteBackResult:
+        return self._write_back(project_id, recovery=recovery)
+
+    def preview(self, project_id: str) -> dict:
+        """Check the same source, authority and target safety without writing files."""
+        return self._write_back(project_id, preview_only=True)
+
+    def _write_back(self, project_id: str, recovery=None, *, preview_only=False):
         """Write known project/application fields into the copied Word form."""
         total_start = perf_counter()
         timings: list[ApplicationFormWriteBackTiming] = []
@@ -237,13 +244,20 @@ class ProjectApplicationFormWriteBackService:
             source_sha256=selected_target.source_sha256,
         )
         current_item = _latest_section_write_back_item(summary, target)
-        if recovery is not None and current_item is None and (
+        if (recovery is not None or preview_only) and current_item is None and (
             not selected_target.source_sha256 or sha256_file(target) != selected_target.source_sha256
         ):
             raise ProjectApplicationFormWriteBackError(
                 "Application Form target has no proven source or managed output identity. Review it before generation."
             )
         append_timing(timings, "application_form.safety_check", safety_start)
+        if preview_only:
+            current = is_current_target_reusable(current_item, target, context_signature)
+            return {"key": "application_form", "label": "Application Form",
+                    "status": "current" if current else "ready",
+                    "action": "skip" if current else "update",
+                    "message": "Current." if current else "Ready to update the archived Application Form.",
+                    "source_context_signature": context_signature}
         reuse_start = perf_counter()
         if is_current_target_reusable(current_item, target, context_signature):
             append_timing(timings, "application_form.reuse_lookup", reuse_start)
