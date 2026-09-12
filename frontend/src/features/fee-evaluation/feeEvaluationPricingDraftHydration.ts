@@ -79,40 +79,47 @@ export function savedPricingDraftDerivedFeesMatch(
   savedDraft: FeeEvaluationEditedFileExportRequest,
   hydratedDraft: FeeEvaluationEditedFileExportRequest
 ): boolean {
+  // The Confirmed Fee summary is derived from testing fees *and* working hours,
+  // so a spend-time-only drift must also make the saved draft stale. Otherwise
+  // Update Fee reuses a draft whose hours no longer match the reviewed screen.
   const hydratedRows = new Map(
-    hydratedDraft.rows.map((row) => [savedIdentity(row), row.testing_fee.trim()])
+    hydratedDraft.rows.map((row) => [savedIdentity(row), row])
   );
   if (savedDraft.rows.length !== hydratedRows.size) {
     return false;
   }
   for (const row of savedDraft.rows) {
+    const hydratedRow = hydratedRows.get(savedIdentity(row));
     if (
-      !derivedFeeValuesMatch(
-        row.testing_fee,
-        hydratedRows.get(savedIdentity(row))
-      )
+      !hydratedRow ||
+      !derivedNumericValuesMatch(row.testing_fee, hydratedRow.testing_fee) ||
+      !derivedNumericValuesMatch(row.spend_time, hydratedRow.spend_time)
     ) {
       return false;
     }
   }
 
   const savedManualRows = savedDraft.manual_rows ?? [];
-  const hydratedManualRows = new Map(
-    (hydratedDraft.manual_rows ?? []).map((row) => [
-      savedManualIdentity(row),
-      row.testing_fee.trim(),
-    ])
+  const hydratedManualRows = hydratedDraft.manual_rows ?? [];
+  if (savedManualRows.length !== hydratedManualRows.length) {
+    return false;
+  }
+  const hydratedManualRowsByIdentity = new Map(
+    hydratedManualRows.map((row) => [savedManualIdentity(row), row])
   );
-  return savedManualRows.every(
-    (row) =>
-      derivedFeeValuesMatch(
-        row.testing_fee,
-        hydratedManualRows.get(savedManualIdentity(row))
-      )
-  );
+  return savedManualRows.every((row) => {
+    const hydratedRow = hydratedManualRowsByIdentity.get(
+      savedManualIdentity(row)
+    );
+    return (
+      hydratedRow !== undefined &&
+      derivedNumericValuesMatch(row.testing_fee, hydratedRow.testing_fee) &&
+      derivedNumericValuesMatch(row.spend_time, hydratedRow.spend_time)
+    );
+  });
 }
 
-function derivedFeeValuesMatch(
+function derivedNumericValuesMatch(
   savedValue: string,
   hydratedValue: string | undefined
 ): boolean {

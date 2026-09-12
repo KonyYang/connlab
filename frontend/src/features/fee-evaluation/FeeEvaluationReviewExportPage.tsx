@@ -165,8 +165,6 @@ export function FeeEvaluationReviewExportPage({
   const [hasUserEditedPricingDraft, setHasUserEditedPricingDraft] = useState(false);
   const [isCancellingPricingSession, setIsCancellingPricingSession] =
     useState(false);
-  const [isSavingPricingSessionAndLeaving, setIsSavingPricingSessionAndLeaving] =
-    useState(false);
   const baselinePricingPayloadRef =
     useRef<FeeEvaluationEditedFileExportRequest | null>(null);
   const baselinePricingContextRef = useRef<PricingDraftContext | null>(null);
@@ -1204,36 +1202,6 @@ export function FeeEvaluationReviewExportPage({
     }
   }
 
-  async function handleSaveDraftAndBackToWorkbench(): Promise<void> {
-    if (isLifecycleReadonly) {
-      onBackToWorkbench();
-      return;
-    }
-    if (
-      draftState.kind !== "ready" ||
-      confirmFeeActionState.kind === "confirming" ||
-      isCancellingPricingSession ||
-      isSavingPricingSessionAndLeaving
-    ) {
-      return;
-    }
-    setIsSavingPricingSessionAndLeaving(true);
-    try {
-      await ensureCurrentPricingDraftSavedForUpdate();
-      onBackToWorkbench();
-    } catch (error: unknown) {
-      setSaveState({
-        kind: "error",
-        message: readonlyAwareErrorMessage(
-          error,
-          "Unable to save the Fee Evaluation draft before returning."
-        ),
-      });
-    } finally {
-      setIsSavingPricingSessionAndLeaving(false);
-    }
-  }
-
   return (
     <section className="fee-evaluation-page" aria-label="Fee Evaluation review and export">
       {isLifecycleReadonly ? (
@@ -1246,7 +1214,7 @@ export function FeeEvaluationReviewExportPage({
         importControl={<FeeFormImportControl key={projectId} projectId={projectId} rows={previewRows}
           disabled={isLifecycleReadonly || draftState.kind !== "ready" || pricingDraftLoadStatus === "loading" ||
             pricingDraftLoadStatus === "error" || pricingDraftLoadStatus === "stale" || pricingDraftLoadStatus === "rebase_required" ||
-            confirmFeeActionState.kind === "confirming" || isCancellingPricingSession || isSavingPricingSessionAndLeaving}
+            confirmFeeActionState.kind === "confirming" || isCancellingPricingSession}
           onApply={changes => {
             if (isLifecycleReadonly) return;
             setPreviewEdits(current => {
@@ -1271,7 +1239,7 @@ export function FeeEvaluationReviewExportPage({
         onGenerateFeeFile={handleGenerateFeeFile}
         onGroupFilterChange={setPreviewGroupFilter}
         onRowEditChange={handlePreviewRowEditChange}
-        readOnly={isLifecycleReadonly || isSavingPricingSessionAndLeaving ||
+        readOnly={isLifecycleReadonly ||
           isCancellingPricingSession || confirmFeeActionState.kind === "confirming"}
         saveState={saveState}
         suppressedSaveMessage={
@@ -1332,25 +1300,10 @@ export function FeeEvaluationReviewExportPage({
             onClick={() => void handleBackToWorkbench()}
             disabled={
               confirmFeeActionState.kind === "confirming" ||
-              isCancellingPricingSession ||
-              isSavingPricingSessionAndLeaving
+              isCancellingPricingSession
             }
           >
             {isCancellingPricingSession ? "Cancelling..." : "Cancel"}
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleSaveDraftAndBackToWorkbench()}
-            disabled={
-              draftState.kind !== "ready" ||
-              confirmFeeActionState.kind === "confirming" ||
-              isCancellingPricingSession ||
-              isSavingPricingSessionAndLeaving
-            }
-          >
-            {isSavingPricingSessionAndLeaving
-              ? "Saving draft..."
-              : "Save draft & return"}
           </button>
           <button
             className="fee-evaluation-primary-action"
@@ -1358,8 +1311,7 @@ export function FeeEvaluationReviewExportPage({
             onClick={() => void handleConfirmFee()}
             disabled={
               Boolean(confirmFeeDisabledReason) ||
-              confirmFeeActionState.kind === "confirming" ||
-              isSavingPricingSessionAndLeaving
+              confirmFeeActionState.kind === "confirming"
             }
             title={confirmFeeDisabledReason ?? undefined}
           >

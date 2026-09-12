@@ -142,6 +142,35 @@ describe("feeEvaluationPricingDraftHydration", () => {
     expect(savedPricingDraftDerivedFeesMatch(saved, hydrated)).toBe(false);
   });
 
+  it("treats a spend-time-only drift as a stale saved pricing draft", () => {
+    const saved = savedPayload({ spend_time: "1" });
+    const hydrated = savedPayload({ spend_time: "1.5" });
+
+    expect(savedPricingDraftDerivedFeesMatch(saved, hydrated)).toBe(false);
+
+    hydrated.rows[0].spend_time = "1.0";
+    expect(savedPricingDraftDerivedFeesMatch(saved, hydrated)).toBe(true);
+  });
+
+  it("treats a hydrated manual row missing from the saved draft as stale", () => {
+    const saved = savedPayload();
+    saved.rows = [];
+    saved.manual_rows = [manualRow({ group_label: "Group 1", group_key: "g1" })];
+    const hydrated = savedPayload();
+    hydrated.rows = [];
+    hydrated.manual_rows = [
+      manualRow({ group_label: "Group 1", group_key: "g1" }),
+      manualRow({
+        row_kind: "sample_preparation",
+        confirmed_group_id: "group-2",
+        group_key: "g2",
+        group_label: "Group 2",
+      }),
+    ];
+
+    expect(savedPricingDraftDerivedFeesMatch(saved, hydrated)).toBe(false);
+  });
+
   it.each(["current_v2_compatibility", "server_rebase_candidate"] as const)(
     "keeps Sample preparation units aligned with the current Matrix in %s mode",
     (mode) => {
@@ -263,6 +292,28 @@ function previewRow(
     fieldMetadata: [],
     rowKind: "matrix_step",
     groupTone: "tone-a",
+    ...overrides,
+  };
+}
+
+function manualRow(
+  overrides: Partial<
+    NonNullable<FeeEvaluationEditedFileExportRequest["manual_rows"]>[number]
+  > = {}
+): NonNullable<FeeEvaluationEditedFileExportRequest["manual_rows"]>[number] {
+  return {
+    row_kind: "sample_preparation",
+    confirmed_group_id: "group-1",
+    group_key: "g1",
+    group_label: "Group 1",
+    spend_time: "0.5",
+    unit_price: "0",
+    unit_type: "per sample",
+    units: "1",
+    base_fee: "0",
+    discount: "0%",
+    testing_fee: "0",
+    notes: "",
     ...overrides,
   };
 }
