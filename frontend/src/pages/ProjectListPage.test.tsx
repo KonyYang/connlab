@@ -6,8 +6,6 @@ import type {
   ProjectRegistryRow,
 } from "../api/client";
 import {
-  closeProjectLifecycle,
-  getProjectOutputStatusSummary,
   getProjectLifecycle,
   listProjectRegistryRows,
 } from "../api/client";
@@ -21,8 +19,6 @@ vi.mock("../api/client", async () => {
     ...actual,
     listProjectRegistryRows: vi.fn(),
     getProjectLifecycle: vi.fn(),
-    closeProjectLifecycle: vi.fn(),
-    getProjectOutputStatusSummary: vi.fn(),
   };
 });
 
@@ -35,7 +31,6 @@ describe("ProjectListPage lifecycle registry views", () => {
     listProjectRegistryRowsMock.mockReset();
     getProjectLifecycleMock.mockReset();
     vi.mocked(managementApi.listManagedProjects).mockResolvedValue([]);
-    vi.mocked(getProjectOutputStatusSummary).mockResolvedValue({project_id: "A", active_draft_id: null, active_draft_version: null, items: []});
   });
 
   it("moves an exact record into the recycle bin, exits the normal view and safely previews Undo", async () => {
@@ -73,17 +68,14 @@ describe("ProjectListPage lifecycle registry views", () => {
     await waitFor(() => expect(managementApi.listManagedProjects).toHaveBeenLastCalledWith("history"));
   });
 
-  it("uses the same conditional-note close dialog from the list", async () => {
-    const user = userEvent.setup();
+  it("keeps project closing in Workbench instead of exposing it in the registry", async () => {
     mockRows([registryRow({project_id: "A", display_project_id: "DL-2026-01-002"})]);
     mockLifecycle({"A": lifecycle({project_id: "A", allowed_actions: ["close"]})});
-    vi.mocked(closeProjectLifecycle).mockResolvedValue(lifecycle({project_id: "A", lifecycle_state: "closed"}));
     render(<ProjectListPage onOpenProject={vi.fn()} />);
-    await user.click(await screen.findByRole("button", {name: "Close project DL-2026-01-002"}));
-    const dialog = within(screen.getByRole("dialog"));
-    await user.selectOptions(dialog.getByLabelText("Close reason"), "completed");
-    await user.click(dialog.getByRole("button", {name: "Close project"}));
-    expect(closeProjectLifecycle).toHaveBeenCalledWith("A", {reason_category: "completed", note: "", operator: null});
+    const row = await screen.findByText("DL-2026-01-002");
+    const actions = row.closest("tr")?.querySelector(".project-registry-action-buttons");
+    expect(actions?.querySelector('[aria-label="Close project DL-2026-01-002"]')).toBeNull();
+    expect(screen.queryByRole("dialog", {name: /Close project/})).toBeNull();
   });
 
   it("defaults to the On-going view for active operational projects", async () => {
