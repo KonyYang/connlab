@@ -127,6 +127,29 @@ def test_file_template_failure_is_local_to_preview_item(tmp_path: Path) -> None:
     assert _item(result.items, "customer_feedback_form").action == "generate"
 
 
+def test_unreadable_output_preserves_other_file_preflight(tmp_path: Path, monkeypatch) -> None:
+    service = _service(tmp_path)
+    service.generate(_ready_command(tmp_path))
+    before = service.preview("P1")
+    target = _item(before.items, "test_record").target_path
+    original_open = Path.open
+
+    def guarded_open(path, *args, **kwargs):
+        if path == target:
+            raise PermissionError("Test output is locked")
+        return original_open(path, *args, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "open", guarded_open)
+        result = service.preview("P1")
+    assert result.status == "blocked"
+    assert _item(result.items, "test_record").action == "blocked"
+    assert "locked" in _item(result.items, "test_record").message
+    for key in ("test_status", "fee_form", "customer_feedback_form"):
+        assert _item(result.items, key) == _item(before.items, key)
+    assert service.preview("P1") == before
+
+
 def test_schedule_change_updates_feedback_without_rewriting_test_record(tmp_path: Path) -> None:
     class Contexts:
         schedule = "schedule-1"

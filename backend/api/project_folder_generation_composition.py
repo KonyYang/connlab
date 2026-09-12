@@ -124,8 +124,15 @@ class ProjectFolderGenerationRunner:
                     "rebuild_pending": saved_operation.get("strategy") in {"backup_and_recreate", "overwrite_rebuild"}
                         and "workspace" not in saved_operation["completed_steps"],
                 }
+            try:
+                target_facts = [(str(path), tree_hash(path)) for path in paths]
+            except OSError:
+                # Keep file readiness visible, but never authorize a write with
+                # an incomplete target fingerprint. Start rechecks this blocker.
+                target_facts = None
+                start_blockers.append("Cannot verify all existing folder files. Check file access or locks before generation.")
             token = fingerprint({"context": current_context, "preview": preview,
-                                "targets": [(str(path), tree_hash(path)) for path in paths],
+                                "targets": target_facts,
                                 "manifest": file_hash(preview.manifest_path) if preview.manifest_path else None})
             workspace_preview = _preview_response(preview).model_dump()
             file_preflight = package_preflight(project_id, preview, session, self.settings)

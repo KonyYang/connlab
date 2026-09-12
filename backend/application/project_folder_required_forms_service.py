@@ -411,13 +411,22 @@ class ProjectFolderRequiredFormsService:
                     target_path=_target_path(workspace, pattern, relative_folder, owner_suffix=owner_suffix),
                     status="blocked", action="blocked", message=errors[key]))
                 continue
-            items.append(self._preview_item(
-                definition=definition,
-                workspace=workspace,
-                owner_suffix=owner_suffix,
-                item_source_context=contexts[key],
-                output_item=by_kind.get(definition[2]),
-            ))
+            try:
+                item = self._preview_item(
+                    definition=definition,
+                    workspace=workspace,
+                    owner_suffix=owner_suffix,
+                    item_source_context=contexts[key],
+                    output_item=by_kind.get(definition[2]),
+                )
+            except OSError as exc:
+                errors[key] = f"Cannot read {label}; check file access or locks: {exc}"
+                item = RequiredFormPreviewItem(
+                    key=key, label=label, output_kind=kind,
+                    target_path=_target_path(workspace, pattern, relative_folder,
+                                             owner_suffix=owner_suffix if key == "customer_feedback_form" else None),
+                    status="blocked", action="blocked", message=errors[key])
+            items.append(item)
         if any(item.status == "conflict" for item in items):
             status = "conflict"
         elif errors:

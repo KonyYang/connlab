@@ -155,6 +155,25 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
         after_items = {item["key"]: item for item in after_preview["workspace_preview"]["file_preflight"]["items"]}
         for key in ("customer_feedback_form", "fee_form", "test_record", "test_status", "application_form"):
             assert after_items[key]["status"] == "current", after_items[key]
+        locked_target = next(path for path in files if "Test Record" in path.name)
+        original_open = Path.open
+        def locked_open(path, *args, **kwargs):
+            if path == locked_target:
+                raise PermissionError("Isolated output lock")
+            return original_open(path, *args, **kwargs)
+        with monkeypatch.context() as patch:
+            patch.setattr(Path, "open", locked_open)
+            blocked_preview = _ok(client.get(url + "/preview"))
+            rejected = client.post(url + "/start", json={
+                "expected_context": blocked_preview["expected_context"],
+                "request_id": "locked-output-restart"})
+            assert rejected.status_code == 409
+            assert "Cannot verify" in rejected.json()["detail"]
+        blocked_items = {item["key"]: item for item in blocked_preview["workspace_preview"]["file_preflight"]["items"]}
+        assert blocked_items["test_record"]["status"] == "blocked"
+        assert blocked_items["test_status"]["status"] == "current"
+        assert blocked_preview["start_blockers"]
+        assert blocked_preview["workspace_preview"]["file_preflight"]["package_ready"] is False
         confirmed_schedule = _ok(client.get("/api/projects/P1/project-schedule"))["confirmed_revision"]
         _ok(client.post("/api/projects/P1/project-schedule/confirm", json={
             "actor": "operator", "expected_revision_id": confirmed_schedule["revision_id"],

@@ -4,6 +4,9 @@ The existing Create/Update entry exposes read-only package preflight. Directory
 readiness is separate from file readiness. A new folder's Application Form remains
 waiting until its archived target and provenance can be checked. Preflight is a
 point-in-time assessment, not a guarantee against later file locks or input changes.
+Unreadable generated files are reported as blocked individually while other file
+results remain visible. If the target-tree fingerprint cannot be verified, preflight
+returns a start blocker rather than permitting generation with incomplete safety facts.
 
 ## Output dependencies
 
