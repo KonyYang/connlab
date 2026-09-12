@@ -59,7 +59,7 @@ class ProjectRequestMaterialCollectionService:
         self._collections = collection_repository
         self._copy_gateway = copy_gateway
 
-    def preview(self, project_id: str, *, planned_workspace=None) -> RequestMaterialPreview:
+    def preview(self, project_id: str, *, planned_workspace=None, rebuilding=False) -> RequestMaterialPreview:
         """Return a read-only preview of request-material collection."""
         project = self._projects.get(project_id)
         if project is None:
@@ -113,7 +113,12 @@ class ProjectRequestMaterialCollectionService:
                 if candidate not in email_candidates and candidate is not form_candidate
             ],
         )
-        items = self._materialize_items(planned, blockers)
+        replaced_root = None
+        if rebuilding:
+            replaced_root = (workspace.local_workspace_path
+                             if getattr(workspace, "conflict_paths", ()) == (workspace.local_workspace_path,)
+                             else workspace.official_folder_path)
+        items = self._materialize_items(planned, blockers, replaced_root=replaced_root)
         if any(
             item.status == "needs_review" and item.action == "copy" for item in items
         ):
@@ -286,6 +291,7 @@ class ProjectRequestMaterialCollectionService:
         self,
         plans: tuple[PlannedTarget, ...],
         blockers: list[str],
+        replaced_root=None,
     ) -> tuple[RequestMaterialPreviewItem, ...]:
         """Convert target plans into preview items with file-system status."""
         items: list[RequestMaterialPreviewItem] = []
@@ -298,7 +304,7 @@ class ProjectRequestMaterialCollectionService:
                 action = "skip"
                 status = "missing_source"
                 message = "Source file is missing."
-            elif plan.target_path.exists():
+            elif plan.target_path.exists() and not (replaced_root is not None and plan.target_path.is_relative_to(replaced_root)):
                 if same_content(candidate, plan.target_path):
                     action = "already_present"
                     status = "needs_review" if plan.review_required else "already_present"

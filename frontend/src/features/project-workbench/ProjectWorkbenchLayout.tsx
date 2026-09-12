@@ -514,27 +514,12 @@ export function ProjectWorkbenchLayout({
             title={checkingRecoveryPreview ? "Checking project folder generation status..." : visibleWorkbenchFolderCommand.disabledReason}
             onClick={handleProjectFolderCreateClick}
           >
-            {visibleWorkbenchFolderCommand.label}
+            {officialWorkspaceCreating ? "Generating..." : "Create project folder"}
           </button>
           <TestReportDraftButton onOpen={onOpenReportWorkspace} />
-          <details>
-            <summary>Advanced folder actions</summary>
-            <button type="button" disabled={visibleWorkbenchFolderCommand.disabled || checkingRecoveryPreview}
-              onClick={() => void performFolderUpdate("backup_and_recreate")}>Rebuild project folder…</button>
-          </details>
         </div>
       </header>
 
-      {officialWorkspacePreview?.file_preflight ? (
-        <details className="runtime-console-workflow-alert">
-          <summary>Project folder readiness — {officialWorkspacePreview.file_preflight.package_ready ? "Files ready" : "Review file requirements"}</summary>
-          <p>Directory: {officialWorkspacePreview.file_preflight.directory_status}. Directory readiness does not mean all files can be generated.</p>
-          <ul>{officialWorkspacePreview.file_preflight.items.map(item => (
-            <li key={item.key}><strong>{item.label}</strong>: {item.status === "current" ? "Current — reuse" : item.status === "ready" ? "Ready" : item.status === "waiting" ? "Waiting for preparation" : "Needs attention"}. {item.message}</li>
-          ))}</ul>
-          <p>Generation stops at the first unmet requirement or failure. No partial-success or individual retry is enabled.</p>
-        </details>
-      ) : null}
       {checkingRecoveryPreview ? (
         <div className="runtime-console-workflow-alert" role="status" aria-busy="true">
           <strong>Project folder workflow</strong>
@@ -546,14 +531,15 @@ export function ProjectWorkbenchLayout({
           role="alert"
         >
           <strong>Project folder workflow</strong>
-          <span>{displayedOfficialWorkspaceError}</span>
+          <span>{displayedOfficialWorkspaceError?.replace(/\s*\[Stage:[\s\S]*$/, "")}</span>
+          {displayedOfficialWorkspaceError?.includes("[Stage:") ? <details><summary>Diagnostic details</summary><span>{displayedOfficialWorkspaceError.slice(displayedOfficialWorkspaceError.indexOf("[Stage:"))}</span></details> : null}
           {isBasicInformationGenerationBlocker &&
           runtimeModel.basicInformation?.status !== "confirmed" ? (
             <button type="button" onClick={onOpenBasicInformation}>
               Open Basic Information
             </button>
           ) : null}
-          <span>After resolving the issue, use Update project folder above. Existing recovery checks and file protection still apply.</span>
+          <span>After resolving the issue, use Create project folder above.</span>
         </div>
       ) : null}
 
@@ -654,7 +640,6 @@ export function ProjectWorkbenchLayout({
           conflictPaths={folderUpdateReview ? deriveOfficialWorkspaceConflictPaths(folderUpdateReview.preview.workspace_preview) : officialWorkspaceConflictPaths}
           onBackup={() => handleProjectFolderConflictChoice("backup_and_recreate")}
           onCancel={() => setShowFolderConflictDialog(false)}
-          onContinue={() => handleProjectFolderConflictChoice("continue_existing")}
           onOverwrite={() => handleProjectFolderConflictChoice("overwrite_rebuild")}
         />
       ) : null}
@@ -751,7 +736,6 @@ function ProjectFolderConflictDialog({
   conflictPaths,
   onBackup,
   onCancel,
-  onContinue,
   onOverwrite,
 }: {
   resumeRebuild: boolean;
@@ -759,15 +743,16 @@ function ProjectFolderConflictDialog({
   conflictPaths: string[];
   onBackup: () => void;
   onCancel: () => void;
-  onContinue: () => void;
   onOverwrite: () => void;
 }): ReactElement {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const visiblePath = conflictPaths[0] ?? "Existing project folder";
   const extraPathCount = Math.max(conflictPaths.length - 1, 0);
   return (
     <div className="runtime-console-modal-backdrop">
       <section
-        aria-label="Project folder already exists"
+        aria-label={confirmDelete ? "Confirm deletion and rebuild" : "Project folder already exists"}
+        aria-modal="true"
         className="runtime-console-conflict-dialog"
         role="dialog"
       >
@@ -778,24 +763,18 @@ function ProjectFolderConflictDialog({
         </div>
         <p>
           {resumeRebuild
-            ? "An earlier rebuild has unfinished recovery work. Continuing will resume that previously selected rebuild, not a normal update."
-            : "Continue uses the existing folder and preserves unrelated files. Only eligible managed outputs are updated. Close files that need updating."}
+            ? "An earlier generation has unfinished file or cleanup work. Resume its saved progress using the previously confirmed choices; this does not create a new generation."
+            : confirmDelete ? "This permanently deletes the current project folder and all its contents, including manually added files. No historical copy will be kept. Rebuild using current confirmed data?" : "Rebuild all project files from current confirmed data. Keep the current folder as history, or delete it before rebuilding."}
         </p>
         <div className="runtime-console-conflict-actions">
-          {resumeRebuild ? <button type="button" className="is-danger" onClick={onResumeRebuild}>Confirm continuation of previous rebuild</button> : <>
-          <button type="button" className="is-primary" onClick={onContinue}>
-            Continue existing folder (Recommended)
-          </button>
-          <details>
-          <summary>Advanced rebuild options</summary>
-          <p>Rebuilding replaces the folder contents. Back up first unless replacement is explicitly intended.</p>
-          <button type="button" onClick={onBackup}>
-            Backup and Rebuild
-          </button>
-          <button type="button" className="is-danger" onClick={onOverwrite}>
-            Overwrite
-          </button>
-          </details>
+          {resumeRebuild ? <button type="button" className="is-primary" onClick={onResumeRebuild}>Resume previous generation</button> : <>
+          {confirmDelete ? <>
+            <button type="button" className="is-danger" onClick={onOverwrite}>Confirm Delete and Rebuild</button>
+            <button type="button" onClick={() => setConfirmDelete(false)}>Back</button>
+          </> : <>
+            <button type="button" className="is-primary" onClick={onBackup}>Backup and Rebuild (Recommended)</button>
+            <button type="button" className="is-danger" onClick={() => setConfirmDelete(true)}>Delete and Rebuild</button>
+          </>}
           </>}
           <button type="button" onClick={onCancel}>
             Cancel

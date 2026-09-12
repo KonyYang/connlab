@@ -9,14 +9,14 @@ const operation = { project_id: "p", operation_id: "operation", status: "running
 beforeEach(() => { vi.resetAllMocks(); api.getProjectFolderGeneration.mockResolvedValue(null); });
 afterEach(() => { vi.useRealTimers(); });
 
-it("updates a managed folder through a fresh preview without a rebuild choice", async () => {
+it("reviews a managed folder before an explicit rebuild choice", async () => {
   api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "fresh", workspace_preview: { status: "completed", blockers: [] }, recovery: null });
   api.startProjectFolderGeneration.mockResolvedValue(operation);
   const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
-  await act(async () => { await result.current.update(); });
-  expect(api.startProjectFolderGeneration).toHaveBeenCalledWith("p", expect.objectContaining({
-    expected_context: "fresh", conflict_strategy: "continue_existing",
-  }));
+  let review: FolderUpdateReview | undefined;
+  await act(async () => { review = (await result.current.update()) || undefined; });
+  expect(review?.preview.expected_context).toBe("fresh");
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
 });
 
 it.each([false, true])("routes an interrupted operation with inputs_match=%s safely", async (matches) => {
@@ -26,14 +26,12 @@ it.each([false, true])("routes an interrupted operation with inputs_match=%s saf
   api.resumeProjectFolderGeneration.mockResolvedValue(operation);
   api.startProjectFolderGeneration.mockResolvedValue(operation);
   const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
-  await act(async () => { await result.current.update(); });
-  if (matches) {
-    expect(api.resumeProjectFolderGeneration).toHaveBeenCalledWith("p", "operation");
-    expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
-  } else {
-    expect(api.startProjectFolderGeneration).toHaveBeenCalledWith("p", expect.objectContaining({ replaces_operation_id: "operation", conflict_strategy: "continue_existing" }));
-    expect(api.resumeProjectFolderGeneration).not.toHaveBeenCalled();
-  }
+  let review: FolderUpdateReview | undefined;
+  await act(async () => { review = (await result.current.update()) || undefined; });
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+  expect(api.resumeProjectFolderGeneration).not.toHaveBeenCalled();
+  await act(async () => { await result.current.update("backup_and_recreate", review); });
+  expect(api.startProjectFolderGeneration).toHaveBeenCalledWith("p", expect.objectContaining({ replaces_operation_id: "operation", conflict_strategy: "backup_and_recreate" }));
 });
 
 it("never replays a pending destructive rebuild from an ordinary update", async () => {
@@ -60,6 +58,24 @@ it("does not replace uncheckpointed publication when inputs changed", async () =
   expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
 });
 
+it.each([
+  { status: "blocked", step: 8, message: "Finalization failed" },
+  { status: "interrupted", step: 5, message: "File publication interrupted" },
+])("offers confirmed recovery for $message after workspace completion", async (pending) => {
+  api.getProjectFolderGeneration.mockResolvedValue({ ...operation, ...pending, can_restart: false });
+  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "fresh", workspace_preview: { status: "completed", blockers: [] },
+    recovery: { operation_id: "operation", inputs_match: true, rebuild_pending: false } });
+  api.resumeProjectFolderGeneration.mockResolvedValue(operation);
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  let review: FolderUpdateReview | undefined;
+  await act(async () => { review = (await result.current.update()) || undefined; });
+  expect(review).toEqual(expect.objectContaining({ operationId: "operation", resumeRebuild: true }));
+  expect(api.resumeProjectFolderGeneration).not.toHaveBeenCalled();
+  await act(async () => { await result.current.update(undefined, review, true); });
+  expect(api.resumeProjectFolderGeneration).toHaveBeenCalledWith("p", "operation");
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+});
+
 it("requires review for an existing unverified folder and rejects stale confirmation", async () => {
   api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "fresh", workspace_preview: { status: "exists", blockers: [] }, recovery: null });
   const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
@@ -79,6 +95,29 @@ it("does not write on preview failure or start twice on a double click", async (
   await act(async () => { await Promise.all([result.current.update(), result.current.update()]); });
   expect(api.previewProjectFolderGeneration).toHaveBeenCalledTimes(1);
   expect(result.current.error).toBe("Preview unavailable");
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+});
+
+it("binds a reviewed delete choice to explicit backend confirmation", async () => {
+  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "fresh", workspace_preview: { status: "completed", blockers: [] }, recovery: null });
+  api.startProjectFolderGeneration.mockResolvedValue(operation);
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  let review: FolderUpdateReview | undefined;
+  await act(async () => { review = (await result.current.update()) || undefined; });
+  await act(async () => { await result.current.update("overwrite_rebuild", review); });
+  expect(api.startProjectFolderGeneration).toHaveBeenCalledWith("p", expect.objectContaining({
+    expected_context: "fresh", conflict_strategy: "overwrite_rebuild", overwrite_confirmed: true,
+  }));
+});
+
+it("reports missing generation inputs before offering rebuild choices", async () => {
+  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "fresh", start_blockers: ["Fee template is missing."],
+    workspace_preview: { status: "exists", blockers: ["Existing folder"] }, recovery: null });
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  let review: FolderUpdateReview | void;
+  await act(async () => { review = await result.current.update(); });
+  expect(review).toBeUndefined();
+  expect(result.current.error).toBe("Fee template is missing.");
   expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
 });
 

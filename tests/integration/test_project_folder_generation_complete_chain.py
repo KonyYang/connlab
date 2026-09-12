@@ -126,6 +126,14 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
         assert len(readiness["items"]) == 6
         assert not tuple(output.iterdir()), "Preflight must not create a project folder"
         assert next(item for item in readiness["items"] if item["key"] == "test_status")["status"] == "ready"
+        source.unlink()
+        missing_source_preview = _ok(client.get(url + "/preview"))
+        material_error = next(item for item in missing_source_preview["workspace_preview"]["file_preflight"]["items"]
+                              if item["key"] == "materials")
+        assert material_error["status"] == "blocked"
+        assert "missing" in material_error["message"].lower()
+        source.write_bytes(b"original submitted application")
+        preview = _ok(client.get(url + "/preview"))
         request = {"expected_context": preview["expected_context"], "request_id": "whole-chain"}
         started = _ok(client.post(url + "/start", json=request))
         assert len(callbacks) == 1
@@ -152,8 +160,9 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
             assert collected is not None
         assert source.read_bytes() == b"original submitted application"
         after_preview = _ok(client.get(url + "/preview"))
-        after_items = {item["key"]: item for item in after_preview["workspace_preview"]["file_preflight"]["items"]}
-        for key in ("customer_feedback_form", "fee_form", "test_record", "test_status", "application_form"):
+        forms_url = "/api/projects/P1/project-folder/required-forms/preview"
+        after_items = {item["key"]: item for item in _ok(client.get(forms_url))["items"]}
+        for key in ("customer_feedback_form", "fee_form", "test_record", "test_status"):
             assert after_items[key]["status"] == "current", after_items[key]
         locked_target = next(path for path in files if "Test Record" in path.name)
         original_open = Path.open
@@ -170,8 +179,8 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
             assert rejected.status_code == 409
             assert "Cannot verify" in rejected.json()["detail"]
         blocked_items = {item["key"]: item for item in blocked_preview["workspace_preview"]["file_preflight"]["items"]}
-        assert blocked_items["test_record"]["status"] == "blocked"
-        assert blocked_items["test_status"]["status"] == "current"
+        assert blocked_items["test_record"]["status"] == "ready"
+        assert blocked_items["test_status"]["status"] == "ready"
         assert blocked_preview["start_blockers"]
         assert blocked_preview["workspace_preview"]["file_preflight"]["package_ready"] is False
         confirmed_schedule = _ok(client.get("/api/projects/P1/project-schedule"))["confirmed_revision"]
@@ -180,15 +189,14 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
             "expected_fingerprint": confirmed_schedule["fingerprint"], "post_test_buffer_days": "0",
             "test_start_date": "2026-09-06", "test_complete_date": "2026-09-16",
             "estimated_completion_date": "2026-09-16"}))
-        changed = _ok(client.get(url + "/preview"))["workspace_preview"]["file_preflight"]
+        changed = _ok(client.get(forms_url))
         changed_items = {item["key"]: item for item in changed["items"]}
         assert changed_items["customer_feedback_form"]["action"] == "update"
-        assert changed_items["application_form"]["action"] == "update"
         for key in ("fee_form", "test_record", "test_status"):
             assert changed_items[key]["action"] == "skip", changed_items[key]
         record_template = template / "FDQF-E-036 Test Record.docx"
         record_template.write_bytes(b"controlled template revision 2")
-        changed = _ok(client.get(url + "/preview"))["workspace_preview"]["file_preflight"]
+        changed = _ok(client.get(forms_url))
         changed_items = {item["key"]: item for item in changed["items"]}
         assert changed_items["test_record"]["action"] == "update"
         assert changed_items["test_status"]["action"] == "skip"
@@ -199,13 +207,38 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
         fee_target = next(path for path in files if "Fee Form" in path.name)
         fee_target.write_bytes(b"operator changes must be retained")
         conflict = _ok(client.get(url + "/preview"))
-        assert any("Fee Form" in message for message in conflict["start_blockers"])
+        assert conflict["start_blockers"] == []
         rejected = client.post(url + "/start", json={
             "expected_context": conflict["expected_context"], "request_id": "conflicting-update"})
         assert rejected.status_code == 409
-        assert "Fee Form" in rejected.json()["detail"]
+        assert "rebuild option" in rejected.json()["detail"]
         assert not callbacks
         assert fee_target.read_bytes() == b"operator changes must be retained"
+        rebuilt = _ok(client.post(url + "/start", json={
+            "expected_context": conflict["expected_context"], "request_id": "backup-rebuild",
+            "conflict_strategy": "backup_and_recreate"}))
+        callbacks.pop()()
+        result = _ok(client.get(url))
+        assert result["status"] == "completed", result
+        assert result["operation_id"] == rebuilt["operation_id"]
+        assert fee_target.read_bytes() != b"operator changes must be retained"
+        history = [path for path in workspace.official_folder_path.parent.iterdir()
+                   if path.is_dir() and path.name.startswith(workspace.official_folder_path.name + " ")]
+        assert len(history) == 1
+        assert (history[0] / fee_target.name).read_bytes() == b"operator changes must be retained"
+        fee_target.write_bytes(b"explicitly discarded output")
+        overwrite_preview = _ok(client.get(url + "/preview"))
+        overwrite = _ok(client.post(url + "/start", json={
+            "expected_context": overwrite_preview["expected_context"], "request_id": "delete-rebuild",
+            "conflict_strategy": "overwrite_rebuild", "overwrite_confirmed": True}))
+        callbacks.pop()()
+        result = _ok(client.get(url))
+        assert result["status"] == "completed", result
+        assert result["operation_id"] == overwrite["operation_id"]
+        assert fee_target.read_bytes() != b"explicitly discarded output"
+        assert not list(settings.data_dir.rglob("overwrite-old"))
+        assert [path for path in workspace.official_folder_path.parent.iterdir()
+                if path.is_dir() and path.name.startswith(workspace.official_folder_path.name + " ")] == history
     finally:
         app.dependency_overrides.clear()
         runner.pool.shutdown()

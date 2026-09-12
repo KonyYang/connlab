@@ -14,6 +14,7 @@ export function getProjectFolderGeneration(projectId: string): Promise<ProjectFo
 
 export type ProjectFolderGenerationPreview = {
   expected_context: string;
+  start_blockers?: string[];
   workspace_preview: OfficialWorkspacePreview;
   recovery?: { operation_id: string; inputs_match: boolean; rebuild_pending: boolean } | null;
 };
@@ -25,6 +26,7 @@ export function previewProjectFolderGeneration(projectId: string): Promise<Proje
 export function startProjectFolderGeneration(projectId: string, request: {
   expected_context: string; request_id: string; conflict_strategy?: OfficialWorkspaceConflictStrategy;
   replaces_operation_id?: string;
+  overwrite_confirmed?: boolean;
 }): Promise<ProjectFolderGeneration> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/project-folder/generation/start`, {
     method: "POST", body: JSON.stringify(request),

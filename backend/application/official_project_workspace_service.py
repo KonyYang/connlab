@@ -469,6 +469,8 @@ class OfficialProjectWorkspaceService:
                 warnings=preview.warnings,
             )
         allowed_conflict_strategies = {option.key for option in preview.conflict_options}
+        # Retained for already journaled legacy operations, not an offered UI policy.
+        allowed_conflict_strategies.add("continue_existing")
         if preview.status == "completed":
             allowed_conflict_strategies = {
                 "continue_existing",
@@ -757,11 +759,6 @@ def _conflict_options() -> tuple[OfficialWorkspaceConflictOption, ...]:
     """Return the operator choices for an existing official project folder."""
     return (
         OfficialWorkspaceConflictOption(
-            key="continue_existing",
-            label="Continue Existing Folder",
-            description="Keep existing files and add only missing template content.",
-        ),
-        OfficialWorkspaceConflictOption(
             key="backup_and_recreate",
             label="Backup and Rebuild",
             description="Move the existing project folder to a timestamped backup, then create a fresh folder.",
@@ -817,13 +814,13 @@ def _workspace_has_business_content(workspace_path: Path) -> bool:
 
 def _unique_backup_path(existing_path: Path) -> Path:
     """Return a timestamped sibling backup path that does not already exist."""
-    timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-    base = existing_path.with_name(f"{existing_path.name} Backup {timestamp}")
-    if not base.exists():
+    timestamp = datetime.fromtimestamp(existing_path.stat().st_mtime).strftime("%Y%m%d%H%M%S")
+    base = existing_path.with_name(f"{existing_path.name} {timestamp}")
+    if not base.exists() and not base.is_symlink():
         return base
-    for index in range(2, 1000):
-        candidate = existing_path.with_name(f"{base.name} {index}")
-        if not candidate.exists():
+    for index in range(1, 1000):
+        candidate = existing_path.with_name(f"{base.name}-{index}")
+        if not candidate.exists() and not candidate.is_symlink():
             return candidate
     raise OfficialWorkspaceCreateError("Unable to create a unique backup folder name.")
 

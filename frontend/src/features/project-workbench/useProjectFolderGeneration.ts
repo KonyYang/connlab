@@ -143,41 +143,43 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
       const pending = latest && latest.status !== "completed" ? latest : null;
       const operationId = pending?.operation_id ?? null;
       if ((preview.recovery?.operation_id ?? null) !== operationId) {
-        throw new Error("Project folder operation changed. Click Update project folder to check again.");
+        throw new Error("Project folder operation changed. Click Create project folder to check again.");
       }
       if (reviewed && (reviewed.operationId !== operationId || reviewed.preview.expected_context !== preview.expected_context)) {
         throw new Error("Project folder preview changed. Review the latest folder state before choosing again.");
       }
       const recovery = preview.recovery;
       if (strategy && !reviewed) return { preview, operationId, resumeRebuild: false };
-      if (!strategy && pending && recovery?.inputs_match && (!recovery.rebuild_pending || (resumeRebuild && reviewed?.resumeRebuild))) {
+      if (!strategy && pending && recovery?.inputs_match && resumeRebuild && reviewed?.resumeRebuild) {
         const next = await resumeProjectFolderGeneration(projectId, pending.operation_id);
         if (isCurrent()) accept(next);
         return;
       }
       if (pending && !pending.can_restart) {
-        if (recovery?.inputs_match && recovery.rebuild_pending) {
+        if (recovery?.inputs_match) {
           return { preview, operationId, resumeRebuild: true };
         }
         throw new Error("The previous publication needs safe recovery before inputs can change. No files were written.");
       }
       const workspace = preview.workspace_preview;
+      if (preview.start_blockers?.length) throw new Error(preview.start_blockers.join(" "));
       if (workspace.status === "blocked" || (workspace.blockers.length && workspace.status !== "exists")) {
         throw new Error(workspace.blockers[0] ?? "Project folder needs review before updating.");
       }
-      if (!strategy && workspace.status === "exists") {
+      if (!strategy && ["exists", "completed"].includes(workspace.status)) {
         return { preview, operationId, resumeRebuild: false };
       }
       if (strategy && !reviewed) {
         return { preview, operationId, resumeRebuild: false };
       }
-      // A normal update never inherits an earlier destructive rebuild choice.
-      const selected = strategy ?? (workspace.status === "completed" ? "continue_existing" : undefined);
+      if (strategy === "continue_existing") throw new Error("Choose backup and rebuild or delete and rebuild.");
+      const selected = strategy;
       requestId.current ??= crypto.randomUUID();
       if (pending) requestId.current = crypto.randomUUID();
       const next = await startProjectFolderGeneration(projectId, {
         expected_context: preview.expected_context, request_id: requestId.current,
         conflict_strategy: selected,
+        overwrite_confirmed: selected === "overwrite_rebuild",
         ...(pending ? { replaces_operation_id: pending.operation_id } : {}),
       });
       if (isCurrent()) accept(next);

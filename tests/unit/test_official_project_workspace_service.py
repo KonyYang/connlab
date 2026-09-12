@@ -203,7 +203,6 @@ def test_preview_existing_official_folder_reports_conflict_choices(
     assert preview.status == "exists"
     assert preview.conflict_paths == (official_folder,)
     assert {option.key for option in preview.conflict_options} == {
-        "continue_existing",
         "backup_and_recreate",
         "overwrite_rebuild",
     }
@@ -231,7 +230,7 @@ def test_create_with_backup_strategy_preserves_existing_official_folder(
 
     result = service.create("project-1", conflict_strategy="backup_and_recreate")
 
-    backups = list(workspace.glob("DL-2025-11-074 Coolpower Qualification test Backup *"))
+    backups = list(workspace.glob("DL-2025-11-074 Coolpower Qualification test [0-9]*"))
     assert len(backups) == 1
     assert (backups[0] / "old.txt").read_text(encoding="utf-8") == "old"
     assert (result.official_folder_path / "template.txt").read_text(encoding="utf-8") == "new"
@@ -357,7 +356,6 @@ def test_existing_ltr_workspace_reports_conflict_choices(
     assert preview.status == "exists"
     assert workspace in preview.conflict_paths
     assert {option.key for option in preview.conflict_options} == {
-        "continue_existing",
         "backup_and_recreate",
         "overwrite_rebuild",
     }
@@ -382,7 +380,7 @@ def test_create_with_backup_strategy_preserves_existing_ltr_workspace(
 
     result = service.create("project-1", conflict_strategy="backup_and_recreate")
 
-    backups = list((tmp_path / "workspaces").glob("DL-2025-11-074 Backup *"))
+    backups = list((tmp_path / "workspaces").glob("DL-2025-11-074 [0-9]*"))
     assert len(backups) == 1
     assert (backups[0] / "legacy.txt").read_text(encoding="utf-8") == "legacy"
     assert (result.official_folder_path / "template.txt").read_text(encoding="utf-8") == "new"
@@ -455,7 +453,7 @@ def test_completed_workspace_can_be_rebuilt_with_backup_strategy(tmp_path: Path)
 
     rebuilt = service.create("project-1", conflict_strategy="backup_and_recreate")
 
-    backups = list(first.official_folder_path.parent.glob(f"{first.official_folder_path.name} Backup *"))
+    backups = list(first.official_folder_path.parent.glob(f"{first.official_folder_path.name} [0-9]*"))
     assert len(backups) == 1
     assert (backups[0] / "operator-note.txt").read_text(encoding="utf-8") == "old folder content"
     assert not old_note.exists()

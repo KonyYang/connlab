@@ -481,13 +481,13 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       false
     );
     expect(actionBar.textContent).toMatch(
-      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Update project folder/
+      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Create project folder/
     );
     await user.click(screen.getByRole("button", { name: "Basic Information" }));
     expect(onOpenBasicInformation).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("button", { name: "Folder ready" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Generate folder" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Update project folder" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Create project folder" })).toBeTruthy();
     expect(screen.queryByText("Matrix confirmed")).toBeNull();
     expect(screen.queryByText("Fee confirmed")).toBeNull();
     expect(screen.queryByText("Folder generated")).toBeNull();
@@ -820,7 +820,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
   });
 
-  it("disables Update project folder when Required forms are blocked by Basic Information", () => {
+  it("disables Create project folder when Required forms are blocked by Basic Information", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -831,7 +831,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       requiredFormsPreview: basicInformationBlockedRequiredFormsPreview,
     });
 
-    const folderButton = screen.getByRole("button", { name: "Update project folder" });
+    const folderButton = screen.getByRole("button", { name: "Create project folder" });
     expect(folderButton).toHaveProperty("disabled", true);
     expect(folderButton.getAttribute("title")).toBe(
       "Confirm Basic Information before generating Project Folder outputs."
@@ -841,7 +841,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(folderAction.textContent).not.toContain("Required forms");
   });
 
-  it("keeps Update project folder disabled when an earlier folder task masks the Required forms blocker", () => {
+  it("keeps Create project folder disabled when an earlier folder task masks the Required forms blocker", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -858,7 +858,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByLabelText("Folder Actions").textContent).not.toContain(
       "Request material"
     );
-    const folderButton = screen.getByRole("button", { name: "Update project folder" });
+    const folderButton = screen.getByRole("button", { name: "Create project folder" });
     expect(folderButton).toHaveProperty("disabled", true);
     expect(folderButton.getAttribute("title")).toBe(
       "Confirm Basic Information before generating Project Folder outputs."
@@ -1267,9 +1267,9 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, onUpdateOfficialWorkspace: update });
     await user.click(getWorkbenchActionButton("Create project folder"));
     expect(screen.getByRole("dialog")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Overwrite" }).closest("details")).toHaveProperty("open", false);
-    await user.click(screen.getByRole("button", { name: "Continue existing folder (Recommended)" }));
-    expect(update).toHaveBeenLastCalledWith("continue_existing", review, false);
+    expect(screen.queryByRole("button", { name: /Continue existing/ })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Backup and Rebuild (Recommended)" }));
+    expect(update).toHaveBeenLastCalledWith("backup_and_recreate", review, false);
   });
 
   it("disables the permanent project folder action until current Fee authority exists", () => {
@@ -1380,7 +1380,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     const user = userEvent.setup();
     const update = vi.fn().mockResolvedValue(undefined);
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true, onUpdateOfficialWorkspace: update });
-    await user.click(getWorkbenchActionButton("Update project folder"));
+    await user.click(getWorkbenchActionButton("Create project folder"));
     expect(update).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -1395,7 +1395,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("button", { name: "Start new generation" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Refresh generation preview" })).toBeNull();
     expect(screen.getByRole("alert").textContent).toContain("Source changed");
-    await user.click(getWorkbenchActionButton("Update project folder"));
+    await user.click(getWorkbenchActionButton("Create project folder"));
     expect(update).toHaveBeenCalledTimes(1);
   });
 
@@ -1412,18 +1412,20 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("button", { name: "Resume generation" })).toBeNull();
   });
 
-  it("keeps rebuild behind advanced actions and binds confirmation to its reviewed context", async () => {
+  it("offers two rebuild choices and requires a second confirmation before deletion", async () => {
     const user = userEvent.setup();
     const review = folderReview();
     const update = vi.fn().mockResolvedValueOnce(review).mockResolvedValue(undefined);
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true, onUpdateOfficialWorkspace: update });
-    expect(screen.getByRole("button", { name: "Rebuild project folder…" }).closest("details")).toHaveProperty("open", false);
-    await user.click(screen.getByText("Advanced folder actions"));
-    await user.click(screen.getByRole("button", { name: "Rebuild project folder…" }));
-    expect(update).toHaveBeenCalledWith("backup_and_recreate", undefined, false);
-    await user.click(screen.getByText("Advanced rebuild options"));
-    await user.click(screen.getByRole("button", { name: "Backup and Rebuild" }));
-    expect(update).toHaveBeenLastCalledWith("backup_and_recreate", review, false);
+    expect(screen.queryByText("Advanced folder actions")).toBeNull();
+    await user.click(getWorkbenchActionButton("Create project folder"));
+    expect(screen.queryByRole("button", { name: /Continue existing/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Backup and Rebuild (Recommended)" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Delete and Rebuild" }));
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("dialog", {name: "Confirm deletion and rebuild"})).toBeTruthy();
+    await user.click(screen.getByRole("button", {name: "Confirm Delete and Rebuild"}));
+    expect(update).toHaveBeenLastCalledWith("overwrite_rebuild", review, false);
   });
 
   it("does not infer a conflict from a recorded folder while preview is unavailable", async () => {
@@ -1431,7 +1433,37 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     const update = vi.fn().mockResolvedValue(undefined);
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true,
       officialWorkspacePreview: null, onUpdateOfficialWorkspace: update });
-    await user.click(getWorkbenchActionButton("Update project folder"));
+    await user.click(getWorkbenchActionButton("Create project folder"));
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("requires confirmation to resume saved generation and cancellation does not resume", async () => {
+    const user = userEvent.setup();
+    const review = { ...folderReview(), operationId: "saved", resumeRebuild: true };
+    const update = vi.fn().mockResolvedValue(review);
+    renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, onUpdateOfficialWorkspace: update });
+    await user.click(getWorkbenchActionButton("Create project folder"));
+    expect(screen.getByRole("button", {name: "Resume previous generation"})).toBeTruthy();
+    expect(screen.queryByRole("button", {name: "Delete and Rebuild"})).toBeNull();
+    await user.click(screen.getByRole("button", {name: "Cancel"}));
+    expect(update).toHaveBeenCalledTimes(1);
+    await user.click(getWorkbenchActionButton("Create project folder"));
+    await user.click(screen.getByRole("button", {name: "Resume previous generation"}));
+    expect(update).toHaveBeenLastCalledWith(undefined, review, true);
+  });
+
+  it("keeps diagnostics collapsed and cancelling deletion does not dispatch", async () => {
+    const user = userEvent.setup();
+    const update = vi.fn().mockResolvedValue(folderReview());
+    renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      officialWorkspaceError: "Fee Form is unavailable. [Stage: folder_fee_form; Diagnostic ID: abc]",
+      onUpdateOfficialWorkspace: update });
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByText("Diagnostic details").closest("details")).toHaveProperty("open", false);
+    await user.click(getWorkbenchActionButton("Create project folder"));
+    await user.click(screen.getByRole("button", {name: "Delete and Rebuild"}));
+    await user.click(screen.getByRole("button", {name: "Cancel"}));
     expect(update).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -1479,7 +1511,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
   });
 });
 
-it("separates folder readiness from file readiness without offering individual retry", async () => {
+it("does not duplicate the operation status with a permanent readiness panel", async () => {
   renderWorkbench({ officialWorkspacePreview: {
     ...folderReview().preview.workspace_preview,
     file_preflight: { directory_status: "ready", package_ready: false, items: [
@@ -1487,10 +1519,7 @@ it("separates folder readiness from file readiness without offering individual r
       { key: "test_status", label: "Test Status", status: "ready", action: "generate", message: "Ready to generate." },
     ] },
   } });
-  await userEvent.click(screen.getByText("Project folder readiness — Review file requirements"));
-  expect(screen.getByText(/Directory readiness does not mean all files/)).toBeTruthy();
-  expect(screen.getByText(/Fee template is missing/)).toBeTruthy();
-  expect(screen.getByText("Test Status", {selector: "strong"})).toBeTruthy();
+  expect(screen.queryByText(/Project folder readiness/)).toBeNull();
   expect(screen.queryByRole("button", {name: /retry this|retry failed/i})).toBeNull();
 });
 

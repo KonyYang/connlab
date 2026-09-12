@@ -5,6 +5,9 @@ import os
 import shutil
 import subprocess
 import sys
+import runpy
+from fastapi.testclient import TestClient
+from backend.api.main import app
 
 import pytest
 from sqlalchemy import create_engine
@@ -23,7 +26,7 @@ from backend.shared.config import Settings
 
 def _settings(root):
     return Settings(data_dir=root / "data", projects_dir=root / "projects", templates_dir=root / "templates",
-                    database_path=root / "fixture.sqlite")
+                    database_path=root / "connlab.sqlite3")
 
 
 def _confirm_basic_information(session):
@@ -43,6 +46,56 @@ def _confirm_basic_information(session):
             confirmed_by="operator",
         )
     )
+    # This suite starts through the real package preflight. Seed its real
+    # authorities, instead of bypassing checks to isolate the workspace step.
+    root = Path(session.bind.url.database).parent
+    template = root / "template"
+    for name in ("E-4243_D Customer Feedback Form.xlsx", "FDQF-E-176 Testing Fee Evaluation.xls",
+                 "FDQF-E-036 Test Record.docx"):
+        (template / name).write_bytes(b"controlled template")
+    from backend.domain import ApplicationForm
+    deps.ApplicationFormRepository(session).create(ApplicationForm("app-form", "P1", "F1", "1", "Test"))
+    if not deps.FileAssetRepository(session).list_by_project("P1"):
+        source = root / "application.docx"
+        source.write_bytes(b"original application")
+        deps.FileAssetRepository(session).create(FileAsset("form", "P1", FileAssetType.APPLICATION_FORM,
+            source, original_name=source.name, source_role="selected_application_form"))
+    session.commit()
+    fixture = runpy.run_path(str(Path(__file__).with_name("test_matrix_editor_session_api.py")))
+    source_id = fixture["_seed_source_import"]("P1", root)
+    overrides = dict(app.dependency_overrides)
+    def get_session():
+        yield session
+    app.dependency_overrides[deps.get_session] = get_session
+    app.dependency_overrides[deps.get_settings] = lambda: _settings(root)
+    client = TestClient(app)
+    def ok(response):
+        assert response.status_code in (200, 201), response.text
+        return response.json()
+    try:
+        draft = ok(client.post("/api/projects/P1/matrix-drafts", json={
+            "source_import_id": source_id, "selected_group_keys": ["g1", "g2"]}))
+        ok(client.post(f"/api/projects/P1/matrix-drafts/{draft['record']['project_matrix_draft_id']}/confirm",
+                       json={"confirmed_by": "operator"}))
+        schedule = ok(client.get("/api/projects/P1/project-schedule"))["confirmed_revision"]
+        ok(client.post("/api/projects/P1/project-schedule/confirm", json={
+            "actor": "operator", "expected_revision_id": schedule["revision_id"] if schedule else None,
+            "expected_fingerprint": schedule["fingerprint"] if schedule else None,
+            "post_test_buffer_days": "0", "test_start_date": "2026-09-06",
+            "test_complete_date": "2026-09-15", "estimated_completion_date": "2026-09-15"}))
+        pricing = ok(client.put("/api/projects/P1/confirmed-matrix/fee-evaluation/pricing-draft",
+                                json={"rows": [], "summary": {}}))
+        ok(client.post("/api/projects/P1/confirmed-fee/versions", json={
+            "confirmed_by": "operator", "expected_pricing_draft_edit_id": pricing["saved_draft_edit_id"],
+            "expected_generation": pricing["saved_generation"],
+            "expected_payload_fingerprint": pricing["saved_payload_fingerprint"],
+            "expected_validation_token": pricing["saved_validation_token"],
+            "summary": {key: "0" for key in ("testing_fee_total", "working_hours", "lab_manpower_cost", "external_cost", "grand_cost")}}))
+        session.commit()
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+        app.dependency_overrides.update(overrides)
 
 
 @pytest.mark.parametrize("replaced", ["local_workspace_path", "official_folder_path", "source_book_path", None])
@@ -78,7 +131,7 @@ def test_later_step_refuses_replaced_workspace_directories_but_allows_new_output
         if reuse_existing:
             state.update(status="completed")
             runner.journal.save(state)
-            service.start("P1", None, runner.preview_context("P1"), "reuse")
+            service.start("P1", "backup_and_recreate", runner.preview_context("P1"), "reuse")
             state = runner.journal.read("P1")
             runner.run_step(state, "workspace")
         state.update(step=1, completed_steps=["workspace"])
@@ -175,7 +228,8 @@ def test_fresh_process_recovers_workspace_without_replaying_conflict_or_copy(tmp
                               env=env, capture_output=True, text=True, timeout=40)
     crashed = run(window)
     assert crashed.returncode == exit_code, crashed.stdout + crashed.stderr
-    orphan_stages = list((destination / ".connlab").rglob("template.txt")) if window == "copy" else []
+    orphan_stages = {path: path.read_bytes() for path in (destination / ".connlab").rglob("*")
+                     if path.is_file()} if window == "copy" else {}
     if window == "copy":
         assert "workspace" not in runner.journal.read("P1")["effects"]
         assert orphan_stages
@@ -193,17 +247,18 @@ def test_fresh_process_recovers_workspace_without_replaying_conflict_or_copy(tmp
     assert (record.official_folder_path / "template.txt").stat().st_mtime_ns == before
     assert record.manifest_path.is_file()
     assert record.source_book_path.is_dir()
-    for orphan in orphan_stages:
-        assert orphan.read_bytes() == b"fixture bytes"  # Never delete an unjournaled attempt.
+    for orphan, original_bytes in orphan_stages.items():
+        assert orphan.read_bytes() == original_bytes  # Never delete an unjournaled attempt.
     if window == "backup":
         effect = runner.journal.read("P1")["effects"]["workspace"]
         assert (Path(effect["backup"]) / "foreign.txt").read_bytes() == b"must survive"
-        assert len(list(destination.glob("*.connlab-backup-*"))) == 1
+        assert Path(effect["backup"]).is_dir()
+        assert Path(effect["backup"]).name.startswith("DL-001 ")
     runner.pool.shutdown()
     engine.dispose()
 
 
-def test_changed_folder_after_process_exit_allows_fresh_continue_existing_review(tmp_path):
+def test_changed_folder_after_process_exit_allows_fresh_history_rebuild_review(tmp_path):
     settings = _settings(tmp_path)
     engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
     Base.metadata.create_all(engine)
@@ -246,12 +301,13 @@ def test_changed_folder_after_process_exit_allows_fresh_continue_existing_review
         assert not list((destination / ".connlab" / "generation").rglob("*-workspace"))
 
         restarted = service.start(
-            "P1", "continue_existing", runner.preview_context("P1"), "reviewed-again",
+            "P1", "backup_and_recreate", runner.preview_context("P1"), "reviewed-again",
             replaces_operation_id=started["operation_id"],
         )
         runner.run_step(runner.journal.read("P1"), "workspace")
         assert restarted["operation_id"] != started["operation_id"]
-        assert operator_file.read_text(encoding="utf-8") == "operator saved edits"
+        history = Path(runner.journal.read("P1")["effects"]["workspace"]["backup"])
+        assert (history / "operator.txt").read_text(encoding="utf-8") == "operator saved edits"
         with sessions() as session:
             record = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
             assert record.local_workspace_path == workspace

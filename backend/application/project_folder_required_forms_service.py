@@ -344,12 +344,12 @@ class ProjectFolderRequiredFormsService:
         self._lifecycle_write_guard = lifecycle_write_guard
         self._file_context_reader = file_context_reader
 
-    def preview(self, project_id: str, *, planned_workspace=None) -> RequiredFormsPreview:
+    def preview(self, project_id: str, *, planned_workspace=None, rebuilding=False) -> RequiredFormsPreview:
         """Return the current Required forms preview."""
         workspace = planned_workspace or self._workspaces.get_by_project(project_id)
         if workspace is None or (planned_workspace is None and not workspace.official_folder_path.exists()):
             return _blocked_preview(project_id, "Create the Official project folder first.")
-        folder_check = self._folder_check.preview(project_id) if planned_workspace is None else None
+        folder_check = self._folder_check.preview(project_id) if planned_workspace is None and not rebuilding else None
         if folder_check is not None and getattr(folder_check, "status", "blocked") in {"blocked", "conflict"}:
             return _blocked_preview(project_id, "Resolve Project Folder check blockers first.")
 
@@ -416,6 +416,14 @@ class ProjectFolderRequiredFormsService:
                     status="blocked", action="blocked", message=errors[key]))
                 continue
             try:
+                if rebuilding:
+                    items.append(RequiredFormPreviewItem(
+                        key=key, label=label, output_kind=kind,
+                        target_path=_target_path(workspace, pattern, relative_folder,
+                                                 owner_suffix=owner_suffix if key == "customer_feedback_form" else None),
+                        status="ready", action="generate", message="Ready to generate a new file.",
+                        source_context_signature=contexts[key]))
+                    continue
                 output_item = by_kind.get(kind)
                 target = _target_path(workspace, pattern, relative_folder,
                                       owner_suffix=owner_suffix if key == "customer_feedback_form" else None)

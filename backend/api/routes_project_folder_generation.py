@@ -15,9 +15,10 @@ class GenerationStartRequest(BaseModel):
     expected_context: str
     request_id: str = Field(min_length=1, max_length=100)
     conflict_strategy: Literal[
-        "continue_existing", "backup_and_recreate", "overwrite_rebuild"
+        "backup_and_recreate", "overwrite_rebuild"
     ] | None = None
     replaces_operation_id: str | None = None
+    overwrite_confirmed: bool = False
 
 
 class GenerationResumeRequest(BaseModel):
@@ -57,6 +58,8 @@ def read(project_id: str, service=Depends(get_project_folder_generation_service)
 
 @router.post("/start", response_model=GenerationResponse, status_code=202)
 def start(project_id: str, request: GenerationStartRequest, service=Depends(get_project_folder_generation_service)):
+    if request.conflict_strategy == "overwrite_rebuild" and not request.overwrite_confirmed:
+        raise HTTPException(status_code=409, detail="Confirm deletion of the reviewed project folder before rebuilding.")
     return _call(lambda: service.start(project_id, request.conflict_strategy, request.expected_context, request.request_id,
                                      replaces_operation_id=request.replaces_operation_id))
 

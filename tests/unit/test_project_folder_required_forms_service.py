@@ -295,6 +295,13 @@ def test_preview_conflicts_untracked_existing_business_form_target(tmp_path: Pat
     assert any("Fee Form" in message for message in preview.blockers)
 
 
+def test_rebuild_preflight_checks_inputs_without_reusing_old_outputs(tmp_path: Path) -> None:
+    service = _service(tmp_path, existing_targets={"fee_form"})
+    preview = service.preview("P1", rebuilding=True)
+    assert preview.status == "ready"
+    assert all(item.action == "generate" for item in preview.items)
+
+
 def test_preview_conflicts_existing_business_form_when_record_path_differs(
     tmp_path: Path,
 ) -> None:

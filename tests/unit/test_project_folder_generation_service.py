@@ -57,6 +57,42 @@ def test_backend_runs_chain_without_browser_and_resumes_at_failed_step(tmp_path)
     assert queued == []
 
 
+def test_failed_finalization_requires_resume_not_replacement(tmp_path):
+    queued, fail = [], [True]
+    def finalize(state):
+        if fail[0]:
+            raise PermissionError("cleanup interrupted")
+    service = ProjectFolderGenerationService(GenerationJournal(tmp_path), lambda _: "same",
+        lambda state, name: None, queued.append, finalize=finalize)
+    started = service.start("p", None, "same", "first")
+    queued.pop()()
+    assert service.read("p")["can_restart"] is False
+    with pytest.raises(ValueError):
+        service.start("p", "backup_and_recreate", "same", "second", started["operation_id"])
+    fail[0] = False
+    service.resume("p", started["operation_id"])
+    queued.pop()()
+    assert service.read("p")["status"] == "completed"
+
+
+def test_overwrite_cleanup_intent_prevents_replacement_before_finalize_checkpoint(tmp_path):
+    journal, queued = GenerationJournal(tmp_path), []
+    def step(state, name):
+        if name == "workspace":
+            state["effects"]["workspace"] = {
+                "step": "workspace", "overwrite_cleanup": True, "prior": "old-files",
+            }
+            journal.save(state)
+        else:
+            raise ValueError("Later file needs repair")
+    service = ProjectFolderGenerationService(journal, lambda _: "same", step, queued.append)
+    started = service.start("p", "overwrite_rebuild", "same", "first")
+    queued.pop()()
+    assert service.read("p")["can_restart"] is False
+    with pytest.raises(ValueError, match="safely checkpointed"):
+        service.start("p", "backup_and_recreate", "same", "second", started["operation_id"])
+
+
 def test_changed_input_blocks_resume_before_any_more_writes(tmp_path):
     queued, context, calls = [], ["old"], []
     service = ProjectFolderGenerationService(GenerationJournal(tmp_path), lambda _: context[0],
@@ -116,7 +152,7 @@ def test_locked_existing_folder_explains_resume_and_safe_continue_choices(tmp_pa
     assert result["status"] == "blocked"
     assert result["can_restart"] is True
     assert "Windows denied access" in result["message"]
-    assert "Continue existing folder" in result["message"]
+    assert "rebuild option" in result["message"]
     assert "Diagnostic ID:" in result["message"]
 
 
@@ -148,7 +184,7 @@ def test_blocked_folder_reports_access_denial_with_diagnostic_id(tmp_path, caplo
         original.winerror = 5
         raise ProjectFolderInUseError("private-path") from original
     service = ProjectFolderGenerationService(journal, lambda _: "context", denied, lambda callback: callback())
-    service.start("p", "continue_existing", "context", "request")
+    service.start("p", "backup_and_recreate", "context", "request")
     result = service.read("p")
     assert result["status"] == "blocked"
     assert "Diagnostic ID:" in result["message"]

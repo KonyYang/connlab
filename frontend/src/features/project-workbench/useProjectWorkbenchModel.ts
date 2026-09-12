@@ -1618,7 +1618,11 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onRefreshOfficialWorkspacePreview,
     onCreateOfficialWorkspace,
     onRestartOfficialWorkspace: generation.restart,
-    onUpdateOfficialWorkspace: generation.update,
+    onUpdateOfficialWorkspace: (...args) => {
+      // A new action owns its error; do not fall back to an older preview failure.
+      setOfficialWorkspaceError(null);
+      return generation.update(...args);
+    },
     onRefreshOfficialFolderCheck,
     onRepairOfficialFolderStructure,
     onRefreshPublicDriveUploadPreview,

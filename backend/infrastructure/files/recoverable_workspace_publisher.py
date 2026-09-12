@@ -10,6 +10,7 @@ from backend.shared.operation_diagnostics import stage
 from uuid import uuid4
 
 from backend.application.official_project_workspace_service import (
+    _unique_backup_path,
     merge_missing_workspace_tree,
     OfficialWorkspaceRecord,
     OfficialWorkspaceCreateResult,
@@ -31,11 +32,11 @@ def _is_redirected(path: Path):
 def tree_hash(path: Path):
     if not path.exists():
         return None
-    if path.is_symlink() or not path.is_dir():
+    if _is_redirected(path) or not path.is_dir():
         raise ValueError("Workspace target is not a regular directory.")
     entries = []
     for item in sorted(path.rglob("*")):
-        if item.is_symlink():
+        if _is_redirected(item):
             raise ValueError("Workspace contains a symbolic link; manual review is required.")
         entries.append((str(item.relative_to(path)), file_hash(item) if item.is_file() else "directory"))
     return fingerprint(entries)
@@ -56,6 +57,71 @@ class RecoverableWorkspacePublisher:
             key: {"path": str(getattr(record, key)), "identity": file_identity(getattr(record, key))}
             for key in ("local_workspace_path", "official_folder_path", "source_book_path")
         }
+        self.journal.save(self.state)
+
+    def finalize(self):
+        """Discard the confirmed overwrite copy only after the caller completes its chain.
+
+        Persist a bounded deletion inventory before removing anything. A power loss
+        can leave an unchanged subset, but must never authorize deleting new content.
+        History mode intentionally retains its old directory.
+        """
+        effect = self.state["effects"].get("workspace")
+        if (not effect or effect.get("strategy") != "overwrite_rebuild"
+                or not effect.get("overwrite_cleanup") or effect["prior"] is None):
+            return
+        backup = Path(effect["backup"])
+        workspace = Path(effect["record"]["local_workspace_path"])
+        operation_root = workspace.parent / ".connlab" / "generation" / self.state["operation_id"]
+        if backup != operation_root / "overwrite-old":
+            raise ValueError("Overwrite recovery directory is outside its approved location.")
+        if any(_is_redirected(path) for path in backup.parents if path.exists()):
+            raise ValueError("Overwrite recovery directory parent is redirected.")
+        inventory = effect.get("overwrite_delete_inventory")
+        if not os.path.lexists(backup):
+            if inventory is None:
+                raise ValueError("Overwrite recovery copy disappeared before finalization.")
+            effect["overwrite_deleted"] = True
+            self.journal.save(self.state)
+            return
+        identity = effect.get("backup_identity") or effect.get(
+            "existing_workspace_identity" if effect["whole"] else "existing_target_identity"
+        )
+        if identity is None or _is_redirected(backup) or file_identity(backup) != identity:
+            raise ValueError("Overwrite recovery directory identity changed; deletion stopped.")
+        self.verify_context()
+        current = {}
+        for item in backup.rglob("*"):
+            if _is_redirected(item):
+                raise ValueError("Overwrite recovery copy contains redirected content.")
+            current[str(item.relative_to(backup))] = {
+                "identity": file_identity(item),
+                "sha": None if item.is_dir() else file_hash(item),
+                "directory": item.is_dir(),
+            }
+        if inventory is None:
+            if tree_hash(backup) != effect["prior"]:
+                raise ValueError("Overwrite recovery copy changed; deletion stopped.")
+            inventory = effect["overwrite_delete_inventory"] = current
+            self.journal.save(self.state)
+        elif any(inventory.get(key) != value for key, value in current.items()):
+            raise ValueError("Overwrite recovery copy changed during deletion; review required.")
+        for relative in sorted(current, key=lambda key: len(Path(key).parts), reverse=True):
+            item = backup / relative
+            if (any(_is_redirected(path) for path in (item, *item.parents))
+                    or file_identity(backup) != identity
+                    or file_identity(item) != current[relative]["identity"]
+                    or (not current[relative]["directory"]
+                        and file_hash(item) != current[relative]["sha"])):
+                raise ValueError("Overwrite recovery entry changed before deletion.")
+            if current[relative]["directory"]:
+                item.rmdir()
+            else:
+                item.unlink()
+        if _is_redirected(backup) or file_identity(backup) != identity:
+            raise ValueError("Overwrite recovery directory changed before removal.")
+        backup.rmdir()
+        effect["overwrite_deleted"] = True
         self.journal.save(self.state)
 
     def verify_directories(self, record):
@@ -126,6 +192,10 @@ class RecoverableWorkspacePublisher:
                 template_source_path=preview.template_path, created_at=datetime.now(UTC).isoformat(),
             )
             self.verify_initial_preview()
+            backup = conflict.with_name(f"{conflict.name}.connlab-backup-{self.state['operation_id']}")
+            if prior is not None:
+                backup = (_unique_backup_path(conflict) if strategy == "backup_and_recreate"
+                          else stage_root / "overwrite-old")
             self.state["effects"]["workspace"] = {
                 "type": "workspace", "step": "workspace", "record": json_value(record),
                 "stage": str(staged), "sha": tree_hash(staged_official), "identity": file_identity(staged_official),
@@ -155,7 +225,9 @@ class RecoverableWorkspacePublisher:
                 ),
                 "manifest_prior": None if whole else file_hash(preview.manifest_path),
                 "conflict": str(conflict), "prior": prior,
-                "backup": str(conflict.with_name(f"{conflict.name}.connlab-backup-{self.state['operation_id']}")),
+                "backup": str(backup),
+                "backup_identity": file_identity(conflict) if prior is not None else None,
+                "overwrite_cleanup": strategy == "overwrite_rebuild",
             }
             self.journal.save(self.state)
         saved = self.recover(repository)
@@ -179,8 +251,10 @@ class RecoverableWorkspacePublisher:
             self.verify_context()
             conflict, backup = Path(effect["conflict"]), Path(effect["backup"])
             if effect["prior"] is not None:
-                if backup.exists():
-                    if tree_hash(backup) != effect["prior"] or conflict.exists():
+                if os.path.lexists(backup):
+                    if (tree_hash(backup) != effect["prior"] or conflict.exists()
+                            or (effect.get("backup_identity") is not None
+                                and file_identity(backup) != effect["backup_identity"])):
                         raise ValueError("Workspace conflict target changed during recovery.")
                 else:
                     if tree_hash(conflict) != effect["prior"]:
@@ -192,6 +266,9 @@ class RecoverableWorkspacePublisher:
                                 "to keep its current contents."
                             )
                         raise ValueError("Workspace conflict target changed before rebuild.")
+                    if (effect.get("backup_identity") is not None
+                            and file_identity(conflict) != effect["backup_identity"]):
+                        raise ValueError("Workspace directory identity changed before rebuild.")
                     try:
                         with stage("move_existing_folder_to_backup", target=conflict, backup=backup):
                             conflict.rename(backup)

@@ -34,7 +34,12 @@ class ProjectFolderGenerationRunner:
         self.pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="project-folder")
 
     def service(self):
-        return ProjectFolderGenerationService(self.journal, self.context, self.run_step, self.pool.submit, self.preview_context, self.preview)
+        return ProjectFolderGenerationService(self.journal, self.context, self.run_step, self.pool.submit, self.preview_context, self.preview, self.finalize)
+
+    def finalize(self, state):
+        if self.context(state["project_id"]) != state["context"]:
+            raise ValueError("Generation inputs changed before final cleanup.")
+        RecoverableWorkspacePublisher(self.journal, state).finalize()
 
     def context(self, project_id):
         with self.sessions() as session:
@@ -135,12 +140,12 @@ class ProjectFolderGenerationRunner:
                                 "targets": target_facts,
                                 "manifest": file_hash(preview.manifest_path) if preview.manifest_path else None})
             workspace_preview = _preview_response(preview).model_dump()
-            file_preflight = package_preflight(project_id, preview, session, self.settings)
+            file_preflight = package_preflight(project_id, preview, session, self.settings, rebuilding=True)
             file_conflicts = [
                 f"{item['label']}: {item['message']}"
-                for item in file_preflight["items"] if item["status"] == "conflict"
+                for item in file_preflight["items"] if item["status"] in {"conflict", "blocked"}
             ]
-            if file_conflicts:
+            if file_conflicts and not start_blockers:
                 start_blockers.append("; ".join(file_conflicts))
             if start_blockers:
                 workspace_preview["status"] = "blocked"

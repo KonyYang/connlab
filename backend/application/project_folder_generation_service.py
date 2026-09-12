@@ -18,12 +18,13 @@ class ProjectFolderInUseError(PermissionError):
 class ProjectFolderGenerationService:
     """Start, observe and resume one project operation; callers never drive its steps."""
 
-    def __init__(self, journal, context, run_step, dispatch, preview_context=None, preview=None):
+    def __init__(self, journal, context, run_step, dispatch, preview_context=None, preview=None, finalize=None):
         self.journal, self.context = journal, context
         self.run_step, self.dispatch = run_step, dispatch
         self.owner = uuid4().hex
         self.preview_context = preview_context or context
         self.preview = preview or (lambda project_id: {"expected_context": self.preview_context(project_id)})
+        self.finalize = finalize or (lambda state: None)
 
     def start(self, project_id, strategy, expected_context, request_id, replaces_operation_id=None):
         with self.journal.lock(project_id):
@@ -40,6 +41,10 @@ class ProjectFolderGenerationService:
             blockers = current_preview.get("start_blockers", ())
             if blockers:
                 raise ValueError(str(blockers[0]))
+            if strategy == "continue_existing":
+                raise ValueError("Choose preserve history and rebuild, or delete and rebuild.")
+            if current_preview.get("workspace_preview", {}).get("status") in {"completed", "exists"} and strategy not in {"backup_and_recreate", "overwrite_rebuild"}:
+                raise ValueError("The project folder already exists. Choose a rebuild option.")
             state = self.journal.create(project_id, strategy, context)
             state.update(request_id=request_id, owner=self.owner, preview_context=expected_context)
             self.journal.save(state)
@@ -97,7 +102,10 @@ class ProjectFolderGenerationService:
                         state["completed_steps"].append(name)
                         state["step"] += 1
                         self.journal.save(state)
-                    state.update(status="completed", message="Project folder generation completed.")
+                    state["finalization_pending"] = True
+                    self.journal.save(state)
+                    self.finalize(state)
+                    state.update(status="completed", finalization_pending=False, message="Project folder generation completed.")
                     self.journal.save(state)
                 except Exception as exc:
                     record_failure(exc)
@@ -105,7 +113,7 @@ class ProjectFolderGenerationService:
                         message = (
                             "Windows denied access to the existing project folder. "
                             "Check permissions or file locks, then resume, or start a new generation and "
-                            "choose Continue existing folder."
+                            "choose a rebuild option after resolving file access."
                         )
                     elif isinstance(exc, OSError):
                         message = (
@@ -127,7 +135,11 @@ class ProjectFolderGenerationService:
 
     @staticmethod
     def _can_replace(state):
-        return state["status"] in {"blocked", "running"} and all(
+        workspace = state["effects"].get("workspace", {})
+        if (workspace.get("overwrite_cleanup") and workspace.get("prior") is not None
+                and not workspace.get("overwrite_deleted")):
+            return False
+        return not state.get("finalization_pending", False) and state["status"] in {"blocked", "running"} and all(
             effect["step"] in state["completed_steps"] for effect in state["effects"].values())
 
 

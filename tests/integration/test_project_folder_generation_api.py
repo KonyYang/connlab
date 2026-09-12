@@ -43,7 +43,7 @@ def _complete_basic_information_values() -> dict[str, str]:
     }
 
 
-def test_start_accepts_continue_existing_conflict_strategy() -> None:
+def test_start_accepts_backup_rebuild_strategy() -> None:
     captured = []
 
     class Service:
@@ -71,7 +71,7 @@ def test_start_accepts_continue_existing_conflict_strategy() -> None:
             json={
                 "expected_context": "fresh-preview",
                 "request_id": "continue-request",
-                "conflict_strategy": "continue_existing",
+                "conflict_strategy": "backup_and_recreate",
                 "replaces_operation_id": "locked-operation",
             },
         )
@@ -80,7 +80,7 @@ def test_start_accepts_continue_existing_conflict_strategy() -> None:
 
     assert response.status_code == 202, response.text
     assert captured == [
-        ("P1", "continue_existing", "fresh-preview", "continue-request", "locked-operation")
+        ("P1", "backup_and_recreate", "fresh-preview", "continue-request", "locked-operation")
     ]
 
 
@@ -291,7 +291,7 @@ def test_start_is_blocked_before_writes_when_project_schedule_is_unconfirmed(
         engine.dispose()
 
 
-def test_real_context_and_routes_start_continue_after_request_and_reconnect(tmp_path):
+def test_real_preflight_rejects_missing_inputs_before_creating_any_folder(tmp_path):
     settings = Settings(data_dir=tmp_path / "data", projects_dir=tmp_path / "projects", templates_dir=tmp_path / "templates",
                         database_path=tmp_path / "fixture.sqlite")
     engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
@@ -333,48 +333,27 @@ def test_real_context_and_routes_start_continue_after_request_and_reconnect(tmp_
         stale = client.post(url + "/start", json={**body, "expected_context": "stale"})
         assert stale.status_code == 409
         started = client.post(url + "/start", json=body)
-        assert started.status_code == 202, started.text
-        assert client.get(url).json()["status"] == "queued"
-        queued.pop()()  # A backend callback; no browser write drives continuation.
-        result = client.get(url).json()
-        assert result["status"] == "blocked"  # Fixture deliberately has no Application Form.
-        assert result["completed_steps"] == ["workspace"], result
-        assert client.get(url + "/preview").json()["recovery"] == {
-            "operation_id": result["operation_id"], "inputs_match": True, "rebuild_pending": False,
-        }
-        assert runner.context("P1") == before_context  # Own folder/index are not source authority.
-        with sessions() as session:
-            workspace = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
-            assert workspace.official_folder_path.is_dir()
-        repeated = client.post(url + "/start", json=body)
-        assert repeated.json()["operation_id"] == result["operation_id"]
-        assert queued == []
-        resume = client.post(url + "/resume", json={"operation_id": result["operation_id"]})
-        assert resume.status_code == 202
-        assert len(queued) == 1
-        queued.pop()()
-        (template / "template.txt").write_text("changed template", encoding="utf-8")
-        assert runner.context("P1") != before_context
-        assert client.post(url + "/resume", json={"operation_id": result["operation_id"]}).status_code == 409
-        assert client.post(url + "/resume", json={"operation_id": "different"}).status_code == 409
-        assert result["can_restart"] is True
-        fresh_preview = client.get(url + "/preview").json()
-        assert fresh_preview["recovery"]["inputs_match"] is False
-        new_body = {"expected_context": fresh_preview["expected_context"], "request_id": "corrected-inputs",
-                    "replaces_operation_id": result["operation_id"]}
-        fresh = client.post(url + "/start", json=new_body)
-        assert fresh.status_code == 202, fresh.text
-        assert fresh.json()["operation_id"] != result["operation_id"]
-        assert runner.journal.read_archived("P1", result["operation_id"])["context"] == before_context
-        queued.pop()()
-        result = client.get(url).json()
-        with sessions() as session:
-            project = deps.ProjectRepository(session).get("P1")
-            deps.ProjectRepository(session).update(replace(project, lifecycle_state=ProjectLifecycleState.CLOSED))
-            session.commit()
-        assert client.post(url + "/resume", json={"operation_id": result["operation_id"]}).status_code == 409
+        assert started.status_code == 409, started.text
+        assert "Application Form" in started.json()["detail"]
+        assert client.get(url).json() is None
+        assert runner.context("P1") == before_context
+        assert list(destination.iterdir()) == []
         assert queued == []
     finally:
         app.dependency_overrides.clear()
         runner.pool.shutdown()
         engine.dispose()
+
+
+def test_new_start_rejects_continue_and_requires_delete_confirmation():
+    app.dependency_overrides[deps.get_project_folder_generation_service] = lambda: object()
+    try:
+        client = TestClient(app)
+        url = "/api/projects/P1/project-folder/generation/start"
+        body = {"expected_context": "reviewed", "request_id": "new"}
+        assert client.post(url, json={**body, "conflict_strategy": "continue_existing"}).status_code == 422
+        response = client.post(url, json={**body, "conflict_strategy": "overwrite_rebuild"})
+        assert response.status_code == 409
+        assert "Confirm deletion" in response.json()["detail"]
+    finally:
+        app.dependency_overrides.clear()

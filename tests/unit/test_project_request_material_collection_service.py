@@ -401,6 +401,21 @@ def test_preview_accepts_written_back_application_form_in_submitted_material(
     assert "write-back" in submitted_item.message
 
 
+def test_rebuild_ignores_old_targets_only_inside_replaced_folder(tmp_path: Path) -> None:
+    source = _write(tmp_path / "source" / "application.docx", b"form")
+    service = _service(tmp_path, [_asset("form", FileAssetType.APPLICATION_FORM, source, "application.docx")])
+    initial = service.preview("P1")
+    submitted = next(item for item in initial.items if item.target_area == "submitted_material")
+    _write(submitted.target_path, b"operator edits")
+    assert next(item for item in service.preview("P1").items
+                if item.target_area == "submitted_material").action != "copy"
+    rebuilt = service.preview("P1", rebuilding=True)
+    assert next(item for item in rebuilt.items
+                if item.target_area == "submitted_material").action == "copy"
+    assert submitted.target_path.read_bytes() == b"operator edits"
+    assert source.read_bytes() == b"form"
+
+
 def _write(path: Path, content: bytes) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(content)

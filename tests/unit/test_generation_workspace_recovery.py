@@ -1,5 +1,7 @@
 from pathlib import Path
 from types import SimpleNamespace
+from datetime import datetime
+import os
 
 import pytest
 
@@ -10,6 +12,108 @@ from backend.infrastructure.files.recoverable_workspace_publisher import Recover
 
 class PowerLoss(BaseException):
     pass
+
+
+def test_history_uses_original_local_mtime_and_preserves_name_collision(tmp_path):
+    preview = _existing_workspace_preview(tmp_path, False)
+    target = preview.official_folder_path
+    stamp = datetime(2026, 9, 13, 14, 30, 25).timestamp()
+    os.utime(target, (stamp, stamp))
+    reserved = target.with_name("official 20260913143025")
+    reserved.mkdir()
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("p", "backup_and_recreate", "context")
+    RecoverableWorkspacePublisher(journal, state).create(
+        preview, "backup_and_recreate", SimpleNamespace(save=lambda record: record)
+    )
+    assert (target.with_name("official 20260913143025-1") / "operator.txt").read_text() == "keep"
+    assert reserved.is_dir()
+
+
+def test_overwrite_retains_recovery_copy_until_successful_finalization(tmp_path):
+    preview = _existing_workspace_preview(tmp_path, False)
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("p", "overwrite_rebuild", "context")
+    publisher = RecoverableWorkspacePublisher(journal, state)
+    publisher.create(preview, "overwrite_rebuild", SimpleNamespace(save=lambda record: record))
+    backup = Path(state["effects"]["workspace"]["backup"])
+    assert (backup / "operator.txt").read_text() == "keep"
+    assert backup.name == "overwrite-old"
+    publisher.finalize()
+    assert not backup.exists()
+    assert (preview.official_folder_path / "template.txt").read_text() == "new"
+    RecoverableWorkspacePublisher(journal, journal.read("p")).finalize()
+
+
+@pytest.mark.parametrize("foreign_content", [False, True])
+def test_overwrite_finalization_recovers_partial_delete_but_rejects_new_content(
+    tmp_path, monkeypatch, foreign_content
+):
+    preview = _existing_workspace_preview(tmp_path, False)
+    (preview.official_folder_path / "second.txt").write_text("old", encoding="utf-8")
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("p", "overwrite_rebuild", "context")
+    publisher = RecoverableWorkspacePublisher(journal, state)
+    publisher.create(preview, "overwrite_rebuild", SimpleNamespace(save=lambda record: record))
+    backup = Path(state["effects"]["workspace"]["backup"])
+    real_unlink = Path.unlink
+    def interrupt(path, *args, **kwargs):
+        real_unlink(path, *args, **kwargs)
+        if path.parent == backup:
+            raise PowerLoss()
+    monkeypatch.setattr(Path, "unlink", interrupt)
+    with pytest.raises(PowerLoss):
+        publisher.finalize()
+    monkeypatch.setattr(Path, "unlink", real_unlink)
+    assert len(list(backup.iterdir())) == 1
+    if foreign_content:
+        (backup / "new.txt").write_text("must survive", encoding="utf-8")
+        with pytest.raises(ValueError, match="changed during deletion"):
+            RecoverableWorkspacePublisher(journal, journal.read("p")).finalize()
+        assert (backup / "new.txt").read_text() == "must survive"
+    else:
+        RecoverableWorkspacePublisher(journal, journal.read("p")).finalize()
+        assert not backup.exists()
+
+
+def test_history_recovery_rejects_foreign_same_content_directory(tmp_path, monkeypatch):
+    preview = _existing_workspace_preview(tmp_path, False)
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("p", "backup_and_recreate", "context")
+    real_rename = Path.rename
+    def interrupt(path, target):
+        result = real_rename(path, target)
+        if path == preview.official_folder_path:
+            raise PowerLoss()
+        return result
+    monkeypatch.setattr(Path, "rename", interrupt)
+    with pytest.raises(PowerLoss):
+        RecoverableWorkspacePublisher(journal, state).create(
+            preview, "backup_and_recreate", SimpleNamespace(save=lambda record: record)
+        )
+    monkeypatch.setattr(Path, "rename", real_rename)
+    backup = Path(state["effects"]["workspace"]["backup"])
+    backup.rename(backup.with_name("actual-history"))
+    backup.mkdir()
+    (backup / "operator.txt").write_text("keep", encoding="utf-8")
+    with pytest.raises(ValueError, match="conflict target changed"):
+        RecoverableWorkspacePublisher(journal, journal.read("p")).recover(
+            SimpleNamespace(save=lambda record: record)
+        )
+    assert (backup / "operator.txt").read_text() == "keep"
+
+
+def test_old_overwrite_journal_does_not_authorize_deleting_retained_copy(tmp_path):
+    preview = _existing_workspace_preview(tmp_path, False)
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("p", "overwrite_rebuild", "context")
+    publisher = RecoverableWorkspacePublisher(journal, state)
+    publisher.create(preview, "overwrite_rebuild", SimpleNamespace(save=lambda record: record))
+    effect = state["effects"]["workspace"]
+    effect.pop("overwrite_cleanup")  # Prior-version durable journal has no deletion intent.
+    journal.save(state)
+    RecoverableWorkspacePublisher(journal, journal.read("p")).finalize()
+    assert (Path(effect["backup"]) / "operator.txt").read_text() == "keep"
 
 
 def _existing_workspace_preview(tmp_path, whole):
