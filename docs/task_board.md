@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FOLDER_PREFLIGHT_REUSE",
+    "summary": "Per-file folder preflight and dependency-specific output reuse",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Phase 1 only: per-file readiness and freshness, existing fail-stop execution and recovery unchanged; isolated tests only.",
+    "scope_paths": [
+      "backend/application/project_folder_required_forms_service.py",
+      "backend/api/project_folder_generation_composition.py",
+      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "6cc509a2c62922c475987c156a499e86dabf9bdf",
+    "started_at": "2026-09-12T14:07:46.601776Z",
+    "updated_at": "2026-09-12T14:07:46.601776Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_SINGLE_ENTRY",
     "tier": "standard",
