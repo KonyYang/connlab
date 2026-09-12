@@ -146,6 +146,7 @@ def test_start_is_blocked_before_writes_when_complete_basic_information_is_uncon
         url = "/api/projects/P1/project-folder/generation"
         preview = client.get(url + "/preview")
         assert preview.status_code == 200, preview.text
+        assert preview.json()["recovery"] is None
         payload = preview.json()
         guidance = (
             "Basic Information is complete but not confirmed. Open Basic Information "
@@ -338,6 +339,9 @@ def test_real_context_and_routes_start_continue_after_request_and_reconnect(tmp_
         result = client.get(url).json()
         assert result["status"] == "blocked"  # Fixture deliberately has no Application Form.
         assert result["completed_steps"] == ["workspace"], result
+        assert client.get(url + "/preview").json()["recovery"] == {
+            "operation_id": result["operation_id"], "inputs_match": True, "rebuild_pending": False,
+        }
         assert runner.context("P1") == before_context  # Own folder/index are not source authority.
         with sessions() as session:
             workspace = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
@@ -355,6 +359,7 @@ def test_real_context_and_routes_start_continue_after_request_and_reconnect(tmp_
         assert client.post(url + "/resume", json={"operation_id": "different"}).status_code == 409
         assert result["can_restart"] is True
         fresh_preview = client.get(url + "/preview").json()
+        assert fresh_preview["recovery"]["inputs_match"] is False
         new_body = {"expected_context": fresh_preview["expected_context"], "request_id": "corrected-inputs",
                     "replaces_operation_id": result["operation_id"]}
         fresh = client.post(url + "/start", json=new_body)

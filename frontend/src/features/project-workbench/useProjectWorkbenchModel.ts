@@ -255,6 +255,7 @@ export type ProjectWorkbenchModel = {
     expectedContext?: string
   ) => Promise<void>;
   onRestartOfficialWorkspace?: (strategy?: OfficialWorkspaceConflictStrategy, expectedContext?: string) => Promise<void>;
+  onUpdateOfficialWorkspace: ReturnType<typeof useProjectFolderGeneration>["update"];
   onRefreshOfficialFolderCheck: () => Promise<void>;
   onRepairOfficialFolderStructure: () => Promise<void>;
   onRefreshPublicDriveUploadPreview: () => Promise<void>;
@@ -1617,6 +1618,7 @@ export function useProjectWorkbenchModel(projectId: string): ProjectWorkbenchMod
     onRefreshOfficialWorkspacePreview,
     onCreateOfficialWorkspace,
     onRestartOfficialWorkspace: generation.restart,
+    onUpdateOfficialWorkspace: generation.update,
     onRefreshOfficialFolderCheck,
     onRepairOfficialFolderStructure,
     onRefreshPublicDriveUploadPreview,

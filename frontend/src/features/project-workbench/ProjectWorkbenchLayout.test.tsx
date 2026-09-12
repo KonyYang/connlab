@@ -316,7 +316,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
   it("uses lifecycle readonly state to block active Matrix write actions", async () => {
     const user = userEvent.setup();
-    const onCreateOfficialWorkspace = vi.fn();
+    const onUpdateOfficialWorkspace = vi.fn();
     renderWorkbench({
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
       lifecycle: {
@@ -341,7 +341,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
         planned_paths: [],
         conflict_paths: [],
       },
-      onCreateOfficialWorkspace,
+      onUpdateOfficialWorkspace,
     });
 
     const projectState = screen.getByRole("region", { name: "Project State" });
@@ -355,7 +355,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       "This project is closed with reason Completed. Reopen it before making changes."
     );
     await user.click(folderButton);
-    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
+    expect(onUpdateOfficialWorkspace).not.toHaveBeenCalled();
   });
 
   it("hides lifecycle write controls for closed projects without active Matrix authority", () => {
@@ -944,11 +944,8 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     await user.click(screen.getByRole("button", { name: "Open Basic Information" }));
     expect(onOpenBasicInformation).toHaveBeenCalledTimes(1);
 
-    await user.click(screen.getByRole("button", { name: "Refresh generation preview" }));
-    expect(screen.getByRole("button", { name: "Start new generation" })).toHaveProperty(
-      "disabled",
-      true
-    );
+    expect(screen.queryByRole("button", { name: "Refresh generation preview" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Start new generation" })).toBeNull();
   });
 
   it("keeps the project folder button enabled when package template readiness is blocked", () => {
@@ -1132,7 +1129,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
   it("routes Project folder Open without triggering create/update folder", async () => {
     const user = userEvent.setup();
-    const onCreateOfficialWorkspace = vi.fn();
+    const onUpdateOfficialWorkspace = vi.fn();
     const onOpenLocalProjectFolder = vi.fn();
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
@@ -1141,7 +1138,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       packagePreview: readyPackagePreview,
       requestMaterialPreview: collectedRequestMaterialPreview,
       folderReady: false,
-      onCreateOfficialWorkspace,
+      onUpdateOfficialWorkspace,
       onOpenLocalProjectFolder,
     });
 
@@ -1151,12 +1148,12 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     await user.click(screen.getByRole("button", { name: "Open" }));
 
     expect(onOpenLocalProjectFolder).toHaveBeenCalledTimes(1);
-    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
+    expect(onUpdateOfficialWorkspace).not.toHaveBeenCalled();
   });
 
   it("keeps Project folder Open actionable while close confirmation is expanded", async () => {
     const user = userEvent.setup();
-    const onCreateOfficialWorkspace = vi.fn();
+    const onUpdateOfficialWorkspace = vi.fn();
     const onOpenLocalProjectFolder = vi.fn();
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
@@ -1165,7 +1162,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       packagePreview: readyPackagePreview,
       requestMaterialPreview: collectedRequestMaterialPreview,
       folderReady: false,
-      onCreateOfficialWorkspace,
+      onUpdateOfficialWorkspace,
       onOpenLocalProjectFolder,
     });
 
@@ -1177,7 +1174,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     await user.click(within(folderActions).getByRole("button", { name: "Open" }));
 
     expect(onOpenLocalProjectFolder).toHaveBeenCalledTimes(1);
-    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
+    expect(onUpdateOfficialWorkspace).not.toHaveBeenCalled();
   });
 
   it("does not use package preview Customer Feedback as the Project Folder source", () => {
@@ -1222,7 +1219,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
   it("shows one local project folder creation action before package preparation", async () => {
     const user = userEvent.setup();
-    const onCreateOfficialWorkspace = vi.fn();
+    const onUpdateOfficialWorkspace = vi.fn();
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -1245,7 +1242,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       },
       officialWorkspaceCreating: false,
       lifecycle: lifecycleResponse({ allowed_actions: [] }),
-      onCreateOfficialWorkspace,
+      onUpdateOfficialWorkspace,
     });
 
     expect(getWorkbenchActionButton("Create project folder")).toBeTruthy();
@@ -1260,64 +1257,23 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     await user.click(getWorkbenchActionButton("Create project folder"));
 
-    expect(onCreateOfficialWorkspace).toHaveBeenCalledTimes(1);
+    expect(onUpdateOfficialWorkspace).toHaveBeenCalledTimes(1);
   });
 
-  it("asks for an explicit conflict strategy before rebuilding an existing project folder", async () => {
+  it("asks for confirmation only when the update entry returns a folder conflict", async () => {
     const user = userEvent.setup();
-    const onCreateOfficialWorkspace = vi.fn();
-    renderWorkbench({
-      latestLtr: "DL-2026-06-001",
-      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
-      matrixAuthorityDraft: testPlanDraft,
-      officialWorkspacePreview: {
-        project_id: "project-1",
-        dl_number: "DL-2026-06-001",
-        status: "exists",
-        local_workspace_root: "D:/Projects",
-        local_workspace_path: "D:/Projects/DL-2026-06-001",
-        source_book_path: "D:/Projects/DL-2026-06-001/Source Book",
-        template_path: "D:/Template/DL-XXXX-YY-ZZZ project",
-        official_project_folder_path:
-          "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
-        manifest_path: "D:/Projects/DL-2026-06-001/.connlab/manifest.json",
-        template_root_mode: "template_root",
-        blockers: ["Official project folder already exists."],
-        warnings: [],
-        planned_paths: [],
-        conflict_paths: [
-          "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
-        ],
-        conflict_options: [
-          {
-            key: "backup_and_recreate",
-            label: "Backup and Rebuild",
-            description: "Move the existing folder to a timestamped backup first.",
-          },
-          {
-            key: "overwrite_rebuild",
-            label: "Overwrite",
-            description: "Replace the existing folder after staging the new template copy.",
-          },
-        ],
-      },
-      officialWorkspaceCreating: false,
-      onCreateOfficialWorkspace,
-    });
-
+    const review = folderReview();
+    const update = vi.fn().mockResolvedValueOnce(review).mockResolvedValue(undefined);
+    renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, onUpdateOfficialWorkspace: update });
     await user.click(getWorkbenchActionButton("Create project folder"));
-
-    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
-    expect(screen.getByRole("dialog", { name: "Project folder already exists" })).toBeTruthy();
-    expect(screen.getByText(/keeps every existing file/i)).toBeTruthy();
-
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Overwrite" }).closest("details")).toHaveProperty("open", false);
     await user.click(screen.getByRole("button", { name: "Continue existing folder (Recommended)" }));
-
-    expect(onCreateOfficialWorkspace).toHaveBeenCalledWith("continue_existing");
+    expect(update).toHaveBeenLastCalledWith("continue_existing", review, false);
   });
 
   it("disables the permanent project folder action until current Fee authority exists", () => {
-    const onCreateOfficialWorkspace = vi.fn();
+    const onUpdateOfficialWorkspace = vi.fn();
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -1339,7 +1295,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
         warnings: [],
         planned_paths: [],
       },
-      onCreateOfficialWorkspace,
+      onUpdateOfficialWorkspace,
     });
 
     const folderButton = getWorkbenchActionButton("Create project folder");
@@ -1348,12 +1304,12 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       "Update Fee before generating the project folder."
     );
     expect(screen.queryByText("Fee needs update")).toBeNull();
-    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
+    expect(onUpdateOfficialWorkspace).not.toHaveBeenCalled();
   });
 
   it("keeps the permanent project folder action clickable when workspace preflight is blocked", async () => {
     const user = userEvent.setup();
-    const onCreateOfficialWorkspace = vi.fn();
+    const onUpdateOfficialWorkspace = vi.fn();
     renderWorkbench(
       {
         latestLtr: "DL-2026-06-001",
@@ -1394,7 +1350,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
           warnings: [],
         },
         officialWorkspaceCreating: false,
-        onCreateOfficialWorkspace,
+        onUpdateOfficialWorkspace,
       }
     );
 
@@ -1417,177 +1373,67 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     await user.click(folderButton);
 
-    expect(onCreateOfficialWorkspace).toHaveBeenCalledTimes(1);
+    expect(onUpdateOfficialWorkspace).toHaveBeenCalledTimes(1);
   });
 
-  it("asks for an explicit update strategy when completed official workspace already exists", async () => {
+  it("updates a managed folder without asking for a rebuild strategy", async () => {
     const user = userEvent.setup();
-    const onCreateOfficialWorkspace = vi.fn();
-    renderWorkbench({
-      latestLtr: "DL-2026-06-001",
-      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
-      matrixAuthorityDraft: testPlanDraft,
-      folderReady: false,
-      officialWorkspacePreview: {
-        project_id: "project-1",
-        dl_number: "DL-2026-06-001",
-        status: "completed",
-        local_workspace_root: "D:/Projects",
-        local_workspace_path: "D:/Projects/DL-2026-06-001",
-        source_book_path: "D:/Projects/DL-2026-06-001/Source Book",
-        template_path: "D:/Template/DL-XXXX-YY-ZZZ project",
-        official_project_folder_path:
-          "D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test",
-        manifest_path: "D:/Projects/DL-2026-06-001/.connlab/manifest.json",
-        template_root_mode: "template_root",
-        blockers: [],
-        warnings: [],
-        planned_paths: [],
-      },
-      packagePreview: readyPackagePreview,
-      onCreateOfficialWorkspace,
-    });
-
-    const folderButton = screen.getByRole("button", { name: "Update project folder" });
-    expect(folderButton).toHaveProperty("disabled", false);
-    expect(folderButton.getAttribute("title")).toBeNull();
-
-    await user.click(folderButton);
-
-    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
-    expect(screen.getByRole("dialog", { name: "Project folder already exists" })).toBeTruthy();
-    expect(
-      screen.getByText("D:/Projects/DL-2026-06-001/DL-2026-06-001 Connector Qualification test")
-    ).toBeTruthy();
-
-    await user.click(screen.getByRole("button", { name: "Backup and Rebuild" }));
-
-    expect(onCreateOfficialWorkspace).toHaveBeenCalledWith("backup_and_recreate");
-    expect(screen.getByLabelText("Folder Actions")).toBeTruthy();
+    const update = vi.fn().mockResolvedValue(undefined);
+    renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true, onUpdateOfficialWorkspace: update });
+    await user.click(getWorkbenchActionButton("Update project folder"));
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("refreshes a safely restartable operation and retains its conflict approval token", async () => {
+  it("keeps recovery behind the top update entry without duplicate generation buttons", async () => {
     const user = userEvent.setup();
-    const onRestartOfficialWorkspace = vi.fn();
-    let finishPreview!: () => void;
-    const onRefreshOfficialWorkspacePreview = vi.fn(() => new Promise<void>(resolve => { finishPreview = resolve; }));
-    renderWorkbench({
-      officialWorkspaceError: "Source changed",
-      officialWorkspaceCanResume: true,
-      officialWorkspaceCanRestart: true,
-      onRestartOfficialWorkspace,
-      onRefreshOfficialWorkspacePreview,
-      officialWorkspacePreview: {
-        project_id: "project-1", dl_number: "DL-001", status: "completed",
-        generation_context: "displayed-preview-token", local_workspace_root: "D:/Projects",
-        local_workspace_path: "D:/Projects/DL-001", source_book_path: "D:/Projects/DL-001/Source Book",
-        template_path: "D:/Template", official_project_folder_path: "D:/Projects/DL-001/Official",
-        manifest_path: "D:/Projects/DL-001/.connlab/manifest.json", template_root_mode: "template_root",
-        blockers: [], warnings: [], planned_paths: [],
-      },
-    });
-    await waitFor(() =>
-      expect(onRefreshOfficialWorkspacePreview).toHaveBeenCalledTimes(1)
-    );
-    expect(screen.getByRole("status").textContent).toContain("Checking project folder generation status...");
-    expect(screen.queryByText("Source changed")).toBeNull();
+    const update = vi.fn().mockResolvedValue(undefined);
+    renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true,
+      officialWorkspaceError: "Source changed", officialWorkspaceCanResume: true,
+      onUpdateOfficialWorkspace: update });
     expect(screen.queryByRole("button", { name: "Resume generation" })).toBeNull();
-    finishPreview();
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Start new generation" })).toHaveProperty(
-        "disabled",
-        false
-      )
-    );
-    expect(screen.getByRole("alert").textContent).toContain(
-      "Project inputs are now ready. Start a new generation to continue from the saved project folder."
-    );
-    expect(screen.getByRole("alert").textContent).not.toContain("Source changed");
-    expect(screen.getByRole("alert").classList.contains("is-danger")).toBe(false);
-    expect(screen.queryByRole("button", { name: "Resume generation" })).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Start new generation" }));
-    expect(onRestartOfficialWorkspace).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Backup and Rebuild" }));
-    expect(onRestartOfficialWorkspace).toHaveBeenCalledWith("backup_and_recreate", "displayed-preview-token");
+    expect(screen.queryByRole("button", { name: "Start new generation" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Refresh generation preview" })).toBeNull();
+    expect(screen.getByRole("alert").textContent).toContain("Source changed");
+    await user.click(getWorkbenchActionButton("Update project folder"));
+    expect(update).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the recovery blocker visible when the initial preview check fails", async () => {
     let rejectPreview!: (error: Error) => void;
     renderWorkbench({
-      officialWorkspaceError: "Folder storage is unavailable or changed. Review the configured folder before resuming.",
-      officialWorkspaceCanResume: true,
-      officialWorkspaceCanRestart: true,
+      officialWorkspaceError: "Folder storage is unavailable",
+      officialWorkspaceCanResume: true, officialWorkspaceCanRestart: true,
       onRefreshOfficialWorkspacePreview: () => new Promise<void>((_resolve, reject) => { rejectPreview = reject; }),
     });
     expect(screen.getByRole("status").textContent).toContain("Checking project folder generation status...");
-    expect(screen.queryByText(/Folder storage is unavailable/)).toBeNull();
     rejectPreview(new Error("Preview unavailable"));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Folder storage is unavailable"));
-    expect(screen.getByRole("button", { name: "Resume generation" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Start new generation" })).toHaveProperty("disabled", true);
+    expect(screen.queryByRole("button", { name: "Resume generation" })).toBeNull();
   });
 
-  it("lets a lock-blocked operation restart by continuing the existing folder", async () => {
+  it("keeps rebuild behind advanced actions and binds confirmation to its reviewed context", async () => {
     const user = userEvent.setup();
-    const onRestartOfficialWorkspace = vi.fn();
-    const onRefreshOfficialWorkspacePreview = vi.fn().mockResolvedValue(undefined);
-    renderWorkbench({
-      officialWorkspaceError: "The existing project folder is in use by another program.",
-      officialWorkspaceCanResume: true,
-      officialWorkspaceCanRestart: true,
-      onRestartOfficialWorkspace,
-      onRefreshOfficialWorkspacePreview,
-      officialWorkspacePreview: {
-        project_id: "project-1", dl_number: "DL-001", status: "exists",
-        generation_context: "locked-preview-token", local_workspace_root: "D:/Projects",
-        local_workspace_path: "D:/Projects/DL-001", source_book_path: "D:/Projects/DL-001/Source Book",
-        template_path: "D:/Template", official_project_folder_path: "D:/Projects/DL-001/Official",
-        manifest_path: "D:/Projects/DL-001/.connlab/manifest.json", template_root_mode: "template_root",
-        blockers: ["Official project folder already exists."], warnings: [], planned_paths: [],
-        conflict_paths: ["D:/Projects/DL-001/Official"],
-        conflict_options: [{
-          key: "continue_existing", label: "Continue Existing Folder",
-          description: "Keep existing files and add only missing template content.",
-        }],
-      },
-    });
-
-    await waitFor(() => expect(onRefreshOfficialWorkspacePreview).toHaveBeenCalledTimes(1));
-    const restart = screen.getByRole("button", { name: "Start new generation" });
-    await waitFor(() => expect(restart).toHaveProperty("disabled", false));
-    await user.click(restart);
-    await user.click(screen.getByRole("button", { name: "Continue existing folder (Recommended)" }));
-
-    expect(onRestartOfficialWorkspace).toHaveBeenCalledWith(
-      "continue_existing", "locked-preview-token"
-    );
+    const review = folderReview();
+    const update = vi.fn().mockResolvedValueOnce(review).mockResolvedValue(undefined);
+    renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true, onUpdateOfficialWorkspace: update });
+    expect(screen.getByRole("button", { name: "Rebuild project folder…" }).closest("details")).toHaveProperty("open", false);
+    await user.click(screen.getByText("Advanced folder actions"));
+    await user.click(screen.getByRole("button", { name: "Rebuild project folder…" }));
+    expect(update).toHaveBeenCalledWith("backup_and_recreate", undefined, false);
+    await user.click(screen.getByText("Advanced rebuild options"));
+    await user.click(screen.getByRole("button", { name: "Backup and Rebuild" }));
+    expect(update).toHaveBeenLastCalledWith("backup_and_recreate", review, false);
   });
 
-  it("asks before updating a recorded project folder while preview is still loading", async () => {
+  it("does not infer a conflict from a recorded folder while preview is unavailable", async () => {
     const user = userEvent.setup();
-    const onCreateOfficialWorkspace = vi.fn();
-    renderWorkbench({
-      latestLtr: "DL-2026-06-001",
-      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
-      matrixAuthorityDraft: testPlanDraft,
-      folderReady: true,
-      officialWorkspacePreview: null,
-      packagePreview: readyPackagePreview,
-      onCreateOfficialWorkspace,
-    });
-
-    await user.click(screen.getByRole("button", { name: "Update project folder" }));
-
-    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
-    expect(screen.getByRole("dialog", { name: "Project folder already exists" })).toBeTruthy();
-    expect(screen.getByText("Existing project folder")).toBeTruthy();
-
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
-
-    expect(onCreateOfficialWorkspace).not.toHaveBeenCalled();
-    expect(
-      screen.queryByRole("dialog", { name: "Project folder already exists" })
-    ).toBeNull();
+    const update = vi.fn().mockResolvedValue(undefined);
+    renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true,
+      officialWorkspacePreview: null, onUpdateOfficialWorkspace: update });
+    await user.click(getWorkbenchActionButton("Update project folder"));
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("blocks navigation clicks while the project folder workflow is running", () => {
@@ -1632,6 +1478,20 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     );
   });
 });
+
+function folderReview() {
+  return {
+    operationId: null, resumeRebuild: false,
+    preview: { expected_context: "reviewed-token", recovery: null, workspace_preview: {
+      project_id: "project-1", dl_number: "DL-001", status: "exists" as const,
+      local_workspace_root: "D:/Projects", local_workspace_path: "D:/Projects/DL-001",
+      source_book_path: "D:/Projects/DL-001/Source Book", template_path: "D:/Template",
+      official_project_folder_path: "D:/Projects/DL-001/Official",
+      manifest_path: "D:/Projects/DL-001/.connlab/manifest.json", template_root_mode: "template_root" as const,
+      blockers: [], warnings: [], planned_paths: [], conflict_paths: ["D:/Projects/DL-001/Official"],
+    } },
+  };
+}
 
 function renderWorkbench(
   overrides: Partial<ProjectRuntimeConsoleModel> = {},
@@ -1776,6 +1636,7 @@ function buildRuntimeModel(
     outputStatusSummary: null,
     onRefreshPackagePreview: vi.fn(),
     onRefreshOfficialWorkspacePreview: vi.fn(),
+    onUpdateOfficialWorkspace: vi.fn().mockResolvedValue(undefined),
     onCreateOfficialWorkspace: vi.fn(),
     onRefreshOfficialFolderCheck: vi.fn(),
     onRepairOfficialFolderStructure: vi.fn(),

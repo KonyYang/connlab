@@ -86,6 +86,7 @@ export type ProjectRuntimeConsoleModel = Pick<
   | "onRefreshPackagePreview"
   | "onRefreshOfficialWorkspacePreview"
   | "onCreateOfficialWorkspace"
+  | "onUpdateOfficialWorkspace"
   | "onRefreshOfficialFolderCheck"
   | "onRepairOfficialFolderStructure"
   | "onRefreshPublicDriveUploadPreview"
@@ -192,6 +193,7 @@ export function selectProjectRuntimeConsoleModel(
     onRefreshPackagePreview: model.onRefreshPackagePreview,
     onRefreshOfficialWorkspacePreview: model.onRefreshOfficialWorkspacePreview,
     onCreateOfficialWorkspace: model.onCreateOfficialWorkspace,
+    onUpdateOfficialWorkspace: model.onUpdateOfficialWorkspace,
     onRefreshOfficialFolderCheck: model.onRefreshOfficialFolderCheck,
     onRepairOfficialFolderStructure: model.onRepairOfficialFolderStructure,
     onRefreshPublicDriveUploadPreview: model.onRefreshPublicDriveUploadPreview,

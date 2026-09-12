@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { useProjectFolderGeneration } from "./useProjectFolderGeneration";
+import { useProjectFolderGeneration, type FolderUpdateReview } from "./useProjectFolderGeneration";
 
 const api = vi.hoisted(() => ({ getProjectFolderGeneration: vi.fn(), previewProjectFolderGeneration: vi.fn(),
   startProjectFolderGeneration: vi.fn(), resumeProjectFolderGeneration: vi.fn() }));
@@ -8,6 +8,94 @@ vi.mock("../../api/client", () => api);
 const operation = { project_id: "p", operation_id: "operation", status: "running", step: 3, completed_steps: [], message: null };
 beforeEach(() => { vi.resetAllMocks(); api.getProjectFolderGeneration.mockResolvedValue(null); });
 afterEach(() => { vi.useRealTimers(); });
+
+it("updates a managed folder through a fresh preview without a rebuild choice", async () => {
+  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "fresh", workspace_preview: { status: "completed", blockers: [] }, recovery: null });
+  api.startProjectFolderGeneration.mockResolvedValue(operation);
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  await act(async () => { await result.current.update(); });
+  expect(api.startProjectFolderGeneration).toHaveBeenCalledWith("p", expect.objectContaining({
+    expected_context: "fresh", conflict_strategy: "continue_existing",
+  }));
+});
+
+it.each([false, true])("routes an interrupted operation with inputs_match=%s safely", async (matches) => {
+  api.getProjectFolderGeneration.mockResolvedValue({ ...operation, status: "interrupted", can_restart: true });
+  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "fresh", workspace_preview: { status: "completed", blockers: [] },
+    recovery: { operation_id: "operation", inputs_match: matches, rebuild_pending: false } });
+  api.resumeProjectFolderGeneration.mockResolvedValue(operation);
+  api.startProjectFolderGeneration.mockResolvedValue(operation);
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  await act(async () => { await result.current.update(); });
+  if (matches) {
+    expect(api.resumeProjectFolderGeneration).toHaveBeenCalledWith("p", "operation");
+    expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+  } else {
+    expect(api.startProjectFolderGeneration).toHaveBeenCalledWith("p", expect.objectContaining({ replaces_operation_id: "operation", conflict_strategy: "continue_existing" }));
+    expect(api.resumeProjectFolderGeneration).not.toHaveBeenCalled();
+  }
+});
+
+it("never replays a pending destructive rebuild from an ordinary update", async () => {
+  api.getProjectFolderGeneration.mockResolvedValue({ ...operation, status: "blocked", can_restart: false });
+  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "fresh", workspace_preview: { status: "exists", blockers: [] },
+    recovery: { operation_id: "operation", inputs_match: true, rebuild_pending: true } });
+  api.resumeProjectFolderGeneration.mockResolvedValue(operation);
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  let review: FolderUpdateReview | undefined;
+  await act(async () => { review = (await result.current.update()) || undefined; });
+  expect(review).toEqual(expect.objectContaining({ resumeRebuild: true }));
+  expect(api.resumeProjectFolderGeneration).not.toHaveBeenCalled();
+  await act(async () => { await result.current.update(undefined, review, true); });
+  expect(api.resumeProjectFolderGeneration).toHaveBeenCalledTimes(1);
+});
+
+it("does not replace uncheckpointed publication when inputs changed", async () => {
+  api.getProjectFolderGeneration.mockResolvedValue({ ...operation, status: "blocked", can_restart: false });
+  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "fresh", workspace_preview: { status: "completed", blockers: [] },
+    recovery: { operation_id: "operation", inputs_match: false, rebuild_pending: false } });
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  await act(async () => { await result.current.update(); });
+  expect(result.current.error).toContain("safe recovery");
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+});
+
+it("requires review for an existing unverified folder and rejects stale confirmation", async () => {
+  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "fresh", workspace_preview: { status: "exists", blockers: [] }, recovery: null });
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  let review: FolderUpdateReview | undefined;
+  await act(async () => { review = (await result.current.update()) || undefined; });
+  expect(review).toBeTruthy();
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "changed", workspace_preview: { status: "exists", blockers: [] }, recovery: null });
+  await act(async () => { await result.current.update("overwrite_rebuild", review); });
+  expect(result.current.error).toContain("preview changed");
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+});
+
+it("does not write on preview failure or start twice on a double click", async () => {
+  api.previewProjectFolderGeneration.mockRejectedValue(new Error("Preview unavailable"));
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  await act(async () => { await Promise.all([result.current.update(), result.current.update()]); });
+  expect(api.previewProjectFolderGeneration).toHaveBeenCalledTimes(1);
+  expect(result.current.error).toBe("Preview unavailable");
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+});
+
+it("does not dispatch an old project after switching during update preflight", async () => {
+  let finish!: (value: unknown) => void;
+  api.previewProjectFolderGeneration.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  const { result, rerender } = renderHook(({ id }) => useProjectFolderGeneration(id, vi.fn(), "old"), { initialProps: { id: "A" } });
+  let pending: Promise<FolderUpdateReview | void>;
+  await act(async () => { pending = result.current.update(); });
+  rerender({ id: "B" });
+  await act(async () => {
+    finish({ expected_context: "fresh", workspace_preview: { status: "completed", blockers: [] }, recovery: null });
+    await pending;
+  });
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+  expect(result.current.busy).toBe(false);
+});
 
 it("starts one backend operation and reconnects without browser-owned writes", async () => {
   api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "preview" });

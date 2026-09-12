@@ -11,8 +11,27 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_PROJECT_FOLDER_SINGLE_ENTRY",
+    "summary": "Unify project folder update and recovery entry; retain explicit advanced rebuild confirmation.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Single UI entry and read-only recovery guidance using existing generation safety guards; no engine rewrite or real output operations.",
+    "scope_paths": [
+      "frontend/src/features/project-workbench",
+      "frontend/src/api/client.ts",
+      "backend/api/project_folder_generation_composition.py",
+      "tests",
+      "docs/project_management"
+    ],
+    "risk_reasons": [],
+    "activation_head": "b70a1dea611d83e8f2e9ed8b8e063e5240f63446",
+    "started_at": "2026-09-12T01:36:01.264661Z",
+    "updated_at": "2026-09-12T01:36:01.264661Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_RELEASE_PUBLICATION_DIAGNOSTICS",
     "tier": "standard",

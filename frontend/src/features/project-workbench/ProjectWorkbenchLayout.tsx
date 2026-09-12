@@ -9,6 +9,7 @@ import {
   type TemporaryProjectDeletePreview,
 } from "../../api/client";
 import { UiIcon } from "../../components/common/UiIcon";
+import type { FolderUpdateReview } from "./useProjectFolderGeneration";
 import {
   deriveActiveMatrixFolderCommand,
   ProjectWorkbenchActiveMatrixWorkspace,
@@ -65,9 +66,7 @@ export function ProjectWorkbenchLayout({
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
   const [showFolderConflictDialog, setShowFolderConflictDialog] = useState(false);
-  const [folderConflictContext, setFolderConflictContext] = useState<string | undefined>();
-  const [folderConflictRestart, setFolderConflictRestart] = useState(false);
-  const [restartPreviewReady, setRestartPreviewReady] = useState(false);
+  const [folderUpdateReview, setFolderUpdateReview] = useState<FolderUpdateReview | null>(null);
   const [recoveryPreviewCheckedProject, setRecoveryPreviewCheckedProject] = useState<string | null>(null);
 
   const {
@@ -81,13 +80,11 @@ export function ProjectWorkbenchLayout({
     packagePreviewError,
     officialWorkspacePreview,
     officialWorkspaceCreating,
-    officialWorkspaceCanResume,
     officialWorkspaceCanRestart,
-    onRestartOfficialWorkspace,
     onRefreshOfficialWorkspacePreview,
     officialWorkspaceProgressLabel,
     officialWorkspaceError,
-    onCreateOfficialWorkspace,
+    onUpdateOfficialWorkspace,
     officialFolderCheckPreview,
     officialFolderCheckError,
     onRefreshOfficialFolderCheck,
@@ -136,19 +133,12 @@ export function ProjectWorkbenchLayout({
     let active = true;
     setRecoveryPreviewCheckedProject(null);
     if (!officialWorkspaceCanRestart) {
-      setRestartPreviewReady(false);
       return () => {
         active = false;
       };
     }
-    setRestartPreviewReady(false);
     void refreshOfficialWorkspacePreview.current()
-      .then(() => {
-        if (active) setRestartPreviewReady(true);
-      })
-      .catch(() => {
-        if (active) setRestartPreviewReady(false);
-      })
+      .catch(() => { /* The model retains the preview error for the operator. */ })
       .finally(() => {
         if (active) setRecoveryPreviewCheckedProject(project.project_id);
       });
@@ -260,11 +250,6 @@ export function ProjectWorkbenchLayout({
   const feeEvaluationButtonState = deriveFeeEvaluationButtonState(confirmedFeeLatest);
   const officialWorkspaceConflictPaths =
     deriveOfficialWorkspaceConflictPaths(officialWorkspacePreview);
-  const hasOfficialWorkspaceConflict =
-    effectiveFolderReady ||
-    officialWorkspaceConflictPaths.length > 0 ||
-    officialWorkspacePreview?.status === "exists" ||
-    officialWorkspacePreview?.status === "completed";
   const basicInformationGenerationGuidance = deriveBasicInformationGenerationGuidance(
     officialWorkspaceError,
     runtimeModel.basicInformation
@@ -272,24 +257,12 @@ export function ProjectWorkbenchLayout({
   const isBasicInformationGenerationBlocker = Boolean(
     basicInformationGenerationGuidance
   );
-  const correctedGenerationReady = Boolean(
-    officialWorkspaceCanRestart &&
-      restartPreviewReady &&
-      officialWorkspacePreview?.generation_context &&
-      !officialWorkspacePreview.blockers?.length
-  );
   // A persisted failure is history until the initial recovery preview has settled.
   // Derive the initial pending state during render so no error paints before the effect runs.
   const checkingRecoveryPreview = Boolean(
     officialWorkspaceCanRestart && recoveryPreviewCheckedProject !== project.project_id
   );
-  const reviewedConflictRestartReady = Boolean(
-    officialWorkspacePreview?.status === "exists" &&
-      officialWorkspacePreview.conflict_options?.length
-  );
-  const displayedOfficialWorkspaceError = correctedGenerationReady
-    ? "Project inputs are now ready. Start a new generation to continue from the saved project folder."
-    : basicInformationGenerationGuidance ?? officialWorkspaceError;
+  const displayedOfficialWorkspaceError = basicInformationGenerationGuidance ?? officialWorkspaceError;
   const hasMatrixDraftForPlanning =
     activeMatrixAuthorityReady || Boolean(matrixCandidateDraft ?? matrixDraft);
   const visibleFeeEvaluationButtonState =
@@ -461,32 +434,37 @@ export function ProjectWorkbenchLayout({
   }
 
   function handleProjectFolderCreateClick(): void {
-    setFolderConflictRestart(false);
     if (lifecycleReadonlyView.readonly) {
       setLifecycleError(lifecycleReadonlyView.message);
       return;
     }
-    if (hasOfficialWorkspaceConflict && !officialWorkspaceCanResume) {
-      setFolderConflictContext(officialWorkspacePreview?.generation_context);
-      setShowFolderConflictDialog(true);
+    void performFolderUpdate();
+  }
+
+  const currentFolderProject = useRef(project.project_id);
+  currentFolderProject.current = project.project_id;
+  useEffect(() => { setShowFolderConflictDialog(false); setFolderUpdateReview(null); }, [project.project_id]);
+
+  async function performFolderUpdate(strategy?: OfficialWorkspaceConflictStrategy, reviewed?: FolderUpdateReview, resumeRebuild = false): Promise<void> {
+    if (lifecycleReadonlyView.readonly) {
+      setLifecycleError(lifecycleReadonlyView.message);
       return;
     }
-    void onCreateOfficialWorkspace();
+    const result = await onUpdateOfficialWorkspace(strategy, reviewed, resumeRebuild);
+    if (currentFolderProject.current !== project.project_id) return;
+    if (result) {
+      setFolderUpdateReview(result);
+      setShowFolderConflictDialog(true);
+    }
   }
 
   function handleProjectFolderConflictChoice(
     strategy: OfficialWorkspaceConflictStrategy
   ): void {
     setShowFolderConflictDialog(false);
-    if (folderConflictRestart) {
-      setRestartPreviewReady(false);
-      void onRestartOfficialWorkspace?.(strategy, folderConflictContext);
+    if (folderUpdateReview) {
+      void performFolderUpdate(strategy, folderUpdateReview);
       return;
-    }
-    if (folderConflictContext) {
-      void onCreateOfficialWorkspace(strategy, folderConflictContext);
-    } else {
-      void onCreateOfficialWorkspace(strategy);
     }
   }
 
@@ -539,6 +517,11 @@ export function ProjectWorkbenchLayout({
             {visibleWorkbenchFolderCommand.label}
           </button>
           <TestReportDraftButton onOpen={onOpenReportWorkspace} />
+          <details>
+            <summary>Advanced folder actions</summary>
+            <button type="button" disabled={visibleWorkbenchFolderCommand.disabled || checkingRecoveryPreview}
+              onClick={() => void performFolderUpdate("backup_and_recreate")}>Rebuild project folder…</button>
+          </details>
         </div>
       </header>
 
@@ -549,7 +532,7 @@ export function ProjectWorkbenchLayout({
         </div>
       ) : officialWorkspaceError ? (
         <div
-          className={`runtime-console-workflow-alert${correctedGenerationReady ? "" : " is-danger"}`}
+          className="runtime-console-workflow-alert is-danger"
           role="alert"
         >
           <strong>Project folder workflow</strong>
@@ -560,34 +543,7 @@ export function ProjectWorkbenchLayout({
               Open Basic Information
             </button>
           ) : null}
-          {officialWorkspaceCanResume && !isBasicInformationGenerationBlocker && !correctedGenerationReady ? (
-            <button type="button" disabled={lifecycleReadonlyView.readonly || officialWorkspaceCreating}
-              onClick={() => void onCreateOfficialWorkspace()}>Resume generation</button>
-          ) : null}
-          {officialWorkspaceCanRestart ? <>
-            <span>{correctedGenerationReady
-              ? "The latest preview is clear. Previous completed files and recovery history are kept."
-              : "After correcting inputs, review a fresh preview to start a new operation. Previous completed files and recovery history are kept."}</span>
-            <button type="button" disabled={officialWorkspaceCreating || lifecycleReadonlyView.readonly}
-              onClick={() => { setRestartPreviewReady(false); void onRefreshOfficialWorkspacePreview().then(() => setRestartPreviewReady(true)).catch(() => setRestartPreviewReady(false)); }}>Refresh generation preview</button>
-            <button type="button" disabled={
-              !restartPreviewReady ||
-              !officialWorkspacePreview?.generation_context ||
-              (Boolean(officialWorkspacePreview?.blockers?.length) && !reviewedConflictRestartReady) ||
-              officialWorkspaceCreating ||
-              lifecycleReadonlyView.readonly
-            }
-              onClick={() => {
-                if (hasOfficialWorkspaceConflict) {
-                  setFolderConflictRestart(true);
-                  setFolderConflictContext(officialWorkspacePreview?.generation_context);
-                  setShowFolderConflictDialog(true);
-                } else {
-                  setRestartPreviewReady(false);
-                  void onRestartOfficialWorkspace?.(undefined, officialWorkspacePreview?.generation_context);
-                }
-              }}>Start new generation</button>
-          </> : null}
+          <span>After resolving the issue, use Update project folder above. Existing recovery checks and file protection still apply.</span>
         </div>
       ) : null}
 
@@ -683,7 +639,9 @@ export function ProjectWorkbenchLayout({
 
       {showFolderConflictDialog ? (
         <ProjectFolderConflictDialog
-          conflictPaths={officialWorkspaceConflictPaths}
+          resumeRebuild={folderUpdateReview?.resumeRebuild ?? false}
+          onResumeRebuild={() => { setShowFolderConflictDialog(false); if (folderUpdateReview) void performFolderUpdate(undefined, folderUpdateReview, true); }}
+          conflictPaths={folderUpdateReview ? deriveOfficialWorkspaceConflictPaths(folderUpdateReview.preview.workspace_preview) : officialWorkspaceConflictPaths}
           onBackup={() => handleProjectFolderConflictChoice("backup_and_recreate")}
           onCancel={() => setShowFolderConflictDialog(false)}
           onContinue={() => handleProjectFolderConflictChoice("continue_existing")}
@@ -778,12 +736,16 @@ function deriveFeeEvaluationButtonState(
 }
 
 function ProjectFolderConflictDialog({
+  resumeRebuild,
+  onResumeRebuild,
   conflictPaths,
   onBackup,
   onCancel,
   onContinue,
   onOverwrite,
 }: {
+  resumeRebuild: boolean;
+  onResumeRebuild: () => void;
   conflictPaths: string[];
   onBackup: () => void;
   onCancel: () => void;
@@ -805,19 +767,26 @@ function ProjectFolderConflictDialog({
           {extraPathCount > 0 ? <em>+{extraPathCount} more</em> : null}
         </div>
         <p>
-          Recommended keeps every existing file and adds only missing template content.
-          Files that are not being updated can remain open.
+          {resumeRebuild
+            ? "An earlier rebuild has unfinished recovery work. Continuing will resume that previously selected rebuild, not a normal update."
+            : "Continue uses the existing folder and preserves unrelated files. Only eligible managed outputs are updated. Close files that need updating."}
         </p>
         <div className="runtime-console-conflict-actions">
+          {resumeRebuild ? <button type="button" className="is-danger" onClick={onResumeRebuild}>Confirm continuation of previous rebuild</button> : <>
           <button type="button" className="is-primary" onClick={onContinue}>
             Continue existing folder (Recommended)
           </button>
+          <details>
+          <summary>Advanced rebuild options</summary>
+          <p>Rebuilding replaces the folder contents. Back up first unless replacement is explicitly intended.</p>
           <button type="button" onClick={onBackup}>
             Backup and Rebuild
           </button>
           <button type="button" className="is-danger" onClick={onOverwrite}>
             Overwrite
           </button>
+          </details>
+          </>}
           <button type="button" onClick={onCancel}>
             Cancel
           </button>

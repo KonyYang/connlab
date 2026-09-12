@@ -113,7 +113,17 @@ class ProjectFolderGenerationRunner:
                 if blocker is not None
             ]
             paths = preview.conflict_paths or ((preview.official_folder_path,) if preview.official_folder_path else ())
-            token = fingerprint({"context": self.context(project_id), "preview": preview,
+            current_context = self.context(project_id)
+            saved_operation = self.journal.read(project_id)
+            recovery = None
+            if saved_operation and saved_operation["status"] != "completed":
+                recovery = {
+                    "operation_id": saved_operation["operation_id"],
+                    "inputs_match": saved_operation["context"] == current_context,
+                    "rebuild_pending": saved_operation.get("strategy") in {"backup_and_recreate", "overwrite_rebuild"}
+                        and "workspace" not in saved_operation["completed_steps"],
+                }
+            token = fingerprint({"context": current_context, "preview": preview,
                                 "targets": [(str(path), tree_hash(path)) for path in paths],
                                 "manifest": file_hash(preview.manifest_path) if preview.manifest_path else None})
             workspace_preview = _preview_response(preview).model_dump()
@@ -125,6 +135,7 @@ class ProjectFolderGenerationRunner:
                 ]
             return {
                 "expected_context": token,
+                "recovery": recovery,
                 "start_blockers": start_blockers,
                 "workspace_preview": {
                     **workspace_preview,

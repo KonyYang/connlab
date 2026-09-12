@@ -12,7 +12,13 @@ export function getProjectFolderGeneration(projectId: string): Promise<ProjectFo
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/project-folder/generation`);
 }
 
-export function previewProjectFolderGeneration(projectId: string): Promise<{ expected_context: string; workspace_preview: OfficialWorkspacePreview }> {
+export type ProjectFolderGenerationPreview = {
+  expected_context: string;
+  workspace_preview: OfficialWorkspacePreview;
+  recovery?: { operation_id: string; inputs_match: boolean; rebuild_pending: boolean } | null;
+};
+
+export function previewProjectFolderGeneration(projectId: string): Promise<ProjectFolderGenerationPreview> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/project-folder/generation/preview`);
 }
 

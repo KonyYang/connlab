@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   getProjectFolderGeneration, startProjectFolderGeneration,
   resumeProjectFolderGeneration, type OfficialWorkspaceConflictStrategy, type ProjectFolderGeneration,
+  previewProjectFolderGeneration, type ProjectFolderGenerationPreview,
 } from "../../api/client";
 
 const labels = ["Creating project folder", "Archiving request materials", "Checking project folder structure",
@@ -10,6 +11,12 @@ const connectionInterruptedMessage = "Connection interrupted. Generation may sti
 type GenerationError = {
   message: string;
   source: "action" | "connection" | "operation" | "completion";
+};
+
+export type FolderUpdateReview = {
+  preview: ProjectFolderGenerationPreview;
+  operationId: string | null;
+  resumeRebuild: boolean;
 };
 
 export function useProjectFolderGeneration(projectId: string, onCompleted: () => Promise<void> | void, expectedContext: string | null) {
@@ -24,6 +31,7 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
   const requestId = useRef<string | null>(null);
   const alive = useRef(true);
   const requestSequence = useRef(0);
+  const updating = useRef(false);
 
   function accept(next: ProjectFolderGeneration | null) {
     if (!alive.current || currentProject.current !== projectId) return;
@@ -115,7 +123,73 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
     }
   }
 
-  return { operation, error: errorState?.message ?? null, start,
+  async function update(
+    strategy?: OfficialWorkspaceConflictStrategy,
+    reviewed?: FolderUpdateReview,
+    resumeRebuild = false,
+  ): Promise<FolderUpdateReview | void> {
+    if (updating.current || starting) return;
+    updating.current = true;
+    setStarting(true);
+    setErrorState(null);
+    const sequence = ++requestSequence.current;
+    const isCurrent = () => alive.current && currentProject.current === projectId && sequence === requestSequence.current;
+    try {
+      const latest = await getProjectFolderGeneration(projectId);
+      if (!isCurrent()) return;
+      if (latest && ["queued", "running"].includes(latest.status)) { accept(latest); return; }
+      const preview = await previewProjectFolderGeneration(projectId);
+      if (!isCurrent()) return;
+      const pending = latest && latest.status !== "completed" ? latest : null;
+      const operationId = pending?.operation_id ?? null;
+      if ((preview.recovery?.operation_id ?? null) !== operationId) {
+        throw new Error("Project folder operation changed. Click Update project folder to check again.");
+      }
+      if (reviewed && (reviewed.operationId !== operationId || reviewed.preview.expected_context !== preview.expected_context)) {
+        throw new Error("Project folder preview changed. Review the latest folder state before choosing again.");
+      }
+      const recovery = preview.recovery;
+      if (strategy && !reviewed) return { preview, operationId, resumeRebuild: false };
+      if (!strategy && pending && recovery?.inputs_match && (!recovery.rebuild_pending || (resumeRebuild && reviewed?.resumeRebuild))) {
+        const next = await resumeProjectFolderGeneration(projectId, pending.operation_id);
+        if (isCurrent()) accept(next);
+        return;
+      }
+      if (pending && !pending.can_restart) {
+        if (recovery?.inputs_match && recovery.rebuild_pending) {
+          return { preview, operationId, resumeRebuild: true };
+        }
+        throw new Error("The previous publication needs safe recovery before inputs can change. No files were written.");
+      }
+      const workspace = preview.workspace_preview;
+      if (workspace.status === "blocked" || (workspace.blockers.length && workspace.status !== "exists")) {
+        throw new Error(workspace.blockers[0] ?? "Project folder needs review before updating.");
+      }
+      if (!strategy && workspace.status === "exists") {
+        return { preview, operationId, resumeRebuild: false };
+      }
+      if (strategy && !reviewed) {
+        return { preview, operationId, resumeRebuild: false };
+      }
+      // A normal update never inherits an earlier destructive rebuild choice.
+      const selected = strategy ?? (workspace.status === "completed" ? "continue_existing" : undefined);
+      requestId.current ??= crypto.randomUUID();
+      if (pending) requestId.current = crypto.randomUUID();
+      const next = await startProjectFolderGeneration(projectId, {
+        expected_context: preview.expected_context, request_id: requestId.current,
+        conflict_strategy: selected,
+        ...(pending ? { replaces_operation_id: pending.operation_id } : {}),
+      });
+      if (isCurrent()) accept(next);
+    } catch (err) {
+      if (isCurrent()) setErrorState({ message: (err as Error).message, source: "action" });
+    } finally {
+      updating.current = false;
+      if (isCurrent()) setStarting(false);
+    }
+  }
+
+  return { operation, error: errorState?.message ?? null, start, update,
     restart: (strategy?: OfficialWorkspaceConflictStrategy, context?: string) => start(strategy, context, true),
     busy: starting || operation?.status === "queued" || operation?.status === "running",
     canResume: operation?.status === "blocked" || operation?.status === "interrupted",
