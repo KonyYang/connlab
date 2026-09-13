@@ -79,7 +79,9 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     const user = userEvent.setup();
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot });
     expect(screen.getByRole("complementary", { name: "Step workspace" })).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Hide workbench details" }));
+    const detailsToggle = screen.getByRole("button", { name: "Hide workbench details" });
+    expect(detailsToggle.className).toContain("runtime-console-workbench-action");
+    await user.click(detailsToggle);
     expect(screen.queryByRole("complementary", { name: "Step workspace" })).toBeNull();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Show workbench details" }));

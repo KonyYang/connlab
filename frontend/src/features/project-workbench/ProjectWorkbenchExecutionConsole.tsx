@@ -59,7 +59,11 @@ export function ProjectWorkbenchExecutionConsole({
     <section className={`runtime-console-workspace${detailsOpen ? "" : " is-details-collapsed"}`}>
       <div className="runtime-console-main">
         <div className="runtime-console-view-controls">
-          <button type="button" aria-expanded={detailsOpen} aria-controls="workbench-details"
+          <button
+            className="runtime-console-workbench-action"
+            type="button"
+            aria-expanded={detailsOpen}
+            aria-controls="workbench-details"
             onClick={() => setDetailsOpen((open) => !open)}>
             {detailsOpen ? "Hide workbench details" : "Show workbench details"}
           </button>

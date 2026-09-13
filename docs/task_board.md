@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_WORKBENCH_DETAILS_TOGGLE_STYLE",
+    "summary": "Move the workbench-details toggle to the left and match the Test Report button style.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Adjust only the Project Workbench details-toggle placement and visual treatment, with focused UI regression coverage.",
+    "scope_paths": [
+      "frontend/src/features/project-workbench/ProjectWorkbenchExecutionConsole.tsx",
+      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+      "frontend/src/workbench.css"
+    ],
+    "risk_reasons": [],
+    "activation_head": "f377e9900659cb500ab88cd366c85a8c2ade67fb",
+    "started_at": "2026-09-13T02:40:30.446522Z",
+    "updated_at": "2026-09-13T02:40:30.446522Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FOLDER_GENERATION_EFFICIENCY",
     "tier": "standard",
