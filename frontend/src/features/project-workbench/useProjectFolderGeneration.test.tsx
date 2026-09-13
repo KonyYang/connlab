@@ -114,7 +114,7 @@ it("reports missing generation inputs before offering rebuild choices", async ()
   api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "fresh", start_blockers: ["Fee template is missing."],
     workspace_preview: { status: "exists", blockers: ["Existing folder"] }, recovery: null });
   const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
-  let review: FolderUpdateReview | void;
+  let review: FolderUpdateReview | void = undefined;
   await act(async () => { review = await result.current.update(); });
   expect(review).toBeUndefined();
   expect(result.current.error).toBe("Fee template is missing.");
