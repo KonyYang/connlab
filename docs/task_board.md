@@ -26,8 +26,16 @@
     "risk_reasons": [],
     "activation_head": "f377e9900659cb500ab88cd366c85a8c2ade67fb",
     "started_at": "2026-09-13T02:40:30.446522Z",
-    "updated_at": "2026-09-13T02:40:30.446522Z",
-    "checkpoint": null,
+    "updated_at": "2026-09-13T02:50:12.169007Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_WORKBENCH_DETAILS_TOGGLE_STYLE",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation and validation are complete; unrelated App.tsx and Sidebar.tsx changes prevent final task recording until their owner resolves them.",
+      "requires_user": false
+    },
     "report": null
   },
   "last_closed": {
