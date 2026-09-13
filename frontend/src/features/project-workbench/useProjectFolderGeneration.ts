@@ -32,9 +32,13 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
   const alive = useRef(true);
   const requestSequence = useRef(0);
   const updating = useRef(false);
+  const pollingStatus = useRef<string | null>(null);
+  const schedulePoll = useRef<(delay: number) => void>(() => {});
 
   function accept(next: ProjectFolderGeneration | null) {
     if (!alive.current || currentProject.current !== projectId) return;
+    pollingStatus.current = next?.status ?? null;
+    schedulePoll.current(next && ["queued", "running"].includes(next.status) ? 1000 : 30000);
     setOperation(next);
     setErrorState(previous => {
       // The current user action is newer than any operation returned by polling.
@@ -64,6 +68,13 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
   useEffect(() => {
     let disposed = false;
     let timer: ReturnType<typeof setTimeout>;
+    let polling = false;
+    const schedule = (delay: number) => {
+      clearTimeout(timer);
+      if (!disposed) timer = setTimeout(poll, delay);
+    };
+    schedulePoll.current = schedule;
+    pollingStatus.current = null;
     alive.current = true;
     setOperation(null);
     setErrorState(null);
@@ -72,21 +83,36 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
     seenCompletion.current = null;
     requestId.current = null;
     async function poll() {
+      if (disposed || polling) return;
+      polling = true;
+      clearTimeout(timer);
       const sequence = requestSequence.current;
+      let failed = false;
       try {
         const next = await getProjectFolderGeneration(projectId);
         if (!disposed && sequence === requestSequence.current) accept(next);
       } catch {
-        if (!disposed) {
+        failed = true;
+        if (!disposed && sequence === requestSequence.current) {
           setErrorState(previous => previous && previous.source !== "connection"
             ? previous
             : { message: connectionInterruptedMessage, source: "connection" });
         }
       }
-      if (!disposed) timer = setTimeout(poll, 1000);
+      polling = false;
+      schedule(failed || ["queued", "running"].includes(pollingStatus.current ?? "") ? 1000 : 30000);
     }
+    const refresh = () => { if (document.visibilityState !== "hidden") void poll(); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
     void poll();
-    return () => { disposed = true; alive.current = false; clearTimeout(timer); };
+    return () => {
+      disposed = true;
+      alive.current = false;
+      clearTimeout(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, [projectId]);
 
   async function start(strategy?: OfficialWorkspaceConflictStrategy, contextOverride?: string, replace = false) {

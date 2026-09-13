@@ -59,3 +59,19 @@ explicit rebuild confirmation and protected publication are unchanged.
 Validation uses isolated repositories, temporary folders and fake Office adapters.
 Real Office/file-lock behavior and packaged deployment require separate acceptance;
 no real project folder is rebuilt by this maintenance task.
+
+## Efficiency follow-up (2026-09-13)
+
+Generation status polling uses one second for queued/running operations and connection
+retries, and 30 seconds for inactive states (including no operation and completed).
+Returning to a visible page refreshes immediately. Starting/resuming an operation
+restores fast polling; focus events do not overlap an outstanding poll. These reads
+never start or resume generation automatically.
+
+An isolated cProfile run of the two complete-chain cases (six create/rebuild operations,
+fake Office, local temporary SQLite/files) recorded 60 required-forms preview calls,
+2.454 seconds cumulative, about 41 ms per call. The whole profiled run took 18.053
+seconds. This measures the test callback thread, not every HTTP-handler preview or
+real Office/release performance. Repeated preview work is confirmed, but backend
+validation/caching changes are deferred until realistic measurements justify touching
+the input/publication checks. No partial completion or item retry is introduced.

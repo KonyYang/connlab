@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FOLDER_GENERATION_EFFICIENCY",
+    "summary": "Reduce idle generation polling and measure repeated form preflight",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Adaptive read-only polling with focus refresh; measure isolated preflight costs and optimize only with demonstrated benefit. No partial generation, real folder writes or push.",
+    "scope_paths": [
+      "frontend/src/features/project-workbench/useProjectFolderGeneration.ts",
+      "frontend/src/features/project-workbench/useProjectFolderGeneration.test.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "ad59d42d9235d750f112d77582d42f0bd38b9e98",
+    "started_at": "2026-09-13T00:44:49.154476Z",
+    "updated_at": "2026-09-13T00:44:49.154476Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FOLDER_PREFLIGHT_REUSE",
     "tier": "standard",

@@ -9,6 +9,55 @@ const operation = { project_id: "p", operation_id: "operation", status: "running
 beforeEach(() => { vi.resetAllMocks(); api.getProjectFolderGeneration.mockResolvedValue(null); });
 afterEach(() => { vi.useRealTimers(); });
 
+it.each([null, "completed", "blocked"])("checks inactive status %s slowly but discovers external work on focus", async (status) => {
+  vi.useFakeTimers();
+  api.getProjectFolderGeneration.mockResolvedValue(status ? { ...operation, status } : null);
+  const { result, unmount } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "shown"));
+  await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+  await act(async () => { await vi.advanceTimersByTimeAsync(29000); });
+  expect(api.getProjectFolderGeneration).toHaveBeenCalledTimes(1);
+  await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+  expect(api.getProjectFolderGeneration).toHaveBeenCalledTimes(2);
+  api.getProjectFolderGeneration.mockResolvedValue(operation);
+  await act(async () => { window.dispatchEvent(new Event("focus")); });
+  expect(result.current.busy).toBe(true);
+  await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+  expect(api.getProjectFolderGeneration).toHaveBeenCalledTimes(4);
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+  unmount();
+  await act(async () => { window.dispatchEvent(new Event("focus")); await vi.advanceTimersByTimeAsync(30000); });
+  expect(api.getProjectFolderGeneration).toHaveBeenCalledTimes(4);
+});
+
+it("returns to fast polling immediately after starting from idle", async () => {
+  vi.useFakeTimers();
+  api.startProjectFolderGeneration.mockResolvedValue(operation);
+  const { result, unmount } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "shown"));
+  await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+  await act(async () => { await result.current.start(); });
+  api.getProjectFolderGeneration.mockResolvedValue({ ...operation, status: "completed" });
+  await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+  expect(result.current.operation?.status).toBe("completed");
+  expect(api.startProjectFolderGeneration).toHaveBeenCalledTimes(1);
+  unmount();
+});
+
+it("does not overlap status reads when focus returns during an outstanding request", async () => {
+  vi.useFakeTimers();
+  let resolve!: (value: null) => void;
+  api.getProjectFolderGeneration.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+  const { unmount } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "shown"));
+  await act(async () => {
+    window.dispatchEvent(new Event("focus"));
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  expect(api.getProjectFolderGeneration).toHaveBeenCalledTimes(1);
+  await act(async () => { resolve(null); });
+  await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
+  expect(api.getProjectFolderGeneration).toHaveBeenCalledTimes(2);
+  unmount();
+});
+
 it("reviews a managed folder before an explicit rebuild choice", async () => {
   api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "fresh", workspace_preview: { status: "completed", blockers: [] }, recovery: null });
   api.startProjectFolderGeneration.mockResolvedValue(operation);
@@ -224,13 +273,15 @@ it("keeps a start blocker visible through a failed poll and later reconnect", as
   expect(result.current.error).toBe("Project Schedule is not confirmed.");
 
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(30000);
   });
+  expect(api.getProjectFolderGeneration).toHaveBeenCalledTimes(3);
   expect(result.current.error).toBe("Project Schedule is not confirmed.");
 
   await act(async () => {
     await vi.advanceTimersByTimeAsync(1000);
   });
+  expect(api.getProjectFolderGeneration).toHaveBeenCalledTimes(4);
   expect(result.current.error).toBe("Project Schedule is not confirmed.");
 
   unmount();
