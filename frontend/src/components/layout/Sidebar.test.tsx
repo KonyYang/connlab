@@ -20,6 +20,7 @@ describe("Sidebar interaction lock", () => {
 
     const projectsButton = screen.getByRole("button", { name: /Projects/ });
     const toggleButton = screen.getByRole("button", { name: /Collapse sidebar/ });
+    expect(screen.queryByRole("button", { name: "Runtime Prototype (Dev)" })).toBeNull();
     expect((projectsButton as HTMLButtonElement).disabled).toBe(true);
     expect(projectsButton.getAttribute("title")).toBe("Applying LTR number. Keep this page open.");
     expect((toggleButton as HTMLButtonElement).disabled).toBe(true);
@@ -29,5 +30,17 @@ describe("Sidebar interaction lock", () => {
 
     expect(onNavigate).not.toHaveBeenCalled();
     expect(onToggleCollapsed).not.toHaveBeenCalled();
+  });
+
+  it("exposes Tools as an active navigation destination", async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    render(<Sidebar activeRoute="tools" onNavigate={onNavigate} />);
+
+    const toolsButton = screen.getByRole("button", { name: "Tools" });
+    expect((toolsButton as HTMLButtonElement).disabled).toBe(false);
+    expect(toolsButton.getAttribute("aria-current")).toBe("page");
+    await user.click(toolsButton);
+    expect(onNavigate).toHaveBeenCalledWith("/tools");
   });
 });

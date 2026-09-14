@@ -35,13 +35,20 @@ class OfficeFilePasswordGateway:
         password: str,
         office_kind: str,
     ) -> None:
-        """Write a protected output, then verify its encryption markers."""
+        """Write a protected output, then verify its encryption markers.
+
+        ``password`` is deliberately applied to both Office open/read and
+        edit/write protection wherever the file format exposes both fields.
+        This keeps standalone Tools copies aligned with Project Workbench
+        encryption; PowerPoint exposes one file password, which governs both
+        opening and subsequent editing.
+        """
         source = Path(source_path)
         output = Path(output_path)
         if not source.is_file():
             raise FileNotFoundError(f"Office source file does not exist: {source.name}")
         if not password:
-            raise ValueError("An Office open password is required.")
+            raise ValueError("An Office open and edit password is required.")
         expected_kind = _kind_from_suffix(source.suffix.lower())
         if expected_kind != office_kind:
             raise ValueError(f"Unsupported or mismatched Office file type: {source.suffix}")

@@ -58,6 +58,13 @@ def parse_ltr_number(value: str) -> ParsedLtrNumber:
     )
 
 
+def excel_password_for_dl_number(value: str) -> str:
+    """Return the Excel protection password derived from a standard DL number."""
+    parsed = parse_ltr_number(value)
+    suffix = parsed.suffix or ""
+    return f"{parsed.year:04d}{parsed.month:02d}{parsed.sequence:03d}{suffix}"
+
+
 def validate_ltr_number(value: str) -> bool:
     """Return True when a value is a supported LTR number."""
     parse_ltr_number(value)

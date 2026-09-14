@@ -193,6 +193,10 @@ from backend.application.llcr_result_dataset_service import (
     LlcrResultDatasetService,
 )
 from backend.application.report_workspace_service import ReportWorkspaceService
+from backend.application.tools_service import ToolsService
+from backend.application.tools_customer_report_job_service import (
+    ToolsCustomerReportJobService,
+)
 from backend.application.current_report_update_service import CurrentReportUpdateService
 from backend.application.customer_report_projection_service import (
     CustomerReportProjectionService,
@@ -239,6 +243,9 @@ from backend.infrastructure.files.report_publication_gateway import (
 )
 from backend.infrastructure.office.customer_report_document_gateway import (
     CustomerReportDocumentGateway,
+)
+from backend.infrastructure.office.customer_report_subprocess_runner import (
+    CustomerReportSubprocessRunner,
 )
 from backend.infrastructure.office.llcr_result_workbook_gateway import (
     LlcrResultWorkbookGateway,
@@ -2109,6 +2116,32 @@ def get_matrix_method_version_sync_service(
 def get_local_path_picker_service() -> LocalPathPickerService:
     """Build the native local path picker service."""
     return LocalPathPickerService(WindowsPathPicker())
+
+
+def get_tools_service() -> ToolsService:
+    """Build project-independent document tools from shared Office adapters."""
+    return ToolsService(
+        customer_report_writer=CustomerReportDocumentGateway(),
+        office_protector=OfficeFilePasswordGateway(),
+    )
+
+
+@lru_cache(maxsize=1)
+def get_tools_customer_report_job_service() -> ToolsCustomerReportJobService:
+    """Own standalone Word-job state independently of one browser request."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    settings = get_settings()
+    pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="tools-customer-report")
+    return ToolsCustomerReportJobService(
+        generator=ToolsService(
+            customer_report_writer=CustomerReportSubprocessRunner(
+                output_root=settings.data_dir / "customer_report_subprocess_runs"
+            ),
+            office_protector=OfficeFilePasswordGateway(),
+        ),
+        dispatch=pool.submit,
+    )
 
 
 def get_ltr_workbook_compatibility_service(

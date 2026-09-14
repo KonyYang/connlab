@@ -5323,6 +5323,59 @@ export function downloadReportDraftRevision(
   );
 }
 
+export function generateStandaloneCustomerReport(file: File): Promise<BlobDownloadResponse> {
+  const form = new FormData();
+  form.append("file", file);
+  return requestBlobResponse("/api/tools/customer-report", {
+    method: "POST",
+    body: form,
+  });
+}
+
+export type StandaloneCustomerReportJob = {
+  operation_id: string;
+  status: "queued" | "running" | "completed" | "failed";
+  stage: string;
+  elapsed_seconds: number;
+  message: string | null;
+};
+
+export function startStandaloneCustomerReport(
+  file: File
+): Promise<StandaloneCustomerReportJob> {
+  const form = new FormData();
+  form.append("file", file);
+  return requestJson<StandaloneCustomerReportJob>("/api/tools/customer-report/jobs", {
+    method: "POST",
+    body: form,
+  });
+}
+
+export function readStandaloneCustomerReportJob(
+  operationId: string
+): Promise<StandaloneCustomerReportJob> {
+  return requestJson<StandaloneCustomerReportJob>(
+    `/api/tools/customer-report/jobs/${encodeURIComponent(operationId)}`
+  );
+}
+
+export function downloadStandaloneCustomerReport(
+  operationId: string
+): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(
+    `/api/tools/customer-report/jobs/${encodeURIComponent(operationId)}/download`
+  );
+}
+
+export function encryptStandaloneCopy(file: File): Promise<BlobDownloadResponse> {
+  const form = new FormData();
+  form.append("file", file);
+  return requestBlobResponse("/api/tools/encrypt-copy", {
+    method: "POST",
+    body: form,
+  });
+}
+
 export function customerReportDraftDownloadUrl(
   projectId: string,
   reportRevisionId: string

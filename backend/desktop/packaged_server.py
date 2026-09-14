@@ -20,6 +20,7 @@ from backend.shared.logging import configure_packaged_logging
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 FEE_EXPORT_CHILD_FLAG = "--connlab-fee-export-child"
+CUSTOMER_REPORT_CHILD_FLAG = "--connlab-customer-report-child"
 
 
 def create_packaged_server_app(paths: PackagedRuntimePaths):
@@ -74,6 +75,12 @@ def main(argv: list[str] | None = None) -> int:
         )
 
         return fee_export_child_main(arguments[1:])
+    if arguments and arguments[0] == CUSTOMER_REPORT_CHILD_FLAG:
+        from backend.infrastructure.office.customer_report_subprocess_child import (
+            main as customer_report_child_main,
+        )
+
+        return customer_report_child_main(arguments[1:])
     args = parse_args(arguments)
     run_packaged_web_server(host=args.host, port=args.port)
     return 0

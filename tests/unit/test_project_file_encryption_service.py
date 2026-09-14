@@ -30,15 +30,17 @@ class _RecordingGateway:
         return item.target_path
 
 
-def _workspace(tmp_path: Path) -> OfficialWorkspaceRecord:
-    local = tmp_path / "DL-2026-08-007"
-    official = local / "DL-2026-08-007 Example project"
+def _workspace(
+    tmp_path: Path, dl_number: str = "DL-2026-08-007"
+) -> OfficialWorkspaceRecord:
+    local = tmp_path / dl_number
+    official = local / f"{dl_number} Example project"
     test_results = official / "Test results"
     test_results.mkdir(parents=True)
     return OfficialWorkspaceRecord(
         workspace_id="workspace-1",
         project_id="project-1",
-        dl_number="DL-2026-08-007",
+        dl_number=dl_number,
         local_workspace_path=local,
         source_book_path=local / "Source Book",
         official_folder_path=official,
@@ -116,6 +118,29 @@ def test_execute_uses_fixed_document_password_and_dl_excel_password(tmp_path: Pa
     assert all("History\\Encryption" in history for _, _, history, _ in gateway.calls)
 
 
+def test_execute_keeps_excel_dl_suffix_in_derived_password(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path, dl_number="DL-2026-04-038A")
+    _touch(workspace.official_folder_path / "Test results" / "measurements.xlsx")
+    gateway = _RecordingGateway()
+    service = ProjectFileEncryptionService(
+        workspace_repository=_WorkspaceRepository(workspace),
+        gateway=gateway,
+    )
+    preview = service.preview("project-1")
+
+    service.execute(
+        ProjectFileEncryptionCommand(
+            project_id="project-1",
+            expected_plan_token=preview.plan_token,
+            conflict_action="overwrite",
+        )
+    )
+
+    assert [(name, password) for name, password, _, _ in gateway.calls] == [
+        ("measurements.xlsx", "202604038A"),
+    ]
+
+
 def test_execute_skip_leaves_conflicting_source_out_of_gateway(tmp_path: Path) -> None:
     workspace = _workspace(tmp_path)
     results = workspace.official_folder_path / "Test results"
@@ -164,4 +189,3 @@ def test_execute_rejects_changed_plan_before_mutation(tmp_path: Path) -> None:
         )
 
     assert gateway.calls == []
-

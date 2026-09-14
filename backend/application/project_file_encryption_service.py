@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Literal, Protocol
 
 from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
+from backend.modules.ltr import LtrNumberError, excel_password_for_dl_number
 from backend.shared.office_document_password import OFFICE_DOCUMENT_PASSWORD
 
 
@@ -340,12 +340,12 @@ class ProjectFileEncryptionService:
 
 
 def _derive_excel_password(dl_number: str) -> str:
-    match = re.fullmatch(r"DL-(\d{4})-(\d{2})-(\d{3})", dl_number.strip(), re.IGNORECASE)
-    if match is None:
+    try:
+        return excel_password_for_dl_number(dl_number)
+    except LtrNumberError as exc:
         raise ProjectFileEncryptionBlockedError(
             "The project DL number cannot be converted to the Excel password format."
-        )
-    return "".join(match.groups())
+        ) from exc
 
 
 def _file_fingerprint(path: Path) -> str:

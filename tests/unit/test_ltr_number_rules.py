@@ -8,6 +8,7 @@ from backend.modules.ltr import (
     LtrNumberError,
     LtrNumberKind,
     base_ltr_number,
+    excel_password_for_dl_number,
     family_stem,
     format_standard_dl_number,
     is_alphanumeric_ltr_suffix_token,
@@ -48,6 +49,12 @@ def test_parse_standard_dl_number_with_suffix() -> None:
 
     assert parse_ltr_number("DL-2026-02-003A").suffix == "A"
     assert parse_ltr_number("DL-2026-02-056AA").suffix == "AA"
+
+
+def test_excel_password_uses_the_full_dl_number_prefix() -> None:
+    """Excel protection uses YYYYMMNNN and keeps an association suffix."""
+    assert excel_password_for_dl_number("DL-2025-09-054") == "202509054"
+    assert excel_password_for_dl_number("DL-2026-04-038A") == "202604038A"
 
 
 @pytest.mark.parametrize(

@@ -22,10 +22,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", route: "dashboard", hint: null, icon: "dashboard", disabled: true },
   { label: "New Project", route: "intake", hint: null, icon: "new-project" },
   { label: "Projects", route: "projects", hint: null, icon: "projects" },
-  { label: "Runtime Prototype (Dev)", route: "runtime-projection", hint: null, icon: "grid" },
   { label: "Reports", route: "reports", hint: null, icon: "reports", disabled: true },
   { label: "Folders", route: "folders", hint: null, icon: "folder", disabled: true },
-  { label: "Templates", route: "templates", hint: null, icon: "templates", disabled: true },
+  { label: "Tools", route: "tools", hint: null, icon: "tools" },
   { label: "Reference Library", route: "reference", hint: null, icon: "library", disabled: true },
   { label: "Settings", route: "settings", hint: null, icon: "settings" }
 ];

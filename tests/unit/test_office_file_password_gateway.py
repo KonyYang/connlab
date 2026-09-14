@@ -34,6 +34,7 @@ class _OfficeDocument:
     def SaveAs2(self, **kwargs) -> None:
         Path(kwargs["FileName"]).write_bytes(b"word-encrypted")
         kwargs["Password"] = self.Password
+        kwargs["WritePassword"] = self.WritePassword
         self.output_writer.append(kwargs)
 
     def SaveAs(self, *args, **kwargs) -> None:
@@ -140,7 +141,9 @@ def test_legacy_doc_and_excel_save_with_open_password_then_verify(tmp_path: Path
     )
 
     assert saves[0]["Password"] == "DGLAB"
+    assert saves[0]["WritePassword"] == "DGLAB"
     assert saves[1]["Password"] == "202608007"
+    assert saves[1]["WriteResPassword"] == "202608007"
     assert opens[0]["PasswordDocument"] == "DGLAB"
     assert opens[0]["WritePasswordDocument"] == "DGLAB"
     assert verified == [

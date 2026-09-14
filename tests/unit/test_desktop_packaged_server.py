@@ -35,6 +35,34 @@ def test_packaged_server_child_mode_routes_to_fee_export_child(
     assert calls["child_argv"] == ["--command-json", str(command_json)]
 
 
+def test_packaged_server_child_mode_routes_to_customer_report_child(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    command_json = tmp_path / "command.json"
+    calls: dict[str, object] = {}
+
+    def fake_child_main(argv: list[str]) -> int:
+        calls["child_argv"] = argv
+        return 9
+
+    def fail_web_server(*args: object, **kwargs: object) -> None:
+        raise AssertionError("child mode must not start the web server")
+
+    monkeypatch.setattr(
+        "backend.infrastructure.office.customer_report_subprocess_child.main",
+        fake_child_main,
+    )
+    monkeypatch.setattr(packaged_server, "run_packaged_web_server", fail_web_server)
+
+    result = packaged_server.main(
+        ["--connlab-customer-report-child", "--command-json", str(command_json)]
+    )
+
+    assert result == 9
+    assert calls["child_argv"] == ["--command-json", str(command_json)]
+
+
 def test_packaged_server_normal_mode_starts_web_server(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

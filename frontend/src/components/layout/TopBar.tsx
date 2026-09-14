@@ -19,8 +19,8 @@ const ROUTE_TITLES: Record<string, { title: string }> = {
   settings: {
     title: "Settings"
   },
-  "runtime-projection": {
-    title: "Runtime Projection Prototype"
+  tools: {
+    title: "Tools"
   },
   unknown: {
     title: "ConnLab"

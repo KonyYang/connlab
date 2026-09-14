@@ -20,6 +20,9 @@ from backend.desktop.runtime_paths import (
 from backend.desktop.shell import desktop_bridge_script
 
 
+CUSTOMER_REPORT_CHILD_FLAG = "--connlab-customer-report-child"
+
+
 @dataclass(slots=True)
 class DesktopServerHandle:
     """Own the in-process Uvicorn server used by the packaged desktop app."""
@@ -125,10 +128,20 @@ def _wait_for_server_start(server: uvicorn.Server, thread: threading.Thread) -> 
     raise RuntimeError("ConnLab packaged API server did not start within 5 seconds.")
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> int:
     """Console script entry point for PyInstaller."""
+    import sys
+
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == CUSTOMER_REPORT_CHILD_FLAG:
+        from backend.infrastructure.office.customer_report_subprocess_child import (
+            main as customer_report_child_main,
+        )
+
+        return customer_report_child_main(arguments[1:])
     run_packaged_desktop()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import gc
 from hashlib import sha256
+import logging
 import os
 from pathlib import Path
 import re
 import shutil
+import time
+from typing import Callable, Iterable, TypeVar
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -77,6 +81,23 @@ _NON_PRODUCT_SAMPLE_PATTERN = re.compile(
     r"\b(?:PCB|BUS\s*BAR|BUSBAR|TEST\s+FIXTURE|FIXTURE|ADAPTER)\b",
     flags=re.IGNORECASE,
 )
+_TRANSIENT_WORD_FILE_LOCK_WINERRORS = {32, 33}
+_TRANSIENT_WORD_FILE_LOCK_DELAYS_SECONDS = (
+    0.05,
+    0.1,
+    0.2,
+    0.4,
+    0.8,
+    1.0,
+    1.0,
+    1.0,
+)
+_T = TypeVar("_T")
+_LOGGER = logging.getLogger(__name__)
+
+
+def _is_transient_word_file_lock(exc: OSError) -> bool:
+    return getattr(exc, "winerror", None) in _TRANSIENT_WORD_FILE_LOCK_WINERRORS
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,13 +110,51 @@ class _InternalHeaderValues:
     approved_by: str
 
 
+@dataclass(slots=True)
+class _NumberedHeadingIndex:
+    """Build once with Word Find and retain live ranges through later edits."""
+
+    _matches: dict[tuple[int, str], tuple[object, str]]
+
+    @classmethod
+    def from_document(
+        cls,
+        document,
+        headings: Iterable[tuple[int, str]],
+    ) -> _NumberedHeadingIndex:
+        ordered_headings = tuple(headings)
+        matches: dict[tuple[int, str], tuple[object, str]] = {}
+        for number, heading in ordered_headings:
+            matches[(number, heading)] = _find_heading_paragraph(
+                document,
+                number,
+                heading,
+            )
+        return cls(matches)
+
+    def get(self, number: int, heading: str) -> tuple[object, str]:
+        try:
+            return self._matches[(number, heading)]
+        except KeyError:
+            raise ValueError(
+                "Internal report is missing required content: "
+                f"{number}. {heading}"
+            ) from None
+
+
 class CustomerReportDocumentGateway:
     """Create one customer draft without changing its internal-report source."""
 
-    def __init__(self, *, protected_package_gateway=None) -> None:
+    def __init__(
+        self,
+        *,
+        protected_package_gateway=None,
+        transient_retry_delay: Callable[[float], None] | None = None,
+    ) -> None:
         self._protected_package_gateway = (
             protected_package_gateway or ProtectedWordPackageGateway()
         )
+        self._transient_retry_delay = transient_retry_delay or time.sleep
 
     def generate_customer_report(
         self,
@@ -103,6 +162,7 @@ class CustomerReportDocumentGateway:
         source_path: Path,
         template_path: Path,
         output_path: Path,
+        progress: Callable[[str], None] | None = None,
     ) -> Path:
         source = Path(source_path)
         template = Path(template_path)
@@ -113,23 +173,93 @@ class CustomerReportDocumentGateway:
             f".customer-report.{uuid4().hex}.tmp{output.suffix}"
         )
         try:
+            _emit_progress(progress, "preparing_template")
             protection_state = self._protected_package_gateway.stage_editable_copy(
                 template,
                 temporary,
             )
-            _generate_with_word(source, temporary)
-            _write_source_report_sha256(temporary, source_hash)
-            _audit_customer_report(temporary)
-            if _file_hash(source) != source_hash:
-                raise ValueError("The internal report source changed during customer generation.")
-            self._protected_package_gateway.restore_password_protection(
-                temporary,
-                protection_state,
+            if progress is None:
+                _generate_with_word(source, temporary)
+            else:
+                _generate_with_word(source, temporary, progress=progress)
+            _emit_progress(progress, "verifying_output")
+            self._after_word_file_operation(
+                lambda: _write_source_report_sha256(temporary, source_hash),
+                operation="record source fingerprint",
+                path=temporary,
             )
-            os.replace(temporary, output)
+            self._after_word_file_operation(
+                lambda: _audit_customer_report(temporary),
+                operation="audit generated report",
+                path=temporary,
+            )
+            current_source_hash = self._after_word_file_operation(
+                lambda: _file_hash(source),
+                operation="verify source fingerprint",
+                path=source,
+            )
+            if current_source_hash != source_hash:
+                raise ValueError("The internal report source changed during customer generation.")
+            _emit_progress(progress, "protecting_output")
+            self._after_word_file_operation(
+                lambda: self._protected_package_gateway.restore_password_protection(
+                    temporary,
+                    protection_state,
+                ),
+                operation="restore report protection",
+                path=temporary,
+            )
+            self._after_word_file_operation(
+                lambda: os.replace(temporary, output),
+                operation="publish generated report",
+                path=temporary,
+            )
         finally:
-            temporary.unlink(missing_ok=True)
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError as exc:
+                if not _is_transient_word_file_lock(exc):
+                    raise
+                _LOGGER.warning(
+                    "Word still holds customer-report working copy during cleanup: file=%s",
+                    temporary.name,
+                )
         return output
+
+    def _after_word_file_operation(
+        self,
+        action: Callable[[], _T],
+        *,
+        operation: str,
+        path: Path,
+    ) -> _T:
+        for attempt, delay_seconds in enumerate(
+            _TRANSIENT_WORD_FILE_LOCK_DELAYS_SECONDS,
+            start=1,
+        ):
+            try:
+                return action()
+            except OSError as exc:
+                if not _is_transient_word_file_lock(exc):
+                    raise
+                _LOGGER.warning(
+                    "Waiting for Microsoft Word to release customer-report working copy: "
+                    "operation=%s file=%s attempt=%s winerror=%s",
+                    operation,
+                    path.name,
+                    attempt,
+                    getattr(exc, "winerror", None),
+                )
+                self._transient_retry_delay(delay_seconds)
+        try:
+            return action()
+        except OSError as exc:
+            if not _is_transient_word_file_lock(exc):
+                raise
+            raise RuntimeError(
+                "Microsoft Word did not release the generated working copy. "
+                "Wait a moment and try again."
+            ) from exc
 
     def read_source_report_sha256(self, path: Path) -> str | None:
         """Read the invisible lineage fingerprint embedded in a customer DOCX."""
@@ -169,7 +299,12 @@ def _validate_paths(source: Path, template: Path, output: Path) -> None:
         raise FileExistsError("Customer report output already exists and will not be replaced.")
 
 
-def _generate_with_word(source_path: Path, target_path: Path) -> None:
+def _generate_with_word(
+    source_path: Path,
+    target_path: Path,
+    *,
+    progress: Callable[[str], None] | None = None,
+) -> None:
     try:
         import pythoncom  # type: ignore[import-not-found]
         import win32com.client  # type: ignore[import-not-found]
@@ -188,6 +323,7 @@ def _generate_with_word(source_path: Path, target_path: Path) -> None:
     )
     try:
         shutil.copy2(target_path, reference_path)
+        _emit_progress(progress, "opening_word")
         word = win32com.client.DispatchEx("Word.Application")
         word.Visible = False
         word.DisplayAlerts = 0
@@ -235,19 +371,30 @@ def _generate_with_word(source_path: Path, target_path: Path) -> None:
             NoEncodingDialog=True,
         )
         try:
-            _copy_customer_body(source, target)
+            _emit_progress(progress, "copying_content")
+            target_headings = _copy_customer_body(
+                source,
+                target,
+                progress=progress,
+            )
         except Exception as exc:
             raise ValueError(
                 f"Customer report body generation failed: {_error_summary(exc)}"
             ) from exc
         try:
-            _normalize_customer_sections(target, template_reference)
+            _emit_progress(progress, "formatting_document")
+            _normalize_customer_sections(
+                target,
+                template_reference,
+                target_headings,
+            )
             _copy_customer_header(source, target)
             _refresh_customer_fields(target)
         except Exception as exc:
             raise ValueError(
                 f"Customer report header generation failed: {_error_summary(exc)}"
             ) from exc
+        _emit_progress(progress, "saving_document")
         target.Save()
     except Exception as exc:
         summary = _error_summary(exc)
@@ -256,25 +403,50 @@ def _generate_with_word(source_path: Path, target_path: Path) -> None:
         if template_reference is not None:
             try:
                 template_reference.Close(SaveChanges=False)
-            except Exception:
-                pass
+            except Exception as exc:
+                _LOGGER.warning(
+                    "Unable to close customer-template reference in Word: %s",
+                    _error_summary(exc),
+                )
         if target is not None:
             try:
                 target.Close(SaveChanges=False)
-            except Exception:
-                pass
+            except Exception as exc:
+                _LOGGER.warning(
+                    "Unable to close customer-report working copy in Word: %s",
+                    _error_summary(exc),
+                )
         if source is not None:
             try:
                 source.Close(SaveChanges=False)
-            except Exception:
-                pass
+            except Exception as exc:
+                _LOGGER.warning(
+                    "Unable to close internal-report working copy in Word: %s",
+                    _error_summary(exc),
+                )
         if word is not None:
             try:
                 word.Quit()
-            except Exception:
-                pass
+            except Exception as exc:
+                _LOGGER.warning(
+                    "Unable to quit customer-report Word automation: %s",
+                    _error_summary(exc),
+                )
+        template_reference = None
+        target = None
+        source = None
+        word = None
+        gc.collect()
         pythoncom.CoUninitialize()
-        reference_path.unlink(missing_ok=True)
+        try:
+            reference_path.unlink(missing_ok=True)
+        except OSError as exc:
+            if not _is_transient_word_file_lock(exc):
+                raise
+            _LOGGER.warning(
+                "Word still holds customer-template reference during cleanup: file=%s",
+                reference_path.name,
+            )
 
 
 def _validate_document_types(source, target) -> None:
@@ -319,9 +491,22 @@ def _copy_customer_header(source, target) -> None:
         )
 
 
-def _copy_customer_body(source, target) -> None:
-    purpose, _ = _find_numbered_heading(source, 1, "PURPOSE")
-    equipment, _ = _find_numbered_heading(source, 7, "EQUIPMENTS")
+def _copy_customer_body(
+    source,
+    target,
+    *,
+    progress: Callable[[str], None] | None = None,
+) -> _NumberedHeadingIndex:
+    source_headings = _NumberedHeadingIndex.from_document(
+        source,
+        (
+            (1, "PURPOSE"),
+            (7, "EQUIPMENTS"),
+            (8, "REVISION RECORD"),
+        ),
+    )
+    purpose, _ = source_headings.get(1, "PURPOSE")
+    equipment, _ = source_headings.get(7, "EQUIPMENTS")
     if int(equipment.Start) <= int(purpose.Start):
         raise ValueError("Internal report section order is invalid.")
     core = source.Range(int(purpose.Start), int(equipment.Start))
@@ -330,7 +515,7 @@ def _copy_customer_body(source, target) -> None:
     destination.Collapse(0)
     destination.FormattedText = core.FormattedText
 
-    revision, _ = _find_numbered_heading(source, 8, "REVISION RECORD")
+    revision, _ = source_headings.get(8, "REVISION RECORD")
     revision_note = _find_text(source, _REVISION_NOTE)
     if int(revision_note.End) <= int(revision.Start):
         raise ValueError("Internal report revision record is incomplete.")
@@ -350,9 +535,13 @@ def _copy_customer_body(source, target) -> None:
     marker.Font.Italic = True
     marker.ParagraphFormat.Alignment = 1
 
-    for index, heading in enumerate(_CUSTOMER_HEADINGS, start=1):
-        number = 8 if heading == "REVISION RECORD" else index
-        found, matched_text = _find_numbered_heading(target, number, heading)
+    target_heading_pairs = tuple(
+        (8 if heading == "REVISION RECORD" else index, heading)
+        for index, heading in enumerate(_CUSTOMER_HEADINGS, start=1)
+    )
+    target_headings = _NumberedHeadingIndex.from_document(target, target_heading_pairs)
+    for number, heading in target_heading_pairs:
+        found, matched_text = target_headings.get(number, heading)
         if matched_text == heading:
             found.ListFormat.RemoveNumbers()
             continue
@@ -361,17 +550,28 @@ def _copy_customer_body(source, target) -> None:
             int(found.Start) + len(matched_text) - len(heading),
         )
         delete_prefix.Text = ""
+    _emit_progress(progress, "cleaning_content")
     _sanitize_customer_body(target)
-    _normalize_customer_body_typography(target)
-    _format_customer_headings(target)
+    _normalize_customer_body_typography(target, target_headings)
+    _format_customer_headings(target, target_headings)
     _merge_customer_disclaimer(target)
+    return target_headings
 
 
-def _normalize_customer_sections(document, template_reference) -> None:
+def _emit_progress(progress: Callable[[str], None] | None, stage: str) -> None:
+    if progress is not None:
+        progress(stage)
+
+
+def _normalize_customer_sections(
+    document,
+    template_reference,
+    headings: _NumberedHeadingIndex,
+) -> None:
     if int(template_reference.Sections.Count) < 2:
         raise ValueError("E-4515 template requires two report sections.")
     _trim_customer_section_spacers(document)
-    _normalize_customer_revision_page(document)
+    _normalize_customer_revision_page(document, headings)
     first_donor = template_reference.Sections(1)
     continuation_donor = template_reference.Sections(2)
     for index in range(1, int(document.Sections.Count) + 1):
@@ -441,8 +641,11 @@ def _trim_customer_section_spacers(document) -> None:
         following.PageSetup.SectionStart = 2
 
 
-def _normalize_customer_revision_page(document) -> None:
-    revision, _ = _find_numbered_heading(document, 8, "REVISION RECORD")
+def _normalize_customer_revision_page(
+    document,
+    headings: _NumberedHeadingIndex,
+) -> None:
+    revision, _ = headings.get(8, "REVISION RECORD")
     protected_anchor_starts = {
         int(document.Shapes(index).Anchor.Paragraphs(1).Range.Start)
         for index in range(1, int(document.Shapes.Count) + 1)
@@ -458,7 +661,6 @@ def _normalize_customer_revision_page(document) -> None:
         if _clean_text(paragraph.Range.Text) or start in protected_anchor_starts:
             break
         paragraph.Range.Delete()
-    revision = _find_text(document, "REVISION RECORD")
     revision.Paragraphs(1).Format.PageBreakBefore = True
 
 
@@ -545,27 +747,39 @@ def _sanitize_customer_body(document) -> None:
             and float(document.Shapes(index).Height) < 1
         )
     }
-    for index in range(int(document.Paragraphs.Count), 0, -1):
-        paragraph = document.Paragraphs(index)
+    content = document.Content.Duplicate
+    disclosure_paragraphs = _find_disclosure_paragraphs(
+        document,
+        str(content.Text),
+    )
+    for paragraph_range in reversed(disclosure_paragraphs):
+        paragraph = paragraph_range.Paragraphs(1)
         text = _clean_text(paragraph.Range.Text)
-        if any(pattern.search(text) for pattern in _INTERNAL_DISCLOSURE_PATTERNS):
-            start = int(paragraph.Range.Start)
-            if start not in protected_anchor_starts:
-                paragraph.Range.Delete()
-                continue
-            content = paragraph.Range.Duplicate
-            content.End = max(int(content.Start), int(content.End) - 1)
-            if int(content.End) <= int(content.Start):
-                continue
-            tail = document.Range(int(content.Start) + 1, int(content.End))
-            tail.Text = ""
-            anchor_character = document.Range(
-                int(content.Start),
-                int(content.Start) + 1,
-            )
-            anchor_character.Font.Hidden = False
-            anchor_character.Font.Color = 16777215
-            anchor_character.Font.Size = 1
+        if not any(pattern.search(text) for pattern in _INTERNAL_DISCLOSURE_PATTERNS):
+            continue
+        start = int(paragraph.Range.Start)
+        if start not in protected_anchor_starts:
+            paragraph.Range.Delete()
+            continue
+        paragraph_content = paragraph.Range.Duplicate
+        paragraph_content.End = max(
+            int(paragraph_content.Start),
+            int(paragraph_content.End) - 1,
+        )
+        if int(paragraph_content.End) <= int(paragraph_content.Start):
+            continue
+        tail = document.Range(
+            int(paragraph_content.Start) + 1,
+            int(paragraph_content.End),
+        )
+        tail.Text = ""
+        anchor_character = document.Range(
+            int(paragraph_content.Start),
+            int(paragraph_content.Start) + 1,
+        )
+        anchor_character.Font.Hidden = False
+        anchor_character.Font.Color = 16777215
+        anchor_character.Font.Size = 1
 
     _remove_body_footer_artifacts(document)
 
@@ -589,6 +803,58 @@ def _sanitize_customer_body(document) -> None:
             updated = re.sub(r"\bMFG\*", "MFG", updated, flags=re.IGNORECASE)
             if updated != value:
                 cell.Range.Text = updated
+
+
+def _internal_disclosure_spans(text: str) -> list[tuple[int, int]]:
+    """Locate disclosure paragraphs in one bulk Word text read."""
+    spans: list[tuple[int, int]] = []
+    for match in re.finditer(r"[^\r]*(?:\r|$)", text):
+        if match.start() == match.end():
+            continue
+        paragraph_text = _clean_text(match.group())
+        if any(
+            pattern.search(paragraph_text)
+            for pattern in _INTERNAL_DISCLOSURE_PATTERNS
+        ):
+            spans.append((match.start(), match.end()))
+    return spans
+
+
+def _find_disclosure_paragraphs(document, content_text: str) -> list[object]:
+    """Use bulk text to choose a few Word Find queries instead of scanning every range."""
+    needles = {
+        content_text[start:end].strip("\r\x07 ")[:180]
+        for start, end in _internal_disclosure_spans(content_text)
+    }
+    matches: dict[int, object] = {}
+    content_end = int(document.Content.End)
+    for needle in needles:
+        if not needle:
+            continue
+        search = document.Content.Duplicate
+        while True:
+            finder = search.Find
+            finder.ClearFormatting()
+            finder.Text = needle
+            finder.Forward = True
+            finder.Wrap = 0
+            finder.MatchCase = False
+            finder.MatchWholeWord = False
+            finder.MatchWildcards = False
+            if not finder.Execute():
+                break
+            paragraph = search.Paragraphs(1).Range.Duplicate
+            paragraph_text = _clean_text(paragraph.Text)
+            if any(
+                pattern.search(paragraph_text)
+                for pattern in _INTERNAL_DISCLOSURE_PATTERNS
+            ):
+                matches[int(paragraph.Start)] = paragraph
+            next_start = int(search.End)
+            if next_start >= content_end:
+                break
+            search = document.Range(next_start, content_end)
+    return [matches[start] for start in sorted(matches)]
 
 
 def _remove_body_footer_artifacts(document) -> None:
@@ -616,10 +882,13 @@ def _remove_body_footer_artifacts(document) -> None:
         if anchor_start not in occupied_anchors:
             anchor.Delete()
 
-def _format_customer_headings(document) -> None:
+def _format_customer_headings(
+    document,
+    headings: _NumberedHeadingIndex,
+) -> None:
     for index, heading in enumerate(_CUSTOMER_HEADINGS, start=1):
         number = 8 if heading == "REVISION RECORD" else index
-        found, _ = _find_numbered_heading(document, number, heading)
+        found, _ = headings.get(number, heading)
         paragraph = found.Paragraphs(1)
         paragraph.Range.Style = document.Styles(-1)
         paragraph.Format.SpaceBefore = 0
@@ -633,9 +902,12 @@ def _format_customer_headings(document) -> None:
         paragraph.Range.Font.Underline = 1
 
 
-def _normalize_customer_body_typography(document) -> None:
-    purpose, _ = _find_numbered_heading(document, 1, "PURPOSE")
-    description, _ = _find_numbered_heading(document, 4, "TEST DESCRIPTION")
+def _normalize_customer_body_typography(
+    document,
+    headings: _NumberedHeadingIndex,
+) -> None:
+    purpose, _ = headings.get(1, "PURPOSE")
+    description, _ = headings.get(4, "TEST DESCRIPTION")
     introduction = document.Range(int(purpose.Start), int(description.Start))
     introduction.Font.Name = "Arial"
     for index in range(1, int(document.Tables.Count) + 1):
@@ -726,18 +998,34 @@ def _find_text(document, text: str, *, required: bool = True):
     return None
 
 
-def _find_numbered_heading(document, number: int, heading: str):
-    for candidate in (f"{number}. {heading}", f"{number}.{heading}"):
-        found = _find_text(document, candidate, required=False)
-        if found is not None:
-            return found, candidate
-    for index in range(1, int(document.Paragraphs.Count) + 1):
-        paragraph = document.Paragraphs(index)
-        if _clean_text(paragraph.Range.Text) != heading:
-            continue
-        found = paragraph.Range.Duplicate
-        found.End = max(int(found.Start), int(found.End) - 1)
-        return found, heading
+def _find_heading_paragraph(document, number: int, heading: str):
+    content_end = int(document.Content.End)
+    search = document.Content.Duplicate
+    accepted_text = {
+        heading: heading,
+        f"{number}. {heading}": f"{number}. {heading}",
+        f"{number}.{heading}": f"{number}.{heading}",
+    }
+    while True:
+        finder = search.Find
+        finder.ClearFormatting()
+        finder.Text = heading
+        finder.Forward = True
+        finder.Wrap = 0
+        finder.MatchCase = True
+        finder.MatchWholeWord = False
+        if not finder.Execute():
+            break
+        paragraph = search.Paragraphs(1).Range
+        matched_text = accepted_text.get(_clean_text(paragraph.Text))
+        if matched_text is not None:
+            found = paragraph.Duplicate
+            found.End = max(int(found.Start), int(found.End) - 1)
+            return found, matched_text
+        next_start = int(search.End)
+        if next_start >= content_end:
+            break
+        search = document.Range(next_start, content_end)
     raise ValueError(
         f"Internal report is missing required content: {number}. {heading}"
     )
@@ -842,6 +1130,11 @@ def _file_hash(path: Path) -> str:
 
 
 def _error_summary(exc: Exception) -> str:
+    if isinstance(exc, OSError) and _is_transient_word_file_lock(exc):
+        return (
+            "Microsoft Word has not released the generated working copy yet. "
+            "Wait a moment and try again."
+        )
     summary = " ".join(str(exc).split()) or exc.__class__.__name__
     return re.sub(
         re.escape(OFFICE_DOCUMENT_PASSWORD),

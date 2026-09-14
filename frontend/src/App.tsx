@@ -55,13 +55,11 @@ const ProjectReportWorkspacePage = lazy(() =>
     default: module.ProjectReportWorkspacePage,
   }))
 );
-const RuntimeProjectionPrototypePage = lazy(() =>
-  import("./pages/RuntimeProjectionPrototypePage").then((module) => ({
-    default: module.RuntimeProjectionPrototypePage,
-  }))
-);
 const SettingsPage = lazy(() =>
   import("./pages/SettingsPage").then((module) => ({ default: module.SettingsPage }))
+);
+const ToolsPage = lazy(() =>
+  import("./pages/ToolsPage").then((module) => ({ default: module.ToolsPage }))
 );
 
 type Route =
@@ -75,8 +73,8 @@ type Route =
   | { name: "projectBasicInformation"; projectId: string }
   | { name: "projectReportWorkspace"; projectId: string }
   | { name: "projectContactMeasurementSetup"; projectId: string }
-  | { name: "runtimeProjection" }
   | { name: "settings" }
+  | { name: "tools" }
   | { name: "notFound" };
 
 function parseRoute(pathname: string): Route {
@@ -92,8 +90,8 @@ function parseRoute(pathname: string): Route {
     return { name: "settings" };
   }
 
-  if (pathname === "/runtime-projection") {
-    return { name: "runtimeProjection" };
+  if (pathname === "/tools") {
+    return { name: "tools" };
   }
 
   const intakePackageMatch = pathname.match(/^\/intake\/([^/]+)$/);
@@ -213,8 +211,6 @@ export default function App(): ReactElement {
         ? "workbench"
       : route.name === "intakePackage" || route.name === "intakeCaseReview"
         ? "intake"
-        : route.name === "runtimeProjection"
-          ? "runtime-projection"
         : route.name;
   const topBarTitle =
     route.name === "projectMatrixEditor"
@@ -343,8 +339,7 @@ export default function App(): ReactElement {
         />
       )}
       {route.name === "settings" && <SettingsPage />}
-      {/* Runtime Projection Prototype - Development only, read-only validation surface for TASK_209 */}
-      {route.name === "runtimeProjection" && <RuntimeProjectionPrototypePage />}
+      {route.name === "tools" && <ToolsPage />}
       {route.name === "notFound" && (
         <section className="panel">
           <h2>Page not found</h2>
