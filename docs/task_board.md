@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_CUSTOMER_REPORT_HEADER_REVISION_FORMAT",
     "summary": "Match the E-4515 continuation header report-number typography and revision-note alignment to the approved customer report.",
@@ -25,17 +25,48 @@
     "risk_reasons": [],
     "activation_head": "39abdaa542bc129951d10732095031ec10a5c498",
     "started_at": "2026-09-14T22:55:14.541923Z",
-    "updated_at": "2026-09-14T23:16:40.509873Z",
+    "updated_at": "2026-09-14T23:30:24.028288Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_CUSTOMER_REPORT_HEADER_REVISION_FORMAT",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User supplied the actual generated customer report and requested diagnosis of the continuation-footer width mismatch.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_CUSTOMER_REPORT_HEADER_REVISION_FORMAT",
+      "subject": "cfc6526e99b195b2478561bf2e8eab96a7495144",
+      "summary": "Customer-report continuation headers retain the template label styling while their report numbers are bold Arial 10 pt, and the revision note is left aligned. The subsequent footer-width diagnosis confirmed the configured template path without changing report or template files.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/infrastructure/office/customer_report_document_gateway.py",
+        "tests/unit/test_customer_report_document_gateway.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "summary": "Regression tests: tests/unit/test_customer_report_document_gateway.py — 18 passed."
+        },
+        {
+          "status": "passed",
+          "summary": "Python compilation passed for the modified customer-report gateway."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented and self-reviewed the focused formatting repair with red/green regression evidence."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "summary": "Committed subject is clean; the later diagnosis was read-only apart from task-state records."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_CUSTOMER_REPORT_TIMEOUT_AND_LAYOUT_REPAIR",
