@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_DEVELOPMENT_LOG_PERSISTENCE",
+    "summary": "Persist development runtime logs and export them through existing diagnostics",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Reuse rotating logging in the development startup factory; no generation, release or running-server changes.",
+    "scope_paths": [
+      "backend/api/development.py",
+      "scripts/run_backend.ps1",
+      "tests/integration/test_development_logging.py",
+      "docs/packaging_notes.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "9ef3791349f5bd4a85724a2d0671e42eb72905b4",
+    "started_at": "2026-09-14T23:33:04.519817Z",
+    "updated_at": "2026-09-14T23:33:04.519817Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_CUSTOMER_REPORT_HEADER_REVISION_FORMAT",
     "tier": "micro",

@@ -16,5 +16,5 @@ Write-Host "===================================="
 Write-Host "API: http://127.0.0.1:8000"
 Write-Host "Health: http://127.0.0.1:8000/health"
 
-& $pythonExe -m uvicorn backend.api.main:app --host 127.0.0.1 --port 8000 --reload
+& $pythonExe -m uvicorn backend.api.development:create_app --factory --host 127.0.0.1 --port 8000 --reload
 exit $LASTEXITCODE

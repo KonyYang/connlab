@@ -23,6 +23,29 @@ In short: no installer is provided yet; these are portable folder releases.
 - `scripts\run_frontend.ps1`: installs frontend dependencies if missing, then starts Vite.
 - `scripts\run_mvp_dev.ps1`: opens backend and frontend scripts in separate PowerShell windows.
 
+### Development diagnostic logs
+
+`run_backend.ps1` uses `backend.api.development:create_app --factory` so each
+Uvicorn reload worker initializes the existing rotating logger before importing
+the application. Logs default to `<repository>\logs\connlab.log`, in UTF-8,
+5 MiB per file with five backups. `CONNLAB_LOGS_DIR` overrides that location
+(relative paths resolve against the launch working directory); `CONNLAB_LOG_LEVEL`
+defaults to `INFO`. The support diagnostic ZIP reads the same resolved directory.
+If logging storage is unavailable, the existing console warning/fallback applies.
+
+Restart the development backend once after changing the startup script. For a
+PyCharm Uvicorn module configuration, use these parameters from the repository root:
+
+```text
+backend.api.development:create_app --factory --host 127.0.0.1 --port 8000 --reload
+```
+
+Launching `backend.api.main:app` directly bypasses this development logging setup.
+The release launcher remains unchanged. Normal diagnostic stages and errors are
+recorded as they happen; Settings > Support diagnostics > Export diagnostic package
+exports existing logs, not a new recording session. This does not recover earlier
+unlogged events. Do not run multiple backend workers against the same rotating file.
+
 ## Portable Desktop Release
 
 RELEASE_001 produces a copyable Windows desktop release folder for non-programmer
