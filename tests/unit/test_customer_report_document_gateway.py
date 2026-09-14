@@ -418,6 +418,210 @@ def test_disclosure_scan_returns_only_matching_paragraph_offsets() -> None:
     ]
 
 
+def test_word_application_never_updates_external_links() -> None:
+    class _Options:
+        UpdateLinksAtOpen = True
+
+    class _Word:
+        Visible = True
+        DisplayAlerts = 1
+        ScreenUpdating = True
+        AutomationSecurity = 0
+        Options = _Options()
+
+    word = _Word()
+
+    gateway_module._configure_word_application(word)
+
+    assert word.Visible is False
+    assert word.DisplayAlerts == 0
+    assert word.ScreenUpdating is False
+    assert word.AutomationSecurity == 3
+    assert word.Options.UpdateLinksAtOpen is False
+
+
+def test_customer_body_destination_clears_only_second_section_placeholder() -> None:
+    class _Range:
+        def __init__(self, start: int, end: int) -> None:
+            self.Start = start
+            self.End = end
+            self.deleted = False
+
+        @property
+        def Duplicate(self):
+            return self
+
+        def Delete(self) -> None:
+            self.deleted = True
+
+    class _Section:
+        def __init__(self, start: int, end: int) -> None:
+            self.Range = _Range(start, end)
+
+    class _Sections:
+        Count = 2
+
+        def __init__(self) -> None:
+            self.values = {1: _Section(0, 1), 2: _Section(1, 40)}
+
+        def __call__(self, index: int):
+            return self.values[index]
+
+    class _Document:
+        def __init__(self) -> None:
+            self.Sections = _Sections()
+            self.requested_range: tuple[int, int] | None = None
+
+        def Range(self, start: int, end: int):
+            self.requested_range = (start, end)
+            return _Range(start, end)
+
+    document = _Document()
+
+    destination = gateway_module._prepare_customer_body_destination(document)
+
+    assert document.Sections(1).Range.deleted is False
+    assert document.Sections(2).Range.deleted is True
+    assert document.Sections(2).Range.End == 39
+    assert document.requested_range == (1, 1)
+    assert (destination.Start, destination.End) == (1, 1)
+
+
+def test_section_normalization_preserves_template_headers_and_two_section_geometry() -> None:
+    class _HeaderOrFooterRange:
+        @property
+        def FormattedText(self):
+            return None
+
+        @FormattedText.setter
+        def FormattedText(self, _value) -> None:
+            raise AssertionError("template header/footer content must not be replaced")
+
+    class _HeaderOrFooter:
+        def __init__(self) -> None:
+            self.LinkToPrevious = False
+            self.Range = _HeaderOrFooterRange()
+
+    class _Collection:
+        def __init__(self) -> None:
+            self.values = {kind: _HeaderOrFooter() for kind in (1, 2, 3)}
+
+        def __call__(self, kind: int):
+            return self.values[kind]
+
+    class _PageSetup:
+        def __init__(self, *, left: int, right: int, title: bool) -> None:
+            self.SectionStart = 0
+            self.OddAndEvenPagesHeaderFooter = False
+            self.DifferentFirstPageHeaderFooter = title
+            self.TopMargin = 100
+            self.BottomMargin = 100
+            self.LeftMargin = left
+            self.RightMargin = right
+            self.HeaderDistance = 20
+            self.FooterDistance = 20
+            self.PageHeight = 1000
+            self.PageWidth = 800
+
+    class _Section:
+        def __init__(self, *, left: int, right: int, title: bool) -> None:
+            self.PageSetup = _PageSetup(left=left, right=right, title=title)
+            self.Headers = _Collection()
+            self.Footers = _Collection()
+
+    class _Sections:
+        Count = 2
+
+        def __init__(self, values: dict[int, _Section]) -> None:
+            self.values = values
+
+        def __call__(self, index: int):
+            return self.values[index]
+
+    target = type("Document", (), {})()
+    target.Sections = _Sections(
+        {
+            1: _Section(left=999, right=999, title=False),
+            2: _Section(left=999, right=999, title=False),
+        }
+    )
+    template = type("Document", (), {})()
+    template.Sections = _Sections(
+        {
+            1: _Section(left=1008, right=1008, title=True),
+            2: _Section(left=720, right=720, title=True),
+        }
+    )
+
+    gateway_module._restore_customer_section_geometry(target, template)
+
+    assert target.Sections(1).PageSetup.LeftMargin == 1008
+    assert target.Sections(2).PageSetup.LeftMargin == 720
+    assert target.Sections(2).PageSetup.RightMargin == 720
+    assert target.Sections(1).PageSetup.DifferentFirstPageHeaderFooter is True
+    assert target.Sections(2).PageSetup.DifferentFirstPageHeaderFooter is True
+
+
+def test_field_refresh_skips_body_fields_and_updates_headers_and_footers() -> None:
+    class _Fields:
+        def __init__(self, *, fail: bool = False) -> None:
+            self.fail = fail
+            self.updates = 0
+
+        def Update(self) -> None:
+            if self.fail:
+                raise AssertionError("body fields may contain external links")
+            self.updates += 1
+
+    class _Range:
+        def __init__(self) -> None:
+            self.Fields = _Fields()
+
+    class _HeaderOrFooter:
+        def __init__(self) -> None:
+            self.Range = _Range()
+
+    class _Collection:
+        def __init__(self) -> None:
+            self.values = {kind: _HeaderOrFooter() for kind in (1, 2, 3)}
+
+        def __call__(self, kind: int):
+            return self.values[kind]
+
+    class _Section:
+        def __init__(self) -> None:
+            self.Headers = _Collection()
+            self.Footers = _Collection()
+
+    class _Sections:
+        Count = 2
+
+        def __init__(self) -> None:
+            self.values = {1: _Section(), 2: _Section()}
+
+        def __call__(self, index: int):
+            return self.values[index]
+
+    document = type("Document", (), {})()
+    document.Fields = _Fields(fail=True)
+    document.Sections = _Sections()
+    document.repaginate_count = 0
+    document.Repaginate = lambda: setattr(
+        document,
+        "repaginate_count",
+        document.repaginate_count + 1,
+    )
+
+    gateway_module._refresh_customer_fields(document)
+
+    assert document.repaginate_count == 1
+    for section_index in (1, 2):
+        section = document.Sections(section_index)
+        for kind in (1, 2, 3):
+            assert section.Headers(kind).Range.Fields.updates == 1
+            assert section.Footers(kind).Range.Fields.updates == 1
+
+
 def _minimal_document(path: Path, *, customer: bool) -> None:
     document = Document()
     document.sections[0].different_first_page_header_footer = True

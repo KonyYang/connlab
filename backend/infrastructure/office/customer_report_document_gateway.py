@@ -318,6 +318,7 @@ def _generate_with_word(
     source = None
     target = None
     template_reference = None
+    update_links_at_open = None
     reference_path = target_path.with_name(
         f".customer-template.{uuid4().hex}.reference{target_path.suffix}"
     )
@@ -325,10 +326,8 @@ def _generate_with_word(
         shutil.copy2(target_path, reference_path)
         _emit_progress(progress, "opening_word")
         word = win32com.client.DispatchEx("Word.Application")
-        word.Visible = False
-        word.DisplayAlerts = 0
-        word.ScreenUpdating = False
-        word.AutomationSecurity = 3
+        update_links_at_open = bool(word.Options.UpdateLinksAtOpen)
+        _configure_word_application(word)
         source = word.Documents.Open(
             str(source_path.resolve()),
             PasswordDocument=OFFICE_DOCUMENT_PASSWORD,
@@ -425,6 +424,14 @@ def _generate_with_word(
                     _error_summary(exc),
                 )
         if word is not None:
+            if update_links_at_open is not None:
+                try:
+                    word.Options.UpdateLinksAtOpen = update_links_at_open
+                except Exception as exc:
+                    _LOGGER.warning(
+                        "Unable to restore Microsoft Word link-update preference: %s",
+                        _error_summary(exc),
+                    )
             try:
                 word.Quit()
             except Exception as exc:
@@ -510,9 +517,7 @@ def _copy_customer_body(
     if int(equipment.Start) <= int(purpose.Start):
         raise ValueError("Internal report section order is invalid.")
     core = source.Range(int(purpose.Start), int(equipment.Start))
-    destination = target.Sections(1).Range.Duplicate
-    destination.End = max(int(destination.Start), int(destination.End) - 1)
-    destination.Collapse(0)
+    destination = _prepare_customer_body_destination(target)
     destination.FormattedText = core.FormattedText
 
     revision, _ = source_headings.get(8, "REVISION RECORD")
@@ -563,23 +568,51 @@ def _emit_progress(progress: Callable[[str], None] | None, stage: str) -> None:
         progress(stage)
 
 
+def _configure_word_application(word) -> None:
+    """Keep isolated automation silent and preserve linked content without refreshing it."""
+    word.Visible = False
+    word.DisplayAlerts = 0
+    word.ScreenUpdating = False
+    word.AutomationSecurity = 3
+    word.Options.UpdateLinksAtOpen = False
+
+
+def _prepare_customer_body_destination(document):
+    """Clear the template's continuation body while retaining its section boundary."""
+    if int(document.Sections.Count) != 2:
+        raise ValueError("E-4515 customer report must retain exactly two sections.")
+    continuation = document.Sections(2).Range.Duplicate
+    start = int(continuation.Start)
+    continuation.End = max(start, int(continuation.End) - 1)
+    if int(continuation.End) > start:
+        continuation.Delete()
+    return document.Range(start, start)
+
+
 def _normalize_customer_sections(
     document,
     template_reference,
     headings: _NumberedHeadingIndex,
 ) -> None:
-    if int(template_reference.Sections.Count) < 2:
-        raise ValueError("E-4515 template requires two report sections.")
-    _trim_customer_section_spacers(document)
     _normalize_customer_revision_page(document, headings)
-    first_donor = template_reference.Sections(1)
-    continuation_donor = template_reference.Sections(2)
+    _restore_customer_section_geometry(document, template_reference)
+
+
+def _restore_customer_section_geometry(document, template_reference) -> None:
+    template_section_count = int(template_reference.Sections.Count)
+    document_section_count = int(document.Sections.Count)
+    if template_section_count != 2 or document_section_count != template_section_count:
+        raise ValueError("E-4515 customer report must retain exactly two sections.")
     for index in range(1, int(document.Sections.Count) + 1):
         section = document.Sections(index)
-        section.PageSetup.SectionStart = 0
-        section.PageSetup.OddAndEvenPagesHeaderFooter = False
-        section.PageSetup.DifferentFirstPageHeaderFooter = index == 1
-        donor = first_donor if index == 1 else continuation_donor
+        donor = template_reference.Sections(index)
+        section.PageSetup.SectionStart = donor.PageSetup.SectionStart
+        section.PageSetup.OddAndEvenPagesHeaderFooter = (
+            donor.PageSetup.OddAndEvenPagesHeaderFooter
+        )
+        section.PageSetup.DifferentFirstPageHeaderFooter = (
+            donor.PageSetup.DifferentFirstPageHeaderFooter
+        )
         for attribute in (
             "TopMargin",
             "BottomMargin",
@@ -595,50 +628,6 @@ def _normalize_customer_sections(
                 attribute,
                 getattr(donor.PageSetup, attribute),
             )
-        for kind in (1, 2, 3):
-            header = section.Headers(kind)
-            footer = section.Footers(kind)
-            header.LinkToPrevious = False
-            footer.LinkToPrevious = False
-            header.Range.FormattedText = donor.Headers(kind).Range.FormattedText
-            footer.Range.FormattedText = donor.Footers(kind).Range.FormattedText
-
-
-def _trim_customer_section_spacers(document) -> None:
-    protected_anchor_starts = {
-        int(document.Shapes(index).Anchor.Paragraphs(1).Range.Start)
-        for index in range(1, int(document.Shapes.Count) + 1)
-    }
-    protected_anchor_starts.update(
-        int(document.InlineShapes(index).Range.Paragraphs(1).Range.Start)
-        for index in range(1, int(document.InlineShapes.Count) + 1)
-    )
-    plans: list[tuple[int, list[tuple[int, int, int]]]] = []
-    for section_index in range(int(document.Sections.Count) - 1, 0, -1):
-        section = document.Sections(section_index)
-        candidates: list[tuple[int, int, int]] = []
-        for paragraph_index in range(int(section.Range.Paragraphs.Count) - 1, 0, -1):
-            paragraph = section.Range.Paragraphs(paragraph_index)
-            start = int(paragraph.Range.Start)
-            if _clean_text(paragraph.Range.Text) or start in protected_anchor_starts:
-                break
-            candidates.append(
-                (
-                    start,
-                    int(paragraph.Range.End),
-                    int(paragraph.Range.Information(3)),
-                )
-            )
-        pages = {page for _start, _end, page in candidates}
-        if len(pages) <= 1 or len(candidates) < 8:
-            continue
-        plans.append((section_index, candidates))
-
-    for section_index, candidates in plans:
-        for start, end, _page in candidates:
-            document.Range(start, end).Delete()
-        following = document.Sections(section_index + 1)
-        following.PageSetup.SectionStart = 2
 
 
 def _normalize_customer_revision_page(
@@ -666,7 +655,6 @@ def _normalize_customer_revision_page(
 
 def _refresh_customer_fields(document) -> None:
     document.Repaginate()
-    document.Fields.Update()
     for index in range(1, int(document.Sections.Count) + 1):
         section = document.Sections(index)
         for kind in (1, 2, 3):

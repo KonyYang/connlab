@@ -11,8 +11,27 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_CUSTOMER_REPORT_TIMEOUT_AND_LAYOUT_REPAIR",
+    "summary": "Prevent customer-report conversion from stalling on linked content and preserve the approved E-4515 continuation header and page geometry.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Repair the isolated customer-report conversion timeout behavior and Word transformation so external links are not refreshed, the template section boundary and continuation logo are retained, and body tables use the approved continuation-page margins; verify against the supplied internal, generated, and expected reports without modifying them.",
+    "scope_paths": [
+      "backend/infrastructure/office/customer_report_document_gateway.py",
+      "backend/infrastructure/office/customer_report_subprocess_child.py",
+      "backend/infrastructure/office/customer_report_subprocess_runner.py",
+      "tests/unit/test_customer_report_document_gateway.py",
+      "tests/unit/test_customer_report_subprocess_runner.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "5f4a3f1676e2094caedf627b4e4276a3d6006311",
+    "started_at": "2026-09-14T10:46:55.027904Z",
+    "updated_at": "2026-09-14T10:46:55.027904Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_WORKBENCH_DETAILS_TOGGLE_STYLE",
     "tier": "micro",

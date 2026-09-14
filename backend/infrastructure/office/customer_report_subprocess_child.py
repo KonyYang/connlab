@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
-from typing import Any
+from typing import Any, Callable
 
 from backend.infrastructure.office.customer_report_document_gateway import (
     CustomerReportDocumentGateway,
@@ -28,10 +29,17 @@ def _execute(command_json: Path) -> dict[str, Any]:
         source = Path(payload["source_path"])
         template = Path(payload["template_path"])
         output = Path(payload["output_path"])
+        progress_path_value = payload.get("progress_path")
+        progress = (
+            _progress_writer(Path(progress_path_value))
+            if isinstance(progress_path_value, str) and progress_path_value
+            else None
+        )
         CustomerReportDocumentGateway().generate_customer_report(
             source_path=source,
             template_path=template,
             output_path=output,
+            progress=progress,
         )
         return {"status": "success"}
     except Exception as exc:
@@ -40,6 +48,22 @@ def _execute(command_json: Path) -> dict[str, Any]:
             "error_type": type(exc).__name__,
             "error_message": " ".join(str(exc).split()) or type(exc).__name__,
         }
+
+
+def _progress_writer(path: Path) -> Callable[[str], None]:
+    sequence = 0
+
+    def write(stage: str) -> None:
+        nonlocal sequence
+        sequence += 1
+        temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+        temporary.write_text(
+            json.dumps({"sequence": sequence, "stage": stage}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        os.replace(temporary, path)
+
+    return write
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
