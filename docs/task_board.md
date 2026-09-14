@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_CUSTOMER_REPORT_HEADER_REVISION_FORMAT",
+    "summary": "Match the E-4515 continuation header report-number typography and revision-note alignment to the approved customer report.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Adjust customer-report conversion formatting so the Section 2 report number is bold Arial 10 pt and the revision note is left aligned.",
+    "scope_paths": [
+      "backend/infrastructure/office/customer_report_document_gateway.py",
+      "tests/unit/test_customer_report_document_gateway.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "39abdaa542bc129951d10732095031ec10a5c498",
+    "started_at": "2026-09-14T22:55:14.541923Z",
+    "updated_at": "2026-09-14T22:55:14.541923Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_CUSTOMER_REPORT_TIMEOUT_AND_LAYOUT_REPAIR",
     "tier": "standard",

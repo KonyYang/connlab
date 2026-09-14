@@ -622,6 +622,73 @@ def test_field_refresh_skips_body_fields_and_updates_headers_and_footers() -> No
             assert section.Footers(kind).Range.Fields.updates == 1
 
 
+def test_continuation_header_report_number_uses_bold_arial_10_point_font() -> None:
+    class _Font:
+        Name = None
+        Size = None
+        Bold = None
+
+    class _Range:
+        def __init__(self, start: int, end: int) -> None:
+            self.Start = start
+            self.End = end
+            self.Text = ""
+            self.Font = _Font()
+            self.duplicates: list[_Range] = []
+
+        @property
+        def Duplicate(self):
+            duplicate = _Range(self.Start, self.End)
+            self.duplicates.append(duplicate)
+            return duplicate
+
+    class _Cell:
+        def __init__(self) -> None:
+            self.Range = _Range(start=400, end=430)
+
+    class _Table:
+        def __init__(self) -> None:
+            self.cell = _Cell()
+
+        def Cell(self, row: int, column: int):
+            assert (row, column) == (1, 1)
+            return self.cell
+
+    table = _Table()
+
+    gateway_module._set_continuation_report_number(
+        table,
+        "DL-2026-07-013-CR",
+    )
+
+    assert table.cell.Range.Text == "Report No. DL-2026-07-013-CR"
+    report_number = table.cell.Range.duplicates[-1]
+    assert (report_number.Start, report_number.End) == (411, 428)
+    assert report_number.Font.Name == "Arial"
+    assert report_number.Font.Size == 10
+    assert report_number.Font.Bold is True
+
+
+def test_customer_revision_note_is_left_aligned(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _Format:
+        Alignment = 1
+
+    class _Paragraph:
+        Format = _Format()
+
+    class _Paragraphs:
+        def __call__(self, index: int):
+            assert index == 1
+            return _Paragraph()
+
+    note = type("Range", (), {"Paragraphs": _Paragraphs()})()
+    monkeypatch.setattr(gateway_module, "_find_text", lambda *_args, **_kwargs: note)
+
+    gateway_module._left_align_customer_revision_note(object())
+
+    assert note.Paragraphs(1).Format.Alignment == 0
+
+
 def _minimal_document(path: Path, *, customer: bool) -> None:
     document = Document()
     document.sections[0].different_first_page_header_footer = True

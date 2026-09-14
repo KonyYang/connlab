@@ -28,6 +28,7 @@ from backend.shared.office_document_password import OFFICE_DOCUMENT_PASSWORD
 _INTERNAL_REPORT_LABEL = "LABORATORY TEST REPORT"
 _CUSTOMER_REPORT_LABEL = "CUSTOMER TEST REPORT"
 _REVISION_NOTE = "Note: Each new revision replaces/supersedes all previous revisions."
+_CONTINUATION_REPORT_PREFIX = "Report No. "
 _END_MARKER = "*** End of Report ***"
 _ACCEPTANCE_TEXT = (
     "Unless otherwise specified, assessment of conformity to requirements is based on "
@@ -490,11 +491,9 @@ def _copy_customer_header(source, target) -> None:
         continuation_header = target.Sections(index).Headers(1).Range
         if int(continuation_header.Tables.Count) < 1:
             raise ValueError("E-4515 continuation header table is missing.")
-        _set_cell_text(
+        _set_continuation_report_number(
             continuation_header.Tables(1),
-            1,
-            1,
-            f"Report No. {report_number}",
+            report_number,
         )
 
 
@@ -595,6 +594,7 @@ def _normalize_customer_sections(
     headings: _NumberedHeadingIndex,
 ) -> None:
     _normalize_customer_revision_page(document, headings)
+    _left_align_customer_revision_note(document)
     _restore_customer_section_geometry(document, template_reference)
 
 
@@ -651,6 +651,12 @@ def _normalize_customer_revision_page(
             break
         paragraph.Range.Delete()
     revision.Paragraphs(1).Format.PageBreakBefore = True
+
+
+def _left_align_customer_revision_note(document) -> None:
+    revision_note = _find_text(document, _REVISION_NOTE, required=False)
+    if revision_note is not None:
+        revision_note.Paragraphs(1).Format.Alignment = 0
 
 
 def _refresh_customer_fields(document) -> None:
@@ -1043,6 +1049,18 @@ def _cell_text(table, row: int, column: int, *, preserve_paragraphs: bool = Fals
 
 def _set_cell_text(table, row: int, column: int, value: str) -> None:
     table.Cell(row, column).Range.Text = value
+
+
+def _set_continuation_report_number(table, report_number: str) -> None:
+    """Keep the continuation-header label distinct from the report identifier."""
+    cell = table.Cell(1, 1)
+    cell.Range.Text = f"{_CONTINUATION_REPORT_PREFIX}{report_number}"
+    identifier = cell.Range.Duplicate
+    identifier.Start = int(cell.Range.Start) + len(_CONTINUATION_REPORT_PREFIX)
+    identifier.End = int(identifier.Start) + len(report_number)
+    identifier.Font.Name = "Arial"
+    identifier.Font.Size = 10
+    identifier.Font.Bold = True
 
 
 def _clean_text(value: str) -> str:
