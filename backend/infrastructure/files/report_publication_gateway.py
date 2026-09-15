@@ -99,6 +99,7 @@ class ReportPublicationGateway:
         expected_current_sha256: str,
         history_root: Path,
         update_document: Callable[[Path, Path], Path],
+        pre_publish: Callable[[], None] | None = None,
     ) -> ReportFilePublicationResult:
         """Publish one staged update without exposing a partially written current file."""
         current = Path(current_path)
@@ -147,6 +148,8 @@ class ReportPublicationGateway:
                     raise ReportPublicationConflictError(
                         "The current report changed while it was being archived. Preview the update again."
                     )
+                if pre_publish:
+                    pre_publish()
                 if self.fingerprint(current) != expected:
                     raise ReportPublicationConflictError(
                         "The current report changed after preview. Preview the update again."
@@ -243,6 +246,7 @@ class ReportPublicationGateway:
         expected_source_sha256: str,
         target_path: Path,
         generate_document: Callable[[Path, Path], Path],
+        pre_publish: Callable[[], None] | None = None,
     ) -> ReportFilePublicationResult:
         """Generate a new sibling report while protecting its source fingerprint."""
         source = Path(source_path)
@@ -280,6 +284,8 @@ class ReportPublicationGateway:
                     "The current Internal Report changed during customer report generation. Generate again."
                 )
             try:
+                if pre_publish:
+                    pre_publish()
                 descriptor = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
                 os.close(descriptor)
                 owns_target_reservation = True

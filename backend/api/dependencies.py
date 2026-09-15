@@ -1235,6 +1235,37 @@ def get_customer_report_projection_service(
     )
 
 
+@lru_cache(maxsize=1)
+def get_project_customer_report_job_service():
+    from concurrent.futures import ThreadPoolExecutor
+    import logging
+    import threading
+    from backend.application.project_customer_report_job_service import ProjectCustomerReportJobService
+    from backend.api.project_customer_report_runner import ProjectCustomerReportRunner
+    settings = get_settings()
+    pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="project-customer-report")
+    stopped = threading.Event()
+    def shutdown():
+        stopped.set()
+        pool.shutdown(wait=True, cancel_futures=True)
+        sweeper.join(timeout=5)
+    service = ProjectCustomerReportJobService(
+        root=settings.data_dir / "project_customer_report_jobs",
+        generate=ProjectCustomerReportRunner(session_factory=get_session_factory(), settings=settings),
+        dispatch=pool.submit,
+        shutdown=shutdown,
+    )
+    def expire_results():
+        while not stopped.wait(60):
+            try:
+                service.prune()
+            except OSError:
+                logging.getLogger(__name__).exception("Could not clean expired customer-report job files")
+    sweeper = threading.Thread(target=expire_results, name="customer-report-retention", daemon=True)
+    sweeper.start()
+    return service
+
+
 def get_contact_measurement_plan_projection_service(
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),

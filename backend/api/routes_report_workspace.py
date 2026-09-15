@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 import shutil
 import tempfile
+from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
@@ -13,6 +14,7 @@ from starlette.background import BackgroundTask
 
 from backend.api.dependencies import (
     get_customer_report_projection_service,
+    get_project_customer_report_job_service,
     get_current_report_update_service,
     get_equipment_report_update_service,
     get_llcr_result_dataset_service,
@@ -28,6 +30,7 @@ from backend.application.customer_report_projection_service import (
     CustomerReportProjectionService,
     CustomerReportProjectionState,
 )
+from backend.application.project_customer_report_job_service import ProjectCustomerReportJobExpired
 from backend.application.current_report_update_service import (
     CurrentReportArtifact,
     CurrentReportFileConflictError,
@@ -73,7 +76,16 @@ from backend.domain.result_dataset_models import (
 from backend.shared.config import Settings
 
 
-router = APIRouter(tags=["report-workspace"])
+@asynccontextmanager
+async def _report_jobs_lifespan(_app):
+    yield
+    if get_project_customer_report_job_service.cache_info().currsize:
+        from starlette.concurrency import run_in_threadpool
+        await run_in_threadpool(get_project_customer_report_job_service().close)
+        get_project_customer_report_job_service.cache_clear()
+
+
+router = APIRouter(tags=["report-workspace"], lifespan=_report_jobs_lifespan)
 
 
 class LlcrDecisionRequest(BaseModel):
@@ -118,6 +130,48 @@ class GenerateCurrentCustomerReportRequest(BaseModel):
         min_length=64,
         max_length=64,
     )
+
+
+@router.post("/api/projects/{project_id}/report-workspace/current-customer-report/jobs", status_code=202)
+def start_project_customer_report_job(project_id: str, request: GenerateCurrentCustomerReportRequest,
+                                     service=Depends(get_project_customer_report_job_service)):
+    return service.start(project_id, request.expected_internal_report_sha256, request.expected_customer_report_sha256)
+
+
+@router.get("/api/projects/{project_id}/report-workspace/current-customer-report/jobs/latest")
+def latest_project_customer_report_job(project_id: str, service=Depends(get_project_customer_report_job_service)):
+    return service.latest(project_id)
+
+
+@router.get("/api/projects/{project_id}/report-workspace/current-customer-report/jobs/{operation_id}")
+def read_project_customer_report_job(project_id: str, operation_id: str, service=Depends(get_project_customer_report_job_service)):
+    try:
+        return service.read(project_id, operation_id)
+    except ProjectCustomerReportJobExpired as exc:
+        raise HTTPException(410, detail={"code": "customer_report_job_expired", "message": str(exc)}) from exc
+
+
+@router.get("/api/projects/{project_id}/report-workspace/current-customer-report/jobs/{operation_id}/download")
+def download_project_customer_report_job(project_id: str, operation_id: str, service=Depends(get_project_customer_report_job_service)):
+    lease = service.download(project_id, operation_id)
+    try:
+        path = lease.__enter__()
+    except ProjectCustomerReportJobExpired as exc:
+        raise HTTPException(410, detail={"code": "customer_report_job_expired", "message": str(exc)}) from exc
+    except ValueError as exc:
+        raise HTTPException(409, detail=str(exc)) from exc
+    except OSError as exc:
+        lease.__exit__(None, None, None)
+        raise HTTPException(410, detail="Customer report download is unavailable. Generate again.") from exc
+
+    class LeasedDownload(FileResponse):
+        async def __call__(self, scope, receive, send):
+            try:
+                await super().__call__(scope, receive, send)
+            finally:
+                lease.__exit__(None, None, None)
+    return LeasedDownload(path, filename=path.name,
+                          media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
 
 class EquipmentExternalOverrideRequest(BaseModel):

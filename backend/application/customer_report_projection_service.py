@@ -31,6 +31,7 @@ class CustomerReportWriter(Protocol):
         source_path: Path,
         template_path: Path,
         output_path: Path,
+        progress: Callable[[str], None] | None = None,
     ) -> Path: ...
 
     def read_source_report_sha256(self, path: Path) -> str | None: ...
@@ -53,6 +54,7 @@ class CustomerReportFiles(Protocol):
         expected_source_sha256: str,
         target_path: Path,
         generate_document: Callable[[Path, Path], Path],
+        pre_publish: Callable[[], None] | None = None,
     ): ...
 
     def publish_update(
@@ -62,6 +64,7 @@ class CustomerReportFiles(Protocol):
         expected_current_sha256: str,
         history_root: Path,
         update_document: Callable[[Path, Path], Path],
+        pre_publish: Callable[[], None] | None = None,
     ): ...
 
 
@@ -227,7 +230,11 @@ class CustomerReportProjectionService:
     def generate(
         self,
         command: CustomerReportGenerationCommand,
+        *,
+        progress: Callable[[str], None] | None = None,
     ) -> CustomerReportGenerationResult:
+        if progress:
+            progress("validating")
         template = Path(command.template_path)
         if template.suffix.casefold() != ".docx" or not template.is_file():
             raise CustomerReportProjectionError(
@@ -250,7 +257,7 @@ class CustomerReportProjectionService:
             )
 
         if current.mode != "official":
-            return self._generate_download(command, current, template)
+            return self._generate_download(command, current, template, progress)
 
         state = self.get_state(command.project_id)
         if state.blockers:
@@ -266,10 +273,15 @@ class CustomerReportProjectionService:
                 source_path=current.file_path,
                 expected_source_sha256=expected_internal,
                 target_path=target,
-                generate_document=lambda source, output: self._writer.generate_customer_report(
+                pre_publish=lambda: self._check_current_authority(command.project_id, current),
+                generate_document=lambda source, output: self._generate_from_expected_source(
                     source_path=source,
+                    expected_source_sha256=expected_internal,
                     template_path=template,
                     output_path=output,
+                    progress=progress,
+                    publishing=True,
+                    authority_check=lambda: self._check_current_authority(command.project_id, current),
                 ),
             )
         else:
@@ -292,11 +304,15 @@ class CustomerReportProjectionService:
                 current_path=state.file_path,
                 expected_current_sha256=expected_customer,
                 history_root=current.history_root,
+                pre_publish=lambda: self._check_current_authority(command.project_id, current),
                 update_document=lambda _customer, output: self._generate_from_expected_source(
                     source_path=current.file_path,
                     expected_source_sha256=expected_internal,
                     template_path=template,
                     output_path=output,
+                    progress=progress,
+                    publishing=True,
+                    authority_check=lambda: self._check_current_authority(command.project_id, current),
                 ),
             )
         return CustomerReportGenerationResult(
@@ -315,6 +331,7 @@ class CustomerReportProjectionService:
         command: CustomerReportGenerationCommand,
         current: CurrentReportArtifact,
         template: Path,
+        progress: Callable[[str], None] | None = None,
     ) -> CustomerReportGenerationResult:
         assert current.file_path is not None
         assert current.file_name is not None
@@ -328,6 +345,8 @@ class CustomerReportProjectionService:
                 expected_source_sha256=current.file_sha256,
                 template_path=template,
                 output_path=output,
+                progress=progress,
+                authority_check=lambda: self._check_current_authority(command.project_id, current),
             )
             if Path(written) != output or not output.is_file():
                 raise CustomerReportProjectionError(
@@ -358,6 +377,9 @@ class CustomerReportProjectionService:
         expected_source_sha256: str,
         template_path: Path,
         output_path: Path,
+        progress: Callable[[str], None] | None = None,
+        publishing: bool = False,
+        authority_check: Callable[[], None] | None = None,
     ) -> Path:
         expected = expected_source_sha256.strip().casefold()
         if self._files.fingerprint(source_path) != expected:
@@ -368,12 +390,27 @@ class CustomerReportProjectionService:
             source_path=source_path,
             template_path=template_path,
             output_path=output_path,
+            **({"progress": progress} if progress is not None else {}),
         )
         if self._files.fingerprint(source_path) != expected:
             raise CustomerReportProjectionError(
                 "The current Internal Report changed during customer report generation. Generate again."
             )
+        if authority_check:
+            authority_check()
+        if progress and publishing:
+            progress("publishing")
         return Path(written)
+
+    def _check_current_authority(self, project_id, expected):
+        latest = self._current_reports.get_current_report(project_id)
+        if (latest.status != "ready" or latest.mode != expected.mode
+                or latest.file_path != expected.file_path
+                or latest.file_sha256 != expected.file_sha256
+                or latest.folder_path != expected.folder_path
+                or expected.file_path is None
+                or self._files.fingerprint(expected.file_path) != expected.file_sha256):
+            raise CustomerReportProjectionError("The current Internal Report authority changed during generation. Preview again.")
 
 
 def customer_report_file_name(internal_report_name: str) -> str:

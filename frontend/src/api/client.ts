@@ -5052,6 +5052,53 @@ export type CustomerReportGenerationResponse =
   | { kind: "published"; result: CustomerReportGenerationResult }
   | { kind: "download"; download: BlobDownloadResponse };
 
+export type ProjectCustomerReportInput = {
+  expected_internal_report_sha256: string;
+  expected_customer_report_sha256: string | null;
+};
+
+export type ProjectCustomerReportJob = {
+  operation_id: string;
+  project_id: string;
+  status: "queued" | "running" | "completed" | "failed";
+  stage: string;
+  elapsed_seconds: number;
+  message: string | null;
+  error_code: string | null;
+  can_regenerate?: boolean;
+  result: null | {
+    mode: "official" | "managed_download";
+    project_id?: string;
+    file_name: string;
+    file_sha256?: string;
+    source_report_sha256?: string;
+    changed: boolean;
+    archive_path: string | null;
+  };
+};
+
+function projectCustomerReportJobsUrl(projectId: string): string {
+  return `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-customer-report/jobs`;
+}
+
+export function startProjectCustomerReportJob(projectId: string, input: ProjectCustomerReportInput): Promise<ProjectCustomerReportJob> {
+  return requestJson(projectCustomerReportJobsUrl(projectId), { method: "POST", body: JSON.stringify(input) });
+}
+
+export function fetchLatestProjectCustomerReportJob(projectId: string): Promise<ProjectCustomerReportJob | null> {
+  return requestJson(`${projectCustomerReportJobsUrl(projectId)}/latest`);
+}
+
+export function readProjectCustomerReportJob(projectId: string, operationId: string): Promise<ProjectCustomerReportJob> {
+  return requestJson(`${projectCustomerReportJobsUrl(projectId)}/${encodeURIComponent(operationId)}`);
+}
+
+export async function downloadProjectCustomerReportJob(projectId: string, operationId: string): Promise<BlobDownloadResponse> {
+  const response = await fetch(`${API_BASE}${projectCustomerReportJobsUrl(projectId)}/${encodeURIComponent(operationId)}/download`);
+  if (!response.ok) throw await responseError(response);
+  return blobDownloadFromResponse(response);
+}
+
 export type CurrentReportLlcrUpdatePreview = {
   project_id: string;
   dataset_id: string;

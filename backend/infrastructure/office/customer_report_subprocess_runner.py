@@ -64,21 +64,22 @@ class CustomerReportSubprocessRunner:
         run_dir.mkdir(parents=True, exist_ok=False)
         command_json = run_dir / "command.json"
         progress_json = run_dir / "progress.json"
-        command_json.write_text(
-            json.dumps(
-                {
-                    "source_path": str(Path(source_path).resolve()),
-                    "template_path": str(Path(template_path).resolve()),
-                    "output_path": str(Path(output_path).resolve()),
-                    "progress_path": str(progress_json.resolve()),
-                },
-                ensure_ascii=False,
-            ),
-            encoding="utf-8",
-        )
-        if progress is not None:
-            progress("preparing_template")
+        process = None
         try:
+            command_json.write_text(
+                json.dumps(
+                    {
+                        "source_path": str(Path(source_path).resolve()),
+                        "template_path": str(Path(template_path).resolve()),
+                        "output_path": str(Path(output_path).resolve()),
+                        "progress_path": str(progress_json.resolve()),
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            if progress is not None:
+                progress("preparing_template")
             process = subprocess.Popen(
                 _child_command(command_json),
                 cwd=Path.cwd(),
@@ -125,6 +126,11 @@ class CustomerReportSubprocessRunner:
                     )
                 self._sleep(self._poll_interval_seconds)
             stdout, _stderr = process.communicate()
+        except BaseException:
+            if process is not None and process.returncode is None:
+                _stop_process(process)
+            Path(output_path).unlink(missing_ok=True)
+            raise
         finally:
             _cleanup_run_directory(root=output_root, run_dir=run_dir)
 

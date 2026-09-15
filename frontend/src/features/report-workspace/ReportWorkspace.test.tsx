@@ -21,6 +21,10 @@ vi.mock("../../api/client", async () => {
     publishManagedReport: vi.fn(),
     downloadCurrentReport: vi.fn(),
     generateCurrentCustomerReport: vi.fn(),
+    startProjectCustomerReportJob: vi.fn(),
+    fetchLatestProjectCustomerReportJob: vi.fn(),
+    readProjectCustomerReportJob: vi.fn(),
+    downloadProjectCustomerReportJob: vi.fn(),
     downloadCurrentCustomerReport: vi.fn(),
     cancelLlcrResultPreview: vi.fn(),
   };
@@ -61,6 +65,11 @@ const customerReport: api.CustomerReportState = {
   blockers: [],
   warnings: ["The current Internal Report changed after this customer report was generated."],
   download_url: "/api/projects/project-1/report-workspace/current-customer-report/download",
+};
+
+const completedJob = {
+  operation_id: "operation-1", project_id: "project-1", status: "completed" as const,
+  stage: "completed", elapsed_seconds: 22, message: null, error_code: null,
 };
 
 const preview: api.LlcrImportPreview = {
@@ -127,6 +136,11 @@ const equipmentPreview: api.EquipmentListPreview = {
 
 describe("ReportWorkspace", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+    sessionStorage.clear();
+    vi.mocked(api.fetchLatestProjectCustomerReportJob).mockResolvedValue(null);
+    vi.mocked(api.startProjectCustomerReportJob).mockReset();
+    vi.mocked(api.downloadProjectCustomerReportJob).mockResolvedValue({ blob: new Blob(["customer"]), fileName: "Customer.docx" });
     Object.defineProperty(URL, "createObjectURL", {
       configurable: true,
       value: vi.fn(() => "blob:customer-report"),
@@ -169,6 +183,7 @@ describe("ReportWorkspace", () => {
 
   it("shows an explicit loading state while workspace authority is loading", () => {
     vi.mocked(api.fetchReportWorkspace).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(api.fetchLatestProjectCustomerReportJob).mockReturnValue(new Promise(() => undefined));
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
 
@@ -445,8 +460,8 @@ describe("ReportWorkspace", () => {
 
   it("updates a stale customer report from the current internal report with both fingerprints", async () => {
     const user = userEvent.setup();
-    vi.mocked(api.generateCurrentCustomerReport).mockResolvedValue({
-      kind: "published",
+    vi.mocked(api.startProjectCustomerReportJob).mockResolvedValue({
+      ...completedJob,
       result: {
         project_id: "project-1",
         mode: "official",
@@ -465,7 +480,7 @@ describe("ReportWorkspace", () => {
     expect(screen.getByText(customerReport.warnings[0])).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Update customer report" }));
 
-    expect(api.generateCurrentCustomerReport).toHaveBeenCalledWith("project-1", {
+    expect(api.startProjectCustomerReportJob).toHaveBeenCalledWith("project-1", {
       expected_internal_report_sha256: "a".repeat(64),
       expected_customer_report_sha256: "b".repeat(64),
     });
@@ -486,21 +501,15 @@ describe("ReportWorkspace", () => {
     vi.mocked(api.fetchCurrentCustomerReport)
       .mockResolvedValueOnce(customerReport)
       .mockResolvedValue(missingCustomerReport);
-    vi.mocked(api.generateCurrentCustomerReport).mockReset();
-    vi.mocked(api.generateCurrentCustomerReport)
-      .mockRejectedValueOnce(
-        new api.ApiRequestError(
-          "The customer report was deleted or moved after the page was loaded.",
-          409,
-          {
-            code: "customer_report_missing_after_preview",
-            message: "The customer report was deleted or moved after the page was loaded.",
-            can_regenerate: true,
-          }
-        )
-      )
+    vi.mocked(api.startProjectCustomerReportJob).mockReset();
+    vi.mocked(api.startProjectCustomerReportJob)
       .mockResolvedValueOnce({
-        kind: "published",
+        ...completedJob, status: "failed", result: null,
+        message: "The customer report was deleted or moved after the page was loaded.",
+        error_code: "customer_report_missing_after_preview", can_regenerate: true,
+      })
+      .mockResolvedValueOnce({
+        ...completedJob, operation_id: "operation-2",
         result: {
           project_id: "project-1",
           mode: "official",
@@ -525,7 +534,7 @@ describe("ReportWorkspace", () => {
 
     await user.click(screen.getByRole("button", { name: "Generate new customer report" }));
 
-    expect(api.generateCurrentCustomerReport).toHaveBeenNthCalledWith(2, "project-1", {
+    expect(api.startProjectCustomerReportJob).toHaveBeenNthCalledWith(2, "project-1", {
       expected_internal_report_sha256: "a".repeat(64),
       expected_customer_report_sha256: null,
     });
@@ -548,8 +557,8 @@ describe("ReportWorkspace", () => {
     vi.mocked(api.fetchCurrentCustomerReport)
       .mockResolvedValueOnce(customerReport)
       .mockResolvedValue(missingCustomerReport);
-    vi.mocked(api.generateCurrentCustomerReport).mockReset();
-    vi.mocked(api.generateCurrentCustomerReport).mockRejectedValueOnce(
+    vi.mocked(api.startProjectCustomerReportJob).mockReset();
+    vi.mocked(api.startProjectCustomerReportJob).mockRejectedValueOnce(
       new api.ApiRequestError(
         "The customer report was deleted or moved after the page was loaded.",
         409,
@@ -568,14 +577,14 @@ describe("ReportWorkspace", () => {
     );
 
     expect(screen.queryByRole("alertdialog", { name: "Customer report not found" })).toBeNull();
-    expect(api.generateCurrentCustomerReport).toHaveBeenCalledTimes(1);
+    expect(api.startProjectCustomerReportJob).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "Generate customer report" })).toBeTruthy();
   });
 
   it("does not claim that an unchanged customer report was archived", async () => {
     const user = userEvent.setup();
-    vi.mocked(api.generateCurrentCustomerReport).mockResolvedValue({
-      kind: "published",
+    vi.mocked(api.startProjectCustomerReportJob).mockResolvedValue({
+      ...completedJob,
       result: {
         project_id: "project-1",
         mode: "official",
@@ -606,21 +615,49 @@ describe("ReportWorkspace", () => {
       warnings: ["No official project folder is available; generation will download a copy."],
       download_url: null,
     });
-    vi.mocked(api.generateCurrentCustomerReport).mockResolvedValue({
-      kind: "download",
-      download: {
-        blob: new Blob(["customer"]),
-        fileName: "DL-001-CR Qualification Testing Report_Rev_A_Draft.docx",
-      },
+    vi.mocked(api.startProjectCustomerReportJob).mockResolvedValue({
+      ...completedJob,
+      result: { mode: "managed_download", file_name: "Customer.docx", changed: true, archive_path: null },
     });
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     await user.click(await screen.findByRole("button", { name: "Generate and download customer report" }));
 
-    expect(api.generateCurrentCustomerReport).toHaveBeenCalledWith("project-1", {
+    expect(api.startProjectCustomerReportJob).toHaveBeenCalledWith("project-1", {
       expected_internal_report_sha256: "a".repeat(64),
       expected_customer_report_sha256: null,
     });
     expect(await screen.findByText("Generated and downloaded the customer report.")).toBeTruthy();
+  });
+
+  it("recovers real progress above the disabled generation button", async () => {
+    vi.mocked(api.fetchLatestProjectCustomerReportJob).mockResolvedValue({
+      ...completedJob, status: "running", stage: "formatting_document", elapsed_seconds: 19, result: null,
+    });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    expect(await screen.findByText("Applying customer-report layout and headers...")).toBeTruthy();
+    expect(screen.getByText("19 seconds elapsed")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Generating customer report..." }) as HTMLButtonElement).disabled).toBe(true);
+    expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
+  });
+
+  it("keeps publication failure visible without claiming generation is still running", async () => {
+    vi.mocked(api.fetchLatestProjectCustomerReportJob).mockResolvedValue({
+      ...completedJob, status: "failed", stage: "publishing", result: null,
+      error_code: "customer_report_publication_failed", message: "The target file changed.",
+    });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    expect(await screen.findByText("Publication failed: The target file changed.")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Update customer report" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("describes a recovered official result without inventing an update or archive", async () => {
+    vi.mocked(api.fetchLatestProjectCustomerReportJob).mockResolvedValue({
+      ...completedJob,
+      result: { mode: "official", file_name: "Customer.docx", changed: true, archive_path: null },
+    });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    expect(await screen.findByText("Customer report is ready (Customer.docx) in the official project folder.")).toBeTruthy();
+    expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
   });
 });

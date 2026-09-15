@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactElement,
@@ -16,7 +17,6 @@ import {
   fetchCurrentReport,
   fetchReportWorkspace,
   generateInitialReportRevision,
-  generateCurrentCustomerReport,
   inspectLlcrResultWorkbook,
   isCustomerReportMissingAfterPreviewError,
   publishManagedReport,
@@ -31,6 +31,8 @@ import {
   type ReportWorkspaceState,
 } from "../../api/client";
 import { ErrorMessage } from "../../components/common/ErrorMessage";
+import { CustomerReportProgress } from "../../components/common/CustomerReportProgress";
+import { useCustomerReportJob } from "./useCustomerReportJob";
 import { LlcrImportPreviewDialog } from "./LlcrImportPreviewDialog";
 import {
   buildLlcrConfirmationDecisions,
@@ -62,9 +64,16 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
   const [equipmentPreview, setEquipmentPreview] = useState<EquipmentListPreview | null>(null);
   const [equipmentDrafts, setEquipmentDrafts] = useState<EquipmentOverrideDrafts>({});
   const [acknowledgeExpired, setAcknowledgeExpired] = useState(false);
-  const [busyAction, setBusyAction] = useState<BusyAction>("load");
+  const [pageBusyAction, setBusyAction] = useState<BusyAction>("load");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const customerJob = useCustomerReportJob(projectId, (response) => {
+    downloadBlob(response.blob, response.fileName || "Customer Report.docx");
+  });
+  const busyAction = pageBusyAction ?? (customerJob.busy ? "customer" : null);
+  const customerRun = useRef<{ regenerating: boolean; hadFile: boolean } | null>(null);
+  const activeProject = useRef(projectId);
+  activeProject.current = projectId;
 
   const refresh = useCallback(async () => {
     const [nextState, nextReport, nextCustomerReport] = await Promise.all([
@@ -72,11 +81,47 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
       fetchCurrentReport(projectId),
       fetchCurrentCustomerReport(projectId),
     ]);
-    setState(nextState);
-    setCurrentReport(nextReport);
-    setCustomerReport(nextCustomerReport);
+    if (activeProject.current === projectId) {
+      setState(nextState);
+      setCurrentReport(nextReport);
+      setCustomerReport(nextCustomerReport);
+    }
     return { state: nextState, customerReport: nextCustomerReport };
   }, [projectId]);
+
+  useEffect(() => {
+    const job = customerJob.job;
+    if (!job || job.project_id !== projectId || (job.status !== "completed" && job.status !== "failed")) return;
+    let active = true;
+    if (job.status === "failed" && job.error_code !== "customer_report_missing_after_preview") return;
+    void refresh().then(({ customerReport: next }) => {
+      if (!active) return;
+      if (job.status === "failed") {
+        if (job.can_regenerate && next.status === "missing" && next.mode === "official" && next.can_generate && next.internal_report_sha256) {
+          setCustomerReportRecovery(next);
+        } else {
+          setError("The customer report state changed again. Review the current state before continuing.");
+        }
+        return;
+      }
+      const result = job.result;
+      if (result?.mode !== "official") return;
+      if (!customerRun.current) {
+        setMessage(`Customer report is ready (${result.file_name}) in the official project folder.`);
+      } else if (customerRun.current.regenerating) {
+        setMessage(`Generated a new customer report (${result.file_name}). No previous file was archived.`);
+      } else if (!result.changed) {
+        setMessage(`The customer report (${result.file_name}) was already current.`);
+      } else if (!customerRun.current.hadFile) {
+        setMessage(`Generated the customer report (${result.file_name}) in the official project folder.`);
+      } else {
+        setMessage(`Updated the customer report (${result.file_name}).${result.archive_path ? " The previous customer report was archived automatically." : ""}`);
+      }
+    }).catch((reason: unknown) => {
+      if (active) setError(errorMessage(reason, "Unable to refresh report status. The generation result is retained; reload to check it."));
+    });
+    return () => { active = false; };
+  }, [customerJob.job, projectId, refresh]);
 
   useEffect(() => {
     let active = true;
@@ -208,7 +253,11 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
     setError(null);
     setMessage(null);
     try {
-      setMessage(await generateCustomerReport(customerReport, false));
+      customerRun.current = { regenerating: false, hadFile: Boolean(customerReport.file_name) };
+      await customerJob.start({
+        expected_internal_report_sha256: customerReport.internal_report_sha256,
+        expected_customer_report_sha256: customerReport.file_sha256,
+      });
     } catch (reason) {
       if (isCustomerReportMissingAfterPreviewError(reason)) {
         try {
@@ -245,45 +294,17 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
     setError(null);
     setMessage(null);
     try {
-      setMessage(await generateCustomerReport(recovery, true));
+      customerRun.current = { regenerating: true, hadFile: false };
+      await customerJob.start({
+        expected_internal_report_sha256: recovery.internal_report_sha256,
+        expected_customer_report_sha256: null,
+      });
       setCustomerReportRecovery(null);
     } catch (reason) {
       setError(errorMessage(reason, "Unable to regenerate the customer report."));
     } finally {
       setBusyAction(null);
     }
-  }
-
-  async function generateCustomerReport(
-    sourceState: CustomerReportState,
-    regeneratingMissingReport: boolean
-  ): Promise<string> {
-    const generated = await generateCurrentCustomerReport(projectId, {
-      expected_internal_report_sha256: sourceState.internal_report_sha256!,
-      expected_customer_report_sha256: regeneratingMissingReport
-        ? null
-        : sourceState.file_sha256,
-    });
-    if (generated.kind === "download") {
-      downloadBlob(
-        generated.download.blob,
-        generated.download.fileName || "Customer Report.docx"
-      );
-      return "Generated and downloaded the customer report.";
-    }
-    await refresh();
-    if (regeneratingMissingReport) {
-      return `Generated a new customer report (${generated.result.file_name}). No previous file was archived.`;
-    }
-    if (!sourceState.file_name) {
-      return `Generated the customer report (${generated.result.file_name}) in the official project folder.`;
-    }
-    if (!generated.result.changed) {
-      return `The customer report (${generated.result.file_name}) was already current.`;
-    }
-    return generated.result.archive_path
-      ? `Updated the customer report (${generated.result.file_name}). The previous customer report was archived automatically.`
-      : `Updated the customer report (${generated.result.file_name}).`;
   }
 
   async function handleDownloadCustomerReport(): Promise<void> {
@@ -492,12 +513,30 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
             {customerReport?.blockers.map((blocker) => (
               <p className="report-workspace-blocker" key={blocker}>{blocker}</p>
             ))}
+            {customerJob.job ? <CustomerReportProgress
+              stage={customerJob.job.stage}
+              elapsedSeconds={customerJob.elapsed}
+              running={customerJob.job.status === "queued" || customerJob.job.status === "running"}
+            /> : null}
+            {customerJob.error ? <p role="alert" className="report-workspace-blocker">{customerJob.error}</p> : null}
+            {customerJob.queryWarning ? <div role="alert" className="report-workspace-warning">
+              <p>{customerJob.queryWarning}</p>
+              <button type="button" onClick={() => void customerJob.retryQuery()}>Retry status check</button>
+            </div> : null}
+            {customerJob.job?.status === "failed" && customerJob.job.error_code !== "customer_report_missing_after_preview" ?
+              <p role="alert" className="report-workspace-blocker">
+                {customerJob.job.error_code === "customer_report_publication_failed" ? "Publication failed: " : "Generation failed: "}
+                {customerJob.job.message || "Unable to generate the customer report."}
+              </p> : null}
+            {customerJob.downloadError ? <p role="alert" className="report-workspace-blocker">{customerJob.downloadError}</p> : null}
+            {customerJob.downloaded ? <p role="status">Generated and downloaded the customer report.</p> : null}
             <div className="report-workspace-action-row">
               <button
                 className="primary-action"
                 disabled={
                   !customerReport?.can_generate ||
                   Boolean(busyAction) ||
+                  customerJob.downloading ||
                   Boolean(customerReportRecovery)
                 }
                 onClick={() => void handleGenerateCustomerReport()}
@@ -511,6 +550,11 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
                       ? "Update customer report"
                       : "Generate customer report"}
               </button>
+              {customerJob.job?.status === "completed" && customerJob.job.result?.mode === "managed_download" ? (
+                <button type="button" disabled={customerJob.downloading || Boolean(busyAction)} onClick={() => void customerJob.download()}>
+                  {customerJob.downloading ? "Downloading..." : customerJob.downloadError ? "Retry download" : "Download generated copy"}
+                </button>
+              ) : null}
               {customerReport?.download_url ? (
                 <button
                   disabled={Boolean(busyAction)}

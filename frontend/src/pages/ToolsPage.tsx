@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ReactElement } from "react";
+import { CustomerReportProgress } from "../components/common/CustomerReportProgress";
 import {
   downloadStandaloneCustomerReport,
   encryptStandaloneCopy,
@@ -181,11 +182,7 @@ function ToolCard({
       {state.error && <p className="tools-feedback tools-feedback-error" role="alert">{state.error}</p>}
       {state.message && <p className="tools-feedback tools-feedback-success" role="status">{state.message}</p>}
       {state.progress && (
-        <div className="tools-progress" role="status" aria-live="polite">
-          <span className="tools-progress-spinner" aria-hidden="true" />
-          <span>{customerReportStageLabel(state.progress.stage)}</span>
-          <span>{Math.round(state.progress.elapsed_seconds)} seconds elapsed</span>
-        </div>
+        <CustomerReportProgress stage={state.progress.stage} elapsedSeconds={state.progress.elapsed_seconds} />
       )}
       <button className="primary-action" type="button" disabled={state.busy} onClick={onRun}>
         {state.busy ? (state.progress ? "Generating..." : "Starting...") : actionLabel}
@@ -225,23 +222,6 @@ async function runCustomerReportJob(
 
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
-}
-
-function customerReportStageLabel(stage: string): string {
-  const labels: Record<string, string> = {
-    queued: "Waiting for the previous customer-report task to finish...",
-    validating: "Validating the Internal Report...",
-    preparing_template: "Preparing the approved customer template...",
-    opening_word: "Opening documents in Microsoft Word...",
-    copying_content: "Copying report content and images...",
-    cleaning_content: "Cleaning internal-only content...",
-    formatting_document: "Applying customer-report layout and headers...",
-    saving_document: "Saving the customer report...",
-    verifying_output: "Verifying the generated report...",
-    protecting_output: "Restoring document protection...",
-    completed: "Customer report is ready for download.",
-  };
-  return labels[stage] ?? "Generating the customer report...";
 }
 
 function fallbackName(tool: ToolKey, file: File): string {

@@ -13,6 +13,26 @@ from backend.infrastructure.office.customer_report_subprocess_runner import (
 from backend.infrastructure.office.customer_report_subprocess_child import _execute
 
 
+def test_unexpected_poll_failure_stops_child_and_cleans_temporary_files(tmp_path, monkeypatch):
+    class Process:
+        returncode = None
+        killed = False
+        def poll(self):
+            raise RuntimeError("broken progress channel")
+        def kill(self):
+            self.killed = True
+            self.returncode = -9
+        def communicate(self):
+            return "", ""
+    process = Process()
+    monkeypatch.setattr("backend.infrastructure.office.customer_report_subprocess_runner.subprocess.Popen", lambda *a, **k: process)
+    with pytest.raises(RuntimeError, match="broken progress channel"):
+        CustomerReportSubprocessRunner(output_root=tmp_path / "runs").generate_customer_report(
+            source_path=tmp_path / "source.docx", template_path=tmp_path / "template.docx", output_path=tmp_path / "out.docx")
+    assert process.killed
+    assert list((tmp_path / "runs").iterdir()) == []
+
+
 def test_runner_times_out_a_stuck_word_process_and_releases_its_run_directory(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

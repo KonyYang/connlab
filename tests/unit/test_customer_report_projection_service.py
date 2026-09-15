@@ -296,6 +296,69 @@ class _MutatingWriter(_Writer):
         return Path(output_path)
 
 
+def test_progress_reflects_document_work_then_safe_publication(tmp_path):
+    events = []
+    class ProgressWriter(_Writer):
+        def generate_customer_report(self, *, progress=None, **kwargs):
+            progress("formatting_document")
+            return super().generate_customer_report(**kwargs)
+    internal = _write(tmp_path / "DL-2026-04-015 Report.docx", b"source")
+    template = _write(tmp_path / "template.docx", b"template")
+    result = _service(tmp_path, internal, writer=ProgressWriter(), files=ReportPublicationGateway()).generate(
+        CustomerReportGenerationCommand("project-1", template, _hash(internal), None), progress=events.append)
+    assert result.file_path.exists()
+    assert events == ["validating", "formatting_document", "publishing"]
+
+
+def test_new_current_authority_during_generation_prevents_publication(tmp_path):
+    internal = _write(tmp_path / "DL-2026-04-015 Report.docx", b"old")
+    newer = _write(tmp_path / "new-internal.docx", b"new")
+    template = _write(tmp_path / "template.docx", b"template")
+    reader = _CurrentReports(_current(internal))
+    class SwitchingWriter(_Writer):
+        def generate_customer_report(self, **kwargs):
+            result = super().generate_customer_report(**kwargs)
+            reader.report = _current(newer)
+            return result
+    service = CustomerReportProjectionService(current_reports=reader, files=ReportPublicationGateway(), writer=SwitchingWriter(), generated_root=tmp_path / "downloads")
+    with pytest.raises(CustomerReportProjectionError, match="authority changed"):
+        service.generate(CustomerReportGenerationCommand("project-1", template, _hash(internal), None))
+    assert not (tmp_path / "DL-2026-04-015-CR Report.docx").exists()
+
+
+def test_source_changed_during_archiving_cannot_replace_existing_customer(tmp_path, monkeypatch):
+    internal = _write(tmp_path / "DL-2026-04-015 Report.docx", b"internal")
+    customer = _write(tmp_path / "DL-2026-04-015-CR Report.docx", b"old-customer")
+    template = _write(tmp_path / "template.docx", b"template")
+    copy = shutil.copy2
+    def changing_copy(source, target):
+        result = copy(source, target)
+        internal.write_bytes(b"new-source")
+        return result
+    monkeypatch.setattr(shutil, "copy2", changing_copy)
+    service = _service(tmp_path, internal, files=ReportPublicationGateway())
+    with pytest.raises(CustomerReportProjectionError, match="changed"):
+        service.generate(CustomerReportGenerationCommand("project-1", template, _hash(internal), _hash(customer)))
+    assert customer.read_bytes() == b"old-customer"
+    assert not list(tmp_path.rglob("*.stage.docx"))
+
+
+def test_target_changed_during_final_source_check_is_not_overwritten(tmp_path):
+    from backend.infrastructure.files.report_publication_gateway import ReportPublicationConflictError
+    current = _write(tmp_path / "customer.docx", b"customer-old")
+    def generate(source, output):
+        output.write_bytes(b"customer-generated")
+        return output
+    def source_check():
+        current.write_bytes(b"customer-edited-externally")
+    with pytest.raises(ReportPublicationConflictError, match="changed"):
+        ReportPublicationGateway().publish_update(
+            current_path=current, expected_current_sha256=_hash(current),
+            history_root=tmp_path / "History", update_document=generate, pre_publish=source_check)
+    assert current.read_bytes() == b"customer-edited-externally"
+    assert not list(tmp_path.rglob("*.stage.docx"))
+
+
 class _Files:
     def __init__(self) -> None:
         self.customer_reports: tuple[Path, ...] = tuple()
@@ -313,8 +376,11 @@ class _Files:
         expected_source_sha256,
         target_path,
         generate_document,
+        pre_publish=None,
     ):
         generated = generate_document(Path(source_path), Path(target_path))
+        if pre_publish:
+            pre_publish()
         return _Publication(Path(generated), _hash(Path(generated)), True, None)
 
     def publish_update(
@@ -324,6 +390,7 @@ class _Files:
         expected_current_sha256,
         history_root,
         update_document,
+        pre_publish=None,
     ):
         current = Path(current_path)
         if _hash(current) != expected_current_sha256:
@@ -333,6 +400,8 @@ class _Files:
         shutil.copy2(current, archive)
         stage = current.with_name(f".{current.name}.stage.docx")
         update_document(current, stage)
+        if pre_publish:
+            pre_publish()
         stage.replace(current)
         return _Publication(current, _hash(current), True, archive)
 
