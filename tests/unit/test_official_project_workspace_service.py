@@ -701,6 +701,51 @@ def test_manifest_disagreement_is_repairable_inconsistency(tmp_path: Path) -> No
     assert "Workspace manifest does not match" in preview.blockers[0]
 
 
+def test_missing_stale_workspace_record_replans_under_current_project_root(
+    tmp_path: Path,
+) -> None:
+    template = _make_template(tmp_path / "template")
+    current_root = tmp_path / "current-workspaces"
+    current_root.mkdir()
+    old_workspace = tmp_path / "old-workspaces" / "DL-2025-11-074"
+    repository = _WorkspaceRepo()
+    repository.saved = OfficialWorkspaceRecord(
+        workspace_id="stale-workspace",
+        project_id="project-1",
+        dl_number="DL-2025-11-074",
+        local_workspace_path=old_workspace,
+        source_book_path=old_workspace / "Source Book",
+        official_folder_path=(
+            old_workspace / "DL-2025-11-074 Coolpower Qualification test"
+        ),
+        manifest_path=old_workspace / ".connlab" / "manifest.json",
+        template_source_path=template,
+        created_at="2026-06-01T00:00:00+00:00",
+    )
+    service = _service(
+        tmp_path,
+        repository=repository,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=current_root,
+            template_path=template,
+            public_drive_root=None,
+        ),
+    )
+
+    preview = service.preview("project-1")
+
+    assert preview.status == "ready"
+    assert not preview.blockers
+    assert preview.local_workspace_path == current_root / "DL-2025-11-074"
+    assert any("previous workspace record" in warning.lower() for warning in preview.warnings)
+
+    result = service.create("project-1")
+
+    assert result.record.local_workspace_path == current_root / "DL-2025-11-074"
+    assert result.record.official_folder_path.is_dir()
+    assert repository.saved == result.record
+
+
 def test_missing_recorded_official_folder_can_be_regenerated(
     tmp_path: Path,
 ) -> None:

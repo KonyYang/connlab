@@ -251,6 +251,24 @@ class OfficialProjectWorkspaceService:
         planned_paths = (workspace_path, source_book_path, official_folder_path, manifest_path)
 
         completed_record = self._workspaces.get_by_project(project_id)
+        if (
+            completed_record is not None
+            and completed_record.local_workspace_path != workspace_path
+            and not any(
+                path.exists()
+                for path in (
+                    completed_record.local_workspace_path,
+                    completed_record.source_book_path,
+                    completed_record.official_folder_path,
+                    completed_record.manifest_path,
+                )
+            )
+        ):
+            warnings.append(
+                "The previous workspace record has no remaining files; ConnLab will "
+                "use the current Project default save location."
+            )
+            completed_record = None
         if completed_record is not None:
             record_inconsistency = self._workspace_record_inconsistency(
                 completed_record,
