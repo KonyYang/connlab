@@ -677,7 +677,9 @@ def test_preview_uses_ltr_sample_description_and_test_item_in_folder_name(
     )
 
 
-def test_manifest_disagreement_is_repairable_inconsistency(tmp_path: Path) -> None:
+def test_foreign_project_manifest_is_a_recoverable_whole_workspace_conflict(
+    tmp_path: Path,
+) -> None:
     template = _make_template(tmp_path / "template")
     workspace = tmp_path / "workspaces" / "DL-2025-11-074"
     manifest_dir = workspace / ".connlab"
@@ -697,8 +699,72 @@ def test_manifest_disagreement_is_repairable_inconsistency(tmp_path: Path) -> No
 
     preview = service.preview("project-1")
 
-    assert preview.status == "inconsistent"
+    assert preview.status == "exists"
     assert "Workspace manifest does not match" in preview.blockers[0]
+    assert preview.conflict_paths == (workspace,)
+    assert {option.key for option in preview.conflict_options} == {
+        "backup_and_recreate",
+        "overwrite_rebuild",
+    }
+
+
+def test_backup_rebuild_preserves_foreign_workspace_and_writes_current_manifest(
+    tmp_path: Path,
+) -> None:
+    template = _make_template(tmp_path / "template")
+    (template / "template.txt").write_text("new", encoding="utf-8")
+    workspace = tmp_path / "workspaces" / "DL-2025-11-074"
+    manifest_dir = workspace / ".connlab"
+    manifest_dir.mkdir(parents=True)
+    (manifest_dir / "manifest.json").write_text(
+        '{"schema_version":1,"project_id":"other","official_project_folder_path":"x"}',
+        encoding="utf-8",
+    )
+    (workspace / "legacy.txt").write_text("legacy", encoding="utf-8")
+    service = _service(
+        tmp_path,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=template,
+            public_drive_root=None,
+        ),
+    )
+
+    result = service.create("project-1", conflict_strategy="backup_and_recreate")
+
+    backups = list((tmp_path / "workspaces").glob("DL-2025-11-074 [0-9]*"))
+    assert len(backups) == 1
+    assert (backups[0] / "legacy.txt").read_text(encoding="utf-8") == "legacy"
+    assert json.loads(
+        (backups[0] / ".connlab" / "manifest.json").read_text(encoding="utf-8")
+    )["project_id"] == "other"
+    assert (result.official_folder_path / "template.txt").read_text(encoding="utf-8") == "new"
+    assert json.loads(result.record.manifest_path.read_text(encoding="utf-8"))[
+        "project_id"
+    ] == "project-1"
+
+
+def test_unreadable_manifest_remains_blocked_as_an_inconsistency(tmp_path: Path) -> None:
+    template = _make_template(tmp_path / "template")
+    workspace = tmp_path / "workspaces" / "DL-2025-11-074"
+    manifest_dir = workspace / ".connlab"
+    manifest_dir.mkdir(parents=True)
+    (manifest_dir / "manifest.json").write_text("not-json", encoding="utf-8")
+    service = _service(
+        tmp_path,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=template,
+            public_drive_root=None,
+        ),
+    )
+
+    preview = service.preview("project-1")
+
+    assert preview.status == "inconsistent"
+    assert "cannot be read" in preview.blockers[0]
+    assert preview.conflict_paths == tuple()
+    assert preview.conflict_options == tuple()
 
 
 def test_missing_stale_workspace_record_replans_under_current_project_root(

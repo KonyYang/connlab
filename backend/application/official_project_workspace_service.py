@@ -362,6 +362,33 @@ class OfficialProjectWorkspaceService:
                 planned_paths=planned_paths,
             )
 
+        foreign_manifest_project_id = self._foreign_manifest_project_id(
+            manifest_path=manifest_path,
+            project_id=project_id,
+        )
+        if foreign_manifest_project_id is not None:
+            warnings.append(
+                "The existing local workspace belongs to another ConnLab project "
+                f"({foreign_manifest_project_id}); preserve it with Backup and Rebuild."
+            )
+            return OfficialWorkspacePreview(
+                project_id=project_id,
+                dl_number=dl_number,
+                local_workspace_root=local_root,
+                local_workspace_path=workspace_path,
+                source_book_path=source_book_path,
+                template_path=template_root.path,
+                official_folder_path=official_folder_path,
+                manifest_path=manifest_path,
+                template_root_mode=template_root.mode,
+                status="exists",
+                blockers=(f"Workspace manifest does not match current project: {manifest_path}",),
+                warnings=tuple(warnings),
+                planned_paths=planned_paths,
+                conflict_paths=(workspace_path,),
+                conflict_options=_conflict_options(),
+            )
+
         manifest_inconsistency = self._manifest_without_record_inconsistency(
             project_id=project_id,
             official_folder_path=official_folder_path,
@@ -643,6 +670,24 @@ class OfficialProjectWorkspaceService:
             "Workspace manifest exists but ConnLab workspace index record is missing: "
             f"{manifest_path}"
         )
+
+    def _foreign_manifest_project_id(
+        self,
+        *,
+        manifest_path: Path,
+        project_id: str,
+    ) -> str | None:
+        """Return a different valid manifest project id, leaving corrupt files blocked."""
+        if not manifest_path.exists():
+            return None
+        try:
+            payload = self._manifests.read(manifest_path)
+        except Exception:
+            return None
+        manifest_project_id = payload.get("project_id")
+        if not isinstance(manifest_project_id, str) or not manifest_project_id.strip():
+            return None
+        return manifest_project_id if manifest_project_id != project_id else None
 
     def _workspace_record_inconsistency(
         self,
