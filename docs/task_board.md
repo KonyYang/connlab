@@ -11,90 +11,46 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
-    "task_id": "TASK_MATRIX_GROUP_IDENTITY_B",
-    "summary": "Audit Matrix draft and confirmed-authority identity integrity against the real local database, then define a previewable and reversible repair workflow plus a simpler retention and UI policy for draft and authority history.",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Read-only database and code audit, evidence-backed repair and retention design, and any narrowly required read-only audit tooling or tests. Do not mutate operator data, delete history, or change authority records in this phase.",
+    "task_id": "TASK_MATRIX_GROUP_IDENTITY_C",
+    "summary": "Implement a previewable, fingerprinted, backup-backed, reversible Matrix data-integrity repair and compatible schema migration without changing confirmed authority content or revision counts.",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Repair only proven legacy Matrix identity inconsistencies: preview findings, require matching fingerprint for execution, create and verify backup, repair safe superseded-draft orphans transactionally, preserve confirmed history, remove invalid confirmed-to-mutable-draft child foreign keys, enforce same-draft child invariants, and enable SQLite foreign keys per connection only after compatibility migration. Validate on database copies; do not mutate operator databases during development.",
     "scope_paths": [
-      "backend",
-      "scripts",
-      "tests",
-      "docs"
+      "backend/infrastructure/storage/database.py",
+      "backend/infrastructure/storage/database_matrix_migrations.py",
+      "backend/infrastructure/storage/models_confirmed_matrix_authority.py",
+      "backend/infrastructure/storage/models_project_matrix_draft.py",
+      "backend/infrastructure/storage/matrix_identity_integrity_audit.py",
+      "backend/infrastructure/storage/matrix_identity_integrity_repair.py",
+      "scripts/audit_matrix_identity.py",
+      "scripts/repair_matrix_identity.py",
+      "tests/unit/test_database.py",
+      "tests/unit/test_matrix_identity_integrity_audit.py",
+      "tests/unit/test_matrix_identity_integrity_repair.py",
+      "docs/matrix_group_identity_audit_and_repair_design.md"
     ],
-    "risk_reasons": [],
-    "activation_head": "2d133f93b2289d0cbb1a94a96a5743dc9339fe6e",
-    "started_at": "2026-09-15T22:46:59.607261Z",
-    "updated_at": "2026-09-15T23:05:09.460943Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_MATRIX_GROUP_IDENTITY_B",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_MATRIX_GROUP_IDENTITY_B",
-      "subject": "0565045f8d20af81d38294f4fb04f85a1061934e",
-      "summary": "Added a reusable read-only Matrix identity audit, audited development and packaged databases, separated valid confirmed history from legacy orphaned lineage, and documented a previewable reversible repair design without mutating operator data.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/infrastructure/storage/matrix_identity_integrity_audit.py",
-        "docs/matrix_group_identity_audit_and_repair_design.md",
-        "scripts/audit_matrix_identity.py",
-        "tests/unit/test_matrix_identity_integrity_audit.py"
-      ],
-      "validation": [
-        {
-          "name": "Affected backend audit, database, draft repository, and confirmed authority tests",
-          "status": "passed",
-          "summary": "31 passed."
-        },
-        {
-          "name": "Python compile check",
-          "status": "passed",
-          "summary": "Audit module and CLI compiled successfully."
-        },
-        {
-          "name": "Read-only real database audit",
-          "status": "passed",
-          "summary": "Development and packaged databases audited through mode=ro/query_only; packaged SHA-256 was unchanged and both database files retained unchanged length and last-write metadata."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "summary": "Implemented with red-green tests and reviewed the exact working-tree change."
-        },
-        "reviewer": {
-          "status": "passed",
-          "summary": "Focused sequential standards and request-fit review found no actionable issue or scope expansion."
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Final affected test matrix and real read-only audit checks passed on the committed state."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "mode": "direct_primary"
-      }
-    }
+    "risk_reasons": [
+      "SQLite schema migration and foreign-key enforcement",
+      "Transactional repair can delete proven orphan rows in database copies",
+      "Confirmed Matrix authority history and operator recovery must remain intact"
+    ],
+    "activation_head": "a632812a3c0cf64e51bca52bc6c0ab38dee11b27",
+    "started_at": "2026-09-15T23:17:55.590456Z",
+    "updated_at": "2026-09-15T23:17:55.590456Z",
+    "checkpoint": null,
+    "report": null
   },
   "last_closed": {
-    "task_id": "TASK_MATRIX_GROUP_IDENTITY_A",
+    "task_id": "TASK_MATRIX_GROUP_IDENTITY_B",
     "tier": "standard",
-    "subject": "6826d851a399ebbbf201bfe9084345c5c81aad83",
-    "summary": "Prevent duplicate Matrix group identities across add, insert, duplicate, save, confirm, reload, and export while preserving existing group data for explicit diagnosis.",
+    "subject": "0565045f8d20af81d38294f4fb04f85a1061934e",
+    "summary": "Audit Matrix draft and confirmed-authority identity integrity against the real local database, then define a previewable and reversible repair workflow plus a simpler retention and UI policy for draft and authority history.",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested 关闭 in the current turn.",
-    "closed_at": "2026-09-15T22:37:03.852203Z"
+    "decision_ref": "User explicitly requested: 关闭并启动 Matrix 数据完整性修复任务",
+    "closed_at": "2026-09-15T23:17:55.590456Z"
   },
   "retained_history": []
 }
