@@ -29,6 +29,20 @@ def test_preview_downloads_draft_when_no_official_workspace_exists(tmp_path: Pat
     assert preview.status == "ready"
 
 
+def test_preview_downloads_draft_when_recorded_official_folder_is_missing(
+    tmp_path: Path,
+) -> None:
+    workspace = _workspace(tmp_path)
+    workspace.official_folder_path.rmdir()
+    service = _service(tmp_path, workspace=workspace)
+
+    preview = service.preview(PreviewFeeFormPublicationCommand("P1", _values()))
+
+    assert preview.mode == "download"
+    assert preview.status == "ready"
+    assert preview.blockers == ()
+
+
 def test_preview_downloads_draft_when_current_values_are_not_confirmed(
     tmp_path: Path,
 ) -> None:

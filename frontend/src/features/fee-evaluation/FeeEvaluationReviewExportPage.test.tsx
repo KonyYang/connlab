@@ -430,7 +430,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     });
     expect(
       await screen.findByText(
-        "Fee-P1.xlsx downloaded."
+        "DL-2026-001 Fee Form draft.xlsx downloaded."
       )
     ).toBeTruthy();
   });
@@ -1420,7 +1420,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     });
     expect(clickSpy).toHaveBeenCalledTimes(1);
     expect(
-      await screen.findByText("Fee-P1.xlsx downloaded.")
+      await screen.findByText("DL-2026-001 Fee Form draft.xlsx downloaded.")
     ).toBeTruthy();
   });
 

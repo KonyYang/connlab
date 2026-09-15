@@ -162,12 +162,7 @@ class FeeFormPublicationService:
 
         official = Path(workspace.official_folder_path)
         if not official.is_dir():
-            return self._preview(
-                command,
-                mode="official",
-                status="blocked",
-                blockers=("The recorded official project folder is missing.",),
-            )
+            return self._preview(command, mode="download")
         basic = self._basic_information.get_latest_confirmed(command.project_id)
         if basic is None:
             return self._preview(

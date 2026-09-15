@@ -1518,11 +1518,8 @@ function feeFileNameFromPageContext(input: {
   draftState: DraftLoadState;
   responseFileName: string | null;
 }): string {
-  if (input.responseFileName) {
-    return input.responseFileName;
-  }
   if (input.contextState.kind !== "ready") {
-    return defaultFeeFileName(input.projectId);
+    return input.responseFileName ?? defaultFeeFileName(input.projectId);
   }
   const identity =
     input.contextState.ltrNumber ??
