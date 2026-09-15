@@ -193,7 +193,7 @@ class FeeFormPublicationService:
                 status="blocked",
                 blockers=("Confirmed Basic Information does not match the project folder.",),
             )
-        target = official / f"{_safe_file_stem(dl_number)} Fee Form.xls"
+        target = official / f"{_safe_file_stem(dl_number)} Fee Form.xlsx"
         fingerprint = self._files.fingerprint(target) if target.is_file() else None
         modified_at = (
             datetime.fromtimestamp(target.stat().st_mtime).astimezone().isoformat()

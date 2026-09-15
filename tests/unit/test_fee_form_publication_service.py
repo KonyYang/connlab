@@ -52,7 +52,7 @@ def test_preview_offers_official_target_for_current_confirmed_fee(
 
     assert preview.mode == "official"
     assert preview.status == "ready"
-    assert preview.target_path == workspace.official_folder_path / "DL-001 Fee Form.xls"
+    assert preview.target_path == workspace.official_folder_path / "DL-001 Fee Form.xlsx"
 
 
 def test_execute_publishes_confirmed_fee_form_and_registers_final_path(
@@ -82,7 +82,7 @@ def test_failed_generation_releases_empty_stage_and_preserves_official_file(tmp_
     from backend.shared.operation_diagnostics import failure_details
     caplog.set_level(logging.INFO, logger="connlab.operations")
     workspace = _workspace(tmp_path)
-    target = workspace.official_folder_path / "DL-001 Fee Form.xls"
+    target = workspace.official_folder_path / "DL-001 Fee Form.xlsx"
     target.write_text("operator original", encoding="utf-8")
     service = _service(tmp_path, workspace=workspace)
 
@@ -106,7 +106,7 @@ def test_failed_generation_releases_empty_stage_and_preserves_official_file(tmp_
 
 def test_official_fee_archive_keeps_previous_file_and_registers_new_output(tmp_path):
     workspace = _workspace(tmp_path)
-    target = workspace.official_folder_path / "DL-001 Fee Form.xls"
+    target = workspace.official_folder_path / "DL-001 Fee Form.xlsx"
     target.write_text("operator original", encoding="utf-8")
     service = _service(tmp_path, workspace=workspace)
     preview = service.preview(PreviewFeeFormPublicationCommand("P1", _values()))

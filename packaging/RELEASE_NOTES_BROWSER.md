@@ -16,6 +16,14 @@ The application starts its local backend automatically and opens `http://127.0.0
 
 This release changes only the startup shell. LTR registration, Settings, Project Workbench, and workbook behavior are the same application workflows as the normal ConnLab build.
 
+## Fee Form XLSX generation
+
+Fee Form download and project-folder publication now use the unique `.xlsx`
+template whose name contains `FDQF-E-176` in the configured Project Folder
+Template directory. Legacy `.xls` templates are not selected. Fee Form generation
+is performed locally without starting Microsoft Excel, while retaining the
+approved template's formulas, logo, layout, comments, and print settings.
+
 ## LTR Workbook Settings
 
 Saving `LTR registration workbook` in Settings now also updates the local workbook write configuration used by LTR number application. Existing local operator settings are preserved.

@@ -46,6 +46,8 @@ def set_a_column_fill(
 
 
 def cell_fill_color(sheet: Any, row: int, column: int) -> int:
+    if hasattr(sheet, "cell_fill_color"):
+        return sheet.cell_fill_color(row, column)
     return int(sheet.Cells(row, column).Interior.Color)
 
 

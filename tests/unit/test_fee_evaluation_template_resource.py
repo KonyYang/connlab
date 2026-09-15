@@ -20,7 +20,7 @@ def test_resolves_fee_template_from_settings_template_folder(tmp_path: Path) -> 
     runtime_templates = tmp_path / "runtime-templates"
     template_folder.mkdir()
     runtime_templates.mkdir()
-    template = template_folder / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
+    template = template_folder / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xlsx"
     template.write_bytes(b"settings template")
 
     resolved = resolve_fee_evaluation_template_path(

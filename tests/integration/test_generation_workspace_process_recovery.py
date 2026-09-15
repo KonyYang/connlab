@@ -50,7 +50,7 @@ def _confirm_basic_information(session):
     # authorities, instead of bypassing checks to isolate the workspace step.
     root = Path(session.bind.url.database).parent
     template = root / "template"
-    for name in ("E-4243_D Customer Feedback Form.xlsx", "FDQF-E-176 Testing Fee Evaluation.xls",
+    for name in ("E-4243_D Customer Feedback Form.xlsx", "FDQF-E-176 Testing Fee Evaluation.xlsx",
                  "FDQF-E-036 Test Record.docx"):
         (template / name).write_bytes(b"controlled template")
     from backend.domain import ApplicationForm

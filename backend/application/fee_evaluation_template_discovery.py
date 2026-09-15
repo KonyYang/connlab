@@ -17,7 +17,7 @@ class FeeEvaluationTemplateAmbiguousError(FeeEvaluationTemplateDiscoveryError):
 
 
 def discover_fee_evaluation_template(template_folder: Path) -> Path:
-    """Return the unique Fee Evaluation .xls template matching the business form id."""
+    """Return the unique Fee Evaluation XLSX template matching the business form id."""
     if not template_folder.exists() or not template_folder.is_dir():
         raise FeeEvaluationTemplateDiscoveryError(
             f"Template folder does not exist or is not a folder: {template_folder}"
@@ -26,19 +26,20 @@ def discover_fee_evaluation_template(template_folder: Path) -> Path:
         path
         for path in template_folder.iterdir()
         if path.is_file()
-        and path.suffix.lower() == ".xls"
+        and path.suffix.lower() == ".xlsx"
+        and not path.name.startswith("~$")
         and FEE_EVALUATION_TEMPLATE_TOKEN.lower() in path.name.lower()
     )
     if not matches:
         raise FeeEvaluationTemplateDiscoveryError(
             "Fee Evaluation template was not found in Template folder. "
-            f"Add an .xls file whose name contains {FEE_EVALUATION_TEMPLATE_TOKEN}."
+            f"Add an .xlsx file whose name contains {FEE_EVALUATION_TEMPLATE_TOKEN}."
         )
     if len(matches) > 1:
         names = ", ".join(path.name for path in matches)
         raise FeeEvaluationTemplateAmbiguousError(
             "Multiple Fee Evaluation templates were found. "
-            f"Keep exactly one {FEE_EVALUATION_TEMPLATE_TOKEN} .xls template "
+            f"Keep exactly one {FEE_EVALUATION_TEMPLATE_TOKEN} .xlsx template "
             f"in Template folder: {names}"
         )
     return matches[0]

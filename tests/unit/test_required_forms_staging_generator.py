@@ -75,7 +75,7 @@ def test_required_forms_fee_form_uses_confirmed_fee_pricing_snapshot_notes(
     settings_template_folder = tmp_path / "settings-template-folder"
     runtime_templates_dir.mkdir()
     settings_template_folder.mkdir()
-    template = settings_template_folder / "FDQF-E-176 Fee Form.xls"
+    template = settings_template_folder / "FDQF-E-176 Fee Form.xlsx"
     template.write_bytes(b"template")
     fee_export = _FeeExportService()
     generator = _RequiredFormsStagingGenerator(
@@ -92,7 +92,7 @@ def test_required_forms_fee_form_uses_confirmed_fee_pricing_snapshot_notes(
     output = generator.generate(
         project_id="P1",
         key="fee_form",
-        target_name="DL-001 Fee Form.xls",
+        target_name="DL-001 Fee Form.xlsx",
         basic_information=ConfirmedBasicInformationSnapshot(
             project_id="P1",
             version=1,
@@ -114,7 +114,7 @@ def test_required_forms_fee_form_uses_confirmed_fee_pricing_snapshot_notes(
         ),
     )
 
-    assert output.name == "DL-001 Fee Form.xls"
+    assert output.name == "DL-001 Fee Form.xlsx"
     assert fee_export.command is not None
     assert fee_export.command.edited_values is not None
     assert fee_export.command.edited_values.rows[0].notes == "阿第三方"

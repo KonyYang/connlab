@@ -228,21 +228,21 @@ def test_preview_source_context_includes_fee_template_identity(tmp_path: Path) -
     )
 
 
-def test_xls_fee_template_context_is_stable_when_office_metadata_changes(
+def test_xlsx_fee_template_context_changes_when_controlled_template_changes(
     tmp_path: Path,
 ) -> None:
     templates_dir = tmp_path / "templates"
     templates_dir.mkdir()
-    template = templates_dir / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
-    template.write_bytes(b"ole-metadata-version-1")
+    template = templates_dir / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xlsx"
+    template.write_bytes(b"controlled-template-version-1")
     reader = _FeeFormTemplateContextReader(_TemplateFolderStore(templates_dir))
 
     first_context = reader.preview_template_context("P1")
-    template.write_bytes(b"ole-metadata-version-2")
+    template.write_bytes(b"controlled-template-version-2")
     second_context = reader.preview_template_context("P1")
 
-    assert first_context == second_context
-    assert "@sha256:" not in first_context
+    assert first_context != second_context
+    assert "@sha256:" in first_context
 
 
 def test_preview_places_test_record_under_submitted_material(tmp_path: Path) -> None:
@@ -1248,7 +1248,7 @@ def _final_path(tmp_path: Path, key: str) -> Path:
     names = {
         "test_record": root / "Submitted Material" / "DL-001 Test Record.docx",
         "test_status": root / "Submitted Material" / "DL-001 test status.xlsx",
-        "fee_form": root / "DL-001 Fee Form.xls",
+        "fee_form": root / "DL-001 Fee Form.xlsx",
         "customer_feedback_form": root / "DL-001 Customer Feedback Form_Even Yang.xlsx",
     }
     return names[key]

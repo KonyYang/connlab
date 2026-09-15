@@ -121,6 +121,12 @@ if (-not $SkipTests) {
                 tests\unit\test_llcr_cr_specialized_record_workbook_gateway.py `
                 tests\integration\test_matrix_editor_llcr_cr_record_generation_api.py `
                 tests\integration\test_llcr_cr_specialized_record_workbook_api.py `
+                tests\unit\test_fee_evaluation_template_discovery.py `
+                tests\unit\test_fee_evaluation_export_dependency.py `
+                tests\unit\test_fee_evaluation_workbook_gateway.py `
+                tests\unit\test_fee_form_publication_service.py `
+                tests\unit\test_required_forms_staging_generator.py `
+                tests\integration\test_confirmed_matrix_fee_file_download_api.py `
                 -q -p no:cacheprovider --basetemp $pytestBaseTemp
             if ($LASTEXITCODE -ne 0) {
                 throw "Release tests failed."

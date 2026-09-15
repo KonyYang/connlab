@@ -30,6 +30,9 @@ from backend.infrastructure.office.fee_evaluation_anchor_snapshot import (
 from backend.infrastructure.office.fee_evaluation_matrix_basic_fill_writer import (
     write_matrix_basic_fill,
 )
+from backend.infrastructure.office.fee_evaluation_openpyxl_adapter import (
+    OpenpyxlFeeSheetAdapter,
+)
 from backend.infrastructure.office.models import FeeEvaluationWorkbookWriteResult
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
 from backend.shared.operation_diagnostics import stage, emit
@@ -43,7 +46,7 @@ _EXCEL_CALCULATION_MANUAL = -4135
 
 
 class FeeEvaluationWorkbookGateway:
-    """Generate fee-evaluation workbooks through a COM-only Excel boundary."""
+    """Generate native XLSX Fee Forms, retaining COM only for legacy XLS files."""
 
     def __init__(self, excel_app_factory: Callable[[], Any] | None = None) -> None:
         self._excel_app_factory = excel_app_factory
@@ -55,13 +58,13 @@ class FeeEvaluationWorkbookGateway:
         output_path: Path,
         preview: TestRecordFeeDatasetPreview,
     ) -> FeeEvaluationWorkbookWriteResult:
-        """Write fee-evaluation content using Excel COM when available."""
+        """Write fee-evaluation content through the selected workbook format path."""
         template = Path(template_path)
         target = Path(output_path)
 
         def write(workbook: Any) -> None:
             summary = preview.fee_dataset.summary if preview.fee_dataset is not None else None
-            sheet = workbook.Worksheets.Item(1)
+            sheet = _first_sheet(workbook)
             sheet.Cells(1, 1).Value = "ConnLab Generated Fee Evaluation"
             sheet.Cells(2, 1).Value = f"Project ID: {preview.project_id}"
             sheet.Cells(3, 1).Value = f"Draft ID: {preview.draft_id}"
@@ -162,6 +165,11 @@ class FeeEvaluationWorkbookGateway:
             raise FileNotFoundError(f"Template does not exist: {template}")
         if not target.parent.is_dir():
             raise FileNotFoundError(f"Output directory does not exist: {target.parent}")
+        if template.resolve() == target.resolve():
+            raise ValueError("Fee output path must not replace the approved template.")
+
+        if template.suffix.lower() == ".xlsx" and target.suffix.lower() == ".xlsx":
+            return self._generate_native_xlsx(template, target, write)
 
         # Excel SaveAs has a stricter path limit than Python filesystem operations.
         with _short_excel_output(target.suffix.lower()) as staged:
@@ -193,6 +201,28 @@ class FeeEvaluationWorkbookGateway:
                 _publish_workbook(staged, target)
             return result
 
+    def _generate_native_xlsx(
+        self, template: Path, target: Path, write: Callable[[Any], Any],
+    ) -> Any:
+        from openpyxl import load_workbook
+
+        with _native_xlsx_output() as staged:
+            with stage("xlsx_open_template", template=template):
+                workbook = load_workbook(template, data_only=False, keep_links=True)
+            try:
+                with stage("xlsx_fill_workbook"):
+                    result = write(workbook)
+                workbook.calculation.calcMode = "auto"
+                workbook.calculation.fullCalcOnLoad = True
+                workbook.calculation.forceFullCalc = True
+                with stage("xlsx_save_workbook", output=staged):
+                    workbook.save(staged)
+            finally:
+                workbook.close()
+            with stage("xlsx_publish_staged_workbook", staging=staged, output=target):
+                _publish_workbook(staged, target)
+            return result
+
     def _open_excel_application(self) -> tuple[Any, Any | None]:
         if self._excel_app_factory is not None:
             return self._excel_app_factory(), None
@@ -220,7 +250,7 @@ def _uninitialize_com(pythoncom_module: Any | None) -> None:
 def _publish_workbook(staged: Path, target: Path) -> None:
     if not staged.is_file() or staged.stat().st_size == 0:
         raise RuntimeError(
-            "Excel generated fee workbook is missing or empty; output was not replaced."
+            "Generated fee workbook is missing or empty; output was not replaced."
         )
     # The sibling is private to this invocation; the old target survives failed copies.
     descriptor, name = tempfile.mkstemp(
@@ -273,10 +303,18 @@ def _cleanup_on_exit(actions: tuple[tuple[str, Callable[[], Any]], ...]) -> Iter
 
 
 def _testing_prices_sheet(workbook: Any) -> Any:
+    if hasattr(workbook, "__getitem__") and "Testing Prices" in workbook.sheetnames:
+        return OpenpyxlFeeSheetAdapter(workbook["Testing Prices"])
     try:
         return workbook.Worksheets.Item("Testing Prices")
     except Exception as exc:
         raise ValueError("Workbook sheet 'Testing Prices' was not found.") from exc
+
+
+def _first_sheet(workbook: Any) -> Any:
+    if hasattr(workbook, "worksheets"):
+        return OpenpyxlFeeSheetAdapter(workbook.worksheets[0])
+    return workbook.Worksheets.Item(1)
 
 
 def _begin_excel_batch(excel: Any) -> dict[str, Any]:
@@ -375,6 +413,13 @@ def _save_as(workbook: Any, target: Path) -> None:
     if file_format is None:
         raise ValueError(f"Unsupported fee output type: {target}")
     workbook.SaveAs(str(target), FileFormat=file_format)
+
+
+@contextmanager
+def _native_xlsx_output() -> Iterator[Path]:
+    directory = Path(tempfile.mkdtemp(prefix="clfee-xlsx-"))
+    with _cleanup_on_exit((("Remove fee XLSX staging directory", lambda: shutil.rmtree(directory)),)):
+        yield directory / "fee.xlsx"
 
 
 def _decimal_text(value: Decimal | None) -> str:

@@ -11,11 +11,14 @@ from backend.application.fee_evaluation_template_discovery import (
 )
 
 
-def test_discovers_unique_fdqf_e_176_xls_template(tmp_path: Path) -> None:
-    template = tmp_path / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
+def test_discovers_unique_fdqf_e_176_xlsx_template(tmp_path: Path) -> None:
+    template = tmp_path / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xlsx"
     template.write_bytes(b"template")
-    (tmp_path / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xlsx").write_bytes(
+    (tmp_path / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls").write_bytes(
         b"wrong extension"
+    )
+    (tmp_path / "~$FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xlsx").write_bytes(
+        b"temporary owner file"
     )
     (tmp_path / "E-4243_D Customer Feedback Form.xlsx").write_bytes(b"other")
 
@@ -30,10 +33,10 @@ def test_missing_fee_template_reports_required_form_id(tmp_path: Path) -> None:
 
 
 def test_multiple_fee_templates_are_rejected(tmp_path: Path) -> None:
-    (tmp_path / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls").write_bytes(
+    (tmp_path / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xlsx").write_bytes(
         b"template"
     )
-    (tmp_path / "FDQF-E-176 Testing Fee Evaluation_Rev_G-v1.xls").write_bytes(
+    (tmp_path / "FDQF-E-176 Testing Fee Evaluation_Rev_G-v1.xlsx").write_bytes(
         b"template"
     )
 

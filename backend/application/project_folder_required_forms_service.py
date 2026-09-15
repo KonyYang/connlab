@@ -47,7 +47,7 @@ REQUIRED_FORM_DEFINITIONS: tuple[tuple[str, str, ProjectOutputKind, str, str | N
         "fee_form",
         "Fee Form",
         ProjectOutputKind.FEE_EVALUATION,
-        "{dl} Fee Form.xls",
+        "{dl} Fee Form.xlsx",
         None,
     ),
     (

@@ -716,7 +716,7 @@ const readyRequiredFormsPreview = {
     {
       key: "fee_form",
       label: "Fee Form",
-      target_path: "D:/Projects/DL-2026-06-001/Official/DL Fee Form.xls",
+      target_path: "D:/Projects/DL-2026-06-001/Official/DL Fee Form.xlsx",
       status: "ready",
       action: "generate",
       message: "Ready to generate.",

@@ -10,6 +10,11 @@ import types
 from types import SimpleNamespace
 
 import pytest
+from openpyxl import Workbook, load_workbook
+from openpyxl.comments import Comment
+from openpyxl.drawing.image import Image as WorksheetImage
+from openpyxl.styles import PatternFill
+from PIL import Image as PillowImage
 
 from backend.application.confirmed_matrix_fee_draft_service import (
     FeeEvaluationDraft,
@@ -36,7 +41,7 @@ from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnava
 
 
 @pytest.mark.parametrize("entrypoint", ["preview", "draft", "matrix"])
-@pytest.mark.parametrize("suffix,file_format", [(".xls", 56), (".xlsx", 51)])
+@pytest.mark.parametrize("suffix,file_format", [(".xls", 56)])
 def test_fee_gateway_publishes_long_path_after_excel_releases_file(
     tmp_path: Path, entrypoint: str, suffix: str, file_format: int,
 ) -> None:
@@ -353,26 +358,147 @@ def test_fee_gateway_structured_writer_rejects_missing_testing_prices_sheet(
         )
 
 
-def test_fee_gateway_structured_writer_uses_com_saveas_for_xlsx_output(
+def test_fee_gateway_matrix_basic_fill_uses_native_xlsx_without_excel_com(
     tmp_path: Path,
 ) -> None:
-    template = tmp_path / "fee.xls"
-    template.write_text("template", encoding="utf-8")
-    excel = _FakeExcel(_FakeWorkbook(sheet_names=("Testing Prices",)))
+    template = tmp_path / "fee.xlsx"
+    _write_native_xlsx_template(template)
+    template_bytes = template.read_bytes()
     output = tmp_path / "fee_out.xlsx"
 
-    FeeEvaluationWorkbookGateway(
-        excel_app_factory=lambda: excel
-    ).generate_from_draft(
+    result = FeeEvaluationWorkbookGateway(
+        excel_app_factory=lambda: pytest.fail("XLSX generation must not start Excel COM")
+    ).generate_matrix_basic_fill(
         template_path=template,
         output_path=output,
-        draft=_draft(),
+        basic_fill=_basic_fill(),
+        review_required=False,
         prepared_by="Operator",
         approved_by=None,
+        basic_information_values={
+            "dl_number": "DL-XLSX",
+            "product_description": "Native workbook",
+            "test_item": "Qualification test",
+            "requested_by": "Requester",
+            "location": "Dongguan",
+        },
     )
 
-    assert output.read_bytes() == b"generated Excel workbook"
-    assert excel.workbook.saved_file_format == 51
+    assert result.output_path == output
+    assert output.is_file()
+    assert template.read_bytes() == template_bytes
+    workbook = load_workbook(output, data_only=False)
+    sheet = workbook["Testing Prices"]
+    assert sheet["D2"].value == "DL-XLSX"
+    assert sheet["G2"].value == "Native workbook Qualification test"
+    assert sheet["A5"].value == "1"
+    assert sheet["C6"].value == "Visual Examination"
+    assert sheet["C9"].value == "Dust Test"
+    assert sheet["B12"].value == "=SUM(B5:B11)"
+    assert sheet["I12"].value == "=SUM(I5:I11)"
+    assert sheet["D13"].value == "=B12"
+    assert sheet["I13"].value == "=D13*200"
+    assert sheet["I14"].value == "=I13+D14"
+    assert sheet["I5"].comment is not None
+    assert len(sheet._images) == 1
+    assert {str(item) for item in sheet.merged_cells.ranges} >= {
+        "C12:H12", "D13:E13", "F13:H13", "D14:E14", "F14:H14", "C15:I15",
+    }
+    assert sheet["A5"].fill.fgColor.rgb[-6:] == "D9D9D9"
+    assert sheet["A8"].fill.fgColor.rgb[-6:] == "DDEBF7"
+    assert sheet.print_area == "'Testing Prices'!$A$1:$I$15"
+    assert workbook.calculation.calcMode == "auto"
+    assert workbook.calculation.fullCalcOnLoad is True
+    workbook.close()
+
+
+def test_fee_gateway_native_xlsx_failure_preserves_existing_target(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    template = tmp_path / "fee.xlsx"
+    _write_native_xlsx_template(template)
+    output = tmp_path / "fee_out.xlsx"
+    output.write_bytes(b"operator original")
+
+    def fail_save(*args, **kwargs):
+        raise OSError("native save failed")
+
+    monkeypatch.setattr("openpyxl.workbook.workbook.Workbook.save", fail_save)
+
+    with pytest.raises(OSError, match="native save failed"):
+        FeeEvaluationWorkbookGateway().generate_matrix_basic_fill(
+            template_path=template,
+            output_path=output,
+            basic_fill=_basic_fill(),
+            review_required=False,
+            prepared_by="Operator",
+            approved_by=None,
+        )
+
+    assert output.read_bytes() == b"operator original"
+
+
+def test_fee_gateway_rejects_approved_template_as_output(tmp_path: Path) -> None:
+    template = tmp_path / "fee.xlsx"
+    _write_native_xlsx_template(template)
+    original = template.read_bytes()
+
+    with pytest.raises(ValueError, match="must not replace the approved template"):
+        FeeEvaluationWorkbookGateway().generate_matrix_basic_fill(
+            template_path=template,
+            output_path=template,
+            basic_fill=_basic_fill(),
+            review_required=False,
+            prepared_by="Operator",
+            approved_by=None,
+        )
+
+    assert template.read_bytes() == original
+
+
+def _write_native_xlsx_template(path: Path) -> None:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Testing Prices"
+    sheet["C2"] = "LTR Number"
+    sheet["F2"] = "Test Description"
+    sheet["C3"] = "Requestor"
+    sheet["F3"] = "Site"
+    sheet["C5"] = "Sample preparation"
+    sheet["E5"] = "per sample"
+    sheet["I5"] = "=D5*F5*(1-H5)+G5"
+    sheet["I5"].comment = Comment("Retained template note", "Template")
+    sheet["C7"] = "Report preparation"
+    sheet["B7"] = 1
+    sheet["E7"] = "per report"
+    sheet["I7"] = "=D7*F7*(1-H7)+G7"
+    sheet["A8"] = "条件确认"
+    sheet["B8"] = 1
+    sheet["I8"] = "=D8*F8*(1-H8)+G8"
+    sheet["C9"] = "Total"
+    sheet["B9"] = "=SUM(B5:B8)"
+    sheet["I9"] = "=SUM(I5:I8)"
+    sheet["F10"] = "Lab manpower cost"
+    sheet["D10"] = "=B9"
+    sheet["I10"] = "=D10*200"
+    sheet["C11"] = "External Cost"
+    sheet["F11"] = "Grand Cost"
+    sheet["I11"] = "=I10+D11"
+    sheet["C12"] = "Prepared By"
+    for cell_range in (
+        "D1:I1", "D2:E2", "G2:I2", "D3:E3", "G3:I3", "D4:E4",
+        "C9:H9", "D10:E10", "F10:H10", "D11:E11", "F11:H11", "C12:I12",
+    ):
+        sheet.merge_cells(cell_range)
+    sheet["C2"].fill = PatternFill(fill_type="solid", fgColor="FFD9D9D9")
+    sheet.print_area = "A1:I12"
+    image_path = path.with_suffix(".png")
+    PillowImage.new("RGB", (12, 12), "navy").save(image_path)
+    sheet.add_image(WorksheetImage(image_path), "A1")
+    workbook.create_sheet("Unit Price Reference")
+    workbook.save(path)
+    workbook.close()
 
 
 def test_fee_gateway_matrix_basic_fill_writes_only_a_and_c_detail_columns(

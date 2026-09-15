@@ -37,7 +37,7 @@ from backend.domain import (
 from backend.shared.config import Settings
 
 
-def test_fee_file_download_route_returns_generated_xls_and_uses_matrix_basic_fill(
+def test_fee_file_download_route_returns_generated_xlsx_and_uses_matrix_basic_fill(
     tmp_path: Path,
 ) -> None:
     settings = _settings(tmp_path, with_fee_template=False)
@@ -53,8 +53,10 @@ def test_fee_file_download_route_returns_generated_xls_and_uses_matrix_basic_fil
 
     assert response.status_code == 200
     assert response.content == b"fee workbook"
-    assert response.headers["content-type"].startswith("application/vnd.ms-excel")
-    assert "fee-P1.xls" in response.headers["content-disposition"]
+    assert response.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert "fee-P1.xlsx" in response.headers["content-disposition"]
 
     command = service.commands[0]
     assert command.project_id == "P1"
@@ -65,7 +67,7 @@ def test_fee_file_download_route_returns_generated_xls_and_uses_matrix_basic_fil
     assert command.output_file_name is None
     assert command.output_dir == settings.data_dir / "generated_fee_files"
     assert command.template_path == (
-        template_folder / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
+        template_folder / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xlsx"
     )
 
 
@@ -174,9 +176,9 @@ def test_fee_form_publication_routes_preserve_preview_and_conflict_contract(
     assert service.preview_commands[0].project_id == "P1"
     assert publish_response.status_code == 200
     assert publish_response.json() == {
-        "file_name": "DL-2026-001 Fee Form.xls",
+        "file_name": "DL-2026-001 Fee Form.xlsx",
         "archive_path": str(
-            Path("D:/Projects/DL-2026-001/History/Fee Form/old.xls")
+            Path("D:/Projects/DL-2026-001/History/Fee Form/old.xlsx")
         ),
     }
     assert isinstance(service.execute_commands[0], ExecuteFeeFormPublicationCommand)
@@ -286,12 +288,12 @@ def test_fee_file_download_route_rejects_service_path_outside_generated_fee_dir(
     assert "generated Fee file path" in response.json()["detail"]
 
 
-def test_fee_file_download_route_rejects_non_xls_generated_path(tmp_path: Path) -> None:
+def test_fee_file_download_route_rejects_non_xlsx_generated_path(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     generated_dir = settings.data_dir / "generated_fee_files"
     generated_dir.mkdir(parents=True)
-    generated = generated_dir / "fee-P1.xlsx"
-    generated.write_bytes(b"xlsx")
+    generated = generated_dir / "fee-P1.xls"
+    generated.write_bytes(b"xls")
     _install_route_overrides(settings, _PathReturningExportService(generated))
     try:
         response = TestClient(app).post(
@@ -301,7 +303,7 @@ def test_fee_file_download_route_rejects_non_xls_generated_path(tmp_path: Path) 
         app.dependency_overrides.clear()
 
     assert response.status_code == 500
-    assert ".xls" in response.json()["detail"]
+    assert ".xlsx" in response.json()["detail"]
 
 
 def test_fee_file_download_route_maps_missing_authority_to_404(tmp_path: Path) -> None:
@@ -372,7 +374,7 @@ def _settings(tmp_path: Path, *, with_fee_template: bool = True) -> Settings:
     templates_dir = tmp_path / "templates"
     templates_dir.mkdir(parents=True, exist_ok=True)
     if with_fee_template:
-        (templates_dir / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls").write_bytes(
+        (templates_dir / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xlsx").write_bytes(
             b"template"
         )
     return Settings(
@@ -387,7 +389,7 @@ def _template_folder(tmp_path: Path, *, with_fee_template: bool = True) -> Path:
     template_folder = tmp_path / "settings-template-folder"
     template_folder.mkdir(parents=True, exist_ok=True)
     if with_fee_template:
-        (template_folder / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls").write_bytes(
+        (template_folder / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xlsx").write_bytes(
             b"settings template"
         )
     return template_folder
@@ -437,7 +439,7 @@ class _FakeDownloadExportService:
         self.commands.append(command)
         assert command.output_dir is not None
         command.output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = command.output_dir / f"fee-{command.project_id}.xls"
+        output_path = command.output_dir / f"fee-{command.project_id}.xlsx"
         output_path.write_bytes(b"fee workbook")
         return _result(command.project_id, output_path)
 
@@ -461,9 +463,9 @@ class _FakeFeeFormPublicationService:
     def execute(self, command: ExecuteFeeFormPublicationCommand):
         self.execute_commands.append(command)
         return SimpleNamespace(
-            file_name="DL-2026-001 Fee Form.xls",
+            file_name="DL-2026-001 Fee Form.xlsx",
             archive_path=Path(
-                "D:/Projects/DL-2026-001/History/Fee Form/old.xls"
+                "D:/Projects/DL-2026-001/History/Fee Form/old.xlsx"
             ),
         )
 

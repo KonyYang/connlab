@@ -260,7 +260,7 @@ def test_current_test_record_and_fee_outputs_are_missing_when_files_are_absent(
                 ProjectOutputStatusItem(
                     output_kind=ProjectOutputKind.FEE_EVALUATION,
                     status=ProjectOutputStatus.CURRENT,
-                    output_path=str(official / "DL-001 Fee Form.xls"),
+                    output_path=str(official / "DL-001 Fee Form.xlsx"),
                     source=ProjectOutputSource.SYSTEM_GENERATED,
                     draft_id="draft-1",
                     draft_version=1,

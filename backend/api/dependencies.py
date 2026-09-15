@@ -160,9 +160,6 @@ from backend.application.confirmed_matrix_fee_evaluation_export_service import (
     ExportConfirmedMatrixFeeEvaluationCommand,
     ConfirmedMatrixFeeEvaluationExportService,
 )
-from backend.application.confirmed_matrix_fee_evaluation_export_timeout_service import (
-    ConfirmedMatrixFeeEvaluationExportTimeoutService,
-)
 from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
     ConfirmedMatrixFeeTemplateBasicFillService,
 )
@@ -378,9 +375,6 @@ from backend.infrastructure.office import (
     LtrWorkbookTransactionConfig,
     LtrWorkbookTransactionGateway,
     OfficeFacade,
-)
-from backend.infrastructure.office.fee_evaluation_export_subprocess_runner import (
-    FeeEvaluationExportSubprocessRunner,
 )
 from backend.infrastructure.office.office_file_password_gateway import (
     OfficeFilePasswordGateway,
@@ -711,12 +705,14 @@ def get_confirmed_matrix_fee_draft_service(
     )
 
 
-def get_confirmed_matrix_fee_evaluation_export_service() -> (
-    ConfirmedMatrixFeeEvaluationExportTimeoutService
-):
-    """Build timeout-protected Fee Evaluation workbook export service."""
-    return ConfirmedMatrixFeeEvaluationExportTimeoutService(
-        runner=FeeEvaluationExportSubprocessRunner()
+def get_confirmed_matrix_fee_evaluation_export_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(lambda: get_settings()),
+) -> ConfirmedMatrixFeeEvaluationExportService:
+    """Build the in-process native XLSX Fee Evaluation export service."""
+    return build_direct_confirmed_matrix_fee_evaluation_export_service(
+        session=session,
+        settings=settings,
     )
 
 
@@ -963,6 +959,7 @@ class _ConfirmedFeeFormPublicationGenerator:
 
 def get_fee_form_publication_service(
     session: Session = Depends(get_session),
+    settings: Settings = Depends(lambda: get_settings()),
 ) -> FeeFormPublicationService:
     """Build authority-aware direct Fee Form publication."""
     output_service = ProjectOutputRecordService(
@@ -977,7 +974,7 @@ def get_fee_form_publication_service(
             ProjectBasicInformationRepository(session)
         ),
         generator=_ConfirmedFeeFormPublicationGenerator(
-            get_confirmed_matrix_fee_evaluation_export_service(),
+            get_confirmed_matrix_fee_evaluation_export_service(session, settings),
             ExternalResourceRepository(session),
         ),
         file_gateway=TestRecordPublicationGateway(resource_label="Fee Form"),
@@ -1800,7 +1797,7 @@ class _ReusableFeeFormArtifactReader:
             path = Path(item.output_path)
             if path == final_target_path:
                 return None
-            if path.suffix.lower() != ".xls" or not path.is_file():
+            if path.suffix.lower() != ".xlsx" or not path.is_file():
                 return None
             if compute_sha256(path) != item.output_sha256:
                 return None
@@ -1821,17 +1818,8 @@ class _FeeFormTemplateContextReader:
 
 
 def _fee_form_template_context(template: Path) -> str:
-    """Return a stable template identity for Required Forms reuse checks.
-
-    Legacy `.xls` workbooks can have Office/OLE metadata rewritten by Excel even
-    when ConnLab only opens them as templates. Using a full-file SHA for those
-    files makes every preview look stale. The template filename carries the
-    controlled form number/revision, so use path + size as the stable identity
-    for `.xls` and keep content hashes for non-legacy workbooks.
-    """
+    """Return a content-bound template identity for Required Forms reuse checks."""
     resolved = template.resolve()
-    if template.suffix.lower() == ".xls":
-        return f"fee-template:{resolved}@legacy-xls-stable:size:{template.stat().st_size}"
     return f"fee-template:{resolved}@sha256:{compute_sha256(template)}"
 
 

@@ -42,7 +42,7 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
         output.mkdir()
         for name in ("E-mail", "Submitted Material", "Photos", "Test results/Final Examination"):
             (template / name).mkdir(parents=True)
-        for name in ("E-4243_D Customer Feedback Form.xlsx", "FDQF-E-176 Testing Fee Evaluation.xls",
+        for name in ("E-4243_D Customer Feedback Form.xlsx", "FDQF-E-176 Testing Fee Evaluation.xlsx",
                      "FDQF-E-036 Test Record.docx"):
             (template / name).write_bytes(b"controlled template")
         with sessions() as session:

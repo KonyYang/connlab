@@ -327,8 +327,10 @@ describe("FeeEvaluationReviewExportPage", () => {
     });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
     apiMocks.generateConfirmedMatrixFeeFileDownload.mockResolvedValue({
-      blob: new Blob(["xls"], { type: "application/vnd.ms-excel" }),
-      fileName: "Fee-P1.xls",
+      blob: new Blob(["xlsx"], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      fileName: "Fee-P1.xlsx",
     });
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     vi.stubGlobal("URL", {
@@ -428,7 +430,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     });
     expect(
       await screen.findByText(
-        "DL-2026-001 Fee Form draft.xls downloaded."
+        "Fee-P1.xlsx downloaded."
       )
     ).toBeTruthy();
   });
@@ -496,7 +498,7 @@ describe("FeeEvaluationReviewExportPage", () => {
       preview_token: "preview-1",
     });
     apiMocks.publishFeeForm.mockResolvedValue({
-      file_name: "DL-2026-001 Fee Form.xls",
+      file_name: "DL-2026-001 Fee Form.xlsx",
       archive_path: null,
     });
 
@@ -505,7 +507,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
 
     expect(
-      await screen.findByText("DL-2026-001 Fee Form.xls saved to the project folder.")
+      await screen.findByText("DL-2026-001 Fee Form.xlsx saved to the project folder.")
     ).toBeTruthy();
     expect(apiMocks.publishFeeForm).toHaveBeenCalledWith(
       "P1",
@@ -526,8 +528,8 @@ describe("FeeEvaluationReviewExportPage", () => {
       preview_token: "preview-conflict",
     });
     apiMocks.publishFeeForm.mockResolvedValue({
-      file_name: "DL-2026-001 Fee Form.xls",
-      archive_path: "D:/Projects/DL-2026-001/History/Fee Form/DL-2026-001 Fee Form_20260828-103000.xls",
+      file_name: "DL-2026-001 Fee Form.xlsx",
+      archive_path: "D:/Projects/DL-2026-001/History/Fee Form/DL-2026-001 Fee Form_20260828-103000.xlsx",
     });
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
@@ -548,7 +550,7 @@ describe("FeeEvaluationReviewExportPage", () => {
       )
     );
     expect(
-      await screen.findByText("DL-2026-001 Fee Form.xls saved to the project folder.")
+      await screen.findByText("DL-2026-001 Fee Form.xlsx saved to the project folder.")
     ).toBeTruthy();
   });
 
@@ -1174,8 +1176,10 @@ describe("FeeEvaluationReviewExportPage", () => {
     });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
     apiMocks.generateConfirmedMatrixFeeFileDownload.mockResolvedValue({
-      blob: new Blob(["xls"], { type: "application/vnd.ms-excel" }),
-      fileName: "Fee-P1.xls",
+      blob: new Blob(["xlsx"], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      fileName: "Fee-P1.xlsx",
     });
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     vi.stubGlobal("URL", {
@@ -1389,8 +1393,10 @@ describe("FeeEvaluationReviewExportPage", () => {
     arrangeSuccessfulContext({ folderPath: null, pricingDraft: currentPricingDraftResponse({ status: "current_v2", saved_generation: 1, saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: "payload-1", saved_validation_token: "token-1" }) });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
     apiMocks.generateConfirmedMatrixFeeFileDownload.mockResolvedValue({
-      blob: new Blob(["xls"], { type: "application/vnd.ms-excel" }),
-      fileName: "Fee-P1.xls",
+      blob: new Blob(["xlsx"], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      fileName: "Fee-P1.xlsx",
     });
     const clickSpy = vi
       .spyOn(HTMLAnchorElement.prototype, "click")
@@ -1414,7 +1420,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     });
     expect(clickSpy).toHaveBeenCalledTimes(1);
     expect(
-      await screen.findByText("DL-2026-001 Fee Form draft.xls downloaded.")
+      await screen.findByText("Fee-P1.xlsx downloaded.")
     ).toBeTruthy();
   });
 

@@ -70,7 +70,9 @@ from backend.api.diagnostic_route import DiagnosticRoute
 router = APIRouter(tags=["confirmed-matrix-fee-evaluation-export"], route_class=DiagnosticRoute)
 
 FEE_FILE_DOWNLOAD_DIR_NAME = "generated_fee_files"
-FEE_FILE_MEDIA_TYPE = "application/vnd.ms-excel"
+FEE_FILE_MEDIA_TYPE = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
 
 
 class FeeEvaluationExportServicePort(Protocol):
@@ -331,9 +333,9 @@ def _validate_fee_file_download_path(output_path: Path, output_dir: Path) -> Pat
             status_code=500,
             detail="Invalid generated Fee file path: file was not created.",
         )
-    if resolved_output_path.suffix.lower() != ".xls":
+    if resolved_output_path.suffix.lower() != ".xlsx":
         raise HTTPException(
             status_code=500,
-            detail="Invalid generated Fee file path: expected a .xls workbook.",
+            detail="Invalid generated Fee file path: expected a .xlsx workbook.",
         )
     return resolved_output_path

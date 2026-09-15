@@ -24,9 +24,14 @@ class FeeEvaluationAnchorSnapshot:
         max_column: int = 9,
     ) -> "FeeEvaluationAnchorSnapshot":
         """Read the anchor scan region once from Excel."""
-        value_range = sheet.Range(sheet.Cells(1, 1), sheet.Cells(max_row, max_column))
-        values = _normalize_2d(value_range.Value, max_row, max_column)
-        formulas = _normalize_2d(getattr(value_range, "Formula", None), max_row, max_column)
+        if hasattr(sheet, "read_anchor_region"):
+            raw_values, raw_formulas = sheet.read_anchor_region(max_row, max_column)
+        else:
+            value_range = sheet.Range(sheet.Cells(1, 1), sheet.Cells(max_row, max_column))
+            raw_values = value_range.Value
+            raw_formulas = getattr(value_range, "Formula", None)
+        values = _normalize_2d(raw_values, max_row, max_column)
+        formulas = _normalize_2d(raw_formulas, max_row, max_column)
         if not any(any(cell for cell in row) for row in formulas):
             formulas = values
         return cls(start_row=1, start_column=1, values=values, formulas=formulas)

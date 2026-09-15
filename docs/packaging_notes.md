@@ -134,6 +134,20 @@ Smoke-check the latest browser release folder:
 .\scripts\smoke_windows_browser_release.ps1
 ```
 
+### Native XLSX Fee Form generation
+
+Fee Form generation uses the unique `.xlsx` file whose name contains
+`FDQF-E-176` in the configured Project Folder Template directory. The legacy
+`.xls` file may remain beside it but is not selected. Browser download, direct
+Fee Form publication, and Project Folder Required Forms all generate `.xlsx`
+outputs in-process through `openpyxl`; they do not start an Excel subprocess or
+Excel COM. Images in the approved
+template require Pillow, which is a runtime dependency and is included by the
+release build. Formula cells are retained and the workbook is marked for a full
+automatic recalculation when opened. The approved template is read-only input;
+generation writes to a private staging workbook before atomically publishing the
+new file.
+
 ## Fee publication and folder recovery repair (2026-09-11)
 
 The `ConnLab_Web_202609110806_v0.1.0` build predates fixes for a missing Fee Form
@@ -155,7 +169,7 @@ operator's project directory or generation journal to bypass these checks.
 ### Publication diagnostics
 
 Browser releases record operation-scoped diagnostics in the existing rotating `connlab.log`
-(5 MiB per file, five backups). Fee publication, its Office subprocess, and project-folder stages
+(5 MiB per file, five backups). Fee publication, Office child operations, and project-folder stages
 carry a correlation ID, stage durations, original exception chains/WinError/COM codes, and safe
 path metadata (role, length, location/drive type, attributes), not file contents or request payloads.
 Child stdout remains UTF-8 JSON; the parent retains bounded diagnostic events before deleting its

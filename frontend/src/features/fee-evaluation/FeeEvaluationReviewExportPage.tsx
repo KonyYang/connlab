@@ -1518,18 +1518,21 @@ function feeFileNameFromPageContext(input: {
   draftState: DraftLoadState;
   responseFileName: string | null;
 }): string {
+  if (input.responseFileName) {
+    return input.responseFileName;
+  }
   if (input.contextState.kind !== "ready") {
-    return input.responseFileName ?? defaultFeeFileName(input.projectId);
+    return defaultFeeFileName(input.projectId);
   }
   const identity =
     input.contextState.ltrNumber ??
     input.contextState.project.project_no ??
     input.projectId;
-  return `${safeFeeFileName(identity)} Fee Form draft.xls`;
+  return `${safeFeeFileName(identity)} Fee Form draft.xlsx`;
 }
 
 function defaultFeeFileName(projectId: string): string {
-  return `${safeFeeFileName(projectId)} Fee Form draft.xls`;
+  return `${safeFeeFileName(projectId)} Fee Form draft.xlsx`;
 }
 
 function safeFeeFileName(value: string): string {
