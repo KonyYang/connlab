@@ -113,11 +113,25 @@ class ProjectFolderGenerationRunner:
                 confirmed_schedule = deps.get_project_schedule_output_reader(session).get_latest_confirmed(project_id)
                 if confirmed_schedule is None:
                     schedule_blocker = PROJECT_SCHEDULE_GENERATION_BLOCKER
-            start_blockers = [
-                blocker
-                for blocker in (basic_information_blocker, schedule_blocker)
-                if blocker is not None
-            ]
+            start_blockers = list(
+                dict.fromkeys(
+                    [
+                        *(
+                            preview.blockers
+                            if preview.status == "blocked"
+                            else tuple()
+                        ),
+                        *(
+                            blocker
+                            for blocker in (
+                                basic_information_blocker,
+                                schedule_blocker,
+                            )
+                            if blocker is not None
+                        ),
+                    ]
+                )
+            )
             paths = preview.conflict_paths or ((preview.official_folder_path,) if preview.official_folder_path else ())
             current_context = self.context(project_id)
             saved_operation = self.journal.read(project_id)
@@ -149,10 +163,11 @@ class ProjectFolderGenerationRunner:
                 start_blockers.append("; ".join(file_conflicts))
             if start_blockers:
                 workspace_preview["status"] = "blocked"
-                workspace_preview["blockers"] = [
-                    *workspace_preview["blockers"],
-                    *start_blockers,
-                ]
+                workspace_preview["blockers"] = list(
+                    dict.fromkeys(
+                        [*workspace_preview["blockers"], *start_blockers]
+                    )
+                )
             return {
                 "expected_context": token,
                 "recovery": recovery,

@@ -291,6 +291,93 @@ def test_start_is_blocked_before_writes_when_project_schedule_is_unconfirmed(
         engine.dispose()
 
 
+def test_preview_surfaces_missing_project_root_before_required_form_blockers(
+    tmp_path,
+):
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "fixture.sqlite",
+    )
+    engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
+    Base.metadata.create_all(engine)
+    bootstrap_project_schedule_schema(engine)
+    sessions = create_session_factory(engine)
+    template = tmp_path / "template"
+    missing_destination = tmp_path / "missing-output"
+    for name in (
+        "E-mail",
+        "Submitted Material",
+        "Photos",
+        "Test results/Final Examination",
+    ):
+        (template / name).mkdir(parents=True)
+    with sessions() as session:
+        deps.ProjectRepository(session).create(
+            Project(
+                project_id="P1",
+                project_no="DL-001",
+                product_name="Connector",
+                requestor="Test",
+                status=ProjectStatus.DRAFT,
+            )
+        )
+        deps.LtrRecordRepository(session).create(
+            LtrRecord(
+                ltr_id="ltr",
+                project_id="P1",
+                ltr_number="DL-001",
+                status=LtrStatus.REGISTERED,
+            )
+        )
+        resources = deps.ExternalResourceRepository(session)
+        resources.upsert(
+            ExternalResource(
+                "root",
+                ExternalResourceType.PROJECT_OUTPUT_ROOT,
+                missing_destination,
+            )
+        )
+        resources.upsert(
+            ExternalResource(
+                "template",
+                ExternalResourceType.PROJECT_FOLDER_TEMPLATE,
+                template,
+            )
+        )
+        deps.get_project_basic_information_service(session).confirm(
+            ConfirmProjectBasicInformationCommand(
+                project_id="P1",
+                values=_complete_basic_information_values(),
+                confirmed_by="operator",
+            )
+        )
+        session.commit()
+    runner = ProjectFolderGenerationRunner(sessions, settings)
+    service = runner.service()
+    app.dependency_overrides[deps.get_project_folder_generation_service] = lambda: service
+    try:
+        response = TestClient(app).get(
+            "/api/projects/P1/project-folder/generation/preview"
+        )
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        blocker = (
+            f"Project default save location does not exist: {missing_destination}"
+        )
+        assert payload["workspace_preview"]["status"] == "blocked"
+        assert payload["workspace_preview"]["blockers"] == [blocker]
+        assert payload["start_blockers"] == [blocker]
+        assert "Resolve the project folder location and identity first" not in str(
+            payload["start_blockers"]
+        )
+    finally:
+        app.dependency_overrides.clear()
+        runner.pool.shutdown()
+        engine.dispose()
+
+
 def test_real_preflight_rejects_missing_inputs_before_creating_any_folder(tmp_path):
     settings = Settings(data_dir=tmp_path / "data", projects_dir=tmp_path / "projects", templates_dir=tmp_path / "templates",
                         database_path=tmp_path / "fixture.sqlite")
