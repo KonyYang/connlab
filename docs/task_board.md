@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_PROJECT_FOLDER_PREFLIGHT_PRIMARY_BLOCKER",
     "summary": "Show the real Project Folder configuration blocker instead of cascading required-form identity errors.",
@@ -27,9 +27,63 @@
     "risk_reasons": [],
     "activation_head": "65be54eeb54fcee990f5ac8bde074085fceb4f61",
     "started_at": "2026-09-15T14:04:36.355636Z",
-    "updated_at": "2026-09-15T14:04:36.355636Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-15T14:12:40.061503Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_PROJECT_FOLDER_PREFLIGHT_PRIMARY_BLOCKER",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_PROJECT_FOLDER_PREFLIGHT_PRIMARY_BLOCKER",
+      "subject": "e4093585025233a99a1435c0443fe26d763fa88a",
+      "summary": "Project Folder generation now surfaces the actionable workspace configuration blocker before cascading required-form blockers.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/project_folder_generation_composition.py",
+        "tests/integration/test_project_folder_generation_api.py"
+      ],
+      "validation": [
+        {
+          "name": "red-green regression",
+          "status": "passed",
+          "summary": "The new missing-root API regression failed before the fix and passed after it."
+        },
+        {
+          "name": "project folder integration",
+          "status": "passed",
+          "summary": "8 relevant integration tests passed."
+        },
+        {
+          "name": "original browser scenario",
+          "status": "passed",
+          "summary": "Workbench alert shows only the missing D:\\Test Project root and no required-form identity cascade."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented the smallest composition-layer correction with a public API regression test."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Sequential exact-diff standards and specification review found no findings; not an independent-agent review."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Relevant integration tests and the original live Workbench interaction passed in the primary context."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "direct_primary"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_FORM_XLSX_NATIVE_GENERATION",
