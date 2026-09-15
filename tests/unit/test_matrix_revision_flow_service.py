@@ -208,6 +208,26 @@ def test_confirm_revision_draft_validates_selected_groups_and_sample_quantity() 
         )
 
 
+def test_confirm_revision_draft_rejects_duplicate_selected_group_keys() -> None:
+    service, stores = _service()
+    revision_draft = service.create_revision_draft(
+        CreateMatrixRevisionDraftCommand(project_id="P1")
+    )
+    groups = list(revision_draft.groups)
+    groups[1] = replace(groups[1], group_key=groups[0].group_key)
+    revision_draft = replace(revision_draft, groups=tuple(groups))
+    stores.draft_store.snapshot_by_id[revision_draft.record.project_matrix_draft_id] = revision_draft
+
+    with pytest.raises(MatrixRevisionFlowError, match="Duplicate Matrix group key: g1"):
+        service.confirm_revision_draft(
+            ConfirmMatrixRevisionDraftCommand(
+                project_id="P1",
+                project_matrix_draft_id=revision_draft.record.project_matrix_draft_id,
+                confirmed_by="operator",
+            )
+        )
+
+
 def test_matrix_revision_service_maps_integrity_error_to_conflict() -> None:
     service, stores = _service()
     revision_draft = service.create_revision_draft(

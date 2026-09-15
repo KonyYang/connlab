@@ -81,6 +81,124 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     expect((method as HTMLTextAreaElement).value).toBe("Next edit");
   });
 
+  it("exports unique stable identities after inserting a group between source groups", async () => {
+    const seed = buildSessionSeed();
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...seed,
+      source_preview_payload: {
+        ...seed.source_preview_payload,
+        groups: [
+          seed.source_preview_payload.groups[0],
+          {
+            ...seed.source_preview_payload.groups[0],
+            group_key: "g2",
+            group_label: "2",
+            sample_quantity_expression: "6",
+          },
+        ],
+        rows: [{
+          ...seed.source_preview_payload.rows[0],
+          group_tokens: { "1": "1", g1: "1", "2": "1", g2: "1" },
+        }],
+      },
+      editor_draft: {
+        ...seed.editor_draft,
+        groups: [
+          seed.editor_draft.groups[0],
+          {
+            ...seed.editor_draft.groups[0],
+            draft_group_id: "group-2",
+            source_group_snapshot_id: "sg-2",
+            group_order: 2,
+            group_key: "g2",
+            group_label: "2",
+            sample_quantity_expression: "6",
+          },
+        ],
+        cells: [
+          seed.editor_draft.cells[0],
+          { draft_row_id: "row-1", draft_group_id: "group-2", cell_value: "1" },
+        ],
+      },
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await screen.findByRole("checkbox", { name: "Include group 1" });
+    fireEvent.contextMenu(document.querySelectorAll(".matrix-editor-group-band")[0] as HTMLElement);
+    fireEvent.click(screen.getByRole("button", { name: "Insert right" }));
+    fireEvent.change(document.querySelector("#group-name-group-3") as HTMLInputElement, {
+      target: { value: "Inserted" },
+    });
+    fireEvent.change(screen.getByLabelText("Samples Inserted"), { target: { value: "1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Export Matrix" }));
+
+    await waitFor(() => expect(apiMocks.previewMatrixEditorLiveXlsxPublication).toHaveBeenCalled());
+    expect(
+      apiMocks.previewMatrixEditorLiveXlsxPublication.mock.calls[0][1].groups.map(
+        (group: { group_key: string }) => group.group_key,
+      ),
+    ).toEqual(["g1", "manual_group_1", "g2"]);
+  });
+
+  it("keeps unique stable identities when duplicating and moving groups", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    const sourceHeader = (await screen.findByRole("checkbox", { name: "Include group 1" }))
+      .closest("th") as HTMLElement;
+    fireEvent.contextMenu(sourceHeader);
+    fireEvent.click(screen.getByRole("button", { name: "Duplicate group" }));
+
+    fireEvent.contextMenu(document.querySelectorAll(".matrix-editor-group-band")[0] as HTMLElement);
+    fireEvent.click(screen.getByRole("button", { name: "Move right" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export Matrix" }));
+
+    await waitFor(() => expect(apiMocks.previewMatrixEditorLiveXlsxPublication).toHaveBeenCalled());
+    expect(
+      apiMocks.previewMatrixEditorLiveXlsxPublication.mock.calls[0][1].groups.map(
+        (group: { group_key: string }) => group.group_key,
+      ),
+    ).toEqual(["manual_group_1", "g1"]);
+  });
+
+  it("surfaces legacy duplicate group keys without autosaving or exporting them", async () => {
+    const seed = buildSessionSeed();
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...seed,
+      editor_draft: {
+        ...seed.editor_draft,
+        groups: [
+          seed.editor_draft.groups[0],
+          {
+            ...seed.editor_draft.groups[0],
+            draft_group_id: "manual-group",
+            source_group_snapshot_id: null,
+            group_order: 2,
+            group_key: "g1",
+            group_label: "Manual",
+          },
+        ],
+        cells: [
+          seed.editor_draft.cells[0],
+          { draft_row_id: "row-1", draft_group_id: "manual-group", cell_value: "2" },
+        ],
+      },
+    });
+
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    expect((await screen.findByLabelText("Row 1 Manual") as HTMLInputElement).value).toBe("2");
+    const identityMessage = /Matrix group identity conflict: g1/;
+    expect(screen.getByRole("region", { name: "Matrix input errors" }).textContent).toMatch(identityMessage);
+    const exportButton = screen.getByRole("button", { name: "Export Matrix" }) as HTMLButtonElement;
+    expect(exportButton.disabled).toBe(true);
+    expect(exportButton.title).toMatch(identityMessage);
+    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText("Row 1 method"), { target: { value: "Do not save" } });
+    await new Promise((resolve) => window.setTimeout(resolve, 900));
+    expect(apiMocks.saveMatrixEditorSessionDraft).not.toHaveBeenCalled();
+    expect(apiMocks.previewMatrixEditorLiveXlsxPublication).not.toHaveBeenCalled();
+  });
+
   it("collapses step details without losing edited text and locates invalid cells", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
     await screen.findByLabelText("Step 1 description");

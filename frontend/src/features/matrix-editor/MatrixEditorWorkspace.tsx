@@ -66,13 +66,16 @@ import {
   buildSessionDraftFromProjectMatrixDraft,
   cloneGroups,
   cloneRows,
-  nextGroupId,
   normalizeGroupName,
   schedulePlanFromProjectMatrixDraft,
   schedulePlanFromSeed,
   type EditableMatrixRow,
   type GroupColumn,
 } from "./matrixEditorDraftModel";
+import {
+  allocateManualGroupIdentity,
+  findDuplicateMatrixGroupKeys,
+} from "./matrixGroupIdentity";
 import {
   buildPreviewStepNoteLookup,
   buildSelectedGroupStepPreviewRows,
@@ -220,6 +223,14 @@ export function MatrixEditorWorkspace({
     () => buildAuthorityComparableSignatureFromDraftPayload(currentSavePayload),
     [currentSavePayload]
   );
+  const groupIdentityConflicts = useMemo(
+    () => findDuplicateMatrixGroupKeys(groupColumns),
+    [groupColumns]
+  );
+  const hasGroupIdentityError = groupIdentityConflicts.duplicateKeys.length > 0;
+  const groupIdentityErrorMessage = hasGroupIdentityError
+    ? `Matrix group identity conflict: ${groupIdentityConflicts.duplicateKeys.join(", ")}. Reimport the Matrix or repair the affected draft before continuing.`
+    : "";
 
   const applyDraftSnapshotToEditor = (
     draft: MatrixEditorSessionDraft,
@@ -284,6 +295,7 @@ export function MatrixEditorWorkspace({
     onError: setConfirmActiveMessage,
     projectId,
     readonlyMessage: isLifecycleReadonly ? lifecycleReadonlyView.message : null,
+    saveBlockedReason: groupIdentityErrorMessage || null,
     sourcePreview: importPreview,
   });
   const {
@@ -543,7 +555,7 @@ export function MatrixEditorWorkspace({
       groupStepSequenceErrorCellKeys, groupStepSequenceErrorMessageById };
   }, [editableRows, groupColumns]);
   const hasStepTokenError = invalidStepFormatCellKeys.size > 0 || groupStepSequenceErrorIds.size > 0;
-  const hasMatrixValidationError = hasGroupNameError || hasStepTokenError;
+  const hasMatrixValidationError = hasGroupIdentityError || hasGroupNameError || hasStepTokenError;
   const firstStepCellError = [...stepCellErrorMessageByKey.values()][0] ?? "";
   const stepTokenErrorMessage = hasStepTokenError ? firstStepCellError : "";
   const selectedGroup = groupColumns.find((group) => group.id === selectedGroupId) ?? null;
@@ -633,9 +645,10 @@ export function MatrixEditorWorkspace({
     currentSavePayload.step_text_overrides,
   );
   const canGenerateTestRecord =
-    selectedDraftGroupIds.size > 0 && hasAnyStepTokenValue && !hasStepTokenError;
+    selectedDraftGroupIds.size > 0 && hasAnyStepTokenValue && !hasStepTokenError && !hasGroupIdentityError;
   const canGenerateTestStatus =
     selectedDraftGroupIds.size > 0 &&
+    !hasGroupIdentityError &&
     editableRows.some(
       (row) => !row.isSampleRow && row.item.trim().length > 0
     );
@@ -680,6 +693,8 @@ export function MatrixEditorWorkspace({
     lifecycleMessage: isLifecycleReadonly ? lifecycleReadonlyView.message : "",
     busy: matrixXlsxExport.busy,
     selectedGroupCount: selectedDraftGroupIds.size,
+    hasGroupIdentityError,
+    groupIdentityErrorMessage,
     hasStepError: hasStepTokenError,
     stepErrorMessage: stepTokenErrorMessage,
     qualifyingRowCount: hasXlsxExportRows ? 1 : 0,
@@ -690,8 +705,16 @@ export function MatrixEditorWorkspace({
     sampleValues
   );
   const hasSelectedSampleQuantityError = invalidSelectedSampleGroupIds.size > 0;
-  const inputIssues: { id: string; label: string; message: string }[] = [];
+  const inputIssues: { id: string; targetId?: string; label: string; message: string }[] = [];
   groupColumns.forEach((group) => {
+    if (groupIdentityConflicts.duplicateGroupIds.has(group.id)) {
+      inputIssues.push({
+        id: `group-identity-${group.id}`,
+        targetId: `group-name-${group.id}`,
+        label: `Group ${group.name || group.groupKey} identity`,
+        message: groupIdentityErrorMessage,
+      });
+    }
     if (emptyGroupIds.has(group.id) || duplicateGroupIds.has(group.id)) {
       inputIssues.push({ id: `group-name-${group.id}`, label: `Group ${group.groupKey} name`, message: groupNameErrorMessage });
     }
@@ -741,7 +764,7 @@ export function MatrixEditorWorkspace({
       : !hasProjectId
       ? "No project id."
       : hasMatrixValidationError || hasMatrixDayError
-        ? groupNameErrorMessage || stepTokenErrorMessage || Object.values(scheduleCalculation.rowErrors)[0]
+        ? groupIdentityErrorMessage || groupNameErrorMessage || stepTokenErrorMessage || Object.values(scheduleCalculation.rowErrors)[0]
         : hasSelectedSampleQuantityError
           ? "Sample quantity is required for selected groups."
         : isPublishBusy
@@ -998,7 +1021,8 @@ export function MatrixEditorWorkspace({
   const addGroup = (): void => {
     markUnsaved();
     pushSnapshot();
-    const nextId = nextGroupId(groupColumns);
+    const identity = allocateManualGroupIdentity(groupColumns);
+    const nextId = identity.id;
     setGroupColumns((previous) => [
       ...previous,
       {
@@ -1006,7 +1030,7 @@ export function MatrixEditorWorkspace({
         name: "",
         draftGroupId: null,
         sourceGroupSnapshotId: null,
-        groupKey: `g${previous.length + 1}`,
+        groupKey: identity.groupKey,
         isSelected: true,
         isSourceBacked: false,
         sampleNote: null,
@@ -1031,7 +1055,8 @@ export function MatrixEditorWorkspace({
     }
     markUnsaved();
     pushSnapshot();
-    const nextId = nextGroupId(groupColumns);
+    const identity = allocateManualGroupIdentity(groupColumns);
+    const nextId = identity.id;
     const insertAt = direction === "left" ? currentIndex : currentIndex + 1;
     setGroupColumns((previous) => {
       const next = [...previous];
@@ -1040,7 +1065,7 @@ export function MatrixEditorWorkspace({
         name: "",
         draftGroupId: null,
         sourceGroupSnapshotId: null,
-        groupKey: `g${insertAt + 1}`,
+        groupKey: identity.groupKey,
         isSelected: true,
         isSourceBacked: false,
         sampleNote: null,
@@ -1066,22 +1091,23 @@ export function MatrixEditorWorkspace({
     }
     markUnsaved();
     pushSnapshot();
-      const sourceGroup = groupColumns[currentIndex];
-      const nextId = nextGroupId(groupColumns);
-      setGroupColumns((previous) => {
-        const next = [...previous];
+    const sourceGroup = groupColumns[currentIndex];
+    const identity = allocateManualGroupIdentity(groupColumns);
+    const nextId = identity.id;
+    setGroupColumns((previous) => {
+      const next = [...previous];
       next.splice(currentIndex + 1, 0, {
         id: nextId,
         name: sourceGroup.name,
         draftGroupId: null,
         sourceGroupSnapshotId: null,
-        groupKey: sourceGroup.groupKey,
+        groupKey: identity.groupKey,
         isSelected: sourceGroup.isSelected,
         isSourceBacked: false,
         sampleNote: sourceGroup.sampleNote,
       });
-        return next;
-      });
+      return next;
+    });
     setEditableRows((previous) =>
       previous.map((row) => ({
         ...row,
@@ -1666,7 +1692,7 @@ export function MatrixEditorWorkspace({
               <li key={issue.id}>
                 <button type="button" onClick={() => {
                   setShowSelectedGroupsOnly(false);
-                  setErrorFocusLabel(issue.id);
+                  setErrorFocusLabel(issue.targetId ?? issue.id);
                 }}>{issue.label}: {issue.message}</button>
               </li>
             ))}

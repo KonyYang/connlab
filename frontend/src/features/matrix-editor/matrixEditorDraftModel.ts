@@ -255,12 +255,20 @@ export function buildMatrixFromSessionSeedDraft(
     return mapped;
   }
 
-  const currentGroupByKey = new Map(
-    mapped.groups.map((group) => [group.groupKey, group])
-  );
+  const currentGroupsByKey = new Map<string, GroupColumn[]>();
+  mapped.groups.forEach((group) => {
+    const matches = currentGroupsByKey.get(group.groupKey) ?? [];
+    matches.push(group);
+    currentGroupsByKey.set(group.groupKey, matches);
+  });
+  const consumedGroupIds = new Set<string>();
   const nextGroups: GroupColumn[] = sourcePreview.groups.map((previewGroup, index) => {
-    const existing = currentGroupByKey.get(previewGroup.group_key);
+    const candidates = currentGroupsByKey.get(previewGroup.group_key) ?? [];
+    const existing = candidates.find(
+      (group) => group.isSourceBacked && !consumedGroupIds.has(group.id)
+    ) ?? candidates.find((group) => !consumedGroupIds.has(group.id));
     if (existing) {
+      consumedGroupIds.add(existing.id);
       return existing;
     }
     return {
@@ -275,10 +283,11 @@ export function buildMatrixFromSessionSeedDraft(
     };
   });
   mapped.groups.forEach((group) => {
-    if (!nextGroups.some((nextGroup) => nextGroup.groupKey === group.groupKey)) {
+    if (!consumedGroupIds.has(group.id)) {
       nextGroups.push(group);
     }
   });
+  const mappedGroupById = new Map(mapped.groups.map((group) => [group.id, group]));
 
   const previewRows = [...sourcePreview.rows]
     .sort((left, right) => left.source_row_index - right.source_row_index)
@@ -299,7 +308,7 @@ export function buildMatrixFromSessionSeedDraft(
     const previewRow = previewRowsByIdentity.get(editorRowIdentity(existing))?.shift();
     const groupValues: Record<string, string> = {};
     nextGroups.forEach((group) => {
-      const existingGroup = currentGroupByKey.get(group.groupKey);
+      const existingGroup = mappedGroupById.get(group.id);
       if (existingGroup && existing.groups[existingGroup.id] !== undefined) {
         groupValues[group.id] = existing.groups[existingGroup.id];
         return;
@@ -317,7 +326,7 @@ export function buildMatrixFromSessionSeedDraft(
 
   const samples: Record<string, string> = {};
   nextGroups.forEach((group) => {
-    const existingGroup = currentGroupByKey.get(group.groupKey);
+    const existingGroup = mappedGroupById.get(group.id);
     if (existingGroup && mapped.samples[existingGroup.id] !== undefined) {
       samples[group.id] = mapped.samples[existingGroup.id];
       return;
@@ -677,21 +686,6 @@ export function schedulePlanFromProjectMatrixDraft(draft: ProjectMatrixDraft): M
     plannedTestCompleteDate: draft.record.planned_test_complete_date ?? "",
     estimatedCompletionDate: draft.record.estimated_completion_date ?? "",
   };
-}
-
-export function nextGroupId(groups: GroupColumn[]): string {
-  let max = 0;
-  groups.forEach((group) => {
-    const match = group.id.match(/^group-(\d+)$/i);
-    if (!match) {
-      return;
-    }
-    const value = Number(match[1]);
-    if (value > max) {
-      max = value;
-    }
-  });
-  return `group-${max + 1}`;
 }
 
 export function normalizeGroupName(name: string): string {

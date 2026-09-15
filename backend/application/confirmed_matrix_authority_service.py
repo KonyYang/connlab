@@ -11,6 +11,11 @@ from uuid import uuid4
 
 from sqlalchemy.exc import IntegrityError
 
+from backend.application.matrix_group_identity import (
+    find_duplicate_matrix_group_keys,
+    format_duplicate_matrix_group_key_message,
+)
+
 from backend.application.matrix_schedule_planning import (
     MatrixScheduleValidationError,
     calculate_group_test_days,
@@ -116,6 +121,11 @@ class ConfirmedMatrixAuthorityService:
         if not selected_groups:
             raise ConfirmedMatrixAuthorityError(
                 "At least one selected group is required for confirmation."
+            )
+        duplicate_group_keys = find_duplicate_matrix_group_keys(selected_groups)
+        if duplicate_group_keys:
+            raise ConfirmedMatrixAuthorityError(
+                format_duplicate_matrix_group_key_message(duplicate_group_keys)
             )
         for group in selected_groups:
             if not group.group_key.strip() or not group.group_label.strip():

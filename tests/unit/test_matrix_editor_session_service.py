@@ -240,6 +240,21 @@ def test_confirm_session_no_change_returns_http200_semantics() -> None:
     assert result.fee_rebase_promotion_status == "not_required"
 
 
+def test_confirm_session_rejects_duplicate_group_keys_before_signature_comparison() -> None:
+    active = _build_active_snapshot()
+    service = _service(active=active, source_snapshot=None)
+    command = _confirm_saved_revision_command(_saved_revision_draft())
+    duplicate_group = replace(
+        command.groups[0],
+        draft_group_id="duplicate-group",
+        source_group_snapshot_id=None,
+        group_order=2,
+    )
+
+    with pytest.raises(MatrixEditorSessionError, match="Duplicate Matrix group key: g1"):
+        service.confirm_session(replace(command, groups=(*command.groups, duplicate_group)))
+
+
 def test_save_editor_draft_attaches_current_fee_rebase_status() -> None:
     active = _build_active_snapshot()
     pending = _RecordingPendingFeeRebaseService(
@@ -271,6 +286,20 @@ def test_save_editor_draft_attaches_current_fee_rebase_status() -> None:
     )
     assert pending.rebase_command is not None
     assert pending.rebase_command.saved_matrix_draft.record.project_matrix_draft_id == "pmd-rev"
+
+
+def test_save_editor_draft_rejects_duplicate_group_keys_before_creating_revision() -> None:
+    service = _service(active=_build_active_snapshot(), source_snapshot=None)
+    command = _save_command()
+    duplicate_group = replace(
+        command.groups[0],
+        draft_group_id="duplicate-group",
+        source_group_snapshot_id=None,
+        group_order=2,
+    )
+
+    with pytest.raises(MatrixEditorSessionError, match="Duplicate Matrix group key: g1"):
+        service.save_editor_draft(replace(command, groups=(*command.groups, duplicate_group)))
 
 
 def test_save_editor_draft_keeps_matrix_success_when_fee_rebase_failed() -> None:

@@ -4,6 +4,72 @@ import type { MatrixEditorSessionDraft, MatrixPreviewResponse } from "../../api/
 import { buildMatrixFromSessionSeedDraft } from "./matrixEditorDraftModel";
 
 describe("buildMatrixFromSessionSeedDraft", () => {
+  it("preserves every saved group when a legacy draft contains duplicate keys", () => {
+    const draft: MatrixEditorSessionDraft = {
+      groups: [
+        {
+          draft_group_id: "source-group",
+          source_group_snapshot_id: "source-snapshot-group",
+          group_order: 1,
+          group_key: "g1",
+          group_label: "Source",
+          is_selected: true,
+          sample_quantity_expression: "3",
+        },
+        {
+          draft_group_id: "manual-group",
+          source_group_snapshot_id: null,
+          group_order: 2,
+          group_key: "g1",
+          group_label: "Manual",
+          is_selected: true,
+          sample_quantity_expression: "2",
+        },
+      ],
+      rows: [{
+        draft_row_id: "row-1",
+        source_row_snapshot_id: "source-row-1",
+        row_order: 1,
+        test_item: "Visual",
+        is_sample_row: false,
+      }],
+      cells: [
+        { draft_row_id: "row-1", draft_group_id: "source-group", cell_value: "1" },
+        { draft_row_id: "row-1", draft_group_id: "manual-group", cell_value: "2" },
+      ],
+    };
+    const preview: MatrixPreviewResponse = {
+      source_document_path: "matrix.xlsx",
+      source_document_name: "matrix.xlsx",
+      source_format: "xlsx",
+      capability_status: "available",
+      generated_at: "",
+      candidate_tables: [],
+      warnings: [],
+      blockers: [],
+      groups: [{
+        group_key: "g1",
+        group_label: "Source",
+        source_table_index: 0,
+        extraction_status: "loaded",
+        sample_quantity_expression: "3",
+        sample_note: null,
+        steps: [],
+      }],
+      rows: [{
+        source_row_index: 1,
+        test_item: "Visual",
+        group_tokens: { g1: "1" },
+        is_sample_row: false,
+      }],
+    };
+
+    const result = buildMatrixFromSessionSeedDraft(draft, preview);
+
+    expect(result.groups.map((group) => group.id)).toEqual(["source-group", "manual-group"]);
+    expect(result.rows[0].groups).toEqual({ "source-group": "1", "manual-group": "2" });
+  });
+
   it("matches repeated test identities one-to-one without appending a duplicate draft row", () => {
     const draft: MatrixEditorSessionDraft = {
       groups: [

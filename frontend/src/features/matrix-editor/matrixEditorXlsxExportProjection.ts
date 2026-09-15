@@ -70,6 +70,8 @@ type AvailabilityInput = {
   lifecycleMessage: string;
   busy: boolean;
   selectedGroupCount: number;
+  hasGroupIdentityError?: boolean;
+  groupIdentityErrorMessage?: string;
   hasStepError: boolean;
   stepErrorMessage: string;
   qualifyingRowCount: number;
@@ -81,6 +83,9 @@ export function getMatrixEditorXlsxExportDisabledReason(
   if (input.lifecycleMessage) return input.lifecycleMessage;
   if (input.busy) return "Matrix export is in progress.";
   if (input.selectedGroupCount === 0) return "Select at least one Group to export.";
+  if (input.hasGroupIdentityError) {
+    return input.groupIdentityErrorMessage || "Fix Matrix group identities before exporting.";
+  }
   if (input.hasStepError) {
     return input.stepErrorMessage || "Fix Matrix step numbering before exporting.";
   }

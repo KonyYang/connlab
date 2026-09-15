@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import replace
 
 import pytest
 
@@ -79,6 +80,24 @@ def test_project_matrix_draft_service_rejects_unknown_selected_group() -> None:
                 selected_group_keys=("g9",),
             )
         )
+
+
+def test_project_matrix_draft_service_rejects_duplicate_source_group_keys() -> None:
+    service, store = _service()
+    source_snapshot = service._source.source_snapshot
+    source_groups = list(source_snapshot.groups)
+    source_groups[1] = replace(source_groups[1], group_key=source_groups[0].group_key)
+    service._source.source_snapshot = replace(source_snapshot, groups=tuple(source_groups))
+
+    with pytest.raises(ProjectMatrixDraftPersistenceError, match="Duplicate Matrix group key: g1"):
+        service.create_from_source_import(
+            CreateProjectMatrixDraftFromSourceImportCommand(
+                project_id="P1",
+                source_import_id="smi-1",
+            )
+        )
+
+    assert len(store.created_snapshots) == 0
 
 
 def test_project_matrix_draft_service_rejects_duplicate_project_and_source_import() -> None:
@@ -270,6 +289,54 @@ def test_project_matrix_draft_service_rejects_duplicate_draft_row_identity_befor
                         test_item=source_row.test_item,
                     ),
                 ),
+            )
+        )
+
+    assert len(store.replaced_snapshots) == 0
+
+
+def test_project_matrix_draft_service_rejects_duplicate_group_key_before_persistence() -> None:
+    service, store = _service()
+    created = service.create_from_source_import(
+        CreateProjectMatrixDraftFromSourceImportCommand(
+            project_id="P1",
+            source_import_id="smi-1",
+        )
+    )
+    groups = tuple(
+        ProjectMatrixDraftGroupInput(
+            draft_group_id=group.draft_group_id,
+            source_group_snapshot_id=group.source_group_snapshot_id,
+            group_order=group.group_order,
+            group_key=created.groups[0].group_key,
+            group_label=group.group_label,
+            is_selected=group.is_selected,
+            sample_quantity_expression=group.sample_quantity_expression,
+            sample_note=group.sample_note,
+        )
+        for group in created.groups
+    )
+
+    with pytest.raises(
+        ProjectMatrixDraftPersistenceError,
+        match="Duplicate Matrix group key: g1",
+    ):
+        service.update_draft(
+            UpdateProjectMatrixDraftCommand(
+                project_id="P1",
+                project_matrix_draft_id=created.record.project_matrix_draft_id,
+                groups=groups,
+                rows=tuple(
+                    ProjectMatrixDraftRowInput(
+                        draft_row_id=row.draft_row_id,
+                        source_row_snapshot_id=row.source_row_snapshot_id,
+                        row_order=row.row_order,
+                        test_item=row.test_item,
+                        is_sample_row=row.is_sample_row,
+                    )
+                    for row in created.rows
+                ),
+                cells=(),
             )
         )
 

@@ -59,5 +59,11 @@ describe("Matrix Editor XLSX export projection", () => {
       lifecycleMessage: "", busy: false, selectedGroupCount: 1,
       hasStepError: false, stepErrorMessage: "", qualifyingRowCount: 0,
     })).toBe("Add at least one step to a selected Group before exporting.");
+    expect(getMatrixEditorXlsxExportDisabledReason({
+      lifecycleMessage: "", busy: false, selectedGroupCount: 1,
+      hasGroupIdentityError: true,
+      groupIdentityErrorMessage: "Matrix group identity conflict: g1.",
+      hasStepError: false, stepErrorMessage: "", qualifyingRowCount: 1,
+    })).toBe("Matrix group identity conflict: g1.");
   });
 });

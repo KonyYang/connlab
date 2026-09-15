@@ -219,6 +219,22 @@ def test_confirmed_matrix_authority_service_rejects_blank_selected_group_key_or_
             )
         )
 
+
+def test_confirmed_matrix_authority_service_rejects_duplicate_selected_group_keys() -> None:
+    service, stores = _service()
+    groups = list(stores.draft_snapshot.groups)
+    groups[1] = replace(groups[1], group_key=groups[0].group_key)
+    stores.draft_store.snapshot = replace(stores.draft_snapshot, groups=tuple(groups))
+
+    with pytest.raises(ConfirmedMatrixAuthorityError, match="Duplicate Matrix group key: g1"):
+        service.confirm_draft(
+            ConfirmProjectMatrixDraftCommand(
+                project_id="P1",
+                project_matrix_draft_id="pmd-1",
+                confirmed_by="operator",
+            )
+        )
+
     service2, _ = _service(group_key_override="g1", group_label_override=" ")
     with pytest.raises(ConfirmedMatrixAuthorityError, match="group_key and group_label"):
         service2.confirm_draft(

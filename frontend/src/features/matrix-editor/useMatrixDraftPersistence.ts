@@ -25,6 +25,7 @@ type MatrixDraftPersistenceOptions = {
   onError: (message: string) => void;
   projectId: string;
   readonlyMessage: string | null;
+  saveBlockedReason?: string | null;
   sourcePreview: MatrixPreviewResponse | null;
 };
 
@@ -111,6 +112,7 @@ export function useMatrixDraftPersistence({
   onError,
   projectId,
   readonlyMessage,
+  saveBlockedReason = null,
   sourcePreview,
 }: MatrixDraftPersistenceOptions) {
   const [saveState, setSaveState] = useState<MatrixDraftSaveState>("idle");
@@ -172,6 +174,7 @@ export function useMatrixDraftPersistence({
       (!activeConfirmedMatrixId && (!sourceImportId || !sourceSnapshotId) && !hasManualMatrixContent) ||
       draftLoading ||
       Boolean(readonlyMessage) ||
+      Boolean(saveBlockedReason) ||
       cancellingRef.current ||
       isCancelling
     ) {
@@ -258,6 +261,7 @@ export function useMatrixDraftPersistence({
     isCancelling,
     projectId,
     readonlyMessage,
+    saveBlockedReason,
     sourceImportId,
     sourceSnapshotId,
   ]);

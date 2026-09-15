@@ -13,6 +13,10 @@ from backend.application.confirmed_matrix_authority_service import (
 from backend.application.matrix_import_commit_service import (
     MatrixImportCommitService,
 )
+from backend.application.matrix_group_identity import (
+    find_duplicate_matrix_group_keys,
+    format_duplicate_matrix_group_key_message,
+)
 from backend.application.matrix_sample_quantity_guard import (
     find_selected_sample_quantity_violations,
     format_sample_quantity_violation_message,
@@ -236,6 +240,7 @@ class MatrixEditorSessionService(
             LifecycleWriteOperation.MATRIX_EDITOR_DRAFT_SAVE,
         )
         self._require_project(command.project_id)
+        _validate_session_group_identities(command.groups)
         active = self._confirmed.get_active_by_project(command.project_id)
         expected_command = _confirm_command_from_save_command(command, confirmed_by="autosave")
         self._validate_expected_active(expected_command, active)
@@ -416,6 +421,7 @@ class MatrixEditorSessionService(
             raise MatrixEditorSessionError("At least one group is required.")
         if len(command.rows) == 0:
             raise MatrixEditorSessionError("At least one row is required.")
+        _validate_session_group_identities(command.groups)
         selected_group_keys = tuple(
             group.group_key.strip()
             for group in command.groups
@@ -503,6 +509,16 @@ class MatrixEditorSessionService(
 
 def _active_fee_rule_version_id() -> str:
     return load_active_fee_rule_library().version.version_id
+
+
+def _validate_session_group_identities(
+    groups: tuple[MatrixEditorSessionGroup, ...],
+) -> None:
+    duplicate_group_keys = find_duplicate_matrix_group_keys(groups)
+    if duplicate_group_keys:
+        raise MatrixEditorSessionError(
+            format_duplicate_matrix_group_key_message(duplicate_group_keys)
+        )
 
 
 _build_signature_from_project_draft = build_project_matrix_draft_payload_signature

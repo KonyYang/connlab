@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from backend.application.matrix_step_text_overrides import updated_step_text_overrides
+from backend.application.matrix_group_identity import (
+    find_duplicate_matrix_group_keys,
+    format_duplicate_matrix_group_key_message,
+)
 
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -63,6 +67,11 @@ def _build_draft_snapshot(
     source_snapshot: SourceMatrixSnapshot,
     selected_keys: set[str],
 ) -> ProjectMatrixDraftSnapshot:
+    duplicate_group_keys = find_duplicate_matrix_group_keys(source_snapshot.groups)
+    if duplicate_group_keys:
+        raise ProjectMatrixDraftPersistenceError(
+            format_duplicate_matrix_group_key_message(duplicate_group_keys)
+        )
     now = _utc_now()
     draft_id = f"pmd-{uuid4().hex}"
     record = ProjectMatrixDraftRecord(
@@ -147,6 +156,7 @@ def _build_updated_snapshot(
     existing: ProjectMatrixDraftSnapshot,
     command: UpdateProjectMatrixDraftCommand,
 ) -> ProjectMatrixDraftSnapshot:
+    _reject_duplicate_group_identities(command.groups)
     _reject_duplicate_row_identities(command.rows)
     draft_id = existing.record.project_matrix_draft_id
     existing_group_by_id = {group.draft_group_id: group for group in existing.groups}
@@ -281,6 +291,34 @@ def _reject_duplicate_row_identities(
         if source_id in seen_source_ids:
             raise ProjectMatrixDraftPersistenceError(
                 f"Duplicate source row lineage: {source_id}"
+            )
+        seen_source_ids.add(source_id)
+
+
+def _reject_duplicate_group_identities(
+    groups: tuple[ProjectMatrixDraftGroupInput, ...],
+) -> None:
+    duplicate_keys = find_duplicate_matrix_group_keys(groups)
+    if duplicate_keys:
+        raise ProjectMatrixDraftPersistenceError(
+            format_duplicate_matrix_group_key_message(duplicate_keys)
+        )
+    seen_draft_group_ids: set[str] = set()
+    seen_source_ids: set[str] = set()
+    for group in groups:
+        draft_group_id = (group.draft_group_id or "").strip()
+        if draft_group_id:
+            if draft_group_id in seen_draft_group_ids:
+                raise ProjectMatrixDraftPersistenceError(
+                    f"Duplicate draft group identity: {draft_group_id}"
+                )
+            seen_draft_group_ids.add(draft_group_id)
+        source_id = (group.source_group_snapshot_id or "").strip()
+        if not source_id:
+            continue
+        if source_id in seen_source_ids:
+            raise ProjectMatrixDraftPersistenceError(
+                f"Duplicate source group lineage: {source_id}"
             )
         seen_source_ids.add(source_id)
 
