@@ -92,5 +92,6 @@ each separate from implementation; this is not a five-independent-context execut
 - Reviewer findings on expired-download guidance, cancelled-job cleanup, and target changes during
   pre-publication source verification were fixed and regression-protected.
 
-The task remains running pending the Word ownership decision above; this checkpoint is not final
-acceptance or `ready_for_close`.
+The user subsequently requested closing the task. The implemented and verified core remains in commit
+`81fa309e`; remaining work was discontinued without claiming full acceptance or `ready_for_close`.
+The Word ownership extension was not approved or implemented, and its limitation above remains.
