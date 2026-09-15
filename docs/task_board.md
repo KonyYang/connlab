@@ -27,15 +27,15 @@
     "risk_reasons": [],
     "activation_head": "65be54eeb54fcee990f5ac8bde074085fceb4f61",
     "started_at": "2026-09-15T14:04:36.355636Z",
-    "updated_at": "2026-09-15T14:23:02.378837Z",
+    "updated_at": "2026-09-15T14:34:39.371998Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_PROJECT_FOLDER_PREFLIGHT_PRIMARY_BLOCKER",
-      "stage": "revision",
+      "stage": "external_identity_conflict",
       "status": "running",
-      "summary": "User confirmed Settings now uses D:\\ConnLabProjects, but the Workbench still blocks on a stale missing workspace record under D:\\Test Project; revise the same task to reconcile stale pre-creation workspace identity safely.",
-      "requires_user": false
+      "summary": "The stale missing D:\\Test Project workspace record now replans under D:\\ConnLabProjects. The target DL-2026-09-001 directory contains a manifest and business content owned by project 4c2191f3419c4f29b14d734938091442, while the current project is 638bb45740f64a0085b2fa203c9d014c. User direction is required before any external folder migration or project identity correction.",
+      "requires_user": true
     },
     "report": null
   },
