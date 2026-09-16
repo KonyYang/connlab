@@ -1262,7 +1262,7 @@ export function FeeEvaluationReviewExportPage({
       <FeeEvaluationPreviewTable
         importControl={<FeeFormImportControl key={projectId} projectId={projectId} rows={previewRows}
           disabled={isLifecycleReadonly || draftState.kind !== "ready" || pricingDraftLoadStatus === "loading" ||
-            pricingDraftLoadStatus === "error" || pricingDraftLoadStatus === "stale" || pricingDraftLoadStatus === "rebase_required" ||
+            pricingDraftLoadStatus === "error" || pricingDraftLoadStatus === "rebase_required" ||
             confirmFeeActionState.kind === "confirming" || isCancellingPricingSession}
           onApply={changes => {
             if (isLifecycleReadonly) return;

@@ -94,13 +94,23 @@ describe("FeeEvaluationReviewExportPage", () => {
     HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue(
+      currentPricingDraftResponse({
+        status: "current_v2",
+        saved_generation: 1,
+        saved_source_context_fingerprint: "context-1",
+        saved_payload_fingerprint: "payload-1",
+        saved_validation_token: "token-1",
+      })
+    );
     apiMocks.inspectFeeForm.mockResolvedValue({rows: [{group: "Other", description: "Visual Examination", rowKind: "matrix_step",
       values: {unitPrice: "37", unitType: "per photo", baseFee: "0", units: "999", spendTime: "99", discount: "20", notes: "source"}}]});
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
     const price = await screen.findByLabelText("Unit Price for Visual Examination");
     const units = (screen.getByLabelText("Units for Visual Examination") as HTMLInputElement).value;
-    await waitFor(() => expect(screen.getByRole("button", {name: "Import Fee Form"})).toHaveProperty("disabled", false));
-    fireEvent.click(screen.getByRole("button", {name: "Import Fee Form"}));
+    const importFeeFormButton = screen.getByRole("button", {name: "Import Fee Form"});
+    await waitFor(() => expect(importFeeFormButton).toHaveProperty("disabled", false));
+    fireEvent.click(importFeeFormButton);
     fireEvent.change(screen.getByLabelText("Import mode"), {target: {value: "prices"}});
     fireEvent.change(screen.getByLabelText("Fee Form file"), {target: {files: [new File(["xls"], "fee.xls")]}});
     fireEvent.click(screen.getByRole("button", {name: "Inspect file"}));
@@ -108,6 +118,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(price).toHaveProperty("value", "37");
     expect(screen.getByLabelText("Units for Visual Examination")).toHaveProperty("value", units);
     await waitFor(() => expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalled(), {timeout: 3000});
+    await waitFor(() => expect(importFeeFormButton).toHaveProperty("disabled", false));
     expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
     expect(apiMocks.publishFeeForm).not.toHaveBeenCalled();
   });
