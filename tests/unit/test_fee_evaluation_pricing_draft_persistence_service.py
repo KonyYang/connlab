@@ -57,6 +57,73 @@ def test_save_then_load_current_pricing_draft_preserves_notes() -> None:
     assert loaded.saved_snapshot.edited_values.summary.external_cost_note == "tooling"
 
 
+def test_repeated_identical_save_keeps_the_existing_v2_generation() -> None:
+    store = _DraftStore()
+    service = _service(store=store)
+    values = _edited_values(notes="reviewed values")
+
+    first = service.save(
+        SaveFeeEvaluationPricingDraftCommand(project_id="P1", edited_values=values)
+    )
+    assert first.saved_snapshot is not None
+
+    repeated = service.save(
+        SaveFeeEvaluationPricingDraftCommand(
+            project_id="P1",
+            edited_values=values,
+            expected_pricing_draft_edit_id=first.saved_snapshot.draft_edit_id,
+            expected_generation=0,
+            expected_payload_fingerprint="stale-payload-fingerprint",
+            expected_updated_at="2026-01-01T00:00:00+00:00",
+        )
+    )
+
+    assert repeated.saved_snapshot == first.saved_snapshot
+    assert repeated.saved_snapshot.generation == 1
+
+
+def test_stale_save_with_different_values_still_conflicts() -> None:
+    store = _DraftStore()
+    service = _service(store=store)
+    first = service.save(
+        SaveFeeEvaluationPricingDraftCommand(
+            project_id="P1",
+            edited_values=_edited_values(notes="first values"),
+        )
+    )
+    assert first.saved_snapshot is not None
+
+    with pytest.raises(FeeEvaluationPricingDraftConflictError):
+        service.save(
+            SaveFeeEvaluationPricingDraftCommand(
+                project_id="P1",
+                edited_values=_edited_values(notes="different values"),
+                expected_pricing_draft_edit_id=first.saved_snapshot.draft_edit_id,
+                expected_generation=0,
+                expected_payload_fingerprint="stale-payload-fingerprint",
+                expected_updated_at="2026-01-01T00:00:00+00:00",
+            )
+        )
+
+
+def test_identical_save_with_a_different_draft_id_still_conflicts() -> None:
+    store = _DraftStore()
+    service = _service(store=store)
+    values = _edited_values(notes="same values")
+    service.save(
+        SaveFeeEvaluationPricingDraftCommand(project_id="P1", edited_values=values)
+    )
+
+    with pytest.raises(FeeEvaluationPricingDraftConflictError):
+        service.save(
+            SaveFeeEvaluationPricingDraftCommand(
+                project_id="P1",
+                edited_values=values,
+                expected_pricing_draft_edit_id="different-draft-id",
+            )
+        )
+
+
 def test_load_missing_pricing_draft_returns_missing() -> None:
     result = _service(store=_DraftStore()).load("P1")
 

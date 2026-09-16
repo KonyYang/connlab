@@ -264,15 +264,28 @@ class FeeEvaluationPricingDraftPersistenceService:
                 edited_values,
             )
         )
-        conflict_message = save_cas_conflict_message(command, existing)
-        if conflict_message is not None:
-            raise FeeEvaluationPricingDraftConflictError(conflict_message)
-        generation = (existing.generation or 0) + 1 if existing is not None else 1
         source_context = (
             automatic_build.source_context
             if automatic_build is not None
             else self._legacy_source_context(context, edited_values)
         )
+        if (
+            existing is not None
+            and existing.generation is not None
+            and command.expected_pricing_draft_edit_id
+            in {None, existing.draft_edit_id}
+            and existing.source_context == source_context
+            and existing.edited_values == edited_values
+        ):
+            return FeeEvaluationPricingDraftLoadResult(
+                status="current_v2",
+                current_context=context,
+                saved_snapshot=existing,
+            )
+        conflict_message = save_cas_conflict_message(command, existing)
+        if conflict_message is not None:
+            raise FeeEvaluationPricingDraftConflictError(conflict_message)
+        generation = (existing.generation or 0) + 1 if existing is not None else 1
         attestation = (
             build_prior_defaults_attestation(
                 generation=generation,
