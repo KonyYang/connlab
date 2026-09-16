@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_FORM_IMPORT_AVAILABILITY",
+    "summary": "Keep Import Fee Form available for editable saved drafts without conflating draft freshness with Fee authority.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Remove stale pricing-draft status as an Import Fee Form disable condition while retaining lifecycle read-only, loading, error, rebase-required, Confirm, and Cancel protections; add focused regression coverage for the post-autosave state.",
+    "scope_paths": [
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "24d08449eac4084e27976c34d8b705179587de3e",
+    "started_at": "2026-09-16T16:10:19.301501Z",
+    "updated_at": "2026-09-16T16:10:19.301501Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FEE_FORM_ACTION_LABELS",
     "tier": "micro",
