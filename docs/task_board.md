@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_CONFIRMED_STATUS_SIGNATURE_CANONICALIZATION",
+    "summary": "Normalize optional Fee manual-row identity fields so a confirmed Fee remains visibly confirmed after re-entry.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Fix only the false unconfirmed status caused by backend empty-string normalization and add focused regression coverage.",
+    "scope_paths": [
+      "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts",
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "78b712d188b83a11e3138af02dc5fd36d95ca440",
+    "started_at": "2026-09-16T14:52:46.963093Z",
+    "updated_at": "2026-09-16T14:52:46.963093Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FEE_FORM_AUTHORITY_AND_HEADER_REPAIR",
     "tier": "standard",

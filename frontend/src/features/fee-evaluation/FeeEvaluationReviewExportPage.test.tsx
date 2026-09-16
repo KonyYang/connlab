@@ -551,7 +551,6 @@ describe("FeeEvaluationReviewExportPage", () => {
       applyFeeEvaluationPreviewEdits(sourceRows, hydrated.edits),
       hydrated.costPreviewValues
     );
-    expect(currentPayload).toEqual(savedPayload);
     expect(feeEvaluationPricingDraftSignature(currentPayload)).toBe(
       feeEvaluationPricingDraftSignature(savedPayload)
     );
@@ -1771,6 +1770,9 @@ function currentAuthorityPricingDraftPayload(): FeeEvaluationEditedFileExportReq
       },
       {
         row_kind: "report_preparation",
+        confirmed_group_id: "",
+        group_key: "",
+        group_label: "",
         spend_time: "4",
         unit_price: "600",
         unit_type: "per report",
