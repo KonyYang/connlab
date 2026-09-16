@@ -11,7 +11,7 @@ import {
 } from "../../api/client";
 
 type MatrixXlsxExportApis = {
-  download: (projectId: string, request: MatrixEditorLiveXlsxExportRequest) => Promise<BlobDownloadResponse>;
+  download: (projectId: string, request: MatrixEditorLiveXlsxExportRequest & { preview_token: string }) => Promise<BlobDownloadResponse>;
   preview: (projectId: string, request: MatrixEditorLiveXlsxExportRequest) => Promise<MatrixEditorLiveXlsxPublicationPreview>;
   publish: (projectId: string, request: MatrixEditorLiveXlsxPublicationRequest) => Promise<MatrixEditorLiveXlsxPublicationResult>;
 };
@@ -30,8 +30,8 @@ export function useMatrixEditorXlsxExport(
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [conflict, setConflict] = useState<MatrixEditorLiveXlsxPublicationPreview | null>(null);
-  const conflictRequestRef = useRef<MatrixEditorLiveXlsxExportRequest | null>(null);
+  const [confirmation, setConfirmation] = useState<MatrixEditorLiveXlsxPublicationPreview | null>(null);
+  const confirmationRequestRef = useRef<MatrixEditorLiveXlsxExportRequest | null>(null);
 
   const publish = async (
     request: MatrixEditorLiveXlsxExportRequest,
@@ -43,8 +43,8 @@ export function useMatrixEditorXlsxExport(
       preview_token: previewToken,
       conflict_action: conflictAction,
     });
-    setConflict(null);
-    conflictRequestRef.current = null;
+    setConfirmation(null);
+    confirmationRequestRef.current = null;
     setMessage(
       conflictAction === "archive"
         ? `Saved ${response.file_name}; archived the previous file in History.`
@@ -54,8 +54,14 @@ export function useMatrixEditorXlsxExport(
     );
   };
 
-  const downloadDraft = async (request: MatrixEditorLiveXlsxExportRequest): Promise<void> => {
-    const response = await apis.download(projectId, request);
+  const downloadDraft = async (
+    request: MatrixEditorLiveXlsxExportRequest,
+    previewToken: string
+  ): Promise<void> => {
+    const response = await apis.download(projectId, {
+      ...request,
+      preview_token: previewToken,
+    });
     const url = window.URL.createObjectURL(response.blob);
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -74,15 +80,16 @@ export function useMatrixEditorXlsxExport(
     setBusy(true);
     setError("");
     setMessage("");
-    setConflict(null);
-    conflictRequestRef.current = null;
+    setConfirmation(null);
+    confirmationRequestRef.current = null;
     try {
       const preview = await apis.preview(projectId, request);
       if (preview.mode === "download") {
-        await downloadDraft(request);
+        confirmationRequestRef.current = request;
+        setConfirmation(preview);
       } else if (preview.status === "conflict") {
-        conflictRequestRef.current = request;
-        setConflict(preview);
+        confirmationRequestRef.current = request;
+        setConfirmation(preview);
       } else if (preview.status === "ready") {
         await publish(request, preview.preview_token, "none");
       } else {
@@ -99,14 +106,16 @@ export function useMatrixEditorXlsxExport(
     }
   };
 
-  const resolveConflict = async (action: "archive" | "recycle"): Promise<void> => {
-    const request = conflictRequestRef.current;
-    if (busy || !conflict || !request) return;
+  const confirmDownload = async (): Promise<void> => {
+    const request = confirmationRequestRef.current;
+    if (busy || !confirmation || confirmation.mode !== "download" || !request) return;
     setBusy(true);
     setError("");
     setMessage("");
     try {
-      await publish(request, conflict.preview_token, action);
+      await downloadDraft(request, confirmation.preview_token);
+      setConfirmation(null);
+      confirmationRequestRef.current = null;
     } catch (caught) {
       setError(
         caught instanceof Error && caught.message.trim()
@@ -118,11 +127,40 @@ export function useMatrixEditorXlsxExport(
     }
   };
 
-  const cancelConflict = (): void => {
-    setConflict(null);
-    conflictRequestRef.current = null;
-    setMessage("Matrix replacement cancelled.");
+  const resolveConflict = async (action: "archive" | "recycle"): Promise<void> => {
+    const request = confirmationRequestRef.current;
+    if (busy || !confirmation || confirmation.mode !== "official" || !request) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await publish(request, confirmation.preview_token, action);
+    } catch (caught) {
+      setError(
+        caught instanceof Error && caught.message.trim()
+          ? caught.message
+          : "Matrix export failed."
+      );
+    } finally {
+      setBusy(false);
+    }
   };
 
-  return { busy, error, message, conflict, exportSnapshot, resolveConflict, cancelConflict };
+  const cancelConfirmation = (): void => {
+    const wasConflict = confirmation?.mode === "official";
+    setConfirmation(null);
+    confirmationRequestRef.current = null;
+    setMessage(wasConflict ? "Matrix replacement cancelled." : "Matrix export cancelled.");
+  };
+
+  return {
+    busy,
+    error,
+    message,
+    confirmation,
+    exportSnapshot,
+    confirmDownload,
+    resolveConflict,
+    cancelConfirmation,
+  };
 }

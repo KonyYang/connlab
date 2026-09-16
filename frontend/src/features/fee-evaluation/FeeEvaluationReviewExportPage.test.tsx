@@ -383,6 +383,12 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect((feeFormButton as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(feeFormButton);
 
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Download Fee Form draft preview?",
+    });
+    expect(apiMocks.generateConfirmedMatrixFeeFileDownload).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Download draft preview" }));
+
     await waitFor(() => {
       expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalled();
     });
@@ -407,6 +413,7 @@ describe("FeeEvaluationReviewExportPage", () => {
       lab_manpower_hourly_rate: "125",
     });
     expect(payload).not.toHaveProperty("pricing_draft_edit_id");
+    expect(payload.preview_token).toBe("draft-preview");
     expect(payload.manual_rows[0]).toMatchObject({
       row_kind: "sample_preparation",
       confirmed_group_id: "cmg-1",
@@ -492,6 +499,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     apiMocks.previewFeeFormPublication.mockResolvedValue({
       mode: "official",
       status: "ready",
+      authority_status: "confirmed",
       existing_file: false,
       existing_modified_at: null,
       blockers: [],
@@ -522,6 +530,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     apiMocks.previewFeeFormPublication.mockResolvedValue({
       mode: "official",
       status: "conflict",
+      authority_status: "confirmed",
       existing_file: true,
       existing_modified_at: "2026-08-28T10:30:00+08:00",
       blockers: [],
@@ -537,6 +546,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
 
     expect(await screen.findByRole("alertdialog", { name: "Replace existing Fee Form?" })).toBeTruthy();
+    expect(screen.getAllByRole("alertdialog")).toHaveLength(1);
     expect(apiMocks.publishFeeForm).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Archive old file" }));
 
@@ -552,6 +562,46 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(
       await screen.findByText("DL-2026-001 Fee Form.xlsx saved to the project folder.")
     ).toBeTruthy();
+  });
+
+  it("explains a confirmed Fee preview when the project folder is unavailable", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    apiMocks.previewFeeFormPublication.mockResolvedValue({
+      mode: "download",
+      status: "ready",
+      authority_status: "confirmed",
+      existing_file: false,
+      existing_modified_at: null,
+      blockers: [],
+      preview_token: "confirmed-download-preview",
+    });
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
+
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Download Fee Form preview?",
+    });
+    expect(within(dialog).getByText(/no available project folder/i)).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Download preview" })).toBeTruthy();
+    expect(apiMocks.generateConfirmedMatrixFeeFileDownload).not.toHaveBeenCalled();
+  });
+
+  it("cancels a Fee Form preview without generating a file", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Download Fee Form draft preview?",
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    expect(apiMocks.generateConfirmedMatrixFeeFileDownload).not.toHaveBeenCalled();
+    expect(apiMocks.publishFeeForm).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 
   it("confirms Fee Evaluation with the latest autosaved draft id and returns to Workbench", async () => {
@@ -1208,6 +1258,12 @@ describe("FeeEvaluationReviewExportPage", () => {
     fireEvent.click(feeForm);
     expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
     expect(apiMocks.saveFeeEvaluationPricingDraft).not.toHaveBeenCalled();
+    const previewDialog = await screen.findByRole("alertdialog", {
+      name: "Download Fee Form draft preview?",
+    });
+    fireEvent.click(
+      within(previewDialog).getByRole("button", { name: "Download draft preview" })
+    );
     await waitFor(() =>
       expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalledWith(
         "P1",
@@ -1411,6 +1467,12 @@ describe("FeeEvaluationReviewExportPage", () => {
     const feeForm = await screen.findByRole("button", { name: "Fee Form" });
     await waitFor(() => expect((feeForm as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(feeForm);
+    const previewDialog = await screen.findByRole("alertdialog", {
+      name: "Download Fee Form draft preview?",
+    });
+    fireEvent.click(
+      within(previewDialog).getByRole("button", { name: "Download draft preview" })
+    );
 
     await waitFor(() => {
       expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalledWith(
@@ -1440,6 +1502,12 @@ describe("FeeEvaluationReviewExportPage", () => {
     const feeForm = await screen.findByRole("button", { name: "Fee Form" });
     await waitFor(() => expect((feeForm as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(feeForm);
+    const previewDialog = await screen.findByRole("alertdialog", {
+      name: "Download Fee Form draft preview?",
+    });
+    fireEvent.click(
+      within(previewDialog).getByRole("button", { name: "Download draft preview" })
+    );
 
     expect(
       await screen.findByText("Fee Evaluation export timed out after 90 seconds.")
@@ -1463,6 +1531,12 @@ describe("FeeEvaluationReviewExportPage", () => {
     const feeForm = await screen.findByRole("button", { name: "Fee Form" });
     await waitFor(() => expect((feeForm as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(feeForm);
+    const previewDialog = await screen.findByRole("alertdialog", {
+      name: "Download Fee Form draft preview?",
+    });
+    fireEvent.click(
+      within(previewDialog).getByRole("button", { name: "Download draft preview" })
+    );
 
     expect(
       await screen.findByText(
@@ -1525,6 +1599,7 @@ function arrangeSuccessfulContext(
   apiMocks.previewFeeFormPublication.mockResolvedValue({
     mode: "download",
     status: "ready",
+    authority_status: "unconfirmed",
     existing_file: false,
     existing_modified_at: null,
     blockers: [],

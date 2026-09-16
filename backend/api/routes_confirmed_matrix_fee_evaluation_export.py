@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -50,6 +50,7 @@ from backend.application.project_output_record_service import (
     ProjectOutputRecordNotFoundError,
 )
 from backend.application.fee_form_publication_service import (
+    ExecuteFeeFormDownloadCommand,
     ExecuteFeeFormPublicationCommand,
     FeeFormPublicationBlockedError,
     FeeFormPublicationConflictError,
@@ -89,9 +90,14 @@ class FeeFormPublicationExecuteRequest(ConfirmedMatrixFeeEvaluationEditedFileReq
     conflict_action: str = Field(pattern="^(none|archive|recycle)$")
 
 
+class FeeFormDownloadRequest(ConfirmedMatrixFeeEvaluationEditedFileRequest):
+    preview_token: str = Field(min_length=1)
+
+
 class FeeFormPublicationPreviewResponse(BaseModel):
     mode: str
     status: str
+    authority_status: str
     existing_file: bool
     existing_modified_at: str | None
     blockers: list[str]
@@ -167,9 +173,12 @@ def export_confirmed_matrix_fee_evaluation(
 @router.post("/api/projects/{project_id}/confirmed-matrix/fee-evaluation/file/generate")
 def generate_confirmed_matrix_fee_file(
     project_id: str,
-    request: ConfirmedMatrixFeeEvaluationEditedFileRequest | None = Body(default=None),
+    request: FeeFormDownloadRequest,
     service: FeeEvaluationExportServicePort = Depends(
         get_confirmed_matrix_fee_evaluation_export_service
+    ),
+    publication_service: FeeFormPublicationService = Depends(
+        get_fee_form_publication_service
     ),
     settings: Settings = Depends(get_settings),
     template_resource_store: FeeEvaluationTemplateResourceStore = Depends(
@@ -180,6 +189,14 @@ def generate_confirmed_matrix_fee_file(
     output_dir = settings.data_dir / FEE_FILE_DOWNLOAD_DIR_NAME
     output_dir.mkdir(parents=True, exist_ok=True)
     try:
+        service_values = request.to_application()
+        publication_service.validate_download(
+            ExecuteFeeFormDownloadCommand(
+                project_id=project_id,
+                current_values=service_values,
+                preview_token=request.preview_token,
+            )
+        )
         template_path = resolve_fee_evaluation_template_path(template_resource_store)
         result = service.export(
             ExportConfirmedMatrixFeeEvaluationCommand(
@@ -191,15 +208,11 @@ def generate_confirmed_matrix_fee_file(
                 allow_review_required=True,
                 fill_mode="matrix_basic",
                 output_purpose="draft_preview",
-                edited_values=request.to_application() if request else None,
-                pricing_draft_edit_id=(request.pricing_draft_edit_id if request else None),
-                pricing_draft_generation=(request.pricing_draft_generation if request else None),
-                pricing_draft_payload_fingerprint=(
-                    request.pricing_draft_payload_fingerprint if request else None
-                ),
-                pricing_draft_validation_token=(
-                    request.pricing_draft_validation_token if request else None
-                ),
+                edited_values=service_values,
+                pricing_draft_edit_id=request.pricing_draft_edit_id,
+                pricing_draft_generation=request.pricing_draft_generation,
+                pricing_draft_payload_fingerprint=request.pricing_draft_payload_fingerprint,
+                pricing_draft_validation_token=request.pricing_draft_validation_token,
             )
         )
     except (
@@ -226,6 +239,10 @@ def generate_confirmed_matrix_fee_file(
         ) from exc
     except CurrentFeePricingDraftRequiredError as exc:
         raise_fee_pricing_draft_not_current(exc)
+    except FeeFormPublicationConflictError as exc:
+        raise HTTPException(status_code=409, detail=diagnostic_message(exc)) from exc
+    except FeeFormPublicationBlockedError as exc:
+        raise HTTPException(status_code=422, detail=diagnostic_message(exc)) from exc
     except (ConfirmedMatrixFeeEvaluationExportError, ProjectOutputRecordError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ValueError as exc:
@@ -257,6 +274,7 @@ def preview_fee_form_publication(
     return FeeFormPublicationPreviewResponse(
         mode=preview.mode,
         status=preview.status,
+        authority_status=preview.authority_status,
         existing_file=preview.existing_file,
         existing_modified_at=preview.existing_modified_at,
         blockers=list(preview.blockers),

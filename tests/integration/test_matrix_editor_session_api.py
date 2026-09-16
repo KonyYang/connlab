@@ -268,7 +268,7 @@ def test_unconfirmed_import_edits_survive_save_reopen_and_first_confirm(tmp_path
         assert authority["editor_draft"]["rows"][0]["method"] == "Edited before first confirm"
         assert authority["active_source_import_id"] == source_import_id
         draft = authority["editor_draft"]
-        export = client.post("/api/projects/P1/matrix-editor/live-xlsx-export", json={
+        export_payload = {
             "source": "matrix_editor_current_ui_state", "project_reference": "ISOLATED-P1",
             "groups": [{"group_id": g["draft_group_id"], "group_key": g["group_key"],
                 "group_label": g["group_label"], "sample_size": g["sample_quantity_expression"] or ""}
@@ -280,7 +280,20 @@ def test_unconfirmed_import_edits_survive_save_reopen_and_first_confirm(tmp_path
                     (c["cell_value"] for c in draft["cells"]
                      if c["draft_row_id"] == r["draft_row_id"] and c["draft_group_id"] == g["draft_group_id"]), "")}
                     for g in draft["groups"]]}
-                for r in draft["rows"]]})
+                for r in draft["rows"]]}
+        export_preview = client.post(
+            "/api/projects/P1/matrix-editor/live-xlsx-export/publication/preview",
+            json=export_payload,
+        )
+        assert export_preview.status_code == 200, export_preview.text
+        assert export_preview.json()["mode"] == "download"
+        export = client.post(
+            "/api/projects/P1/matrix-editor/live-xlsx-export",
+            json={
+                **export_payload,
+                "preview_token": export_preview.json()["preview_token"],
+            },
+        )
         assert export.status_code == 200, export.text
         workbook = load_workbook(BytesIO(export.content), read_only=True)
         try:

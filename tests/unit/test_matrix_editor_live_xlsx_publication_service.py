@@ -14,6 +14,7 @@ from backend.application.matrix_editor_live_xlsx_export_service import (
 )
 from backend.application.matrix_editor_live_xlsx_publication_service import (
     ConfirmedMatrixLiveXlsxAuthorityMatcher,
+    ExecuteMatrixEditorLiveXlsxDownloadCommand,
     ExecuteMatrixEditorLiveXlsxPublicationCommand,
     MatrixEditorLiveXlsxPublicationBlockedError,
     MatrixEditorLiveXlsxPublicationConflictError,
@@ -40,6 +41,7 @@ def test_preview_keeps_download_mode_before_project_folder_exists() -> None:
 
     assert preview.mode == "download"
     assert preview.status == "ready"
+    assert preview.authority_status == "confirmed"
 
 
 def test_authority_matcher_ignores_draft_ids_and_matches_confirmed_projection() -> None:
@@ -108,6 +110,38 @@ def test_preview_downloads_draft_when_current_matrix_is_not_confirmed(
 
     assert preview.mode == "download"
     assert preview.status == "ready"
+    assert preview.authority_status == "unconfirmed"
+
+
+def test_download_validation_rechecks_matrix_authority_and_preview_token(
+    tmp_path: Path,
+) -> None:
+    authority = _AuthorityMatcher(matches=False)
+    service = MatrixEditorLiveXlsxPublicationService(
+        workspace_store=_WorkspaceStore(_workspace(tmp_path)),
+        authority_matcher=authority,
+        export_service=_ExportService(),
+        file_gateway=_FileGateway(),
+    )
+    preview = service.preview(
+        PreviewMatrixEditorLiveXlsxPublicationCommand("P1", _request())
+    )
+
+    validated = service.validate_download(
+        ExecuteMatrixEditorLiveXlsxDownloadCommand(
+            "P1", _request(), preview.preview_token
+        )
+    )
+    assert validated.mode == "download"
+    assert validated.authority_status == "unconfirmed"
+
+    authority.matches = True
+    with pytest.raises(MatrixEditorLiveXlsxPublicationConflictError, match="changed"):
+        service.validate_download(
+            ExecuteMatrixEditorLiveXlsxDownloadCommand(
+                "P1", _request(), preview.preview_token
+            )
+        )
 
 
 def test_preview_targets_formal_matrix_in_source_book_when_authority_matches(

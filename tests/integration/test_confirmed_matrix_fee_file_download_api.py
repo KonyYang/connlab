@@ -26,6 +26,7 @@ from backend.application.fee_evaluation_export_lineage import (
     FeeEvaluationExportLineTrace,
 )
 from backend.application.fee_form_publication_service import (
+    ExecuteFeeFormDownloadCommand,
     ExecuteFeeFormPublicationCommand,
     PreviewFeeFormPublicationCommand,
 )
@@ -46,7 +47,8 @@ def test_fee_file_download_route_returns_generated_xlsx_and_uses_matrix_basic_fi
     _install_route_overrides(settings, service, template_folder)
     try:
         response = TestClient(app).post(
-            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate"
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate",
+            json=_download_payload(),
         )
     finally:
         app.dependency_overrides.clear()
@@ -81,6 +83,7 @@ def test_fee_file_download_route_accepts_edited_payload(
         response = TestClient(app).post(
             "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate",
             json={
+                "preview_token": "preview-token",
                 "rows": [
                     {
                         "source_line_id": "cmv-1:g1:cmr-1:1:0",
@@ -167,6 +170,7 @@ def test_fee_form_publication_routes_preserve_preview_and_conflict_contract(
     assert preview_response.json() == {
         "mode": "official",
         "status": "conflict",
+        "authority_status": "confirmed",
         "existing_file": True,
         "existing_modified_at": "2026-08-28T10:30:00+08:00",
         "blockers": [],
@@ -198,6 +202,7 @@ def test_fee_file_download_route_rejects_incomplete_sample_preparation_identity(
         response = TestClient(app).post(
             "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate",
             json={
+                "preview_token": "preview-token",
                 "manual_rows": [
                     {
                         "row_kind": "sample_preparation",
@@ -255,6 +260,7 @@ def test_fee_file_download_route_rejects_duplicate_edited_row_identity(
         response = TestClient(app).post(
             "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate",
             json={
+                "preview_token": "preview-token",
                 "rows": [row, row],
                 "summary": {
                     "condition_confirmation_spend_time": "0",
@@ -279,7 +285,8 @@ def test_fee_file_download_route_rejects_service_path_outside_generated_fee_dir(
     _install_route_overrides(settings, _PathReturningExportService(outside))
     try:
         response = TestClient(app).post(
-            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate"
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate",
+            json=_download_payload(),
         )
     finally:
         app.dependency_overrides.clear()
@@ -297,7 +304,8 @@ def test_fee_file_download_route_rejects_non_xlsx_generated_path(tmp_path: Path)
     _install_route_overrides(settings, _PathReturningExportService(generated))
     try:
         response = TestClient(app).post(
-            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate"
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate",
+            json=_download_payload(),
         )
     finally:
         app.dependency_overrides.clear()
@@ -318,7 +326,8 @@ def test_fee_file_download_route_maps_missing_authority_to_404(tmp_path: Path) -
     )
     try:
         response = TestClient(app).post(
-            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate"
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate",
+            json=_download_payload(),
         )
     finally:
         app.dependency_overrides.clear()
@@ -334,7 +343,8 @@ def test_fee_file_download_route_maps_missing_fee_template_to_404(tmp_path: Path
     _install_route_overrides(settings, service, template_folder)
     try:
         response = TestClient(app).post(
-            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate"
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate",
+            json=_download_payload(),
         )
     finally:
         app.dependency_overrides.clear()
@@ -358,7 +368,8 @@ def test_fee_file_download_route_maps_timeout_to_structured_503(tmp_path: Path) 
     )
     try:
         response = TestClient(app).post(
-            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate"
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/file/generate",
+            json=_download_payload(),
         )
     finally:
         app.dependency_overrides.clear()
@@ -405,6 +416,9 @@ def _install_route_overrides(
         get_confirmed_matrix_fee_evaluation_export_service
     ] = lambda: service
     app.dependency_overrides[get_settings] = lambda: settings
+    app.dependency_overrides[get_fee_form_publication_service] = (
+        lambda: _DownloadPublicationService()
+    )
     app.dependency_overrides[get_fee_evaluation_template_resource_store] = (
         lambda: _TemplateFolderStore(folder)
     )
@@ -454,6 +468,7 @@ class _FakeFeeFormPublicationService:
         return SimpleNamespace(
             mode="official",
             status="conflict",
+            authority_status="confirmed",
             existing_file=True,
             existing_modified_at="2026-08-28T10:30:00+08:00",
             blockers=(),
@@ -468,6 +483,26 @@ class _FakeFeeFormPublicationService:
                 "D:/Projects/DL-2026-001/History/Fee Form/old.xlsx"
             ),
         )
+
+
+class _DownloadPublicationService:
+    def validate_download(self, command: ExecuteFeeFormDownloadCommand):
+        assert command.preview_token == "preview-token"
+        return SimpleNamespace(mode="download", status="ready")
+
+
+def _download_payload() -> dict:
+    return {
+        "preview_token": "preview-token",
+        "rows": [],
+        "manual_rows": [],
+        "summary": {
+            "condition_confirmation_spend_time": "0",
+            "external_cost": "0",
+            "external_cost_note": "",
+            "lab_manpower_hourly_rate": "200",
+        },
+    }
 
 
 class _PathReturningExportService:

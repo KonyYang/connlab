@@ -144,7 +144,7 @@ export function FeeEvaluationReviewExportPage({
   const [downloadState, setDownloadState] = useState<FeeFileDownloadState>({
     kind: "idle",
   });
-  const [feeFormConflict, setFeeFormConflict] =
+  const [feeFormConfirmation, setFeeFormConfirmation] =
     useState<FeeFormPublicationPreview | null>(null);
   const [saveState, setSaveState] = useState<FeePricingDraftSaveState>({
     kind: "loading",
@@ -785,34 +785,63 @@ export function FeeEvaluationReviewExportPage({
       return;
     }
     setDownloadState({ kind: "running" });
-    setFeeFormConflict(null);
+    setFeeFormConfirmation(null);
     try {
       const payload = buildEditedExportPayload(previewRows, costPreviewValues);
-      if (!isLifecycleReadonly) {
-        const preview = await previewFeeFormPublication(projectId, payload);
-        if (preview.status === "blocked") {
-          throw new Error(preview.blockers[0] ?? "Fee Form cannot be saved.");
-        }
-        if (preview.mode === "official") {
-          if (preview.status === "conflict") {
-            setFeeFormConflict(preview);
-            setDownloadState({ kind: "idle" });
-            return;
-          }
-          const result = await publishFeeForm(projectId, {
-            ...payload,
-            preview_token: preview.preview_token,
-            conflict_action: "none",
-          });
-          setDownloadState({
-            kind: "success",
-            fileName: result.file_name,
-            delivery: "official",
-          });
-          return;
-        }
+      const preview = await previewFeeFormPublication(projectId, payload);
+      if (preview.status === "blocked") {
+        throw new Error(preview.blockers[0] ?? "Fee Form cannot be saved.");
       }
-      const response = await generateConfirmedMatrixFeeFileDownload(projectId, payload);
+      if (preview.mode === "download") {
+        setFeeFormConfirmation(preview);
+        setDownloadState({ kind: "idle" });
+        return;
+      }
+      if (preview.status === "conflict") {
+        setFeeFormConfirmation(preview);
+        setDownloadState({ kind: "idle" });
+        return;
+      }
+      const result = await publishFeeForm(projectId, {
+        ...payload,
+        preview_token: preview.preview_token,
+        conflict_action: "none",
+      });
+      setDownloadState({
+        kind: "success",
+        fileName: result.file_name,
+        delivery: "official",
+      });
+      return;
+    } catch (error: unknown) {
+      const detail =
+        error instanceof ApiRequestError && isErrorDetailObject(error.detail)
+          ? error.detail
+          : null;
+      setDownloadState({
+        kind: "error",
+        message:
+          error instanceof ApiRequestError
+            ? businessReadableDownloadError(error)
+            : error instanceof Error && error.message.trim().length > 0
+              ? error.message
+              : "Fee file generation failed.",
+        manualCleanupWarning: detail?.manual_cleanup_warning ?? null,
+      });
+    }
+  }
+
+  async function confirmFeeFormDownload(): Promise<void> {
+    if (!feeFormConfirmation || feeFormConfirmation.mode !== "download") {
+      return;
+    }
+    setDownloadState({ kind: "running" });
+    try {
+      const payload = buildEditedExportPayload(previewRows, costPreviewValues);
+      const response = await generateConfirmedMatrixFeeFileDownload(projectId, {
+        ...payload,
+        preview_token: feeFormConfirmation.preview_token,
+      });
       const downloadFileName = feeFileNameFromPageContext({
         projectId,
         contextState,
@@ -820,6 +849,7 @@ export function FeeEvaluationReviewExportPage({
         responseFileName: response.fileName,
       });
       downloadBlob(response.blob, downloadFileName);
+      setFeeFormConfirmation(null);
       setDownloadState({ kind: "success", fileName: downloadFileName, delivery: "download" });
     } catch (error: unknown) {
       const detail =
@@ -911,17 +941,17 @@ export function FeeEvaluationReviewExportPage({
   async function resolveFeeFormConflict(
     action: "archive" | "recycle"
   ): Promise<void> {
-    if (!feeFormConflict) {
+    if (!feeFormConfirmation) {
       return;
     }
     setDownloadState({ kind: "running" });
     try {
       const result = await publishFeeForm(projectId, {
         ...buildEditedExportPayload(previewRows, costPreviewValues),
-        preview_token: feeFormConflict.preview_token,
+        preview_token: feeFormConfirmation.preview_token,
         conflict_action: action,
       });
-      setFeeFormConflict(null);
+      setFeeFormConfirmation(null);
       setDownloadState({
         kind: "success",
         fileName: result.file_name,
@@ -1252,7 +1282,7 @@ export function FeeEvaluationReviewExportPage({
         totals={previewTotals}
         updateFeeBlockersByRowId={updateFeeBlockersByRowId}
       />
-      {feeFormConflict ? (
+      {feeFormConfirmation ? (
         <section
           aria-describedby="fee-form-conflict-description"
           aria-labelledby="fee-form-conflict-title"
@@ -1261,28 +1291,61 @@ export function FeeEvaluationReviewExportPage({
           role="alertdialog"
         >
           <article className="official-output-conflict-panel">
-            <h3 id="fee-form-conflict-title">Replace existing Fee Form?</h3>
-            <p id="fee-form-conflict-description">
-              A file with the same name already exists in the project folder. Choose what
-              to do with the existing workbook before saving the confirmed version.
-            </p>
-            <div className="official-output-conflict-actions">
-              <button type="button" onClick={() => void resolveFeeFormConflict("archive")}>
-                Archive old file
-              </button>
-              <button type="button" onClick={() => void resolveFeeFormConflict("recycle")}>
-                Move old file to Recycle Bin
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setFeeFormConflict(null);
-                  setDownloadState({ kind: "idle" });
-                }}
-              >
-                Cancel
-              </button>
-            </div>
+            {feeFormConfirmation.mode === "download" ? (
+              <>
+                <h3 id="fee-form-conflict-title">
+                  {feeFormConfirmation.authority_status === "unconfirmed"
+                    ? "Download Fee Form draft preview?"
+                    : "Download Fee Form preview?"}
+                </h3>
+                <p id="fee-form-conflict-description">
+                  {feeFormConfirmation.authority_status === "unconfirmed"
+                    ? "The current Fee content is an unconfirmed draft. The preview will download to your system Downloads folder and will not change any official file in the project folder."
+                    : "The Fee is confirmed, but there is no available project folder. The preview will download to your system Downloads folder and will not be registered as an official project file."}
+                </p>
+                <div className="official-output-conflict-actions">
+                  <button type="button" onClick={() => void confirmFeeFormDownload()}>
+                    {feeFormConfirmation.authority_status === "unconfirmed"
+                      ? "Download draft preview"
+                      : "Download preview"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFeeFormConfirmation(null);
+                      setDownloadState({ kind: "idle" });
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 id="fee-form-conflict-title">Replace existing Fee Form?</h3>
+                <p id="fee-form-conflict-description">
+                  A file with the same name already exists in the project folder. Choose what
+                  to do with the existing workbook before saving the confirmed version.
+                </p>
+                <div className="official-output-conflict-actions">
+                  <button type="button" onClick={() => void resolveFeeFormConflict("archive")}>
+                    Archive old file
+                  </button>
+                  <button type="button" onClick={() => void resolveFeeFormConflict("recycle")}>
+                    Move old file to Recycle Bin
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFeeFormConfirmation(null);
+                      setDownloadState({ kind: "idle" });
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
           </article>
         </section>
       ) : null}

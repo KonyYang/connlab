@@ -74,11 +74,86 @@ describe("MatrixEditorWorkspace editing behavior", () => {
       rows: [expect.objectContaining({ test_method: "Unsaved export method" })],
     }));
     fireEvent.change(method, { target: { value: "Next edit" } });
-    await act(async () => preview.resolve({ mode: "download", status: "ready" }));
+    await act(async () => preview.resolve({
+      mode: "download",
+      status: "ready",
+      authority_status: "unconfirmed",
+      existing_file: false,
+      existing_modified_at: null,
+      blockers: [],
+      preview_token: "matrix-download-token",
+    }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Download Matrix draft preview?",
+    });
+    expect(apiMocks.exportMatrixEditorLiveXlsx).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Download draft preview" }));
     await waitFor(() => expect(apiMocks.exportMatrixEditorLiveXlsx).toHaveBeenCalledWith("P1", expect.objectContaining({
+      preview_token: "matrix-download-token",
       rows: [expect.objectContaining({ test_method: "Unsaved export method" })],
     })));
     expect((method as HTMLTextAreaElement).value).toBe("Next edit");
+  });
+
+  it("explains a confirmed Matrix preview when the project folder is unavailable", async () => {
+    apiMocks.previewMatrixEditorLiveXlsxPublication.mockResolvedValueOnce({
+      mode: "download",
+      status: "ready",
+      authority_status: "confirmed",
+      existing_file: false,
+      existing_modified_at: null,
+      blockers: [],
+      preview_token: "confirmed-matrix-download",
+    });
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Export Matrix" }));
+
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Download Matrix preview?",
+    });
+    expect(within(dialog).getByText(/no available project folder/i)).toBeTruthy();
+    expect(apiMocks.exportMatrixEditorLiveXlsx).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(apiMocks.exportMatrixEditorLiveXlsx).not.toHaveBeenCalled();
+  });
+
+  it("uses one conflict dialog before replacing an existing official Matrix workbook", async () => {
+    apiMocks.previewMatrixEditorLiveXlsxPublication.mockResolvedValueOnce({
+      mode: "official",
+      status: "conflict",
+      authority_status: "confirmed",
+      existing_file: true,
+      existing_modified_at: "2026-09-16T10:30:00+08:00",
+      blockers: [],
+      preview_token: "matrix-conflict-token",
+    });
+    apiMocks.publishMatrixEditorLiveXlsx.mockResolvedValueOnce({
+      file_name: "DL-001 Matrix.xlsx",
+      archive_path: "D:/Projects/DL-001/History/Matrix/old.xlsx",
+    });
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Export Matrix" }));
+
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Replace existing Matrix workbook?",
+    });
+    expect(screen.getAllByRole("alertdialog")).toHaveLength(1);
+    expect(apiMocks.publishMatrixEditorLiveXlsx).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Archive old file" }));
+    await waitFor(() =>
+      expect(apiMocks.publishMatrixEditorLiveXlsx).toHaveBeenCalledWith(
+        "P1",
+        expect.objectContaining({
+          preview_token: "matrix-conflict-token",
+          conflict_action: "archive",
+        })
+      )
+    );
   });
 
   it("exports unique stable identities after inserting a group between source groups", async () => {

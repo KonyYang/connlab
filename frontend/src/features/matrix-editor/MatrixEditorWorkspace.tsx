@@ -1641,7 +1641,7 @@ export function MatrixEditorWorkspace({
           {matrixXlsxExport.error || matrixXlsxExport.message}
         </section>
       ) : null}
-      {matrixXlsxExport.conflict ? (
+      {matrixXlsxExport.confirmation ? (
         <section
           aria-describedby="matrix-xlsx-conflict-description"
           aria-labelledby="matrix-xlsx-conflict-title"
@@ -1650,40 +1650,75 @@ export function MatrixEditorWorkspace({
           role="alertdialog"
         >
           <article className="official-output-conflict-panel">
-            <h3 id="matrix-xlsx-conflict-title">Replace existing Matrix workbook?</h3>
-            <p id="matrix-xlsx-conflict-description">
-              A file with the same name already exists in Source Book. Choose what to do
-              with the existing workbook before the confirmed Matrix is saved.
-            </p>
-            {matrixXlsxExport.conflict.existing_modified_at ? (
-              <p className="fine-print">
-                Existing file modified:{" "}
-                {new Date(matrixXlsxExport.conflict.existing_modified_at).toLocaleString()}
-              </p>
-            ) : null}
-            <div className="official-output-conflict-actions">
-              <button
-                type="button"
-                disabled={matrixXlsxExport.busy}
-                onClick={() => void matrixXlsxExport.resolveConflict("archive")}
-              >
-                Archive old file
-              </button>
-              <button
-                type="button"
-                disabled={matrixXlsxExport.busy}
-                onClick={() => void matrixXlsxExport.resolveConflict("recycle")}
-              >
-                Move old file to Recycle Bin
-              </button>
-              <button
-                type="button"
-                disabled={matrixXlsxExport.busy}
-                onClick={matrixXlsxExport.cancelConflict}
-              >
-                Cancel
-              </button>
-            </div>
+            {matrixXlsxExport.confirmation.mode === "download" ? (
+              <>
+                <h3 id="matrix-xlsx-conflict-title">
+                  {matrixXlsxExport.confirmation.authority_status === "unconfirmed"
+                    ? "Download Matrix draft preview?"
+                    : "Download Matrix preview?"}
+                </h3>
+                <p id="matrix-xlsx-conflict-description">
+                  {matrixXlsxExport.confirmation.authority_status === "unconfirmed"
+                    ? "The current Matrix content is an unconfirmed draft. The preview will download to your system Downloads folder and will not change any official file in the project folder."
+                    : "The Matrix is confirmed, but there is no available project folder. The preview will download to your system Downloads folder and will not be registered as an official project file."}
+                </p>
+                <div className="official-output-conflict-actions">
+                  <button
+                    type="button"
+                    disabled={matrixXlsxExport.busy}
+                    onClick={() => void matrixXlsxExport.confirmDownload()}
+                  >
+                    {matrixXlsxExport.confirmation.authority_status === "unconfirmed"
+                      ? "Download draft preview"
+                      : "Download preview"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={matrixXlsxExport.busy}
+                    onClick={matrixXlsxExport.cancelConfirmation}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 id="matrix-xlsx-conflict-title">Replace existing Matrix workbook?</h3>
+                <p id="matrix-xlsx-conflict-description">
+                  A file with the same name already exists in Source Book. Choose what to do
+                  with the existing workbook before the confirmed Matrix is saved.
+                </p>
+                {matrixXlsxExport.confirmation.existing_modified_at ? (
+                  <p className="fine-print">
+                    Existing file modified:{" "}
+                    {new Date(matrixXlsxExport.confirmation.existing_modified_at).toLocaleString()}
+                  </p>
+                ) : null}
+                <div className="official-output-conflict-actions">
+                  <button
+                    type="button"
+                    disabled={matrixXlsxExport.busy}
+                    onClick={() => void matrixXlsxExport.resolveConflict("archive")}
+                  >
+                    Archive old file
+                  </button>
+                  <button
+                    type="button"
+                    disabled={matrixXlsxExport.busy}
+                    onClick={() => void matrixXlsxExport.resolveConflict("recycle")}
+                  >
+                    Move old file to Recycle Bin
+                  </button>
+                  <button
+                    type="button"
+                    disabled={matrixXlsxExport.busy}
+                    onClick={matrixXlsxExport.cancelConfirmation}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
           </article>
         </section>
       ) : null}

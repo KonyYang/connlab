@@ -2077,6 +2077,7 @@ export type MatrixSourceCandidate = {
 export type MatrixEditorLiveXlsxPublicationPreview = {
   mode: "download" | "official";
   status: "ready" | "conflict" | "blocked";
+  authority_status: "confirmed" | "unconfirmed";
   existing_file: boolean;
   existing_modified_at: string | null;
   blockers: string[];
@@ -3175,6 +3176,7 @@ export type FrontendErrorReport = {
 export type FeeFormPublicationPreview = {
   mode: "download" | "official";
   status: "ready" | "blocked" | "conflict";
+  authority_status: "confirmed" | "unconfirmed";
   existing_file: boolean;
   existing_modified_at: string | null;
   blockers: string[];
@@ -4728,17 +4730,15 @@ export function exportConfirmedMatrixFeeEvaluation(
 
 export function generateConfirmedMatrixFeeFileDownload(
   projectId: string,
-  input?: FeeEvaluationEditedFileExportRequest
+  input: FeeEvaluationEditedFileExportRequest & { preview_token: string }
 ): Promise<BlobDownloadResponse> {
   return requestBlobResponse(
     `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/fee-evaluation/file/generate`,
-    input
-      ? {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
-        }
-      : { method: "POST" }
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
   );
 }
 
@@ -5447,7 +5447,7 @@ export function generateMatrixEditorLlcrCrRecordDraftDownload(
 
 export function exportMatrixEditorLiveXlsx(
   projectId: string,
-  input: MatrixEditorLiveXlsxExportRequest
+  input: MatrixEditorLiveXlsxExportRequest & { preview_token: string }
 ): Promise<BlobDownloadResponse> {
   return requestBlobResponse(
     `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/live-xlsx-export`,

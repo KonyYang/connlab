@@ -19,10 +19,11 @@ function installDownloadSpies() {
 }
 
 describe("useMatrixEditorXlsxExport", () => {
-  it("keeps the existing draft download when publication preview selects download mode", async () => {
+  it("waits for confirmation before downloading an unconfirmed Matrix preview", async () => {
     const apis = {
       preview: vi.fn().mockResolvedValue({
-        mode: "download", status: "ready", existing_file: false,
+        mode: "download", status: "ready", authority_status: "unconfirmed",
+        existing_file: false,
         existing_modified_at: null, blockers: [], preview_token: "draft-token",
       }),
       publish: vi.fn(),
@@ -34,7 +35,15 @@ describe("useMatrixEditorXlsxExport", () => {
     await act(() => result.current.exportSnapshot(request));
 
     expect(apis.preview).toHaveBeenCalledWith("p1", request);
-    expect(apis.download).toHaveBeenCalledWith("p1", request);
+    expect(apis.download).not.toHaveBeenCalled();
+    expect(result.current.confirmation?.authority_status).toBe("unconfirmed");
+
+    await act(() => result.current.confirmDownload());
+
+    expect(apis.download).toHaveBeenCalledWith("p1", {
+      ...request,
+      preview_token: "draft-token",
+    });
     expect(apis.publish).not.toHaveBeenCalled();
     expect(click).toHaveBeenCalledOnce();
     expect(create).toHaveBeenCalledOnce();
@@ -45,7 +54,8 @@ describe("useMatrixEditorXlsxExport", () => {
   it("publishes a matching confirmed Matrix directly to Source Book", async () => {
     const apis = {
       preview: vi.fn().mockResolvedValue({
-        mode: "official", status: "ready", existing_file: false,
+        mode: "official", status: "ready", authority_status: "confirmed",
+        existing_file: false,
         existing_modified_at: null, blockers: [], preview_token: "official-token",
       }),
       publish: vi.fn().mockResolvedValue({ file_name: "DL-1 Matrix.xlsx", archive_path: null }),
@@ -65,7 +75,8 @@ describe("useMatrixEditorXlsxExport", () => {
   it("waits for an explicit choice before replacing an existing formal Matrix", async () => {
     const apis = {
       preview: vi.fn().mockResolvedValue({
-        mode: "official", status: "conflict", existing_file: true,
+        mode: "official", status: "conflict", authority_status: "confirmed",
+        existing_file: true,
         existing_modified_at: "2026-08-29T10:30:00+08:00", blockers: [],
         preview_token: "conflict-token",
       }),
@@ -77,14 +88,14 @@ describe("useMatrixEditorXlsxExport", () => {
     const { result } = renderHook(() => useMatrixEditorXlsxExport("p1", apis));
 
     await act(() => result.current.exportSnapshot(request));
-    expect(result.current.conflict?.preview_token).toBe("conflict-token");
+    expect(result.current.confirmation?.preview_token).toBe("conflict-token");
     expect(apis.publish).not.toHaveBeenCalled();
 
     await act(() => result.current.resolveConflict("archive"));
     expect(apis.publish).toHaveBeenCalledWith("p1", {
       ...request, preview_token: "conflict-token", conflict_action: "archive",
     });
-    expect(result.current.conflict).toBeNull();
+    expect(result.current.confirmation).toBeNull();
     expect(result.current.message).toBe(
       "Saved DL-1 Matrix.xlsx; archived the previous file in History."
     );
@@ -93,7 +104,8 @@ describe("useMatrixEditorXlsxExport", () => {
   it("exposes an error and allows retry", async () => {
     const apis = {
       preview: vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({
-        mode: "download", status: "ready", existing_file: false,
+        mode: "download", status: "ready", authority_status: "unconfirmed",
+        existing_file: false,
         existing_modified_at: null, blockers: [], preview_token: "retry-token",
       }),
       publish: vi.fn(),
@@ -107,5 +119,25 @@ describe("useMatrixEditorXlsxExport", () => {
     await act(() => result.current.exportSnapshot(request));
     expect(apis.preview).toHaveBeenCalledTimes(2);
     expect(result.current.error).toBe("");
+  });
+
+  it("cancels a Matrix preview without generating a file", async () => {
+    const apis = {
+      preview: vi.fn().mockResolvedValue({
+        mode: "download", status: "ready", authority_status: "confirmed",
+        existing_file: false, existing_modified_at: null, blockers: [],
+        preview_token: "confirmed-download-token",
+      }),
+      publish: vi.fn(),
+      download: vi.fn(),
+    };
+    const { result } = renderHook(() => useMatrixEditorXlsxExport("p1", apis));
+
+    await act(() => result.current.exportSnapshot(request));
+    act(() => result.current.cancelConfirmation());
+
+    expect(apis.download).not.toHaveBeenCalled();
+    expect(apis.publish).not.toHaveBeenCalled();
+    expect(result.current.confirmation).toBeNull();
   });
 });

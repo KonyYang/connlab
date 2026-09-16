@@ -13,7 +13,9 @@ from backend.application.fee_evaluation_pricing_draft_serialization import (
     edited_values_to_json,
 )
 from backend.application.fee_form_publication_service import (
+    ExecuteFeeFormDownloadCommand,
     ExecuteFeeFormPublicationCommand,
+    FeeFormPublicationConflictError,
     FeeFormPublicationService,
     PreviewFeeFormPublicationCommand,
 )
@@ -27,6 +29,7 @@ def test_preview_downloads_draft_when_no_official_workspace_exists(tmp_path: Pat
 
     assert preview.mode == "download"
     assert preview.status == "ready"
+    assert preview.authority_status == "confirmed"
 
 
 def test_preview_downloads_draft_when_recorded_official_folder_is_missing(
@@ -41,6 +44,7 @@ def test_preview_downloads_draft_when_recorded_official_folder_is_missing(
     assert preview.mode == "download"
     assert preview.status == "ready"
     assert preview.blockers == ()
+    assert preview.authority_status == "confirmed"
 
 
 def test_preview_downloads_draft_when_current_values_are_not_confirmed(
@@ -54,6 +58,25 @@ def test_preview_downloads_draft_when_current_values_are_not_confirmed(
 
     assert preview.mode == "download"
     assert preview.status == "ready"
+    assert preview.authority_status == "unconfirmed"
+
+
+def test_download_validation_rechecks_authority_and_preview_token(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path)
+    service = _service(tmp_path, workspace=workspace)
+    values = _values(external_cost="99")
+    preview = service.preview(PreviewFeeFormPublicationCommand("P1", values))
+
+    validated = service.validate_download(
+        ExecuteFeeFormDownloadCommand("P1", values, preview.preview_token)
+    )
+    assert validated.mode == "download"
+    assert validated.authority_status == "unconfirmed"
+
+    with pytest.raises(FeeFormPublicationConflictError, match="changed"):
+        service.validate_download(
+            ExecuteFeeFormDownloadCommand("P1", _values(), preview.preview_token)
+        )
 
 
 def test_preview_offers_official_target_for_current_confirmed_fee(

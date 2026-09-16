@@ -277,10 +277,18 @@ class ExecuteMatrixEditorLiveXlsxPublicationCommand:
 
 
 @dataclass(frozen=True, slots=True)
+class ExecuteMatrixEditorLiveXlsxDownloadCommand:
+    project_id: str
+    request: MatrixEditorLiveXlsxExportRequest
+    preview_token: str
+
+
+@dataclass(frozen=True, slots=True)
 class MatrixEditorLiveXlsxPublicationPreview:
     project_id: str
     mode: str
     status: str
+    authority_status: str
     target_path: Path | None
     target_fingerprint: str | None
     existing_file: bool
@@ -317,28 +325,35 @@ class MatrixEditorLiveXlsxPublicationService:
         self,
         command: PreviewMatrixEditorLiveXlsxPublicationCommand,
     ) -> MatrixEditorLiveXlsxPublicationPreview:
-        workspace = self._workspaces.get_by_project(command.project_id)
-        if workspace is None:
-            return self._preview_result(command, mode="download")
-        if not self._authority.matches_active_authority(
+        authority_matches = self._authority.matches_active_authority(
             command.project_id,
             command.request,
-        ):
-            return self._preview_result(command, mode="download")
-        source_book = Path(workspace.source_book_path)
-        if not source_book.is_dir():
+        )
+        authority_status = "confirmed" if authority_matches else "unconfirmed"
+        if not authority_matches:
+            return self._preview_result(
+                command, mode="download", authority_status=authority_status
+            )
+        workspace = self._workspaces.get_by_project(command.project_id)
+        if workspace is None:
+            return self._preview_result(
+                command, mode="download", authority_status=authority_status
+            )
+        source_book_value = getattr(workspace, "source_book_path", None)
+        if not source_book_value or not Path(source_book_value).is_dir():
             return self._preview_result(
                 command,
-                mode="official",
-                status="blocked",
-                blockers=("The recorded Source Book folder is missing.",),
+                mode="download",
+                authority_status=authority_status,
             )
+        source_book = Path(source_book_value)
         dl_number = _text(getattr(workspace, "dl_number", ""))
         if not dl_number:
             return self._preview_result(
                 command,
                 mode="official",
                 status="blocked",
+                authority_status=authority_status,
                 blockers=("The project folder is missing its DL/LTR Number.",),
             )
         target = source_book / f"{safe_matrix_xlsx_reference(dl_number)} Matrix.xlsx"
@@ -347,6 +362,7 @@ class MatrixEditorLiveXlsxPublicationService:
                 command,
                 mode="official",
                 status="blocked",
+                authority_status=authority_status,
                 target_path=target,
                 blockers=("The formal Matrix target is not a file.",),
             )
@@ -360,10 +376,32 @@ class MatrixEditorLiveXlsxPublicationService:
             command,
             mode="official",
             status="conflict" if fingerprint is not None else "ready",
+            authority_status=authority_status,
             target_path=target,
             target_fingerprint=fingerprint,
             existing_modified_at=modified_at,
         )
+
+    def validate_download(
+        self, command: ExecuteMatrixEditorLiveXlsxDownloadCommand
+    ) -> MatrixEditorLiveXlsxPublicationPreview:
+        """Revalidate that the current Matrix still belongs in download mode."""
+        current = self.preview(
+            PreviewMatrixEditorLiveXlsxPublicationCommand(
+                command.project_id, command.request
+            )
+        )
+        if current.preview_token != command.preview_token:
+            raise MatrixEditorLiveXlsxPublicationConflictError(
+                "Matrix authority or Source Book target changed after preview. Try again."
+            )
+        if current.status == "blocked":
+            raise MatrixEditorLiveXlsxPublicationBlockedError(current.blockers[0])
+        if current.mode != "download":
+            raise MatrixEditorLiveXlsxPublicationConflictError(
+                "Matrix destination changed after preview. Try again."
+            )
+        return current
 
     def execute(
         self,
@@ -440,6 +478,7 @@ class MatrixEditorLiveXlsxPublicationService:
         *,
         mode: str,
         status: str = "ready",
+        authority_status: str,
         target_path: Path | None = None,
         target_fingerprint: str | None = None,
         existing_modified_at: str | None = None,
@@ -452,6 +491,7 @@ class MatrixEditorLiveXlsxPublicationService:
             ),
             "mode": mode,
             "status": status,
+            "authority_status": authority_status,
             "target_path": str(target_path) if target_path else None,
             "target_fingerprint": target_fingerprint,
             "blockers": blockers,
@@ -468,6 +508,7 @@ class MatrixEditorLiveXlsxPublicationService:
             project_id=command.project_id,
             mode=mode,
             status=status,
+            authority_status=authority_status,
             target_path=target_path,
             target_fingerprint=target_fingerprint,
             existing_file=target_fingerprint is not None,

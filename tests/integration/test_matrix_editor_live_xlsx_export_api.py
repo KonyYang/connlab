@@ -12,6 +12,7 @@ from backend.application.matrix_editor_live_xlsx_export_service import (
     MatrixEditorLiveXlsxExportService,
 )
 from backend.application.matrix_editor_live_xlsx_publication_service import (
+    ExecuteMatrixEditorLiveXlsxDownloadCommand,
     ExecuteMatrixEditorLiveXlsxPublicationCommand,
     PreviewMatrixEditorLiveXlsxPublicationCommand,
 )
@@ -57,7 +58,11 @@ def client(service=None, publication_service=None, settings=None):
 
 def test_live_xlsx_api_returns_bytes_and_utf8_content_disposition():
     service = MatrixEditorLiveXlsxExportService(MatrixEditorLiveXlsxWorkbookGateway())
-    response = client(service).post("/api/projects/p1/matrix-editor/live-xlsx-export", json=payload())
+    publication = _PublicationService()
+    request = {**payload(), "preview_token": "preview-token"}
+    response = client(service, publication_service=publication).post(
+        "/api/projects/p1/matrix-editor/live-xlsx-export", json=request
+    )
     assert response.status_code == 200
     assert response.content.startswith(b"PK")
     assert response.headers["content-type"].startswith(
@@ -69,8 +74,10 @@ def test_live_xlsx_api_returns_bytes_and_utf8_content_disposition():
 def test_live_xlsx_api_returns_typed_422_for_zero_rows():
     invalid = payload()
     invalid["rows"] = []
+    invalid["preview_token"] = "preview-token"
     response = client(
-        MatrixEditorLiveXlsxExportService(MatrixEditorLiveXlsxWorkbookGateway())
+        MatrixEditorLiveXlsxExportService(MatrixEditorLiveXlsxWorkbookGateway()),
+        publication_service=_PublicationService(),
     ).post("/api/projects/p1/matrix-editor/live-xlsx-export", json=invalid)
     assert response.status_code == 422
     assert response.json()["detail"]["code"] == "matrix_editor_live_xlsx_export_blocked"
@@ -104,6 +111,7 @@ def test_publication_routes_preserve_preview_and_conflict_choice(tmp_path: Path)
     assert preview_response.json() == {
         "mode": "official",
         "status": "conflict",
+        "authority_status": "confirmed",
         "existing_file": True,
         "existing_modified_at": "2026-08-29T10:00:00+08:00",
         "blockers": [],
@@ -129,12 +137,14 @@ class _PublicationService:
     def __init__(self) -> None:
         self.preview_commands = []
         self.execute_commands = []
+        self.download_commands = []
 
     def preview(self, command):
         self.preview_commands.append(command)
         return SimpleNamespace(
             mode="official",
             status="conflict",
+            authority_status="confirmed",
             existing_file=True,
             existing_modified_at="2026-08-29T10:00:00+08:00",
             blockers=(),
@@ -147,3 +157,8 @@ class _PublicationService:
             file_name="DL-测试 Matrix.xlsx",
             archive_path=Path("D:/Projects/DL-测试/History/Matrix/old.xlsx"),
         )
+
+    def validate_download(self, command: ExecuteMatrixEditorLiveXlsxDownloadCommand):
+        self.download_commands.append(command)
+        assert command.preview_token == "preview-token"
+        return SimpleNamespace(mode="download", status="ready")

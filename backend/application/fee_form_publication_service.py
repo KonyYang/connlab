@@ -99,10 +99,18 @@ class ExecuteFeeFormPublicationCommand:
 
 
 @dataclass(frozen=True, slots=True)
+class ExecuteFeeFormDownloadCommand:
+    project_id: str
+    current_values: FeeEvaluationEditedExportValues
+    preview_token: str
+
+
+@dataclass(frozen=True, slots=True)
 class FeeFormPublicationPreview:
     project_id: str
     mode: str
     status: str
+    authority_status: str
     target_path: Path | None
     target_fingerprint: str | None
     existing_file: bool
@@ -142,33 +150,43 @@ class FeeFormPublicationService:
         self._lifecycle_write_guard = lifecycle_write_guard
 
     def preview(self, command: PreviewFeeFormPublicationCommand) -> FeeFormPublicationPreview:
-        workspace = self._workspaces.get_by_project(command.project_id)
-        if workspace is None:
-            return self._preview(command, mode="download")
         fee_result = self._fees.get_latest(command.project_id)
         fee = getattr(fee_result, "latest_confirmed_fee", None)
-        if getattr(fee_result, "status", None) != "current" or fee is None:
-            return self._preview(command, mode="download")
-        try:
-            confirmed_values = edited_values_from_json(
-                edited_values_json_from_confirmed_fee_snapshot(
-                    str(getattr(fee, "pricing_snapshot_json"))
+        authority_matches = False
+        if getattr(fee_result, "status", None) == "current" and fee is not None:
+            try:
+                confirmed_values = edited_values_from_json(
+                    edited_values_json_from_confirmed_fee_snapshot(
+                        str(getattr(fee, "pricing_snapshot_json"))
+                    )
                 )
+                authority_matches = confirmed_values == command.current_values
+            except (AttributeError, KeyError, TypeError, ValueError):
+                authority_matches = False
+        authority_status = "confirmed" if authority_matches else "unconfirmed"
+        if not authority_matches:
+            return self._preview(
+                command, mode="download", authority_status=authority_status
             )
-        except (AttributeError, KeyError, TypeError, ValueError):
-            return self._preview(command, mode="download")
-        if confirmed_values != command.current_values:
-            return self._preview(command, mode="download")
 
-        official = Path(workspace.official_folder_path)
-        if not official.is_dir():
-            return self._preview(command, mode="download")
+        workspace = self._workspaces.get_by_project(command.project_id)
+        if workspace is None:
+            return self._preview(
+                command, mode="download", authority_status=authority_status
+            )
+        official_value = getattr(workspace, "official_folder_path", None)
+        if not official_value or not Path(official_value).is_dir():
+            return self._preview(
+                command, mode="download", authority_status=authority_status
+            )
+        official = Path(official_value)
         basic = self._basic_information.get_latest_confirmed(command.project_id)
         if basic is None:
             return self._preview(
                 command,
                 mode="official",
                 status="blocked",
+                authority_status=authority_status,
                 blockers=("Confirm Basic Information before saving Fee Form.",),
             )
         identity = fee_form_identity(basic)
@@ -178,6 +196,7 @@ class FeeFormPublicationService:
                 command,
                 mode="official",
                 status="blocked",
+                authority_status=authority_status,
                 blockers=("Confirmed Basic Information is missing DL/LTR Number.",),
             )
         workspace_dl = str(getattr(workspace, "dl_number", "") or "").strip()
@@ -186,6 +205,7 @@ class FeeFormPublicationService:
                 command,
                 mode="official",
                 status="blocked",
+                authority_status=authority_status,
                 blockers=("Confirmed Basic Information does not match the project folder.",),
             )
         target = official / f"{_safe_file_stem(dl_number)} Fee Form.xlsx"
@@ -199,12 +219,34 @@ class FeeFormPublicationService:
             command,
             mode="official",
             status="conflict" if fingerprint else "ready",
+            authority_status=authority_status,
             target_path=target,
             target_fingerprint=fingerprint,
             existing_modified_at=modified_at,
             basic_information=basic,
             confirmed_fee=fee,
         )
+
+    def validate_download(
+        self, command: ExecuteFeeFormDownloadCommand
+    ) -> FeeFormPublicationPreview:
+        """Revalidate that the preview still belongs in browser-download mode."""
+        current = self.preview(
+            PreviewFeeFormPublicationCommand(
+                command.project_id, command.current_values
+            )
+        )
+        if current.preview_token != command.preview_token:
+            raise FeeFormPublicationConflictError(
+                "Fee Form destination or authority changed after preview. Try again."
+            )
+        if current.status == "blocked":
+            raise FeeFormPublicationBlockedError(current.blockers[0])
+        if current.mode != "download":
+            raise FeeFormPublicationConflictError(
+                "Fee Form destination changed after preview. Try again."
+            )
+        return current
 
     def execute(self, command: ExecuteFeeFormPublicationCommand) -> FeeFormPublicationResult:
         with operation("fee_form_publication", operation_id=context_payload().get("operation_id"), project_id=command.project_id):
@@ -295,6 +337,7 @@ class FeeFormPublicationService:
         *,
         mode: str,
         status: str = "ready",
+        authority_status: str,
         target_path: Path | None = None,
         target_fingerprint: str | None = None,
         existing_modified_at: str | None = None,
@@ -307,6 +350,7 @@ class FeeFormPublicationService:
             "current_values": asdict(command.current_values),
             "mode": mode,
             "status": status,
+            "authority_status": authority_status,
             "target_path": str(target_path) if target_path else None,
             "target_fingerprint": target_fingerprint,
             "blockers": blockers,
@@ -321,6 +365,7 @@ class FeeFormPublicationService:
             project_id=command.project_id,
             mode=mode,
             status=status,
+            authority_status=authority_status,
             target_path=target_path,
             target_fingerprint=target_fingerprint,
             existing_file=target_fingerprint is not None,

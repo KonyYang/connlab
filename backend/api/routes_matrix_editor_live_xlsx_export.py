@@ -25,6 +25,7 @@ from backend.application.matrix_editor_live_xlsx_export_service import (
     MatrixEditorLiveXlsxExportService,
 )
 from backend.application.matrix_editor_live_xlsx_publication_service import (
+    ExecuteMatrixEditorLiveXlsxDownloadCommand,
     ExecuteMatrixEditorLiveXlsxPublicationCommand,
     MatrixEditorLiveXlsxPublicationBlockedError,
     MatrixEditorLiveXlsxPublicationConflictError,
@@ -88,9 +89,14 @@ class LiveXlsxPublicationExecuteRequest(LiveXlsxExportRequest):
     conflict_action: str = Field(pattern="^(none|archive|recycle)$")
 
 
+class LiveXlsxDownloadRequest(LiveXlsxExportRequest):
+    preview_token: str = Field(min_length=1)
+
+
 class LiveXlsxPublicationPreviewResponse(BaseModel):
     mode: str
     status: str
+    authority_status: str
     existing_file: bool
     existing_modified_at: str | None
     blockers: list[str]
@@ -105,15 +111,27 @@ class LiveXlsxPublicationResultResponse(BaseModel):
 @router.post("/api/projects/{project_id}/matrix-editor/live-xlsx-export")
 def export_live_matrix_xlsx(
     project_id: str,
-    request: LiveXlsxExportRequest,
+    request: LiveXlsxDownloadRequest,
     service: MatrixEditorLiveXlsxExportService = Depends(
         get_matrix_editor_live_xlsx_export_service
     ),
+    publication_service: MatrixEditorLiveXlsxPublicationService = Depends(
+        get_matrix_editor_live_xlsx_publication_service
+    ),
 ) -> Response:
     """Return an immutable current-UI snapshot as XLSX bytes."""
-    del project_id
     try:
-        result = service.export(_to_application_request(request))
+        application_request = _to_application_request(request)
+        publication_service.validate_download(
+            ExecuteMatrixEditorLiveXlsxDownloadCommand(
+                project_id, application_request, request.preview_token
+            )
+        )
+        result = service.export(application_request)
+    except MatrixEditorLiveXlsxPublicationConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except MatrixEditorLiveXlsxPublicationBlockedError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except MatrixEditorLiveXlsxExportError as exc:
         raise HTTPException(
             status_code=422,
@@ -161,6 +179,7 @@ def preview_live_matrix_xlsx_publication(
     return LiveXlsxPublicationPreviewResponse(
         mode=preview.mode,
         status=preview.status,
+        authority_status=preview.authority_status,
         existing_file=preview.existing_file,
         existing_modified_at=preview.existing_modified_at,
         blockers=list(preview.blockers),
