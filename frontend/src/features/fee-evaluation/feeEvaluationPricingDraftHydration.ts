@@ -97,6 +97,12 @@ function shouldRestoreAutomaticSpendTime(
   if (!ownedFields || ownedFields.includes("spend_time")) {
     return false;
   }
+  // Missing defaults must never replace an already saved, valid man-hour value.
+  const automaticSpendTime = previewRow.spendTime.trim();
+  const automaticHours = Number(automaticSpendTime);
+  if (!automaticSpendTime || !Number.isFinite(automaticHours) || automaticHours < 0) {
+    return false;
+  }
   return !derivedNumericValuesMatch(savedRow.spend_time, previewRow.spendTime);
 }
 

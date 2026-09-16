@@ -18,6 +18,16 @@ import {
 } from "./feeEvaluationPreviewModel";
 
 describe("feeEvaluationPreviewModel", () => {
+  it.each(["0.5", "0", "1.25"])("uses backend man-hours %s for each expanded test step", (spendTime) => {
+    const draft = createDraft();
+    const visual = draft.groups[0].line_items.find((line) => line.test_item === "Visual Examination")!;
+    visual.spend_time = spendTime;
+    const rows = applyFeeEvaluationPreviewEdits(buildFeeEvaluationPreviewRows(draft), {});
+
+    expect(rows.filter((row) => row.description === "Visual Examination").map((row) => row.spendTime))
+      .toEqual([spendTime, spendTime]);
+  });
+
   it("maps fee draft rows into Testing Prices preview rows", () => {
     const rows = buildFeeEvaluationPreviewRows(createDraft());
 

@@ -66,6 +66,59 @@ vi.mock("../../api/client", async (importOriginal) => {
 });
 
 describe("FeeEvaluationReviewExportPage", () => {
+  it.each([false, true])("confirms a man-hour edit equal to the automatic default after save and reload (autosaved: %s)", async (autosaved) => {
+    arrangeSuccessfulContext();
+    const draft = createDraftWithEditableSingleLine();
+    draft.groups[0].line_items[0].spend_time = "0.5";
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(draft);
+    let payload = currentAuthorityPricingDraftPayload();
+    let generation = 1;
+    const response = () => currentPricingDraftResponse({
+      status: "current_v2",
+      saved_generation: generation,
+      saved_source_context_fingerprint: "context-1",
+      saved_payload_fingerprint: `payload-${generation}`,
+      saved_validation_token: `token-${generation}`,
+      payload,
+      // The backend no longer marks a field as overridden once it equals its default.
+      operator_row_provenance: {
+        [payload.rows[0].source_line_id]: payload.rows[0].spend_time === "0.5"
+          ? ["unit_type"] : ["spend_time", "unit_type"],
+      },
+    });
+    apiMocks.getFeeEvaluationPricingDraft.mockImplementation(async () => response());
+    apiMocks.saveFeeEvaluationPricingDraft.mockImplementation(async (_projectId, input) => {
+      payload = input;
+      generation += 1;
+      return response();
+    });
+    apiMocks.confirmFeeVersion.mockResolvedValue(createConfirmedFeeLatest({ status: "current" }));
+    const onBackToWorkbench = vi.fn();
+    const view = render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />);
+
+    const manHours = await screen.findByLabelText("Spend Time for group Group 1 step 1");
+    await waitFor(() => expect(manHours).toHaveProperty("value", "0"));
+    fireEvent.change(manHours, { target: { value: "0.5" } });
+    if (autosaved) {
+      await waitFor(() => expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1), { timeout: 1600 });
+    }
+    const confirm = screen.getByRole("button", { name: "Confirm" });
+    await waitFor(() => expect(confirm).toHaveProperty("disabled", false));
+    fireEvent.click(confirm);
+
+    await waitFor(() => expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith("P1", expect.objectContaining({
+      expected_generation: generation,
+      summary: expect.objectContaining({ working_hours: "5.0", lab_manpower_cost: "1000" }),
+    })));
+    expect(payload.rows[0].spend_time).toBe("0.5");
+    expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Unable to confirm Fee.")).toBeNull();
+    view.unmount();
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBackToWorkbench} />);
+    await waitFor(() => expect(screen.getByLabelText("Spend Time for group Group 1 step 1"))
+      .toHaveProperty("value", "0.5"));
+  });
+
   it("locks editable values during Confirm and unlocks them if saving fails", async () => {
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());

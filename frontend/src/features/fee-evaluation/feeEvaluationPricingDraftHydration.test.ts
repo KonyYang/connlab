@@ -183,6 +183,16 @@ describe("feeEvaluationPricingDraftHydration", () => {
     });
   });
 
+  it.each(["Pending", "", " ", "invalid", "-1", "Infinity"])("retains saved man-hours when the automatic default is unavailable (%s)", (spendTime) => {
+    const row = previewRow({ spendTime, description: "Visual Inspection" });
+    const saved = savedPayload({ spend_time: "0.5" });
+    const result = hydrateFeeEvaluationPricingDraft(
+      [row], saved, "current_v2_compatibility", { [row.sourceLineId]: [] }
+    );
+
+    expect(result.edits[row.lineId]).toMatchObject({ spendTime: "0.5" });
+  });
+
   it("keeps a Visual Inspection zero spend time when the operator explicitly set it", () => {
     const row = previewRow({ spendTime: "0.5", description: "Visual Inspection" });
     const saved = savedPayload({ spend_time: "0" });

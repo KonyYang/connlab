@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_CONFIRM_SPEND_TIME_ROUNDTRIP",
+    "summary": "Fix Fee confirmation after editing Visual Inspection man-hours",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Reproduce and correct automatic spend-time mapping and confirmation roundtrip without losing manual edits",
+    "scope_paths": [
+      "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts",
+      "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.ts",
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "b7154f4ca5f2c1d00df1b7a244dd94d0aaab1c29",
+    "started_at": "2026-09-16T23:14:33.687894Z",
+    "updated_at": "2026-09-16T23:14:33.687894Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FEE_VISUAL_INSPECTION_DEFAULT_TIME",
     "tier": "standard",

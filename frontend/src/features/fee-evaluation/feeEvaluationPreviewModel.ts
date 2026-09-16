@@ -614,7 +614,7 @@ function buildMatrixStepRows(
       groupLabel: line.group_label,
       stepToken: stepDisplay,
       stepIndex: index,
-      spendTime: "Pending",
+      spendTime: pendingValue(line.spend_time),
       description: line.test_item,
       unitPrice: pendingValue(line.unit_price),
       unitType: line.unit_label || line.calculation_strategy || "Pending",
