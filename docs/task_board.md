@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_FEE_CONFIRMED_DRAFT_HYDRATION",
     "summary": "Restore confirmed Fee Form authority after reopening Fee Evaluation instead of incorrectly reverting to Draft.",
@@ -26,59 +26,17 @@
     "risk_reasons": [],
     "activation_head": "bf3fd3035d1808c3cfe33165358b25ee14289300",
     "started_at": "2026-09-16T16:47:12.437479Z",
-    "updated_at": "2026-09-16T16:58:56.078443Z",
+    "updated_at": "2026-09-16T22:27:12.710142Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_FEE_CONFIRMED_DRAFT_HYDRATION",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "Verify LLCR/CR test-point quantity propagation into Fee Evaluation and confirmed/draft Fee Form action state.",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_FEE_CONFIRMED_DRAFT_HYDRATION",
-      "subject": "204f578f9fe69d2921f39b75124eb53e305655ec",
-      "summary": "Detect Matrix-aligned Sample preparation quantity drift so Confirm persists the normalized pricing draft before establishing Fee authority.",
-      "scope_ok": true,
-      "changed_paths": [
-        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
-        "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.test.ts",
-        "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.ts"
-      ],
-      "validation": [
-        {
-          "name": "Focused Fee hydration and page regression suite",
-          "status": "passed",
-          "summary": "48 tests passed."
-        },
-        {
-          "name": "Frontend production build",
-          "status": "passed",
-          "summary": "TypeScript and Vite production build completed successfully."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "summary": "Implemented the minimal Sample preparation units drift check with RED/GREEN coverage."
-        },
-        "reviewer": {
-          "status": "passed",
-          "summary": "Standards and spec review found no actionable findings or scope creep."
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Focused regression tests and the production build passed on the committed state."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "summary": "The exact clean HEAD contains only the scoped frontend behavior and regression tests."
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_FEE_GROUP_SUMMARY_PLACEMENT",
