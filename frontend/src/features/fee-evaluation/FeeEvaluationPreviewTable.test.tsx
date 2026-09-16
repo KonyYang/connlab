@@ -20,6 +20,7 @@ describe("FeeEvaluationPreviewTable", () => {
         costRisk={{ severity: "none", message: null }}
         confirmFeeActionState={{ kind: "idle" }}
         downloadState={{ kind: "idle" }}
+        feeFormButtonLabel="Download Draft Fee Form"
         draftPreviewNotice={null}
         grandCostLabel="0.00"
         groupFilter="all"

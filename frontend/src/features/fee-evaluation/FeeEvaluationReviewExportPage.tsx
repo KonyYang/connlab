@@ -665,11 +665,10 @@ export function FeeEvaluationReviewExportPage({
     !hasPricingDraftLocalChanges &&
     serverPricingPayloadSignature !== null &&
     serverPricingPayloadSignature === currentPricingDraftSignature;
-  const draftPreviewNotice =
-    feeFileDownloadBlocker(draftState) ??
-    (currentFeeIsConfirmed
-      ? "Current Fee is confirmed. Fee Form will save to the project folder when available."
-      : "Current page values are not confirmed. Select Confirm to establish the current Fee; Fee Form downloads as a draft until then.");
+  const draftPreviewNotice = feeFileDownloadBlocker(draftState);
+  const feeFormButtonLabel = currentFeeIsConfirmed
+    ? "Generate Official Fee Form"
+    : "Download Draft Fee Form";
 
   function applySavedPricingDraftResult(
     result: FeeEvaluationPricingDraftResponse,
@@ -1284,6 +1283,7 @@ export function FeeEvaluationReviewExportPage({
         header={previewHeader}
         identityLine={previewIdentityLine}
         downloadState={downloadState}
+        feeFormButtonLabel={feeFormButtonLabel}
         draftPreviewNotice={draftPreviewNotice}
         onCostPreviewChange={handleCostPreviewChange}
         onGenerateFeeFile={handleGenerateFeeFile}

@@ -20,6 +20,7 @@ type FeeEvaluationPreviewTableProps = {
   header: FeeEvaluationPreviewHeader;
   identityLine: string;
   downloadState: FeeFileDownloadState;
+  feeFormButtonLabel: "Download Draft Fee Form" | "Generate Official Fee Form";
   draftPreviewNotice: string | null;
   readOnly?: boolean;
   onCostPreviewChange: (field: keyof FeeEvaluationCostPreviewValues, value: string) => void;
@@ -82,6 +83,7 @@ export function FeeEvaluationPreviewTable({
   header,
   identityLine,
   downloadState,
+  feeFormButtonLabel,
   draftPreviewNotice,
   readOnly = false,
   onCostPreviewChange,
@@ -131,9 +133,9 @@ export function FeeEvaluationPreviewTable({
             type="button"
             onClick={onGenerateFeeFile}
             disabled={downloadState.kind === "running"}
-            title="Downloads a draft until the current Fee is confirmed; otherwise saves the official Fee Form."
+            title={feeFormButtonLabel}
           >
-            {downloadState.kind === "running" ? "Generating..." : "Fee Form"}
+            {downloadState.kind === "running" ? "Generating..." : feeFormButtonLabel}
           </button>
           {importControl}
         </div>

@@ -23,6 +23,8 @@ import {
   hydrateFeeEvaluationPreviewEditsFromSavedDraft,
 } from "./feeEvaluationPreviewModel";
 
+const FEE_FORM_ACTION_NAME = /^(?:Download Draft|Generate Official) Fee Form$/;
+
 const originalConsoleError = console.error.bind(console);
 let unexpectedActWarnings: string[] = [];
 
@@ -161,10 +163,10 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(screen.queryByLabelText("Confirmed by")).toBeNull();
     expect(screen.queryByText("Confirmed by")).toBeNull();
     expect(
-      await screen.findByText(
+      screen.queryByText(
         "Current page values are not confirmed. Select Confirm to establish the current Fee; Fee Form downloads as a draft until then."
       )
-    ).toBeTruthy();
+    ).toBeNull();
 
     const tables = screen.getAllByRole("table");
     expect(tables).toHaveLength(1);
@@ -181,7 +183,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(screen.queryByText("Fee")).toBeNull();
     expect(screen.getByLabelText("Selected group fee")).toBeTruthy();
     expect(screen.getByText("Total Testing Fee")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Fee Form" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Download Draft Fee Form" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Back to Workbench" })).toBeNull();
     const completionDock = screen.getByLabelText("Fee Evaluation completion actions");
     expect(completionDock.classList.contains("fee-evaluation-completion-dock")).toBe(true);
@@ -394,7 +396,7 @@ describe("FeeEvaluationReviewExportPage", () => {
       screen.getByText("Lab manpower cost exceeds Grand Cost. Review pricing before sending the fee form.")
     ).toBeTruthy();
 
-    const feeFormButton = screen.getByRole("button", { name: "Fee Form" });
+    const feeFormButton = screen.getByRole("button", { name: FEE_FORM_ACTION_NAME });
     expect((feeFormButton as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(feeFormButton);
 
@@ -527,7 +529,7 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
+    fireEvent.click(await screen.findByRole("button", { name: FEE_FORM_ACTION_NAME }));
 
     expect(
       await screen.findByText("DL-2026-001 Fee Form.xlsx saved to the project folder.")
@@ -578,9 +580,12 @@ describe("FeeEvaluationReviewExportPage", () => {
     );
 
     expect(
-      await screen.findByText(
+      screen.queryByText(
         "Current Fee is confirmed. Fee Form will save to the project folder when available."
       )
+    ).toBeNull();
+    expect(
+      await screen.findByRole("button", { name: "Generate Official Fee Form" })
     ).toBeTruthy();
   });
 
@@ -603,7 +608,7 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
+    fireEvent.click(await screen.findByRole("button", { name: FEE_FORM_ACTION_NAME }));
 
     expect(await screen.findByRole("alertdialog", { name: "Replace existing Fee Form?" })).toBeTruthy();
     expect(screen.getAllByRole("alertdialog")).toHaveLength(1);
@@ -638,7 +643,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     });
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
+    fireEvent.click(await screen.findByRole("button", { name: FEE_FORM_ACTION_NAME }));
 
     const dialog = await screen.findByRole("alertdialog", {
       name: "Download Fee Form preview?",
@@ -653,7 +658,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Fee Form" }));
+    fireEvent.click(await screen.findByRole("button", { name: FEE_FORM_ACTION_NAME }));
     const dialog = await screen.findByRole("alertdialog", {
       name: "Download Fee Form draft preview?",
     });
@@ -1313,7 +1318,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     const updateButton = screen.getByRole("button", { name: "Confirm" });
     expect(updateButton).toHaveProperty("disabled", true);
     fireEvent.click(updateButton);
-    const feeForm = screen.getByRole("button", { name: "Fee Form" });
+    const feeForm = screen.getByRole("button", { name: FEE_FORM_ACTION_NAME });
     expect((feeForm as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(feeForm);
     expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
@@ -1498,7 +1503,7 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    const exportButton = await screen.findByRole("button", { name: "Fee Form" });
+    const exportButton = await screen.findByRole("button", { name: FEE_FORM_ACTION_NAME });
     await waitFor(() => expect((exportButton as HTMLButtonElement).disabled).toBe(false));
     expect(
       screen.queryByText("Create the project folder before generating the workbook.")
@@ -1524,7 +1529,7 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    const feeForm = await screen.findByRole("button", { name: "Fee Form" });
+    const feeForm = await screen.findByRole("button", { name: FEE_FORM_ACTION_NAME });
     await waitFor(() => expect((feeForm as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(feeForm);
     const previewDialog = await screen.findByRole("alertdialog", {
@@ -1559,7 +1564,7 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    const feeForm = await screen.findByRole("button", { name: "Fee Form" });
+    const feeForm = await screen.findByRole("button", { name: FEE_FORM_ACTION_NAME });
     await waitFor(() => expect((feeForm as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(feeForm);
     const previewDialog = await screen.findByRole("alertdialog", {
@@ -1588,7 +1593,7 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    const feeForm = await screen.findByRole("button", { name: "Fee Form" });
+    const feeForm = await screen.findByRole("button", { name: FEE_FORM_ACTION_NAME });
     await waitFor(() => expect((feeForm as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(feeForm);
     const previewDialog = await screen.findByRole("alertdialog", {
