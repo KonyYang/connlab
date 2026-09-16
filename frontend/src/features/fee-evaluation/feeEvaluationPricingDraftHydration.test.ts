@@ -152,6 +152,51 @@ describe("feeEvaluationPricingDraftHydration", () => {
     expect(savedPricingDraftDerivedFeesMatch(saved, hydrated)).toBe(true);
   });
 
+  it("restores the current Visual Inspection default when an old draft did not own its zero spend time", () => {
+    const row = previewRow({
+      spendTime: "0.5",
+      description: "Visual Inspection",
+      unitType: "per photo",
+      units: "3",
+      testingFee: "0",
+    });
+    const saved = savedPayload({
+      spend_time: "0",
+      unit_price: "10",
+      unit_type: "per photo",
+      units: "3",
+      testing_fee: "0",
+    });
+
+    const result = hydrateFeeEvaluationPricingDraft(
+      [row],
+      saved,
+      "current_v2_compatibility",
+      { [row.sourceLineId]: [] }
+    );
+
+    expect(result.edits[row.lineId]).not.toHaveProperty("spendTime");
+    expect(result.edits[row.lineId]).toMatchObject({
+      unitPrice: "10",
+      unitType: "per photo",
+      units: "3",
+    });
+  });
+
+  it("keeps a Visual Inspection zero spend time when the operator explicitly set it", () => {
+    const row = previewRow({ spendTime: "0.5", description: "Visual Inspection" });
+    const saved = savedPayload({ spend_time: "0" });
+
+    const result = hydrateFeeEvaluationPricingDraft(
+      [row],
+      saved,
+      "current_v2_compatibility",
+      { [row.sourceLineId]: ["spend_time"] }
+    );
+
+    expect(result.edits[row.lineId]).toMatchObject({ spendTime: "0" });
+  });
+
   it("treats a hydrated manual row missing from the saved draft as stale", () => {
     const saved = savedPayload();
     saved.rows = [];

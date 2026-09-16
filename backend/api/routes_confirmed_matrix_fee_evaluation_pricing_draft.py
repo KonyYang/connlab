@@ -29,6 +29,10 @@ from backend.application.fee_evaluation_pricing_draft_persistence_service import
     FeeEvaluationPricingDraftSnapshot,
     SaveFeeEvaluationPricingDraftCommand,
 )
+from backend.application.fee_evaluation_pricing_draft_v2_contract import (
+    FeePricingDraftEnvelopeError,
+    decode_pricing_draft_payload,
+)
 from backend.application.project_lifecycle_write_guard import (
     ProjectLifecycleReadonlyError,
     ProjectLifecycleWriteGuardNotFoundError,
@@ -69,6 +73,7 @@ class FeeEvaluationPricingDraftResponse(BaseModel):
     saved_payload_fingerprint: str | None = None
     saved_validation_token: str | None = None
     saved_source_context_fingerprint: str | None = None
+    operator_row_provenance: dict[str, list[str]] | None = None
     payload: ConfirmedMatrixFeeEvaluationEditedFileRequest | None = None
 
 
@@ -229,6 +234,9 @@ def _to_response(
         saved_source_context_fingerprint=(
             snapshot.source_context_fingerprint if snapshot else None
         ),
+        operator_row_provenance=(
+            _operator_row_provenance(snapshot) if snapshot else None
+        ),
         payload=(
             _to_payload(snapshot)
             if result.status in {"current", "current_v2", "rebase_required"}
@@ -236,6 +244,24 @@ def _to_response(
             else None
         ),
     )
+
+
+def _operator_row_provenance(
+    snapshot: FeeEvaluationPricingDraftSnapshot,
+) -> dict[str, list[str]] | None:
+    """Expose V2 ownership facts so the UI can retain only real operator edits."""
+    if not snapshot.payload_json:
+        return None
+    try:
+        decoded = decode_pricing_draft_payload(snapshot.payload_json)
+    except FeePricingDraftEnvelopeError:
+        return None
+    if decoded.kind != "v2":
+        return None
+    return {
+        source_line_id: list(fields)
+        for source_line_id, fields in decoded.row_provenance.items()
+    }
 
 
 def _to_payload(

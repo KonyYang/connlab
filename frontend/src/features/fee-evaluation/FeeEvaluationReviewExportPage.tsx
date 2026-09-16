@@ -357,7 +357,8 @@ export function FeeEvaluationReviewExportPage({
           }
           const hydrated = hydrateFeeEvaluationPreviewEditsFromSavedDraft(
             sourcePreviewRows,
-            result.payload
+            result.payload,
+            result.operator_row_provenance
           );
           setServerPricingPayloadSignature(pricingDraftSignature(result.payload));
           setPreviewEdits(hydrated.edits);
@@ -1045,7 +1046,8 @@ export function FeeEvaluationReviewExportPage({
     }
     const hydrated = hydrateFeeEvaluationPreviewEditsFromSavedDraft(
       sourcePreviewRows,
-      reloaded.payload
+      reloaded.payload,
+      reloaded.operator_row_provenance
     );
     const reloadedPayload = buildEditedExportPayload(
       applyFeeEvaluationPreviewEdits(sourcePreviewRows, hydrated.edits),
@@ -1221,7 +1223,8 @@ export function FeeEvaluationReviewExportPage({
       }
       const restored = hydrateFeeEvaluationPreviewEditsFromSavedDraft(
         sourcePreviewRows,
-        restoredServerDraft.payload
+        restoredServerDraft.payload,
+        restoredServerDraft.operator_row_provenance
       );
       const restoredPayload = buildEditedExportPayload(
         applyFeeEvaluationPreviewEdits(sourcePreviewRows, restored.edits),

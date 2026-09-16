@@ -12,7 +12,8 @@ export type FeeEvaluationPricingDraftHydrationMode =
 export function hydrateFeeEvaluationPricingDraft(
   previewRows: FeeEvaluationPreviewRow[],
   savedDraft: FeeEvaluationEditedFileExportRequest,
-  mode: FeeEvaluationPricingDraftHydrationMode
+  mode: FeeEvaluationPricingDraftHydrationMode,
+  operatorRowProvenance?: Readonly<Record<string, readonly string[]>> | null
 ): FeeEvaluationSavedDraftHydrationResult {
   const byIdentity = new Map(
     previewRows
@@ -39,7 +40,15 @@ export function hydrateFeeEvaluationPricingDraft(
     ) {
       continue;
     }
-    edits[previewRow.lineId] = hydrateRow(previewRow, row, mode);
+    const rowEdits = hydrateRow(previewRow, row, mode);
+    edits[previewRow.lineId] = shouldRestoreAutomaticSpendTime(
+      previewRow,
+      row,
+      mode,
+      operatorRowProvenance
+    )
+      ? omitSpendTime(rowEdits)
+      : rowEdits;
     appliedRowCount += 1;
   }
 
@@ -73,6 +82,29 @@ export function hydrateFeeEvaluationPricingDraft(
     appliedRowCount,
     unmatchedRowCount,
   };
+}
+
+function shouldRestoreAutomaticSpendTime(
+  previewRow: FeeEvaluationPreviewRow,
+  savedRow: FeeEvaluationEditedFileExportRequest["rows"][number],
+  mode: FeeEvaluationPricingDraftHydrationMode,
+  operatorRowProvenance?: Readonly<Record<string, readonly string[]>> | null
+): boolean {
+  if (mode !== "current_v2_compatibility" || !operatorRowProvenance) {
+    return false;
+  }
+  const ownedFields = operatorRowProvenance[savedRow.source_line_id];
+  if (!ownedFields || ownedFields.includes("spend_time")) {
+    return false;
+  }
+  return !derivedNumericValuesMatch(savedRow.spend_time, previewRow.spendTime);
+}
+
+function omitSpendTime<T extends { spendTime: string }>(
+  values: T
+): Omit<T, "spendTime"> {
+  const { spendTime: _spendTime, ...remaining } = values;
+  return remaining;
 }
 
 export function savedPricingDraftDerivedFeesMatch(

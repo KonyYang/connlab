@@ -337,12 +337,14 @@ export function applyFeeEvaluationPreviewEdits(
 
 export function hydrateFeeEvaluationPreviewEditsFromSavedDraft(
   previewRows: FeeEvaluationPreviewRow[],
-  savedDraft: FeeEvaluationEditedFileExportRequest
+  savedDraft: FeeEvaluationEditedFileExportRequest,
+  operatorRowProvenance?: Readonly<Record<string, readonly string[]>> | null
 ): FeeEvaluationSavedDraftHydrationResult {
   return hydrateFeeEvaluationPricingDraft(
     previewRows,
     savedDraft,
-    "current_v2_compatibility"
+    "current_v2_compatibility",
+    operatorRowProvenance
   );
 }
 

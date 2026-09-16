@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from fastapi.testclient import TestClient
 
 from backend.api.dependencies import get_fee_evaluation_pricing_draft_service
@@ -20,6 +22,13 @@ from backend.application.fee_evaluation_pricing_draft_persistence_service import
     FeeEvaluationPricingDraftLoadResult,
     FeeEvaluationPricingDraftSnapshot,
     SaveFeeEvaluationPricingDraftCommand,
+)
+from backend.application.fee_evaluation_pricing_draft_v2_contract import (
+    FeePricingDraftSourceContext,
+    encode_pricing_draft_v2,
+)
+from backend.application.fee_evaluation_pricing_draft_serialization import (
+    edited_values_to_payload,
 )
 from backend.application.project_lifecycle_write_guard import ProjectLifecycleReadonlyError
 from backend.domain import ProjectClosureType, ProjectLifecycleState
@@ -50,6 +59,7 @@ def test_pricing_draft_get_missing_returns_current_context() -> None:
         "saved_payload_fingerprint": None,
         "saved_validation_token": None,
         "saved_source_context_fingerprint": None,
+        "operator_row_provenance": None,
         "payload": None,
     }
 
@@ -96,6 +106,51 @@ def test_pricing_draft_put_saves_payload_and_get_can_return_current_payload() ->
     assert get_response.status_code == 200
     assert get_response.json()["saved_draft_edit_id"] == "fed-1"
     assert get_response.json()["payload"]["summary"]["external_cost_note"] == "tooling"
+
+
+def test_pricing_draft_get_exposes_v2_operator_field_ownership() -> None:
+    values = _edited_values()
+    source_context = FeePricingDraftSourceContext(
+        confirmed_matrix_id="cmv-1",
+        confirmed_revision=1,
+        fee_rule_version_id="fee_rules_v2026_06_03",
+        point_profile_status="not_started",
+        point_profile_revision_id=None,
+        point_profile_revision_sequence=None,
+        point_profile_fingerprint=None,
+        automatic_defaults_fingerprint="automatic-defaults",
+    )
+    snapshot = replace(
+        _snapshot(values=values),
+        generation=1,
+        source_context=source_context,
+        payload_json=encode_pricing_draft_v2(
+            generation=1,
+            source_context=source_context,
+            edited_values_payload=edited_values_to_payload(values),
+            row_provenance={
+                "cmv-1:g1:cmr-visual:1:0": ("unit_price", "unit_type")
+            },
+            summary_provenance=(),
+        ),
+    )
+    result = FeeEvaluationPricingDraftLoadResult(
+        status="current_v2",
+        current_context=_context(),
+        saved_snapshot=snapshot,
+    )
+    app.dependency_overrides[get_fee_evaluation_pricing_draft_service] = lambda: _Service(result)
+    try:
+        response = TestClient(app).get(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/pricing-draft"
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["operator_row_provenance"] == {
+        "cmv-1:g1:cmr-visual:1:0": ["unit_price", "unit_type"]
+    }
 
 
 def test_pricing_draft_get_stale_does_not_return_payload() -> None:

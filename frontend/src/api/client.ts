@@ -2731,6 +2731,7 @@ export type FeeEvaluationPricingDraftResponse = {
   saved_payload_fingerprint?: string | null;
   saved_validation_token?: string | null;
   saved_source_context_fingerprint?: string | null;
+  operator_row_provenance?: Record<string, string[]> | null;
   payload?: FeeEvaluationEditedFileExportRequest | null;
 };
 
