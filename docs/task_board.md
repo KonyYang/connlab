@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FEE_CONFIRMED_STATUS_SIGNATURE_CANONICALIZATION",
     "summary": "Normalize optional Fee manual-row identity fields so a confirmed Fee remains visibly confirmed after re-entry.",
@@ -25,17 +25,62 @@
     "risk_reasons": [],
     "activation_head": "78b712d188b83a11e3138af02dc5fd36d95ca440",
     "started_at": "2026-09-16T14:52:46.963093Z",
-    "updated_at": "2026-09-16T15:06:59.070857Z",
+    "updated_at": "2026-09-16T15:35:32.944247Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_FEE_CONFIRMED_STATUS_SIGNATURE_CANONICALIZATION",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User reported Confirm failing after editing Unit Price with Fee Evaluation draft changed after totals were prepared.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_FEE_CONFIRMED_STATUS_SIGNATURE_CANONICALIZATION",
+      "subject": "71e61dd0055f6b75e5e4d9de4ec71a0b2cdbabe6",
+      "summary": "Canonicalized optional Fee identity fields and made identical current-context pricing-draft saves idempotent so confirmed status remains stable and duplicate autosave/confirm writes do not create stale-CAS failures.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/application/fee_evaluation_pricing_draft_persistence_service.py",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
+        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts",
+        "tests/unit/test_fee_evaluation_pricing_draft_persistence_service.py"
+      ],
+      "validation": [
+        {
+          "name": "Fee backend targeted regression",
+          "status": "passed",
+          "detail": "32 relevant unit/integration tests passed."
+        },
+        {
+          "name": "Fee Evaluation frontend regression",
+          "status": "passed",
+          "detail": "36 page tests passed."
+        },
+        {
+          "name": "Real browser smoke",
+          "status": "passed",
+          "detail": "Confirm succeeded; draft generation stayed 9 and Confirmed Fee became current revision 14."
+        },
+        {
+          "name": "Exact diff review",
+          "status": "passed",
+          "detail": "No standards or requirement findings; distinct content and draft identities remain conflict-protected."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "detail": "Implemented, self-reviewed, and validated the micro task and in-scope revision."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "detail": "Development API and live browser flow confirmed current Fee authority without duplicate generation."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_FORM_AUTHORITY_AND_HEADER_REPAIR",
