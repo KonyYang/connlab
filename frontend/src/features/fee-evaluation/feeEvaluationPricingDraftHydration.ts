@@ -114,7 +114,9 @@ export function savedPricingDraftDerivedFeesMatch(
     return (
       hydratedRow !== undefined &&
       derivedNumericValuesMatch(row.testing_fee, hydratedRow.testing_fee) &&
-      derivedNumericValuesMatch(row.spend_time, hydratedRow.spend_time)
+      derivedNumericValuesMatch(row.spend_time, hydratedRow.spend_time) &&
+      (row.row_kind !== "sample_preparation" ||
+        derivedNumericValuesMatch(row.units, hydratedRow.units))
     );
   });
 }

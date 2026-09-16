@@ -171,6 +171,17 @@ describe("feeEvaluationPricingDraftHydration", () => {
     expect(savedPricingDraftDerivedFeesMatch(saved, hydrated)).toBe(false);
   });
 
+  it("treats a Matrix-aligned Sample preparation quantity drift as stale", () => {
+    const saved = savedPayload();
+    saved.rows = [];
+    saved.manual_rows = [manualRow({ units: "70", testing_fee: "0" })];
+    const hydrated = savedPayload();
+    hydrated.rows = [];
+    hydrated.manual_rows = [manualRow({ units: "7", testing_fee: "0" })];
+
+    expect(savedPricingDraftDerivedFeesMatch(saved, hydrated)).toBe(false);
+  });
+
   it.each(["current_v2_compatibility", "server_rebase_candidate"] as const)(
     "keeps Sample preparation units aligned with the current Matrix in %s mode",
     (mode) => {

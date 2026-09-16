@@ -598,6 +598,89 @@ describe("FeeEvaluationReviewExportPage", () => {
     ).toBeTruthy();
   });
 
+  it("normalizes Matrix-aligned Sample preparation units before reconfirming Fee", async () => {
+    const draft = createDraftWithResolvedSingleLine();
+    const stalePayload = currentAuthorityPricingDraftPayload();
+    const staleSamplePreparation = stalePayload.manual_rows?.find(
+      (row) => row.row_kind === "sample_preparation"
+    );
+    if (!staleSamplePreparation) {
+      throw new Error("Sample preparation fixture is missing.");
+    }
+    staleSamplePreparation.units = "70";
+    const normalizedPayload = currentAuthorityPricingDraftPayload();
+    const staleResponse = currentPricingDraftResponse({
+      status: "current_v2",
+      saved_draft_edit_id: "fed-1",
+      saved_generation: 1,
+      saved_source_context_fingerprint: "context-1",
+      saved_payload_fingerprint: "payload-1",
+      saved_validation_token: "token-1",
+      payload: stalePayload,
+    });
+    const normalizedResponse = currentPricingDraftResponse({
+      status: "current_v2",
+      saved_draft_edit_id: "fed-2",
+      saved_generation: 2,
+      saved_source_context_fingerprint: "context-1",
+      saved_payload_fingerprint: "payload-2",
+      saved_validation_token: "token-2",
+      payload: normalizedPayload,
+    });
+    arrangeSuccessfulContext({
+      pricingDraft: staleResponse,
+      confirmedFee: createConfirmedFeeLatest({
+        status: "current",
+        pricingDraftEditId: "fed-1",
+      }),
+    });
+    apiMocks.getFeeEvaluationPricingDraft
+      .mockResolvedValueOnce(staleResponse)
+      .mockResolvedValue(normalizedResponse);
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(draft);
+    apiMocks.saveFeeEvaluationPricingDraft.mockResolvedValue(normalizedResponse);
+    apiMocks.confirmFeeVersion.mockResolvedValue(
+      createConfirmedFeeLatest({
+        status: "current",
+        pricingDraftEditId: "fed-2",
+      })
+    );
+    const onBackToWorkbench = vi.fn();
+
+    render(
+      <FeeEvaluationReviewExportPage
+        projectId="P1"
+        onBackToWorkbench={onBackToWorkbench}
+      />
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "Download Draft Fee Form" })
+    ).toBeTruthy();
+    const confirmButton = screen.getByRole("button", { name: "Confirm" });
+    await waitFor(() => {
+      expect(confirmButton).toHaveProperty("disabled", false);
+    });
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
+    });
+    const savedPayload = apiMocks.saveFeeEvaluationPricingDraft.mock.calls[0]?.[1];
+    expect(
+      savedPayload?.manual_rows?.find(
+        (row: { row_kind: string }) => row.row_kind === "sample_preparation"
+      )?.units
+    ).toBe("5");
+    await waitFor(() => {
+      expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith(
+        "P1",
+        expect.objectContaining({ expected_pricing_draft_edit_id: "fed-2" })
+      );
+    });
+    expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
+  });
+
   it("requires an explicit replacement choice for an existing official Fee Form", async () => {
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
