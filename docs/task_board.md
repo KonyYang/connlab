@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FEE_CONFIRMED_DRAFT_HYDRATION",
     "summary": "Restore confirmed Fee Form authority after reopening Fee Evaluation instead of incorrectly reverting to Draft.",
@@ -26,17 +26,69 @@
     "risk_reasons": [],
     "activation_head": "bf3fd3035d1808c3cfe33165358b25ee14289300",
     "started_at": "2026-09-16T16:47:12.437479Z",
-    "updated_at": "2026-09-16T22:27:12.710142Z",
+    "updated_at": "2026-09-16T22:32:56.413966Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_FEE_CONFIRMED_DRAFT_HYDRATION",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "Verify LLCR/CR test-point quantity propagation into Fee Evaluation and confirmed/draft Fee Form action state.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_FEE_CONFIRMED_DRAFT_HYDRATION",
+      "subject": "0869c0bcb9b3d8cf5de0955d887dba8aabb6a96d",
+      "summary": "Detect Matrix-aligned quantity drift before Fee confirmation and verify confirmed LLCR/CR point-profile changes propagate into Fee units and action state.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
+        "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.test.ts",
+        "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.ts"
+      ],
+      "validation": [
+        {
+          "name": "Focused Fee hydration and page regression suite",
+          "status": "passed",
+          "summary": "48 tests passed."
+        },
+        {
+          "name": "Frontend production build",
+          "status": "passed",
+          "summary": "TypeScript and Vite production build completed successfully."
+        },
+        {
+          "name": "LLCR point-profile quantity and rebase checks",
+          "status": "passed",
+          "summary": "The focused backend quantity multiplication and point-profile rebase tests passed."
+        },
+        {
+          "name": "Current project read-only authority audit",
+          "status": "passed",
+          "summary": "Confirmed 5 points per sample, calculated LLCR units, current V2 pricing draft, and matching confirmed Fee draft identity."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented the minimal Sample preparation units drift check with RED/GREEN coverage."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Standards and spec review found no actionable findings or scope creep."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Focused frontend regressions, backend point-profile linkage tests, production build, and read-only live authority audit passed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "summary": "The exact clean HEAD contains only the scoped frontend fix, regression tests, and task-control records; live project data was not mutated."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_GROUP_SUMMARY_PLACEMENT",
