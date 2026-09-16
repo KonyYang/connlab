@@ -68,6 +68,14 @@ def test_fee_file_download_route_returns_generated_xlsx_and_uses_matrix_basic_fi
     assert command.overwrite is True
     assert command.output_file_name is None
     assert command.output_dir == settings.data_dir / "generated_fee_files"
+    assert command.basic_information_values == {
+        "dl_number": "DL-2026-001",
+        "product_description": "Connector",
+        "test_item": "Qualification Testing",
+        "requested_by": "Lab User",
+        "location": "Dongguan",
+        "lab_performing_tests": "Dongguan laboratory",
+    }
     assert command.template_path == (
         template_folder / "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xlsx"
     )
@@ -488,7 +496,18 @@ class _FakeFeeFormPublicationService:
 class _DownloadPublicationService:
     def validate_download(self, command: ExecuteFeeFormDownloadCommand):
         assert command.preview_token == "preview-token"
-        return SimpleNamespace(mode="download", status="ready")
+        return SimpleNamespace(
+            mode="download",
+            status="ready",
+            basic_information_values={
+                "dl_number": "DL-2026-001",
+                "product_description": "Connector",
+                "test_item": "Qualification Testing",
+                "requested_by": "Lab User",
+                "location": "Dongguan",
+                "lab_performing_tests": "Dongguan laboratory",
+            },
+        )
 
 
 def _download_payload() -> dict:

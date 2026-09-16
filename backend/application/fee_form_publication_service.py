@@ -117,6 +117,7 @@ class FeeFormPublicationPreview:
     existing_modified_at: str | None
     blockers: tuple[str, ...]
     preview_token: str
+    basic_information_values: dict[str, str] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,6 +153,7 @@ class FeeFormPublicationService:
     def preview(self, command: PreviewFeeFormPublicationCommand) -> FeeFormPublicationPreview:
         fee_result = self._fees.get_latest(command.project_id)
         fee = getattr(fee_result, "latest_confirmed_fee", None)
+        basic = self._basic_information.get_latest_confirmed(command.project_id)
         authority_matches = False
         if getattr(fee_result, "status", None) == "current" and fee is not None:
             try:
@@ -166,21 +168,29 @@ class FeeFormPublicationService:
         authority_status = "confirmed" if authority_matches else "unconfirmed"
         if not authority_matches:
             return self._preview(
-                command, mode="download", authority_status=authority_status
+                command,
+                mode="download",
+                authority_status=authority_status,
+                basic_information=basic,
             )
 
         workspace = self._workspaces.get_by_project(command.project_id)
         if workspace is None:
             return self._preview(
-                command, mode="download", authority_status=authority_status
+                command,
+                mode="download",
+                authority_status=authority_status,
+                basic_information=basic,
             )
         official_value = getattr(workspace, "official_folder_path", None)
         if not official_value or not Path(official_value).is_dir():
             return self._preview(
-                command, mode="download", authority_status=authority_status
+                command,
+                mode="download",
+                authority_status=authority_status,
+                basic_information=basic,
             )
         official = Path(official_value)
-        basic = self._basic_information.get_latest_confirmed(command.project_id)
         if basic is None:
             return self._preview(
                 command,
@@ -372,6 +382,11 @@ class FeeFormPublicationService:
             existing_modified_at=existing_modified_at,
             blockers=blockers,
             preview_token=token,
+            basic_information_values=(
+                fee_form_identity(basic_information).as_dict()
+                if basic_information is not None
+                else None
+            ),
         )
 
 

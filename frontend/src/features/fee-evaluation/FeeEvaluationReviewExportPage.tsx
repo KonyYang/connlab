@@ -162,6 +162,8 @@ export function FeeEvaluationReviewExportPage({
   const [savedLocalPricingSignature, setSavedLocalPricingSignature] = useState<
     string | null
   >(null);
+  const [serverPricingPayloadSignature, setServerPricingPayloadSignature] =
+    useState<string | null>(null);
   const [hasUserEditedPricingDraft, setHasUserEditedPricingDraft] = useState(false);
   const [isCancellingPricingSession, setIsCancellingPricingSession] =
     useState(false);
@@ -235,6 +237,7 @@ export function FeeEvaluationReviewExportPage({
     setLatestSavedPricingDraftId(null);
     setPricingDraftLoadStatus("loading");
     setSavedLocalPricingSignature(null);
+    setServerPricingPayloadSignature(null);
     setHasUserEditedPricingDraft(false);
     baselinePricingPayloadRef.current = null;
     baselinePricingContextRef.current = null;
@@ -331,6 +334,7 @@ export function FeeEvaluationReviewExportPage({
           setPricingDraftLoadStatus(currentV2 ? "current" : "stale");
           setHasUserEditedPricingDraft(false);
           if (!result.payload) {
+            setServerPricingPayloadSignature(null);
             const currentSignature = pricingDraftSignature(
               buildEditedExportPayload(sourcePreviewRows, costPreviewValues)
             );
@@ -355,6 +359,7 @@ export function FeeEvaluationReviewExportPage({
             sourcePreviewRows,
             result.payload
           );
+          setServerPricingPayloadSignature(pricingDraftSignature(result.payload));
           setPreviewEdits(hydrated.edits);
           setCostPreviewValues(hydrated.costPreviewValues);
           const hydratedPayload = buildEditedExportPayload(
@@ -406,6 +411,7 @@ export function FeeEvaluationReviewExportPage({
             hydrated.costPreviewValues
           );
           const loadedCas = pricingDraftCasStateFromResponse(result);
+          setServerPricingPayloadSignature(null);
           setPreviewEdits(hydrated.edits);
           setCostPreviewValues(hydrated.costPreviewValues);
           baselinePricingPayloadRef.current = reviewedPayload;
@@ -649,9 +655,21 @@ export function FeeEvaluationReviewExportPage({
         saveState,
         updateFeeBlockerMessage: firstUpdateFeeBlocker?.message ?? null,
       });
+  const currentFeeIsConfirmed =
+    confirmedFeeState.kind === "ready" &&
+    confirmedFeeState.data.status === "current" &&
+    confirmedFeeState.data.confirmed_fee?.pricing_draft_edit_id ===
+      latestSavedPricingDraftId &&
+    pricingDraftLoadStatus === "current" &&
+    saveState.kind === "saved" &&
+    !hasPricingDraftLocalChanges &&
+    serverPricingPayloadSignature !== null &&
+    serverPricingPayloadSignature === currentPricingDraftSignature;
   const draftPreviewNotice =
     feeFileDownloadBlocker(draftState) ??
-    "Unconfirmed page values download as draft; confirmed Fee values save to the project folder when available.";
+    (currentFeeIsConfirmed
+      ? "Current Fee is confirmed. Fee Form will save to the project folder when available."
+      : "Current page values are not confirmed. Select Confirm to establish the current Fee; Fee Form downloads as a draft until then.");
 
   function applySavedPricingDraftResult(
     result: FeeEvaluationPricingDraftResponse,
@@ -665,6 +683,7 @@ export function FeeEvaluationReviewExportPage({
       sessionOwnedPricingCasRef.current = savedCas;
       setPricingDraftLoadStatus("stale");
       setSavedLocalPricingSignature(savedDraftId ? signature : null);
+      setServerPricingPayloadSignature(savedDraftId ? signature : null);
       setHasUserEditedPricingDraft(false);
       setSaveState(
         savedDraftId && savedCas
@@ -680,6 +699,7 @@ export function FeeEvaluationReviewExportPage({
     pricingDraftCasRef.current = null;
     setPricingDraftLoadStatus("stale");
     setSavedLocalPricingSignature(null);
+    setServerPricingPayloadSignature(null);
     setSaveState({
       kind: "stale",
       message: "Saved draft is not current for this Matrix or fee rule version.",

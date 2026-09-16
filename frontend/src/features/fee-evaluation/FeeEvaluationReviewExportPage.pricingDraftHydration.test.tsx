@@ -155,6 +155,9 @@ describe("FeeEvaluationReviewExportPage pricing-draft hydration", () => {
     const feeForm = screen.getByRole("button", { name: "Fee Form" });
     expect((feeForm as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(feeForm);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Download preview" })
+    );
     await waitFor(() =>
       expect(apiMocks.generateConfirmedMatrixFeeFileDownload).toHaveBeenCalled()
     );

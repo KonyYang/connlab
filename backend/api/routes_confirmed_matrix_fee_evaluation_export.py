@@ -190,7 +190,7 @@ def generate_confirmed_matrix_fee_file(
     output_dir.mkdir(parents=True, exist_ok=True)
     try:
         service_values = request.to_application()
-        publication_service.validate_download(
+        validated_download = publication_service.validate_download(
             ExecuteFeeFormDownloadCommand(
                 project_id=project_id,
                 current_values=service_values,
@@ -209,6 +209,7 @@ def generate_confirmed_matrix_fee_file(
                 fill_mode="matrix_basic",
                 output_purpose="draft_preview",
                 edited_values=service_values,
+                basic_information_values=validated_download.basic_information_values,
                 pricing_draft_edit_id=request.pricing_draft_edit_id,
                 pricing_draft_generation=request.pricing_draft_generation,
                 pricing_draft_payload_fingerprint=request.pricing_draft_payload_fingerprint,

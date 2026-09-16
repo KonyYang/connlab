@@ -458,7 +458,47 @@ export function feeEvaluationPricingDraftCasEquals(
     left.validationToken === right.validationToken;
 }
 
-export const feeEvaluationPricingDraftSignature = (payload: FeeEvaluationEditedFileExportRequest): string => JSON.stringify(payload);
+export const feeEvaluationPricingDraftSignature = (
+  payload: FeeEvaluationEditedFileExportRequest
+): string =>
+  JSON.stringify({
+    rows: payload.rows.map((row) => ({
+      source_line_id: row.source_line_id,
+      confirmed_group_id: row.confirmed_group_id,
+      confirmed_row_id: row.confirmed_row_id,
+      step_token: row.step_token,
+      step_index: row.step_index,
+      spend_time: row.spend_time,
+      unit_price: row.unit_price,
+      unit_type: row.unit_type,
+      units: row.units,
+      base_fee: row.base_fee,
+      discount: row.discount,
+      testing_fee: row.testing_fee,
+      notes: row.notes,
+    })),
+    manual_rows: (payload.manual_rows ?? []).map((row) => ({
+      row_kind: row.row_kind,
+      confirmed_group_id: row.confirmed_group_id,
+      group_key: row.group_key,
+      group_label: row.group_label,
+      spend_time: row.spend_time,
+      unit_price: row.unit_price,
+      unit_type: row.unit_type,
+      units: row.units,
+      base_fee: row.base_fee,
+      discount: row.discount,
+      testing_fee: row.testing_fee,
+      notes: row.notes,
+    })),
+    summary: {
+      condition_confirmation_spend_time:
+        payload.summary.condition_confirmation_spend_time,
+      external_cost: payload.summary.external_cost,
+      external_cost_note: payload.summary.external_cost_note,
+      lab_manpower_hourly_rate: payload.summary.lab_manpower_hourly_rate,
+    },
+  });
 
 export function calculateFeePreviewTestingFee(input: {
   unitPrice: string;

@@ -72,6 +72,14 @@ def test_download_validation_rechecks_authority_and_preview_token(tmp_path: Path
     )
     assert validated.mode == "download"
     assert validated.authority_status == "unconfirmed"
+    assert validated.basic_information_values == {
+        "dl_number": "DL-001",
+        "product_description": "Connector",
+        "test_item": "",
+        "requested_by": "",
+        "location": "",
+        "lab_performing_tests": "",
+    }
 
     with pytest.raises(FeeFormPublicationConflictError, match="changed"):
         service.validate_download(

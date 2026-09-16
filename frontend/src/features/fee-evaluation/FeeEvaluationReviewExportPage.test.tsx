@@ -8,8 +8,20 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { ApiRequestError, type FeeEvaluationLineItem } from "../../api/client";
+import {
+  ApiRequestError,
+  type FeeEvaluationDraft,
+  type FeeEvaluationEditedFileExportRequest,
+  type FeeEvaluationLineItem,
+} from "../../api/client";
 import { FeeEvaluationReviewExportPage } from "./FeeEvaluationReviewExportPage";
+import {
+  applyFeeEvaluationPreviewEdits,
+  buildFeeEvaluationEditedExportPayload,
+  buildFeeEvaluationPreviewRows,
+  feeEvaluationPricingDraftSignature,
+  hydrateFeeEvaluationPreviewEditsFromSavedDraft,
+} from "./feeEvaluationPreviewModel";
 
 const originalConsoleError = console.error.bind(console);
 let unexpectedActWarnings: string[] = [];
@@ -148,8 +160,11 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(screen.queryByText("Review details")).toBeNull();
     expect(screen.queryByLabelText("Confirmed by")).toBeNull();
     expect(screen.queryByText("Confirmed by")).toBeNull();
-    expect(screen.queryByLabelText("Confirmed Fee status")).toBeNull();
-    expect(screen.queryByText("Fee authority is current.")).toBeNull();
+    expect(
+      await screen.findByText(
+        "Current page values are not confirmed. Select Confirm to establish the current Fee; Fee Form downloads as a draft until then."
+      )
+    ).toBeTruthy();
 
     const tables = screen.getAllByRole("table");
     expect(tables).toHaveLength(1);
@@ -522,6 +537,52 @@ describe("FeeEvaluationReviewExportPage", () => {
       expect.objectContaining({ preview_token: "preview-1", conflict_action: "none" })
     );
     expect(apiMocks.generateConfirmedMatrixFeeFileDownload).not.toHaveBeenCalled();
+  });
+
+  it("shows when the current Fee values are already confirmed", async () => {
+    const draft = createDraftWithResolvedSingleLine();
+    const savedPayload = currentAuthorityPricingDraftPayload();
+    const sourceRows = buildFeeEvaluationPreviewRows(draft);
+    const hydrated = hydrateFeeEvaluationPreviewEditsFromSavedDraft(
+      sourceRows,
+      savedPayload
+    );
+    const currentPayload = buildFeeEvaluationEditedExportPayload(
+      applyFeeEvaluationPreviewEdits(sourceRows, hydrated.edits),
+      hydrated.costPreviewValues
+    );
+    expect(currentPayload).toEqual(savedPayload);
+    expect(feeEvaluationPricingDraftSignature(currentPayload)).toBe(
+      feeEvaluationPricingDraftSignature(savedPayload)
+    );
+    arrangeSuccessfulContext({
+      pricingDraft: currentPricingDraftResponse({
+        status: "current_v2",
+        saved_draft_edit_id: "fed-1",
+        saved_generation: 1,
+        saved_source_context_fingerprint: "context-1",
+        saved_payload_fingerprint: "payload-1",
+        saved_validation_token: "token-1",
+        payload: savedPayload,
+      }),
+      confirmedFee: createConfirmedFeeLatest({
+        status: "current",
+        pricingDraftEditId: "fed-1",
+      }),
+    });
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(
+      draft
+    );
+
+    render(
+      <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />
+    );
+
+    expect(
+      await screen.findByText(
+        "Current Fee is confirmed. Fee Form will save to the project folder when available."
+      )
+    ).toBeTruthy();
   });
 
   it("requires an explicit replacement choice for an existing official Fee Form", async () => {
@@ -1674,6 +1735,61 @@ function promotedPricingDraftPayload(
   };
 }
 
+function currentAuthorityPricingDraftPayload(): FeeEvaluationEditedFileExportRequest {
+  return {
+    rows: [
+      {
+        source_line_id: "cmv-1:g1:row-1:1:0",
+        confirmed_group_id: "cmg-1",
+        confirmed_row_id: "row-1",
+        step_token: "1",
+        step_index: 0,
+        spend_time: "0",
+        unit_price: "10",
+        unit_type: "per photo",
+        units: "1",
+        base_fee: "0",
+        discount: "0%",
+        testing_fee: "10",
+        notes: "",
+      },
+    ],
+    manual_rows: [
+      {
+        row_kind: "sample_preparation",
+        confirmed_group_id: "cmg-1",
+        group_key: "g1",
+        group_label: "Group 1",
+        spend_time: "0.5",
+        unit_price: "50",
+        unit_type: "per sample",
+        units: "5",
+        base_fee: "0",
+        discount: "100%",
+        testing_fee: "0",
+        notes: "",
+      },
+      {
+        row_kind: "report_preparation",
+        spend_time: "4",
+        unit_price: "600",
+        unit_type: "per report",
+        units: "1",
+        base_fee: "0",
+        discount: "100%",
+        testing_fee: "0",
+        notes: "",
+      },
+    ],
+    summary: {
+      condition_confirmation_spend_time: "0",
+      external_cost: "0",
+      external_cost_note: "",
+      lab_manpower_hourly_rate: "200",
+    },
+  };
+}
+
 function createConfirmedFeeLatest(input: {
   status: "missing" | "current" | "stale";
   pricingDraftEditId?: string;
@@ -1710,7 +1826,7 @@ function createConfirmedFeeLatest(input: {
   };
 }
 
-function createDraft() {
+function createDraft(): FeeEvaluationDraft {
   return {
     header: {
       project_id: "P1",
