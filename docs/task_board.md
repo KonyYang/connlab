@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FEE_CONFIRMED_STATUS_SIGNATURE_CANONICALIZATION",
     "summary": "Normalize optional Fee manual-row identity fields so a confirmed Fee remains visibly confirmed after re-entry.",
@@ -25,9 +25,56 @@
     "risk_reasons": [],
     "activation_head": "78b712d188b83a11e3138af02dc5fd36d95ca440",
     "started_at": "2026-09-16T14:52:46.963093Z",
-    "updated_at": "2026-09-16T14:52:46.963093Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-16T15:00:09.769481Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_FEE_CONFIRMED_STATUS_SIGNATURE_CANONICALIZATION",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_FEE_CONFIRMED_STATUS_SIGNATURE_CANONICALIZATION",
+      "subject": "41ffc25431fa6ca0ee891abd489997f776b89ea9",
+      "summary": "Canonicalized optional Fee manual-row identity fields so confirmed authority remains recognized after reload.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
+        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts"
+      ],
+      "validation": [
+        {
+          "name": "TDD confirmed-status regression",
+          "status": "passed"
+        },
+        {
+          "name": "Fee Evaluation affected tests 64/64",
+          "status": "passed"
+        },
+        {
+          "name": "frontend production build",
+          "status": "passed"
+        },
+        {
+          "name": "live browser confirmed-status verification",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented via red-green TDD and self-reviewed exact diff; no findings."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "direct_primary"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_FORM_AUTHORITY_AND_HEADER_REPAIR",
