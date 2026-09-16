@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FEE_FORM_ACTION_LABELS",
     "summary": "Replace the Fee Form status explanation with authority-aware English action labels.",
@@ -26,9 +26,62 @@
     "risk_reasons": [],
     "activation_head": "00831553214ec56912db7b3f27eeb786a50c8020",
     "started_at": "2026-09-16T15:51:59.823678Z",
-    "updated_at": "2026-09-16T15:51:59.823678Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-16T16:04:45.779218Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_FEE_FORM_ACTION_LABELS",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_FEE_FORM_ACTION_LABELS",
+      "subject": "93721fc79867142773c69359003002eee7794a16",
+      "summary": "Replaced the persistent Fee authority explanation with authority-aware Fee Form action labels while retaining blocker, success, and error feedback.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.test.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx"
+      ],
+      "validation": [
+        {
+          "name": "Fee Evaluation targeted frontend tests",
+          "status": "passed",
+          "detail": "44 tests passed across three affected test files."
+        },
+        {
+          "name": "Frontend production build",
+          "status": "passed",
+          "detail": "TypeScript and Vite production build completed successfully."
+        },
+        {
+          "name": "Real browser smoke",
+          "status": "passed",
+          "detail": "Confirmed Fee displayed Generate Official Fee Form and the former persistent status notice was absent."
+        },
+        {
+          "name": "Exact diff review",
+          "status": "passed",
+          "detail": "Standards and specification passes found no actionable findings."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "detail": "Implemented the micro UI change with TDD, self-review, and targeted validation."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "detail": "Existing draft download, official publication, conflict, success, and error flows remained covered and passing."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_CONFIRMED_STATUS_SIGNATURE_CANONICALIZATION",
