@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FEE_VISUAL_INSPECTION_DEFAULT_TIME",
     "summary": "Set Visual Inspection default spend time to 0.5 without overwriting deliberate fee edits",
@@ -28,9 +28,65 @@
     "risk_reasons": [],
     "activation_head": "e4f66b9a1f44c69d974874b6a5a4d9b25d94a589",
     "started_at": "2026-09-16T22:52:34.891033Z",
-    "updated_at": "2026-09-16T22:52:34.891033Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-16T23:06:59.677504Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_FEE_VISUAL_INSPECTION_DEFAULT_TIME",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_FEE_VISUAL_INSPECTION_DEFAULT_TIME",
+      "subject": "98da3fb24ac424fb77a5349bd81c320cdbf8a21f",
+      "summary": "Visual Inspection now restores the current 0.5-hour automatic default for prior non-operator-owned draft values while preserving explicit operator edits.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/routes_confirmed_matrix_fee_evaluation_pricing_draft.py",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts",
+        "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.test.ts",
+        "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.ts",
+        "tests/integration/test_fee_evaluation_pricing_draft_api.py"
+      ],
+      "validation": [
+        {
+          "name": "pricing draft API integration",
+          "status": "passed"
+        },
+        {
+          "name": "fee draft frontend tests",
+          "status": "passed"
+        },
+        {
+          "name": "frontend production build",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented the narrow V2 ownership-aware hydration path with TDD coverage."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Focused standards and specification review found no blocking issues."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Affected API integration, frontend tests, and production build pass."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "summary": "The API ownership contract is consumed by each fee-draft hydration path without background persistence."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_CONFIRMED_DRAFT_HYDRATION",
