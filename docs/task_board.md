@@ -11,86 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_FEE_FORM_ACTION_LABELS",
-    "summary": "Replace the Fee Form status explanation with authority-aware English action labels.",
-    "tier": "micro",
-    "route": "sol_direct",
-    "scope": "Update the existing Fee Form button label to Download Draft Fee Form or Generate Official Fee Form based on current confirmed authority, preserve blocker/error/success notices, and add focused frontend regression tests.",
-    "scope_paths": [
-      "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
-      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
-      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx"
-    ],
-    "risk_reasons": [],
-    "activation_head": "00831553214ec56912db7b3f27eeb786a50c8020",
-    "started_at": "2026-09-16T15:51:59.823678Z",
-    "updated_at": "2026-09-16T16:04:45.779218Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_FEE_FORM_ACTION_LABELS",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_FEE_FORM_ACTION_LABELS",
-      "subject": "93721fc79867142773c69359003002eee7794a16",
-      "summary": "Replaced the persistent Fee authority explanation with authority-aware Fee Form action labels while retaining blocker, success, and error feedback.",
-      "scope_ok": true,
-      "changed_paths": [
-        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.test.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx"
-      ],
-      "validation": [
-        {
-          "name": "Fee Evaluation targeted frontend tests",
-          "status": "passed",
-          "detail": "44 tests passed across three affected test files."
-        },
-        {
-          "name": "Frontend production build",
-          "status": "passed",
-          "detail": "TypeScript and Vite production build completed successfully."
-        },
-        {
-          "name": "Real browser smoke",
-          "status": "passed",
-          "detail": "Confirmed Fee displayed Generate Official Fee Form and the former persistent status notice was absent."
-        },
-        {
-          "name": "Exact diff review",
-          "status": "passed",
-          "detail": "Standards and specification passes found no actionable findings."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "detail": "Implemented the micro UI change with TDD, self-review, and targeted validation."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "detail": "Existing draft download, official publication, conflict, success, and error flows remained covered and passing."
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_FEE_CONFIRMED_STATUS_SIGNATURE_CANONICALIZATION",
+    "task_id": "TASK_FEE_FORM_ACTION_LABELS",
     "tier": "micro",
-    "subject": "71e61dd0055f6b75e5e4d9de4ec71a0b2cdbabe6",
-    "summary": "Normalize optional Fee manual-row identity fields so a confirmed Fee remains visibly confirmed after re-entry.",
+    "subject": "93721fc79867142773c69359003002eee7794a16",
+    "summary": "Replace the Fee Form status explanation with authority-aware English action labels.",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested 关闭任务 in the current turn.",
-    "closed_at": "2026-09-16T15:47:18.494991Z"
+    "decision_ref": "User explicitly requested 关闭任务 before starting the Import Fee Form optimization.",
+    "closed_at": "2026-09-16T16:08:21.989250Z"
   },
   "retained_history": []
 }
