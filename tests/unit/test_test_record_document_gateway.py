@@ -159,6 +159,62 @@ def test_gateway_repeats_template_group_blocks_for_multiple_groups(tmp_path: Pat
     assert document.tables[3].rows[1].cells[0].text == "EQUIPMENT USED 使用的设备:"
 
 
+def test_gateway_preserves_real_group_labels_starting_with_g(tmp_path: Path) -> None:
+    template = _build_confirmed_matrix_template(tmp_path / "template.docx")
+    output = tmp_path / "confirmed-record.docx"
+    group = _ConfirmedGroup(
+        group_key="group_10",
+        group_label="Ga",
+        sample_quantity_expression="3+3",
+    )
+
+    TestRecordDocumentGateway().generate_from_confirmed_matrix(
+        template_path=template,
+        output_path=output,
+        project_id="P1",
+        project_no="DL-001",
+        product_description="Connector",
+        applicable_specification="GS-12-1507",
+        confirmed_matrix_id="cmv-1",
+        groups=(group,),
+        header_metadata=TestRecordHeaderMetadata(),
+    )
+
+    text = "\n".join(paragraph.text for paragraph in Document(output).paragraphs)
+    assert (
+        "Group Number 组别编号: Ga ;   "
+        "Sample Quantity & Number 样品数量及编号: 3+3 (GroupGa-1#~3#)"
+    ) in text
+
+
+def test_gateway_keeps_numeric_g_prefix_compatibility(tmp_path: Path) -> None:
+    template = _build_confirmed_matrix_template(tmp_path / "template.docx")
+    output = tmp_path / "confirmed-record.docx"
+    group = _ConfirmedGroup(
+        group_key="g1",
+        group_label="G1",
+        sample_quantity_expression="3",
+    )
+
+    TestRecordDocumentGateway().generate_from_confirmed_matrix(
+        template_path=template,
+        output_path=output,
+        project_id="P1",
+        project_no="DL-001",
+        product_description="Connector",
+        applicable_specification="GS-12-1507",
+        confirmed_matrix_id="cmv-1",
+        groups=(group,),
+        header_metadata=TestRecordHeaderMetadata(),
+    )
+
+    text = "\n".join(paragraph.text for paragraph in Document(output).paragraphs)
+    assert (
+        "Group Number 组别编号: 1 ;   "
+        "Sample Quantity & Number 样品数量及编号: 3 sets (Group1-1#~3#)"
+    ) in text
+
+
 def test_gateway_orders_group_steps_by_step_token(tmp_path: Path) -> None:
     template = _build_confirmed_matrix_template(tmp_path / "template.docx")
     output = tmp_path / "confirmed-record.docx"

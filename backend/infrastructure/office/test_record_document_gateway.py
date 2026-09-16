@@ -531,7 +531,7 @@ def _normalize_group_number_label(group_label: str) -> str:
     compact = re.sub(r"\s+", "", group_label).strip()
     if not compact:
         return "-"
-    prefixed = re.match(r"^(?:group|g)(.+)$", compact, flags=re.IGNORECASE)
+    prefixed = re.match(r"^(?:group|g(?=\d))(.+)$", compact, flags=re.IGNORECASE)
     value = prefixed.group(1) if prefixed else compact
     return value or "-"
 
