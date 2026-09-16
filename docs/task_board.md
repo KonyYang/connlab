@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FEE_FORM_AUTHORITY_AND_HEADER_REPAIR",
     "summary": "Fix Fee Form header population and make current confirmed authority status reliable and visible.",
@@ -34,17 +34,69 @@
     "risk_reasons": [],
     "activation_head": "238be05f22a03d2a8a3b7cdf1c74a9ba00636be9",
     "started_at": "2026-09-16T13:09:43.575748Z",
-    "updated_at": "2026-09-16T13:50:45.531916Z",
+    "updated_at": "2026-09-16T13:53:15.235800Z",
     "checkpoint": {
-      "stage": "qa-complete",
-      "status": "running",
       "schema": "connlab.sol-task-checkpoint",
-      "summary": "Fee Form draft downloads now receive confirmed Basic Information headers; current confirmed authority status is derived from matching saved values. Targeted backend/frontend tests and production build pass; unrelated baseline failures are documented.",
       "version": 1,
       "task_id": "TASK_FEE_FORM_AUTHORITY_AND_HEADER_REPAIR",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "task_id": "TASK_FEE_FORM_AUTHORITY_AND_HEADER_REPAIR",
+      "summary": "Fee Form downloads now populate confirmed Basic Information headers and the page reliably distinguishes matching confirmed authority from unconfirmed current values.",
+      "version": 1,
+      "validation": [
+        {
+          "status": "passed",
+          "name": "fee-form backend and workbook regression",
+          "summary": "64 passed"
+        },
+        {
+          "status": "passed",
+          "name": "fee-evaluation frontend regression",
+          "summary": "43 passed"
+        },
+        {
+          "status": "passed",
+          "name": "frontend production build",
+          "summary": "TypeScript and Vite build passed"
+        }
+      ],
+      "schema": "connlab.sol-task-report",
+      "scope_ok": true,
+      "roles": {
+        "developer": {
+          "summary": "Implemented with TDD and self-reviewed.",
+          "status": "passed"
+        },
+        "qa": {
+          "summary": "Affected backend/frontend regressions and production build passed; unrelated baseline failures recorded separately.",
+          "status": "passed"
+        },
+        "reviewer": {
+          "summary": "Focused diff review found no in-scope defects or scope drift.",
+          "status": "passed"
+        }
+      },
+      "changed_paths": [
+        "backend/api/routes_confirmed_matrix_fee_evaluation_export.py",
+        "backend/application/fee_form_publication_service.py",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.pricingDraftHydration.test.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts",
+        "tests/integration/test_confirmed_matrix_fee_file_download_api.py",
+        "tests/unit/test_fee_form_publication_service.py"
+      ],
+      "integration": {
+        "mode": "direct_primary",
+        "status": "passed"
+      },
+      "subject": "ae3f0b544efeb0fa6dac9f413096dfa8fa9cff92"
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_MATRIX_SINGLE_BUTTON_PREVIEW_CONFIRMATION",
