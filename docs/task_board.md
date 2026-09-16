@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_GROUP_SUMMARY_PLACEMENT",
+    "summary": "Move the Preview group and Total Testing Fee card into the totals row and replace the redundant Grand Cost card.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Recompose the Fee Evaluation preview header and totals row so the group selector/selected total occupies the former Grand Cost slot, keep filtering and calculations unchanged, adjust responsive styling, and add focused layout regression tests.",
+    "scope_paths": [
+      "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
+      "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.test.tsx",
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
+      "frontend/src/workbench.css"
+    ],
+    "risk_reasons": [],
+    "activation_head": "c76588889a9a66b3d01ed269ad67ad41dd40e047",
+    "started_at": "2026-09-16T16:22:17.929009Z",
+    "updated_at": "2026-09-16T16:22:17.929009Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FEE_FORM_IMPORT_AVAILABILITY",
     "tier": "micro",
