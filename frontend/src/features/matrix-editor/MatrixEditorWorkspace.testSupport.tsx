@@ -437,6 +437,7 @@ export function installMatrixEditorWorkspaceTestLifecycle(): void {
       project_id: "P1",
       mode: "download",
       status: "ready",
+      authority_status: "unconfirmed",
       target_path: null,
       existing_file: false,
       existing_modified_at: null,

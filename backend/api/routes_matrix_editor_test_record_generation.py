@@ -28,6 +28,7 @@ from backend.application.matrix_editor_test_record_authority import (
     build_matrix_editor_test_record_signature,
 )
 from backend.application.matrix_editor_test_record_publication_service import (
+    ExecuteMatrixEditorTestRecordDownloadCommand,
     ExecuteMatrixEditorTestRecordPublicationCommand,
     MatrixEditorTestRecordPublicationBlockedError,
     MatrixEditorTestRecordPublicationConflictError,
@@ -90,10 +91,17 @@ class MatrixEditorTestRecordPublicationExecuteRequest(
     conflict_action: str = Field(pattern="^(none|archive|recycle)$")
 
 
+class MatrixEditorTestRecordDownloadRequest(MatrixEditorTestRecordDraftRequest):
+    """Preview download authorized by a matching, freshly checked preview."""
+
+    preview_token: str = Field(min_length=1)
+
+
 class MatrixEditorTestRecordPublicationPreviewResponse(BaseModel):
     project_id: str
     mode: str
     status: str
+    authority_status: str
     target_path: str | None
     existing_file: bool
     existing_modified_at: str | None
@@ -131,6 +139,7 @@ def preview_matrix_editor_test_record_publication(
         project_id=preview.project_id,
         mode=preview.mode,
         status=preview.status,
+        authority_status=preview.authority_status,
         target_path=str(preview.target_path) if preview.target_path else None,
         existing_file=preview.existing_file,
         existing_modified_at=preview.existing_modified_at,
@@ -201,9 +210,12 @@ def publish_matrix_editor_test_record(
 @router.post("/api/projects/{project_id}/matrix-editor/test-record-draft/generate")
 def generate_matrix_editor_test_record_draft_preview(
     project_id: str,
-    request: MatrixEditorTestRecordDraftRequest,
+    request: MatrixEditorTestRecordDownloadRequest,
     service: MatrixEditorTestRecordDocumentGenerationService = Depends(
         get_matrix_editor_test_record_document_generation_service
+    ),
+    publication_service: MatrixEditorTestRecordPublicationService = Depends(
+        get_matrix_editor_test_record_publication_service
     ),
     settings: Settings = Depends(get_settings),
     template_resource_store: TestRecordTemplateResourceStore = Depends(
@@ -211,11 +223,22 @@ def generate_matrix_editor_test_record_draft_preview(
     ),
 ) -> FileResponse:
     """Generate and return one preview Test Record from current Matrix Editor state."""
-    if request.source != "matrix_editor_current_ui_state":
-        raise HTTPException(
-            status_code=422,
-            detail="Matrix Editor Test Record preview requires current UI state payload.",
+    _require_current_ui_source(request.source)
+    draft_request = MatrixEditorTestRecordDraftRequest.model_validate(
+        request.model_dump(include={"source", "groups", "rows", "step_text_overrides"})
+    )
+    try:
+        publication_service.validate_download(
+            ExecuteMatrixEditorTestRecordDownloadCommand(
+                project_id=project_id,
+                draft_signature=_draft_signature(draft_request),
+                preview_token=request.preview_token,
+            )
         )
+    except MatrixEditorTestRecordPublicationBlockedError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except MatrixEditorTestRecordPublicationConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     try:
         template_path = resolve_test_record_template_path(
             template_resource_store,

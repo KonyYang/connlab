@@ -2097,6 +2097,7 @@ export type MatrixEditorTestRecordPublicationPreview = {
   project_id: string;
   mode: "download" | "official";
   status: "ready" | "conflict" | "blocked";
+  authority_status: "confirmed" | "unconfirmed";
   target_path: string | null;
   existing_file: boolean;
   existing_modified_at: string | null;
@@ -4818,7 +4819,7 @@ export function generateConfirmedMatrixTestRecordDraftDownload(
 
 export function generateMatrixEditorTestRecordDraftDownload(
   projectId: string,
-  input: MatrixEditorTestRecordDraftRequest
+  input: MatrixEditorTestRecordDraftRequest & { preview_token: string }
 ): Promise<BlobDownloadResponse> {
   return requestBlobResponse(
     `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/test-record-draft/generate`,

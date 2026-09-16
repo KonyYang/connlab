@@ -273,27 +273,43 @@ def _build_page_break_paragraph_element() -> object:
 
 
 def _fill_header_metadata(document: Document, metadata: TestRecordHeaderMetadata) -> None:
+    seen_parts: set[str] = set()
     for section in document.sections:
-        header = section.header
-        _fill_lab_test_request_number(
-            header_tables=header.tables,
-            value=metadata.lab_test_request_number,
-        )
-        _fill_header_value_by_label(
-            header_tables=header.tables,
-            label_tokens=("Product Description", "产品描述"),
-            value=metadata.product_description,
-        )
-        _fill_header_value_by_label(
-            header_tables=header.tables,
-            label_tokens=("Applicable Specification", "Applicable Specifications", "适用的规范"),
-            value=metadata.applicable_specification,
-        )
-        _fill_header_value_by_label(
-            header_tables=header.tables,
-            label_tokens=("Estimated Completion Date", "预计完成日期"),
-            value="",
-        )
+        headers = [section.header]
+        if section.different_first_page_header_footer:
+            headers.append(section.first_page_header)
+        if document.settings.odd_and_even_pages_header_footer:
+            headers.append(section.even_page_header)
+        for header in headers:
+            part_key = str(header.part.partname)
+            if part_key in seen_parts:
+                continue
+            seen_parts.add(part_key)
+            _fill_one_header_metadata(header.tables, metadata)
+
+
+def _fill_one_header_metadata(
+    header_tables: list[Table], metadata: TestRecordHeaderMetadata
+) -> None:
+    _fill_lab_test_request_number(
+        header_tables=header_tables,
+        value=metadata.lab_test_request_number,
+    )
+    _fill_header_value_by_label(
+        header_tables=header_tables,
+        label_tokens=("Product Description", "产品描述"),
+        value=metadata.product_description,
+    )
+    _fill_header_value_by_label(
+        header_tables=header_tables,
+        label_tokens=("Applicable Specification", "Applicable Specifications", "适用的规范"),
+        value=metadata.applicable_specification,
+    )
+    _fill_header_value_by_label(
+        header_tables=header_tables,
+        label_tokens=("Estimated Completion Date", "预计完成日期"),
+        value="",
+    )
 
 
 def _fill_lab_test_request_number(*, header_tables: list[Table], value: str) -> None:

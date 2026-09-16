@@ -199,7 +199,7 @@ export function MatrixEditorWorkspace({
   const [confirmActiveMessage, setConfirmActiveMessage] = useState<string>("");
   const [testRecordState, setTestRecordState] = useState<MatrixTestRecordState>("idle");
   const [testRecordMessage, setTestRecordMessage] = useState<string>("");
-  const [testRecordConflict, setTestRecordConflict] =
+  const [testRecordConfirmation, setTestRecordConfirmation] =
     useState<MatrixEditorTestRecordPublicationPreview | null>(null);
   const [testStatusState, setTestStatusState] = useState<MatrixTestRecordState>("idle");
   const [testStatusMessage, setTestStatusMessage] = useState<string>("");
@@ -1242,7 +1242,7 @@ export function MatrixEditorWorkspace({
       return;
     }
     setTestRecordState("loading");
-    setTestRecordConflict(null);
+    setTestRecordConfirmation(null);
     setTestRecordMessage("Checking Test Record destination...");
     try {
       const testRecordDraftRequest = getTestRecordDraftRequest();
@@ -1254,20 +1254,13 @@ export function MatrixEditorWorkspace({
         throw new Error(preview.blockers[0] ?? "Test Record cannot be saved.");
       }
       if (preview.mode === "download") {
-        const response = await generateMatrixEditorTestRecordDraftDownload(
-          projectId,
-          testRecordDraftRequest
-        );
-        triggerBlobDownload(
-          response.blob,
-          testRecordDraftFileName(projectReference, projectId)
-        );
-        setTestRecordState("success");
-        setTestRecordMessage("Downloaded unconfirmed Test Record preview.");
+        setTestRecordConfirmation(preview);
+        setTestRecordState("idle");
+        setTestRecordMessage("Confirm the Test Record preview download.");
         return;
       }
       if (preview.status === "conflict") {
-        setTestRecordConflict(preview);
+        setTestRecordConfirmation(preview);
         setTestRecordState("idle");
         setTestRecordMessage("An existing Test Record needs a replacement choice.");
         return;
@@ -1287,10 +1280,41 @@ export function MatrixEditorWorkspace({
     }
   };
 
+  const confirmTestRecordDownload = async (): Promise<void> => {
+    if (!testRecordConfirmation || testRecordConfirmation.mode !== "download") {
+      return;
+    }
+    setTestRecordState("loading");
+    setTestRecordMessage("Generating Test Record preview...");
+    try {
+      const response = await generateMatrixEditorTestRecordDraftDownload(projectId, {
+        ...getTestRecordDraftRequest(),
+        preview_token: testRecordConfirmation.preview_token,
+      });
+      triggerBlobDownload(
+        response.blob,
+        testRecordDraftFileName(projectReference, projectId)
+      );
+      const wasUnconfirmed = testRecordConfirmation.authority_status === "unconfirmed";
+      setTestRecordConfirmation(null);
+      setTestRecordState("success");
+      setTestRecordMessage(
+        wasUnconfirmed
+          ? "Downloaded unconfirmed Test Record preview."
+          : "Downloaded confirmed Test Record preview."
+      );
+    } catch (error) {
+      setTestRecordState("error");
+      setTestRecordMessage(
+        parseRequestError(error, "Failed to generate Test Record preview.")
+      );
+    }
+  };
+
   const resolveTestRecordConflict = async (
     action: "archive" | "recycle"
   ): Promise<void> => {
-    if (!testRecordConflict) {
+    if (!testRecordConfirmation) {
       return;
     }
     setTestRecordState("loading");
@@ -1302,10 +1326,10 @@ export function MatrixEditorWorkspace({
     try {
       const result = await publishMatrixEditorTestRecord(projectId, {
         ...getTestRecordDraftRequest(),
-        preview_token: testRecordConflict.preview_token,
+        preview_token: testRecordConfirmation.preview_token,
         conflict_action: action,
       });
-      setTestRecordConflict(null);
+      setTestRecordConfirmation(null);
       setTestRecordState("success");
       setTestRecordMessage(
         action === "archive" && result.archive_path
@@ -1510,7 +1534,7 @@ export function MatrixEditorWorkspace({
           {testRecordMessage}
         </section>
       ) : null}
-      {testRecordConflict ? (
+      {testRecordConfirmation ? (
         <section
           aria-describedby="test-record-conflict-description"
           aria-labelledby="test-record-conflict-title"
@@ -1519,43 +1543,82 @@ export function MatrixEditorWorkspace({
           role="alertdialog"
         >
           <article className="matrix-editor-test-record-conflict-panel">
-            <h3 id="test-record-conflict-title">Replace existing Test Record?</h3>
-            <p id="test-record-conflict-description">
-              A file with the same name already exists in Submitted Material. Choose what to do
-              with the existing Word document before the new version is saved.
-            </p>
-            {testRecordConflict.existing_modified_at ? (
-              <p className="fine-print">
-                Existing file modified: {new Date(testRecordConflict.existing_modified_at).toLocaleString()}
-              </p>
-            ) : null}
-            <div className="matrix-editor-test-record-conflict-actions">
-              <button
-                type="button"
-                disabled={testRecordState === "loading"}
-                onClick={() => void resolveTestRecordConflict("archive")}
-              >
-                Archive old file
-              </button>
-              <button
-                type="button"
-                disabled={testRecordState === "loading"}
-                onClick={() => void resolveTestRecordConflict("recycle")}
-              >
-                Move old file to Recycle Bin
-              </button>
-              <button
-                type="button"
-                disabled={testRecordState === "loading"}
-                onClick={() => {
-                  setTestRecordConflict(null);
-                  setTestRecordState("idle");
-                  setTestRecordMessage("Test Record replacement cancelled.");
-                }}
-              >
-                Cancel
-              </button>
-            </div>
+            {testRecordConfirmation.mode === "download" ? (
+              <>
+                <h3 id="test-record-conflict-title">
+                  {testRecordConfirmation.authority_status === "unconfirmed"
+                    ? "Download Test Record draft preview?"
+                    : "Download Test Record preview?"}
+                </h3>
+                <p id="test-record-conflict-description">
+                  {testRecordConfirmation.authority_status === "unconfirmed"
+                    ? "The current content is an unconfirmed draft. The preview will download to your system Downloads folder and will not change any official file in the project folder."
+                    : "The Matrix is confirmed, but there is no available project folder. The preview will download to your system Downloads folder and will not be registered as an official project file."}
+                </p>
+                <div className="matrix-editor-test-record-conflict-actions">
+                  <button
+                    type="button"
+                    disabled={testRecordState === "loading"}
+                    onClick={() => void confirmTestRecordDownload()}
+                  >
+                    {testRecordConfirmation.authority_status === "unconfirmed"
+                      ? "Download draft preview"
+                      : "Download preview"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={testRecordState === "loading"}
+                    onClick={() => {
+                      setTestRecordConfirmation(null);
+                      setTestRecordState("idle");
+                      setTestRecordMessage("Test Record generation cancelled.");
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 id="test-record-conflict-title">Replace existing Test Record?</h3>
+                <p id="test-record-conflict-description">
+                  A file with the same name already exists in Submitted Material. Choose what to do
+                  with the existing Word document before the new version is saved.
+                </p>
+                {testRecordConfirmation.existing_modified_at ? (
+                  <p className="fine-print">
+                    Existing file modified: {new Date(testRecordConfirmation.existing_modified_at).toLocaleString()}
+                  </p>
+                ) : null}
+                <div className="matrix-editor-test-record-conflict-actions">
+                  <button
+                    type="button"
+                    disabled={testRecordState === "loading"}
+                    onClick={() => void resolveTestRecordConflict("archive")}
+                  >
+                    Archive old file
+                  </button>
+                  <button
+                    type="button"
+                    disabled={testRecordState === "loading"}
+                    onClick={() => void resolveTestRecordConflict("recycle")}
+                  >
+                    Move old file to Recycle Bin
+                  </button>
+                  <button
+                    type="button"
+                    disabled={testRecordState === "loading"}
+                    onClick={() => {
+                      setTestRecordConfirmation(null);
+                      setTestRecordState("idle");
+                      setTestRecordMessage("Test Record replacement cancelled.");
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
           </article>
         </section>
       ) : null}

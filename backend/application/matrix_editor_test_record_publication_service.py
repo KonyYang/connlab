@@ -110,10 +110,18 @@ class ExecuteMatrixEditorTestRecordPublicationCommand:
 
 
 @dataclass(frozen=True, slots=True)
+class ExecuteMatrixEditorTestRecordDownloadCommand:
+    project_id: str
+    draft_signature: str
+    preview_token: str
+
+
+@dataclass(frozen=True, slots=True)
 class MatrixEditorTestRecordPublicationPreview:
     project_id: str
     mode: str
     status: str
+    authority_status: str
     target_path: Path | None
     target_fingerprint: str | None
     existing_file: bool
@@ -157,25 +165,29 @@ class MatrixEditorTestRecordPublicationService:
     def preview(
         self, command: PreviewMatrixEditorTestRecordPublicationCommand
     ) -> MatrixEditorTestRecordPublicationPreview:
+        authority_matches = self._authority_matcher.matches_active_authority(
+            command.project_id, command.draft_signature
+        )
+        authority_status = "confirmed" if authority_matches else "unconfirmed"
         workspace = self._workspaces.get_by_project(command.project_id)
-        if workspace is None:
+        if not authority_matches:
             return self._preview_result(
                 command=command,
                 mode="download",
                 status="ready",
+                authority_status=authority_status,
                 target_path=None,
                 target_fingerprint=None,
                 existing_modified_at=None,
                 blockers=(),
                 basic_information=None,
             )
-        if not self._authority_matcher.matches_active_authority(
-            command.project_id, command.draft_signature
-        ):
+        if workspace is None:
             return self._preview_result(
                 command=command,
                 mode="download",
                 status="ready",
+                authority_status=authority_status,
                 target_path=None,
                 target_fingerprint=None,
                 existing_modified_at=None,
@@ -185,14 +197,13 @@ class MatrixEditorTestRecordPublicationService:
         if not Path(workspace.official_folder_path).is_dir():
             return self._preview_result(
                 command=command,
-                mode="official",
-                status="blocked",
-                target_path=Path(workspace.official_folder_path),
+                mode="download",
+                status="ready",
+                authority_status=authority_status,
+                target_path=None,
                 target_fingerprint=None,
                 existing_modified_at=None,
-                blockers=(
-                    f"The recorded official project folder is missing: {workspace.official_folder_path}",
-                ),
+                blockers=(),
                 basic_information=None,
             )
 
@@ -200,14 +211,13 @@ class MatrixEditorTestRecordPublicationService:
         if not submitted_material.is_dir():
             return self._preview_result(
                 command=command,
-                mode="official",
-                status="blocked",
-                target_path=submitted_material,
+                mode="download",
+                status="ready",
+                authority_status=authority_status,
+                target_path=None,
                 target_fingerprint=None,
                 existing_modified_at=None,
-                blockers=(
-                    "The official project folder is missing the Submitted Material folder.",
-                ),
+                blockers=(),
                 basic_information=None,
             )
 
@@ -219,6 +229,7 @@ class MatrixEditorTestRecordPublicationService:
                 command=command,
                 mode="official",
                 status="blocked",
+                authority_status=authority_status,
                 target_path=None,
                 target_fingerprint=None,
                 existing_modified_at=None,
@@ -238,6 +249,7 @@ class MatrixEditorTestRecordPublicationService:
                 command=command,
                 mode="official",
                 status="blocked",
+                authority_status=authority_status,
                 target_path=None,
                 target_fingerprint=None,
                 existing_modified_at=None,
@@ -254,6 +266,7 @@ class MatrixEditorTestRecordPublicationService:
                 command=command,
                 mode="official",
                 status="blocked",
+                authority_status=authority_status,
                 target_path=None,
                 target_fingerprint=None,
                 existing_modified_at=None,
@@ -272,6 +285,7 @@ class MatrixEditorTestRecordPublicationService:
                 command=command,
                 mode="official",
                 status="blocked",
+                authority_status=authority_status,
                 target_path=target,
                 target_fingerprint=None,
                 existing_modified_at=None,
@@ -284,12 +298,35 @@ class MatrixEditorTestRecordPublicationService:
             command=command,
             mode="official",
             status="conflict" if fingerprint is not None else "ready",
+            authority_status=authority_status,
             target_path=target,
             target_fingerprint=fingerprint,
             existing_modified_at=modified_at,
             blockers=(),
             basic_information=basic_information,
         )
+
+    def validate_download(
+        self, command: ExecuteMatrixEditorTestRecordDownloadCommand
+    ) -> MatrixEditorTestRecordPublicationPreview:
+        """Revalidate that the preview still belongs in browser-download mode."""
+        current = self.preview(
+            PreviewMatrixEditorTestRecordPublicationCommand(
+                project_id=command.project_id,
+                draft_signature=command.draft_signature,
+            )
+        )
+        if current.preview_token != command.preview_token:
+            raise MatrixEditorTestRecordPublicationConflictError(
+                "Test Record destination or authority changed after preview. Try again."
+            )
+        if current.status == "blocked":
+            raise MatrixEditorTestRecordPublicationBlockedError(current.blockers[0])
+        if current.mode != "download":
+            raise MatrixEditorTestRecordPublicationConflictError(
+                "Test Record destination changed after preview. Try again."
+            )
+        return current
 
     def execute(
         self, command: ExecuteMatrixEditorTestRecordPublicationCommand
@@ -392,6 +429,7 @@ class MatrixEditorTestRecordPublicationService:
         command: PreviewMatrixEditorTestRecordPublicationCommand,
         mode: str,
         status: str,
+        authority_status: str,
         target_path: Path | None,
         target_fingerprint: str | None,
         existing_modified_at: str | None,
@@ -405,6 +443,7 @@ class MatrixEditorTestRecordPublicationService:
             "draft_signature": command.draft_signature,
             "mode": mode,
             "status": status,
+            "authority_status": authority_status,
             "target_path": str(target_path) if target_path is not None else None,
             "target_fingerprint": target_fingerprint,
             "basic_information_version": version,
@@ -418,6 +457,7 @@ class MatrixEditorTestRecordPublicationService:
             project_id=command.project_id,
             mode=mode,
             status=status,
+            authority_status=authority_status,
             target_path=target_path,
             target_fingerprint=target_fingerprint,
             existing_file=target_fingerprint is not None,

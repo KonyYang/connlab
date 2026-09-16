@@ -282,7 +282,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     expect(screen.queryByRole("button", { name: "Apply to blank contact targets" })).toBeNull();
   });
 
-  it("downloads a Test Record preview from current unsaved Matrix Editor state", async () => {
+  it("confirms before downloading a Test Record from current unconfirmed Matrix state", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
     await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
 
@@ -294,12 +294,22 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Test record" }));
 
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Download Test Record draft preview?",
+    });
+    expect(
+      within(dialog).getByText(/unconfirmed draft/i)
+    ).toBeTruthy();
+    expect(apiMocks.generateMatrixEditorTestRecordDraftDownload).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Download draft preview" }));
+
     await waitFor(() =>
       expect(apiMocks.generateMatrixEditorTestRecordDraftDownload).toHaveBeenCalledTimes(1)
     );
     const [projectId, payload] = apiMocks.generateMatrixEditorTestRecordDraftDownload.mock.calls[0];
     expect(projectId).toBe("P1");
     expect(payload.source).toBe("matrix_editor_current_ui_state");
+    expect(payload.preview_token).toBe("download-preview-token");
     expect(payload.step_text_overrides).toEqual([{
       group_key: "g1", row_order: 1, step_sequence: 1, step_suffix_note: "",
       description: "Draft-only step description", requirement: null,
@@ -322,11 +332,57 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     expect(screen.getByText("Downloaded unconfirmed Test Record preview.")).toBeTruthy();
   });
 
+  it("confirms a preview download when Matrix is confirmed but no project folder is available", async () => {
+    apiMocks.previewMatrixEditorTestRecordPublication.mockResolvedValueOnce({
+      project_id: "P1",
+      mode: "download",
+      status: "ready",
+      authority_status: "confirmed",
+      target_path: null,
+      existing_file: false,
+      existing_modified_at: null,
+      blockers: [],
+      preview_token: "confirmed-download-token",
+    });
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Test record" }));
+
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Download Test Record preview?",
+    });
+    expect(within(dialog).getByText(/no available project folder/i)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Download preview" }));
+    await waitFor(() =>
+      expect(apiMocks.generateMatrixEditorTestRecordDraftDownload).toHaveBeenCalledWith(
+        "P1",
+        expect.objectContaining({ preview_token: "confirmed-download-token" })
+      )
+    );
+  });
+
+  it("cancels the Test Record preview confirmation without creating a file or state change", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Test record" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Download Test Record draft preview?",
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    expect(apiMocks.generateMatrixEditorTestRecordDraftDownload).not.toHaveBeenCalled();
+    expect(apiMocks.publishMatrixEditorTestRecord).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
   it("saves Test Record directly to Submitted Material when the official folder exists", async () => {
     apiMocks.previewMatrixEditorTestRecordPublication.mockResolvedValueOnce({
       project_id: "P1",
       mode: "official",
       status: "ready",
+      authority_status: "confirmed",
       target_path: "D:/Projects/DL-001/Submitted Material/DL-001 Test Record.docx",
       existing_file: false,
       existing_modified_at: null,
@@ -348,6 +404,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
         })
       )
     );
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(apiMocks.generateMatrixEditorTestRecordDraftDownload).not.toHaveBeenCalled();
     expect(screen.getByText("Saved DL-001 Test Record.docx to Submitted Material.")).toBeTruthy();
   });
@@ -357,6 +414,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
       project_id: "P1",
       mode: "official",
       status: "conflict",
+      authority_status: "confirmed",
       target_path: "D:/Projects/DL-001/Submitted Material/DL-001 Test Record.docx",
       existing_file: true,
       existing_modified_at: "2026-08-28T12:00:00+08:00",
@@ -376,6 +434,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     const dialog = await screen.findByRole("alertdialog", {
       name: "Replace existing Test Record?",
     });
+    expect(screen.getAllByRole("alertdialog")).toHaveLength(1);
     expect(within(dialog).getByRole("button", { name: "Archive old file" })).toBeTruthy();
     expect(
       within(dialog).getByRole("button", { name: "Move old file to Recycle Bin" })

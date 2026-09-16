@@ -354,6 +354,39 @@ def test_gateway_fills_test_record_header_metadata(tmp_path: Path) -> None:
     assert header_tables[1].cell(0, 5).text == ""
 
 
+def test_gateway_fills_default_first_even_and_linked_header_variants(
+    tmp_path: Path,
+) -> None:
+    template = _build_template_with_header_variants(tmp_path / "template-variants.docx")
+    output = tmp_path / "record-variants.docx"
+
+    TestRecordDocumentGateway().generate_from_confirmed_matrix(
+        template_path=template,
+        output_path=output,
+        project_id="P1",
+        project_no="DL-001",
+        product_description="legacy",
+        applicable_specification="legacy",
+        confirmed_matrix_id="cmv-1",
+        groups=(_ConfirmedGroup(),),
+        header_metadata=TestRecordHeaderMetadata(
+            lab_test_request_number="DL-2026-05-003",
+            product_description="Coolpower HDF 3.40mm pin",
+            applicable_specification="GS-12-1507",
+        ),
+    )
+
+    document = Document(output)
+    first = document.sections[0]
+    linked = document.sections[1]
+    for header in (first.header, first.first_page_header, first.even_page_header):
+        assert "DL-2026-05-003" in header.tables[0].cell(0, 2).text
+        assert header.tables[1].cell(0, 1).text == "Coolpower HDF 3.40mm pin"
+        assert header.tables[1].cell(0, 3).text == "GS-12-1507"
+    assert linked.header.is_linked_to_previous is True
+    assert "DL-2026-05-003" in linked.header.tables[0].cell(0, 2).text
+
+
 def _build_template_with_header(path: Path) -> Path:
     section_width = 7 * 914400
     document = Document()
@@ -372,3 +405,35 @@ def _build_template_with_header(path: Path) -> Path:
     equipment_table.rows[0].cells[0].text = "Equipment ID No."
     document.save(path)
     return path
+
+
+def _build_template_with_header_variants(path: Path) -> Path:
+    from docx.enum.section import WD_SECTION
+
+    document = Document()
+    document.settings.odd_and_even_pages_header_footer = True
+    first = document.sections[0]
+    first.different_first_page_header_footer = True
+    for header in (first.header, first.first_page_header, first.even_page_header):
+        _add_header_metadata_tables(header, first.page_width - first.left_margin - first.right_margin)
+    document.add_paragraph("Group Number 组别编号: ")
+    step_table = document.add_table(rows=1, cols=9)
+    step_table.rows[0].cells[0].text = "Step"
+    document.add_paragraph("EQUIPMENT USED 使用的设备:")
+    equipment_table = document.add_table(rows=1, cols=7)
+    equipment_table.rows[0].cells[0].text = "Equipment ID No."
+    linked = document.add_section(WD_SECTION.NEW_PAGE)
+    linked.header.is_linked_to_previous = True
+    linked.first_page_header.is_linked_to_previous = True
+    linked.even_page_header.is_linked_to_previous = True
+    document.save(path)
+    return path
+
+
+def _add_header_metadata_tables(header, width) -> None:
+    table0 = header.add_table(rows=1, cols=3, width=width)
+    table0.cell(0, 2).text = "Lab Test Request Number:\n实验室测试项目编号："
+    table1 = header.add_table(rows=1, cols=6, width=width)
+    table1.cell(0, 0).text = "Product Description\n产品描述"
+    table1.cell(0, 2).text = "Applicable Specification\n适用的规范"
+    table1.cell(0, 4).text = "Estimated Completion Date\n预计完成日期"

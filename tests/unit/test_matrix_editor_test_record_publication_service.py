@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from backend.application.matrix_editor_test_record_publication_service import (
+    ExecuteMatrixEditorTestRecordDownloadCommand,
     ExecuteMatrixEditorTestRecordPublicationCommand,
     MatrixEditorTestRecordPublicationBlockedError,
     MatrixEditorTestRecordPublicationConflictError,
@@ -31,6 +32,7 @@ def test_preview_uses_download_mode_before_official_workspace_exists(tmp_path: P
     assert preview.mode == "download"
     assert preview.status == "ready"
     assert preview.target_path is None
+    assert preview.authority_status == "confirmed"
 
 
 def test_preview_uses_download_mode_when_current_matrix_is_not_confirmed(
@@ -52,6 +54,52 @@ def test_preview_uses_download_mode_when_current_matrix_is_not_confirmed(
     assert preview.mode == "download"
     assert preview.status == "ready"
     assert preview.target_path is None
+    assert preview.authority_status == "unconfirmed"
+
+
+def test_download_execution_revalidates_authority_and_destination_state(
+    tmp_path: Path,
+) -> None:
+    service = _service(tmp_path, workspace=None, authority_matches=False)
+    preview = service.preview(
+        PreviewMatrixEditorTestRecordPublicationCommand("P1", "draft-a")
+    )
+
+    validated = service.validate_download(
+        ExecuteMatrixEditorTestRecordDownloadCommand(
+            project_id="P1",
+            draft_signature="draft-a",
+            preview_token=preview.preview_token,
+        )
+    )
+
+    assert validated.mode == "download"
+    assert validated.authority_status == "unconfirmed"
+
+
+def test_download_execution_rejects_stale_preview_after_project_folder_becomes_available(
+    tmp_path: Path,
+) -> None:
+    workspace_store = _WorkspaceStore(None)
+    service = _service(
+        tmp_path,
+        workspace=None,
+        authority_matches=True,
+        workspace_store=workspace_store,
+    )
+    preview = service.preview(
+        PreviewMatrixEditorTestRecordPublicationCommand("P1", "draft-a")
+    )
+    workspace_store.workspace = _workspace(tmp_path)
+
+    with pytest.raises(MatrixEditorTestRecordPublicationConflictError, match="changed"):
+        service.validate_download(
+            ExecuteMatrixEditorTestRecordDownloadCommand(
+                project_id="P1",
+                draft_signature="draft-a",
+                preview_token=preview.preview_token,
+            )
+        )
 
 
 def test_execute_replaces_the_submitted_material_test_record_and_registers_output(
@@ -187,7 +235,7 @@ def test_missing_confirmed_basic_information_blocks_official_publication(
         )
 
 
-def test_recorded_workspace_with_missing_official_folder_is_blocked(
+def test_confirmed_matrix_with_missing_official_folder_uses_download_preview(
     tmp_path: Path,
 ) -> None:
     workspace = SimpleNamespace(
@@ -202,9 +250,10 @@ def test_recorded_workspace_with_missing_official_folder_is_blocked(
         PreviewMatrixEditorTestRecordPublicationCommand("P1", "draft-a")
     )
 
-    assert preview.mode == "official"
-    assert preview.status == "blocked"
-    assert "missing" in preview.blockers[0].lower()
+    assert preview.mode == "download"
+    assert preview.status == "ready"
+    assert preview.authority_status == "confirmed"
+    assert preview.blockers == ()
 
 
 def test_basic_information_dl_must_match_official_workspace(tmp_path: Path) -> None:
@@ -333,6 +382,7 @@ def _service(
     workspace,
     basic_information=...,
     authority_matches: bool = True,
+    workspace_store=None,
 ) -> MatrixEditorTestRecordPublicationService:
     if basic_information is ...:
         basic_information = SimpleNamespace(
@@ -347,7 +397,7 @@ def _service(
     generator = _Generator()
     outputs = _Outputs()
     service = MatrixEditorTestRecordPublicationService(
-        workspace_store=_WorkspaceStore(workspace),
+        workspace_store=workspace_store or _WorkspaceStore(workspace),
         authority_matcher=_AuthorityMatcher(authority_matches),
         basic_information_reader=_BasicInformationReader(basic_information),
         document_generation_service=generator,
