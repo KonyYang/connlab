@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_FORM_ACTION_LABELS",
+    "summary": "Replace the Fee Form status explanation with authority-aware English action labels.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Update the existing Fee Form button label to Download Draft Fee Form or Generate Official Fee Form based on current confirmed authority, preserve blocker/error/success notices, and add focused frontend regression tests.",
+    "scope_paths": [
+      "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "00831553214ec56912db7b3f27eeb786a50c8020",
+    "started_at": "2026-09-16T15:51:59.823678Z",
+    "updated_at": "2026-09-16T15:51:59.823678Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FEE_CONFIRMED_STATUS_SIGNATURE_CANONICALIZATION",
     "tier": "micro",
