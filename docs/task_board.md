@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FEE_MATRIX_SINGLE_BUTTON_PREVIEW_CONFIRMATION",
     "summary": "Apply the Test Record single-button preview and official-save interaction to Fee Form and Export Matrix.",
@@ -38,9 +38,81 @@
     "risk_reasons": [],
     "activation_head": "9112a30b7a208fd4e1cce37bd014221f9e3281b1",
     "started_at": "2026-09-16T09:38:48.810138Z",
-    "updated_at": "2026-09-16T09:38:48.810138Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-16T10:05:46.530701Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_FEE_MATRIX_SINGLE_BUTTON_PREVIEW_CONFIRMATION",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_FEE_MATRIX_SINGLE_BUTTON_PREVIEW_CONFIRMATION",
+      "subject": "4c3fd2a23e274b656b47db9b3c4477a3c841395f",
+      "summary": "Fee Form and Export Matrix now require one explicit confirmation for browser previews, keep direct official saves when current authority and project folders are available, preserve one conflict dialog for existing files, and revalidate preview tokens before download generation.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/routes_confirmed_matrix_fee_evaluation_export.py",
+        "backend/api/routes_matrix_editor_live_xlsx_export.py",
+        "backend/application/fee_form_publication_service.py",
+        "backend/application/matrix_editor_live_xlsx_publication_service.py",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/features/matrix-editor/useMatrixEditorXlsxExport.test.tsx",
+        "frontend/src/features/matrix-editor/useMatrixEditorXlsxExport.ts",
+        "tests/integration/test_confirmed_matrix_fee_file_download_api.py",
+        "tests/integration/test_matrix_editor_live_xlsx_export_api.py",
+        "tests/integration/test_matrix_editor_session_api.py",
+        "tests/unit/test_fee_form_publication_service.py",
+        "tests/unit/test_matrix_editor_live_xlsx_publication_service.py"
+      ],
+      "validation": [
+        {
+          "name": "backend publication and API regression",
+          "status": "passed",
+          "details": "32 passed"
+        },
+        {
+          "name": "Matrix session integration regression",
+          "status": "passed",
+          "details": "21 passed"
+        },
+        {
+          "name": "frontend Fee Form and Matrix interaction regression",
+          "status": "passed",
+          "details": "75 passed"
+        },
+        {
+          "name": "frontend production build",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented the two state-driven publication flows with TDD evidence."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Sequential focused diff review completed in the current agent; no standards or specification findings."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Sequential affected backend, API, frontend, integration, and production-build validation passed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "direct_primary"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEST_RECORD_SINGLE_BUTTON_HEADER",
