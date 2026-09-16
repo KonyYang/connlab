@@ -269,7 +269,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(screen.getByLabelText("Selected group fee").textContent).toContain("120.00");
   });
 
-  it("updates Working hours and Grand Cost when the group filter changes", async () => {
+  it("updates Working hours and the selected group total when the group filter changes", async () => {
     arrangeSuccessfulContext();
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(
       createDraftWithTwoCalculatedGroups()
@@ -299,10 +299,8 @@ describe("FeeEvaluationReviewExportPage", () => {
       target: { value: "Group 1" },
     });
 
-    expect(screen.getByLabelText("Selected group fee").textContent).toContain("100.00");
-    expect(within(totals).getByText("Grand Cost")).toBeTruthy();
+    expect(within(totals).getByLabelText("Selected group fee").textContent).toContain("100.00");
     expect(within(totals).getByText("1.5")).toBeTruthy();
-    expect(within(totals).getByText("100.00")).toBeTruthy();
   });
 
   it("clears local cost preview values when the project draft reloads", async () => {

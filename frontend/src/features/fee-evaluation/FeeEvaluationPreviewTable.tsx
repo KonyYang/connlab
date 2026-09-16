@@ -14,7 +14,6 @@ type FeeEvaluationPreviewTableProps = {
   costPreviewValues: FeeEvaluationCostPreviewValues;
   costRisk: FeeEvaluationCostRisk;
   confirmFeeActionState: ConfirmFeeActionState;
-  grandCostLabel: string;
   labManpowerCostLabel: string;
   groupFilter: string;
   header: FeeEvaluationPreviewHeader;
@@ -77,7 +76,6 @@ export function FeeEvaluationPreviewTable({
   costPreviewValues,
   costRisk,
   confirmFeeActionState,
-  grandCostLabel,
   labManpowerCostLabel,
   groupFilter,
   header,
@@ -107,27 +105,6 @@ export function FeeEvaluationPreviewTable({
           </p>
         </div>
         <div className="fee-evaluation-preview-controls">
-          <div className="fee-evaluation-preview-group-card">
-            <label>
-              <span className="fee-evaluation-sr-only">Preview group</span>
-              <select
-                value={groupFilter}
-                disabled={readOnly}
-                onChange={(event) => onGroupFilterChange(event.currentTarget.value)}
-              >
-                <option value="all">All Group</option>
-                {groupOptions.map((group) => (
-                  <option key={group} value={group}>
-                    {group}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="fee-evaluation-preview-scope-fee" aria-label="Selected group fee">
-              <span>Total Testing Fee</span>
-              <strong>{scopeFeeLabel}</strong>
-            </div>
-          </div>
           <button
             className="fee-evaluation-file-button"
             type="button"
@@ -247,9 +224,28 @@ export function FeeEvaluationPreviewTable({
             />
           </dd>
         </div>
-        <div>
-          <dt>Grand Cost</dt>
-          <dd>{grandCostLabel}</dd>
+        <div className="fee-evaluation-preview-group-card">
+          <dt>
+            <label>
+              <span className="fee-evaluation-sr-only">Preview group</span>
+              <select
+                value={groupFilter}
+                disabled={readOnly}
+                onChange={(event) => onGroupFilterChange(event.currentTarget.value)}
+              >
+                <option value="all">All Group</option>
+                {groupOptions.map((group) => (
+                  <option key={group} value={group}>
+                    {group}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </dt>
+          <dd className="fee-evaluation-preview-scope-fee" aria-label="Selected group fee">
+            <span>Total Testing Fee</span>
+            <strong>{scopeFeeLabel}</strong>
+          </dd>
         </div>
       </dl>
       {costRisk.severity === "loss_warning" && costRisk.message ? (

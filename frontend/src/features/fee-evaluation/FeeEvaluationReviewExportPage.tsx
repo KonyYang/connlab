@@ -1276,7 +1276,6 @@ export function FeeEvaluationReviewExportPage({
         costPreviewValues={costPreviewValues}
         costRisk={costRisk}
         confirmFeeActionState={confirmFeeActionState}
-        grandCostLabel={grandCostLabel}
         labManpowerCostLabel={labManpowerCostLabel}
         groupFilter={previewGroupFilter}
         groupOptions={groupOptions}

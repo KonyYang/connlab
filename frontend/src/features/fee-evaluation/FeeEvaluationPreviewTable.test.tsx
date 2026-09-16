@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FeeEvaluationPreviewTable } from "./FeeEvaluationPreviewTable";
@@ -22,7 +22,6 @@ describe("FeeEvaluationPreviewTable", () => {
         downloadState={{ kind: "idle" }}
         feeFormButtonLabel="Download Draft Fee Form"
         draftPreviewNotice={null}
-        grandCostLabel="0.00"
         groupFilter="all"
         groupOptions={[]}
         header={{
@@ -61,5 +60,10 @@ describe("FeeEvaluationPreviewTable", () => {
     expect(notice.textContent).toContain("Automatic Fee defaults changed");
     expect(notice.className).toContain("fee-evaluation-save-notice");
     expect(screen.queryByRole("alert")).toBeNull();
+
+    const totals = screen.getByLabelText("Testing Prices totals");
+    expect(within(totals).getByLabelText("Preview group")).toBeTruthy();
+    expect(within(totals).getByLabelText("Selected group fee")).toBeTruthy();
+    expect(within(totals).queryByText("Grand Cost")).toBeNull();
   });
 });
