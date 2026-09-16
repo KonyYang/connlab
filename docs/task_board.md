@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_CONFIRMED_DRAFT_HYDRATION",
+    "summary": "Restore confirmed Fee Form authority after reopening Fee Evaluation instead of incorrectly reverting to Draft.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Preserve current-v2 saved Sample preparation values when hydrating the Fee page so displayed content remains identical to the confirmed pricing draft, keep rebase behavior authoritative to the refreshed Matrix, and add page-level and hydration regression coverage for the official Fee Form action.",
+    "scope_paths": [
+      "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.ts",
+      "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.test.ts",
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "bf3fd3035d1808c3cfe33165358b25ee14289300",
+    "started_at": "2026-09-16T16:47:12.437479Z",
+    "updated_at": "2026-09-16T16:47:12.437479Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FEE_GROUP_SUMMARY_PLACEMENT",
     "tier": "micro",
