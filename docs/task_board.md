@@ -32,8 +32,16 @@
     ],
     "activation_head": "d6db63505cf7e0949d91f6b0e47cc1df590d65fe",
     "started_at": "2026-09-17T05:04:03.315167Z",
-    "updated_at": "2026-09-17T05:04:03.315167Z",
-    "checkpoint": null,
+    "updated_at": "2026-09-17T05:19:51.569553Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_PROJECT_FOLDER_FINALIZATION_ACCESS_COMPLETE",
+      "stage": "qa_scope_blocker",
+      "status": "blocked",
+      "requires_user": true,
+      "summary": "Approved composition callback wiring committed as 5df3fc3b; independent Planner/Developer/Reviewer complete, Standards 0/Spec 0, prior P1/P2 closed. QA: backend 92 passed/16 failed, frontend recovery 26 passed. All 16 failures arise before recovery from empty Fee rows in tests/integration/test_project_folder_generation_complete_chain.py and tests/integration/test_generation_workspace_process_recovery.py. Two representative cases reproduced identical 422 on isolated b78b6863 baseline. Await explicit approval to update these two extra test fixtures; do not weaken Fee validation. Python 3.11 smoke could not import backend.application because olefile is missing; no dependencies installed. No real database/project mutation or live resume. Full QA is NOT passed; retain task running until validation resolved."
+    },
     "report": null
   },
   "last_closed": {
