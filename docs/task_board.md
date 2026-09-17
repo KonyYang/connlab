@@ -20,27 +20,25 @@
     "scope": "Complete retained WIP c19b82df by wiring actual generation context callback in explicitly approved composition path, independently review and validate full cleanup fix. No live project mutation, resume, database migration or packaging.",
     "scope_paths": [
       "backend/api/project_folder_generation_composition.py",
-      "backend/infrastructure/files/recoverable_workspace_publisher.py",
-      "backend/application/project_folder_generation_service.py",
-      "tests/unit/test_generation_workspace_recovery.py",
-      "tests/unit/test_project_folder_generation_service.py",
-      "tests/integration/test_project_folder_generation_recovery.py",
-      "docs/project_folder_generation_recovery.md"
+      "docs/project_folder_generation_recovery.md",
+      "tests/integration/test_generation_workspace_process_recovery.py",
+      "tests/integration/test_project_folder_generation_complete_chain.py",
+      "tests/integration/test_project_folder_generation_recovery.py"
     ],
     "risk_reasons": [
       "Finalization controls approved destructive cleanup of operation-owned rollback copy; preserve input, identity, inventory and external alias protections."
     ],
     "activation_head": "d6db63505cf7e0949d91f6b0e47cc1df590d65fe",
     "started_at": "2026-09-17T05:04:03.315167Z",
-    "updated_at": "2026-09-17T11:22:21.395076Z",
+    "updated_at": "2026-09-17T11:27:18.942355Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_PROJECT_FOLDER_FINALIZATION_ACCESS_COMPLETE",
-      "stage": "approved_fixture_repair",
+      "stage": "scope_manifest_correction",
       "status": "running",
-      "requires_user": false,
-      "summary": "User explicitly approved two additional test files on 2026-09-17: tests/integration/test_project_folder_generation_complete_chain.py and tests/integration/test_generation_workspace_process_recovery.py. Update only obsolete empty Fee fixtures through real public API, retain safety assertions and strict production validation. Existing RED baseline proved; focused Developer checks, independent review and affected QA follow. Correct high-risk scope manifest after approved fixture changes are committed. No dependency installation or live data mutation. Python 3.11 runtime smoke remains unavailable due missing olefile."
+      "summary": "User explicitly approved updating the two named integration Fee fixtures on 2026-09-17. Manifest now equals exact committed diff since activation d6db6350. Retained pre-activation readonly safety changes remain part of reviewed/tested behavior but need no additional edits.",
+      "requires_user": false
     },
     "report": null
   },
