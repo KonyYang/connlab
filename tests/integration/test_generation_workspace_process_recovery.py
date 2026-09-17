@@ -83,8 +83,22 @@ def _confirm_basic_information(session):
             "expected_fingerprint": schedule["fingerprint"] if schedule else None,
             "post_test_buffer_days": "0", "test_start_date": "2026-09-06",
             "test_complete_date": "2026-09-15", "estimated_completion_date": "2026-09-15"}))
+        fee_draft = ok(client.get("/api/projects/P1/confirmed-matrix/fee-draft"))
+        fee_rows = [{
+            "source_line_id": f"{line['line_id']}:{token}:{index}",
+            "confirmed_group_id": line["confirmed_group_id"],
+            "confirmed_row_id": line["confirmed_row_id"],
+            "step_token": token, "step_index": index,
+            "spend_time": "0", "unit_price": "0", "unit_type": "per sample",
+            "units": "1", "base_fee": "0", "discount": "0%", "testing_fee": "0",
+        } for group in fee_draft["groups"] for line in group["line_items"]
+          for index, token in enumerate(line["step_tokens"])]
+        assert fee_rows
         pricing = ok(client.put("/api/projects/P1/confirmed-matrix/fee-evaluation/pricing-draft",
-                                json={"rows": [], "summary": {}}))
+                                json={"rows": fee_rows, "summary": {
+                                    "condition_confirmation_spend_time": "0",
+                                    "external_cost": "0", "lab_manpower_hourly_rate": "200",
+                                }}))
         ok(client.post("/api/projects/P1/confirmed-fee/versions", json={
             "confirmed_by": "operator", "expected_pricing_draft_edit_id": pricing["saved_draft_edit_id"],
             "expected_generation": pricing["saved_generation"],
