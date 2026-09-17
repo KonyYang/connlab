@@ -224,9 +224,21 @@ def test_reviewed_save_stale_cas_is_typed_and_does_not_overwrite(tmp_path) -> No
         assert winner is not None
         winner_session.commit()
 
+        # An exact replay is already satisfied and must not create a generation.
+        repeated = stale_service.save(
+            _reviewed_command(saved, stale_candidate.saved_snapshot.edited_values)
+        ).saved_snapshot
+        assert repeated is not None
+        assert repeated.generation == winner.generation
+        assert repeated.payload_fingerprint == winner.payload_fingerprint
+        stale_values = stale_candidate.saved_snapshot.edited_values
+        changed_values = replace(stale_values, rows=(
+            replace(stale_values.rows[0], notes="stale tab must not overwrite winner"),
+            *stale_values.rows[1:],
+        ))
         with pytest.raises(FeeEvaluationPricingDraftConflictError):
             stale_service.save(
-                _reviewed_command(saved, stale_candidate.saved_snapshot.edited_values)
+                _reviewed_command(saved, changed_values)
             )
         stale_session.rollback()
 

@@ -66,6 +66,47 @@ vi.mock("../../api/client", async (importOriginal) => {
 });
 
 describe("FeeEvaluationReviewExportPage", () => {
+  it.each([
+    ["Spend Time for group Group 1 step 1", "0.25", "4.8", "950"],
+    ["Units for Sample preparation", "7", "4.5", "900"],
+    ["Base Fee for Visual Examination", "", "4.5", "900"],
+    ["Discount for Visual Examination", "", "4.5", "900"],
+    ["Notes for Visual Examination", " operator note ", "4.5", "900"],
+  ])("confirms edited %s and remains official on re-entry", async (label, value, hours, cost) => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
+    let payload = currentAuthorityPricingDraftPayload();
+    let generation = 1;
+    const response = () => currentPricingDraftResponse({status: "current_v2", saved_generation: generation,
+      saved_source_context_fingerprint: "context-1", saved_payload_fingerprint: `p${generation}`,
+      saved_validation_token: `t${generation}`, payload});
+    apiMocks.getFeeEvaluationPricingDraft.mockImplementation(async () => response());
+    apiMocks.saveFeeEvaluationPricingDraft.mockImplementation(async (_projectId, input) => {
+      // The HTTP DTO trims strings, just like the real endpoint.
+      payload = JSON.parse(JSON.stringify(input, (_key, entry) => typeof entry === "string" ? entry.trim() : entry));
+      generation += 1;
+      return response();
+    });
+    apiMocks.confirmFeeVersion.mockImplementation(async () => {
+      const confirmed = createConfirmedFeeLatest({status: "current"});
+      apiMocks.getConfirmedFeeLatest.mockResolvedValue(confirmed);
+      return confirmed;
+    });
+    const onBack = vi.fn();
+    const view = render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={onBack} />);
+    const input = await screen.findByLabelText(label);
+    await waitFor(() => expect(screen.getByRole("button", {name: "Confirm"})).toHaveProperty("disabled", false));
+    fireEvent.change(input, {target: {value}});
+    fireEvent.click(screen.getByRole("button", {name: "Confirm"}));
+    await waitFor(() => expect(onBack).toHaveBeenCalledTimes(1));
+    expect(apiMocks.confirmFeeVersion).toHaveBeenCalledWith("P1", expect.objectContaining({
+      summary: expect.objectContaining({working_hours: hours, lab_manpower_cost: cost}),
+    }));
+    view.unmount();
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+    expect(await screen.findByRole("button", {name: "Generate Official Fee Form"})).toBeTruthy();
+  });
+
   it.each([false, true])("confirms a man-hour edit equal to the automatic default after save and reload (autosaved: %s)", async (autosaved) => {
     arrangeSuccessfulContext();
     const draft = createDraftWithEditableSingleLine();
@@ -140,6 +181,18 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(price).toHaveProperty("value", "37");
     expect(screen.getByLabelText("External Cost preview")).toHaveProperty("disabled", false);
     expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty("disabled", false);
+    expect(await screen.findByText("Save unavailable")).toBeTruthy();
+
+    apiMocks.saveFeeEvaluationPricingDraft.mockImplementation(async (_projectId, payload) => {
+      const saved = currentPricingDraftResponse({status: "current_v2", saved_generation: 2,
+        saved_payload_fingerprint: "p2", saved_validation_token: "t2", payload});
+      apiMocks.getFeeEvaluationPricingDraft.mockResolvedValue(saved);
+      return saved;
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    await waitFor(() => expect(apiMocks.confirmFeeVersion).toHaveBeenCalledTimes(1));
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 
   it("applies reused prices to editable draft and autosaves without confirming Fee", async () => {
@@ -651,7 +704,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     ).toBeTruthy();
   });
 
-  it("normalizes Matrix-aligned Sample preparation units before reconfirming Fee", async () => {
+  it("refreshes Matrix-aligned Sample preparation units during reviewed rebase", async () => {
     const draft = createDraftWithResolvedSingleLine();
     const stalePayload = currentAuthorityPricingDraftPayload();
     const staleSamplePreparation = stalePayload.manual_rows?.find(
@@ -663,7 +716,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     staleSamplePreparation.units = "70";
     const normalizedPayload = currentAuthorityPricingDraftPayload();
     const staleResponse = currentPricingDraftResponse({
-      status: "current_v2",
+      status: "rebase_required",
       saved_draft_edit_id: "fed-1",
       saved_generation: 1,
       saved_source_context_fingerprint: "context-1",
@@ -876,7 +929,9 @@ describe("FeeEvaluationReviewExportPage", () => {
   it("stays on Fee Evaluation when Confirm fails", async () => {
     arrangeSuccessfulContext({
       pricingDraft: currentPricingDraftResponse({
-        payload: promotedPricingDraftPayload(),
+        status: "current_v2", saved_generation: 1, saved_payload_fingerprint: "p1",
+        saved_source_context_fingerprint: "c1", saved_validation_token: "t1",
+        payload: currentAuthorityPricingDraftPayload(),
       }),
     });
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(
@@ -898,7 +953,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     await waitFor(() => expect(confirmButton).toHaveProperty("disabled", false));
     fireEvent.click(confirmButton);
 
-    expect(await screen.findAllByText("Unable to confirm Fee.")).toHaveLength(2);
+    expect(await screen.findByText("Fee authority confirmation failed.")).toBeTruthy();
     expect(onBackToWorkbench).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Confirm" })).toBeTruthy();
   });
@@ -1390,11 +1445,11 @@ describe("FeeEvaluationReviewExportPage", () => {
       await screen.findAllByText(
         "Save returned no pricing draft id. Retry before updating."
       )
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     expect(
       (screen.getByRole("button", { name: "Confirm" }) as HTMLButtonElement)
         .disabled
-    ).toBe(true);
+    ).toBe(false);
     expect(apiMocks.confirmFeeVersion).not.toHaveBeenCalled();
   });
 
@@ -1572,7 +1627,7 @@ describe("FeeEvaluationReviewExportPage", () => {
       await screen.findAllByText(
         "Unable to restore Fee Evaluation pricing before leaving."
       )
-    ).toHaveLength(2);
+    ).toHaveLength(1);
   });
 
   it("stays on Fee Evaluation when in-flight autosave cannot be confirmed safe", async () => {
@@ -1610,7 +1665,7 @@ describe("FeeEvaluationReviewExportPage", () => {
       await screen.findAllByText(
         "Fee Evaluation is still saving. Wait a moment and retry Cancel."
       )
-    ).toHaveLength(2);
+    ).toHaveLength(1);
   });
 
   it("stays on Fee Evaluation when the Matrix or fee context changed before restore", async () => {
@@ -1639,7 +1694,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(apiMocks.saveFeeEvaluationPricingDraft).toHaveBeenCalledTimes(1);
     expect(apiMocks.discardFeeEvaluationPricingDraft).not.toHaveBeenCalled();
     expect(onBackToWorkbench).not.toHaveBeenCalled();
-    expect(await screen.findAllByText("Fee Evaluation pricing changed. Refresh before leaving.")).toHaveLength(2);
+    expect(await screen.findByText("Fee Evaluation pricing changed. Refresh before leaving.")).toBeTruthy();
   });
 
   it("keeps the Fee file action enabled when the project folder path is missing", async () => {

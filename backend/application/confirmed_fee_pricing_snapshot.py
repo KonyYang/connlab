@@ -44,10 +44,29 @@ def matches_current_v2_pricing_snapshot(
     payload_json: str,
     snapshot: FeeEvaluationPricingDraftSnapshot,
 ) -> bool:
-    """Return whether one Confirmed Fee retains the exact current V2 lineage."""
+    """Read currentness by reviewed content/source; writes still require exact CAS.
+
+    Cancelling an autosaved edit advances the draft generation but does not undo
+    the user's earlier confirmation when it restores exactly the same content.
+    Never search older authorities or rewrite their immutable lineage.
+    """
     try:
         payload = _object_payload(payload_json)
-        return payload.get("kind") == _KIND and payload.get("lineage") == _lineage_from_snapshot(snapshot)
+        current = _lineage_from_snapshot(snapshot)
+        lineage = payload.get("lineage")
+        if payload.get("kind") != _KIND or not isinstance(lineage, dict):
+            return False
+        values = edited_values_to_payload(snapshot.edited_values)
+        values.pop("inactive_rows", None)
+        reviewed = payload.get("edited_values")
+        if not isinstance(reviewed, dict):
+            return False
+        reviewed = {key: value for key, value in reviewed.items() if key != "inactive_rows"}
+        return (
+            lineage.get("draft_edit_id") == current["draft_edit_id"]
+            and lineage.get("source_context_fingerprint") == current["source_context_fingerprint"]
+            and reviewed == values
+        )
     except ConfirmedFeePricingSnapshotError:
         return False
 

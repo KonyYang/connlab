@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import pytest
+from dataclasses import replace
 
 from backend.application.confirmed_fee_version_service import (
     ConfirmFeeVersionCommand,
     ConfirmedFeePricingDraftChangedError,
     ConfirmedFeeVersionService,
+    ConfirmedFeeSummaryValidationError,
 )
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportRow,
@@ -18,6 +20,42 @@ from backend.application.fee_evaluation_pricing_draft_persistence_service import
     FeeEvaluationPricingDraftSnapshot,
 )
 from backend.domain.confirmed_fee import ConfirmedFeeSummary, ConfirmedFeeVersion
+
+
+def test_fractional_hours_confirm_using_unrounded_manpower_cost() -> None:
+    loaded = _load_result()
+    values = loaded.saved_snapshot.edited_values
+    loaded = replace(loaded, saved_snapshot=replace(loaded.saved_snapshot,
+        edited_values=replace(values, rows=(replace(values.rows[0], spend_time="0.25"),))))
+    command = replace(_command(), summary=replace(_command().summary, working_hours="0.3", lab_manpower_cost="50"))
+    assert _service(_Store(), loaded).confirm(command).summary.lab_manpower_cost == "50"
+
+
+def test_fractional_external_cost_uses_decimal_rounding_only_for_total() -> None:
+    loaded = _load_result()
+    values = loaded.saved_snapshot.edited_values
+    loaded = replace(loaded, saved_snapshot=replace(loaded.saved_snapshot,
+        edited_values=replace(values, summary=replace(values.summary, external_cost="2.675"))))
+    command = replace(_command(), summary=replace(_command().summary, external_cost="2.675", grand_cost="43.68"))
+    assert _service(_Store(), loaded).confirm(command).summary.grand_cost == "43.68"
+
+
+@pytest.mark.parametrize("changes", [
+    {"testing_fee": "1"}, {"unit_price": "-20"}, {"spend_time": "-1"},
+    {"units": "NaN"}, {"base_fee": "Infinity"}, {"discount": "101%"},
+])
+def test_confirm_rejects_invalid_rows_even_when_client_summary_agrees(changes) -> None:
+    loaded = _load_result()
+    values = loaded.saved_snapshot.edited_values
+    loaded = replace(loaded, saved_snapshot=replace(loaded.saved_snapshot,
+        edited_values=replace(values, rows=(replace(values.rows[0], **changes),))))
+    store = _Store()
+    command = _command()
+    if "testing_fee" in changes:
+        command = replace(command, summary=replace(command.summary, testing_fee_total="1", grand_cost="151"))
+    with pytest.raises(ConfirmedFeeSummaryValidationError):
+        _service(store, loaded).confirm(command)
+    assert store.versions == []
 
 
 def test_missing_v2_attestation_rejects_confirm_without_write() -> None:
@@ -59,6 +97,29 @@ def test_same_draft_newer_generation_blocks_required_forms_currentness_gate() ->
 
     assert result.latest_confirmed_fee == confirmed
     assert result.status == "stale"
+
+
+def test_restored_identical_content_and_source_remains_confirmed_without_rewriting_history() -> None:
+    store = _Store()
+    loaded = _load_result()
+    confirmed = _service(store, loaded).confirm(_command())
+    restored = replace(loaded, saved_snapshot=replace(loaded.saved_snapshot,
+        generation=3, payload_fingerprint="restored-content", validation_token="token-3"))
+    assert _service(store, restored).get_latest("P1").status == "current"
+    assert store.versions == [confirmed]
+    # Semantic currentness must never loosen the write's exact concurrency token.
+    with pytest.raises(ConfirmedFeePricingDraftChangedError):
+        _service(store, restored).confirm(_command())
+
+
+def test_same_source_but_changed_notes_requires_fee_confirmation() -> None:
+    store = _Store()
+    loaded = _load_result()
+    _service(store, loaded).confirm(_command())
+    values = loaded.saved_snapshot.edited_values
+    changed = replace(loaded, saved_snapshot=replace(loaded.saved_snapshot, generation=2,
+        validation_token="token-2", edited_values=replace(values, rows=(replace(values.rows[0], notes="changed"),))))
+    assert _service(store, changed).get_latest("P1").status == "stale"
 
 
 def _service(store: "_Store", load_result: FeeEvaluationPricingDraftLoadResult) -> ConfirmedFeeVersionService:

@@ -550,18 +550,18 @@ export function FeeEvaluationReviewExportPage({
   const labManpowerCostLabel = useMemo(
     () =>
       buildFeeEvaluationLabManpowerCost(
-        workingHoursLabel,
+        buildFeeEvaluationPreviewWorkingHours(scopedPreviewRows, costPreviewValues.conditionConfirmationSpendTime, false),
         costPreviewValues.labManpowerHourlyRate
       ),
-    [costPreviewValues.labManpowerHourlyRate, workingHoursLabel]
+    [costPreviewValues.labManpowerHourlyRate, costPreviewValues.conditionConfirmationSpendTime, scopedPreviewRows]
   );
   const allLabManpowerCostLabel = useMemo(
     () =>
       buildFeeEvaluationLabManpowerCost(
-        allWorkingHoursLabel,
+        buildFeeEvaluationPreviewWorkingHours(allPreviewRows, costPreviewValues.conditionConfirmationSpendTime, false),
         costPreviewValues.labManpowerHourlyRate
       ),
-    [allWorkingHoursLabel, costPreviewValues.labManpowerHourlyRate]
+    [allPreviewRows, costPreviewValues.conditionConfirmationSpendTime, costPreviewValues.labManpowerHourlyRate]
   );
   const previewTotals = useMemo(
     () => ({
@@ -603,7 +603,7 @@ export function FeeEvaluationReviewExportPage({
           testingFeeTotal: allPreviewTotal,
           workingHours: allWorkingHoursLabel,
           labManpowerCost: allLabManpowerCostLabel,
-          externalCost: costPreviewValues.externalCost,
+          externalCost: costPreviewValues.externalCost.trim() || "0",
           grandCost: allGrandCostLabel,
         },
       }),
@@ -929,7 +929,7 @@ export function FeeEvaluationReviewExportPage({
           testing_fee_total: allPreviewTotal,
           working_hours: allWorkingHoursLabel,
           lab_manpower_cost: allLabManpowerCostLabel,
-          external_cost: costPreviewValues.externalCost,
+          external_cost: currentPricingDraftPayload.summary.external_cost,
           grand_cost: allGrandCostLabel,
         },
       });
@@ -1013,6 +1013,7 @@ export function FeeEvaluationReviewExportPage({
     }
     if (
       pendingAutosave === null &&
+      saveState.kind === "saved" &&
       pricingDraftLoadStatus === "current" &&
       latestSavedPricingDraftId &&
       savedLocalPricingSignature === currentPricingDraftSignature
@@ -1440,9 +1441,8 @@ function confirmFeeBlocker(input: {
   if (input.saveState.kind === "saving") {
     return "Saving pricing draft before update.";
   }
-  if (input.saveState.kind === "error") {
-    return input.saveState.message;
-  }
+  // A failed request must be retryable. Confirm re-saves/reloads with exact CAS;
+  // real context conflicts remain protected by the backend on every retry.
   if (input.updateFeeBlockerMessage) {
     return input.updateFeeBlockerMessage;
   }
@@ -1531,7 +1531,7 @@ function readonlyAwareErrorMessage(error: unknown, fallback: string): string {
   ) {
     return deriveReadonlyApiErrorMessage(detail);
   }
-  return error instanceof ApiRequestError ? error.message : fallback;
+  return error instanceof Error && error.message ? error.message : fallback;
 }
 
 function businessReadableConfirmFeeError(message: string): string {

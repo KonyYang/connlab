@@ -18,6 +18,26 @@ import {
 } from "./feeEvaluationPreviewModel";
 
 describe("feeEvaluationPreviewModel", () => {
+  it("keeps fractional hours for manpower calculation before display rounding", () => {
+    const row = buildFeeEvaluationPreviewRows(createDraft())[0];
+    const rows = [{...row, spendTime: "0.25"}];
+    expect(buildFeeEvaluationPreviewWorkingHours(rows, "0")).toBe("0.3");
+    const raw = buildFeeEvaluationPreviewWorkingHours(rows, "0", false);
+    expect(raw).toBe("0.25");
+    expect(buildFeeEvaluationLabManpowerCost(raw, "200")).toBe("50");
+    expect(calculateFeePreviewTestingFee({unitPrice: "1.005", units: "100", baseFee: "0", discount: "0%"})).toBe("101");
+  });
+  it.each(["spendTime", "unitPrice", "units", "baseFee", "discount"] as const)("blocks a negative %s before confirmation", (field) => {
+    const rows = applyFeeEvaluationPreviewEdits(buildFeeEvaluationPreviewRows(createDraft()), {});
+    const row = {...rows[0], [field]: "-1"};
+    expect(buildFeeEvaluationUpdateBlockers({rows: [row], totals: {
+      testingFeeTotal: "10", workingHours: "1", labManpowerCost: "200", externalCost: "0", grandCost: "10",
+    }}).length).toBeGreaterThan(0);
+  });
+  it("rounds the grand total in decimal rather than binary floating point", () => {
+    const row = {...buildFeeEvaluationPreviewRows(createDraft())[0], testingFee: "0"};
+    expect(buildFeeEvaluationPreviewGrandCost([row], "2.675")).toBe("2.68");
+  });
   it.each(["0.5", "0", "1.25"])("uses backend man-hours %s for each expanded test step", (spendTime) => {
     const draft = createDraft();
     const visual = draft.groups[0].line_items.find((line) => line.test_item === "Visual Examination")!;

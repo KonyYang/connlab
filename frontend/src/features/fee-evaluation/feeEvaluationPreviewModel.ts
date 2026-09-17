@@ -1,3 +1,4 @@
+import { feeDecimalSum, feeDecimalProduct, feeRowAmount } from "./feeEvaluationDecimal";
 import type {
   FeeEvaluationDraft,
   FeeEvaluationEditedFileExportRequest,
@@ -211,15 +212,7 @@ export function buildFeeEvaluationPreviewScopeTotal(
   if (scopedRows.length === 0) {
     return "Pending";
   }
-  let total = 0;
-  for (const row of scopedRows) {
-    const parsed = Number(row.testingFee);
-    if (!Number.isFinite(parsed)) {
-      return "Pending";
-    }
-    total += parsed;
-  }
-  return total.toFixed(2);
+  return feeDecimalSum(scopedRows.map((row) => row.testingFee), 2);
 }
 
 export function filterFeeEvaluationPreviewRowsForScope(
@@ -244,22 +237,8 @@ export function buildFeeEvaluationPreviewGrandCost(
   if (rows.length === 0) {
     return pendingLabel;
   }
-  let total = 0;
-  for (const row of rows) {
-    const parsed = Number(row.testingFee);
-    if (!Number.isFinite(parsed)) {
-      return pendingLabel;
-    }
-    total += parsed;
-  }
-  const external =
-    externalCost.trim().length > 0
-      ? parsePreviewNumber(externalCost)
-      : 0;
-  if (external === null) {
-    return pendingLabel;
-  }
-  return (total + external).toFixed(2);
+  const amount = feeDecimalSum([...rows.map((row) => row.testingFee), externalCost.trim() || "0"], 2);
+  return amount === "Pending" ? pendingLabel : amount;
 }
 
 export function buildFeeEvaluationLabManpowerCost(
@@ -271,29 +250,15 @@ export function buildFeeEvaluationLabManpowerCost(
   if (parsedWorkingHours === null || parsedHourlyRate === null) {
     return "Pending";
   }
-  return formatPreviewWholeAmount(parsedWorkingHours * parsedHourlyRate);
+  return feeDecimalProduct(workingHours, hourlyRate, 0);
 }
 
 export function buildFeeEvaluationPreviewWorkingHours(
   rows: FeeEvaluationPreviewRow[],
-  conditionConfirmationSpendTime: string
+  conditionConfirmationSpendTime: string,
+  rounded = true
 ): string {
-  let total = 0;
-  for (const row of rows) {
-    const parsed = parsePreviewNumber(row.spendTime);
-    if (parsed === null) {
-      return "Pending";
-    }
-    total += parsed;
-  }
-  const conditionSpendTime =
-    conditionConfirmationSpendTime.trim().length > 0
-      ? parsePreviewNumber(conditionConfirmationSpendTime)
-      : 0;
-  if (conditionSpendTime === null) {
-    return "Pending";
-  }
-  return (total + conditionSpendTime).toFixed(1);
+  return feeDecimalSum([...rows.map((row) => row.spendTime), conditionConfirmationSpendTime.trim() || "0"], rounded ? 1 : undefined);
 }
 
 export function applyFeeEvaluationPreviewEdits(
@@ -364,10 +329,10 @@ export function buildFeeEvaluationEditedExportPayload(
   costValues: FeeEvaluationSavedDraftHydrationResult["costPreviewValues"]
 ): FeeEvaluationEditedFileExportRequest {
   const rowValues = (row: FeeEvaluationPreviewRow) => ({
-    spend_time: row.spendTime, unit_price: row.unitPrice,
-    unit_type: row.unitType, units: row.units,
-    base_fee: row.baseFee, discount: row.discount,
-    testing_fee: row.testingFee, notes: row.notes,
+    spend_time: row.spendTime.trim(), unit_price: row.unitPrice.trim(),
+    unit_type: row.unitType.trim(), units: row.units.trim(),
+    base_fee: row.baseFee.trim() || (fieldIsManualRequired(row, "baseFee") ? "" : "0"), discount: row.discount.trim() || "0%",
+    testing_fee: row.testingFee, notes: row.notes.trim(),
   });
   return {
     rows: rows
@@ -381,10 +346,10 @@ export function buildFeeEvaluationEditedExportPayload(
         ...rowValues(row),
       })),
     summary: {
-      condition_confirmation_spend_time: costValues.conditionConfirmationSpendTime,
-      external_cost: costValues.externalCost,
-      external_cost_note: costValues.externalCostNote,
-      lab_manpower_hourly_rate: costValues.labManpowerHourlyRate,
+      condition_confirmation_spend_time: costValues.conditionConfirmationSpendTime.trim() || "0",
+      external_cost: costValues.externalCost.trim() || "0",
+      external_cost_note: costValues.externalCostNote.trim(),
+      lab_manpower_hourly_rate: costValues.labManpowerHourlyRate.trim(),
     },
     manual_rows: rows
       .filter((row) =>
@@ -520,7 +485,7 @@ export function calculateFeePreviewTestingFee(input: {
   ) {
     return "Pending";
   }
-  return formatPreviewWholeAmount(unitPrice * units * (1 - discount) + baseFee);
+  return feeRowAmount(input.unitPrice, input.units, input.baseFee.trim(), input.discount.trim());
 }
 
 export function buildFeeEvaluationCostRisk(input: {
@@ -885,13 +850,6 @@ function parsePreviewNumber(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function formatPreviewWholeAmount(value: number): string {
-  if (!Number.isFinite(value)) {
-    return "Pending";
-  }
-  return value.toFixed(0);
-}
-
 function incompleteUpdateFields(row: FeeEvaluationPreviewRow): string[] {
   const fields: string[] = [];
   const baseFeeIncomplete = fieldIsManualRequired(row, "baseFee")
@@ -950,15 +908,18 @@ function formatFieldList(fields: string[]): string {
 }
 
 function isCompleteNumber(value: string): boolean {
-  return parsePreviewNumber(value) !== null;
+  const number = parsePreviewNumber(value);
+  return number !== null && number >= 0;
 }
 
 function isCompleteOptionalNumber(value: string): boolean {
-  return parseOptionalEditableNumber(value) !== null;
+  const number = parseOptionalEditableNumber(value);
+  return number !== null && number >= 0;
 }
 
 function isCompleteDiscount(value: string): boolean {
-  return parseEditableDiscount(value) !== null;
+  const number = parseEditableDiscount(value);
+  return number !== null && number >= 0 && number <= 1;
 }
 
 function isCompleteUnitType(value: string): boolean {

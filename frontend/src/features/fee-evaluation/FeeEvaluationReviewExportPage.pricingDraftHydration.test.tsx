@@ -33,7 +33,7 @@ vi.mock("../../api/client", async (importOriginal) => {
 vi.mock("./FeeEvaluationPreviewTable", () => ({
   FeeEvaluationPreviewTable: (props: {
     rows: FeeEvaluationPreviewRow[];
-    saveState: { kind: string };
+    saveState: { kind: string; message?: string };
     draftPreviewNotice: string | null;
     onGenerateFeeFile: () => void;
     onRowEditChange: (
@@ -59,6 +59,7 @@ vi.mock("./FeeEvaluationPreviewTable", () => ({
           .join("\n")}
       </output>
       <output data-testid="pricing-save-state">{props.saveState.kind}</output>
+      {props.saveState.kind === "error" ? <p role="alert">{props.saveState.message}</p> : null}
       <button
         type="button"
         onClick={() => {

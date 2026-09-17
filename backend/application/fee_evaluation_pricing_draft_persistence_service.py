@@ -23,6 +23,8 @@ from backend.application.fee_evaluation_pricing_draft_prior_defaults_attestation
 )
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportValues,
+    basic_fill_line_identity,
+    edited_row_lookup,
 )
 from backend.application.fee_evaluation_pricing_draft_serialization import (
     edited_values_from_json,
@@ -220,6 +222,22 @@ class FeeEvaluationPricingDraftPersistenceService:
         self._automatic_defaults_provider = automatic_defaults_provider
         self._point_profile_provider = point_profile_provider
         self._measurement_plan_provider = measurement_plan_provider
+
+    def load_for_confirmation(self, project_id: str) -> FeeEvaluationPricingDraftLoadResult:
+        """Require complete Matrix coverage only at Confirm, never during autosave."""
+        result = self.load(project_id)
+        snapshot = result.saved_snapshot
+        if result.status != "current_v2" or snapshot is None:
+            return result
+        basic_fill = self._build_basic_fill(project_id)
+        if _context_from_basic_fill(basic_fill) != result.current_context:
+            raise FeeEvaluationPricingDraftConflictError("Matrix changed. Reload Fee Evaluation before Confirm.")
+        actual = edited_row_lookup(snapshot.edited_values, basic_fill)
+        expected = {basic_fill_line_identity(line) for group in basic_fill.groups for line in group.lines}
+        if set(actual) != expected:
+            raise ValueError("Fee Evaluation is missing Matrix test rows. Reload the complete Matrix before Confirm.")
+        validate_edited_values_against_captured_matrix(snapshot.edited_values, basic_fill)
+        return result
 
     def save(
         self, command: SaveFeeEvaluationPricingDraftCommand

@@ -17,6 +17,7 @@ from backend.application.confirmed_fee_pricing_snapshot import (
     matches_current_v2_pricing_snapshot,
 )
 from backend.application.confirmed_fee_review_markers import AUTO_REBASE_FEE_CONFIRMATION_NOTE
+from backend.application.fee_evaluation_confirmation_validation import fee_number, validate_confirmable_fee_values
 from backend.application.fee_evaluation_pricing_draft_persistence_service import (
     FeeEvaluationPricingDraftContext,
     FeeEvaluationPricingDraftLoadResult,
@@ -116,7 +117,13 @@ class ConfirmedFeeVersionService:
     def confirm(self, command: ConfirmFeeVersionCommand) -> ConfirmedFeeVersion:
         """Create a Confirmed Fee version from the current saved pricing draft."""
         confirmed_by = _validate_confirmed_by(command.confirmed_by)
-        load_result = self._pricing_draft_loader.load(command.project_id)
+        # Real persistence supplies a complete Matrix coverage check. Lightweight
+        # legacy ports still load snapshots; row/numeric validation always runs here.
+        load = getattr(self._pricing_draft_loader, "load_for_confirmation", self._pricing_draft_loader.load)
+        try:
+            load_result = load(command.project_id)
+        except ValueError as exc:
+            raise ConfirmedFeeSummaryValidationError(str(exc)) from exc
         snapshot = _require_current_pricing_snapshot(load_result)
         if snapshot.draft_edit_id != command.expected_pricing_draft_edit_id:
             raise ConfirmedFeePricingDraftChangedError(
@@ -124,6 +131,10 @@ class ConfirmedFeeVersionService:
                 "Reload and confirm again."
             )
         _validate_v2_pricing_snapshot(snapshot, command)
+        try:
+            validate_confirmable_fee_values(snapshot.edited_values)
+        except ValueError as exc:
+            raise ConfirmedFeeSummaryValidationError(str(exc)) from exc
         _validate_summary(command.summary)
         _validate_summary_matches_saved_pricing_snapshot(command.summary, snapshot)
         versions = self._confirmed_fee_store.list_by_project(command.project_id)
@@ -275,8 +286,8 @@ def _validate_summary(summary: ConfirmedFeeSummary) -> None:
         if str(value).strip() == "":
             raise ConfirmedFeeSummaryValidationError(f"{field_name} is required.")
         try:
-            Decimal(str(value).strip())
-        except InvalidOperation as exc:
+            fee_number(value, field_name)
+        except ValueError as exc:
             raise ConfirmedFeeSummaryValidationError(
                 f"{field_name} must be numeric."
             ) from exc
@@ -322,13 +333,13 @@ def _summary_from_saved_pricing_snapshot(
     grand_cost = testing_fee_total + external_cost
     return ConfirmedFeeSummary(
         testing_fee_total=_format_decimal(testing_fee_total, Decimal("0.01")),
-        working_hours=_format_decimal(working_hours, Decimal("0.1")),
+        working_hours=_format_decimal(working_hours, Decimal("0.1"), rounding=ROUND_HALF_UP),
         lab_manpower_cost=_format_decimal(
             lab_manpower_cost,
             Decimal("1"),
             rounding=ROUND_HALF_UP,
         ),
-        external_cost=_format_decimal(external_cost, Decimal("0.01")),
+        external_cost=str(external_cost),
         grand_cost=_format_decimal(grand_cost, Decimal("0.01")),
     )
 
@@ -391,7 +402,7 @@ def _decimal_value(value: str) -> Decimal:
         ) from exc
 
 
-def _format_decimal(value: Decimal, quantum: Decimal, *, rounding=None) -> str:
+def _format_decimal(value: Decimal, quantum: Decimal, *, rounding=ROUND_HALF_UP) -> str:
     if rounding is not None:
         return str(value.quantize(quantum, rounding=rounding))
     return str(value.quantize(quantum))

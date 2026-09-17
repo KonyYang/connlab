@@ -32,6 +32,30 @@ from backend.domain import (
 )
 
 
+def test_confirmation_rejects_missing_matrix_rows_without_rejecting_draft_save() -> None:
+    from backend.application.confirmed_fee_version_service import (
+        ConfirmedFeeVersionService, ConfirmFeeVersionCommand, ConfirmedFeeSummaryValidationError,
+    )
+    from backend.domain.confirmed_fee import ConfirmedFeeSummary
+
+    class Store:
+        versions = []
+        def list_by_project(self, project_id): return tuple(self.versions)
+        def create(self, version): self.versions.append(version); return version
+
+    draft = _service(store=_DraftStore())
+    values = replace(_edited_values(), rows=(), manual_rows=(), summary=replace(_summary(), condition_confirmation_spend_time="0"))
+    saved = draft.save(SaveFeeEvaluationPricingDraftCommand(project_id="P1", edited_values=values)).saved_snapshot
+    store = Store()
+    service = ConfirmedFeeVersionService(pricing_draft_loader=draft, confirmed_fee_store=store)
+    with pytest.raises(ConfirmedFeeSummaryValidationError, match="Matrix"):
+        service.confirm(ConfirmFeeVersionCommand(project_id="P1", confirmed_by="Lab User",
+            expected_pricing_draft_edit_id=saved.draft_edit_id, expected_generation=saved.generation,
+            expected_payload_fingerprint=saved.payload_fingerprint, expected_validation_token=saved.validation_token,
+            summary=ConfirmedFeeSummary(testing_fee_total="0", working_hours="0", lab_manpower_cost="0", external_cost="150", grand_cost="150")))
+    assert store.versions == []
+
+
 def test_save_then_load_current_pricing_draft_preserves_notes() -> None:
     store = _DraftStore()
     service = _service(store=store)

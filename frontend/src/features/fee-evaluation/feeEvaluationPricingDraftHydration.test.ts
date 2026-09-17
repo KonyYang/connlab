@@ -7,6 +7,20 @@ import {
 } from "./feeEvaluationPricingDraftHydration";
 
 describe("feeEvaluationPricingDraftHydration", () => {
+  it("keeps reviewed sample-preparation quantity when reloading the same context", () => {
+    const row = previewRow({rowKind: "sample_preparation", units: "5"});
+    const payload = savedPayload();
+    payload.rows = [];
+    payload.manual_rows = [manualRow({units: "7"})];
+    const result = hydrateFeeEvaluationPricingDraft([row], payload, "current_v2_compatibility");
+    expect(result.edits[row.lineId]?.units).toBe("7");
+  });
+
+  it("does not replace explicitly cleared editable cells with source defaults", () => {
+    const row = previewRow({baseFee: "50", discount: "100%"});
+    const result = hydrateFeeEvaluationPricingDraft([row], savedPayload({base_fee: "", discount: ""}), "current_v2_compatibility");
+    expect(result.edits[row.lineId]).toMatchObject({baseFee: "", discount: ""});
+  });
   it("keeps compatibility placeholders from replacing current automatic defaults", () => {
     const row = previewRow({
       unitPrice: "25",
@@ -238,7 +252,7 @@ describe("feeEvaluationPricingDraftHydration", () => {
   });
 
   it.each(["current_v2_compatibility", "server_rebase_candidate"] as const)(
-    "keeps Sample preparation units aligned with the current Matrix in %s mode",
+    "preserves reviewed units on reload and refreshes Matrix units only in rebase (%s)",
     (mode) => {
       const row = previewRow({
         lineId: "sample-preparation:g1",
@@ -279,7 +293,7 @@ describe("feeEvaluationPricingDraftHydration", () => {
         spendTime: "2",
         unitPrice: "9",
         unitType: "per sample",
-        units: "5",
+        units: mode === "server_rebase_candidate" ? "5" : "1",
         baseFee: "7",
         discount: "15%",
         notes: "operator note",

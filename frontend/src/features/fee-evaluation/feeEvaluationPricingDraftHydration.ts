@@ -286,12 +286,12 @@ function hydrateRow(
   mode: FeeEvaluationPricingDraftHydrationMode
 ) {
   const units =
-    previewRow.rowKind === "sample_preparation" &&
+    mode === "server_rebase_candidate" && previewRow.rowKind === "sample_preparation" &&
     !fieldIsManualRequired(previewRow, "units")
       ? previewRow.units
       : mode === "server_rebase_candidate"
         ? exactCandidateValue(row.units)
-        : hydratedPreviewNumber(row.units, previewRow, "units", "1");
+        : restoredNumber(row.units, previewRow.units, "1");
   if (mode === "server_rebase_candidate") {
     return {
       spendTime: exactCandidateValue(row.spend_time),
@@ -304,17 +304,12 @@ function hydrateRow(
     };
   }
   return {
-    spendTime: hydratedEditableNumber(row.spend_time, previewRow.spendTime, "0"),
-    unitPrice: hydratedPreviewNumber(
-      row.unit_price,
-      previewRow,
-      "unitPrice",
-      "0"
-    ),
+    spendTime: restoredNumber(row.spend_time, previewRow.spendTime, "0"),
+    unitPrice: restoredNumber(row.unit_price, previewRow.unitPrice, "0"),
     unitType: hydratedUnitType(row.unit_type, previewRow.unitType),
     units,
-    baseFee: hydratedPreviewNumber(row.base_fee, previewRow, "baseFee", "0"),
-    discount: hydratedEditableDiscount(row.discount, previewRow.discount),
+    baseFee: restoredNumber(row.base_fee, previewRow.baseFee, "0"),
+    discount: restoredNumber(row.discount, previewRow.discount, "0%"),
     notes: row.notes,
   };
 }
@@ -353,35 +348,19 @@ function exactCandidateValue(value: string): string {
   return value.trim();
 }
 
+function restoredNumber(value: string, source: string, fallback: string): string {
+  // Older promoted drafts used the literal Pending as an unfilled placeholder.
+  // An explicit empty string is an operator edit, not that legacy sentinel.
+  return value.trim().toLowerCase() === "pending"
+    ? editableDefault(source, fallback)
+    : value.trim();
+}
+
 function hydratedUnitType(value: string, fallback: string): string {
   const normalized = value.trim();
   return normalized.length > 0
     ? formatUnitTypeForPreview(normalized)
     : formatUnitTypeForPreview(fallback);
-}
-
-function hydratedEditableNumber(
-  value: string,
-  fallback: string,
-  defaultValue: string
-): string {
-  const normalized = editableDefault(value, "");
-  return normalized.length > 0
-    ? normalized
-    : editableDefault(fallback, defaultValue);
-}
-
-function hydratedPreviewNumber(
-  value: string,
-  previewRow: FeeEvaluationPreviewRow,
-  field: "unitPrice" | "units" | "baseFee",
-  defaultValue: string
-): string {
-  return hydratedEditableNumber(
-    value,
-    previewRow[field],
-    fieldIsManualRequired(previewRow, field) ? "" : defaultValue
-  );
 }
 
 function hydratedEditableDiscount(value: string, fallback: string): string {
