@@ -2,6 +2,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from datetime import datetime
 import os
+import stat
 
 import pytest
 
@@ -43,6 +44,212 @@ def test_overwrite_retains_recovery_copy_until_successful_finalization(tmp_path)
     assert not backup.exists()
     assert (preview.official_folder_path / "template.txt").read_text() == "new"
     RecoverableWorkspacePublisher(journal, journal.read("p")).finalize()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows readonly deletion semantics")
+@pytest.mark.parametrize("whole", [False, True])
+@pytest.mark.parametrize("readonly_target", ["nested", "nested/old.txt", "."])
+def test_overwrite_finalization_removes_readonly_owned_entries(
+    tmp_path, whole, readonly_target
+):
+    preview = _existing_workspace_preview(tmp_path, whole)
+    nested = preview.conflict_paths[0] / "nested"
+    nested.mkdir()
+    (nested / "old.txt").write_text("old", encoding="utf-8")
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("p", "overwrite_rebuild", "context")
+    publisher = RecoverableWorkspacePublisher(journal, state)
+    publisher.create(preview, "overwrite_rebuild", SimpleNamespace(save=lambda record: record))
+    backup = Path(state["effects"]["workspace"]["backup"])
+    readonly = backup / readonly_target
+    readonly.chmod(stat.S_IREAD)
+    try:
+        assert readonly.stat().st_file_attributes & stat.FILE_ATTRIBUTE_READONLY
+        publisher.finalize()
+        assert not backup.exists()
+        assert journal.read("p")["effects"]["workspace"]["overwrite_deleted"] is True
+        assert (preview.official_folder_path / "template.txt").read_text(encoding="utf-8") == "new"
+        RecoverableWorkspacePublisher(journal, journal.read("p")).finalize()
+    finally:
+        if readonly.exists():
+            readonly.chmod(stat.S_IWRITE)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows readonly deletion semantics")
+@pytest.mark.parametrize("readonly", [False, True])
+def test_overwrite_cleanup_preserves_external_hardlink_attributes(tmp_path, readonly):
+    preview = _existing_workspace_preview(tmp_path, False)
+    alias = tmp_path / "external-alias.txt"
+    os.link(preview.official_folder_path / "operator.txt", alias)
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("p", "overwrite_rebuild", "context")
+    publisher = RecoverableWorkspacePublisher(journal, state)
+    publisher.create(preview, "overwrite_rebuild", SimpleNamespace(save=lambda record: record))
+    backup = Path(state["effects"]["workspace"]["backup"])
+    if readonly:
+        alias.chmod(stat.S_IREAD)
+    attributes = alias.stat().st_file_attributes
+    try:
+        if readonly:
+            with pytest.raises(ValueError, match="hard link"):
+                publisher.finalize()
+            assert (backup / "operator.txt").read_text(encoding="utf-8") == "keep"
+            assert not journal.read("p")["effects"]["workspace"].get("overwrite_deleted")
+        else:
+            publisher.finalize()
+            assert not backup.exists()
+        assert alias.read_text(encoding="utf-8") == "keep"
+        assert alias.stat().st_file_attributes == attributes
+    finally:
+        alias.chmod(stat.S_IWRITE)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows readonly deletion semantics")
+@pytest.mark.parametrize("change", ["new", "changed", "foreign_root", "redirected", "context"])
+def test_readonly_retry_revalidates_before_changing_attributes(tmp_path, monkeypatch, change):
+    import subprocess
+
+    preview = _existing_workspace_preview(tmp_path, False)
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("p", "overwrite_rebuild", "context")
+    context_changed = False
+
+    def verify_context():
+        if context_changed:
+            raise ValueError("Generation inputs changed")
+
+    publisher = RecoverableWorkspacePublisher(journal, state, verify_context)
+    publisher.create(preview, "overwrite_rebuild", SimpleNamespace(save=lambda record: record))
+    backup = Path(state["effects"]["workspace"]["backup"])
+    target = backup / "operator.txt"
+    target.chmod(stat.S_IREAD)
+    real_unlink, real_chmod = Path.unlink, Path.chmod
+    attribute_changes = []
+    retained = tmp_path / "retained"
+    junction = backup / "redirected"
+
+    def denied_after_change(path, *args, **kwargs):
+        nonlocal context_changed
+        if path != target:
+            return real_unlink(path, *args, **kwargs)
+        if change == "new":
+            (backup / "new.txt").write_text("must survive", encoding="utf-8")
+        elif change == "changed":
+            real_chmod(target, stat.S_IWRITE)
+            target.write_text("operator edits", encoding="utf-8")
+            real_chmod(target, stat.S_IREAD)
+        elif change == "foreign_root":
+            backup.rename(retained)
+            backup.mkdir()
+            target.write_text("keep", encoding="utf-8")
+            real_chmod(target, stat.S_IREAD)
+        elif change == "redirected":
+            retained.mkdir()
+            (retained / "external.txt").write_text("must survive", encoding="utf-8")
+            subprocess.run(["cmd", "/c", "mklink", "/J", str(junction), str(retained)],
+                           check=True, capture_output=True)
+        else:
+            context_changed = True
+        raise PermissionError(5, "Access denied", str(path))
+
+    monkeypatch.setattr(Path, "unlink", denied_after_change)
+    monkeypatch.setattr(Path, "chmod", lambda path, *args, **kwargs: attribute_changes.append(path))
+    try:
+        with pytest.raises(ValueError):
+            publisher.finalize()
+        assert attribute_changes == []
+        assert target.stat().st_file_attributes & stat.FILE_ATTRIBUTE_READONLY
+        assert target.read_text(encoding="utf-8") == ("operator edits" if change == "changed" else "keep")
+        assert not journal.read("p")["effects"]["workspace"].get("overwrite_deleted")
+        if change == "redirected":
+            assert (retained / "external.txt").read_text(encoding="utf-8") == "must survive"
+    finally:
+        if junction.exists():
+            junction.rmdir()
+        real_chmod(target, stat.S_IWRITE)
+        if (retained / "operator.txt").exists():
+            real_chmod(retained / "operator.txt", stat.S_IWRITE)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows readonly deletion semantics")
+def test_history_finalization_keeps_readonly_copy_unchanged(tmp_path):
+    preview = _existing_workspace_preview(tmp_path, False)
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("p", "backup_and_recreate", "context")
+    publisher = RecoverableWorkspacePublisher(journal, state)
+    publisher.create(preview, "backup_and_recreate", SimpleNamespace(save=lambda record: record))
+    backup = Path(state["effects"]["workspace"]["backup"])
+    backup.chmod(stat.S_IREAD)
+    try:
+        publisher.finalize()
+        assert backup.stat().st_file_attributes & stat.FILE_ATTRIBUTE_READONLY
+        assert (backup / "operator.txt").read_text(encoding="utf-8") == "keep"
+    finally:
+        backup.chmod(stat.S_IWRITE)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows sharing violation")
+@pytest.mark.parametrize("readonly", [False, True])
+def test_locked_cleanup_remains_pending_then_resumes_without_replaying_outputs(tmp_path, monkeypatch, readonly):
+    import ctypes
+    from ctypes import wintypes
+    from backend.application.project_folder_generation_service import GENERATION_STEPS, ProjectFolderGenerationService
+
+    preview = _existing_workspace_preview(tmp_path, False)
+    journal = GenerationJournal(tmp_path / "journal")
+    steps, queued, deletion_attempts, handles = [], [], [], []
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                                   ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    kernel32.CreateFileW.restype = wintypes.HANDLE
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    real_unlink = Path.unlink
+
+    def count_deletion(path, *args, **kwargs):
+        if path.name == "operator.txt":
+            deletion_attempts.append(path)
+        return real_unlink(path, *args, **kwargs)
+
+    def step(state, name):
+        steps.append(name)
+        if name == "workspace":
+            RecoverableWorkspacePublisher(journal, state).create(
+                preview, "overwrite_rebuild", SimpleNamespace(save=lambda record: record)
+            )
+            target = Path(state["effects"]["workspace"]["backup"]) / "operator.txt"
+            if readonly:
+                target.chmod(stat.S_IREAD)
+            # Permit reads and attribute changes, but deliberately deny delete sharing.
+            handle = kernel32.CreateFileW(str(target), 0x80000000, 3, None, 3, 0, None)
+            assert handle != wintypes.HANDLE(-1).value, ctypes.get_last_error()
+            handles.append(handle)
+
+    monkeypatch.setattr(Path, "unlink", count_deletion)
+    service = ProjectFolderGenerationService(
+        journal, lambda _: "same", step, queued.append,
+        finalize=lambda state: RecoverableWorkspacePublisher(journal, state).finalize(),
+    )
+    try:
+        started = service.start("p", "overwrite_rebuild", "same", "request")
+        queued.pop()()
+        blocked = service.read("p")
+        assert blocked["status"] == "blocked"
+        assert blocked["can_restart"] is False
+        assert "Stage: folder_finalization" in blocked["message"]
+        assert journal.read("p")["finalization_pending"] is True
+        assert len(deletion_attempts) == (2 if readonly else 1)
+        assert deletion_attempts[0].read_text(encoding="utf-8") == "keep"
+    finally:
+        for handle in handles:
+            kernel32.CloseHandle(handle)
+
+    service.resume("p", started["operation_id"])
+    queued.pop()()
+    assert service.read("p")["status"] == "completed"
+    assert steps == list(GENERATION_STEPS)
+    assert not deletion_attempts[0].parent.exists()
+    assert (preview.official_folder_path / "template.txt").read_text(encoding="utf-8") == "new"
 
 
 @pytest.mark.parametrize("foreign_content", [False, True])

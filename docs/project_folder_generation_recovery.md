@@ -65,6 +65,26 @@ The existing Fee Form `.xls` template identity policy is retained: controlled re
 allow legacy Excel OLE metadata churn. Other input/template bytes are hashed. Configured Test Record
 templates outside the resource folder are also bound to the operation.
 
+### Windows overwrite cleanup
+
+After all eight output steps finish, delete-and-rebuild removes only its journal-owned
+`overwrite-old` recovery copy. Windows ReadOnly attributes on old files or directories can prevent
+this final cleanup even though the new project outputs have already been generated. This is not
+evidence that the configured project root is missing or that document generation failed.
+
+The cleanup handles ReadOnly only on an entry whose approved location, filesystem identity,
+non-redirected ancestry and retained content inventory have been verified. It does not change ACLs,
+grant permissions, alter the new workspace or templates, or remove retained history. A locked entry,
+real permission denial, changed content or changed identity still stops cleanup. The original
+operation stays pending; it is not marked complete and cannot be replaced by a fresh rebuild.
+ReadOnly files with multiple hard links also remain pending: changing their attributes could affect
+an alias outside the approved recovery copy. Normal unlinking without attribute changes is unchanged.
+
+Recovery uses the existing Create project folder review/Resume flow. It checks the original inputs
+again and retries final cleanup without regenerating completed documents. Do not delete the journal
+or manually reset its step counter to clear a cleanup error. Tests reproduce ReadOnly behavior in
+temporary Windows directories; deployment does not automatically clean real project backups.
+
 Publication requires stable nonzero filesystem file IDs and same-volume hard-link/rename support
 (the Windows/NTFS workbench environment). Unsupported filesystems fail safely. This is not an atomic
 compare-and-swap against a non-cooperating external editor between the final check and OS replace;

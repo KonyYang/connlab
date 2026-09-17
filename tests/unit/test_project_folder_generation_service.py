@@ -57,22 +57,40 @@ def test_backend_runs_chain_without_browser_and_resumes_at_failed_step(tmp_path)
     assert queued == []
 
 
-def test_failed_finalization_requires_resume_not_replacement(tmp_path):
-    queued, fail = [], [True]
+@pytest.mark.parametrize("failure", [PermissionError, OSError])
+def test_failed_finalization_requires_resume_not_replacement(tmp_path, caplog, failure):
+    import logging
+    caplog.set_level(logging.INFO, logger="connlab.operations")
+    queued, fail, steps, finalizations = [], [True], [], []
     def finalize(state):
+        finalizations.append(state["operation_id"])
         if fail[0]:
-            raise PermissionError("cleanup interrupted")
-    service = ProjectFolderGenerationService(GenerationJournal(tmp_path), lambda _: "same",
-        lambda state, name: None, queued.append, finalize=finalize)
+            raise failure("cleanup interrupted")
+    journal = GenerationJournal(tmp_path)
+    service = ProjectFolderGenerationService(journal, lambda _: "same",
+        lambda state, name: steps.append(name), queued.append, finalize=finalize)
     started = service.start("p", None, "same", "first")
     queued.pop()()
-    assert service.read("p")["can_restart"] is False
+    blocked = service.read("p")
+    assert blocked["status"] == "blocked"
+    assert blocked["completed_steps"] == list(GENERATION_STEPS)
+    assert blocked["can_restart"] is False
+    assert journal.read("p")["finalization_pending"] is True
+    assert "outputs are ready" in blocked["message"]
+    assert "old-copy cleanup" in blocked["message"]
+    assert "resume" in blocked["message"]
+    assert "Stage: folder_finalization" in blocked["message"]
+    assert "Diagnostic ID:" in blocked["message"]
+    assert '"stage": "folder_finalization"' in caplog.text
     with pytest.raises(ValueError):
         service.start("p", "backup_and_recreate", "same", "second", started["operation_id"])
     fail[0] = False
     service.resume("p", started["operation_id"])
     queued.pop()()
     assert service.read("p")["status"] == "completed"
+    assert journal.read("p")["finalization_pending"] is False
+    assert steps == list(GENERATION_STEPS)
+    assert finalizations == [started["operation_id"], started["operation_id"]]
 
 
 def test_overwrite_cleanup_intent_prevents_replacement_before_finalize_checkpoint(tmp_path):

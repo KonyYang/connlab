@@ -104,12 +104,18 @@ class ProjectFolderGenerationService:
                         self.journal.save(state)
                     state["finalization_pending"] = True
                     self.journal.save(state)
-                    self.finalize(state)
+                    with stage("folder_finalization"):
+                        self.finalize(state)
                     state.update(status="completed", finalization_pending=False, message="Project folder generation completed.")
                     self.journal.save(state)
                 except Exception as exc:
                     record_failure(exc)
-                    if isinstance(exc, ProjectFolderInUseError):
+                    if isinstance(exc, OSError) and state.get("finalization_pending"):
+                        message = (
+                            "Generated project outputs are ready, but old-copy cleanup is incomplete. "
+                            "Check file locks and permissions, then resume this operation to finish cleanup."
+                        )
+                    elif isinstance(exc, ProjectFolderInUseError):
                         message = (
                             "Windows denied access to the existing project folder. "
                             "Check permissions or file locks, then resume, or start a new generation and "

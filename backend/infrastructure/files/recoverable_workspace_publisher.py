@@ -108,21 +108,59 @@ class RecoverableWorkspacePublisher:
             raise ValueError("Overwrite recovery copy changed during deletion; review required.")
         for relative in sorted(current, key=lambda key: len(Path(key).parts), reverse=True):
             item = backup / relative
-            if (any(_is_redirected(path) for path in (item, *item.parents))
-                    or file_identity(backup) != identity
-                    or file_identity(item) != current[relative]["identity"]
-                    or (not current[relative]["directory"]
-                        and file_hash(item) != current[relative]["sha"])):
-                raise ValueError("Overwrite recovery entry changed before deletion.")
-            if current[relative]["directory"]:
-                item.rmdir()
-            else:
-                item.unlink()
-        if _is_redirected(backup) or file_identity(backup) != identity:
-            raise ValueError("Overwrite recovery directory changed before removal.")
-        backup.rmdir()
+            self._remove_overwrite_entry(item, backup, identity, current[relative])
+        self._remove_overwrite_entry(
+            backup, backup, identity, {"identity": identity, "directory": True}
+        )
         effect["overwrite_deleted"] = True
         self.journal.save(self.state)
+
+    def _remove_overwrite_entry(self, item, backup, identity, expected):
+        def verify_entry():
+            if (any(_is_redirected(path) for path in (item, *item.parents))
+                    or file_identity(backup) != identity
+                    or file_identity(item) != expected["identity"]
+                    or item.is_dir() != expected["directory"]
+                    or (not expected["directory"] and file_hash(item) != expected["sha"])):
+                raise ValueError("Overwrite recovery entry changed before deletion.")
+
+        def verify_retry():
+            verify_entry()
+            self.verify_context()
+            inventory = self.state["effects"]["workspace"]["overwrite_delete_inventory"]
+            for remaining in backup.rglob("*"):
+                if _is_redirected(remaining):
+                    raise ValueError("Overwrite recovery copy contains redirected content.")
+                actual = {"identity": file_identity(remaining),
+                          "sha": None if remaining.is_dir() else file_hash(remaining),
+                          "directory": remaining.is_dir()}
+                if inventory.get(str(remaining.relative_to(backup))) != actual:
+                    raise ValueError("Overwrite recovery copy changed during deletion; review required.")
+            if expected["directory"] and any(item.iterdir()):
+                raise ValueError("Overwrite recovery directory is no longer empty; deletion stopped.")
+            verify_entry()
+
+        remove = item.rmdir if expected["directory"] else item.unlink
+        verify_entry()
+        try:
+            remove()
+        except PermissionError:
+            if os.name != "nt":
+                raise
+            verify_retry()
+            info = item.lstat()
+            if not info.st_file_attributes & stat.FILE_ATTRIBUTE_READONLY:
+                raise
+            if not expected["directory"] and info.st_nlink != 1:
+                raise ValueError(
+                    "Overwrite recovery file may have another hard link; "
+                    "review before changing readonly attributes."
+                )
+            # Windows chmod changes only READONLY, never ACLs or other attributes.
+            # File attributes are shared by hard links, including outside this copy.
+            item.chmod(stat.S_IWRITE)
+            verify_retry()
+            remove()
 
     def verify_directories(self, record):
         """Check directory ownership, not the changing contents generated inside it."""

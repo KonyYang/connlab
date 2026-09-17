@@ -11,102 +11,48 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
-    "task_id": "TASK_FEE_CONFIRM_SPEND_TIME_ROUNDTRIP",
-    "summary": "Fix Fee confirmation after editing Visual Inspection man-hours",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Reproduce and correct automatic spend-time mapping and confirmation roundtrip without losing manual edits",
+    "task_id": "TASK_PROJECT_FOLDER_FINALIZATION_ACCESS",
+    "summary": "Fix project folder finalization access failure and actionable recovery diagnostics",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Diagnose diagnostic d01ccfa9c2f54ba5b0e82b8600b2d4a3 and safely fix existing operation-owned overwrite cleanup without weakening identity or content protections. No real database migration or unconfirmed external deletion.",
     "scope_paths": [
-      "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts",
-      "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.ts",
-      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
-      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx"
+      "backend/infrastructure/files/recoverable_workspace_publisher.py",
+      "backend/application/project_folder_generation_service.py",
+      "backend/shared/operation_diagnostics.py",
+      "tests/unit/test_generation_workspace_recovery.py",
+      "tests/unit/test_project_folder_generation_service.py",
+      "tests/unit/test_operation_diagnostics.py",
+      "tests/integration/test_project_folder_generation_recovery.py",
+      "docs/project_folder_generation_recovery.md"
     ],
-    "risk_reasons": [],
-    "activation_head": "b7154f4ca5f2c1d00df1b7a244dd94d0aaab1c29",
-    "started_at": "2026-09-16T23:14:33.687894Z",
-    "updated_at": "2026-09-17T00:11:28.661873Z",
+    "risk_reasons": [
+      "Cleanup of a previously approved overwrite recovery copy is destructive; retain exact identity and content checks."
+    ],
+    "activation_head": "b78b686328fa4761d5800033d6fe61dc4aac55f1",
+    "started_at": "2026-09-17T00:15:34.338492Z",
+    "updated_at": "2026-09-17T00:35:43.208738Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
-      "task_id": "TASK_FEE_CONFIRM_SPEND_TIME_ROUNDTRIP",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
+      "task_id": "TASK_PROJECT_FOLDER_FINALIZATION_ACCESS",
+      "stage": "review_scope_confirmation",
+      "status": "blocked",
+      "summary": "Root cause proven: readonly old directories fail final cleanup after all8steps. Developer RED/GREEN22passed; P1 external hardlink attr mutation fixed. Independent review P2: production Runner.finalize omits verify_context callback. Await user approval to include backend/api/project_folder_generation_composition.py (additional high-risk path); do not modify it before approval. Pending independent re-review, final QA and integration. No real data writes/resume. Board rollover closed prior Fee task.",
+      "requires_user": true
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_FEE_CONFIRM_SPEND_TIME_ROUNDTRIP",
-      "subject": "b644c6c6b90868c4a499cbc590021a9485b78836",
-      "summary": "Fix Fee editing hydration, decimal calculations, confirmation validation, restored-content currentness and retry while retaining stale-write protection.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/application/confirmed_fee_pricing_snapshot.py",
-        "backend/application/confirmed_fee_version_service.py",
-        "backend/application/fee_evaluation_confirmation_validation.py",
-        "backend/application/fee_evaluation_pricing_draft_persistence_service.py",
-        "docs/fee_confirmation_contract.md",
-        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.pricingDraftHydration.test.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
-        "frontend/src/features/fee-evaluation/feeEvaluationDecimal.ts",
-        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.test.ts",
-        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts",
-        "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.test.ts",
-        "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.ts",
-        "tests/integration/test_fee_pricing_draft_measurement_plan_rebase_attestation.py",
-        "tests/unit/test_confirmed_fee_version_service_v2_lineage.py",
-        "tests/unit/test_fee_evaluation_pricing_draft_persistence_service.py"
-      ],
-      "validation": [
-        {
-          "name": "Backend Fee regressions",
-          "status": "passed",
-          "result": "171 cases covered: broad run 170 passed; one pre-existing identical replay assertion reproduced against original HEAD, corrected to cover no-op replay and different stale-payload rejection; final affected integration file 5 passed."
-        },
-        {
-          "name": "Frontend Fee regressions",
-          "status": "passed",
-          "result": "117 cases covered: broad run 116 passed; error-display mock corrected to match real table; final affected hydration file 7 passed. Page 44, preview 38, hydration 21 cases passed."
-        },
-        {
-          "name": "Production build and diff hygiene",
-          "status": "passed",
-          "result": "Final npm run build (tsc and Vite) and git diff --check passed."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "summary": "TDD red/green for decimal calculations, saved quantities and blanks, invalid rows and missing Matrix rows, restored-content currentness and retry."
-        },
-        "reviewer": {
-          "status": "passed",
-          "summary": "Same-agent sequential Standards and Spec review of exact diff, not independent agent review; retained exact write CAS, source rebase, readonly protection and history."
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Same-agent QA: full selected matrices then affected-file retests after test corrections; production build passed. No live project mutation or packaged-release test."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "summary": "Scoped source, tests and documentation committed locally as b644c6c6b90868c4a499cbc590021a9485b78836; no unrelated files or real databases modified."
-      }
-    }
+    "report": null
   },
   "last_closed": {
-    "task_id": "TASK_FEE_VISUAL_INSPECTION_DEFAULT_TIME",
+    "task_id": "TASK_FEE_CONFIRM_SPEND_TIME_ROUNDTRIP",
     "tier": "standard",
-    "subject": "98da3fb24ac424fb77a5349bd81c320cdbf8a21f",
-    "summary": "Set Visual Inspection default spend time to 0.5 without overwriting deliberate fee edits",
+    "subject": "b644c6c6b90868c4a499cbc590021a9485b78836",
+    "summary": "Fix Fee confirmation after editing Visual Inspection man-hours",
     "disposition": "completed",
-    "decision_ref": "User requested closure",
-    "closed_at": "2026-09-16T23:09:25.184863Z"
+    "decision_ref": "User explicitly closed Fee task and requested folder failure diagnosis and fix",
+    "closed_at": "2026-09-17T00:15:34.338492Z"
   },
   "retained_history": []
 }
