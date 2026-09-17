@@ -6,6 +6,7 @@ import runpy
 import subprocess
 import sys
 import shutil
+import stat
 from types import SimpleNamespace
 
 import pytest
@@ -14,8 +15,9 @@ from sqlalchemy import create_engine
 from backend.api import dependencies as deps
 from backend.api.project_folder_generation_composition import ProjectFolderGenerationRunner
 from backend.domain import Project, ProjectStatus, FileAsset, FileAssetType
-from backend.application.official_project_workspace_service import OfficialWorkspaceRecord
+from backend.application.official_project_workspace_service import OfficialWorkspacePreview, OfficialWorkspaceRecord
 from backend.infrastructure.files.generation_journal import GenerationJournal
+from backend.infrastructure.files.recoverable_workspace_publisher import RecoverableWorkspacePublisher
 from backend.infrastructure.storage.database import Base, create_session_factory
 from backend.shared.config import Settings
 from backend.application.project_application_form_write_back_service import ProjectApplicationFormWriteBackService
@@ -25,6 +27,101 @@ from backend.infrastructure.files.project_folder_required_forms_gateway import P
 def _settings(root):
     return Settings(data_dir=root / "data", projects_dir=root / "projects", templates_dir=root / "templates",
                     database_path=root / "fixture.sqlite")
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows readonly deletion semantics")
+@pytest.mark.parametrize("input_change", ["first_denial", "after_chmod", None])
+def test_runner_revalidates_real_inputs_around_readonly_cleanup(tmp_path, monkeypatch, input_change):
+    # Runner.context loads schedule storage lazily; register it before fixture DDL.
+    from backend.infrastructure.storage import models_project_schedule  # noqa: F401
+
+    settings = _settings(tmp_path)
+    engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
+    Base.metadata.create_all(engine)
+    sessions = create_session_factory(engine)
+    source = tmp_path / "source.txt"
+    source.write_text("approved input", encoding="utf-8")
+    with sessions() as session:
+        deps.ProjectRepository(session).create(Project(
+            project_id="P1", project_no="DL-001", product_name="Fixture",
+            requestor="Test", status=ProjectStatus.DRAFT,
+        ))
+        deps.FileAssetRepository(session).create(FileAsset(
+            "attachment", "P1", FileAssetType.ATTACHMENT, source,
+            original_name=source.name, source_role="supporting_attachment",
+        ))
+        session.commit()
+    runner = ProjectFolderGenerationRunner(sessions, settings)
+    workspace = tmp_path / "workspace"
+    official, template = workspace / "Official", tmp_path / "template"
+    official.mkdir(parents=True)
+    template.mkdir()
+    (official / "old.txt").write_text("previous output", encoding="utf-8")
+    (template / "new.txt").write_text("generated output", encoding="utf-8")
+    preview = OfficialWorkspacePreview(
+        project_id="P1", dl_number="DL-001", local_workspace_root=tmp_path,
+        local_workspace_path=workspace, source_book_path=workspace / "Source Book",
+        template_path=template, official_folder_path=official,
+        manifest_path=workspace / ".connlab" / "manifest.json",
+        template_root_mode="template_root", status="exists", blockers=(), warnings=(),
+        planned_paths=(), conflict_paths=(official,),
+    )
+    target = None
+    real_unlink, real_chmod = Path.unlink, Path.chmod
+    attempts, attribute_changes = [], []
+    try:
+        state = runner.journal.create("P1", "overwrite_rebuild", runner.context("P1"))
+        with sessions() as session:
+            RecoverableWorkspacePublisher(runner.journal, state).create(
+                preview, "overwrite_rebuild", deps.ProjectOfficialWorkspaceRepository(session)
+            )
+            session.commit()
+        backup = Path(state["effects"]["workspace"]["backup"])
+        target = backup / "old.txt"
+        target.chmod(stat.S_IREAD)
+
+        def unlink(path, *args, **kwargs):
+            if path == target:
+                attempts.append(path)
+            try:
+                return real_unlink(path, *args, **kwargs)
+            except PermissionError:
+                if path == target and input_change == "first_denial":
+                    source.write_text("changed input", encoding="utf-8")
+                raise
+
+        def chmod(path, *args, **kwargs):
+            result = real_chmod(path, *args, **kwargs)
+            if path == target:
+                attribute_changes.append(path)
+                if input_change == "after_chmod":
+                    source.write_text("changed input", encoding="utf-8")
+            return result
+
+        monkeypatch.setattr(Path, "unlink", unlink)
+        monkeypatch.setattr(Path, "chmod", chmod)
+        if input_change is not None:
+            with pytest.raises(ValueError, match="Generation inputs changed"):
+                runner.finalize(state)
+            assert target.read_text(encoding="utf-8") == "previous output"
+            assert len(attempts) == 1
+            assert len(attribute_changes) == (1 if input_change == "after_chmod" else 0)
+            assert bool(target.stat().st_file_attributes & stat.FILE_ATTRIBUTE_READONLY) == (
+                input_change == "first_denial"
+            )
+            assert not runner.journal.read("P1")["effects"]["workspace"].get("overwrite_deleted")
+        else:
+            runner.finalize(state)
+            assert not backup.exists()
+            assert len(attempts) == 2
+            assert len(attribute_changes) == 1
+            assert runner.journal.read("P1")["effects"]["workspace"]["overwrite_deleted"] is True
+        assert (official / "new.txt").read_text(encoding="utf-8") == "generated output"
+    finally:
+        if target is not None and target.exists():
+            real_chmod(target, stat.S_IWRITE)
+        runner.pool.shutdown()
+        engine.dispose()
 
 
 @pytest.mark.parametrize("missing_attachment", [False, True])

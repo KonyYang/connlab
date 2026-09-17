@@ -81,7 +81,10 @@ ReadOnly files with multiple hard links also remain pending: changing their attr
 an alias outside the approved recovery copy. Normal unlinking without attribute changes is unchanged.
 
 Recovery uses the existing Create project folder review/Resume flow. It checks the original inputs
-again and retries final cleanup without regenerating completed documents. Do not delete the journal
+again and retries final cleanup without regenerating completed documents. The production runner passes
+its live input check into the cleanup publisher, including checks before and after ReadOnly repair.
+If inputs change after the attribute repair, deletion stops; it does not blindly restore attributes
+on potentially changed content. Do not delete the journal
 or manually reset its step counter to clear a cleanup error. Tests reproduce ReadOnly behavior in
 temporary Windows directories; deployment does not automatically clean real project backups.
 

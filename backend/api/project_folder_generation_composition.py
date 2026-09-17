@@ -37,9 +37,12 @@ class ProjectFolderGenerationRunner:
         return ProjectFolderGenerationService(self.journal, self.context, self.run_step, self.pool.submit, self.preview_context, self.preview, self.finalize)
 
     def finalize(self, state):
-        if self.context(state["project_id"]) != state["context"]:
-            raise ValueError("Generation inputs changed before final cleanup.")
-        RecoverableWorkspacePublisher(self.journal, state).finalize()
+        def verify_context():
+            if self.context(state["project_id"]) != state["context"]:
+                raise ValueError("Generation inputs changed before final cleanup.")
+
+        verify_context()
+        RecoverableWorkspacePublisher(self.journal, state, verify_context=verify_context).finalize()
 
     def context(self, project_id):
         with self.sessions() as session:
