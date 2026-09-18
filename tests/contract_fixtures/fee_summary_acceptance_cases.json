@@ -1,0 +1,200 @@
+{
+  "schema": "connlab.fee-summary-acceptance/v1",
+  "authority": "docs/fee_confirmation_contract.md",
+  "purpose": "Shared acceptance samples for the Fee Evaluation summary derivation seam. The backend and the frontend independently derive the five summary fields; both must reproduce these samples. This file is a common acceptance oracle, not the production formula itself.",
+  "conventions": {
+    "row_inputs": "Each row carries its arithmetic inputs (unit_price, units, base_fee, discount) plus spend_time, and the client-sent whole-amount testing_fee derived from them. Row testing fees display as whole amounts (ROUND_HALF_UP), matching the contract clause that UI-rounded whole amounts must follow the same formula; the backend also accepts the exact unrounded calculated amount.",
+    "calculation_comparison": "Numeric equality after normalizing $ , and blank inputs to plain decimals.",
+    "display_comparison": "Exact strings per contract display rules: working hours one decimal, totals two decimals, manpower whole amount.",
+    "normalization": "Both sides must parse $ , and blank inputs equivalently; external cost retains its entered precision until the total is rounded."
+  },
+  "cases": [
+    {
+      "id": "baseline_simple",
+      "matrix_rows": [
+        {"unit_price": "0", "units": "1", "base_fee": "41", "discount": "0%", "testing_fee": "41", "spend_time": "1.5"}
+      ],
+      "manual_rows": [],
+      "condition_confirmation_spend_time": "0",
+      "external_cost": "150",
+      "lab_manpower_hourly_rate": "200",
+      "expected_summary": {
+        "testing_fee_total": "41.00",
+        "working_hours": "1.5",
+        "lab_manpower_cost": "300",
+        "external_cost": "150",
+        "grand_cost": "191.00"
+      },
+      "covers": "Baseline totals: one matrix row, external cost, two-decimal totals."
+    },
+    {
+      "id": "hours_display_half_up_manpower_uses_raw_hours",
+      "matrix_rows": [
+        {"unit_price": "0", "units": "1", "base_fee": "10", "discount": "0%", "testing_fee": "10", "spend_time": "1.25"},
+        {"unit_price": "0", "units": "1", "base_fee": "5", "discount": "0%", "testing_fee": "5", "spend_time": "0"}
+      ],
+      "manual_rows": [],
+      "condition_confirmation_spend_time": "0",
+      "external_cost": "0",
+      "lab_manpower_hourly_rate": "200",
+      "expected_summary": {
+        "testing_fee_total": "15.00",
+        "working_hours": "1.3",
+        "lab_manpower_cost": "250",
+        "external_cost": "0",
+        "grand_cost": "15.00"
+      },
+      "covers": "HALF_UP hour display (1.25 -> 1.3) while manpower multiplies the unrounded 1.25 hours (contract: manpower uses unrounded hours)."
+    },
+    {
+      "id": "manpower_whole_amount_rounds_half_up",
+      "matrix_rows": [
+        {"unit_price": "0", "units": "1", "base_fee": "10", "discount": "0%", "testing_fee": "10", "spend_time": "0.5"},
+        {"unit_price": "0", "units": "1", "base_fee": "10", "discount": "0%", "testing_fee": "10", "spend_time": "0.25"}
+      ],
+      "manual_rows": [],
+      "condition_confirmation_spend_time": "0",
+      "external_cost": "0",
+      "lab_manpower_hourly_rate": "333",
+      "expected_summary": {
+        "testing_fee_total": "20.00",
+        "working_hours": "0.8",
+        "lab_manpower_cost": "250",
+        "external_cost": "0",
+        "grand_cost": "20.00"
+      },
+      "covers": "Manpower displays as a whole amount with ROUND_HALF_UP (0.75 * 333 = 249.75 -> 250) while the displayed hours round independently (0.75 -> 0.8)."
+    },
+    {
+      "id": "manual_rows_and_condition_hours",
+      "matrix_rows": [
+        {"unit_price": "0", "units": "1", "base_fee": "41", "discount": "0%", "testing_fee": "41", "spend_time": "1.5"}
+      ],
+      "manual_rows": [
+        {"row_kind": "sample_preparation", "unit_price": "0", "units": "1", "base_fee": "25", "discount": "0%", "testing_fee": "25", "spend_time": "0.5", "group_label": "Group 1"},
+        {"row_kind": "report_preparation", "unit_price": "0", "units": "1", "base_fee": "10", "discount": "0%", "testing_fee": "10", "spend_time": "1"}
+      ],
+      "condition_confirmation_spend_time": "0.5",
+      "external_cost": "0",
+      "lab_manpower_hourly_rate": "200",
+      "expected_summary": {
+        "testing_fee_total": "76.00",
+        "working_hours": "3.5",
+        "lab_manpower_cost": "700",
+        "external_cost": "0",
+        "grand_cost": "76.00"
+      },
+      "covers": "Sample preparation and report preparation manual rows join matrix rows in both fee and hour totals; condition confirmation hours add to working hours."
+    },
+    {
+      "id": "external_cost_precision_until_total_rounded",
+      "matrix_rows": [
+        {"unit_price": "0", "units": "1", "base_fee": "41", "discount": "0%", "testing_fee": "41", "spend_time": "1.5"}
+      ],
+      "manual_rows": [],
+      "condition_confirmation_spend_time": "0",
+      "external_cost": "19.999",
+      "lab_manpower_hourly_rate": "200",
+      "expected_summary": {
+        "testing_fee_total": "41.00",
+        "working_hours": "1.5",
+        "lab_manpower_cost": "300",
+        "external_cost": "19.999",
+        "grand_cost": "61.00"
+      },
+      "covers": "External cost retains its entered precision (19.999) while the grand total rounds to two decimals (60.999 -> 61.00 HALF_UP)."
+    },
+    {
+      "id": "ui_whole_row_fee_matches_exact_formula",
+      "matrix_rows": [
+        {"unit_price": "33.33", "units": "3", "base_fee": "0", "discount": "0%", "testing_fee": "100", "spend_time": "0.5"},
+        {"unit_price": "0", "units": "1", "base_fee": "41", "discount": "0%", "testing_fee": "41", "spend_time": "1"}
+      ],
+      "manual_rows": [],
+      "condition_confirmation_spend_time": "0",
+      "external_cost": "0",
+      "lab_manpower_hourly_rate": "200",
+      "expected_summary": {
+        "testing_fee_total": "141.00",
+        "working_hours": "1.5",
+        "lab_manpower_cost": "300",
+        "external_cost": "0",
+        "grand_cost": "141.00"
+      },
+      "covers": "Contract clause: UI-rounded whole row amounts must match the same formula. 33.33 * 3 = 99.99 exact, displayed/sent as whole 100; backend accepts whole or exact. Totals use the whole row amount (100 + 41 = 141.00)."
+    },
+    {
+      "id": "blank_optionals_serialize_as_zero",
+      "matrix_rows": [
+        {"unit_price": "0", "units": "1", "base_fee": "41", "discount": "0%", "testing_fee": "41", "spend_time": "1.5"}
+      ],
+      "manual_rows": [],
+      "condition_confirmation_spend_time": "",
+      "external_cost": "",
+      "lab_manpower_hourly_rate": "200",
+      "expected_summary": {
+        "testing_fee_total": "41.00",
+        "working_hours": "1.5",
+        "lab_manpower_cost": "300",
+        "external_cost": "0",
+        "grand_cost": "41.00"
+      },
+      "covers": "Blank optional condition/external inputs serialize as zero on the client and normalize to zero on both sides."
+    },
+    {
+      "id": "input_normalization_currency_and_thousands",
+      "matrix_rows": [
+        {"unit_price": "0", "units": "1", "base_fee": "$2,000", "discount": "0%", "testing_fee": "2000", "spend_time": "1,000"}
+      ],
+      "manual_rows": [],
+      "condition_confirmation_spend_time": "0",
+      "external_cost": "$1,500.00",
+      "lab_manpower_hourly_rate": "200",
+      "expected_summary": {
+        "testing_fee_total": "2000.00",
+        "working_hours": "1000.0",
+        "lab_manpower_cost": "200000",
+        "external_cost": "1500.00",
+        "grand_cost": "3500.00"
+      },
+      "covers": "Currency symbols and thousands separators normalize identically on both sides; the canonical external_cost value is numerically 1500.00 even if a client transmits the decorated form."
+    },
+    {
+      "id": "multi_group_rows_all_counted",
+      "matrix_rows": [
+        {"unit_price": "0", "units": "1", "base_fee": "41", "discount": "0%", "testing_fee": "41", "spend_time": "1", "confirmed_group_id": "cmg-1", "group_label": "Group 1"},
+        {"unit_price": "0", "units": "1", "base_fee": "25", "discount": "0%", "testing_fee": "25", "spend_time": "2", "confirmed_group_id": "cmg-2", "group_label": "Group 2"}
+      ],
+      "manual_rows": [],
+      "condition_confirmation_spend_time": "0",
+      "external_cost": "0",
+      "lab_manpower_hourly_rate": "200",
+      "expected_summary": {
+        "testing_fee_total": "66.00",
+        "working_hours": "3.0",
+        "lab_manpower_cost": "600",
+        "external_cost": "0",
+        "grand_cost": "66.00"
+      },
+      "covers": "Rows from multiple groups all count toward the full confirmation summary; contract requires Confirm to review all active groups including rows hidden by the group filter (filter behavior is asserted in the frontend page test)."
+    },
+    {
+      "id": "fractional_condition_hours",
+      "matrix_rows": [
+        {"unit_price": "0", "units": "1", "base_fee": "41", "discount": "0%", "testing_fee": "41", "spend_time": "1.5"}
+      ],
+      "manual_rows": [],
+      "condition_confirmation_spend_time": "1.25",
+      "external_cost": "0",
+      "lab_manpower_hourly_rate": "200",
+      "expected_summary": {
+        "testing_fee_total": "41.00",
+        "working_hours": "2.8",
+        "lab_manpower_cost": "550",
+        "external_cost": "0",
+        "grand_cost": "41.00"
+      },
+      "covers": "Fractional condition confirmation hours (1.5 + 1.25 = 2.75 -> 2.8 displayed) drive manpower from the unrounded 2.75 (2.75 * 200 = 550)."
+    }
+  ]
+}
