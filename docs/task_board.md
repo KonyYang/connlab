@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_361B_TEST_RUNNER_INTERPRETER_ALIGNMENT",
     "summary": "Align the supported test runner with the ConnLab Python virtual environment and retire stale broad environment-debt assumptions.",
@@ -26,9 +26,54 @@
     "risk_reasons": [],
     "activation_head": "867a155540148e372bc06a0f96ebf500cda84850",
     "started_at": "2026-09-18T15:01:17.305336Z",
-    "updated_at": "2026-09-18T15:01:17.305336Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-18T15:18:39.393237Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_361B_TEST_RUNNER_INTERPRETER_ALIGNMENT",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_361B_TEST_RUNNER_INTERPRETER_ALIGNMENT",
+      "subject": "ad0cbb757b4fa5f5549dcfb6746d7f20ed6528f3",
+      "summary": "Aligned the supported Python test runner with the ConnLab virtual environment while preserving Office opt-in separation.",
+      "scope_ok": true,
+      "changed_paths": [
+        "scripts/run_tests.ps1",
+        "tests/unit/test_packaging_notes.py"
+      ],
+      "validation": [
+        {
+          "name": "focused script contracts",
+          "status": "passed",
+          "result": "6 passed"
+        },
+        {
+          "name": "PowerShell syntax",
+          "status": "passed"
+        },
+        {
+          "name": "complete non-Office Python gate",
+          "status": "passed",
+          "result": "2954 passed, 7 skipped, 19 deselected"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented, self-reviewed, and validated the bounded test-entry repair."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "isolated_worktree_pending_primary_integration"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_361C_TMP_DISK_GOVERNANCE_INVENTORY",
