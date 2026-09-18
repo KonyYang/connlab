@@ -19,6 +19,34 @@ groups, including rows hidden by the group filter. Fee Form publication remains 
 - Production confirmation also requires all Matrix test-row identities. Incomplete drafts can
   still autosave; missing rows cannot become confirmed authority.
 
+### Row pricing fields and summary roles
+
+- A row fee follows `unit_price * units * (1 - discount / 100) + base_fee`.
+  Use `unit_price` and `units` for quantity-based pricing; use `base_fee` for the fixed or additive
+  part of a row. A fixed whole-row fee can therefore use `unit_price = 0` and put the amount in
+  `base_fee`, but not every fee belongs in `base_fee`.
+- `testing_fee` is the derived row-fee snapshot sent by the client. It is not independent pricing
+  authority or a manually retained provenance field: confirmation recomputes the row arithmetic
+  and rejects an unrelated value. After that validation, the saved `testing_fee` values are summed
+  to derive `testing_fee_total` and `grand_cost`, so `testing_fee` is not merely unused display text.
+- The shared acceptance cases under `tests/contract_fixtures` pin these roles and the display
+  boundaries across the frontend and backend; they do not replace either production implementation.
+
+### Deferred hardening, when justified
+
+The current shared acceptance cases are the regression baseline. Further hardening is deliberately
+deferred until a related behavior change, demonstrated gap, or repeated drift justifies it:
+
+- expose the canonical summary calculation as a public pure domain function instead of testing a
+  private application helper;
+- add property-based coverage for decimal normalization, rounding boundaries, and equivalent input
+  representations;
+- add a real HTTP API contract test that carries the frontend-shaped confirmation payload through
+  transport validation into backend confirmation.
+
+These are optional follow-ups, not authorization for an immediate refactor or expansion of the Fee
+workflow.
+
 ## Confirmation, cancel and retry
 
 - Writes retain exact draft ID/generation/fingerprint/token checks. Context changes and concurrent
