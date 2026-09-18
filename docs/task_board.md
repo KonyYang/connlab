@@ -14,15 +14,21 @@
   "state": "idle",
   "active": null,
   "last_closed": {
-    "task_id": "TASK_PROJECT_FOLDER_FINALIZATION_ACCESS_COMPLETE",
-    "tier": "high_risk",
-    "subject": "b7073d2915e6ae967c0b293c7d4b25e0086daa44",
-    "summary": "Complete approved production cleanup context wiring and verify retained readonly safety fix",
+    "task_id": "TASK_361A_FEE_SUMMARY_ACCEPTANCE_CONTRACT",
+    "tier": "standard",
+    "subject": "Add fee summary acceptance contract fixtures and cross-stack tests",
+    "summary": "Pinned frontend/backend fee-summary derivation to shared golden samples from docs/fee_confirmation_contract.md without changing business formulas. Backend 20/20, frontend model 10/10, frontend page 2/2 acceptance tests pass.",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested close on 2026-09-17 after completed Python 3.11 smoke validation.",
-    "closed_at": "2026-09-17T11:59:24.022479Z"
+    "decision_ref": "User approved adjusted scope on 2026-09-18: contract.md authoritative, JSON as shared acceptance samples, numeric equivalence assertions, report-only on drift.",
+    "closed_at": "2026-09-18T03:01:50.000000Z"
   },
-  "retained_history": []
+  "retained_history": [
+    {
+      "task_id": "TASK_PROJECT_FOLDER_FINALIZATION_ACCESS_COMPLETE",
+      "tier": "high_risk",
+      "closed_at": "2026-09-17T11:59:24.022479Z"
+    }
+  ]
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
