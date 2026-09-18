@@ -10,7 +10,11 @@ def test_local_run_scripts_exist_and_use_expected_commands() -> None:
     """Supported local run scripts are present and target the expected processes."""
     scripts = {
         "scripts/init_db.ps1": ["create_database_engine", "init_db"],
-        "scripts/run_backend.ps1": ["uvicorn", "backend.api.main:app"],
+        "scripts/run_backend.ps1": [
+            "uvicorn",
+            "backend.api.development:create_app",
+            "--factory",
+        ],
         "scripts/run_frontend.ps1": ["npm install", "npm run dev"],
         "scripts/run_mvp_dev.ps1": ["run_backend.ps1", "run_frontend.ps1"],
     }
@@ -20,6 +24,16 @@ def test_local_run_scripts_exist_and_use_expected_commands() -> None:
         assert "[Console]::OutputEncoding" in source
         for term in expected_terms:
             assert term in source
+
+
+def test_test_runner_uses_connlab_python_and_keeps_office_opt_in() -> None:
+    """The supported test gate uses the application interpreter, not launcher state."""
+    source = (ROOT / "scripts" / "run_tests.ps1").read_text(encoding="utf-8")
+
+    assert '[string]$PythonExe = "C:\\PythonEnvs\\connlab\\.venv\\Scripts\\python.exe"' in source
+    assert "& $PythonExe -m pytest" in source
+    assert "& py -m pytest" not in source
+    assert 'if ($OfficeOnly) { "office_integration" } else { "not office_integration" }' in source
 
 
 def test_readme_documents_setup_run_and_validation() -> None:

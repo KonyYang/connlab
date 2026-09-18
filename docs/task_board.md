@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_361B_TEST_RUNNER_INTERPRETER_ALIGNMENT",
+    "summary": "Align the supported test runner with the ConnLab Python virtual environment and retire stale broad environment-debt assumptions.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Update only the test runner, its focused contract test, and the task board. Preserve normal versus Office test separation; do not change product code, dependencies, or host safe-delete policy.",
+    "scope_paths": [
+      "scripts/run_tests.ps1",
+      "tests/unit/test_packaging_notes.py",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "867a155540148e372bc06a0f96ebf500cda84850",
+    "started_at": "2026-09-18T15:01:17.305336Z",
+    "updated_at": "2026-09-18T15:01:17.305336Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_361C_TMP_DISK_GOVERNANCE_INVENTORY",
     "tier": "standard",
@@ -46,22 +63,28 @@ authorize work, create WIP, or override this control block.
 These items are not in-flight; they are recorded here for prioritization. They do not
 change the `active` field above.
 
-### TASK_361B_TEST_ENVIRONMENT_DEBT_CLEANUP
+### TASK_361B_TEST_RUNNER_INTERPRETER_ALIGNMENT
 
-**Tier:** standard  
-**Discovered during:** TASK_361A acceptance run on 2026-09-18  
-**Goal:** Make the backend pytest suite runnable to completion inside the current agent/WorkBuddy session.
+**Tier:** micro
+**Revised from:** the stale broad test-environment proposal discovered during TASK_361A
+**Goal:** Keep the supported test entry point on the same Python runtime as ConnLab development.
 
-**Observed blockers:**
+The original diagnosis was rechecked before implementation:
 
-1. **Managed Python 3.13.12 lacks tkinter.** `backend/api/dependencies.py:367` ultimately imports `windows_path_picker.py`, which does a top-level `from tkinter import ...`. Running `pytest tests` with the managed Python fails at collection for ~109 test files (`ModuleNotFoundError: tkinter`). Current workaround: use `C:/Python313/python.exe` for full-suite runs.
-2. **WorkBuddy safe-delete hook intercepts test cleanup.** The sitecustomize.py injected by the agent runtime raises `SystemExit(1)` once per-turn deletions exceed threshold 50. Tests that use `path.unlink()` or `shutil.rmtree()` (e.g. `test_config.py`, `test_database.py`, `test_packaging_notes.py`) hit `SAFE_DELETE_BULK_CONFIRM_REQUIRED`. This makes even targeted runs fail after the threshold is reached, and single-file reruns fail with a higher count because temp dirs accumulate.
-3. **Office COM crashes during matrix-preview integration tests.** `tests/integration/test_project_test_plan_preview_api.py:63` triggers Word COM calls that crash with Windows fatal exception `0x800706be` / `0x800706ba` inside `word_document_gateway.py`. This aborts the process rather than producing a normal test failure.
+- `C:/PythonEnvs/connlab/.venv` is Python 3.11.9 and imports Tkinter 8.6 successfully; no
+  dependency installation is needed.
+- Office-dependent integration tests already use the `office_integration` marker. The normal gate
+  excludes them and `-Suite Office` remains the explicit installed-Office check.
+- WorkBuddy or Codex temporary-directory and safe-delete restrictions are host permissions, not
+  ConnLab product behavior. They must be handled by the runner environment or an explicitly
+  permitted pytest temp location, not by weakening repository cleanup or test semantics.
 
-**Proposed remediation directions:**
+The remaining defect was limited to `scripts/run_tests.ps1`: it invoked the ambient `py` launcher,
+which selected Python 3.13.3 instead of the Python 3.11.9 environment used by ConnLab. The revised
+runner defaults to `C:/PythonEnvs/connlab/.venv/Scripts/python.exe`, supports an explicit
+`-PythonExe` override, fails clearly when that interpreter is missing, and preserves the existing
+normal/Office split.
 
-- Add `tkinter` to the managed Python venv (or switch backend test runs to system Python with tkinter).
-- Configure pytest `--basetemp D:/PythonProject/connlab/tmp/pytest-tmp` and, if the safe-delete hook allows, scope temp cleanup outside the bulk-delete threshold. Alternatively, run the suite in an environment where the hook is not injected.
-- Isolate COM-dependent integration tests behind an `office` or `com` pytest marker and skip them in the standard CI/agent run unless an Office instance is confirmed healthy.
-
-**Acceptance criteria:** `pytest tests -q` passes to completion (or cleanly skips COM tests) without manual intervention, using the project's documented Python runtime.
+**Validation:** the focused runner contract passes, and the complete non-Office Python gate passes
+with 2954 tests, 7 skips, and 19 Office tests deselected on Python 3.11.9. No product code,
+dependencies, Office implementation, or host safety policy changed.

@@ -1,7 +1,9 @@
 [CmdletBinding()]
 param(
     [ValidateSet("All", "Python", "Frontend", "Office")]
-    [string]$Suite = "All"
+    [string]$Suite = "All",
+
+    [string]$PythonExe = "C:\PythonEnvs\connlab\.venv\Scripts\python.exe"
 )
 
 Set-StrictMode -Version Latest
@@ -15,13 +17,18 @@ New-Item -ItemType Directory -Path $logRoot -Force | Out-Null
 function Invoke-PythonTests {
     param([switch]$OfficeOnly)
 
+    if (-not (Test-Path -LiteralPath $PythonExe -PathType Leaf)) {
+        throw "ConnLab Python interpreter not found: $PythonExe"
+    }
+
     $selection = if ($OfficeOnly) { "office_integration" } else { "not office_integration" }
     $logName = if ($OfficeOnly) { "pytest_office_last.log" } else { "pytest_last.log" }
     $logPath = Join-Path $logRoot $logName
 
     Push-Location $repositoryRoot
     try {
-        & py -m pytest -p no:cacheprovider -m $selection 2>&1 |
+        Write-Host "Python test interpreter: $PythonExe"
+        & $PythonExe -m pytest -p no:cacheprovider -m $selection 2>&1 |
             Tee-Object -FilePath $logPath
         if ($LASTEXITCODE -ne 0) {
             throw "Python test suite failed. See $logPath"
