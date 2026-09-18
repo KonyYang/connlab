@@ -14,15 +14,20 @@
   "state": "idle",
   "active": null,
   "last_closed": {
-    "task_id": "TASK_361A_FEE_SUMMARY_ACCEPTANCE_CONTRACT",
+    "task_id": "TASK_361C_TMP_DISK_GOVERNANCE_INVENTORY",
     "tier": "standard",
-    "subject": "Add fee summary acceptance contract fixtures and cross-stack tests",
-    "summary": "Pinned frontend/backend fee-summary derivation to shared golden samples from docs/fee_confirmation_contract.md without changing business formulas. Backend 20/20, frontend model 10/10, frontend page 2/2 acceptance tests pass.",
+    "subject": "Scan tmp/ and produce 26.75 GB disk-governance inventory",
+    "summary": "Read-only scan of D:/PythonProject/connlab/tmp categorized 768 entries into repo_copy (16.12 GB), task_evidence (5.18 GB), pytest_artifact (820 MB), other (4.64 GB). No files deleted; report awaits user confirmation per batch.",
     "disposition": "completed",
-    "decision_ref": "User approved adjusted scope on 2026-09-18: contract.md authoritative, JSON as shared acceptance samples, numeric equivalence assertions, report-only on drift.",
-    "closed_at": "2026-09-18T03:01:50.000000Z"
+    "decision_ref": "User requested execute recommended sequence on 2026-09-18; report-only, delete-after-confirm boundary preserved.",
+    "closed_at": "2026-09-18T03:30:00.000000Z"
   },
   "retained_history": [
+    {
+      "task_id": "TASK_361A_FEE_SUMMARY_ACCEPTANCE_CONTRACT",
+      "tier": "standard",
+      "closed_at": "2026-09-18T03:01:50.000000Z"
+    },
     {
       "task_id": "TASK_PROJECT_FOLDER_FINALIZATION_ACCESS_COMPLETE",
       "tier": "high_risk",
