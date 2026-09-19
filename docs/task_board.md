@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_WORKBENCH_FOLDER_ACTION_MIGRATION",
     "summary": "Move project folder create and update control from the Workbench top bar into Folder Actions with correct labels, primary weight, lifecycle reachability, and narrow-width coverage.",
@@ -26,9 +26,75 @@
     "risk_reasons": [],
     "activation_head": "6649350ccd38e71135b4260378b4742a0b9ba509",
     "started_at": "2026-09-19T14:33:41.881450Z",
-    "updated_at": "2026-09-19T14:33:41.881450Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-19T15:05:43.445041Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_WORKBENCH_FOLDER_ACTION_MIGRATION",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "changed_paths": [
+        "docs/workbench_topbar_actions_and_folder_create_migration_plan.md",
+        "frontend/src/features/project-workbench/ProjectFolderTaskList.test.tsx",
+        "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx",
+        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+        "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
+        "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts",
+        "frontend/src/features/project-workbench/useProjectFolderGeneration.ts",
+        "frontend/src/workbench.css"
+      ],
+      "task_id": "TASK_WORKBENCH_FOLDER_ACTION_MIGRATION",
+      "validation": [
+        {
+          "status": "passed",
+          "summary": "4 files, 100 tests passed.",
+          "name": "targeted_frontend"
+        },
+        {
+          "status": "passed",
+          "summary": "87 files passed, 644 tests passed, 1 skipped.",
+          "name": "complete_frontend"
+        },
+        {
+          "status": "passed",
+          "summary": "163 modules transformed and production bundle completed.",
+          "name": "vite_bundle"
+        },
+        {
+          "status": "passed",
+          "summary": "393px viewport had no horizontal overflow; Folder Actions primary label remained complete.",
+          "name": "responsive_browser"
+        }
+      ],
+      "integration": {
+        "status": "passed",
+        "mode": "direct_primary"
+      },
+      "scope_ok": true,
+      "subject": "8134c9ab67a6d62e4501cee048746eec37d2d50a",
+      "summary": "Moved the project folder create/update command from the Workbench top bar into the shared Folder Actions surface while retaining Open and generation behavior.",
+      "version": 1,
+      "schema": "connlab.sol-task-report",
+      "roles": {
+        "reviewer": {
+          "status": "passed",
+          "summary": "Sequential focused standards and specification review passed; no independent subagent was used."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Primary-agent complete frontend and browser QA passed; no independent subagent was used. The wrapper TypeScript gate still reports pre-existing unrelated fee contract test type errors."
+        },
+        "developer": {
+          "status": "passed",
+          "summary": "Primary Astra implementation used public-seam TDD and self-review."
+        }
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_361B_TEST_RUNNER_INTERPRETER_ALIGNMENT",
