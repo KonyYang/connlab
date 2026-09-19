@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactElement, type ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { TopBarActionsProvider } from "./TopBarActionsContext";
 
 type AppShellProps = {
   activeRoute: string;
@@ -36,19 +37,25 @@ export function AppShell({
   }, [sidebarCollapsed]);
 
   return (
-    <div className={`app-shell${sidebarCollapsed ? " app-shell-sidebar-collapsed" : ""}`}>
-      <Sidebar
-        activeRoute={activeRoute}
-        collapsed={sidebarCollapsed}
-        interactionLocked={interactionLocked}
-        interactionLockedReason={interactionLockedReason}
-        onNavigate={onNavigate}
-        onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
-      />
-      <div className="app-workspace">
-        <TopBar activeRoute={activeRoute} titleOverride={topBarTitle} actions={topBarActions} />
-        <main className="main-work-area">{children}</main>
+    <TopBarActionsProvider>
+      <div className={`app-shell${sidebarCollapsed ? " app-shell-sidebar-collapsed" : ""}`}>
+        <Sidebar
+          activeRoute={activeRoute}
+          collapsed={sidebarCollapsed}
+          interactionLocked={interactionLocked}
+          interactionLockedReason={interactionLockedReason}
+          onNavigate={onNavigate}
+          onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
+        />
+        <div className="app-workspace">
+          <TopBar
+            activeRoute={activeRoute}
+            titleOverride={topBarTitle}
+            actions={topBarActions}
+          />
+          <main className="main-work-area">{children}</main>
+        </div>
       </div>
-    </div>
+    </TopBarActionsProvider>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
+import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
 import {
   deleteTemporaryProject,
   type OfficialWorkspaceConflictStrategy,
@@ -69,7 +70,7 @@ export function ProjectWorkbenchLayout({
   const [showFolderConflictDialog, setShowFolderConflictDialog] = useState(false);
   const [folderUpdateReview, setFolderUpdateReview] = useState<FolderUpdateReview | null>(null);
   const [recoveryPreviewCheckedProject, setRecoveryPreviewCheckedProject] = useState<string | null>(null);
-  const [topBarActionsRoot, setTopBarActionsRoot] = useState<HTMLElement | null>(null);
+  const topBarActionsRoot = useTopBarActionsRoot();
 
   const {
     activeConfirmedMatrixSnapshot,
@@ -130,10 +131,6 @@ export function ProjectWorkbenchLayout({
   } = runtimeModel;
   const refreshOfficialWorkspacePreview = useRef(onRefreshOfficialWorkspacePreview);
   refreshOfficialWorkspacePreview.current = onRefreshOfficialWorkspacePreview;
-
-  useEffect(() => {
-    setTopBarActionsRoot(document.querySelector<HTMLElement>("[data-top-bar-actions]"));
-  }, []);
 
   useEffect(() => {
     let active = true;

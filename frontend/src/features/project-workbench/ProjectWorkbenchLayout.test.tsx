@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { ComponentType, ReactElement, ReactNode } from "react";
 import type {
   ConfirmedMatrixSnapshot,
   ConfirmedFeeLatestResponse,
@@ -17,6 +18,7 @@ import type {
   ProjectOutputStatusSummary,
 } from "../../api/client";
 import { previewTemporaryProjectDelete } from "../../api/client";
+import { AppShell } from "../../components/layout/AppShell";
 import { ProjectWorkbenchLayout } from "./ProjectWorkbenchLayout";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 
@@ -1546,7 +1548,8 @@ function renderWorkbench(
     ProjectWorkbenchLayoutPropsForTest,
     "onBack" | "onOpenMatrixEditor" | "onOpenFeeEvaluation"
     | "onOpenBasicInformation" | "onOpenReportWorkspace" | "onOpenSettings"
-  >> = {}
+  >> = {},
+  wrapper?: ComponentType<{ children: ReactNode }>
 ): ReturnType<typeof render> {
   const currentProject = { ...project, ...projectOverrides };
   return render(
@@ -1559,9 +1562,43 @@ function renderWorkbench(
       onOpenBasicInformation={callbacks.onOpenBasicInformation ?? vi.fn()}
       onOpenReportWorkspace={callbacks.onOpenReportWorkspace ?? vi.fn()}
       onOpenSettings={callbacks.onOpenSettings ?? vi.fn()}
-    />
+    />,
+    { wrapper }
   );
 }
+
+function AppShellWrapper({ children }: { children: ReactNode }): ReactElement {
+  return (
+    <AppShell activeRoute="workbench" interactionLocked={false}>
+      {children}
+    </AppShell>
+  );
+}
+
+/**
+ * Guards the top-bar slot contract. Every other case in this file renders the layout on its own and
+ * therefore takes the in-place fallback branch, so without these two cases nothing pins where the
+ * command bar actually lands.
+ */
+describe("ProjectWorkbenchLayout top bar action slot", () => {
+  it("renders the workbench command bar inside the shell slot when the app shell is mounted", () => {
+    renderWorkbench({}, {}, {}, AppShellWrapper);
+
+    const slot = document.querySelector<HTMLElement>("[data-top-bar-actions]");
+    expect(slot).not.toBeNull();
+    expect(slot?.querySelector('[aria-label="Project Workbench actions"]')).toBeTruthy();
+    expect(document.querySelector(".runtime-console-shell > .runtime-console-topbar")).toBeNull();
+  });
+
+  it("renders the workbench command bar in place when no shell slot is mounted", () => {
+    renderWorkbench();
+
+    expect(document.querySelector("[data-top-bar-actions]")).toBeNull();
+    expect(
+      screen.getByLabelText("Project Workbench actions").closest(".runtime-console-topbar")
+    ).not.toBeNull();
+  });
+});
 
 type ProjectWorkbenchLayoutPropsForTest = Parameters<typeof ProjectWorkbenchLayout>[0];
 

@@ -10,6 +10,7 @@ import {
   listProjectRegistryRows,
 } from "../api/client";
 import { ProjectListPage } from "./ProjectListPage";
+import { AppShell } from "../components/layout/AppShell";
 import * as managementApi from "../api/projectRegistryManagement";
 vi.mock("../api/projectRegistryManagement", () => ({listManagedProjects: vi.fn(), previewProjectRegistryAction: vi.fn(), moveProjectToTrash: vi.fn(), restoreManagedProject: vi.fn()}));
 
@@ -51,20 +52,20 @@ describe("ProjectListPage lifecycle registry views", () => {
     expect(Boolean(projectView.compareDocumentPosition(active) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
   });
 
-  it("places registry controls in the shell top-bar action slot when available", async () => {
-    const topBarActions = document.createElement("div");
-    topBarActions.dataset.topBarActions = "true";
-    document.body.appendChild(topBarActions);
-    try {
-      mockRows([]);
-      render(<ProjectListPage onOpenProject={vi.fn()} />);
+  it("places registry controls in the shell top-bar action slot", async () => {
+    mockRows([]);
+    render(
+      <AppShell activeRoute="projects" interactionLocked={false}>
+        <ProjectListPage onOpenProject={vi.fn()} />
+      </AppShell>
+    );
 
-      await screen.findByRole("button", { name: "Active" });
-      expect(topBarActions.querySelector(".register-toolbar")).not.toBeNull();
-      expect(document.querySelector(".project-register-panel > .register-toolbar")).toBeNull();
-    } finally {
-      topBarActions.remove();
-    }
+    await screen.findByRole("button", { name: "Active" });
+
+    const slot = document.querySelector<HTMLElement>("[data-top-bar-actions]");
+    expect(slot).not.toBeNull();
+    expect(slot?.querySelector(".register-toolbar")).toBeTruthy();
+    expect(document.querySelector(".project-register-panel > .register-toolbar")).toBeNull();
   });
 
   it("moves an exact record into the recycle bin, exits the normal view and safely previews Undo", async () => {

@@ -1,6 +1,6 @@
 import { useState, type ReactElement, type ReactNode } from "react";
-import { useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
 import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixProjectionPanel";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
@@ -33,7 +33,7 @@ export function ProjectWorkbenchExecutionConsole({
   sideColumnAfter?: ReactNode;
 }): ReactElement {
   const [detailsOpen, setDetailsOpen] = useState(true);
-  const [topBarActionsRoot, setTopBarActionsRoot] = useState<HTMLElement | null>(null);
+  const topBarActionsRoot = useTopBarActionsRoot();
   const selectedWorkspace = runtimeProjectionSnapshot?.step_workspace ?? null;
   const selectedWorkspaceToken = selectedWorkspace?.selected_token ?? null;
   const hasSelectedStep =
@@ -57,10 +57,6 @@ export function ProjectWorkbenchExecutionConsole({
   const lifecycleStatusClassSuffix = displayLifecycleStatus
     .toLowerCase()
     .replace(/\s+/g, "-");
-
-  useEffect(() => {
-    setTopBarActionsRoot(document.querySelector<HTMLElement>("[data-top-bar-actions]"));
-  }, []);
 
   const detailsToggle = (
     <button

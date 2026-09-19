@@ -1,5 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
+import { useTopBarActionsRoot } from "../components/layout/TopBarActionsContext";
 import {
   getProjectLifecycle,
   listProjectRegistryRows,
@@ -80,7 +81,7 @@ export function ProjectListPage({
   const [lastLtrApplyResult, setLastLtrApplyResult] = useState<LastLtrApplyResult | null>(null);
   const [area, setArea] = useState<"active" | "trash" | "history">("active");
   const [managedRevision, setManagedRevision] = useState(0);
-  const [topBarActionsRoot, setTopBarActionsRoot] = useState<HTMLElement | null>(null);
+  const topBarActionsRoot = useTopBarActionsRoot();
   const refreshEpoch = useRef(0);
   const management = useProjectRegistryManagement(area, () => {
     setManagedRevision((value) => value + 1);
@@ -92,7 +93,6 @@ export function ProjectListPage({
   useEffect(() => {
     void refreshProjects();
     setLastLtrApplyResult(readLastLtrApplyResult());
-    setTopBarActionsRoot(document.querySelector<HTMLElement>("[data-top-bar-actions]"));
     return () => {refreshEpoch.current += 1;};
   }, []);
 
