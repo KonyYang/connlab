@@ -22,6 +22,7 @@ import {
 } from "./ProjectWorkbenchLifecycleSections";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import {
+  attachProjectFolderCommandTask,
   deriveProjectFolderTasks,
   selectProjectFolderOneClickBlocker,
   type ProjectFolderTaskActionTarget,
@@ -189,7 +190,7 @@ export function ProjectWorkbenchLayout({
     lifecycleReadonlyView,
     { hasRegisteredProject: Boolean(projectNumber) }
   );
-  const projectFolderTasks = deriveProjectFolderTasks({
+  const projectFolderWorkflowTasks = deriveProjectFolderTasks({
     folderReady: effectiveFolderReady,
     matrixAuthorityReady: Boolean(projectNumber) && activeMatrixAuthorityReady,
     officialFolderCheckPreview,
@@ -241,7 +242,7 @@ export function ProjectWorkbenchLayout({
     projectFolderBlocker:
       officialWorkspacePreview?.blockers?.find((blocker) =>
         blocker.includes("Basic Information")
-      ) ?? selectProjectFolderOneClickBlocker(projectFolderTasks, effectiveFolderReady),
+      ) ?? selectProjectFolderOneClickBlocker(projectFolderWorkflowTasks, effectiveFolderReady),
   });
   const visibleActiveMatrixFolderCommand = lifecycleReadonlyView.readonly
     ? {
@@ -297,6 +298,16 @@ export function ProjectWorkbenchLayout({
           ? "LTR registration is required before project folder outputs can be prepared."
           : "Active Matrix authority is required before project folder outputs can be prepared.",
       };
+  const projectFolderTasks = attachProjectFolderCommandTask(
+    projectFolderWorkflowTasks,
+    checkingRecoveryPreview
+      ? {
+          label: visibleWorkbenchFolderCommand.label,
+          disabled: true,
+          disabledReason: "Checking project folder generation status...",
+        }
+      : visibleWorkbenchFolderCommand
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -509,15 +520,6 @@ export function ProjectWorkbenchLayout({
         <button type="button" onClick={onOpenBasicInformation}>
           Basic Information
         </button>
-        <button
-          type="button"
-          className="is-primary"
-          disabled={visibleWorkbenchFolderCommand.disabled || checkingRecoveryPreview}
-          title={checkingRecoveryPreview ? "Checking project folder generation status..." : visibleWorkbenchFolderCommand.disabledReason}
-          onClick={handleProjectFolderCreateClick}
-        >
-          {officialWorkspaceCreating ? "Generating..." : "Create project folder"}
-        </button>
         <TestReportDraftButton onOpen={onOpenReportWorkspace} />
       </div>
     </div>
@@ -546,7 +548,7 @@ export function ProjectWorkbenchLayout({
               Open Basic Information
             </button>
           ) : null}
-          <span>After resolving the issue, use Create project folder above.</span>
+          <span>After resolving the issue, use the project folder action in Folder Actions.</span>
         </div>
       ) : null}
 

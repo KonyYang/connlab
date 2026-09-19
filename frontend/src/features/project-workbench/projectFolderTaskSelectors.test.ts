@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ProjectFolderRequiredFormsPreview } from "../../api/client";
 import {
+  attachProjectFolderCommandTask,
   deriveProjectFolderTasks,
   selectCurrentProjectFolderTaskKey,
   selectProjectFolderOneClickBlocker,
@@ -127,6 +128,43 @@ describe("deriveProjectFolderTasks", () => {
       context: "Project folder is not available yet.",
       actionTarget: null,
       blockers: ["Project folder is not available yet."],
+    });
+  });
+});
+
+describe("attachProjectFolderCommandTask", () => {
+  it("adds the folder generation command before the existing folder operations", () => {
+    const tasks = attachProjectFolderCommandTask(deriveProjectFolderTasks(readyInput()), {
+      label: "Create project folder",
+      disabled: false,
+    });
+
+    expect(tasks[0]).toMatchObject({
+      key: "project_folder_create",
+      title: "Project folder output",
+      actionLabel: "Create project folder",
+      actionTarget: "folder",
+      blockers: [],
+    });
+    expect(tasks[1]).toMatchObject({
+      key: "project_folder",
+      actionLabel: "Open",
+      actionTarget: "project_folder_open",
+    });
+  });
+
+  it("keeps an update command visible but disabled with its authoritative reason", () => {
+    const tasks = attachProjectFolderCommandTask(deriveProjectFolderTasks(readyInput()), {
+      label: "Update project folder",
+      disabled: true,
+      disabledReason: "Reopen this project before making changes.",
+    });
+
+    expect(tasks[0]).toMatchObject({
+      key: "project_folder_create",
+      actionLabel: "Update project folder",
+      actionTarget: null,
+      blockers: ["Reopen this project before making changes."],
     });
   });
 });

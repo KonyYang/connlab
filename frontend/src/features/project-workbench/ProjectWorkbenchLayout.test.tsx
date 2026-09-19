@@ -65,15 +65,11 @@ vi.mock("../../api/client", () => ({
   }),
 }));
 
-function getWorkbenchActionButton(name: string): HTMLButtonElement {
-  const actionBar = screen.getByLabelText("Project Workbench actions");
-  const button = Array.from(actionBar.querySelectorAll("button")).find(
-    (candidate) => candidate.textContent?.trim() === name
-  );
-  if (!button) {
-    throw new Error(`Project Workbench action button not found: ${name}`);
-  }
-  return button;
+function getProjectFolderCommandButton(): HTMLButtonElement {
+  const folderActions = screen.getByLabelText("Folder Actions");
+  return within(folderActions).getByRole("button", {
+    name: /^(Create|Update) project folder$|^Generating\.\.\.$/,
+  }) as HTMLButtonElement;
 }
 
 describe("ProjectWorkbenchLayout lifecycle modes", () => {
@@ -101,7 +97,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Shape the request before formal registration")).toBeNull();
     expect(screen.getByLabelText("Project Workbench actions")).toBeTruthy();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Create project folder" })).toHaveProperty("disabled", true);
+    expect(getProjectFolderCommandButton()).toHaveProperty("disabled", true);
   });
 
   it("labels the topbar back button as the Projects overview navigation", async () => {
@@ -129,7 +125,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     const actionBar = screen.getByLabelText("Project Workbench actions");
     expect(actionBar.textContent).toMatch(
-      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Create project folder/
+      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Test Report/
     );
     expect(screen.getByRole("button", { name: "Matrix Editor" })).toHaveProperty(
       "disabled",
@@ -139,10 +135,8 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       "disabled",
       true
     );
-    expect(screen.getByRole("button", { name: "Create project folder" })).toHaveProperty(
-      "disabled",
-      true
-    );
+    expect(actionBar.textContent).not.toContain("Create project folder");
+    expect(getProjectFolderCommandButton()).toHaveProperty("disabled", true);
     expect(screen.getByRole("region", { name: "No active Matrix workspace" })).toBeTruthy();
     expect(screen.getByText("Visual Examination")).toBeTruthy();
     expect(screen.getAllByText("EIA-364-18B").length).toBeGreaterThan(0);
@@ -313,7 +307,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       lifecycle: lifecycleResponse({registry_state: registryState, readonly: true, allowed_actions: []})});
     expect(screen.queryByRole("button", {name: "Reopen project"})).toBeNull();
     expect(screen.queryByRole("button", {name: "Close project"})).toBeNull();
-    const writeAction = getWorkbenchActionButton("Create project folder");
+    const writeAction = getProjectFolderCommandButton();
     expect(writeAction).toHaveProperty("disabled", true);
     expect(writeAction.getAttribute("title")).toContain("Restore it from the project list");
   });
@@ -353,7 +347,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByLabelText("Workbench state")).toBeNull();
     expect(projectState.querySelector(".runtime-console-state-context")).toBeNull();
     expect(screen.queryByRole("region", { name: "Lifecycle state" })).toBeNull();
-    const folderButton = getWorkbenchActionButton("Create project folder");
+    const folderButton = getProjectFolderCommandButton();
     expect(folderButton).toHaveProperty("disabled", true);
     expect(folderButton.getAttribute("title")).toBe(
       "This project is closed with reason Completed. Reopen it before making changes."
@@ -432,7 +426,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     const actionBar = screen.getByLabelText("Project Workbench actions");
     expect(actionBar.textContent).toMatch(
-      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Create project folder/
+      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Test Report/
     );
     expect(screen.getByRole("button", { name: "Matrix Editor" })).toHaveProperty(
       "disabled",
@@ -442,7 +436,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       "disabled",
       false
     );
-    const folderButton = screen.getByRole("button", { name: "Create project folder" });
+    const folderButton = getProjectFolderCommandButton();
     expect(folderButton).toHaveProperty("disabled", true);
     expect(folderButton.getAttribute("title")).toMatch(/active Matrix authority/i);
     expect(screen.getByRole("region", { name: "No active Matrix workspace" })).toBeTruthy();
@@ -485,13 +479,14 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       false
     );
     expect(actionBar.textContent).toMatch(
-      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Create project folder/
+      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Test Report/
     );
     await user.click(screen.getByRole("button", { name: "Basic Information" }));
     expect(onOpenBasicInformation).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("button", { name: "Folder ready" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Generate folder" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Create project folder" })).toBeTruthy();
+    expect(actionBar.textContent).not.toContain("project folder");
+    expect(getProjectFolderCommandButton().textContent).toBe("Update project folder");
     expect(screen.queryByText("Matrix confirmed")).toBeNull();
     expect(screen.queryByText("Fee confirmed")).toBeNull();
     expect(screen.queryByText("Folder generated")).toBeNull();
@@ -559,7 +554,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(projectState.querySelector(".runtime-console-state-context")).toBeNull();
     const actionBar = screen.getByLabelText("Project Workbench actions");
     expect(actionBar.textContent).toMatch(
-      /Fee Evaluation\s*Basic Information\s*Create project folder/
+      /Fee Evaluation\s*Basic Information\s*Test Report/
     );
     expect(actionBar.textContent).not.toContain("Matrix Editor");
     expect(screen.getByRole("button", { name: "Fee Evaluation" })).toHaveProperty(
@@ -818,13 +813,13 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByRole("region", { name: "Test Execution Workspace" })).toBeTruthy();
     expect(screen.getByLabelText("Folder Actions").textContent).toContain("Project folder");
     expect(container.querySelector(".runtime-console-folder-operation-list")).toBeTruthy();
-    expect(container.querySelectorAll(".runtime-console-folder-operation")).toHaveLength(4);
+    expect(container.querySelectorAll(".runtime-console-folder-operation")).toHaveLength(5);
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
   });
 
-  it("disables Create project folder when Required forms are blocked by Basic Information", () => {
+  it("disables the project folder command when Required forms are blocked by Basic Information", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -835,7 +830,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       requiredFormsPreview: basicInformationBlockedRequiredFormsPreview,
     });
 
-    const folderButton = screen.getByRole("button", { name: "Create project folder" });
+    const folderButton = getProjectFolderCommandButton();
     expect(folderButton).toHaveProperty("disabled", true);
     expect(folderButton.getAttribute("title")).toBe(
       "Confirm Basic Information before generating Project Folder outputs."
@@ -845,7 +840,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(folderAction.textContent).not.toContain("Required forms");
   });
 
-  it("keeps Create project folder disabled when an earlier folder task masks the Required forms blocker", () => {
+  it("keeps the project folder command disabled when an earlier folder task masks the Required forms blocker", () => {
     renderWorkbench({
       latestLtr: "DL-2026-06-001",
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -862,7 +857,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByLabelText("Folder Actions").textContent).not.toContain(
       "Request material"
     );
-    const folderButton = screen.getByRole("button", { name: "Create project folder" });
+    const folderButton = getProjectFolderCommandButton();
     expect(folderButton).toHaveProperty("disabled", true);
     expect(folderButton.getAttribute("title")).toBe(
       "Confirm Basic Information before generating Project Folder outputs."
@@ -899,7 +894,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       },
     });
 
-    const folderButton = screen.getByRole("button", { name: "Create project folder" });
+    const folderButton = getProjectFolderCommandButton();
     expect(folderButton).toHaveProperty("disabled", true);
     expect(folderButton.getAttribute("title")).toBe(blocker);
   });
@@ -965,7 +960,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       { onOpenSettings }
     );
 
-    expect(getWorkbenchActionButton("Create project folder")).toHaveProperty(
+    expect(getProjectFolderCommandButton()).toHaveProperty(
       "disabled",
       false
     );
@@ -1249,7 +1244,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       onUpdateOfficialWorkspace,
     });
 
-    expect(getWorkbenchActionButton("Create project folder")).toBeTruthy();
+    expect(getProjectFolderCommandButton()).toBeTruthy();
     expect(
       screen.queryByText("Create the official project folder from the standard template.")
     ).toBeNull();
@@ -1259,7 +1254,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
 
-    await user.click(getWorkbenchActionButton("Create project folder"));
+    await user.click(getProjectFolderCommandButton());
 
     expect(onUpdateOfficialWorkspace).toHaveBeenCalledTimes(1);
   });
@@ -1269,7 +1264,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     const review = folderReview();
     const update = vi.fn().mockResolvedValueOnce(review).mockResolvedValue(undefined);
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, onUpdateOfficialWorkspace: update });
-    await user.click(getWorkbenchActionButton("Create project folder"));
+    await user.click(getProjectFolderCommandButton());
     expect(screen.getByRole("dialog")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Continue existing/ })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Backup and Rebuild (Recommended)" }));
@@ -1302,7 +1297,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       onUpdateOfficialWorkspace,
     });
 
-    const folderButton = getWorkbenchActionButton("Create project folder");
+    const folderButton = getProjectFolderCommandButton();
     expect(folderButton).toHaveProperty("disabled", true);
     expect(folderButton.getAttribute("title")).toBe(
       "Update Fee before generating the project folder."
@@ -1358,7 +1353,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       }
     );
 
-    const folderButton = getWorkbenchActionButton("Create project folder");
+    const folderButton = getProjectFolderCommandButton();
     expect(folderButton).toHaveProperty("disabled", false);
     expect(folderButton.getAttribute("title")).toBeNull();
     expect(
@@ -1372,7 +1367,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       screen
         .getByLabelText("Folder Actions")
         .querySelectorAll("button")
-    ).toHaveLength(3);
+    ).toHaveLength(4);
     expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
 
     await user.click(folderButton);
@@ -1384,12 +1379,13 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     const user = userEvent.setup();
     const update = vi.fn().mockResolvedValue(undefined);
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true, onUpdateOfficialWorkspace: update });
-    await user.click(getWorkbenchActionButton("Create project folder"));
+    expect(getProjectFolderCommandButton().textContent).toBe("Update project folder");
+    await user.click(getProjectFolderCommandButton());
     expect(update).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("keeps recovery behind the top update entry without duplicate generation buttons", async () => {
+  it("keeps recovery behind the Folder Actions update entry without duplicate generation buttons", async () => {
     const user = userEvent.setup();
     const update = vi.fn().mockResolvedValue(undefined);
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true,
@@ -1399,7 +1395,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("button", { name: "Start new generation" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Refresh generation preview" })).toBeNull();
     expect(screen.getByRole("alert").textContent).toContain("Source changed");
-    await user.click(getWorkbenchActionButton("Create project folder"));
+    await user.click(getProjectFolderCommandButton());
     expect(update).toHaveBeenCalledTimes(1);
   });
 
@@ -1422,7 +1418,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     const update = vi.fn().mockResolvedValueOnce(review).mockResolvedValue(undefined);
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true, onUpdateOfficialWorkspace: update });
     expect(screen.queryByText("Advanced folder actions")).toBeNull();
-    await user.click(getWorkbenchActionButton("Create project folder"));
+    await user.click(getProjectFolderCommandButton());
     expect(screen.queryByRole("button", { name: /Continue existing/ })).toBeNull();
     expect(screen.getByRole("button", { name: "Backup and Rebuild (Recommended)" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Delete and Rebuild" }));
@@ -1437,7 +1433,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     const update = vi.fn().mockResolvedValue(undefined);
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true,
       officialWorkspacePreview: null, onUpdateOfficialWorkspace: update });
-    await user.click(getWorkbenchActionButton("Create project folder"));
+    await user.click(getProjectFolderCommandButton());
     expect(update).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -1447,12 +1443,12 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     const review = { ...folderReview(), operationId: "saved", resumeRebuild: true };
     const update = vi.fn().mockResolvedValue(review);
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, onUpdateOfficialWorkspace: update });
-    await user.click(getWorkbenchActionButton("Create project folder"));
+    await user.click(getProjectFolderCommandButton());
     expect(screen.getByRole("button", {name: "Resume previous generation"})).toBeTruthy();
     expect(screen.queryByRole("button", {name: "Delete and Rebuild"})).toBeNull();
     await user.click(screen.getByRole("button", {name: "Cancel"}));
     expect(update).toHaveBeenCalledTimes(1);
-    await user.click(getWorkbenchActionButton("Create project folder"));
+    await user.click(getProjectFolderCommandButton());
     await user.click(screen.getByRole("button", {name: "Resume previous generation"}));
     expect(update).toHaveBeenLastCalledWith(undefined, review, true);
   });
@@ -1465,7 +1461,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       onUpdateOfficialWorkspace: update });
     expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(screen.getByText("Diagnostic details").closest("details")).toHaveProperty("open", false);
-    await user.click(getWorkbenchActionButton("Create project folder"));
+    await user.click(getProjectFolderCommandButton());
     await user.click(screen.getByRole("button", {name: "Delete and Rebuild"}));
     await user.click(screen.getByRole("button", {name: "Cancel"}));
     expect(update).toHaveBeenCalledTimes(1);

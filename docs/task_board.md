@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_WORKBENCH_FOLDER_ACTION_MIGRATION",
+    "summary": "Move project folder create and update control from the Workbench top bar into Folder Actions with correct labels, primary weight, lifecycle reachability, and narrow-width coverage.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Frontend Workbench folder action placement and its public behavior tests; preserve existing folder generation authority and backend contracts.",
+    "scope_paths": [
+      "frontend/src/features/project-workbench",
+      "frontend/src/workbench.css",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "6649350ccd38e71135b4260378b4742a0b9ba509",
+    "started_at": "2026-09-19T14:33:41.881450Z",
+    "updated_at": "2026-09-19T14:33:41.881450Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_361B_TEST_RUNNER_INTERPRETER_ALIGNMENT",
     "tier": "micro",

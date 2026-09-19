@@ -1,6 +1,7 @@
 # Workbench top-bar action slot and Folder creation migration
 
-Status: Batch 0 and Batch 1 implemented. Batch 2 blocked on three product decisions.
+Status: Batch 0, Batch 1, and Batch 2 implemented. D1/D2/D3 were resolved using the recommended
+task-row placement, primary visual weight, and cross-lifecycle reachability coverage.
 
 Scope: `frontend/src/components/layout/*`, `frontend/src/features/project-workbench/*`,
 `frontend/src/pages/ProjectListPage.tsx`. No backend, endpoint, Office, or authority change.
@@ -199,7 +200,7 @@ Validation:
 Risk: medium, and realised as designed — three consumers changed together, which is why this had to
 precede batch 2 rather than follow it.
 
-## 8. Batch 2 — decisions required before implementation
+## 8. Batch 2 — implemented decisions
 
 ### D1 — which surface receives the control
 
@@ -213,24 +214,31 @@ and the row's index must be chosen deliberately because of `tasks[0]`.
 styled button beside the eyebrow. Matches the stated intent exactly. Costs: new prop, new CSS (F3),
 must be passed at both instantiation sites, and does not inherit the per-task blocker rendering.
 
-Recommendation: **A first**, then B only if the corner shortcut is still wanted after seeing A. A is
-the smaller change, is better covered by existing tests, and has no design open question about
-disabled-state ownership.
+Implemented: **Option A**. `attachProjectFolderCommandTask` adds a dedicated
+`project_folder_create` task after the command's authoritative state has been derived, ahead of the
+existing folder operations. The existing `Project folder` row keeps its independent Open action, so
+the migration does not remove folder access.
 
 ### D2 — primary visual weight
 
 After the move the command bar holds Matrix Editor / Fee Evaluation / Basic Information /
 Test Report Draft — all secondary. `.is-primary` currently only styles
 `.runtime-console-commandbar-actions button` (`workbench.css:2529`), so a primary control inside the
-Folder Actions card gets no styling unless that selector is widened. Decide whether the card should
-carry the page's only primary control.
+Folder Actions card gets no styling unless that selector is widened. Implemented: the task row owns
+the page's primary folder command, rendered as a visible text button rather than an icon-only action.
 
 ### D3 — reachability
 
 The Folder Actions surface sits in `sideColumnAfter`; in the no-matrix mode it is inside the empty
 state, and under `readonly_archive` its position differs. The top bar was always visible, so the card
 may require scrolling or be collapsed at narrow widths. `/projects/*` previously had a horizontal
-overflow defect at ~514px. Measure before committing to either option, and cover both lifecycle modes.
+overflow defect at ~514px. Implemented coverage keeps the command in the shared Folder Actions
+surface for active Matrix, no-Matrix, and read-only lifecycle modes, with wrapping copy and action
+controls.
+
+The command bar no longer contains the folder command. The task row reuses the existing generation
+handler and displays the derived `Create project folder`, `Update project folder`, or `Generating...`
+label together with the authoritative disabled reason.
 
 ## 9. Cleanup candidate (verify before deleting)
 

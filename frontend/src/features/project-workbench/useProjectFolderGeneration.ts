@@ -169,7 +169,9 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
       const pending = latest && latest.status !== "completed" ? latest : null;
       const operationId = pending?.operation_id ?? null;
       if ((preview.recovery?.operation_id ?? null) !== operationId) {
-        throw new Error("Project folder operation changed. Click Create project folder to check again.");
+        throw new Error(
+          "Project folder operation changed. Use the project folder action in Folder Actions to check again."
+        );
       }
       if (reviewed && (reviewed.operationId !== operationId || reviewed.preview.expected_context !== preview.expected_context)) {
         throw new Error("Project folder preview changed. Review the latest folder state before choosing again.");

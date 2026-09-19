@@ -107,6 +107,7 @@ function FolderOperation({
   onAutoSyncChange?: (enabled: boolean) => void;
   readonlyReason?: string;
 }): ReactElement {
+  const isFolderCommand = task.key === "project_folder_create";
   const readonlyBlocksAction = Boolean(
     readonlyReason && task.actionTarget !== "project_folder_open"
   );
@@ -120,7 +121,7 @@ function FolderOperation({
 
   return (
     <article className="runtime-console-folder-operation">
-      {task.actionLabel ? (
+      {task.actionLabel && !isFolderCommand ? (
         <button
           className="runtime-console-folder-operation-icon runtime-console-folder-operation-icon-button"
           type="button"
@@ -165,6 +166,17 @@ function FolderOperation({
         ) : null}
       </div>
       <div className="runtime-console-folder-operation-controls">
+        {isFolderCommand && task.actionLabel ? (
+          <button
+            className="runtime-console-folder-primary-action is-primary"
+            type="button"
+            disabled={disabled}
+            title={blocker ?? undefined}
+            onClick={activateTaskAction}
+          >
+            {task.actionLabel}
+          </button>
+        ) : null}
         {task.confirming && task.operation ? (
           <div className="runtime-console-folder-operation-confirmation">
             <button

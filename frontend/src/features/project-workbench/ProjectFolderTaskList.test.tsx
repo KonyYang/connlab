@@ -9,6 +9,39 @@ import type {
 } from "./projectFolderTaskSelectors";
 
 describe("ProjectFolderTaskList", () => {
+  it("renders folder generation as the visible primary action and routes it", async () => {
+    const user = userEvent.setup();
+    const onTaskAction = vi.fn();
+    render(
+      <ProjectFolderActionsSurface
+        tasks={[
+          {
+            key: "project_folder_create",
+            title: "Project folder output",
+            iconName: "folder",
+            statusLabel: "Create",
+            status: "neutral",
+            summary: "Create or update the managed project folder.",
+            context: "Uses the approved project template.",
+            actionLabel: "Create project folder",
+            actionTarget: "folder",
+            blockers: [],
+            warnings: [],
+          },
+        ]}
+        onTaskAction={onTaskAction}
+      />
+    );
+
+    const button = screen.getByRole("button", { name: "Create project folder" });
+    expect(button.textContent).toBe("Create project folder");
+    expect(button.className).toContain("is-primary");
+
+    await user.click(button);
+
+    expect(onTaskAction).toHaveBeenCalledWith("folder");
+  });
+
   it("renders the quiet four-operation Folder Actions surface", () => {
     const { container } = render(<ProjectFolderTaskListHarness />);
 
