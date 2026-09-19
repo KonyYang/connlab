@@ -1557,6 +1557,7 @@ export function MatrixEditorWorkspace({
                 </p>
                 <div className="matrix-editor-test-record-conflict-actions">
                   <button
+                    className="ui-primary-action"
                     type="button"
                     disabled={testRecordState === "loading"}
                     onClick={() => void confirmTestRecordDownload()}
@@ -1566,6 +1567,7 @@ export function MatrixEditorWorkspace({
                       : "Download preview"}
                   </button>
                   <button
+                    className="ui-secondary-action"
                     type="button"
                     disabled={testRecordState === "loading"}
                     onClick={() => {
@@ -1592,6 +1594,7 @@ export function MatrixEditorWorkspace({
                 ) : null}
                 <div className="matrix-editor-test-record-conflict-actions">
                   <button
+                    className="ui-primary-action"
                     type="button"
                     disabled={testRecordState === "loading"}
                     onClick={() => void resolveTestRecordConflict("archive")}
@@ -1599,6 +1602,7 @@ export function MatrixEditorWorkspace({
                     Archive old file
                   </button>
                   <button
+                    className="ui-secondary-action"
                     type="button"
                     disabled={testRecordState === "loading"}
                     onClick={() => void resolveTestRecordConflict("recycle")}
@@ -1606,6 +1610,7 @@ export function MatrixEditorWorkspace({
                     Move old file to Recycle Bin
                   </button>
                   <button
+                    className="ui-secondary-action"
                     type="button"
                     disabled={testRecordState === "loading"}
                     onClick={() => {
@@ -1664,6 +1669,7 @@ export function MatrixEditorWorkspace({
                 </p>
                 <div className="official-output-conflict-actions">
                   <button
+                    className="ui-primary-action"
                     type="button"
                     disabled={matrixXlsxExport.busy}
                     onClick={() => void matrixXlsxExport.confirmDownload()}
@@ -1673,6 +1679,7 @@ export function MatrixEditorWorkspace({
                       : "Download preview"}
                   </button>
                   <button
+                    className="ui-secondary-action"
                     type="button"
                     disabled={matrixXlsxExport.busy}
                     onClick={matrixXlsxExport.cancelConfirmation}
@@ -1696,6 +1703,7 @@ export function MatrixEditorWorkspace({
                 ) : null}
                 <div className="official-output-conflict-actions">
                   <button
+                    className="ui-primary-action"
                     type="button"
                     disabled={matrixXlsxExport.busy}
                     onClick={() => void matrixXlsxExport.resolveConflict("archive")}
@@ -1703,6 +1711,7 @@ export function MatrixEditorWorkspace({
                     Archive old file
                   </button>
                   <button
+                    className="ui-secondary-action"
                     type="button"
                     disabled={matrixXlsxExport.busy}
                     onClick={() => void matrixXlsxExport.resolveConflict("recycle")}
@@ -1710,6 +1719,7 @@ export function MatrixEditorWorkspace({
                     Move old file to Recycle Bin
                   </button>
                   <button
+                    className="ui-secondary-action"
                     type="button"
                     disabled={matrixXlsxExport.busy}
                     onClick={matrixXlsxExport.cancelConfirmation}

@@ -1,9 +1,9 @@
-import type { ReactElement } from "react";
-import { UiIcon } from "../common/UiIcon";
+import type { ReactElement, ReactNode } from "react";
 
 type TopBarProps = {
   activeRoute: string;
   titleOverride?: string;
+  actions?: ReactNode;
 };
 
 const ROUTE_TITLES: Record<string, { title: string }> = {
@@ -14,7 +14,7 @@ const ROUTE_TITLES: Record<string, { title: string }> = {
     title: "New Project"
   },
   workbench: {
-    title: "Project workbench"
+    title: "Workspace"
   },
   settings: {
     title: "Settings"
@@ -27,40 +27,16 @@ const ROUTE_TITLES: Record<string, { title: string }> = {
   }
 };
 
-export function TopBar({ activeRoute, titleOverride }: TopBarProps): ReactElement {
+export function TopBar({ activeRoute, titleOverride, actions }: TopBarProps): ReactElement {
   const context = ROUTE_TITLES[activeRoute] ?? ROUTE_TITLES.unknown;
   const title = titleOverride ?? context.title;
 
   return (
-    <header className="top-bar">
-      <div>
-        <h1>{title}</h1>
+    <header className={`top-bar top-bar-${activeRoute}`}>
+      <div className="top-bar-title-slot">
+        <h1 title={title}>{title}</h1>
       </div>
-      <div className="top-search" role="search">
-        <UiIcon name="search" />
-        <input
-          aria-label="Search ConnLab"
-          placeholder="Search projects, LTR Number, product..."
-          readOnly
-        />
-      </div>
-      <div className="top-utilities" aria-label="Utilities">
-        <button className="utility-button utility-alert" title="Local notifications" type="button">
-          <UiIcon name="bell" />
-          <span>2</span>
-        </button>
-        <button className="utility-button" title="Help" type="button">
-          <UiIcon name="help" />
-        </button>
-        <button className="user-menu" type="button">
-          <span className="user-avatar"><UiIcon name="user" /></span>
-          <span>
-            <strong>Lab User</strong>
-            <small>Offline local</small>
-          </span>
-          <UiIcon name="chevron-down" />
-        </button>
-      </div>
+      <div className="top-bar-actions" data-top-bar-actions="true" aria-label="Page actions">{actions}</div>
     </header>
   );
 }

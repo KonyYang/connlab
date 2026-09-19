@@ -4,6 +4,7 @@
 }
 
 .project-register-panel {
+  min-width: 0;
   padding: 18px;
   box-shadow: 0 8px 22px rgba(36, 54, 84, 0.05);
 }
@@ -40,23 +41,26 @@
 }
 
 .register-toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   justify-content: flex-start;
   align-items: end;
+  gap: 6px;
   margin-bottom: 14px;
 }
 
 .registry-tools {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
-  justify-content: end;
-  gap: 9px;
+  min-width: 0;
+  gap: 6px;
 }
 
 .project-search {
   display: grid;
   gap: 6px;
-  min-width: 280px;
+  min-width: 0;
   color: var(--color-ink-muted);
   font-size: 12px;
   font-weight: 800;
@@ -67,6 +71,7 @@
   grid-template-columns: 18px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
+  min-width: 0;
   min-height: 40px;
   padding: 0 11px;
   border: 1px solid var(--color-border);
@@ -76,6 +81,8 @@
 }
 
 .project-search-input input {
+  width: 100%;
+  min-width: 0;
   min-height: 38px;
   padding: 0;
   border: 0;
@@ -96,30 +103,33 @@
   padding: 8px 12px;
   border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: var(--color-surface);
-  color: var(--color-ink);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
   cursor: pointer;
   font-weight: 750;
 }
 
 .toolbar-button:disabled {
-  color: var(--color-ink-muted);
+  border-color: #d3dbe8;
+  background: #e7ecf3;
+  color: #9aa7ba;
   cursor: not-allowed;
 }
 
 .registry-view-select {
   display: grid;
-  min-width: 168px;
+  flex: 0 0 80px;
+  min-width: 80px;
   white-space: nowrap;
 }
 
 .registry-view-select select {
   min-height: 40px;
-  padding: 0 10px;
-  border: 1px solid var(--color-border);
+  padding: 0 8px;
+  border: 1px solid var(--color-action-secondary-border);
   border-radius: 10px;
-  background: var(--color-surface);
-  color: var(--color-ink);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
   font: inherit;
   font-size: 13px;
   font-weight: 750;
@@ -236,16 +246,29 @@
 .row-action {
   min-height: 32px;
   padding: 6px 11px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-action-secondary-border);
   border-radius: 8px;
-  background: var(--color-surface);
-  color: var(--color-ink);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
   cursor: pointer;
   font-weight: 700;
 }
 
-.row-action:hover {
-  border-color: var(--color-primary);
+.row-action:hover:not(:disabled) {
+  border-color: #9fbbea;
+  background: var(--color-action-secondary-hover);
+}
+
+.row-action:focus-visible {
+  outline: 3px solid rgba(31, 102, 209, 0.24);
+  outline-offset: 2px;
+}
+
+.row-action:disabled {
+  border-color: #d3dbe8;
+  background: #e7ecf3;
+  color: #9aa7ba;
+  cursor: not-allowed;
 }
 
 .registry-status-text,
@@ -336,18 +359,6 @@
   width: 44%;
 }
 
-@media (max-width: 1180px) {
-  .register-toolbar {
-    display: block;
-  }
-
-  .registry-tools {
-    justify-content: start;
-    overflow-x: auto;
-    padding-bottom: 2px;
-  }
-}
-
 @media (min-width: 761px) and (max-width: 1366px) {
   .project-dashboard {
     gap: 14px;
@@ -363,22 +374,23 @@
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 640px) {
   .register-toolbar {
-    display: block;
+    display: flex;
+    flex-wrap: wrap;
   }
 
   .registry-tools {
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
   }
 
   .project-search {
-    min-width: 0;
+    flex: 1 1 160px;
+    min-width: 160px;
   }
-}
 
-@media (max-width: 640px) {
   .project-table-wrap {
     overflow-x: visible;
     border: 0;
@@ -515,9 +527,9 @@
 .project-management-output-summary li { margin-bottom: 8px; }
 .project-management-dialog summary { cursor: pointer; }
 @media (max-width: 600px) { .project-management-dialog { padding: 16px; } .project-management-dialog-actions { flex-direction: column; } }
-.project-registry-areas { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-.project-registry-areas button { padding: 8px 12px; font-size: 13px; }
-.project-registry-areas button[aria-pressed="true"] { border-color: var(--color-primary, #1f66d1); background: #e8f0fc; color: var(--color-primary-strong, #164aa3); }
+.project-registry-areas { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 6px; margin-bottom: 0; }
+.project-registry-areas .registry-area-button { min-height: 40px; padding: 8px 14px; font-size: 13px; }
+.project-registry-areas .registry-area-button[aria-pressed="true"] { border-color: var(--color-primary, #1f66d1); background: #e3efff; color: var(--color-primary-strong, #164aa3); box-shadow: inset 0 -2px 0 var(--color-primary); }
 .project-management-area-help { margin: 0 0 12px; color: var(--color-ink-muted); }
 .project-management-record { display: grid; gap: 4px; padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; background: #f4f7fb; }
 .project-management-record small { color: var(--color-ink-muted, #647084); }

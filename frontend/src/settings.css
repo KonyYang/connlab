@@ -157,9 +157,9 @@
 }
 
 .settings-path-control .ui-tertiary-action {
-  border: 1px solid var(--color-primary-strong);
-  background: var(--color-primary-strong);
-  color: var(--color-surface);
+  border: 1px solid var(--color-action-secondary-border);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
   min-width: 0;
   justify-self: end;
 }

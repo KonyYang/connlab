@@ -33,6 +33,40 @@ describe("ProjectListPage lifecycle registry views", () => {
     vi.mocked(managementApi.listManagedProjects).mockResolvedValue([]);
   });
 
+  it("labels the normal registry area by its actual function", async () => {
+    mockRows([]);
+    render(<ProjectListPage onOpenProject={vi.fn()} />);
+
+    const active = await screen.findByRole("button", { name: "Active" });
+    const search = screen.getByRole("textbox", { name: "Search projects" });
+    const projectView = screen.getByRole("combobox", { name: "Project view" });
+    const toolbar = search.closest(".register-toolbar");
+
+    expect(active).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Projects" })).toBeNull();
+    expect(toolbar).not.toBeNull();
+    expect(toolbar?.contains(projectView)).toBe(true);
+    expect(toolbar?.contains(active)).toBe(true);
+    expect(Boolean(search.compareDocumentPosition(active) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    expect(Boolean(projectView.compareDocumentPosition(active) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+  });
+
+  it("places registry controls in the shell top-bar action slot when available", async () => {
+    const topBarActions = document.createElement("div");
+    topBarActions.dataset.topBarActions = "true";
+    document.body.appendChild(topBarActions);
+    try {
+      mockRows([]);
+      render(<ProjectListPage onOpenProject={vi.fn()} />);
+
+      await screen.findByRole("button", { name: "Active" });
+      expect(topBarActions.querySelector(".register-toolbar")).not.toBeNull();
+      expect(document.querySelector(".project-register-panel > .register-toolbar")).toBeNull();
+    } finally {
+      topBarActions.remove();
+    }
+  });
+
   it("moves an exact record into the recycle bin, exits the normal view and safely previews Undo", async () => {
     const user = userEvent.setup();
     mockRows([registryRow({project_id: "original-A", display_project_id: "DL-2026-01-002"})]);
@@ -60,11 +94,11 @@ describe("ProjectListPage lifecycle registry views", () => {
       sample_description: "Old connector", test_item: "LLCR", requestor: "Lab", created_on: "2026-01-01",
       lifecycle_state: "closed", close_reason_label: "Completed", registry_state: "trash", registry_revision: 1, changed_at: "2026-01-02", reason: "Duplicate"}]);
     render(<ProjectListPage onOpenProject={vi.fn()} />);
-    await user.click(screen.getByRole("button", {name: "Recycle bin"}));
+    await user.click(screen.getByRole("button", {name: "Trash"}));
     expect(await screen.findByText("Old connector")).toBeTruthy();
     expect(screen.getByText(/Record unique-delet/)).toBeTruthy();
     expect(screen.getByRole("button", {name: "View read-only details"})).toBeTruthy();
-    await user.click(screen.getByRole("button", {name: "Retained history"}));
+    await user.click(screen.getByRole("button", {name: "History"}));
     await waitFor(() => expect(managementApi.listManagedProjects).toHaveBeenLastCalledWith("history"));
   });
 

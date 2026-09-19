@@ -1,4 +1,6 @@
 import { useState, type ReactElement, type ReactNode } from "react";
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixProjectionPanel";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
@@ -31,6 +33,7 @@ export function ProjectWorkbenchExecutionConsole({
   sideColumnAfter?: ReactNode;
 }): ReactElement {
   const [detailsOpen, setDetailsOpen] = useState(true);
+  const [topBarActionsRoot, setTopBarActionsRoot] = useState<HTMLElement | null>(null);
   const selectedWorkspace = runtimeProjectionSnapshot?.step_workspace ?? null;
   const selectedWorkspaceToken = selectedWorkspace?.selected_token ?? null;
   const hasSelectedStep =
@@ -55,19 +58,27 @@ export function ProjectWorkbenchExecutionConsole({
     .toLowerCase()
     .replace(/\s+/g, "-");
 
+  useEffect(() => {
+    setTopBarActionsRoot(document.querySelector<HTMLElement>("[data-top-bar-actions]"));
+  }, []);
+
+  const detailsToggle = (
+    <button
+      className="runtime-console-workbench-action"
+      type="button"
+      aria-expanded={detailsOpen}
+      aria-controls="workbench-details"
+      onClick={() => setDetailsOpen((open) => !open)}
+    >
+      {detailsOpen ? "Hide Actions" : "Show Actions"}
+    </button>
+  );
+
   return (
     <section className={`runtime-console-workspace${detailsOpen ? "" : " is-details-collapsed"}`}>
       <div className="runtime-console-main">
-        <div className="runtime-console-view-controls">
-          <button
-            className="runtime-console-workbench-action"
-            type="button"
-            aria-expanded={detailsOpen}
-            aria-controls="workbench-details"
-            onClick={() => setDetailsOpen((open) => !open)}>
-            {detailsOpen ? "Hide workbench details" : "Show workbench details"}
-          </button>
-        </div>
+        {topBarActionsRoot ? null : <div className="runtime-console-view-controls">{detailsToggle}</div>}
+        {topBarActionsRoot ? createPortal(detailsToggle, topBarActionsRoot) : null}
         <ProjectWorkbenchMatrixProjectionPanel
           projectId={projectId}
           onTokenSelect={setSelectedProjectionToken}
@@ -78,7 +89,7 @@ export function ProjectWorkbenchExecutionConsole({
         <aside className="runtime-console-step-workspace" aria-label="Step workspace">
           <header>
             <div>
-              <p className="eyebrow">Step Workspace</p>
+              <p className="eyebrow">Step Actions</p>
               <p className="runtime-console-step-breadcrumb">{stepContextLine}</p>
             </div>
           </header>

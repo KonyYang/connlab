@@ -193,20 +193,20 @@
 }
 
 .matrix-editor-primary-action {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  color: #1e40af;
+  background: var(--color-action-secondary-bg);
+  border-color: var(--color-action-secondary-border);
+  color: var(--color-action-secondary-text);
 }
 
 .matrix-editor-primary-action:hover:not(:disabled),
 .matrix-import-source-picker footer button:hover:not(:disabled) {
-  background: #bfdbfe;
-  border-color: #60a5fa;
+  background: var(--color-action-secondary-hover);
+  border-color: var(--color-action-secondary-border);
 }
 
 .matrix-editor-primary-action:focus-visible:not(:disabled),
 .matrix-import-source-picker footer button:focus-visible:not(:disabled) {
-  outline: 2px solid #60a5fa;
+  outline: 2px solid var(--color-action-secondary-border);
   outline-offset: 1px;
 }
 
@@ -1271,9 +1271,9 @@
 }
 
 .matrix-contact-plan-actions button:last-child {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: #fff;
+  border-color: var(--color-action-secondary-border);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
 }
 
 .matrix-contact-plan-actions button:disabled {
@@ -1323,9 +1323,9 @@
 }
 
 .matrix-contact-plan-workbook-actions button:nth-child(2) {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: #fff;
+  border-color: var(--color-action-secondary-border);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
 }
 
 @media (max-width: 900px) {
@@ -1479,10 +1479,10 @@
 .matrix-editor-templates button,
 .matrix-editor-reference-library button,
 .matrix-import-source-picker footer button {
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface);
-  color: var(--color-primary-strong);
+  border: 1px solid var(--color-action-secondary-border);
+  border-radius: 10px;
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
   font-size: 12px;
   font-weight: 700;
   padding: 5px 9px;
@@ -2257,10 +2257,10 @@
 .runtime-console-mode-surface button,
 .runtime-console-setup-focus button {
   justify-self: start;
-  border: 1px solid var(--color-primary-strong);
-  border-radius: 7px;
-  background: var(--color-primary-strong);
-  color: var(--color-surface);
+  border: 1px solid var(--color-action-secondary-border);
+  border-radius: 10px;
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
   font-size: 12px;
   font-weight: 800;
   padding: 7px 10px;
@@ -2306,8 +2306,9 @@
 }
 
 .runtime-console-mode-tabs button.is-active {
-  background: var(--color-primary-strong);
-  color: var(--color-surface);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
+  box-shadow: inset 0 -2px 0 var(--color-primary);
 }
 
 .runtime-console-active-matrix {
@@ -2527,9 +2528,9 @@
 
 .runtime-console-commandbar-actions button.is-primary {
   min-width: 150px;
-  border-color: var(--color-primary-strong);
-  background: var(--color-primary-strong);
-  color: var(--color-surface);
+  border-color: var(--color-action-secondary-border);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
 }
 
 .runtime-console-commandbar-actions button.is-review-required {
@@ -2724,15 +2725,15 @@
 }
 
 .runtime-console-conflict-actions button.is-primary {
-  border-color: var(--color-primary-strong);
-  background: var(--color-primary-strong);
-  color: var(--color-surface);
+  border-color: var(--color-action-secondary-border);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
 }
 
 .runtime-console-conflict-actions button.is-primary:hover:not(:disabled),
 .runtime-console-conflict-actions button.is-primary:focus-visible:not(:disabled) {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
+  border-color: #9fbbea;
+  background: var(--color-action-secondary-hover);
 }
 
 .runtime-console-conflict-actions button.is-danger {
@@ -3147,10 +3148,10 @@
 
 .runtime-console-folder-inspector button {
   justify-self: start;
-  border: 1px solid var(--color-primary-strong);
-  border-radius: 7px;
-  background: var(--color-primary-strong);
-  color: var(--color-surface);
+  border: 1px solid var(--color-action-secondary-border);
+  border-radius: 10px;
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
   font-size: 12px;
   font-weight: 850;
   padding: 7px 11px;
@@ -3445,17 +3446,17 @@
 
 .runtime-console-lifecycle-actions button.runtime-console-close-action:not(:disabled),
 .runtime-console-lifecycle-actions button.runtime-console-activate-action:not(:disabled) {
-  border-color: var(--color-primary-strong);
-  background: var(--color-primary-strong);
-  color: var(--color-surface);
+  border-color: var(--color-action-secondary-border);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
   font-weight: 800;
   box-shadow: 0 1px 2px color-mix(in srgb, var(--color-primary-strong) 18%, transparent);
 }
 
 .runtime-console-lifecycle-actions button.runtime-console-close-action:not(:disabled):hover,
 .runtime-console-lifecycle-actions button.runtime-console-activate-action:not(:disabled):hover {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
+  border-color: #9fbbea;
+  background: var(--color-action-secondary-hover);
 }
 
 .runtime-console-lifecycle-confirmation {
@@ -3944,6 +3945,12 @@
   margin: 0;
 }
 
+.runtime-console-folder-actions .eyebrow,
+.runtime-console-step-workspace .eyebrow {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .runtime-console-folder-operation-list {
   display: grid;
   gap: 0;
@@ -4368,10 +4375,10 @@
 
 .runtime-console-folder-task-heading button {
   justify-self: start;
-  border: 1px solid var(--color-primary-strong);
-  border-radius: 7px;
-  background: var(--color-primary-strong);
-  color: var(--color-surface);
+  border: 1px solid var(--color-action-secondary-border);
+  border-radius: 10px;
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
   font-size: 12px;
   font-weight: 800;
   padding: 7px 10px;
@@ -5126,10 +5133,10 @@
 }
 
 .runtime-console-test-record-generation button {
-  border: 1px solid var(--color-primary-strong);
-  border-radius: 8px;
-  background: var(--color-primary-strong);
-  color: var(--color-surface);
+  border: 1px solid var(--color-action-secondary-border);
+  border-radius: 10px;
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
   padding: 8px 12px;
   font-weight: 700;
 }
@@ -5749,8 +5756,10 @@
   justify-self: end;
   min-width: 72px;
   padding: 8px 12px;
-  background: var(--color-primary);
-  color: var(--color-surface);
+  border: 1px solid var(--color-action-secondary-border);
+  border-radius: 10px;
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
 }
 
 .runtime-console-activity ul {
@@ -6191,8 +6200,9 @@
 }
 
 .basic-information-completion-dock .basic-information-primary-action {
-  background: var(--color-primary);
-  color: var(--color-surface);
+  border-color: var(--color-action-secondary-border);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
 }
 
 @media (max-width: 820px) {
@@ -6272,10 +6282,10 @@
 .fee-evaluation-file-button,
 .basic-information-completion-dock button,
 .fee-evaluation-completion-dock button {
-  border: 1px solid var(--color-border);
-  border-radius: 7px;
-  background: var(--color-surface);
-  color: var(--color-primary-strong);
+  border: 1px solid var(--color-action-secondary-border);
+  border-radius: 10px;
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
   font-size: 12px;
   font-weight: 800;
 }
@@ -6412,9 +6422,16 @@
 .fee-evaluation-file-button {
   min-height: 36px;
   padding: 0 16px;
-  background: var(--color-primary);
-  color: var(--color-surface);
+  border-color: var(--color-action-secondary-border);
+  border-radius: 10px;
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
   white-space: nowrap;
+}
+
+.fee-evaluation-file-button:hover:not(:disabled) {
+  border-color: #9fbbea;
+  background: var(--color-action-secondary-hover);
 }
 
 .fee-evaluation-save-button {
@@ -6479,8 +6496,9 @@
 }
 
 .fee-evaluation-completion-dock .fee-evaluation-primary-action {
-  background: var(--color-primary);
-  color: var(--color-surface);
+  border-color: var(--color-action-secondary-border);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
 }
 
 .fee-evaluation-confirm-error,
@@ -6961,8 +6979,9 @@
 
 .fee-evaluation-export-actions button {
   min-height: 34px;
-  background: var(--color-primary);
-  color: var(--color-surface);
+  border-color: var(--color-action-secondary-border);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
 }
 
 .fee-evaluation-export-actions button:disabled {
@@ -8787,9 +8806,14 @@
 }
 
 .secondary-button {
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-ink);
+  border: 1px solid var(--color-action-secondary-border);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
+}
+
+.secondary-button:hover:not(:disabled) {
+  border-color: #9fbbea;
+  background: var(--color-action-secondary-hover);
 }
 
 .matrix-review-group {
@@ -9282,16 +9306,16 @@
 }
 
 .matrix-editor-import-primary-button {
-  background: #1f5fbf;
-  color: #fff;
-  border: 1px solid #1f5fbf;
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
+  border: 1px solid var(--color-action-secondary-border);
   border-radius: 10px;
   font-weight: 700;
   padding: 10px 16px;
 }
 
 .matrix-editor-import-primary-button:hover {
-  background: #1a54aa;
+  background: var(--color-action-secondary-hover);
 }
 
 .matrix-editor-import-controls-pane .error {
@@ -9382,15 +9406,15 @@
 }
 
 .matrix-editor-import-secondary-button {
-  background: #fff;
-  color: #334155;
-  border: 1px solid #b7c4db;
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
+  border: 1px solid var(--color-action-secondary-border);
 }
 
 .matrix-editor-import-commit-button {
-  background: #1f5fbf;
-  color: #fff;
-  border: 1px solid #1f5fbf;
+  background: var(--color-action-secondary-bg);
+  color: var(--color-action-secondary-text);
+  border: 1px solid var(--color-action-secondary-border);
 }
 
 .matrix-editor-import-commit-button:disabled {
@@ -9872,9 +9896,9 @@
 
 .report-workspace-card .primary-action,
 .report-workspace-dialog .primary-action {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-surface);
+  background: var(--color-action-secondary-bg);
+  border-color: var(--color-action-secondary-border);
+  color: var(--color-action-secondary-text);
 }
 
 .report-workspace-card .primary-action:disabled,
@@ -10277,5 +10301,102 @@
   .report-workspace-dialog {
     border-radius: 0;
     max-height: 100vh;
+  }
+}
+
+/* The project identity and actions share the global Workbench title bar. */
+.top-bar-workbench .top-bar-actions {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  justify-content: stretch;
+  overflow: hidden;
+}
+
+.top-bar-workbench {
+  grid-template-columns: max-content minmax(0, 1fr);
+}
+
+.top-bar-workbench .runtime-console-topbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 240px) minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.top-bar-workbench .runtime-console-app-title {
+  min-height: 32px;
+  flex: 0 0 auto;
+}
+
+.top-bar-workbench .runtime-console-project-state {
+  flex: none;
+  min-width: 220px;
+}
+
+.top-bar-workbench .runtime-console-project-identity {
+  max-width: 300px;
+  font-size: 12px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+}
+
+.top-bar-workbench .runtime-console-commandbar-actions {
+  width: auto;
+  min-width: 0;
+  overflow: visible;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-left: 8px;
+  border-left: 1px solid var(--color-border);
+  justify-content: flex-start;
+  align-content: center;
+}
+
+.top-bar-workbench .runtime-console-commandbar-actions button,
+.top-bar-workbench .runtime-console-commandbar-actions .runtime-console-workbench-action {
+  min-width: 0;
+  min-height: 30px;
+  padding: 5px 8px;
+  font-size: 11px;
+  line-height: 1.15;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.top-bar-workbench .runtime-console-commandbar-actions button.is-primary {
+  min-width: 0;
+}
+
+.top-bar-workbench .top-bar-actions > .runtime-console-workbench-action {
+  flex: 0 0 auto;
+  margin-left: 8px;
+}
+
+@media (max-width: 760px) {
+  .top-bar-workbench .runtime-console-topbar {
+    grid-template-columns: auto minmax(0, 0.8fr) minmax(0, 1.2fr);
+    align-items: start;
+  }
+
+  .top-bar-workbench .runtime-console-project-state {
+    flex-basis: auto;
+    min-width: 0;
+  }
+
+  .top-bar-workbench .runtime-console-project-identity {
+    max-width: 240px;
   }
 }

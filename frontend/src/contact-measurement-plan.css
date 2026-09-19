@@ -166,10 +166,10 @@
 .contact-measurement-button {
   min-height: 38px;
   padding: 8px 14px;
-  border: 1px solid var(--color-border, #d5deea);
-  border-radius: 7px;
-  background: var(--color-surface, #fbfdff);
-  color: var(--color-primary-strong, #174ea6);
+  border: 1px solid var(--color-action-secondary-border, #bfd7f2);
+  border-radius: 10px;
+  background: var(--color-action-secondary-bg, #eef5ff);
+  color: var(--color-action-secondary-text, #164aa3);
   cursor: pointer;
   font-size: 13px;
   font-weight: 750;
@@ -180,7 +180,7 @@
 
 .contact-measurement-button:hover:not(:disabled) {
   border-color: #9fbbea;
-  background: #f4f8ff;
+  background: var(--color-action-secondary-hover);
 }
 
 .contact-measurement-button:focus-visible {
@@ -189,14 +189,15 @@
 }
 
 .contact-measurement-button.is-primary {
-  border-color: var(--color-primary, #1f66d1);
-  background: var(--color-primary, #1f66d1);
-  color: #f9fbff;
+  border-color: var(--color-action-secondary-border, #bfd7f2);
+  background: var(--color-action-secondary-bg, #eef5ff);
+  color: var(--color-action-secondary-text, #164aa3);
+  box-shadow: none;
 }
 
 .contact-measurement-button.is-primary:hover:not(:disabled) {
-  border-color: var(--color-primary-strong, #174ea6);
-  background: var(--color-primary-strong, #174ea6);
+  border-color: #9fbbea;
+  background: var(--color-action-secondary-hover);
 }
 
 .contact-measurement-button.is-compact {

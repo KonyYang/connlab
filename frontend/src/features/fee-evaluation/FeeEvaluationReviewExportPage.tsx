@@ -1327,12 +1327,13 @@ export function FeeEvaluationReviewExportPage({
                     : "The Fee is confirmed, but there is no available project folder. The preview will download to your system Downloads folder and will not be registered as an official project file."}
                 </p>
                 <div className="official-output-conflict-actions">
-                  <button type="button" onClick={() => void confirmFeeFormDownload()}>
+                  <button className="ui-primary-action" type="button" onClick={() => void confirmFeeFormDownload()}>
                     {feeFormConfirmation.authority_status === "unconfirmed"
                       ? "Download draft preview"
                       : "Download preview"}
                   </button>
                   <button
+                    className="ui-secondary-action"
                     type="button"
                     onClick={() => {
                       setFeeFormConfirmation(null);
@@ -1351,13 +1352,14 @@ export function FeeEvaluationReviewExportPage({
                   to do with the existing workbook before saving the confirmed version.
                 </p>
                 <div className="official-output-conflict-actions">
-                  <button type="button" onClick={() => void resolveFeeFormConflict("archive")}>
+                  <button className="ui-primary-action" type="button" onClick={() => void resolveFeeFormConflict("archive")}>
                     Archive old file
                   </button>
-                  <button type="button" onClick={() => void resolveFeeFormConflict("recycle")}>
+                  <button className="ui-secondary-action" type="button" onClick={() => void resolveFeeFormConflict("recycle")}>
                     Move old file to Recycle Bin
                   </button>
                   <button
+                    className="ui-secondary-action"
                     type="button"
                     onClick={() => {
                       setFeeFormConfirmation(null);

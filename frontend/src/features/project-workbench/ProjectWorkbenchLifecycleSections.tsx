@@ -518,7 +518,7 @@ export function NoMatrixWorkspaceEmptyState({
         <aside className="runtime-console-step-workspace" aria-label="Step workspace">
           <header>
             <div>
-              <p className="eyebrow">Step Workspace</p>
+              <p className="eyebrow">Step Actions</p>
               <p className="runtime-console-step-breadcrumb">
                 {selectedStep
                   ? `Group ${selectedStep.groupLabel} Step ${selectedStep.rawToken}: ${selectedStep.row.testItem}`

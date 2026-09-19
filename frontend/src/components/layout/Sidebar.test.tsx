@@ -1,9 +1,33 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./Sidebar";
 
 describe("Sidebar interaction lock", () => {
+  it("opens the bottom user menu with the existing Settings destination", async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    render(<Sidebar activeRoute="projects" onNavigate={onNavigate} />);
+
+    await user.click(screen.getByRole("button", { name: "Lab User" }));
+
+    const menu = screen.getByRole("menu", { name: "User menu" });
+    expect(within(menu).getByText("Offline local")).toBeTruthy();
+    await user.click(within(menu).getByRole("menuitem", { name: "Settings" }));
+
+    expect(onNavigate).toHaveBeenCalledWith("/settings");
+    expect(screen.queryByRole("menu", { name: "User menu" })).toBeNull();
+  });
+
+  it("shows the reserved search placeholder instead of the dashboard item", () => {
+    render(<Sidebar activeRoute="projects" />);
+
+    const searchButton = screen.getByRole("button", { name: "Search" });
+    expect((searchButton as HTMLButtonElement).disabled).toBe(true);
+    expect(searchButton.querySelector("svg")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Dashboard" })).toBeNull();
+  });
+
   it("blocks navigation and collapse while New Project Apply LTR is busy", async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();

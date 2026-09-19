@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from "react";
+import { createPortal } from "react-dom";
 import {
   deleteTemporaryProject,
   type OfficialWorkspaceConflictStrategy,
@@ -68,6 +69,7 @@ export function ProjectWorkbenchLayout({
   const [showFolderConflictDialog, setShowFolderConflictDialog] = useState(false);
   const [folderUpdateReview, setFolderUpdateReview] = useState<FolderUpdateReview | null>(null);
   const [recoveryPreviewCheckedProject, setRecoveryPreviewCheckedProject] = useState<string | null>(null);
+  const [topBarActionsRoot, setTopBarActionsRoot] = useState<HTMLElement | null>(null);
 
   const {
     activeConfirmedMatrixSnapshot,
@@ -128,6 +130,10 @@ export function ProjectWorkbenchLayout({
   } = runtimeModel;
   const refreshOfficialWorkspacePreview = useRef(onRefreshOfficialWorkspacePreview);
   refreshOfficialWorkspacePreview.current = onRefreshOfficialWorkspacePreview;
+
+  useEffect(() => {
+    setTopBarActionsRoot(document.querySelector<HTMLElement>("[data-top-bar-actions]"));
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -468,57 +474,61 @@ export function ProjectWorkbenchLayout({
     }
   }
 
+  const runtimeConsoleTopbar = (
+    <div className="runtime-console-topbar">
+      <div className="runtime-console-app-title">
+        <button
+          aria-label="Back to projects"
+          className="runtime-console-menu-button"
+          title="Back to Projects overview"
+          type="button"
+          onClick={onBack}
+        >
+          <UiIcon name="project-overview" />
+        </button>
+      </div>
+      <section className="runtime-console-project-state" aria-label="Project State">
+        <div className="runtime-console-project-title">
+          <h2 className="runtime-console-project-identity">
+            {shellModel.projectIdentity}
+          </h2>
+        </div>
+      </section>
+      <div className="runtime-console-commandbar-actions" aria-label="Project Workbench actions">
+        {!lifecycleReadonlyView.readonly ? (
+          <button type="button" onClick={onOpenMatrixEditor}>
+            Matrix Editor
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className={visibleFeeEvaluationButtonState.className}
+          disabled={visibleFeeEvaluationButtonState.disabled}
+          title={visibleFeeEvaluationButtonState.title}
+          onClick={onOpenFeeEvaluation}
+        >
+          Fee Evaluation
+        </button>
+        <button type="button" onClick={onOpenBasicInformation}>
+          Basic Information
+        </button>
+        <button
+          type="button"
+          className="is-primary"
+          disabled={visibleWorkbenchFolderCommand.disabled || checkingRecoveryPreview}
+          title={checkingRecoveryPreview ? "Checking project folder generation status..." : visibleWorkbenchFolderCommand.disabledReason}
+          onClick={handleProjectFolderCreateClick}
+        >
+          {officialWorkspaceCreating ? "Generating..." : "Create project folder"}
+        </button>
+        <TestReportDraftButton onOpen={onOpenReportWorkspace} />
+      </div>
+    </div>
+  );
+
   return (
     <section className="runtime-console-shell" aria-label="Project runtime console">
-      <header className="runtime-console-topbar">
-        <div className="runtime-console-app-title">
-          <button
-            aria-label="Back to projects"
-            className="runtime-console-menu-button"
-            title="Back to Projects overview"
-            type="button"
-            onClick={onBack}
-          >
-            <UiIcon name="project-overview" />
-          </button>
-        </div>
-        <section className="runtime-console-project-state" aria-label="Project State">
-          <div className="runtime-console-project-title">
-            <h2 className="runtime-console-project-identity">
-              {shellModel.projectIdentity}
-            </h2>
-          </div>
-        </section>
-        <div className="runtime-console-commandbar-actions" aria-label="Project Workbench actions">
-          {!lifecycleReadonlyView.readonly ? (
-            <button type="button" onClick={onOpenMatrixEditor}>
-              Matrix Editor
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className={visibleFeeEvaluationButtonState.className}
-            disabled={visibleFeeEvaluationButtonState.disabled}
-            title={visibleFeeEvaluationButtonState.title}
-            onClick={onOpenFeeEvaluation}
-          >
-            Fee Evaluation
-          </button>
-          <button type="button" onClick={onOpenBasicInformation}>
-            Basic Information
-          </button>
-          <button
-            type="button"
-            className="is-primary"
-            disabled={visibleWorkbenchFolderCommand.disabled || checkingRecoveryPreview}
-            title={checkingRecoveryPreview ? "Checking project folder generation status..." : visibleWorkbenchFolderCommand.disabledReason}
-            onClick={handleProjectFolderCreateClick}
-          >
-            {officialWorkspaceCreating ? "Generating..." : "Create project folder"}
-          </button>
-          <TestReportDraftButton onOpen={onOpenReportWorkspace} />
-        </div>
-      </header>
+      {topBarActionsRoot ? createPortal(runtimeConsoleTopbar, topBarActionsRoot) : runtimeConsoleTopbar}
 
       {checkingRecoveryPreview ? (
         <div className="runtime-console-workflow-alert" role="status" aria-busy="true">

@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
+import { createPortal } from "react-dom";
 import {
   getProjectLifecycle,
   listProjectRegistryRows,
@@ -49,6 +50,11 @@ const VIEW_LABELS: Record<RegistryView, string> = {
   closed: "Closed",
   ongoing: "On-going",
 };
+const REGISTRY_AREA_LABELS: Record<"active" | "trash" | "history", string> = {
+  active: "Active",
+  trash: "Trash",
+  history: "History",
+};
 
 const VIEW_ORDER: RegistryView[] = [
   "ongoing",
@@ -74,6 +80,7 @@ export function ProjectListPage({
   const [lastLtrApplyResult, setLastLtrApplyResult] = useState<LastLtrApplyResult | null>(null);
   const [area, setArea] = useState<"active" | "trash" | "history">("active");
   const [managedRevision, setManagedRevision] = useState(0);
+  const [topBarActionsRoot, setTopBarActionsRoot] = useState<HTMLElement | null>(null);
   const refreshEpoch = useRef(0);
   const management = useProjectRegistryManagement(area, () => {
     setManagedRevision((value) => value + 1);
@@ -85,6 +92,7 @@ export function ProjectListPage({
   useEffect(() => {
     void refreshProjects();
     setLastLtrApplyResult(readLastLtrApplyResult());
+    setTopBarActionsRoot(document.querySelector<HTMLElement>("[data-top-bar-actions]"));
     return () => {refreshEpoch.current += 1;};
   }, []);
 
@@ -182,18 +190,52 @@ export function ProjectListPage({
     setProjectIdSort((current) => (current === "asc" ? "desc" : "asc"));
   }
 
+  const registryControls = (
+    <div className="register-toolbar">
+      <div className="registry-tools">
+        <label className="project-search">
+          <span className="registry-control-sr-only">Search projects</span>
+          <span className="project-search-input">
+            <UiIcon name="search" />
+            <input
+              aria-label="Search projects"
+              placeholder="Search Project ID, sample, test item, requestor..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </span>
+        </label>
+        {area === "active" && <label className="registry-view-select">
+          <span className="registry-control-sr-only">Project view</span>
+          <select
+            aria-label="Project view"
+            value={selectedView}
+            onChange={(event) => setSelectedView(normalizeRegistryView(event.target.value) ?? "ongoing")}
+          >
+            {VIEW_ORDER.map((view) => (
+              <option key={view} value={view}>
+                {VIEW_LABELS[view]}
+              </option>
+            ))}
+          </select>
+        </label>}
+      </div>
+      <nav className="project-registry-areas" aria-label="Project management areas">
+        {(["active", "trash", "history"] as const).map((location) => <button key={location} className="registry-area-button ui-secondary-action" type="button"
+          aria-pressed={area === location} disabled={management.busy}
+          onClick={() => setArea(location)}>{REGISTRY_AREA_LABELS[location]}</button>)}
+      </nav>
+    </div>
+  );
+
   return (
     <section className="project-dashboard">
       <div className="project-register-panel">
-        <nav className="project-registry-areas" aria-label="Project management areas">
-          {(["active", "trash", "history"] as const).map((location) => <button key={location} type="button"
-            aria-pressed={area === location} disabled={management.busy}
-            onClick={() => setArea(location)}>{location === "active" ? "Projects" : location === "trash" ? "Recycle bin" : "Retained history"}</button>)}
-        </nav>
+        {topBarActionsRoot ? createPortal(registryControls, topBarActionsRoot) : registryControls}
         {management.lastChange && <div className="registry-result-banner" role="status">
           <span>{management.lastChange.display_project_id} {management.lastChange.registry_state === "trash" ? "moved to the recycle bin." : management.lastChange.registry_state === "history" ? "restored to retained history." : "restored to projects."}</span>
-          {management.lastChange.registry_state === "trash" && <button type="button" onClick={() => void management.open(management.lastChange!.project_id, "restore")}>Undo</button>}
-          <button type="button" onClick={management.clearLastChange}>Dismiss</button>
+          {management.lastChange.registry_state === "trash" && <button className="row-action" type="button" onClick={() => void management.open(management.lastChange!.project_id, "restore")}>Undo</button>}
+          <button className="row-action" type="button" onClick={management.clearLastChange}>Dismiss</button>
         </div>}
         {lastLtrApplyResult ? (
           <div className="registry-result-banner" role="status" aria-live="polite">
@@ -212,36 +254,6 @@ export function ProjectListPage({
             </button>
           </div>
         ) : null}
-        <div className="register-toolbar">
-          <div className="registry-tools">
-            <label className="project-search">
-              <span className="registry-control-sr-only">Search projects</span>
-              <span className="project-search-input">
-                <UiIcon name="search" />
-                <input
-                  aria-label="Search projects"
-                  placeholder="Search Project ID, sample, test item, requestor..."
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                />
-              </span>
-            </label>
-            {area === "active" && <label className="registry-view-select">
-              <span className="registry-control-sr-only">Project view</span>
-              <select
-                aria-label="Project view"
-                value={selectedView}
-                onChange={(event) => setSelectedView(normalizeRegistryView(event.target.value) ?? "ongoing")}
-              >
-                {VIEW_ORDER.map((view) => (
-                  <option key={view} value={view}>
-                    {VIEW_LABELS[view]}
-                  </option>
-                ))}
-              </select>
-            </label>}
-          </div>
-        </div>
         {area !== "active" ? <ProjectRegistryManagementPanel location={area} search={deferredSearch} revision={managedRevision}
           onManage={(id, action) => void management.open(id, action)} onOpenProject={onOpenProject} /> : <>
         {loading && <LoadingState label="Loading project registry..." />}

@@ -50,7 +50,7 @@ export function ProjectWorkbenchCloseConfirmation({
     } finally {submitLock.current = false; setSubmitting(false);}
   }
   return <section className={`runtime-console-close-actions${compact ? " is-compact" : ""}`} aria-label="Project close action">
-    {!initiallyOpen && <button type="button" className="runtime-console-close-action" disabled={busy}
+    {!initiallyOpen && <button type="button" className="runtime-console-close-action ui-primary-action" disabled={busy}
       onClick={() => setConfirming(true)}>Close project</button>}
     {confirming && <ProjectManagementDialog title={`Close project ${projectReference ?? projectIdentity}`} busy={busy} onCancel={resetConfirmation}>
       <p>Closing makes this project read-only and keeps all its records. Reopen it when work needs to continue.</p>
@@ -66,8 +66,8 @@ export function ProjectWorkbenchCloseConfirmation({
       <OutputStatusSummaryPanel outputStatusSummary={outputStatusSummary} />
       {validationMessage && <p className="runtime-console-error" role="alert">{validationMessage}</p>}
       <div className="project-management-dialog-actions">
-        <button type="button" disabled={!canSubmit} onClick={() => void handleCloseProject()}>{submitting ? "Closing…" : "Close project"}</button>
-        <button type="button" disabled={busy} onClick={resetConfirmation}>Cancel</button>
+        <button className="primary-action ui-primary-action" type="button" disabled={!canSubmit} onClick={() => void handleCloseProject()}>{submitting ? "Closing…" : "Close project"}</button>
+        <button className="secondary-action ui-secondary-action" type="button" disabled={busy} onClick={resetConfirmation}>Cancel</button>
       </div>
     </ProjectManagementDialog>}
   </section>;

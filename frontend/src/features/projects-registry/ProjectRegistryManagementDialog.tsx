@@ -37,16 +37,16 @@ export function ProjectRegistryManagementDialog({action, preview, loading, busy,
       </section> : <p className="project-management-help">No current project conflicts were found in this preview.</p>}
     </>}
     {error && <p role="alert">{error}</p>}
-    {(stale || error || Boolean(preview?.blockers.length)) && <button type="button" disabled={busy || loading} onClick={onRefresh}>Refresh preview</button>}
+    {(stale || error || Boolean(preview?.blockers.length)) && <button className="secondary-action ui-secondary-action" type="button" disabled={busy || loading} onClick={onRefresh}>Refresh preview</button>}
     <div className="project-management-dialog-actions">
-      {action === "trash" ? <button type="button" disabled={disabled || !reason} onClick={() => void onTrash(note.trim() ? `${reason}: ${note.trim()}` : reason)}>Move to recycle bin</button>
+      {action === "trash" ? <button className="primary-action ui-primary-action" type="button" disabled={disabled || !reason} onClick={() => void onTrash(note.trim() ? `${reason}: ${note.trim()}` : reason)}>Move to recycle bin</button>
         : <>
-          <button type="button" disabled={disabled} onClick={() => void onRestore("active", conflicts.length > 0)}>
+          <button className="primary-action ui-primary-action" type="button" disabled={disabled} onClick={() => void onRestore("active", conflicts.length > 0)}>
             {conflicts.length > 0 ? "Restore as current; retain existing projects in history" : "Restore to projects"}
           </button>
-          {conflicts.length > 0 && <button type="button" disabled={disabled} onClick={() => void onRestore("history", false)}>Restore to history only</button>}
+          {conflicts.length > 0 && <button className="secondary-action ui-secondary-action" type="button" disabled={disabled} onClick={() => void onRestore("history", false)}>Restore to history only</button>}
         </>}
-      <button type="button" disabled={busy} onClick={onCancel}>Cancel</button>
+      <button className="secondary-action ui-secondary-action" type="button" disabled={busy} onClick={onCancel}>Cancel</button>
     </div>
   </ProjectManagementDialog>;
 }

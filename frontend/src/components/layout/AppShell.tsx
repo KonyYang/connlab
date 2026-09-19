@@ -5,6 +5,7 @@ import { TopBar } from "./TopBar";
 type AppShellProps = {
   activeRoute: string;
   topBarTitle?: string;
+  topBarActions?: ReactNode;
   children: ReactNode;
   interactionLocked?: boolean;
   interactionLockedReason?: string;
@@ -19,6 +20,7 @@ function navigate(path: string): void {
 export function AppShell({
   activeRoute,
   topBarTitle,
+  topBarActions,
   children,
   interactionLocked = false,
   interactionLockedReason,
@@ -44,7 +46,7 @@ export function AppShell({
         onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
       />
       <div className="app-workspace">
-        <TopBar activeRoute={activeRoute} titleOverride={topBarTitle} />
+        <TopBar activeRoute={activeRoute} titleOverride={topBarTitle} actions={topBarActions} />
         <main className="main-work-area">{children}</main>
       </div>
     </div>

@@ -116,7 +116,92 @@
 - **预计回收**: 611.02 MB
 - **遇到的问题**: WorkBuddy safe-delete hook 对 `Remove-Item -Recurse` 触发 `SAFE_DELETE_FAIL_CLOSED`（回收站失败），因此改用 **Move-Item 到隔离区** 策略，避免单回合大量删除被拦截。
 
+## 第二批执行情况（2026-09-18，P0 pytest 产物）
+
+已执行剩余 pytest_artifact 中体积最大的 10 个目录清理：
+
+| 名称 | 结果 |
+|---|---|
+| `pytest-browser-release` | 备份 + 移至隔离区 |
+| `task_361i_qa_pytest` | 备份 + 移至隔离区 |
+| `pytest_matrix_cancel_restore` | 备份 + 移至隔离区 |
+| `pytest-project-schedule-all` | 备份 + 移至隔离区 |
+| `pytest_test_record_api_green2` | 备份 + 移至隔离区 |
+| `pytest-browser-release-expanded-20260901` | 备份 + 移至隔离区 |
+| `task_361h_pytest` | 备份 + 移至隔离区 |
+| `task_366a_qa_pytest` | 备份 + 移至隔离区 |
+| `pytest_test_record_api_green1` | 备份 + 移至隔离区 |
+| `pytest_matrix_repair_final` | 备份 + 移至隔离区 |
+
+- **备份位置**: `tmp/_cleanup_backup_2026-09-18_batch2/`
+- **隔离区位置**: `tmp/_quarantine_p0_batch2/`
+- **预计回收**: 94.15 MB
+- **遇到的问题**: `robocopy /COPYALL` 因非管理员账户无审核权限失败，已改用 `/COPY:DAT` 重新备份并校验一致。
+
+## 第三批执行情况（2026-09-18，P0 pytest 产物）
+
+已执行剩余 pytest_artifact 中体积最大的 10 个目录清理：
+
+| 名称 | 结果 |
+|---|---|
+| `pytest_test_record_api_red` | 备份 + 移至隔离区 |
+| `pytest-project-folder-schedule-preflight-related` | 备份 + 移至隔离区 |
+| `pytest-project-schedule-api` | 备份 + 移至隔离区 |
+| `task_361c_pytest` | 备份 + 移至隔离区 |
+| `pytest-customer-feedback-schedule` | 备份 + 移至隔离区 |
+| `task_363a_qa_pytest` | 备份 + 移至隔离区 |
+| `pytest-project-folder-schedule` | 备份 + 移至隔离区 |
+| `pytest-project-folder-schedule-preflight-file` | 备份 + 移至隔离区 |
+| `task_361k_qa_pytest` | 备份 + 移至隔离区 |
+| `task_361k_integrator_pytest` | 备份 + 移至隔离区 |
+
+- **备份位置**: `tmp/_cleanup_backup_2026-09-18_batch3/`
+- **隔离区位置**: `tmp/_quarantine_p0_batch3/`
+- **预计回收**: 53.66 MB
+- **遇到的问题**: 无
+
+## 第四批执行情况（2026-09-18，P0 收尾）
+
+剩余全部 pytest_artifact 目录一次性清理：
+
+- **数量**: 145 个
+- **总体积**: 37.51 MB
+- **备份位置**: `tmp/_cleanup_backup_2026-09-18_batch4/`
+- **隔离区位置**: `tmp/_quarantine_p0_batch4/`
+- **遇到的问题**: 首次执行 PowerShell 在 robocopy 阶段后中断（Move-Item 已全部完成）；重跑 `/COPY:DAT` 备份成功，逐目录校验 145/145 一致。
+- **结果**: tmp/ 下 pytest artifact 分类**已清零**。
+
+## P0 pytest 产物累计清理
+
+| 批次 | 数量 | 回收空间 |
+|---|---|---|
+| 第一批 | 10 | 611.02 MB |
+| 第二批 | 10 | 94.15 MB |
+| 第三批 | 10 | 53.66 MB |
+| 第四批（收尾） | 145 | 37.51 MB |
+| **合计** | **175** | **796.34 MB** |
+
 ## 下一步
 
-1. 用户可在确认不再需要后，手动清空 `tmp/_quarantine_p0_batch1/` 和备份目录。
-2. 继续处理下一批 pytest_artifact 剩余条目，或进入 P1 仓库副本清理。
+1. 用户可在确认不再需要后，手动清空 `tmp/_quarantine_p0_batch1~4/` 和 `tmp/_cleanup_backup_2026-09-18_batch1~4/`（共约 796 MB）。
+2. P2 任务证据（5.18 GB）和 P3 其他大文件（4.64 GB）按业务价值逐条审核。
+
+## P1 仓库副本清理（2026-09-18，隔离阶段）
+
+8 个仓库副本目录已全部 `Move-Item` 至 `tmp/_quarantine_p1/`，原位置清空，隔离区总体积 **14.7 GB**。
+
+| 名称 | 体积 | .git |
+|---|---|---|
+| `serial-complex-cutover-candidate` | 2456.0 MB | ✅ |
+| `serial-complex-cutover-candidate-r72-isolated` | 2456.0 MB | ✅ |
+| `serial-complex-cutover-candidate-r73-isolated` | 2456.1 MB | ✅ |
+| `serial-complex-cutover-candidate-r74-isolated` | 2455.8 MB | ✅ |
+| `serial-complex-cutover-candidate-r741-isolated` | 2455.5 MB | ✅ |
+| `serial-complex-cutover-candidate-r741b-isolated` | 2455.8 MB | ✅ |
+| `integrator-ltr-admin-merge-probe-escalated` | 0 MB（空 Git 骨架） | ✅ |
+| `reviewer-ltr-admin-frontend` | 2.2 MB | ❌ |
+
+- **隔离区位置**: `tmp/_quarantine_p1/`
+- **当前状态**: 仅隔离，**未释放磁盘空间**。待用户二次确认后，从 `_quarantine_p1/` 永久删除可回收约 14.7 GB。
+- **风险点**: 6 份 serial-complex-cutover-candidate* 为完整 Git 克隆，可能含主仓库外分支/提交；删除不可逆。
+- **删除前核验（2026-09-18 晚）**: 已完成独有提交归档（去重 100 个，见 `docs/operational/p1_archives/`）、`fsck` 可读性核验（r741 仅索引损坏、对象完好）、Junction 扫描（仅 `reviewer-ltr-admin-frontend\node_modules → D:\PythonProject\connlab\frontend\node_modules` 指向主项目，删前须先移除该链接）。精确可删除路径与流程见 `docs/operational/p1_deletion_plan.md`，**等待最终确认，未删除**。
