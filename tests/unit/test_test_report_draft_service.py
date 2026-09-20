@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
+from dataclasses import replace
 from datetime import date
+from pathlib import Path
 
 import pytest
 
@@ -62,10 +63,7 @@ def test_generates_report_model_from_confirmed_basic_information_and_active_matr
     assert report.confirmed_matrix_id == "cmv-1"
     assert report.groups == _preview().groups
     assert result.output_path.parent == tmp_path / "generated_test_reports" / "P1"
-    assert result.file_name == (
-        "DL-2026-05-011 Coolpower HDF 3.40mm Qualification Testing "
-        "Report_Rev_A_Draft.docx"
-    )
+    assert result.file_name == "DL-2026-05-011 Report_Rev_A_Draft.docx"
     assert result.confirmed_basic_information_version == 3
 
 
@@ -73,10 +71,7 @@ def test_uses_non_overwriting_draft_name(tmp_path: Path) -> None:
     output_dir = tmp_path / "generated_test_reports"
     project_dir = output_dir / "P1"
     project_dir.mkdir(parents=True)
-    existing = project_dir / (
-        "DL-2026-05-011 Coolpower HDF 3.40mm Qualification Testing "
-        "Report_Rev_A_Draft.docx"
-    )
+    existing = project_dir / "DL-2026-05-011 Report_Rev_A_Draft.docx"
     existing.write_bytes(b"manual draft")
     service = TestReportDraftService(
         preview_service=_PreviewService(_preview()),
@@ -116,10 +111,36 @@ def test_generates_canonical_current_report_directly_in_official_folder(
     )
 
     assert result.output_path.parent == official_folder
-    assert result.file_name == (
-        "DL-2026-05-011 Coolpower HDF 3.40mm Qualification Testing "
-        "Report_Rev_A.docx"
+    assert result.file_name == "DL-2026-05-011 Report_Rev_A.docx"
+
+
+def test_keeps_official_report_file_name_short_for_long_project_metadata(
+    tmp_path: Path,
+) -> None:
+    values = {
+        **_basic_information().values,
+        "product_description": "Product " * 40,
+        "test_item": "Qualification " * 30,
+    }
+    service = TestReportDraftService(
+        preview_service=_PreviewService(_preview()),
+        basic_information_reader=_BasicInformationReader(
+            replace(_basic_information(), values=values)
+        ),
+        writer=_Writer(),
     )
+
+    result = service.generate(
+        GenerateTestReportDraftCommand(
+            project_id="P1",
+            template_path=_template(tmp_path),
+            output_dir=tmp_path / "official-test-folder",
+            publication_mode="official_current",
+        )
+    )
+
+    assert result.file_name == "DL-2026-05-011 Report_Rev_A.docx"
+    assert len(result.file_name) < 64
 
 
 def test_requires_confirmed_basic_information(tmp_path: Path) -> None:

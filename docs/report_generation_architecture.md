@@ -148,12 +148,13 @@ silently populated in the wrong location.
 Drafts are stored under `Settings.data_dir/generated_test_reports/{project_id}`. The base filename is:
 
 ```text
-{DL} {Product Description} {Test Item} Report_Rev_A_Draft.docx
+{DL} Report_Rev_A_Draft.docx
 ```
 
-Generation reserves the target atomically. Existing drafts are preserved and the next filename uses
-`(2)`, `(3)`, and so on. The API downloads the exact server filename. No official project file or
-approved template is mutated in this phase.
+The DL number and revision identify the file; product and test details remain in the Project identity
+and report body rather than extending the Windows path. Generation reserves the target atomically.
+Existing drafts are preserved and the next filename uses `(2)`, `(3)`, and so on. The API downloads
+the exact server filename. No official project file or approved template is mutated in this phase.
 
 The canonical Test Record authority created by Project Folder is
 `{official qualification folder}/Submitted Material/{DL} Test Record.docx`. Matrix Editor publication

@@ -254,10 +254,8 @@ def _parse_report_date(value: str) -> date:
 
 def _report_file_name(report: TestReportDraftData, *, draft: bool) -> str:
     report_number = _safe_file_component(report.report_number, 50)
-    product_name = _safe_file_component(report.product_name, 80)
-    test_description = _safe_file_component(report.test_description, 60)
     suffix = "Report_Rev_A_Draft.docx" if draft else "Report_Rev_A.docx"
-    return f"{report_number} {product_name} {test_description} {suffix}"
+    return f"{report_number} {suffix}"
 
 
 def _reserve_report_path(path: Path, *, allow_numbered_copy: bool) -> Path:
