@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_WORKBENCH_FOLDER_ACTION_MIGRATION",
     "summary": "Move project folder create and update control from the Workbench top bar into Folder Actions with correct labels, primary weight, lifecycle reachability, and narrow-width coverage.",
@@ -26,17 +26,70 @@
     "risk_reasons": [],
     "activation_head": "6649350ccd38e71135b4260378b4742a0b9ba509",
     "started_at": "2026-09-19T14:33:41.881450Z",
-    "updated_at": "2026-09-20T00:11:37.154771Z",
+    "updated_at": "2026-09-20T00:29:23.559381Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_WORKBENCH_FOLDER_ACTION_MIGRATION",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User clarified that Create folder belongs in the Folder Actions header, with no extra task row and fixed copy.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_WORKBENCH_FOLDER_ACTION_MIGRATION",
+      "subject": "eb48ff598fabe73f85d70d4bdeb4d46824319772",
+      "summary": "Moved the existing project-folder command into the Folder Actions header as a fixed Create folder button, removed the extra task-row implementation, and preserved the established generation workflow.",
+      "scope_ok": true,
+      "changed_paths": [
+        "docs/workbench_topbar_actions_and_folder_create_migration_plan.md",
+        "frontend/src/features/project-workbench/ProjectFolderTaskList.test.tsx",
+        "frontend/src/features/project-workbench/ProjectFolderTaskList.tsx",
+        "frontend/src/features/project-workbench/ProjectWorkbenchActiveMatrixWorkspace.tsx",
+        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+        "frontend/src/features/project-workbench/ProjectWorkbenchLifecycleSections.tsx",
+        "frontend/src/features/project-workbench/useProjectFolderGeneration.ts",
+        "frontend/src/workbench.css"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "name": "targeted frontend tests",
+          "summary": "98 tests passed across Folder Actions, layout, selectors, and folder-generation workflow."
+        },
+        {
+          "status": "passed",
+          "name": "Vite production build",
+          "summary": "163 modules transformed and production assets built successfully."
+        },
+        {
+          "status": "passed",
+          "name": "browser smoke",
+          "summary": "Desktop and 393px checks confirmed header placement, four operation rows, and no horizontal overflow."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented the revision with a public-seam RED/GREEN cycle."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Sequential primary-agent standards and specification reviews found no remaining issue."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Affected suite, production build, and responsive browser smoke passed; the unrelated ReportWorkspace timer test remains outside this task."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "summary": "The fixed header action reuses the original handler, disabled reasons, and conflict-confirmation flow without backend or authority changes."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_361B_TEST_RUNNER_INTERPRETER_ALIGNMENT",
