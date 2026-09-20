@@ -78,7 +78,6 @@ export function FeeEvaluationPreviewTable({
   confirmFeeActionState,
   labManpowerCostLabel,
   groupFilter,
-  header,
   identityLine,
   downloadState,
   feeFormButtonLabel,
