@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
     "summary": "Keep the Matrix Editor project-context and action card visible while a user scrolls the long Matrix table.",
@@ -26,17 +26,63 @@
     "risk_reasons": [],
     "activation_head": "91483dd581fb7060bba99f4e6ef9a6b47131448e",
     "started_at": "2026-09-20T01:15:36.790500Z",
-    "updated_at": "2026-09-20T04:23:18.875591Z",
+    "updated_at": "2026-09-20T04:36:38.407456Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User feedback: hide the Matrix source document name from the fixed top bar.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
+      "subject": "d7922ab70d3ac97558bbfa623572f31bec5b1b37",
+      "summary": "Matrix actions remain in the fixed Workbench top bar; the imported source filename is no longer rendered, while project identity and the four actions remain intact.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/components/layout/AppShell.tsx",
+        "frontend/src/components/layout/TopBar.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.import.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/styles.css",
+        "frontend/src/workbench.css"
+      ],
+      "validation": [
+        {
+          "name": "Matrix Editor targeted Vitest",
+          "status": "passed",
+          "details": "53 tests passed across editing and import suites."
+        },
+        {
+          "name": "Vite production build",
+          "status": "passed",
+          "details": "163 modules transformed successfully."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "details": "Implemented the smallest display-only change with regression coverage."
+        },
+        "reviewer": {
+          "status": "passed",
+          "details": "Reviewed exact diff; source import state and actions remain unchanged."
+        },
+        "qa": {
+          "status": "passed",
+          "details": "Targeted Matrix validation and production build passed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "details": "The fixed top-bar action slot continues to host the project identity and all four Matrix actions."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_WORKBENCH_FOLDER_ACTION_MIGRATION",
