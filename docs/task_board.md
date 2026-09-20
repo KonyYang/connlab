@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
     "summary": "Keep the Matrix Editor project-context and action card visible while a user scrolls the long Matrix table.",
@@ -26,17 +26,71 @@
     "risk_reasons": [],
     "activation_head": "91483dd581fb7060bba99f4e6ef9a6b47131448e",
     "started_at": "2026-09-20T01:15:36.790500Z",
-    "updated_at": "2026-09-20T05:25:31.200055Z",
+    "updated_at": "2026-09-20T05:35:01.372645Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "Verified that the Fee Evaluation identity summary is display-only and not used to generate the Fee Form; user requested its removal.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
+      "subject": "30b925f4cd2de828365da82b47a7f185766a3456",
+      "summary": "Removed the display-only Fee Evaluation metadata panel; Fee Form identity remains populated independently from confirmed Basic Information.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/components/layout/AppShell.tsx",
+        "frontend/src/components/layout/TopBar.test.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.test.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.test.ts",
+        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.import.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/styles.css",
+        "frontend/src/workbench.css"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "details": "Focused Fee Evaluation suite: 83 tests passed."
+        },
+        {
+          "status": "passed",
+          "details": "Browser smoke confirmed the metadata card is absent and Fee Evaluation actions remain in the fixed top bar."
+        },
+        {
+          "status": "passed",
+          "details": "Vite production build completed."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "details": "Implemented the requested display-only metadata removal without changing Fee Form generation."
+        },
+        "reviewer": {
+          "status": "passed",
+          "details": "Standards and specification review found no actionable issues."
+        },
+        "qa": {
+          "status": "passed",
+          "details": "Focused tests, browser smoke, and production build passed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "details": "Fee Form identity remains sourced from confirmed Basic Information independently of the removed display panel."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_WORKBENCH_FOLDER_ACTION_MIGRATION",
