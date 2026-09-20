@@ -62,16 +62,27 @@ class CustomerReportSubprocessRunner:
         output_root = self._output_root.resolve()
         run_dir = output_root / f"run-{uuid4().hex}"
         run_dir.mkdir(parents=True, exist_ok=False)
+        source = Path(source_path)
+        template = Path(template_path)
+        output = Path(output_path)
+        output_existed = output.exists()
+        staged_source = run_dir / "internal-report.docx"
+        staged_template = run_dir / "customer-report-template.docx"
+        staged_output = run_dir / "customer-report.docx"
         command_json = run_dir / "command.json"
         progress_json = run_dir / "progress.json"
         process = None
         try:
+            if output_existed:
+                raise FileExistsError("Customer report output already exists and will not be replaced.")
+            shutil.copy2(source, staged_source)
+            shutil.copy2(template, staged_template)
             command_json.write_text(
                 json.dumps(
                     {
-                        "source_path": str(Path(source_path).resolve()),
-                        "template_path": str(Path(template_path).resolve()),
-                        "output_path": str(Path(output_path).resolve()),
+                        "source_path": str(staged_source.resolve()),
+                        "template_path": str(staged_template.resolve()),
+                        "output_path": str(staged_output.resolve()),
                         "progress_path": str(progress_json.resolve()),
                     },
                     ensure_ascii=False,
@@ -109,7 +120,7 @@ class CustomerReportSubprocessRunner:
                     break
                 if now - started_at >= self._absolute_timeout_seconds:
                     _stop_process(process)
-                    Path(output_path).unlink(missing_ok=True)
+                    output.unlink(missing_ok=True)
                     raise ToolsError(
                         "Customer report generation exceeded the "
                         f"{self._absolute_timeout_seconds:g}-second safety limit. "
@@ -118,7 +129,7 @@ class CustomerReportSubprocessRunner:
                     )
                 if now - last_progress_at >= self._timeout_seconds:
                     _stop_process(process)
-                    Path(output_path).unlink(missing_ok=True)
+                    output.unlink(missing_ok=True)
                     raise ToolsError(
                         "Customer report generation stayed at one processing stage for "
                         f"{self._timeout_seconds:g} seconds. The isolated Word task was stopped; "
@@ -126,27 +137,27 @@ class CustomerReportSubprocessRunner:
                     )
                 self._sleep(self._poll_interval_seconds)
             stdout, _stderr = process.communicate()
+            payload = _parse_child_result(stdout)
+            if returncode != 0 or payload.get("status") != "success":
+                message = str(payload.get("error_message") or "").strip()
+                raise ToolsError(
+                    message
+                    or "The isolated Word task could not generate the customer report."
+                )
+            if not staged_output.is_file():
+                raise ToolsError(
+                    "The isolated Word task finished without producing the customer report."
+                )
+            shutil.copy2(staged_output, output)
+            return output
         except BaseException:
             if process is not None and process.returncode is None:
                 _stop_process(process)
-            Path(output_path).unlink(missing_ok=True)
+            if not output_existed:
+                output.unlink(missing_ok=True)
             raise
         finally:
             _cleanup_run_directory(root=output_root, run_dir=run_dir)
-
-        payload = _parse_child_result(stdout)
-        if returncode != 0 or payload.get("status") != "success":
-            message = str(payload.get("error_message") or "").strip()
-            raise ToolsError(
-                message
-                or "The isolated Word task could not generate the customer report."
-            )
-        output = Path(output_path)
-        if not output.is_file():
-            raise ToolsError(
-                "The isolated Word task finished without producing the customer report."
-            )
-        return output
 
 
 def _read_progress(path: Path, *, after_sequence: int) -> tuple[int, str] | None:

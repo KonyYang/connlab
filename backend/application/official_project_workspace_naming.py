@@ -18,7 +18,7 @@ def build_official_project_folder_name(
     dl_number: str,
     product_description: str | None,
     test_description: str | None,
-    max_segment_length: int = 96,
+    max_segment_length: int = 150,
 ) -> str:
     """Return a safe business-readable official project folder name."""
     dl = _clean_part(dl_number)

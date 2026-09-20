@@ -42,17 +42,6 @@ def test_official_folder_name_preserves_dl_prefix_when_truncating() -> None:
     assert len(name) <= 80
 
 
-def test_official_folder_name_default_reserves_path_budget_for_report_files() -> None:
-    name = build_official_project_folder_name(
-        dl_number="DL-2025-11-074",
-        product_description="A" * 200,
-        test_description="B" * 200,
-    )
-
-    assert name.startswith("DL-2025-11-074 ")
-    assert len(name) <= 96
-
-
 def test_official_folder_name_rejects_missing_dl_number() -> None:
     with pytest.raises(OfficialWorkspaceNamingError, match="DL number is required"):
         build_official_project_folder_name(

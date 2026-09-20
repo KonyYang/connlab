@@ -9,7 +9,9 @@ from decimal import Decimal
 import os
 from pathlib import Path
 import re
+import shutil
 from statistics import stdev
+import tempfile
 from uuid import uuid4
 
 from docx import Document
@@ -127,10 +129,8 @@ class TestReportDocumentGateway:
         if target.exists() and target.stat().st_size:
             raise FileExistsError(f"Output file already exists and will not be replaced: {target}")
 
-        temporary = target.with_name(
-            f".{target.stem}.{uuid4().hex}.tmp{target.suffix}"
-        )
-        try:
+        with tempfile.TemporaryDirectory(prefix="connlab-test-report-") as directory:
+            temporary = Path(directory) / "report.docx"
             protection_state = self._protected_package_gateway.stage_editable_copy(
                 template,
                 temporary,
@@ -160,9 +160,7 @@ class TestReportDocumentGateway:
                 temporary,
                 protection_state,
             )
-            os.replace(temporary, target)
-        finally:
-            temporary.unlink(missing_ok=True)
+            shutil.copy2(temporary, target)
         return target
 
     def synchronize_llcr_results(

@@ -58,6 +58,12 @@ file replaces it atomically. Without an official project folder, the generated f
 browser download and is not promoted into project authority. The approved E-4515_F template and both
 source reports remain read-only.
 
+Before Microsoft Word starts, ConnLab copies the Internal Report, the customer template, and the
+working output into a short task-owned directory. Word therefore never receives the potentially long
+official project path or creates its temporary files beside the project report. The completed working
+copy is then returned to the existing publication stage, which keeps the full descriptive customer
+report filename and its non-overwrite and history rules.
+
 Report history is intentionally flat. A prior Internal Report is stored directly as
 `History/Report/{DL} Report_Rev_{revision} {YYYYMMDD-HHMMSS}.docx`; a prior Customer Report uses
 `{DL}-CR Report_Rev_{revision} {YYYYMMDD-HHMMSS}.docx`. The product title is omitted from history
@@ -148,13 +154,16 @@ silently populated in the wrong location.
 Drafts are stored under `Settings.data_dir/generated_test_reports/{project_id}`. The base filename is:
 
 ```text
-{DL} Report_Rev_A_Draft.docx
+{DL} {Product Description} {Test Item} Report_Rev_A_Draft.docx
 ```
 
-The DL number and revision identify the file; product and test details remain in the Project identity
-and report body rather than extending the Windows path. Generation reserves the target atomically.
-Existing drafts are preserved and the next filename uses `(2)`, `(3)`, and so on. The API downloads
-the exact server filename. No official project file or approved template is mutated in this phase.
+Generation reserves the target atomically. Existing drafts are preserved and the next filename uses
+`(2)`, `(3)`, and so on. The API downloads the exact server filename. No official project file or
+approved template is mutated in this phase.
+
+Initial-report editing uses a short ConnLab working copy rather than a UUID-suffixed temporary file
+beside the final report. The full descriptive draft or official filename is retained when the validated
+working copy is published to its reserved target.
 
 The canonical Test Record authority created by Project Folder is
 `{official qualification folder}/Submitted Material/{DL} Test Record.docx`. Matrix Editor publication

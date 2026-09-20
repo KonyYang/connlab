@@ -235,6 +235,39 @@ def test_generates_e3707_draft_without_mutating_approved_template(tmp_path: Path
     assert equipment_heading._p.getprevious().xpath('.//w:br[@w:type="page"]')
 
 
+def test_generates_initial_report_through_a_short_working_copy(
+    tmp_path: Path,
+) -> None:
+    template = _build_template(tmp_path / "E-3707_H.docx")
+    project_folder = tmp_path / "DL-2026-09-002 PwrBlade Ultra Pro Rec.R-A TYPE WITH 2HP+20S Qualification test"
+    project_folder.mkdir()
+    output = project_folder / "DL-2026-09-002 PwrBlade Ultra Pro Rec.R-A TYPE WITH 2HP+20S Qualification test Report_Rev_A.docx"
+    output.touch()
+    staged_paths: list[Path] = []
+
+    class _ProtectedPackageGateway:
+        def stage_editable_copy(self, source_path: Path, output_path: Path):
+            staged_paths.append(output_path)
+            shutil.copy2(source_path, output_path)
+            return WordPackageProtectionState(was_password_protected=False)
+
+        def restore_password_protection(self, editable_path: Path, state) -> None:
+            assert state.was_password_protected is False
+
+    written = TestReportDocumentGateway(
+        protected_package_gateway=_ProtectedPackageGateway(),
+    ).generate(
+        template_path=template,
+        output_path=output,
+        report=_report(),
+    )
+
+    assert written == output
+    assert Document(output).paragraphs
+    assert staged_paths[0].parent != output.parent
+    assert staged_paths[0].name == "report.docx"
+
+
 def test_synchronize_equipment_list_updates_only_the_equipment_table(
     tmp_path: Path,
 ) -> None:

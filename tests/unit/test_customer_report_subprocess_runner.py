@@ -26,6 +26,8 @@ def test_unexpected_poll_failure_stops_child_and_cleans_temporary_files(tmp_path
             return "", ""
     process = Process()
     monkeypatch.setattr("backend.infrastructure.office.customer_report_subprocess_runner.subprocess.Popen", lambda *a, **k: process)
+    (tmp_path / "source.docx").write_bytes(b"source")
+    (tmp_path / "template.docx").write_bytes(b"template")
     with pytest.raises(RuntimeError, match="broken progress channel"):
         CustomerReportSubprocessRunner(output_root=tmp_path / "runs").generate_customer_report(
             source_path=tmp_path / "source.docx", template_path=tmp_path / "template.docx", output_path=tmp_path / "out.docx")
@@ -137,6 +139,89 @@ def test_runner_forwards_child_progress_and_resets_the_stall_deadline(
 
     assert result.read_bytes() == b"customer"
     assert progress == ["preparing_template", "copying_content"]
+    assert list((tmp_path / "runs").glob("run-*")) == []
+
+
+def test_runner_stages_word_inputs_and_output_away_from_the_project_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Path] = {}
+    staged_contents: dict[str, bytes] = {}
+
+    class _CompletedProcess:
+        returncode = None
+
+        def __init__(self, command: list[str]) -> None:
+            payload = json.loads(Path(command[-1]).read_text(encoding="utf-8"))
+            captured.update({key: Path(payload[key]) for key in ("source_path", "template_path", "output_path")})
+            staged_contents["source"] = captured["source_path"].read_bytes()
+            staged_contents["template"] = captured["template_path"].read_bytes()
+            self.output_path = captured["output_path"]
+
+        def poll(self):
+            self.output_path.write_bytes(b"customer")
+            self.returncode = 0
+            return 0
+
+        def communicate(self):
+            return json.dumps({"status": "success"}), ""
+
+    monkeypatch.setattr(
+        "backend.infrastructure.office.customer_report_subprocess_runner.subprocess.Popen",
+        lambda command, **_kwargs: _CompletedProcess(command),
+    )
+    project_folder = tmp_path / "DL-2026-09-002 PwrBlade Ultra Pro Rec.R-A TYPE WITH 2HP+20S Qualification test"
+    project_folder.mkdir()
+    source = project_folder / "DL-2026-09-002 PwrBlade Ultra Pro Rec.R-A TYPE WITH 2HP+20S Qualification test Report_Rev_A.docx"
+    output = project_folder / "DL-2026-09-002-CR PwrBlade Ultra Pro Rec.R-A TYPE WITH 2HP+20S Qualification test Report_Rev_A.docx"
+    template = tmp_path / "E-4515_F Customer Report.docx"
+    source.write_bytes(b"source")
+    template.write_bytes(b"template")
+
+    result = CustomerReportSubprocessRunner(
+        output_root=tmp_path / "runs",
+        timeout_seconds=1,
+        absolute_timeout_seconds=10,
+        poll_interval_seconds=0,
+    ).generate_customer_report(
+        source_path=source,
+        template_path=template,
+        output_path=output,
+    )
+
+    assert result == output
+    assert output.read_bytes() == b"customer"
+    assert captured["source_path"] != source.resolve()
+    assert captured["template_path"] != template.resolve()
+    assert captured["output_path"] != output.resolve()
+    assert staged_contents == {"source": b"source", "template": b"template"}
+    assert list((tmp_path / "runs").glob("run-*")) == []
+
+
+def test_runner_rejects_an_existing_output_without_deleting_it(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "internal.docx"
+    template = tmp_path / "template.docx"
+    output = tmp_path / "customer.docx"
+    source.write_bytes(b"source")
+    template.write_bytes(b"template")
+    output.write_bytes(b"existing customer report")
+    monkeypatch.setattr(
+        "backend.infrastructure.office.customer_report_subprocess_runner.subprocess.Popen",
+        lambda *_args, **_kwargs: pytest.fail("Word child must not start for an existing output"),
+    )
+
+    with pytest.raises(FileExistsError, match="already exists"):
+        CustomerReportSubprocessRunner(output_root=tmp_path / "runs").generate_customer_report(
+            source_path=source,
+            template_path=template,
+            output_path=output,
+        )
+
+    assert output.read_bytes() == b"existing customer report"
     assert list((tmp_path / "runs").glob("run-*")) == []
 
 
