@@ -11,83 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_FRONTEND_RELEASE_BUILD_REPAIR",
-    "summary": "Repair the browser release frontend build by removing the stale Fee header destructuring and excluding test files from production TypeScript compilation.",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Frontend-only release-build repair; preserve Vitest test execution and existing Fee export behavior.",
-    "scope_paths": [
-      "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
-      "frontend/tsconfig.json"
-    ],
-    "risk_reasons": [],
-    "activation_head": "b337ac2daec945691882680668e4efc424befd71",
-    "started_at": "2026-09-20T12:30:53.160623Z",
-    "updated_at": "2026-09-20T12:39:35.637303Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_FRONTEND_RELEASE_BUILD_REPAIR",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_FRONTEND_RELEASE_BUILD_REPAIR",
-      "subject": "01a09b3dc0406dddefffb17b3e062c7a30de3a7c",
-      "summary": "Restored the browser release frontend build by removing the stale Fee header destructuring and excluding Vitest files from production TypeScript compilation.",
-      "scope_ok": true,
-      "changed_paths": [
-        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
-        "frontend/tsconfig.json"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "details": "Release-equivalent npm run build (tsc -b and vite build) passed."
-        },
-        {
-          "status": "passed",
-          "details": "Focused Fee component and fee-summary contract suite: 11 tests passed."
-        },
-        {
-          "status": "passed",
-          "details": "Complete frontend Vitest suite: 645 tests passed and 1 test skipped."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "details": "Removed the stale destructuring and scoped production TypeScript to application sources while preserving Vitest tests."
-        },
-        "reviewer": {
-          "status": "passed",
-          "details": "Sequential standards and specification review found no actionable issues."
-        },
-        "qa": {
-          "status": "passed",
-          "details": "Production build, focused regressions, and the complete frontend suite passed."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "details": "Exact task diff is committed; working tree is clean."
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_BASIC_INFORMATION_TOPBAR_LTR",
+    "task_id": "TASK_FRONTEND_RELEASE_BUILD_REPAIR",
     "tier": "standard",
-    "subject": "519f4f2e764dc161c5f38acbc36b7c9a686a4438",
-    "summary": "Move the Basic Information LTR identity into the fixed top bar beside the page title.",
+    "subject": "01a09b3dc0406dddefffb17b3e062c7a30de3a7c",
+    "summary": "Repair the browser release frontend build by removing the stale Fee header destructuring and excluding test files from production TypeScript compilation.",
     "disposition": "completed",
-    "decision_ref": "User requested: 关闭",
-    "closed_at": "2026-09-20T12:20:29.828929Z"
+    "decision_ref": "user-explicit-close-2026-09-20",
+    "closed_at": "2026-09-20T13:52:47.547132Z"
   },
   "retained_history": [
     {
