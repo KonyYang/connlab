@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { AppShell } from "../../components/layout/AppShell";
 import {
   apiMocks,
   buildCommitResponse,
@@ -16,15 +17,21 @@ import { MatrixEditorWorkspace } from "./MatrixEditorWorkspace";
 installMatrixEditorWorkspaceTestLifecycle();
 
 describe("MatrixEditorWorkspace editing behavior", () => {
-  it("groups the Matrix source and actions in the sticky action card", async () => {
-    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+  it("places Matrix context and actions in the shared Workbench top bar", async () => {
+    render(
+      <AppShell activeRoute="workbench">
+        <MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />
+      </AppShell>
+    );
 
-    const actionCard = await screen.findByLabelText("Matrix actions");
-    expect(actionCard.className).toContain("matrix-editor-sticky-actions");
-    expect(within(actionCard).getByRole("button", { name: "Import Matrix" })).toBeTruthy();
-    expect(within(actionCard).getByRole("button", { name: "Export Matrix" })).toBeTruthy();
-    expect(within(actionCard).getByRole("button", { name: "Test record" })).toBeTruthy();
-    expect(within(actionCard).getByRole("button", { name: "Test Status" })).toBeTruthy();
+    const actionBar = await screen.findByLabelText("Matrix actions");
+    expect(actionBar.className).toContain("matrix-editor-commandbar");
+    expect(screen.getByLabelText("Page actions").contains(actionBar)).toBe(true);
+    expect(screen.queryByRole("region", { name: "Matrix actions" })).toBeNull();
+    expect(within(actionBar).getByRole("button", { name: "Import Matrix" })).toBeTruthy();
+    expect(within(actionBar).getByRole("button", { name: "Export Matrix" })).toBeTruthy();
+    expect(within(actionBar).getByRole("button", { name: "Test record" })).toBeTruthy();
+    expect(within(actionBar).getByRole("button", { name: "Test Status" })).toBeTruthy();
   });
 
   it("confirms schedule before Matrix authority even with invalid Matrix edits and no received date", async () => {

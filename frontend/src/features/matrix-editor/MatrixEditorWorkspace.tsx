@@ -1,4 +1,6 @@
 ﻿import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactElement } from "react";
+import { createPortal } from "react-dom";
+import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
 import { useMatrixEditorContext } from "./useMatrixEditorContext";
 import { buildProjectIdentityLine, deriveProjectReference } from "../projectIdentity";
 import {
@@ -159,6 +161,7 @@ export function MatrixEditorWorkspace({
   onBackToWorkbench,
   onOpenContactMeasurementSetup,
 }: MatrixEditorWorkspaceProps): ReactElement {
+  const topBarActionsRoot = useTopBarActionsRoot();
   const model = useMatrixEditorContext(projectId);
   const lifecycleReadonlyView = deriveProjectLifecycleReadonlyView(model.lifecycle);
   const isLifecycleReadonly = lifecycleReadonlyView.readonly;
@@ -1463,63 +1466,63 @@ export function MatrixEditorWorkspace({
   const contextMenuRow =
     contextMenu?.kind === "row" ? editableRows[contextMenu.rowIndex] ?? null : null;
 
-  return (
-    <section className="workbench-page matrix-editor-shell matrix-editor-target-shell" onClick={() => setContextMenu(null)}>
-      <section
-        aria-label="Matrix actions"
-        className="matrix-editor-target-header matrix-editor-sticky-actions"
-      >
-        <p className="matrix-editor-project-identity matrix-editor-target-title-compact" title={matrixEditorIdentityLine}>
+  const matrixCommandbar = (
+    <div aria-label="Matrix actions" className="matrix-editor-commandbar">
+      <div className="matrix-editor-commandbar-context">
+        <p className="matrix-editor-project-identity" title={matrixEditorIdentityLine}>
           {matrixEditorIdentityLine}
         </p>
-        <div className="matrix-editor-target-actions">
-          {currentSourceDocumentName ? (
-            <span
-              className="matrix-editor-source-document-name"
-              title={currentSourceDocumentName}
-            >
-              {currentSourceDocumentName}
-            </span>
-          ) : null}
-          <button
-            type="button"
-            disabled={isLifecycleReadonly}
-            title={isLifecycleReadonly ? lifecycleReadonlyView.message : undefined}
-            onClick={() => void matrixImport.chooseSource()}
-          >
-            Import Matrix
-          </button>
-          <MatrixEditorXlsxExportButton
-            disabledReason={matrixXlsxExportDisabledReason}
-            busy={matrixXlsxExport.busy}
-            onExport={() => {
-              if (!matrixXlsxExportDisabledReason) {
-                void matrixXlsxExport.exportSnapshot(getMatrixXlsxExportRequest());
-              }
-            }}
-          />
-          <button
-            type="button"
-            disabled={
-              isLifecycleReadonly || !canGenerateTestRecord || testRecordState === "loading"
+        {currentSourceDocumentName ? (
+          <span className="matrix-editor-source-document-name" title={currentSourceDocumentName}>
+            {currentSourceDocumentName}
+          </span>
+        ) : null}
+      </div>
+      <div className="matrix-editor-commandbar-actions">
+        <button
+          type="button"
+          disabled={isLifecycleReadonly}
+          title={isLifecycleReadonly ? lifecycleReadonlyView.message : undefined}
+          onClick={() => void matrixImport.chooseSource()}
+        >
+          Import Matrix
+        </button>
+        <MatrixEditorXlsxExportButton
+          disabledReason={matrixXlsxExportDisabledReason}
+          busy={matrixXlsxExport.busy}
+          onExport={() => {
+            if (!matrixXlsxExportDisabledReason) {
+              void matrixXlsxExport.exportSnapshot(getMatrixXlsxExportRequest());
             }
-            title={isLifecycleReadonly ? lifecycleReadonlyView.message : undefined}
-            onClick={() => void onGenerateTestRecordPreview()}
-          >
-            {testRecordState === "loading" ? "Generating..." : "Test record"}
-          </button>
-          <button
-            type="button"
-            disabled={
-              isLifecycleReadonly || !canGenerateTestStatus || testStatusState === "loading"
-            }
-            title={isLifecycleReadonly ? lifecycleReadonlyView.message : undefined}
-            onClick={() => void onGenerateTestStatusPreview()}
-          >
-            {testStatusState === "loading" ? "Generating..." : "Test Status"}
-          </button>
-        </div>
-      </section>
+          }}
+        />
+        <button
+          type="button"
+          disabled={
+            isLifecycleReadonly || !canGenerateTestRecord || testRecordState === "loading"
+          }
+          title={isLifecycleReadonly ? lifecycleReadonlyView.message : undefined}
+          onClick={() => void onGenerateTestRecordPreview()}
+        >
+          {testRecordState === "loading" ? "Generating..." : "Test record"}
+        </button>
+        <button
+          type="button"
+          disabled={
+            isLifecycleReadonly || !canGenerateTestStatus || testStatusState === "loading"
+          }
+          title={isLifecycleReadonly ? lifecycleReadonlyView.message : undefined}
+          onClick={() => void onGenerateTestStatusPreview()}
+        >
+          {testStatusState === "loading" ? "Generating..." : "Test Status"}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <section className="workbench-page matrix-editor-shell matrix-editor-target-shell" onClick={() => setContextMenu(null)}>
+      {topBarActionsRoot ? createPortal(matrixCommandbar, topBarActionsRoot) : matrixCommandbar}
 
       {isLifecycleReadonly ? (
         <div className="matrix-editor-state-banner" role="status">

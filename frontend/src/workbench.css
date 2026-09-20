@@ -766,23 +766,17 @@
   gap: 8px;
 }
 
-.matrix-editor-target-header {
+.matrix-editor-commandbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-surface);
-  padding: 8px 10px;
 }
 
-.matrix-editor-sticky-actions {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  isolation: isolate;
-  box-shadow: 0 4px 12px rgba(35, 62, 104, 0.12);
+.matrix-editor-commandbar-context {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 
 .matrix-editor-target-title h2,
@@ -886,7 +880,7 @@
   line-height: 1;
 }
 
-.matrix-editor-target-actions {
+.matrix-editor-commandbar-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1477,7 +1471,7 @@
   color: #b42318;
 }
 
-.matrix-editor-target-actions button,
+.matrix-editor-commandbar-actions button,
 .matrix-editor-completion-dock button,
 .matrix-workspace-action-item button,
 .matrix-workspace-toolbar button,
@@ -10109,6 +10103,15 @@
   display: grid;
   gap: 3px;
   min-width: 0;
+}
+
+.top-bar-workbench .matrix-editor-commandbar {
+  width: 100%;
+  min-width: 0;
+}
+
+.top-bar-workbench .matrix-editor-commandbar-actions {
+  justify-content: flex-end;
 }
 
 .report-workspace-history .report-workspace-history-actions {
