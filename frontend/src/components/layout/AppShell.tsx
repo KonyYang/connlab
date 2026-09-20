@@ -47,13 +47,15 @@ export function AppShell({
           onNavigate={onNavigate}
           onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
         />
-        <div className="app-workspace">
+        <div className={`app-workspace${activeRoute === "workbench" ? " app-workspace-workbench" : ""}`}>
           <TopBar
             activeRoute={activeRoute}
             titleOverride={topBarTitle}
             actions={topBarActions}
           />
-          <main className="main-work-area">{children}</main>
+          <div className="app-main-scroll-region">
+            <main className="main-work-area">{children}</main>
+          </div>
         </div>
       </div>
     </TopBarActionsProvider>

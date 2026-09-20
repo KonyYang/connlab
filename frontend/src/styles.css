@@ -186,6 +186,17 @@ button {
   overflow-y: auto;
 }
 
+.app-workspace-workbench {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.app-workspace-workbench .app-main-scroll-region {
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .sidebar {
   display: flex;
   flex-direction: column;

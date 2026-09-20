@@ -27,6 +27,20 @@ describe("compact top context bar", () => {
     expect(screen.getByRole("heading", { name: "Workspace" })).toBeTruthy();
   });
 
+  it("keeps the Workbench title bar outside its independently scrollable content region", () => {
+    render(
+      <AppShell activeRoute="workbench">
+        <p>Workbench content</p>
+      </AppShell>
+    );
+
+    const workspace = screen.getByText("Workbench content").closest(".app-workspace");
+    expect(workspace?.className).toContain("app-workspace-workbench");
+    expect(workspace?.querySelector(".app-main-scroll-region")?.textContent).toContain(
+      "Workbench content"
+    );
+  });
+
   it("keeps AppShell top-bar actions compatible while the slot is context-owned", () => {
     render(
       <AppShell activeRoute="projects" topBarActions={<button type="button">Refresh</button>}>
