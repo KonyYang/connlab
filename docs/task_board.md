@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FRONTEND_RELEASE_BUILD_REPAIR",
+    "summary": "Repair the browser release frontend build by removing the stale Fee header destructuring and excluding test files from production TypeScript compilation.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Frontend-only release-build repair; preserve Vitest test execution and existing Fee export behavior.",
+    "scope_paths": [
+      "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
+      "frontend/tsconfig.json"
+    ],
+    "risk_reasons": [],
+    "activation_head": "b337ac2daec945691882680668e4efc424befd71",
+    "started_at": "2026-09-20T12:30:53.160623Z",
+    "updated_at": "2026-09-20T12:30:53.160623Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_BASIC_INFORMATION_TOPBAR_LTR",
     "tier": "standard",
