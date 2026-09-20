@@ -900,6 +900,35 @@
   background: rgba(15, 23, 42, 0.42);
 }
 
+.fee-evaluation-commandbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.fee-evaluation-project-identity {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fee-evaluation-commandbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
 .official-output-conflict-backdrop {
   position: fixed;
   inset: 0;
@@ -10101,6 +10130,10 @@
 }
 
 .top-bar-workbench .matrix-editor-commandbar-actions {
+  justify-content: flex-end;
+}
+
+.top-bar-workbench .fee-evaluation-commandbar-actions {
   justify-content: flex-end;
 }
 

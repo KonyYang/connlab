@@ -14,6 +14,7 @@ import {
   type FeeEvaluationEditedFileExportRequest,
   type FeeEvaluationLineItem,
 } from "../../api/client";
+import { AppShell } from "../../components/layout/AppShell";
 import { FeeEvaluationReviewExportPage } from "./FeeEvaluationReviewExportPage";
 import {
   applyFeeEvaluationPreviewEdits,
@@ -66,6 +67,28 @@ vi.mock("../../api/client", async (importOriginal) => {
 });
 
 describe("FeeEvaluationReviewExportPage", () => {
+  it("places Fee identity and form actions in the shared Workbench top bar", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraft());
+
+    render(
+      <AppShell activeRoute="workbench">
+        <FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />
+      </AppShell>
+    );
+
+    const actionBar = await screen.findByLabelText("Fee Evaluation actions");
+    expect(screen.getByLabelText("Page actions").contains(actionBar)).toBe(true);
+    expect(
+      within(actionBar).getByText(
+        "DL-2026-001 Coolpower HDF 3.40mm pin Qualification Testing"
+      )
+    ).toBeTruthy();
+    expect(within(actionBar).getByRole("button", { name: "Download Draft Fee Form" })).toBeTruthy();
+    expect(within(actionBar).getByRole("button", { name: "Import Fee Form" })).toBeTruthy();
+    expect(screen.getByLabelText("Testing Prices preview").querySelector(".fee-evaluation-preview-title")).toBeNull();
+  });
+
   it.each([
     ["Spend Time for group Group 1 step 1", "0.25", "4.8", "950"],
     ["Units for Sample preparation", "7", "4.5", "900"],

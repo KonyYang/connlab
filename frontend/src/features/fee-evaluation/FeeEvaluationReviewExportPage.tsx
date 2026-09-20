@@ -5,6 +5,7 @@ import {
   useState,
   type ReactElement,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   ApiRequestError,
   confirmFeeVersion,
@@ -30,6 +31,7 @@ import {
   type ProjectLifecycleResponse,
 } from "../../api/client";
 import { buildProjectIdentityLine } from "../projectIdentity";
+import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
 import {
   deriveProjectLifecycleReadonlyView,
   deriveReadonlyApiErrorMessage,
@@ -131,6 +133,7 @@ export function FeeEvaluationReviewExportPage({
   projectId,
   onBackToWorkbench,
 }: FeeEvaluationReviewExportPageProps): ReactElement {
+  const topBarActionsRoot = useTopBarActionsRoot();
   const [contextState, setContextState] = useState<FeePageContextState>({
     kind: "loading",
   });
@@ -670,6 +673,52 @@ export function FeeEvaluationReviewExportPage({
   const feeFormButtonLabel = currentFeeIsConfirmed
     ? "Generate Official Fee Form"
     : "Download Draft Fee Form";
+  const feeFormImportControl = (
+    <FeeFormImportControl
+      key={projectId}
+      projectId={projectId}
+      rows={previewRows}
+      disabled={
+        isLifecycleReadonly ||
+        draftState.kind !== "ready" ||
+        pricingDraftLoadStatus === "loading" ||
+        pricingDraftLoadStatus === "error" ||
+        pricingDraftLoadStatus === "rebase_required" ||
+        confirmFeeActionState.kind === "confirming" ||
+        isCancellingPricingSession
+      }
+      onApply={(changes) => {
+        if (isLifecycleReadonly) return;
+        setPreviewEdits((current) => {
+          const next = { ...current };
+          changes.forEach(({ row, values }) => {
+            next[row.lineId] = { ...next[row.lineId], ...values };
+          });
+          return next;
+        });
+        markPricingDraftDirty();
+      }}
+    />
+  );
+  const feeEvaluationCommandbar = (
+    <div aria-label="Fee Evaluation actions" className="fee-evaluation-commandbar">
+      <p className="fee-evaluation-project-identity" title={previewIdentityLine}>
+        {previewIdentityLine}
+      </p>
+      <div className="fee-evaluation-commandbar-actions">
+        <button
+          className="fee-evaluation-file-button"
+          type="button"
+          onClick={handleGenerateFeeFile}
+          disabled={downloadState.kind === "running"}
+          title={feeFormButtonLabel}
+        >
+          {downloadState.kind === "running" ? "Generating..." : feeFormButtonLabel}
+        </button>
+        {feeFormImportControl}
+      </div>
+    </div>
+  );
 
   function applySavedPricingDraftResult(
     result: FeeEvaluationPricingDraftResponse,
@@ -1257,6 +1306,7 @@ export function FeeEvaluationReviewExportPage({
 
   return (
     <section className="fee-evaluation-page" aria-label="Fee Evaluation review and export">
+      {topBarActionsRoot ? createPortal(feeEvaluationCommandbar, topBarActionsRoot) : null}
       {isLifecycleReadonly ? (
         <div className="fee-evaluation-confirm-error" role="status">
           <strong>{lifecycleReadonlyView.title}</strong>
@@ -1264,19 +1314,8 @@ export function FeeEvaluationReviewExportPage({
         </div>
       ) : null}
       <FeeEvaluationPreviewTable
-        importControl={<FeeFormImportControl key={projectId} projectId={projectId} rows={previewRows}
-          disabled={isLifecycleReadonly || draftState.kind !== "ready" || pricingDraftLoadStatus === "loading" ||
-            pricingDraftLoadStatus === "error" || pricingDraftLoadStatus === "rebase_required" ||
-            confirmFeeActionState.kind === "confirming" || isCancellingPricingSession}
-          onApply={changes => {
-            if (isLifecycleReadonly) return;
-            setPreviewEdits(current => {
-              const next = {...current};
-              changes.forEach(({row, values}) => { next[row.lineId] = {...next[row.lineId], ...values}; });
-              return next;
-            });
-            markPricingDraftDirty();
-          }} />}
+        importControl={topBarActionsRoot ? undefined : feeFormImportControl}
+        showInlineActions={!topBarActionsRoot}
         costPreviewValues={costPreviewValues}
         costRisk={costRisk}
         confirmFeeActionState={confirmFeeActionState}

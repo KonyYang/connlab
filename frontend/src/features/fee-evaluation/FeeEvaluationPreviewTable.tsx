@@ -11,6 +11,7 @@ import { FEE_UNIT_TYPE_OPTIONS } from "./feeEvaluationPreviewModel";
 
 type FeeEvaluationPreviewTableProps = {
   importControl?: ReactNode;
+  showInlineActions?: boolean;
   costPreviewValues: FeeEvaluationCostPreviewValues;
   costRisk: FeeEvaluationCostRisk;
   confirmFeeActionState: ConfirmFeeActionState;
@@ -73,6 +74,7 @@ type ConfirmFeeActionState =
 
 export function FeeEvaluationPreviewTable({
   importControl,
+  showInlineActions = true,
   costPreviewValues,
   costRisk,
   confirmFeeActionState,
@@ -98,33 +100,46 @@ export function FeeEvaluationPreviewTable({
 }: FeeEvaluationPreviewTableProps): ReactElement {
   return (
     <section className="fee-evaluation-preview-surface" aria-label="Testing Prices preview">
-      <header className="fee-evaluation-preview-header">
-        <div>
-          <p className="eyebrow fee-evaluation-preview-title" title={identityLine}>
-            {identityLine}
-          </p>
-        </div>
-        <div className="fee-evaluation-preview-controls">
-          <button
-            className="fee-evaluation-file-button"
-            type="button"
-            onClick={onGenerateFeeFile}
-            disabled={downloadState.kind === "running"}
-            title={feeFormButtonLabel}
-          >
-            {downloadState.kind === "running" ? "Generating..." : feeFormButtonLabel}
-          </button>
-          {importControl}
-        </div>
-        <FeeFileDownloadStatus
-          state={downloadState}
-          notice={draftPreviewNotice}
-        />
-        <FeePricingDraftSaveStatus
-          state={saveState}
-          suppressedMessage={suppressedSaveMessage}
-        />
-      </header>
+      {showInlineActions ? (
+        <header className="fee-evaluation-preview-header">
+          <div>
+            <p className="eyebrow fee-evaluation-preview-title" title={identityLine}>
+              {identityLine}
+            </p>
+          </div>
+          <div className="fee-evaluation-preview-controls">
+            <button
+              className="fee-evaluation-file-button"
+              type="button"
+              onClick={onGenerateFeeFile}
+              disabled={downloadState.kind === "running"}
+              title={feeFormButtonLabel}
+            >
+              {downloadState.kind === "running" ? "Generating..." : feeFormButtonLabel}
+            </button>
+            {importControl}
+          </div>
+          <FeeFileDownloadStatus
+            state={downloadState}
+            notice={draftPreviewNotice}
+          />
+          <FeePricingDraftSaveStatus
+            state={saveState}
+            suppressedMessage={suppressedSaveMessage}
+          />
+        </header>
+      ) : (
+        <>
+          <FeeFileDownloadStatus
+            state={downloadState}
+            notice={draftPreviewNotice}
+          />
+          <FeePricingDraftSaveStatus
+            state={saveState}
+            suppressedMessage={suppressedSaveMessage}
+          />
+        </>
+      )}
 
       {confirmFeeActionState.kind === "error" ? (
         <p className="fee-evaluation-confirm-error" role="alert">
