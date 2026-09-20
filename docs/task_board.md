@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
     "summary": "Keep the Matrix Editor project-context and action card visible while a user scrolls the long Matrix table.",
@@ -26,17 +26,71 @@
     "risk_reasons": [],
     "activation_head": "91483dd581fb7060bba99f4e6ef9a6b47131448e",
     "started_at": "2026-09-20T01:15:36.790500Z",
-    "updated_at": "2026-09-20T05:04:06.942667Z",
+    "updated_at": "2026-09-20T05:13:07.258788Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requested Fee Evaluation project identity and Generate Office Fee Form/Import Fee Form controls move into the fixed page-title row.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
+      "subject": "fe9b5b53e82e9233eb834921820374d55bb2278d",
+      "summary": "Matrix and Fee Evaluation project identities and action controls now share the fixed Workbench title row. Fee form generation and import behavior remain unchanged.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/components/layout/AppShell.tsx",
+        "frontend/src/components/layout/TopBar.test.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.import.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/styles.css",
+        "frontend/src/workbench.css"
+      ],
+      "validation": [
+        {
+          "name": "Fee Evaluation targeted Vitest",
+          "status": "passed",
+          "details": "45 tests passed."
+        },
+        {
+          "name": "Browser fixed-header smoke test",
+          "status": "passed",
+          "details": "Fee identity and actions stayed at the fixed top bar after a 700px content scroll."
+        },
+        {
+          "name": "Vite production build",
+          "status": "passed",
+          "details": "163 modules transformed successfully."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "details": "Moved only the existing identity and Fee form controls into the shared top-bar slot."
+        },
+        "reviewer": {
+          "status": "passed",
+          "details": "Standards and specification review found no findings."
+        },
+        "qa": {
+          "status": "passed",
+          "details": "Focused UI tests, browser smoke test, and production build passed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "details": "The existing AppShell Workbench scroll boundary keeps Fee actions fixed without changing generation or import flows."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_WORKBENCH_FOLDER_ACTION_MIGRATION",
