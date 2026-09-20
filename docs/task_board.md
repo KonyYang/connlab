@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
+    "summary": "Keep the Matrix Editor project-context and action card visible while a user scrolls the long Matrix table.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Frontend Matrix Editor sticky header behavior, responsive layering, and regression coverage. Preserve existing Matrix edit and action behavior.",
+    "scope_paths": [
+      "frontend/src/features/matrix-editor",
+      "frontend/src/workbench.css",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "91483dd581fb7060bba99f4e6ef9a6b47131448e",
+    "started_at": "2026-09-20T01:15:36.790500Z",
+    "updated_at": "2026-09-20T01:15:36.790500Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_WORKBENCH_FOLDER_ACTION_MIGRATION",
     "tier": "standard",
