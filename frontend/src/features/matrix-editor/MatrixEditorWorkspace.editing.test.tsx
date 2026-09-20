@@ -28,6 +28,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     expect(actionBar.className).toContain("matrix-editor-commandbar");
     expect(screen.getByLabelText("Page actions").contains(actionBar)).toBe(true);
     expect(screen.queryByRole("region", { name: "Matrix actions" })).toBeNull();
+    expect(screen.queryByTitle("spec.docx")).toBeNull();
     expect(within(actionBar).getByRole("button", { name: "Import Matrix" })).toBeTruthy();
     expect(within(actionBar).getByRole("button", { name: "Export Matrix" })).toBeTruthy();
     expect(within(actionBar).getByRole("button", { name: "Test record" })).toBeTruthy();
@@ -322,7 +323,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     const identityLine = screen.getByText("LTR-0001 Coolpower HDF 3.40mm pin Qualification Testing");
     expect(identityLine.getAttribute("title")).toBe("LTR-0001 Coolpower HDF 3.40mm pin Qualification Testing");
     expect(screen.queryByText("LTR-0001 | Connector A | EIA-364 Qualification Matrix")).toBeNull();
-    expect(screen.getByText("spec.docx")).toBeTruthy();
+    expect(screen.queryByText("spec.docx")).toBeNull();
     expect(screen.getByRole("button", { name: "Import Matrix" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Test record" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Test Status" })).toBeTruthy();

@@ -889,16 +889,6 @@
   min-width: 0;
 }
 
-.matrix-editor-source-document-name {
-  max-width: min(44vw, 720px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--color-ink-muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
 .matrix-editor-test-record-conflict-backdrop {
   position: fixed;
   inset: 0;

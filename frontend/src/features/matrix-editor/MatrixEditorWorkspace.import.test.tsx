@@ -281,7 +281,7 @@ describe("MatrixEditorWorkspace import flow", () => {
     expect((append as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("keeps the committed source document name when import preview is cancelled", async () => {
+  it("keeps the committed Matrix when import preview is cancelled without exposing source names", async () => {
     apiMocks.previewProjectTestPlanMatrixFromUpload.mockResolvedValueOnce({
       ...buildSessionSeed().source_preview_payload,
       source_document_name: "spec_b.docx",
@@ -302,7 +302,8 @@ describe("MatrixEditorWorkspace import flow", () => {
     });
 
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
-    await screen.findByText("spec.docx");
+    await screen.findByRole("button", { name: "Import Matrix" });
+    expect(screen.queryByText("spec.docx")).toBeNull();
     fireEvent.click(await screen.findByRole("button", { name: "Import Matrix" }));
     const input = document.querySelector("input[type=\"file\"]") as HTMLInputElement;
     fireEvent.change(input, {
@@ -312,10 +313,10 @@ describe("MatrixEditorWorkspace import flow", () => {
     });
 
     await screen.findByRole("button", { name: "Replace" });
-    expect(screen.getByText("spec.docx")).toBeTruthy();
+    expect(screen.queryByText("spec.docx")).toBeNull();
     fireEvent.click(screen.getAllByRole("button", { name: "Cancel" })[0]);
     await waitFor(() => expect(screen.queryByRole("button", { name: "Replace" })).toBeNull());
-    expect(screen.getByText("spec.docx")).toBeTruthy();
+    expect(screen.queryByText("spec.docx")).toBeNull();
     expect(screen.queryByText("spec_b.docx")).toBeNull();
   });
 
@@ -412,7 +413,7 @@ describe("MatrixEditorWorkspace import flow", () => {
     });
     fireEvent.click((await screen.findAllByRole("button", { name: "Replace" }))[0]);
     await waitFor(() => expect(apiMocks.commitMatrixImport).toHaveBeenCalledTimes(1));
-    expect(screen.getByText("spec_b.docx")).toBeTruthy();
+    expect(screen.queryByText("spec_b.docx")).toBeNull();
     expect(screen.getByText("Matrix replaced. 1 Method updated; 2 rows need review.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Selected Groups" })).toBeNull();
   });
@@ -521,7 +522,8 @@ describe("MatrixEditorWorkspace import flow", () => {
 
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
-    expect(await screen.findByText("replacement.docx")).toBeTruthy();
+    await screen.findByRole("button", { name: "Confirm Matrix" });
+    expect(screen.queryByText("replacement.docx")).toBeNull();
     expect((screen.getByLabelText("Row 1 test item") as HTMLInputElement).value).toBe(
       "Imported replacement row"
     );

@@ -282,7 +282,6 @@ export function MatrixEditorWorkspace({
     },
   });
   const {
-    committedSourceDocumentName,
     dialog: importDialog,
     preview: importPreview,
     resetSessionSource: resetImportSessionSource,
@@ -446,8 +445,6 @@ export function MatrixEditorWorkspace({
     latestLtr: model.latestLtr,
     projectId,
   });
-  const currentSourceDocumentName =
-    committedSourceDocumentName || null;
   const { emptyGroupIds, duplicateGroupIds, hasGroupNameError, groupNameErrorMessage } = useMemo(() => {
     const normalizedNameMap = new Map<string, string[]>();
     const emptyGroupIds = new Set<string>();
@@ -1472,11 +1469,6 @@ export function MatrixEditorWorkspace({
         <p className="matrix-editor-project-identity" title={matrixEditorIdentityLine}>
           {matrixEditorIdentityLine}
         </p>
-        {currentSourceDocumentName ? (
-          <span className="matrix-editor-source-document-name" title={currentSourceDocumentName}>
-            {currentSourceDocumentName}
-          </span>
-        ) : null}
       </div>
       <div className="matrix-editor-commandbar-actions">
         <button
