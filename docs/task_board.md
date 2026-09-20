@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_CUSTOMER_REPORT_LONG_PATH_REPAIR",
+    "summary": "Prevent customer-report generation from passing long official project-report paths directly to Microsoft Word by using a short controlled working copy while preserving source-authority checks and publication behavior.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Customer report Word input staging for long official project-folder paths.",
+    "scope_paths": [
+      "backend/infrastructure/office/customer_report_subprocess_runner.py",
+      "tests/unit/test_customer_report_subprocess_runner.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "f13b5defef95e9eb3e2b559aeeab3a124a6f5331",
+    "started_at": "2026-09-20T14:01:56.007171Z",
+    "updated_at": "2026-09-20T14:01:56.007171Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FRONTEND_RELEASE_BUILD_REPAIR",
     "tier": "standard",
