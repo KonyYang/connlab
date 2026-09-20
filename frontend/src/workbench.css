@@ -10096,6 +10096,23 @@
   justify-content: flex-end;
 }
 
+.top-bar-workbench .basic-information-commandbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.top-bar-workbench .basic-information-commandbar-identity {
+  min-width: 0;
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .report-workspace-history .report-workspace-history-actions {
   display: flex;
   flex: 0 0 auto;

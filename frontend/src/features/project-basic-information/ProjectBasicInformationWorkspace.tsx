@@ -1,4 +1,6 @@
 import { useLayoutEffect, useRef, type ReactElement } from "react";
+import { createPortal } from "react-dom";
+import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
 import {
   BASIC_INFORMATION_FIELD_PANELS,
   type BasicInformationFieldConfig,
@@ -23,6 +25,7 @@ export function ProjectBasicInformationWorkspace({
   projectId,
   onBackToWorkbench,
 }: ProjectBasicInformationWorkspaceProps): ReactElement {
+  const topBarActionsRoot = useTopBarActionsRoot();
   const model = useProjectBasicInformationModel({ projectId, onBackToWorkbench });
   const missingLabels = selectCurrentMissingLabels(
     model.values,
@@ -38,9 +41,26 @@ export function ProjectBasicInformationWorkspace({
     missingLabels.length > 0 ||
     dateValidation.messages.length > 0;
   const panelIdentity = model.values.dl_number?.trim() || model.identityLabel;
+  const ltrIdentity = (
+    <section className="basic-information-ltr-card" aria-label="LTR information">
+      <span className="basic-information-panel-identity">{panelIdentity}</span>
+    </section>
+  );
+  const topBarLtrIdentity = (
+    <div className="basic-information-commandbar" aria-label="Basic Information actions">
+      <span
+        className="basic-information-commandbar-identity"
+        aria-label="Basic Information LTR"
+        title={panelIdentity}
+      >
+        {panelIdentity}
+      </span>
+    </div>
+  );
 
   return (
     <section className="basic-information-page" aria-label="Project Basic Information">
+      {topBarActionsRoot ? createPortal(topBarLtrIdentity, topBarActionsRoot) : null}
       {model.loading ? (
         <section className="basic-information-surface" aria-busy="true">
           Loading Basic Information...
@@ -69,9 +89,7 @@ export function ProjectBasicInformationWorkspace({
             </div>
           ) : null}
 
-          <section className="basic-information-ltr-card" aria-label="LTR information">
-            <span className="basic-information-panel-identity">{panelIdentity}</span>
-          </section>
+          {!topBarActionsRoot ? ltrIdentity : null}
 
           <section className="basic-information-panel-grid">
             {BASIC_INFORMATION_FIELD_PANELS.map((panel) => (

@@ -5,6 +5,7 @@ import type {
   ProjectBasicInformationResponse,
   ProjectLifecycleResponse,
 } from "../../api/client";
+import { AppShell } from "../../components/layout/AppShell";
 import { ProjectBasicInformationWorkspace } from "./ProjectBasicInformationWorkspace";
 
 const api = vi.hoisted(() => ({
@@ -37,6 +38,21 @@ describe("ProjectBasicInformationWorkspace", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it("places the LTR identity in the shared Basic Information top bar", async () => {
+    api.getProjectBasicInformation.mockResolvedValue(response());
+
+    render(
+      <AppShell activeRoute="workbench" topBarTitle="Basic Information">
+        <ProjectBasicInformationWorkspace projectId="P1" onBackToWorkbench={vi.fn()} />
+      </AppShell>
+    );
+
+    const identity = await screen.findByLabelText("Basic Information LTR");
+    expect(identity.textContent).toBe("DL-2026-05-011");
+    expect(screen.getByLabelText("Page actions").contains(identity)).toBe(true);
+    expect(screen.queryByRole("region", { name: "LTR information" })).toBeNull();
   });
 
   it("loads draft values, auto-saves edits, and keeps DL number in confirm payload", async () => {
