@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_CUSTOMER_REPORT_LONG_PATH_REPAIR",
     "summary": "Prevent customer-report generation from passing long official project-report paths directly to Microsoft Word by using a short controlled working copy while preserving source-authority checks and publication behavior.",
@@ -25,9 +25,71 @@
     "risk_reasons": [],
     "activation_head": "f13b5defef95e9eb3e2b559aeeab3a124a6f5331",
     "started_at": "2026-09-20T14:01:56.007171Z",
-    "updated_at": "2026-09-20T14:01:56.007171Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-20T14:43:31.369750Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_CUSTOMER_REPORT_LONG_PATH_REPAIR",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_CUSTOMER_REPORT_LONG_PATH_REPAIR",
+      "subject": "41cf0282728569f496160d11bee11f5a8e99f8d2",
+      "summary": "Shortened generated report filenames and reduced the default official project-folder segment limit so report generation stays within traditional Windows/Word path budgets without requiring administrator long-path settings. A new Windows browser release package was built and smoke-checked.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/application/official_project_workspace_naming.py",
+        "backend/application/test_report_draft_service.py",
+        "docs/report_generation_architecture.md",
+        "tests/unit/test_official_project_workspace_naming.py",
+        "tests/unit/test_test_report_draft_service.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "details": "RED/GREEN focused report naming and folder naming tests: 12 passed."
+        },
+        {
+          "status": "passed",
+          "details": "Affected report generation, customer projection, publication, and API suite: 54 passed."
+        },
+        {
+          "status": "passed",
+          "details": "Complete backend non-Office gate: 2956 passed, 7 skipped, 19 deselected."
+        },
+        {
+          "status": "passed",
+          "details": "Complete frontend suite: 645 passed, 1 skipped; production build passed."
+        },
+        {
+          "status": "passed",
+          "details": "Windows browser release package built and smoke-checked on isolated port 8766: ConnLab_Web_202609202239_v0.1.0."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "details": "Reproduced long report names, then applied the minimum filename and folder-budget changes with regression coverage."
+        },
+        "reviewer": {
+          "status": "passed",
+          "details": "Sequential standards and specification review found no actionable defects; documentation was aligned with the new filename contract."
+        },
+        "qa": {
+          "status": "passed",
+          "details": "Focused report suite, complete backend non-Office gate, complete frontend suite, production build, and packaged smoke check passed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "details": "Exact task diff is committed; the new portable browser release package was generated from it."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FRONTEND_RELEASE_BUILD_REPAIR",
