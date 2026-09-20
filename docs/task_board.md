@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_BASIC_INFORMATION_TOPBAR_LTR",
+    "summary": "Move the Basic Information LTR identity into the fixed top bar beside the page title.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Frontend-only layout migration using the established top-bar action context; preserve the existing read-only LTR identity and all form behavior.",
+    "scope_paths": [
+      "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.tsx",
+      "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
+      "frontend/src/workbench.css",
+      "frontend/src/styles.css"
+    ],
+    "risk_reasons": [],
+    "activation_head": "958f012aec5e1ff18607134ef0ced0ec6d35ec96",
+    "started_at": "2026-09-20T09:43:07.946744Z",
+    "updated_at": "2026-09-20T09:43:07.946744Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
     "tier": "standard",
