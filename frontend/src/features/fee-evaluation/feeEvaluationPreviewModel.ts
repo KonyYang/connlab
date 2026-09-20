@@ -94,13 +94,6 @@ export type FeeEvaluationPreviewTotals = {
   confirmationLabel: string;
 };
 
-export type FeeEvaluationPreviewHeader = {
-  ltrNumber: string;
-  testDescription: string;
-  requestor: string;
-  site: string;
-};
-
 export type FeeEvaluationCostRisk = {
   severity: "none" | "loss_warning";
   message: string | null;
@@ -135,18 +128,6 @@ type ExpandedStepRow = FeeEvaluationPreviewRow & {
   sourceLineOrder: number;
   sourceTokenOrder: number;
 };
-
-export function buildFeeEvaluationPreviewHeader(input: {
-  ltrNumber: string | null;
-  requestor: string | null | undefined;
-}): FeeEvaluationPreviewHeader {
-  return {
-    ltrNumber: displayOrPending(input.ltrNumber),
-    testDescription: "Pending",
-    requestor: displayOrPending(input.requestor),
-    site: "Pending",
-  };
-}
 
 export function buildFeeEvaluationPreviewRows(
   draft: FeeEvaluationDraft | null
@@ -791,10 +772,6 @@ function formatDiscount(value: string | null | undefined): string {
   return normalized.length > 0 ? `${normalized}%` : "";
 }
 
-function displayOrPending(value: string | null | undefined): string {
-  const normalized = value?.trim() ?? "";
-  return normalized.length > 0 ? normalized : "Pending";
-}
 
 function editableUnitType(value: string | undefined, fallback: string): string {
   if (value === undefined) {

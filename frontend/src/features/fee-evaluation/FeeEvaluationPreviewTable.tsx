@@ -1,7 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import type {
   FeeEvaluationEditableField,
-  FeeEvaluationPreviewHeader,
   FeeEvaluationPreviewRow,
   FeeEvaluationPreviewTotals,
   FeeEvaluationCostRisk,
@@ -17,7 +16,6 @@ type FeeEvaluationPreviewTableProps = {
   confirmFeeActionState: ConfirmFeeActionState;
   labManpowerCostLabel: string;
   groupFilter: string;
-  header: FeeEvaluationPreviewHeader;
   identityLine: string;
   downloadState: FeeFileDownloadState;
   feeFormButtonLabel: "Download Draft Fee Form" | "Generate Official Fee Form";
@@ -268,25 +266,6 @@ export function FeeEvaluationPreviewTable({
           {costRisk.message}
         </p>
       ) : null}
-
-      <dl className="fee-evaluation-preview-header-band" aria-label="Testing Prices header">
-        <div>
-          <dt>LTR Number</dt>
-          <dd>{header.ltrNumber}</dd>
-        </div>
-        <div>
-          <dt>Test description</dt>
-          <dd>{header.testDescription}</dd>
-        </div>
-        <div>
-          <dt>Requestor</dt>
-          <dd>{header.requestor}</dd>
-        </div>
-        <div>
-          <dt>Site</dt>
-          <dd>{header.site}</dd>
-        </div>
-      </dl>
 
       {rows.length === 0 ? (
         <p className="fee-evaluation-empty">No Matrix fee rows are available for preview.</p>

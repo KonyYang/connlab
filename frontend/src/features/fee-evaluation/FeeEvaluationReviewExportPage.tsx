@@ -44,7 +44,6 @@ import {
   buildFeeEvaluationEditedExportPayload as buildEditedExportPayload,
   buildFeeEvaluationLabManpowerCost,
   buildFeeEvaluationPreviewGrandCost,
-  buildFeeEvaluationPreviewHeader,
   buildFeeEvaluationPreviewRows,
   buildFeeEvaluationPreviewScopeTotal,
   buildFeeEvaluationPreviewTotals,
@@ -517,14 +516,6 @@ export function FeeEvaluationReviewExportPage({
   const allPreviewTotal = useMemo(
     () => buildFeeEvaluationPreviewScopeTotal(previewRows, "all"),
     [previewRows]
-  );
-  const previewHeader = useMemo(
-    () =>
-      buildFeeEvaluationPreviewHeader({
-        ltrNumber: contextState.kind === "ready" ? contextState.ltrNumber : null,
-        requestor: contextState.kind === "ready" ? contextState.project.requestor : null,
-      }),
-    [contextState]
   );
   const previewIdentityLine = useMemo(
     () => buildFeeEvaluationIdentityLine(contextState),
@@ -1322,7 +1313,6 @@ export function FeeEvaluationReviewExportPage({
         labManpowerCostLabel={labManpowerCostLabel}
         groupFilter={previewGroupFilter}
         groupOptions={groupOptions}
-        header={previewHeader}
         identityLine={previewIdentityLine}
         downloadState={downloadState}
         feeFormButtonLabel={feeFormButtonLabel}

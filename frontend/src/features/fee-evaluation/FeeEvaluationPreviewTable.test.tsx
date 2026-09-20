@@ -24,12 +24,6 @@ describe("FeeEvaluationPreviewTable", () => {
         draftPreviewNotice={null}
         groupFilter="all"
         groupOptions={[]}
-        header={{
-          ltrNumber: "DL-2026-001",
-          requestor: "MP Cao",
-          site: "Pending",
-          testDescription: "Pending",
-        }}
         identityLine="DL-2026-001"
         labManpowerCostLabel="0"
         onCostPreviewChange={vi.fn()}

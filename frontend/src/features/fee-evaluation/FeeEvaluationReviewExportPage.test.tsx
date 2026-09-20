@@ -333,13 +333,7 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(within(completionDock).getByRole("button", { name: "Confirm" })).toBeTruthy();
     fireEvent.click(cancelButton);
     expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
-    const headerBand = screen.getByLabelText("Testing Prices header");
-    expect(within(headerBand).getByText("LTR Number")).toBeTruthy();
-    expect(within(headerBand).getByText("DL-2026-001")).toBeTruthy();
-    expect(within(headerBand).getByText("Requestor")).toBeTruthy();
-    expect(within(headerBand).getByText("Lab User")).toBeTruthy();
-    expect(within(headerBand).getByText("Test description")).toBeTruthy();
-    expect(within(headerBand).getAllByText("Pending").length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText("Testing Prices header")).toBeNull();
     for (const column of [
       "Group",
       "Step",

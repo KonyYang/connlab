@@ -4,7 +4,6 @@ import {
   applyFeeEvaluationPreviewEdits,
   buildFeeEvaluationCostRisk,
   buildFeeEvaluationLabManpowerCost,
-  buildFeeEvaluationPreviewHeader,
   buildFeeEvaluationPreviewGrandCost,
   buildFeeEvaluationPreviewRows,
   buildFeeEvaluationPreviewScopeTotal,
@@ -275,20 +274,6 @@ describe("feeEvaluationPreviewModel", () => {
       testFeeTotal: "125.00",
       approvedBy: "Gentle Zeng",
       confirmationLabel: "Pricing confirmed",
-    });
-  });
-
-  it("builds the Testing Prices header from available frontend context", () => {
-    expect(
-      buildFeeEvaluationPreviewHeader({
-        ltrNumber: "DL-2026-001",
-        requestor: "Lab User",
-      })
-    ).toEqual({
-      ltrNumber: "DL-2026-001",
-      testDescription: "Pending",
-      requestor: "Lab User",
-      site: "Pending",
     });
   });
 
