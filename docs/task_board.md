@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_CUSTOMER_REPORT_LONG_PATH_REPAIR",
     "summary": "Prevent customer-report generation from passing long official project-report paths directly to Microsoft Word by using a short controlled working copy while preserving source-authority checks and publication behavior.",
@@ -25,17 +25,76 @@
     "risk_reasons": [],
     "activation_head": "f13b5defef95e9eb3e2b559aeeab3a124a6f5331",
     "started_at": "2026-09-20T14:01:56.007171Z",
-    "updated_at": "2026-09-20T15:03:33.828179Z",
+    "updated_at": "2026-09-20T16:12:41.261792Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_CUSTOMER_REPORT_LONG_PATH_REPAIR",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User: keep descriptive final report names; use a short controlled working copy.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_CUSTOMER_REPORT_LONG_PATH_REPAIR",
+      "subject": "853eac219b34d94c2e4dc49d6a7f9f0fce0ba340",
+      "summary": "Restored descriptive report filenames and moved both initial-report and customer-report Word working copies into short task-owned paths before publishing to the existing full-name targets. A replacement browser release was built and smoke-checked.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/infrastructure/office/customer_report_subprocess_runner.py",
+        "backend/infrastructure/office/test_report_document_gateway.py",
+        "docs/report_generation_architecture.md",
+        "tests/unit/test_customer_report_subprocess_runner.py",
+        "tests/unit/test_test_report_document_gateway.py",
+        "tests/unit/test_test_report_draft_service.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "details": "RED/GREEN customer-report staging and non-overwrite coverage: 8 passed."
+        },
+        {
+          "status": "passed",
+          "details": "RED/GREEN initial-report short working-copy coverage: 1 passed."
+        },
+        {
+          "status": "passed",
+          "details": "Affected draft, publication, and customer-report suites: 77 passed."
+        },
+        {
+          "status": "passed",
+          "details": "Complete backend non-Office gate: 2957 passed, 7 skipped, 19 deselected."
+        },
+        {
+          "status": "passed",
+          "details": "Frontend production build passed. The full suite had one load-time timeout in an unrelated 256-row Contact Measurement test; isolated retry passed 2/2."
+        },
+        {
+          "status": "passed",
+          "details": "Replacement Windows browser release focused tests: 148 passed; packaged smoke check passed on isolated port 8766."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "details": "Restored the required descriptive filename contract and staged both report generation flows outside the long project path."
+        },
+        "reviewer": {
+          "status": "passed",
+          "details": "Sequential standards and specification review of the final exact diff found no actionable defects."
+        },
+        "qa": {
+          "status": "passed",
+          "details": "Focused, affected, complete backend, frontend build, isolated frontend retry, release build, and packaged smoke validation completed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "details": "Final source commit b07c28fd9a3899b3b7f4fec7d8cdc28c63bc0b7d and replacement release ConnLab_Web_202609202356_v0.1.0 contain the accepted strategy."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FRONTEND_RELEASE_BUILD_REPAIR",
