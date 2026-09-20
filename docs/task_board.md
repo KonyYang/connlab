@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_BASIC_INFORMATION_TOPBAR_LTR",
     "summary": "Move the Basic Information LTR identity into the fixed top bar beside the page title.",
@@ -27,9 +27,61 @@
     "risk_reasons": [],
     "activation_head": "958f012aec5e1ff18607134ef0ced0ec6d35ec96",
     "started_at": "2026-09-20T09:43:07.946744Z",
-    "updated_at": "2026-09-20T09:43:07.946744Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-20T09:58:14.848387Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_BASIC_INFORMATION_TOPBAR_LTR",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_BASIC_INFORMATION_TOPBAR_LTR",
+      "subject": "519f4f2e764dc161c5f38acbc36b7c9a686a4438",
+      "summary": "Moved the Basic Information LTR identity into the fixed shared top bar while preserving standalone inline fallback behavior and all form workflows.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
+        "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.tsx",
+        "frontend/src/workbench.css"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "details": "Focused Basic Information workspace suite: 22 tests passed."
+        },
+        {
+          "status": "passed",
+          "details": "Browser smoke confirmed the LTR identity is in the fixed top bar, the inline card is absent, and it remains fixed after scrolling."
+        },
+        {
+          "status": "passed",
+          "details": "Vite production build completed."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "details": "Implemented the top-bar portal with regression coverage and no change to Basic Information persistence or confirmation."
+        },
+        "reviewer": {
+          "status": "passed",
+          "details": "Sequential standards and specification review found no actionable issues."
+        },
+        "qa": {
+          "status": "passed",
+          "details": "Focused tests, browser smoke, and production build passed; the full frontend suite separately retains its existing Report Workspace timing failure."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "details": "Exact three-path task diff is committed and working tree is clean."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
