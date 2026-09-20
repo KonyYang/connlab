@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
     "summary": "Keep the Matrix Editor project-context and action card visible while a user scrolls the long Matrix table.",
@@ -26,9 +26,69 @@
     "risk_reasons": [],
     "activation_head": "91483dd581fb7060bba99f4e6ef9a6b47131448e",
     "started_at": "2026-09-20T01:15:36.790500Z",
-    "updated_at": "2026-09-20T01:15:36.790500Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-20T01:24:01.827777Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
+      "subject": "e0e7c63577f823055bbfcb9806090b8a4da09a7c",
+      "summary": "Pinned the whole Matrix source-and-actions card while preserving every existing action and narrow-screen wrapping. Note: composite TypeScript build has pre-existing Fee-test type blockers outside this scope; Vite production build passed.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/workbench.css"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "name": "Matrix Editor targeted Vitest",
+          "summary": "36 tests passed."
+        },
+        {
+          "status": "passed",
+          "name": "Frontend Vitest suite",
+          "summary": "643 tests passed; 1 existing test skipped."
+        },
+        {
+          "status": "passed",
+          "name": "Browser scroll smoke",
+          "summary": "At 700px scroll the card remained at top: 0, retained all four actions, and had no horizontal overflow."
+        },
+        {
+          "status": "passed",
+          "name": "Vite production build",
+          "summary": "163 modules transformed and production assets generated."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Sequential primary-agent implementation with a red/green regression test."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Sequential standards and specification review found no issues."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Targeted and full frontend tests plus browser smoke passed; Vite build passed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "summary": "The sticky card uses an existing header, remains below existing modal layers, and preserves current action behavior."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_WORKBENCH_FOLDER_ACTION_MIGRATION",
