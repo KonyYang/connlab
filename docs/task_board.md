@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
     "summary": "Keep the Matrix Editor project-context and action card visible while a user scrolls the long Matrix table.",
@@ -26,17 +26,72 @@
     "risk_reasons": [],
     "activation_head": "91483dd581fb7060bba99f4e6ef9a6b47131448e",
     "started_at": "2026-09-20T01:15:36.790500Z",
-    "updated_at": "2026-09-20T01:31:14.480947Z",
+    "updated_at": "2026-09-20T01:39:52.956303Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User feedback: Matrix project information still scrolls out of view; make the complete Matrix action card persist at the top.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
+      "subject": "8e5a8e6c03e8cdd7007abd8131a96579a5c388e4",
+      "summary": "Kept the complete Matrix action card visible during Matrix scrolling and moved Workbench content into a dedicated scroll region so its project context remains fixed above it. Note: the composite TypeScript build retains existing unrelated Fee-test type blockers; Vite production build passed.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/components/layout/AppShell.tsx",
+        "frontend/src/components/layout/TopBar.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/styles.css",
+        "frontend/src/workbench.css"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "name": "Focused layout and Matrix Vitest",
+          "summary": "41 tests passed."
+        },
+        {
+          "status": "passed",
+          "name": "Frontend Vitest suite",
+          "summary": "644 tests passed; 1 existing test skipped."
+        },
+        {
+          "status": "passed",
+          "name": "Workbench and Matrix browser scroll smoke",
+          "summary": "Workbench identity stayed visible; Matrix top bar and action card remained visible after 700px scroll with no horizontal overflow."
+        },
+        {
+          "status": "passed",
+          "name": "Vite production build",
+          "summary": "163 modules transformed and production assets generated."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Sequential primary-agent diagnosis and red/green implementation."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Sequential standards and specification review found no issues."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Focused and full frontend tests plus two-page browser scroll smoke passed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "summary": "Only Workbench routes use the separate content scroll region, preserving the current scroll model everywhere else."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_WORKBENCH_FOLDER_ACTION_MIGRATION",
