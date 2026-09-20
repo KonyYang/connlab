@@ -1465,7 +1465,10 @@ export function MatrixEditorWorkspace({
 
   return (
     <section className="workbench-page matrix-editor-shell matrix-editor-target-shell" onClick={() => setContextMenu(null)}>
-      <section className="matrix-editor-target-header">
+      <section
+        aria-label="Matrix actions"
+        className="matrix-editor-target-header matrix-editor-sticky-actions"
+      >
         <p className="matrix-editor-project-identity matrix-editor-target-title-compact" title={matrixEditorIdentityLine}>
           {matrixEditorIdentityLine}
         </p>

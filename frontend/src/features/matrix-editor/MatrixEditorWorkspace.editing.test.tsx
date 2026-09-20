@@ -16,6 +16,17 @@ import { MatrixEditorWorkspace } from "./MatrixEditorWorkspace";
 installMatrixEditorWorkspaceTestLifecycle();
 
 describe("MatrixEditorWorkspace editing behavior", () => {
+  it("groups the Matrix source and actions in the sticky action card", async () => {
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    const actionCard = await screen.findByLabelText("Matrix actions");
+    expect(actionCard.className).toContain("matrix-editor-sticky-actions");
+    expect(within(actionCard).getByRole("button", { name: "Import Matrix" })).toBeTruthy();
+    expect(within(actionCard).getByRole("button", { name: "Export Matrix" })).toBeTruthy();
+    expect(within(actionCard).getByRole("button", { name: "Test record" })).toBeTruthy();
+    expect(within(actionCard).getByRole("button", { name: "Test Status" })).toBeTruthy();
+  });
+
   it("confirms schedule before Matrix authority even with invalid Matrix edits and no received date", async () => {
     apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({ ...buildSessionSeed(),
       active_confirmed_matrix_id: null, active_confirmed_revision: null });

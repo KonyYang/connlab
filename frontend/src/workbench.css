@@ -777,6 +777,14 @@
   padding: 8px 10px;
 }
 
+.matrix-editor-sticky-actions {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  isolation: isolate;
+  box-shadow: 0 4px 12px rgba(35, 62, 104, 0.12);
+}
+
 .matrix-editor-target-title h2,
 .matrix-editor-target-title p,
 .matrix-editor-target-project strong,
