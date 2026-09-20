@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
     "summary": "Keep the Matrix Editor project-context and action card visible while a user scrolls the long Matrix table.",
@@ -26,72 +26,17 @@
     "risk_reasons": [],
     "activation_head": "91483dd581fb7060bba99f4e6ef9a6b47131448e",
     "started_at": "2026-09-20T01:15:36.790500Z",
-    "updated_at": "2026-09-20T01:56:39.276617Z",
+    "updated_at": "2026-09-20T04:23:18.875591Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User feedback: hide the Matrix source document name from the fixed top bar.",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
-      "subject": "0124cce45e1bafd06d5de815d6fdc3cc1ff4a777",
-      "summary": "Moved Matrix identity, source context, and existing actions into the shared fixed Workbench title bar; retained the separate Workbench content scroll region. Note: the composite TypeScript build retains existing unrelated Fee-test type blockers; Vite production build passed.",
-      "scope_ok": true,
-      "changed_paths": [
-        "frontend/src/components/layout/AppShell.tsx",
-        "frontend/src/components/layout/TopBar.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-        "frontend/src/styles.css",
-        "frontend/src/workbench.css"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "name": "Focused Matrix and top-bar Vitest",
-          "summary": "41 tests passed."
-        },
-        {
-          "status": "passed",
-          "name": "Frontend Vitest suite",
-          "summary": "644 tests passed; 1 existing test skipped."
-        },
-        {
-          "status": "passed",
-          "name": "Matrix browser smoke",
-          "summary": "At 700px width, actions were in the fixed title bar, no legacy main card remained, and all four action labels were visible after 700px scroll."
-        },
-        {
-          "status": "passed",
-          "name": "Vite production build",
-          "summary": "163 modules transformed and production assets generated."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "summary": "Sequential primary-agent red/green migration using the existing top-bar action slot."
-        },
-        "reviewer": {
-          "status": "passed",
-          "summary": "Sequential standards and specification review found no issues."
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Focused and full frontend tests plus browser smoke passed."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "summary": "The Matrix page now shares the same fixed Workbench title-bar action mechanism as the project Workbench."
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_WORKBENCH_FOLDER_ACTION_MIGRATION",
