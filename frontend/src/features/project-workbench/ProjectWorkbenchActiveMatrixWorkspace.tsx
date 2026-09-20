@@ -8,7 +8,10 @@ import type {
   ProjectFolderTaskActionTarget,
   ProjectFolderTaskRow,
 } from "./projectFolderTaskSelectors";
-import { ProjectFolderActionsSurface } from "./ProjectFolderTaskList";
+import {
+  ProjectFolderActionsSurface,
+  type ProjectFolderHeaderAction,
+} from "./ProjectFolderTaskList";
 import { ProjectFileEncryptionAction } from "./ProjectFileEncryptionAction";
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 
@@ -20,6 +23,7 @@ type ProjectWorkbenchActiveMatrixWorkspaceProps = {
   onProjectFolderTaskCancel: (operation: PublicFolderWorkflowOperationType) => void;
   onPublicFolderAutoSyncChange: (enabled: boolean) => void;
   projectFolderTasks: ProjectFolderTaskRow[];
+  projectFolderHeaderAction: ProjectFolderHeaderAction;
   projectId: string;
   registeredLtrNumber: string | null;
   basicInformation: ProjectRuntimeConsoleModel["basicInformation"];
@@ -39,6 +43,7 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
   onProjectFolderTaskCancel,
   onPublicFolderAutoSyncChange,
   projectFolderTasks,
+  projectFolderHeaderAction,
   projectId,
   registeredLtrNumber,
   basicInformation,
@@ -69,6 +74,7 @@ export function ProjectWorkbenchActiveMatrixWorkspace({
             <>
               <ProjectFolderActionsSurface
                 tasks={visibleProjectFolderTasks}
+                headerAction={projectFolderHeaderAction}
                 onTaskAction={onProjectFolderTaskAction}
                 onTaskConfirm={onProjectFolderTaskConfirm}
                 onTaskCancel={onProjectFolderTaskCancel}
@@ -123,56 +129,42 @@ export function deriveActiveMatrixFolderCommand({
   activeMatrixAuthorityReady,
   confirmedFeeLatest,
   creatingFolder,
-  effectiveFolderReady,
-  officialWorkspaceStatus,
   projectFolderBlocker,
 }: {
   activeMatrixAuthorityReady: boolean;
   confirmedFeeLatest: ProjectRuntimeConsoleModel["confirmedFeeLatest"];
   creatingFolder: boolean;
-  effectiveFolderReady: boolean;
-  officialWorkspaceStatus: NonNullable<ProjectRuntimeConsoleModel["officialWorkspacePreview"]>["status"] | null | undefined;
   projectFolderBlocker?: string | null;
 }): {
   disabled: boolean;
   disabledReason?: string;
-  label: string;
 } {
   const hasCurrentFeeAuthority = confirmedFeeLatest?.status === "current";
-  const label =
-    effectiveFolderReady || officialWorkspaceStatus === "completed"
-      ? "Update project folder"
-      : "Create project folder";
   if (creatingFolder) {
     return {
       disabled: true,
       disabledReason: "Generating project folder...",
-      label: "Generating...",
     };
   }
   if (!activeMatrixAuthorityReady) {
     return {
       disabled: true,
       disabledReason: "Confirm Matrix before generating the project folder.",
-      label,
     };
   }
   if (!hasCurrentFeeAuthority) {
     return {
       disabled: true,
       disabledReason: "Update Fee before generating the project folder.",
-      label,
     };
   }
   if (projectFolderBlocker) {
     return {
       disabled: true,
       disabledReason: projectFolderBlocker,
-      label,
     };
   }
   return {
     disabled: false,
-    label,
   };
 }

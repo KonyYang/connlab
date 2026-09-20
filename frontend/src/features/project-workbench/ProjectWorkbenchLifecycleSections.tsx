@@ -18,6 +18,7 @@ import type {
 import {
   ProjectFolderActionsSurface,
   ProjectFolderTaskList,
+  type ProjectFolderHeaderAction,
 } from "./ProjectFolderTaskList";
 import type {
   ProjectFolderTaskActionTarget,
@@ -432,6 +433,7 @@ export function RegisteredSetupMode({
 
 export function NoMatrixWorkspaceEmptyState({
   projectFolderTasks,
+  projectFolderHeaderAction,
   matrixDraft,
   onProjectFolderTaskAction,
   onProjectFolderTaskConfirm,
@@ -440,6 +442,7 @@ export function NoMatrixWorkspaceEmptyState({
   readonlyReason,
 }: {
   projectFolderTasks: ProjectFolderTaskRow[];
+  projectFolderHeaderAction: ProjectFolderHeaderAction;
   matrixDraft: ProjectTestPlanDraft | null;
   onProjectFolderTaskAction?: (actionTarget: ProjectFolderTaskActionTarget) => void;
   onProjectFolderTaskConfirm?: (operation: PublicFolderWorkflowOperationType) => void;
@@ -551,6 +554,7 @@ export function NoMatrixWorkspaceEmptyState({
         </aside>
         <ProjectFolderActionsSurface
           tasks={projectFolderTasks}
+          headerAction={projectFolderHeaderAction}
           onTaskAction={onProjectFolderTaskAction}
           onTaskConfirm={onProjectFolderTaskConfirm}
           onTaskCancel={onProjectFolderTaskCancel}

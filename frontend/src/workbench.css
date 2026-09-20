@@ -3945,6 +3945,30 @@
   margin: 0;
 }
 
+.runtime-console-folder-header-action {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: var(--color-on-primary, #fff);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.runtime-console-folder-header-action:hover:not(:disabled),
+.runtime-console-folder-header-action:focus-visible {
+  background: var(--color-primary-strong);
+}
+
+.runtime-console-folder-header-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .runtime-console-folder-actions .eyebrow,
 .runtime-console-step-workspace .eyebrow {
   letter-spacing: 0;
@@ -4168,18 +4192,6 @@
   padding-top: 2px;
 }
 
-.runtime-console-folder-operation-controls .runtime-console-folder-primary-action {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: var(--color-on-primary, #fff);
-  white-space: normal;
-}
-
-.runtime-console-folder-operation-controls .runtime-console-folder-primary-action:hover:not(:disabled),
-.runtime-console-folder-operation-controls .runtime-console-folder-primary-action:focus-visible {
-  background: var(--color-primary-strong);
-}
-
 @media (max-width: 760px) {
   .runtime-console-folder-operation {
     grid-template-columns: auto minmax(0, 1fr);
@@ -4188,10 +4200,6 @@
   .runtime-console-folder-operation-controls {
     grid-column: 2;
     justify-content: flex-start;
-  }
-
-  .runtime-console-folder-operation-controls .runtime-console-folder-primary-action {
-    width: 100%;
   }
 }
 

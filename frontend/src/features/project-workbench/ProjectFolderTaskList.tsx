@@ -12,6 +12,13 @@ import type {
   ProjectFolderTaskRow,
 } from "./projectFolderTaskSelectors";
 
+export type ProjectFolderHeaderAction = {
+  label: string;
+  disabled: boolean;
+  title?: string;
+  onClick: () => void;
+};
+
 export function ProjectFolderTaskList({
   tasks,
   onTaskAction,
@@ -50,6 +57,7 @@ export function ProjectFolderTaskList({
 
 export function ProjectFolderActionsSurface({
   tasks,
+  headerAction,
   onTaskAction,
   onTaskConfirm,
   onTaskCancel,
@@ -58,6 +66,7 @@ export function ProjectFolderActionsSurface({
   footerAction,
 }: {
   tasks: ProjectFolderTaskRow[];
+  headerAction?: ProjectFolderHeaderAction;
   onTaskAction?: (actionTarget: ProjectFolderTaskActionTarget) => void;
   onTaskConfirm?: (operation: PublicFolderWorkflowOperationType) => void;
   onTaskCancel?: (operation: PublicFolderWorkflowOperationType) => void;
@@ -70,6 +79,17 @@ export function ProjectFolderActionsSurface({
     <section className="runtime-console-folder-actions" aria-label="Folder Actions">
       <header className="runtime-console-folder-actions-header">
         <p className="eyebrow">Folder Actions</p>
+        {headerAction ? (
+          <button
+            className="runtime-console-folder-header-action is-primary"
+            type="button"
+            disabled={headerAction.disabled}
+            title={headerAction.title}
+            onClick={headerAction.onClick}
+          >
+            {headerAction.label}
+          </button>
+        ) : null}
       </header>
       <div className="runtime-console-folder-operation-list">
         {tasks.map((task) => (
@@ -107,7 +127,6 @@ function FolderOperation({
   onAutoSyncChange?: (enabled: boolean) => void;
   readonlyReason?: string;
 }): ReactElement {
-  const isFolderCommand = task.key === "project_folder_create";
   const readonlyBlocksAction = Boolean(
     readonlyReason && task.actionTarget !== "project_folder_open"
   );
@@ -121,7 +140,7 @@ function FolderOperation({
 
   return (
     <article className="runtime-console-folder-operation">
-      {task.actionLabel && !isFolderCommand ? (
+      {task.actionLabel ? (
         <button
           className="runtime-console-folder-operation-icon runtime-console-folder-operation-icon-button"
           type="button"
@@ -166,17 +185,6 @@ function FolderOperation({
         ) : null}
       </div>
       <div className="runtime-console-folder-operation-controls">
-        {isFolderCommand && task.actionLabel ? (
-          <button
-            className="runtime-console-folder-primary-action is-primary"
-            type="button"
-            disabled={disabled}
-            title={blocker ?? undefined}
-            onClick={activateTaskAction}
-          >
-            {task.actionLabel}
-          </button>
-        ) : null}
         {task.confirming && task.operation ? (
           <div className="runtime-console-folder-operation-confirmation">
             <button

@@ -22,7 +22,6 @@ import {
 } from "./ProjectWorkbenchLifecycleSections";
 import type { MatrixProjectionTokenCell } from "./projectWorkbenchMatrixProjectionSelectors";
 import {
-  attachProjectFolderCommandTask,
   deriveProjectFolderTasks,
   selectProjectFolderOneClickBlocker,
   type ProjectFolderTaskActionTarget,
@@ -237,8 +236,6 @@ export function ProjectWorkbenchLayout({
     activeMatrixAuthorityReady,
     confirmedFeeLatest,
     creatingFolder: officialWorkspaceCreating,
-    effectiveFolderReady,
-    officialWorkspaceStatus: officialWorkspacePreview?.status,
     projectFolderBlocker:
       officialWorkspacePreview?.blockers?.find((blocker) =>
         blocker.includes("Basic Information")
@@ -289,25 +286,20 @@ export function ProjectWorkbenchLayout({
   const visibleWorkbenchFolderCommand = isActiveMatrixWorkspace && Boolean(projectNumber)
     ? visibleActiveMatrixFolderCommand
     : {
-        label:
-          effectiveFolderReady || officialWorkspacePreview?.status === "completed"
-            ? "Update project folder"
-            : "Create project folder",
         disabled: true,
         disabledReason: !projectNumber
           ? "LTR registration is required before project folder outputs can be prepared."
           : "Active Matrix authority is required before project folder outputs can be prepared.",
       };
-  const projectFolderTasks = attachProjectFolderCommandTask(
-    projectFolderWorkflowTasks,
-    checkingRecoveryPreview
-      ? {
-          label: visibleWorkbenchFolderCommand.label,
-          disabled: true,
-          disabledReason: "Checking project folder generation status...",
-        }
-      : visibleWorkbenchFolderCommand
-  );
+  const projectFolderTasks = projectFolderWorkflowTasks;
+  const projectFolderHeaderAction = {
+    label: "Create folder",
+    disabled: checkingRecoveryPreview || visibleWorkbenchFolderCommand.disabled,
+    title: checkingRecoveryPreview
+      ? "Checking project folder generation status..."
+      : visibleWorkbenchFolderCommand.disabledReason,
+    onClick: handleProjectFolderCreateClick,
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -576,6 +568,7 @@ export function ProjectWorkbenchLayout({
                 void onSetPublicFolderWorkflowAutoSync(enabled)
               }
               projectFolderTasks={projectFolderTasks}
+              projectFolderHeaderAction={projectFolderHeaderAction}
               projectId={project.project_id}
               registeredLtrNumber={projectNumber}
               runtimeProjectionSnapshot={runtimeProjectionSnapshot}
@@ -607,6 +600,7 @@ export function ProjectWorkbenchLayout({
           <>
             <NoMatrixWorkspaceEmptyState
               projectFolderTasks={projectFolderTasks}
+              projectFolderHeaderAction={projectFolderHeaderAction}
               matrixDraft={matrixCandidateDraft ?? matrixDraft ?? null}
               onProjectFolderTaskAction={handleProjectFolderTaskAction}
               onProjectFolderTaskConfirm={handleProjectFolderTaskConfirm}

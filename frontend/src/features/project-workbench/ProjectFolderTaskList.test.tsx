@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ProjectFolderActionsSurface, ProjectFolderTaskList } from "./ProjectFolderTaskList";
@@ -9,37 +9,32 @@ import type {
 } from "./projectFolderTaskSelectors";
 
 describe("ProjectFolderTaskList", () => {
-  it("renders folder generation as the visible primary action and routes it", async () => {
+  it("renders the fixed folder command in the Folder Actions header and routes it", async () => {
     const user = userEvent.setup();
-    const onTaskAction = vi.fn();
+    const onCreateFolder = vi.fn();
     render(
       <ProjectFolderActionsSurface
-        tasks={[
-          {
-            key: "project_folder_create",
-            title: "Project folder output",
-            iconName: "folder",
-            statusLabel: "Create",
-            status: "neutral",
-            summary: "Create or update the managed project folder.",
-            context: "Uses the approved project template.",
-            actionLabel: "Create project folder",
-            actionTarget: "folder",
-            blockers: [],
-            warnings: [],
-          },
-        ]}
-        onTaskAction={onTaskAction}
+        tasks={tasks}
+        headerAction={{
+          label: "Create folder",
+          disabled: false,
+          onClick: onCreateFolder,
+        }}
       />
     );
 
-    const button = screen.getByRole("button", { name: "Create project folder" });
-    expect(button.textContent).toBe("Create project folder");
-    expect(button.className).toContain("is-primary");
+    const surface = screen.getByRole("region", { name: "Folder Actions" });
+    const header = surface.querySelector("header");
+    expect(header).toBeTruthy();
+    expect(within(header as HTMLElement).getByText("Folder Actions")).toBeTruthy();
+    const button = within(header as HTMLElement).getByRole("button", {
+      name: "Create folder",
+    });
 
     await user.click(button);
 
-    expect(onTaskAction).toHaveBeenCalledWith("folder");
+    expect(onCreateFolder).toHaveBeenCalledTimes(1);
+    expect(surface.querySelectorAll(".runtime-console-folder-operation")).toHaveLength(4);
   });
 
   it("renders the quiet four-operation Folder Actions surface", () => {

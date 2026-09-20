@@ -11,7 +11,6 @@ import type { WorkbenchVersionStatus } from "./projectWorkbenchVersionSelectors"
 import type { ProjectRuntimeConsoleModel } from "./useProjectRuntimeConsoleModel";
 
 export type ProjectFolderTaskKey =
-  | "project_folder_create"
   | "project_folder"
   | "public_working_copy"
   | "approval_package"
@@ -99,12 +98,6 @@ export type ProjectFolderTaskSelectorInput = {
   lifecycleReadonlyReason?: string | null;
 };
 
-export type ProjectFolderCommand = {
-  label: string;
-  disabled: boolean;
-  disabledReason?: string;
-};
-
 export function deriveProjectFolderTasks(
   input: ProjectFolderTaskSelectorInput
 ): ProjectFolderTaskRow[] {
@@ -137,31 +130,6 @@ export function deriveProjectFolderTasks(
     deriveWorkflowTask(input, contextBlocker, projectFolderUnavailableBlocker, "sync"),
     deriveWorkflowTask(input, contextBlocker, projectFolderUnavailableBlocker, "submit"),
     deriveWorkflowTask(input, contextBlocker, projectFolderUnavailableBlocker, "pull"),
-  ];
-}
-
-export function attachProjectFolderCommandTask(
-  tasks: ProjectFolderTaskRow[],
-  command: ProjectFolderCommand
-): ProjectFolderTaskRow[] {
-  const blocker = command.disabled
-    ? command.disabledReason ?? "Project folder action is unavailable."
-    : null;
-  return [
-    {
-      key: "project_folder_create",
-      title: "Project folder output",
-      iconName: "folder",
-      statusLabel: command.label.startsWith("Update") ? "Update" : "Create",
-      status: blocker ? "blocked" : "neutral",
-      summary: "Create or update the managed project folder from the approved template.",
-      context: "Existing managed files are reviewed before an update is applied.",
-      actionLabel: command.label,
-      actionTarget: blocker ? null : "folder",
-      blockers: blocker ? [blocker] : [],
-      warnings: [],
-    },
-    ...tasks,
   ];
 }
 

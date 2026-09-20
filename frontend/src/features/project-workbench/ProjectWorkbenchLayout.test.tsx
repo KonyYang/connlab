@@ -68,7 +68,7 @@ vi.mock("../../api/client", () => ({
 function getProjectFolderCommandButton(): HTMLButtonElement {
   const folderActions = screen.getByLabelText("Folder Actions");
   return within(folderActions).getByRole("button", {
-    name: /^(Create|Update) project folder$|^Generating\.\.\.$/,
+    name: "Create folder",
   }) as HTMLButtonElement;
 }
 
@@ -486,7 +486,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("button", { name: "Folder ready" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Generate folder" })).toBeNull();
     expect(actionBar.textContent).not.toContain("project folder");
-    expect(getProjectFolderCommandButton().textContent).toBe("Update project folder");
+    expect(getProjectFolderCommandButton().textContent).toBe("Create folder");
     expect(screen.queryByText("Matrix confirmed")).toBeNull();
     expect(screen.queryByText("Fee confirmed")).toBeNull();
     expect(screen.queryByText("Folder generated")).toBeNull();
@@ -813,7 +813,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByRole("region", { name: "Test Execution Workspace" })).toBeTruthy();
     expect(screen.getByLabelText("Folder Actions").textContent).toContain("Project folder");
     expect(container.querySelector(".runtime-console-folder-operation-list")).toBeTruthy();
-    expect(container.querySelectorAll(".runtime-console-folder-operation")).toHaveLength(5);
+    expect(container.querySelectorAll(".runtime-console-folder-operation")).toHaveLength(4);
     expect(screen.queryByText("Project package panel")).toBeNull();
     expect(screen.getByText("Matrix projection panel")).toBeTruthy();
     expect(screen.getByLabelText("Step workspace")).toBeTruthy();
@@ -1379,7 +1379,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     const user = userEvent.setup();
     const update = vi.fn().mockResolvedValue(undefined);
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true, onUpdateOfficialWorkspace: update });
-    expect(getProjectFolderCommandButton().textContent).toBe("Update project folder");
+    expect(getProjectFolderCommandButton().textContent).toBe("Create folder");
     await user.click(getProjectFolderCommandButton());
     expect(update).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -1504,7 +1504,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(dialog.textContent).not.toContain("Keep this page open until the operation finishes.");
     expect(dialog.textContent).not.toContain("Updating Customer Feedback Form");
     expect(dialog.textContent).not.toContain("Updating Fee Form");
-    expect(screen.getByRole("button", { name: "Generating..." })).toHaveProperty(
+    expect(screen.getByRole("button", { name: "Create folder" })).toHaveProperty(
       "disabled",
       true
     );
