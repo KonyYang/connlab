@@ -11,95 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
-    "summary": "Keep the Matrix Editor project-context and action card visible while a user scrolls the long Matrix table.",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Frontend Matrix Editor sticky header behavior, responsive layering, and regression coverage. Preserve existing Matrix edit and action behavior.",
-    "scope_paths": [
-      "frontend/src/features/matrix-editor",
-      "frontend/src/workbench.css",
-      "docs/task_board.md"
-    ],
-    "risk_reasons": [],
-    "activation_head": "91483dd581fb7060bba99f4e6ef9a6b47131448e",
-    "started_at": "2026-09-20T01:15:36.790500Z",
-    "updated_at": "2026-09-20T05:35:01.372645Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
-      "subject": "30b925f4cd2de828365da82b47a7f185766a3456",
-      "summary": "Removed the display-only Fee Evaluation metadata panel; Fee Form identity remains populated independently from confirmed Basic Information.",
-      "scope_ok": true,
-      "changed_paths": [
-        "frontend/src/components/layout/AppShell.tsx",
-        "frontend/src/components/layout/TopBar.test.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.test.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
-        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.test.ts",
-        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.import.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-        "frontend/src/styles.css",
-        "frontend/src/workbench.css"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "details": "Focused Fee Evaluation suite: 83 tests passed."
-        },
-        {
-          "status": "passed",
-          "details": "Browser smoke confirmed the metadata card is absent and Fee Evaluation actions remain in the fixed top bar."
-        },
-        {
-          "status": "passed",
-          "details": "Vite production build completed."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "details": "Implemented the requested display-only metadata removal without changing Fee Form generation."
-        },
-        "reviewer": {
-          "status": "passed",
-          "details": "Standards and specification review found no actionable issues."
-        },
-        "qa": {
-          "status": "passed",
-          "details": "Focused tests, browser smoke, and production build passed."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "details": "Fee Form identity remains sourced from confirmed Basic Information independently of the removed display panel."
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_WORKBENCH_FOLDER_ACTION_MIGRATION",
+    "task_id": "TASK_MATRIX_EDITOR_STICKY_ACTION_HEADER",
     "tier": "standard",
-    "subject": "eb48ff598fabe73f85d70d4bdeb4d46824319772",
-    "summary": "Move project folder create and update control from the Workbench top bar into Folder Actions with correct labels, primary weight, lifecycle reachability, and narrow-width coverage.",
+    "subject": "30b925f4cd2de828365da82b47a7f185766a3456",
+    "summary": "Keep the Matrix Editor project-context and action card visible while a user scrolls the long Matrix table.",
     "disposition": "completed",
-    "decision_ref": "User requested closure before starting the Matrix Editor sticky action-card task.",
-    "closed_at": "2026-09-20T01:14:35.302812Z"
+    "decision_ref": "User requested: 关闭任务",
+    "closed_at": "2026-09-20T09:36:39.104835Z"
   },
   "retained_history": [
     {
