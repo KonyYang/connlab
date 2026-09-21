@@ -191,10 +191,13 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
                 "expected_context": blocked_preview["expected_context"],
                 "request_id": "locked-output-restart"})
             assert rejected.status_code == 409
-            assert "Cannot verify" in rejected.json()["detail"]
+            assert (
+                "Test Record: Cannot read Test Record; check file access or locks: "
+                "Isolated output lock"
+            ) in rejected.json()["detail"]
         blocked_items = {item["key"]: item for item in blocked_preview["workspace_preview"]["file_preflight"]["items"]}
-        assert blocked_items["test_record"]["status"] == "ready"
-        assert blocked_items["test_status"]["status"] == "ready"
+        assert blocked_items["test_record"]["status"] == "blocked"
+        assert blocked_items["test_status"]["status"] == "current"
         assert blocked_preview["start_blockers"]
         assert blocked_preview["workspace_preview"]["file_preflight"]["package_ready"] is False
         confirmed_schedule = _ok(client.get("/api/projects/P1/project-schedule"))["confirmed_revision"]
@@ -221,15 +224,18 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
         fee_target = next(path for path in files if "Fee Form" in path.name)
         fee_target.write_bytes(b"operator changes must be retained")
         conflict = _ok(client.get(url + "/preview"))
-        assert conflict["start_blockers"] == []
+        assert conflict["start_blockers"] == [
+            "Fee Form: Target was changed outside ConnLab."
+        ]
         rejected = client.post(url + "/start", json={
             "expected_context": conflict["expected_context"], "request_id": "conflicting-update"})
         assert rejected.status_code == 409
-        assert "rebuild option" in rejected.json()["detail"]
+        assert rejected.json()["detail"] == "Fee Form: Target was changed outside ConnLab."
         assert not callbacks
         assert fee_target.read_bytes() == b"operator changes must be retained"
+        rebuild_preview = _ok(client.get(url + "/preview?intent=backup_rebuild"))
         rebuilt = _ok(client.post(url + "/start", json={
-            "expected_context": conflict["expected_context"], "request_id": "backup-rebuild",
+            "expected_context": rebuild_preview["expected_context"], "request_id": "backup-rebuild",
             "conflict_strategy": "backup_and_recreate"}))
         callbacks.pop()()
         result = _ok(client.get(url))
@@ -241,15 +247,13 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
         assert len(history) == 1
         assert (history[0] / fee_target.name).read_bytes() == b"operator changes must be retained"
         fee_target.write_bytes(b"explicitly discarded output")
-        overwrite_preview = _ok(client.get(url + "/preview"))
-        overwrite = _ok(client.post(url + "/start", json={
+        overwrite_preview = _ok(client.get(url + "/preview?intent=backup_rebuild"))
+        overwrite = client.post(url + "/start", json={
             "expected_context": overwrite_preview["expected_context"], "request_id": "delete-rebuild",
-            "conflict_strategy": "overwrite_rebuild", "overwrite_confirmed": True}))
-        callbacks.pop()()
-        result = _ok(client.get(url))
-        assert result["status"] == "completed", result
-        assert result["operation_id"] == overwrite["operation_id"]
-        assert fee_target.read_bytes() != b"explicitly discarded output"
+            "conflict_strategy": "overwrite_rebuild", "overwrite_confirmed": True})
+        assert overwrite.status_code == 422
+        assert not callbacks
+        assert fee_target.read_bytes() == b"explicitly discarded output"
         assert not list(settings.data_dir.rglob("overwrite-old"))
         assert [path for path in workspace.official_folder_path.parent.iterdir()
                 if path.is_dir() and path.name.startswith(workspace.official_folder_path.name + " ")] == history
