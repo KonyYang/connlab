@@ -11,138 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_PROJECT_FOLDER_DATA_PROTECTION_ADOPTION",
-    "summary": "Protect existing project folders by separating identity-only adoption and healthy-folder opening from explicit backup rebuild operations, including portable cross-PC rebinding without modifying business files.",
-    "tier": "high_risk",
-    "route": "full_chain",
-    "scope": "Implement identity-only existing-folder adoption, portable same-project rebinding, non-hashing normal preview, safe UI actions, and backup-only advanced rebuild while preserving historical journal recovery compatibility.",
-    "scope_paths": [
-      "backend/api/project_folder_generation_composition.py",
-      "backend/api/routes_official_project_workspace.py",
-      "backend/api/routes_project_folder_generation.py",
-      "backend/application/official_project_workspace_service.py",
-      "backend/application/project_folder_generation_service.py",
-      "backend/infrastructure/official_workspace_manifest.py",
-      "docs/PROJECT_CONTEXT.md",
-      "frontend/src/api/client.ts",
-      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-      "frontend/src/features/project-workbench/useProjectFolderGeneration.test.tsx",
-      "frontend/src/features/project-workbench/useProjectFolderGeneration.ts",
-      "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx",
-      "frontend/src/features/report-workspace/useCustomerReportJob.ts",
-      "tests/integration/test_generation_workspace_process_recovery.py",
-      "tests/integration/test_official_project_workspace_api.py",
-      "tests/integration/test_project_folder_generation_api.py",
-      "tests/integration/test_project_folder_generation_complete_chain.py",
-      "tests/unit/test_generation_workspace_recovery.py",
-      "tests/unit/test_official_project_workspace_service.py",
-      "tests/unit/test_project_folder_generation_service.py"
-    ],
-    "risk_reasons": [
-      "authoritative external filesystem mutation",
-      "cross-PC project identity recovery",
-      "destructive rebuild entry separation",
-      "broad backend and frontend workflow change"
-    ],
-    "activation_head": "5426711281450466fc1ca25cea861f0d177e5dce",
-    "started_at": "2026-09-21T14:27:11.502060Z",
-    "updated_at": "2026-09-21T23:56:35.950962Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_PROJECT_FOLDER_DATA_PROTECTION_ADOPTION",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "task_id": "TASK_PROJECT_FOLDER_DATA_PROTECTION_ADOPTION",
-      "summary": "Existing project folders can be safely opened or identity-only adopted without touching business files; explicit rebuild is backup-only, portable rebinding is controlled, and recovered customer-report progress restores its authoritative elapsed time atomically.",
-      "roles": {
-        "planner": {
-          "status": "passed",
-          "summary": "Independent high-risk safety plan completed."
-        },
-        "reviewer": {
-          "status": "passed",
-          "summary": "Independent standards and spec review passed; 21-path scope exact."
-        },
-        "integrator": {
-          "status": "passed",
-          "summary": "Clean exact subject, scope, review, and QA evidence reconciled."
-        },
-        "developer": {
-          "status": "passed",
-          "summary": "Implementation completed with targeted regression validation."
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Independent Python, frontend, and build validation passed."
-        }
-      },
-      "changed_paths": [
-        "backend/api/project_folder_generation_composition.py",
-        "backend/api/routes_official_project_workspace.py",
-        "backend/api/routes_project_folder_generation.py",
-        "backend/application/official_project_workspace_service.py",
-        "backend/application/project_folder_generation_service.py",
-        "backend/infrastructure/official_workspace_manifest.py",
-        "docs/PROJECT_CONTEXT.md",
-        "frontend/src/api/client.ts",
-        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-        "frontend/src/features/project-workbench/useProjectFolderGeneration.test.tsx",
-        "frontend/src/features/project-workbench/useProjectFolderGeneration.ts",
-        "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx",
-        "frontend/src/features/report-workspace/useCustomerReportJob.ts",
-        "tests/integration/test_generation_workspace_process_recovery.py",
-        "tests/integration/test_official_project_workspace_api.py",
-        "tests/integration/test_project_folder_generation_api.py",
-        "tests/integration/test_project_folder_generation_complete_chain.py",
-        "tests/unit/test_generation_workspace_recovery.py",
-        "tests/unit/test_official_project_workspace_service.py",
-        "tests/unit/test_project_folder_generation_service.py"
-      ],
-      "subject": "c5bbe88c82d247773a2aaba9783b0c4ea7aab0dd",
-      "integration": {
-        "summary": "No real project folder was touched; exact committed diff is integration-ready.",
-        "status": "passed",
-        "mode": "verified_local"
-      },
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "scope_ok": true,
-      "validation": [
-        {
-          "summary": "2983 passed, 7 skipped, 19 deselected",
-          "name": "python-full",
-          "status": "passed"
-        },
-        {
-          "summary": "647 passed, 1 skipped",
-          "name": "frontend-full",
-          "status": "passed"
-        },
-        {
-          "summary": "TypeScript and Vite production build passed",
-          "name": "frontend-build",
-          "status": "passed"
-        }
-      ]
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_CUSTOMER_REPORT_LONG_PATH_REPAIR",
-    "tier": "standard",
-    "subject": "25b68d6d363df5b98b7d31946ba4a311810f07ae",
-    "summary": "Prevent customer-report generation from passing long official project-report paths directly to Microsoft Word by using a short controlled working copy while preserving source-authority checks and publication behavior.",
+    "task_id": "TASK_PROJECT_FOLDER_DATA_PROTECTION_ADOPTION",
+    "tier": "high_risk",
+    "subject": "c5bbe88c82d247773a2aaba9783b0c4ea7aab0dd",
+    "summary": "Protect existing project folders by separating identity-only adoption and healthy-folder opening from explicit backup rebuild operations, including portable cross-PC rebinding without modifying business files.",
     "disposition": "completed",
-    "decision_ref": "user-close-2026-09-21",
-    "closed_at": "2026-09-21T11:22:49.206818Z"
+    "decision_ref": "user-close-2026-09-22",
+    "closed_at": "2026-09-21T23:58:33.839550Z"
   },
   "retained_history": [
     {
