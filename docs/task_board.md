@@ -32,6 +32,7 @@
       "frontend/src/features/project-workbench/useProjectFolderGeneration.test.tsx",
       "frontend/src/features/project-workbench/useProjectFolderGeneration.ts",
       "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx",
+      "frontend/src/features/report-workspace/useCustomerReportJob.ts",
       "tests/integration/test_generation_workspace_process_recovery.py",
       "tests/integration/test_official_project_workspace_api.py",
       "tests/integration/test_project_folder_generation_api.py",
@@ -48,14 +49,14 @@
     ],
     "activation_head": "5426711281450466fc1ca25cea861f0d177e5dce",
     "started_at": "2026-09-21T14:27:11.502060Z",
-    "updated_at": "2026-09-21T23:33:39.230034Z",
+    "updated_at": "2026-09-21T23:48:53.638766Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_PROJECT_FOLDER_DATA_PROTECTION_ADOPTION",
       "stage": "scope_manifest_correction",
       "status": "running",
-      "summary": "user-approved-complete-chain-test-2026-09-22",
+      "summary": "user-approved-report-workspace-elapsed-fix-2026-09-22",
       "requires_user": false
     },
     "report": null
