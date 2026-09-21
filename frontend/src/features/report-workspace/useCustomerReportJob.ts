@@ -40,6 +40,9 @@ export function useCustomerReportJob(projectId: string, save: (value: BlobDownlo
   const accept = useCallback((next: ProjectCustomerReportJob | null) => {
     current.current = next;
     setJob(next);
+    // Restore the server snapshot atomically with the job. Waiting for the
+    // elapsed-time effect would briefly pair a recovered stage with 0 seconds.
+    setElapsed(next?.elapsed_seconds ?? 0);
     setQueryWarning(null);
     if (next) remember(projectId, next.operation_id);
   }, [projectId]);
