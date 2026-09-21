@@ -35,6 +35,7 @@
       "tests/integration/test_generation_workspace_process_recovery.py",
       "tests/integration/test_official_project_workspace_api.py",
       "tests/integration/test_project_folder_generation_api.py",
+      "tests/integration/test_project_folder_generation_complete_chain.py",
       "tests/unit/test_generation_workspace_recovery.py",
       "tests/unit/test_official_project_workspace_service.py",
       "tests/unit/test_project_folder_generation_service.py"
@@ -47,14 +48,14 @@
     ],
     "activation_head": "5426711281450466fc1ca25cea861f0d177e5dce",
     "started_at": "2026-09-21T14:27:11.502060Z",
-    "updated_at": "2026-09-21T22:10:40.054424Z",
+    "updated_at": "2026-09-21T23:33:39.230034Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_PROJECT_FOLDER_DATA_PROTECTION_ADOPTION",
       "stage": "scope_manifest_correction",
       "status": "running",
-      "summary": "user-approved-scope-addition-2026-09-22",
+      "summary": "user-approved-complete-chain-test-2026-09-22",
       "requires_user": false
     },
     "report": null
