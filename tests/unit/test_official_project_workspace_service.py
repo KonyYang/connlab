@@ -817,6 +817,116 @@ def test_missing_stale_workspace_record_replans_under_current_project_root(
     assert repository.saved == result.record
 
 
+@pytest.mark.parametrize(
+    "escaped_component",
+    ["workspace", "source_book", "official_folder", "manifest"],
+)
+def test_completed_record_rejects_paths_outside_configured_workspace_relationships(
+    tmp_path: Path,
+    escaped_component: str,
+) -> None:
+    template = _make_template(tmp_path / "template")
+    root = tmp_path / "workspaces"
+    root.mkdir()
+    workspace = root / "DL-2025-11-074"
+    source_book = workspace / "Source Book"
+    official_folder = workspace / "DL-2025-11-074 Coolpower Qualification test"
+    manifest = workspace / ".connlab" / "manifest.json"
+    if escaped_component == "workspace":
+        workspace = tmp_path / "outside" / "DL-2025-11-074"
+        source_book = workspace / "Source Book"
+        official_folder = workspace / "DL-2025-11-074 Coolpower Qualification test"
+        manifest = workspace / ".connlab" / "manifest.json"
+    elif escaped_component == "source_book":
+        source_book = tmp_path / "outside-source"
+    elif escaped_component == "official_folder":
+        official_folder = tmp_path / "outside-official"
+    elif escaped_component == "manifest":
+        manifest = tmp_path / "outside-manifest.json"
+    source_book.mkdir(parents=True)
+    official_folder.mkdir(parents=True)
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        json.dumps(
+            {
+                "project_id": "project-1",
+                "dl_number": "DL-2025-11-074",
+                "official_project_folder_path": str(official_folder),
+            }
+        ),
+        encoding="utf-8",
+    )
+    repository = _WorkspaceRepo()
+    repository.saved = OfficialWorkspaceRecord(
+        workspace_id="retained",
+        project_id="project-1",
+        dl_number="DL-2025-11-074",
+        local_workspace_path=workspace,
+        source_book_path=source_book,
+        official_folder_path=official_folder,
+        manifest_path=manifest,
+        template_source_path=template,
+        created_at="2026-06-01T00:00:00+00:00",
+    )
+    service = _service(
+        tmp_path,
+        repository=repository,
+        settings=OfficialWorkspaceSettings(root, template, None),
+    )
+
+    preview = service.preview("project-1")
+
+    assert preview.status == "inconsistent"
+    assert "workspace record" in preview.blockers[0].lower()
+
+
+def test_completed_record_fails_closed_when_retained_path_is_redirected(
+    tmp_path: Path,
+) -> None:
+    template = _make_template(tmp_path / "template")
+    root = tmp_path / "workspaces"
+    root.mkdir()
+    workspace = root / "legacy-DL-2025-11-074"
+    source_book = workspace / "Source Book"
+    official_folder = workspace / "DL-2025-11-074 Coolpower Qualification test"
+    manifest = workspace / ".connlab" / "manifest.json"
+    source_book.mkdir(parents=True)
+    official_folder.mkdir()
+    manifest.parent.mkdir()
+    manifest.write_text(
+        json.dumps(
+            {
+                "project_id": "project-1",
+                "official_project_folder_path": str(official_folder),
+            }
+        ),
+        encoding="utf-8",
+    )
+    repository = _WorkspaceRepo()
+    repository.saved = OfficialWorkspaceRecord(
+        "retained",
+        "project-1",
+        "DL-2025-11-074",
+        workspace,
+        source_book,
+        official_folder,
+        manifest,
+        template,
+        "2026-06-01T00:00:00+00:00",
+    )
+    service = _service(
+        tmp_path,
+        repository=repository,
+        manifest_gateway=_RedirectingManifestGateway(workspace),
+        settings=OfficialWorkspaceSettings(root, template, None),
+    )
+
+    preview = service.preview("project-1")
+
+    assert preview.status == "inconsistent"
+    assert "symbolic link or junction" in preview.blockers[0]
+
+
 def test_missing_recorded_official_folder_can_be_regenerated(
     tmp_path: Path,
 ) -> None:
@@ -895,6 +1005,47 @@ def test_manifest_without_workspace_record_is_identity_only_adoptable(tmp_path: 
 
     assert preview.status == "adoptable"
     assert preview.blockers == tuple()
+
+
+@pytest.mark.parametrize("payload", ["[]", '"manifest"', "7"])
+def test_non_object_manifest_is_an_actionable_conflict(
+    tmp_path: Path, payload: str
+) -> None:
+    root = tmp_path / "workspaces"
+    workspace = root / "DL-2025-11-074"
+    manifest = workspace / ".connlab" / "manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(payload, encoding="utf-8")
+    service = _service(
+        tmp_path,
+        settings=OfficialWorkspaceSettings(root, None, None),
+    )
+
+    preview = service.preview("project-1")
+
+    assert preview.status == "conflict"
+    assert "cannot be read" in preview.blockers[0]
+
+
+def test_non_object_manifest_on_retained_record_is_inconsistent_not_an_exception(
+    tmp_path: Path,
+) -> None:
+    template = _make_template(tmp_path / "template")
+    root = tmp_path / "workspaces"
+    root.mkdir()
+    repository = _WorkspaceRepo()
+    service = _service(
+        tmp_path,
+        repository=repository,
+        settings=OfficialWorkspaceSettings(root, template, None),
+    )
+    created = service.create("project-1")
+    created.record.manifest_path.write_text("[]", encoding="utf-8")
+
+    preview = service.preview("project-1")
+
+    assert preview.status == "inconsistent"
+    assert "cannot be read" in preview.blockers[0]
 
 
 def test_portable_same_project_manifest_is_adoptable_under_current_configured_root(
@@ -1029,12 +1180,11 @@ def test_adoption_does_not_require_configured_template_to_be_available(
     official_folder.mkdir()
     operator_file = official_folder / "operator-report.docx"
     operator_file.write_bytes(b"operator-owned")
-    unavailable_template = tmp_path / "old-machine-template"
     service = _service(
         tmp_path,
         settings=OfficialWorkspaceSettings(
             local_workspace_root=tmp_path / "workspaces",
-            template_path=unavailable_template,
+            template_path=None,
             public_drive_root=None,
         ),
     )
@@ -1042,8 +1192,56 @@ def test_adoption_does_not_require_configured_template_to_be_available(
     assert service.preview("project-1").status == "adoptable"
     result = service.adopt_existing("project-1")
 
-    assert result.record.template_source_path == unavailable_template
+    assert result.record.template_source_path == official_folder
     assert operator_file.read_bytes() == b"operator-owned"
+    with pytest.raises(OfficialWorkspaceCreateError, match="configured project workspace root"):
+        service.create("project-1", conflict_strategy="backup_and_recreate")
+    assert operator_file.read_bytes() == b"operator-owned"
+
+
+def test_rebuild_never_uses_another_project_operator_tree_as_retained_template(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "workspaces"
+    current_workspace = root / "DL-2025-11-074"
+    source_book = current_workspace / "Source Book"
+    official_folder = current_workspace / "DL-2025-11-074 Coolpower Qualification test"
+    source_book.mkdir(parents=True)
+    official_folder.mkdir()
+    (official_folder / "current-report.docx").write_bytes(b"current")
+    other_project_folder = _make_template(
+        root / "DL-2024-01-001" / "DL-2024-01-001 Other project"
+    )
+    other_operator_file = other_project_folder / "operator-report.docx"
+    other_operator_file.write_bytes(b"other-project")
+    manifest = current_workspace / ".connlab" / "manifest.json"
+    manifest.parent.mkdir()
+    manifest.write_text(
+        json.dumps(
+            {
+                "project_id": "project-1",
+                "dl_number": "DL-2025-11-074",
+                "official_project_folder_path": str(official_folder),
+                "template_source_path": str(other_project_folder),
+            }
+        ),
+        encoding="utf-8",
+    )
+    service = _service(
+        tmp_path,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=root,
+            template_path=tmp_path / "unavailable-template",
+            public_drive_root=None,
+        ),
+    )
+    service.adopt_existing("project-1")
+
+    with pytest.raises(OfficialWorkspaceCreateError, match="Template folder does not exist"):
+        service.create("project-1", conflict_strategy="backup_and_recreate")
+
+    assert other_operator_file.read_bytes() == b"other-project"
+    assert (official_folder / "current-report.docx").read_bytes() == b"current"
 
 
 def test_adoption_does_not_overwrite_a_different_folder_manifest_inserted_after_initial_check(
@@ -1225,6 +1423,14 @@ class _InterveningManifestGateway(OfficialWorkspaceManifestGateway):
         return payload
 
 
+class _RedirectingManifestGateway(OfficialWorkspaceManifestGateway):
+    def __init__(self, redirected: Path) -> None:
+        self.redirected = redirected
+
+    def first_redirected_path(self, *paths: Path) -> Path | None:
+        return self.redirected if self.redirected in paths else None
+
+
 class _WorkspaceRepo:
     def __init__(self) -> None:
         self.saved: OfficialWorkspaceRecord | None = None
@@ -1261,6 +1467,7 @@ def _service(
     ltr_repository: _LtrRepo | None = None,
     forms: list[ApplicationForm] | None = None,
     basic_information_reader=None,
+    manifest_gateway: OfficialWorkspaceManifestGateway | None = None,
     settings: OfficialWorkspaceSettings,
 ) -> OfficialProjectWorkspaceService:
     return OfficialProjectWorkspaceService(
@@ -1278,6 +1485,7 @@ def _service(
         ltr_repository=ltr_repository or _default_ltr_repo(),
         application_form_repository=_ApplicationFormRepo(forms),
         basic_information_reader=basic_information_reader,
+        manifest_gateway=manifest_gateway,
         settings=settings,
     )
 

@@ -331,7 +331,10 @@ def test_changed_folder_after_process_exit_allows_fresh_history_rebuild_review(t
         assert not list((destination / ".connlab" / "generation").rglob("*-workspace"))
 
         restarted = service.start(
-            "P1", "backup_and_recreate", runner.preview_context("P1"), "reviewed-again",
+            "P1",
+            "backup_and_recreate",
+            runner.preview_context("P1", "backup_rebuild"),
+            "reviewed-again",
             replaces_operation_id=started["operation_id"],
         )
         runner.run_step(runner.journal.read("P1"), "workspace")

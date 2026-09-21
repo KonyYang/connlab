@@ -116,7 +116,14 @@ over a new pass-through layer. Introduce an adapter seam only when behavior actu
   Ordinary additions, edits, deletions, and file locks inside the official project folder do not change
   project identity; identity comes from the immutable `project_id`, registered DL number, configured
   workspace boundary, and manifest. Symlinks, junctions, reparse points, unreadable/foreign manifests,
-  or identity changes during linking fail closed.
+  or identity changes during linking fail closed. The legacy Create action never mutates an adoptable
+  existing folder and instead directs the operator to Link existing folder. Linking does not require
+  the configured template source to remain reachable; template validation is deferred to a later
+  create/rebuild operation. A manifest that changes to a different reviewed official-folder identity,
+  even for the same project and DL number, wins the race and is preserved while linking fails closed.
+  Retained SQLite paths are rechecked against the configured workspace boundary and expected child
+  layout before they are treated as completed; no path below any project workspace may be reused as
+  a generation template.
 - Rebuild is a separate advanced operation. New rebuilds only offer `Backup and Rebuild`, which moves
   the reviewed existing folder to timestamped history before creating a fresh folder. New operations
   cannot select legacy incremental continuation or delete/overwrite rebuild; already-persisted legacy

@@ -597,7 +597,9 @@ class OfficialProjectWorkspaceService:
                 "Existing project folder is ready to link. Use Link existing folder; "
                 "Create will not modify operator-owned content."
             )
-        template_root = self._template_root_for_generation(preview.template_path)
+        template_root = self._template_root_for_generation(
+            preview.template_path, preview.local_workspace_path
+        )
         preview = replace(
             preview,
             template_path=template_root.path,
@@ -702,12 +704,24 @@ class OfficialProjectWorkspaceService:
         )
 
     def _template_root_for_generation(
-        self, retained_template_path: Path | None
+        self,
+        retained_template_path: Path | None,
+        local_workspace_path: Path,
     ) -> OfficialTemplateRoot:
         """Resolve a real template only for an operation that will generate files."""
+        workspace_root = self._settings.local_workspace_root
         candidates = [self._settings.template_path, retained_template_path]
         errors: list[str] = []
         for candidate in dict.fromkeys(path for path in candidates if path is not None):
+            if (
+                candidate.is_relative_to(local_workspace_path)
+                or workspace_root is not None
+                and candidate.is_relative_to(workspace_root)
+            ):
+                errors.append(
+                    "Template source cannot be inside the configured project workspace root."
+                )
+                continue
             try:
                 return resolve_official_template_root(candidate)
             except OfficialWorkspaceError as exc:
@@ -824,6 +838,11 @@ class OfficialProjectWorkspaceService:
                 "Workspace manifest does not match current project or cannot be read: "
                 f"{manifest_path}"
             )
+        if not isinstance(payload, dict):
+            return None, (
+                "Workspace manifest does not match current project or cannot be read: "
+                f"{manifest_path}"
+            )
         if payload.get("project_id") != project_id:
             return None, f"Workspace manifest does not match current project: {manifest_path}"
         manifest_dl = payload.get("dl_number")
@@ -843,6 +862,32 @@ class OfficialProjectWorkspaceService:
             return "Local project workspace record does not match current project."
         if record.dl_number != dl_number:
             return "Local project workspace record does not match current DL number."
+        local_root = self._settings.local_workspace_root
+        if (
+            local_root is None
+            or record.local_workspace_path == local_root
+            or not record.local_workspace_path.is_relative_to(local_root)
+        ):
+            return "Local project workspace record is outside the configured workspace root."
+        if record.source_book_path != record.local_workspace_path / "Source Book":
+            return "Local project workspace record has an invalid Source Book path."
+        if record.official_folder_path.parent != record.local_workspace_path:
+            return "Local project workspace record has an invalid official folder path."
+        if record.manifest_path != record.local_workspace_path / ".connlab" / "manifest.json":
+            return "Local project workspace record has an invalid manifest path."
+        redirected = self._manifests.first_redirected_path(
+            local_root,
+            record.local_workspace_path,
+            record.source_book_path,
+            record.official_folder_path,
+            record.manifest_path.parent,
+            record.manifest_path,
+        )
+        if redirected is not None:
+            return (
+                "Local project workspace record cannot use a symbolic link or junction: "
+                f"{redirected}"
+            )
         if not record.local_workspace_path.is_dir():
             return f"Local project workspace path is missing: {record.local_workspace_path}"
         if not record.source_book_path.is_dir():
@@ -870,6 +915,8 @@ class OfficialProjectWorkspaceService:
         try:
             payload = self._manifests.read(manifest_path)
         except Exception:
+            return f"Workspace manifest does not match current project or cannot be read: {manifest_path}"
+        if not isinstance(payload, dict):
             return f"Workspace manifest does not match current project or cannot be read: {manifest_path}"
         if payload.get("project_id") != project_id:
             return f"Workspace manifest does not match current project: {manifest_path}"

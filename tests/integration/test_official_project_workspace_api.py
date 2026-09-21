@@ -7,11 +7,19 @@ from fastapi.testclient import TestClient
 import pytest
 
 from backend.api.dependencies import get_official_project_workspace_service, get_settings
-from backend.shared.config import Settings
+from backend.shared.config import OfficialWorkspaceSettings, Settings
 from backend.api.main import app
 from backend.api import dependencies as deps
-from backend.domain import ExternalResource, ExternalResourceType, LtrRecord, LtrStatus
+from backend.domain import (
+    ExternalResource,
+    ExternalResourceType,
+    LtrRecord,
+    LtrStatus,
+    Project,
+    ProjectStatus,
+)
 from backend.application.official_project_workspace_service import (
+    OfficialProjectWorkspaceService,
     OfficialWorkspaceConflictOption,
     OfficialWorkspaceCreateError,
     OfficialWorkspaceCreateResult,
@@ -114,6 +122,59 @@ def test_official_workspace_preview_api_returns_typed_preview() -> None:
     assert payload["warnings"][0].startswith("Public Project locations")
     assert payload["conflict_paths"] == []
     assert payload["conflict_options"] == []
+
+
+def test_official_workspace_preview_api_returns_conflict_for_non_object_manifest(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "workspaces"
+    manifest = root / "DL-2025-11-074" / ".connlab" / "manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text("[]", encoding="utf-8")
+    project = Project(
+        project_id="P1",
+        project_no="DL-2025-11-074",
+        product_name="Connector",
+        requestor="Operator",
+        status=ProjectStatus.CONFIRMED,
+    )
+    ltr = LtrRecord(
+        ltr_id="ltr-1",
+        project_id="P1",
+        ltr_number="DL-2025-11-074",
+        status=LtrStatus.REGISTERED,
+    )
+
+    class Projects:
+        def get(self, project_id):
+            return project if project_id == "P1" else None
+
+    class Workspaces:
+        def get_by_project(self, _project_id):
+            return None
+
+        def save(self, record):
+            return record
+
+    class Ltrs:
+        def list_by_project(self, project_id):
+            return [ltr] if project_id == "P1" else []
+
+    service = OfficialProjectWorkspaceService(
+        Projects(),
+        Workspaces(),
+        OfficialWorkspaceSettings(root, None, None),
+        ltr_repository=Ltrs(),
+    )
+    app.dependency_overrides[get_official_project_workspace_service] = lambda: service
+    try:
+        response = TestClient(app).get("/api/projects/P1/official-workspace/preview")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "conflict"
+    assert "cannot be read" in response.json()["blockers"][0]
 
 
 def test_official_workspace_preview_api_returns_conflict_options() -> None:
