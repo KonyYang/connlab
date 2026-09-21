@@ -11,90 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_CUSTOMER_REPORT_LONG_PATH_REPAIR",
-    "summary": "Prevent customer-report generation from passing long official project-report paths directly to Microsoft Word by using a short controlled working copy while preserving source-authority checks and publication behavior.",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Customer report Word input staging for long official project-folder paths.",
-    "scope_paths": [
-      "backend/infrastructure/office/customer_report_subprocess_runner.py",
-      "tests/unit/test_customer_report_subprocess_runner.py"
-    ],
-    "risk_reasons": [],
-    "activation_head": "f13b5defef95e9eb3e2b559aeeab3a124a6f5331",
-    "started_at": "2026-09-20T14:01:56.007171Z",
-    "updated_at": "2026-09-21T01:36:50.044058Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_CUSTOMER_REPORT_LONG_PATH_REPAIR",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_CUSTOMER_REPORT_LONG_PATH_REPAIR",
-      "subject": "25b68d6d363df5b98b7d31946ba4a311810f07ae",
-      "summary": "Verified the corrected customer-report flow in the live browser after replacing the stale backend process: the same real report completed twice in 12.06 and 13.33 seconds with full correlated stage logging; no additional product-code change was justified.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/application/tools_customer_report_job_service.py",
-        "backend/infrastructure/office/customer_report_subprocess_child.py",
-        "backend/infrastructure/office/customer_report_subprocess_runner.py",
-        "backend/infrastructure/office/test_report_document_gateway.py",
-        "docs/report_generation_architecture.md",
-        "tests/unit/test_customer_report_subprocess_runner.py",
-        "tests/unit/test_test_report_document_gateway.py",
-        "tests/unit/test_test_report_draft_service.py",
-        "tests/unit/test_tools_customer_report_job_service.py"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "details": "Live in-app browser smoke: the same real Internal Report generated and downloaded successfully twice."
-        },
-        {
-          "status": "passed",
-          "details": "Current-code stage traces completed in 12.06 and 13.33 seconds through Word open, copy, clean, format, save, verify, and protect."
-        },
-        {
-          "status": "passed",
-          "details": "Affected suite remains 34 passed and complete Python 3.11 gate remains 2960 passed, 7 skipped, 19 deselected; no source byte changed after those runs."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "details": "Existing repair was loaded into a clean backend process; no further source change was warranted by the live evidence."
-        },
-        "reviewer": {
-          "status": "passed",
-          "details": "Reviewed live stage traces and exact diff; deterministic document/path failures were disproved and no scope creep was introduced."
-        },
-        "qa": {
-          "status": "passed",
-          "details": "Two consecutive real-browser conversions succeeded with downloads and correlated backend completion logs."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "details": "Live frontend on port 5173 and refreshed backend on port 8000 completed the real customer-report workflow twice."
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_FRONTEND_RELEASE_BUILD_REPAIR",
+    "task_id": "TASK_CUSTOMER_REPORT_LONG_PATH_REPAIR",
     "tier": "standard",
-    "subject": "01a09b3dc0406dddefffb17b3e062c7a30de3a7c",
-    "summary": "Repair the browser release frontend build by removing the stale Fee header destructuring and excluding test files from production TypeScript compilation.",
+    "subject": "25b68d6d363df5b98b7d31946ba4a311810f07ae",
+    "summary": "Prevent customer-report generation from passing long official project-report paths directly to Microsoft Word by using a short controlled working copy while preserving source-authority checks and publication behavior.",
     "disposition": "completed",
-    "decision_ref": "user-explicit-close-2026-09-20",
-    "closed_at": "2026-09-20T13:52:47.547132Z"
+    "decision_ref": "user-close-2026-09-21",
+    "closed_at": "2026-09-21T11:22:49.206818Z"
   },
   "retained_history": [
     {
