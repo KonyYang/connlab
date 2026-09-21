@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_CUSTOMER_REPORT_LONG_PATH_REPAIR",
     "summary": "Prevent customer-report generation from passing long official project-report paths directly to Microsoft Word by using a short controlled working copy while preserving source-authority checks and publication behavior.",
@@ -25,17 +25,67 @@
     "risk_reasons": [],
     "activation_head": "f13b5defef95e9eb3e2b559aeeab3a124a6f5331",
     "started_at": "2026-09-20T14:01:56.007171Z",
-    "updated_at": "2026-09-20T23:59:57.827754Z",
+    "updated_at": "2026-09-21T00:24:30.722611Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_CUSTOMER_REPORT_LONG_PATH_REPAIR",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "user-stage-timeout-diagnostics-feedback-2026-09-21",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_CUSTOMER_REPORT_LONG_PATH_REPAIR",
+      "subject": "1054df654aab2316672d4a308aeebf19d805eda6",
+      "summary": "Removed the 120-second unchanged-stage abort from customer report conversion, added non-terminating stall snapshots and correlated redacted diagnostics, and retained the 600-second absolute Word safety limit.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/application/tools_customer_report_job_service.py",
+        "backend/infrastructure/office/customer_report_subprocess_child.py",
+        "backend/infrastructure/office/customer_report_subprocess_runner.py",
+        "backend/infrastructure/office/test_report_document_gateway.py",
+        "docs/report_generation_architecture.md",
+        "tests/unit/test_customer_report_subprocess_runner.py",
+        "tests/unit/test_test_report_document_gateway.py",
+        "tests/unit/test_test_report_draft_service.py",
+        "tests/unit/test_tools_customer_report_job_service.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "details": "Affected customer-report unit and integration suite: 34 passed."
+        },
+        {
+          "status": "passed",
+          "details": "Complete Python gate under Python 3.11.9: 2960 passed, 7 skipped, 19 deselected."
+        },
+        {
+          "status": "passed",
+          "details": "Python 3.11 compile and customer-report diagnostic smoke passed."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "details": "TDD implementation completed and committed at the exact report subject."
+        },
+        "reviewer": {
+          "status": "passed",
+          "details": "Focused standards and specification review completed with no findings; exact diff check passed."
+        },
+        "qa": {
+          "status": "passed",
+          "details": "Affected suite and complete Python gate passed on the final implementation state."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "details": "Primary integration is clean at the exact report subject with bounded timeout safety and redacted diagnostics."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_FRONTEND_RELEASE_BUILD_REPAIR",
