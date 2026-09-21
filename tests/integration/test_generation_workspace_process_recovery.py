@@ -145,7 +145,12 @@ def test_later_step_refuses_replaced_workspace_directories_but_allows_new_output
         if reuse_existing:
             state.update(status="completed")
             runner.journal.save(state)
-            service.start("P1", "backup_and_recreate", runner.preview_context("P1"), "reuse")
+            service.start(
+                "P1",
+                "backup_and_recreate",
+                runner.preview_context("P1", "backup_rebuild"),
+                "reuse",
+            )
             state = runner.journal.read("P1")
             runner.run_step(state, "workspace")
         state.update(step=1, completed_steps=["workspace"])
@@ -235,7 +240,13 @@ def test_fresh_process_recovers_workspace_without_replaying_conflict_or_copy(tmp
     runner = ProjectFolderGenerationRunner(sessions, settings)
     service = runner.service()
     service.dispatch = lambda callback: None
-    service.start("P1", "backup_and_recreate" if window == "backup" else None, runner.preview_context("P1"), "request")
+    intent = "backup_rebuild" if window == "backup" else "create"
+    service.start(
+        "P1",
+        "backup_and_recreate" if window == "backup" else None,
+        runner.preview_context("P1", intent),
+        "request",
+    )
     env = dict(os.environ, PYTHONPATH=str(Path(__file__).parents[2]))
     def run(mode):
         return subprocess.run([sys.executable, str(Path(__file__).resolve()), str(tmp_path), mode],
@@ -296,7 +307,12 @@ def test_changed_folder_after_process_exit_allows_fresh_history_rebuild_review(t
     service = runner.service()
     service.dispatch = lambda callback: None
     try:
-        started = service.start("P1", "backup_and_recreate", runner.preview_context("P1"), "initial")
+        started = service.start(
+            "P1",
+            "backup_and_recreate",
+            runner.preview_context("P1", "backup_rebuild"),
+            "initial",
+        )
         crashed = subprocess.run(
             [sys.executable, str(Path(__file__).resolve()), str(tmp_path), "before_backup"],
             env=dict(os.environ, PYTHONPATH=str(Path(__file__).parents[2])),

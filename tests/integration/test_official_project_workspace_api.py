@@ -196,8 +196,51 @@ def test_official_workspace_create_api_returns_created_paths() -> None:
     assert service.created_with_strategy == "backup_and_recreate"
 
 
-def test_official_workspace_create_blocked_returns_409() -> None:
-    service = _FakeWorkspaceService(error=OfficialWorkspaceCreateError("Official project folder already exists"))
+def test_official_workspace_adopt_api_uses_identity_only_service_action() -> None:
+    record = OfficialWorkspaceRecord(
+        workspace_id="W1",
+        project_id="P1",
+        dl_number="DL-2025-11-074",
+        local_workspace_path=Path("D:/Projects/DL-2025-11-074"),
+        source_book_path=Path("D:/Projects/DL-2025-11-074/Source Book"),
+        official_folder_path=Path(
+            "D:/Projects/DL-2025-11-074/DL-2025-11-074 Product Qualification test"
+        ),
+        manifest_path=Path("D:/Projects/DL-2025-11-074/.connlab/manifest.json"),
+        template_source_path=Path("D:/Template/DL-XXXX-YY-ZZZ project"),
+        created_at="2026-06-12T00:00:00+00:00",
+    )
+    service = _FakeWorkspaceService(
+        adopt=OfficialWorkspaceCreateResult(
+            record=record,
+            created_paths=(record.manifest_path,),
+            warnings=(),
+        )
+    )
+    app.dependency_overrides[get_official_project_workspace_service] = lambda: service
+    try:
+        response = TestClient(app).post("/api/projects/P1/official-workspace/adopt")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200, response.text
+    assert response.json()["workspace_id"] == "W1"
+    assert service.adopted_project_id == "P1"
+
+
+def test_official_workspace_create_blocked_returns_409_without_touching_operator_tree(
+    tmp_path: Path,
+) -> None:
+    operator_folder = tmp_path / "existing-project"
+    operator_folder.mkdir()
+    operator_file = operator_folder / "completed-report.docx"
+    operator_file.write_bytes(b"retained")
+    before = tuple((path.name, path.stat().st_size) for path in operator_folder.iterdir())
+    service = _FakeWorkspaceService(
+        error=OfficialWorkspaceCreateError(
+            "Existing project folder is ready to link. Use Link existing folder."
+        )
+    )
     app.dependency_overrides[get_official_project_workspace_service] = lambda: service
     client = TestClient(app)
 
@@ -207,7 +250,9 @@ def test_official_workspace_create_blocked_returns_409() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 409
-    assert "already exists" in response.json()["detail"]
+    assert "Link existing folder" in response.json()["detail"]
+    assert tuple((path.name, path.stat().st_size) for path in operator_folder.iterdir()) == before
+    assert operator_file.read_bytes() == b"retained"
 
 
 def test_official_workspace_missing_project_returns_404() -> None:
@@ -230,11 +275,14 @@ class _FakeWorkspaceService:
         *,
         preview: OfficialWorkspacePreview | None = None,
         create: OfficialWorkspaceCreateResult | None = None,
+        adopt: OfficialWorkspaceCreateResult | None = None,
         error: Exception | None = None,
     ) -> None:
         self._preview = preview
         self._create = create
+        self._adopt = adopt
         self._error = error
+        self.adopted_project_id: str | None = None
 
     def preview(self, project_id: str) -> OfficialWorkspacePreview:
         if self._error:
@@ -252,3 +300,10 @@ class _FakeWorkspaceService:
         assert self._create is not None
         self.created_with_strategy = conflict_strategy
         return self._create
+
+    def adopt_existing(self, project_id: str) -> OfficialWorkspaceCreateResult:
+        if self._error:
+            raise self._error
+        assert self._adopt is not None
+        self.adopted_project_id = project_id
+        return self._adopt

@@ -449,7 +449,7 @@ describe("useProjectWorkbenchModel", () => {
     expect(apiMocks.startProjectFolderGeneration).toHaveBeenCalledTimes(1);
   });
 
-  it("replaces an old preview error when a fresh create check succeeds", async () => {
+  it("clears an old preview error when the fresh check finds a completed folder", async () => {
     const { result } = renderHook(() => useProjectWorkbenchModel("project-1"));
     await waitFor(() => expect(result.current.officialWorkspacePreview?.generation_context).toBeTruthy());
     apiMocks.previewProjectFolderGeneration.mockRejectedValueOnce(new Error("Old storage error"));
@@ -457,7 +457,7 @@ describe("useProjectWorkbenchModel", () => {
     expect(result.current.officialWorkspaceError).toBe("Old storage error");
     let review: unknown;
     await act(async () => { review = await result.current.onUpdateOfficialWorkspace(); });
-    expect(review).toBeTruthy();
+    expect(review).toBeUndefined();
     expect(result.current.officialWorkspaceError).toBeNull();
   });
 

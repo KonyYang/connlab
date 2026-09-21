@@ -104,7 +104,11 @@ def test_overwrite_cleanup_intent_prevents_replacement_before_finalize_checkpoin
         else:
             raise ValueError("Later file needs repair")
     service = ProjectFolderGenerationService(journal, lambda _: "same", step, queued.append)
-    started = service.start("p", "overwrite_rebuild", "same", "first")
+    state = journal.create("p", "overwrite_rebuild", "same")
+    state.update(request_id="historical", owner=service.owner)
+    journal.save(state)
+    started = service._view(state)
+    service.dispatch(lambda: service.run("p", state["operation_id"]))
     queued.pop()()
     assert service.read("p")["can_restart"] is False
     with pytest.raises(ValueError, match="safely checkpointed"):
@@ -152,6 +156,52 @@ def test_cannot_replace_an_operation_with_uncheckpointed_publication(tmp_path):
     with pytest.raises(ValueError, match="safely checkpointed"):
         service.start("p", None, "same", "two", replaces_operation_id=original["operation_id"])
     assert journal.read("p")["operation_id"] == original["operation_id"]
+
+
+@pytest.mark.parametrize("strategy", ["continue_existing", "overwrite_rebuild"])
+def test_new_generation_rejects_legacy_mutating_strategies(tmp_path, strategy):
+    service = ProjectFolderGenerationService(
+        GenerationJournal(tmp_path), lambda _: "same", lambda *_: None, lambda *_: None
+    )
+
+    with pytest.raises(ValueError, match="not available for new project folder operations"):
+        service.start("p", strategy, "same", "request")
+
+
+@pytest.mark.parametrize("strategy", ["continue_existing", "overwrite_rebuild"])
+def test_pre_upgrade_journal_resumes_with_legacy_token_and_rebuild_intent(
+    tmp_path, strategy
+):
+    journal, queued, preview_intents, steps = GenerationJournal(tmp_path), [], [], []
+
+    def preview(_project_id, intent):
+        preview_intents.append(intent)
+        return {
+            "expected_context": "version-2-token",
+            "legacy_expected_context": "pre-upgrade-token",
+        }
+
+    service = ProjectFolderGenerationService(
+        journal,
+        lambda _: "same",
+        lambda _state, name: steps.append(name),
+        queued.append,
+        preview=preview,
+    )
+    historical = journal.create("p", strategy, "same")
+    historical.update(
+        request_id="historical-request",
+        owner="pre-upgrade-backend",
+        preview_context="pre-upgrade-token",
+    )
+    journal.save(historical)
+
+    service.resume("p", historical["operation_id"])
+    queued.pop()()
+
+    assert preview_intents == ["backup_rebuild"]
+    assert service.read("p")["status"] == "completed"
+    assert steps == list(GENERATION_STEPS)
 
 
 def test_locked_existing_folder_explains_resume_and_safe_continue_choices(tmp_path):

@@ -19,14 +19,18 @@ export type ProjectFolderGenerationPreview = {
   recovery?: { operation_id: string; inputs_match: boolean; rebuild_pending: boolean } | null;
 };
 
-export function previewProjectFolderGeneration(projectId: string): Promise<ProjectFolderGenerationPreview> {
-  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/project-folder/generation/preview`);
+export function previewProjectFolderGeneration(
+  projectId: string,
+  intent: "create" | "backup_rebuild" = "create"
+): Promise<ProjectFolderGenerationPreview> {
+  return requestJson(
+    `/api/projects/${encodeURIComponent(projectId)}/project-folder/generation/preview?intent=${intent}`
+  );
 }
 
 export function startProjectFolderGeneration(projectId: string, request: {
   expected_context: string; request_id: string; conflict_strategy?: OfficialWorkspaceConflictStrategy;
   replaces_operation_id?: string;
-  overwrite_confirmed?: boolean;
 }): Promise<ProjectFolderGeneration> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/project-folder/generation/start`, {
     method: "POST", body: JSON.stringify(request),
@@ -374,6 +378,7 @@ export type OfficialWorkspacePreviewStatus =
   | "completed"
   | "blocked"
   | "adoptable"
+  | "conflict"
   | "exists"
   | "inconsistent";
 
@@ -401,10 +406,7 @@ export type OfficialWorkspacePreview = {
   conflict_options?: OfficialWorkspaceConflictOption[];
 };
 
-export type OfficialWorkspaceConflictStrategy =
-  | "continue_existing"
-  | "backup_and_recreate"
-  | "overwrite_rebuild";
+export type OfficialWorkspaceConflictStrategy = "backup_and_recreate";
 
 export type OfficialWorkspaceConflictOption = {
   key: OfficialWorkspaceConflictStrategy;
@@ -5081,6 +5083,15 @@ export type ProjectCustomerReportJob = {
 
 function projectCustomerReportJobsUrl(projectId: string): string {
   return `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-customer-report/jobs`;
+}
+
+export function adoptOfficialWorkspace(
+  projectId: string
+): Promise<OfficialWorkspaceCreateResponse> {
+  return requestJson<OfficialWorkspaceCreateResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/official-workspace/adopt`,
+    { method: "POST" }
+  );
 }
 
 export function startProjectCustomerReportJob(projectId: string, input: ProjectCustomerReportInput): Promise<ProjectCustomerReportJob> {

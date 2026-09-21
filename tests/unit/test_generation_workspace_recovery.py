@@ -230,8 +230,11 @@ def test_locked_cleanup_remains_pending_then_resumes_without_replaying_outputs(t
         journal, lambda _: "same", step, queued.append,
         finalize=lambda state: RecoverableWorkspacePublisher(journal, state).finalize(),
     )
+    historical = journal.create("p", "overwrite_rebuild", "same")
+    historical.update(request_id="historical-request", owner="previous-backend")
+    journal.save(historical)
     try:
-        started = service.start("p", "overwrite_rebuild", "same", "request")
+        started = service.resume("p", historical["operation_id"])
         queued.pop()()
         blocked = service.read("p")
         assert blocked["status"] == "blocked"

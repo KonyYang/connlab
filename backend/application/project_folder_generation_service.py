@@ -23,30 +23,42 @@ class ProjectFolderGenerationService:
         self.run_step, self.dispatch = run_step, dispatch
         self.owner = uuid4().hex
         self.preview_context = preview_context or context
-        self.preview = preview or (lambda project_id: {"expected_context": self.preview_context(project_id)})
+        self.preview = preview or (
+            lambda project_id, intent="create": {
+                "expected_context": self.preview_context(project_id)
+            }
+        )
         self.finalize = finalize or (lambda state: None)
 
     def start(self, project_id, strategy, expected_context, request_id, replaces_operation_id=None):
         with self.journal.lock(project_id):
+            if strategy in {"continue_existing", "overwrite_rebuild"}:
+                raise ValueError(
+                    f"{strategy} is not available for new project folder operations."
+                )
             existing = self.journal.read(project_id)
             if existing and existing.get("request_id") == request_id:
                 return self._view(existing)
             if existing and existing["status"] != "completed":
                 if replaces_operation_id != existing["operation_id"] or not self._can_replace(existing):
                     raise ValueError("Resume the existing operation, or review a fresh preview before explicitly replacing a safely checkpointed operation.")
-            current_preview = self.preview(project_id)
+            preview_intent = self._preview_intent(strategy)
+            current_preview = self.preview(project_id, preview_intent)
             context = self.context(project_id)
             if current_preview.get("expected_context") != expected_context:
                 raise ValueError("Project folder preview changed. Refresh the preview before starting.")
             blockers = current_preview.get("start_blockers", ())
             if blockers:
                 raise ValueError(str(blockers[0]))
-            if strategy == "continue_existing":
-                raise ValueError("Choose preserve history and rebuild, or delete and rebuild.")
-            if current_preview.get("workspace_preview", {}).get("status") in {"completed", "exists"} and strategy not in {"backup_and_recreate", "overwrite_rebuild"}:
+            if current_preview.get("workspace_preview", {}).get("status") in {"completed", "conflict"} and strategy != "backup_and_recreate":
                 raise ValueError("The project folder already exists. Choose a rebuild option.")
             state = self.journal.create(project_id, strategy, context)
-            state.update(request_id=request_id, owner=self.owner, preview_context=expected_context)
+            state.update(
+                request_id=request_id,
+                owner=self.owner,
+                preview_context=expected_context,
+                preview_context_version=2,
+            )
             self.journal.save(state)
         self.dispatch(lambda: self.run(project_id, state["operation_id"]))
         return self._view(state)
@@ -74,6 +86,18 @@ class ProjectFolderGenerationService:
                 return self._view(state)
             if self.context(project_id) != state["context"]:
                 raise ValueError("Generation inputs changed. Review the operation before recovery; no files were written.")
+            if "workspace" not in state.get("completed_steps", ()):
+                preview = self.preview(project_id, self._preview_intent(state.get("strategy")))
+                expected = state.get("preview_context")
+                matches_current = preview.get("expected_context") == expected
+                matches_legacy = (
+                    state.get("preview_context_version") is None
+                    and preview.get("legacy_expected_context") == expected
+                )
+                if not (matches_current or matches_legacy):
+                    raise ValueError(
+                        "Workspace preview or target changed. Refresh and review before generating."
+                    )
             state.update(status="queued", message=None, owner=self.owner)
             self.journal.save(state)
         self.dispatch(lambda: self.run(project_id, operation_id))
@@ -138,6 +162,14 @@ class ProjectFolderGenerationService:
     def _view(state):
         return {**{key: state.get(key) for key in ("project_id", "operation_id", "status", "step", "completed_steps", "message")},
                 "can_restart": ProjectFolderGenerationService._can_replace(state)}
+
+    @staticmethod
+    def _preview_intent(strategy):
+        return (
+            "backup_rebuild"
+            if strategy in {"backup_and_recreate", "continue_existing", "overwrite_rebuild"}
+            else "create"
+        )
 
     @staticmethod
     def _can_replace(state):

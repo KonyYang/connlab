@@ -11,7 +11,10 @@ import {
   type TemporaryProjectDeletePreview,
 } from "../../api/client";
 import { UiIcon } from "../../components/common/UiIcon";
-import type { FolderUpdateReview } from "./useProjectFolderGeneration";
+import type {
+  FolderUpdateReview,
+  ProjectFolderUpdateAction,
+} from "./useProjectFolderGeneration";
 import {
   deriveActiveMatrixFolderCommand,
   ProjectWorkbenchActiveMatrixWorkspace,
@@ -292,13 +295,33 @@ export function ProjectWorkbenchLayout({
           : "Active Matrix authority is required before project folder outputs can be prepared.",
       };
   const projectFolderTasks = projectFolderWorkflowTasks;
+  const workspaceStatus = officialWorkspacePreview?.status ?? "ready";
   const projectFolderHeaderAction = {
-    label: "Create folder",
-    disabled: checkingRecoveryPreview || visibleWorkbenchFolderCommand.disabled,
+    label:
+      workspaceStatus === "completed"
+        ? "Open folder"
+        : workspaceStatus === "adoptable"
+        ? "Link existing folder"
+        : ["conflict", "exists", "inconsistent"].includes(workspaceStatus)
+        ? "Review folder"
+        : "Create folder",
+    disabled:
+      checkingRecoveryPreview
+      || officialWorkspaceCreating
+      || lifecycleReadonlyView.readonly
+      || (["ready", "blocked"].includes(workspaceStatus) && visibleWorkbenchFolderCommand.disabled),
     title: checkingRecoveryPreview
       ? "Checking project folder generation status..."
       : visibleWorkbenchFolderCommand.disabledReason,
-    onClick: handleProjectFolderCreateClick,
+    onClick: () => {
+      if (workspaceStatus === "completed") {
+        void onOpenLocalProjectFolder();
+      } else if (workspaceStatus === "adoptable") {
+        void performFolderUpdate("adopt_existing");
+      } else {
+        handleProjectFolderCreateClick();
+      }
+    },
   };
 
   useEffect(() => {
@@ -451,7 +474,7 @@ export function ProjectWorkbenchLayout({
   currentFolderProject.current = project.project_id;
   useEffect(() => { setShowFolderConflictDialog(false); setFolderUpdateReview(null); }, [project.project_id]);
 
-  async function performFolderUpdate(strategy?: OfficialWorkspaceConflictStrategy, reviewed?: FolderUpdateReview, resumeRebuild = false): Promise<void> {
+  async function performFolderUpdate(strategy?: ProjectFolderUpdateAction, reviewed?: FolderUpdateReview, resumeRebuild = false): Promise<void> {
     if (lifecycleReadonlyView.readonly) {
       setLifecycleError(lifecycleReadonlyView.message);
       return;
@@ -643,7 +666,6 @@ export function ProjectWorkbenchLayout({
           conflictPaths={folderUpdateReview ? deriveOfficialWorkspaceConflictPaths(folderUpdateReview.preview.workspace_preview) : officialWorkspaceConflictPaths}
           onBackup={() => handleProjectFolderConflictChoice("backup_and_recreate")}
           onCancel={() => setShowFolderConflictDialog(false)}
-          onOverwrite={() => handleProjectFolderConflictChoice("overwrite_rebuild")}
         />
       ) : null}
       {officialWorkspaceCreating ? (
@@ -739,22 +761,19 @@ function ProjectFolderConflictDialog({
   conflictPaths,
   onBackup,
   onCancel,
-  onOverwrite,
 }: {
   resumeRebuild: boolean;
   onResumeRebuild: () => void;
   conflictPaths: string[];
   onBackup: () => void;
   onCancel: () => void;
-  onOverwrite: () => void;
 }): ReactElement {
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const visiblePath = conflictPaths[0] ?? "Existing project folder";
   const extraPathCount = Math.max(conflictPaths.length - 1, 0);
   return (
     <div className="runtime-console-modal-backdrop">
       <section
-        aria-label={confirmDelete ? "Confirm deletion and rebuild" : "Project folder already exists"}
+        aria-label="Project folder already exists"
         aria-modal="true"
         className="runtime-console-conflict-dialog"
         role="dialog"
@@ -767,18 +786,12 @@ function ProjectFolderConflictDialog({
         <p>
           {resumeRebuild
             ? "An earlier generation has unfinished file or cleanup work. Resume its saved progress using the previously confirmed choices; this does not create a new generation."
-            : confirmDelete ? "This permanently deletes the current project folder and all its contents, including manually added files. No historical copy will be kept. Rebuild using current confirmed data?" : "Rebuild all project files from current confirmed data. Keep the current folder as history, or delete it before rebuilding."}
+            : "This advanced action moves the current project folder to timestamped history before rebuilding from current confirmed data."}
         </p>
         <div className="runtime-console-conflict-actions">
-          {resumeRebuild ? <button type="button" className="is-primary" onClick={onResumeRebuild}>Resume previous generation</button> : <>
-          {confirmDelete ? <>
-            <button type="button" className="is-danger" onClick={onOverwrite}>Confirm Delete and Rebuild</button>
-            <button type="button" onClick={() => setConfirmDelete(false)}>Back</button>
-          </> : <>
-            <button type="button" className="is-primary" onClick={onBackup}>Backup and Rebuild (Recommended)</button>
-            <button type="button" className="is-danger" onClick={() => setConfirmDelete(true)}>Delete and Rebuild</button>
-          </>}
-          </>}
+          {resumeRebuild
+            ? <button type="button" className="is-primary" onClick={onResumeRebuild}>Resume previous generation</button>
+            : <button type="button" className="is-primary" onClick={onBackup}>Backup and Rebuild</button>}
           <button type="button" onClick={onCancel}>
             Cancel
           </button>

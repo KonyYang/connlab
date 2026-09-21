@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
@@ -201,8 +201,6 @@ class OfficialProjectWorkspaceService:
             blockers.append("Project default save location is not configured.")
         elif not local_root.is_dir():
             blockers.append(f"Project default save location does not exist: {local_root}")
-        if template_setting is None:
-            blockers.append("Template folder is not configured.")
         if self._settings.public_drive_root is None:
             warnings.append("Public Project locations is not configured; upload readiness will be checked later.")
         elif not self._settings.public_drive_root.is_dir():
@@ -212,13 +210,16 @@ class OfficialProjectWorkspaceService:
             )
 
         template_root: OfficialTemplateRoot | None = None
+        template_blockers: list[str] = []
+        if template_setting is None:
+            template_blockers.append("Template folder is not configured.")
         if template_setting is not None:
             try:
                 template_root = resolve_official_template_root(template_setting)
             except OfficialWorkspaceError as exc:
-                blockers.append(str(exc))
+                template_blockers.append(str(exc))
 
-        if blockers or not dl_number or local_root is None or template_root is None:
+        if blockers or not dl_number or local_root is None:
             return OfficialWorkspacePreview(
                 project_id=project_id,
                 dl_number=dl_number,
@@ -249,6 +250,38 @@ class OfficialProjectWorkspaceService:
         official_folder_path = workspace_path / folder_name
         manifest_path = workspace_path / ".connlab" / "manifest.json"
         planned_paths = (workspace_path, source_book_path, official_folder_path, manifest_path)
+
+        redirected_path = self._manifests.first_redirected_path(
+            local_root,
+            workspace_path,
+            source_book_path,
+            official_folder_path,
+            manifest_path.parent,
+            manifest_path,
+        )
+        if redirected_path is not None:
+            return OfficialWorkspacePreview(
+                project_id=project_id,
+                dl_number=dl_number,
+                local_workspace_root=local_root,
+                local_workspace_path=workspace_path,
+                source_book_path=source_book_path,
+                template_path=_adoption_template_metadata(
+                    None, template_setting, official_folder_path
+                ),
+                official_folder_path=official_folder_path,
+                manifest_path=manifest_path,
+                template_root_mode=template_root.mode if template_root else None,
+                status="conflict",
+                blockers=(
+                    "Project workspace identity cannot be linked through a symbolic link "
+                    f"or junction: {redirected_path}",
+                ),
+                warnings=tuple(warnings),
+                planned_paths=planned_paths,
+                conflict_paths=(workspace_path,),
+                conflict_options=_conflict_options(),
+            )
 
         completed_record = self._workspaces.get_by_project(project_id)
         if (
@@ -292,7 +325,7 @@ class OfficialProjectWorkspaceService:
                     template_path=completed_record.template_source_path,
                     official_folder_path=completed_record.official_folder_path,
                     manifest_path=completed_record.manifest_path,
-                    template_root_mode=template_root.mode,
+                    template_root_mode=template_root.mode if template_root else None,
                     status="completed",
                     blockers=tuple(),
                     warnings=tuple(record_warnings),
@@ -320,10 +353,10 @@ class OfficialProjectWorkspaceService:
                         local_workspace_root=local_root,
                         local_workspace_path=completed_record.local_workspace_path,
                         source_book_path=completed_record.source_book_path,
-                        template_path=template_root.path,
+                        template_path=template_root.path if template_root else template_setting,
                         official_folder_path=official_folder_path,
                         manifest_path=manifest_path,
-                        template_root_mode=template_root.mode,
+                        template_root_mode=template_root.mode if template_root else None,
                         status="exists",
                         blockers=(f"Official project folder already exists: {official_folder_path}",),
                         warnings=tuple(record_warnings),
@@ -337,10 +370,10 @@ class OfficialProjectWorkspaceService:
                     local_workspace_root=local_root,
                     local_workspace_path=completed_record.local_workspace_path,
                     source_book_path=completed_record.source_book_path,
-                    template_path=template_root.path,
+                    template_path=template_root.path if template_root else template_setting,
                     official_folder_path=official_folder_path,
                     manifest_path=manifest_path,
-                    template_root_mode=template_root.mode,
+                    template_root_mode=template_root.mode if template_root else None,
                     status="adoptable",
                     blockers=tuple(),
                     warnings=tuple(record_warnings),
@@ -355,21 +388,22 @@ class OfficialProjectWorkspaceService:
                 template_path=completed_record.template_source_path,
                 official_folder_path=completed_record.official_folder_path,
                 manifest_path=completed_record.manifest_path,
-                template_root_mode=template_root.mode,
+                template_root_mode=template_root.mode if template_root else None,
                 status="inconsistent",
                 blockers=(record_inconsistency,),
                 warnings=tuple(record_warnings),
                 planned_paths=planned_paths,
             )
 
-        foreign_manifest_project_id = self._foreign_manifest_project_id(
+        manifest_payload, manifest_error = self._read_manifest_identity(
             manifest_path=manifest_path,
             project_id=project_id,
+            dl_number=dl_number,
         )
-        if foreign_manifest_project_id is not None:
+        if manifest_error is not None:
             warnings.append(
-                "The existing local workspace belongs to another ConnLab project "
-                f"({foreign_manifest_project_id}); preserve it with Backup and Rebuild."
+                "The existing local workspace identity cannot be linked. Review it "
+                "before using the advanced Backup and Rebuild action."
             )
             return OfficialWorkspacePreview(
                 project_id=project_id,
@@ -377,79 +411,83 @@ class OfficialProjectWorkspaceService:
                 local_workspace_root=local_root,
                 local_workspace_path=workspace_path,
                 source_book_path=source_book_path,
-                template_path=template_root.path,
+                        template_path=template_root.path if template_root else template_setting,
                 official_folder_path=official_folder_path,
                 manifest_path=manifest_path,
-                template_root_mode=template_root.mode,
-                status="exists",
-                blockers=(f"Workspace manifest does not match current project: {manifest_path}",),
+                        template_root_mode=template_root.mode if template_root else None,
+                status="conflict",
+                blockers=(manifest_error,),
                 warnings=tuple(warnings),
                 planned_paths=planned_paths,
                 conflict_paths=(workspace_path,),
                 conflict_options=_conflict_options(),
             )
 
-        manifest_inconsistency = self._manifest_without_record_inconsistency(
-            project_id=project_id,
-            official_folder_path=official_folder_path,
-            manifest_path=manifest_path,
-        )
-        if manifest_inconsistency:
+        if manifest_payload is not None:
+            rebound = _portable_official_folder_path(workspace_path, manifest_payload)
+            if rebound is None or not rebound.is_dir() or not source_book_path.is_dir():
+                detail = (
+                    "Workspace manifest belongs to this project, but its current "
+                    "official folder or Source Book cannot be verified."
+                )
+                return OfficialWorkspacePreview(
+                    project_id=project_id,
+                    dl_number=dl_number,
+                    local_workspace_root=local_root,
+                    local_workspace_path=workspace_path,
+                    source_book_path=source_book_path,
+                    template_path=template_root.path if template_root else template_setting,
+                    official_folder_path=rebound or official_folder_path,
+                    manifest_path=manifest_path,
+                    template_root_mode=template_root.mode if template_root else None,
+                    status="conflict",
+                    blockers=(detail,),
+                    warnings=tuple(warnings),
+                    planned_paths=planned_paths,
+                    conflict_paths=(workspace_path,),
+                    conflict_options=_conflict_options(),
+                )
             return OfficialWorkspacePreview(
                 project_id=project_id,
                 dl_number=dl_number,
                 local_workspace_root=local_root,
                 local_workspace_path=workspace_path,
                 source_book_path=source_book_path,
-                template_path=template_root.path,
-                official_folder_path=official_folder_path,
+                template_path=_adoption_template_metadata(
+                    manifest_payload, template_setting, rebound
+                ),
+                official_folder_path=rebound,
                 manifest_path=manifest_path,
-                template_root_mode=template_root.mode,
-                status="inconsistent",
-                blockers=(manifest_inconsistency,),
+                template_root_mode=template_root.mode if template_root else None,
+                status="adoptable",
+                blockers=tuple(),
                 warnings=tuple(warnings),
-                planned_paths=planned_paths,
-            )
-
-        inconsistency = self._manifest_inconsistency(
-            manifest_path=manifest_path,
-            project_id=project_id,
-            official_folder_path=official_folder_path,
-        )
-        if inconsistency:
-            return OfficialWorkspacePreview(
-                project_id=project_id,
-                dl_number=dl_number,
-                local_workspace_root=local_root,
-                local_workspace_path=workspace_path,
-                source_book_path=source_book_path,
-                template_path=template_root.path,
-                official_folder_path=official_folder_path,
-                manifest_path=manifest_path,
-                template_root_mode=template_root.mode,
-                status="inconsistent",
-                blockers=(inconsistency,),
-                warnings=tuple(warnings),
-                planned_paths=planned_paths,
+                planned_paths=(workspace_path, source_book_path, rebound, manifest_path),
             )
 
         if official_folder_path.exists():
+            status = "adoptable" if source_book_path.is_dir() else "conflict"
+            blockers = tuple() if status == "adoptable" else (
+                "Existing project folder cannot be linked because Source Book is missing.",
+            )
             return OfficialWorkspacePreview(
                 project_id=project_id,
                 dl_number=dl_number,
                 local_workspace_root=local_root,
                 local_workspace_path=workspace_path,
                 source_book_path=source_book_path,
-                template_path=template_root.path,
+                template_path=_adoption_template_metadata(
+                    None, template_setting, official_folder_path
+                ),
                 official_folder_path=official_folder_path,
                 manifest_path=manifest_path,
-                template_root_mode=template_root.mode,
-                status="exists",
-                blockers=(f"Official project folder already exists: {official_folder_path}",),
+                template_root_mode=template_root.mode if template_root else None,
+                status=status,
+                blockers=blockers,
                 warnings=tuple(warnings),
                 planned_paths=planned_paths,
                 conflict_paths=(official_folder_path,),
-                conflict_options=_conflict_options(),
+                conflict_options=_conflict_options() if status == "conflict" else tuple(),
             )
 
         status = "ready"
@@ -461,19 +499,36 @@ class OfficialProjectWorkspaceService:
                     local_workspace_root=local_root,
                     local_workspace_path=workspace_path,
                     source_book_path=source_book_path,
-                    template_path=template_root.path,
+                    template_path=template_root.path if template_root else template_setting,
                     official_folder_path=official_folder_path,
                     manifest_path=manifest_path,
-                    template_root_mode=template_root.mode,
-                    status="exists",
+                    template_root_mode=template_root.mode if template_root else None,
+                    status="conflict",
                     blockers=(f"Local project workspace already exists: {workspace_path}",),
                     warnings=tuple(warnings),
                     planned_paths=planned_paths,
                     conflict_paths=(workspace_path,),
                     conflict_options=_conflict_options(),
                 )
-            status = "adoptable"
-            warnings.append("Local project workspace already exists and can be continued.")
+            status = "ready"
+            warnings.append("An empty local project workspace already exists and can be created safely.")
+
+        if template_root is None:
+            return OfficialWorkspacePreview(
+                project_id=project_id,
+                dl_number=dl_number,
+                local_workspace_root=local_root,
+                local_workspace_path=workspace_path,
+                source_book_path=source_book_path,
+                template_path=template_setting,
+                official_folder_path=official_folder_path,
+                manifest_path=manifest_path,
+                template_root_mode=None,
+                status="blocked",
+                blockers=tuple(template_blockers),
+                warnings=tuple(warnings),
+                planned_paths=planned_paths,
+            )
 
         return OfficialWorkspacePreview(
             project_id=project_id,
@@ -498,11 +553,12 @@ class OfficialProjectWorkspaceService:
         recovery=None,
     ) -> OfficialWorkspaceCreateResult:
         """Create or continue the local official project workspace."""
+        if recovery is None and conflict_strategy in {"continue_existing", "overwrite_rebuild"}:
+            raise OfficialWorkspaceCreateError(
+                f"{conflict_strategy} is not available for new project folder operations."
+            )
         preview = self.preview(project_id)
-        if preview.status == "completed" and conflict_strategy in {
-            None,
-            "continue_existing",
-        }:
+        if preview.status == "completed" and conflict_strategy is None:
             record = self._workspaces.get_by_project(project_id)
             if record is None:
                 raise OfficialWorkspaceCreateError("Local project workspace record is missing.")
@@ -514,15 +570,19 @@ class OfficialProjectWorkspaceService:
                 warnings=preview.warnings,
             )
         allowed_conflict_strategies = {option.key for option in preview.conflict_options}
-        # Retained for already journaled legacy operations, not an offered UI policy.
-        allowed_conflict_strategies.add("continue_existing")
-        if preview.status == "completed":
+        if recovery is not None:
+            # Historical journal recovery may finish an already-authorized operation;
+            # new requests cannot select these legacy strategies.
+            allowed_conflict_strategies.update({"continue_existing", "overwrite_rebuild"})
+        if preview.status == "completed" and recovery is not None:
             allowed_conflict_strategies = {
                 "continue_existing",
                 "backup_and_recreate",
                 "overwrite_rebuild",
             }
-        if preview.status in {"exists", "completed"} and conflict_strategy in allowed_conflict_strategies:
+        elif preview.status == "completed":
+            allowed_conflict_strategies = {"backup_and_recreate"}
+        if preview.status in {"conflict", "exists", "completed"} and conflict_strategy in allowed_conflict_strategies:
             pass
         elif preview.status not in {"ready", "adoptable"}:
             detail = preview.blockers[0] if preview.blockers else preview.status
@@ -530,9 +590,19 @@ class OfficialProjectWorkspaceService:
         assert preview.dl_number is not None
         assert preview.local_workspace_path is not None
         assert preview.source_book_path is not None
-        assert preview.template_path is not None
         assert preview.official_folder_path is not None
         assert preview.manifest_path is not None
+        if preview.status == "adoptable" and preview.official_folder_path.is_dir():
+            raise OfficialWorkspaceCreateError(
+                "Existing project folder is ready to link. Use Link existing folder; "
+                "Create will not modify operator-owned content."
+            )
+        template_root = self._template_root_for_generation(preview.template_path)
+        preview = replace(
+            preview,
+            template_path=template_root.path,
+            template_root_mode=template_root.mode,
+        )
 
         if recovery is not None:
             return recovery.create(preview, conflict_strategy, self._workspaces)
@@ -556,7 +626,7 @@ class OfficialProjectWorkspaceService:
                 workspace_path.mkdir(parents=True, exist_ok=True)
                 source_book_path.mkdir(parents=True, exist_ok=True)
                 merge_missing_workspace_tree(preview.template_path, preview.official_folder_path)
-            elif preview.status == "exists" and workspace_conflict:
+            elif preview.status in {"conflict", "exists"} and workspace_conflict:
                 assert conflict_strategy is not None
                 resolution = _resolve_existing_path(
                     existing_path=workspace_path,
@@ -576,7 +646,7 @@ class OfficialProjectWorkspaceService:
                 _copytree_no_overwrite(preview.template_path, copied_root)
             if (
                 conflict_strategy != "continue_existing"
-                and preview.status in {"exists", "completed"}
+                and preview.status in {"conflict", "exists", "completed"}
                 and not workspace_conflict
             ):
                 assert conflict_strategy is not None
@@ -631,6 +701,94 @@ class OfficialProjectWorkspaceService:
             warnings=preview.warnings,
         )
 
+    def _template_root_for_generation(
+        self, retained_template_path: Path | None
+    ) -> OfficialTemplateRoot:
+        """Resolve a real template only for an operation that will generate files."""
+        candidates = [self._settings.template_path, retained_template_path]
+        errors: list[str] = []
+        for candidate in dict.fromkeys(path for path in candidates if path is not None):
+            try:
+                return resolve_official_template_root(candidate)
+            except OfficialWorkspaceError as exc:
+                errors.append(str(exc))
+        detail = errors[0] if errors else "Template folder is not configured."
+        raise OfficialWorkspaceCreateError(detail)
+
+    def adopt_existing(self, project_id: str) -> OfficialWorkspaceCreateResult:
+        """Link an existing same-project workspace without touching business content."""
+        preview = self.preview(project_id)
+        if preview.status == "completed":
+            record = self._workspaces.get_by_project(project_id)
+            if record is None:
+                raise OfficialWorkspaceCreateError("Local project workspace record is missing.")
+            return OfficialWorkspaceCreateResult(record, tuple(), preview.warnings)
+        if preview.status != "adoptable":
+            detail = preview.blockers[0] if preview.blockers else preview.status
+            raise OfficialWorkspaceCreateError(
+                f"Existing project folder cannot be linked: {detail}"
+            )
+        assert preview.dl_number is not None
+        assert preview.local_workspace_root is not None
+        assert preview.local_workspace_path is not None
+        assert preview.source_book_path is not None
+        assert preview.official_folder_path is not None
+        assert preview.manifest_path is not None
+        assert preview.template_path is not None
+        if not preview.local_workspace_path.is_dir():
+            raise OfficialWorkspaceCreateError("Existing local project workspace is missing.")
+        if not preview.source_book_path.is_dir():
+            raise OfficialWorkspaceCreateError("Existing Source Book folder is missing.")
+        if not preview.official_folder_path.is_dir():
+            raise OfficialWorkspaceCreateError("Existing official project folder is missing.")
+        redirected = self._manifests.first_redirected_path(
+            preview.local_workspace_root,
+            preview.local_workspace_path,
+            preview.source_book_path,
+            preview.official_folder_path,
+            preview.manifest_path.parent,
+            preview.manifest_path,
+        )
+        if redirected is not None:
+            raise OfficialWorkspaceCreateError(
+                f"Project workspace identity cannot be linked through a symbolic link or junction: {redirected}"
+            )
+        now = datetime.now(UTC).replace(microsecond=0).isoformat()
+        record = OfficialWorkspaceRecord(
+            workspace_id=uuid4().hex,
+            project_id=project_id,
+            dl_number=preview.dl_number,
+            local_workspace_path=preview.local_workspace_path,
+            source_book_path=preview.source_book_path,
+            official_folder_path=preview.official_folder_path,
+            manifest_path=preview.manifest_path,
+            template_source_path=preview.template_path,
+            created_at=now,
+        )
+        existed = preview.manifest_path.exists()
+        try:
+            self._manifests.write_adoption(
+                preview.manifest_path,
+                OfficialWorkspaceManifest(
+                    schema_version=1,
+                    project_id=record.project_id,
+                    dl_number=record.dl_number,
+                    local_workspace_path=str(record.local_workspace_path),
+                    source_book_path=str(record.source_book_path),
+                    official_project_folder_path=str(record.official_folder_path),
+                    template_source_path=str(record.template_source_path),
+                    created_at=record.created_at,
+                ),
+            )
+            saved = self._workspaces.save(record)
+        except Exception as exc:
+            raise OfficialWorkspaceCreateError(str(exc)) from exc
+        return OfficialWorkspaceCreateResult(
+            record=saved,
+            created_paths=tuple() if existed else (preview.manifest_path,),
+            warnings=preview.warnings,
+        )
+
     def _get_project(self, project_id: str) -> Project:
         """Load a project or raise a not-found error."""
         project = self._projects.get(project_id)
@@ -649,45 +807,29 @@ class OfficialProjectWorkspaceService:
                 return requested_testing
         return None
 
-    def _manifest_without_record_inconsistency(
-        self,
-        *,
-        project_id: str,
-        official_folder_path: Path,
-        manifest_path: Path,
-    ) -> str | None:
-        """Return a repairable inconsistency when a manifest exists without SQLite index."""
-        if not manifest_path.exists():
-            return None
-        inconsistency = self._manifest_inconsistency(
-            manifest_path=manifest_path,
-            project_id=project_id,
-            official_folder_path=official_folder_path,
-        )
-        if inconsistency:
-            return inconsistency
-        return (
-            "Workspace manifest exists but ConnLab workspace index record is missing: "
-            f"{manifest_path}"
-        )
-
-    def _foreign_manifest_project_id(
+    def _read_manifest_identity(
         self,
         *,
         manifest_path: Path,
         project_id: str,
-    ) -> str | None:
-        """Return a different valid manifest project id, leaving corrupt files blocked."""
+        dl_number: str,
+    ) -> tuple[dict[str, object] | None, str | None]:
+        """Read only portable identity fields; never authorize a manifest absolute path."""
         if not manifest_path.exists():
-            return None
+            return None, None
         try:
             payload = self._manifests.read(manifest_path)
         except Exception:
-            return None
-        manifest_project_id = payload.get("project_id")
-        if not isinstance(manifest_project_id, str) or not manifest_project_id.strip():
-            return None
-        return manifest_project_id if manifest_project_id != project_id else None
+            return None, (
+                "Workspace manifest does not match current project or cannot be read: "
+                f"{manifest_path}"
+            )
+        if payload.get("project_id") != project_id:
+            return None, f"Workspace manifest does not match current project: {manifest_path}"
+        manifest_dl = payload.get("dl_number")
+        if manifest_dl not in {None, "", dl_number}:
+            return None, f"Workspace manifest does not match current DL number: {manifest_path}"
+        return payload, None
 
     def _workspace_record_inconsistency(
         self,
@@ -826,11 +968,6 @@ def _conflict_options() -> tuple[OfficialWorkspaceConflictOption, ...]:
             label="Backup and Rebuild",
             description="Move the existing project folder to a timestamped backup, then create a fresh folder.",
         ),
-        OfficialWorkspaceConflictOption(
-            key="overwrite_rebuild",
-            label="Overwrite",
-            description="Replace the existing project folder after the new template copy is staged.",
-        ),
     )
 
 
@@ -873,6 +1010,43 @@ def _workspace_has_business_content(workspace_path: Path) -> bool:
     """Return whether an existing LTR workspace contains operator-created content."""
     ignored_names = {".connlab"}
     return any(child.name not in ignored_names for child in workspace_path.iterdir())
+
+
+def _portable_official_folder_path(
+    workspace_path: Path,
+    manifest: dict[str, object],
+) -> Path | None:
+    """Rebind only a manifest folder leaf under the current configured workspace."""
+    raw_path = manifest.get("official_project_folder_path")
+    if not isinstance(raw_path, str) or not raw_path.strip():
+        return None
+    folder_name = Path(raw_path).name
+    if folder_name in {"", ".", ".."}:
+        return None
+    candidate = workspace_path / folder_name
+    try:
+        candidate.relative_to(workspace_path)
+    except ValueError:
+        return None
+    return candidate
+
+
+def _adoption_template_metadata(
+    manifest: dict[str, object] | None,
+    configured_template: Path | None,
+    official_folder_path: Path,
+) -> Path:
+    """Retain template provenance without requiring that source to be reachable."""
+    if manifest is not None:
+        retained = manifest.get("template_source_path")
+        if isinstance(retained, str) and retained.strip():
+            return Path(retained)
+    if configured_template is not None:
+        return configured_template
+    # Legacy folders may predate template provenance. The adopted official folder
+    # is retained as the only defensible source metadata; generation still resolves
+    # and validates a configured template before it can mutate this workspace.
+    return official_folder_path
 
 
 def _unique_backup_path(existing_path: Path) -> Path:

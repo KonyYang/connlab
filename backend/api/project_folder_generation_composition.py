@@ -98,10 +98,19 @@ class ProjectFolderGenerationRunner:
             values.append((str(item.relative_to(path)), value))
         return fingerprint(values)
 
-    def preview_context(self, project_id):
-        return self.preview(project_id)["expected_context"]
+    def preview_context(self, project_id, intent="create"):
+        return self.preview(project_id, intent)["expected_context"]
 
-    def preview(self, project_id):
+    def preview_context_matches(self, project_id, expected_context, intent="create", *, allow_legacy=False):
+        preview = self.preview(project_id, intent)
+        if preview["expected_context"] == expected_context:
+            return True
+        return allow_legacy and preview.get("legacy_expected_context") == expected_context
+
+    def preview(self, project_id, intent="create"):
+        if intent not in {"create", "backup_rebuild"}:
+            raise ValueError("Unsupported project folder preview intent.")
+        rebuilding = intent == "backup_rebuild"
         from backend.api.routes_official_project_workspace import _preview_response
         with self.sessions() as session:
             preview = deps.get_official_project_workspace_service(session).preview(project_id)
@@ -135,7 +144,12 @@ class ProjectFolderGenerationRunner:
                     ]
                 )
             )
-            paths = preview.conflict_paths or ((preview.official_folder_path,) if preview.official_folder_path else ())
+            paths = (
+                preview.conflict_paths
+                or ((preview.official_folder_path,) if preview.official_folder_path else ())
+                if rebuilding
+                else ()
+            )
             current_context = self.context(project_id)
             saved_operation = self.journal.read(project_id)
             recovery = None
@@ -147,17 +161,28 @@ class ProjectFolderGenerationRunner:
                         and "workspace" not in saved_operation["completed_steps"],
                 }
             try:
-                target_facts = [(str(path), tree_hash(path)) for path in paths]
+                target_facts = (
+                    [(str(path), tree_hash(path)) for path in paths]
+                    if rebuilding
+                    else None
+                )
             except OSError:
                 # Keep file readiness visible, but never authorize a write with
                 # an incomplete target fingerprint. Start rechecks this blocker.
                 target_facts = None
                 start_blockers.append("Cannot verify all existing folder files. Check file access or locks before generation.")
-            token = fingerprint({"context": current_context, "preview": preview,
-                                "targets": target_facts,
-                                "manifest": file_hash(preview.manifest_path) if preview.manifest_path else None})
+            token_payload = {
+                "context": current_context,
+                "preview": preview,
+                "targets": target_facts,
+                "manifest": file_hash(preview.manifest_path) if preview.manifest_path else None,
+            }
+            legacy_token = fingerprint(token_payload)
+            token = fingerprint({**token_payload, "intent": intent})
             workspace_preview = _preview_response(preview).model_dump()
-            file_preflight = package_preflight(project_id, preview, session, self.settings, rebuilding=True)
+            file_preflight = package_preflight(
+                project_id, preview, session, self.settings, rebuilding=rebuilding
+            )
             file_conflicts = [
                 f"{item['label']}: {item['message']}"
                 for item in file_preflight["items"] if item["status"] in {"conflict", "blocked"}
@@ -173,6 +198,7 @@ class ProjectFolderGenerationRunner:
                 )
             return {
                 "expected_context": token,
+                "legacy_expected_context": legacy_token,
                 "recovery": recovery,
                 "start_blockers": start_blockers,
                 "workspace_preview": {
@@ -203,7 +229,21 @@ class ProjectFolderGenerationRunner:
                 publisher.recover_files(lambda payload: self._register_once(outputs, payload))
                 if name == "workspace":
                     def verify_initial_preview():
-                        if self.preview_context(project_id) != state["preview_context"]:
+                        intent = (
+                            "backup_rebuild"
+                            if state.get("strategy") in {
+                                "backup_and_recreate",
+                                "continue_existing",
+                                "overwrite_rebuild",
+                            }
+                            else "create"
+                        )
+                        if not self.preview_context_matches(
+                            project_id,
+                            state["preview_context"],
+                            intent,
+                            allow_legacy=state.get("preview_context_version") is None,
+                        ):
                             raise ValueError("Workspace preview or target changed. Refresh and review before generating.")
                     workspace = RecoverableWorkspacePublisher(self.journal, state, verify_context, verify_initial_preview)
                     if "workspace" in state["effects"]:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -57,7 +58,7 @@ class OfficialWorkspaceConflictOptionResponse(BaseModel):
 class OfficialWorkspaceCreateRequest(BaseModel):
     """Create request for resolving local project folder conflicts."""
 
-    conflict_strategy: str | None = None
+    conflict_strategy: Literal["backup_and_recreate"] | None = None
 
 
 class OfficialWorkspaceCreateResponse(BaseModel):
@@ -109,6 +110,26 @@ def create_official_workspace(
                 conflict_strategy=request.conflict_strategy if request else None,
             )
         )
+    except OfficialWorkspaceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except OfficialWorkspaceCreateError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except OfficialWorkspaceError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/adopt",
+    response_model=OfficialWorkspaceCreateResponse,
+    dependencies=[Depends(require_project_folder_write_slot)],
+)
+def adopt_official_workspace(
+    project_id: str,
+    service: OfficialProjectWorkspaceService = Depends(get_official_project_workspace_service),
+) -> OfficialWorkspaceCreateResponse:
+    """Link a verified existing workspace without generating or moving business files."""
+    try:
+        return _create_response(service.adopt_existing(project_id))
     except OfficialWorkspaceNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except OfficialWorkspaceCreateError as exc:

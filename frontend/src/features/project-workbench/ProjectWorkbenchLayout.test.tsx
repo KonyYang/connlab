@@ -68,7 +68,7 @@ vi.mock("../../api/client", () => ({
 function getProjectFolderCommandButton(): HTMLButtonElement {
   const folderActions = screen.getByLabelText("Folder Actions");
   return within(folderActions).getByRole("button", {
-    name: "Create folder",
+    name: /^(Create folder|Open folder|Link existing folder|Review folder)$/,
   }) as HTMLButtonElement;
 }
 
@@ -1267,7 +1267,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     await user.click(getProjectFolderCommandButton());
     expect(screen.getByRole("dialog")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Continue existing/ })).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Backup and Rebuild (Recommended)" }));
+    await user.click(screen.getByRole("button", { name: "Backup and Rebuild" }));
     expect(update).toHaveBeenLastCalledWith("backup_and_recreate", review, false);
   });
 
@@ -1375,14 +1375,42 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(onUpdateOfficialWorkspace).toHaveBeenCalledTimes(1);
   });
 
-  it("updates a managed folder without asking for a rebuild strategy", async () => {
+  it("opens a completed managed folder without starting generation", async () => {
     const user = userEvent.setup();
     const update = vi.fn().mockResolvedValue(undefined);
-    renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true, onUpdateOfficialWorkspace: update });
-    expect(getProjectFolderCommandButton().textContent).toBe("Create folder");
+    const open = vi.fn();
+    renderWorkbench({
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      folderReady: true,
+      officialWorkspacePreview: {
+        ...folderReview().preview.workspace_preview,
+        status: "completed",
+      },
+      onUpdateOfficialWorkspace: update,
+      onOpenLocalProjectFolder: open,
+    });
+    expect(getProjectFolderCommandButton().textContent).toBe("Open folder");
     await user.click(getProjectFolderCommandButton());
-    expect(update).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(update).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("links an adoptable folder through the identity-only action", async () => {
+    const user = userEvent.setup();
+    const update = vi.fn().mockResolvedValue(undefined);
+    renderWorkbench({
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      officialWorkspacePreview: {
+        ...folderReview().preview.workspace_preview,
+        status: "adoptable",
+      },
+      onUpdateOfficialWorkspace: update,
+    });
+
+    expect(getProjectFolderCommandButton().textContent).toBe("Link existing folder");
+    await user.click(getProjectFolderCommandButton());
+    expect(update).toHaveBeenCalledWith("adopt_existing", undefined, false);
   });
 
   it("keeps recovery behind the Folder Actions update entry without duplicate generation buttons", async () => {
@@ -1412,7 +1440,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByRole("button", { name: "Resume generation" })).toBeNull();
   });
 
-  it("offers two rebuild choices and requires a second confirmation before deletion", async () => {
+  it("offers only backup and rebuild for an advanced folder conflict", async () => {
     const user = userEvent.setup();
     const review = folderReview();
     const update = vi.fn().mockResolvedValueOnce(review).mockResolvedValue(undefined);
@@ -1420,12 +1448,10 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.queryByText("Advanced folder actions")).toBeNull();
     await user.click(getProjectFolderCommandButton());
     expect(screen.queryByRole("button", { name: /Continue existing/ })).toBeNull();
-    expect(screen.getByRole("button", { name: "Backup and Rebuild (Recommended)" })).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Delete and Rebuild" }));
-    expect(update).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("dialog", {name: "Confirm deletion and rebuild"})).toBeTruthy();
-    await user.click(screen.getByRole("button", {name: "Confirm Delete and Rebuild"}));
-    expect(update).toHaveBeenLastCalledWith("overwrite_rebuild", review, false);
+    expect(screen.getByRole("button", { name: "Backup and Rebuild" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Delete and Rebuild/ })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Backup and Rebuild" }));
+    expect(update).toHaveBeenLastCalledWith("backup_and_recreate", review, false);
   });
 
   it("does not infer a conflict from a recorded folder while preview is unavailable", async () => {
@@ -1453,7 +1479,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(update).toHaveBeenLastCalledWith(undefined, review, true);
   });
 
-  it("keeps diagnostics collapsed and cancelling deletion does not dispatch", async () => {
+  it("keeps diagnostics collapsed and cancelling rebuild review does not dispatch", async () => {
     const user = userEvent.setup();
     const update = vi.fn().mockResolvedValue(folderReview());
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -1462,7 +1488,6 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(screen.getByText("Diagnostic details").closest("details")).toHaveProperty("open", false);
     await user.click(getProjectFolderCommandButton());
-    await user.click(screen.getByRole("button", {name: "Delete and Rebuild"}));
     await user.click(screen.getByRole("button", {name: "Cancel"}));
     expect(update).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -1504,7 +1529,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(dialog.textContent).not.toContain("Keep this page open until the operation finishes.");
     expect(dialog.textContent).not.toContain("Updating Customer Feedback Form");
     expect(dialog.textContent).not.toContain("Updating Fee Form");
-    expect(screen.getByRole("button", { name: "Create folder" })).toHaveProperty(
+    expect(screen.getByRole("button", { name: "Open folder" })).toHaveProperty(
       "disabled",
       true
     );

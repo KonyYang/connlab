@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
-from dataclasses import dataclass
+import subprocess
+from dataclasses import dataclass, replace
 from datetime import date
 from pathlib import Path
 
@@ -13,6 +15,10 @@ from backend.application.official_project_workspace_service import (
     OfficialWorkspaceCreateError,
     OfficialWorkspaceRecord,
     resolve_official_template_root,
+)
+from backend.infrastructure.official_workspace_manifest import (
+    OfficialWorkspaceManifest,
+    OfficialWorkspaceManifestGateway,
 )
 from backend.domain import ApplicationForm, LtrRecord, LtrStatus, Project, ProjectStatus
 from backend.shared.config import OfficialWorkspaceSettings
@@ -133,7 +139,7 @@ def test_resolve_template_folder_with_workspace_template_child(
     assert resolved.mode == "workspace_template_child_root"
 
 
-def test_existing_safe_dl_workspace_is_adoptable(tmp_path: Path) -> None:
+def test_existing_empty_dl_workspace_is_ready_for_initial_creation(tmp_path: Path) -> None:
     template = _make_template(tmp_path / "template")
     existing_workspace = tmp_path / "workspaces" / "DL-2025-11-074"
     existing_workspace.mkdir(parents=True)
@@ -148,8 +154,11 @@ def test_existing_safe_dl_workspace_is_adoptable(tmp_path: Path) -> None:
 
     preview = service.preview("project-1")
 
-    assert preview.status == "adoptable"
-    assert "Local project workspace already exists and can be continued." in preview.warnings
+    assert preview.status == "ready"
+    assert any(
+        "empty local project workspace" in warning.lower()
+        for warning in preview.warnings
+    )
 
 
 def test_existing_official_folder_blocks_create(tmp_path: Path) -> None:
@@ -172,9 +181,9 @@ def test_existing_official_folder_blocks_create(tmp_path: Path) -> None:
 
     preview = service.preview("project-1")
 
-    assert preview.status == "exists"
-    assert "Official project folder already exists" in preview.blockers[0]
-    with pytest.raises(OfficialWorkspaceCreateError, match="Official project folder already exists"):
+    assert preview.status == "conflict"
+    assert "Source Book is missing" in preview.blockers[0]
+    with pytest.raises(OfficialWorkspaceCreateError, match="Source Book is missing"):
         service.create("project-1")
 
 
@@ -200,12 +209,9 @@ def test_preview_existing_official_folder_reports_conflict_choices(
 
     preview = service.preview("project-1")
 
-    assert preview.status == "exists"
+    assert preview.status == "conflict"
     assert preview.conflict_paths == (official_folder,)
-    assert {option.key for option in preview.conflict_options} == {
-        "backup_and_recreate",
-        "overwrite_rebuild",
-    }
+    assert {option.key for option in preview.conflict_options} == {"backup_and_recreate"}
 
 
 def test_create_with_backup_strategy_preserves_existing_official_folder(
@@ -237,7 +243,7 @@ def test_create_with_backup_strategy_preserves_existing_official_folder(
     assert repo.saved is not None
 
 
-def test_continue_existing_strategy_preserves_operator_files_and_adds_missing_template_content(
+def test_new_continue_existing_strategy_is_rejected_without_mutating_operator_files(
     tmp_path: Path,
 ) -> None:
     template = _make_template(tmp_path / "template")
@@ -259,18 +265,18 @@ def test_continue_existing_strategy_preserves_operator_files_and_adds_missing_te
         ),
     )
 
-    result = service.create("project-1", conflict_strategy="continue_existing")
+    with pytest.raises(OfficialWorkspaceCreateError, match="not available for new"):
+        service.create("project-1", conflict_strategy="continue_existing")
 
-    assert result.official_folder_path == official_folder
     assert (official_folder / "operator.txt").read_text(encoding="utf-8") == "keep"
-    assert (official_folder / "template.txt").read_text(encoding="utf-8") == "new"
     assert (official_folder / "shared.txt").read_text(encoding="utf-8") == "manual"
-    assert (workspace / "Source Book").is_dir()
+    assert not (official_folder / "template.txt").exists()
+    assert not (workspace / "Source Book").exists()
     assert not list(workspace.glob("*Backup*"))
-    assert repo.saved is not None
+    assert repo.saved is None
 
 
-def test_create_with_overwrite_strategy_replaces_existing_official_folder(
+def test_new_overwrite_strategy_is_rejected_without_mutating_operator_files(
     tmp_path: Path,
 ) -> None:
     template = _make_template(tmp_path / "template")
@@ -288,15 +294,15 @@ def test_create_with_overwrite_strategy_replaces_existing_official_folder(
         ),
     )
 
-    result = service.create("project-1", conflict_strategy="overwrite_rebuild")
+    with pytest.raises(OfficialWorkspaceCreateError, match="not available for new"):
+        service.create("project-1", conflict_strategy="overwrite_rebuild")
 
-    assert result.official_folder_path == official_folder
-    assert not (official_folder / "old.txt").exists()
-    assert (official_folder / "template.txt").read_text(encoding="utf-8") == "new"
+    assert (official_folder / "old.txt").read_text(encoding="utf-8") == "old"
+    assert not (official_folder / "template.txt").exists()
     assert not list((workspace / ".connlab" / "tmp").glob("overwrite-old-*"))
 
 
-def test_overwrite_strategy_restores_existing_folder_when_final_move_fails(
+def test_backup_strategy_preserves_existing_folder_when_final_move_fails(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -327,11 +333,12 @@ def test_overwrite_strategy_restores_existing_folder_when_final_move_fails(
     )
 
     with pytest.raises(OfficialWorkspaceCreateError, match="final move failed"):
-        service.create("project-1", conflict_strategy="overwrite_rebuild")
+        service.create("project-1", conflict_strategy="backup_and_recreate")
 
-    assert official_folder.is_dir()
-    assert (official_folder / "old.txt").read_text(encoding="utf-8") == "old"
-    assert not (official_folder / "template.txt").exists()
+    backups = list(workspace.glob("DL-2025-11-074 Coolpower Qualification test [0-9]*"))
+    assert len(backups) == 1
+    assert (backups[0] / "old.txt").read_text(encoding="utf-8") == "old"
+    assert not official_folder.exists()
     assert not list((workspace / ".connlab" / "tmp").glob("*"))
 
 
@@ -353,12 +360,9 @@ def test_existing_ltr_workspace_reports_conflict_choices(
 
     preview = service.preview("project-1")
 
-    assert preview.status == "exists"
+    assert preview.status == "conflict"
     assert workspace in preview.conflict_paths
-    assert {option.key for option in preview.conflict_options} == {
-        "backup_and_recreate",
-        "overwrite_rebuild",
-    }
+    assert {option.key for option in preview.conflict_options} == {"backup_and_recreate"}
 
 
 def test_create_with_backup_strategy_preserves_existing_ltr_workspace(
@@ -699,12 +703,11 @@ def test_foreign_project_manifest_is_a_recoverable_whole_workspace_conflict(
 
     preview = service.preview("project-1")
 
-    assert preview.status == "exists"
+    assert preview.status == "conflict"
     assert "Workspace manifest does not match" in preview.blockers[0]
     assert preview.conflict_paths == (workspace,)
     assert {option.key for option in preview.conflict_options} == {
         "backup_and_recreate",
-        "overwrite_rebuild",
     }
 
 
@@ -761,10 +764,12 @@ def test_unreadable_manifest_remains_blocked_as_an_inconsistency(tmp_path: Path)
 
     preview = service.preview("project-1")
 
-    assert preview.status == "inconsistent"
+    assert preview.status == "conflict"
     assert "cannot be read" in preview.blockers[0]
-    assert preview.conflict_paths == tuple()
-    assert preview.conflict_options == tuple()
+    assert preview.conflict_paths == (workspace,)
+    assert {option.key for option in preview.conflict_options} == {
+        "backup_and_recreate",
+    }
 
 
 def test_missing_stale_workspace_record_replans_under_current_project_root(
@@ -859,7 +864,7 @@ def test_missing_recorded_official_folder_can_be_regenerated(
     assert repository.saved.official_folder_path == preview.official_folder_path
 
 
-def test_manifest_without_workspace_record_is_repairable_inconsistency(tmp_path: Path) -> None:
+def test_manifest_without_workspace_record_is_identity_only_adoptable(tmp_path: Path) -> None:
     template = _make_template(tmp_path / "template")
     workspace = tmp_path / "workspaces" / "DL-2025-11-074"
     official_folder = workspace / "DL-2025-11-074 Coolpower Qualification test"
@@ -888,8 +893,270 @@ def test_manifest_without_workspace_record_is_repairable_inconsistency(tmp_path:
 
     preview = service.preview("project-1")
 
-    assert preview.status == "inconsistent"
-    assert "workspace index record is missing" in preview.blockers[0]
+    assert preview.status == "adoptable"
+    assert preview.blockers == tuple()
+
+
+def test_portable_same_project_manifest_is_adoptable_under_current_configured_root(
+    tmp_path: Path,
+) -> None:
+    template = _make_template(tmp_path / "template")
+    workspace = tmp_path / "workspaces" / "DL-2025-11-074"
+    source_book = workspace / "Source Book"
+    official_folder = workspace / "DL-2025-11-074 Coolpower Qualification test"
+    source_book.mkdir(parents=True)
+    official_folder.mkdir()
+    manifest = workspace / ".connlab" / "manifest.json"
+    manifest.parent.mkdir()
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "project_id": "project-1",
+                "dl_number": "DL-2025-11-074",
+                "local_workspace_path": "E:/OldMachine/DL-2025-11-074",
+                "source_book_path": "E:/OldMachine/DL-2025-11-074/Source Book",
+                "official_project_folder_path": (
+                    "E:/OldMachine/DL-2025-11-074/"
+                    "DL-2025-11-074 Coolpower Qualification test"
+                ),
+                "template_source_path": "E:/OldMachine/template",
+                "created_at": "2026-06-01T00:00:00+00:00",
+            }
+        ),
+        encoding="utf-8",
+    )
+    service = _service(
+        tmp_path,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=template,
+            public_drive_root=None,
+        ),
+    )
+
+    preview = service.preview("project-1")
+
+    assert preview.status == "adoptable"
+    assert preview.local_workspace_path == workspace
+    assert preview.source_book_path == source_book
+    assert preview.official_folder_path == official_folder
+    assert not preview.blockers
+
+
+def test_adopt_existing_only_rebinds_manifest_and_workspace_index(tmp_path: Path) -> None:
+    template = _make_template(tmp_path / "template")
+    workspace = tmp_path / "workspaces" / "DL-2025-11-074"
+    source_book = workspace / "Source Book"
+    official_folder = workspace / "DL-2025-11-074 Coolpower Qualification test"
+    source_book.mkdir(parents=True)
+    official_folder.mkdir()
+    operator_file = official_folder / "operator-report.docx"
+    operator_file.write_bytes(b"operator-owned")
+    before = {
+        path.relative_to(workspace): (path.is_dir(), path.stat().st_size, path.stat().st_mtime_ns)
+        for path in (source_book, official_folder, operator_file)
+    }
+    repository = _WorkspaceRepo()
+    service = _service(
+        tmp_path,
+        repository=repository,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=template,
+            public_drive_root=None,
+        ),
+    )
+
+    result = service.adopt_existing("project-1")
+
+    after = {
+        path.relative_to(workspace): (path.is_dir(), path.stat().st_size, path.stat().st_mtime_ns)
+        for path in (source_book, official_folder, operator_file)
+    }
+    assert after == before
+    assert operator_file.read_bytes() == b"operator-owned"
+    assert repository.saved == result.record
+    assert result.created_paths == (workspace / ".connlab" / "manifest.json",)
+    assert not (official_folder / "template.txt").exists()
+    assert not list(workspace.parent.glob("DL-2025-11-074 *"))
+    assert service.preview("project-1").status == "completed"
+
+
+def test_create_rejects_adoptable_folder_without_mutating_operator_tree(
+    tmp_path: Path,
+) -> None:
+    template = _make_template(tmp_path / "template")
+    workspace = tmp_path / "workspaces" / "DL-2025-11-074"
+    source_book = workspace / "Source Book"
+    official_folder = workspace / "DL-2025-11-074 Coolpower Qualification test"
+    source_book.mkdir(parents=True)
+    official_folder.mkdir()
+    operator_file = official_folder / "operator-report.docx"
+    operator_file.write_bytes(b"operator-owned")
+    before = {
+        path.relative_to(workspace): (path.is_dir(), path.stat().st_size, path.stat().st_mtime_ns)
+        for path in workspace.rglob("*")
+    }
+    service = _service(
+        tmp_path,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=template,
+            public_drive_root=None,
+        ),
+    )
+
+    with pytest.raises(OfficialWorkspaceCreateError, match="Link existing folder"):
+        service.create("project-1")
+
+    after = {
+        path.relative_to(workspace): (path.is_dir(), path.stat().st_size, path.stat().st_mtime_ns)
+        for path in workspace.rglob("*")
+    }
+    assert after == before
+    assert operator_file.read_bytes() == b"operator-owned"
+    assert not (workspace / ".connlab").exists()
+
+
+def test_adoption_does_not_require_configured_template_to_be_available(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspaces" / "DL-2025-11-074"
+    source_book = workspace / "Source Book"
+    official_folder = workspace / "DL-2025-11-074 Coolpower Qualification test"
+    source_book.mkdir(parents=True)
+    official_folder.mkdir()
+    operator_file = official_folder / "operator-report.docx"
+    operator_file.write_bytes(b"operator-owned")
+    unavailable_template = tmp_path / "old-machine-template"
+    service = _service(
+        tmp_path,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=unavailable_template,
+            public_drive_root=None,
+        ),
+    )
+
+    assert service.preview("project-1").status == "adoptable"
+    result = service.adopt_existing("project-1")
+
+    assert result.record.template_source_path == unavailable_template
+    assert operator_file.read_bytes() == b"operator-owned"
+
+
+def test_adoption_does_not_overwrite_a_different_folder_manifest_inserted_after_initial_check(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / ".connlab" / "manifest.json"
+    path.parent.mkdir(parents=True)
+    current = OfficialWorkspaceManifest(
+        schema_version=1,
+        project_id="project-1",
+        dl_number="DL-2025-11-074",
+        local_workspace_path="D:/old/DL-2025-11-074",
+        source_book_path="D:/old/DL-2025-11-074/Source Book",
+        official_project_folder_path="D:/old/DL-2025-11-074/Official",
+        template_source_path="D:/old/template",
+        created_at="2026-06-01T00:00:00+00:00",
+    )
+    gateway = _InterveningManifestGateway()
+    gateway.write(path, current)
+    rebound = replace(
+        current,
+        local_workspace_path=str(tmp_path / "DL-2025-11-074"),
+    )
+
+    with pytest.raises(ValueError, match="reviewed official project folder"):
+        gateway.write_adoption(path, rebound)
+
+    preserved = json.loads(path.read_text(encoding="utf-8"))
+    assert preserved["project_id"] == "project-1"
+    assert preserved["official_project_folder_path"] == "D:/other/Unexpected Folder"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows junction regression")
+def test_adoption_preview_fails_closed_for_workspace_junction(tmp_path: Path) -> None:
+    template = _make_template(tmp_path / "template")
+    root = tmp_path / "workspaces"
+    root.mkdir()
+    target = tmp_path / "outside-workspace"
+    source_book = target / "Source Book"
+    official_folder = target / "DL-2025-11-074 Coolpower Qualification test"
+    source_book.mkdir(parents=True)
+    official_folder.mkdir()
+    workspace = root / "DL-2025-11-074"
+    created = subprocess.run(
+        ["cmd", "/c", "mklink", "/J", str(workspace), str(target)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if created.returncode != 0:
+        pytest.skip(f"Junction creation unavailable: {created.stderr or created.stdout}")
+    try:
+        service = _service(
+            tmp_path,
+            settings=OfficialWorkspaceSettings(
+                local_workspace_root=root,
+                template_path=template,
+                public_drive_root=None,
+            ),
+        )
+
+        preview = service.preview("project-1")
+
+        assert preview.status == "conflict"
+        assert "symbolic link or junction" in preview.blockers[0]
+        with pytest.raises(OfficialWorkspaceCreateError, match="cannot be linked"):
+            service.adopt_existing("project-1")
+    finally:
+        workspace.rmdir()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows file-lock regression")
+def test_completed_identity_ignores_business_file_mutations_and_locks(tmp_path: Path) -> None:
+    import ctypes
+    from ctypes import wintypes
+
+    template = _make_template(tmp_path / "template")
+    (tmp_path / "workspaces").mkdir()
+    repository = _WorkspaceRepo()
+    service = _service(
+        tmp_path,
+        repository=repository,
+        settings=OfficialWorkspaceSettings(
+            local_workspace_root=tmp_path / "workspaces",
+            template_path=template,
+            public_drive_root=None,
+        ),
+    )
+    created = service.create("project-1")
+    operator_file = created.official_folder_path / "operator-owned.docx"
+    operator_file.write_bytes(b"first")
+    operator_file.write_bytes(b"operator changed this file")
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateFileW.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    kernel32.CreateFileW.restype = wintypes.HANDLE
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    handle = kernel32.CreateFileW(str(operator_file), 0x80000000, 0, None, 3, 0, None)
+    assert handle != wintypes.HANDLE(-1).value, ctypes.get_last_error()
+    try:
+        assert service.preview("project-1").status == "completed"
+        assert service.adopt_existing("project-1").record == created.record
+    finally:
+        kernel32.CloseHandle(handle)
 
 
 def test_failed_template_copy_cleans_temp_without_final_folder(
@@ -932,6 +1199,30 @@ class _ProjectRepo:
 
     def get(self, project_id: str) -> Project | None:
         return self.project if self.project.project_id == project_id else None
+
+
+class _InterveningManifestGateway(OfficialWorkspaceManifestGateway):
+    """Simulate another folder identity winning after the reviewed first read."""
+
+    def __init__(self) -> None:
+        self._intervene = True
+
+    def read(self, path: Path) -> dict[str, object]:
+        payload = super().read(path)
+        if self._intervene:
+            self._intervene = False
+            path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "project_id": "project-1",
+                        "dl_number": "DL-2025-11-074",
+                        "official_project_folder_path": "D:/other/Unexpected Folder",
+                    }
+                ),
+                encoding="utf-8",
+            )
+        return payload
 
 
 class _WorkspaceRepo:

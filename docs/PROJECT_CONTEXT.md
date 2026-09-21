@@ -110,12 +110,20 @@ over a new pass-through layer. Introduce an adapter seam only when behavior actu
 - Test development and packaged path resolution when resources or configuration change.
 - Never overwrite an authoritative workbook or existing project folder without the explicit conflict
   and recovery policy authorized by the task.
-- The project-folder entry creates a new folder or explicitly rebuilds an existing one: preserve
-  history then rebuild, or confirm deletion then rebuild. New operations do not offer incremental
-  continuation; legacy journals retain recovery compatibility. History names use the original folder
-  name plus its local last-modification timestamp (`yyyyMMddHHmmss`), with collision suffixes.
-  Existing output edits are not rebuild blockers; current inputs, target identity and fresh approval
-  still matter. Delete-rebuild retains an operation-owned rollback directory until generation succeeds.
+- The normal project-folder entry creates a missing folder, opens a healthy indexed folder, or links
+  an existing same-project folder by repairing only its `.connlab` identity manifest and local SQLite
+  binding. Linking never copies, renames, deletes, tree-hashes, or rewrites operator business files.
+  Ordinary additions, edits, deletions, and file locks inside the official project folder do not change
+  project identity; identity comes from the immutable `project_id`, registered DL number, configured
+  workspace boundary, and manifest. Symlinks, junctions, reparse points, unreadable/foreign manifests,
+  or identity changes during linking fail closed.
+- Rebuild is a separate advanced operation. New rebuilds only offer `Backup and Rebuild`, which moves
+  the reviewed existing folder to timestamped history before creating a fresh folder. New operations
+  cannot select legacy incremental continuation or delete/overwrite rebuild; already-persisted legacy
+  journals may still resume those historical choices so interrupted releases remain recoverable.
+  Ordinary preview and linking do not hash the business tree; only the explicit rebuild preview binds
+  approval to current target contents. History names use the original folder name plus its local
+  last-modification timestamp (`yyyyMMddHHmmss`), with collision suffixes.
 - New official project folders use the latest confirmed Basic Information product description and
   test item, with existing Project/LTR/application-form fallbacks when absent. The registered LTR
   remains the DL-number authority. Unconfirmed Basic drafts never name official folders. Existing

@@ -95,6 +95,7 @@ def test_start_is_blocked_before_writes_when_complete_basic_information_is_uncon
     )
     engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
     Base.metadata.create_all(engine)
+    bootstrap_project_schedule_schema(engine)
     sessions = create_session_factory(engine)
     template, destination = tmp_path / "template", tmp_path / "output"
     destination.mkdir()
@@ -378,11 +379,12 @@ def test_preview_surfaces_missing_project_root_before_required_form_blockers(
         engine.dispose()
 
 
-def test_real_preflight_rejects_missing_inputs_before_creating_any_folder(tmp_path):
+def test_real_preflight_rejects_missing_inputs_before_creating_any_folder(tmp_path, monkeypatch):
     settings = Settings(data_dir=tmp_path / "data", projects_dir=tmp_path / "projects", templates_dir=tmp_path / "templates",
                         database_path=tmp_path / "fixture.sqlite")
     engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
     Base.metadata.create_all(engine)
+    bootstrap_project_schedule_schema(engine)
     sessions = create_session_factory(engine)
     template, destination = tmp_path / "template", tmp_path / "output"
     destination.mkdir()
@@ -410,12 +412,21 @@ def test_real_preflight_rejects_missing_inputs_before_creating_any_folder(tmp_pa
     service.dispatch = queued.append
     app.dependency_overrides[deps.get_project_folder_generation_service] = lambda: service
     try:
+        hashed_paths = []
+        monkeypatch.setattr(
+            "backend.api.project_folder_generation_composition.tree_hash",
+            lambda path: hashed_paths.append(path) or "reviewed-target-hash",
+        )
         client = TestClient(app)
         url = "/api/projects/P1/project-folder/generation"
         assert client.get(url).json() is None
         before_context = runner.context("P1")
         preview = client.get(url + "/preview")
         assert preview.status_code == 200, preview.text
+        assert hashed_paths == []
+        advanced_preview = client.get(url + "/preview?intent=backup_rebuild")
+        assert advanced_preview.status_code == 200, advanced_preview.text
+        assert hashed_paths
         body = {**preview.json(), "request_id": "request-one"}
         stale = client.post(url + "/start", json={**body, "expected_context": "stale"})
         assert stale.status_code == 409
@@ -432,15 +443,15 @@ def test_real_preflight_rejects_missing_inputs_before_creating_any_folder(tmp_pa
         engine.dispose()
 
 
-def test_new_start_rejects_continue_and_requires_delete_confirmation():
+def test_new_start_rejects_legacy_mutating_strategies():
     app.dependency_overrides[deps.get_project_folder_generation_service] = lambda: object()
     try:
         client = TestClient(app)
         url = "/api/projects/P1/project-folder/generation/start"
         body = {"expected_context": "reviewed", "request_id": "new"}
         assert client.post(url, json={**body, "conflict_strategy": "continue_existing"}).status_code == 422
-        response = client.post(url, json={**body, "conflict_strategy": "overwrite_rebuild"})
-        assert response.status_code == 409
-        assert "Confirm deletion" in response.json()["detail"]
+        assert client.post(
+            url, json={**body, "conflict_strategy": "overwrite_rebuild"}
+        ).status_code == 422
     finally:
         app.dependency_overrides.clear()
