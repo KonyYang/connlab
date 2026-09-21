@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import pytest
@@ -64,6 +65,7 @@ def test_customer_report_job_reports_progress_and_completes(tmp_path: Path) -> N
 
 def test_customer_report_job_keeps_actionable_failure_after_cleaning_temp_files(
     tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     class _FailingGenerator:
         def generate_customer_report(self, **_kwargs):
@@ -80,6 +82,7 @@ def test_customer_report_job_keeps_actionable_failure_after_cleaning_temp_files(
         generator=_FailingGenerator(),
         dispatch=queued.append,
     )
+    caplog.set_level(logging.INFO, logger="connlab.customer_report")
 
     started = jobs.start(
         root=root,
@@ -94,6 +97,9 @@ def test_customer_report_job_keeps_actionable_failure_after_cleaning_temp_files(
     assert failed["stage"] == "failed"
     assert failed["message"] == "Word could not copy the report body."
     assert not root.exists()
+    assert f"operation_id={started['operation_id']}" in caplog.text
+    assert "stage=validating" in caplog.text
+    assert "error_type=ValueError" in caplog.text
 
 
 def test_customer_report_job_removes_an_undownloaded_result_after_retention(

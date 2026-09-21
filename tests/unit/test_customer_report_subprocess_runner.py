@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
+import time
 
 import pytest
 
@@ -11,6 +13,15 @@ from backend.infrastructure.office.customer_report_subprocess_runner import (
     _child_command,
 )
 from backend.infrastructure.office.customer_report_subprocess_child import _execute
+
+
+def _wait_for_file(path: Path, *, timeout_seconds: float) -> bool:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        if path.is_file():
+            return True
+        time.sleep(0.005)
+    return path.is_file()
 
 
 def test_unexpected_poll_failure_stops_child_and_cleans_temporary_files(tmp_path, monkeypatch):
@@ -84,6 +95,173 @@ def test_runner_times_out_a_stuck_word_process_and_releases_its_run_directory(
     assert progress == ["preparing_template"]
     assert process.killed is True
     assert list((tmp_path / "runs").glob("run-*")) == []
+
+
+def test_runner_does_not_abort_only_because_one_stage_exceeds_120_seconds(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _SlowButSuccessfulProcess:
+        returncode = None
+
+        def __init__(self, command: list[str]) -> None:
+            payload = json.loads(Path(command[-1]).read_text(encoding="utf-8"))
+            self.output_path = Path(payload["output_path"])
+            self.polls = 0
+
+        def poll(self):
+            self.polls += 1
+            if self.polls == 1:
+                return None
+            self.output_path.write_bytes(b"customer")
+            self.returncode = 0
+            return 0
+
+        def communicate(self):
+            return json.dumps({"status": "success"}), ""
+
+        def kill(self) -> None:
+            self.returncode = -9
+
+    moments = iter((0.0, 121.0, 122.0))
+    monkeypatch.setattr(
+        "backend.infrastructure.office.customer_report_subprocess_runner.subprocess.Popen",
+        lambda command, **_kwargs: _SlowButSuccessfulProcess(command),
+    )
+    source = tmp_path / "internal.docx"
+    template = tmp_path / "template.docx"
+    source.write_bytes(b"source")
+    template.write_bytes(b"template")
+
+    output = CustomerReportSubprocessRunner(
+        output_root=tmp_path / "runs",
+        absolute_timeout_seconds=600,
+        poll_interval_seconds=0,
+        clock=lambda: next(moments),
+    ).generate_customer_report(
+        source_path=source,
+        template_path=template,
+        output_path=tmp_path / "customer.docx",
+    )
+
+    assert output.read_bytes() == b"customer"
+
+
+def test_child_records_the_python_stacks_when_a_stage_stops_advancing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "internal.docx"
+    template = tmp_path / "template.docx"
+    output = tmp_path / "customer.docx"
+    progress_json = tmp_path / "progress.json"
+    diagnostic_json = tmp_path / "diagnostic.json"
+    command_json = tmp_path / "command.json"
+    source.write_bytes(b"source")
+    template.write_bytes(b"template")
+    command_json.write_text(
+        json.dumps(
+            {
+                "source_path": str(source),
+                "template_path": str(template),
+                "output_path": str(output),
+                "progress_path": str(progress_json),
+                "diagnostic_path": str(diagnostic_json),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    class _BlockedGateway:
+        def generate_customer_report(self, **paths) -> Path:
+            paths["progress"]("opening_word")
+            assert _wait_for_file(diagnostic_json, timeout_seconds=1)
+            paths["output_path"].write_bytes(b"customer")
+            return paths["output_path"]
+
+    monkeypatch.setattr(
+        "backend.infrastructure.office.customer_report_subprocess_child.CustomerReportDocumentGateway",
+        _BlockedGateway,
+    )
+    monkeypatch.setattr(
+        "backend.infrastructure.office.customer_report_subprocess_child.DEFAULT_CHILD_STALL_DIAGNOSTIC_SECONDS",
+        0.01,
+    )
+
+    assert _execute(command_json) == {"status": "success"}
+    diagnostic = json.loads(diagnostic_json.read_text(encoding="utf-8"))
+    assert diagnostic["stage"] == "opening_word"
+    assert diagnostic["elapsed_seconds"] >= 0.01
+    assert "_wait_for_file" in diagnostic["python_stacks"]
+
+
+def test_runner_logs_the_stall_snapshot_without_local_paths_or_secrets(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    class _DiagnosedProcess:
+        returncode = None
+
+        def __init__(self, command: list[str]) -> None:
+            payload = json.loads(Path(command[-1]).read_text(encoding="utf-8"))
+            self.diagnostic_path = Path(payload["diagnostic_path"])
+            self.output_path = Path(payload["output_path"])
+            self.polls = 0
+
+        def poll(self):
+            self.polls += 1
+            if self.polls == 1:
+                self.diagnostic_path.write_text(
+                    json.dumps(
+                        {
+                            "sequence": 1,
+                            "stage": "opening_word",
+                            "elapsed_seconds": 120.0,
+                            "python_stacks": (
+                                'File "C:\\Sensitive\\blocked.py", line 1\n'
+                                "password=secret"
+                            ),
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                return None
+            self.output_path.write_bytes(b"customer")
+            self.returncode = 0
+            return 0
+
+        def communicate(self):
+            return json.dumps({"status": "success"}), ""
+
+    monkeypatch.setattr(
+        "backend.infrastructure.office.customer_report_subprocess_runner.subprocess.Popen",
+        lambda command, **_kwargs: _DiagnosedProcess(command),
+    )
+    source = tmp_path / "internal.docx"
+    template = tmp_path / "template.docx"
+    source.write_bytes(b"source")
+    template.write_bytes(b"template")
+    moments = iter((0.0, 121.0, 122.0))
+    caplog.set_level(logging.INFO, logger="connlab.customer_report")
+
+    CustomerReportSubprocessRunner(
+        output_root=tmp_path / "runs",
+        absolute_timeout_seconds=600,
+        poll_interval_seconds=0,
+        clock=lambda: next(moments),
+    ).generate_customer_report(
+        source_path=source,
+        template_path=template,
+        output_path=tmp_path / "customer.docx",
+    )
+
+    assert "customer_report_child_stalled" in caplog.text
+    assert "stage=opening_word" in caplog.text
+    assert "<LOCAL_PATH>" in caplog.text
+    assert "password=<REDACTED>" in caplog.text
+    assert "Sensitive" not in caplog.text
+    assert "password=secret" not in caplog.text
 
 
 def test_runner_forwards_child_progress_and_resets_the_stall_deadline(

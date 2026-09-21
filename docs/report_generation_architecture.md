@@ -64,6 +64,14 @@ official project path or creates its temporary files beside the project report. 
 copy is then returned to the existing publication stage, which keeps the full descriptive customer
 report filename and its non-overwrite and history rules.
 
+Customer-report generation does not abort merely because one Word stage takes 120 seconds. The
+isolated process retains a 600-second total safety limit. If one stage has not advanced for 120 seconds,
+the child records a non-terminating diagnostic snapshot with the current stage and Python thread
+stacks; the parent writes a redacted copy to the runtime log and continues waiting. Job logs correlate
+the operation identifier, stage, elapsed time, child exit status, and bounded stdout/stderr details so
+an exported diagnostics package can distinguish template preparation, Word startup, content copying,
+formatting, saving, verification, and output protection failures without retaining report contents.
+
 Report history is intentionally flat. A prior Internal Report is stored directly as
 `History/Report/{DL} Report_Rev_{revision} {YYYYMMDD-HHMMSS}.docx`; a prior Customer Report uses
 `{DL}-CR Report_Rev_{revision} {YYYYMMDD-HHMMSS}.docx`. The product title is omitted from history

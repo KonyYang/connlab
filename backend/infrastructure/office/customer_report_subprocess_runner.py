@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 import shutil
@@ -13,14 +14,16 @@ from typing import Callable
 from uuid import uuid4
 
 from backend.application.tools_service import ToolsError
+from backend.shared.operation_diagnostics import path_summary, safe_text, safe_value
 
 
-DEFAULT_CUSTOMER_REPORT_TIMEOUT_SECONDS = 120.0
+DEFAULT_CUSTOMER_REPORT_TIMEOUT_SECONDS: float | None = None
 DEFAULT_CUSTOMER_REPORT_ABSOLUTE_TIMEOUT_SECONDS = 600.0
 DEFAULT_CUSTOMER_REPORT_POLL_INTERVAL_SECONDS = 0.25
 DEFAULT_CUSTOMER_REPORT_SUBPROCESS_ROOT = Path(
     "tmp/customer_report_subprocess"
 )
+_LOGGER = logging.getLogger("connlab.customer_report")
 
 
 class CustomerReportSubprocessRunner:
@@ -30,18 +33,23 @@ class CustomerReportSubprocessRunner:
         self,
         *,
         output_root: Path = DEFAULT_CUSTOMER_REPORT_SUBPROCESS_ROOT,
-        timeout_seconds: float = DEFAULT_CUSTOMER_REPORT_TIMEOUT_SECONDS,
+        timeout_seconds: float | None = DEFAULT_CUSTOMER_REPORT_TIMEOUT_SECONDS,
         absolute_timeout_seconds: float = DEFAULT_CUSTOMER_REPORT_ABSOLUTE_TIMEOUT_SECONDS,
         poll_interval_seconds: float = DEFAULT_CUSTOMER_REPORT_POLL_INTERVAL_SECONDS,
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
-        if timeout_seconds <= 0:
+        if timeout_seconds is not None and timeout_seconds <= 0:
             raise ValueError("Customer-report stall timeout must be positive.")
-        if absolute_timeout_seconds < timeout_seconds:
+        if (
+            timeout_seconds is not None
+            and absolute_timeout_seconds < timeout_seconds
+        ):
             raise ValueError(
                 "Customer-report absolute timeout must not be shorter than its stall timeout."
             )
+        if absolute_timeout_seconds <= 0:
+            raise ValueError("Customer-report absolute timeout must be positive.")
         if poll_interval_seconds < 0:
             raise ValueError("Customer-report poll interval must not be negative.")
         self._output_root = Path(output_root)
@@ -60,7 +68,8 @@ class CustomerReportSubprocessRunner:
         progress: Callable[[str], None] | None = None,
     ) -> Path:
         output_root = self._output_root.resolve()
-        run_dir = output_root / f"run-{uuid4().hex}"
+        run_id = uuid4().hex
+        run_dir = output_root / f"run-{run_id}"
         run_dir.mkdir(parents=True, exist_ok=False)
         source = Path(source_path)
         template = Path(template_path)
@@ -71,6 +80,7 @@ class CustomerReportSubprocessRunner:
         staged_output = run_dir / "customer-report.docx"
         command_json = run_dir / "command.json"
         progress_json = run_dir / "progress.json"
+        diagnostic_json = run_dir / "diagnostic.json"
         process = None
         try:
             if output_existed:
@@ -84,6 +94,7 @@ class CustomerReportSubprocessRunner:
                         "template_path": str(staged_template.resolve()),
                         "output_path": str(staged_output.resolve()),
                         "progress_path": str(progress_json.resolve()),
+                        "diagnostic_path": str(diagnostic_json.resolve()),
                     },
                     ensure_ascii=False,
                 ),
@@ -91,6 +102,14 @@ class CustomerReportSubprocessRunner:
             )
             if progress is not None:
                 progress("preparing_template")
+            _LOGGER.info(
+                "customer_report_child_started run_id=%s source=%s template=%s "
+                "absolute_timeout_seconds=%s",
+                run_id,
+                path_summary(source),
+                path_summary(template),
+                self._absolute_timeout_seconds,
+            )
             process = subprocess.Popen(
                 _child_command(command_json),
                 cwd=Path.cwd(),
@@ -106,6 +125,8 @@ class CustomerReportSubprocessRunner:
             last_progress_at = started_at
             last_sequence = 0
             last_stage = "preparing_template"
+            last_diagnostic_sequence = 0
+            latest_diagnostic: dict[str, object] | None = None
             while True:
                 returncode = process.poll()
                 now = self._clock()
@@ -116,30 +137,96 @@ class CustomerReportSubprocessRunner:
                     if progress is not None and stage != last_stage:
                         progress(stage)
                     last_stage = stage
+                    _LOGGER.info(
+                        "customer_report_child_progress run_id=%s stage=%s "
+                        "elapsed_seconds=%.2f",
+                        run_id,
+                        stage,
+                        now - started_at,
+                    )
+                diagnostic = _read_diagnostic(
+                    diagnostic_json,
+                    after_sequence=last_diagnostic_sequence,
+                )
+                if diagnostic is not None:
+                    last_diagnostic_sequence, latest_diagnostic = diagnostic
+                    _LOGGER.warning(
+                        "customer_report_child_stalled run_id=%s stage=%s "
+                        "stage_elapsed_seconds=%s python_stacks=%s",
+                        run_id,
+                        latest_diagnostic.get("stage", last_stage),
+                        latest_diagnostic.get("elapsed_seconds"),
+                        safe_text(latest_diagnostic.get("python_stacks", "")),
+                    )
                 if returncode is not None:
                     break
                 if now - started_at >= self._absolute_timeout_seconds:
-                    _stop_process(process)
+                    stdout, stderr = _stop_process(process)
                     output.unlink(missing_ok=True)
+                    _LOGGER.error(
+                        "customer_report_child_absolute_timeout run_id=%s stage=%s "
+                        "elapsed_seconds=%.2f diagnostic=%s stdout=%s stderr=%s",
+                        run_id,
+                        last_stage,
+                        now - started_at,
+                        safe_value(latest_diagnostic),
+                        safe_text(stdout),
+                        safe_text(stderr),
+                    )
                     raise ToolsError(
                         "Customer report generation exceeded the "
                         f"{self._absolute_timeout_seconds:g}-second safety limit. "
+                        f"Last processing stage: {last_stage}. "
                         "The isolated Word task was stopped; the original report was not changed. "
                         "Select the source again and retry."
                     )
-                if now - last_progress_at >= self._timeout_seconds:
-                    _stop_process(process)
+                if (
+                    self._timeout_seconds is not None
+                    and now - last_progress_at >= self._timeout_seconds
+                ):
+                    stdout, stderr = _stop_process(process)
                     output.unlink(missing_ok=True)
+                    _LOGGER.error(
+                        "customer_report_child_stage_timeout run_id=%s stage=%s "
+                        "elapsed_seconds=%.2f stdout=%s stderr=%s",
+                        run_id,
+                        last_stage,
+                        now - last_progress_at,
+                        safe_text(stdout),
+                        safe_text(stderr),
+                    )
                     raise ToolsError(
                         "Customer report generation stayed at one processing stage for "
                         f"{self._timeout_seconds:g} seconds. The isolated Word task was stopped; "
                         "the original report was not changed. Select the source again and retry."
                     )
                 self._sleep(self._poll_interval_seconds)
-            stdout, _stderr = process.communicate()
-            payload = _parse_child_result(stdout)
+            stdout, stderr = process.communicate()
+            try:
+                payload = _parse_child_result(stdout)
+            except ToolsError:
+                _LOGGER.error(
+                    "customer_report_child_invalid_result run_id=%s exit_code=%s "
+                    "stage=%s stdout=%s stderr=%s",
+                    run_id,
+                    returncode,
+                    last_stage,
+                    safe_text(stdout),
+                    safe_text(stderr),
+                )
+                raise
             if returncode != 0 or payload.get("status") != "success":
                 message = str(payload.get("error_message") or "").strip()
+                _LOGGER.error(
+                    "customer_report_child_failed run_id=%s exit_code=%s stage=%s "
+                    "error_type=%s message=%s stderr=%s",
+                    run_id,
+                    returncode,
+                    last_stage,
+                    safe_text(payload.get("error_type", "unknown")),
+                    safe_text(message),
+                    safe_text(stderr),
+                )
                 raise ToolsError(
                     message
                     or "The isolated Word task could not generate the customer report."
@@ -149,6 +236,11 @@ class CustomerReportSubprocessRunner:
                     "The isolated Word task finished without producing the customer report."
                 )
             shutil.copy2(staged_output, output)
+            _LOGGER.info(
+                "customer_report_child_completed run_id=%s elapsed_seconds=%.2f",
+                run_id,
+                now - started_at,
+            )
             return output
         except BaseException:
             if process is not None and process.returncode is None:
@@ -179,11 +271,29 @@ def _read_progress(path: Path, *, after_sequence: int) -> tuple[int, str] | None
     return sequence, stage
 
 
-def _stop_process(process) -> None:
+def _stop_process(process) -> tuple[str, str]:
     try:
         process.kill()
     finally:
-        process.communicate()
+        stdout, stderr = process.communicate()
+    return stdout or "", stderr or ""
+
+
+def _read_diagnostic(
+    path: Path,
+    *,
+    after_sequence: int,
+) -> tuple[int, dict[str, object]] | None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    sequence = payload.get("sequence")
+    if not isinstance(sequence, int) or sequence <= after_sequence:
+        return None
+    return sequence, payload
 
 
 def _child_command(command_json: Path) -> list[str]:
