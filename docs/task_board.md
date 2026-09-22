@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_EQUIPMENT_CALIBRATION_MANUFACTURER_HEADER_MATCH",
+    "summary": "Accept the legacy equipment workbook Manufacturer header when the configured third header cell contains Manufacturer plus a vendor annotation, while retaining the fixed All Equip. layout and other required headers.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Only the requested legacy equipment-calibration header matching behavior.",
+    "scope_paths": [
+      "backend/application/external_resource_service.py",
+      "tests/unit/test_external_resource_service.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "c9fefcc3e06560a604f246e2061bea4ff77bd119",
+    "started_at": "2026-09-22T15:51:57.399200Z",
+    "updated_at": "2026-09-22T15:51:57.399200Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_AVAILABILITY_GUIDANCE",
     "tier": "high_risk",
