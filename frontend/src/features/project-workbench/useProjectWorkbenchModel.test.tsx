@@ -457,7 +457,14 @@ describe("useProjectWorkbenchModel", () => {
     expect(result.current.officialWorkspaceError).toBe("Old storage error");
     let review: unknown;
     await act(async () => { review = await result.current.onUpdateOfficialWorkspace(); });
-    expect(review).toBeUndefined();
+    expect(review).toMatchObject({
+      operationId: null,
+      resumeRebuild: false,
+      preview: {
+        expected_context: "preview",
+        workspace_preview: { status: "completed" },
+      },
+    });
     expect(result.current.officialWorkspaceError).toBeNull();
   });
 
