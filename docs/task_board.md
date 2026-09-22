@@ -22,7 +22,8 @@
       "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
       "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
       "frontend/src/features/project-workbench/useProjectFolderGeneration.test.tsx",
-      "frontend/src/features/project-workbench/useProjectFolderGeneration.ts"
+      "frontend/src/features/project-workbench/useProjectFolderGeneration.ts",
+      "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx"
     ],
     "risk_reasons": [
       "exposes authoritative external folder backup-and-rebuild entry",
@@ -31,14 +32,14 @@
     ],
     "activation_head": "9ad0edac21ad0d1b078de53f1521af1bb30e04e4",
     "started_at": "2026-09-22T09:42:38.241695Z",
-    "updated_at": "2026-09-22T10:10:53.134785Z",
+    "updated_at": "2026-09-22T11:33:02.411865Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_PROJECT_FOLDER_CREATE_REBUILD_ENTRY",
       "stage": "scope_manifest_correction",
       "status": "running",
-      "summary": "user-approved-reviewed-plan-2026-09-22",
+      "summary": "user-approved-workbench-model-test-2026-09-22",
       "requires_user": false
     },
     "report": null
