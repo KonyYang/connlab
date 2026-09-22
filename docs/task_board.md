@@ -25,15 +25,15 @@
     "risk_reasons": [],
     "activation_head": "c9fefcc3e06560a604f246e2061bea4ff77bd119",
     "started_at": "2026-09-22T15:51:57.399200Z",
-    "updated_at": "2026-09-22T16:26:17.706107Z",
+    "updated_at": "2026-09-22T23:30:58.902908Z",
     "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
       "task_id": "TASK_EQUIPMENT_CALIBRATION_MANUFACTURER_HEADER_MATCH",
-      "stage": "runtime-revalidation",
       "status": "running",
-      "summary": "Current source maps the configured workbook header successfully, but the Settings page still targets an inaccessible old backend on port 8000. The isolated current-source backend encountered an Excel COM INetCache open error during full API read, so no persisted validation state was changed.",
-      "requires_user": true
+      "stage": "runtime-verified",
+      "schema": "connlab.sol-task-checkpoint",
+      "summary": "Excel COM cannot open the configured legacy XLS because of Content.MSO, so the legacy tabular reader now falls back to the bundled xlrd parser. The configured workbook revalidated as valid through current source and returned DG-Q-0033 with its ISO calibration date; the persisted Settings resource is valid.",
+      "version": 1,
+      "requires_user": false
     },
     "report": null
   },
