@@ -21,7 +21,10 @@ In short: no installer is provided yet; these are portable folder releases.
 - `scripts\init_db.ps1`: initializes the SQLite schema using the configured database path.
 - `scripts\run_backend.ps1`: starts the FastAPI backend with `uvicorn`.
 - `scripts\run_frontend.ps1`: installs frontend dependencies if missing, then starts Vite.
-- `scripts\run_mvp_dev.ps1`: opens backend and frontend scripts in separate PowerShell windows.
+- `scripts\run_mvp_dev.ps1`: starts a managed development desktop session. Closing its
+  ConnLab window stops the backend and frontend process trees it started. Pass
+  `-SeparateWindows` only for diagnostic work that deliberately needs independent consoles;
+  those consoles are not automatically stopped when a browser or desktop window closes.
 
 ### Development diagnostic logs
 

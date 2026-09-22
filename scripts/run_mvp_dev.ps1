@@ -1,4 +1,5 @@
 param(
+    [switch]$SeparateWindows,
     [switch]$WithDesktopShell
 )
 
@@ -11,7 +12,15 @@ Set-Location $repoRoot
 Write-Host "===================================="
 Write-Host " Starting ConnLab MVP Dev Servers"
 Write-Host "===================================="
+if (-not $SeparateWindows) {
+    Write-Host "Opening one managed ConnLab desktop session."
+    Write-Host "Closing the ConnLab window stops its backend and frontend process trees."
+    py -m backend.desktop.managed_development_launcher
+    exit $LASTEXITCODE
+}
+
 Write-Host "Opening backend and frontend in separate PowerShell windows."
+Write-Host "This diagnostic mode does not manage their lifetime."
 if ($WithDesktopShell) {
     Write-Host "Desktop shell will open in a third PowerShell window."
 }
