@@ -811,10 +811,128 @@ def test_powershell_user_entry_supports_lifecycle_actions_without_legacy_approve
     assert closed.returncode == 0, closed.stderr or closed.stdout
     assert json.loads(closed.stdout)["code"] == "ALLOW_CLOSE"
     assert control(repo)["state"] == "idle"
+    assert git(repo, "status", "--porcelain=v1") == ""
+    assert git(repo, "show", "--format=", "--name-only", "HEAD") == BOARD.as_posix()
+    assert json.loads(closed.stdout)["publication"]["code"] == "SKIPPED_CANCELLED_CLOSE"
 
     source = RUN_TASK.read_text(encoding="utf-8")
     assert '[ValidateSet("Submit", "Revise", "Close", "CloseAndSubmit")]' in source
     assert "Approve" not in source
+
+
+def test_powershell_completed_close_commits_board_and_publishes_to_local_origin(
+    repo: Path, tmp_path: Path
+) -> None:
+    submit(repo, "TASK_PS_PUBLISH", "micro")
+    subject = commit_activation_and_implementation(repo)
+    invoke(
+        repo,
+        "finish",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_PS_PUBLISH",
+        "--result-json",
+        json.dumps(report("TASK_PS_PUBLISH", subject, "micro")),
+    )
+    git(repo, "add", str(BOARD))
+    git(repo, "commit", "-m", "ready for close")
+    remote = tmp_path.parent / f"{tmp_path.name}-origin.git"
+    subprocess.run(["git", "init", "--bare", str(remote)], check=True, capture_output=True)
+    git(repo, "remote", "add", "origin", str(remote))
+    git(repo, "push", "-u", "origin", "master")
+    before_close = git(repo, "rev-parse", "HEAD")
+
+    completed = subprocess.run(
+        [
+            "powershell.exe",
+            "-NoProfile",
+            "-File",
+            str(RUN_TASK),
+            "-Task",
+            "TASK_PS_PUBLISH",
+            "-Action",
+            "Close",
+            "-DecisionRef",
+            "User closed the completed task.",
+            "-ExpectedBoardSha256",
+            board_hash(repo),
+            "-RepositoryRoot",
+            str(repo),
+            "-Json",
+        ],
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    result = json.loads(completed.stdout)
+    close_head = git(repo, "rev-parse", "HEAD")
+    assert result["code"] == "ALLOW_CLOSE"
+    assert result["close_commit"] == close_head
+    assert result["publication"]["code"] == "PUBLISHED_CLOSED_TASK"
+    assert close_head != before_close
+    assert git(repo, "status", "--porcelain=v1") == ""
+    assert git(repo, "show", "--format=", "--name-only", "HEAD") == BOARD.as_posix()
+    assert (
+        subprocess.run(
+            ["git", "--git-dir", str(remote), "rev-parse", "refs/heads/master"],
+            text=True,
+            encoding="utf-8",
+            capture_output=True,
+            check=True,
+        ).stdout.strip()
+        == close_head
+    )
+
+
+def test_powershell_completed_close_keeps_local_commit_when_remote_publish_fails(
+    repo: Path, tmp_path: Path
+) -> None:
+    submit(repo, "TASK_PS_OFFLINE", "micro")
+    subject = commit_activation_and_implementation(repo)
+    invoke(
+        repo,
+        "finish",
+        "--expected-board-sha256",
+        board_hash(repo),
+        "--task-id",
+        "TASK_PS_OFFLINE",
+        "--result-json",
+        json.dumps(report("TASK_PS_OFFLINE", subject, "micro")),
+    )
+    git(repo, "add", str(BOARD))
+    git(repo, "commit", "-m", "ready for close")
+    remote = tmp_path.parent / f"{tmp_path.name}-origin.git"
+    subprocess.run(["git", "init", "--bare", str(remote)], check=True, capture_output=True)
+    git(repo, "remote", "add", "origin", str(remote))
+    git(repo, "push", "-u", "origin", "master")
+    git(repo, "remote", "set-url", "origin", str(tmp_path / "missing-origin.git"))
+    before_close = git(repo, "rev-parse", "HEAD")
+
+    completed = subprocess.run(
+        [
+            "powershell.exe", "-NoProfile", "-File", str(RUN_TASK),
+            "-Task", "TASK_PS_OFFLINE", "-Action", "Close",
+            "-DecisionRef", "User closed the completed task.",
+            "-ExpectedBoardSha256", board_hash(repo),
+            "-RepositoryRoot", str(repo), "-Json",
+        ],
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+    )
+
+    assert completed.returncode == 2
+    result = json.loads(completed.stdout)
+    close_head = git(repo, "rev-parse", "HEAD")
+    assert result["code"] == "BLOCKED_REMOTE_OPERATION"
+    assert result["local_close_committed"] is True
+    assert result["close_commit"] == close_head
+    assert close_head != before_close
+    assert control(repo)["state"] == "idle"
+    assert git(repo, "status", "--porcelain=v1") == ""
 
 
 def test_powershell_user_entry_can_revise_completed_task(repo: Path) -> None:
@@ -877,6 +995,7 @@ def test_powershell_user_entry_can_close_and_submit_in_one_transition(repo: Path
     git(repo, "add", str(BOARD))
     git(repo, "commit", "-m", "finish task before rollover")
 
+    before_rollover = git(repo, "rev-parse", "HEAD")
     completed = subprocess.run(
         [
             "powershell.exe",
@@ -909,3 +1028,5 @@ def test_powershell_user_entry_can_close_and_submit_in_one_transition(repo: Path
     assert result["code"] == "ALLOW_CLOSE_AND_SUBMIT"
     assert result["active_task_id"] == "TASK_PS_NEXT"
     assert control(repo)["last_closed"]["task_id"] == "TASK_PS_DONE"
+    assert git(repo, "rev-parse", "HEAD") == before_rollover
+    assert git(repo, "status", "--porcelain=v1") == "M docs/task_board.md"

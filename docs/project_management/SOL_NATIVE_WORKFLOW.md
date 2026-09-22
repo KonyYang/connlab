@@ -27,7 +27,9 @@ Do not ask for routine Plan, role, test-command, bounded-fix, or clean-local-int
 WIP is one; only explicit Close or Cancel releases it. When a task is `ready_for_close`, interpret the
 next User message as follows:
 
-- final `关闭` or an unmistakable cancellation: close or cancel the task;
+- final `关闭`: close the completed task, commit the board-only close transition, and run the safe
+  `origin/master` publication gate; an unmistakable cancellation closes and commits locally without
+  publication;
 - an in-scope defect, acceptance finding, or adjustment: run `Revise` and continue the same task;
 - a materially unrelated request: keep WIP unless that message also explicitly closes or cancels the
   current task, in which case `CloseAndSubmit` may perform the atomic rollover.
@@ -141,11 +143,13 @@ Public commands are `Submit`, `Revise`, `Close`, and `CloseAndSubmit` through
 - `finish`: verify the clean exact subject, scope, proportional results, and validation;
 - `revise`: on in-scope User feedback, return the same task from `ready_for_close` to `running`,
   invalidate its stale final report, and record a concise revision checkpoint;
-- `close`: record the User decision and return to idle.
+- `close`: record the User decision and return to idle. The public `run_task.ps1` wrapper then creates
+  one exact board-only close commit. For `completed` only, it invokes
+  `connlab_publish_closed_task.py`; `cancelled` is committed locally and never published.
 - `close-and-submit`: when one User message explicitly closes or cancels the current task and requests
   a complete next task, record the old decision and activate the next request in one locked board
   transition. It preserves WIP=1 and fails without writing on identity, request, state, cleanliness,
-  or board-hash errors.
+  or board-hash errors. It does not automatically commit or publish because the next task is active.
 
 Routine callers use the compact structured result and `next_action`; they do not reread this document,
 command help, or writer source before each transition. They invoke `Revise` automatically before
@@ -165,3 +169,11 @@ evidence, commits, or tests merely because the conversation restarted.
 concise validation. Report only the outcome, evidence needed to trust it, material caveats, and next
 action. At `ready_for_close`, final Close releases WIP; in-scope feedback triggers `Revise` and resumes
 execution without another planning or close ceremony.
+
+For a completed terminal Close, publication is a separate fail-closed Git gate after the local close
+commit. It requires the expected HEAD on clean `master`, an idle board whose matching `last_closed`
+disposition is `completed`, a first-parent diff containing only `docs/task_board.md`, and upstream
+`origin/master`. It fetches first, permits only a fast-forward ordinary push, then verifies the
+advertised remote SHA with `ls-remote`. It never force-pushes, rebases, resets, stashes, or cleans.
+Remote, network, or authentication failure returns a typed blocker while preserving the valid local
+close commit; the task remains closed locally and GitHub synchronization remains pending.

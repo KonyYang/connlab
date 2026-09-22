@@ -53,6 +53,11 @@ the board/writer are compatibility names, not instructions to select GPT-5.6 Sol
   from an inferred preference. Skills cannot expand scope or require an already-authorized decision again.
 - Preserve unrelated User work. Never silently reset, restore, stash, clean, rebase, push, delete
   unrelated files, or overwrite external data.
+- Final `关闭` for a successfully completed task is the User's bounded authorization for
+  `scripts/run_task.ps1` to create the board-only close commit and pass that exact `master` HEAD
+  through the ordinary fast-forward publication gate to `origin/master`. Cancellation and
+  `CloseAndSubmit` never authorize publication. A blocked publication leaves the local close commit
+  intact and must not force, rebase, reset, stash, clean, or retry destructively.
 
 ## Durable product facts
 
