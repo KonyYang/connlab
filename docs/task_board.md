@@ -25,15 +25,15 @@
     "risk_reasons": [],
     "activation_head": "c9fefcc3e06560a604f246e2061bea4ff77bd119",
     "started_at": "2026-09-22T15:51:57.399200Z",
-    "updated_at": "2026-09-22T23:30:58.902908Z",
+    "updated_at": "2026-09-22T23:41:15.302099Z",
     "checkpoint": {
+      "version": 1,
+      "requires_user": false,
       "task_id": "TASK_EQUIPMENT_CALIBRATION_MANUFACTURER_HEADER_MATCH",
       "status": "running",
-      "stage": "runtime-verified",
       "schema": "connlab.sol-task-checkpoint",
-      "summary": "Excel COM cannot open the configured legacy XLS because of Content.MSO, so the legacy tabular reader now falls back to the bundled xlrd parser. The configured workbook revalidated as valid through current source and returned DG-Q-0033 with its ISO calibration date; the persisted Settings resource is valid.",
-      "version": 1,
-      "requires_user": false
+      "summary": "The legacy XLS read fallback remains verified. The user also authorized repair of the residual local development runtime: run_mvp_dev now owns backend and frontend under one desktop session and stops only its child PID trees when the window closes. The observed stale listener PID 13328 was terminated with its child tree; ports 8000 and 5173 are no longer listening.",
+      "stage": "managed-runtime-verified"
     },
     "report": null
   },
