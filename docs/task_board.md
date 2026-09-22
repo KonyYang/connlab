@@ -11,8 +11,33 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_CLOSE_AUTO_PUBLISH_GATE",
+    "summary": "Publish completed tasks to origin/master through a fail-closed post-Close Git gate after the board close commit.",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Add a small closed-task publication module and connect only completed terminal Close to exact board commit plus ordinary fast-forward GitHub push; exclude cancellation and CloseAndSubmit; never force, rebase, reset, stash, or clean.",
+    "scope_paths": [
+      "AGENTS.md",
+      "docs/project_management/SOL_NATIVE_WORKFLOW.md",
+      "scripts/connlab_publish_closed_task.py",
+      "scripts/run_task.ps1",
+      "tests/unit/test_connlab_publish_closed_task.py",
+      "tests/unit/test_connlab_sol_native_workflow.py",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [
+      "remote GitHub mutation",
+      "workflow authority change",
+      "automatic Git commit and push after explicit user Close"
+    ],
+    "activation_head": "b48b50ca5f58fa75e68bfd61a7471f65cdb78236",
+    "started_at": "2026-09-22T00:05:34.866806Z",
+    "updated_at": "2026-09-22T00:05:34.866806Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_DATA_PROTECTION_ADOPTION",
     "tier": "high_risk",
