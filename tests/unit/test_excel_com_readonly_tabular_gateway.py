@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import backend.infrastructure.office.excel_com_readonly_tabular_gateway as legacy_gateway
 from backend.infrastructure.office.excel_com_readonly_tabular_gateway import (
     ExcelComReadonlyTabularGateway,
     LegacyExcelCleanupError,
@@ -17,6 +18,7 @@ from backend.infrastructure.office.excel_com_readonly_tabular_gateway import (
 )
 from backend.infrastructure.office.models import ExcelStructureProbeResult
 from backend.infrastructure.office.models import ExcelTabularReadResult
+from backend.infrastructure.office.excel_tabular_layout import ExcelTabularLayout
 from backend.infrastructure.office.office_facade import OfficeFacade
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
 
@@ -82,6 +84,79 @@ def test_probe_uses_value2_only_when_value_read_fails(tmp_path: Path) -> None:
     )
     assert used_range.value_accesses == 1
     assert used_range.value2_accesses == 1
+
+
+def test_falls_back_to_xlrd_when_excel_cannot_open_legacy_workbook(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    path = _xls_file(tmp_path)
+    book = _FakeXlrdBook(
+        [
+            _FakeXlrdSheet(
+                "All Equip.",
+                [
+                    [""],
+                    [""],
+                    [""],
+                    [
+                        "Item (Equipment Name)",
+                        "",
+                        "Manufacturer\n(制造商)",
+                        "ID Number",
+                        "Last Cal.",
+                        "Cal. Due",
+                    ],
+                    [
+                        "Test Probe",
+                        "",
+                        "SunHo",
+                        "DG-Q-0033",
+                        _FakeXlrdDate(46237),
+                        _FakeXlrdDate(46601),
+                    ],
+                ],
+            )
+        ]
+    )
+    monkeypatch.setattr(legacy_gateway.xlrd, "open_workbook", lambda *_args, **_kwargs: book)
+    lifecycle = _FakeLifecycle([], open_error=RuntimeError("Content.MSO unavailable"))
+
+    result = ExcelComReadonlyTabularGateway(lifecycle).read_tabular_rows(
+        path,
+        expected_headers=(
+            "Item (Equipment Name)",
+            "Manufacturer",
+            "ID Number",
+            "Last Cal.",
+            "Cal. Due",
+        ),
+        expected_sheet_names=("All Equip.",),
+        layout=ExcelTabularLayout(
+            header_row_number=4,
+            required_header_columns=(
+                ("Item (Equipment Name)", 1),
+                ("Manufacturer", 3),
+                ("ID Number", 4),
+                ("Last Cal.", 5),
+                ("Cal. Due", 6),
+            ),
+            contains_required_headers=("Manufacturer",),
+            require_unique_sheet_match=True,
+        ),
+    )
+
+    assert book.released is True
+    assert result.rows == (
+        {
+            "Item (Equipment Name)": "Test Probe",
+            "Manufacturer": "SunHo",
+            "ID Number": "DG-Q-0033",
+            "Last Cal.": "2026-08-03T00:00:00",
+            "Cal. Due": "2027-08-02T00:00:00",
+            "__sheet_name": "All Equip.",
+        },
+    )
 
 
 def test_arbitrary_value_failure_does_not_read_value2(tmp_path: Path) -> None:
@@ -405,6 +480,45 @@ class _FakeLifecycle:
         if self._open_error is not None:
             raise self._open_error
         return self.handle
+
+
+class _FakeXlrdDate:
+    def __init__(self, value: float) -> None:
+        self.value = value
+
+
+class _FakeXlrdSheet:
+    def __init__(self, name: str, rows: list[list[object]]) -> None:
+        self.name = name
+        self._rows = rows
+        self.nrows = len(rows)
+        self.ncols = max((len(row) for row in rows), default=0)
+
+    def cell_type(self, row: int, column: int) -> int:
+        value = self._value(row, column)
+        return legacy_gateway.xlrd.XL_CELL_DATE if isinstance(value, _FakeXlrdDate) else legacy_gateway.xlrd.XL_CELL_TEXT
+
+    def cell_value(self, row: int, column: int) -> object:
+        value = self._value(row, column)
+        return value.value if isinstance(value, _FakeXlrdDate) else value
+
+    def _value(self, row: int, column: int) -> object:
+        return self._rows[row][column] if column < len(self._rows[row]) else ""
+
+
+class _FakeXlrdBook:
+    datemode = 0
+
+    def __init__(self, sheets: list[_FakeXlrdSheet]) -> None:
+        self._sheets = sheets
+        self.nsheets = len(sheets)
+        self.released = False
+
+    def sheet_by_index(self, index: int) -> _FakeXlrdSheet:
+        return self._sheets[index]
+
+    def release_resources(self) -> None:
+        self.released = True
 
 
 class _RecordingGateway:

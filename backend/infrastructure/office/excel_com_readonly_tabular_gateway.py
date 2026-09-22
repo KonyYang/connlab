@@ -9,6 +9,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Protocol
 
+import xlrd
+
 from backend.infrastructure.office.models import ExcelStructureProbeResult
 from backend.infrastructure.office.models import ExcelTabularReadResult
 from backend.infrastructure.office.excel_tabular_layout import (
@@ -208,13 +210,21 @@ class ExcelComReadonlyTabularGateway:
                 path, modify_password=None, read_only=True
             )
         except OfficeAutomationUnavailable as exc:
-            raise LegacyExcelComUnavailableError(
-                "Legacy .xls reading requires Microsoft Excel COM and pywin32 on Windows."
-            ) from exc
+            return _read_xlrd_matching_sheets(
+                path,
+                expected_names,
+                expected_patterns,
+                normalize_exact=normalize_exact,
+                com_error=exc,
+            )
         except Exception as exc:
-            raise LegacyExcelReadOnlyOpenError(
-                f"Unable to open legacy .xls workbook read-only: {_summary(exc)}"
-            ) from exc
+            return _read_xlrd_matching_sheets(
+                path,
+                expected_names,
+                expected_patterns,
+                normalize_exact=normalize_exact,
+                com_error=exc,
+            )
 
         try:
             result = _read_workbook_sheets(
@@ -246,26 +256,129 @@ def _read_workbook_sheets(
 ) -> tuple[tuple[str, ...], list[tuple[str, list[list[str]]]]]:
     worksheets = workbook.Worksheets
     count = _count_value(worksheets.Count, "worksheet")
-    exact = {
-        normalized_sheet_name(name) if normalize_exact else name.lower()
-        for name in expected_names
-    }
-    patterns = [re.compile(value, re.IGNORECASE) for value in expected_patterns]
+    exact, patterns = _sheet_matching_rules(
+        expected_names, expected_patterns, normalize_exact=normalize_exact
+    )
     names: list[str] = []
     matched: list[tuple[str, list[list[str]]]] = []
     for index in range(1, count + 1):
         sheet = worksheets.Item(index)
         name = str(sheet.Name)
         names.append(name)
-        selected = not exact and not patterns
-        candidate = normalized_sheet_name(name) if normalize_exact else name.lower()
-        selected = selected or candidate in exact
-        selected = selected or any(pattern.fullmatch(name) for pattern in patterns)
-        if selected:
+        if _sheet_matches(name, exact, patterns, normalize_exact=normalize_exact):
             matched.append((name, _read_used_range(sheet, name)))
         sheet = None
     worksheets = None
     return tuple(names), matched
+
+
+def _read_xlrd_matching_sheets(
+    path: Path,
+    expected_names: tuple[str, ...],
+    expected_patterns: tuple[str, ...],
+    *,
+    normalize_exact: bool,
+    com_error: Exception,
+) -> tuple[tuple[str, ...], list[tuple[str, list[list[str]]]]]:
+    """Read a legacy workbook without Excel when COM cannot open it."""
+    try:
+        workbook = xlrd.open_workbook(str(path), on_demand=True)
+    except Exception as fallback_error:
+        if isinstance(com_error, OfficeAutomationUnavailable):
+            raise LegacyExcelComUnavailableError(
+                "Legacy .xls reading requires Microsoft Excel COM and pywin32 on Windows; "
+                f"the xlrd fallback also failed: {_summary(fallback_error)}"
+            ) from fallback_error
+        raise LegacyExcelReadOnlyOpenError(
+            "Unable to open legacy .xls workbook read-only through Excel COM "
+            f"({_summary(com_error)}) or the xlrd fallback ({_summary(fallback_error)})."
+        ) from fallback_error
+
+    try:
+        exact, patterns = _sheet_matching_rules(
+            expected_names, expected_patterns, normalize_exact=normalize_exact
+        )
+        count = _count_value(workbook.nsheets, "worksheet")
+        names: list[str] = []
+        matched: list[tuple[str, list[list[str]]]] = []
+        for index in range(count):
+            sheet = workbook.sheet_by_index(index)
+            name = str(sheet.name)
+            names.append(name)
+            if _sheet_matches(name, exact, patterns, normalize_exact=normalize_exact):
+                matched.append((name, _read_xlrd_sheet(sheet, name, workbook.datemode)))
+        return tuple(names), matched
+    except ExternalExcelTabularGatewayError:
+        raise
+    except Exception as exc:
+        raise LegacyExcelReadError(
+            f"Unable to read legacy .xls workbook with xlrd fallback: {_summary(exc)}"
+        ) from exc
+    finally:
+        workbook.release_resources()
+
+
+def _sheet_matching_rules(
+    expected_names: tuple[str, ...],
+    expected_patterns: tuple[str, ...],
+    *,
+    normalize_exact: bool,
+) -> tuple[set[str], list[re.Pattern[str]]]:
+    exact = {
+        normalized_sheet_name(name) if normalize_exact else name.lower()
+        for name in expected_names
+    }
+    return exact, [re.compile(value, re.IGNORECASE) for value in expected_patterns]
+
+
+def _sheet_matches(
+    name: str,
+    exact: set[str],
+    patterns: list[re.Pattern[str]],
+    *,
+    normalize_exact: bool,
+) -> bool:
+    if not exact and not patterns:
+        return True
+    candidate = normalized_sheet_name(name) if normalize_exact else name.lower()
+    return candidate in exact or any(pattern.fullmatch(name) for pattern in patterns)
+
+
+def _read_xlrd_sheet(sheet: object, sheet_name: str, datemode: int) -> list[list[str]]:
+    rows = _count_value(sheet.nrows, "row")
+    columns = _count_value(sheet.ncols, "column")
+    if rows > MAX_XLS_USED_RANGE_ROWS:
+        raise LegacyExcelRangeError(f"Worksheet {sheet_name!r} exceeds 65,536 rows.")
+    if columns > MAX_XLS_USED_RANGE_COLUMNS:
+        raise LegacyExcelRangeError(f"Worksheet {sheet_name!r} exceeds 256 columns.")
+    if rows * columns > MAX_XLS_USED_RANGE_CELLS:
+        raise LegacyExcelRangeError(f"Worksheet {sheet_name!r} exceeds 1,000,000 cells.")
+    return [
+        [
+            _xlrd_cell_text(sheet, sheet_name, row_index, column_index, datemode)
+            for column_index in range(columns)
+        ]
+        for row_index in range(rows)
+    ]
+
+
+def _xlrd_cell_text(
+    sheet: object,
+    sheet_name: str,
+    row_index: int,
+    column_index: int,
+    datemode: int,
+) -> str:
+    value = sheet.cell_value(row_index, column_index)
+    if sheet.cell_type(row_index, column_index) == xlrd.XL_CELL_DATE:
+        try:
+            value = xlrd.xldate_as_datetime(value, datemode)
+        except Exception as exc:
+            raise LegacyExcelReadError(
+                f"Invalid Excel date at {sheet_name}!R{row_index + 1}C{column_index + 1}: "
+                f"{_summary(exc)}"
+            ) from exc
+    return _cell_text(value, sheet_name, row_index + 1, column_index + 1)
 
 
 def _probe_explicit_layout(
