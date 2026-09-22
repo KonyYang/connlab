@@ -11,8 +11,35 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_PROJECT_FOLDER_AVAILABILITY_GUIDANCE",
+    "summary": "Make Project Folder actions reflect real folder and template availability, disable false Open/Create affordances, and guide missing-template recovery through Settings.",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Expose read-only local folder availability from the public-folder context, use it for Folder Actions, prevent Create when the generation preview is blocked by missing template resources, and provide a direct Settings recovery action without changing external files.",
+    "scope_paths": [
+      "backend/application/public_folder_workflow_service.py",
+      "backend/api/routes_public_folder_workflow.py",
+      "frontend/src/api/client.ts",
+      "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts",
+      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+      "tests/unit/test_public_folder_workflow_service.py",
+      "tests/integration/test_public_folder_workflow_api.py",
+      "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
+      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx"
+    ],
+    "risk_reasons": [
+      "project-folder availability controls an authoritative external-folder workflow",
+      "must not weaken template preflight or alter project files",
+      "must preserve physically existing legacy folders without requiring a latest generation record"
+    ],
+    "activation_head": "0063f4ba73a3ea1a6e94ce53d26b9c29a15daf77",
+    "started_at": "2026-09-22T12:08:25.034029Z",
+    "updated_at": "2026-09-22T12:08:25.034029Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_CREATE_REBUILD_ENTRY",
     "tier": "high_risk",
