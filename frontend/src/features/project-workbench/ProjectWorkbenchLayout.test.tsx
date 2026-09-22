@@ -897,6 +897,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     const folderButton = getProjectFolderCommandButton();
     expect(folderButton).toHaveProperty("disabled", true);
     expect(folderButton.getAttribute("title")).toBe(blocker);
+    expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
   });
 
   it("explains a saved Basic Information failure and opens the form instead of offering resume", async () => {
@@ -1306,9 +1307,10 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(onUpdateOfficialWorkspace).not.toHaveBeenCalled();
   });
 
-  it("keeps the permanent project folder action clickable when workspace preflight is blocked", async () => {
+  it("disables initial folder creation and opens Settings for workspace resource blockers", async () => {
     const user = userEvent.setup();
     const onUpdateOfficialWorkspace = vi.fn();
+    const onOpenSettings = vi.fn();
     renderWorkbench(
       {
         latestLtr: "DL-2026-06-001",
@@ -1325,10 +1327,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
           official_project_folder_path: null,
           manifest_path: null,
           template_root_mode: null,
-          blockers: [
-            "Project default save location is not configured.",
-            "Template folder is not configured.",
-          ],
+          blockers: ["Template folder does not exist: D:/Template"],
           warnings: [],
           planned_paths: [],
         },
@@ -1343,6 +1342,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
           year_source: "project",
           year_evidence: "created_on",
           local_official_folder_path: null,
+          local_official_folder_available: false,
           public_open_path: "D:/PublicProject/Open/2026/DL-2026-06-001",
           public_closed_path: "D:/PublicProject/Closed/2026/DL-2026-06-001",
           blockers: [],
@@ -1350,29 +1350,33 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
         },
         officialWorkspaceCreating: false,
         onUpdateOfficialWorkspace,
-      }
+      },
+      {},
+      { onOpenSettings }
     );
 
     const folderButton = getProjectFolderCommandButton();
-    expect(folderButton).toHaveProperty("disabled", false);
-    expect(folderButton.getAttribute("title")).toBeNull();
+    expect(folderButton).toHaveProperty("disabled", true);
+    expect(folderButton.getAttribute("title")).toBe(
+      "Template folder does not exist: D:/Template"
+    );
     expect(
       screen.getAllByText(
         "Project folder access is unavailable until the template and target path are ready."
       ).length
     ).toBeGreaterThan(0);
     expect(screen.queryByText("Configure workspace paths")).toBeNull();
-    expect(screen.queryByText("Project default save location is not configured.")).toBeNull();
+    expect(screen.getByRole("alert").textContent).toContain(
+      "Template folder does not exist: D:/Template"
+    );
     expect(
       screen
         .getByLabelText("Folder Actions")
         .querySelectorAll("button")
     ).toHaveLength(4);
-    expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
-
-    await user.click(folderButton);
-
-    expect(onUpdateOfficialWorkspace).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: "Open Settings" }));
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+    expect(onUpdateOfficialWorkspace).not.toHaveBeenCalled();
   });
 
   it("keeps completed folder creation separate from the sole inline Open action", async () => {
@@ -1709,6 +1713,7 @@ function buildRuntimeModel(
       year_source: "project",
       year_evidence: "created_on",
       local_official_folder_path: "D:/Test Project/DL-2026-06-001",
+      local_official_folder_available: true,
       public_open_path: "D:/PublicProject/Open/2026/DL-2026-06-001",
       public_closed_path: "D:/PublicProject/Closed/2026/DL-2026-06-001",
       blockers: [],

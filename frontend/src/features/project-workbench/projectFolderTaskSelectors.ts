@@ -105,7 +105,10 @@ export function deriveProjectFolderTasks(
   const contextBlocker = selectContextBlocker(input);
   const localProjectFolderPath =
     input.publicFolderWorkflowContext?.local_official_folder_path?.trim() ?? "";
-  const projectFolderOpenAvailable = Boolean(localProjectFolderPath);
+  const projectFolderOpenAvailable = Boolean(
+    localProjectFolderPath &&
+      input.publicFolderWorkflowContext?.local_official_folder_available
+  );
   const projectFolderUnavailableBlocker = projectFolderOpenAvailable
     ? null
     : "Project folder is not available yet.";

@@ -256,6 +256,7 @@ class PublicFolderWorkflowContext:
     public_closed_path: Path | None
     blockers: tuple[str, ...]
     warnings: tuple[str, ...]
+    local_official_folder_available: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -328,6 +329,7 @@ class PublicFolderWorkflowService:
         blockers = list(year.blockers)
         warnings = list(year.warnings)
         paths = self._resolve_paths(workspace, year, blockers)
+        local_official_folder_path = workspace.official_folder_path if workspace else None
         return PublicFolderWorkflowContext(
             project_id=project_id,
             auto_sync_enabled=state.auto_sync_enabled,
@@ -338,11 +340,14 @@ class PublicFolderWorkflowService:
             public_folder_year=year.year,
             year_source=year.source,
             year_evidence=year.evidence,
-            local_official_folder_path=workspace.official_folder_path if workspace else None,
+            local_official_folder_path=local_official_folder_path,
             public_open_path=paths.public_open_path if paths else None,
             public_closed_path=paths.public_closed_path if paths else None,
             blockers=tuple(blockers),
             warnings=tuple(warnings),
+            local_official_folder_available=bool(
+                local_official_folder_path and local_official_folder_path.is_dir()
+            ),
         )
 
     def set_auto_sync(

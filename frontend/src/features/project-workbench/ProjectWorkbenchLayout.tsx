@@ -63,6 +63,7 @@ export function ProjectWorkbenchLayout({
   onOpenFeeEvaluation,
   onOpenBasicInformation,
   onOpenReportWorkspace,
+  onOpenSettings,
 }: ProjectWorkbenchLayoutProps): ReactElement {
   const [selectedProjectionToken, setSelectedProjectionToken] =
     useState<MatrixProjectionTokenCell | null>(null);
@@ -266,7 +267,19 @@ export function ProjectWorkbenchLayout({
   const checkingRecoveryPreview = Boolean(
     officialWorkspaceCanRestart && recoveryPreviewCheckedProject !== project.project_id
   );
-  const displayedOfficialWorkspaceError = basicInformationGenerationGuidance ?? officialWorkspaceError;
+  const workspaceStatus = officialWorkspacePreview?.status ?? "ready";
+  const initialWorkspaceResourceBlocker =
+    workspaceStatus === "blocked"
+      ? officialWorkspacePreview?.blockers.find(isSettingsTemplateResourceBlocker) ?? null
+      : null;
+  const displayedOfficialWorkspaceError =
+    basicInformationGenerationGuidance
+    ?? officialWorkspaceError
+    ?? initialWorkspaceResourceBlocker;
+  const isSettingsTemplateGenerationBlocker = Boolean(
+    displayedOfficialWorkspaceError
+    && isSettingsTemplateResourceBlocker(displayedOfficialWorkspaceError)
+  );
   const hasMatrixDraftForPlanning =
     activeMatrixAuthorityReady || Boolean(matrixCandidateDraft ?? matrixDraft);
   const visibleFeeEvaluationButtonState =
@@ -295,7 +308,6 @@ export function ProjectWorkbenchLayout({
           : "Active Matrix authority is required before project folder outputs can be prepared.",
       };
   const projectFolderTasks = projectFolderWorkflowTasks;
-  const workspaceStatus = officialWorkspacePreview?.status ?? "ready";
   const projectFolderHeaderAction = {
     label:
       workspaceStatus === "completed"
@@ -309,10 +321,11 @@ export function ProjectWorkbenchLayout({
       checkingRecoveryPreview
       || officialWorkspaceCreating
       || lifecycleReadonlyView.readonly
+      || Boolean(initialWorkspaceResourceBlocker)
       || (["ready", "blocked"].includes(workspaceStatus) && visibleWorkbenchFolderCommand.disabled),
     title: checkingRecoveryPreview
       ? "Checking project folder generation status..."
-      : visibleWorkbenchFolderCommand.disabledReason,
+      : initialWorkspaceResourceBlocker ?? visibleWorkbenchFolderCommand.disabledReason,
     onClick: () => {
       if (workspaceStatus === "adoptable") {
         void performFolderUpdate("adopt_existing");
@@ -547,7 +560,7 @@ export function ProjectWorkbenchLayout({
           <strong>Project folder workflow</strong>
           <span>Checking project folder generation status...</span>
         </div>
-      ) : officialWorkspaceError ? (
+      ) : displayedOfficialWorkspaceError ? (
         <div
           className="runtime-console-workflow-alert is-danger"
           role="alert"
@@ -559,6 +572,11 @@ export function ProjectWorkbenchLayout({
           runtimeModel.basicInformation?.status !== "confirmed" ? (
             <button type="button" onClick={onOpenBasicInformation}>
               Open Basic Information
+            </button>
+          ) : null}
+          {!isBasicInformationGenerationBlocker && isSettingsTemplateGenerationBlocker ? (
+            <button type="button" onClick={onOpenSettings}>
+              Open Settings
             </button>
           ) : null}
           <span>After resolving the issue, use the project folder action in Folder Actions.</span>
@@ -720,6 +738,15 @@ function deriveBasicInformationGenerationGuidance(
     return "Basic Information is complete but not confirmed. Open Basic Information and click Confirm before generating Project Folder outputs.";
   }
   return "Basic Information is now confirmed. Refresh the generation preview and start a new generation.";
+}
+
+function isSettingsTemplateResourceBlocker(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("template")
+    || normalized.includes("save location")
+    || normalized.includes("settings")
+  );
 }
 
 function deriveOfficialWorkspaceConflictPaths(

@@ -66,6 +66,18 @@ def test_public_folder_workflow_auto_sync_api_returns_persisted_state() -> None:
     assert response.json()["auto_sync_enabled"] is True
 
 
+def test_public_folder_workflow_context_api_returns_local_folder_availability() -> None:
+    service = _FakeService()
+    app.dependency_overrides[get_public_folder_workflow_service] = lambda: service
+    try:
+        response = TestClient(app).get("/api/projects/P1/public-folder-workflow/context")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["local_official_folder_available"] is False
+
+
 def _preview() -> PublicFolderWorkflowPreview:
     item = PublicFolderWorkflowItem(
         kind="file",

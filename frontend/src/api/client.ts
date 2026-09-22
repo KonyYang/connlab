@@ -644,6 +644,7 @@ export type PublicFolderWorkflowContext = {
   year_source: string | null;
   year_evidence: string | null;
   local_official_folder_path: string | null;
+  local_official_folder_available: boolean;
   public_open_path: string | null;
   public_closed_path: string | null;
   blockers: string[];

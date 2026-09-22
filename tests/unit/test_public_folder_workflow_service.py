@@ -32,6 +32,24 @@ def test_path_resolver_blocks_missing_public_root(tmp_path: Path) -> None:
     assert not (tmp_path / "missing").exists()
 
 
+def test_context_reports_existing_local_official_folder_as_available(tmp_path: Path) -> None:
+    service, _repository, _paths = _service(tmp_path)
+
+    context = service.context("P1")
+
+    assert context.local_official_folder_available is True
+
+
+def test_context_keeps_recorded_missing_local_official_folder_unavailable(tmp_path: Path) -> None:
+    service, _repository, paths = _service(tmp_path)
+    paths["local"].rmdir()
+
+    context = service.context("P1")
+
+    assert context.local_official_folder_path == paths["local"]
+    assert context.local_official_folder_available is False
+
+
 def test_sync_execute_copies_to_open_and_records_operation(tmp_path: Path) -> None:
     service, repository, paths = _service(tmp_path)
     (paths["local"] / "Submitted Material").mkdir()

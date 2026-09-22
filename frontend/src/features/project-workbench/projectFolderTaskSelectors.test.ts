@@ -129,6 +129,23 @@ describe("deriveProjectFolderTasks", () => {
       blockers: ["Project folder is not available yet."],
     });
   });
+
+  it("disables project folder Open when a recorded local path is no longer available", () => {
+    const tasks = deriveProjectFolderTasks({
+      ...readyInput(),
+      publicFolderWorkflowContext: {
+        ...readyInput().publicFolderWorkflowContext,
+        local_official_folder_available: false,
+      },
+    });
+
+    expect(tasks[0]).toMatchObject({
+      title: "Project folder",
+      context: "Project folder is not available yet.",
+      actionTarget: null,
+      blockers: ["Project folder is not available yet."],
+    });
+  });
 });
 
 function readyInput() {
@@ -151,6 +168,7 @@ function readyInput() {
       year_source: "project",
       year_evidence: "created_on",
       local_official_folder_path: "D:/Test Project/DL-2026-06-001",
+      local_official_folder_available: true,
       public_open_path: "D:/PublicProject/Open/2026/DL-2026-06-001",
       public_closed_path: "D:/PublicProject/Closed/2026/DL-2026-06-001",
       blockers: [],

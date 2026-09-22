@@ -86,6 +86,7 @@ class PublicFolderWorkflowContextResponse(BaseModel):
     public_closed_path: str | None
     blockers: list[str]
     warnings: list[str]
+    local_official_folder_available: bool = False
 
 
 class PublicFolderWorkflowExecuteRequest(BaseModel):
@@ -263,6 +264,7 @@ def _context_response(context: PublicFolderWorkflowContext) -> PublicFolderWorkf
         public_closed_path=_path(context.public_closed_path),
         blockers=list(context.blockers),
         warnings=list(context.warnings),
+        local_official_folder_available=context.local_official_folder_available,
     )
 
 
