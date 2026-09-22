@@ -11,105 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_PROJECT_FOLDER_CREATE_REBUILD_ENTRY",
-    "summary": "Separate project-folder opening from the Folder Actions header so the row icon remains the only Open action and the header handles Create folder or protected Backup and Rebuild.",
-    "tier": "high_risk",
-    "route": "full_chain",
-    "scope": "Change the completed-workspace header action from Open folder to the reviewed Create folder backup-rebuild flow while preserving adoption, conflict review, recovery priority, read-only behavior, and existing backend data-protection contracts.",
-    "scope_paths": [
-      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-      "frontend/src/features/project-workbench/useProjectFolderGeneration.test.tsx",
-      "frontend/src/features/project-workbench/useProjectFolderGeneration.ts",
-      "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx"
-    ],
-    "risk_reasons": [
-      "exposes authoritative external folder backup-and-rebuild entry",
-      "must preserve recovery and read-only safety",
-      "must not duplicate or bypass folder-open behavior"
-    ],
-    "activation_head": "9ad0edac21ad0d1b078de53f1521af1bb30e04e4",
-    "started_at": "2026-09-22T09:42:38.241695Z",
-    "updated_at": "2026-09-22T11:44:22.121333Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_PROJECT_FOLDER_CREATE_REBUILD_ENTRY",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "subject": "785964d4ef996d75677efc22eda670c733090c2b",
-      "changed_paths": [
-        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-        "frontend/src/features/project-workbench/useProjectFolderGeneration.test.tsx",
-        "frontend/src/features/project-workbench/useProjectFolderGeneration.ts",
-        "frontend/src/features/project-workbench/useProjectWorkbenchModel.test.tsx"
-      ],
-      "scope_ok": true,
-      "task_id": "TASK_PROJECT_FOLDER_CREATE_REBUILD_ENTRY",
-      "roles": {
-        "integrator": {
-          "summary": "Clean exact subject, scope, review, and QA evidence reconciled.",
-          "status": "passed"
-        },
-        "developer": {
-          "summary": "TDD implementation and test contract update completed.",
-          "status": "passed"
-        },
-        "planner": {
-          "summary": "Independent plan confirmed backend contract sufficiency and recovery-priority requirements.",
-          "status": "passed"
-        },
-        "reviewer": {
-          "summary": "Independent review found no standards or spec issues; five-path scope exact.",
-          "status": "passed"
-        },
-        "qa": {
-          "summary": "Independent complete Python, frontend, and build gate passed.",
-          "status": "passed"
-        }
-      },
-      "validation": [
-        {
-          "status": "passed",
-          "name": "python-full",
-          "summary": "2993 passed, 7 skipped, 19 deselected"
-        },
-        {
-          "status": "passed",
-          "name": "frontend-full",
-          "summary": "649 passed, 1 skipped"
-        },
-        {
-          "status": "passed",
-          "name": "frontend-build",
-          "summary": "TypeScript and Vite build passed; 163 modules transformed"
-        }
-      ],
-      "version": 1,
-      "schema": "connlab.sol-task-report",
-      "integration": {
-        "status": "passed",
-        "summary": "No real project folders touched; current committed state is integration-ready.",
-        "mode": "verified_local"
-      },
-      "summary": "Folder Actions now separates opening from creation and protected rebuild: the row icon is the sole Open action, while completed folders use Create folder to enter reviewed Backup and Rebuild with recovery priority and token revalidation preserved."
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_CLOSE_AUTO_PUBLISH_GATE",
+    "task_id": "TASK_PROJECT_FOLDER_CREATE_REBUILD_ENTRY",
     "tier": "high_risk",
-    "subject": "83c7acf4c29e05a1d133490571c52769317235f3",
-    "summary": "Publish completed tasks to origin/master through a fail-closed post-Close Git gate after the board close commit.",
+    "subject": "785964d4ef996d75677efc22eda670c733090c2b",
+    "summary": "Separate project-folder opening from the Folder Actions header so the row icon remains the only Open action and the header handles Create folder or protected Backup and Rebuild.",
     "disposition": "completed",
     "decision_ref": "user-close-2026-09-22",
-    "closed_at": "2026-09-22T09:41:11.208201Z"
+    "closed_at": "2026-09-22T11:46:06.011819Z"
   },
   "retained_history": [
     {
