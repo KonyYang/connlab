@@ -20,6 +20,7 @@ class ExcelTabularLayout:
 
     header_row_number: int
     required_header_columns: tuple[tuple[str, int], ...]
+    contains_required_headers: tuple[str, ...] = ()
     optional_headers: tuple[str, ...] = ()
     include_row_number: bool = False
     require_unique_sheet_match: bool = False
@@ -29,6 +30,14 @@ class ExcelTabularLayout:
             raise ValueError("header_row_number must be positive.")
         if any(column < 1 for _header, column in self.required_header_columns):
             raise ValueError("Header columns must be positive.")
+        required_headers = {
+            _normalize_header(header) for header, _column in self.required_header_columns
+        }
+        if any(
+            _normalize_header(header) not in required_headers
+            for header in self.contains_required_headers
+        ):
+            raise ValueError("Contains header matching requires a required header column.")
 
 
 def map_explicit_layout_rows(
@@ -46,10 +55,19 @@ def map_explicit_layout_rows(
         )
     header_row = [value.strip() for value in rows[header_index]]
     required_indexes: dict[str, int] = {}
+    contains_headers = {
+        _normalize_header(header) for header in layout.contains_required_headers
+    }
     for header, one_based_column in layout.required_header_columns:
         index = one_based_column - 1
         actual = header_row[index] if index < len(header_row) else ""
-        if _normalize_header(actual) != _normalize_header(header):
+        normalized_header = _normalize_header(header)
+        matches = (
+            normalized_header in _normalize_header(actual)
+            if normalized_header in contains_headers
+            else _normalize_header(actual) == normalized_header
+        )
+        if not matches:
             raise ExcelTabularLayoutError(
                 f"Expected {header!r} at column {one_based_column} on row "
                 f"{layout.header_row_number}."

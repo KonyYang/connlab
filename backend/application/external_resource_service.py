@@ -324,5 +324,6 @@ def legacy_equipment_excel_layout() -> ExcelTabularLayout:
             ("Last Cal.", 5),
             ("Cal. Due", 6),
         ),
+        contains_required_headers=("Manufacturer",),
         require_unique_sheet_match=True,
     )
