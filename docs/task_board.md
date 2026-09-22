@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_PROJECT_FOLDER_AVAILABILITY_GUIDANCE",
     "summary": "Make Project Folder actions reflect real folder and template availability, disable false Open/Create affordances, and guide missing-template recovery through Settings.",
@@ -36,17 +36,83 @@
     ],
     "activation_head": "0063f4ba73a3ea1a6e94ce53d26b9c29a15daf77",
     "started_at": "2026-09-22T12:08:25.034029Z",
-    "updated_at": "2026-09-22T14:49:44.240195Z",
+    "updated_at": "2026-09-22T15:12:37.932192Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_PROJECT_FOLDER_AVAILABILITY_GUIDANCE",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User reports the current legacy project still cannot reconcile its existing folder and the template path source appears stale.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_PROJECT_FOLDER_AVAILABILITY_GUIDANCE",
+      "subject": "64a26bf331d5c6eb9a32016c456a2bab66ec6076",
+      "summary": "Project Folder actions use live directory availability and safe recovery guidance; revision smoke testing also removed a stale orphaned Uvicorn worker that was serving the pre-fix API schema.",
+      "changed_paths": [
+        "backend/application/public_folder_workflow_service.py",
+        "backend/api/routes_public_folder_workflow.py",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts",
+        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+        "tests/unit/test_public_folder_workflow_service.py",
+        "tests/integration/test_public_folder_workflow_api.py",
+        "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
+        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx"
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed",
+          "summary": "Independent plan confirmed read-only availability contract and recovery guidance."
+        },
+        "developer": {
+          "status": "passed",
+          "summary": "Independent implementation and focused checks completed; no source change was required for the runtime revision."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Independent focused review passed; revision found no additional source defect after the correct backend took ownership of port 8000."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Independent complete normal gate passed on the exact implementation; live browser smoke passed after stale worker removal."
+        },
+        "integrator": {
+          "status": "passed",
+          "summary": "Exact subject, scope, configured template path, API schema, existing-folder recognition, Open, and protected rebuild entry were verified."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "verified_local"
+      },
+      "scope_ok": true,
+      "validation": [
+        {
+          "name": "developer-focused",
+          "status": "passed",
+          "summary": "Backend 13, selector 8, layout 58 passed with TDD red/green evidence."
+        },
+        {
+          "name": "independent-review",
+          "status": "passed",
+          "summary": "No blocking defects; safety invariants and scope passed."
+        },
+        {
+          "name": "independent-qa",
+          "status": "passed",
+          "summary": "Python 2996 passed/7 skipped/19 deselected; frontend 650 passed/1 skipped; production build passed."
+        },
+        {
+          "name": "revision-runtime-smoke",
+          "status": "passed",
+          "summary": "Current Settings template D:/Source/Template exists; generation preview is completed; local folder and manifest exist; API availability is true; Open works; Create opens Backup and Rebuild confirmation; Cancel preserved all files."
+        }
+      ]
+    }
   },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_CREATE_REBUILD_ENTRY",
