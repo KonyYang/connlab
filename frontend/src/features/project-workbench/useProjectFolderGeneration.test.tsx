@@ -75,6 +75,53 @@ it("uses an advanced preview only after an existing folder needs review", async 
   expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
 });
 
+it("requires backup and rebuild review before updating a completed managed folder", async () => {
+  api.previewProjectFolderGeneration
+    .mockResolvedValueOnce({ expected_context: "ordinary", workspace_preview: { status: "completed", blockers: [] }, recovery: null })
+    .mockResolvedValueOnce({ expected_context: "advanced", workspace_preview: { status: "completed", blockers: [] }, recovery: null })
+    .mockResolvedValueOnce({ expected_context: "advanced", workspace_preview: { status: "completed", blockers: [] }, recovery: null });
+  api.startProjectFolderGeneration.mockResolvedValue(operation);
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+
+  let review: FolderUpdateReview | undefined;
+  await act(async () => { review = (await result.current.update()) || undefined; });
+
+  expect(review?.preview.expected_context).toBe("advanced");
+  expect(api.previewProjectFolderGeneration.mock.calls).toEqual([
+    ["p", "create"],
+    ["p", "backup_rebuild"],
+  ]);
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+
+  await act(async () => { await result.current.update("backup_and_recreate", review); });
+
+  expect(api.previewProjectFolderGeneration).toHaveBeenLastCalledWith("p", "backup_rebuild");
+  expect(api.previewProjectFolderGeneration).toHaveBeenCalledTimes(3);
+  expect(api.startProjectFolderGeneration).toHaveBeenCalledWith("p", expect.objectContaining({
+    expected_context: "advanced",
+    conflict_strategy: "backup_and_recreate",
+  }));
+});
+
+it("does not offer rebuild when the advanced preview has start blockers", async () => {
+  api.previewProjectFolderGeneration
+    .mockResolvedValueOnce({ expected_context: "ordinary", workspace_preview: { status: "completed", blockers: [] }, recovery: null })
+    .mockResolvedValueOnce({
+      expected_context: "advanced",
+      start_blockers: ["Fee authority changed after the folder was created."],
+      workspace_preview: { status: "completed", blockers: [] },
+      recovery: null,
+    });
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+
+  let review: FolderUpdateReview | void = undefined;
+  await act(async () => { review = await result.current.update(); });
+
+  expect(review).toBeUndefined();
+  expect(result.current.error).toBe("Fee authority changed after the folder was created.");
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+});
+
 it("links an adoptable folder without starting generation", async () => {
   api.adoptOfficialWorkspace.mockResolvedValue({ workspace_id: "workspace" });
   const completed = vi.fn();

@@ -299,7 +299,7 @@ export function ProjectWorkbenchLayout({
   const projectFolderHeaderAction = {
     label:
       workspaceStatus === "completed"
-        ? "Open folder"
+        ? "Create folder"
         : workspaceStatus === "adoptable"
         ? "Link existing folder"
         : ["conflict", "exists", "inconsistent"].includes(workspaceStatus)
@@ -314,9 +314,7 @@ export function ProjectWorkbenchLayout({
       ? "Checking project folder generation status..."
       : visibleWorkbenchFolderCommand.disabledReason,
     onClick: () => {
-      if (workspaceStatus === "completed") {
-        void onOpenLocalProjectFolder();
-      } else if (workspaceStatus === "adoptable") {
+      if (workspaceStatus === "adoptable") {
         void performFolderUpdate("adopt_existing");
       } else {
         handleProjectFolderCreateClick();

@@ -1375,9 +1375,9 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(onUpdateOfficialWorkspace).toHaveBeenCalledTimes(1);
   });
 
-  it("opens a completed managed folder without starting generation", async () => {
+  it("keeps completed folder creation separate from the sole inline Open action", async () => {
     const user = userEvent.setup();
-    const update = vi.fn().mockResolvedValue(undefined);
+    const update = vi.fn().mockResolvedValue(folderReview());
     const open = vi.fn();
     renderWorkbench({
       activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
@@ -1389,11 +1389,21 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
       onUpdateOfficialWorkspace: update,
       onOpenLocalProjectFolder: open,
     });
-    expect(getProjectFolderCommandButton().textContent).toBe("Open folder");
+
+    expect(getProjectFolderCommandButton().textContent).toBe("Create folder");
+    expect(screen.getAllByRole("button", { name: "Open" })).toHaveLength(1);
     await user.click(getProjectFolderCommandButton());
-    expect(open).toHaveBeenCalledTimes(1);
-    expect(update).not.toHaveBeenCalled();
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(open).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Backup and Rebuild" })).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(update).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledTimes(1);
   });
 
   it("links an adoptable folder through the identity-only action", async () => {
@@ -1529,7 +1539,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(dialog.textContent).not.toContain("Keep this page open until the operation finishes.");
     expect(dialog.textContent).not.toContain("Updating Customer Feedback Form");
     expect(dialog.textContent).not.toContain("Updating Fee Form");
-    expect(screen.getByRole("button", { name: "Open folder" })).toHaveProperty(
+    expect(screen.getByRole("button", { name: "Create folder" })).toHaveProperty(
       "disabled",
       true
     );

@@ -212,7 +212,11 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
         throw new Error(workspace.blockers[0] ?? "Project folder needs review before updating.");
       }
       if (!strategy && workspace.status === "completed") {
-        return pending ? { preview, operationId, resumeRebuild: false } : undefined;
+        if (pending) return { preview, operationId, resumeRebuild: false };
+        preview = await previewProjectFolderGeneration(projectId, "backup_rebuild");
+        if (!isCurrent()) return;
+        if (preview.start_blockers?.length) throw new Error(preview.start_blockers.join(" "));
+        return { preview, operationId, resumeRebuild: false };
       }
       if (!strategy && workspace.status === "adoptable") {
         throw new Error("Link the existing project folder before generating outputs.");
