@@ -11,8 +11,28 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_PROJECT_FOLDER_CREATE_REBUILD_ENTRY",
+    "summary": "Separate project-folder opening from the Folder Actions header so the row icon remains the only Open action and the header handles Create folder or protected Backup and Rebuild.",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Change the completed-workspace header action from Open folder to the reviewed Create folder backup-rebuild flow while preserving adoption, conflict review, recovery priority, read-only behavior, and existing backend data-protection contracts.",
+    "scope_paths": [
+      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx"
+    ],
+    "risk_reasons": [
+      "exposes authoritative external folder backup-and-rebuild entry",
+      "must preserve recovery and read-only safety",
+      "must not duplicate or bypass folder-open behavior"
+    ],
+    "activation_head": "9ad0edac21ad0d1b078de53f1521af1bb30e04e4",
+    "started_at": "2026-09-22T09:42:38.241695Z",
+    "updated_at": "2026-09-22T09:42:38.241695Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_CLOSE_AUTO_PUBLISH_GATE",
     "tier": "high_risk",
