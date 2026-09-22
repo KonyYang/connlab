@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_PROJECT_FOLDER_AVAILABILITY_GUIDANCE",
     "summary": "Make Project Folder actions reflect real folder and template availability, disable false Open/Create affordances, and guide missing-template recovery through Settings.",
@@ -36,9 +36,78 @@
     ],
     "activation_head": "0063f4ba73a3ea1a6e94ce53d26b9c29a15daf77",
     "started_at": "2026-09-22T12:08:25.034029Z",
-    "updated_at": "2026-09-22T12:08:25.034029Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-22T13:01:33.053843Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_PROJECT_FOLDER_AVAILABILITY_GUIDANCE",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "subject": "d6a6fcfd54f2c0023f0908cc54baa216973d6754",
+      "summary": "Project Folder actions now use live directory availability, template-blocked creation is disabled before write, and Settings provides the recovery path.",
+      "changed_paths": [
+        "backend/application/public_folder_workflow_service.py",
+        "backend/api/routes_public_folder_workflow.py",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts",
+        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+        "tests/unit/test_public_folder_workflow_service.py",
+        "tests/integration/test_public_folder_workflow_api.py",
+        "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
+        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx"
+      ],
+      "task_id": "TASK_PROJECT_FOLDER_AVAILABILITY_GUIDANCE",
+      "roles": {
+        "reviewer": {
+          "status": "passed",
+          "summary": "Independent focused review passed; P3 test gap resolved before QA."
+        },
+        "integrator": {
+          "status": "passed",
+          "summary": "Exact subject, scope paths, clean tree, commits, and evidence verified."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Independent complete normal gate passed once."
+        },
+        "developer": {
+          "status": "passed",
+          "summary": "Independent implementation and focused checks completed."
+        },
+        "planner": {
+          "status": "passed",
+          "summary": "Independent plan confirmed read-only availability contract and recovery guidance."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "verified_local"
+      },
+      "version": 1,
+      "scope_ok": true,
+      "validation": [
+        {
+          "name": "developer-focused",
+          "summary": "Backend 13, selector 8, layout 58 passed with TDD red/green evidence.",
+          "status": "passed"
+        },
+        {
+          "name": "independent-review",
+          "summary": "No blocking defects; safety invariants and scope passed. Exact template blocker regression added.",
+          "status": "passed"
+        },
+        {
+          "name": "independent-qa",
+          "summary": "Python 2996 passed/7 skipped/19 deselected; frontend 650 passed/1 skipped; production build passed.",
+          "status": "passed"
+        }
+      ]
+    }
   },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_CREATE_REBUILD_ENTRY",
