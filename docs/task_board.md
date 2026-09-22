@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_EQUIPMENT_CALIBRATION_MANUFACTURER_HEADER_MATCH",
     "summary": "Accept the legacy equipment workbook Manufacturer header when the configured third header cell contains Manufacturer plus a vendor annotation, while retaining the fixed All Equip. layout and other required headers.",
@@ -25,46 +25,17 @@
     "risk_reasons": [],
     "activation_head": "c9fefcc3e06560a604f246e2061bea4ff77bd119",
     "started_at": "2026-09-22T15:51:57.399200Z",
-    "updated_at": "2026-09-22T16:00:23.041415Z",
+    "updated_at": "2026-09-22T16:26:17.706107Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_EQUIPMENT_CALIBRATION_MANUFACTURER_HEADER_MATCH",
-      "stage": "delivery",
+      "stage": "runtime-revalidation",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
+      "summary": "Current source maps the configured workbook header successfully, but the Settings page still targets an inaccessible old backend on port 8000. The isolated current-source backend encountered an Excel COM INetCache open error during full API read, so no persisted validation state was changed.",
+      "requires_user": true
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_EQUIPMENT_CALIBRATION_MANUFACTURER_HEADER_MATCH",
-      "subject": "da7a2302df2d505ea3069d943dbe226eaea4709c",
-      "summary": "The legacy All Equip. layout now accepts a third-column header that contains Manufacturer, while retaining exact matching for every other required column.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/application/external_resource_service.py",
-        "backend/infrastructure/office/excel_tabular_layout.py",
-        "tests/unit/test_legacy_equipment_excel_layout.py"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "details": "TDD red case failed with the prior exact Manufacturer header match; the final focused suite passed 15 tests."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "details": "Implemented and self-reviewed the exact diff; standards and specification passes found no actionable issue."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "mode": "direct_primary",
-        "details": "Committed as da7a2302df2d505ea3069d943dbe226eaea4709c on the active task branch."
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_AVAILABILITY_GUIDANCE",
