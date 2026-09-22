@@ -11,110 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_CLOSE_AUTO_PUBLISH_GATE",
-    "summary": "Publish completed tasks to origin/master through a fail-closed post-Close Git gate after the board close commit.",
-    "tier": "high_risk",
-    "route": "full_chain",
-    "scope": "Add a small closed-task publication module and connect only completed terminal Close to exact board commit plus ordinary fast-forward GitHub push; exclude cancellation and CloseAndSubmit; never force, rebase, reset, stash, or clean.",
-    "scope_paths": [
-      "AGENTS.md",
-      "docs/project_management/SOL_NATIVE_WORKFLOW.md",
-      "scripts/connlab_publish_closed_task.py",
-      "scripts/run_task.ps1",
-      "tests/unit/test_connlab_publish_closed_task.py",
-      "tests/unit/test_connlab_sol_native_workflow.py",
-      "docs/task_board.md"
-    ],
-    "risk_reasons": [
-      "remote GitHub mutation",
-      "workflow authority change",
-      "automatic Git commit and push after explicit user Close"
-    ],
-    "activation_head": "b48b50ca5f58fa75e68bfd61a7471f65cdb78236",
-    "started_at": "2026-09-22T00:05:34.866806Z",
-    "updated_at": "2026-09-22T00:52:03.691727Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_CLOSE_AUTO_PUBLISH_GATE",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_CLOSE_AUTO_PUBLISH_GATE",
-      "subject": "83c7acf4c29e05a1d133490571c52769317235f3",
-      "summary": "Added a fail-closed post-Close publication gate that commits only the closed board and ordinarily fast-forwards completed master to origin/master.",
-      "scope_ok": true,
-      "changed_paths": [
-        "AGENTS.md",
-        "docs/project_management/SOL_NATIVE_WORKFLOW.md",
-        "scripts/connlab_publish_closed_task.py",
-        "scripts/run_task.ps1",
-        "tests/unit/test_connlab_publish_closed_task.py",
-        "tests/unit/test_connlab_sol_native_workflow.py"
-      ],
-      "validation": [
-        {
-          "name": "publication and workflow unit matrix",
-          "status": "passed",
-          "result": "36 passed"
-        },
-        {
-          "name": "Python in-memory compile",
-          "status": "passed"
-        },
-        {
-          "name": "PowerShell parser",
-          "status": "passed"
-        },
-        {
-          "name": "git diff check",
-          "status": "passed"
-        }
-      ],
-      "roles": {
-        "planner": {
-          "status": "passed",
-          "summary": "Defined the minimal publication seam and fail-closed contract."
-        },
-        "developer": {
-          "status": "passed",
-          "summary": "Implemented with local bare-remote TDD and no real-origin access."
-        },
-        "reviewer": {
-          "status": "passed",
-          "summary": "Independent exact-diff review: Standards 0 findings, Spec 0 findings."
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Independent final matrix: 36 passed plus syntax and diff checks."
-        },
-        "integrator": {
-          "status": "passed",
-          "summary": "Verified exact subject, scope, parents, clean master, and bootstrap publication boundary."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "mode": "direct_primary",
-        "subject": "83c7acf4c29e05a1d133490571c52769317235f3"
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_PROJECT_FOLDER_DATA_PROTECTION_ADOPTION",
+    "task_id": "TASK_CLOSE_AUTO_PUBLISH_GATE",
     "tier": "high_risk",
-    "subject": "c5bbe88c82d247773a2aaba9783b0c4ea7aab0dd",
-    "summary": "Protect existing project folders by separating identity-only adoption and healthy-folder opening from explicit backup rebuild operations, including portable cross-PC rebinding without modifying business files.",
+    "subject": "83c7acf4c29e05a1d133490571c52769317235f3",
+    "summary": "Publish completed tasks to origin/master through a fail-closed post-Close Git gate after the board close commit.",
     "disposition": "completed",
     "decision_ref": "user-close-2026-09-22",
-    "closed_at": "2026-09-21T23:58:33.839550Z"
+    "closed_at": "2026-09-22T09:41:11.208201Z"
   },
   "retained_history": [
     {
