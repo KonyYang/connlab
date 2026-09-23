@@ -6,6 +6,11 @@
 2. Open the copied folder.
 3. Double-click `Start_ConnLab.bat`.
 
+If ConnLab reports that its local address is already in use, another ConnLab
+server (often an older version) is still running. Close that server's console
+window, then run `Start_ConnLab.bat` again. The launcher will not stop another
+process or open a browser tab to that existing server.
+
 ConnLab starts a local server on your computer and opens:
 
 ```text

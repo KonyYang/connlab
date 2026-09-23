@@ -197,12 +197,12 @@ def test_release_icon_asset_exists() -> None:
     assert icon.stat().st_size > 0
 
 
-def test_browser_release_start_script_opens_fixed_local_url() -> None:
-    """RELEASE_003 operator start script opens the fixed local web URL."""
+def test_browser_release_start_script_requests_browser_after_server_start() -> None:
+    """The packaged server opens its local URL after startup succeeds."""
     start_script = _read_text("packaging/Start_ConnLab.bat")
 
     assert "ConnLab_Server.exe" in start_script
-    assert "http://127.0.0.1:8765/" in start_script
+    assert "--open-browser" in start_script
     assert "%~dp0" in start_script
     assert "routes_settings" not in start_script
     assert "ltr-workbook" not in start_script

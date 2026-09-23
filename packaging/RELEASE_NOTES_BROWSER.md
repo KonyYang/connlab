@@ -12,7 +12,7 @@ This portable release is intended for Windows local-browser use.
 
 Run `Start_ConnLab.bat`.
 
-The application starts its local backend automatically and opens `http://127.0.0.1:8765/` in a browser. No Python, Node, npm, Vite, or manual backend/frontend startup is required on the operator computer.
+The application starts its local backend automatically and opens `http://127.0.0.1:8765/` in a browser after startup succeeds. If another ConnLab instance is still using that address, the new launcher explains that the existing server must be closed; it does not terminate it or open the old instance. No Python, Node, npm, Vite, or manual backend/frontend startup is required on the operator computer.
 
 This release changes only the startup shell. LTR registration, Settings, Project Workbench, and workbook behavior are the same application workflows as the normal ConnLab build.
 

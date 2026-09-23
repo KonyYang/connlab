@@ -68,13 +68,15 @@ def test_packaged_server_normal_mode_starts_web_server(
 ) -> None:
     calls: dict[str, object] = {}
 
-    def fake_web_server(*, host: str, port: int) -> None:
+    def fake_web_server(*, host: str, port: int, open_browser: bool) -> bool:
         calls["host"] = host
         calls["port"] = port
+        calls["open_browser"] = open_browser
+        return True
 
     monkeypatch.setattr(packaged_server, "run_packaged_web_server", fake_web_server)
 
-    result = packaged_server.main(["--host", "127.0.0.1", "--port", "8765"])
+    result = packaged_server.main(["--open-browser"])
 
     assert result == 0
-    assert calls == {"host": "127.0.0.1", "port": 8765}
+    assert calls == {"host": "127.0.0.1", "port": 8765, "open_browser": True}

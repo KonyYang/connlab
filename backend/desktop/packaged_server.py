@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import errno
+import socket
 import sys
+import webbrowser
 from pathlib import Path
+from typing import Any
 
 import uvicorn
 
@@ -37,25 +41,82 @@ def run_packaged_web_server(
     port: int = DEFAULT_PORT,
     app_root: Path | None = None,
     frontend_dist: Path | None = None,
-) -> None:
+    open_browser: bool = False,
+) -> bool:
     """Run ConnLab as a local browser-accessible server."""
     paths = build_packaged_runtime_paths(app_root=app_root, frontend_dist=frontend_dist)
     prepare_packaged_runtime_environment(paths)
     configure_packaged_logging(log_path=paths.logs_dir / "connlab.log")
     app = create_packaged_server_app(paths)
+
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        listener.bind((host, port))
+        listener.listen(socket.SOMAXCONN)
+        listener.setblocking(False)
+    except OSError as error:
+        listener.close()
+        print("")
+        if error.errno == errno.EADDRINUSE:
+            print(f"ConnLab cannot start because {host}:{port} is already in use.")
+            print(
+                "If another ConnLab server window is open, close that window and "
+                "run Start_ConnLab.bat again."
+            )
+            print("No other process was stopped, and the browser was not opened.")
+        else:
+            print(f"ConnLab could not reserve {host}:{port}: {error}")
+        if open_browser:
+            try:
+                input("Press Enter to close this window...")
+            except EOFError:
+                pass
+        return False
+
     print("")
     print("ConnLab local web server is starting.")
     print(f"Open http://{host}:{port}/ in Microsoft Edge or another browser.")
     print("Close this window to stop ConnLab.")
     print("")
-    uvicorn.run(
-        app,
+
+    server_app: Any = app
+    if open_browser:
+        target_url = f"http://{host}:{port}/"
+
+        async def open_browser_after_lifespan_startup(
+            scope: dict[str, Any], receive: Any, send: Any
+        ) -> None:
+            if scope["type"] != "lifespan":
+                await app(scope, receive, send)
+                return
+
+            async def open_after_startup(message: dict[str, Any]) -> None:
+                if message["type"] == "lifespan.startup.complete":
+                    try:
+                        webbrowser.open(target_url)
+                    except Exception as error:  # Browser launch should not stop the server.
+                        print(f"Could not open the browser automatically: {error}")
+                        print(f"Open {target_url} manually.")
+                await send(message)
+
+            await app(scope, receive, open_after_startup)
+
+        server_app = open_browser_after_lifespan_startup
+
+    config = uvicorn.Config(
+        server_app,
         host=host,
         port=port,
         log_level="info",
         access_log=False,
         log_config=None,
     )
+    server = uvicorn.Server(config)
+    try:
+        server.run(sockets=[listener])
+    finally:
+        listener.close()
+    return True
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -63,6 +124,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run ConnLab local web server.")
     parser.add_argument("--host", default=DEFAULT_HOST)
     parser.add_argument("--port", default=DEFAULT_PORT, type=int)
+    parser.add_argument(
+        "--open-browser",
+        action="store_true",
+        help="Open the browser after the server has started successfully.",
+    )
     return parser.parse_args(argv)
 
 
@@ -82,8 +148,12 @@ def main(argv: list[str] | None = None) -> int:
 
         return customer_report_child_main(arguments[1:])
     args = parse_args(arguments)
-    run_packaged_web_server(host=args.host, port=args.port)
-    return 0
+    started = run_packaged_web_server(
+        host=args.host,
+        port=args.port,
+        open_browser=args.open_browser,
+    )
+    return 0 if started else 1
 
 
 if __name__ == "__main__":
