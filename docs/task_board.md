@@ -11,129 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_ASSOCIATED_LTR_INTAKE_REGISTRATION",
-    "summary": "Allow Intake to create a new associated LTR number after comparing the existing base row with the proposed new registration row.",
-    "tier": "high_risk",
-    "route": "full_chain",
-    "scope": "Extend the specified-LTR Intake workflow so a missing associated DL suffix whose base exists can be reviewed as a separate new workbook row using current Intake/project mappings, then explicitly confirmed and appended without changing the base row. Preserve the exact-existing-number reuse flow; block missing bases and exact suffix duplicates; revalidate preview state and target absence at commit. Do not redesign other LTR registration modes.",
-    "scope_paths": [
-      "backend/api/dependencies.py",
-      "backend/api/routes_new_project_completion.py",
-      "backend/application/intake_confirmation_service.py",
-      "backend/application/ltr_authority.py",
-      "backend/application/ltr_excel_authority_adapter.py",
-      "backend/application/ltr_workbook_write_commit_service.py",
-      "backend/application/ltr_workbook_write_preview_service.py",
-      "backend/application/new_project_completion_service.py",
-      "backend/application/specified_ltr_workbook_authority_preview_service.py",
-      "docs/PROJECT_CONTEXT.md",
-      "frontend/src/api/client.ts",
-      "frontend/src/components/workflow/new-project-workflow.css",
-      "frontend/src/features/new-project/SpecifiedLtrWorkbookAuthorityPreviewPanel.tsx",
-      "frontend/src/features/new-project/useNewProjectCompletion.ts",
-      "frontend/src/pages/IntakeInboxPage.test.tsx",
-      "tests/integration/test_new_project_completion_api.py",
-      "tests/unit/test_ltr_workbook_write_commit_service.py",
-      "tests/unit/test_specified_ltr_workbook_authority_preview_service.py"
-    ],
-    "risk_reasons": [
-      "authoritative public LTR workbook row creation",
-      "duplicate and stale-preview race protection across external workbook writes"
-    ],
-    "activation_head": "a7c28aae0bf6b58397f02dab1be3e16cb406e812",
-    "started_at": "2026-09-24T04:46:32.259629Z",
-    "updated_at": "2026-09-24T14:59:10.769466Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_ASSOCIATED_LTR_INTAKE_REGISTRATION",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_ASSOCIATED_LTR_INTAKE_REGISTRATION",
-      "subject": "84240104066101e4d4d931615873b36922b286d8",
-      "summary": "Intake now supports reviewing and appending a new associated DL suffix against its unchanged base row. Exact existing numbers retain the compare-and-replace flow; associated rows require an existing base, show base and proposed data, and are revalidated under the workbook lock before append. Missing bases, duplicates, and stale previews fail closed.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/api/dependencies.py",
-        "backend/api/routes_new_project_completion.py",
-        "backend/application/intake_confirmation_service.py",
-        "backend/application/ltr_authority.py",
-        "backend/application/ltr_excel_authority_adapter.py",
-        "backend/application/ltr_workbook_write_commit_service.py",
-        "backend/application/ltr_workbook_write_preview_service.py",
-        "backend/application/new_project_completion_service.py",
-        "backend/application/specified_ltr_workbook_authority_preview_service.py",
-        "docs/PROJECT_CONTEXT.md",
-        "frontend/src/api/client.ts",
-        "frontend/src/components/workflow/new-project-workflow.css",
-        "frontend/src/features/new-project/SpecifiedLtrWorkbookAuthorityPreviewPanel.tsx",
-        "frontend/src/features/new-project/useNewProjectCompletion.ts",
-        "frontend/src/pages/IntakeInboxPage.test.tsx",
-        "tests/integration/test_new_project_completion_api.py",
-        "tests/unit/test_ltr_workbook_write_commit_service.py",
-        "tests/unit/test_specified_ltr_workbook_authority_preview_service.py"
-      ],
-      "validation": [
-        {
-          "name": "Full QA gate: scripts/run_tests.ps1 -Suite All",
-          "status": "passed",
-          "detail": "Exit 0; pytest 3026 passed, 8 skipped, 19 deselected; Vitest 651 passed, 1 skipped (87 files passed, 1 skipped); TypeScript and Vite production build passed (163 modules). Office integration suite excluded by Suite All. Two existing warnings: Starlette/httpx deprecation and duplicate OpenAPI operation ID."
-        },
-        {
-          "name": "Final diff and scope",
-          "status": "passed",
-          "detail": "git diff --check passed; Integrator confirmed exactly 18 task paths, clean tree, no staged or untracked files before final board recording."
-        }
-      ],
-      "roles": {
-        "planner": {
-          "status": "passed",
-          "detail": "Independent plan established compare-and-append semantics, base-row immutability, and commit-time revalidation."
-        },
-        "developer": {
-          "status": "passed",
-          "detail": "Independent TDD implementation; focused Python and frontend tests passed before full QA."
-        },
-        "reviewer": {
-          "status": "passed",
-          "detail": "Independent final review found no P1/P2; exact replacement and associated append guards verified."
-        },
-        "qa": {
-          "status": "passed",
-          "detail": "Independent full non-Office Suite All gate passed on final code state."
-        },
-        "integrator": {
-          "status": "passed",
-          "detail": "Read-only final scope review verified all 18 exact paths and advised local-only integration sequence."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "commit": "84240104066101e4d4d931615873b36922b286d8",
-        "implementation_commit": "a9fefefb9b8a1b916262064cebdb2e6c7bd383de",
-        "branch": "master",
-        "clean": true,
-        "scope_ok": true,
-        "published": false
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_PROJECT_FOLDER_LEGACY_RECOVERY_REVIEW",
+    "task_id": "TASK_ASSOCIATED_LTR_INTAKE_REGISTRATION",
     "tier": "high_risk",
-    "subject": "71ba57e9522627e0742826b9c7778c1ee9969647",
-    "summary": "Repair project folder generation review, stale legacy path recovery, template guidance, and safely blocked checkpoints without overwriting operator files.",
+    "subject": "84240104066101e4d4d931615873b36922b286d8",
+    "summary": "Allow Intake to create a new associated LTR number after comparing the existing base row with the proposed new registration row.",
     "disposition": "completed",
-    "decision_ref": "user-close-and-submit-2026-09-24-associated-ltr",
-    "closed_at": "2026-09-24T04:46:32.259629Z"
+    "decision_ref": "user-close-2026-09-24",
+    "closed_at": "2026-09-24T15:05:36.658246Z"
   },
   "retained_history": [
     {
