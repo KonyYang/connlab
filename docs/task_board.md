@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_PROJECT_FOLDER_LEGACY_RECOVERY_REVIEW",
     "summary": "Repair project folder generation review, stale legacy path recovery, template guidance, and safely blocked checkpoints without overwriting operator files.",
@@ -62,9 +62,86 @@
     ],
     "activation_head": "9b4335e36178032eb03bf1bdcf29131ae033f542",
     "started_at": "2026-09-23T23:07:13.579991Z",
-    "updated_at": "2026-09-23T23:07:13.579991Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-24T00:18:02.690227Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_PROJECT_FOLDER_LEGACY_RECOVERY_REVIEW",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_PROJECT_FOLDER_LEGACY_RECOVERY_REVIEW",
+      "subject": "71ba57e9522627e0742826b9c7778c1ee9969647",
+      "summary": "Separated true generation blockers from reviewable file conflicts; guarded identity-only legacy workspace link; conservative renamed-inner-folder review; verified legacy output-path relink; missing-template Settings guidance. No real operator folders or databases were mutated in validation. Existing release package was not rebuilt or live-smoke-tested.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/project_folder_generation_composition.py",
+        "backend/api/project_folder_preflight.py",
+        "backend/api/routes_official_project_workspace.py",
+        "backend/application/official_project_workspace_service.py",
+        "backend/application/project_folder_generation_service.py",
+        "backend/application/project_folder_required_forms_service.py",
+        "docs/project_folder_generation_recovery.md",
+        "frontend/src/api/client.ts",
+        "tests/integration/test_project_folder_generation_api.py",
+        "tests/integration/test_project_folder_generation_complete_chain.py",
+        "tests/unit/test_official_project_workspace_service.py",
+        "tests/unit/test_project_folder_required_forms_service.py"
+      ],
+      "validation": [
+        {
+          "name": "Developer affected RED/GREEN",
+          "status": "passed",
+          "detail": "Initial 116 pass; follow-up RED 7 fail/1 skip then GREEN 123 pass/1 skip; conservative inner-folder RED 2 fail/1 pass then GREEN 122 pass/1 skip."
+        },
+        {
+          "name": "QA complete gate",
+          "status": "passed",
+          "detail": "scripts/run_tests.ps1 -Suite All exit 0: Python 3016 pass, 8 skip, 19 Office deselected, 2 warnings; Vitest 650 pass, 1 skip, 87 files pass and 1 skip; tsc -b and Vite build passed, 163 modules."
+        },
+        {
+          "name": "Diff and scope",
+          "status": "passed",
+          "detail": "git diff --check passed; all 12 changed implementation paths are within the high-risk task allowlist; clean master, implementation c7fa9533 and board activation 71ba57e9."
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed",
+          "detail": "Independent read-only cause and safety-boundary plan."
+        },
+        "developer": {
+          "status": "passed",
+          "detail": "Independent TDD implementation and affected checks."
+        },
+        "reviewer": {
+          "status": "passed",
+          "detail": "Independent risk-focused review; P1 issues fixed and re-reviewed; final no P1/P2."
+        },
+        "qa": {
+          "status": "passed",
+          "detail": "Independent complete non-Office gate on final reviewed state."
+        },
+        "integrator": {
+          "status": "passed",
+          "detail": "Verified exact scope, clean tree, commit parents, subject and QA evidence; no publication."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "commit": "71ba57e9522627e0742826b9c7778c1ee9969647",
+        "implementation_commit": "c7fa9533a1b5012a731cf645f92046b02a8b52b6",
+        "branch": "master",
+        "clean": true,
+        "scope_ok": true,
+        "published": false
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_EQUIPMENT_CALIBRATION_MANUFACTURER_HEADER_MATCH",
