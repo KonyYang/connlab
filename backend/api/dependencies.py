@@ -271,6 +271,7 @@ from backend.application.project_package_preview_service import (
 from backend.application.official_project_workspace_service import (
     OfficialProjectWorkspaceService,
 )
+from backend.application.official_folder_relocation_service import OfficialFolderRelocationService
 from backend.application.official_project_folder_check_service import (
     OfficialProjectFolderCheckService,
 )
@@ -2605,6 +2606,20 @@ def get_intake_confirmation_service(
         application_form_store=ApplicationFormRepository(session),
         sample_store=SampleInfoRepository(session),
         file_asset_store=FileAssetRepository(session),
+    )
+
+
+def get_official_folder_relocation_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> OfficialFolderRelocationService:
+    """Build the reviewed local folder-name relocation workflow."""
+    from backend.infrastructure.files.generation_journal import GenerationJournal
+
+    return OfficialFolderRelocationService(
+        workspace_service=get_official_project_workspace_service(session),
+        workspace_repository=ProjectOfficialWorkspaceRepository(session),
+        journal=GenerationJournal(settings.data_dir / "official_folder_relocation"),
     )
 
 

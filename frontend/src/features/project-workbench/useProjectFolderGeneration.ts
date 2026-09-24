@@ -18,6 +18,7 @@ export type FolderUpdateReview = {
   preview: ProjectFolderGenerationPreview;
   operationId: string | null;
   resumeRebuild: boolean;
+  intent?: "backup_rebuild" | "update_in_place";
 };
 
 export type ProjectFolderUpdateAction =
@@ -177,6 +178,8 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
       if (latest && ["queued", "running"].includes(latest.status)) { accept(latest); return; }
       const previewIntent = strategy === "backup_and_recreate"
         ? "backup_rebuild"
+        : strategy === "update_in_place"
+        ? "update_in_place"
         : "create";
       let preview = await previewProjectFolderGeneration(projectId, previewIntent);
       if (!isCurrent()) return;
@@ -187,11 +190,15 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
           "Project folder operation changed. Use the project folder action in Folder Actions to check again."
         );
       }
+      if (strategy === "backup_and_recreate" && reviewed?.intent === "update_in_place") {
+        // Switching from an in-place review to a whole-folder rebuild needs its own preview.
+        return { preview, operationId, resumeRebuild: false, intent: "backup_rebuild" };
+      }
       if (reviewed && (reviewed.operationId !== operationId || reviewed.preview.expected_context !== preview.expected_context)) {
         throw new Error("Project folder preview changed. Review the latest folder state before choosing again.");
       }
       const recovery = preview.recovery;
-      if (strategy && !reviewed) return { preview, operationId, resumeRebuild: false };
+      if (strategy && !reviewed) return { preview, operationId, resumeRebuild: false, intent: previewIntent === "update_in_place" ? previewIntent : "backup_rebuild" };
       if (!strategy && pending && recovery?.inputs_match && resumeRebuild && reviewed?.resumeRebuild) {
         const next = await resumeProjectFolderGeneration(projectId, pending.operation_id);
         if (isCurrent()) accept(next);
@@ -212,11 +219,11 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
         throw new Error(workspace.blockers[0] ?? "Project folder needs review before updating.");
       }
       if (!strategy && workspace.status === "completed") {
-        if (pending) return { preview, operationId, resumeRebuild: false };
-        preview = await previewProjectFolderGeneration(projectId, "backup_rebuild");
+        if (pending) return { preview, operationId, resumeRebuild: false, intent: "backup_rebuild" };
+        preview = await previewProjectFolderGeneration(projectId, "update_in_place");
         if (!isCurrent()) return;
         if (preview.start_blockers?.length) throw new Error(preview.start_blockers.join(" "));
-        return { preview, operationId, resumeRebuild: false };
+        return { preview, operationId, resumeRebuild: false, intent: "update_in_place" };
       }
       if (!strategy && workspace.status === "adoptable") {
         throw new Error("Link the existing project folder before generating outputs.");
@@ -224,10 +231,10 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
       if (!strategy && ["conflict", "exists", "inconsistent"].includes(workspace.status)) {
         preview = await previewProjectFolderGeneration(projectId, "backup_rebuild");
         if (!isCurrent()) return;
-        return { preview, operationId, resumeRebuild: false };
+        return { preview, operationId, resumeRebuild: false, intent: "backup_rebuild" };
       }
       if (strategy && !reviewed) {
-        return { preview, operationId, resumeRebuild: false };
+        return { preview, operationId, resumeRebuild: false, intent: previewIntent === "update_in_place" ? previewIntent : "backup_rebuild" };
       }
       const selected = strategy;
       requestId.current ??= crypto.randomUUID();

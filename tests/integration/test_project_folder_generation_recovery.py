@@ -1,6 +1,7 @@
 """New-process recovery through the real runner, SQLite and fake form generator."""
 
 from pathlib import Path
+import json
 import os
 import runpy
 import subprocess
@@ -14,10 +15,14 @@ from sqlalchemy import create_engine
 
 from backend.api import dependencies as deps
 from backend.api.project_folder_generation_composition import ProjectFolderGenerationRunner
-from backend.domain import Project, ProjectStatus, FileAsset, FileAssetType
+from backend.domain import Project, ProjectStatus, FileAsset, FileAssetType, LtrRecord, LtrStatus
+from backend.domain import ExternalResource, ExternalResourceType
 from backend.application.official_project_workspace_service import OfficialWorkspacePreview, OfficialWorkspaceRecord
 from backend.infrastructure.files.generation_journal import GenerationJournal
 from backend.infrastructure.files.recoverable_workspace_publisher import RecoverableWorkspacePublisher
+from backend.infrastructure.official_workspace_manifest import (
+    OfficialWorkspaceManifest, OfficialWorkspaceManifestGateway, stable_folder_identity,
+)
 from backend.infrastructure.storage.database import Base, create_session_factory
 from backend.shared.config import Settings
 from backend.application.project_application_form_write_back_service import ProjectApplicationFormWriteBackService
@@ -27,6 +32,108 @@ from backend.infrastructure.files.project_folder_required_forms_gateway import P
 def _settings(root):
     return Settings(data_dir=root / "data", projects_dir=root / "projects", templates_dir=root / "templates",
                     database_path=root / "fixture.sqlite")
+
+
+def test_recoverable_backup_archives_only_active_ltr_child_under_history(tmp_path):
+    workspace = tmp_path / "projects" / "DL-001"
+    official = workspace / "DL-001 Original"
+    official.mkdir(parents=True)
+    (workspace / "Source Book").mkdir()
+    (workspace / "History").mkdir()
+    (workspace / "History" / "existing.txt").write_text("keep", encoding="utf-8")
+    (official / "operator.txt").write_text("keep", encoding="utf-8")
+    template = tmp_path / "template"
+    template.mkdir()
+    (template / "template.txt").write_text("new", encoding="utf-8")
+    preview = OfficialWorkspacePreview(
+        project_id="P1", dl_number="DL-001", local_workspace_root=workspace.parent,
+        local_workspace_path=workspace, source_book_path=workspace / "Source Book",
+        template_path=template, official_folder_path=official,
+        manifest_path=workspace / ".connlab" / "manifest.json",
+        template_root_mode="template_root", status="completed", blockers=(), warnings=(),
+        planned_paths=(), conflict_paths=(official,),
+    )
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("P1", "backup_and_recreate", "fixture")
+
+    class Repository:
+        def save(self, record):
+            return record
+
+    result = RecoverableWorkspacePublisher(journal, state).create(
+        preview, "backup_and_recreate", Repository()
+    )
+
+    archives = list((workspace / "History" / "Folders").glob("DL-001 Original [0-9]*"))
+    assert len(archives) == 1
+    assert (archives[0] / "operator.txt").read_text(encoding="utf-8") == "keep"
+    assert (workspace / "History" / "existing.txt").read_text(encoding="utf-8") == "keep"
+    assert (result.official_folder_path / "template.txt").read_text(encoding="utf-8") == "new"
+    assert json.loads(result.record.manifest_path.read_text(encoding="utf-8"))[
+        "official_folder_identity"
+    ] == [result.official_folder_path.stat().st_dev, result.official_folder_path.stat().st_ino]
+
+
+@pytest.mark.parametrize("legacy_manifest", [False, True])
+def test_runner_update_in_place_reuses_verified_custom_folder_without_rebuilding(tmp_path, legacy_manifest):
+    settings = _settings(tmp_path)
+    engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
+    Base.metadata.create_all(engine)
+    sessions = create_session_factory(engine)
+    template = tmp_path / "template"
+    for name in ("E-mail", "Submitted Material", "Photos", "Test results/Final Examination"):
+        (template / name).mkdir(parents=True)
+    (template / "new-template-file.txt").write_text("new", encoding="utf-8")
+    output = tmp_path / "output"
+    output.mkdir()
+    workspace = output / "DL-001"
+    custom = workspace / "DL-001 Operator Custom"
+    custom.mkdir(parents=True)
+    (workspace / "Source Book").mkdir()
+    operator_file = custom / "operator.txt"
+    operator_file.write_text("keep", encoding="utf-8")
+    manifest_path = workspace / ".connlab" / "manifest.json"
+    record = OfficialWorkspaceRecord(
+        "workspace-1", "P1", "DL-001", workspace, workspace / "Source Book",
+        custom, manifest_path, template, "2026-09-25T00:00:00+00:00",
+    )
+    OfficialWorkspaceManifestGateway().write_adoption(manifest_path, OfficialWorkspaceManifest(
+        1, "P1", "DL-001", str(workspace), str(workspace / "Source Book"),
+        str(custom), str(template), record.created_at,
+        None if legacy_manifest else stable_folder_identity(custom),
+        "DL-001 Connector Qualification Testing",
+    ))
+    with sessions() as session:
+        deps.ProjectRepository(session).create(Project(
+            project_id="P1", project_no="DL-001", product_name="Connector",
+            requestor="Test", status=ProjectStatus.DRAFT,
+        ))
+        deps.LtrRecordRepository(session).create(LtrRecord(
+            "ltr", "P1", "DL-001", LtrStatus.REGISTERED,
+        ))
+        resources = deps.ExternalResourceRepository(session)
+        resources.upsert(ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, output))
+        resources.upsert(ExternalResource("template", ExternalResourceType.PROJECT_FOLDER_TEMPLATE, template))
+        deps.ProjectOfficialWorkspaceRepository(session).save(record)
+        session.commit()
+    runner = ProjectFolderGenerationRunner(sessions, settings)
+    runner.context = lambda _project_id: "fixture"
+    runner.preview_context_matches = lambda *_args, **_kwargs: True
+    state = runner.journal.create("P1", "update_in_place", "fixture")
+    state.update(preview_context="fixture", preview_context_version=2)
+    runner.journal.save(state)
+    try:
+        runner.run_step(state, "workspace")
+        with sessions() as session:
+            retained = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
+        assert retained.official_folder_path == custom
+        assert operator_file.read_text(encoding="utf-8") == "keep"
+        assert not (custom / "new-template-file.txt").exists()
+        assert not (workspace / "History").exists()
+        assert state["workspace_directories"]["official_folder_path"]["identity"] == stable_folder_identity(custom)
+    finally:
+        runner.pool.shutdown()
+        engine.dispose()
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows readonly deletion semantics")

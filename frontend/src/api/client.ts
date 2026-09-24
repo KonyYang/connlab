@@ -22,7 +22,7 @@ export type ProjectFolderGenerationPreview = {
 
 export function previewProjectFolderGeneration(
   projectId: string,
-  intent: "create" | "backup_rebuild" = "create"
+  intent: "create" | "backup_rebuild" | "update_in_place" = "create"
 ): Promise<ProjectFolderGenerationPreview> {
   return requestJson(
     `/api/projects/${encodeURIComponent(projectId)}/project-folder/generation/preview?intent=${intent}`
@@ -407,7 +407,7 @@ export type OfficialWorkspacePreview = {
   conflict_options?: OfficialWorkspaceConflictOption[];
 };
 
-export type OfficialWorkspaceConflictStrategy = "backup_and_recreate";
+export type OfficialWorkspaceConflictStrategy = "backup_and_recreate" | "update_in_place";
 
 export type OfficialWorkspaceConflictOption = {
   key: OfficialWorkspaceConflictStrategy;
@@ -431,6 +431,24 @@ export type OfficialWorkspaceCreateResponse = {
   created_paths: string[];
   warnings: string[];
   created_at: string;
+};
+
+export type OfficialWorkspaceRelocationAction =
+  | "rename_to_confirmed"
+  | "rebind_and_rename"
+  | "rebind_keep_custom"
+  | "keep_current_name"
+  | "resume";
+
+export type OfficialWorkspaceRelocationPreview = {
+  status: "not_needed" | "rename_available" | "manual_relink_available" | "blocked" | "interrupted";
+  current_path: string | null;
+  suggested_path: string | null;
+  candidate_path: string | null;
+  blockers: string[];
+  warnings: string[];
+  expected_context: string | null;
+  actions: { key: OfficialWorkspaceRelocationAction; label: string; description: string }[];
 };
 
 export type RequestMaterialPreviewStatus =
@@ -5098,6 +5116,25 @@ export type ProjectCustomerReportJob = {
 
 function projectCustomerReportJobsUrl(projectId: string): string {
   return `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-customer-report/jobs`;
+}
+
+export function fetchOfficialWorkspaceRelocationPreview(
+  projectId: string
+): Promise<OfficialWorkspaceRelocationPreview> {
+  return requestJson<OfficialWorkspaceRelocationPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/official-workspace/relocation/preview`,
+    { cache: "no-store" }
+  );
+}
+
+export function relocateOfficialWorkspace(
+  projectId: string,
+  input: { action: OfficialWorkspaceRelocationAction; expected_context: string }
+): Promise<OfficialWorkspaceCreateResponse> {
+  return requestJson<OfficialWorkspaceCreateResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/official-workspace/relocation`,
+    { method: "POST", body: JSON.stringify(input) }
+  );
 }
 
 export function adoptOfficialWorkspace(

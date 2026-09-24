@@ -108,7 +108,7 @@ class ProjectFolderGenerationRunner:
         return allow_legacy and preview.get("legacy_expected_context") == expected_context
 
     def preview(self, project_id, intent="create"):
-        if intent not in {"create", "backup_rebuild"}:
+        if intent not in {"create", "backup_rebuild", "update_in_place"}:
             raise ValueError("Unsupported project folder preview intent.")
         rebuilding = intent == "backup_rebuild"
         from backend.api.routes_official_project_workspace import _preview_response
@@ -243,6 +243,7 @@ class ProjectFolderGenerationRunner:
                                 "continue_existing",
                                 "overwrite_rebuild",
                             }
+                            else "update_in_place" if state.get("strategy") == "update_in_place"
                             else "create"
                         )
                         if not self.preview_context_matches(
@@ -257,7 +258,11 @@ class ProjectFolderGenerationRunner:
                         workspace.recover(deps.ProjectOfficialWorkspaceRepository(session))
                     else:
                         verify_initial_preview()
-                        deps.get_official_project_workspace_service(session).create(project_id, state["strategy"], recovery=workspace)
+                        deps.get_official_project_workspace_service(session).create(
+                            project_id,
+                            None if state["strategy"] == "update_in_place" else state["strategy"],
+                            recovery=workspace,
+                        )
                 elif name == "materials":
                     latest = deps.ProjectRequestMaterialCollectionRepository(session).latest_by_project(project_id)
                     if latest is None or latest.collection_id != state["operation_id"]:

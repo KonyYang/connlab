@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
+from hashlib import sha256
 import runpy
 
 from fastapi.testclient import TestClient
 import pytest
+from sqlalchemy import event, select
+from sqlalchemy.orm import Session
 
 from backend.api.dependencies import get_official_project_workspace_service, get_settings
 from backend.shared.config import OfficialWorkspaceSettings, Settings
@@ -27,6 +31,12 @@ from backend.application.official_project_workspace_service import (
     OfficialWorkspacePreview,
     OfficialWorkspaceRecord,
 )
+from backend.infrastructure.storage.models import (
+    FileAssetModel, ProjectFolderRecordModel, ProjectOutputRecordModel,
+    ProjectRequestMaterialCollectionModel, ProjectRequestMaterialCollectionItemModel,
+    ProjectModel,
+)
+from backend.infrastructure.official_workspace_manifest import stable_folder_identity
 
 
 @pytest.fixture(autouse=True)
@@ -81,6 +91,236 @@ def test_real_workspace_preview_tracks_confirmations_not_basic_drafts(tmp_path):
         assert folder_name() == (
             "DL-2026-08-079 Customized PBU Connector with 14P Solderability and Mechanical Testing"
         )
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_relocation_recovers_sqlite_commit_failure_and_rebinds_live_paths(tmp_path):
+    fixture = runpy.run_path(str(Path(__file__).with_name("test_matrix_editor_session_api.py")))
+    client, engine, sessions = fixture["_client"](tmp_path)
+    try:
+        fixture["_seed_project"]("P1", tmp_path)
+        template, output = tmp_path / "template", tmp_path / "output"
+        output.mkdir()
+        for name in ("E-mail", "Submitted Material", "Photos", "Test results/Final Examination"):
+            (template / name).mkdir(parents=True)
+        with sessions() as session:
+            deps.LtrRecordRepository(session).create(
+                LtrRecord("ltr", "P1", "DL-2026-08-079", LtrStatus.REGISTERED)
+            )
+            resources = deps.ExternalResourceRepository(session)
+            resources.upsert(ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, output))
+            resources.upsert(ExternalResource("template", ExternalResourceType.PROJECT_FOLDER_TEMPLATE, template))
+            session.commit()
+        values = {
+            "dl_number": "DL-2026-08-079", "project_type": "NPD",
+            "product_description": "Original connector", "test_item": "Qualification test",
+            "tests_to_be_performed": "Qualification test",
+            "requested_by": "Alice", "project_leader": "Engineer", "lab_performing_tests": "Dongguan",
+        }
+        confirmed = client.post("/api/projects/P1/basic-information/confirm", json={
+            "values": values, "confirmed_by": "operator",
+        })
+        assert confirmed.status_code == 200, confirmed.text
+        created = client.post("/api/projects/P1/official-workspace/create")
+        assert created.status_code == 201, created.text
+        source = Path(created.json()["official_project_folder_path"])
+        report = source / "Test results" / "operator.docx"
+        report.write_bytes(b"operator report")
+        edited_asset = source / "Test results" / "edited.docx"
+        edited_asset.write_bytes(b"original")
+        edited_digest = sha256(edited_asset.read_bytes()).hexdigest()
+        edited_asset.write_bytes(b"operator edit")
+        missing_asset = source / "Test results" / "removed.docx"
+        missing_folder = source / "Test results" / "Removed By Operator"
+        application_form = source / "Submitted Material" / "application.docx"
+        application_form.write_bytes(b"submitted application")
+        application_digest = sha256(application_form.read_bytes()).hexdigest()
+        digest = sha256(report.read_bytes()).hexdigest()
+        with sessions() as session:
+            session.add(FileAssetModel(
+                asset_id="asset-1", project_id="P1", asset_type="attachment",
+                path=str(report), sha256=digest,
+            ))
+            session.add(FileAssetModel(
+                asset_id="edited-asset", project_id="P1", asset_type="attachment",
+                path=str(edited_asset), sha256=edited_digest,
+            ))
+            session.add(FileAssetModel(
+                asset_id="missing-asset", project_id="P1", asset_type="attachment",
+                path=str(missing_asset), sha256=digest,
+            ))
+            session.add(ProjectFolderRecordModel(
+                folder_id="missing-folder", project_id="P1", folder_path=str(missing_folder),
+            ))
+            session.add(ProjectOutputRecordModel(
+                output_record_id="old-output", project_id="P1", draft_id=None,
+                draft_version=None, output_kind="test_record_form", output_path=str(report),
+                output_sha256=digest, output_size_bytes=report.stat().st_size,
+                source_context_signature="confirmed-fixture", status="current",
+                source="system_generated", created_at="2026-09-24T00:00:00+00:00",
+                updated_at="2026-09-24T00:00:00+00:00",
+            ))
+            for collection_id, created_at in (
+                ("prior-materials", "2026-09-23T00:00:00+00:00"),
+                ("current-materials", "2026-09-24T00:00:00+00:00"),
+            ):
+                session.add(ProjectRequestMaterialCollectionModel(
+                    collection_id=collection_id, project_id="P1", workspace_id="workspace-1",
+                    status="completed", item_count=1, copied_count=1,
+                    already_present_count=0, conflict_count=0, skipped_count=0,
+                    missing_source_count=0, created_at=created_at, updated_at=created_at,
+                    warnings_json="[]",
+                ))
+                session.add(ProjectRequestMaterialCollectionItemModel(
+                    item_id=f"{collection_id}-item", collection_id=collection_id,
+                    project_id="P1", source_asset_id="asset-1",
+                    source_asset_type="application_form", source_role="selected_application_form",
+                    dedupe_key=collection_id, source_path=str(application_form),
+                    original_name="application.docx", target_area="submitted_material",
+                    target_path=str(application_form), status="copied", action="copy",
+                    review_required=False, size_bytes=application_form.stat().st_size,
+                    sha256=application_digest,
+                ))
+            planned_target = source / "Submitted Material" / "missing-optional.docx"
+            session.add(ProjectRequestMaterialCollectionItemModel(
+                item_id="current-materials-skipped", collection_id="current-materials",
+                project_id="P1", source_asset_id="missing-asset",
+                source_asset_type="application_form", source_role="other",
+                dedupe_key="skipped-material", source_path=str(tmp_path / "missing-optional.docx"),
+                original_name="missing-optional.docx", target_area="submitted_material",
+                target_path=str(planned_target), status="missing_source", action="skip",
+                review_required=True, size_bytes=None, sha256=None,
+            ))
+            session.add(ProjectOutputRecordModel(
+                output_record_id="unverified-output", project_id="P1", draft_id=None,
+                draft_version=None, output_kind="customer_report", output_path=str(report),
+                output_sha256=None, output_size_bytes=None,
+                source_context_signature="old-fixture", status="current",
+                source="system_generated", created_at="2026-09-24T00:00:00+00:00",
+                updated_at="2026-09-24T00:00:00+00:00",
+            ))
+            session.commit()
+        revised = {**values, "product_description": "Updated connector"}
+        confirmed = client.post("/api/projects/P1/basic-information/confirm", json={
+            "values": revised, "confirmed_by": "operator",
+        })
+        assert confirmed.status_code == 200, confirmed.text
+        reviewed = client.get("/api/projects/P1/official-workspace/relocation/preview")
+        assert reviewed.status_code == 200, reviewed.text
+        assert reviewed.json()["status"] == "rename_available"
+        token = reviewed.json()["expected_context"]
+        application_form.write_bytes(b"operator changed placed material")
+        preflight_blocked = client.post("/api/projects/P1/official-workspace/relocation", json={
+            "action": "rename_to_confirmed", "expected_context": token,
+        })
+        assert preflight_blocked.status_code == 409, preflight_blocked.text
+        assert source.is_dir()
+        assert not (source.parent / "DL-2026-08-079 Updated connector Qualification test").exists()
+        application_form.write_bytes(b"submitted application")
+        pending_preflight = client.get("/api/projects/P1/official-workspace/relocation/preview")
+        assert pending_preflight.json()["status"] == "interrupted"
+        failed_once = False
+
+        def fail_first_commit(_session):
+            nonlocal failed_once
+            if not failed_once:
+                failed_once = True
+                raise OSError("simulated SQLite commit interruption")
+
+        event.listen(Session, "before_commit", fail_first_commit)
+        try:
+            failed = client.post("/api/projects/P1/official-workspace/relocation", json={
+                "action": "resume", "expected_context": pending_preflight.json()["expected_context"],
+            })
+        finally:
+            event.remove(Session, "before_commit", fail_first_commit)
+        assert failed.status_code == 409, failed.text
+        pending = client.get("/api/projects/P1/official-workspace/relocation/preview")
+        assert pending.status_code == 200, pending.text
+        assert pending.json()["status"] == "interrupted"
+        resumed = client.post("/api/projects/P1/official-workspace/relocation", json={
+            "action": "resume", "expected_context": pending.json()["expected_context"],
+        })
+        assert resumed.status_code == 200, resumed.text
+        target = Path(resumed.json()["official_project_folder_path"])
+        assert target.name == "DL-2026-08-079 Updated connector Qualification test"
+        assert (target / "Test results" / "operator.docx").read_bytes() == b"operator report"
+        assert not source.exists()
+        with sessions() as session:
+            asset = session.get(FileAssetModel, "asset-1")
+            assert session.get(FileAssetModel, "edited-asset").path == str(edited_asset)
+            assert session.get(FileAssetModel, "missing-asset").path == str(missing_asset)
+            assert session.get(ProjectFolderRecordModel, "missing-folder").folder_path == str(missing_folder)
+            records = session.scalars(select(ProjectOutputRecordModel).where(
+                ProjectOutputRecordModel.project_id == "P1"
+            ).order_by(ProjectOutputRecordModel.created_at)).all()
+            assert asset.path == str(target / "Test results" / "operator.docx")
+            assert len(records) == 4
+            assert sum(record.output_path == str(report) for record in records) == 2
+            relocated = [record for record in records if record.output_path == str(target / "Test results" / "operator.docx")]
+            assert len(relocated) == 2
+            assert {record.output_kind: record.status for record in relocated} == {
+                "test_record_form": "current", "customer_report": "failed",
+            }
+            current_item = session.get(ProjectRequestMaterialCollectionItemModel, "current-materials-item")
+            prior_item = session.get(ProjectRequestMaterialCollectionItemModel, "prior-materials-item")
+            assert current_item.target_path == str(target / "Submitted Material" / "application.docx")
+            assert prior_item.target_path == str(application_form)
+            assert session.get(
+                ProjectRequestMaterialCollectionItemModel, "current-materials-skipped"
+            ).target_path == str(planned_target)
+            session.get(ProjectModel, "P1").lifecycle_state = "closed"
+            session.commit()
+        rejected = client.post("/api/projects/P1/official-workspace/relocation", json={
+            "action": "keep_current_name", "expected_context": "stale-preview",
+        })
+        assert rejected.status_code == 409, rejected.text
+        assert "closed" in rejected.json()["detail"].lower()
+        assert target.is_dir()
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_relocation_database_commit_rejects_replaced_target_directory(tmp_path):
+    fixture = runpy.run_path(str(Path(__file__).with_name("test_matrix_editor_session_api.py")))
+    _client, engine, sessions = fixture["_client"](tmp_path)
+    try:
+        fixture["_seed_project"]("P1", tmp_path)
+        workspace = tmp_path / "output" / "DL-2026-08-079"
+        source = workspace / "DL-2026-08-079 Original"
+        target = workspace / "DL-2026-08-079 Confirmed"
+        source.mkdir(parents=True)
+        (workspace / "Source Book").mkdir()
+        record = OfficialWorkspaceRecord(
+            "workspace-1", "P1", "DL-2026-08-079", workspace,
+            workspace / "Source Book", source,
+            workspace / ".connlab" / "manifest.json", tmp_path / "template",
+            "2026-09-24T00:00:00+00:00",
+        )
+        with sessions() as session:
+            deps.ProjectOfficialWorkspaceRepository(session).save(record)
+            session.commit()
+        source.rename(target)
+        expected_identity = stable_folder_identity(target)
+        retained = workspace / "retained-original"
+        target.rename(retained)
+        target.mkdir()
+        (target / "foreign.txt").write_text("foreign", encoding="utf-8")
+
+        with sessions() as session:
+            repository = deps.ProjectOfficialWorkspaceRepository(session)
+            with pytest.raises(ValueError, match="identity|changed"):
+                repository.publish_relocation(
+                    replace(record, official_folder_path=target), source=source,
+                    target=target, operation_id="replacement-race",
+                    expected_identity=expected_identity,
+                )
+            assert repository.get_by_project("P1").official_folder_path == source
+        assert (target / "foreign.txt").read_text(encoding="utf-8") == "foreign"
+        assert retained.is_dir()
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

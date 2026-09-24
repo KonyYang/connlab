@@ -133,7 +133,8 @@ over a new pass-through layer. Introduce an adapter seam only when behavior actu
   layout before they are treated as completed; no path below any project workspace may be reused as
   a generation template.
 - Rebuild is a separate advanced operation. New rebuilds only offer `Backup and Rebuild`, which moves
-  the reviewed existing folder to timestamped history before creating a fresh folder. New operations
+  the reviewed inner business folder to `LTR/History/Folders/<old name + timestamp>` before creating
+  a fresh folder. The LTR root, `Source Book`, and other root-level files remain in place. New operations
   cannot select legacy incremental continuation or delete/overwrite rebuild; already-persisted legacy
   journals may still resume those historical choices so interrupted releases remain recoverable.
   Ordinary preview and linking do not hash the business tree; only the explicit rebuild preview binds
@@ -141,9 +142,15 @@ over a new pass-through layer. Introduce an adapter seam only when behavior actu
   last-modification timestamp (`yyyyMMddHHmmss`), with collision suffixes.
 - New official project folders use the latest confirmed Basic Information product description and
   test item, with existing Project/LTR/application-form fallbacks when absent. The registered LTR
-  remains the DL-number authority. Unconfirmed Basic drafts never name official folders. Existing
-  indexed folders retain their paths and report name differences; changing confirmed text alone does
-  not rename operator directories or rewrite stored output paths.
+  remains the DL-number authority. Unconfirmed Basic drafts never name official folders. The inner
+  folder's descriptive name is mutable, not project identity. A confirmed name change offers an
+  explicit, identity-checked in-place rename and updates live indexed paths. A uniquely identified
+  manual rename offers explicit rebind while retaining the custom name or adopting the confirmed
+  name. Retaining a custom name requires an explicit, reviewed in-place update to refresh outputs;
+  it is never silently converted into a whole-folder rebuild. Manual rebind requires a previously
+  recorded stable folder identity; older manifests without that proof require manual review.
+  Foreign or unreadable manifests, multiple active DL-prefixed folders, redirected paths, and
+  changed preview context fail closed; historical operation snapshots are not rewritten.
 - Include file, operation, and external-context details in actionable errors without exposing local
   paths unnecessarily in the UI.
 - Project-folder required-form work files use an operation-isolated `data_dir/stage/<operation_id>`

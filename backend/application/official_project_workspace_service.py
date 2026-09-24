@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
@@ -26,6 +27,7 @@ from backend.domain import ApplicationForm, LtrRecord, Project
 from backend.infrastructure.official_workspace_manifest import (
     OfficialWorkspaceManifest,
     OfficialWorkspaceManifestGateway,
+    stable_folder_identity,
 )
 from backend.shared.config import OfficialWorkspaceSettings
 
@@ -66,6 +68,17 @@ class OfficialWorkspaceRepositoryPort(Protocol):
 
     def save(self, record: "OfficialWorkspaceRecord") -> "OfficialWorkspaceRecord":
         """Create or update a workspace record."""
+
+    def publish_relocation(
+        self, record: "OfficialWorkspaceRecord", *, source: Path, target: Path,
+        operation_id: str, expected_identity: list[int],
+    ) -> "OfficialWorkspaceRecord":
+        """Commit a verified same-project move and its live path references."""
+
+    def preflight_placed_materials(
+        self, record: "OfficialWorkspaceRecord", *, source: Path,
+    ) -> None:
+        """Verify placed request materials before moving the project folder."""
 
 
 class LtrRecordRepositoryPort(Protocol):
@@ -125,6 +138,7 @@ class OfficialWorkspacePreview:
     planned_paths: tuple[Path, ...]
     conflict_paths: tuple[Path, ...] = tuple()
     conflict_options: tuple[OfficialWorkspaceConflictOption, ...] = tuple()
+    suggested_folder_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,6 +193,12 @@ class OfficialProjectWorkspaceService:
         self._settings = settings
         self._manifests = manifest_gateway or OfficialWorkspaceManifestGateway()
         self._basic_information = basic_information_reader
+
+    def require_write_allowed(self, project_id: str) -> None:
+        """Use the same project lifecycle gate as folder creation and adoption."""
+        ProjectLifecycleWriteGuard(self._projects).require_write_allowed(
+            project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE
+        )
 
     def preview(self, project_id: str) -> OfficialWorkspacePreview:
         """Return a safe preview for local official project workspace creation."""
@@ -295,6 +315,41 @@ class OfficialProjectWorkspaceService:
                 warnings.append("A same-project legacy workspace was found under the configured save location; link it explicitly before generating outputs.")
         planned_paths = (workspace_path, source_book_path, official_folder_path, manifest_path)
 
+        active_workspace = (
+            completed_record.local_workspace_path if completed_record is not None
+            else workspace_path
+        )
+        if active_workspace.is_dir():
+            try:
+                active_children = [
+                    child for child in active_workspace.iterdir()
+                    if child.name.startswith(f"{dl_number} ")
+                ]
+            except OSError as exc:
+                raise OfficialWorkspaceError(
+                    f"Cannot inspect active folders in the LTR workspace: {active_workspace}"
+                ) from exc
+            if len(active_children) > 1:
+                return OfficialWorkspacePreview(
+                    project_id=project_id,
+                    dl_number=dl_number,
+                    local_workspace_root=local_root,
+                    local_workspace_path=active_workspace,
+                    source_book_path=source_book_path,
+                    template_path=template_root.path if template_root else template_setting,
+                    official_folder_path=official_folder_path,
+                    manifest_path=manifest_path,
+                    template_root_mode=template_root.mode if template_root else None,
+                    status="conflict",
+                    blockers=(
+                        "Multiple active DL-prefixed folders exist in the LTR workspace; "
+                        "review them before creating or rebuilding the official folder.",
+                    ),
+                    warnings=tuple(warnings),
+                    planned_paths=planned_paths,
+                    conflict_paths=tuple(active_children),
+                )
+
         redirected_path = self._manifests.first_redirected_path(
             local_root,
             workspace_path,
@@ -324,7 +379,7 @@ class OfficialProjectWorkspaceService:
                 warnings=tuple(warnings),
                 planned_paths=planned_paths,
                 conflict_paths=(workspace_path,),
-                conflict_options=_conflict_options(),
+                conflict_options=tuple(),
             )
 
         if (
@@ -378,6 +433,7 @@ class OfficialProjectWorkspaceService:
                         completed_record.official_folder_path,
                         completed_record.manifest_path,
                     ),
+                    suggested_folder_path=official_folder_path,
                 )
             if record_inconsistency == (
                 f"Official project folder is missing: {completed_record.official_folder_path}"
@@ -439,6 +495,7 @@ class OfficialProjectWorkspaceService:
                     blockers=(detail,) if detail else tuple(),
                     warnings=tuple(record_warnings),
                     planned_paths=(workspace_path, source_book_path, selected_folder, manifest_path),
+                    suggested_folder_path=official_folder_path,
                 )
             return OfficialWorkspacePreview(
                 project_id=project_id,
@@ -481,7 +538,7 @@ class OfficialProjectWorkspaceService:
                 warnings=tuple(warnings),
                 planned_paths=planned_paths,
                 conflict_paths=(workspace_path,),
-                conflict_options=_conflict_options(),
+                conflict_options=tuple(),
             )
 
         if manifest_payload is not None:
@@ -506,7 +563,7 @@ class OfficialProjectWorkspaceService:
                     warnings=tuple(warnings),
                     planned_paths=planned_paths,
                     conflict_paths=(workspace_path,),
-                    conflict_options=_conflict_options(),
+                    conflict_options=tuple(),
                 )
             return OfficialWorkspacePreview(
                 project_id=project_id,
@@ -569,7 +626,7 @@ class OfficialProjectWorkspaceService:
                     warnings=tuple(warnings),
                     planned_paths=planned_paths,
                     conflict_paths=(workspace_path,),
-                    conflict_options=_conflict_options(),
+                    conflict_options=tuple(),
                 )
             status = "ready"
             warnings.append("An empty local project workspace already exists and can be created safely.")
@@ -682,6 +739,18 @@ class OfficialProjectWorkspaceService:
                 created_paths=tuple(),
                 warnings=preview.warnings,
             )
+        if (
+            preview.manifest_path is not None
+            and preview.manifest_path.exists()
+            and preview.dl_number is not None
+        ):
+            _payload, identity_error = self._read_manifest_identity(
+                manifest_path=preview.manifest_path,
+                project_id=project_id,
+                dl_number=preview.dl_number,
+            )
+            if identity_error is not None:
+                raise OfficialWorkspaceCreateError(identity_error)
         allowed_conflict_strategies = {option.key for option in preview.conflict_options}
         if recovery is not None:
             # Historical journal recovery may finish an already-authorized operation;
@@ -808,7 +877,9 @@ class OfficialProjectWorkspaceService:
                 official_project_folder_path=str(record.official_folder_path),
                 template_source_path=str(record.template_source_path),
                 created_at=record.created_at,
+                official_folder_identity=stable_folder_identity(record.official_folder_path),
                 ),
+                allow_rebuild_identity_refresh=conflict_strategy == "backup_and_recreate",
             )
         except (OSError, ValueError) as exc:
             raise OfficialWorkspaceCreateError(str(exc)) from exc
@@ -911,6 +982,7 @@ class OfficialProjectWorkspaceService:
                     official_project_folder_path=str(record.official_folder_path),
                     template_source_path=str(record.template_source_path),
                     created_at=record.created_at,
+                    official_folder_identity=stable_folder_identity(record.official_folder_path),
                 ),
             )
             saved = self._workspaces.save(record)
@@ -1146,6 +1218,7 @@ def _resolve_existing_path(
     """Move an existing project path according to an explicit strategy."""
     if conflict_strategy == "backup_and_recreate":
         backup_path = _unique_backup_path(existing_path)
+        _prepare_history_archive(backup_path)
         shutil.move(str(existing_path), str(backup_path))
         return OfficialWorkspaceConflictResolution(
             created_paths=(backup_path,),
@@ -1216,16 +1289,95 @@ def _adoption_template_metadata(
 
 
 def _unique_backup_path(existing_path: Path) -> Path:
-    """Return a timestamped sibling backup path that does not already exist."""
+    """Return a timestamped history path for one reviewed LTR business child."""
+    workspace = existing_path.parent
+    if not existing_path.name.startswith(f"{workspace.name} "):
+        raise OfficialWorkspaceCreateError(
+            "Only the active official folder may be archived; the LTR root is preserved."
+        )
+    history = workspace / "History"
+    folders = history / "Folders"
+    if OfficialWorkspaceManifestGateway.first_redirected_path(workspace, history, folders):
+        raise OfficialWorkspaceCreateError("History archive cannot pass through a link or junction.")
+    if (history.exists() and not history.is_dir()) or (folders.exists() and not folders.is_dir()):
+        raise OfficialWorkspaceCreateError("History archive path is not a directory.")
     timestamp = datetime.fromtimestamp(existing_path.stat().st_mtime).strftime("%Y%m%d%H%M%S")
-    base = existing_path.with_name(f"{existing_path.name} {timestamp}")
-    if not base.exists() and not base.is_symlink():
+    base = folders / f"{existing_path.name} {timestamp}"
+    if not os.path.lexists(base):
+        _require_archive_path_capacity(existing_path, base)
         return base
     for index in range(1, 1000):
-        candidate = existing_path.with_name(f"{base.name}-{index}")
-        if not candidate.exists() and not candidate.is_symlink():
+        candidate = folders / f"{base.name}-{index}"
+        if not os.path.lexists(candidate):
+            _require_archive_path_capacity(existing_path, candidate)
             return candidate
     raise OfficialWorkspaceCreateError("Unable to create a unique backup folder name.")
+
+
+def _require_archive_path_capacity(existing_path: Path, archive_path: Path) -> None:
+    """Fail before moving when legacy Windows APIs cannot address the archive tree."""
+    if os.name != "nt":
+        return
+    if len(str(archive_path)) >= 248:
+        raise OfficialWorkspaceCreateError(
+            "History archive path is too long for a portable Windows folder move. "
+            "Choose a shorter project save location before rebuilding."
+        )
+    try:
+        for item in existing_path.rglob("*"):
+            destination = archive_path / item.relative_to(existing_path)
+            limit = 248 if item.is_dir() else 260
+            if len(str(destination)) >= limit:
+                raise OfficialWorkspaceCreateError(
+                    "History archive path is too long for a portable Windows folder move. "
+                    "Choose a shorter project save location before rebuilding."
+                )
+    except OSError as exc:
+        raise OfficialWorkspaceCreateError(
+            "Cannot verify all History archive paths before moving the folder."
+        ) from exc
+
+
+def _prepare_history_archive(backup_path: Path) -> None:
+    """Create only the reviewed archive parents immediately before the move."""
+    history, folders = backup_path.parent.parent, backup_path.parent
+    workspace = history.parent
+
+    def require_identity(path: Path, expected: list[int] | None = None) -> list[int]:
+        if OfficialWorkspaceManifestGateway.first_redirected_path(path) is not None:
+            raise OfficialWorkspaceCreateError("History archive cannot pass through a link or junction.")
+        if not path.is_dir():
+            raise OfficialWorkspaceCreateError("History archive parent is not a directory.")
+        identity = stable_folder_identity(path)
+        if identity is None or expected is not None and identity != expected:
+            raise OfficialWorkspaceCreateError("History archive parent identity changed during preparation.")
+        return identity
+
+    workspace_identity = require_identity(workspace)
+    if os.path.lexists(history):
+        history_identity = require_identity(history)
+    else:
+        require_identity(workspace, workspace_identity)
+        try:
+            history.mkdir()
+        except FileExistsError as exc:
+            raise OfficialWorkspaceCreateError("History archive parent appeared; review again.") from exc
+        history_identity = require_identity(history)
+    require_identity(workspace, workspace_identity)
+    require_identity(history, history_identity)
+    if os.path.lexists(folders):
+        folders_identity = require_identity(folders)
+    else:
+        try:
+            folders.mkdir()
+        except FileExistsError as exc:
+            raise OfficialWorkspaceCreateError("History archive folder appeared; review again.") from exc
+        folders_identity = require_identity(folders)
+    require_identity(workspace, workspace_identity)
+    require_identity(history, history_identity)
+    require_identity(folders, folders_identity)
+    if os.path.lexists(backup_path):
+        raise OfficialWorkspaceCreateError("History archive destination appeared; review again.")
 
 
 def _clean_text(value: str | None) -> str | None:

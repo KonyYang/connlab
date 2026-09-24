@@ -193,10 +193,11 @@ def _child(root, mode):
     if mode in {"move", "backup", "before_backup"}:
         original = Path.rename
         def interrupted_move(path, target):
-            if mode == "before_backup" and path.name == "DL-001":
+            business_child = path.parent.name == "DL-001" and path.name.startswith("DL-001 ")
+            if mode == "before_backup" and business_child:
                 os._exit(35)
             result = original(path, target)
-            if (mode == "move" and Path(target).name == "DL-001") or (mode == "backup" and path.name == "DL-001"):
+            if (mode == "move" and Path(target).name == "DL-001") or (mode == "backup" and business_child):
                 os._exit(32)
             return result
         Path.rename = interrupted_move
@@ -235,8 +236,10 @@ def test_fresh_process_recovers_workspace_without_replaying_conflict_or_copy(tmp
         _confirm_basic_information(session)
         session.commit()
     if window == "backup":
-        (destination / "DL-001").mkdir()
-        (destination / "DL-001" / "foreign.txt").write_bytes(b"must survive")
+        with sessions() as session:
+            existing = deps.get_official_project_workspace_service(session).create("P1")
+            session.commit()
+        (existing.official_folder_path / "foreign.txt").write_bytes(b"must survive")
     runner = ProjectFolderGenerationRunner(sessions, settings)
     service = runner.service()
     service.dispatch = lambda callback: None
@@ -291,10 +294,8 @@ def test_changed_folder_after_process_exit_allows_fresh_history_rebuild_review(t
     template, destination = tmp_path / "template", tmp_path / "output"
     for name in ("E-mail", "Submitted Material", "Photos", "Test results/Final Examination"):
         (template / name).mkdir(parents=True)
+    destination.mkdir()
     workspace = destination / "DL-001"
-    workspace.mkdir(parents=True)
-    operator_file = workspace / "operator.txt"
-    operator_file.write_text("before save", encoding="utf-8")
     with sessions() as session:
         deps.ProjectRepository(session).create(Project("P1", "DL-001", "Connector", "Test", ProjectStatus.DRAFT))
         deps.LtrRecordRepository(session).create(LtrRecord("ltr", "P1", "DL-001", LtrStatus.REGISTERED))
@@ -303,6 +304,11 @@ def test_changed_folder_after_process_exit_allows_fresh_history_rebuild_review(t
         resources.upsert(ExternalResource("template", ExternalResourceType.PROJECT_FOLDER_TEMPLATE, template))
         _confirm_basic_information(session)
         session.commit()
+    with sessions() as session:
+        existing = deps.get_official_project_workspace_service(session).create("P1")
+        session.commit()
+    operator_file = existing.official_folder_path / "operator.txt"
+    operator_file.write_text("before save", encoding="utf-8")
     runner = ProjectFolderGenerationRunner(sessions, settings)
     service = runner.service()
     service.dispatch = lambda callback: None

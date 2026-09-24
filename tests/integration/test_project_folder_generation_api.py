@@ -2,6 +2,7 @@ from pathlib import Path
 from dataclasses import replace
 
 from fastapi.testclient import TestClient
+import pytest
 from sqlalchemy import create_engine
 
 from backend.api import dependencies as deps
@@ -43,7 +44,8 @@ def _complete_basic_information_values() -> dict[str, str]:
     }
 
 
-def test_start_accepts_backup_rebuild_strategy() -> None:
+@pytest.mark.parametrize("strategy", ["backup_and_recreate", "update_in_place"])
+def test_start_accepts_explicit_existing_folder_strategy(strategy) -> None:
     captured = []
 
     class Service:
@@ -71,7 +73,7 @@ def test_start_accepts_backup_rebuild_strategy() -> None:
             json={
                 "expected_context": "fresh-preview",
                 "request_id": "continue-request",
-                "conflict_strategy": "backup_and_recreate",
+                "conflict_strategy": strategy,
                 "replaces_operation_id": "locked-operation",
             },
         )
@@ -80,7 +82,7 @@ def test_start_accepts_backup_rebuild_strategy() -> None:
 
     assert response.status_code == 202, response.text
     assert captured == [
-        ("P1", "backup_and_recreate", "fresh-preview", "continue-request", "locked-operation")
+        ("P1", strategy, "fresh-preview", "continue-request", "locked-operation")
     ]
 
 

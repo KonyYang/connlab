@@ -75,9 +75,10 @@ it("uses an advanced preview only after an existing folder needs review", async 
   expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
 });
 
-it("requires backup and rebuild review before updating a completed managed folder", async () => {
+it("requires a separate review before switching from an in-place update to backup and rebuild", async () => {
   api.previewProjectFolderGeneration
     .mockResolvedValueOnce({ expected_context: "ordinary", workspace_preview: { status: "completed", blockers: [] }, recovery: null })
+    .mockResolvedValueOnce({ expected_context: "in-place", workspace_preview: { status: "completed", blockers: [] }, recovery: null })
     .mockResolvedValueOnce({ expected_context: "advanced", workspace_preview: { status: "completed", blockers: [] }, recovery: null })
     .mockResolvedValueOnce({ expected_context: "advanced", workspace_preview: { status: "completed", blockers: [] }, recovery: null });
   api.startProjectFolderGeneration.mockResolvedValue(operation);
@@ -86,24 +87,47 @@ it("requires backup and rebuild review before updating a completed managed folde
   let review: FolderUpdateReview | undefined;
   await act(async () => { review = (await result.current.update()) || undefined; });
 
-  expect(review?.preview.expected_context).toBe("advanced");
+  expect(review?.preview.expected_context).toBe("in-place");
   expect(api.previewProjectFolderGeneration.mock.calls).toEqual([
     ["p", "create"],
-    ["p", "backup_rebuild"],
+    ["p", "update_in_place"],
   ]);
   expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
 
-  await act(async () => { await result.current.update("backup_and_recreate", review); });
+  let backupReview: FolderUpdateReview | undefined;
+  await act(async () => { backupReview = (await result.current.update("backup_and_recreate", review)) || undefined; });
+  expect(backupReview?.preview.expected_context).toBe("advanced");
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+  await act(async () => { await result.current.update("backup_and_recreate", backupReview); });
 
   expect(api.previewProjectFolderGeneration).toHaveBeenLastCalledWith("p", "backup_rebuild");
-  expect(api.previewProjectFolderGeneration).toHaveBeenCalledTimes(3);
+  expect(api.previewProjectFolderGeneration).toHaveBeenCalledTimes(4);
   expect(api.startProjectFolderGeneration).toHaveBeenCalledWith("p", expect.objectContaining({
     expected_context: "advanced",
     conflict_strategy: "backup_and_recreate",
   }));
 });
 
-it("does not offer rebuild when the advanced preview has start blockers", async () => {
+it("offers an in-place file update for a completed folder without archiving its custom name", async () => {
+  const ordinary = { expected_context: "ordinary", workspace_preview: { status: "completed", blockers: [] }, recovery: null };
+  const inPlace = { expected_context: "in-place", workspace_preview: { status: "completed", blockers: [] }, recovery: null };
+  api.previewProjectFolderGeneration.mockResolvedValueOnce(ordinary).mockResolvedValueOnce(inPlace)
+    .mockResolvedValueOnce(inPlace);
+  api.startProjectFolderGeneration.mockResolvedValue(operation);
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "ordinary"));
+  let review: FolderUpdateReview | undefined;
+  await act(async () => { review = (await result.current.update()) || undefined; });
+  expect(review?.intent).toBe("update_in_place");
+  expect(api.previewProjectFolderGeneration.mock.calls).toEqual([
+    ["p", "create"], ["p", "update_in_place"],
+  ]);
+  await act(async () => { await result.current.update("update_in_place", review); });
+  expect(api.startProjectFolderGeneration).toHaveBeenCalledWith("p", expect.objectContaining({
+    expected_context: "in-place", conflict_strategy: "update_in_place",
+  }));
+});
+
+it("does not offer an in-place update when its preview has start blockers", async () => {
   api.previewProjectFolderGeneration
     .mockResolvedValueOnce({ expected_context: "ordinary", workspace_preview: { status: "completed", blockers: [] }, recovery: null })
     .mockResolvedValueOnce({

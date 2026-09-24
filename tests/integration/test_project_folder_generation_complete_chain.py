@@ -253,7 +253,8 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
         assert result["status"] == "completed", result
         assert result["operation_id"] == rebuilt["operation_id"]
         assert fee_target.read_bytes() != b"operator changes must be retained"
-        history = [path for path in workspace.official_folder_path.parent.iterdir()
+        history_root = workspace.local_workspace_path / "History" / "Folders"
+        history = [path for path in history_root.iterdir()
                    if path.is_dir() and path.name.startswith(workspace.official_folder_path.name + " ")]
         assert len(history) == 1
         assert (history[0] / fee_target.name).read_bytes() == b"operator changes must be retained"
@@ -266,7 +267,7 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
         assert not callbacks
         assert fee_target.read_bytes() == b"explicitly discarded output"
         assert not list(settings.data_dir.rglob("overwrite-old"))
-        assert [path for path in workspace.official_folder_path.parent.iterdir()
+        assert [path for path in history_root.iterdir()
                 if path.is_dir() and path.name.startswith(workspace.official_folder_path.name + " ")] == history
     finally:
         app.dependency_overrides.clear()

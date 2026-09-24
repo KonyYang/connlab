@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from backend.application.official_project_workspace_service import (
     _unique_backup_path,
+    _require_archive_path_capacity,
     merge_missing_workspace_tree,
     OfficialWorkspaceRecord,
     OfficialWorkspaceCreateResult,
@@ -20,6 +21,9 @@ from backend.application.project_folder_generation_service import (
 )
 from backend.infrastructure.files.generation_journal import fingerprint, json_value
 from backend.infrastructure.files.recoverable_output_publisher import file_hash, file_identity, RecoverableOutputPublisher
+from backend.infrastructure.official_workspace_manifest import (
+    OfficialWorkspaceManifestGateway, stable_folder_identity,
+)
 
 
 def _is_redirected(path: Path):
@@ -50,6 +54,24 @@ class RecoverableWorkspacePublisher:
 
     def remember_existing(self, record):
         """Bind an unchanged, already indexed workspace before later steps use it."""
+        if self.state.get("strategy") == "update_in_place":
+            payload = OfficialWorkspaceManifestGateway().read(record.manifest_path)
+            if (
+                not isinstance(payload, dict)
+                or payload.get("project_id") != record.project_id
+                or payload.get("dl_number") != record.dl_number
+                or payload.get("official_project_folder_path") != str(record.official_folder_path)
+                or (payload.get("official_folder_identity") is not None
+                    and payload["official_folder_identity"] != stable_folder_identity(record.official_folder_path))
+                or OfficialWorkspaceManifestGateway.first_redirected_path(
+                    record.local_workspace_path.parent, record.local_workspace_path,
+                    record.source_book_path, record.official_folder_path,
+                    record.manifest_path.parent, record.manifest_path,
+                ) is not None
+            ):
+                raise ValueError(
+                    "Existing official folder identity is unproven; review the folder before updating in place."
+                )
         if "workspace_directories" in self.state:
             self.verify_directories(record)
             return
@@ -289,6 +311,8 @@ class RecoverableWorkspacePublisher:
             self.verify_context()
             conflict, backup = Path(effect["conflict"]), Path(effect["backup"])
             if effect["prior"] is not None:
+                if effect.get("strategy") == "backup_and_recreate":
+                    self._prepare_archive_destination(effect, record, conflict, backup)
                 if os.path.lexists(backup):
                     if (tree_hash(backup) != effect["prior"] or conflict.exists()
                             or (effect.get("backup_identity") is not None
@@ -337,6 +361,36 @@ class RecoverableWorkspacePublisher:
                 or file_identity(record.source_book_path) != effect["source_book_identity"]):
             raise ValueError("Published workspace changed before recovery completed.")
         return self._publish_manifest_and_record(effect, record, repository)
+
+    def _prepare_archive_destination(self, effect, record, conflict, backup):
+        """Journal and recheck History/Folders ownership before moving a business child."""
+        history = record.local_workspace_path / "History"
+        folders = history / "Folders"
+        if backup.parent != folders:
+            # Interrupted operations from older releases retain their original
+            # reviewed destination; no new operation chooses that layout.
+            if effect.get("history_directories") is not None:
+                raise ValueError("History archive destination changed during recovery.")
+            return
+        if (effect["whole"] or conflict != record.official_folder_path
+                or not conflict.name.startswith(f"{record.dl_number} ")):
+            raise ValueError("Only the reviewed active LTR folder can be archived.")
+        _require_archive_path_capacity(conflict, backup)
+        saved = effect.get("history_directories")
+        if saved is None:
+            for directory in (history, folders):
+                if os.path.lexists(directory):
+                    if _is_redirected(directory) or not directory.is_dir():
+                        raise ValueError("History archive path is redirected or not a directory.")
+                else:
+                    directory.mkdir()
+            saved = {str(path): file_identity(path) for path in (history, folders)}
+            effect["history_directories"] = saved
+            self.journal.save(self.state)
+        for path in (history, folders):
+            if (not path.is_dir() or _is_redirected(path)
+                    or file_identity(path) != saved.get(str(path))):
+                raise ValueError("History archive directory changed during recovery.")
 
     def _discard_unpublished_stage(self, effect, record, staged):
         """Release a pre-move checkpoint without touching the operator's folder."""
@@ -458,6 +512,7 @@ class RecoverableWorkspacePublisher:
         manifest = {"schema_version": 1, "project_id": record.project_id, "dl_number": record.dl_number,
                     "local_workspace_path": str(record.local_workspace_path), "source_book_path": str(record.source_book_path),
                     "official_project_folder_path": str(record.official_folder_path),
+                    "official_folder_identity": stable_folder_identity(record.official_folder_path),
                     "template_source_path": str(record.template_source_path),
                     "created_at": record.created_at}
         manifest_source = self.journal.project_path(record.project_id) / f"{self.state['operation_id']}-manifest-{uuid4().hex}.json"

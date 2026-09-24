@@ -57,6 +57,30 @@ def test_backend_runs_chain_without_browser_and_resumes_at_failed_step(tmp_path)
     assert queued == []
 
 
+def test_completed_workspace_requires_explicit_in_place_intent_to_keep_custom_folder(tmp_path):
+    queued = []
+    seen_intents = []
+
+    def preview(_project_id, intent):
+        seen_intents.append(intent)
+        return {
+            "expected_context": f"context-{intent}",
+            "workspace_preview": {"status": "completed"},
+            "start_blockers": [], "review_conflicts": [],
+        }
+
+    service = ProjectFolderGenerationService(
+        GenerationJournal(tmp_path), lambda _: "same", lambda _state, _name: None,
+        queued.append, preview=preview,
+    )
+    with pytest.raises(ValueError, match="already exists"):
+        service.start("p", None, "context-create", "without-consent")
+    started = service.start("p", "update_in_place", "context-update_in_place", "explicit-consent")
+    assert started["status"] == "queued"
+    assert seen_intents[-1] == "update_in_place"
+    assert len(queued) == 1
+
+
 @pytest.mark.parametrize("failure", [PermissionError, OSError])
 def test_failed_finalization_requires_resume_not_replacement(tmp_path, caplog, failure):
     import logging

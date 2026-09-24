@@ -9,7 +9,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from backend.api.project_folder_write_guard import require_project_folder_write_slot
-from backend.api.dependencies import get_official_project_workspace_service
+from backend.api.dependencies import (
+    get_official_project_workspace_service, get_official_folder_relocation_service,
+)
+from backend.application.official_folder_relocation_service import (
+    OfficialFolderRelocationPreview, OfficialFolderRelocationService,
+)
 from backend.application.project_lifecycle_write_guard import ProjectLifecycleReadonlyError
 from backend.application.official_project_workspace_service import (
     OfficialWorkspaceConflictOption,
@@ -78,6 +83,32 @@ class OfficialWorkspaceCreateResponse(BaseModel):
     created_at: str
 
 
+class OfficialFolderRelocationOptionResponse(BaseModel):
+    key: str
+    label: str
+    description: str
+
+
+class OfficialFolderRelocationPreviewResponse(BaseModel):
+    status: Literal[
+        "not_needed", "rename_available", "manual_relink_available", "blocked", "interrupted"
+    ]
+    current_path: str | None
+    suggested_path: str | None
+    candidate_path: str | None
+    blockers: list[str]
+    warnings: list[str]
+    expected_context: str | None
+    actions: list[OfficialFolderRelocationOptionResponse]
+
+
+class OfficialFolderRelocationRequest(BaseModel):
+    action: Literal[
+        "rename_to_confirmed", "keep_current_name", "rebind_and_rename", "rebind_keep_custom", "resume"
+    ]
+    expected_context: str
+
+
 @router.get("/preview", response_model=OfficialWorkspacePreviewResponse)
 def preview_official_workspace(
     project_id: str,
@@ -143,6 +174,36 @@ def adopt_official_workspace(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.get("/relocation/preview", response_model=OfficialFolderRelocationPreviewResponse)
+def preview_official_folder_relocation(
+    project_id: str,
+    service: OfficialFolderRelocationService = Depends(get_official_folder_relocation_service),
+) -> OfficialFolderRelocationPreviewResponse:
+    try:
+        preview = service.preview(project_id)
+    except OfficialWorkspaceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (OfficialWorkspaceError, OSError, ValueError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return _relocation_preview_response(preview)
+
+
+@router.post(
+    "/relocation", response_model=OfficialWorkspaceCreateResponse,
+    dependencies=[Depends(require_project_folder_write_slot)],
+)
+def relocate_official_folder(
+    project_id: str, request: OfficialFolderRelocationRequest,
+    service: OfficialFolderRelocationService = Depends(get_official_folder_relocation_service),
+) -> OfficialWorkspaceCreateResponse:
+    try:
+        return _create_response(service.apply(project_id, request.action, request.expected_context))
+    except OfficialWorkspaceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (OfficialWorkspaceError, OSError, ValueError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 def _preview_response(preview: OfficialWorkspacePreview) -> OfficialWorkspacePreviewResponse:
     """Convert preview dataclass into a Pydantic response."""
     return OfficialWorkspacePreviewResponse(
@@ -164,6 +225,22 @@ def _preview_response(preview: OfficialWorkspacePreview) -> OfficialWorkspacePre
             _conflict_option_response(option)
             for option in preview.conflict_options
         ],
+    )
+
+
+def _relocation_preview_response(
+    preview: OfficialFolderRelocationPreview,
+) -> OfficialFolderRelocationPreviewResponse:
+    return OfficialFolderRelocationPreviewResponse(
+        status=preview.status,
+        current_path=_path(preview.current_path),
+        suggested_path=_path(preview.suggested_path),
+        candidate_path=_path(preview.candidate_path),
+        blockers=list(preview.blockers), warnings=list(preview.warnings),
+        expected_context=preview.expected_context,
+        actions=[OfficialFolderRelocationOptionResponse(
+            key=option.key, label=option.label, description=option.description,
+        ) for option in preview.actions],
     )
 
 

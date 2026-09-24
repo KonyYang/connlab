@@ -53,7 +53,10 @@ class ProjectFolderGenerationService:
             review_conflicts = current_preview.get("review_conflicts", ())
             if review_conflicts:
                 raise ValueError(str(review_conflicts[0]))
-            if current_preview.get("workspace_preview", {}).get("status") in {"completed", "conflict"} and strategy != "backup_and_recreate":
+            workspace_status = current_preview.get("workspace_preview", {}).get("status")
+            if strategy == "update_in_place" and workspace_status != "completed":
+                raise ValueError("In-place update requires a verified existing project folder.")
+            if workspace_status in {"completed", "conflict"} and strategy not in {"backup_and_recreate", "update_in_place"}:
                 raise ValueError("The project folder already exists. Choose a rebuild option.")
             state = self.journal.create(project_id, strategy, context)
             state.update(
@@ -168,6 +171,8 @@ class ProjectFolderGenerationService:
 
     @staticmethod
     def _preview_intent(strategy):
+        if strategy == "update_in_place":
+            return "update_in_place"
         return (
             "backup_rebuild"
             if strategy in {"backup_and_recreate", "continue_existing", "overwrite_rebuild"}

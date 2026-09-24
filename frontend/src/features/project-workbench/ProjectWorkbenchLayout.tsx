@@ -3,7 +3,12 @@ import { createPortal } from "react-dom";
 import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
 import {
   deleteTemporaryProject,
+  fetchOfficialWorkspaceRelocationPreview,
+  getProjectFolderGeneration,
+  relocateOfficialWorkspace,
   type OfficialWorkspaceConflictStrategy,
+  type OfficialWorkspaceRelocationAction,
+  type OfficialWorkspaceRelocationPreview,
   previewTemporaryProjectDelete,
   type PublicFolderWorkflowOperationType,
   type ProjectCloseReasonCategory,
@@ -73,6 +78,11 @@ export function ProjectWorkbenchLayout({
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
   const [showFolderConflictDialog, setShowFolderConflictDialog] = useState(false);
   const [folderUpdateReview, setFolderUpdateReview] = useState<FolderUpdateReview | null>(null);
+  const [folderRelocationReview, setFolderRelocationReview] = useState<OfficialWorkspaceRelocationPreview | null>(null);
+  const [folderRelocationError, setFolderRelocationError] = useState<string | null>(null);
+  const [folderRelocationBusy, setFolderRelocationBusy] = useState(false);
+  const [folderNameUpdatedNotice, setFolderNameUpdatedNotice] = useState(false);
+  const folderRelocationInFlight = useRef(false);
   const [recoveryPreviewCheckedProject, setRecoveryPreviewCheckedProject] = useState<string | null>(null);
   const topBarActionsRoot = useTopBarActionsRoot();
 
@@ -103,6 +113,7 @@ export function ProjectWorkbenchLayout({
     publicFolderWorkflowContext,
     publicFolderWorkflowContextLoading,
     publicFolderWorkflowContextError,
+    onRefreshPublicFolderWorkflowContext,
     publicFolderWorkflowPreviews,
     publicFolderWorkflowResults,
     publicFolderWorkflowBusyOperation,
@@ -274,6 +285,7 @@ export function ProjectWorkbenchLayout({
       : null;
   const displayedOfficialWorkspaceError =
     basicInformationGenerationGuidance
+    ?? folderRelocationError
     ?? officialWorkspaceError
     ?? initialWorkspaceResourceBlocker;
   const isSettingsTemplateGenerationBlocker = Boolean(
@@ -320,6 +332,7 @@ export function ProjectWorkbenchLayout({
     disabled:
       checkingRecoveryPreview
       || officialWorkspaceCreating
+      || folderRelocationBusy
       || lifecycleReadonlyView.readonly
       || Boolean(initialWorkspaceResourceBlocker)
       || (["ready", "blocked"].includes(workspaceStatus) && visibleWorkbenchFolderCommand.disabled),
@@ -478,12 +491,97 @@ export function ProjectWorkbenchLayout({
       setLifecycleError(lifecycleReadonlyView.message);
       return;
     }
-    void performFolderUpdate();
+    if (["completed", "conflict", "exists", "inconsistent"].includes(workspaceStatus)) {
+      void performFolderRelocationReview();
+    } else {
+      void performFolderUpdate();
+    }
   }
 
   const currentFolderProject = useRef(project.project_id);
   currentFolderProject.current = project.project_id;
-  useEffect(() => { setShowFolderConflictDialog(false); setFolderUpdateReview(null); }, [project.project_id]);
+  useEffect(() => {
+    setShowFolderConflictDialog(false);
+    setFolderUpdateReview(null);
+    setFolderRelocationReview(null);
+    setFolderRelocationError(null);
+    setFolderRelocationBusy(false);
+    setFolderNameUpdatedNotice(false);
+    folderRelocationInFlight.current = false;
+  }, [project.project_id]);
+
+  async function performFolderRelocationReview(): Promise<void> {
+    if (folderRelocationInFlight.current) return;
+    folderRelocationInFlight.current = true;
+    setFolderRelocationBusy(true);
+    setFolderRelocationError(null);
+    try {
+      const result = await fetchOfficialWorkspaceRelocationPreview(project.project_id);
+      if (currentFolderProject.current !== project.project_id) return;
+      if (result.status === "not_needed") {
+        void performFolderUpdate();
+      } else {
+        setFolderRelocationReview(result);
+      }
+    } catch {
+      if (currentFolderProject.current === project.project_id) {
+        setFolderRelocationError("Unable to check the project folder. Verify local storage and try again.");
+      }
+    } finally {
+      if (currentFolderProject.current === project.project_id) {
+        folderRelocationInFlight.current = false;
+        setFolderRelocationBusy(false);
+      }
+    }
+  }
+
+  async function handleFolderRelocationChoice(action: OfficialWorkspaceRelocationAction): Promise<void> {
+    if (!folderRelocationReview || folderRelocationInFlight.current) return;
+    folderRelocationInFlight.current = true;
+    setFolderRelocationBusy(true);
+    setFolderRelocationError(null);
+    try {
+      const fresh = await fetchOfficialWorkspaceRelocationPreview(project.project_id);
+      if (currentFolderProject.current !== project.project_id) return;
+      if (!folderRelocationReview.expected_context || fresh.expected_context !== folderRelocationReview.expected_context) {
+        throw new Error("Project folder preview changed. Review the latest folder state before choosing again.");
+      }
+      if (fresh.blockers.length || !fresh.actions.some(item => item.key === action)) {
+        throw new Error("This folder action is no longer available. Review the latest folder state.");
+      }
+      const operation = await getProjectFolderGeneration(project.project_id);
+      if (currentFolderProject.current !== project.project_id) return;
+      if (operation && ["queued", "running"].includes(operation.status)) {
+        throw new Error("Project folder generation is still running. Wait for it to finish before changing the folder.");
+      }
+      try {
+        await relocateOfficialWorkspace(project.project_id, { action, expected_context: fresh.expected_context });
+      } catch {
+        throw new Error("The folder change needs review. Refresh the page to check its current state before trying again.");
+      }
+      if (currentFolderProject.current !== project.project_id) return;
+      setFolderRelocationReview(null);
+      if (action === "rename_to_confirmed" || action === "rebind_and_rename") {
+        setFolderNameUpdatedNotice(true);
+      }
+      try {
+        await Promise.all([onRefreshOfficialWorkspacePreview(), onRefreshRequiredForms(),
+          onRefreshOfficialFolderCheck(), onRefreshPublicFolderWorkflowContext()]);
+        if (action === "keep_current_name" || action === "rebind_keep_custom") {
+          await performFolderUpdate();
+        }
+      } catch {
+        setFolderRelocationError("Folder updated, but its displayed status could not refresh. Refresh this page to reconnect.");
+      }
+    } catch (err) {
+      if (currentFolderProject.current === project.project_id) setFolderRelocationError((err as Error).message);
+    } finally {
+      if (currentFolderProject.current === project.project_id) {
+        folderRelocationInFlight.current = false;
+        setFolderRelocationBusy(false);
+      }
+    }
+  }
 
   async function performFolderUpdate(strategy?: ProjectFolderUpdateAction, reviewed?: FolderUpdateReview, resumeRebuild = false): Promise<void> {
     if (lifecycleReadonlyView.readonly) {
@@ -583,6 +681,16 @@ export function ProjectWorkbenchLayout({
         </div>
       ) : null}
 
+      {folderNameUpdatedNotice ? (
+        <div className="runtime-console-workflow-alert" role="status" aria-label="Folder name updated">
+          <strong>Folder name updated</strong>
+          <span>Review Update existing folder to refresh generated outputs such as Fee Form and Customer Feedback. Renaming alone does not regenerate their contents.</span>
+          <button type="button" disabled={officialWorkspaceCreating || folderRelocationBusy || lifecycleReadonlyView.readonly}
+            onClick={() => void performFolderUpdate()}>Review update existing folder</button>
+          <button type="button" onClick={() => setFolderNameUpdatedNotice(false)}>Dismiss</button>
+        </div>
+      ) : null}
+
       <section
         className={`runtime-console-shell-primary workspace-${shellModel.primaryWorkspace}`}
         aria-label="Matrix"
@@ -678,10 +786,21 @@ export function ProjectWorkbenchLayout({
       {showFolderConflictDialog ? (
         <ProjectFolderConflictDialog
           resumeRebuild={folderUpdateReview?.resumeRebuild ?? false}
+          intent={folderUpdateReview?.intent ?? "backup_rebuild"}
           onResumeRebuild={() => { setShowFolderConflictDialog(false); if (folderUpdateReview) void performFolderUpdate(undefined, folderUpdateReview, true); }}
           conflictPaths={folderUpdateReview ? deriveOfficialWorkspaceConflictPaths(folderUpdateReview.preview.workspace_preview) : officialWorkspaceConflictPaths}
           onBackup={() => handleProjectFolderConflictChoice("backup_and_recreate")}
+          onUpdateInPlace={() => handleProjectFolderConflictChoice("update_in_place")}
           onCancel={() => setShowFolderConflictDialog(false)}
+        />
+      ) : null}
+      {folderRelocationReview ? (
+        <ProjectFolderRelocationDialog
+          preview={folderRelocationReview}
+          busy={folderRelocationBusy}
+          error={folderRelocationError}
+          onChoose={(action) => void handleFolderRelocationChoice(action)}
+          onCancel={() => setFolderRelocationReview(null)}
         />
       ) : null}
       {officialWorkspaceCreating ? (
@@ -782,15 +901,19 @@ function deriveFeeEvaluationButtonState(
 
 function ProjectFolderConflictDialog({
   resumeRebuild,
+  intent,
   onResumeRebuild,
   conflictPaths,
   onBackup,
+  onUpdateInPlace,
   onCancel,
 }: {
   resumeRebuild: boolean;
+  intent: "backup_rebuild" | "update_in_place";
   onResumeRebuild: () => void;
   conflictPaths: string[];
   onBackup: () => void;
+  onUpdateInPlace: () => void;
   onCancel: () => void;
 }): ReactElement {
   const visiblePath = conflictPaths[0] ?? "Existing project folder";
@@ -811,15 +934,81 @@ function ProjectFolderConflictDialog({
         <p>
           {resumeRebuild
             ? "An earlier generation has unfinished file or cleanup work. Resume its saved progress using the previously confirmed choices; this does not create a new generation."
+            : intent === "update_in_place"
+            ? "Update generated files inside the current project folder without renaming or archiving the whole folder. Existing file safeguards still apply."
             : "This advanced action moves the current project folder to timestamped history before rebuilding from current confirmed data."}
         </p>
         <div className="runtime-console-conflict-actions">
           {resumeRebuild
             ? <button type="button" className="is-primary" onClick={onResumeRebuild}>Resume previous generation</button>
+            : intent === "update_in_place"
+            ? <>
+                <button type="button" className="is-primary" onClick={onUpdateInPlace}>Update existing folder</button>
+                <button type="button" onClick={onBackup}>Backup and Rebuild</button>
+              </>
             : <button type="button" className="is-primary" onClick={onBackup}>Backup and Rebuild</button>}
           <button type="button" onClick={onCancel}>
             Cancel
           </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function folderName(path: string | null): string | null {
+  if (!path) return null;
+  return path.replace(/[\\/]+$/, "").split(/[\\/]/).at(-1) ?? null;
+}
+
+function safeRelocationBlocker(message: string): string {
+  if (/foreign|ownership|manifest.*(?:project|mismatch)|does not match.*project/i.test(message)) {
+    return "Folder ownership does not match this project. Check which project created it.";
+  }
+  if (/(?:[A-Za-z]:[\\/]|\\\\|(?:^|\s)\/[^\s]|\b[0-9a-f]{32}\b|\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b)/i.test(message)) {
+    return "The folder path or identity could not be verified. Review the existing LTR folders manually.";
+  }
+  return message.replace(/\s*\[Stage:[\s\S]*$/, "");
+}
+
+function ProjectFolderRelocationDialog({
+  preview, busy, error, onChoose, onCancel,
+}: {
+  preview: OfficialWorkspaceRelocationPreview;
+  busy: boolean;
+  error: string | null;
+  onChoose: (action: OfficialWorkspaceRelocationAction) => void;
+  onCancel: () => void;
+}): ReactElement {
+  const existingName = folderName(preview.current_path ?? preview.candidate_path);
+  const suggestedName = folderName(preview.suggested_path);
+  return (
+    <div className="runtime-console-modal-backdrop">
+      <section aria-label="Review project folder name" aria-modal="true" role="dialog" className="runtime-console-conflict-dialog">
+        <h3>Review project folder name</h3>
+        {preview.status === "blocked" ? (
+          <div role="alert">
+            <p>The existing folder cannot be linked safely. No files were changed.</p>
+            <ul>{(preview.blockers.length ? preview.blockers : ["Folder ownership or location needs manual review."])
+              .map((blocker, index) => <li key={index}>{safeRelocationBlocker(blocker)}</li>)}</ul>
+          </div>
+        ) : (
+          <>
+            {existingName ? <div className="runtime-console-conflict-path"><span>Existing folder</span><strong>{existingName}</strong></div> : null}
+            {suggestedName ? <div className="runtime-console-conflict-path"><span>Name from confirmed Basic Information</span><strong>{suggestedName}</strong></div> : null}
+            <p>{preview.status === "interrupted"
+              ? "An earlier folder change was interrupted. Resume its saved progress after reviewing the folder name."
+              : "Choose how to keep this project's existing files. Nothing changes until you select an action."}</p>
+          </>
+        )}
+        {error ? <p role="alert">{error}</p> : null}
+        <div className="runtime-console-conflict-actions">
+          {preview.actions.map(item => (
+            <button key={item.key} type="button" className="is-primary" title={item.description} disabled={busy} onClick={() => onChoose(item.key)}>
+              {item.label}
+            </button>
+          ))}
+          <button type="button" disabled={busy} onClick={onCancel}>Cancel</button>
         </div>
       </section>
     </div>

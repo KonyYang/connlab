@@ -6,7 +6,9 @@ import stat
 
 import pytest
 
-from backend.application.official_project_workspace_service import OfficialWorkspacePreview
+from backend.application.official_project_workspace_service import (
+    OfficialWorkspaceCreateError, OfficialWorkspacePreview,
+)
 from backend.infrastructure.files.generation_journal import GenerationJournal
 from backend.infrastructure.files.recoverable_workspace_publisher import RecoverableWorkspacePublisher
 
@@ -20,14 +22,16 @@ def test_history_uses_original_local_mtime_and_preserves_name_collision(tmp_path
     target = preview.official_folder_path
     stamp = datetime(2026, 9, 13, 14, 30, 25).timestamp()
     os.utime(target, (stamp, stamp))
-    reserved = target.with_name("official 20260913143025")
+    archive_parent = target.parent / "History" / "Folders"
+    archive_parent.mkdir(parents=True)
+    reserved = archive_parent / f"{target.name} 20260913143025"
     reserved.mkdir()
     journal = GenerationJournal(tmp_path / "journal")
     state = journal.create("p", "backup_and_recreate", "context")
     RecoverableWorkspacePublisher(journal, state).create(
         preview, "backup_and_recreate", SimpleNamespace(save=lambda record: record)
     )
-    assert (target.with_name("official 20260913143025-1") / "operator.txt").read_text() == "keep"
+    assert (archive_parent / f"{target.name} 20260913143025-1" / "operator.txt").read_text() == "keep"
     assert reserved.is_dir()
 
 
@@ -331,7 +335,7 @@ def _existing_workspace_preview(tmp_path, whole):
     template.mkdir()
     (template / "template.txt").write_text("new", encoding="utf-8")
     workspace = tmp_path / "DL1"
-    official = workspace / "official"
+    official = workspace / "DL1 Official"
     official.mkdir(parents=True)
     conflict = workspace if whole else official
     (conflict / "operator.txt").write_text("keep", encoding="utf-8")
@@ -346,12 +350,11 @@ def _existing_workspace_preview(tmp_path, whole):
     )
 
 
-@pytest.mark.parametrize("whole", [True, False])
 @pytest.mark.parametrize("window", ["persisted_checkpoint", "locked_folder_edit"])
 def test_unpublished_rebuild_with_changed_original_can_be_reviewed_again(
-    tmp_path, monkeypatch, whole, window
+    tmp_path, monkeypatch, window
 ):
-    preview = _existing_workspace_preview(tmp_path, whole)
+    preview = _existing_workspace_preview(tmp_path, False)
     conflict = preview.conflict_paths[0]
     journal = GenerationJournal(tmp_path / "journal")
     state = journal.create("p", "backup_and_recreate", "context")
@@ -467,7 +470,7 @@ def test_workspace_recovers_directory_manifest_and_database_gap(tmp_path, existi
     preview = OfficialWorkspacePreview(
         project_id="p", dl_number="DL1", local_workspace_root=tmp_path,
         local_workspace_path=workspace, source_book_path=workspace / "Source Book",
-        template_path=template, official_folder_path=workspace / "official",
+        template_path=template, official_folder_path=workspace / "DL1 Official",
         manifest_path=workspace / ".connlab" / "manifest.json", template_root_mode="template_root",
         status="adoptable" if existing_empty else "ready", blockers=(), warnings=(), planned_paths=(),
     )
@@ -478,19 +481,17 @@ def test_workspace_recovers_directory_manifest_and_database_gap(tmp_path, existi
         raise PowerLoss()
     with pytest.raises(PowerLoss):
         publisher.create(preview, None, SimpleNamespace(save=interrupted_save))
-    before = (workspace / "official" / "original.txt").stat().st_mtime_ns
+    before = (workspace / "DL1 Official" / "original.txt").stat().st_mtime_ns
     records = []
     recovered = RecoverableWorkspacePublisher(journal, journal.read("p"))
     recovered.recover(SimpleNamespace(save=lambda record: records.append(record) or record))
     assert len(records) == 1
     assert records[0].project_id == "p"
     assert preview.manifest_path.is_file()
-    assert (workspace / "official" / "original.txt").stat().st_mtime_ns == before
+    assert (workspace / "DL1 Official" / "original.txt").stat().st_mtime_ns == before
 
 
-def test_locked_conflict_leaves_operator_folder_unchanged_and_restartable(
-    tmp_path, monkeypatch
-):
+def test_foreign_ltr_root_cannot_be_archived_by_backup_rebuild(tmp_path):
     template = tmp_path / "template"
     template.mkdir()
     (template / "template.txt").write_text("new", encoding="utf-8")
@@ -504,7 +505,7 @@ def test_locked_conflict_leaves_operator_folder_unchanged_and_restartable(
         local_workspace_path=workspace,
         source_book_path=workspace / "Source Book",
         template_path=template,
-        official_folder_path=workspace / "official",
+        official_folder_path=workspace / "DL1 Official",
         manifest_path=workspace / ".connlab" / "manifest.json",
         template_root_mode="template_root",
         status="exists",
@@ -515,17 +516,9 @@ def test_locked_conflict_leaves_operator_folder_unchanged_and_restartable(
     )
     journal = GenerationJournal(tmp_path / "journal")
     state = journal.create("p", "backup_and_recreate", "context")
-    real_rename = Path.rename
-
-    def fail_locked_conflict(path, target):
-        if path == workspace:
-            raise PermissionError(5, "Access is denied", str(path))
-        return real_rename(path, target)
-
-    monkeypatch.setattr(Path, "rename", fail_locked_conflict)
     publisher = RecoverableWorkspacePublisher(journal, state)
 
-    with pytest.raises(PermissionError, match="Access is denied"):
+    with pytest.raises(OfficialWorkspaceCreateError, match="active official folder"):
         publisher.create(
             preview,
             "backup_and_recreate",
@@ -533,11 +526,34 @@ def test_locked_conflict_leaves_operator_folder_unchanged_and_restartable(
         )
 
     assert (workspace / "operator.txt").read_text(encoding="utf-8") == "keep"
+    assert workspace.is_dir()
+    assert not (workspace / "History").exists()
     assert not list(tmp_path.glob("DL1.connlab-backup-*"))
-    # A failure before the old folder moves has no external effect. Its staged
-    # effect must not make the operation permanently non-replaceable.
+    # An unmanifested LTR root is never treated as the replaceable business child.
     assert journal.read("p")["effects"] == {}
-    assert not list((tmp_path / ".connlab" / "generation").rglob("*-workspace"))
+
+
+def test_locked_official_child_remains_unchanged_and_restartable(tmp_path, monkeypatch):
+    preview = _existing_workspace_preview(tmp_path, False)
+    official = preview.official_folder_path
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("p", "backup_and_recreate", "context")
+    real_rename = Path.rename
+
+    def fail_locked_child(path, target):
+        if path == official:
+            raise PermissionError(5, "Access is denied", str(path))
+        return real_rename(path, target)
+
+    monkeypatch.setattr(Path, "rename", fail_locked_child)
+    with pytest.raises(PermissionError, match="Access is denied"):
+        RecoverableWorkspacePublisher(journal, state).create(
+            preview, "backup_and_recreate", SimpleNamespace(save=lambda record: record)
+        )
+
+    assert (official / "operator.txt").read_text(encoding="utf-8") == "keep"
+    assert not list((official.parent / "History" / "Folders").glob("DL1 Official *"))
+    assert journal.read("p")["effects"] == {}
 
 
 def test_recoverable_continue_existing_adds_only_missing_template_content(tmp_path):
@@ -545,7 +561,7 @@ def test_recoverable_continue_existing_adds_only_missing_template_content(tmp_pa
     template.mkdir()
     (template / "template.txt").write_text("new", encoding="utf-8")
     workspace = tmp_path / "DL1"
-    official = workspace / "official"
+    official = workspace / "DL1 Official"
     official.mkdir(parents=True)
     (official / "operator.txt").write_text("keep", encoding="utf-8")
     preview = OfficialWorkspacePreview(
@@ -590,7 +606,7 @@ def test_continue_existing_does_not_read_operator_files_before_adding_missing_co
     template.mkdir()
     (template / "template.txt").write_text("new", encoding="utf-8")
     workspace = tmp_path / "DL1"
-    official = workspace / "official"
+    official = workspace / "DL1 Official"
     official.mkdir(parents=True)
     (official / "open-report.docx").write_text("operator", encoding="utf-8")
     preview = OfficialWorkspacePreview(
@@ -629,7 +645,7 @@ def test_continue_existing_recovers_if_interrupted_after_missing_content_is_adde
     template.mkdir()
     (template / "template.txt").write_text("new", encoding="utf-8")
     workspace = tmp_path / "DL1"
-    official = workspace / "official"
+    official = workspace / "DL1 Official"
     official.mkdir(parents=True)
     (official / "operator.txt").write_text("keep", encoding="utf-8")
     preview = OfficialWorkspacePreview(

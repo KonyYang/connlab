@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/projects/{project_id}/project-folder/generation"
 class GenerationStartRequest(BaseModel):
     expected_context: str
     request_id: str = Field(min_length=1, max_length=100)
-    conflict_strategy: Literal["backup_and_recreate"] | None = None
+    conflict_strategy: Literal["backup_and_recreate", "update_in_place"] | None = None
     replaces_operation_id: str | None = None
 
 
@@ -46,7 +46,7 @@ def _call(action):
 @router.get("/preview")
 def preview(
     project_id: str,
-    intent: Literal["create", "backup_rebuild"] = "create",
+    intent: Literal["create", "backup_rebuild", "update_in_place"] = "create",
     service=Depends(get_project_folder_generation_service),
 ):
     return _call(lambda: service.preview(project_id, intent))
