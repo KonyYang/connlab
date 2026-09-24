@@ -50,6 +50,9 @@ class ProjectFolderGenerationService:
             blockers = current_preview.get("start_blockers", ())
             if blockers:
                 raise ValueError(str(blockers[0]))
+            review_conflicts = current_preview.get("review_conflicts", ())
+            if review_conflicts:
+                raise ValueError(str(review_conflicts[0]))
             if current_preview.get("workspace_preview", {}).get("status") in {"completed", "conflict"} and strategy != "backup_and_recreate":
                 raise ValueError("The project folder already exists. Choose a rebuild option.")
             state = self.journal.create(project_id, strategy, context)

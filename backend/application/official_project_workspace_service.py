@@ -18,6 +18,10 @@ from backend.application.project_identity import (
     resolve_project_identity,
 )
 from backend.application.project_basic_information_output import ConfirmedBasicInformationReader
+from backend.application.project_lifecycle_write_guard import (
+    LifecycleWriteOperation,
+    ProjectLifecycleWriteGuard,
+)
 from backend.domain import ApplicationForm, LtrRecord, Project
 from backend.infrastructure.official_workspace_manifest import (
     OfficialWorkspaceManifest,
@@ -218,6 +222,11 @@ class OfficialProjectWorkspaceService:
                 template_root = resolve_official_template_root(template_setting)
             except OfficialWorkspaceError as exc:
                 template_blockers.append(str(exc))
+        if template_blockers:
+            template_blockers = [
+                f"{detail} Open Settings > External Resources and select an existing Project Folder Template folder."
+                for detail in template_blockers
+            ]
 
         if blockers or not dl_number or local_root is None:
             return OfficialWorkspacePreview(
@@ -249,6 +258,41 @@ class OfficialProjectWorkspaceService:
         source_book_path = workspace_path / "Source Book"
         official_folder_path = workspace_path / folder_name
         manifest_path = workspace_path / ".connlab" / "manifest.json"
+        completed_record = self._workspaces.get_by_project(project_id)
+        recorded_path_exists = completed_record is not None and any(
+            path.exists() for path in (
+                completed_record.local_workspace_path,
+                completed_record.source_book_path,
+                completed_record.official_folder_path,
+                completed_record.manifest_path,
+            )
+        )
+        if not workspace_path.exists() and not recorded_path_exists:
+            legacy_candidates = self._legacy_workspace_candidates(
+                local_root, project_id, dl_number
+            )
+            if len(legacy_candidates) > 1:
+                return OfficialWorkspacePreview(
+                    project_id=project_id,
+                    dl_number=dl_number,
+                    local_workspace_root=local_root,
+                    local_workspace_path=None,
+                    source_book_path=None,
+                    template_path=template_root.path if template_root else template_setting,
+                    official_folder_path=None,
+                    manifest_path=None,
+                    template_root_mode=template_root.mode if template_root else None,
+                    status="blocked",
+                    blockers=("Multiple same-project legacy workspaces match this DL number. Review their manifests before linking a folder.",),
+                    warnings=tuple(warnings),
+                    planned_paths=tuple(),
+                    conflict_paths=tuple(path for path, _ in legacy_candidates),
+                )
+            if legacy_candidates:
+                workspace_path, official_folder_path = legacy_candidates[0]
+                source_book_path = workspace_path / "Source Book"
+                manifest_path = workspace_path / ".connlab" / "manifest.json"
+                warnings.append("A same-project legacy workspace was found under the configured save location; link it explicitly before generating outputs.")
         planned_paths = (workspace_path, source_book_path, official_folder_path, manifest_path)
 
         redirected_path = self._manifests.first_redirected_path(
@@ -283,7 +327,6 @@ class OfficialProjectWorkspaceService:
                 conflict_options=_conflict_options(),
             )
 
-        completed_record = self._workspaces.get_by_project(project_id)
         if (
             completed_record is not None
             and completed_record.local_workspace_path != workspace_path
@@ -336,33 +379,51 @@ class OfficialProjectWorkspaceService:
                         completed_record.manifest_path,
                     ),
                 )
-            if (
-                not completed_record.official_folder_path.is_dir()
-                and completed_record.local_workspace_path.is_dir()
-                and completed_record.source_book_path.is_dir()
+            if record_inconsistency == (
+                f"Official project folder is missing: {completed_record.official_folder_path}"
             ):
                 record_warnings.append(
                     "Previous local project workspace record points to a missing "
-                    "official project folder; ConnLab can generate the current folder "
-                    "from the standard template."
+                    "official project folder; its identity must be reviewed before repair."
                 )
-                if official_folder_path.exists():
-                    return OfficialWorkspacePreview(
-                        project_id=project_id,
-                        dl_number=dl_number,
-                        local_workspace_root=local_root,
-                        local_workspace_path=completed_record.local_workspace_path,
-                        source_book_path=completed_record.source_book_path,
-                        template_path=template_root.path if template_root else template_setting,
-                        official_folder_path=official_folder_path,
-                        manifest_path=manifest_path,
-                        template_root_mode=template_root.mode if template_root else None,
-                        status="exists",
-                        blockers=(f"Official project folder already exists: {official_folder_path}",),
-                        warnings=tuple(record_warnings),
-                        planned_paths=planned_paths,
-                        conflict_paths=(official_folder_path,),
-                        conflict_options=_conflict_options(),
+                payload, manifest_error = self._read_manifest_identity(
+                    manifest_path=completed_record.manifest_path,
+                    project_id=project_id, dl_number=dl_number,
+                )
+                candidates = self._renamed_official_candidates(workspace_path, dl_number)
+                recorded_leaf = completed_record.official_folder_path.name
+                manifest_folder = (
+                    _portable_official_folder_path(workspace_path, payload)
+                    if payload is not None else None
+                )
+                if payload is not None and (
+                    payload.get("dl_number") != dl_number
+                    or manifest_folder is None
+                    or manifest_folder.name != recorded_leaf
+                ):
+                    manifest_error = "Workspace manifest does not match the recorded official folder and DL number."
+                if candidates:
+                    status = "inconsistent"
+                    selected_folder = completed_record.official_folder_path
+                    detail = (
+                        f"{manifest_error} " if manifest_error else ""
+                    ) + (
+                        "Possible renamed official folder(s) need manual review; "
+                        "folder names alone do not prove identity: "
+                        + ", ".join(str(candidate) for candidate in candidates)
+                    )
+                elif manifest_error or payload is not None or official_folder_path.exists():
+                    status = "inconsistent"
+                    selected_folder = completed_record.official_folder_path
+                    detail = manifest_error or (
+                        "Recorded official folder is missing; its manifest identity requires manual review."
+                    )
+                else:
+                    status = "ready" if template_root is not None else "blocked"
+                    selected_folder = official_folder_path
+                    detail = template_blockers[0] if template_blockers else None
+                    record_warnings.append(
+                        "ConnLab can generate a new official folder from the standard template."
                     )
                 return OfficialWorkspacePreview(
                     project_id=project_id,
@@ -371,13 +432,13 @@ class OfficialProjectWorkspaceService:
                     local_workspace_path=completed_record.local_workspace_path,
                     source_book_path=completed_record.source_book_path,
                     template_path=template_root.path if template_root else template_setting,
-                    official_folder_path=official_folder_path,
+                    official_folder_path=selected_folder,
                     manifest_path=manifest_path,
                     template_root_mode=template_root.mode if template_root else None,
-                    status="adoptable",
-                    blockers=tuple(),
+                    status=status,
+                    blockers=(detail,) if detail else tuple(),
                     warnings=tuple(record_warnings),
-                    planned_paths=planned_paths,
+                    planned_paths=(workspace_path, source_book_path, selected_folder, manifest_path),
                 )
             return OfficialWorkspacePreview(
                 project_id=project_id,
@@ -546,6 +607,55 @@ class OfficialProjectWorkspaceService:
             planned_paths=planned_paths,
         )
 
+    def _legacy_workspace_candidates(
+        self, root: Path, project_id: str, dl_number: str
+    ) -> list[tuple[Path, Path]]:
+        """Find only direct, non-redirected folders with matching portable identity."""
+        candidates: list[tuple[Path, Path]] = []
+        try:
+            children = sorted(root.iterdir())
+        except OSError as exc:
+            raise OfficialWorkspaceError(
+                f"Cannot inspect the configured project save location: {root}"
+            ) from exc
+        for workspace in children:
+            manifest_path = workspace / ".connlab" / "manifest.json"
+            source_book_path = workspace / "Source Book"
+            if self._manifests.first_redirected_path(
+                root, workspace, source_book_path, manifest_path.parent, manifest_path
+            ) is not None or not manifest_path.is_file() or not source_book_path.is_dir():
+                continue
+            payload, error = self._read_manifest_identity(
+                manifest_path=manifest_path, project_id=project_id,
+                dl_number=dl_number,
+            )
+            if (
+                error is not None or payload is None
+                or payload.get("dl_number") != dl_number
+            ):
+                continue
+            official_folder = _portable_official_folder_path(workspace, payload)
+            if (
+                official_folder is None or not official_folder.is_dir()
+                or self._manifests.first_redirected_path(official_folder) is not None
+            ):
+                continue
+            candidates.append((workspace, official_folder))
+        return candidates
+
+    def _renamed_official_candidates(self, workspace: Path, dl_number: str) -> list[Path]:
+        """Only direct DL-named folders inside the indexed workspace can be reviewed."""
+        try:
+            children = sorted(workspace.iterdir())
+        except OSError:
+            return []
+        return [
+            child for child in children
+            if child.name.startswith(f"{dl_number} ")
+            and self._manifests.first_redirected_path(child) is None
+            and child.is_dir()
+        ]
+
     def create(
         self,
         project_id: str,
@@ -558,6 +668,9 @@ class OfficialProjectWorkspaceService:
                 f"{conflict_strategy} is not available for new project folder operations."
             )
         preview = self.preview(project_id)
+        ProjectLifecycleWriteGuard(self._projects).require_write_allowed(
+            project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE
+        )
         if preview.status == "completed" and conflict_strategy is None:
             record = self._workspaces.get_by_project(project_id)
             if record is None:
@@ -683,9 +796,10 @@ class OfficialProjectWorkspaceService:
             template_source_path=preview.template_path,
             created_at=now,
         )
-        self._manifests.write(
-            preview.manifest_path,
-            OfficialWorkspaceManifest(
+        try:
+            self._manifests.write_adoption(
+                preview.manifest_path,
+                OfficialWorkspaceManifest(
                 schema_version=1,
                 project_id=record.project_id,
                 dl_number=record.dl_number,
@@ -694,8 +808,10 @@ class OfficialProjectWorkspaceService:
                 official_project_folder_path=str(record.official_folder_path),
                 template_source_path=str(record.template_source_path),
                 created_at=record.created_at,
-            ),
-        )
+                ),
+            )
+        except (OSError, ValueError) as exc:
+            raise OfficialWorkspaceCreateError(str(exc)) from exc
         saved = self._workspaces.save(record)
         return OfficialWorkspaceCreateResult(
             record=saved,
@@ -732,6 +848,9 @@ class OfficialProjectWorkspaceService:
     def adopt_existing(self, project_id: str) -> OfficialWorkspaceCreateResult:
         """Link an existing same-project workspace without touching business content."""
         preview = self.preview(project_id)
+        ProjectLifecycleWriteGuard(self._projects).require_write_allowed(
+            project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE
+        )
         if preview.status == "completed":
             record = self._workspaces.get_by_project(project_id)
             if record is None:

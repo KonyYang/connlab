@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from backend.api.project_folder_write_guard import require_project_folder_write_slot
 from backend.api.dependencies import get_official_project_workspace_service
+from backend.application.project_lifecycle_write_guard import ProjectLifecycleReadonlyError
 from backend.application.official_project_workspace_service import (
     OfficialWorkspaceConflictOption,
     OfficialProjectWorkspaceService,
@@ -112,6 +113,8 @@ def create_official_workspace(
         )
     except OfficialWorkspaceNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleReadonlyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except OfficialWorkspaceCreateError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except OfficialWorkspaceError as exc:
@@ -132,6 +135,8 @@ def adopt_official_workspace(
         return _create_response(service.adopt_existing(project_id))
     except OfficialWorkspaceNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProjectLifecycleReadonlyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except OfficialWorkspaceCreateError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except OfficialWorkspaceError as exc:

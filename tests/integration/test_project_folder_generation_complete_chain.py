@@ -173,6 +173,15 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
             collected = deps.ProjectRequestMaterialCollectionRepository(session).latest_by_project("P1")
             assert collected is not None
         assert source.read_bytes() == b"original submitted application"
+        if include_email:
+            collected_email = next((workspace.official_folder_path / "E-mail").iterdir())
+            original_email = collected_email.read_bytes()
+            collected_email.write_bytes(b"operator-edited request email")
+            material_conflict = _ok(client.get(url + "/preview"))
+            assert material_conflict["start_blockers"] == []
+            assert material_conflict["workspace_preview"]["status"] == "completed"
+            assert any("Request materials" in item for item in material_conflict["review_conflicts"])
+            collected_email.write_bytes(original_email)
         after_preview = _ok(client.get(url + "/preview"))
         forms_url = "/api/projects/P1/project-folder/required-forms/preview"
         after_items = {item["key"]: item for item in _ok(client.get(forms_url))["items"]}
@@ -224,7 +233,9 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
         fee_target = next(path for path in files if "Fee Form" in path.name)
         fee_target.write_bytes(b"operator changes must be retained")
         conflict = _ok(client.get(url + "/preview"))
-        assert conflict["start_blockers"] == [
+        assert conflict["workspace_preview"]["status"] == "completed"
+        assert conflict["start_blockers"] == []
+        assert conflict["review_conflicts"] == [
             "Fee Form: Target was changed outside ConnLab."
         ]
         rejected = client.post(url + "/start", json={

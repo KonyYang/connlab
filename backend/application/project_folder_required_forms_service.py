@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from hashlib import sha256
+import os
 from pathlib import Path
+import stat
 from time import perf_counter
 from typing import Protocol
 
@@ -427,19 +429,41 @@ class ProjectFolderRequiredFormsService:
                 output_item = by_kind.get(kind)
                 target = _target_path(workspace, pattern, relative_folder,
                                       owner_suffix=owner_suffix if key == "customer_feedback_form" else None)
+                verified_relink = False
                 if output_item is not None and Path(getattr(output_item, "output_path", None) or "") != target:
                     # Another output location must not hide this target's own
                     # latest record. Byte and input checks still apply below.
                     if output_history is None:
                         output_history = self._outputs.list_records(project_id)
-                    output_item = next((record for record in reversed(output_history)
-                                        if record.output_kind == kind and Path(record.output_path or "") == target), output_item)
+                    matching_target = next((record for record in reversed(output_history)
+                                            if record.output_kind == kind and Path(record.output_path or "") == target), None)
+                    if matching_target is not None:
+                        output_item = matching_target
+                    elif target.is_file():
+                        target_identity = _verified_regular_file(target)
+                        target_sha = target_identity[0] if target_identity else None
+                        candidates = [record for record in output_history
+                                      if record.output_kind == kind
+                                      and record.status == ProjectOutputStatus.CURRENT
+                                      and record.source == ProjectOutputSource.SYSTEM_GENERATED
+                                      and record.output_sha256 == target_sha
+                                      and not Path(record.output_path or "").exists()]
+                        live_alternate = any(
+                            record.output_kind == kind
+                            and record.status == ProjectOutputStatus.CURRENT
+                            and Path(record.output_path or "").exists()
+                            for record in output_history
+                        )
+                        if len(candidates) == 1 and not live_alternate:
+                            output_item = candidates[0]
+                            verified_relink = True
                 item = self._preview_item(
                     definition=definition,
                     workspace=workspace,
                     owner_suffix=owner_suffix,
                     item_source_context=contexts[key],
                     output_item=output_item,
+                    verified_relink=verified_relink,
                 )
             except OSError as exc:
                 errors[key] = f"Cannot read {label}; check file access or locks: {exc}"
@@ -532,6 +556,36 @@ class ProjectFolderRequiredFormsService:
                         message=item.message,
                     )
                 )
+                continue
+            if item.action == "relink":
+                try:
+                    target_matches = (
+                        item.target_path is not None
+                        and item.existing_sha256 is not None
+                        and (identity := _verified_regular_file(item.target_path)) is not None
+                        and identity[0] == item.existing_sha256
+                    )
+                except OSError:
+                    target_matches = False
+                if not target_matches:
+                    generated.append(_failed_item(item, "conflict", "Target changed before output record relink."))
+                    continue
+                try:
+                    record = self._register_output(
+                        command.project_id, item, item.source_context_signature,
+                        expected_sha256=item.existing_sha256,
+                    )
+                except (OSError, RequiredFormsConflictError):
+                    generated.append(_failed_item(
+                        item, "conflict", "Target changed before output record relink."
+                    ))
+                    continue
+                generated.append(RequiredFormsGenerateItem(
+                    key=item.key, label=item.label, target_path=item.target_path,
+                    status="linked", source_path=None,
+                    output_record_id=str(getattr(record, "output_record_id", "")) or None,
+                    message="Verified existing output record path was linked.",
+                ))
                 continue
             try:
                 source = self._source_for_item(
@@ -633,6 +687,7 @@ class ProjectFolderRequiredFormsService:
         owner_suffix: str | None,
         item_source_context: str,
         output_item: object | None,
+        verified_relink: bool = False,
     ) -> RequiredFormPreviewItem:
         key, label, kind, pattern, relative_folder = definition
         target_path = _target_path(
@@ -656,7 +711,7 @@ class ProjectFolderRequiredFormsService:
             return _conflict_item(
                 key, label, target_path, kind, source_context=item_source_context
             )
-        if Path(getattr(output_item, "output_path", None) or "") != target_path:
+        if not verified_relink and Path(getattr(output_item, "output_path", None) or "") != target_path:
             return _conflict_item(
                 key, label, target_path, kind,
                 "The latest output record points to another location. Review both files before updating.",
@@ -668,7 +723,8 @@ class ProjectFolderRequiredFormsService:
                 key, label, target_path, kind,
                 "The output record has no file fingerprint. Existing contents cannot be verified; review before updating.",
                 source_context=item_source_context)
-        if compute_sha256(target_path) != stored_sha:
+        target_identity = _verified_regular_file(target_path)
+        if target_identity is None or target_identity[0] != stored_sha:
             return _conflict_item(
                 key,
                 label,
@@ -678,7 +734,7 @@ class ProjectFolderRequiredFormsService:
                 source_context=item_source_context,
             )
         stored_context = getattr(output_item, "source_context_signature", None)
-        action = "skip" if stored_context == item_source_context else "update"
+        action = ("relink" if verified_relink else "skip") if stored_context == item_source_context else "update"
         status = "current" if action == "skip" else "ready"
         return RequiredFormPreviewItem(
             key=key,
@@ -747,9 +803,19 @@ class ProjectFolderRequiredFormsService:
         project_id: str,
         item: RequiredFormPreviewItem,
         source_context: str | None,
+        *,
+        expected_sha256: str | None = None,
     ) -> object:
         if item.target_path is None:
             raise RequiredFormsConflictError("Cannot register a missing target path.")
+        verified = (
+            _verified_regular_file(item.target_path)
+            if expected_sha256 is not None else None
+        )
+        if expected_sha256 is not None and (
+            verified is None or verified[0] != expected_sha256
+        ):
+            raise RequiredFormsConflictError("Target changed before output record relink.")
         summary = self._outputs.get_status_summary(project_id)
         active_draft_id = getattr(summary, "active_draft_id", None)
         return self._outputs.register_output(
@@ -760,8 +826,8 @@ class ProjectFolderRequiredFormsService:
                 source=ProjectOutputSource.SYSTEM_GENERATED,
                 output_path=str(item.target_path),
                 draft_id=active_draft_id,
-                output_sha256=compute_sha256(item.target_path),
-                output_size_bytes=item.target_path.stat().st_size,
+                output_sha256=verified[0] if verified else compute_sha256(item.target_path),
+                output_size_bytes=verified[1] if verified else item.target_path.stat().st_size,
                 source_context_signature=source_context,
             )
         )
@@ -860,6 +926,34 @@ def compute_sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _verified_regular_file(path: Path) -> tuple[str, int] | None:
+    """Hash a non-redirected file while checking its opened filesystem identity."""
+    for component in (path, *path.parents):
+        try:
+            entry = os.lstat(component)
+        except FileNotFoundError:
+            return None
+        if stat.S_ISLNK(entry.st_mode) or getattr(entry, "st_file_attributes", 0) & 0x400:
+            return None
+    try:
+        before = os.lstat(path)
+        if not stat.S_ISREG(before.st_mode):
+            return None
+        digest = sha256()
+        with path.open("rb") as handle:
+            opened = os.fstat(handle.fileno())
+            if (before.st_dev, before.st_ino) != (opened.st_dev, opened.st_ino):
+                return None
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+            after = os.lstat(path)
+            if (opened.st_dev, opened.st_ino) != (after.st_dev, after.st_ino):
+                return None
+            return digest.hexdigest(), opened.st_size
+    except FileNotFoundError:
+        return None
 
 
 def _append_timing(

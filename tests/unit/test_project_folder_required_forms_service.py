@@ -541,6 +541,114 @@ def test_generate_skips_same_context_unchanged_managed_target(tmp_path: Path) ->
     assert latest.status is ProjectOutputStatus.CURRENT
 
 
+def test_unique_legacy_output_path_is_relinked_only_after_target_hash_verification(
+    tmp_path: Path,
+) -> None:
+    from dataclasses import replace
+
+    outputs = _OutputStatusService()
+    service = _service(tmp_path, output_service=outputs, managed_targets={
+        "fee_form": "same_context_unchanged_fingerprint",
+    })
+    original = outputs.latest(ProjectOutputKind.FEE_EVALUATION)
+    assert original is not None
+    outputs.items[outputs.items.index(original)] = replace(
+        original, output_path=str(tmp_path / "old-machine" / "Fee Form.xlsx")
+    )
+    target = _final_path(tmp_path, "fee_form")
+    before = (target.read_bytes(), target.stat().st_mtime_ns)
+
+    preview = service.preview("P1")
+    assert _item(preview.items, "fee_form").action == "relink"
+    result = service.generate(_ready_command(tmp_path, expected_targets=(
+        RequiredFormsGenerateTarget("fee_form", target),
+    )))
+    assert _item(result.items, "fee_form").status == "linked"
+    assert (target.read_bytes(), target.stat().st_mtime_ns) == before
+    assert outputs.latest(ProjectOutputKind.FEE_EVALUATION).output_path == str(target)
+
+
+def test_legacy_output_relink_rejects_target_changed_at_registration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from dataclasses import replace
+
+    outputs = _OutputStatusService()
+    service = _service(tmp_path, output_service=outputs, managed_targets={
+        "fee_form": "same_context_unchanged_fingerprint",
+    })
+    original = outputs.latest(ProjectOutputKind.FEE_EVALUATION)
+    assert original is not None
+    outputs.items[outputs.items.index(original)] = replace(
+        original, output_path=str(tmp_path / "old-machine" / "Fee Form.xlsx")
+    )
+    target = _final_path(tmp_path, "fee_form")
+    assert _item(service.preview("P1").items, "fee_form").action == "relink"
+    register = service._register_output
+
+    def changed_before_registration(project_id, item, source_context, **kwargs):
+        target.write_bytes(b"operator changed after verification")
+        return register(project_id, item, source_context, **kwargs)
+
+    monkeypatch.setattr(service, "_register_output", changed_before_registration)
+    result = service.generate(_ready_command(tmp_path, expected_targets=(
+        RequiredFormsGenerateTarget("fee_form", target),
+    )))
+    assert _item(result.items, "fee_form").status == "conflict"
+    assert outputs.latest(ProjectOutputKind.FEE_EVALUATION).output_path != str(target)
+
+
+def test_legacy_output_relink_rejects_symbolic_target(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    outputs = _OutputStatusService()
+    service = _service(tmp_path, output_service=outputs, managed_targets={
+        "fee_form": "same_context_unchanged_fingerprint",
+    })
+    original = outputs.latest(ProjectOutputKind.FEE_EVALUATION)
+    assert original is not None
+    outputs.items[outputs.items.index(original)] = replace(
+        original, output_path=str(tmp_path / "old-machine" / "Fee Form.xlsx")
+    )
+    target = _final_path(tmp_path, "fee_form")
+    external = tmp_path / "operator-file.xlsx"
+    target.replace(external)
+    try:
+        target.symlink_to(external)
+    except OSError as exc:
+        pytest.skip(f"File symlinks unavailable on this host: {exc}")
+    assert _item(service.preview("P1").items, "fee_form").action != "relink"
+    assert external.read_bytes() == b"managed old"
+
+
+def test_legacy_output_path_mismatch_or_ambiguous_lineage_remains_conflict(
+    tmp_path: Path,
+) -> None:
+    from dataclasses import replace
+
+    outputs = _OutputStatusService()
+    service = _service(tmp_path, output_service=outputs, managed_targets={
+        "fee_form": "same_context_unchanged_fingerprint",
+    })
+    original = outputs.latest(ProjectOutputKind.FEE_EVALUATION)
+    assert original is not None
+    outputs.items[outputs.items.index(original)] = replace(
+        original, output_path=str(tmp_path / "old-machine" / "Fee Form.xlsx")
+    )
+    outputs.items.append(replace(
+        original, output_path=str(tmp_path / "second-old-machine" / "Fee Form.xlsx")
+    ))
+    assert _item(service.preview("P1").items, "fee_form").status == "conflict"
+    outputs.items.pop()
+    _final_path(tmp_path, "fee_form").write_bytes(b"operator revision")
+    assert _item(service.preview("P1").items, "fee_form").status == "conflict"
+    _final_path(tmp_path, "fee_form").write_bytes(b"managed old")
+    old_path = Path(outputs.items[0].output_path)
+    old_path.parent.mkdir()
+    old_path.write_bytes(b"another existing output")
+    assert _item(service.preview("P1").items, "fee_form").status == "conflict"
+
+
 def test_generate_recreates_deleted_form_files_from_existing_output_records(
     tmp_path: Path,
 ) -> None:

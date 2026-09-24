@@ -437,6 +437,22 @@ def test_real_preflight_rejects_missing_inputs_before_creating_any_folder(tmp_pa
         assert runner.context("P1") == before_context
         assert list(destination.iterdir()) == []
         assert queued == []
+
+        # An existing folder can be linked by the separate identity-only route
+        # even while missing generation inputs still prohibit Start.
+        planned = preview.json()["workspace_preview"]
+        Path(planned["source_book_path"]).mkdir(parents=True)
+        Path(planned["official_project_folder_path"]).mkdir()
+        link_preview = client.get(url + "/preview")
+        assert link_preview.status_code == 200, link_preview.text
+        assert link_preview.json()["workspace_preview"]["status"] == "adoptable"
+        assert link_preview.json()["start_blockers"]
+        linked_start = client.post(url + "/start", json={
+            "expected_context": link_preview.json()["expected_context"],
+            "request_id": "link-is-not-generation",
+        })
+        assert linked_start.status_code == 409
+        assert client.get(url).json() is None
     finally:
         app.dependency_overrides.clear()
         runner.pool.shutdown()

@@ -18,6 +18,10 @@ Project/Matrix/confirmed Fee/Basic Information and configured source/template au
   The previous journal is archived unchanged; conflict choices are collected again, never inherited.
   Replacement is refused while any durable publication effect lacks its completed-step checkpoint.
   This permits fixing missing inputs without rebinding a partly generated operation to new authority.
+- Preview separates missing or unreadable generation inputs (`start_blockers`) from existing-file
+  conflicts (`review_conflicts`). Both prohibit an ordinary Start. A conflict can be reviewed for a
+  fresh Backup and Rebuild; the backend fingerprints the chosen target again before publication.
+  Missing inputs do not hide Link existing folder when the workspace identity itself is adoptable.
 - A project-scoped OS file lock serializes generation. The retained per-step mutation routes share the
   lock/unfinished-operation guard so another tab cannot bypass the active operation.
 
@@ -50,6 +54,22 @@ not a replacement for configured external business authority.
   stages, backups, links/junctions, or incomplete cleanup retain the checkpoint for review.
 - A file published before its record commits is reconciled into exactly one matching lineage record.
   A record committed before the progress checkpoint is recognized without generating or publishing again.
+- A legacy workspace moved under the current configured save location can be linked explicitly when
+  exactly one direct child has a non-redirected manifest matching both internal project ID and DL,
+  with Source Book and its manifest-named official folder present. Multiple candidates, a foreign
+  manifest, or a symlink/junction never supplies an automatic workspace identity. Link updates the
+  manifest and workspace index; subsequent Open uses that indexed folder.
+- If the indexed workspace still exists but its recorded inner official folder is missing, direct
+  DL-named folders are listed by full path for manual review. Even a single candidate is not proof
+  that it is the renamed folder: Link and generation remain blocked, and neither the manifest nor
+  business content is rewritten. A foreign manifest also blocks repair. If there is no manifest or
+  candidate, regeneration is offered only with a reachable template; Link is not offered for a
+  missing folder.
+- A legacy output record pointing to an unavailable old path can be relinked to the current target
+  only when exactly one current system-generated record of the same kind has the target's SHA-256.
+  Different bytes, multiple matching records, or an old path that still exists remain conflicts.
+  Relink registers the current path without rewriting the target file. A redirected target or changed
+  bytes at registration fails closed instead of registering an unverified new fingerprint.
 
 ## Fail-safe limits
 

@@ -16,11 +16,12 @@ from backend.application.official_project_workspace_service import (
     OfficialWorkspaceRecord,
     resolve_official_template_root,
 )
+from backend.application.project_lifecycle_write_guard import ProjectLifecycleReadonlyError
 from backend.infrastructure.official_workspace_manifest import (
     OfficialWorkspaceManifest,
     OfficialWorkspaceManifestGateway,
 )
-from backend.domain import ApplicationForm, LtrRecord, LtrStatus, Project, ProjectStatus
+from backend.domain import ApplicationForm, LtrRecord, LtrStatus, Project, ProjectLifecycleState, ProjectStatus
 from backend.shared.config import OfficialWorkspaceSettings
 from backend.application.project_basic_information_output import ConfirmedBasicInformationSnapshot
 
@@ -817,6 +818,113 @@ def test_missing_stale_workspace_record_replans_under_current_project_root(
     assert repository.saved == result.record
 
 
+def test_unique_relocated_legacy_manifest_can_be_explicitly_linked(tmp_path: Path) -> None:
+    root = tmp_path / "workspaces"
+    workspace = root / "legacy-DL-2025-11-074"
+    official_folder = workspace / "DL-2025-11-074 Original operator folder"
+    (workspace / "Source Book").mkdir(parents=True)
+    official_folder.mkdir()
+    operator_file = official_folder / "operator-report.docx"
+    operator_file.write_bytes(b"operator-owned")
+    manifest = workspace / ".connlab" / "manifest.json"
+    manifest.parent.mkdir()
+    manifest.write_text(json.dumps({
+        "project_id": "project-1", "dl_number": "DL-2025-11-074",
+        "official_project_folder_path": "E:/OldMachine/DL-2025-11-074 Original operator folder",
+    }), encoding="utf-8")
+    repository = _WorkspaceRepo()
+    service = _service(tmp_path, repository=repository, settings=OfficialWorkspaceSettings(
+        root, None, None,
+    ))
+
+    preview = service.preview("project-1")
+    assert preview.status == "adoptable"
+    assert preview.local_workspace_path == workspace
+    assert preview.official_folder_path == official_folder
+    assert repository.saved is None
+    linked = service.adopt_existing("project-1")
+    assert linked.record.local_workspace_path == workspace
+    assert operator_file.read_bytes() == b"operator-owned"
+
+
+def test_closed_project_cannot_link_a_legacy_workspace(tmp_path: Path) -> None:
+    root = tmp_path / "workspaces"
+    workspace = root / "DL-2025-11-074"
+    official_folder = workspace / "DL-2025-11-074 Coolpower Qualification test"
+    (workspace / "Source Book").mkdir(parents=True)
+    official_folder.mkdir()
+    repository = _WorkspaceRepo()
+    service = _service(
+        tmp_path,
+        project=Project(
+            project_id="project-1", project_no="DL-2025-11-074",
+            product_name="Coolpower", requestor="Alice",
+            lifecycle_state=ProjectLifecycleState.CLOSED,
+        ),
+        repository=repository,
+        settings=OfficialWorkspaceSettings(root, None, None),
+    )
+
+    assert service.preview("project-1").status == "adoptable"
+    with pytest.raises(ProjectLifecycleReadonlyError, match="closed"):
+        service.adopt_existing("project-1")
+    assert repository.saved is None
+    assert not (workspace / ".connlab").exists()
+
+
+def test_ambiguous_relocated_legacy_manifests_never_bind_automatically(tmp_path: Path) -> None:
+    root = tmp_path / "workspaces"
+    for name in ("legacy-A", "legacy-B"):
+        workspace = root / name
+        (workspace / "Source Book").mkdir(parents=True)
+        official_folder = workspace / "DL-2025-11-074 Original operator folder"
+        official_folder.mkdir()
+        manifest = workspace / ".connlab" / "manifest.json"
+        manifest.parent.mkdir()
+        manifest.write_text(json.dumps({
+            "project_id": "project-1", "dl_number": "DL-2025-11-074",
+            "official_project_folder_path": str(official_folder),
+        }), encoding="utf-8")
+    repository = _WorkspaceRepo()
+    service = _service(tmp_path, repository=repository, settings=OfficialWorkspaceSettings(
+        root, None, None,
+    ))
+
+    preview = service.preview("project-1")
+    assert preview.status == "blocked"
+    assert "Multiple" in preview.blockers[0]
+    with pytest.raises(OfficialWorkspaceCreateError):
+        service.adopt_existing("project-1")
+    assert repository.saved is None
+
+
+@pytest.mark.parametrize("identity", [
+    {"project_id": "another-project", "dl_number": "DL-2025-11-074"},
+    {"project_id": "project-1", "dl_number": "DL-2024-01-001"},
+    {"project_id": "project-1"},
+])
+def test_relocated_legacy_candidate_requires_project_and_dl_manifest_identity(
+    tmp_path: Path, identity: dict[str, str]
+) -> None:
+    root = tmp_path / "workspaces"
+    workspace = root / "legacy-DL-2025-11-074"
+    official_folder = workspace / "DL-2025-11-074 Original operator folder"
+    (workspace / "Source Book").mkdir(parents=True)
+    official_folder.mkdir()
+    manifest = workspace / ".connlab" / "manifest.json"
+    manifest.parent.mkdir()
+    manifest.write_text(json.dumps({
+        **identity, "official_project_folder_path": str(official_folder),
+    }), encoding="utf-8")
+    template = _make_template(tmp_path / "template")
+    service = _service(tmp_path, settings=OfficialWorkspaceSettings(root, template, None))
+
+    preview = service.preview("project-1")
+    assert preview.status == "ready"
+    assert preview.local_workspace_path == root / "DL-2025-11-074"
+    assert preview.local_workspace_path != workspace
+
+
 @pytest.mark.parametrize(
     "escaped_component",
     ["workspace", "source_book", "official_folder", "manifest"],
@@ -959,12 +1067,14 @@ def test_missing_recorded_official_folder_can_be_regenerated(
 
     preview = service.preview("project-1")
 
-    assert preview.status == "adoptable"
+    assert preview.status == "ready"
     assert not preview.blockers
     assert preview.official_folder_path == workspace / (
         "DL-2025-11-074 Coolpower Qualification test"
     )
     assert any("missing official project folder" in warning for warning in preview.warnings)
+    with pytest.raises(OfficialWorkspaceCreateError, match="cannot be linked"):
+        service.adopt_existing("project-1")
 
     result = service.create("project-1")
 
@@ -972,6 +1082,88 @@ def test_missing_recorded_official_folder_can_be_regenerated(
     assert result.official_folder_path.is_dir()
     assert repository.saved is not None
     assert repository.saved.official_folder_path == preview.official_folder_path
+
+
+@pytest.mark.parametrize("foreign_manifest", [False, True])
+def test_missing_recorded_folder_never_links_without_verified_existing_folder(
+    tmp_path: Path, foreign_manifest: bool,
+) -> None:
+    template = _make_template(tmp_path / "template") if foreign_manifest else tmp_path / "unavailable-template"
+    workspace = tmp_path / "workspaces" / "DL-2025-11-074"
+    (workspace / "Source Book").mkdir(parents=True)
+    missing = workspace / "DL-2025-11-074 Coolpower Old test"
+    manifest = workspace / ".connlab" / "manifest.json"
+    if foreign_manifest:
+        manifest.parent.mkdir()
+        manifest.write_text(json.dumps({
+            "project_id": "other-project", "dl_number": "DL-2025-11-074",
+            "official_project_folder_path": str(missing),
+        }), encoding="utf-8")
+    original_manifest = manifest.read_bytes() if foreign_manifest else None
+    repository = _WorkspaceRepo()
+    repository.saved = OfficialWorkspaceRecord(
+        "workspace-1", "project-1", "DL-2025-11-074", workspace,
+        workspace / "Source Book", missing, manifest,
+        template, "2026-06-01T00:00:00+00:00",
+    )
+    service = _service(tmp_path, repository=repository, settings=OfficialWorkspaceSettings(
+        tmp_path / "workspaces", template, None,
+    ))
+
+    preview = service.preview("project-1")
+    assert preview.status in {"blocked", "inconsistent", "conflict"}
+    assert preview.status != "adoptable"
+    with pytest.raises(OfficialWorkspaceCreateError):
+        service.adopt_existing("project-1")
+    with pytest.raises(OfficialWorkspaceCreateError):
+        service.create("project-1")
+    assert not missing.exists()
+    assert (manifest.read_bytes() if foreign_manifest else None) == original_manifest
+
+
+@pytest.mark.parametrize("candidate_count, foreign_manifest", [(1, False), (2, False), (1, True)])
+def test_recorded_workspace_inner_folder_candidate_requires_manual_review(
+    tmp_path: Path, candidate_count: int, foreign_manifest: bool,
+) -> None:
+    workspace = tmp_path / "workspaces" / "DL-2025-11-074"
+    (workspace / "Source Book").mkdir(parents=True)
+    old_missing = workspace / "DL-2025-11-074 Coolpower Old test"
+    renamed = workspace / "DL-2025-11-074 Coolpower Renamed test"
+    renamed.mkdir()
+    operator_file = renamed / "operator-owned.txt"
+    operator_file.write_bytes(b"operator bytes")
+    if candidate_count == 2:
+        (workspace / "DL-2025-11-074 Another possible folder").mkdir()
+    manifest = workspace / ".connlab" / "manifest.json"
+    manifest.parent.mkdir()
+    manifest.write_text(json.dumps({
+        "project_id": "other-project" if foreign_manifest else "project-1",
+        "dl_number": "DL-2025-11-074",
+        "official_project_folder_path": str(old_missing),
+    }), encoding="utf-8")
+    original_manifest = manifest.read_bytes()
+    repository = _WorkspaceRepo()
+    repository.saved = OfficialWorkspaceRecord(
+        "workspace-1", "project-1", "DL-2025-11-074", workspace,
+        workspace / "Source Book", old_missing, manifest,
+        tmp_path / "unavailable-template", "2026-06-01T00:00:00+00:00",
+    )
+    service = _service(tmp_path, repository=repository, settings=OfficialWorkspaceSettings(
+        tmp_path / "workspaces", tmp_path / "unavailable-template", None,
+    ))
+
+    preview = service.preview("project-1")
+    assert preview.status == "inconsistent"
+    if not foreign_manifest:
+        assert str(renamed) in preview.blockers[0]
+        assert "manual review" in preview.blockers[0].lower()
+    with pytest.raises(OfficialWorkspaceCreateError):
+        service.adopt_existing("project-1")
+    with pytest.raises(OfficialWorkspaceCreateError):
+        service.create("project-1")
+    assert manifest.read_bytes() == original_manifest
+    assert repository.saved.official_folder_path == old_missing
+    assert operator_file.read_bytes() == b"operator bytes"
 
 
 def test_manifest_without_workspace_record_is_identity_only_adoptable(tmp_path: Path) -> None:
@@ -1197,6 +1389,26 @@ def test_adoption_does_not_require_configured_template_to_be_available(
     with pytest.raises(OfficialWorkspaceCreateError, match="configured project workspace root"):
         service.create("project-1", conflict_strategy="backup_and_recreate")
     assert operator_file.read_bytes() == b"operator-owned"
+
+
+def test_missing_template_names_settings_action_without_authorizing_creation(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "workspaces"
+    root.mkdir()
+    missing_template = tmp_path / "unavailable-template"
+    service = _service(tmp_path, settings=OfficialWorkspaceSettings(
+        root, missing_template, None,
+    ))
+
+    preview = service.preview("project-1")
+    assert preview.status == "blocked"
+    assert str(missing_template) in preview.blockers[0]
+    assert "Settings" in preview.blockers[0]
+    assert "Project Folder Template" in preview.blockers[0]
+    with pytest.raises(OfficialWorkspaceCreateError):
+        service.create("project-1")
+    assert not (root / "DL-2025-11-074").exists()
 
 
 def test_rebuild_never_uses_another_project_operator_tree_as_retained_template(

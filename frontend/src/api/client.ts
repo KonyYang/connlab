@@ -15,6 +15,7 @@ export function getProjectFolderGeneration(projectId: string): Promise<ProjectFo
 export type ProjectFolderGenerationPreview = {
   expected_context: string;
   start_blockers?: string[];
+  review_conflicts?: string[];
   workspace_preview: OfficialWorkspacePreview;
   recovery?: { operation_id: string; inputs_match: boolean; rebuild_pending: boolean } | null;
 };

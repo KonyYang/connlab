@@ -28,9 +28,17 @@ def package_preflight(project_id, workspace, session, settings, *, rebuilding=Fa
         material_errors = [item.message for item in materials.items
                            if item.action not in {"copy", "already_present"}
                            or item.status in {"missing", "missing_source", "needs_review"}]
+        material_conflict_only = (
+            not source_inside_target
+            and any(item.status == "conflict" for item in materials.items)
+            and all(item.status not in {"missing", "missing_source", "needs_review"}
+                    and (item.action in {"copy", "already_present"} or item.status == "conflict")
+                    for item in materials.items)
+            and all(blocker == "Target file conflict" for blocker in materials.blockers)
+        )
         items.insert(0, {"key": "materials", "label": "Request materials",
-                        "status": "ready" if materials_ready else "blocked",
-                        "action": "collect" if materials_ready else "blocked",
+                        "status": "ready" if materials_ready else "conflict" if material_conflict_only else "blocked",
+                        "action": "collect" if materials_ready else "review" if material_conflict_only else "blocked",
                         "message": ("Source material is inside the folder being rebuilt. Import an independent source copy before rebuilding."
                                     if source_inside_target else safe_text("; ".join([*materials.blockers, *material_errors] or materials.warnings)
                                              or "Source materials are ready for collection."))})

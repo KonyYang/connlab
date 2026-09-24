@@ -183,13 +183,19 @@ class ProjectFolderGenerationRunner:
             file_preflight = package_preflight(
                 project_id, preview, session, self.settings, rebuilding=rebuilding
             )
-            file_conflicts = [
+            file_blockers = [
                 f"{item['label']}: {item['message']}"
-                for item in file_preflight["items"] if item["status"] in {"conflict", "blocked"}
+                for item in file_preflight["items"] if item["status"] == "blocked"
             ]
-            if file_conflicts and not start_blockers:
-                start_blockers.append("; ".join(file_conflicts))
-            if start_blockers:
+            review_conflicts = [
+                f"{item['label']}: {item['message']}"
+                for item in file_preflight["items"] if item["status"] == "conflict"
+            ]
+            if file_blockers and not start_blockers:
+                start_blockers.append("; ".join(file_blockers))
+            # Generation inputs can be missing while a separate, identity-only
+            # Link existing folder action remains valid for this workspace.
+            if start_blockers and preview.status != "adoptable":
                 workspace_preview["status"] = "blocked"
                 workspace_preview["blockers"] = list(
                     dict.fromkeys(
@@ -201,6 +207,7 @@ class ProjectFolderGenerationRunner:
                 "legacy_expected_context": legacy_token,
                 "recovery": recovery,
                 "start_blockers": start_blockers,
+                "review_conflicts": review_conflicts,
                 "workspace_preview": {
                     **workspace_preview,
                     "generation_context": token,
