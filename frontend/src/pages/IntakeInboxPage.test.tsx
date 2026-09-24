@@ -186,21 +186,26 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
 
     await waitFor(() => {
       expect(previewSpecifiedLtrWorkbookAuthority).toHaveBeenCalledWith("case-1", {
-        specified_ltr_number: "DL-2026-05-011"
+        specified_ltr_number: "DL-2026-05-011",
+        plan_date: expect.any(String),
+        test_item: "Qualification",
+        sample_description: "Connector sample",
+        test_type_in_sheet: "Qualification",
+        project_leader: "Lab User"
       });
     });
     expect(completeNewProject).not.toHaveBeenCalled();
     const dialog = await screen.findByRole("dialog", { name: "DL-2026-05-011" });
     expect(dialog.getAttribute("aria-modal")).toBe("true");
     expect(dialog.closest(".specified-ltr-preview-modal")).toBeTruthy();
-    expect(screen.getByText("PwrBlade Ultra Pro")).toBeTruthy();
+    expect(screen.getAllByText("PwrBlade Ultra Pro")).toHaveLength(2);
     await waitFor(() => {
-      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Use this LTR number" }));
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Replace row and use this LTR number" }));
     });
     expect((screen.getByRole("button", { name: /Apply LTR Number/ }) as HTMLButtonElement).disabled)
       .toBe(true);
 
-    await user.click(screen.getByRole("button", { name: "Use this LTR number" }));
+    await user.click(screen.getByRole("button", { name: "Replace row and use this LTR number" }));
 
     await waitFor(() => {
       expect(completeNewProject).toHaveBeenCalledWith(
@@ -212,6 +217,44 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
         })
       );
     });
+    expect(completeNewProject).toHaveBeenCalledWith(
+      "case-1",
+      expect.objectContaining({
+        plan_date: vi.mocked(previewSpecifiedLtrWorkbookAuthority).mock.calls[0][1].plan_date
+      })
+    );
+  });
+
+  it("compares a missing associated LTR with its base and appends only after confirmation", async () => {
+    const user = userEvent.setup();
+    vi.mocked(getIntakeCaseReview).mockResolvedValue(reviewWithAssociatedSpecifiedCase);
+    vi.mocked(previewSpecifiedLtrWorkbookAuthority).mockResolvedValue(workbookPreviewAssociatedCandidate);
+    vi.mocked(completeNewProject).mockResolvedValue({
+      project_id: "project-new",
+      project_status: "ltr_registered",
+      ltr_number: "DL-2026-05-011A"
+    });
+
+    render(<Harness />);
+    const applyButton = await screen.findByRole("button", { name: /Apply LTR Number/ });
+    await waitFor(() => expect((applyButton as HTMLButtonElement).disabled).toBe(false));
+    await user.click(applyButton);
+
+    expect(await screen.findByRole("dialog", { name: "DL-2026-05-011A" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Existing LTR workbook row" }).textContent)
+      .toContain("DL-2026-05-011");
+    expect(screen.getByRole("region", { name: "Proposed LTR workbook row" }).textContent)
+      .toContain("Connector sample");
+    expect(screen.getByText("Existing base — DL-2026-05-011")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Create associated LTR number" }));
+    await waitFor(() => expect(completeNewProject).toHaveBeenCalledWith(
+      "case-1",
+      expect.objectContaining({
+        specified_ltr_number: "DL-2026-05-011A",
+        specified_ltr_workbook_preview_ack: workbookPreviewAssociatedCandidate.preview_ack
+      })
+    ));
   });
 
   it("blocks completion when the specified LTR is missing from the workbook", async () => {
@@ -232,7 +275,7 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
     expect(alertDialog.getAttribute("aria-modal")).toBe("true");
     expect(alertDialog.closest(".specified-ltr-preview-modal")).toBeTruthy();
     expect(await screen.findByText("LTR workbook 中不存在该编号")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Use this LTR number" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Replace row and use this LTR number" })).toBeNull();
     await waitFor(() => {
       expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close" }));
     });
@@ -294,7 +337,7 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
 
     await user.click(applyButton);
     await screen.findByText("DL-2026-05-011");
-    await user.click(screen.getByRole("button", { name: "Use this LTR number" }));
+    await user.click(screen.getByRole("button", { name: "Replace row and use this LTR number" }));
 
     expect(await screen.findByRole("alertdialog")).toBeTruthy();
     expect(screen.queryByText("DL-2026-05-011")).toBeNull();
@@ -473,6 +516,19 @@ const reviewWithSpecifiedCase: IntakeCaseReview = {
   ]
 };
 
+const reviewWithAssociatedSpecifiedCase: IntakeCaseReview = {
+  ...reviewWithSpecifiedCase,
+  cases: [
+    {
+      ...reviewWithSpecifiedCase.cases[0],
+      project_setup: {
+        ...reviewWithSpecifiedCase.cases[0].project_setup,
+        specified_ltr_number: "DL-2026-05-011A"
+      }
+    }
+  ]
+};
+
 const reviewWithoutCases: IntakeCaseReview = {
   ...reviewWithCase,
   cases: []
@@ -533,13 +589,29 @@ const workbookPreviewFound = {
       is_blank: false
     }
   ],
+  proposed_row_values: [
+    {
+      field_name: "project_type",
+      label: "Project Type",
+      value: "Qualification",
+      is_blank: false
+    },
+    {
+      field_name: "description_pn",
+      label: "Description P/N",
+      value: "PwrBlade Ultra Pro",
+      is_blank: false
+    }
+  ],
   preview_ack: {
     acknowledged: true,
     ltr_number: "DL-2026-05-011",
     sheet_name: "2026",
     row_number: 12,
     preview_token: "preview-token",
-    row_fingerprint: "row-fingerprint"
+    row_fingerprint: "row-fingerprint",
+    action: "replace_existing" as const,
+    proposed_fingerprint: "proposed-fingerprint"
   },
   blockers: [],
   warnings: []
@@ -553,7 +625,50 @@ const workbookPreviewNotFound = {
   sheet_name: "2026",
   row_number: null,
   row_values: [],
+  proposed_row_values: [],
   preview_ack: null,
+  blockers: [],
+  warnings: []
+};
+
+const workbookPreviewAssociatedCandidate = {
+  status: "associated_candidate" as const,
+  ltr_number: "DL-2026-05-011A",
+  message: "将基于 DL-2026-05-011 信息新增独立关联编号行；不会改写主编号。",
+  workbook_path: "D:/PublicProject/LTR.xlsx",
+  sheet_name: "2026",
+  row_number: 12,
+  related_ltr_number: "DL-2026-05-011",
+  row_values: [
+    {
+      field_name: "ltr_number",
+      label: "LTR Number",
+      value: "DL-2026-05-011",
+      is_blank: false
+    }
+  ],
+  proposed_row_values: [
+    {
+      field_name: "description_pn",
+      label: "Description P/N",
+      value: "Connector sample",
+      is_blank: false
+    }
+  ],
+  preview_ack: {
+    acknowledged: true,
+    ltr_number: "DL-2026-05-011A",
+    sheet_name: "2026",
+    row_number: 12,
+    preview_token: "append-preview-token",
+    row_fingerprint: "base-row-fingerprint",
+    action: "append_associated" as const,
+    base_ltr_number: "DL-2026-05-011",
+    base_sheet_name: "2026",
+    base_row_number: 12,
+    base_fingerprint: "base-row-fingerprint",
+    proposed_fingerprint: "associated-proposed-fingerprint"
+  },
   blockers: [],
   warnings: []
 };

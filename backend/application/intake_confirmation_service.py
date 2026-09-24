@@ -55,13 +55,19 @@ class IntakeDraftStore(Protocol):
 class ProjectStore(Protocol):
     def create(self, project: Project) -> Project: ...
 
+    def get(self, project_id: str) -> Project | None: ...
+
 
 class ApplicationFormStore(Protocol):
     def create(self, form: ApplicationForm) -> ApplicationForm: ...
 
+    def list_by_project(self, project_id: str) -> list[ApplicationForm]: ...
+
 
 class SampleInfoStore(Protocol):
     def create(self, sample: SampleInfo) -> SampleInfo: ...
+
+    def list_by_project(self, project_id: str) -> list[SampleInfo]: ...
 
 
 class FileAssetStore(Protocol):
@@ -74,6 +80,16 @@ class IntakeConfirmationResult:
     application_form: ApplicationForm
     sample_infos: tuple[SampleInfo, ...]
     file_assets: tuple[FileAsset, ...]
+    intake_case: IntakeCase
+
+
+@dataclass(frozen=True)
+class IntakeConfirmationProjection:
+    """Read-only Project/Form/Sample values that confirmation would persist."""
+
+    project: Project
+    application_form: ApplicationForm
+    sample_infos: tuple[SampleInfo, ...]
     intake_case: IntakeCase
 
 
@@ -144,6 +160,60 @@ class IntakeConfirmationService:
             sample_infos=samples,
             file_assets=assets,
             intake_case=confirmed_case,
+        )
+
+    def preview_case(self, case_id: str) -> IntakeConfirmationProjection:
+        """Project the current reviewed draft without creating or updating records."""
+        intake_case = self._get_case(case_id)
+        if intake_case.confirmed_project_id:
+            return self._confirmed_projection(intake_case)
+        if intake_case.status is not IntakeCaseStatus.NEEDS_REVIEW:
+            raise IntakeConfirmationError("Only reviewed intake cases can be previewed.")
+
+        self._get_package(intake_case.package_id)
+        self._get_selected_asset(intake_case)
+        draft = self._get_draft(intake_case.case_id)
+        draft_data = self._merged_draft_data(draft)
+        self._validate_required_fields(draft_data)
+
+        # Stable preview IDs are never persisted; the same transformers used by
+        # confirm_case produce the exact domain values that a later write maps.
+        project_id = f"intake-preview-{intake_case.case_id}"
+        form = self._to_application_form(project_id, draft_data)
+        return IntakeConfirmationProjection(
+            project=self._to_project(project_id, draft_data),
+            application_form=form,
+            sample_infos=self._to_sample_infos(
+                project_id,
+                form.form_id,
+                draft_data,
+            ),
+            intake_case=intake_case,
+        )
+
+    def _confirmed_projection(self, intake_case: IntakeCase) -> IntakeConfirmationProjection:
+        """Rebuild the same no-write projection after an earlier partial completion."""
+        if intake_case.status is not IntakeCaseStatus.CONFIRMED:
+            raise IntakeConfirmationError(
+                "Intake case has a confirmed project but is not in confirmed status."
+            )
+        project_id = intake_case.confirmed_project_id
+        assert project_id is not None
+        project = self._project_store.get(project_id)
+        if project is None:
+            raise IntakeConfirmationNotFoundError(
+                f"Confirmed project not found: {project_id}"
+            )
+        forms = self._application_form_store.list_by_project(project_id)
+        if not forms:
+            raise IntakeConfirmationNotFoundError(
+                f"Application form not found for confirmed project: {project_id}"
+            )
+        return IntakeConfirmationProjection(
+            project=project,
+            application_form=forms[-1],
+            sample_infos=tuple(self._sample_store.list_by_project(project_id)),
+            intake_case=intake_case,
         )
 
     def _get_case(self, case_id: str) -> IntakeCase:

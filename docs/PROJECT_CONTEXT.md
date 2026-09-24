@@ -16,6 +16,14 @@ Existing public-drive LTR workbooks and approved Word/Excel templates retain the
 their implemented workflow. SQLite is a local cache, automation aid, and migration backup. Any
 authority cutover must be an explicit task with migration and recovery behavior.
 
+For Intake requests with a manually specified full DL, preview the public workbook before completion.
+An exact existing number presents its current row beside the proposed replacement for confirmation.
+An absent associated suffix (for example, `DL-2026-09-002A`) is eligible only when its base row exists;
+show that base row read-only beside the proposed new row, then append the suffix as a separate row in
+the base number's annual sheet. Revalidate the confirmed target/base state under the workbook write
+transaction; a missing base, duplicate target, or stale row blocks the write. An associated append
+never replaces the base row.
+
 ## Domain ownership
 
 - **Project** owns lifecycle identity and traceability.

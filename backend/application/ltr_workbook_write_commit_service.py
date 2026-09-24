@@ -19,6 +19,13 @@ from backend.application.ltr_workbook_write_preview_service import (
     LtrWorkbookWritePreviewService,
     PreviewLtrWorkbookWriteCommand,
 )
+from backend.application.specified_ltr_workbook_authority_preview_service import (
+    SpecifiedLtrWorkbookAuthorityPreviewAck,
+    _proposed_fingerprint,
+    _proposed_row_values,
+    _row_fingerprint,
+    _row_values,
+)
 from backend.domain import LtrRecord, LtrStatus, Project
 from backend.infrastructure.office import (
     LtrWorkbookDropdownEnsureResult,
@@ -86,6 +93,7 @@ class CommitLtrWorkbookWriteCommand:
     operator_note: str | None = None
     current_case_id: str | None = None
     duplicate_resolution: DuplicateResolutionCommand | None = None
+    specified_ltr_workbook_preview_ack: SpecifiedLtrWorkbookAuthorityPreviewAck | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,6 +170,7 @@ class LtrWorkbookWriteCommitService:
                 sheet_names,
                 self._bootstrap_policy,
             )
+            _verify_specified_ltr_intent(context.session, decision, command)
             if self._duplicates is not None:
                 project = self._projects.get(project_id) if self._projects is not None else None
                 if project is None:
@@ -189,6 +198,7 @@ class LtrWorkbookWriteCommitService:
                 )
             except LtrWorkbookWritePreviewError as exc:
                 raise LtrWorkbookWriteCommitError(str(exc)) from exc
+            _verify_proposed_row_intent(preview.row_data, decision, command)
             context.session.prepare_sheet_for_operation(
                 decision.target_sheet,
                 mode="write",
@@ -259,6 +269,102 @@ def _reject_existing_local_ltr(records: list[LtrRecord]) -> None:
         raise LtrWorkbookWriteCommitError("Project already has an active registered LTR.")
 
 
+def _verify_specified_ltr_intent(session, decision: _NumberDecision, command) -> None:
+    """Revalidate preview intent against locked workbook state before writing."""
+    ack = command.specified_ltr_workbook_preview_ack
+    if ack is None:
+        return
+    if (
+        not ack.acknowledged
+        or ack.ltr_number != decision.ltr_number
+        or not ack.preview_token
+        or not ack.proposed_fingerprint
+    ):
+        raise LtrWorkbookWriteCommitError(
+            "Specified LTR preview authorization is invalid; refresh before applying."
+        )
+    if ack.action != decision.action:
+        raise LtrWorkbookWriteCommitError(
+            "Specified LTR action changed after preview; refresh before applying."
+        )
+
+    if ack.action == "replace_existing":
+        row = decision.existing_row
+        if row is None or (
+            row.sheet_name != ack.sheet_name
+            or row.row_number != ack.row_number
+            or _row_fingerprint(
+                ltr_number=row.dl_number,
+                sheet_name=row.sheet_name,
+                row_number=row.row_number,
+                values=_row_values(row),
+                workbook_values=row.values,
+            )
+            != ack.row_fingerprint
+        ):
+            raise LtrWorkbookWriteCommitError(
+                "LTR workbook row changed after preview; refresh before replacing it."
+            )
+        return
+
+    if ack.action != "append_associated":
+        raise LtrWorkbookWriteCommitError(
+            "Unsupported specified LTR preview action; refresh before applying."
+        )
+    if decision.existing_row is not None:
+        raise LtrWorkbookWriteCommitError(
+            "Associated LTR now exists in the workbook; refresh before applying."
+        )
+    base_number = base_ltr_number(decision.ltr_number)
+    if ack.base_ltr_number != base_number:
+        raise LtrWorkbookWriteCommitError(
+            "Associated base LTR does not match the confirmed preview."
+        )
+    annual_sheets = _annual_sheet_names(session.list_sheets())
+    if session.find_ltr_number(decision.ltr_number, annual_sheets) is not None:
+        raise LtrWorkbookWriteCommitError(
+            "Associated LTR now exists in the workbook; refresh before applying."
+        )
+    base_row = session.find_ltr_number(base_number, annual_sheets)
+    if base_row is None:
+        raise LtrWorkbookWriteCommitError(
+            f"Associated base LTR does not exist in the workbook: {base_number}"
+        )
+    base_fingerprint = _row_fingerprint(
+        ltr_number=base_row.dl_number,
+        sheet_name=base_row.sheet_name,
+        row_number=base_row.row_number,
+        values=_row_values(base_row),
+        workbook_values=base_row.values,
+    )
+    if (
+        base_row.sheet_name != ack.base_ltr_number[3:7]
+        or base_row.sheet_name != ack.base_sheet_name
+        or base_row.row_number != ack.base_row_number
+        or base_fingerprint != ack.base_fingerprint
+        or base_fingerprint != ack.row_fingerprint
+    ):
+        raise LtrWorkbookWriteCommitError(
+            "Associated base LTR changed after preview; refresh before appending."
+        )
+
+
+def _verify_proposed_row_intent(row_data, decision: _NumberDecision, command) -> None:
+    """Ensure the row written is exactly the row shown in the confirmed preview."""
+    ack = command.specified_ltr_workbook_preview_ack
+    if ack is None:
+        return
+    proposed = _proposed_fingerprint(
+        decision.ltr_number,
+        _proposed_row_values(row_data),
+        row_data,
+    )
+    if proposed != ack.proposed_fingerprint:
+        raise LtrWorkbookWriteCommitError(
+            "Proposed LTR row changed after preview; refresh before applying."
+        )
+
+
 def _resolve_number_decision(
     session,
     command: CommitLtrWorkbookWriteCommand,
@@ -306,9 +412,23 @@ def _resolve_number_decision(
                 existing_row=exact,
             )
         base = base_ltr_number(parsed.normalized)
-        if session.find_ltr_number(base, sheet_names) is None:
+        base_row = session.find_ltr_number(base, sheet_names)
+        if base_row is None:
             raise LtrWorkbookWriteCommitError(
                 f"Associated base LTR does not exist in the workbook: {base}"
+            )
+        preview_ack = command.specified_ltr_workbook_preview_ack
+        if preview_ack is not None and preview_ack.action == "append_associated":
+            expected_sheet = f"{parsed.year:04d}"
+            if base_row.sheet_name != expected_sheet:
+                raise LtrWorkbookWriteCommitError(
+                    f"Associated base LTR is stored on {base_row.sheet_name}, "
+                    f"but its number belongs to workbook year {expected_sheet}."
+                )
+            return _NumberDecision(
+                ltr_number=parsed.normalized,
+                action="append_associated",
+                target_sheet=base_row.sheet_name,
             )
         sheet_names = _ensure_target_sheet(
             session, command, sheet_names, target_sheet, bootstrap_policy

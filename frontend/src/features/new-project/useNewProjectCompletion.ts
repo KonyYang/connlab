@@ -51,6 +51,8 @@ export function useNewProjectCompletion({
     useState<SpecifiedLtrWorkbookAuthorityPreview | null>(null);
   const [pendingSpecifiedLtrPreviewAck, setPendingSpecifiedLtrPreviewAck] =
     useState<SpecifiedLtrWorkbookAuthorityPreviewAck | null>(null);
+  const [pendingSpecifiedLtrPlanDate, setPendingSpecifiedLtrPlanDate] =
+    useState<string | null>(null);
   const [specifiedLtrPreviewLoading, setSpecifiedLtrPreviewLoading] = useState(false);
   const [specifiedLtrPreviewConfirming, setSpecifiedLtrPreviewConfirming] = useState(false);
   const [localDuplicateConflict, setLocalDuplicateConflict] =
@@ -62,6 +64,7 @@ export function useNewProjectCompletion({
     setCompletionResult(null);
     setSpecifiedLtrWorkbookPreview(null);
     setPendingSpecifiedLtrPreviewAck(null);
+    setPendingSpecifiedLtrPlanDate(null);
     setLocalDuplicateConflict(null);
   }, [resetKey]);
 
@@ -74,11 +77,19 @@ export function useNewProjectCompletion({
     setCompletionResult(null);
     setSpecifiedLtrWorkbookPreview(null);
     setPendingSpecifiedLtrPreviewAck(null);
+    setPendingSpecifiedLtrPlanDate(null);
     setLocalDuplicateConflict(null);
     try {
       if (shouldPreviewSpecifiedLtrWorkbook(setupValues)) {
+        const planDate = getPlanDate();
+        setPendingSpecifiedLtrPlanDate(planDate);
         const preview = await previewSpecifiedLtrWorkbookAuthority(activeCase.case_id, {
-          specified_ltr_number: setupValues.specifiedLtrNumber.trim()
+          specified_ltr_number: setupValues.specifiedLtrNumber.trim(),
+          plan_date: planDate,
+          test_item: setupValues.testItem,
+          sample_description: setupValues.sampleDescription,
+          test_type_in_sheet: setupValues.testTypeInSheet,
+          project_leader: setupValues.projectLeader
         });
         setSpecifiedLtrWorkbookPreview(preview);
         return;
@@ -100,11 +111,12 @@ export function useNewProjectCompletion({
     setPendingSpecifiedLtrPreviewAck(specifiedLtrWorkbookPreview.preview_ack);
     try {
       await submitCompletion({
-        ...buildCompletionInput(setupValues),
+        ...buildCompletionInput(setupValues, pendingSpecifiedLtrPlanDate ?? undefined),
         specified_ltr_workbook_preview_ack: specifiedLtrWorkbookPreview.preview_ack
       });
       setSpecifiedLtrWorkbookPreview(null);
       setPendingSpecifiedLtrPreviewAck(null);
+      setPendingSpecifiedLtrPlanDate(null);
     } catch (error) {
       if (
         error instanceof ApiRequestError &&
@@ -132,12 +144,16 @@ export function useNewProjectCompletion({
     setCompletionError(null);
     try {
       await submitCompletion({
-        ...buildCompletionInput(setupValues),
+        ...buildCompletionInput(
+          setupValues,
+          pendingSpecifiedLtrPreviewAck ? pendingSpecifiedLtrPlanDate ?? undefined : undefined
+        ),
         duplicate_resolution: resolution,
         specified_ltr_workbook_preview_ack: pendingSpecifiedLtrPreviewAck
       }, completionCaseId);
       setLocalDuplicateConflict(null);
       setPendingSpecifiedLtrPreviewAck(null);
+      setPendingSpecifiedLtrPlanDate(null);
     } catch (error) {
       handleCompletionError(error);
     } finally {
@@ -188,6 +204,7 @@ export function useNewProjectCompletion({
     clearSpecifiedLtrWorkbookPreview: () => {
       setSpecifiedLtrWorkbookPreview(null);
       setPendingSpecifiedLtrPreviewAck(null);
+      setPendingSpecifiedLtrPlanDate(null);
       setCompletionError(null);
     },
     confirmSpecifiedLtrWorkbookPreview,
@@ -197,6 +214,7 @@ export function useNewProjectCompletion({
       setSpecifiedLtrPreviewConfirming(false);
       setSpecifiedLtrWorkbookPreview(null);
       setPendingSpecifiedLtrPreviewAck(null);
+      setPendingSpecifiedLtrPlanDate(null);
       setLocalDuplicateConflict(null);
       setCompletionError(null);
       setCompletionResult(null);
@@ -217,10 +235,14 @@ function shouldPreviewSpecifiedLtrWorkbook(
   );
 }
 
+function getPlanDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function buildCompletionInput(
-  setupValues: NewProjectSetupConfirmationValues
+  setupValues: NewProjectSetupConfirmationValues,
+  planDate = getPlanDate()
 ): CompleteNewProjectInput {
-  const planDate = new Date().toISOString().slice(0, 10);
   return {
     ltr_mode: setupValues.ltrMode,
     specified_ltr_number:

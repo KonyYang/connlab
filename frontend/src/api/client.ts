@@ -2223,6 +2223,11 @@ export type CompleteNewProjectInput = {
 
 export type SpecifiedLtrWorkbookAuthorityPreviewInput = {
   specified_ltr_number: string;
+  plan_date: string;
+  test_item: string;
+  sample_description: string;
+  test_type_in_sheet: string;
+  project_leader: string;
 };
 
 export type SpecifiedLtrWorkbookAuthorityRowValue = {
@@ -2239,16 +2244,24 @@ export type SpecifiedLtrWorkbookAuthorityPreviewAck = {
   row_number: number;
   preview_token: string;
   row_fingerprint: string;
+  action: "replace_existing" | "append_associated";
+  base_ltr_number?: string | null;
+  base_sheet_name?: string | null;
+  base_row_number?: number | null;
+  base_fingerprint?: string | null;
+  proposed_fingerprint: string;
 };
 
 export type SpecifiedLtrWorkbookAuthorityPreview = {
-  status: "found" | "not_found" | "blocked";
+  status: "found" | "associated_candidate" | "not_found" | "blocked";
   ltr_number: string;
   message: string;
   workbook_path?: string | null;
   sheet_name?: string | null;
   row_number?: number | null;
   row_values: SpecifiedLtrWorkbookAuthorityRowValue[];
+  proposed_row_values: SpecifiedLtrWorkbookAuthorityRowValue[];
+  related_ltr_number?: string | null;
   preview_ack?: SpecifiedLtrWorkbookAuthorityPreviewAck | null;
   blockers: string[];
   warnings: string[];

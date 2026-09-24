@@ -116,9 +116,37 @@ class LtrWorkbookWritePreviewService:
         snapshot = self._snapshot()
         target_sheet = f"{parsed_number.year:04d}"
         target_row = _target_row(snapshot, target_sheet)
-        row_data = LtrWorkbookRowData(
-            month=command.plan_date.strftime("%b"),
+        row_data = self.project_row_data(
+            project,
+            form,
+            samples,
+            command,
             total=max((target_row or 2) - 2, 0),
+        )
+        return LtrWorkbookWritePreview(
+            project_id=project_id,
+            workbook_path=self._settings.path,
+            target_sheet=target_sheet,
+            target_row=target_row,
+            row_data=row_data,
+            columns=_column_previews(row_data),
+            warnings=_warnings(self._settings, snapshot, target_sheet),
+        )
+
+    @staticmethod
+    def project_row_data(
+        project: Project,
+        form: ApplicationForm | None,
+        samples: list[SampleInfo] | tuple[SampleInfo, ...],
+        command: PreviewLtrWorkbookWriteCommand,
+        *,
+        total: int = 0,
+    ) -> LtrWorkbookRowData:
+        """Build the authoritative workbook row from projected domain values."""
+        parsed_number = _parse_standard_number(command.ltr_number)
+        return LtrWorkbookRowData(
+            month=command.plan_date.strftime("%b"),
+            total=total,
             monthly_number=parsed_number.sequence or 0,
             dl_number=parsed_number.normalized,
             project_type=_project_type_to_ltr_value(getattr(form, "project_type", None)),
@@ -134,15 +162,6 @@ class LtrWorkbookWritePreviewService:
             sub_contract=_subcontract_value(form),
             test_fee=None,
             remarks_po=_text(getattr(form, "additional_information", None)),
-        )
-        return LtrWorkbookWritePreview(
-            project_id=project_id,
-            workbook_path=self._settings.path,
-            target_sheet=target_sheet,
-            target_row=target_row,
-            row_data=row_data,
-            columns=_column_previews(row_data),
-            warnings=_warnings(self._settings, snapshot, target_sheet),
         )
 
     def _snapshot(self) -> LtrWorkbookSnapshot | None:

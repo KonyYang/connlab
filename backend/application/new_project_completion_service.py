@@ -24,6 +24,7 @@ from backend.application.ltr_duplicate_resolution_service import (
 from backend.application.new_project_setup_policy import normalize_lab_performing_tests
 from backend.application.specified_ltr_workbook_authority_preview_service import (
     SpecifiedLtrWorkbookAuthorityPreviewAck,
+    SpecifiedLtrWorkbookAuthorityPreviewCommand,
     SpecifiedLtrWorkbookAuthorityPreviewError,
     SpecifiedLtrWorkbookAuthorityPreviewService,
 )
@@ -225,6 +226,9 @@ class NewProjectCompletionService:
                 operator_note=_operator_note(command),
                 current_case_id=command.case_id,
                 duplicate_resolution=command.duplicate_resolution,
+                specified_ltr_workbook_preview_ack=(
+                    command.specified_ltr_workbook_preview_ack
+                ),
             ),
         )
 
@@ -316,6 +320,15 @@ class NewProjectCompletionService:
             self._specified_ltr_preview.verify_ack(
                 specified_ltr_number=command.specified_ltr_number,
                 ack=command.specified_ltr_workbook_preview_ack,
+                command=SpecifiedLtrWorkbookAuthorityPreviewCommand(
+                    case_id=command.case_id,
+                    specified_ltr_number=command.specified_ltr_number,
+                    plan_date=command.plan_date or date.today(),
+                    test_item=_text(command.test_item) or "",
+                    sample_description=_text(command.sample_description) or "",
+                    test_type_in_sheet=_text(command.test_type_in_sheet) or "",
+                    project_leader=_text(command.project_leader) or "",
+                ),
             )
         except SpecifiedLtrWorkbookAuthorityPreviewError as exc:
             raise NewProjectCompletionError(str(exc)) from exc

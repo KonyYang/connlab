@@ -4,6 +4,7 @@ import json
 from collections.abc import Generator
 from datetime import date
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import uuid4
 
 from fastapi import Depends
@@ -19,6 +20,7 @@ from backend.api.dependencies import (
 )
 from backend.api.main import app
 from backend.application.ltr_authority import LtrAuthorityCommitResult
+from backend.application.intake_confirmation_service import IntakeConfirmationService
 from backend.application.ltr_duplicate_resolution_service import (
     LocalLtrDuplicateResolutionService,
 )
@@ -46,7 +48,7 @@ from backend.domain import (
     ProjectFolderRecord,
     ProjectTemporaryContext,
 )
-from backend.infrastructure.office import LtrWorkbookExistingRow
+from backend.infrastructure.office import LtrWorkbookExistingRow, LtrWorkbookRowData
 from backend.modules.ltr import next_monthly_dl_number, parse_ltr_number
 from backend.infrastructure.storage.database import (
     create_database_engine,
@@ -55,12 +57,14 @@ from backend.infrastructure.storage.database import (
 )
 from backend.infrastructure.storage.repositories import (
     ApplicationFormRepository,
+    FileAssetRepository,
     LtrAssociationEventRepository,
     LtrDuplicateResolutionTokenRepository,
     LtrRecordRepository,
     ProjectFolderRecordRepository,
     ProjectTemporaryContextRepository,
     ProjectRepository,
+    SampleInfoRepository,
 )
 from backend.infrastructure.storage.repositories.intake_package import (
     IntakeAssetRepository,
@@ -704,10 +708,30 @@ def test_complete_new_project_confirmed_duplicate_resolution_retires_old_owner(
         return _FakeWorkbookCommitService(session, shared_state)
 
     app.dependency_overrides[get_ltr_authority_service] = override_ltr_commit_service
-    app.dependency_overrides[get_specified_ltr_workbook_authority_preview_service] = (
-        lambda: _fake_specified_ltr_preview_service(
-            _authority_existing_row("DL-2026-05-777")
+
+    def override_specified_preview_service(
+        session: Session = Depends(get_session),
+    ) -> SpecifiedLtrWorkbookAuthorityPreviewService:
+        confirmation = IntakeConfirmationService(
+            package_store=IntakePackageRepository(session),
+            intake_asset_store=IntakeAssetRepository(session),
+            intake_case_store=IntakeCaseRepository(session),
+            intake_draft_store=IntakeDraftRepository(session),
+            project_store=ProjectRepository(session),
+            application_form_store=ApplicationFormRepository(session),
+            sample_store=SampleInfoRepository(session),
+            file_asset_store=FileAssetRepository(session),
         )
+        return SpecifiedLtrWorkbookAuthorityPreviewService(
+            transaction_gateway=_FakeSpecifiedLtrPreviewTransactionGateway(
+                _authority_existing_row("DL-2026-05-777")
+            ),
+            intake_confirmation_service=confirmation,
+            row_preview_service=_FakeSpecifiedLtrRowPreviewService(),
+        )
+
+    app.dependency_overrides[get_specified_ltr_workbook_authority_preview_service] = (
+        override_specified_preview_service
     )
     client = TestClient(app)
 
@@ -738,18 +762,16 @@ def test_complete_new_project_confirmed_duplicate_resolution_retires_old_owner(
             )
             session.commit()
 
+        preview_ack = _preview_ack(client, conflict_case_id, "DL-2026-05-777")
         conflict = client.post(
             f"/api/intake-cases/{conflict_case_id}/complete-new-project",
             json={
                 **_completion_payload("specified"),
                 "specified_ltr_number": "DL-2026-05-777",
-                "specified_ltr_workbook_preview_ack": _preview_ack(
-                    client,
-                    conflict_case_id,
-                    "DL-2026-05-777",
-                ),
+                "specified_ltr_workbook_preview_ack": preview_ack,
             },
         )
+        assert conflict.status_code == 409, conflict.json()
         token = conflict.json()["detail"]["resolution"]["token"]
 
         confirmed = client.post(
@@ -757,11 +779,7 @@ def test_complete_new_project_confirmed_duplicate_resolution_retires_old_owner(
             json={
                 **_completion_payload("specified"),
                 "specified_ltr_number": "DL-2026-05-777",
-                "specified_ltr_workbook_preview_ack": _preview_ack(
-                    client,
-                    conflict_case_id,
-                    "DL-2026-05-777",
-                ),
+                "specified_ltr_workbook_preview_ack": preview_ack,
                 "duplicate_resolution": {
                     "action": "replace_local_association",
                     "token": token,
@@ -878,7 +896,7 @@ def test_specified_ltr_workbook_preview_found_returns_row_without_local_create(
 
         response = client.post(
             f"/api/intake-cases/{case_id}/specified-ltr-workbook-authority-preview",
-            json={"specified_ltr_number": "DL-2026-05-011"},
+            json=_preview_payload("DL-2026-05-011"),
         )
 
         assert response.status_code == 200
@@ -940,7 +958,7 @@ def test_specified_ltr_workbook_preview_not_found_blocks_continuation(
 
         response = client.post(
             f"/api/intake-cases/{case_id}/specified-ltr-workbook-authority-preview",
-            json={"specified_ltr_number": "DL-2026-05-099"},
+            json=_preview_payload("DL-2026-05-099"),
         )
 
         assert response.status_code == 200
@@ -1080,7 +1098,9 @@ def _fake_specified_ltr_preview_service(
     existing: LtrWorkbookExistingRow | None,
 ) -> SpecifiedLtrWorkbookAuthorityPreviewService:
     return SpecifiedLtrWorkbookAuthorityPreviewService(
-        transaction_gateway=_FakeSpecifiedLtrPreviewTransactionGateway(existing)
+        transaction_gateway=_FakeSpecifiedLtrPreviewTransactionGateway(existing),
+        intake_confirmation_service=_FakeIntakeProjectionService(),
+        row_preview_service=_FakeSpecifiedLtrRowPreviewService(),
     )
 
 
@@ -1096,13 +1116,24 @@ def _authority_existing_row(ltr_number: str) -> LtrWorkbookExistingRow:
 def _preview_ack(client: TestClient, case_id: str, ltr_number: str) -> dict[str, object]:
     response = client.post(
         f"/api/intake-cases/{case_id}/specified-ltr-workbook-authority-preview",
-        json={"specified_ltr_number": ltr_number},
+        json=_preview_payload(ltr_number),
     )
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "found"
     assert payload["preview_ack"] is not None
     return payload["preview_ack"]
+
+
+def _preview_payload(ltr_number: str) -> dict[str, object]:
+    return {
+        "specified_ltr_number": ltr_number,
+        "plan_date": "2026-05-06",
+        "test_item": "Qualification bend testing",
+        "sample_description": "CoolPower connector samples",
+        "test_type_in_sheet": "Qualification",
+        "project_leader": "Alice",
+    }
 
 
 def _authority_row_values(description: str) -> tuple[object, ...]:
@@ -1222,7 +1253,40 @@ class _FakeSpecifiedLtrPreviewSession:
         self.existing = existing
 
     def find_ltr_number(self, ltr_number: str, sheet_names=None):
-        return self.existing
+        if self.existing is not None and self.existing.dl_number == ltr_number:
+            return self.existing
+        return None
+
+    def list_sheets(self):
+        return ["2026"]
+
+
+class _FakeIntakeProjectionService:
+    def preview_case(self, case_id: str):
+        return SimpleNamespace(project=object(), application_form=object(), sample_infos=())
+
+
+class _FakeSpecifiedLtrRowPreviewService:
+    def project_row_data(self, project, form, samples, command):
+        return LtrWorkbookRowData(
+            month=command.plan_date.strftime("%b"),
+            total=0,
+            monthly_number=11,
+            dl_number=command.ltr_number,
+            project_type="NPD",
+            description_pn=command.sample_description,
+            test_item=command.test_item,
+            test_type=command.test_type_in_sheet,
+            requested_by="Alice",
+            location="Nantong",
+            project_leader=command.project_leader,
+            test_result=None,
+            failed_item=None,
+            sample_deposition="Keep in the Lab",
+            sub_contract="No",
+            test_fee=None,
+            remarks_po="PO pending",
+        )
 
 
 class _FakeWorkbookCommitService:

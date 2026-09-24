@@ -2592,8 +2592,31 @@ def get_ltr_workbook_basic_information_sync_service(
     )
 
 
+def get_intake_confirmation_service(
+    session: Session = Depends(get_session),
+) -> IntakeConfirmationService:
+    """Build the shared intake projection/confirmation service."""
+    return IntakeConfirmationService(
+        package_store=IntakePackageRepository(session),
+        intake_asset_store=IntakeAssetRepository(session),
+        intake_case_store=IntakeCaseRepository(session),
+        intake_draft_store=IntakeDraftRepository(session),
+        project_store=ProjectRepository(session),
+        application_form_store=ApplicationFormRepository(session),
+        sample_store=SampleInfoRepository(session),
+        file_asset_store=FileAssetRepository(session),
+    )
+
+
 def get_specified_ltr_workbook_authority_preview_service(
+    session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
+    confirmation_service: IntakeConfirmationService = Depends(
+        get_intake_confirmation_service
+    ),
+    row_preview_service: LtrWorkbookWritePreviewService = Depends(
+        get_ltr_workbook_write_preview_service
+    ),
 ) -> SpecifiedLtrWorkbookAuthorityPreviewService:
     """Build the read-only specified LTR workbook authority preview service."""
     transaction_gateway = LtrWorkbookTransactionGateway(
@@ -2611,7 +2634,9 @@ def get_specified_ltr_workbook_authority_preview_service(
         ),
     )
     return SpecifiedLtrWorkbookAuthorityPreviewService(
-        transaction_gateway=transaction_gateway
+        transaction_gateway=transaction_gateway,
+        intake_confirmation_service=confirmation_service,
+        row_preview_service=row_preview_service,
     )
 
 
@@ -2632,22 +2657,15 @@ def get_new_project_completion_service(
     specified_ltr_preview_service: SpecifiedLtrWorkbookAuthorityPreviewService = Depends(
         get_specified_ltr_workbook_authority_preview_service
     ),
+    confirmation_service: IntakeConfirmationService = Depends(
+        get_intake_confirmation_service
+    ),
 ) -> NewProjectCompletionService:
     """Build the New Project single-page completion orchestration service."""
     project_repository = ProjectRepository(session)
     ltr_repository = LtrRecordRepository(session)
     file_asset_repository = FileAssetRepository(session)
     lifecycle_guard = ProjectLifecycleService(project_repository)
-    confirmation_service = IntakeConfirmationService(
-        package_store=IntakePackageRepository(session),
-        intake_asset_store=IntakeAssetRepository(session),
-        intake_case_store=IntakeCaseRepository(session),
-        intake_draft_store=IntakeDraftRepository(session),
-        project_store=project_repository,
-        application_form_store=ApplicationFormRepository(session),
-        sample_store=SampleInfoRepository(session),
-        file_asset_store=file_asset_repository,
-    )
     return NewProjectCompletionService(
         intake_case_store=IntakeCaseRepository(session),
         project_store=project_repository,

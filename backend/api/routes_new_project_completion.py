@@ -75,6 +75,12 @@ class SpecifiedLtrWorkbookPreviewAckRequest(BaseModel):
     row_number: int
     preview_token: str
     row_fingerprint: str
+    action: str = "replace_existing"
+    base_ltr_number: str | None = None
+    base_sheet_name: str | None = None
+    base_row_number: int | None = None
+    base_fingerprint: str | None = None
+    proposed_fingerprint: str | None = None
 
 
 class CompleteNewProjectRequest(BaseModel):
@@ -100,6 +106,11 @@ class SpecifiedLtrWorkbookAuthorityPreviewRequest(BaseModel):
     """Request body for full specified DL workbook authority preview."""
 
     specified_ltr_number: str
+    plan_date: date | None = None
+    test_item: str | None = None
+    sample_description: str | None = None
+    test_type_in_sheet: str | None = None
+    project_leader: str | None = None
 
 
 class SpecifiedLtrWorkbookAuthorityRowValueResponse(BaseModel):
@@ -120,6 +131,12 @@ class SpecifiedLtrWorkbookAuthorityPreviewAckResponse(BaseModel):
     row_number: int
     preview_token: str
     row_fingerprint: str
+    action: str
+    base_ltr_number: str | None
+    base_sheet_name: str | None
+    base_row_number: int | None
+    base_fingerprint: str | None
+    proposed_fingerprint: str | None
 
 
 class SpecifiedLtrWorkbookAuthorityPreviewResponse(BaseModel):
@@ -132,6 +149,8 @@ class SpecifiedLtrWorkbookAuthorityPreviewResponse(BaseModel):
     sheet_name: str | None
     row_number: int | None
     row_values: list[SpecifiedLtrWorkbookAuthorityRowValueResponse]
+    proposed_row_values: list[SpecifiedLtrWorkbookAuthorityRowValueResponse]
+    related_ltr_number: str | None
     preview_ack: SpecifiedLtrWorkbookAuthorityPreviewAckResponse | None
     blockers: list[str]
     warnings: list[str]
@@ -189,6 +208,11 @@ def preview_specified_ltr_workbook_authority(
         SpecifiedLtrWorkbookAuthorityPreviewCommand(
             case_id=case_id,
             specified_ltr_number=request.specified_ltr_number,
+            plan_date=request.plan_date or date.today(),
+            test_item=request.test_item or "",
+            sample_description=request.sample_description or "",
+            test_type_in_sheet=request.test_type_in_sheet or "",
+            project_leader=request.project_leader or "",
         )
     )
     return _to_specified_ltr_preview_response(preview)
@@ -313,6 +337,12 @@ def _specified_ltr_preview_ack(
         row_number=request.row_number,
         preview_token=request.preview_token,
         row_fingerprint=request.row_fingerprint,
+        action=request.action,
+        base_ltr_number=request.base_ltr_number,
+        base_sheet_name=request.base_sheet_name,
+        base_row_number=request.base_row_number,
+        base_fingerprint=request.base_fingerprint,
+        proposed_fingerprint=request.proposed_fingerprint,
     )
 
 
@@ -336,6 +366,16 @@ def _to_specified_ltr_preview_response(
             )
             for value in preview.row_values
         ],
+        proposed_row_values=[
+            SpecifiedLtrWorkbookAuthorityRowValueResponse(
+                field_name=value.field_name,
+                label=value.label,
+                value=value.value,
+                is_blank=value.is_blank,
+            )
+            for value in preview.proposed_row_values
+        ],
+        related_ltr_number=preview.related_ltr_number,
         preview_ack=(
             SpecifiedLtrWorkbookAuthorityPreviewAckResponse(
                 acknowledged=preview.preview_ack.acknowledged,
@@ -344,6 +384,12 @@ def _to_specified_ltr_preview_response(
                 row_number=preview.preview_ack.row_number,
                 preview_token=preview.preview_ack.preview_token,
                 row_fingerprint=preview.preview_ack.row_fingerprint,
+                action=preview.preview_ack.action,
+                base_ltr_number=preview.preview_ack.base_ltr_number,
+                base_sheet_name=preview.preview_ack.base_sheet_name,
+                base_row_number=preview.preview_ack.base_row_number,
+                base_fingerprint=preview.preview_ack.base_fingerprint,
+                proposed_fingerprint=preview.preview_ack.proposed_fingerprint,
             )
             if preview.preview_ack
             else None

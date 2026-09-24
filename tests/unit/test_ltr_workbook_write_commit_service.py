@@ -12,6 +12,12 @@ from backend.application.ltr_workbook_write_commit_service import (
 )
 from backend.application.ltr_workbook_write_preview_service import (
     LtrWorkbookWritePreviewService,
+    PreviewLtrWorkbookWriteCommand,
+)
+from backend.application.specified_ltr_workbook_authority_preview_service import (
+    SpecifiedLtrWorkbookAuthorityPreviewAck,
+    SpecifiedLtrWorkbookAuthorityPreviewCommand,
+    SpecifiedLtrWorkbookAuthorityPreviewService,
 )
 from backend.domain import ApplicationForm, LtrRecord, LtrStatus, Project, ProjectStatus
 from backend.infrastructure.office import (
@@ -112,6 +118,154 @@ def test_ltr_workbook_commit_associated_existing_full_replaces_across_year_sheet
     result = service.commit_project("P1", _command(number_input="DL-2025-12-003A9"))
     assert result.action == "replace_existing"
     assert result.pointer.sheet_name == "2025"
+
+
+def test_specified_associated_commit_appends_without_replacing_base_row() -> None:
+    """Confirmed associated preview appends its row while preserving the base."""
+    base = _registration_row("DL-2026-05-003", "Base description")
+    service, session, _ = _service({"2026": [base]})
+    ack = _specified_preview_ack(
+        session,
+        ltr_number="DL-2026-05-003A",
+    )
+
+    result = service.commit_project(
+        "P1",
+        _command(
+            number_input="DL-2026-05-003A",
+            specified_ltr_workbook_preview_ack=ack,
+        ),
+    )
+
+    assert result.action == "append_associated"
+    assert result.ltr_number == "DL-2026-05-003A"
+    assert session.appended[0].dl_number == "DL-2026-05-003A"
+    assert session.appended_rows[0].month == "May"
+    assert session.appended_rows[0].monthly_number == 3
+    assert session.replaced == []
+
+
+def test_specified_associated_commit_targets_base_year_sheet_and_maps_full_number() -> None:
+    """Authorized associated rows stay with their base annual sheet and preserve suffix."""
+    base = _registration_row("DL-2025-12-003", "Base description")
+    service, session, _ = _service(
+        {
+            "2025": [base],
+            "2026": [_registration_row("DL-2026-05-001", "Other row")],
+        }
+    )
+    ack = _specified_preview_ack(session, ltr_number="DL-2025-12-003A")
+
+    result = service.commit_project(
+        "P1",
+        _command(
+            number_input="DL-2025-12-003A",
+            specified_ltr_workbook_preview_ack=ack,
+        ),
+    )
+
+    written = session.appended_rows[0]
+    assert result.pointer.sheet_name == "2025"
+    assert result.action == "append_associated"
+    assert written.dl_number == "DL-2025-12-003A"
+    assert written.monthly_number == 3
+    assert written.month == "May"
+    assert session.replaced == []
+
+
+def test_specified_associated_commit_rejects_base_on_wrong_year_sheet() -> None:
+    """An acknowledged associated number cannot be appended under the wrong year."""
+    service, _, _ = _service(
+        {"2024": [_registration_row("DL-2025-12-003", "Misfiled base")]}
+    )
+    ack = SpecifiedLtrWorkbookAuthorityPreviewAck(
+        acknowledged=True,
+        ltr_number="DL-2025-12-003A",
+        sheet_name="2024",
+        row_number=2,
+        preview_token="preview-token",
+        row_fingerprint="row-fingerprint",
+        action="append_associated",
+        base_ltr_number="DL-2025-12-003",
+        base_sheet_name="2024",
+        base_row_number=2,
+        base_fingerprint="base-fingerprint",
+        proposed_fingerprint="proposed-fingerprint",
+    )
+
+    with pytest.raises(LtrWorkbookWriteCommitError, match="belongs to workbook year 2025"):
+        service.commit_project(
+            "P1",
+            _command(
+                number_input="DL-2025-12-003A",
+                specified_ltr_workbook_preview_ack=ack,
+            ),
+        )
+
+
+def test_specified_associated_commit_rejects_target_created_after_preview() -> None:
+    """A raced exact target must not fall through to replacement."""
+    base = _registration_row("DL-2026-05-003", "Base description")
+    service, session, _ = _service({"2026": [base]})
+    ack = _specified_preview_ack(session, ltr_number="DL-2026-05-003A")
+    session.rows_by_sheet["2026"].append(
+        _registration_row("DL-2026-05-003A", "Another operator's row")
+    )
+
+    with pytest.raises(LtrWorkbookWriteCommitError, match="action changed|now exists"):
+        service.commit_project(
+            "P1",
+            _command(
+                number_input="DL-2026-05-003A",
+                specified_ltr_workbook_preview_ack=ack,
+            ),
+        )
+
+    assert session.appended == []
+    assert session.replaced == []
+
+
+def test_specified_associated_commit_rejects_base_changed_after_preview() -> None:
+    """A changed base fingerprint invalidates append authorization."""
+    base = _registration_row("DL-2026-05-003", "Base description")
+    service, session, _ = _service({"2026": [base]})
+    ack = _specified_preview_ack(session, ltr_number="DL-2026-05-003A")
+    session.rows_by_sheet["2026"][0] = _registration_row(
+        "DL-2026-05-003",
+        "Changed base description",
+    )
+
+    with pytest.raises(LtrWorkbookWriteCommitError, match="base LTR changed"):
+        service.commit_project(
+            "P1",
+            _command(
+                number_input="DL-2026-05-003A",
+                specified_ltr_workbook_preview_ack=ack,
+            ),
+        )
+
+    assert session.appended == []
+    assert session.replaced == []
+
+
+def test_specified_existing_commit_replaces_only_row_confirmed_in_preview() -> None:
+    """Existing-number confirmation still previews and replaces the exact row."""
+    existing = _registration_row("DL-2026-05-003", "Current description")
+    service, session, _ = _service({"2026": [existing]})
+    ack = _specified_preview_ack(session, ltr_number="DL-2026-05-003")
+
+    result = service.commit_project(
+        "P1",
+        _command(
+            number_input="DL-2026-05-003",
+            specified_ltr_workbook_preview_ack=ack,
+        ),
+    )
+
+    assert result.action == "replace_existing"
+    assert result.pointer.row_number == 2
+    assert session.replaced[0].dl_number == "DL-2026-05-003"
+    assert session.appended == []
 
 
 def test_ltr_workbook_commit_rejects_invalid_specified_input() -> None:
@@ -220,6 +374,7 @@ def _command(
     operator_confirmed: bool = True,
     preview_acknowledged: bool = True,
     allow_year_sheet_bootstrap: bool = False,
+    specified_ltr_workbook_preview_ack: SpecifiedLtrWorkbookAuthorityPreviewAck | None = None,
 ) -> CommitLtrWorkbookWriteCommand:
     """Return a complete commit command."""
     return CommitLtrWorkbookWriteCommand(
@@ -234,7 +389,64 @@ def _command(
         test_type_in_sheet="Qualification",
         project_leader="Alice",
         requested_by="Alice",
+        specified_ltr_workbook_preview_ack=specified_ltr_workbook_preview_ack,
     )
+
+
+def _registration_row(ltr_number: str, description: str) -> tuple[object, ...]:
+    return (
+        "May",
+        1,
+        3,
+        ltr_number,
+        "NPD",
+        description,
+        "Qualification bend testing",
+        "Qualification",
+        "Alice",
+        "Nantong",
+        "Alice",
+        None,
+        None,
+        "Keep in the Lab",
+        "No",
+        None,
+        "PO pending",
+    )
+
+
+def _specified_preview_ack(session, *, ltr_number: str):
+    mapper = LtrWorkbookWritePreviewService(
+        project_store=_ProjectStore(),
+        application_form_store=_FormStore(),
+        sample_store=_SampleStore(),
+        workbook_settings=LtrWorkbookSettings(path=Path("LTR_number.xls")),
+    )
+    projection = SimpleNamespace(
+        project=_ProjectStore().get("preview"),
+        application_form=_FormStore().list_by_project("preview")[0],
+        sample_infos=(),
+    )
+    service = SpecifiedLtrWorkbookAuthorityPreviewService(
+        transaction_gateway=_FakeTransactionGateway(session),
+        intake_confirmation_service=SimpleNamespace(
+            preview_case=lambda case_id: projection
+        ),
+        row_preview_service=mapper,
+    )
+    preview = service.preview(
+        SpecifiedLtrWorkbookAuthorityPreviewCommand(
+            case_id="case-1",
+            specified_ltr_number=ltr_number,
+            plan_date=date(2026, 5, 7),
+            test_item="Qualification bend testing",
+            sample_description="CoolPower connector samples",
+            test_type_in_sheet="Qualification",
+            project_leader="Alice",
+        )
+    )
+    assert preview.preview_ack is not None
+    return preview.preview_ack
 
 
 def _service(
@@ -282,6 +494,23 @@ class _FakeTransactionGateway:
         self._session.saved = True
         return result
 
+    def open_read_only_transaction(self):
+        return _FakeReadOnlyTransaction(self._session)
+
+
+class _FakeReadOnlyTransaction:
+    def __init__(self, session) -> None:
+        self._session = session
+
+    def __enter__(self):
+        return SimpleNamespace(
+            session=self._session,
+            workbook_path=Path("LTR_number.xls"),
+        )
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        return None
+
 
 class _FakeWorkbookSession:
     def __init__(
@@ -292,6 +521,7 @@ class _FakeWorkbookSession:
     ) -> None:
         self.rows_by_sheet = rows_by_sheet
         self.appended: list[LtrWorkbookRowPointer] = []
+        self.appended_rows: list[LtrWorkbookRowData] = []
         self.replaced: list[LtrWorkbookRowPointer] = []
         self.bootstrap_calls: list[tuple[str, str, int]] = []
         self.prepared_calls: list[tuple[str, str]] = []
@@ -322,6 +552,7 @@ class _FakeWorkbookSession:
         return None
 
     def append_registration_row(self, sheet_name, row_data) -> LtrWorkbookRowPointer:
+        self.appended_rows.append(row_data)
         pointer = LtrWorkbookRowPointer(
             sheet_name=sheet_name,
             row_number=len(self.rows_by_sheet[sheet_name]) + 2,

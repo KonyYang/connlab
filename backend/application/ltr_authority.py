@@ -7,6 +7,9 @@ from datetime import date
 from typing import Protocol
 
 from backend.application.ltr_duplicate_resolution_service import DuplicateResolutionCommand
+from backend.application.specified_ltr_workbook_authority_preview_service import (
+    SpecifiedLtrWorkbookAuthorityPreviewAck,
+)
 from backend.domain import LtrRecord
 
 
@@ -31,6 +34,7 @@ class CommitLtrAuthorityCommand:
     operator_note: str | None = None
     current_case_id: str | None = None
     duplicate_resolution: DuplicateResolutionCommand | None = None
+    specified_ltr_workbook_preview_ack: SpecifiedLtrWorkbookAuthorityPreviewAck | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -52,6 +52,9 @@ class ExcelWorkbookLtrAuthorityAdapter(LtrAuthorityPort):
                     operator_note=command.operator_note,
                     current_case_id=command.current_case_id,
                     duplicate_resolution=command.duplicate_resolution,
+                    specified_ltr_workbook_preview_ack=(
+                        command.specified_ltr_workbook_preview_ack
+                    ),
                 ),
             )
         except (LtrWorkbookWriteCommitError, LtrWorkbookWriteError) as exc:
