@@ -11,146 +11,50 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
-    "task_id": "TASK_PROJECT_FOLDER_LEGACY_RECOVERY_REVIEW",
-    "summary": "Repair project folder generation review, stale legacy path recovery, template guidance, and safely blocked checkpoints without overwriting operator files.",
+    "task_id": "TASK_ASSOCIATED_LTR_INTAKE_REGISTRATION",
+    "summary": "Allow Intake to create a new associated LTR number after comparing the existing base row with the proposed new registration row.",
     "tier": "high_risk",
     "route": "full_chain",
-    "scope": "Project Folder preview, review and guarded regeneration for legacy workspaces; safe path reconciliation and checkpoint handling; no direct mutation of real operator folders or databases during validation.",
+    "scope": "Extend the specified-LTR Intake workflow so a missing associated DL suffix whose base exists can be reviewed as a separate new workbook row using current Intake/project mappings, then explicitly confirmed and appended without changing the base row. Preserve the exact-existing-number reuse flow; block missing bases and exact suffix duplicates; revalidate preview state and target absence at commit. Do not redesign other LTR registration modes.",
     "scope_paths": [
-      "backend/api/project_folder_generation_composition.py",
-      "backend/api/project_folder_preflight.py",
-      "backend/api/routes_project_folder_generation.py",
-      "backend/api/routes_official_project_workspace.py",
-      "backend/api/routes_public_folder_workflow.py",
-      "backend/api/routes_folder.py",
-      "backend/application/project_folder_generation_service.py",
-      "backend/application/official_project_workspace_service.py",
-      "backend/application/project_folder_required_forms_service.py",
-      "backend/application/public_folder_workflow_service.py",
-      "backend/application/project_folder_open_service.py",
-      "backend/infrastructure/files/recoverable_workspace_publisher.py",
+      "backend/application/new_project_completion_service.py",
+      "backend/application/specified_ltr_workbook_authority_preview_service.py",
+      "backend/application/ltr_workbook_write_preview_service.py",
+      "backend/application/ltr_workbook_write_commit_service.py",
+      "backend/api/routes_new_project_completion.py",
+      "backend/api/dependencies.py",
       "frontend/src/api/client.ts",
-      "frontend/src/features/project-workbench/useProjectFolderGeneration.ts",
-      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-      "frontend/src/features/project-workbench/ProjectWorkbenchExecutionConsole.tsx",
-      "frontend/src/features/project-workbench/ProjectWorkbenchActiveMatrixWorkspace.tsx",
-      "frontend/src/features/project-workbench/projectFolderTaskSelectors.ts",
-      "frontend/src/features/project-workbench/useProjectWorkbenchModel.ts",
-      "tests/unit/test_official_project_workspace_service.py",
-      "tests/unit/test_project_folder_required_forms_service.py",
-      "tests/unit/test_project_folder_open_service.py",
-      "tests/unit/test_project_folder_generation_service.py",
-      "tests/unit/test_generation_workspace_recovery.py",
-      "tests/integration/test_project_folder_generation_api.py",
-      "tests/integration/test_project_folder_generation_complete_chain.py",
-      "tests/integration/test_official_project_workspace_api.py",
-      "tests/integration/test_project_folder_open_api.py",
-      "tests/integration/test_project_folder_generation_recovery.py",
-      "frontend/src/features/project-workbench/useProjectFolderGeneration.test.tsx",
-      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-      "frontend/src/features/project-workbench/projectFolderTaskSelectors.test.ts",
-      "docs/project_folder_generation_recovery.md",
-      "docs/PROJECT_CONTEXT.md",
-      "docs/packaging_notes.md"
+      "frontend/src/features/new-project/SpecifiedLtrWorkbookAuthorityPreviewPanel.tsx",
+      "frontend/src/features/new-project/useNewProjectCompletion.ts",
+      "frontend/src/pages/IntakeInboxPage.tsx",
+      "frontend/src/components/workflow/new-project-workflow.css",
+      "tests/unit/test_specified_ltr_workbook_authority_preview_service.py",
+      "tests/unit/test_ltr_workbook_write_commit_service.py",
+      "tests/integration/test_new_project_completion_api.py",
+      "frontend/src/features/new-project/useNewProjectCompletion.test.tsx",
+      "frontend/src/pages/IntakeInboxPage.test.tsx",
+      "docs/PROJECT_CONTEXT.md"
     ],
     "risk_reasons": [
-      "authoritative external project folder and output mutation",
-      "durable generation checkpoint recovery",
-      "legacy workspace identity reconciliation"
+      "authoritative public LTR workbook row creation",
+      "duplicate and stale-preview race protection across external workbook writes"
     ],
-    "activation_head": "9b4335e36178032eb03bf1bdcf29131ae033f542",
-    "started_at": "2026-09-23T23:07:13.579991Z",
-    "updated_at": "2026-09-24T00:18:02.690227Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_PROJECT_FOLDER_LEGACY_RECOVERY_REVIEW",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_PROJECT_FOLDER_LEGACY_RECOVERY_REVIEW",
-      "subject": "71ba57e9522627e0742826b9c7778c1ee9969647",
-      "summary": "Separated true generation blockers from reviewable file conflicts; guarded identity-only legacy workspace link; conservative renamed-inner-folder review; verified legacy output-path relink; missing-template Settings guidance. No real operator folders or databases were mutated in validation. Existing release package was not rebuilt or live-smoke-tested.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/api/project_folder_generation_composition.py",
-        "backend/api/project_folder_preflight.py",
-        "backend/api/routes_official_project_workspace.py",
-        "backend/application/official_project_workspace_service.py",
-        "backend/application/project_folder_generation_service.py",
-        "backend/application/project_folder_required_forms_service.py",
-        "docs/project_folder_generation_recovery.md",
-        "frontend/src/api/client.ts",
-        "tests/integration/test_project_folder_generation_api.py",
-        "tests/integration/test_project_folder_generation_complete_chain.py",
-        "tests/unit/test_official_project_workspace_service.py",
-        "tests/unit/test_project_folder_required_forms_service.py"
-      ],
-      "validation": [
-        {
-          "name": "Developer affected RED/GREEN",
-          "status": "passed",
-          "detail": "Initial 116 pass; follow-up RED 7 fail/1 skip then GREEN 123 pass/1 skip; conservative inner-folder RED 2 fail/1 pass then GREEN 122 pass/1 skip."
-        },
-        {
-          "name": "QA complete gate",
-          "status": "passed",
-          "detail": "scripts/run_tests.ps1 -Suite All exit 0: Python 3016 pass, 8 skip, 19 Office deselected, 2 warnings; Vitest 650 pass, 1 skip, 87 files pass and 1 skip; tsc -b and Vite build passed, 163 modules."
-        },
-        {
-          "name": "Diff and scope",
-          "status": "passed",
-          "detail": "git diff --check passed; all 12 changed implementation paths are within the high-risk task allowlist; clean master, implementation c7fa9533 and board activation 71ba57e9."
-        }
-      ],
-      "roles": {
-        "planner": {
-          "status": "passed",
-          "detail": "Independent read-only cause and safety-boundary plan."
-        },
-        "developer": {
-          "status": "passed",
-          "detail": "Independent TDD implementation and affected checks."
-        },
-        "reviewer": {
-          "status": "passed",
-          "detail": "Independent risk-focused review; P1 issues fixed and re-reviewed; final no P1/P2."
-        },
-        "qa": {
-          "status": "passed",
-          "detail": "Independent complete non-Office gate on final reviewed state."
-        },
-        "integrator": {
-          "status": "passed",
-          "detail": "Verified exact scope, clean tree, commit parents, subject and QA evidence; no publication."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "commit": "71ba57e9522627e0742826b9c7778c1ee9969647",
-        "implementation_commit": "c7fa9533a1b5012a731cf645f92046b02a8b52b6",
-        "branch": "master",
-        "clean": true,
-        "scope_ok": true,
-        "published": false
-      }
-    }
+    "activation_head": "a7c28aae0bf6b58397f02dab1be3e16cb406e812",
+    "started_at": "2026-09-24T04:46:32.259629Z",
+    "updated_at": "2026-09-24T04:46:32.259629Z",
+    "checkpoint": null,
+    "report": null
   },
   "last_closed": {
-    "task_id": "TASK_EQUIPMENT_CALIBRATION_MANUFACTURER_HEADER_MATCH",
-    "tier": "micro",
-    "subject": "ef79e24d56c87ed6ebcf72ec59375a245ab4ac32",
-    "summary": "Accept the legacy equipment workbook Manufacturer header when the configured third header cell contains Manufacturer plus a vendor annotation, while retaining the fixed All Equip. layout and other required headers.",
+    "task_id": "TASK_PROJECT_FOLDER_LEGACY_RECOVERY_REVIEW",
+    "tier": "high_risk",
+    "subject": "71ba57e9522627e0742826b9c7778c1ee9969647",
+    "summary": "Repair project folder generation review, stale legacy path recovery, template guidance, and safely blocked checkpoints without overwriting operator files.",
     "disposition": "completed",
-    "decision_ref": "user-close-2026-09-24",
-    "closed_at": "2026-09-23T16:23:29.237335Z"
+    "decision_ref": "user-close-and-submit-2026-09-24-associated-ltr",
+    "closed_at": "2026-09-24T04:46:32.259629Z"
   },
   "retained_history": [
     {
