@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_CANONICAL_OFFICIAL_FOLDER_LIFECYCLE",
     "summary": "Keep one active LTR-named official project folder, reconcile confirmed Basic Information names, and archive reviewed rebuild versions safely.",
@@ -50,17 +50,94 @@
     ],
     "activation_head": "932fc1f8aa7efd3bae2e5b460497295e6a053f19",
     "started_at": "2026-09-24T15:28:17.482354Z",
-    "updated_at": "2026-09-24T23:05:24.455449Z",
+    "updated_at": "2026-09-24T23:06:35.021016Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_CANONICAL_OFFICIAL_FOLDER_LIFECYCLE",
-      "stage": "scope_manifest_correction",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User approved four exact additional paths for the canonical folder task on 2026-09-25.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "summary": "Implemented identity-checked official folder naming, relocation/relink, History/Folders rebuild archive, in-place update, and fail-closed safeguards without touching business folders.",
+      "scope_ok": true,
+      "task_id": "TASK_CANONICAL_OFFICIAL_FOLDER_LIFECYCLE",
+      "integration": {
+        "status": "passed",
+        "detail": "Implementation 7fda10a3 and approved scope correction c469def1 are local commits; no push, release, close, or real business-folder mutation."
+      },
+      "changed_paths": [
+        "backend/api/dependencies.py",
+        "backend/api/project_folder_generation_composition.py",
+        "backend/api/routes_official_project_workspace.py",
+        "backend/api/routes_project_folder_generation.py",
+        "backend/application/official_folder_relocation_service.py",
+        "backend/application/official_project_workspace_service.py",
+        "backend/application/project_folder_generation_service.py",
+        "backend/infrastructure/files/recoverable_workspace_publisher.py",
+        "backend/infrastructure/official_workspace_manifest.py",
+        "backend/infrastructure/storage/repositories/official_workspace.py",
+        "backend/infrastructure/storage/repositories/project_output_record.py",
+        "docs/PROJECT_CONTEXT.md",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+        "frontend/src/features/project-workbench/useProjectFolderGeneration.test.tsx",
+        "frontend/src/features/project-workbench/useProjectFolderGeneration.ts",
+        "tests/integration/test_generation_workspace_process_recovery.py",
+        "tests/integration/test_official_project_workspace_api.py",
+        "tests/integration/test_project_folder_generation_api.py",
+        "tests/integration/test_project_folder_generation_complete_chain.py",
+        "tests/integration/test_project_folder_generation_recovery.py",
+        "tests/unit/test_generation_workspace_recovery.py",
+        "tests/unit/test_official_project_workspace_service.py",
+        "tests/unit/test_project_folder_generation_service.py"
+      ],
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "subject": "c469def1731e75eaa20ceb7f66c1619033b404bf",
+      "roles": {
+        "qa": {
+          "status": "passed",
+          "detail": "Independent complete affected matrix passed."
+        },
+        "developer": {
+          "status": "passed",
+          "detail": "RED/GREEN focused tests and implementation completed."
+        },
+        "integrator": {
+          "status": "passed",
+          "detail": "Verified clean master, parent chain, exact approved scope, route alignment, and test evidence."
+        },
+        "reviewer": {
+          "status": "passed",
+          "detail": "Independent production review and follow-up review passed."
+        },
+        "planner": {
+          "status": "passed",
+          "detail": "Independent high-risk planning completed."
+        }
+      },
+      "validation": [
+        {
+          "status": "passed",
+          "name": "Python non-Office suite",
+          "detail": "3046 passed, 8 skipped, 19 deselected, 2 warnings on final state."
+        },
+        {
+          "status": "passed",
+          "name": "Frontend tests and production build",
+          "detail": "661 passed, 1 skipped; TypeScript and Vite production build passed on unchanged frontend."
+        },
+        {
+          "status": "passed",
+          "name": "Git diff whitespace check",
+          "detail": "git diff --check passed on final committed diff."
+        }
+      ]
+    }
   },
   "last_closed": {
     "task_id": "TASK_ASSOCIATED_LTR_INTAKE_REGISTRATION",
