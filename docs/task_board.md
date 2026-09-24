@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_ASSOCIATED_LTR_INTAKE_REGISTRATION",
     "summary": "Allow Intake to create a new associated LTR number after comparing the existing base row with the proposed new registration row.",
@@ -44,17 +44,87 @@
     ],
     "activation_head": "a7c28aae0bf6b58397f02dab1be3e16cb406e812",
     "started_at": "2026-09-24T04:46:32.259629Z",
-    "updated_at": "2026-09-24T14:52:47.274910Z",
+    "updated_at": "2026-09-24T14:54:54.760390Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_ASSOCIATED_LTR_INTAKE_REGISTRATION",
-      "stage": "scope_manifest_correction",
+      "stage": "delivery",
       "status": "running",
-      "summary": "user-approved-extra-scope-paths-2026-09-24",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_ASSOCIATED_LTR_INTAKE_REGISTRATION",
+      "subject": "0c61ab8ddaec24a551940bdbe95f4e1dbae0a32b",
+      "summary": "Intake now supports reviewing and appending a new associated DL suffix against its unchanged base row. Exact existing numbers retain the compare-and-replace flow; associated rows require an existing base, show base and proposed data, and are revalidated under the workbook lock before append. Missing bases, duplicates, and stale previews fail closed.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/dependencies.py",
+        "backend/api/routes_new_project_completion.py",
+        "backend/application/intake_confirmation_service.py",
+        "backend/application/ltr_authority.py",
+        "backend/application/ltr_excel_authority_adapter.py",
+        "backend/application/ltr_workbook_write_commit_service.py",
+        "backend/application/ltr_workbook_write_preview_service.py",
+        "backend/application/new_project_completion_service.py",
+        "backend/application/specified_ltr_workbook_authority_preview_service.py",
+        "docs/PROJECT_CONTEXT.md",
+        "frontend/src/api/client.ts",
+        "frontend/src/components/workflow/new-project-workflow.css",
+        "frontend/src/features/new-project/SpecifiedLtrWorkbookAuthorityPreviewPanel.tsx",
+        "frontend/src/features/new-project/useNewProjectCompletion.ts",
+        "frontend/src/pages/IntakeInboxPage.test.tsx",
+        "tests/integration/test_new_project_completion_api.py",
+        "tests/unit/test_ltr_workbook_write_commit_service.py",
+        "tests/unit/test_specified_ltr_workbook_authority_preview_service.py"
+      ],
+      "validation": [
+        {
+          "name": "Full QA gate: scripts/run_tests.ps1 -Suite All",
+          "status": "passed",
+          "detail": "Exit 0; pytest 3026 passed, 8 skipped, 19 deselected; Vitest 651 passed, 1 skipped (87 files passed, 1 skipped); TypeScript and Vite production build passed (163 modules). Office integration suite excluded by Suite All. Two existing warnings: Starlette/httpx deprecation and duplicate OpenAPI operation ID."
+        },
+        {
+          "name": "Final diff and scope",
+          "status": "passed",
+          "detail": "git diff --check passed; Integrator confirmed exactly 18 task paths, clean tree, no staged or untracked files before final board recording."
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed",
+          "detail": "Independent plan established compare-and-append semantics, base-row immutability, and commit-time revalidation."
+        },
+        "developer": {
+          "status": "passed",
+          "detail": "Independent TDD implementation; focused Python and frontend tests passed before full QA."
+        },
+        "reviewer": {
+          "status": "passed",
+          "detail": "Independent final review found no P1/P2; exact replacement and associated append guards verified."
+        },
+        "qa": {
+          "status": "passed",
+          "detail": "Independent full non-Office Suite All gate passed on final code state."
+        },
+        "integrator": {
+          "status": "passed",
+          "detail": "Read-only final scope review verified all 18 exact paths and advised local-only integration sequence."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "commit": "0c61ab8ddaec24a551940bdbe95f4e1dbae0a32b",
+        "implementation_commit": "a9fefefbe3681ed502d6d5c5aed6d771fbb64282",
+        "branch": "master",
+        "clean": true,
+        "scope_ok": true,
+        "published": false
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_LEGACY_RECOVERY_REVIEW",
