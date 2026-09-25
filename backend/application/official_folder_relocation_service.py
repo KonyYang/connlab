@@ -154,6 +154,63 @@ class OfficialFolderRelocationService:
             token, (_RENAME, _KEEP_CURRENT),
         )
 
+    def abandon_unmoved_for_rebuild(self, project_id: str, expected_source: Path) -> None:
+        """Retire only an unexecuted rename after a separate archive/rebuild is approved."""
+        with self._journal.lock(project_id):
+            operation = self._journal.read(project_id)
+            if operation is None or operation["status"] == "completed":
+                return
+            if operation.get("strategy") not in {
+                "rename_to_confirmed", "keep_current_name", "rebind_and_rename", "rebind_keep_custom",
+            }:
+                raise OfficialWorkspaceCreateError("Unknown folder relocation needs manual recovery.")
+            effect = operation.get("effects", {}).get("relocation")
+            if set(operation.get("effects", {})) - {"relocation"}:
+                raise OfficialWorkspaceCreateError("Folder relocation has other effects; resume recovery first.")
+            if effect and (effect.get("moved") or effect.get("manifest_updated")):
+                raise OfficialWorkspaceCreateError("Folder relocation already recorded a move; resume recovery first.")
+            record = self._repository.get_by_project(project_id)
+            preview = self._workspaces.preview(project_id)
+            if (record is None or preview.status != "completed"
+                    or record.official_folder_path != expected_source
+                    or expected_source.parent != record.local_workspace_path
+                    or not expected_source.name.startswith(f"{record.dl_number} ")
+                    or self._manifests.first_redirected_path(
+                        record.local_workspace_path, record.source_book_path,
+                        expected_source, record.manifest_path,
+                    ) is not None):
+                raise OfficialWorkspaceCreateError("Current official folder identity needs review before rebuild.")
+            try:
+                manifest = self._manifests.read(record.manifest_path)
+                active = [child for child in record.local_workspace_path.iterdir()
+                          if child.name.startswith(f"{record.dl_number} ")]
+            except (OSError, ValueError) as exc:
+                raise OfficialWorkspaceCreateError("Cannot verify the current official folder before rebuild.") from exc
+            identity = file_identity(expected_source)
+            if (active != [expected_source] or not isinstance(manifest, dict)
+                    or manifest.get("project_id") != project_id
+                    or manifest.get("dl_number") != record.dl_number
+                    or manifest.get("official_project_folder_path") != str(expected_source)
+                    or manifest.get("official_folder_identity") not in (None, identity)):
+                raise OfficialWorkspaceCreateError("Current official folder identity changed; review before rebuild.")
+            if effect:
+                saved = effect.get("record")
+                if (not isinstance(saved, dict)
+                        or saved.get("project_id") != record.project_id
+                        or saved.get("dl_number") != record.dl_number
+                        or saved.get("official_folder_path") != str(expected_source)
+                        or saved.get("local_workspace_path") != str(record.local_workspace_path)
+                        or effect.get("source") != str(expected_source)
+                        or effect.get("directory_identity") != identity):
+                    raise OfficialWorkspaceCreateError("Saved folder relocation identity changed; resume recovery first.")
+                target = Path(effect["target"])
+                if (target.parent != record.local_workspace_path
+                        or not target.name.startswith(f"{record.dl_number} ")
+                        or target != expected_source and os.path.lexists(target)):
+                    raise OfficialWorkspaceCreateError("Saved folder move target changed; resume recovery first.")
+            operation.update(status="completed", message="Unmoved relocation superseded by a reviewed archive/rebuild.")
+            self._journal.save(operation)
+
     def _preview_manual_relink(
         self, record: OfficialWorkspaceRecord, suggested: Path,
         warnings: tuple[str, ...],

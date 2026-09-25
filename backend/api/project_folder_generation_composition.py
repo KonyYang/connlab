@@ -15,7 +15,7 @@ from backend.application.project_output_record_service import RegisterProjectOut
 from backend.application.project_lifecycle_write_guard import LifecycleWriteOperation
 from backend.domain import ProjectOutputKind, ProjectOutputSource, ProjectOutputStatus
 from backend.infrastructure.files.generation_journal import GenerationJournal, fingerprint
-from backend.infrastructure.files.recoverable_output_publisher import RecoverableOutputPublisher, file_hash
+from backend.infrastructure.files.recoverable_output_publisher import RecoverableOutputPublisher, file_hash, file_identity
 from backend.infrastructure.files.recoverable_workspace_publisher import RecoverableWorkspacePublisher, tree_hash
 
 
@@ -34,7 +34,21 @@ class ProjectFolderGenerationRunner:
         self.pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="project-folder")
 
     def service(self):
-        return ProjectFolderGenerationService(self.journal, self.context, self.run_step, self.pool.submit, self.preview_context, self.preview, self.finalize)
+        return ProjectFolderGenerationService(
+            self.journal, self.context, self.run_step, self.pool.submit,
+            self.preview_context, self.preview, self.finalize, self._prepare_start,
+        )
+
+    def _prepare_start(self, project_id, strategy, preview):
+        if strategy != "backup_and_recreate":
+            return
+        old_paths = preview.get("workspace_preview", {}).get("conflict_paths") or []
+        if len(old_paths) != 1:
+            return
+        with self.sessions() as session:
+            deps.get_official_folder_relocation_service(
+                session, self.settings,
+            ).abandon_unmoved_for_rebuild(project_id, Path(old_paths[0]))
 
     def finalize(self, state):
         def verify_context():
@@ -113,7 +127,9 @@ class ProjectFolderGenerationRunner:
         rebuilding = intent == "backup_rebuild"
         from backend.api.routes_official_project_workspace import _preview_response
         with self.sessions() as session:
-            preview = deps.get_official_project_workspace_service(session).preview(project_id)
+            workspace_service = deps.get_official_project_workspace_service(session)
+            preview = (workspace_service.preview_for_rebuild(project_id)
+                       if rebuilding else workspace_service.preview(project_id))
             basic_information = deps.get_project_basic_information_service(session).get(project_id)
             basic_information_blocker = basic_information_generation_blocker(
                 status=basic_information.status,
@@ -162,7 +178,7 @@ class ProjectFolderGenerationRunner:
                 }
             try:
                 target_facts = (
-                    [(str(path), tree_hash(path)) for path in paths]
+                    [(str(path), file_identity(path)) for path in paths]
                     if rebuilding
                     else None
                 )
@@ -170,7 +186,7 @@ class ProjectFolderGenerationRunner:
                 # Keep file readiness visible, but never authorize a write with
                 # an incomplete target fingerprint. Start rechecks this blocker.
                 target_facts = None
-                start_blockers.append("Cannot verify all existing folder files. Check file access or locks before generation.")
+                start_blockers.append("Cannot verify the existing folder identity. Check folder access before generation.")
             token_payload = {
                 "context": current_context,
                 "preview": preview,
@@ -178,11 +194,59 @@ class ProjectFolderGenerationRunner:
                 "manifest": file_hash(preview.manifest_path) if preview.manifest_path else None,
             }
             legacy_token = fingerprint(token_payload)
+            if (rebuilding and saved_operation is not None
+                    and saved_operation["status"] != "completed"
+                    and saved_operation.get("preview_context_version") is None):
+                # Only a historical unfinished journal may demand its original
+                # content-bound token. New archive approvals never read old files.
+                try:
+                    old_preview = workspace_service.preview(project_id)
+                    old_paths = (old_preview.conflict_paths or
+                                 ((old_preview.official_folder_path,) if old_preview.official_folder_path else ()))
+                    legacy_token = fingerprint({
+                        **token_payload,
+                        "preview": old_preview,
+                        "targets": [(str(path), tree_hash(path)) for path in old_paths],
+                    })
+                except (OSError, ValueError):
+                    legacy_token = None
             token = fingerprint({**token_payload, "intent": intent})
             workspace_preview = _preview_response(preview).model_dump()
             file_preflight = package_preflight(
                 project_id, preview, session, self.settings, rebuilding=rebuilding
             )
+            if rebuilding and len(preview.conflict_paths) == 1:
+                archived_source = preview.conflict_paths[0]
+                archived_root = archived_source.resolve()
+
+                def source_will_be_archived(source_path):
+                    path = Path(source_path)
+                    return (path.is_relative_to(archived_source)
+                            or path.resolve().is_relative_to(archived_root))
+
+                registered_source_inside = any(
+                    source_will_be_archived(asset.path)
+                    for asset in deps.FileAssetRepository(session).list_by_project(project_id)
+                )
+                material_preview = deps.get_project_request_material_collection_service(session).preview(
+                    project_id, planned_workspace=preview, rebuilding=True,
+                )
+                material_source_inside = any(
+                    item.source_path is not None
+                    and source_will_be_archived(item.source_path)
+                    for item in material_preview.items
+                )
+                if registered_source_inside or material_source_inside:
+                    detail = (
+                        "A registered or selected source is inside the folder being archived. "
+                        "Provide an independent source before rebuilding."
+                    )
+                    start_blockers.append(detail)
+                    file_preflight["package_ready"] = False
+                    if material_source_inside:
+                        for item in file_preflight["items"]:
+                            if item["key"] == "materials":
+                                item.update(status="blocked", action="blocked", message=detail)
             file_blockers = [
                 f"{item['label']}: {item['message']}"
                 for item in file_preflight["items"] if item["status"] == "blocked"

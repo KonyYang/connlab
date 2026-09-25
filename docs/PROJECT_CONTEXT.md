@@ -134,11 +134,21 @@ over a new pass-through layer. Introduce an adapter seam only when behavior actu
   a generation template.
 - Rebuild is a separate advanced operation. New rebuilds only offer `Backup and Rebuild`, which moves
   the reviewed inner business folder to `LTR/History/Folders/<old name + timestamp>` before creating
-  a fresh folder. The LTR root, `Source Book`, and other root-level files remain in place. New operations
+  a fresh folder from the configured template and latest confirmed authorities; old business files
+  and subfolders stay in History and are never copied into the replacement. The new folder name follows
+  the latest confirmed Basic Information, even when the archived folder had an older description.
+  The LTR root, `Source Book`, and other root-level files remain in place. New operations
   cannot select legacy incremental continuation or delete/overwrite rebuild; already-persisted legacy
   journals may still resume those historical choices so interrupted releases remain recoverable.
-  Ordinary preview and linking do not hash the business tree; only the explicit rebuild preview binds
-  approval to current target contents. History names use the original folder name plus its local
+  Ordinary preview and linking do not hash the business tree. New explicit archive/rebuild approval
+  binds the sole active folder's filesystem identity and manifest, not its file bytes, descendant
+  names, or descendant structure; historical content-bound journals retain their original recovery
+  rules. If a retained manifest records the folder's filesystem identity, it must match before
+  archival; older manifests without that field still require the indexed same-project/DL path and
+  sole active folder; a missing or unreadable manifest blocks the new archive flow. Registered FileAsset
+  sources inside the archive folder block generation before moving it. A new active sibling after the
+  old folder moves blocks recovery. History names use the
+  original folder name plus its local
   last-modification timestamp (`yyyyMMddHHmmss`), with collision suffixes.
 - New official project folders use the latest confirmed Basic Information product description and
   test item, with existing Project/LTR/application-form fallbacks when absent. The registered LTR
@@ -146,8 +156,11 @@ over a new pass-through layer. Introduce an adapter seam only when behavior actu
   folder's descriptive name is mutable, not project identity. A confirmed name change offers an
   explicit, identity-checked in-place rename and updates live indexed paths. A uniquely identified
   manual rename offers explicit rebind while retaining the custom name or adopting the confirmed
-  name. Retaining a custom name requires an explicit, reviewed in-place update to refresh outputs;
-  it is never silently converted into a whole-folder rebuild. Manual rebind requires a previously
+  name. When an indexed folder already exists, the Workbench Create folder action instead offers a
+  reviewed whole-folder archive/rebuild in that indexed LTR workspace; a changed default save root
+  cannot move the new folder elsewhere. A previously queued relocation with no recorded move may
+  be superseded only after folder and manifest identity are rechecked; a moved relocation still
+  requires its own recovery. Manual rebind requires a previously
   recorded stable folder identity; older manifests without that proof require manual review.
   Foreign or unreadable manifests, multiple active DL-prefixed folders, redirected paths, and
   changed preview context fail closed; historical operation snapshots are not rewritten.

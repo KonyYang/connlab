@@ -101,6 +101,93 @@ def test_confirmed_name_change_does_not_silently_move_existing_files(tmp_path):
     assert not (original.record.local_workspace_path / "DL-2025-11-074 New connector New testing").exists()
 
 
+def test_rebuild_of_indexed_legacy_workspace_keeps_new_folder_in_that_workspace(tmp_path):
+    template = _make_template(tmp_path / "template")
+    current_root = tmp_path / "current"
+    current_root.mkdir()
+    legacy_root = current_root / "legacy"
+    legacy_root.mkdir()
+    reader, repository = _BasicReader(), _WorkspaceRepo()
+    legacy = _service(
+        tmp_path, repository=repository, basic_information_reader=reader,
+        settings=OfficialWorkspaceSettings(legacy_root, template, None),
+    )
+    original = legacy.create("project-1")
+    reader.values = {"product_description": "Confirmed connector", "test_item": "Qualification"}
+    current = _service(
+        tmp_path, repository=repository, basic_information_reader=reader,
+        settings=OfficialWorkspaceSettings(current_root, template, None),
+    )
+
+    assert current.preview("project-1").suggested_folder_path == (
+        current_root / "DL-2025-11-074" / "DL-2025-11-074 Confirmed connector Qualification"
+    )
+    rebuild = current.preview_for_rebuild("project-1")
+    assert rebuild.conflict_paths == (original.official_folder_path,)
+    assert rebuild.official_folder_path == (
+        original.record.local_workspace_path / "DL-2025-11-074 Confirmed connector Qualification"
+    )
+    assert not (current_root / "DL-2025-11-074").exists()
+
+
+@pytest.mark.parametrize("retain_manifest_identity", [True, False])
+def test_rebuild_rejects_replaced_folder_when_manifest_has_identity(tmp_path, retain_manifest_identity):
+    template = _make_template(tmp_path / "template")
+    root = tmp_path / "workspaces"
+    root.mkdir()
+    service = _service(
+        tmp_path,
+        settings=OfficialWorkspaceSettings(root, template, None),
+    )
+    original = service.create("project-1")
+    manifest = original.record.manifest_path
+    if not retain_manifest_identity:
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        payload.pop("official_folder_identity")
+        manifest.write_text(json.dumps(payload), encoding="utf-8")
+    original.official_folder_path.rename(tmp_path / "detached-original")
+    original.official_folder_path.mkdir()
+
+    reviewed = service.preview_for_rebuild("project-1")
+
+    if retain_manifest_identity:
+        assert reviewed.status == "conflict"
+        assert any("identity" in blocker for blocker in reviewed.blockers)
+    else:
+        assert reviewed.status == "completed"
+        assert reviewed.conflict_paths == (original.official_folder_path,)
+
+
+def test_legacy_pre_effect_rebuild_keeps_original_approved_folder_name(tmp_path):
+    from backend.infrastructure.files.recoverable_workspace_publisher import RecoverableWorkspacePublisher
+
+    template = _make_template(tmp_path / "template")
+    (template / "template.txt").write_text("new template", encoding="utf-8")
+    root = tmp_path / "workspaces"
+    root.mkdir()
+    reader, repository = _BasicReader(), _WorkspaceRepo()
+    service = _service(
+        tmp_path, repository=repository, basic_information_reader=reader,
+        settings=OfficialWorkspaceSettings(root, template, None),
+    )
+    original = service.create("project-1")
+    (original.official_folder_path / "operator.txt").write_text("archived", encoding="utf-8")
+    reader.values = {"product_description": "New connector", "test_item": "New testing"}
+    journal = GenerationJournal(tmp_path / "legacy-generation-journal")
+    state = journal.create("project-1", "backup_and_recreate", "original reviewed inputs")
+    assert "archive_source_identity_only" not in state
+
+    rebuilt = service.create(
+        "project-1", conflict_strategy="backup_and_recreate",
+        recovery=RecoverableWorkspacePublisher(journal, state),
+    )
+
+    assert rebuilt.official_folder_path == original.official_folder_path
+    assert (rebuilt.official_folder_path / "template.txt").read_text(encoding="utf-8") == "new template"
+    assert not (rebuilt.official_folder_path / "operator.txt").exists()
+    assert not (original.record.local_workspace_path / "DL-2025-11-074 New connector New testing").exists()
+
+
 def test_create_and_rebuild_block_multiple_active_ltr_children(tmp_path):
     template = _make_template(tmp_path / "template")
     (tmp_path / "workspaces").mkdir()
@@ -479,6 +566,43 @@ def test_crash_after_relocation_journal_create_can_clear_empty_attempt(tmp_path)
     assert result.official_folder_path == original.official_folder_path
     assert journal.read("project-1")["status"] == "completed"
     assert original.official_folder_path.is_dir()
+
+
+@pytest.mark.parametrize("moved", [False, True])
+def test_archive_rebuild_can_supersede_only_unmoved_relocation_attempt(tmp_path, moved):
+    template = _make_template(tmp_path / "template")
+    (tmp_path / "workspaces").mkdir()
+    reader = _BasicReader()
+    repository = _WorkspaceRepo()
+    workspace_service = _service(
+        tmp_path, repository=repository, basic_information_reader=reader,
+        settings=OfficialWorkspaceSettings(tmp_path / "workspaces", template, None),
+    )
+    original = workspace_service.create("project-1")
+    old = original.official_folder_path
+    (old / "operator.docx").write_bytes(b"edited after relocation preview")
+    reader.values = {"product_description": "Confirmed", "test_item": "Qualification testing"}
+    journal = GenerationJournal(tmp_path / "relocation-journal")
+    pending = journal.create("project-1", "rename_to_confirmed", "stale preview context")
+    pending["effects"]["relocation"] = {
+        "source": str(old), "target": str(old.with_name("DL-2025-11-074 Old target")),
+        "suggested": str(old.with_name("DL-2025-11-074 Old target")),
+        "directory_identity": file_identity(old), "record": original.record,
+        "moved": moved,
+    }
+    journal.save(pending)
+    relocation = OfficialFolderRelocationService(
+        workspace_service=workspace_service, workspace_repository=repository, journal=journal,
+    )
+
+    if moved:
+        with pytest.raises(OfficialWorkspaceCreateError, match="move|recovery"):
+            relocation.abandon_unmoved_for_rebuild("project-1", old)
+        assert journal.read("project-1")["status"] == "queued"
+    else:
+        relocation.abandon_unmoved_for_rebuild("project-1", old)
+        assert journal.read("project-1")["status"] == "completed"
+    assert (old / "operator.docx").read_bytes() == b"edited after relocation preview"
 
 
 def test_preview_ready_for_new_workspace(tmp_path: Path) -> None:

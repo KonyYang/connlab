@@ -18,7 +18,7 @@ class ProjectFolderInUseError(PermissionError):
 class ProjectFolderGenerationService:
     """Start, observe and resume one project operation; callers never drive its steps."""
 
-    def __init__(self, journal, context, run_step, dispatch, preview_context=None, preview=None, finalize=None):
+    def __init__(self, journal, context, run_step, dispatch, preview_context=None, preview=None, finalize=None, prepare_start=None):
         self.journal, self.context = journal, context
         self.run_step, self.dispatch = run_step, dispatch
         self.owner = uuid4().hex
@@ -29,6 +29,7 @@ class ProjectFolderGenerationService:
             }
         )
         self.finalize = finalize or (lambda state: None)
+        self.prepare_start = prepare_start or (lambda _project_id, _strategy, _preview: None)
 
     def start(self, project_id, strategy, expected_context, request_id, replaces_operation_id=None):
         with self.journal.lock(project_id):
@@ -58,12 +59,14 @@ class ProjectFolderGenerationService:
                 raise ValueError("In-place update requires a verified existing project folder.")
             if workspace_status in {"completed", "conflict"} and strategy not in {"backup_and_recreate", "update_in_place"}:
                 raise ValueError("The project folder already exists. Choose a rebuild option.")
+            self.prepare_start(project_id, strategy, current_preview)
             state = self.journal.create(project_id, strategy, context)
             state.update(
                 request_id=request_id,
                 owner=self.owner,
                 preview_context=expected_context,
                 preview_context_version=2,
+                archive_source_identity_only=strategy == "backup_and_recreate",
             )
             self.journal.save(state)
         self.dispatch(lambda: self.run(project_id, state["operation_id"]))
@@ -92,7 +95,8 @@ class ProjectFolderGenerationService:
                 return self._view(state)
             if self.context(project_id) != state["context"]:
                 raise ValueError("Generation inputs changed. Review the operation before recovery; no files were written.")
-            if "workspace" not in state.get("completed_steps", ()):
+            if ("workspace" not in state.get("completed_steps", ())
+                    and "workspace" not in state.get("effects", {})):
                 preview = self.preview(project_id, self._preview_intent(state.get("strategy")))
                 expected = state.get("preview_context")
                 matches_current = preview.get("expected_context") == expected

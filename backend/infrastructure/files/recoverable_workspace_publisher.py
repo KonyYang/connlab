@@ -46,6 +46,24 @@ def tree_hash(path: Path):
     return fingerprint(entries)
 
 
+def _require_manifest_source_identity(manifest_path, source, actual_folder, project_id, dl_number):
+    """Honor a retained inode proof without rejecting legacy manifests that lack one."""
+    if not manifest_path.is_file():
+        raise ValueError("Workspace manifest identity needs review before archive.")
+    try:
+        manifest = OfficialWorkspaceManifestGateway().read(manifest_path)
+    except (OSError, ValueError) as exc:
+        raise ValueError("Workspace manifest identity needs review before archive.") from exc
+    if (not isinstance(manifest, dict)
+            or manifest.get("project_id") != project_id
+            or manifest.get("dl_number") not in (None, "", dl_number)
+            or manifest.get("official_project_folder_path") != str(source)):
+        raise ValueError("Workspace manifest identity needs review before archive.")
+    retained = manifest.get("official_folder_identity")
+    if retained is not None and retained != stable_folder_identity(actual_folder):
+        raise ValueError("Official folder identity differs from the workspace manifest.")
+
+
 class RecoverableWorkspacePublisher:
     def __init__(self, journal, state, verify_context=None, verify_initial_preview=None):
         self.journal, self.state = journal, state
@@ -207,13 +225,18 @@ class RecoverableWorkspacePublisher:
         if "workspace" not in self.state["effects"]:
             target = preview.official_folder_path
             workspace = preview.local_workspace_path
-            conflict = workspace if preview.conflict_paths == (workspace,) else target
+            conflict = preview.conflict_paths[0] if len(preview.conflict_paths) == 1 else target
+            identity_only_archive = (strategy == "backup_and_recreate" and conflict != workspace
+                                     and self.state.get("archive_source_identity_only") is True)
+            if identity_only_archive and target.parent != workspace:
+                raise ValueError("New official folder must remain inside the indexed LTR workspace.")
             # Continuing an existing folder never reads, moves, or replaces its
             # current files. Directory identity is sufficient; hashing the whole
             # tree would make an open Office/PDF file an unnecessary blocker.
             try:
                 with stage("inspect_existing_folder", target=conflict):
-                    prior = None if strategy == "continue_existing" else tree_hash(conflict)
+                    prior = (None if strategy == "continue_existing" else
+                             "directory_identity" if identity_only_archive else tree_hash(conflict))
             except PermissionError as exc:
                 raise ProjectFolderInUseError(str(conflict)) from exc
             if prior is not None and strategy not in {
@@ -252,9 +275,25 @@ class RecoverableWorkspacePublisher:
                 template_source_path=preview.template_path, created_at=datetime.now(UTC).isoformat(),
             )
             self.verify_initial_preview()
+            if identity_only_archive:
+                _require_manifest_source_identity(
+                    preview.manifest_path, conflict, conflict, preview.project_id, preview.dl_number,
+                )
+                if (not conflict.is_dir() or _is_redirected(conflict)
+                        or conflict.parent != workspace
+                        or not conflict.name.startswith(f"{preview.dl_number} ")
+                        or (target != conflict and os.path.lexists(target))):
+                    raise ValueError("Reviewed active project folder changed before archive.")
+                active = [child for child in workspace.iterdir()
+                          if child.name.startswith(f"{preview.dl_number} ")]
+                if active != [conflict]:
+                    raise ValueError("Exactly one active LTR folder is required before archive.")
             backup = conflict.with_name(f"{conflict.name}.connlab-backup-{self.state['operation_id']}")
             if prior is not None:
-                backup = (_unique_backup_path(conflict) if strategy == "backup_and_recreate"
+                backup = (_unique_backup_path(
+                    conflict, shallow=identity_only_archive,
+                    dl_number=preview.dl_number if identity_only_archive else None,
+                ) if strategy == "backup_and_recreate"
                           else stage_root / "overwrite-old")
             self.state["effects"]["workspace"] = {
                 "type": "workspace", "step": "workspace", "record": json_value(record),
@@ -285,6 +324,8 @@ class RecoverableWorkspacePublisher:
                 ),
                 "manifest_prior": None if whole else file_hash(preview.manifest_path),
                 "conflict": str(conflict), "prior": prior,
+                "archive_source_identity_only": identity_only_archive,
+                "archive_parent_identity": file_identity(workspace) if identity_only_archive else None,
                 "backup": str(backup),
                 "backup_identity": file_identity(conflict) if prior is not None else None,
                 "overwrite_cleanup": strategy == "overwrite_rebuild",
@@ -302,11 +343,19 @@ class RecoverableWorkspacePublisher:
             payload[key] = Path(payload[key])
         record = OfficialWorkspaceRecord(**payload)
         target, staged = record.official_folder_path, Path(effect["stage"])
+        if effect.get("archive_source_identity_only") and target.parent != record.local_workspace_path:
+            raise ValueError("New official folder must remain inside the indexed LTR workspace.")
         if effect.get("strategy") == "continue_existing":
             self._continue_existing(effect, record, staged)
             return self._publish_manifest_and_record(effect, record, repository)
         publish_target = Path(effect["publish_target"])
         owned = publish_target.is_dir() and file_identity(publish_target) == effect["publish_identity"]
+        if owned and effect.get("archive_source_identity_only"):
+            active = [child for child in record.local_workspace_path.iterdir()
+                      if child.name.startswith(f"{record.dl_number} ")]
+            if (file_identity(record.local_workspace_path) != effect.get("archive_parent_identity")
+                    or active != [target]):
+                raise ValueError("An unexpected active LTR folder appeared after publication; review before recovery.")
         if not owned:
             self.verify_context()
             conflict, backup = Path(effect["conflict"]), Path(effect["backup"])
@@ -314,12 +363,40 @@ class RecoverableWorkspacePublisher:
                 if effect.get("strategy") == "backup_and_recreate":
                     self._prepare_archive_destination(effect, record, conflict, backup)
                 if os.path.lexists(backup):
-                    if (tree_hash(backup) != effect["prior"] or conflict.exists()
+                    if effect.get("archive_source_identity_only"):
+                        _require_manifest_source_identity(
+                            record.manifest_path, conflict, backup, record.project_id, record.dl_number,
+                        )
+                        if (file_identity(record.local_workspace_path) != effect.get("archive_parent_identity")
+                                or file_hash(record.manifest_path) != effect.get("manifest_prior")):
+                            raise ValueError("Reviewed LTR workspace or manifest changed during archive recovery.")
+                        active = [child for child in record.local_workspace_path.iterdir()
+                                  if child.name.startswith(f"{record.dl_number} ")]
+                        if active:
+                            raise ValueError("An unexpected active LTR folder appeared after archive; review before recovery.")
+                    if ((not effect.get("archive_source_identity_only")
+                         and tree_hash(backup) != effect["prior"]) or conflict.exists()
+                            or _is_redirected(backup)
                             or (effect.get("backup_identity") is not None
                                 and file_identity(backup) != effect["backup_identity"])):
                         raise ValueError("Workspace conflict target changed during recovery.")
                 else:
-                    if tree_hash(conflict) != effect["prior"]:
+                    if effect.get("archive_source_identity_only"):
+                        _require_manifest_source_identity(
+                            record.manifest_path, conflict, conflict, record.project_id, record.dl_number,
+                        )
+                        if (not conflict.is_dir() or _is_redirected(conflict)
+                                or conflict.parent != record.local_workspace_path
+                                or file_identity(conflict) != effect.get("backup_identity")
+                                or file_identity(record.local_workspace_path) != effect.get("archive_parent_identity")
+                                or file_hash(record.manifest_path) != effect.get("manifest_prior")
+                                or (record.official_folder_path != conflict and os.path.lexists(record.official_folder_path))):
+                            raise ValueError("Reviewed active project folder changed before archive.")
+                        active = [child for child in record.local_workspace_path.iterdir()
+                                  if child.name.startswith(f"{record.dl_number} ")]
+                        if active != [conflict]:
+                            raise ValueError("Exactly one active LTR folder is required before archive.")
+                    elif tree_hash(conflict) != effect["prior"]:
                         if self._discard_unpublished_stage(effect, record, staged):
                             raise ValueError(
                                 "The existing project folder changed before rebuilding. "
@@ -372,10 +449,12 @@ class RecoverableWorkspacePublisher:
             if effect.get("history_directories") is not None:
                 raise ValueError("History archive destination changed during recovery.")
             return
-        if (effect["whole"] or conflict != record.official_folder_path
+        if (effect["whole"] or conflict.parent != record.local_workspace_path
                 or not conflict.name.startswith(f"{record.dl_number} ")):
             raise ValueError("Only the reviewed active LTR folder can be archived.")
-        _require_archive_path_capacity(conflict, backup)
+        _require_archive_path_capacity(
+            conflict, backup, shallow=effect.get("archive_source_identity_only", False),
+        )
         saved = effect.get("history_directories")
         if saved is None:
             for directory in (history, folders):
@@ -397,14 +476,19 @@ class RecoverableWorkspacePublisher:
         if "workspace" in self.state["completed_steps"] or set(self.state["effects"]) != {"workspace"}:
             return False
         conflict, backup = Path(effect["conflict"]), Path(effect["backup"])
-        expected_conflict = record.local_workspace_path if effect["whole"] else record.official_folder_path
-        expected_identity = effect.get("existing_workspace_identity" if effect["whole"] else "existing_target_identity")
+        expected_conflict = record.local_workspace_path if effect["whole"] else Path(effect["conflict"])
+        expected_identity = effect.get(
+            "existing_workspace_identity" if effect["whole"] else
+            "backup_identity" if effect.get("archive_source_identity_only") else
+            "existing_target_identity"
+        )
         root = record.local_workspace_path.parent / ".connlab" / "generation" / self.state["operation_id"]
         try:
             # A backup (including a dangling link), changed directory identity, or
             # a foreign stage means publication cannot be proven not to have run.
             if (os.path.lexists(backup) or conflict != expected_conflict
-                    or Path(effect["publish_target"]) != expected_conflict
+                    or (not effect.get("archive_source_identity_only")
+                        and Path(effect["publish_target"]) != expected_conflict)
                     or expected_identity is None or _is_redirected(conflict) or not conflict.is_dir()
                     or file_identity(conflict) != expected_identity
                     or file_identity(conflict) == effect["publish_identity"]):

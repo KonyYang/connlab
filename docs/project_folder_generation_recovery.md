@@ -20,7 +20,10 @@ Project/Matrix/confirmed Fee/Basic Information and configured source/template au
   This permits fixing missing inputs without rebinding a partly generated operation to new authority.
 - Preview separates missing or unreadable generation inputs (`start_blockers`) from existing-file
   conflicts (`review_conflicts`). Both prohibit an ordinary Start. A conflict can be reviewed for a
-  fresh Backup and Rebuild; the backend fingerprints the chosen target again before publication.
+  fresh Backup and Rebuild. For new reviewed archive/rebuilds, the preview binds the one active old
+  business folder by directory identity and manifest, not by hashing its files. It shows that folder
+  as the archive source and the latest confirmed Basic Information name as the fresh target inside
+  the already indexed LTR workspace, even when the configured save root now differs.
   Missing inputs do not hide Link existing folder when the workspace identity itself is adoptable.
 - A project-scoped OS file lock serializes generation. The retained per-step mutation routes share the
   lock/unfinished-operation guard so another tab cannot bypass the active operation.
@@ -42,15 +45,34 @@ not a replacement for configured external business authority.
   before recovery or writes; generated contents may evolve, but replacement directories are refused.
   Manifest intent and the stable workspace record recover move/manifest/DB gaps. Existing conflicts
   move to the operation's recovery backup once; restart never repeats that destructive choice.
+- A newly approved archive/rebuild moves the entire old business folder to
+  `LTR/History/Folders/<old name + last-modified timestamp>` without inspecting its descendant
+  names or bytes. The fresh business folder contains only the template and outputs regenerated from
+  current confirmed authority; no old file is copied back. Root-level LTR files and Source Book stay
+  in place. The source folder, workspace, archive parents, manifest and staged new folder retain
+  identity/path checks. A registered FileAsset or separately selected source inside the folder to
+  be archived is still a Start blocker: it must first be provided from an independent location for
+  regeneration. A manifest with an official-folder filesystem identity must match the old folder;
+  an older manifest without that field remains eligible only with the same-project/DL manifest,
+  indexed path, and sole active DL-prefixed folder checks. A new active sibling after archival
+  blocks recovery without deleting the archived old folder or operation-owned stage.
+- A pending folder-name relocation can be retired by a new confirmed archive/rebuild only if no
+  move or manifest update was recorded and the indexed sole active folder and manifest still match.
+  A partly moved relocation must resume its own recovery. After an archive move, generation Resume
+  uses the saved publication effect rather than requiring the pre-move preview to remain true.
+  Historical content-bound generation journals continue their original recovery policy and keep the
+  folder name approved when that journal started; a later confirmed Basic name cannot retarget them.
+  A linked legacy LTR workspace whose directory name differs from the DL number still archives its
+  verified DL-prefixed business child under that workspace's History/Folders.
 - A hard exit during staging, before intent exists, abandons that unique staging attempt. A subsequent
   attempt uses a new path. Unjournaled files are retained, not guessed to be safe to delete. Workspace
   stages live in the configured output root's `.connlab/generation` area, outside final project content.
-- A blocked initial rebuild can release its unpublished checkpoint when the original directory still
+- A blocked historical initial rebuild can release its unpublished checkpoint when the original directory still
   has its recorded identity, no backup or other publication effect exists, and its unchanged staged
   directories are proven to belong to this operation. This also handles an older persisted checkpoint
   when an operator saved files after a locked-folder error. Only these internal stages are discarded;
-  the edited original remains untouched. A changed folder requires a fresh preview and explicit new
-  generation; Continue existing folder preserves its contents. Missing ownership evidence, changed
+  the edited original remains untouched. A changed historical folder requires a fresh preview and explicit new
+  generation; legacy Continue existing folder preserves its contents. Missing ownership evidence, changed
   stages, backups, links/junctions, or incomplete cleanup retain the checkpoint for review.
 - A file published before its record commits is reconciled into exactly one matching lineage record.
   A record committed before the progress checkpoint is recognized without generating or publishing again.
@@ -84,6 +106,10 @@ project files or recovery backups.
 The existing Fee Form `.xls` template identity policy is retained: controlled revision/path plus size
 allow legacy Excel OLE metadata churn. Other input/template bytes are hashed. Configured Test Record
 templates outside the resource folder are also bound to the operation.
+
+The retained direct `/official-workspace/create` backup route keeps its legacy manifest guard and
+does not rename an old folder to a newly confirmed description. The Workbench Create folder path
+uses the recoverable generation operation for that behavior.
 
 ### Windows overwrite cleanup
 

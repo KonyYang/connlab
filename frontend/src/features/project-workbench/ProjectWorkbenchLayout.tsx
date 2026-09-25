@@ -491,7 +491,9 @@ export function ProjectWorkbenchLayout({
       setLifecycleError(lifecycleReadonlyView.message);
       return;
     }
-    if (["completed", "conflict", "exists", "inconsistent"].includes(workspaceStatus)) {
+    if (workspaceStatus === "completed") {
+      void performFolderUpdate("backup_and_recreate");
+    } else if (["conflict", "exists", "inconsistent"].includes(workspaceStatus)) {
       void performFolderRelocationReview();
     } else {
       void performFolderUpdate();
@@ -789,6 +791,7 @@ export function ProjectWorkbenchLayout({
           intent={folderUpdateReview?.intent ?? "backup_rebuild"}
           onResumeRebuild={() => { setShowFolderConflictDialog(false); if (folderUpdateReview) void performFolderUpdate(undefined, folderUpdateReview, true); }}
           conflictPaths={folderUpdateReview ? deriveOfficialWorkspaceConflictPaths(folderUpdateReview.preview.workspace_preview) : officialWorkspaceConflictPaths}
+          newFolderPath={folderUpdateReview?.preview.workspace_preview.official_project_folder_path ?? null}
           onBackup={() => handleProjectFolderConflictChoice("backup_and_recreate")}
           onUpdateInPlace={() => handleProjectFolderConflictChoice("update_in_place")}
           onCancel={() => setShowFolderConflictDialog(false)}
@@ -904,6 +907,7 @@ function ProjectFolderConflictDialog({
   intent,
   onResumeRebuild,
   conflictPaths,
+  newFolderPath,
   onBackup,
   onUpdateInPlace,
   onCancel,
@@ -912,6 +916,7 @@ function ProjectFolderConflictDialog({
   intent: "backup_rebuild" | "update_in_place";
   onResumeRebuild: () => void;
   conflictPaths: string[];
+  newFolderPath: string | null;
   onBackup: () => void;
   onUpdateInPlace: () => void;
   onCancel: () => void;
@@ -931,12 +936,18 @@ function ProjectFolderConflictDialog({
           <strong>{visiblePath}</strong>
           {extraPathCount > 0 ? <em>+{extraPathCount} more</em> : null}
         </div>
+        {!resumeRebuild && intent === "backup_rebuild" && newFolderPath && newFolderPath !== visiblePath ? (
+          <div className="runtime-console-conflict-path">
+            <span>New folder from confirmed information</span>
+            <strong>{newFolderPath}</strong>
+          </div>
+        ) : null}
         <p>
           {resumeRebuild
             ? "An earlier generation has unfinished file or cleanup work. Resume its saved progress using the previously confirmed choices; this does not create a new generation."
             : intent === "update_in_place"
             ? "Update generated files inside the current project folder without renaming or archiving the whole folder. Existing file safeguards still apply."
-            : "This advanced action moves the current project folder to timestamped history before rebuilding from current confirmed data."}
+            : "The existing project folder and all its files will move to timestamped History. A new folder will be built from the template and latest confirmed information; old files are not copied into the new folder."}
         </p>
         <div className="runtime-console-conflict-actions">
           {resumeRebuild
@@ -980,7 +991,7 @@ function ProjectFolderRelocationDialog({
   onChoose: (action: OfficialWorkspaceRelocationAction) => void;
   onCancel: () => void;
 }): ReactElement {
-  const existingName = folderName(preview.current_path ?? preview.candidate_path);
+  const existingName = folderName(preview.candidate_path ?? preview.current_path);
   const suggestedName = folderName(preview.suggested_path);
   return (
     <div className="runtime-console-modal-backdrop">

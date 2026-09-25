@@ -200,6 +200,43 @@ class OfficialProjectWorkspaceService:
             project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE
         )
 
+    def preview_for_rebuild(self, project_id: str) -> OfficialWorkspacePreview:
+        """Keep the verified old folder as archive source and name the new one from authority."""
+        preview = self.preview(project_id)
+        if preview.status != "completed":
+            return preview
+        source = preview.official_folder_path
+        target = (
+            preview.local_workspace_path / preview.suggested_folder_path.name
+            if preview.suggested_folder_path is not None and preview.local_workspace_path is not None
+            else source
+        )
+        assert source is not None and target is not None
+        manifest, error = self._read_manifest_identity(
+            manifest_path=preview.manifest_path,
+            project_id=project_id,
+            dl_number=preview.dl_number,
+        )
+        if error is not None or not isinstance(manifest, dict):
+            return replace(preview, status="conflict", blockers=(
+                error or "Workspace manifest identity needs review before rebuilding.",
+            ), conflict_options=tuple())
+        retained_identity = manifest.get("official_folder_identity")
+        if retained_identity is not None and retained_identity != stable_folder_identity(source):
+            return replace(preview, status="conflict", blockers=(
+                "Official folder identity differs from the workspace manifest; review before rebuilding.",
+            ), conflict_options=tuple())
+        if target != source and os.path.lexists(target):
+            return replace(
+                preview, status="conflict",
+                blockers=("The confirmed folder name already exists; review the LTR workspace before rebuilding.",),
+                conflict_options=tuple(),
+            )
+        return replace(
+            preview, official_folder_path=target, conflict_paths=(source,),
+            planned_paths=(preview.local_workspace_path, preview.source_book_path, target, preview.manifest_path),
+        )
+
     def preview(self, project_id: str) -> OfficialWorkspacePreview:
         """Return a safe preview for local official project workspace creation."""
         project = self._get_project(project_id)
@@ -724,7 +761,10 @@ class OfficialProjectWorkspaceService:
             raise OfficialWorkspaceCreateError(
                 f"{conflict_strategy} is not available for new project folder operations."
             )
-        preview = self.preview(project_id)
+        preview = (self.preview_for_rebuild(project_id)
+                   if (recovery is not None and conflict_strategy == "backup_and_recreate"
+                       and getattr(recovery, "state", {}).get("archive_source_identity_only") is True)
+                   else self.preview(project_id))
         ProjectLifecycleWriteGuard(self._projects).require_write_allowed(
             project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE
         )
@@ -1288,10 +1328,10 @@ def _adoption_template_metadata(
     return official_folder_path
 
 
-def _unique_backup_path(existing_path: Path) -> Path:
+def _unique_backup_path(existing_path: Path, *, shallow: bool = False, dl_number: str | None = None) -> Path:
     """Return a timestamped history path for one reviewed LTR business child."""
     workspace = existing_path.parent
-    if not existing_path.name.startswith(f"{workspace.name} "):
+    if not existing_path.name.startswith(f"{dl_number or workspace.name} "):
         raise OfficialWorkspaceCreateError(
             "Only the active official folder may be archived; the LTR root is preserved."
         )
@@ -1304,17 +1344,17 @@ def _unique_backup_path(existing_path: Path) -> Path:
     timestamp = datetime.fromtimestamp(existing_path.stat().st_mtime).strftime("%Y%m%d%H%M%S")
     base = folders / f"{existing_path.name} {timestamp}"
     if not os.path.lexists(base):
-        _require_archive_path_capacity(existing_path, base)
+        _require_archive_path_capacity(existing_path, base, shallow=shallow)
         return base
     for index in range(1, 1000):
         candidate = folders / f"{base.name}-{index}"
         if not os.path.lexists(candidate):
-            _require_archive_path_capacity(existing_path, candidate)
+            _require_archive_path_capacity(existing_path, candidate, shallow=shallow)
             return candidate
     raise OfficialWorkspaceCreateError("Unable to create a unique backup folder name.")
 
 
-def _require_archive_path_capacity(existing_path: Path, archive_path: Path) -> None:
+def _require_archive_path_capacity(existing_path: Path, archive_path: Path, *, shallow: bool = False) -> None:
     """Fail before moving when legacy Windows APIs cannot address the archive tree."""
     if os.name != "nt":
         return
@@ -1323,6 +1363,10 @@ def _require_archive_path_capacity(existing_path: Path, archive_path: Path) -> N
             "History archive path is too long for a portable Windows folder move. "
             "Choose a shorter project save location before rebuilding."
         )
+    if shallow:
+        # An archive is a directory move, not a per-file publication. Checking
+        # descendant names would make arbitrary operator content a rebuild gate.
+        return
     try:
         for item in existing_path.rglob("*"):
             destination = archive_path / item.relative_to(existing_path)

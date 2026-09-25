@@ -1423,42 +1423,72 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(update).toHaveBeenCalledTimes(1);
   });
 
-  it("offers an explicit canonical rename before rebuilding a completed folder", async () => {
+  it("reviews archiving the existing business folder before creating a fresh confirmed folder", async () => {
     const user = userEvent.setup();
-    const preview = { status: "rename_available" as const, current_path: "D:/Projects/DL-1/old description",
-      suggested_path: "D:/Projects/DL-1/new description", candidate_path: null, blockers: [], warnings: [],
-      expected_context: "rename-v1", actions: [{ key: "rename_to_confirmed" as const, label: "Rename to confirmed name",
-        description: "Keep the existing project files." }] };
+    const review = { ...folderReview(), intent: "backup_rebuild" as const,
+      preview: { ...folderReview().preview, workspace_preview: {
+        ...folderReview().preview.workspace_preview,
+        conflict_paths: ["D:/Projects/DL-001/old description"],
+        official_project_folder_path: "D:/Projects/DL-001/new confirmed description",
+      } } };
+    const update = vi.fn().mockResolvedValueOnce(review).mockResolvedValue(undefined);
+    renderWorkbench({
+      activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      folderReady: true,
+      officialWorkspacePreview: { ...folderReview().preview.workspace_preview, status: "completed" },
+      onUpdateOfficialWorkspace: update,
+    });
+
+    await user.click(getProjectFolderCommandButton());
+
+    expect(update).toHaveBeenCalledWith("backup_and_recreate", undefined, false);
+    expect(fetchOfficialWorkspaceRelocationPreview).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", { name: "Project folder already exists" });
+    expect(dialog.textContent).toContain("History");
+    expect(dialog.textContent).toContain("not copied into the new folder");
+    expect(dialog.textContent).toContain("old description");
+    expect(dialog.textContent).toContain("new confirmed description");
+    await user.click(within(dialog).getByRole("button", { name: "Backup and Rebuild" }));
+    await waitFor(() => expect(update).toHaveBeenLastCalledWith("backup_and_recreate", review, false));
+    expect(update).toHaveBeenCalledTimes(2);
+  });
+
+  it("offers an explicit confirmed-name relink for a verified manually renamed folder", async () => {
+    const user = userEvent.setup();
+    const preview = { status: "manual_relink_available" as const, current_path: "D:/Projects/DL-1/old description",
+      suggested_path: "D:/Projects/DL-1/new description", candidate_path: "D:/Projects/DL-1/operator name", blockers: [], warnings: [],
+      expected_context: "relink-v1", actions: [{ key: "rebind_and_rename" as const, label: "Use confirmed name",
+        description: "Link this verified project folder." }] };
     vi.mocked(fetchOfficialWorkspaceRelocationPreview).mockResolvedValue(preview);
     const onUpdateOfficialWorkspace = vi.fn();
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true,
-      officialWorkspacePreview: { ...folderReview().preview.workspace_preview, status: "completed" },
+      officialWorkspacePreview: { ...folderReview().preview.workspace_preview, status: "inconsistent" },
       onUpdateOfficialWorkspace });
 
     await user.click(getProjectFolderCommandButton());
     expect(screen.getByRole("dialog", { name: "Review project folder name" })).toBeTruthy();
-    expect(screen.getByText("old description")).toBeTruthy();
+    expect(screen.getByText("operator name")).toBeTruthy();
     expect(screen.getByText("new description")).toBeTruthy();
     expect(onUpdateOfficialWorkspace).not.toHaveBeenCalled();
     expect(relocateOfficialWorkspace).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Rename to confirmed name" }));
+    await user.click(screen.getByRole("button", { name: "Use confirmed name" }));
     await waitFor(() => expect(relocateOfficialWorkspace).toHaveBeenCalledWith(project.project_id,
-      { action: "rename_to_confirmed", expected_context: "rename-v1" }));
+      { action: "rebind_and_rename", expected_context: "relink-v1" }));
     expect(screen.queryByRole("dialog", { name: "Review project folder name" })).toBeNull();
     expect(getProjectFolderGeneration).toHaveBeenCalledWith(project.project_id);
   });
 
-  it("keeps a visible follow-on action after renaming instead of silently generating files", async () => {
+  it("keeps a visible follow-on action after a verified manual relink", async () => {
     const user = userEvent.setup();
-    const preview = { status: "rename_available" as const, current_path: "D:/Projects/DL-1/old",
-      suggested_path: "D:/Projects/DL-1/new", candidate_path: null, blockers: [], warnings: [],
-      expected_context: "rename-v1", actions: [{ key: "rename_to_confirmed" as const,
-        label: "Use confirmed name", description: "Rename folder" }] };
+    const preview = { status: "manual_relink_available" as const, current_path: "D:/Projects/DL-1/old",
+      suggested_path: "D:/Projects/DL-1/new", candidate_path: "D:/Projects/DL-1/operator name", blockers: [], warnings: [],
+      expected_context: "relink-v1", actions: [{ key: "rebind_and_rename" as const,
+        label: "Use confirmed name", description: "Relink folder" }] };
     const review = { ...folderReview(), intent: "update_in_place" as const };
     vi.mocked(fetchOfficialWorkspaceRelocationPreview).mockResolvedValue(preview);
     const onUpdateOfficialWorkspace = vi.fn().mockResolvedValue(review);
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true,
-      officialWorkspacePreview: { ...folderReview().preview.workspace_preview, status: "completed" },
+      officialWorkspacePreview: { ...folderReview().preview.workspace_preview, status: "inconsistent" },
       onUpdateOfficialWorkspace });
 
     await user.click(getProjectFolderCommandButton());
@@ -1471,24 +1501,24 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByRole("button", { name: "Update existing folder" })).toBeTruthy();
   });
 
-  it("keeps a custom folder name and continues the existing-folder update", async () => {
+  it("keeps a verified custom folder name and continues the existing-folder update", async () => {
     const user = userEvent.setup();
-    const preview = { status: "rename_available" as const, current_path: "D:/Projects/DL-1/operator name",
-      suggested_path: "D:/Projects/DL-1/confirmed name", candidate_path: null, blockers: [], warnings: [],
+    const preview = { status: "manual_relink_available" as const, current_path: "D:/Projects/DL-1/old name",
+      suggested_path: "D:/Projects/DL-1/confirmed name", candidate_path: "D:/Projects/DL-1/operator name", blockers: [], warnings: [],
       expected_context: "retain-v1", actions: [
-        { key: "rename_to_confirmed" as const, label: "Use confirmed name", description: "Rename the folder" },
-        { key: "keep_current_name" as const, label: "Keep current name", description: "Retain operator name" },
+        { key: "rebind_and_rename" as const, label: "Use confirmed name", description: "Rename the folder" },
+        { key: "rebind_keep_custom" as const, label: "Keep custom name", description: "Retain operator name" },
       ] };
     vi.mocked(fetchOfficialWorkspaceRelocationPreview).mockResolvedValue(preview);
     const onUpdateOfficialWorkspace = vi.fn().mockResolvedValue(undefined);
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true,
-      officialWorkspacePreview: { ...folderReview().preview.workspace_preview, status: "completed" },
+      officialWorkspacePreview: { ...folderReview().preview.workspace_preview, status: "inconsistent" },
       onUpdateOfficialWorkspace });
 
     await user.click(getProjectFolderCommandButton());
-    await user.click(screen.getByRole("button", { name: "Keep current name" }));
+    await user.click(screen.getByRole("button", { name: "Keep custom name" }));
     await waitFor(() => expect(relocateOfficialWorkspace).toHaveBeenCalledWith(project.project_id,
-      { action: "keep_current_name", expected_context: "retain-v1" }));
+      { action: "rebind_keep_custom", expected_context: "retain-v1" }));
     await waitFor(() => expect(onUpdateOfficialWorkspace).toHaveBeenCalledTimes(1));
   });
 
@@ -1505,21 +1535,20 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(relocateOfficialWorkspace).not.toHaveBeenCalled();
   });
 
-  it("offers an explicit in-place update after the retained folder name is accepted", async () => {
+  it("does not offer an in-place update from Create folder when an official folder exists", async () => {
     const user = userEvent.setup();
-    const review = { ...folderReview(), intent: "update_in_place" as const,
+    const review = { ...folderReview(), intent: "backup_rebuild" as const,
       preview: { ...folderReview().preview,
         workspace_preview: { ...folderReview().preview.workspace_preview, status: "completed" as const } } };
-    const onUpdateOfficialWorkspace = vi.fn().mockResolvedValueOnce(review).mockResolvedValue(undefined);
+    const onUpdateOfficialWorkspace = vi.fn().mockResolvedValue(review);
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true,
       officialWorkspacePreview: { ...folderReview().preview.workspace_preview, status: "completed" },
       onUpdateOfficialWorkspace });
 
     await user.click(getProjectFolderCommandButton());
-    expect(screen.getByRole("button", { name: "Update existing folder" })).toBeTruthy();
-    expect(screen.getByText(/without renaming or archiving the whole folder/)).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Update existing folder" }));
-    expect(onUpdateOfficialWorkspace).toHaveBeenLastCalledWith("update_in_place", review, false);
+    expect(onUpdateOfficialWorkspace).toHaveBeenCalledWith("backup_and_recreate", undefined, false);
+    expect(screen.queryByRole("button", { name: "Update existing folder" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Backup and Rebuild" })).toBeTruthy();
   });
 
   it("keeps a foreign or ambiguous folder read-only and shows a review blocker", async () => {
@@ -1574,14 +1603,14 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
   it("keeps the review open but makes no write when the folder preview changes", async () => {
     const user = userEvent.setup();
-    const preview = { status: "rename_available" as const, current_path: "D:/Projects/DL-1/old",
-      suggested_path: "D:/Projects/DL-1/new", candidate_path: null, blockers: [], warnings: [],
-      expected_context: "v1", actions: [{ key: "rename_to_confirmed" as const,
+    const preview = { status: "manual_relink_available" as const, current_path: "D:/Projects/DL-1/old",
+      suggested_path: "D:/Projects/DL-1/new", candidate_path: "D:/Projects/DL-1/operator name", blockers: [], warnings: [],
+      expected_context: "v1", actions: [{ key: "rebind_and_rename" as const,
         label: "Rename folder", description: "Keep files" }] };
     vi.mocked(fetchOfficialWorkspaceRelocationPreview)
       .mockResolvedValueOnce(preview).mockResolvedValueOnce({ ...preview, expected_context: "v2" });
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, folderReady: true,
-      officialWorkspacePreview: { ...folderReview().preview.workspace_preview, status: "completed" } });
+      officialWorkspacePreview: { ...folderReview().preview.workspace_preview, status: "inconsistent" } });
 
     await user.click(getProjectFolderCommandButton());
     await user.click(screen.getByRole("button", { name: "Rename folder" }));

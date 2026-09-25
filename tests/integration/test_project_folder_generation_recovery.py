@@ -18,12 +18,15 @@ from backend.api.project_folder_generation_composition import ProjectFolderGener
 from backend.domain import Project, ProjectStatus, FileAsset, FileAssetType, LtrRecord, LtrStatus
 from backend.domain import ExternalResource, ExternalResourceType
 from backend.application.official_project_workspace_service import OfficialWorkspacePreview, OfficialWorkspaceRecord
+from backend.application.project_basic_information_service import ConfirmProjectBasicInformationCommand
+from backend.application.project_folder_generation_service import ProjectFolderGenerationService
 from backend.infrastructure.files.generation_journal import GenerationJournal
 from backend.infrastructure.files.recoverable_workspace_publisher import RecoverableWorkspacePublisher
 from backend.infrastructure.official_workspace_manifest import (
     OfficialWorkspaceManifest, OfficialWorkspaceManifestGateway, stable_folder_identity,
 )
 from backend.infrastructure.storage.database import Base, create_session_factory
+from backend.infrastructure.storage.project_schedule_schema_migration import bootstrap_project_schedule_schema
 from backend.shared.config import Settings
 from backend.application.project_application_form_write_back_service import ProjectApplicationFormWriteBackService
 from backend.infrastructure.files.project_folder_required_forms_gateway import ProjectFolderRequiredFormsFileGateway
@@ -72,6 +75,447 @@ def test_recoverable_backup_archives_only_active_ltr_child_under_history(tmp_pat
     assert json.loads(result.record.manifest_path.read_text(encoding="utf-8"))[
         "official_folder_identity"
     ] == [result.official_folder_path.stat().st_dev, result.official_folder_path.stat().st_ino]
+
+
+@pytest.mark.parametrize("ltr_workspace_name", ["DL-001", "legacy-DL-001"])
+def test_rebuild_archives_changed_old_tree_without_reading_it_and_uses_confirmed_name(tmp_path, monkeypatch, ltr_workspace_name):
+    workspace = tmp_path / "projects" / ltr_workspace_name
+    old, new = workspace / "DL-001 Original", workspace / "DL-001 Confirmed Description"
+    (old / "arbitrary operator directory").mkdir(parents=True)
+    (old / "arbitrary operator directory" / "updated.docx").write_bytes(b"operator-edited")
+    (workspace / "Source Book").mkdir()
+    template = tmp_path / "template"
+    template.mkdir()
+    (template / "template.txt").write_text("new", encoding="utf-8")
+    manifest_path = workspace / ".connlab" / "manifest.json"
+    OfficialWorkspaceManifestGateway().write_adoption(manifest_path, OfficialWorkspaceManifest(
+        1, "P1", "DL-001", str(workspace), str(workspace / "Source Book"),
+        str(old), str(template), "2026-09-25T00:00:00+00:00", stable_folder_identity(old),
+    ))
+    preview = OfficialWorkspacePreview(
+        project_id="P1", dl_number="DL-001", local_workspace_root=workspace.parent,
+        local_workspace_path=workspace, source_book_path=workspace / "Source Book",
+        template_path=template, official_folder_path=new,
+        manifest_path=manifest_path,
+        template_root_mode="template_root", status="completed", blockers=(), warnings=(),
+        planned_paths=(), conflict_paths=(old,),
+    )
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("P1", "backup_and_recreate", "context")
+    state["archive_source_identity_only"] = True
+    journal.save(state)
+    from backend.infrastructure.files import recoverable_workspace_publisher as module
+    real_tree_hash = module.tree_hash
+
+    def reject_old_tree(path):
+        if path == old or path.parent == old:
+            raise PermissionError("old business files must not be inspected")
+        return real_tree_hash(path)
+
+    monkeypatch.setattr(module, "tree_hash", reject_old_tree)
+    real_rglob = Path.rglob
+
+    def reject_old_descendant_scan(path, pattern):
+        if path == old:
+            raise AssertionError("archive must not inspect old subfolders or files")
+        return real_rglob(path, pattern)
+
+    monkeypatch.setattr(Path, "rglob", reject_old_descendant_scan)
+    def operator_updates_after_review():
+        (old / "arbitrary operator directory" / "updated.docx").write_bytes(b"second edit")
+
+    result = RecoverableWorkspacePublisher(
+        journal, state, verify_initial_preview=operator_updates_after_review,
+    ).create(
+        preview, "backup_and_recreate", SimpleNamespace(save=lambda record: record)
+    )
+
+    archived = Path(state["effects"]["workspace"]["backup"])
+    assert result.official_folder_path == new
+    assert (archived / "arbitrary operator directory" / "updated.docx").read_bytes() == b"second edit"
+    assert not (new / "arbitrary operator directory").exists()
+    assert (new / "template.txt").read_text(encoding="utf-8") == "new"
+
+
+def test_rebuild_never_publishes_outside_indexed_ltr_workspace(tmp_path):
+    workspace = tmp_path / "legacy" / "DL-001"
+    old = workspace / "DL-001 Original"
+    old.mkdir(parents=True)
+    (old / "operator.txt").write_text("keep", encoding="utf-8")
+    (workspace / "Source Book").mkdir()
+    current_workspace = tmp_path / "current" / "DL-001"
+    current_workspace.mkdir(parents=True)
+    foreign_target = current_workspace / "DL-001 Confirmed"
+    template = tmp_path / "template"
+    template.mkdir()
+    (template / "template.txt").write_text("new", encoding="utf-8")
+    preview = OfficialWorkspacePreview(
+        project_id="P1", dl_number="DL-001", local_workspace_root=workspace.parent,
+        local_workspace_path=workspace, source_book_path=workspace / "Source Book",
+        template_path=template, official_folder_path=foreign_target,
+        manifest_path=workspace / ".connlab" / "manifest.json",
+        template_root_mode="template_root", status="completed", blockers=(), warnings=(),
+        planned_paths=(), conflict_paths=(old,),
+    )
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("P1", "backup_and_recreate", "context")
+    state["archive_source_identity_only"] = True
+    journal.save(state)
+
+    with pytest.raises(ValueError, match="indexed LTR workspace"):
+        RecoverableWorkspacePublisher(journal, state).create(
+            preview, "backup_and_recreate", SimpleNamespace(save=lambda record: record),
+        )
+
+    assert (old / "operator.txt").read_text(encoding="utf-8") == "keep"
+    assert not foreign_target.exists()
+    assert not (workspace / "History" / "Folders").exists()
+
+
+@pytest.mark.parametrize("change", ["replaced_source", "removed_manifest"])
+def test_rebuild_rejects_changed_manifest_or_source_after_review(tmp_path, change):
+    workspace = tmp_path / "projects" / "DL-001"
+    old = workspace / "DL-001 Original"
+    old.mkdir(parents=True)
+    (old / "operator.txt").write_text("original", encoding="utf-8")
+    (workspace / "Source Book").mkdir()
+    manifest_path = workspace / ".connlab" / "manifest.json"
+    OfficialWorkspaceManifestGateway().write_adoption(manifest_path, OfficialWorkspaceManifest(
+        1, "P1", "DL-001", str(workspace), str(workspace / "Source Book"),
+        str(old), str(tmp_path / "template"), "2026-09-25T00:00:00+00:00",
+        stable_folder_identity(old),
+    ))
+    template = tmp_path / "template"
+    template.mkdir()
+    (template / "template.txt").write_text("new", encoding="utf-8")
+    preview = OfficialWorkspacePreview(
+        project_id="P1", dl_number="DL-001", local_workspace_root=workspace.parent,
+        local_workspace_path=workspace, source_book_path=workspace / "Source Book",
+        template_path=template, official_folder_path=workspace / "DL-001 Confirmed",
+        manifest_path=manifest_path, template_root_mode="template_root", status="completed",
+        blockers=(), warnings=(), planned_paths=(), conflict_paths=(old,),
+    )
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("P1", "backup_and_recreate", "context")
+    state["archive_source_identity_only"] = True
+    journal.save(state)
+
+    def replace_source_after_review():
+        if change == "removed_manifest":
+            manifest_path.unlink()
+        else:
+            old.rename(tmp_path / "detached-original")
+            old.mkdir()
+            (old / "operator.txt").write_text("replacement", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="identity"):
+        RecoverableWorkspacePublisher(
+            journal, state, verify_initial_preview=replace_source_after_review,
+        ).create(preview, "backup_and_recreate", SimpleNamespace(save=lambda record: record))
+
+    assert (old / "operator.txt").read_text(encoding="utf-8") == (
+        "original" if change == "removed_manifest" else "replacement"
+    )
+    assert not (workspace / "History" / "Folders").exists()
+    assert not (workspace / "DL-001 Confirmed").exists()
+
+
+def test_recovery_blocks_new_active_sibling_after_old_folder_was_archived(tmp_path, monkeypatch):
+    workspace = tmp_path / "projects" / "DL-001"
+    old, new = workspace / "DL-001 Original", workspace / "DL-001 Confirmed"
+    old.mkdir(parents=True)
+    (old / "operator.txt").write_text("old content", encoding="utf-8")
+    (workspace / "Source Book").mkdir()
+    template = tmp_path / "template"
+    template.mkdir()
+    (template / "template.txt").write_text("new content", encoding="utf-8")
+    manifest_path = workspace / ".connlab" / "manifest.json"
+    OfficialWorkspaceManifestGateway().write_adoption(manifest_path, OfficialWorkspaceManifest(
+        1, "P1", "DL-001", str(workspace), str(workspace / "Source Book"),
+        str(old), str(template), "2026-09-25T00:00:00+00:00", stable_folder_identity(old),
+    ))
+    preview = OfficialWorkspacePreview(
+        project_id="P1", dl_number="DL-001", local_workspace_root=workspace.parent,
+        local_workspace_path=workspace, source_book_path=workspace / "Source Book",
+        template_path=template, official_folder_path=new,
+        manifest_path=manifest_path,
+        template_root_mode="template_root", status="completed", blockers=(), warnings=(),
+        planned_paths=(), conflict_paths=(old,),
+    )
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("P1", "backup_and_recreate", "context")
+    state["archive_source_identity_only"] = True
+    journal.save(state)
+    publisher = RecoverableWorkspacePublisher(journal, state)
+    real_rename = Path.rename
+    interrupted = False
+
+    def interrupt_after_archive(path, target):
+        nonlocal interrupted
+        if path == Path(state["effects"]["workspace"]["stage"]) and target == new and not interrupted:
+            interrupted = True
+            raise OSError("simulated process interruption before publishing the new folder")
+        return real_rename(path, target)
+
+    monkeypatch.setattr(Path, "rename", interrupt_after_archive)
+    with pytest.raises(OSError, match="simulated process interruption"):
+        publisher.create(preview, "backup_and_recreate", SimpleNamespace(save=lambda record: record))
+    monkeypatch.setattr(Path, "rename", real_rename)
+    archived = Path(state["effects"]["workspace"]["backup"])
+    assert (archived / "operator.txt").read_text(encoding="utf-8") == "old content"
+    sibling = workspace / "DL-001 Unexpected sibling"
+    sibling.mkdir()
+
+    with pytest.raises(ValueError, match="active LTR folder"):
+        publisher.recover(SimpleNamespace(save=lambda record: record))
+
+    assert sibling.is_dir()
+    assert (archived / "operator.txt").read_text(encoding="utf-8") == "old content"
+    assert not new.exists()
+
+
+def test_recovery_blocks_new_active_sibling_after_new_folder_was_published(tmp_path):
+    workspace = tmp_path / "projects" / "DL-001"
+    old, new = workspace / "DL-001 Original", workspace / "DL-001 Confirmed"
+    old.mkdir(parents=True)
+    (old / "operator.txt").write_text("old content", encoding="utf-8")
+    (workspace / "Source Book").mkdir()
+    template = tmp_path / "template"
+    template.mkdir()
+    (template / "template.txt").write_text("new content", encoding="utf-8")
+    manifest_path = workspace / ".connlab" / "manifest.json"
+    OfficialWorkspaceManifestGateway().write_adoption(manifest_path, OfficialWorkspaceManifest(
+        1, "P1", "DL-001", str(workspace), str(workspace / "Source Book"),
+        str(old), str(template), "2026-09-25T00:00:00+00:00", stable_folder_identity(old),
+    ))
+    preview = OfficialWorkspacePreview(
+        project_id="P1", dl_number="DL-001", local_workspace_root=workspace.parent,
+        local_workspace_path=workspace, source_book_path=workspace / "Source Book",
+        template_path=template, official_folder_path=new, manifest_path=manifest_path,
+        template_root_mode="template_root", status="completed", blockers=(), warnings=(),
+        planned_paths=(), conflict_paths=(old,),
+    )
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("P1", "backup_and_recreate", "context")
+    state["archive_source_identity_only"] = True
+    journal.save(state)
+
+    class Repository:
+        def __init__(self):
+            self.fail_once = True
+
+        def save(self, record):
+            if self.fail_once:
+                self.fail_once = False
+                raise OSError("simulated index write outage")
+            return record
+
+    repository = Repository()
+    publisher = RecoverableWorkspacePublisher(journal, state)
+    with pytest.raises(OSError, match="simulated index write outage"):
+        publisher.create(preview, "backup_and_recreate", repository)
+    archived = Path(state["effects"]["workspace"]["backup"])
+    assert (archived / "operator.txt").read_text(encoding="utf-8") == "old content"
+    assert (new / "template.txt").read_text(encoding="utf-8") == "new content"
+    sibling = workspace / "DL-001 Unexpected sibling"
+    sibling.mkdir()
+
+    with pytest.raises(ValueError, match="active LTR folder"):
+        publisher.recover(repository)
+
+    assert sibling.is_dir()
+    assert (archived / "operator.txt").read_text(encoding="utf-8") == "old content"
+
+
+@pytest.mark.parametrize("archived_asset_type", [
+    None, FileAssetType.APPLICATION_FORM, FileAssetType.OTHER, FileAssetType.LTR,
+])
+def test_runner_rebuild_uses_latest_confirmed_name_and_never_copies_old_business_tree(tmp_path, archived_asset_type):
+    settings = _settings(tmp_path)
+    engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
+    Base.metadata.create_all(engine)
+    bootstrap_project_schedule_schema(engine)
+    sessions = create_session_factory(engine)
+    template = tmp_path / "template"
+    for name in ("E-mail", "Submitted Material", "Photos", "Test results/Final Examination"):
+        (template / name).mkdir(parents=True)
+    (template / "template.txt").write_text("template", encoding="utf-8")
+    root = tmp_path / "output"
+    root.mkdir()
+    workspace = root / "DL-001"
+    old = workspace / "DL-001 Original Qualification Testing"
+    (old / "operator subfolder").mkdir(parents=True)
+    (old / "operator subfolder" / "changed.docx").write_bytes(b"keep in history")
+    (workspace / "Source Book").mkdir()
+    manifest_path = workspace / ".connlab" / "manifest.json"
+    record = OfficialWorkspaceRecord(
+        "workspace-1", "P1", "DL-001", workspace, workspace / "Source Book",
+        old, manifest_path, template, "2026-09-25T00:00:00+00:00",
+    )
+    OfficialWorkspaceManifestGateway().write_adoption(manifest_path, OfficialWorkspaceManifest(
+        1, "P1", "DL-001", str(workspace), str(workspace / "Source Book"),
+        str(old), str(template), record.created_at, stable_folder_identity(old),
+    ))
+    with sessions() as session:
+        deps.ProjectRepository(session).create(Project(
+            project_id="P1", project_no="DL-001", product_name="Fallback",
+            requestor="Test", status=ProjectStatus.DRAFT,
+        ))
+        deps.LtrRecordRepository(session).create(LtrRecord("ltr", "P1", "DL-001", LtrStatus.REGISTERED))
+        resources = deps.ExternalResourceRepository(session)
+        resources.upsert(ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, root))
+        resources.upsert(ExternalResource("template", ExternalResourceType.PROJECT_FOLDER_TEMPLATE, template))
+        deps.ProjectOfficialWorkspaceRepository(session).save(record)
+        if archived_asset_type is not None:
+            deps.FileAssetRepository(session).create(FileAsset(
+                "source", "P1", archived_asset_type,
+                old / "operator subfolder" / "changed.docx",
+                original_name="changed.docx",
+                source_role="selected_application_form" if archived_asset_type == FileAssetType.APPLICATION_FORM else None,
+            ))
+        deps.get_project_basic_information_service(session).confirm(ConfirmProjectBasicInformationCommand(
+            project_id="P1", confirmed_by="operator", values={
+                "dl_number": "DL-001", "project_type": "NPD", "product_description": "Confirmed Product",
+                "test_item": "Qualification Testing", "tests_to_be_performed": "Qualification Testing",
+                "requested_by": "Test", "project_leader": "Engineer", "lab_performing_tests": "Dongguan",
+            },
+        ))
+        session.commit()
+    runner = ProjectFolderGenerationRunner(sessions, settings)
+    runner.context = lambda _project_id: "confirmed authority"
+    runner.preview_context_matches = lambda *_args, **_kwargs: True
+    try:
+        actual_preview = runner.preview("P1", "backup_rebuild")
+        preview = actual_preview["workspace_preview"]
+        assert preview["conflict_paths"] == [str(old)]
+        assert preview["official_project_folder_path"] == str(workspace / "DL-001 Confirmed Product Qualification Testing")
+        if archived_asset_type is not None:
+            assert any("inside the folder being archived" in item for item in actual_preview["start_blockers"])
+            with pytest.raises(ValueError, match="inside the folder being archived"):
+                runner.service().start(
+                    "P1", "backup_and_recreate", actual_preview["expected_context"], "reviewed-archive",
+                )
+            assert old.is_dir()
+            return
+        relocation_journal = GenerationJournal(settings.data_dir / "official_folder_relocation")
+        pending = relocation_journal.create("P1", "rename_to_confirmed", "old reviewed name")
+        pending["effects"]["relocation"] = {
+            "source": str(old), "target": str(workspace / "DL-001 Old target"),
+            "suggested": str(workspace / "DL-001 Old target"),
+            "directory_identity": stable_folder_identity(old), "record": record,
+        }
+        relocation_journal.save(pending)
+        runner.preview = lambda _project_id, _intent="create": {
+            "expected_context": actual_preview["expected_context"],
+            "start_blockers": [], "review_conflicts": [],
+            "workspace_preview": {"status": "completed", "conflict_paths": [str(old)]},
+        }
+        service = runner.service()
+        queued = []
+        service.dispatch = queued.append
+        started = service.start("P1", "backup_and_recreate", actual_preview["expected_context"], "reviewed-archive")
+        assert started["status"] == "queued"
+        assert relocation_journal.read("P1")["status"] == "completed"
+        state = runner.journal.read("P1")
+        runner.run_step(state, "workspace")
+        with sessions() as session:
+            updated = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
+        assert updated.official_folder_path == workspace / "DL-001 Confirmed Product Qualification Testing"
+        archived = next((workspace / "History" / "Folders").glob("DL-001 Original Qualification Testing *"))
+        assert (archived / "operator subfolder" / "changed.docx").read_bytes() == b"keep in history"
+        assert not (updated.official_folder_path / "operator subfolder").exists()
+        assert (updated.official_folder_path / "template.txt").read_text(encoding="utf-8") == "template"
+    finally:
+        runner.pool.shutdown()
+        engine.dispose()
+
+
+def test_resume_recovery_after_archived_source_move_uses_saved_workspace_effect(tmp_path):
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("P1", "backup_and_recreate", "confirmed inputs")
+    state.update(status="blocked", preview_context="pre-move review", preview_context_version=2)
+    state["effects"]["workspace"] = {"step": "workspace", "type": "workspace"}
+    journal.save(state)
+    queued = []
+    service = ProjectFolderGenerationService(
+        journal, lambda _project_id: "confirmed inputs", lambda *_args: None,
+        queued.append, preview=lambda *_args: {"expected_context": "post-move review"},
+    )
+
+    resumed = service.resume("P1", state["operation_id"])
+
+    assert resumed["status"] == "queued"
+    assert len(queued) == 1
+
+
+def test_legacy_pre_effect_rebuild_resume_keeps_original_folder_target(tmp_path):
+    settings = _settings(tmp_path)
+    engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
+    Base.metadata.create_all(engine)
+    bootstrap_project_schedule_schema(engine)
+    sessions = create_session_factory(engine)
+    template = tmp_path / "template"
+    for name in ("E-mail", "Submitted Material", "Photos", "Test results/Final Examination"):
+        (template / name).mkdir(parents=True)
+    (template / "template.txt").write_text("template-only", encoding="utf-8")
+    root = tmp_path / "output"
+    root.mkdir()
+    workspace = root / "DL-001"
+    old = workspace / "DL-001 Original"
+    old.mkdir(parents=True)
+    (old / "operator.txt").write_text("keep in History", encoding="utf-8")
+    (workspace / "Source Book").mkdir()
+    manifest_path = workspace / ".connlab" / "manifest.json"
+    record = OfficialWorkspaceRecord(
+        "workspace-1", "P1", "DL-001", workspace, workspace / "Source Book",
+        old, manifest_path, template, "2026-09-25T00:00:00+00:00",
+    )
+    OfficialWorkspaceManifestGateway().write_adoption(manifest_path, OfficialWorkspaceManifest(
+        1, "P1", "DL-001", str(workspace), str(workspace / "Source Book"),
+        str(old), str(template), record.created_at, stable_folder_identity(old),
+    ))
+    with sessions() as session:
+        deps.ProjectRepository(session).create(Project("P1", "DL-001", "Fallback", "Test", ProjectStatus.DRAFT))
+        deps.LtrRecordRepository(session).create(LtrRecord("ltr", "P1", "DL-001", LtrStatus.REGISTERED))
+        resources = deps.ExternalResourceRepository(session)
+        resources.upsert(ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, root))
+        resources.upsert(ExternalResource("template", ExternalResourceType.PROJECT_FOLDER_TEMPLATE, template))
+        deps.ProjectOfficialWorkspaceRepository(session).save(record)
+        deps.get_project_basic_information_service(session).confirm(ConfirmProjectBasicInformationCommand(
+            project_id="P1", confirmed_by="operator", values={
+                "dl_number": "DL-001", "project_type": "NPD", "product_description": "Confirmed Product",
+                "test_item": "Qualification Testing", "tests_to_be_performed": "Qualification Testing",
+                "requested_by": "Test", "project_leader": "Engineer", "lab_performing_tests": "Dongguan",
+            },
+        ))
+        session.commit()
+    runner = ProjectFolderGenerationRunner(sessions, settings)
+    runner.context = lambda _project_id: "approved historical inputs"
+    try:
+        state = runner.journal.create("P1", "backup_and_recreate", "approved historical inputs")
+        historical_preview = runner.preview("P1", "backup_rebuild")
+        state.update(status="blocked", preview_context=historical_preview["legacy_expected_context"])
+        runner.journal.save(state)
+        queued = []
+        service = runner.service()
+        service.dispatch = queued.append
+
+        resumed = service.resume("P1", state["operation_id"])
+        assert resumed["status"] == "queued"
+        assert len(queued) == 1
+        runner.run_step(runner.journal.read("P1"), "workspace")
+
+        with sessions() as session:
+            rebuilt = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
+        assert rebuilt.official_folder_path == old
+        assert (old / "template.txt").read_text(encoding="utf-8") == "template-only"
+        assert not (old / "operator.txt").exists()
+        assert not (workspace / "DL-001 Confirmed Product Qualification Testing").exists()
+        archived = next((workspace / "History" / "Folders").glob("DL-001 Original *"))
+        assert (archived / "operator.txt").read_text(encoding="utf-8") == "keep in History"
+    finally:
+        runner.pool.shutdown()
+        engine.dispose()
 
 
 @pytest.mark.parametrize("legacy_manifest", [False, True])

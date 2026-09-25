@@ -428,7 +428,7 @@ def test_real_preflight_rejects_missing_inputs_before_creating_any_folder(tmp_pa
         assert hashed_paths == []
         advanced_preview = client.get(url + "/preview?intent=backup_rebuild")
         assert advanced_preview.status_code == 200, advanced_preview.text
-        assert hashed_paths
+        assert hashed_paths == [], "A new rebuild preview must not content-hash business files"
         body = {**preview.json(), "request_id": "request-one"}
         stale = client.post(url + "/start", json={**body, "expected_context": "stale"})
         assert stale.status_code == 409
