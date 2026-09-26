@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_INTAKE_LTR_ROW_COMPARISON_LAYOUT",
     "summary": "Show existing and proposed LTR workbook row values side by side in a single field-aligned English comparison table.",
@@ -28,17 +28,66 @@
     "risk_reasons": [],
     "activation_head": "8b1db641c73427a8dfa82c745637d251a80ef87b",
     "started_at": "2026-09-26T07:22:25.478363Z",
-    "updated_at": "2026-09-26T07:55:03.534095Z",
+    "updated_at": "2026-09-26T08:03:55.366491Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_INTAKE_LTR_ROW_COMPARISON_LAYOUT",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requested the existing LTR Preview changed-row background, no Changed label, and denser type so all rows fit vertically when possible.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "integration": {
+        "status": "passed",
+        "summary": "Committed in-scope changes at c23d302c; worktree clean, no workbook or unrelated file writes."
+      },
+      "scope_ok": true,
+      "roles": {
+        "qa": {
+          "status": "passed",
+          "summary": "Completed full frontend Vitest, production build, and browser smoke on final code state."
+        },
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented a bounded JSX/CSS/test revision and verified RED/GREEN."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Same-agent focused standards and spec review of exact diff; no actionable findings."
+        }
+      },
+      "changed_paths": [
+        "frontend/src/components/workflow/new-project-workflow.css",
+        "frontend/src/features/new-project/SpecifiedLtrWorkbookAuthorityPreviewPanel.tsx",
+        "frontend/src/intake-inbox.css",
+        "frontend/src/pages/IntakeInboxPage.test.tsx"
+      ],
+      "subject": "c23d302ccaf33c292546c140b582e8970a9972a1",
+      "summary": "Aligned English LTR row comparison with compact typography and the existing LTR Preview changed-row background; no Changed labels.",
+      "task_id": "TASK_INTAKE_LTR_ROW_COMPARISON_LAYOUT",
+      "version": 1,
+      "schema": "connlab.sol-task-report",
+      "validation": [
+        {
+          "status": "passed",
+          "summary": "Focused IntakeInboxPage tests: 9 passed; RED on obsolete Changed label, then GREEN."
+        },
+        {
+          "status": "passed",
+          "summary": "Full frontend Vitest with maxWorkers=2: 671 passed, 1 existing skipped."
+        },
+        {
+          "status": "passed",
+          "summary": "Vite production build passed."
+        },
+        {
+          "status": "passed",
+          "summary": "In-app browser smoke at approximately 677x800: 13 rows and action buttons visible; changed-row shading verified."
+        }
+      ]
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_METHOD_VERSION_COMPACT_UI",
