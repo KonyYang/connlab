@@ -11,101 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_MATRIX_METHOD_VERSION_COMPACT_UI",
-    "summary": "Move Matrix Method version sync into a compact table-toolbar entry with an on-demand review dialog, preserving preview, selection, and apply behavior.",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Matrix Editor frontend layout and interaction only; preserve existing backend draft and confirmation semantics.",
-    "scope_paths": [
-      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-      "frontend/src/features/matrix-editor/MatrixMethodVersionSyncPanel.tsx",
-      "frontend/src/features/matrix-editor/MatrixMethodVersionSyncPanel.test.tsx",
-      "frontend/src/workbench.css"
-    ],
-    "risk_reasons": [],
-    "activation_head": "a8621582e1faa4411561948e26286629345ddb9a",
-    "started_at": "2026-09-26T04:21:39.101968Z",
-    "updated_at": "2026-09-26T06:18:11.285563Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_MATRIX_METHOD_VERSION_COMPACT_UI",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_MATRIX_METHOD_VERSION_COMPACT_UI",
-      "subject": "0038c7dab04525f94b8e97876b04a68d2f9391fa",
-      "summary": "One-click update reads configured Standard record Excel and edits only EIA-364 Method values in the Matrix editor draft; no review dialog or authority confirmation.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/api/routes_matrix_method_version_sync.py",
-        "backend/application/matrix_method_version_sync_service.py",
-        "backend/modules/test_plan/standard_method_version_parser.py",
-        "frontend/src/api/client.ts",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.testSupport.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-        "frontend/src/features/matrix-editor/MatrixImportOptionalStandardFallback.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixMethodVersionSyncPanel.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixMethodVersionSyncPanel.tsx",
-        "frontend/src/features/matrix-editor/useMatrixMethodVersionSync.test.tsx",
-        "frontend/src/features/matrix-editor/useMatrixMethodVersionSync.ts",
-        "frontend/src/workbench.css",
-        "tests/integration/test_matrix_method_version_sync_api.py",
-        "tests/unit/test_matrix_method_version_sync_service.py"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "name": "Python focused tests",
-          "result": "13 passed"
-        },
-        {
-          "status": "passed",
-          "name": "Frontend full regression",
-          "result": "670 passed, 1 skipped"
-        },
-        {
-          "status": "passed",
-          "name": "Frontend production build",
-          "result": "passed"
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "summary": "Implemented and tested one-click draft-only Method updates."
-        },
-        "reviewer": {
-          "status": "passed",
-          "summary": "Sequential self-review of exact diff against standards and request; no blocking findings; not an independent agent review."
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Focused Python tests, complete frontend suite, and production build passed."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "summary": "Exact task paths committed; worktree clean before finish."
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_BASIC_INFORMATION_CANCEL_RELOAD_AUTHORITY",
+    "task_id": "TASK_MATRIX_METHOD_VERSION_COMPACT_UI",
     "tier": "standard",
-    "subject": "9600f2ed7e18c5ba80d9401a2cabfd61f5417627",
-    "summary": "After Cancel exits Project Basic Information, the next explicit entry from the Project Workbench should load the authoritative Basic Information version; leaving and returning through sidebar navigation should continue restoring the existing draft behavior.",
+    "subject": "0038c7dab04525f94b8e97876b04a68d2f9391fa",
+    "summary": "Move Matrix Method version sync into a compact table-toolbar entry with an on-demand review dialog, preserving preview, selection, and apply behavior.",
     "disposition": "completed",
-    "decision_ref": "User requested close of current task on 2026-09-26.",
-    "closed_at": "2026-09-26T03:28:34.583873Z"
+    "decision_ref": "User requested final close after completed one-click Method version update.",
+    "closed_at": "2026-09-26T06:23:16.758591Z"
   },
   "retained_history": [
     {
