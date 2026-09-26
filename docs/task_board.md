@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_BASIC_INFORMATION_CANCEL_RELOAD_AUTHORITY",
     "summary": "After Cancel exits Project Basic Information, the next explicit entry from the Project Workbench should load the authoritative Basic Information version; leaving and returning through sidebar navigation should continue restoring the existing draft behavior.",
@@ -28,9 +28,68 @@
     "risk_reasons": [],
     "activation_head": "562ccc692597695a18b1921875738affa114afdd",
     "started_at": "2026-09-26T03:04:10.401636Z",
-    "updated_at": "2026-09-26T03:04:10.401636Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-26T03:26:29.806327Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_BASIC_INFORMATION_CANCEL_RELOAD_AUTHORITY",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_BASIC_INFORMATION_CANCEL_RELOAD_AUTHORITY",
+      "subject": "9600f2ed7e18c5ba80d9401a2cabfd61f5417627",
+      "summary": "Cancel exits Basic Information; the next workbench re-entry loads latest confirmed authority (or current source suggestions when none exists), while sidebar navigation preserves draft-first behavior. The one-shot Cancel marker is cleared when navigating away via the sidebar.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/App.test.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
+        "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.tsx",
+        "frontend/src/features/project-basic-information/useProjectBasicInformationModel.ts",
+        "frontend/src/pages/ProjectBasicInformationPage.tsx"
+      ],
+      "validation": [
+        {
+          "name": "Focused route and workspace tests",
+          "status": "passed",
+          "result": "27 passed"
+        },
+        {
+          "name": "Complete Frontend QA",
+          "status": "passed",
+          "result": "88 test files passed, 1 skipped; 667 tests passed, 1 skipped; Vite production build passed"
+        },
+        {
+          "name": "Git diff check",
+          "status": "passed",
+          "result": "No whitespace errors"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Implemented; initial targeted RED reproduced the sidebar-marker leak; fixed it and reran focused tests."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Primary agent performed separate Standards and Spec passes; found and fixed one route-boundary issue, then re-reviewed. Not an independent-agent review."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Primary agent ran the complete frontend suite and production build on the reviewed state."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "direct_primary",
+        "summary": "Integrated as 9600f2ed7e18c5ba80d9401a2cabfd61f5417627 on master; clean after commit."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_ARCHIVE_RECREATE_SIMPLIFICATION",
