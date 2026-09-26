@@ -77,14 +77,19 @@ Do not use a dated snapshot as a substitute for the code.
 
 ## Architecture seams
 
-### Independent Project Schedule
+### Project Schedule in Matrix Editor
 
-- `Confirm schedule` confirms the three schedule dates and post-test buffer independently of
-  `Confirm Matrix` and Basic Information confirmation. It validates its own required ISO dates,
-  chronology and buffer; sample receipt and calculated Matrix days are reference/defaulting inputs.
-- Upstream Basic/Matrix references on a schedule revision are optional provenance, not prerequisites.
-  Later upstream changes do not revoke an explicitly confirmed schedule. Output consumers read that
-  revision; the legacy Matrix-date fallback remains only when no independent revision exists.
+- Project Schedule fields are edited in Matrix Editor and confirmed through its single `Confirm Matrix`
+  action. A schedule-only edit creates a Project Schedule revision without an unnecessary Matrix
+  revision; simultaneous Matrix and schedule edits commit together or roll back together. The three
+  required ISO dates, chronology and post-test buffer are validated before schedule confirmation.
+  Sample receipt and calculated Matrix days remain reference/defaulting inputs.
+- Existing independently confirmed Project Schedule revisions and the legacy schedule API remain
+  readable for compatibility. Basic/Matrix references on a schedule revision are optional provenance,
+  not prerequisites; later upstream changes do not revoke an explicitly confirmed schedule. Formal
+  outputs read the latest Project Schedule revision, with the legacy Matrix-date fallback only when
+  no independent revision exists. A missing confirmed schedule still blocks project-folder outputs
+  that require those dates; the operator completes the schedule in Matrix Editor and uses `Confirm Matrix`.
 - Matrix confirmation validates Matrix rows, groups, quantities and Day expressions, not legacy
   schedule completeness. Loading a saved draft preserves its rows, order and cleared text; a source
   preview may supply review metadata and excluded-group context, never reinsert deleted test rows.

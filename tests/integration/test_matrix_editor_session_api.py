@@ -705,6 +705,116 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
         engine.dispose()
 
 
+def test_matrix_confirm_can_publish_only_schedule_without_new_matrix_revision(tmp_path: Path) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        source_import_id = _seed_source_import("P1", tmp_path)
+        created = client.post("/api/projects/P1/matrix-drafts", json={
+            "source_import_id": source_import_id, "selected_group_keys": ["g1", "g2"]
+        })
+        assert created.status_code == 201, created.text
+        assert client.post(
+            f"/api/projects/P1/matrix-drafts/{created.json()['record']['project_matrix_draft_id']}/confirm",
+            json={"confirmed_by": "operator"},
+        ).status_code == 201
+        seed = client.get("/api/projects/P1/matrix-editor/session").json()
+        schedule = client.get("/api/projects/P1/project-schedule").json()
+        payload = {
+            "expected_active_confirmed_matrix_id": seed["active_confirmed_matrix_id"],
+            "expected_active_confirmed_revision": seed["active_confirmed_revision"],
+            "confirmed_by": "operator",
+            "groups": seed["editor_draft"]["groups"],
+            "rows": seed["editor_draft"]["rows"],
+            "cells": seed["editor_draft"]["cells"],
+            "schedule_confirmation": {
+                "expected_revision_id": None,
+                "expected_fingerprint": None,
+                "post_test_buffer_days": "1",
+                "test_start_date": "2026-09-10",
+                "test_complete_date": "2026-09-13",
+                "estimated_completion_date": "2026-09-14",
+            },
+        }
+        assert schedule["confirmed_revision"] is None
+        response = client.post("/api/projects/P1/matrix-editor/session/confirm", json=payload)
+        assert response.status_code == 200, response.text
+        assert response.json()["publish_status"] == "no_change"
+        after = client.get("/api/projects/P1/matrix-editor/session").json()
+        assert after["active_confirmed_matrix_id"] == seed["active_confirmed_matrix_id"]
+        assert after["active_confirmed_revision"] == seed["active_confirmed_revision"]
+        confirmed_schedule = client.get("/api/projects/P1/project-schedule").json()["confirmed_revision"]
+        assert confirmed_schedule["test_start_date"] == "2026-09-10"
+        assert confirmed_schedule["based_on_confirmed_matrix_id"] == seed["active_confirmed_matrix_id"]
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+@pytest.mark.parametrize("schedule_failure", ["stale", "invalid"])
+def test_matrix_confirm_rolls_back_matrix_when_schedule_confirmation_fails(
+    tmp_path: Path, schedule_failure: str,
+) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        source_import_id = _seed_source_import("P1", tmp_path)
+        created = client.post("/api/projects/P1/matrix-drafts", json={
+            "source_import_id": source_import_id, "selected_group_keys": ["g1", "g2"]
+        })
+        assert created.status_code == 201, created.text
+        assert client.post(
+            f"/api/projects/P1/matrix-drafts/{created.json()['record']['project_matrix_draft_id']}/confirm",
+            json={"confirmed_by": "operator"},
+        ).status_code == 201
+        schedule_response = client.post("/api/projects/P1/project-schedule/confirm", json={
+            "actor": "operator", "expected_revision_id": None, "expected_fingerprint": None,
+            "post_test_buffer_days": "0", "test_start_date": "2026-09-10",
+            "test_complete_date": "2026-09-11", "estimated_completion_date": "2026-09-11",
+        })
+        assert schedule_response.status_code == 200, schedule_response.text
+        original_schedule = schedule_response.json()
+        seed = client.get("/api/projects/P1/matrix-editor/session").json()
+        draft = seed["editor_draft"]
+        changed_rows = [{**row, "method": "EIA-364-18C"} if index == 0 else row
+                        for index, row in enumerate(draft["rows"])]
+        matrix_payload = {
+            "expected_active_confirmed_matrix_id": seed["active_confirmed_matrix_id"],
+            "expected_active_confirmed_revision": seed["active_confirmed_revision"],
+            "source_import_id": seed["active_source_import_id"],
+            "source_snapshot_id": seed["active_source_snapshot_id"],
+            "groups": draft["groups"], "rows": changed_rows, "cells": draft["cells"],
+        }
+        saved = client.put("/api/projects/P1/matrix-editor/session/draft", json=matrix_payload)
+        assert saved.status_code == 200, saved.text
+        schedule_update = {
+            "expected_revision_id": original_schedule["revision_id"],
+            "expected_fingerprint": original_schedule["fingerprint"],
+            "post_test_buffer_days": "0", "test_start_date": "2026-09-12",
+            "test_complete_date": "2026-09-13", "estimated_completion_date": "2026-09-13",
+        }
+        if schedule_failure == "stale":
+            schedule_update["expected_fingerprint"] = "obsolete"
+        else:
+            schedule_update["test_complete_date"] = "2026-09-11"
+        response = client.post("/api/projects/P1/matrix-editor/session/confirm", json={
+            **matrix_payload,
+            "expected_editor_draft_id": saved.json()["editor_draft_id"],
+            "expected_saved_payload_signature": saved.json()["saved_payload_signature"],
+            "confirmed_by": "operator",
+            "schedule_confirmation": schedule_update,
+        })
+        assert response.status_code == (409 if schedule_failure == "stale" else 422), response.text
+        after_matrix = client.get("/api/projects/P1/matrix-editor/session").json()
+        assert after_matrix["active_confirmed_matrix_id"] == seed["active_confirmed_matrix_id"]
+        assert after_matrix["active_confirmed_revision"] == seed["active_confirmed_revision"]
+        after_schedule = client.get("/api/projects/P1/project-schedule").json()["confirmed_revision"]
+        assert after_schedule["revision_id"] == original_schedule["revision_id"]
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_matrix_editor_session_autosave_rejects_duplicate_row_lineage_without_server_error(
     tmp_path: Path,
 ) -> None:
@@ -841,6 +951,14 @@ def test_matrix_editor_session_confirm_publishes_schedule_planning_fields(
                 "planned_test_start_date": "2026-06-02",
                 "planned_test_complete_date": "2026-06-03",
                 "estimated_completion_date": "2026-06-04",
+                "schedule_confirmation": {
+                    "expected_revision_id": None,
+                    "expected_fingerprint": None,
+                    "post_test_buffer_days": "1",
+                    "test_start_date": "2026-06-02",
+                    "test_complete_date": "2026-06-03",
+                    "estimated_completion_date": "2026-06-04",
+                },
                 "groups": editor_draft["groups"],
                 "rows": rows,
                 "cells": editor_draft["cells"],
@@ -858,6 +976,9 @@ def test_matrix_editor_session_confirm_publishes_schedule_planning_fields(
         assert version["planned_test_complete_date"] == "2026-06-03"
         assert version["estimated_completion_date"] == "2026-06-04"
         assert payload["confirmed_snapshot"]["rows"][0]["day_expression"] == "0.5x"
+        confirmed_schedule = client.get("/api/projects/P1/project-schedule").json()["confirmed_revision"]
+        assert confirmed_schedule["test_start_date"] == "2026-06-02"
+        assert confirmed_schedule["based_on_confirmed_matrix_id"] == version["confirmed_matrix_id"]
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

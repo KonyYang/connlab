@@ -7,7 +7,7 @@ from backend.domain.project_matrix_draft_models import ProjectMatrixDraftStepTex
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 
-from backend.api.dependencies import get_matrix_editor_session_service
+from backend.api.dependencies import get_matrix_editor_session_service, get_project_schedule_service
 from backend.api.lifecycle_errors import (
     lifecycle_guard_not_found,
     lifecycle_readonly_conflict,
@@ -44,6 +44,12 @@ from backend.api.matrix_editor_session_response_mappers import (
     _to_session_groups,
     _to_session_rows,
     _to_session_duration_authorities,
+)
+from backend.application.project_schedule_service import (
+    ConfirmProjectScheduleCommand,
+    ProjectScheduleConflictError,
+    ProjectScheduleProjectNotFoundError,
+    ProjectScheduleReadinessError,
 )
 
 @router.get(
@@ -265,6 +271,7 @@ def confirm_matrix_editor_session(
     project_id: str,
     request: MatrixEditorSessionConfirmRequest,
     service: MatrixEditorSessionService = Depends(get_matrix_editor_session_service),
+    schedule_service=Depends(get_project_schedule_service),
 ) -> MatrixEditorSessionConfirmResponse:
     """Confirm one Matrix Editor temporary session into active authority."""
     try:
@@ -297,6 +304,20 @@ def confirm_matrix_editor_session(
                 expected_saved_payload_signature=request.expected_saved_payload_signature,
             )
         )
+        if request.schedule_confirmation is not None:
+            schedule = request.schedule_confirmation
+            schedule_service.confirm(
+                ConfirmProjectScheduleCommand(
+                    project_id=project_id,
+                    expected_revision_id=schedule.expected_revision_id,
+                    expected_fingerprint=schedule.expected_fingerprint,
+                    post_test_buffer_days=schedule.post_test_buffer_days,
+                    test_start_date=schedule.test_start_date,
+                    test_complete_date=schedule.test_complete_date,
+                    estimated_completion_date=schedule.estimated_completion_date,
+                    confirmed_by=request.confirmed_by,
+                )
+            )
     except MatrixEditorSessionNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ProjectLifecycleWriteGuardNotFoundError as exc:
@@ -315,9 +336,15 @@ def confirm_matrix_editor_session(
         ) from exc
     except MatrixEditorSessionError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ProjectScheduleProjectNotFoundError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found", "message": str(exc)}) from exc
+    except ProjectScheduleConflictError as exc:
+        raise HTTPException(status_code=409, detail={"code": "project_schedule_conflict", "message": str(exc)}) from exc
+    except (ProjectScheduleReadinessError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail={"code": "project_schedule_validation", "message": str(exc)}) from exc
     return MatrixEditorSessionConfirmResponse(
         publish_status=result.publish_status,
-        message=result.message,
+        message=("Project Schedule confirmed." if request.schedule_confirmation is not None and result.publish_status == "no_change" else result.message),
         confirmed_snapshot=(
             _to_confirmed_response(result.confirmed_snapshot)
             if result.confirmed_snapshot is not None

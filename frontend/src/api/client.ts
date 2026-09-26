@@ -1784,11 +1784,19 @@ export type MatrixEditorSessionConfirmRequest = {
   planned_test_start_date?: string | null;
   planned_test_complete_date?: string | null;
   estimated_completion_date?: string | null;
+  schedule_confirmation?: {
+    expected_revision_id: string | null;
+    expected_fingerprint: string | null;
+    post_test_buffer_days: string;
+    test_start_date: string;
+    test_complete_date: string;
+    estimated_completion_date: string;
+  } | null;
 };
 
 export type MatrixEditorSessionDraftSaveRequest = Omit<
   MatrixEditorSessionConfirmRequest,
-  "confirmed_by" | "expected_editor_draft_id" | "expected_saved_payload_signature"
+  "confirmed_by" | "expected_editor_draft_id" | "expected_saved_payload_signature" | "schedule_confirmation"
 >;
 
 export type MatrixEditorSessionDraftSaveResponse = {

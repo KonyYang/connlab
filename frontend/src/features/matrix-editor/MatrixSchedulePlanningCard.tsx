@@ -1,21 +1,14 @@
 import type { ReactElement } from "react";
 import {
-  formatPlanningDays,
   type MatrixScheduleCalculation,
-  type MatrixScheduleGroupInput,
   type MatrixSchedulePlan,
 } from "./matrixSchedulePlanning";
 
 type MatrixSchedulePlanningCardProps = {
   plan: MatrixSchedulePlan;
-  groups: MatrixScheduleGroupInput[];
   calculation: MatrixScheduleCalculation;
   readOnly?: boolean;
   onChange: (plan: MatrixSchedulePlan) => void;
-  confirmationStatus?: string;
-  confirmDisabledReason?: string;
-  confirming?: boolean;
-  onConfirm?: () => void;
 };
 
 const DATE_FIELDS: Array<
@@ -33,18 +26,10 @@ type DateField = typeof DATE_FIELDS[number];
 
 export function MatrixSchedulePlanningCard({
   plan,
-  groups,
   calculation,
   readOnly = false,
   onChange,
-  confirmationStatus = "",
-  confirmDisabledReason = "",
-  confirming = false,
-  onConfirm,
 }: MatrixSchedulePlanningCardProps): ReactElement {
-  const selectedGroups = groups.filter((group) => group.isSelected);
-  const criticalGroup = selectedGroups.find((group) => group.id === calculation.criticalGroupId) ?? null;
-  const criticalLabel = criticalGroup ? criticalGroup.name || criticalGroup.id : "No group";
   const updateField = (field: keyof MatrixSchedulePlan, value: string): void => {
     if (readOnly) {
       return;
@@ -63,14 +48,7 @@ export function MatrixSchedulePlanningCard({
   return (
     <section className="matrix-editor-schedule-card" aria-label="Project schedule planning">
       <header className="matrix-editor-schedule-header">
-        <div>
-          <h3>Project Schedule</h3>
-          <p>Confirmed dates are used in project outputs; update them when actual timing changes.</p>
-        </div>
-        <strong>
-          Longest Test Group {criticalLabel}: {formatPlanningDays(calculation.criticalGroupDays)} d
-        </strong>
-        <p>Sample received: {plan.sampleReceivedDate || "Not available"} (reference only)</p>
+        <h3>Project Schedule</h3>
       </header>
 
       <div className="matrix-editor-schedule-fields">
@@ -134,19 +112,6 @@ export function MatrixSchedulePlanningCard({
       {calculation.dateError ? (
         <p className="matrix-editor-schedule-error">{calculation.dateError}</p>
       ) : null}
-      <div className="matrix-editor-schedule-actions">
-        <button
-          type="button"
-          disabled={readOnly || confirming || Boolean(confirmDisabledReason)}
-          title={confirmDisabledReason}
-          onClick={onConfirm}
-        >
-          {confirming ? "Saving schedule…" : "Confirm schedule"}
-        </button>
-        {confirmationStatus || confirmDisabledReason ? (
-          <p role="status">{confirmationStatus || confirmDisabledReason}</p>
-        ) : null}
-      </div>
     </section>
   );
 }

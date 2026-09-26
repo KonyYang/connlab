@@ -34,25 +34,17 @@ function buildCalculation(): MatrixScheduleCalculation {
 }
 
 describe("MatrixSchedulePlanningCard", () => {
-  it("shows the critical group name and marks invalid date fields", () => {
+  it("keeps only the editable schedule fields and marks invalid dates", () => {
     render(
       <MatrixSchedulePlanningCard
         plan={emptyPlan}
-        groups={[
-          { id: "g1", name: "1", isSelected: true },
-          { id: "g8", name: "8a", isSelected: true },
-        ]}
         calculation={buildCalculation()}
         onChange={vi.fn()}
       />
     );
 
-    expect(screen.getByText("Longest Test Group 8a: 2.5 d")).toBeTruthy();
-    expect(
-      screen.getByText(
-        "Confirmed dates are used in project outputs; update them when actual timing changes."
-      )
-    ).toBeTruthy();
+    expect(screen.getByText("Project Schedule")).toBeTruthy();
+    expect(screen.queryByText(/Longest Test Group/)).toBeNull();
     expect(screen.getByLabelText("Test complete").classList.contains("is-invalid")).toBe(true);
     expect(screen.getByLabelText("Test complete").getAttribute("aria-invalid")).toBe("true");
     expect(screen.getByLabelText("Planned start").classList.contains("is-invalid")).toBe(false);
@@ -68,14 +60,13 @@ describe("MatrixSchedulePlanningCard", () => {
           plannedTestCompleteDate: "2026-06-03",
           estimatedCompletionDate: "2026-06-04",
         }}
-        groups={[{ id: "g1", name: "1", isSelected: true }]}
         calculation={buildCalculation()}
         onChange={vi.fn()}
       />
     );
 
     expect(screen.queryByLabelText("Sample received")).toBeNull();
-    expect(screen.getByText(/Sample received: 2026-06-01/)).toBeTruthy();
+    expect(screen.queryByText(/Sample received:/)).toBeNull();
     expect(screen.getByLabelText("Planned start").getAttribute("value")).toBe("2026-06-02");
     expect(screen.getByLabelText("Test complete").getAttribute("value")).toBe("2026-06-03");
     expect(screen.getByLabelText("Estimated completion").getAttribute("value")).toBe("2026-06-04");
@@ -85,7 +76,6 @@ describe("MatrixSchedulePlanningCard", () => {
     render(
       <MatrixSchedulePlanningCard
         plan={blankDatePlan}
-        groups={[{ id: "g8", name: "8a", isSelected: true }]}
         calculation={{ ...buildCalculation(), invalidDateFields: {}, dateError: null, isValid: true }}
         onChange={vi.fn()}
       />
@@ -96,23 +86,17 @@ describe("MatrixSchedulePlanningCard", () => {
     expect(screen.getByLabelText("Estimated completion").classList.contains("is-invalid")).toBe(true);
   });
 
-  it("shows why schedule confirmation is unavailable", () => {
+  it("keeps schedule editing in the card without a separate confirmation action", () => {
     render(
       <MatrixSchedulePlanningCard
         plan={emptyPlan}
-        groups={[{ id: "g1", name: "1", isSelected: true }]}
         calculation={{ ...buildCalculation(), invalidDateFields: {}, dateError: null, isValid: true }}
-        confirmDisabledReason="Confirm Matrix changes before updating Project Schedule."
         onChange={vi.fn()}
       />
     );
 
-    expect(
-      screen.getByText("Confirm Matrix changes before updating Project Schedule.")
-    ).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Confirm schedule" }).hasAttribute("disabled")
-    ).toBe(true);
+    expect(screen.getByLabelText("Planned start")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Confirm schedule" })).toBeNull();
   });
 
   it("preselects complete and estimated dates from planned start", () => {
@@ -120,7 +104,6 @@ describe("MatrixSchedulePlanningCard", () => {
     render(
       <MatrixSchedulePlanningCard
         plan={blankDatePlan}
-        groups={[{ id: "g8", name: "8a", isSelected: true }]}
         calculation={{ ...buildCalculation(), invalidDateFields: {}, dateError: null, isValid: true }}
         onChange={onChange}
       />
@@ -149,7 +132,6 @@ describe("MatrixSchedulePlanningCard", () => {
           plannedTestCompleteDate: "2026-06-06",
           estimatedCompletionDate: "2026-06-07",
         }}
-        groups={[{ id: "g8", name: "8a", isSelected: true }]}
         calculation={{ ...buildCalculation(), invalidDateFields: {}, dateError: null, isValid: true }}
         onChange={onChange}
       />
@@ -178,7 +160,6 @@ describe("MatrixSchedulePlanningCard", () => {
           plannedTestCompleteDate: "",
           estimatedCompletionDate: "",
         }}
-        groups={[{ id: "g8", name: "8a", isSelected: true }]}
         calculation={{ ...buildCalculation(), invalidDateFields: {}, dateError: null, isValid: true }}
         onChange={onChange}
       />

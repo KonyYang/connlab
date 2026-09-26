@@ -13,6 +13,9 @@ from backend.application.project_basic_information_service import (
     SaveProjectBasicInformationDraftCommand,
 )
 from backend.domain import (
+    ConfirmedMatrixCell,
+    ConfirmedMatrixGroup,
+    ConfirmedMatrixRow,
     ConfirmedMatrixSnapshot,
     ConfirmedMatrixStatus,
     ConfirmedMatrixVersion,
@@ -248,7 +251,23 @@ def test_start_is_blocked_before_writes_when_project_schedule_is_unconfirmed(
                     status=ConfirmedMatrixStatus.CONFIRMED,
                     confirmed_by="operator",
                     confirmed_at="2026-09-01T00:00:00Z",
-                )
+                ),
+                groups=(ConfirmedMatrixGroup(
+                    confirmed_group_id="CG1", confirmed_matrix_id="CM1",
+                    draft_group_id="DG1", source_group_snapshot_id=None,
+                    group_order=1, group_key="g1", group_label="1",
+                    sample_quantity_expression="1",
+                ),),
+                rows=(ConfirmedMatrixRow(
+                    confirmed_row_id="CR1", confirmed_matrix_id="CM1",
+                    draft_row_id="DR1", source_row_snapshot_id=None,
+                    row_order=1, test_item="Visual Examination", day_expression="0",
+                ),),
+                cells=(ConfirmedMatrixCell(
+                    confirmed_cell_id="CC1", confirmed_matrix_id="CM1",
+                    confirmed_row_id="CR1", confirmed_group_id="CG1",
+                    draft_row_id="DR1", draft_group_id="DG1", cell_value="1",
+                ),),
             )
         )
         session.commit()
@@ -257,6 +276,16 @@ def test_start_is_blocked_before_writes_when_project_schedule_is_unconfirmed(
     queued = []
     service.dispatch = queued.append
     app.dependency_overrides[deps.get_project_folder_generation_service] = lambda: service
+    def override_session():
+        with sessions() as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+    app.dependency_overrides[deps.get_session] = override_session
+    app.dependency_overrides[deps.get_settings] = lambda: settings
     try:
         client = TestClient(app)
         url = "/api/projects/P1/project-folder/generation"
@@ -265,7 +294,7 @@ def test_start_is_blocked_before_writes_when_project_schedule_is_unconfirmed(
         payload = preview.json()
         guidance = (
             "Project Schedule is not confirmed. Open Matrix Editor, complete Project "
-            "Schedule, and click Confirm schedule before generating Project Folder outputs. "
+            "Schedule, and click Confirm Matrix before generating Project Folder outputs. "
             "This date authority is required for Customer Feedback, Application Form, and "
             "Test Report."
         )
@@ -285,7 +314,49 @@ def test_start_is_blocked_before_writes_when_project_schedule_is_unconfirmed(
         assert client.get(url).json() is None
         assert queued == []
         assert list(destination.iterdir()) == []
+        matrix_seed = client.get("/api/projects/P1/matrix-editor/session")
+        assert matrix_seed.status_code == 200, matrix_seed.text
+        matrix = matrix_seed.json()
+        matrix_confirm_payload = {
+            "expected_active_confirmed_matrix_id": matrix["active_confirmed_matrix_id"],
+            "expected_active_confirmed_revision": matrix["active_confirmed_revision"],
+            "source_import_id": matrix["active_source_import_id"],
+            "source_snapshot_id": matrix["active_source_snapshot_id"],
+            "groups": matrix["editor_draft"]["groups"],
+            "rows": matrix["editor_draft"]["rows"],
+            "cells": matrix["editor_draft"]["cells"],
+            "confirmed_by": "operator",
+            "schedule_confirmation": {
+                "expected_revision_id": None,
+                "expected_fingerprint": None,
+                "post_test_buffer_days": "0",
+                "test_start_date": "2026-09-02",
+                "test_complete_date": "2026-09-02",
+                "estimated_completion_date": "2026-09-02",
+            },
+        }
+        missing_date = client.post("/api/projects/P1/matrix-editor/session/confirm", json={
+            **matrix_confirm_payload,
+            "schedule_confirmation": {
+                **matrix_confirm_payload["schedule_confirmation"],
+                "estimated_completion_date": "",
+            },
+        })
+        assert missing_date.status_code == 422, missing_date.text
+        still_blocked = client.get(url + "/preview")
+        assert guidance in still_blocked.json()["start_blockers"]
+        confirmed_schedule = client.post(
+            "/api/projects/P1/matrix-editor/session/confirm", json=matrix_confirm_payload,
+        )
+        assert confirmed_schedule.status_code == 200, confirmed_schedule.text
+        assert confirmed_schedule.json()["publish_status"] == "no_change"
+        after_confirm = client.get(url + "/preview")
+        assert after_confirm.status_code == 200, after_confirm.text
+        assert guidance not in after_confirm.json()["workspace_preview"]["blockers"]
+        assert guidance not in after_confirm.json()["start_blockers"]
     finally:
+        app.dependency_overrides.pop(deps.get_session, None)
+        app.dependency_overrides.pop(deps.get_settings, None)
         dependency_override = app.dependency_overrides.pop(
             deps.get_project_folder_generation_service, None
         )

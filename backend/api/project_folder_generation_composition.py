@@ -21,7 +21,7 @@ from backend.infrastructure.files.recoverable_workspace_publisher import Recover
 
 PROJECT_SCHEDULE_GENERATION_BLOCKER = (
     "Project Schedule is not confirmed. Open Matrix Editor, complete Project "
-    "Schedule, and click Confirm schedule before generating Project Folder outputs. "
+    "Schedule, and click Confirm Matrix before generating Project Folder outputs. "
     "This date authority is required for Customer Feedback, Application Form, and "
     "Test Report."
 )

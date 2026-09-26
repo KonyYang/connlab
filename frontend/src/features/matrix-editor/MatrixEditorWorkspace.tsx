@@ -9,7 +9,6 @@ import {
 } from "../project-lifecycle/projectLifecycleReadonlyModel";
 import {
   ApiRequestError,
-  confirmProjectSchedule,
   confirmMatrixEditorSession,
   createMatrixRevisionDraft,
   fetchMatrixEditorSession,
@@ -178,8 +177,19 @@ export function MatrixEditorWorkspace({
   const [matrixLegacySchedulePlan, setMatrixLegacySchedulePlan] =
     useState<MatrixSchedulePlan>(() => emptySchedulePlan());
   const [scheduleWorkspace, setScheduleWorkspace] = useState<ProjectScheduleWorkspace | null>(null);
-  const [scheduleSaveState, setScheduleSaveState] = useState<"idle" | "loading">("idle");
   const [scheduleMessage, setScheduleMessage] = useState("");
+  const [scheduleBaselinePlan, setScheduleBaselinePlan] = useState<MatrixSchedulePlan | null>(null);
+  const scheduleHasChanges = scheduleBaselinePlan !== null && (
+    schedulePlan.postTestBufferDays.trim() !== scheduleBaselinePlan.postTestBufferDays.trim() ||
+    schedulePlan.plannedTestStartDate.trim() !== scheduleBaselinePlan.plannedTestStartDate.trim() ||
+    schedulePlan.plannedTestCompleteDate.trim() !== scheduleBaselinePlan.plannedTestCompleteDate.trim() ||
+    schedulePlan.estimatedCompletionDate.trim() !== scheduleBaselinePlan.estimatedCompletionDate.trim()
+  );
+  const scheduleNeedsConfirmation = Boolean(scheduleWorkspace) && (
+    scheduleHasChanges ||
+    (scheduleWorkspace?.status !== "confirmed" &&
+      Boolean(schedulePlan.plannedTestStartDate && schedulePlan.plannedTestCompleteDate && schedulePlan.estimatedCompletionDate))
+  );
   const [showSelectedGroupsOnly, setShowSelectedGroupsOnly] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(true);
   const editorSurfaceRef = useRef<HTMLElement>(null);
@@ -251,7 +261,6 @@ export function MatrixEditorWorkspace({
     setStepOutputOverrides(nextStepOverrides);
     setSampleMergeNotes({});
     setMatrixLegacySchedulePlan(nextSchedulePlan);
-    setSchedulePlan(nextSchedulePlan);
     setSelectedGroupId(nextGroups[0]?.id ?? null);
     setSelectedRowId(null);
     const baselinePayload = buildDraftSavePayload(
@@ -291,6 +300,7 @@ export function MatrixEditorWorkspace({
     currentPayload: currentSavePayload,
     currentSignature: currentSaveSignature,
     draftLoading,
+    hasExternalUnsavedChanges: scheduleHasChanges,
     durationAuthorities,
     onBackToWorkbench,
     onError: setConfirmActiveMessage,
@@ -316,7 +326,7 @@ export function MatrixEditorWorkspace({
     const loadSessionSeed = async (): Promise<void> => {
       setDraftLoading(true);
       setScheduleWorkspace(null);
-      setScheduleSaveState("idle");
+      setScheduleBaselinePlan(null);
       setScheduleMessage("");
       try {
         const seed: MatrixEditorSessionSeed = await fetchMatrixEditorSession(projectId);
@@ -330,6 +340,7 @@ export function MatrixEditorWorkspace({
             seed.source_preview_payload ?? null,
             loadedSchedulePlan
           );
+          setSchedulePlan(loadedSchedulePlan);
           draftPersistence.hydrateSession({
             baselineSignature: loadedSignature,
             hasEditorDraft: true,
@@ -373,10 +384,13 @@ export function MatrixEditorWorkspace({
           const schedule = await fetchProjectSchedule(projectId);
           if (cancelled) return;
           setScheduleWorkspace(schedule);
-          setSchedulePlan(schedulePlanFromWorkspace(schedule));
+          const loadedPlan = schedulePlanFromWorkspace(schedule);
+          setScheduleBaselinePlan(loadedPlan);
+          setSchedulePlan(loadedPlan);
         } catch (scheduleError) {
           if (!cancelled) {
             setScheduleWorkspace(null);
+            setScheduleBaselinePlan(null);
             setScheduleMessage(parseRequestError(scheduleError, "Project Schedule is not ready."));
           }
         }
@@ -740,7 +754,8 @@ export function MatrixEditorWorkspace({
     saveState === "dirty" ||
     saveState === "saving" ||
     saveState === "error" ||
-    Boolean(savedEditorDraftId);
+    Boolean(savedEditorDraftId) ||
+    scheduleNeedsConfirmation;
   const methodVersionSync = useMatrixMethodVersionSync({
     projectId,
     rows: editableRows.filter((row) => !row.isSampleRow).map((row) => ({ row_id: row.id, method: row.method })),
@@ -770,6 +785,16 @@ export function MatrixEditorWorkspace({
       ? "No project id."
       : hasMatrixValidationError || hasMatrixDayError
         ? groupIdentityErrorMessage || groupNameErrorMessage || stepTokenErrorMessage || Object.values(scheduleCalculation.rowErrors)[0]
+        : scheduleNeedsConfirmation && (
+            !schedulePlan.plannedTestStartDate ||
+            !schedulePlan.plannedTestCompleteDate ||
+            !schedulePlan.estimatedCompletionDate ||
+            Object.keys(scheduleCalculation.bufferErrors).length > 0 ||
+            Boolean(scheduleCalculation.dateError)
+          )
+          ? Object.values(scheduleCalculation.bufferErrors)[0] ??
+            scheduleCalculation.dateError ??
+            "Complete Planned start, Test complete and Estimated completion before confirming Project Schedule."
         : hasSelectedSampleQuantityError
           ? "Sample quantity is required for selected groups."
         : isPublishBusy
@@ -784,51 +809,6 @@ export function MatrixEditorWorkspace({
             ? "Add at least one step token before confirm."
             : "";
   const canPublishActiveMatrix = publishDisabledReason.length === 0;
-  const scheduleBaseline = scheduleWorkspace?.suggestion;
-  const scheduleHasChanges =
-    scheduleWorkspace?.status !== "confirmed" ||
-    !scheduleBaseline ||
-    schedulePlan.postTestBufferDays.trim() !== scheduleBaseline.post_test_buffer_days.trim() ||
-    schedulePlan.plannedTestStartDate.trim() !== scheduleBaseline.test_start_date.trim() ||
-    schedulePlan.plannedTestCompleteDate.trim() !== scheduleBaseline.test_complete_date.trim() ||
-    schedulePlan.estimatedCompletionDate.trim() !== scheduleBaseline.estimated_completion_date.trim();
-  const scheduleConfirmDisabledReason = isLifecycleReadonly
-    ? lifecycleReadonlyView.message
-    : !scheduleWorkspace
-      ? scheduleMessage || "Project Schedule is not ready."
-      : !schedulePlan.plannedTestStartDate || !schedulePlan.plannedTestCompleteDate || !schedulePlan.estimatedCompletionDate
-        ? "Complete Planned start, Test complete and Estimated completion before confirming Project Schedule."
-        : Object.keys(scheduleCalculation.bufferErrors).length > 0 || scheduleCalculation.dateError
-          ? Object.values(scheduleCalculation.bufferErrors)[0] ??
-            scheduleCalculation.dateError ??
-            "Complete Project Schedule."
-          : !scheduleHasChanges
-            ? "No Project Schedule changes to confirm."
-            : "";
-  const onConfirmSchedule = async (): Promise<void> => {
-    if (!scheduleWorkspace || scheduleConfirmDisabledReason) return;
-    setScheduleSaveState("loading");
-    setScheduleMessage("Saving Project Schedule…");
-    try {
-      await confirmProjectSchedule(projectId, {
-        actor: MVP_REVISION_CONFIRMED_BY,
-        expected_revision_id: scheduleWorkspace.confirmed_revision?.revision_id ?? null,
-        expected_fingerprint: scheduleWorkspace.confirmed_revision?.fingerprint ?? null,
-        post_test_buffer_days: schedulePlan.postTestBufferDays,
-        test_start_date: schedulePlan.plannedTestStartDate,
-        test_complete_date: schedulePlan.plannedTestCompleteDate,
-        estimated_completion_date: schedulePlan.estimatedCompletionDate,
-      });
-      const refreshed = await fetchProjectSchedule(projectId);
-      setScheduleWorkspace(refreshed);
-      setSchedulePlan(schedulePlanFromWorkspace(refreshed));
-      setScheduleMessage("Project Schedule confirmed.");
-    } catch (error) {
-      setScheduleMessage(parseRequestError(error, "Unable to confirm Project Schedule."));
-    } finally {
-      setScheduleSaveState("idle");
-    }
-  };
   const publishBlockingMessage =
     publishDisabledReason && publishDisabledReason !== "Action in progress."
       ? publishDisabledReason
@@ -850,6 +830,7 @@ export function MatrixEditorWorkspace({
     saveState === "error" ? AUTO_SAVE_STATUS_COPY.error : "";
   const completionStatusMessage =
     confirmActiveMessage ||
+    scheduleMessage ||
     publishBlockingMessage ||
     "Confirm returns to Workbench without creating a new version when nothing changed.";
 
@@ -1393,6 +1374,24 @@ export function MatrixEditorWorkspace({
       }
       return;
     }
+    const buildUnifiedConfirmRequest = (
+      expectedMatrixId: string | null,
+      expectedRevision: number | null,
+    ) => ({
+      ...draftPersistence.buildConfirmRequest(
+        MVP_REVISION_CONFIRMED_BY,
+        expectedMatrixId,
+        expectedRevision,
+      ),
+      schedule_confirmation: scheduleNeedsConfirmation && scheduleWorkspace ? {
+        expected_revision_id: scheduleWorkspace.confirmed_revision?.revision_id ?? null,
+        expected_fingerprint: scheduleWorkspace.confirmed_revision?.fingerprint ?? null,
+        post_test_buffer_days: schedulePlan.postTestBufferDays,
+        test_start_date: schedulePlan.plannedTestStartDate,
+        test_complete_date: schedulePlan.plannedTestCompleteDate,
+        estimated_completion_date: schedulePlan.estimatedCompletionDate,
+      } : undefined,
+    });
     const handleConfirmResponse = (
       response: MatrixEditorSessionConfirmResponse
     ): void => {
@@ -1414,11 +1413,7 @@ export function MatrixEditorWorkspace({
       const response: MatrixEditorSessionConfirmResponse =
         await confirmMatrixEditorSession(
           projectId,
-          draftPersistence.buildConfirmRequest(
-            MVP_REVISION_CONFIRMED_BY,
-            activeConfirmedMatrixId,
-            activeConfirmedRevision
-          )
+          buildUnifiedConfirmRequest(activeConfirmedMatrixId, activeConfirmedRevision)
         );
       handleConfirmResponse(response);
     } catch (error) {
@@ -1439,10 +1434,9 @@ export function MatrixEditorWorkspace({
             );
             const retryResponse = await confirmMatrixEditorSession(
               projectId,
-              draftPersistence.buildConfirmRequest(
-                MVP_REVISION_CONFIRMED_BY,
+              buildUnifiedConfirmRequest(
                 latestSeed.active_confirmed_matrix_id,
-                latestSeed.active_confirmed_revision ?? null
+                latestSeed.active_confirmed_revision ?? null,
               )
             );
             handleConfirmResponse(retryResponse);
@@ -2174,17 +2168,8 @@ export function MatrixEditorWorkspace({
           </div>
           <MatrixSchedulePlanningCard
             plan={schedulePlan}
-            groups={groupColumns.map((group) => ({
-              id: group.id,
-              name: group.name || group.groupKey,
-              isSelected: group.isSelected,
-            }))}
             calculation={scheduleCalculation}
-            readOnly={isLifecycleReadonly}
-            confirmationStatus={scheduleMessage}
-            confirmDisabledReason={scheduleConfirmDisabledReason}
-            confirming={scheduleSaveState === "loading"}
-            onConfirm={() => void onConfirmSchedule()}
+            readOnly={isLifecycleReadonly || !scheduleWorkspace || confirmActiveState === "loading"}
             onChange={(nextPlan) => {
               setSchedulePlan(nextPlan);
             }}
@@ -2247,7 +2232,7 @@ export function MatrixEditorWorkspace({
       >
         <span>{completionStatusMessage}</span>
         <div className="matrix-editor-completion-actions">
-          <button type="button" onClick={() => void draftPersistence.cancel()}>
+          <button type="button" disabled={confirmActiveState === "loading"} onClick={() => void draftPersistence.cancel()}>
             Cancel
           </button>
           <button
