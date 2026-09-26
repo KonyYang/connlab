@@ -1,107 +1,74 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  applyMatrixMethodVersionSync,
-  previewMatrixMethodVersionSync,
-  type MatrixMethodVersionSyncPreview,
+  suggestMatrixMethodVersions,
+  type MatrixMethodVersionSuggestion,
 } from "../../api/client";
+
+type MethodRow = { row_id: string; method: string };
+type MethodUpdate = Pick<MatrixMethodVersionSuggestion, "row_id" | "current_method" | "proposed_method">;
 
 type MatrixMethodVersionSyncInputs = {
   projectId: string;
-  draftId: string | null;
-  savedPayloadSignature: string | null;
+  rows: MethodRow[];
+  currentSignature: string;
   disabled: boolean;
-  onApplied: (savedPayloadSignature: string) => void;
+  onApply: (updates: MethodUpdate[]) => void;
 };
 
 export function useMatrixMethodVersionSync({
   projectId,
-  draftId,
-  savedPayloadSignature,
+  rows,
+  currentSignature,
   disabled,
-  onApplied,
+  onApply,
 }: MatrixMethodVersionSyncInputs) {
-  const [preview, setPreview] = useState<MatrixMethodVersionSyncPreview | null>(null);
-  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
-  const [busy, setBusy] = useState<"preview" | "apply" | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const latestSignatureRef = useRef(currentSignature);
+  const latestProjectIdRef = useRef(projectId);
+  const busyRef = useRef(false);
+  latestSignatureRef.current = currentSignature;
+  latestProjectIdRef.current = projectId;
 
   useEffect(() => {
-    setPreview(null);
-    setSelectedRowIds(new Set());
     setError(null);
     setMessage(null);
-  }, [projectId, draftId, savedPayloadSignature]);
+  }, [projectId]);
 
-  const previewMethods = async (): Promise<void> => {
-    if (disabled || busy || !draftId || !savedPayloadSignature) return;
-    setBusy("preview");
+  const syncMethods = async (): Promise<void> => {
+    if (disabled || busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
     setError(null);
     setMessage(null);
+    const requestedSignature = currentSignature;
+    const requestedRows = rows.map((row) => ({ ...row }));
     try {
-      const next = await previewMatrixMethodVersionSync(projectId, {
-        project_matrix_draft_id: draftId,
-        expected_saved_payload_signature: savedPayloadSignature,
-      });
-      setPreview(next);
-      setSelectedRowIds(
-        new Set(next.rows.filter((row) => row.selectable).map((row) => row.draft_row_id))
-      );
+      const result = await suggestMatrixMethodVersions(projectId, { rows: requestedRows });
+      if (latestProjectIdRef.current !== projectId || latestSignatureRef.current !== requestedSignature) {
+        throw new Error("Matrix changed while checking Method versions. Run the update again.");
+      }
+      const originalMethods = new Map(requestedRows.map((row) => [row.row_id, row.method]));
+      const updates = result.rows.filter((row) => row.selectable && row.proposed_method);
+      if (updates.some((row) => originalMethods.get(row.row_id) !== row.current_method)) {
+        throw new Error("Matrix changed while checking Method versions. Run the update again.");
+      }
+      if (updates.length === 0) {
+        setMessage("No applicable Method version updates found.");
+        return;
+      }
+      onApply(updates.map(({ row_id, current_method, proposed_method }) => ({
+        row_id, current_method, proposed_method,
+      })));
+      setMessage(`${updates.length} Method version${updates.length === 1 ? "" : "s"} updated in the Matrix draft. Confirm Matrix when ready.`);
     } catch (caught) {
-      setPreview(null);
-      setSelectedRowIds(new Set());
-      setError((caught as Error).message || "Unable to check Method versions.");
+      setError((caught as Error).message || "Unable to update Method versions.");
     } finally {
-      setBusy(null);
+      busyRef.current = false;
+      setBusy(false);
     }
   };
 
-  const toggleRow = (rowId: string, checked: boolean): void => {
-    setSelectedRowIds((current) => {
-      const next = new Set(current);
-      if (checked) next.add(rowId);
-      else next.delete(rowId);
-      return next;
-    });
-  };
-
-  const applySelected = async (): Promise<void> => {
-    if (
-      disabled ||
-      busy ||
-      !draftId ||
-      !savedPayloadSignature ||
-      !preview ||
-      selectedRowIds.size === 0
-    ) return;
-    setBusy("apply");
-    setError(null);
-    setMessage(null);
-    try {
-      const result = await applyMatrixMethodVersionSync(projectId, {
-        project_matrix_draft_id: draftId,
-        expected_saved_payload_signature: savedPayloadSignature,
-        preview_fingerprint: preview.preview_fingerprint,
-        selected_draft_row_ids: [...selectedRowIds],
-        applied_by: "operator",
-      });
-      setMessage(`${result.applied_row_ids.length} Method update(s) applied.`);
-      onApplied(result.saved_payload_signature);
-    } catch (caught) {
-      setError((caught as Error).message || "Unable to apply Method updates.");
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  return {
-    preview,
-    selectedRowIds,
-    busy,
-    error,
-    message,
-    previewMethods,
-    toggleRow,
-    applySelected,
-  };
+  return { busy, error, message, syncMethods };
 }

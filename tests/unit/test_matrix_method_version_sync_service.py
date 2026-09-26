@@ -18,6 +18,8 @@ from backend.application.matrix_method_version_sync_service import (
     MatrixMethodVersionSyncConflictError,
     MatrixMethodVersionSyncService,
     PreviewMatrixMethodVersionSyncCommand,
+    SuggestMatrixMethodVersionsCommand,
+    SuggestMatrixMethodVersionsRow,
 )
 from backend.domain import (
     ExternalResource,
@@ -48,6 +50,50 @@ def test_preview_is_zero_write_and_reports_safe_method_update() -> None:
     assert preview.rows[0].proposed_method == "EIA-364-04B"
     assert preview.rows[0].selectable is True
     assert preview.rows[1].status == "current"
+
+
+def test_suggest_uses_standard_record_for_visible_methods_without_creating_a_draft() -> None:
+    store = _Drafts(_snapshot())
+    service = _service(store)
+
+    result = service.suggest(SuggestMatrixMethodVersionsCommand(
+        project_id="P1",
+        rows=(
+            SuggestMatrixMethodVersionsRow("row-1", "EIA-364-04A"),
+            SuggestMatrixMethodVersionsRow("row-2", "EIA-364-18C"),
+            SuggestMatrixMethodVersionsRow("row-3", "IEC 60512-1"),
+            SuggestMatrixMethodVersionsRow("row-4", "EIA-364-04C"),
+            SuggestMatrixMethodVersionsRow("row-5", "IEC 364-04A"),
+        ),
+    ))
+
+    assert result.resource_path == "standard.xlsx"
+    assert [(row.row_id, row.proposed_method, row.selectable) for row in result.rows] == [
+        ("row-1", "EIA-364-04B", True),
+        ("row-2", None, False),
+        ("row-3", None, False),
+        ("row-4", "EIA-364-04B", True),
+        ("row-5", None, False),
+    ]
+    assert store.get_calls == 0
+    assert store.apply_calls == []
+
+
+def test_suggest_rejects_a_standard_record_path_changed_during_read() -> None:
+    store = _Drafts(_snapshot())
+    service = MatrixMethodVersionSyncService(
+        draft_store=store,
+        confirmed_store=_Confirmed(),
+        resource_store=_Resources(_standard_resource()),
+        catalog_reader=_CatalogFromOtherPath(),
+    )
+
+    with pytest.raises(MatrixMethodVersionSyncConflictError, match="changed while reading"):
+        service.suggest(SuggestMatrixMethodVersionsCommand(
+            project_id="P1", rows=(SuggestMatrixMethodVersionsRow("row-1", "EIA-364-04A"),),
+        ))
+
+    assert store.apply_calls == []
 
 
 def test_apply_updates_only_selected_method_and_persists_context() -> None:
@@ -268,3 +314,8 @@ class _Catalog:
                 StandardRecordRow("EIA-364-18C", "Other", None, "认可标准", 4),
             ),
         )
+
+
+class _CatalogFromOtherPath(_Catalog):
+    def read_standard_records(self):
+        return replace(super().read_standard_records(), resource_path="other.xlsx")

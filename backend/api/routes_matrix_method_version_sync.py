@@ -8,6 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.api.dependencies import get_matrix_method_version_sync_service
+from backend.application.external_excel_read_service import (
+    ExternalExcelReadError,
+    ExternalExcelReadNotFoundError,
+)
 from backend.application.matrix_method_version_sync_service import (
     ApplyMatrixMethodVersionSyncCommand,
     MatrixMethodVersionSyncConflictError,
@@ -16,6 +20,8 @@ from backend.application.matrix_method_version_sync_service import (
     MatrixMethodVersionSyncPreview,
     MatrixMethodVersionSyncService,
     PreviewMatrixMethodVersionSyncCommand,
+    SuggestMatrixMethodVersionsCommand,
+    SuggestMatrixMethodVersionsRow,
 )
 
 
@@ -67,6 +73,63 @@ class MatrixMethodVersionSyncApplyResponse(BaseModel):
     project_matrix_draft_id: str
     saved_payload_signature: str
     applied_row_ids: list[str]
+
+
+class MatrixMethodVersionSuggestionRowRequest(BaseModel):
+    row_id: str
+    method: str
+
+
+class MatrixMethodVersionSuggestionRequest(BaseModel):
+    rows: list[MatrixMethodVersionSuggestionRowRequest]
+
+
+class MatrixMethodVersionSuggestionRowResponse(BaseModel):
+    row_id: str
+    current_method: str
+    proposed_method: str | None
+    status: str
+    selectable: bool
+
+
+class MatrixMethodVersionSuggestionResponse(BaseModel):
+    resource_path: str
+    rows: list[MatrixMethodVersionSuggestionRowResponse]
+
+
+@router.post(
+    "/api/projects/{project_id}/matrix-method-version-sync/suggest",
+    response_model=MatrixMethodVersionSuggestionResponse,
+)
+def suggest_matrix_method_versions(
+    project_id: str,
+    request: MatrixMethodVersionSuggestionRequest,
+    service: MatrixMethodVersionSyncService = Depends(
+        get_matrix_method_version_sync_service
+    ),
+) -> MatrixMethodVersionSuggestionResponse:
+    try:
+        result = service.suggest(SuggestMatrixMethodVersionsCommand(
+            project_id=project_id,
+            rows=tuple(
+                SuggestMatrixMethodVersionsRow(row.row_id, row.method)
+                for row in request.rows
+            ),
+        ))
+    except MatrixMethodVersionSyncNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except MatrixMethodVersionSyncConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ExternalExcelReadNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (ExternalExcelReadError, FileNotFoundError, PermissionError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except MatrixMethodVersionSyncError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return MatrixMethodVersionSuggestionResponse(
+        resource_path=result.resource_path,
+        rows=[MatrixMethodVersionSuggestionRowResponse(**asdict(row)) for row in result.rows],
+    )
 
 
 @router.post(

@@ -8,6 +8,10 @@ from dataclasses import dataclass
 
 _HYPHENS = str.maketrans({value: "-" for value in "‐‑‒–—−"})
 _MATRIX_CORE = re.compile(r"364\s*-\s*(?P<number>\d{2})(?P<revision>[A-Z])?", re.I)
+_MATRIX_EIA_CORE = re.compile(
+    r"(?:ANSI\s*/\s*)?EIA\s*-\s*364\s*-\s*(?P<number>\d{2})(?P<revision>[A-Z])?",
+    re.I,
+)
 _CATALOG_CODE = re.compile(
     r"(?:ANSI\s*/\s*)?EIA\s*-\s*364\s*-\s*"
     r"(?P<number>\d{2})(?P<revision>[A-Z])"
@@ -53,11 +57,14 @@ class MethodProposal:
     reason: str | None = None
 
 
-def parse_matrix_method(value: str | None) -> MatrixMethod:
+def parse_matrix_method(
+    value: str | None, *, require_eia_prefix: bool = False
+) -> MatrixMethod:
     """Parse exactly one EIA-364 method core while retaining original spans."""
     original = value or ""
     normalized = original.translate(_HYPHENS)
-    matches = list(_MATRIX_CORE.finditer(normalized))
+    pattern = _MATRIX_EIA_CORE if require_eia_prefix else _MATRIX_CORE
+    matches = list(pattern.finditer(normalized))
     if not matches:
         return MatrixMethod(original=original, status="no_method_core")
     if len(matches) != 1:
@@ -125,6 +132,8 @@ def resolve_catalog_candidates(
 def build_method_proposal(
     matrix: MatrixMethod,
     candidates: tuple[CatalogMethod | None, ...],
+    *,
+    authoritative_catalog: bool = False,
 ) -> MethodProposal:
     """Build one conservative row-local proposal."""
     if matrix.status != "parsed" or matrix.core is None:
@@ -144,7 +153,7 @@ def build_method_proposal(
     }
     if matrix.revision == candidate.revision:
         return MethodProposal(status="current", **details)
-    if matrix.revision and matrix.revision > candidate.revision:
+    if matrix.revision and matrix.revision > candidate.revision and not authoritative_catalog:
         return MethodProposal(status="downgrade_conflict", **details)
     if matrix.revision_span:
         start, end = matrix.revision_span

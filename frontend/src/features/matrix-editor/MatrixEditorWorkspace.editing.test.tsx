@@ -17,64 +17,35 @@ import { MatrixEditorWorkspace } from "./MatrixEditorWorkspace";
 installMatrixEditorWorkspaceTestLifecycle();
 
 describe("MatrixEditorWorkspace editing behavior", () => {
-  it("opens Method version review from the table toolbar and returns focus on close", async () => {
-    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
-      ...buildSessionSeed(),
-      editor_draft_id: "editor-draft-1",
-      draft_status: "current",
-      saved_payload_signature: "saved-signature-1",
-    });
+  it("updates Method versions from the table toolbar without a dialog and enables Confirm Matrix", async () => {
+    apiMocks.suggestMatrixMethodVersions.mockResolvedValueOnce({ rows: [{
+      row_id: "row-1", current_method: "EIA-364-18B", proposed_method: "EIA-364-18C",
+      status: "update_available", selectable: true,
+    }] });
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
-    const trigger = await screen.findByRole("button", { name: "Check Method versions" });
-    expect(screen.queryByRole("dialog", { name: "Standard Method versions" })).toBeNull();
+    const trigger = await screen.findByRole("button", { name: "Update Method versions" });
     fireEvent.click(trigger);
 
-    const dialog = screen.getByRole("dialog", { name: "Standard Method versions" });
-    expect(within(dialog).getByRole("button", { name: "Check versions" })).toBeTruthy();
-    expect(within(dialog).getByRole("button", { name: "Apply selected" })).toBeTruthy();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog", { name: "Standard Method versions" })).toBeNull();
-    expect(document.activeElement).toBe(trigger);
+    await waitFor(() => expect((screen.getByLabelText("Row 1 method") as HTMLTextAreaElement).value).toBe("EIA-364-18C"));
+    expect(await screen.findByText(/1 Method version updated/i)).toBeTruthy();
+    await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalled(), { timeout: 3000 });
+    await waitFor(() => expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false));
+    expect(apiMocks.createMatrixRevisionDraft).not.toHaveBeenCalled();
+    expect(apiMocks.confirmMatrixEditorSession).not.toHaveBeenCalled();
   });
 
-  it("applies reviewed Method updates to the draft and returns to the Matrix table", async () => {
-    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
-      ...buildSessionSeed(),
-      editor_draft_id: "editor-draft-1",
-      draft_status: "current",
-      saved_payload_signature: "saved-signature-1",
-    });
-    apiMocks.previewMatrixMethodVersionSync.mockResolvedValueOnce({
-      preview_fingerprint: "preview-1",
-      rows: [{
-        draft_row_id: "row-1", row_order: 1, test_item: "Visual Examination",
-        current_method: "EIA-364-18B", method_core: "364-18",
-        matched_standard_code: "EIA-364-18C", catalog_revision: "C", catalog_year: null,
-        source_row_number: 3, proposed_method: "EIA-364-18C", status: "update_available",
-        reason: null, selectable: true,
-      }],
-    });
-    apiMocks.applyMatrixMethodVersionSync.mockResolvedValueOnce({
-      project_matrix_draft_id: "editor-draft-1",
-      saved_payload_signature: "saved-signature-2",
-      applied_row_ids: ["row-1"],
-    });
+  it("reports no Method update without activating Confirm Matrix", async () => {
+    apiMocks.suggestMatrixMethodVersions.mockResolvedValueOnce({ rows: [] });
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Check Method versions" }));
-    let dialog = screen.getByRole("dialog", { name: "Standard Method versions" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Check versions" }));
-    dialog = await screen.findByRole("dialog", { name: "Standard Method versions" });
-    expect(await within(dialog).findByText("EIA-364-18C")).toBeTruthy();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Apply selected" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Update Method versions" }));
 
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Standard Method versions" })).toBeNull());
-    expect(screen.getByText("Method updates applied to the saved draft. Confirm Matrix when ready.")).toBeTruthy();
-    expect(apiMocks.applyMatrixMethodVersionSync).toHaveBeenCalledWith("P1", expect.objectContaining({
-      selected_draft_row_ids: ["row-1"],
-    }));
-    expect(apiMocks.confirmMatrixEditorSession).not.toHaveBeenCalled();
+    expect(await screen.findByText(/No applicable Method version updates/i)).toBeTruthy();
+    expect(apiMocks.saveMatrixEditorSessionDraft).not.toHaveBeenCalled();
+    expect(apiMocks.createMatrixRevisionDraft).not.toHaveBeenCalled();
+    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("places Matrix context and actions in the shared Workbench top bar", async () => {

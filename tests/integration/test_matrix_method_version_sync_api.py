@@ -137,6 +137,39 @@ def test_preview_apply_and_stale_conflict_use_typed_api(tmp_path: Path) -> None:
     engine.dispose()
 
 
+def test_suggest_methods_is_read_only_and_works_without_a_saved_draft(tmp_path: Path) -> None:
+    settings = Settings(
+        data_dir=tmp_path,
+        projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates",
+        database_path=tmp_path / "db.sqlite3",
+    )
+    engine = create_database_engine(settings)
+    init_db(engine)
+    factory = create_session_factory(engine)
+    with factory() as session:
+        service = MatrixMethodVersionSyncService(
+            draft_store=ProjectMatrixDraftRepository(session),
+            confirmed_store=_Confirmed(),
+            resource_store=_Resources(),
+            catalog_reader=_Catalog(),
+        )
+        app.dependency_overrides[get_matrix_method_version_sync_service] = lambda: service
+        client = TestClient(app)
+        response = client.post(
+            "/api/projects/P1/matrix-method-version-sync/suggest",
+            json={"rows": [{"row_id": "visible-1", "method": "EIA-364-04A"}]},
+        )
+        assert response.status_code == 200
+        assert response.json()["rows"] == [{
+            "row_id": "visible-1", "current_method": "EIA-364-04A",
+            "proposed_method": "EIA-364-04B", "status": "update_available",
+            "selectable": True,
+        }]
+    app.dependency_overrides.clear()
+    engine.dispose()
+
+
 class _Confirmed:
     def get_active_by_project(self, _project_id: str):
         return SimpleNamespace(version=SimpleNamespace(confirmed_matrix_id="CM1"))

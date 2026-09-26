@@ -46,17 +46,12 @@ vi.mock("./MatrixEditorXlsxExportButton", () => ({ MatrixEditorXlsxExportButton:
 vi.mock("./useMatrixEditorXlsxExport", () => ({
   useMatrixEditorXlsxExport: () => ({ busy: false, error: null, message: null, exportSnapshot: vi.fn() }),
 }));
-vi.mock("./MatrixMethodVersionSyncPanel", () => ({ MatrixMethodVersionSyncPanel: () => null }));
 vi.mock("./useMatrixMethodVersionSync", () => ({
   useMatrixMethodVersionSync: () => ({
-    preview: null,
-    selectedRowIds: [],
     busy: false,
     error: null,
     message: null,
-    previewMethods: vi.fn(),
-    toggleRow: vi.fn(),
-    applySelected: vi.fn(),
+    syncMethods: vi.fn(),
   }),
 }));
 vi.mock("../contact-measurement-plan/ContactMeasurementPlanSummaryCard", () => ({

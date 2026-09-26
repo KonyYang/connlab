@@ -35,7 +35,6 @@ import {
 } from "./matrixEditorXlsxExportProjection";
 import { useMatrixEditorXlsxExport } from "./useMatrixEditorXlsxExport";
 import { MatrixImportSourceCandidatePicker } from "./MatrixImportSourceCandidatePicker";
-import { MatrixMethodVersionSyncPanel } from "./MatrixMethodVersionSyncPanel";
 import { useMatrixMethodVersionSync } from "./useMatrixMethodVersionSync";
 import { MatrixImportStandardVersionChoiceDialog } from "./MatrixImportStandardVersionChoiceDialog";
 import { MatrixImportDialog } from "./MatrixImportDialog";
@@ -183,9 +182,6 @@ export function MatrixEditorWorkspace({
   const [scheduleMessage, setScheduleMessage] = useState("");
   const [showSelectedGroupsOnly, setShowSelectedGroupsOnly] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(true);
-  const [methodVersionReviewOpen, setMethodVersionReviewOpen] = useState(false);
-  const [methodVersionActionMessage, setMethodVersionActionMessage] = useState("");
-  const methodVersionTriggerRef = useRef<HTMLButtonElement>(null);
   const editorSurfaceRef = useRef<HTMLElement>(null);
   const [errorFocusLabel, setErrorFocusLabel] = useState<string | null>(null);
   useLayoutEffect(() => {
@@ -312,7 +308,6 @@ export function MatrixEditorWorkspace({
     isCancelling,
     saveState,
     savedEditorDraftId,
-    savedPayloadSignature,
     sourceImportId: sessionSourceImportId,
   } = draftPersistence;
 
@@ -748,14 +743,18 @@ export function MatrixEditorWorkspace({
     Boolean(savedEditorDraftId);
   const methodVersionSync = useMatrixMethodVersionSync({
     projectId,
-    draftId: savedEditorDraftId,
-    savedPayloadSignature,
-    disabled: isLifecycleReadonly || draftLoading || !hasCurrentSavedDraft,
-    onApplied: () => {
-      setMethodVersionReviewOpen(false);
-      setMethodVersionActionMessage("Method updates applied to the saved draft. Confirm Matrix when ready.");
-      setSessionReloadGeneration((previous) => previous + 1);
-      methodVersionTriggerRef.current?.focus();
+    rows: editableRows.filter((row) => !row.isSampleRow).map((row) => ({ row_id: row.id, method: row.method })),
+    currentSignature: currentSaveSignature,
+    disabled: isLifecycleReadonly || draftLoading,
+    onApply: (updates) => {
+      const byRowId = new Map(updates.map((row) => [row.row_id, row]));
+      markUnsaved();
+      setEditableRows((previous) => previous.map((row) => {
+        const update = byRowId.get(row.id);
+        return update && update.proposed_method && row.method === update.current_method
+          ? { ...row, method: update.proposed_method }
+          : row;
+      }));
     },
   });
   const requiresCurrentSavedDraft =
@@ -1822,19 +1821,16 @@ export function MatrixEditorWorkspace({
                 </button>
                 <button
                   type="button"
-                  aria-haspopup="dialog"
-                  aria-expanded={methodVersionReviewOpen}
-                  ref={methodVersionTriggerRef}
-                  onClick={() => {
-                    setMethodVersionActionMessage("");
-                    setMethodVersionReviewOpen(true);
-                  }}
+                  disabled={isLifecycleReadonly || draftLoading || methodVersionSync.busy}
+                  onClick={() => void methodVersionSync.syncMethods()}
                 >
-                  Check Method versions
+                  {methodVersionSync.busy ? "Updating Method versions..." : "Update Method versions"}
                 </button>
               </div>
-              {methodVersionActionMessage ? (
-                <span className="matrix-editor-method-sync-status" role="status">{methodVersionActionMessage}</span>
+              {methodVersionSync.error || methodVersionSync.message ? (
+                <span className={`matrix-editor-method-sync-status${methodVersionSync.error ? " is-error" : ""}`} role="status">
+                  {methodVersionSync.error || methodVersionSync.message}
+                </span>
               ) : null}
               <label className="matrix-editor-filter-toggle">
                 <input
@@ -2176,26 +2172,6 @@ export function MatrixEditorWorkspace({
               </div>
             ) : null}
           </div>
-          {methodVersionReviewOpen ? <MatrixMethodVersionSyncPanel
-            preview={methodVersionSync.preview}
-            selectedRowIds={methodVersionSync.selectedRowIds}
-            busy={methodVersionSync.busy}
-            error={methodVersionSync.error}
-            message={methodVersionSync.message}
-            disabled={isLifecycleReadonly || draftLoading || !hasCurrentSavedDraft}
-            disabledReason={isLifecycleReadonly
-              ? "Matrix is read-only."
-              : draftLoading
-                ? "Matrix draft is loading."
-                : "Save the current Matrix draft before checking Method versions."}
-            onPreview={() => void methodVersionSync.previewMethods()}
-            onToggle={methodVersionSync.toggleRow}
-            onApply={() => void methodVersionSync.applySelected()}
-            onClose={() => {
-              setMethodVersionReviewOpen(false);
-              methodVersionTriggerRef.current?.focus();
-            }}
-          /> : null}
           <MatrixSchedulePlanningCard
             plan={schedulePlan}
             groups={groupColumns.map((group) => ({

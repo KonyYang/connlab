@@ -119,6 +119,33 @@ class MatrixMethodVersionSyncApplyResult:
     method_sync_context_json: str
 
 
+@dataclass(frozen=True, slots=True)
+class SuggestMatrixMethodVersionsRow:
+    row_id: str
+    method: str
+
+
+@dataclass(frozen=True, slots=True)
+class SuggestMatrixMethodVersionsCommand:
+    project_id: str
+    rows: tuple[SuggestMatrixMethodVersionsRow, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class MatrixMethodVersionSuggestion:
+    row_id: str
+    current_method: str
+    proposed_method: str | None
+    status: str
+    selectable: bool
+
+
+@dataclass(frozen=True, slots=True)
+class MatrixMethodVersionSuggestionResult:
+    resource_path: str
+    rows: tuple[MatrixMethodVersionSuggestion, ...]
+
+
 class MatrixMethodVersionSyncService:
     """Coordinate one-read preview and method-only CAS apply."""
 
@@ -136,6 +163,47 @@ class MatrixMethodVersionSyncService:
         self._resources = resource_store
         self._catalog = catalog_reader
         self._now = now or (lambda: datetime.now(UTC).isoformat())
+
+    def suggest(
+        self, command: SuggestMatrixMethodVersionsCommand
+    ) -> MatrixMethodVersionSuggestionResult:
+        """Read the configured Standard record without creating or changing Matrix drafts."""
+        if len(command.rows) > 2000:
+            raise MatrixMethodVersionSyncError("Too many Matrix Method rows.")
+        row_ids = [row.row_id for row in command.rows]
+        if any(not row_id.strip() for row_id in row_ids) or len(set(row_ids)) != len(row_ids):
+            raise MatrixMethodVersionSyncError("Matrix Method row ids must be unique and nonblank.")
+        resource = self._resources.get_by_type(ExternalResourceType.STANDARD_RECORD_EXCEL)
+        if resource is None or not resource.active:
+            raise MatrixMethodVersionSyncNotFoundError(
+                "Active Standard record Excel resource is not configured."
+            )
+        catalog = self._catalog.read_standard_records()
+        if Path(catalog.resource_path) != Path(resource.path):
+            raise MatrixMethodVersionSyncConflictError(
+                "Configured Standard record changed while reading. Run the update again."
+            )
+        candidates = tuple(
+            parse_catalog_method(row.standard_code, source_row_number=row.source_row_number)
+            for row in catalog.rows
+        )
+        suggestions = []
+        for row in command.rows:
+            proposal = build_method_proposal(
+                parse_matrix_method(row.method, require_eia_prefix=True),
+                candidates,
+                authoritative_catalog=True,
+            )
+            suggestions.append(MatrixMethodVersionSuggestion(
+                row_id=row.row_id,
+                current_method=row.method,
+                proposed_method=proposal.proposed_method,
+                status=proposal.status,
+                selectable=proposal.status in {"update_available", "revision_missing"},
+            ))
+        return MatrixMethodVersionSuggestionResult(
+            resource_path=str(Path(resource.path)), rows=tuple(suggestions)
+        )
 
     def preview(
         self, command: PreviewMatrixMethodVersionSyncCommand

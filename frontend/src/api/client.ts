@@ -1167,6 +1167,19 @@ export type MatrixMethodVersionSyncPreview = {
   rows: MatrixMethodVersionSyncRow[];
 };
 
+export type MatrixMethodVersionSuggestion = {
+  row_id: string;
+  current_method: string;
+  proposed_method: string | null;
+  status: string;
+  selectable: boolean;
+};
+
+export type MatrixMethodVersionSuggestionResponse = {
+  resource_path: string;
+  rows: MatrixMethodVersionSuggestion[];
+};
+
 export type MatrixMethodVersionSyncApplyResponse = {
   project_matrix_draft_id: string;
   saved_payload_signature: string;
@@ -5116,6 +5129,16 @@ export type ProjectCustomerReportJob = {
 
 function projectCustomerReportJobsUrl(projectId: string): string {
   return `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-customer-report/jobs`;
+}
+
+export function suggestMatrixMethodVersions(
+  projectId: string,
+  input: { rows: { row_id: string; method: string }[] }
+): Promise<MatrixMethodVersionSuggestionResponse> {
+  return requestJson<MatrixMethodVersionSuggestionResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-method-version-sync/suggest`,
+    { method: "POST", body: JSON.stringify(input) }
+  );
 }
 
 export function fetchOfficialWorkspaceRelocationPreview(
