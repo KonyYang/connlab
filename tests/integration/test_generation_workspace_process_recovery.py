@@ -286,7 +286,7 @@ def test_fresh_process_recovers_workspace_without_replaying_conflict_or_copy(tmp
     engine.dispose()
 
 
-def test_changed_folder_after_process_exit_allows_fresh_history_rebuild_review(tmp_path):
+def test_changed_folder_after_process_exit_resumes_same_archive_rebuild(tmp_path):
     settings = _settings(tmp_path)
     engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
     Base.metadata.create_all(engine)
@@ -294,6 +294,7 @@ def test_changed_folder_after_process_exit_allows_fresh_history_rebuild_review(t
     template, destination = tmp_path / "template", tmp_path / "output"
     for name in ("E-mail", "Submitted Material", "Photos", "Test results/Final Examination"):
         (template / name).mkdir(parents=True)
+    (template / "template-marker.txt").write_text("fresh template", encoding="utf-8")
     destination.mkdir()
     workspace = destination / "DL-001"
     with sessions() as session:
@@ -327,29 +328,19 @@ def test_changed_folder_after_process_exit_allows_fresh_history_rebuild_review(t
         assert crashed.returncode == 35, crashed.stdout + crashed.stderr
         operator_file.write_text("operator saved edits", encoding="utf-8")
 
-        service.run("P1", started["operation_id"])
-        blocked = service.read("P1")
-        assert blocked["status"] == "blocked"
-        assert blocked["can_restart"] is True
-        assert "fresh preview" in blocked["message"]
-        assert operator_file.read_text(encoding="utf-8") == "operator saved edits"
-        assert not list(destination.glob("*.connlab-backup-*"))
-        assert not list((destination / ".connlab" / "generation").rglob("*-workspace"))
-
-        restarted = service.start(
-            "P1",
-            "backup_and_recreate",
-            runner.preview_context("P1", "backup_rebuild"),
-            "reviewed-again",
-            replaces_operation_id=started["operation_id"],
-        )
+        resumed = service.resume("P1", started["operation_id"])
+        assert resumed["operation_id"] == started["operation_id"]
+        assert resumed["status"] == "queued"
         runner.run_step(runner.journal.read("P1"), "workspace")
-        assert restarted["operation_id"] != started["operation_id"]
         history = Path(runner.journal.read("P1")["effects"]["workspace"]["backup"])
+        assert history.parent == workspace / "History" / "Folders"
         assert (history / "operator.txt").read_text(encoding="utf-8") == "operator saved edits"
         with sessions() as session:
             record = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
             assert record.local_workspace_path == workspace
+            assert record.official_folder_path.is_dir()
+            assert (record.official_folder_path / "template-marker.txt").read_text(encoding="utf-8") == "fresh template"
+            assert not (record.official_folder_path / "operator.txt").exists()
             assert record.source_book_path.is_dir()
     finally:
         runner.pool.shutdown()
