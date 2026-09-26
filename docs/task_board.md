@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_MATRIX_METHOD_VERSION_COMPACT_UI",
     "summary": "Move Matrix Method version sync into a compact table-toolbar entry with an on-demand review dialog, preserving preview, selection, and apply behavior.",
@@ -27,72 +27,17 @@
     "risk_reasons": [],
     "activation_head": "a8621582e1faa4411561948e26286629345ddb9a",
     "started_at": "2026-09-26T04:21:39.101968Z",
-    "updated_at": "2026-09-26T04:42:42.482710Z",
+    "updated_at": "2026-09-26T05:41:59.202500Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_METHOD_VERSION_COMPACT_UI",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requests one-click Method version update without a review dialog; keep draft/Confirm Matrix flow.",
       "requires_user": false
     },
-    "report": {
-      "scope_ok": true,
-      "integration": {
-        "status": "passed",
-        "detail": "Committed exact six frontend paths on master; clean tree"
-      },
-      "task_id": "TASK_MATRIX_METHOD_VERSION_COMPACT_UI",
-      "summary": "Matrix Method version sync now opens from the table toolbar in an on-demand review dialog; preview, selected apply, saved-draft checks, and Matrix confirmation remain intact.",
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "detail": "Implemented and ran targeted tests"
-        },
-        "qa": {
-          "status": "passed",
-          "detail": "Sequential same-agent full frontend test/build and UI smoke"
-        },
-        "reviewer": {
-          "status": "passed",
-          "detail": "Sequential same-agent standards and spec review; no findings"
-        }
-      },
-      "subject": "90005c3dfe91662ea2f7479a4a8adc4c7f4b028b",
-      "validation": [
-        {
-          "check": "TDD red/green targeted Method review tests",
-          "status": "passed"
-        },
-        {
-          "check": "Frontend full Vitest: 670 passed, 1 skipped",
-          "status": "passed"
-        },
-        {
-          "check": "TypeScript and Vite production build",
-          "status": "passed"
-        },
-        {
-          "check": "In-app browser narrow viewport, dialog and Escape/focus verification",
-          "status": "passed"
-        },
-        {
-          "check": "git diff --check",
-          "status": "passed"
-        }
-      ],
-      "schema": "connlab.sol-task-report",
-      "changed_paths": [
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.testSupport.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-        "frontend/src/features/matrix-editor/MatrixMethodVersionSyncPanel.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixMethodVersionSyncPanel.tsx",
-        "frontend/src/workbench.css"
-      ],
-      "version": 1
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_BASIC_INFORMATION_CANCEL_RELOAD_AUTHORITY",
