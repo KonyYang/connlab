@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_METHOD_VERSION_COMPACT_UI",
+    "summary": "Move Matrix Method version sync into a compact table-toolbar entry with an on-demand review dialog, preserving preview, selection, and apply behavior.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Matrix Editor frontend layout and interaction only; preserve existing backend draft and confirmation semantics.",
+    "scope_paths": [
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+      "frontend/src/features/matrix-editor/MatrixMethodVersionSyncPanel.tsx",
+      "frontend/src/features/matrix-editor/MatrixMethodVersionSyncPanel.test.tsx",
+      "frontend/src/workbench.css"
+    ],
+    "risk_reasons": [],
+    "activation_head": "a8621582e1faa4411561948e26286629345ddb9a",
+    "started_at": "2026-09-26T04:21:39.101968Z",
+    "updated_at": "2026-09-26T04:21:39.101968Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_BASIC_INFORMATION_CANCEL_RELOAD_AUTHORITY",
     "tier": "standard",

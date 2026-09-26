@@ -183,6 +183,9 @@ export function MatrixEditorWorkspace({
   const [scheduleMessage, setScheduleMessage] = useState("");
   const [showSelectedGroupsOnly, setShowSelectedGroupsOnly] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(true);
+  const [methodVersionReviewOpen, setMethodVersionReviewOpen] = useState(false);
+  const [methodVersionActionMessage, setMethodVersionActionMessage] = useState("");
+  const methodVersionTriggerRef = useRef<HTMLButtonElement>(null);
   const editorSurfaceRef = useRef<HTMLElement>(null);
   const [errorFocusLabel, setErrorFocusLabel] = useState<string | null>(null);
   useLayoutEffect(() => {
@@ -749,7 +752,10 @@ export function MatrixEditorWorkspace({
     savedPayloadSignature,
     disabled: isLifecycleReadonly || draftLoading || !hasCurrentSavedDraft,
     onApplied: () => {
+      setMethodVersionReviewOpen(false);
+      setMethodVersionActionMessage("Method updates applied to the saved draft. Confirm Matrix when ready.");
       setSessionReloadGeneration((previous) => previous + 1);
+      methodVersionTriggerRef.current?.focus();
     },
   });
   const requiresCurrentSavedDraft =
@@ -1809,10 +1815,27 @@ export function MatrixEditorWorkspace({
         <section className="matrix-editor-grid-surface">
           <div className="matrix-editor-main-table-wrap">
             <div className="matrix-editor-grid-controls">
-              <button type="button" aria-expanded={detailsOpen} aria-controls="matrix-step-details"
-                onClick={() => setDetailsOpen((open) => !open)}>
-                {detailsOpen ? "Hide step details" : "Show step details"}
-              </button>
+              <div className="matrix-editor-grid-control-actions">
+                <button type="button" aria-expanded={detailsOpen} aria-controls="matrix-step-details"
+                  onClick={() => setDetailsOpen((open) => !open)}>
+                  {detailsOpen ? "Hide step details" : "Show step details"}
+                </button>
+                <button
+                  type="button"
+                  aria-haspopup="dialog"
+                  aria-expanded={methodVersionReviewOpen}
+                  ref={methodVersionTriggerRef}
+                  onClick={() => {
+                    setMethodVersionActionMessage("");
+                    setMethodVersionReviewOpen(true);
+                  }}
+                >
+                  Check Method versions
+                </button>
+              </div>
+              {methodVersionActionMessage ? (
+                <span className="matrix-editor-method-sync-status" role="status">{methodVersionActionMessage}</span>
+              ) : null}
               <label className="matrix-editor-filter-toggle">
                 <input
                   aria-label="Show selected groups only"
@@ -2153,17 +2176,26 @@ export function MatrixEditorWorkspace({
               </div>
             ) : null}
           </div>
-          <MatrixMethodVersionSyncPanel
+          {methodVersionReviewOpen ? <MatrixMethodVersionSyncPanel
             preview={methodVersionSync.preview}
             selectedRowIds={methodVersionSync.selectedRowIds}
             busy={methodVersionSync.busy}
             error={methodVersionSync.error}
             message={methodVersionSync.message}
             disabled={isLifecycleReadonly || draftLoading || !hasCurrentSavedDraft}
+            disabledReason={isLifecycleReadonly
+              ? "Matrix is read-only."
+              : draftLoading
+                ? "Matrix draft is loading."
+                : "Save the current Matrix draft before checking Method versions."}
             onPreview={() => void methodVersionSync.previewMethods()}
             onToggle={methodVersionSync.toggleRow}
             onApply={() => void methodVersionSync.applySelected()}
-          />
+            onClose={() => {
+              setMethodVersionReviewOpen(false);
+              methodVersionTriggerRef.current?.focus();
+            }}
+          /> : null}
           <MatrixSchedulePlanningCard
             plan={schedulePlan}
             groups={groupColumns.map((group) => ({

@@ -46,6 +46,7 @@ describe("MatrixMethodVersionSyncPanel", () => {
         onPreview={vi.fn()}
         onToggle={onToggle}
         onApply={onApply}
+        onClose={vi.fn()}
       />
     );
 
@@ -97,6 +98,7 @@ describe("MatrixMethodVersionSyncPanel", () => {
         onPreview={vi.fn()}
         onToggle={vi.fn()}
         onApply={vi.fn()}
+        onClose={vi.fn()}
       />
     );
 
@@ -114,5 +116,26 @@ describe("MatrixMethodVersionSyncPanel", () => {
     expect(status.getAttribute("data-label")).toBe("Status");
     expect(row?.children[2]).toBe(current);
     expect(row?.children[3]).toBe(proposed);
+  });
+
+  it("explains why version checking is unavailable until the Matrix draft is saved", () => {
+    render(
+      <MatrixMethodVersionSyncPanel
+        disabled
+        disabledReason="Save the current Matrix draft before checking Method versions."
+        busy={null}
+        error={null}
+        message={null}
+        selectedRowIds={new Set()}
+        preview={null}
+        onPreview={vi.fn()}
+        onToggle={vi.fn()}
+        onApply={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Save the current Matrix draft before checking Method versions.")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Check versions" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
