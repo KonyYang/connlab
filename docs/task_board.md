@@ -11,124 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_PROJECT_FOLDER_ARCHIVE_RECREATE_SIMPLIFICATION",
-    "summary": "Create folder archives the sole verified active LTR business folder to timestamped History and regenerates a fresh folder from template and latest confirmed information without old-file content checks.",
-    "tier": "high_risk",
-    "route": "full_chain",
-    "scope": "Only the confirmed project-folder archive-and-recreate workflow, safe retirement of an unexecuted relocation checkpoint, user confirmation, focused tests and current product context. Never mutate the real operator project during validation.",
-    "scope_paths": [
-      "backend/api/project_folder_generation_composition.py",
-      "backend/application/official_folder_relocation_service.py",
-      "backend/application/official_project_workspace_service.py",
-      "backend/application/project_folder_generation_service.py",
-      "backend/infrastructure/files/recoverable_workspace_publisher.py",
-      "docs/PROJECT_CONTEXT.md",
-      "docs/project_folder_generation_recovery.md",
-      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-      "tests/integration/test_generation_workspace_process_recovery.py",
-      "tests/integration/test_project_folder_generation_api.py",
-      "tests/integration/test_project_folder_generation_recovery.py",
-      "tests/unit/test_official_project_workspace_service.py"
-    ],
-    "risk_reasons": [
-      "Moves an authoritative external business folder into History before rebuilding.",
-      "Changes interruption recovery and publication safeguards."
-    ],
-    "activation_head": "6dc76802e937ad6094a46f99782685729bc7b004",
-    "started_at": "2026-09-25T13:14:31.988339Z",
-    "updated_at": "2026-09-26T02:37:46.063968Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_PROJECT_FOLDER_ARCHIVE_RECREATE_SIMPLIFICATION",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "roles": {
-        "integrator": {
-          "status": "passed",
-          "summary": "Exact diff, scope, clean HEAD and board gate verified"
-        },
-        "planner": {
-          "status": "passed",
-          "summary": "Independent recovery-plan and identity-only archive rule check"
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Independent full Python and frontend suites plus production build passed"
-        },
-        "reviewer": {
-          "status": "passed",
-          "summary": "Independent final two-axis review passed"
-        },
-        "developer": {
-          "status": "passed",
-          "summary": "Approved regression test corrected; targeted tests passed"
-        }
-      },
-      "validation": [
-        {
-          "status": "passed",
-          "summary": "Python full suite: 3068 passed, 8 skipped, 19 Office deselected"
-        },
-        {
-          "status": "passed",
-          "summary": "Frontend full Vitest rerun: 662 passed, 1 skipped"
-        },
-        {
-          "status": "passed",
-          "summary": "Frontend production build: tsc and Vite passed"
-        },
-        {
-          "status": "passed",
-          "summary": "Approved recovery test file: 14 passed; exact diff check passed"
-        },
-        {
-          "status": "passed",
-          "summary": "Isolated real project retry previously completed; no live project mutation in final QA"
-        }
-      ],
-      "changed_paths": [
-        "backend/api/project_folder_generation_composition.py",
-        "backend/application/official_folder_relocation_service.py",
-        "backend/application/official_project_workspace_service.py",
-        "backend/application/project_folder_generation_service.py",
-        "backend/infrastructure/files/recoverable_workspace_publisher.py",
-        "docs/PROJECT_CONTEXT.md",
-        "docs/project_folder_generation_recovery.md",
-        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-        "tests/integration/test_generation_workspace_process_recovery.py",
-        "tests/integration/test_project_folder_generation_api.py",
-        "tests/integration/test_project_folder_generation_recovery.py",
-        "tests/unit/test_official_project_workspace_service.py"
-      ],
-      "schema": "connlab.sol-task-report",
-      "integration": {
-        "status": "passed",
-        "summary": "Approved test and board-only scope amendment committed; clean worktree; no release package run; transient frontend async test passed on rerun"
-      },
-      "subject": "555cec43847e13918e495c5ae15a73ca8874f352",
-      "task_id": "TASK_PROJECT_FOLDER_ARCHIVE_RECREATE_SIMPLIFICATION",
-      "version": 1,
-      "summary": "Confirmed Create folder archives the sole active LTR business folder into timestamped History, rebuilds from template and latest confirmed information, preserves crash recovery, and updates the approved process-recovery regression.",
-      "scope_ok": true
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_CANONICAL_OFFICIAL_FOLDER_LIFECYCLE",
+    "task_id": "TASK_PROJECT_FOLDER_ARCHIVE_RECREATE_SIMPLIFICATION",
     "tier": "high_risk",
-    "subject": "c469def1731e75eaa20ceb7f66c1619033b404bf",
-    "summary": "Keep one active LTR-named official project folder, reconcile confirmed Basic Information names, and archive reviewed rebuild versions safely.",
+    "subject": "555cec43847e13918e495c5ae15a73ca8874f352",
+    "summary": "Create folder archives the sole verified active LTR business folder to timestamped History and regenerates a fresh folder from template and latest confirmed information without old-file content checks.",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested Close on 2026-09-25.",
-    "closed_at": "2026-09-24T23:28:26.697642Z"
+    "decision_ref": "User requested final close on 2026-09-26.",
+    "closed_at": "2026-09-26T02:40:03.174297Z"
   },
   "retained_history": [
     {
