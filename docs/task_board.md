@@ -19,24 +19,19 @@
     "route": "full_chain",
     "scope": "Only the confirmed project-folder archive-and-recreate workflow, safe retirement of an unexecuted relocation checkpoint, user confirmation, focused tests and current product context. Never mutate the real operator project during validation.",
     "scope_paths": [
-      "backend/application/official_project_workspace_service.py",
-      "backend/application/official_folder_relocation_service.py",
-      "backend/application/project_folder_generation_service.py",
       "backend/api/project_folder_generation_composition.py",
-      "backend/api/routes_official_project_workspace.py",
+      "backend/application/official_folder_relocation_service.py",
+      "backend/application/official_project_workspace_service.py",
+      "backend/application/project_folder_generation_service.py",
       "backend/infrastructure/files/recoverable_workspace_publisher.py",
-      "frontend/src/api/client.ts",
-      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-      "frontend/src/features/project-workbench/useProjectFolderGeneration.ts",
-      "frontend/src/features/project-workbench/useProjectFolderGeneration.test.tsx",
-      "tests/unit/test_official_project_workspace_service.py",
-      "tests/integration/test_official_project_workspace_api.py",
-      "tests/integration/test_project_folder_generation_recovery.py",
-      "tests/integration/test_project_folder_generation_api.py",
       "docs/PROJECT_CONTEXT.md",
       "docs/project_folder_generation_recovery.md",
-      "docs/task_board.md"
+      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+      "tests/integration/test_generation_workspace_process_recovery.py",
+      "tests/integration/test_project_folder_generation_api.py",
+      "tests/integration/test_project_folder_generation_recovery.py",
+      "tests/unit/test_official_project_workspace_service.py"
     ],
     "risk_reasons": [
       "Moves an authoritative external business folder into History before rebuilding.",
@@ -44,8 +39,16 @@
     ],
     "activation_head": "6dc76802e937ad6094a46f99782685729bc7b004",
     "started_at": "2026-09-25T13:14:31.988339Z",
-    "updated_at": "2026-09-25T13:14:31.988339Z",
-    "checkpoint": null,
+    "updated_at": "2026-09-26T02:36:16.598341Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_PROJECT_FOLDER_ARCHIVE_RECREATE_SIMPLIFICATION",
+      "stage": "scope_manifest_correction",
+      "status": "running",
+      "summary": "User explicitly approved adding tests/integration/test_generation_workspace_process_recovery.py to the current high-risk task on 2026-09-26.",
+      "requires_user": false
+    },
     "report": null
   },
   "last_closed": {
