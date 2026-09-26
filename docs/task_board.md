@@ -11,8 +11,27 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_BASIC_INFORMATION_CANCEL_RELOAD_AUTHORITY",
+    "summary": "After Cancel exits Project Basic Information, the next explicit entry from the Project Workbench should load the authoritative Basic Information version; leaving and returning through sidebar navigation should continue restoring the existing draft behavior.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Keep Cancel distinct from ordinary route/sidebar navigation. A Cancel-return followed by clicking Basic Information should initialize the editor from the latest confirmed Basic Information authority, falling back to current upstream field suggestions when no confirmed version exists. Sidebar navigation away from and back to Basic Information must keep the existing draft-first load behavior. Do not delete persisted drafts or change backend authority/write semantics.",
+    "scope_paths": [
+      "frontend/src/App.tsx",
+      "frontend/src/pages/ProjectBasicInformationPage.tsx",
+      "frontend/src/features/project-basic-information/useProjectBasicInformationModel.ts",
+      "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
+      "frontend/src/App.test.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "562ccc692597695a18b1921875738affa114afdd",
+    "started_at": "2026-09-26T03:04:10.401636Z",
+    "updated_at": "2026-09-26T03:04:10.401636Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_PROJECT_FOLDER_ARCHIVE_RECREATE_SIMPLIFICATION",
     "tier": "high_risk",

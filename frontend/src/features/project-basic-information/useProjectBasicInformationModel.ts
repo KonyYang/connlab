@@ -26,6 +26,8 @@ export type BackToWorkbenchOptions = {
   refreshBasicInformation: boolean;
 };
 
+export type ProjectBasicInformationInitialValuesMode = "draft" | "authoritative";
+
 export type ProjectBasicInformationModel = {
   response: ProjectBasicInformationResponse | null;
   values: Record<string, string>;
@@ -44,9 +46,11 @@ export type ProjectBasicInformationModel = {
 
 export function useProjectBasicInformationModel({
   projectId,
+  initialValuesMode = "draft",
   onBackToWorkbench,
 }: {
   projectId: string;
+  initialValuesMode?: ProjectBasicInformationInitialValuesMode;
   onBackToWorkbench: (options: BackToWorkbenchOptions) => void;
 }): ProjectBasicInformationModel {
   const [response, setResponse] = useState<ProjectBasicInformationResponse | null>(null);
@@ -81,7 +85,13 @@ export function useProjectBasicInformationModel({
         setResponse(nextResponse);
         setLifecycle(nextLifecycle);
         setCompletionOptions(nextCompletionOptions);
-        setValues(normalizeBasicInformationFieldValues(nextResponse.draft.values));
+        setValues(
+          normalizeBasicInformationFieldValues(
+            initialValuesMode === "authoritative"
+              ? selectAuthoritativeValues(nextResponse)
+              : nextResponse.draft.values
+          )
+        );
         setDraftDirty(false);
       })
       .catch((err) => {
@@ -97,7 +107,7 @@ export function useProjectBasicInformationModel({
     return () => {
       cancelled = true;
     };
-  }, [projectId]);
+  }, [initialValuesMode, projectId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -236,6 +246,20 @@ export function useProjectBasicInformationModel({
     confirm,
     cancel,
   };
+}
+
+function selectAuthoritativeValues(
+  response: ProjectBasicInformationResponse
+): Record<string, string> {
+  if (response.latest_confirmed) {
+    return response.latest_confirmed.values;
+  }
+  return Object.fromEntries(
+    Object.entries(response.field_suggestions).map(([key, suggestion]) => [
+      key,
+      suggestion.source_value,
+    ])
+  );
 }
 
 function readonlyAwareErrorMessage(err: unknown, fallback: string): string {

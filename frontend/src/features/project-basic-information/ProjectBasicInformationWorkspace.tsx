@@ -13,20 +13,27 @@ import {
 } from "./basicInformationSelectors";
 import {
   type BackToWorkbenchOptions,
+  type ProjectBasicInformationInitialValuesMode,
   useProjectBasicInformationModel,
 } from "./useProjectBasicInformationModel";
 
 type ProjectBasicInformationWorkspaceProps = {
   projectId: string;
+  initialValuesMode?: ProjectBasicInformationInitialValuesMode;
   onBackToWorkbench: (options: BackToWorkbenchOptions) => void;
 };
 
 export function ProjectBasicInformationWorkspace({
   projectId,
+  initialValuesMode = "draft",
   onBackToWorkbench,
 }: ProjectBasicInformationWorkspaceProps): ReactElement {
   const topBarActionsRoot = useTopBarActionsRoot();
-  const model = useProjectBasicInformationModel({ projectId, onBackToWorkbench });
+  const model = useProjectBasicInformationModel({
+    projectId,
+    initialValuesMode,
+    onBackToWorkbench,
+  });
   const missingLabels = selectCurrentMissingLabels(
     model.values,
     selectBasicInformationMissingLabels(model.response)

@@ -70,7 +70,11 @@ type Route =
   | { name: "projectDetail"; projectId: string }
   | { name: "projectMatrixEditor"; projectId: string }
   | { name: "projectFeeEvaluation"; projectId: string }
-  | { name: "projectBasicInformation"; projectId: string }
+  | {
+      name: "projectBasicInformation";
+      projectId: string;
+      initialValuesMode?: "draft" | "authoritative";
+    }
   | { name: "projectReportWorkspace"; projectId: string }
   | { name: "projectContactMeasurementSetup"; projectId: string }
   | { name: "settings" }
@@ -148,13 +152,27 @@ function parseRoute(pathname: string): Route {
   return { name: "notFound" };
 }
 
-function navigate(path: string): void {
-  window.history.pushState({}, "", path);
+function navigate(path: string, state: Record<string, unknown> = {}): void {
+  window.history.pushState(state, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
+function parseCurrentRoute(): Route {
+  const route = parseRoute(window.location.pathname);
+  if (route.name !== "projectBasicInformation") {
+    return route;
+  }
+  const entryMode = window.history.state?.basicInformationInitialValuesMode;
+  return {
+    ...route,
+    initialValuesMode: entryMode === "authoritative" ? "authoritative" : "draft",
+  };
+}
+
 export default function App(): ReactElement {
-  const [route, setRoute] = useState<Route>(() => parseRoute(window.location.pathname));
+  const [route, setRoute] = useState<Route>(parseCurrentRoute);
+  const [cancelledBasicInformationProjectId, setCancelledBasicInformationProjectId] =
+    useState<string | null>(null);
   const [intakeSession, setIntakeSession] =
     useState<IntakeSessionState>(loadIntakeSession);
   const [lastProjectRoute, setLastProjectRoute] = useState<string | null>(() => {
@@ -164,7 +182,7 @@ export default function App(): ReactElement {
   const [intakeInteractionLockReason, setIntakeInteractionLockReason] = useState<string | null>(null);
 
   useEffect(() => {
-    const onPopState = () => setRoute(parseRoute(window.location.pathname));
+    const onPopState = () => setRoute(parseCurrentRoute());
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
@@ -189,11 +207,23 @@ export default function App(): ReactElement {
     if (intakeInteractionLockReason && route.name === "intake") {
       return;
     }
+    setCancelledBasicInformationProjectId(null);
     if (path === "/projects" && route.name !== "projects" && lastProjectRoute) {
       navigate(lastProjectRoute);
       return;
     }
     navigate(path);
+  }
+
+  function openBasicInformation(projectId: string): void {
+    const importAuthoritativeVersion = cancelledBasicInformationProjectId === projectId;
+    setCancelledBasicInformationProjectId(null);
+    navigate(
+      `/projects/${encodeURIComponent(projectId)}/basic-information`,
+      importAuthoritativeVersion
+        ? { basicInformationInitialValuesMode: "authoritative" }
+        : {}
+    );
   }
 
   const activeRoute =
@@ -295,7 +325,7 @@ export default function App(): ReactElement {
             navigate(`/projects/${encodeURIComponent(route.projectId)}/fee-evaluation`)
           }
           onOpenBasicInformation={() =>
-            navigate(`/projects/${encodeURIComponent(route.projectId)}/basic-information`)
+            openBasicInformation(route.projectId)
           }
           onOpenReportWorkspace={() =>
             navigate(`/projects/${encodeURIComponent(route.projectId)}/report-workspace`)
@@ -321,7 +351,13 @@ export default function App(): ReactElement {
       {route.name === "projectBasicInformation" && (
         <ProjectBasicInformationPage
           projectId={route.projectId}
-          onBackToWorkbench={() => navigate(`/projects/${encodeURIComponent(route.projectId)}`)}
+          initialValuesMode={route.initialValuesMode ?? "draft"}
+          onBackToWorkbench={(options) => {
+            if (!options.refreshBasicInformation) {
+              setCancelledBasicInformationProjectId(route.projectId);
+            }
+            navigate(`/projects/${encodeURIComponent(route.projectId)}`);
+          }}
         />
       )}
       {route.name === "projectReportWorkspace" && (

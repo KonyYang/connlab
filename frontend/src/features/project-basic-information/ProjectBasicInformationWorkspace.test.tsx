@@ -55,6 +55,56 @@ describe("ProjectBasicInformationWorkspace", () => {
     expect(screen.queryByRole("region", { name: "LTR information" })).toBeNull();
   });
 
+  it("imports the latest confirmed values for an authority-mode entry", async () => {
+    const savedDraft = response({ project_leader: "Cancelled draft" }, "confirmed");
+    api.getProjectBasicInformation.mockResolvedValue({
+      ...savedDraft,
+      latest_confirmed: {
+        ...savedDraft.latest_confirmed!,
+        values: { ...savedDraft.draft.values, project_leader: "Confirmed leader" },
+      },
+    });
+
+    render(
+      <ProjectBasicInformationWorkspace
+        projectId="P1"
+        initialValuesMode="authoritative"
+        onBackToWorkbench={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByDisplayValue("Confirmed leader")).toBeTruthy();
+    expect(screen.queryByDisplayValue("Cancelled draft")).toBeNull();
+    expect(api.saveProjectBasicInformationDraft).not.toHaveBeenCalled();
+  });
+
+  it("uses current source suggestions for authority-mode entry without a confirmed version", async () => {
+    const savedDraft = response({ requested_by: "Cancelled draft" });
+    api.getProjectBasicInformation.mockResolvedValue({
+      ...savedDraft,
+      field_suggestions: {
+        requested_by: {
+          field_key: "requested_by",
+          source: "application_form",
+          source_value: "Current request owner",
+          needs_review: false,
+        },
+      },
+    });
+
+    render(
+      <ProjectBasicInformationWorkspace
+        projectId="P1"
+        initialValuesMode="authoritative"
+        onBackToWorkbench={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByDisplayValue("Current request owner")).toBeTruthy();
+    expect(screen.queryByDisplayValue("Cancelled draft")).toBeNull();
+    expect(api.saveProjectBasicInformationDraft).not.toHaveBeenCalled();
+  });
+
   it("loads draft values, auto-saves edits, and keeps DL number in confirm payload", async () => {
     const user = userEvent.setup();
     const onBackToWorkbench = vi.fn();
