@@ -11,94 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_BASIC_INFORMATION_CANCEL_RELOAD_AUTHORITY",
-    "summary": "After Cancel exits Project Basic Information, the next explicit entry from the Project Workbench should load the authoritative Basic Information version; leaving and returning through sidebar navigation should continue restoring the existing draft behavior.",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Keep Cancel distinct from ordinary route/sidebar navigation. A Cancel-return followed by clicking Basic Information should initialize the editor from the latest confirmed Basic Information authority, falling back to current upstream field suggestions when no confirmed version exists. Sidebar navigation away from and back to Basic Information must keep the existing draft-first load behavior. Do not delete persisted drafts or change backend authority/write semantics.",
-    "scope_paths": [
-      "frontend/src/App.tsx",
-      "frontend/src/pages/ProjectBasicInformationPage.tsx",
-      "frontend/src/features/project-basic-information/useProjectBasicInformationModel.ts",
-      "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
-      "frontend/src/App.test.tsx"
-    ],
-    "risk_reasons": [],
-    "activation_head": "562ccc692597695a18b1921875738affa114afdd",
-    "started_at": "2026-09-26T03:04:10.401636Z",
-    "updated_at": "2026-09-26T03:26:29.806327Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_BASIC_INFORMATION_CANCEL_RELOAD_AUTHORITY",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_BASIC_INFORMATION_CANCEL_RELOAD_AUTHORITY",
-      "subject": "9600f2ed7e18c5ba80d9401a2cabfd61f5417627",
-      "summary": "Cancel exits Basic Information; the next workbench re-entry loads latest confirmed authority (or current source suggestions when none exists), while sidebar navigation preserves draft-first behavior. The one-shot Cancel marker is cleared when navigating away via the sidebar.",
-      "scope_ok": true,
-      "changed_paths": [
-        "frontend/src/App.test.tsx",
-        "frontend/src/App.tsx",
-        "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
-        "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.tsx",
-        "frontend/src/features/project-basic-information/useProjectBasicInformationModel.ts",
-        "frontend/src/pages/ProjectBasicInformationPage.tsx"
-      ],
-      "validation": [
-        {
-          "name": "Focused route and workspace tests",
-          "status": "passed",
-          "result": "27 passed"
-        },
-        {
-          "name": "Complete Frontend QA",
-          "status": "passed",
-          "result": "88 test files passed, 1 skipped; 667 tests passed, 1 skipped; Vite production build passed"
-        },
-        {
-          "name": "Git diff check",
-          "status": "passed",
-          "result": "No whitespace errors"
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "summary": "Implemented; initial targeted RED reproduced the sidebar-marker leak; fixed it and reran focused tests."
-        },
-        "reviewer": {
-          "status": "passed",
-          "summary": "Primary agent performed separate Standards and Spec passes; found and fixed one route-boundary issue, then re-reviewed. Not an independent-agent review."
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Primary agent ran the complete frontend suite and production build on the reviewed state."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "mode": "direct_primary",
-        "summary": "Integrated as 9600f2ed7e18c5ba80d9401a2cabfd61f5417627 on master; clean after commit."
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_PROJECT_FOLDER_ARCHIVE_RECREATE_SIMPLIFICATION",
-    "tier": "high_risk",
-    "subject": "555cec43847e13918e495c5ae15a73ca8874f352",
-    "summary": "Create folder archives the sole verified active LTR business folder to timestamped History and regenerates a fresh folder from template and latest confirmed information without old-file content checks.",
+    "task_id": "TASK_BASIC_INFORMATION_CANCEL_RELOAD_AUTHORITY",
+    "tier": "standard",
+    "subject": "9600f2ed7e18c5ba80d9401a2cabfd61f5417627",
+    "summary": "After Cancel exits Project Basic Information, the next explicit entry from the Project Workbench should load the authoritative Basic Information version; leaving and returning through sidebar navigation should continue restoring the existing draft behavior.",
     "disposition": "completed",
-    "decision_ref": "User requested final close on 2026-09-26.",
-    "closed_at": "2026-09-26T02:40:03.174297Z"
+    "decision_ref": "User requested close of current task on 2026-09-26.",
+    "closed_at": "2026-09-26T03:28:34.583873Z"
   },
   "retained_history": [
     {
