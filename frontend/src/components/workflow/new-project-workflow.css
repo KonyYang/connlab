@@ -156,25 +156,6 @@
   }
 }
 .specified-ltr-preview-comparison {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  max-height: min(58vh, 680px);
-  overflow: auto;
-}
-
-.specified-ltr-preview-column {
   min-width: 0;
-}
-
-.specified-ltr-preview-column h4 {
-  margin: 0 0 8px;
-  color: #183b66;
-}
-
-@media (max-width: 760px) {
-  .specified-ltr-preview-comparison {
-    grid-template-columns: minmax(0, 1fr);
-    max-height: 62vh;
-  }
+  margin-top: 16px;
 }

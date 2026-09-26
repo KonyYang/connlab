@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -225,6 +225,50 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
     );
   });
 
+  it("compares workbook values in one aligned table with each English field label shown once", async () => {
+    const user = userEvent.setup();
+    const blankFee = { field_name: "test_fee", label: "Test Fee", value: null, is_blank: true };
+    vi.mocked(getIntakeCaseReview).mockResolvedValue(reviewWithSpecifiedCase);
+    vi.mocked(previewSpecifiedLtrWorkbookAuthority).mockResolvedValue({
+      ...workbookPreviewFound,
+      row_values: [...workbookPreviewFound.row_values, blankFee],
+      proposed_row_values: [
+        workbookPreviewFound.proposed_row_values[0],
+        {
+          field_name: "description_pn",
+          label: "Description P/N",
+          value: "Coolpower HD3.5mm",
+          is_blank: false
+        },
+        blankFee
+      ]
+    });
+
+    render(<Harness />);
+    const applyButton = await screen.findByRole("button", { name: /Apply LTR Number/ });
+    await waitFor(() => expect((applyButton as HTMLButtonElement).disabled).toBe(false));
+    await user.click(applyButton);
+
+    const comparison = await screen.findByRole("table", { name: "LTR workbook row comparison" });
+    expect(within(comparison).getAllByRole("columnheader").map((header) => header.textContent)).toEqual([
+      "Field",
+      "Existing row — will be replaced",
+      "Proposed replacement row"
+    ]);
+    expect(within(comparison).getAllByText("Description P/N")).toHaveLength(1);
+    const changedRow = within(comparison).getByRole("row", { name: /Description P\/N/ });
+    expect(within(changedRow).getAllByRole("cell").map((cell) => cell.textContent)).toEqual([
+      "PwrBlade Ultra Pro",
+      "Coolpower HD3.5mm"
+    ]);
+    expect(within(changedRow).getByText("Changed")).toBeTruthy();
+    expect(within(comparison).getByRole("row", { name: /Project Type/ }).textContent)
+      .not.toContain("Changed");
+    expect(within(within(comparison).getByRole("row", { name: /Test Fee/ }))
+      .getAllByRole("cell").map((cell) => cell.textContent))
+      .toEqual(["Blank", "Blank"]);
+  });
+
   it("compares a missing associated LTR with its base and appends only after confirmation", async () => {
     const user = userEvent.setup();
     vi.mocked(getIntakeCaseReview).mockResolvedValue(reviewWithAssociatedSpecifiedCase);
@@ -241,11 +285,17 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
     await user.click(applyButton);
 
     expect(await screen.findByRole("dialog", { name: "DL-2026-05-011A" })).toBeTruthy();
-    expect(screen.getByRole("region", { name: "Existing LTR workbook row" }).textContent)
-      .toContain("DL-2026-05-011");
-    expect(screen.getByRole("region", { name: "Proposed LTR workbook row" }).textContent)
-      .toContain("Connector sample");
-    expect(screen.getByText("Existing base — DL-2026-05-011")).toBeTruthy();
+    const comparison = screen.getByRole("table", { name: "LTR workbook row comparison" });
+    expect(within(comparison).getByRole("columnheader", { name: "Existing base — DL-2026-05-011" }))
+      .toBeTruthy();
+    expect(within(comparison).getByRole("columnheader", { name: "Proposed new associated row" }))
+      .toBeTruthy();
+    expect(within(within(comparison).getByRole("row", { name: /LTR Number/ }))
+      .getAllByRole("cell").map((cell) => cell.textContent))
+      .toEqual(["DL-2026-05-011", "Not in preview"]);
+    expect(within(within(comparison).getByRole("row", { name: /Description P\/N/ }))
+      .getAllByRole("cell").map((cell) => cell.textContent))
+      .toEqual(["Not in preview", "Connector sample"]);
 
     await user.click(screen.getByRole("button", { name: "Create associated LTR number" }));
     await waitFor(() => expect(completeNewProject).toHaveBeenCalledWith(

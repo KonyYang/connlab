@@ -11,8 +11,27 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_INTAKE_LTR_ROW_COMPARISON_LAYOUT",
+    "summary": "Show existing and proposed LTR workbook row values side by side in a single field-aligned English comparison table.",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Intake specified-LTR preview dialog presentation, accessibility, responsive styling and focused frontend regression only. Preserve preview acknowledgement and workbook write behavior.",
+    "scope_paths": [
+      "frontend/src/features/new-project/SpecifiedLtrWorkbookAuthorityPreviewPanel.tsx",
+      "frontend/src/intake-inbox.css",
+      "frontend/src/components/workflow/new-project-workflow.css",
+      "frontend/src/pages/IntakeInboxPage.test.tsx",
+      "docs/task_board.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "8b1db641c73427a8dfa82c745637d251a80ef87b",
+    "started_at": "2026-09-26T07:22:25.478363Z",
+    "updated_at": "2026-09-26T07:22:25.478363Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_MATRIX_METHOD_VERSION_COMPACT_UI",
     "tier": "standard",
