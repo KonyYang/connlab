@@ -257,7 +257,7 @@
 }
 
 .specified-ltr-preview-table-scroll {
-  max-height: min(58vh, 680px);
+  max-height: min(68vh, 680px);
   overflow: auto;
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -269,11 +269,13 @@
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
+  font-size: 12px;
+  line-height: 1.3;
 }
 
 .specified-ltr-preview-table th,
 .specified-ltr-preview-table td {
-  padding: 9px 10px;
+  padding: 5px 7px;
   border-bottom: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
   overflow-wrap: anywhere;
@@ -298,6 +300,7 @@
   background: var(--color-surface-muted);
   color: var(--color-ink);
   font-weight: 700;
+  font-size: 11px;
 }
 
 .specified-ltr-preview-table th:first-child {
@@ -322,12 +325,14 @@
   color: var(--color-ink-muted);
 }
 
-.specified-ltr-preview-change-tag {
-  display: inline-block;
-  margin-left: 6px;
-  color: var(--color-primary-strong);
-  font-size: 11px;
-  font-weight: 700;
+.specified-ltr-preview-table tbody tr.is-changed {
+  background: color-mix(in oklch, var(--color-warning) 10%, transparent);
+}
+
+.specified-ltr-preview-table tbody tr.is-changed th,
+.specified-ltr-preview-table tbody tr.is-changed td {
+  background: color-mix(in oklch, var(--color-warning) 10%, var(--color-surface));
+  color: var(--color-ink);
 }
 
 .specified-ltr-preview-message {

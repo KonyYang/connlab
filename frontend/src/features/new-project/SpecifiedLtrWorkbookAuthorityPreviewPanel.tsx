@@ -192,10 +192,7 @@ function PreviewComparisonTable({
               formatPreviewValue(existing.value, existing.is_blank) !== formatPreviewValue(proposed.value, proposed.is_blank);
             return (
               <tr className={changed ? "is-changed" : "is-unchanged"} key={fieldName}>
-                <th scope="row">
-                  {existing?.label ?? proposed?.label}
-                  {changed ? <span className="specified-ltr-preview-change-tag">Changed</span> : null}
-                </th>
+                <th scope="row">{existing?.label ?? proposed?.label}</th>
                 <td>{existing ? formatPreviewValue(existing.value, existing.is_blank) : "Not in preview"}</td>
                 <td>{proposed ? formatPreviewValue(proposed.value, proposed.is_blank) : "Not in preview"}</td>
               </tr>

@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_INTAKE_LTR_ROW_COMPARISON_LAYOUT",
     "summary": "Show existing and proposed LTR workbook row values side by side in a single field-aligned English comparison table.",
@@ -28,70 +28,17 @@
     "risk_reasons": [],
     "activation_head": "8b1db641c73427a8dfa82c745637d251a80ef87b",
     "started_at": "2026-09-26T07:22:25.478363Z",
-    "updated_at": "2026-09-26T07:41:22.924705Z",
+    "updated_at": "2026-09-26T07:55:03.534095Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_INTAKE_LTR_ROW_COMPARISON_LAYOUT",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requested the existing LTR Preview changed-row background, no Changed label, and denser type so all rows fit vertically when possible.",
       "requires_user": false
     },
-    "report": {
-      "task_id": "TASK_INTAKE_LTR_ROW_COMPARISON_LAYOUT",
-      "roles": {
-        "developer": {
-          "summary": "TDD implementation and focused checks completed",
-          "status": "passed"
-        },
-        "qa": {
-          "summary": "Same-agent affected QA matrix and browser layout check completed",
-          "status": "passed"
-        },
-        "reviewer": {
-          "summary": "Focused same-agent standards and spec review found no actionable issues",
-          "status": "passed"
-        }
-      },
-      "version": 1,
-      "subject": "a41e08fc7b0a3958889e43477ceb0b5e67ad2a21",
-      "integration": {
-        "summary": "Clean master HEAD, in-scope four frontend paths, no backend or external workbook change; default-worker timeout recorded as test-stability caveat",
-        "status": "passed"
-      },
-      "schema": "connlab.sol-task-report",
-      "scope_ok": true,
-      "validation": [
-        {
-          "summary": "Focused IntakeInboxPage tests: 9 passed; RED demonstrated missing comparison table before implementation",
-          "status": "passed"
-        },
-        {
-          "summary": "Frontend full suite with two workers: 671 passed, 1 skipped; default-worker suite has an unrelated 256-row test timeout",
-          "status": "passed"
-        },
-        {
-          "summary": "TypeScript and Vite production build passed",
-          "status": "passed"
-        },
-        {
-          "summary": "In-app browser verified current and narrow viewport layout; no workbook write performed",
-          "status": "passed"
-        },
-        {
-          "summary": "Exact Git diff and diff --check passed",
-          "status": "passed"
-        }
-      ],
-      "summary": "Intake specified-LTR preview now uses one English three-column comparison table with a shared field column, changed labels, explicit blank values, responsive internal scrolling, and unchanged confirmation/write behavior.",
-      "changed_paths": [
-        "frontend/src/components/workflow/new-project-workflow.css",
-        "frontend/src/features/new-project/SpecifiedLtrWorkbookAuthorityPreviewPanel.tsx",
-        "frontend/src/intake-inbox.css",
-        "frontend/src/pages/IntakeInboxPage.test.tsx"
-      ]
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_METHOD_VERSION_COMPACT_UI",

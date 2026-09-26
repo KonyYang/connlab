@@ -261,7 +261,7 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
       "PwrBlade Ultra Pro",
       "Coolpower HD3.5mm"
     ]);
-    expect(within(changedRow).getByText("Changed")).toBeTruthy();
+    expect(within(comparison).queryByText("Changed")).toBeNull();
     expect(within(comparison).getByRole("row", { name: /Project Type/ }).textContent)
       .not.toContain("Changed");
     expect(within(within(comparison).getByRole("row", { name: /Test Fee/ }))
