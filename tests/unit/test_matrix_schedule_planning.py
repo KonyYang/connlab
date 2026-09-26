@@ -13,7 +13,31 @@ from backend.application.matrix_schedule_planning import (
     parse_buffer_days,
     parse_day_expression,
     validate_planned_schedule,
+    validate_matrix_authority_schedule,
 )
+
+
+def test_matrix_authority_requires_plan_without_sample_receipt() -> None:
+    validate_matrix_authority_schedule(
+        post_test_buffer_days="1",
+        planned_test_start_date="2026-09-10",
+        planned_test_complete_date="2026-09-11",
+        estimated_completion_date="2026-09-12",
+    )
+    with pytest.raises(MatrixScheduleValidationError, match="planned_test_start_date is required"):
+        validate_matrix_authority_schedule(
+            post_test_buffer_days="1",
+            planned_test_start_date="",
+            planned_test_complete_date="2026-09-11",
+            estimated_completion_date="2026-09-12",
+        )
+    with pytest.raises(MatrixScheduleValidationError, match="post-test buffer"):
+        validate_matrix_authority_schedule(
+            post_test_buffer_days="2",
+            planned_test_start_date="2026-09-10",
+            planned_test_complete_date="2026-09-11",
+            estimated_completion_date="2026-09-12",
+        )
 
 
 def test_parse_plain_decimal_day_expression() -> None:

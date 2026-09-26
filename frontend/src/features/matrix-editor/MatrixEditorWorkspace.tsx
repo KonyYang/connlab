@@ -174,22 +174,8 @@ export function MatrixEditorWorkspace({
   const [sampleValues, setSampleValues] = useState<Record<string, string>>({ "group-1": "" });
   const [sampleMergeNotes, setSampleMergeNotes] = useState<Record<string, string>>({});
   const [schedulePlan, setSchedulePlan] = useState<MatrixSchedulePlan>(() => emptySchedulePlan());
-  const [matrixLegacySchedulePlan, setMatrixLegacySchedulePlan] =
-    useState<MatrixSchedulePlan>(() => emptySchedulePlan());
   const [scheduleWorkspace, setScheduleWorkspace] = useState<ProjectScheduleWorkspace | null>(null);
   const [scheduleMessage, setScheduleMessage] = useState("");
-  const [scheduleBaselinePlan, setScheduleBaselinePlan] = useState<MatrixSchedulePlan | null>(null);
-  const scheduleHasChanges = scheduleBaselinePlan !== null && (
-    schedulePlan.postTestBufferDays.trim() !== scheduleBaselinePlan.postTestBufferDays.trim() ||
-    schedulePlan.plannedTestStartDate.trim() !== scheduleBaselinePlan.plannedTestStartDate.trim() ||
-    schedulePlan.plannedTestCompleteDate.trim() !== scheduleBaselinePlan.plannedTestCompleteDate.trim() ||
-    schedulePlan.estimatedCompletionDate.trim() !== scheduleBaselinePlan.estimatedCompletionDate.trim()
-  );
-  const scheduleNeedsConfirmation = Boolean(scheduleWorkspace) && (
-    scheduleHasChanges ||
-    (scheduleWorkspace?.status !== "confirmed" &&
-      Boolean(schedulePlan.plannedTestStartDate && schedulePlan.plannedTestCompleteDate && schedulePlan.estimatedCompletionDate))
-  );
   const [showSelectedGroupsOnly, setShowSelectedGroupsOnly] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(true);
   const editorSurfaceRef = useRef<HTMLElement>(null);
@@ -227,10 +213,10 @@ export function MatrixEditorWorkspace({
     editableRows,
     groupColumns,
     sampleValues,
-    matrixLegacySchedulePlan,
+    schedulePlan,
     durationAuthorities,
     buildStepTextOverrides(editableRows, groupColumns, stepOutputOverrides),
-  ), [editableRows, groupColumns, sampleValues, matrixLegacySchedulePlan, durationAuthorities, stepOutputOverrides]);
+  ), [editableRows, groupColumns, sampleValues, schedulePlan, durationAuthorities, stepOutputOverrides]);
   const currentSaveSignature = useMemo(
     () => buildAuthorityComparableSignatureFromDraftPayload(currentSavePayload),
     [currentSavePayload]
@@ -247,7 +233,8 @@ export function MatrixEditorWorkspace({
   const applyDraftSnapshotToEditor = (
     draft: MatrixEditorSessionDraft,
     sourcePreview: MatrixPreviewResponse | null = null,
-    nextSchedulePlan: MatrixSchedulePlan = emptySchedulePlan()
+    nextSchedulePlan: MatrixSchedulePlan = emptySchedulePlan(),
+    displaySchedulePlan: MatrixSchedulePlan = nextSchedulePlan,
   ): string => {
     const mapped = buildMatrixFromSessionSeedDraft(draft, sourcePreview);
     const nextGroups = mapped.groups.length > 0 ? mapped.groups : buildInitialGroupColumns();
@@ -260,7 +247,7 @@ export function MatrixEditorWorkspace({
     setDurationAuthorities(draft.duration_authorities ?? []);
     setStepOutputOverrides(nextStepOverrides);
     setSampleMergeNotes({});
-    setMatrixLegacySchedulePlan(nextSchedulePlan);
+    setSchedulePlan(displaySchedulePlan);
     setSelectedGroupId(nextGroups[0]?.id ?? null);
     setSelectedRowId(null);
     const baselinePayload = buildDraftSavePayload(
@@ -281,10 +268,16 @@ export function MatrixEditorWorkspace({
     projectId,
     readonlyMessage: isLifecycleReadonly ? lifecycleReadonlyView.message : null,
     onCommitted: ({ response }) => {
+      const importedSchedulePlan = schedulePlanFromProjectMatrixDraft(response.project_matrix_draft);
+      const displaySchedulePlan = schedulePlanWithMissingDatesFrom(schedulePlan, importedSchedulePlan);
+      if (!activeConfirmedMatrixId && !savedEditorDraftId && !hasUnsavedChanges) {
+        displaySchedulePlan.postTestBufferDays = importedSchedulePlan.postTestBufferDays;
+      }
       const baselineSignature = applyDraftSnapshotToEditor(
         buildSessionDraftFromProjectMatrixDraft(response.project_matrix_draft),
         null,
-        schedulePlanFromProjectMatrixDraft(response.project_matrix_draft)
+        importedSchedulePlan,
+        displaySchedulePlan,
       );
       draftPersistence.acceptImportedDraft(response, baselineSignature);
     },
@@ -300,7 +293,6 @@ export function MatrixEditorWorkspace({
     currentPayload: currentSavePayload,
     currentSignature: currentSaveSignature,
     draftLoading,
-    hasExternalUnsavedChanges: scheduleHasChanges,
     durationAuthorities,
     onBackToWorkbench,
     onError: setConfirmActiveMessage,
@@ -326,7 +318,6 @@ export function MatrixEditorWorkspace({
     const loadSessionSeed = async (): Promise<void> => {
       setDraftLoading(true);
       setScheduleWorkspace(null);
-      setScheduleBaselinePlan(null);
       setScheduleMessage("");
       try {
         const seed: MatrixEditorSessionSeed = await fetchMatrixEditorSession(projectId);
@@ -360,7 +351,6 @@ export function MatrixEditorWorkspace({
           setSampleMergeNotes({});
           setDurationAuthorities([]);
           setStepOutputOverrides({});
-          setMatrixLegacySchedulePlan(defaultSchedulePlan);
           setSchedulePlan(defaultSchedulePlan);
           setSelectedGroupId(defaultGroups[0]?.id ?? null);
           setSelectedRowId(null);
@@ -384,14 +374,31 @@ export function MatrixEditorWorkspace({
           const schedule = await fetchProjectSchedule(projectId);
           if (cancelled) return;
           setScheduleWorkspace(schedule);
-          const loadedPlan = schedulePlanFromWorkspace(schedule);
-          setScheduleBaselinePlan(loadedPlan);
-          setSchedulePlan(loadedPlan);
+          if (schedule.confirmed_revision && seed.draft_status === "current") {
+            const savedPlan = schedulePlanFromSeed(seed);
+            const legacyPlan = schedulePlanWithLegacyValues(savedPlan, schedule);
+            const filledPlan = schedulePlanWithMissingDatesFrom(savedPlan, legacyPlan);
+            if (!sameScheduleFields(savedPlan, filledPlan)) {
+              setScheduleMessage(`Previous confirmed schedule dates filled empty Matrix fields (${describeLegacySchedule(legacyPlan)}). Review all four fields before Confirm Matrix.`);
+              setSchedulePlan((currentPlan) => sameScheduleFields(currentPlan, savedPlan)
+                ? filledPlan
+                : currentPlan);
+            } else if (!sameScheduleFields(savedPlan, legacyPlan)) {
+              setScheduleMessage(`Saved Matrix draft dates differ from the older confirmed schedule (${describeLegacySchedule(legacyPlan)}). Review and edit the Matrix fields before Confirm Matrix replaces those older dates.`);
+            }
+          } else if (schedule.confirmed_revision) {
+            const matrixPlan = seed.editor_draft ? schedulePlanFromSeed(seed) : emptySchedulePlan();
+            if (!sameScheduleFields(matrixPlan, schedulePlanWithLegacyValues(matrixPlan, schedule))) {
+              setScheduleMessage("Previous confirmed schedule dates are loaded into the Matrix draft. Review them before Confirm Matrix.");
+              setSchedulePlan((currentPlan) => sameScheduleFields(currentPlan, matrixPlan)
+                ? schedulePlanWithLegacyValues(currentPlan, schedule)
+                : currentPlan);
+            }
+          }
         } catch (scheduleError) {
           if (!cancelled) {
             setScheduleWorkspace(null);
-            setScheduleBaselinePlan(null);
-            setScheduleMessage(parseRequestError(scheduleError, "Project Schedule is not ready."));
+            setScheduleMessage(parseRequestError(scheduleError, "Existing schedule history could not be checked."));
           }
         }
         if (revisionDraftReloadPendingRef.current) {
@@ -754,8 +761,7 @@ export function MatrixEditorWorkspace({
     saveState === "dirty" ||
     saveState === "saving" ||
     saveState === "error" ||
-    Boolean(savedEditorDraftId) ||
-    scheduleNeedsConfirmation;
+    Boolean(savedEditorDraftId);
   const methodVersionSync = useMatrixMethodVersionSync({
     projectId,
     rows: editableRows.filter((row) => !row.isSampleRow).map((row) => ({ row_id: row.id, method: row.method })),
@@ -785,7 +791,7 @@ export function MatrixEditorWorkspace({
       ? "No project id."
       : hasMatrixValidationError || hasMatrixDayError
         ? groupIdentityErrorMessage || groupNameErrorMessage || stepTokenErrorMessage || Object.values(scheduleCalculation.rowErrors)[0]
-        : scheduleNeedsConfirmation && (
+        : (
             !schedulePlan.plannedTestStartDate ||
             !schedulePlan.plannedTestCompleteDate ||
             !schedulePlan.estimatedCompletionDate ||
@@ -794,7 +800,7 @@ export function MatrixEditorWorkspace({
           )
           ? Object.values(scheduleCalculation.bufferErrors)[0] ??
             scheduleCalculation.dateError ??
-            "Complete Planned start, Test complete and Estimated completion before confirming Project Schedule."
+            "Complete Planned start, Test complete and Estimated completion before confirming Matrix."
         : hasSelectedSampleQuantityError
           ? "Sample quantity is required for selected groups."
         : isPublishBusy
@@ -1383,14 +1389,8 @@ export function MatrixEditorWorkspace({
         expectedMatrixId,
         expectedRevision,
       ),
-      schedule_confirmation: scheduleNeedsConfirmation && scheduleWorkspace ? {
-        expected_revision_id: scheduleWorkspace.confirmed_revision?.revision_id ?? null,
-        expected_fingerprint: scheduleWorkspace.confirmed_revision?.fingerprint ?? null,
-        post_test_buffer_days: schedulePlan.postTestBufferDays,
-        test_start_date: schedulePlan.plannedTestStartDate,
-        test_complete_date: schedulePlan.plannedTestCompleteDate,
-        estimated_completion_date: schedulePlan.estimatedCompletionDate,
-      } : undefined,
+      expected_legacy_schedule_revision_id: scheduleWorkspace?.confirmed_revision?.revision_id ?? null,
+      expected_legacy_schedule_fingerprint: scheduleWorkspace?.confirmed_revision?.fingerprint ?? null,
     });
     const handleConfirmResponse = (
       response: MatrixEditorSessionConfirmResponse
@@ -2169,8 +2169,9 @@ export function MatrixEditorWorkspace({
           <MatrixSchedulePlanningCard
             plan={schedulePlan}
             calculation={scheduleCalculation}
-            readOnly={isLifecycleReadonly || !scheduleWorkspace || confirmActiveState === "loading"}
+            readOnly={isLifecycleReadonly || confirmActiveState === "loading"}
             onChange={(nextPlan) => {
+              setScheduleMessage("");
               setSchedulePlan(nextPlan);
             }}
           />
@@ -2250,14 +2251,41 @@ export function MatrixEditorWorkspace({
   );
 }
 
-function schedulePlanFromWorkspace(
+function schedulePlanWithLegacyValues(
+  current: MatrixSchedulePlan,
   workspace: ProjectScheduleWorkspace
 ): MatrixSchedulePlan {
+  const revision = workspace.confirmed_revision;
+  if (!revision) return current;
   return {
-    postTestBufferDays: workspace.suggestion.post_test_buffer_days,
-    sampleReceivedDate: workspace.sample_received_date,
-    plannedTestStartDate: workspace.suggestion.test_start_date,
-    plannedTestCompleteDate: workspace.suggestion.test_complete_date,
-    estimatedCompletionDate: workspace.suggestion.estimated_completion_date,
+    postTestBufferDays: revision.post_test_buffer_days,
+    sampleReceivedDate: current.sampleReceivedDate,
+    plannedTestStartDate: revision.test_start_date,
+    plannedTestCompleteDate: revision.test_complete_date,
+    estimatedCompletionDate: revision.estimated_completion_date,
   };
+}
+
+function schedulePlanWithMissingDatesFrom(
+  current: MatrixSchedulePlan,
+  fallback: MatrixSchedulePlan,
+): MatrixSchedulePlan {
+  return {
+    postTestBufferDays: current.postTestBufferDays,
+    sampleReceivedDate: current.sampleReceivedDate || fallback.sampleReceivedDate,
+    plannedTestStartDate: current.plannedTestStartDate || fallback.plannedTestStartDate,
+    plannedTestCompleteDate: current.plannedTestCompleteDate || fallback.plannedTestCompleteDate,
+    estimatedCompletionDate: current.estimatedCompletionDate || fallback.estimatedCompletionDate,
+  };
+}
+
+function describeLegacySchedule(plan: MatrixSchedulePlan): string {
+  return `buffer ${plan.postTestBufferDays || "0"} days, planned start ${plan.plannedTestStartDate}, test complete ${plan.plannedTestCompleteDate}, estimated completion ${plan.estimatedCompletionDate}`;
+}
+
+function sameScheduleFields(left: MatrixSchedulePlan, right: MatrixSchedulePlan): boolean {
+  return left.postTestBufferDays === right.postTestBufferDays &&
+    left.plannedTestStartDate === right.plannedTestStartDate &&
+    left.plannedTestCompleteDate === right.plannedTestCompleteDate &&
+    left.estimatedCompletionDate === right.estimatedCompletionDate;
 }

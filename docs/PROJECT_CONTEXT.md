@@ -80,21 +80,24 @@ Do not use a dated snapshot as a substitute for the code.
 ### Project Schedule in Matrix Editor
 
 - Project Schedule fields are edited in Matrix Editor and confirmed through its single `Confirm Matrix`
-  action. A schedule-only edit creates a Project Schedule revision without an unnecessary Matrix
-  revision; simultaneous Matrix and schedule edits commit together or roll back together. The three
-  required ISO dates, chronology and post-test buffer are validated before schedule confirmation.
-  Sample receipt and calculated Matrix days remain reference/defaulting inputs.
-- Existing independently confirmed Project Schedule revisions and the legacy schedule API remain
-  readable for compatibility. Basic/Matrix references on a schedule revision are optional provenance,
-  not prerequisites; later upstream changes do not revoke an explicitly confirmed schedule. Formal
-  outputs read the latest Project Schedule revision, with the legacy Matrix-date fallback only when
-  no independent revision exists. A missing confirmed schedule still blocks project-folder outputs
-  that require those dates; the operator completes the schedule in Matrix Editor and uses `Confirm Matrix`.
-- Matrix confirmation validates Matrix rows, groups, quantities and Day expressions, not legacy
-  schedule completeness. Loading a saved draft preserves its rows, order and cleared text; a source
-  preview may supply review metadata and excluded-group context, never reinsert deleted test rows.
-- Existing schedule tables migrate transactionally to nullable lineage with history and constraints
-  preserved. Operator databases and external project outputs must not be replaced to deploy this fix.
+  action. Post-test buffer, planned start, test completion and estimated completion are Matrix draft
+  fields: changing only these fields still creates a new confirmed Matrix version. Confirm Matrix
+  validates the three required ISO dates, their order and the buffer before publication. Calculated
+  Matrix days can suggest dates; the sample-received date remains Basic Information authority.
+- Independently confirmed Project Schedule revisions from older releases remain readable as migration
+  evidence, but no new independent revision is created. When a historical confirmed revision differs
+  from Matrix dates, the editor prefills its actual confirmed dates into empty Matrix draft date fields;
+  nonempty saved draft fields and an intentionally blank zero-day buffer remain untouched. The older
+  values are shown for review before the operator uses `Confirm Matrix`. Publication checks the
+  historical revision and supersedes it atomically. Until then, formal outputs are blocked instead of
+  silently using older Matrix dates or deleting newer historical work.
+- Formal outputs read planned dates and buffer from the confirmed Matrix, and sample receipt from Basic
+  Information. A missing Basic sample-received date remains an output-level blocker, not a Matrix
+  confirmation blocker. Incomplete confirmed Matrix history remains readable but cannot produce
+  date-dependent outputs. The retired Project Schedule write API cannot publish a second date authority.
+- Loading a saved Matrix draft preserves its rows, order and cleared text; a source preview may supply
+  review metadata and excluded-group context, never reinsert deleted test rows. Existing schedule
+  tables and external project outputs are not replaced to deploy this change.
 
 ```text
 React frontend -> FastAPI routes -> application modules -> domain/interfaces

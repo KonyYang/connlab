@@ -293,10 +293,9 @@ def test_start_is_blocked_before_writes_when_project_schedule_is_unconfirmed(
         assert preview.status_code == 200, preview.text
         payload = preview.json()
         guidance = (
-            "Project Schedule is not confirmed. Open Matrix Editor, complete Project "
-            "Schedule, and click Confirm Matrix before generating Project Folder outputs. "
-            "This date authority is required for Customer Feedback, Application Form, and "
-            "Test Report."
+            "Confirmed Matrix plan dates are incomplete or historical Project Schedule dates "
+            "have not been migrated. Open Matrix Editor, review the plan dates, and click "
+            "Confirm Matrix before generating Project Folder outputs."
         )
         assert payload["workspace_preview"]["status"] == "blocked"
         assert payload["workspace_preview"]["blockers"] == [guidance]
@@ -326,30 +325,27 @@ def test_start_is_blocked_before_writes_when_project_schedule_is_unconfirmed(
             "rows": matrix["editor_draft"]["rows"],
             "cells": matrix["editor_draft"]["cells"],
             "confirmed_by": "operator",
-            "schedule_confirmation": {
-                "expected_revision_id": None,
-                "expected_fingerprint": None,
-                "post_test_buffer_days": "0",
-                "test_start_date": "2026-09-02",
-                "test_complete_date": "2026-09-02",
-                "estimated_completion_date": "2026-09-02",
-            },
+            "post_test_buffer_days": "0",
+            "planned_test_start_date": "2026-09-02",
+            "planned_test_complete_date": "2026-09-02",
+            "estimated_completion_date": "2026-09-02",
         }
         missing_date = client.post("/api/projects/P1/matrix-editor/session/confirm", json={
             **matrix_confirm_payload,
-            "schedule_confirmation": {
-                **matrix_confirm_payload["schedule_confirmation"],
-                "estimated_completion_date": "",
-            },
+            "estimated_completion_date": "",
         })
         assert missing_date.status_code == 422, missing_date.text
         still_blocked = client.get(url + "/preview")
         assert guidance in still_blocked.json()["start_blockers"]
-        confirmed_schedule = client.post(
-            "/api/projects/P1/matrix-editor/session/confirm", json=matrix_confirm_payload,
-        )
+        saved = client.put("/api/projects/P1/matrix-editor/session/draft", json=matrix_confirm_payload)
+        assert saved.status_code == 200, saved.text
+        confirmed_schedule = client.post("/api/projects/P1/matrix-editor/session/confirm", json={
+            **matrix_confirm_payload,
+            "expected_editor_draft_id": saved.json()["editor_draft_id"],
+            "expected_saved_payload_signature": saved.json()["saved_payload_signature"],
+        })
         assert confirmed_schedule.status_code == 200, confirmed_schedule.text
-        assert confirmed_schedule.json()["publish_status"] == "no_change"
+        assert confirmed_schedule.json()["publish_status"] == "published"
         after_confirm = client.get(url + "/preview")
         assert after_confirm.status_code == 200, after_confirm.text
         assert guidance not in after_confirm.json()["workspace_preview"]["blockers"]

@@ -225,7 +225,7 @@ class ProjectApplicationFormWriteBackService:
         )
         if self._project_schedule is not None and schedule is None:
             raise ProjectApplicationFormWriteBackError(
-                "Confirm Project Schedule before writing the Application Form."
+                "Confirm Matrix plan dates before writing the Application Form."
             )
         context_signature = source_context_signature(
             form,

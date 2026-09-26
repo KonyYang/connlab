@@ -163,17 +163,6 @@ class MatrixEditorSessionDurationAuthorityRequest(BaseModel):
     status: str = "usable"
 
 
-class MatrixEditorScheduleConfirmationRequest(BaseModel):
-    """Optional schedule authority update committed with Matrix confirmation."""
-
-    expected_revision_id: str | None = Field(default=None, max_length=64)
-    expected_fingerprint: str | None = Field(default=None, max_length=128)
-    post_test_buffer_days: str = Field(max_length=64)
-    test_start_date: str = Field(min_length=1, max_length=32)
-    test_complete_date: str = Field(min_length=1, max_length=32)
-    estimated_completion_date: str = Field(min_length=1, max_length=32)
-
-
 class MatrixEditorSessionConfirmRequest(BaseModel):
     """Session confirm request model."""
 
@@ -198,7 +187,8 @@ class MatrixEditorSessionConfirmRequest(BaseModel):
     planned_test_start_date: str | None = None
     planned_test_complete_date: str | None = None
     estimated_completion_date: str | None = None
-    schedule_confirmation: MatrixEditorScheduleConfirmationRequest | None = None
+    expected_legacy_schedule_revision_id: str | None = Field(default=None, max_length=64)
+    expected_legacy_schedule_fingerprint: str | None = Field(default=None, max_length=128)
     expected_editor_draft_id: str | None = None
     expected_saved_payload_signature: str | None = None
 

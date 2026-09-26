@@ -49,7 +49,7 @@ class ProjectScheduleRepository:
             return
         row.state = "superseded"
         row.superseded_at = at
-        row.superseded_reason = "Superseded by confirmed Project Schedule revision."
+        row.superseded_reason = "Migrated to confirmed Matrix authority."
 
     def flush(self) -> None:
         self._session.flush()

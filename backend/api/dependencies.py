@@ -1841,7 +1841,7 @@ class _RequiredFormsInputContextReader:
             template = _CustomerFeedbackTemplateReader(self.resources).preview_template(project_id)
             schedule = self.schedules.get_latest_confirmed(project_id)
             if schedule is None:
-                raise ValueError("Confirm Project Schedule before generating Customer Feedback.")
+                raise ValueError("Confirm Matrix plan dates before generating Customer Feedback.")
             inputs = {"schedule": schedule.context_signature}
         else:
             raise ValueError("Unsupported form input context.")

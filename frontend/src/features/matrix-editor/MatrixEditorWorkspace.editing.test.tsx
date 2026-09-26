@@ -82,7 +82,32 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     expect(screen.queryByRole("button", {name: "Confirm schedule"})).toBeNull();
     expect(apiMocks.confirmMatrixEditorSession).not.toHaveBeenCalled();
   });
-  it("confirms schedule-only edits through one Matrix confirmation request", async () => {
+  it("blocks Confirm Matrix before publication when required dates are missing", async () => {
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...buildSessionSeed(),
+      planned_test_start_date: null,
+      planned_test_complete_date: null,
+      estimated_completion_date: null,
+    });
+    apiMocks.fetchProjectSchedule.mockResolvedValueOnce({
+      status: "not_started", project_id: "P1", sample_received_date: "",
+      critical_group_id: null, critical_group_days: "0",
+      suggestion: {
+        post_test_buffer_days: "", test_start_date: "",
+        test_complete_date: "", estimated_completion_date: "",
+      },
+      confirmed_revision: null,
+    });
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    const plannedStart = await screen.findByLabelText("Planned start") as HTMLInputElement;
+    expect(plannedStart.value).toBe("");
+    const confirm = screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+    expect(confirm.title).toContain("Complete Planned start");
+    expect(apiMocks.confirmMatrixEditorSession).not.toHaveBeenCalled();
+  });
+  it("saves date-only edits in the Matrix draft and confirms them as Matrix authority", async () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
     const plannedStart = await screen.findByLabelText("Planned start");
@@ -90,25 +115,109 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     expect(confirmMatrix.disabled).toBe(true);
     expect(screen.queryByLabelText("Sample received")).toBeNull();
 
-    fireEvent.change(plannedStart, { target: { value: "2026-06-03" } });
+    fireEvent.change(plannedStart, { target: { value: "2026-06-01" } });
 
-    expect(confirmMatrix.disabled).toBe(false);
+    expect(confirmMatrix.disabled).toBe(true);
     expect(screen.queryByRole("button", { name: "Confirm schedule" })).toBeNull();
+    await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalled(), { timeout: 1600 });
+    expect(apiMocks.saveMatrixEditorSessionDraft.mock.calls[0][1].planned_test_start_date).toBe("2026-06-01");
+    await waitFor(() => expect(confirmMatrix.disabled).toBe(false));
     fireEvent.click(confirmMatrix);
     await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledWith(
       "P1",
       expect.objectContaining({
-        schedule_confirmation: expect.objectContaining({
-          expected_revision_id: "psr-1",
-          expected_fingerprint: "schedule-fp",
-          test_start_date: "2026-06-03",
-          test_complete_date: "2026-06-03",
-          estimated_completion_date: "2026-06-03",
-        }),
+        planned_test_start_date: "2026-06-01",
+        planned_test_complete_date: "2026-06-01",
+        estimated_completion_date: "2026-06-01",
+        expected_legacy_schedule_revision_id: "psr-1",
       })
     ));
+    expect(apiMocks.confirmMatrixEditorSession.mock.calls[0][1].schedule_confirmation).toBeUndefined();
+  });
+
+  it("prefills a legacy confirmed date revision into the Matrix draft without trusting newer suggestions", async () => {
+    apiMocks.fetchProjectSchedule.mockResolvedValueOnce({
+      status: "stale_inputs", project_id: "P1", sample_received_date: "2026-06-01",
+      critical_group_id: "group-1", critical_group_days: "0",
+      suggestion: {
+        post_test_buffer_days: "", test_start_date: "2026-06-02",
+        test_complete_date: "2026-06-02", estimated_completion_date: "2026-06-02",
+      },
+      confirmed_revision: {
+        revision_id: "psr-later", project_id: "P1", revision_sequence: 2,
+        state: "confirmed", fingerprint: "later-fp", matrix_input_fingerprint: "matrix-fp",
+        based_on_confirmed_matrix_id: "confirmed-1", based_on_confirmed_matrix_revision: 3,
+        based_on_basic_information_version: 2, sample_received_date: "2026-06-01",
+        post_test_buffer_days: "2", test_start_date: "2026-06-25",
+        test_complete_date: "2026-06-26", estimated_completion_date: "2026-06-28",
+        confirmed_by: "Lab User", confirmed_at: "2026-06-25T00:00:00Z",
+      },
+    });
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    const plannedStart = await screen.findByLabelText("Planned start") as HTMLInputElement;
+    await waitFor(() => expect(plannedStart.value).toBe("2026-06-25"));
+    expect((screen.getByLabelText("Test complete") as HTMLInputElement).value).toBe("2026-06-26");
+    expect((screen.getByLabelText("Estimated completion") as HTMLInputElement).value).toBe("2026-06-28");
+    await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalled(), { timeout: 1600 });
+    expect(apiMocks.saveMatrixEditorSessionDraft.mock.calls[0][1].planned_test_start_date).toBe("2026-06-25");
+    await waitFor(() => expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Matrix" }));
+    await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledWith("P1", expect.objectContaining({
+      planned_test_start_date: "2026-06-25",
+      expected_legacy_schedule_revision_id: "psr-later",
+      expected_legacy_schedule_fingerprint: "later-fp",
+    })));
+  });
+
+  it("does not overwrite a saved Matrix draft with legacy schedule dates", async () => {
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...buildSessionSeed(),
+      draft_status: "current",
+      editor_draft_id: "saved-draft",
+      saved_payload_signature: "saved-signature",
+      planned_test_start_date: "2026-06-03",
+      planned_test_complete_date: "2026-06-03",
+      estimated_completion_date: "2026-06-03",
+    });
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    const plannedStart = await screen.findByLabelText("Planned start") as HTMLInputElement;
+    await waitFor(() => expect(plannedStart.value).toBe("2026-06-03"));
+    expect(await screen.findByText(/Saved Matrix draft dates differ from the older confirmed schedule/)).toBeTruthy();
+    expect(plannedStart.value).toBe("2026-06-03");
     expect(apiMocks.saveMatrixEditorSessionDraft).not.toHaveBeenCalled();
-    expect(apiMocks.confirmProjectSchedule).not.toHaveBeenCalled();
+  });
+
+  it("fills missing saved Matrix draft dates from the older confirmed schedule without replacing entered dates", async () => {
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...buildSessionSeed(),
+      draft_status: "current",
+      editor_draft_id: "saved-draft",
+      saved_payload_signature: "saved-signature",
+      post_test_buffer_days: null,
+      planned_test_start_date: null,
+      planned_test_complete_date: "2026-06-03",
+      estimated_completion_date: null,
+    });
+    const legacySchedule = await apiMocks.fetchProjectSchedule.getMockImplementation()!("P1");
+    apiMocks.fetchProjectSchedule.mockResolvedValueOnce({
+      ...legacySchedule,
+      confirmed_revision: { ...legacySchedule.confirmed_revision, post_test_buffer_days: "2" },
+    });
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    await waitFor(() => expect((screen.getByLabelText("Planned start") as HTMLInputElement).value).toBe("2026-06-02"));
+    expect((screen.getByLabelText("Test complete") as HTMLInputElement).value).toBe("2026-06-03");
+    expect((screen.getByLabelText("Estimated completion") as HTMLInputElement).value).toBe("2026-06-02");
+    expect((screen.getByLabelText("Post-test buffer") as HTMLInputElement).value).toBe("");
+    expect(await screen.findByText(/Previous confirmed schedule dates filled empty Matrix fields/)).toBeTruthy();
+    await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalled(), { timeout: 1600 });
+    expect(apiMocks.saveMatrixEditorSessionDraft.mock.calls[0][1]).toEqual(expect.objectContaining({
+      post_test_buffer_days: null,
+      planned_test_start_date: "2026-06-02",
+      planned_test_complete_date: "2026-06-03",
+    }));
   });
 
   it("locks Project Schedule and Cancel while Matrix confirmation is pending", async () => {
@@ -122,13 +231,15 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={onBackToWorkbench} />);
 
     const plannedStart = await screen.findByLabelText("Planned start") as HTMLInputElement;
-    fireEvent.change(plannedStart, { target: { value: "2026-06-03" } });
+    fireEvent.change(plannedStart, { target: { value: "2026-06-01" } });
+    await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalled(), { timeout: 1600 });
+    await waitFor(() => expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByRole("button", { name: "Confirm Matrix" }));
     await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(1));
 
     expect(plannedStart.disabled).toBe(true);
     fireEvent.change(plannedStart, { target: { value: "2026-06-04" } });
-    expect(plannedStart.value).toBe("2026-06-03");
+    expect(plannedStart.value).toBe("2026-06-01");
     const cancel = screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement;
     expect(cancel.disabled).toBe(true);
     fireEvent.click(cancel);
@@ -141,7 +252,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
   });
 
-  it("offers one Matrix confirmation for a complete unconfirmed schedule without creating a Matrix draft", async () => {
+  it("does not create an independent schedule authority for a new project", async () => {
     apiMocks.fetchProjectSchedule.mockResolvedValueOnce({
       status: "not_started", project_id: "P1", sample_received_date: "",
       critical_group_id: null, critical_group_days: "0",
@@ -153,14 +264,18 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
     const confirm = await screen.findByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+    fireEvent.change(await screen.findByLabelText("Post-test buffer"), { target: { value: "1" } });
+    await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalled(), { timeout: 1600 });
     await waitFor(() => expect(confirm.disabled).toBe(false));
     fireEvent.click(confirm);
     await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledWith(
       "P1", expect.objectContaining({
-        schedule_confirmation: expect.objectContaining({ expected_revision_id: null }),
+        post_test_buffer_days: "1",
+        expected_legacy_schedule_revision_id: null,
       }),
     ));
-    expect(apiMocks.saveMatrixEditorSessionDraft).not.toHaveBeenCalled();
+    expect(apiMocks.confirmMatrixEditorSession.mock.calls[0][1].schedule_confirmation).toBeUndefined();
   });
 
   it("warns before discarding schedule-only edits through Cancel", async () => {
@@ -168,23 +283,23 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     const onBackToWorkbench = vi.fn();
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={onBackToWorkbench} />);
 
-    fireEvent.change(await screen.findByLabelText("Planned start"), { target: { value: "2026-06-03" } });
+    fireEvent.change(await screen.findByLabelText("Planned start"), { target: { value: "2026-06-01" } });
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("Project Schedule edits"));
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("Matrix edits"));
     expect(onBackToWorkbench).not.toHaveBeenCalled();
     expect(apiMocks.discardMatrixEditorSessionDraft).not.toHaveBeenCalled();
   });
 
-  it("explains why Project Schedule fields are unavailable when schedule loading fails", async () => {
+  it("keeps Matrix schedule fields editable when legacy schedule loading fails", async () => {
     apiMocks.fetchProjectSchedule.mockRejectedValueOnce(new Error("Project Schedule service unavailable."));
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
     const plannedStart = await screen.findByLabelText("Planned start") as HTMLInputElement;
-    expect(plannedStart.disabled).toBe(true);
+    expect(plannedStart.disabled).toBe(false);
     expect(await screen.findByText("Project Schedule service unavailable.")).toBeTruthy();
   });
 
-  it("keeps a confirmed Project Schedule when replacing Matrix source", async () => {
+  it("keeps current Matrix dates when replacing Matrix source", async () => {
     const preview = buildImportPreview({ source_document_name: "replacement.docx" });
     apiMocks.previewProjectTestPlanMatrixFromUpload.mockResolvedValueOnce(preview);
     apiMocks.commitMatrixImport.mockResolvedValueOnce(buildCommitResponse(preview));
@@ -199,18 +314,62 @@ describe("MatrixEditorWorkspace editing behavior", () => {
 
     await waitFor(() => expect(apiMocks.commitMatrixImport).toHaveBeenCalledTimes(1));
     expect((screen.getByLabelText("Planned start") as HTMLInputElement).value).toBe("2026-06-02");
+    await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalled(), { timeout: 1600 });
+    await waitFor(() => expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByRole("button", { name: "Confirm Matrix" }));
     await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalled());
     expect(apiMocks.confirmMatrixEditorSession.mock.calls[0][1].schedule_confirmation).toBeUndefined();
+    expect(apiMocks.confirmMatrixEditorSession.mock.calls[0][1].planned_test_start_date).toBe("2026-06-02");
   });
 
-  it("preserves pending Project Schedule edits while replacing Matrix source", async () => {
-    const preview = buildImportPreview({ source_document_name: "replacement.docx" });
+  it("keeps dates supplied by the first imported Matrix instead of autosaving blank dates", async () => {
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce({
+      ...buildSessionSeed(),
+      active_confirmed_matrix_id: null,
+      active_confirmed_revision: null,
+      planned_test_start_date: null,
+      planned_test_complete_date: null,
+      estimated_completion_date: null,
+    });
+    apiMocks.fetchProjectSchedule.mockResolvedValueOnce({
+      status: "not_started", project_id: "P1", sample_received_date: "",
+      critical_group_id: null, critical_group_days: "0", suggestion: null, confirmed_revision: null,
+    });
+    const preview = buildImportPreview({ source_document_name: "first.docx" });
+    const response = buildCommitResponse(preview);
+    response.project_matrix_draft.record.planned_test_start_date = "2026-07-01";
+    response.project_matrix_draft.record.planned_test_complete_date = "2026-07-03";
+    response.project_matrix_draft.record.estimated_completion_date = "2026-07-04";
+    response.project_matrix_draft.record.post_test_buffer_days = "1";
     apiMocks.previewProjectTestPlanMatrixFromUpload.mockResolvedValueOnce(preview);
-    apiMocks.commitMatrixImport.mockResolvedValueOnce(buildCommitResponse(preview));
+    apiMocks.commitMatrixImport.mockResolvedValueOnce(response);
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
-    fireEvent.change(await screen.findByLabelText("Planned start"), { target: { value: "2026-06-03" } });
+    expect((await screen.findByLabelText("Planned start") as HTMLInputElement).value).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "Import Matrix" }));
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, {
+      target: { files: [new File(["docx"], "first.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" })] },
+    });
+    fireEvent.click((await screen.findAllByRole("button", { name: "Replace" }))[0]);
+
+    await waitFor(() => expect(apiMocks.commitMatrixImport).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect((screen.getByLabelText("Planned start") as HTMLInputElement).value).toBe("2026-07-01"));
+    expect((screen.getByLabelText("Test complete") as HTMLInputElement).value).toBe("2026-07-03");
+    expect((screen.getByLabelText("Estimated completion") as HTMLInputElement).value).toBe("2026-07-04");
+    expect((screen.getByLabelText("Post-test buffer") as HTMLInputElement).value).toBe("1");
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(apiMocks.saveMatrixEditorSessionDraft).not.toHaveBeenCalled();
+  });
+
+  it("keeps an existing Matrix's blank zero-day buffer when importing a replacement source", async () => {
+    const preview = buildImportPreview({ source_document_name: "replacement.docx" });
+    const response = buildCommitResponse(preview);
+    response.project_matrix_draft.record.post_test_buffer_days = "2";
+    apiMocks.previewProjectTestPlanMatrixFromUpload.mockResolvedValueOnce(preview);
+    apiMocks.commitMatrixImport.mockResolvedValueOnce(response);
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    expect((await screen.findByLabelText("Post-test buffer") as HTMLInputElement).value).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "Import Matrix" }));
     fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, {
       target: { files: [new File(["docx"], "replacement.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" })] },
@@ -218,12 +377,34 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     fireEvent.click((await screen.findAllByRole("button", { name: "Replace" }))[0]);
 
     await waitFor(() => expect(apiMocks.commitMatrixImport).toHaveBeenCalledTimes(1));
-    expect((screen.getByLabelText("Planned start") as HTMLInputElement).value).toBe("2026-06-03");
+    expect((screen.getByLabelText("Post-test buffer") as HTMLInputElement).value).toBe("");
+    await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalled(), { timeout: 1600 });
+    expect(apiMocks.saveMatrixEditorSessionDraft.mock.calls[0][1].post_test_buffer_days).toBeNull();
+  });
+
+  it("preserves pending Matrix date edits while replacing Matrix source", async () => {
+    const preview = buildImportPreview({ source_document_name: "replacement.docx" });
+    apiMocks.previewProjectTestPlanMatrixFromUpload.mockResolvedValueOnce(preview);
+    apiMocks.commitMatrixImport.mockResolvedValueOnce(buildCommitResponse(preview));
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+
+    fireEvent.change(await screen.findByLabelText("Planned start"), { target: { value: "2026-06-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Import Matrix" }));
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, {
+      target: { files: [new File(["docx"], "replacement.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" })] },
+    });
+    fireEvent.click((await screen.findAllByRole("button", { name: "Replace" }))[0]);
+
+    await waitFor(() => expect(apiMocks.commitMatrixImport).toHaveBeenCalledTimes(1));
+    expect((screen.getByLabelText("Planned start") as HTMLInputElement).value).toBe("2026-06-01");
+    await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalled(), { timeout: 1600 });
+    await waitFor(() => expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByRole("button", { name: "Confirm Matrix" }));
     await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalled());
-    expect(apiMocks.confirmMatrixEditorSession.mock.calls[0][1].schedule_confirmation).toEqual(
-      expect.objectContaining({ test_start_date: "2026-06-03", expected_revision_id: "psr-1" }),
-    );
+    expect(apiMocks.confirmMatrixEditorSession.mock.calls[0][1]).toEqual(expect.objectContaining({
+      planned_test_start_date: "2026-06-01",
+      expected_legacy_schedule_revision_id: "psr-1",
+    }));
   });
 
   it("exports the current unsaved Matrix and keeps its snapshot while preview is pending", async () => {

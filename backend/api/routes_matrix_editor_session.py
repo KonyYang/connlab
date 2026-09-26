@@ -6,8 +6,9 @@ from dataclasses import asdict
 from backend.domain.project_matrix_draft_models import ProjectMatrixDraftStepTextOverride
 
 from fastapi import APIRouter, Body, Depends, HTTPException
+from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_matrix_editor_session_service, get_project_schedule_service
+from backend.api.dependencies import get_matrix_editor_session_service, get_project_schedule_service, get_session
 from backend.api.lifecycle_errors import (
     lifecycle_guard_not_found,
     lifecycle_readonly_conflict,
@@ -46,7 +47,6 @@ from backend.api.matrix_editor_session_response_mappers import (
     _to_session_duration_authorities,
 )
 from backend.application.project_schedule_service import (
-    ConfirmProjectScheduleCommand,
     ProjectScheduleConflictError,
     ProjectScheduleProjectNotFoundError,
     ProjectScheduleReadinessError,
@@ -272,51 +272,53 @@ def confirm_matrix_editor_session(
     request: MatrixEditorSessionConfirmRequest,
     service: MatrixEditorSessionService = Depends(get_matrix_editor_session_service),
     schedule_service=Depends(get_project_schedule_service),
+    session: Session = Depends(get_session),
 ) -> MatrixEditorSessionConfirmResponse:
     """Confirm one Matrix Editor temporary session into active authority."""
     try:
-        result = service.confirm_session(
-            MatrixEditorSessionConfirmCommand(
-                project_id=project_id,
-                expected_active_confirmed_matrix_id=request.expected_active_confirmed_matrix_id,
-                expected_active_confirmed_revision=request.expected_active_confirmed_revision,
-                source_document_path=request.source_document_path,
-                source_document_name=request.source_document_name,
-                source_format=request.source_format,
-                source_import_id=request.source_import_id,
-                source_snapshot_id=request.source_snapshot_id,
-                confirmed_by=request.confirmed_by,
-                groups=_to_session_groups(request.groups),
-                rows=_to_session_rows(request.rows),
-                cells=_to_session_cells(request.cells),
-                step_text_overrides=(tuple(ProjectMatrixDraftStepTextOverride(**item.model_dump()) for item in request.step_text_overrides)
-                                     if request.step_text_overrides is not None else None),
-                duration_authorities=_to_session_duration_authorities(
-                    request.duration_authorities
-                ),
-                pre_test_buffer_days=request.pre_test_buffer_days,
-                post_test_buffer_days=request.post_test_buffer_days,
-                sample_received_date=request.sample_received_date,
-                planned_test_start_date=request.planned_test_start_date,
-                planned_test_complete_date=request.planned_test_complete_date,
-                estimated_completion_date=request.estimated_completion_date,
-                expected_editor_draft_id=request.expected_editor_draft_id,
-                expected_saved_payload_signature=request.expected_saved_payload_signature,
+        with session.begin_nested():
+            schedule_service.verify_legacy_revision(
+                project_id,
+                expected_revision_id=request.expected_legacy_schedule_revision_id,
+                expected_fingerprint=request.expected_legacy_schedule_fingerprint,
             )
-        )
-        if request.schedule_confirmation is not None:
-            schedule = request.schedule_confirmation
-            schedule_service.confirm(
-                ConfirmProjectScheduleCommand(
+            result = service.confirm_session(
+                MatrixEditorSessionConfirmCommand(
                     project_id=project_id,
-                    expected_revision_id=schedule.expected_revision_id,
-                    expected_fingerprint=schedule.expected_fingerprint,
-                    post_test_buffer_days=schedule.post_test_buffer_days,
-                    test_start_date=schedule.test_start_date,
-                    test_complete_date=schedule.test_complete_date,
-                    estimated_completion_date=schedule.estimated_completion_date,
+                    expected_active_confirmed_matrix_id=request.expected_active_confirmed_matrix_id,
+                    expected_active_confirmed_revision=request.expected_active_confirmed_revision,
+                    source_document_path=request.source_document_path,
+                    source_document_name=request.source_document_name,
+                    source_format=request.source_format,
+                    source_import_id=request.source_import_id,
+                    source_snapshot_id=request.source_snapshot_id,
                     confirmed_by=request.confirmed_by,
+                    groups=_to_session_groups(request.groups),
+                    rows=_to_session_rows(request.rows),
+                    cells=_to_session_cells(request.cells),
+                    step_text_overrides=(
+                        tuple(ProjectMatrixDraftStepTextOverride(**item.model_dump())
+                              for item in request.step_text_overrides)
+                        if request.step_text_overrides is not None else None
+                    ),
+                    duration_authorities=_to_session_duration_authorities(
+                        request.duration_authorities
+                    ),
+                    pre_test_buffer_days=request.pre_test_buffer_days,
+                    post_test_buffer_days=request.post_test_buffer_days,
+                    sample_received_date=request.sample_received_date,
+                    planned_test_start_date=request.planned_test_start_date,
+                    planned_test_complete_date=request.planned_test_complete_date,
+                    estimated_completion_date=request.estimated_completion_date,
+                    expected_editor_draft_id=request.expected_editor_draft_id,
+                    expected_saved_payload_signature=request.expected_saved_payload_signature,
                 )
+            )
+            schedule_service.retire_legacy_revision(
+                project_id,
+                expected_revision_id=request.expected_legacy_schedule_revision_id,
+                expected_fingerprint=request.expected_legacy_schedule_fingerprint,
+                matrix_publish_status=result.publish_status,
             )
     except MatrixEditorSessionNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -344,7 +346,7 @@ def confirm_matrix_editor_session(
         raise HTTPException(status_code=422, detail={"code": "project_schedule_validation", "message": str(exc)}) from exc
     return MatrixEditorSessionConfirmResponse(
         publish_status=result.publish_status,
-        message=("Project Schedule confirmed." if request.schedule_confirmation is not None and result.publish_status == "no_change" else result.message),
+        message=result.message,
         confirmed_snapshot=(
             _to_confirmed_response(result.confirmed_snapshot)
             if result.confirmed_snapshot is not None

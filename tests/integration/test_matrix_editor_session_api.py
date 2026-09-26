@@ -14,6 +14,8 @@ from sqlalchemy.orm import Session
 
 from backend.api.dependencies import (
     get_matrix_editor_session_service,
+    get_project_basic_information_service,
+    get_project_schedule_output_reader,
     get_session,
     get_settings,
 )
@@ -34,6 +36,9 @@ from backend.application.fee_evaluation_pricing_draft_persistence_service import
     FeeEvaluationPricingDraftSnapshot,
 )
 from backend.application.project_lifecycle_write_guard import ProjectLifecycleReadonlyError
+from backend.application.project_basic_information_service import ConfirmProjectBasicInformationCommand
+from backend.domain.project_schedule_models import ProjectScheduleRevision
+from backend.infrastructure.storage.repositories.project_schedule import ProjectScheduleRepository
 from backend.domain import (
     Project,
     ProjectClosureType,
@@ -74,7 +79,7 @@ def test_step_text_edits_are_durable_local_drafts_and_versioned_only_on_confirm(
         ]
         override = {"draft_group_id": group_id, "draft_row_id": row_id,
                     "step_sequence": 1, "step_suffix_note": "", "description": "Only group one step one", "requirement": ""}
-        payload = {**draft, "source_import_id": seed["editor_source_import_id"],
+        payload = {**draft, **_valid_matrix_dates(), "source_import_id": seed["editor_source_import_id"],
                    "source_snapshot_id": seed["editor_source_snapshot_id"],
                    "step_text_overrides": [override]}
         saved = client.put("/api/projects/P1/matrix-editor/session/draft", json=payload)
@@ -98,7 +103,7 @@ def test_step_text_edits_are_durable_local_drafts_and_versioned_only_on_confirm(
         active_id = authority["active_confirmed_matrix_id"]
         original_authority = client.get("/api/projects/P1/confirmed-matrix/active-snapshot").json()
         assert original_authority["step_text_overrides"][0]["requirement"] == ""
-        revised = {**authority["editor_draft"], "source_import_id": authority["editor_source_import_id"],
+        revised = {**authority["editor_draft"], **_valid_matrix_dates(), "source_import_id": authority["editor_source_import_id"],
                    "source_snapshot_id": authority["editor_source_snapshot_id"],
                    "expected_active_confirmed_matrix_id": active_id,
                    "expected_active_confirmed_revision": authority["active_confirmed_revision"],
@@ -127,7 +132,7 @@ def test_step_text_edits_are_durable_local_drafts_and_versioned_only_on_confirm(
         assert final["active_confirmed_revision"] == authority["active_confirmed_revision"] + 1
         assert len(final["editor_draft"]["step_text_overrides"]) == 1
         assert final["editor_draft"]["step_text_overrides"][0]["description"] == "Revised step"
-        legacy_payload = {**final["editor_draft"], "source_import_id": final["editor_source_import_id"],
+        legacy_payload = {**final["editor_draft"], **_valid_matrix_dates(), "source_import_id": final["editor_source_import_id"],
                           "source_snapshot_id": final["editor_source_snapshot_id"],
                           "expected_active_confirmed_matrix_id": final["active_confirmed_matrix_id"],
                           "expected_active_confirmed_revision": final["active_confirmed_revision"]}
@@ -242,7 +247,7 @@ def test_unconfirmed_import_edits_survive_save_reopen_and_first_confirm(tmp_path
             json={"source_import_id": source_import_id, "selected_group_keys": ["g1", "g2"]})
         assert created.status_code == 201
         seed = client.get("/api/projects/P1/matrix-editor/session").json()
-        payload = {**seed["editor_draft"], **legacy_dates,
+        payload = {**seed["editor_draft"], **_valid_matrix_dates(), **legacy_dates,
             "source_import_id": seed["editor_source_import_id"],
             "source_snapshot_id": seed["editor_source_snapshot_id"],
             "expected_active_confirmed_matrix_id": None,
@@ -320,6 +325,7 @@ def test_registry_tracks_confirmed_matrix_authority_without_changing_project_sta
         assert created.status_code == 201
         draft_id = created.json()["record"]["project_matrix_draft_id"]
         assert client.get("/api/projects/registry").json()[0]["has_confirmed_matrix"] is False
+        _fill_matrix_dates(client, draft_id)
         confirmed = client.post(f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
             json={"confirmed_by": "operator"})
         assert confirmed.status_code == 201
@@ -344,6 +350,7 @@ def test_matrix_editor_session_seed_handles_missing_source_snapshot(
         )
         assert created.status_code == 201
         draft_id = created.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
         confirmed = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
             json={"confirmed_by": "operator"},
@@ -452,6 +459,7 @@ def test_matrix_editor_session_confirm_no_change_returns_http200_no_change(
         )
         assert created.status_code == 201
         draft_id = created.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
         confirmed = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
             json={"confirmed_by": "operator"},
@@ -468,6 +476,7 @@ def test_matrix_editor_session_confirm_no_change_returns_http200_no_change(
         response = client.post(
             "/api/projects/P1/matrix-editor/session/confirm",
             json={
+                **_valid_matrix_dates(),
                 "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
                 "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
                 "source_document_path": seed_payload["source_preview_payload"]["source_document_path"]
@@ -508,6 +517,7 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
         )
         assert created.status_code == 201
         draft_id = created.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
         confirmed = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
             json={"confirmed_by": "operator"},
@@ -532,6 +542,7 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
         saved = client.put(
             "/api/projects/P1/matrix-editor/session/draft",
             json={
+                **_valid_matrix_dates(),
                 "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
                 "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
                 "source_document_path": seed_payload["source_preview_payload"]["source_document_path"],
@@ -569,6 +580,7 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
         stale_confirm = client.post(
             "/api/projects/P1/matrix-editor/session/confirm",
             json={
+                **_valid_matrix_dates(),
                 "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
                 "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
                 "expected_editor_draft_id": saved_payload["editor_draft_id"],
@@ -589,6 +601,7 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
         mismatched_confirm = client.post(
             "/api/projects/P1/matrix-editor/session/confirm",
             json={
+                **_valid_matrix_dates(),
                 "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
                 "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
                 "expected_editor_draft_id": saved_payload["editor_draft_id"],
@@ -611,6 +624,7 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
         confirmed_saved = client.post(
             "/api/projects/P1/matrix-editor/session/confirm",
             json={
+                **_valid_matrix_dates(),
                 "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
                 "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
                 "expected_editor_draft_id": saved_payload["editor_draft_id"],
@@ -705,57 +719,70 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
         engine.dispose()
 
 
-def test_matrix_confirm_can_publish_only_schedule_without_new_matrix_revision(tmp_path: Path) -> None:
-    client, engine, _ = _client(tmp_path)
+def test_date_only_matrix_confirm_publishes_matrix_without_new_schedule_revision(tmp_path: Path) -> None:
+    client, engine, session_factory = _client(tmp_path)
     try:
         _seed_project("P1", tmp_path)
+        with session_factory() as session:
+            _seed_basic_receipt(session)
+            session.commit()
         source_import_id = _seed_source_import("P1", tmp_path)
         created = client.post("/api/projects/P1/matrix-drafts", json={
             "source_import_id": source_import_id, "selected_group_keys": ["g1", "g2"]
         })
         assert created.status_code == 201, created.text
+        _fill_matrix_dates(client, created.json()["record"]["project_matrix_draft_id"])
         assert client.post(
             f"/api/projects/P1/matrix-drafts/{created.json()['record']['project_matrix_draft_id']}/confirm",
             json={"confirmed_by": "operator"},
         ).status_code == 201
         seed = client.get("/api/projects/P1/matrix-editor/session").json()
         schedule = client.get("/api/projects/P1/project-schedule").json()
+        changed_dates = {
+            "post_test_buffer_days": "1",
+            "planned_test_start_date": "2026-09-10",
+            "planned_test_complete_date": "2026-09-13",
+            "estimated_completion_date": "2026-09-14",
+        }
         payload = {
             "expected_active_confirmed_matrix_id": seed["active_confirmed_matrix_id"],
             "expected_active_confirmed_revision": seed["active_confirmed_revision"],
-            "confirmed_by": "operator",
+            "source_import_id": seed["active_source_import_id"],
+            "source_snapshot_id": seed["active_source_snapshot_id"],
             "groups": seed["editor_draft"]["groups"],
             "rows": seed["editor_draft"]["rows"],
             "cells": seed["editor_draft"]["cells"],
-            "schedule_confirmation": {
-                "expected_revision_id": None,
-                "expected_fingerprint": None,
-                "post_test_buffer_days": "1",
-                "test_start_date": "2026-09-10",
-                "test_complete_date": "2026-09-13",
-                "estimated_completion_date": "2026-09-14",
-            },
+            **changed_dates,
         }
+        saved = client.put("/api/projects/P1/matrix-editor/session/draft", json=payload)
+        assert saved.status_code == 200, saved.text
         assert schedule["confirmed_revision"] is None
-        response = client.post("/api/projects/P1/matrix-editor/session/confirm", json=payload)
+        response = client.post("/api/projects/P1/matrix-editor/session/confirm", json={
+            **payload,
+            "confirmed_by": "operator",
+            "expected_editor_draft_id": saved.json()["editor_draft_id"],
+            "expected_saved_payload_signature": saved.json()["saved_payload_signature"],
+        })
         assert response.status_code == 200, response.text
-        assert response.json()["publish_status"] == "no_change"
+        assert response.json()["publish_status"] == "published"
         after = client.get("/api/projects/P1/matrix-editor/session").json()
-        assert after["active_confirmed_matrix_id"] == seed["active_confirmed_matrix_id"]
-        assert after["active_confirmed_revision"] == seed["active_confirmed_revision"]
-        confirmed_schedule = client.get("/api/projects/P1/project-schedule").json()["confirmed_revision"]
-        assert confirmed_schedule["test_start_date"] == "2026-09-10"
-        assert confirmed_schedule["based_on_confirmed_matrix_id"] == seed["active_confirmed_matrix_id"]
+        assert after["active_confirmed_matrix_id"] != seed["active_confirmed_matrix_id"]
+        assert after["active_confirmed_revision"] == seed["active_confirmed_revision"] + 1
+        assert client.get("/api/projects/P1/project-schedule").json()["confirmed_revision"] is None
+        with session_factory() as session:
+            authority = get_project_schedule_output_reader(session).get_latest_confirmed("P1")
+            assert authority is not None
+            assert authority.test_complete_date == "2026-09-13"
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
 
 
-@pytest.mark.parametrize("schedule_failure", ["stale", "invalid"])
-def test_matrix_confirm_rolls_back_matrix_when_schedule_confirmation_fails(
+@pytest.mark.parametrize("schedule_failure", ["stale", "invalid", "matrix_draft_conflict"])
+def test_matrix_confirm_rolls_back_when_legacy_migration_fails(
     tmp_path: Path, schedule_failure: str,
 ) -> None:
-    client, engine, _ = _client(tmp_path)
+    client, engine, session_factory = _client(tmp_path)
     try:
         _seed_project("P1", tmp_path)
         source_import_id = _seed_source_import("P1", tmp_path)
@@ -763,17 +790,17 @@ def test_matrix_confirm_rolls_back_matrix_when_schedule_confirmation_fails(
             "source_import_id": source_import_id, "selected_group_keys": ["g1", "g2"]
         })
         assert created.status_code == 201, created.text
+        _fill_matrix_dates(client, created.json()["record"]["project_matrix_draft_id"])
         assert client.post(
             f"/api/projects/P1/matrix-drafts/{created.json()['record']['project_matrix_draft_id']}/confirm",
             json={"confirmed_by": "operator"},
         ).status_code == 201
-        schedule_response = client.post("/api/projects/P1/project-schedule/confirm", json={
-            "actor": "operator", "expected_revision_id": None, "expected_fingerprint": None,
-            "post_test_buffer_days": "0", "test_start_date": "2026-09-10",
-            "test_complete_date": "2026-09-11", "estimated_completion_date": "2026-09-11",
-        })
-        assert schedule_response.status_code == 200, schedule_response.text
-        original_schedule = schedule_response.json()
+        with session_factory() as session:
+            original_schedule = _seed_legacy_schedule(
+                session, post_buffer="0", start="2026-09-10",
+                complete="2026-09-11", estimated="2026-09-11",
+            )
+            session.commit()
         seed = client.get("/api/projects/P1/matrix-editor/session").json()
         draft = seed["editor_draft"]
         changed_rows = [{**row, "method": "EIA-364-18C"} if index == 0 else row
@@ -784,32 +811,97 @@ def test_matrix_confirm_rolls_back_matrix_when_schedule_confirmation_fails(
             "source_import_id": seed["active_source_import_id"],
             "source_snapshot_id": seed["active_source_snapshot_id"],
             "groups": draft["groups"], "rows": changed_rows, "cells": draft["cells"],
+            "post_test_buffer_days": "0",
+            "planned_test_start_date": "2026-09-12",
+            "planned_test_complete_date": "2026-09-13",
+            "estimated_completion_date": "2026-09-13",
         }
         saved = client.put("/api/projects/P1/matrix-editor/session/draft", json=matrix_payload)
         assert saved.status_code == 200, saved.text
-        schedule_update = {
-            "expected_revision_id": original_schedule["revision_id"],
-            "expected_fingerprint": original_schedule["fingerprint"],
-            "post_test_buffer_days": "0", "test_start_date": "2026-09-12",
-            "test_complete_date": "2026-09-13", "estimated_completion_date": "2026-09-13",
-        }
+        legacy_fingerprint = original_schedule.fingerprint
         if schedule_failure == "stale":
-            schedule_update["expected_fingerprint"] = "obsolete"
-        else:
-            schedule_update["test_complete_date"] = "2026-09-11"
+            legacy_fingerprint = "obsolete"
+        elif schedule_failure == "invalid":
+            matrix_payload["planned_test_complete_date"] = "2026-09-11"
         response = client.post("/api/projects/P1/matrix-editor/session/confirm", json={
             **matrix_payload,
             "expected_editor_draft_id": saved.json()["editor_draft_id"],
-            "expected_saved_payload_signature": saved.json()["saved_payload_signature"],
+            "expected_saved_payload_signature": (
+                "obsolete" if schedule_failure == "matrix_draft_conflict"
+                else saved.json()["saved_payload_signature"]
+            ),
             "confirmed_by": "operator",
-            "schedule_confirmation": schedule_update,
+            "expected_legacy_schedule_revision_id": original_schedule.revision_id,
+            "expected_legacy_schedule_fingerprint": legacy_fingerprint,
         })
-        assert response.status_code == (409 if schedule_failure == "stale" else 422), response.text
+        assert response.status_code == (422 if schedule_failure == "invalid" else 409), response.text
         after_matrix = client.get("/api/projects/P1/matrix-editor/session").json()
         assert after_matrix["active_confirmed_matrix_id"] == seed["active_confirmed_matrix_id"]
         assert after_matrix["active_confirmed_revision"] == seed["active_confirmed_revision"]
         after_schedule = client.get("/api/projects/P1/project-schedule").json()["confirmed_revision"]
-        assert after_schedule["revision_id"] == original_schedule["revision_id"]
+        assert after_schedule["revision_id"] == original_schedule.revision_id
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_confirm_matrix_migrates_legacy_schedule_without_creating_another_schedule_revision(
+    tmp_path: Path,
+) -> None:
+    client, engine, session_factory = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        with session_factory() as session:
+            _seed_basic_receipt(session)
+            session.commit()
+        source_import_id = _seed_source_import("P1", tmp_path)
+        created = client.post("/api/projects/P1/matrix-drafts", json={
+            "source_import_id": source_import_id, "selected_group_keys": ["g1", "g2"],
+        })
+        draft_id = created.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
+        assert client.post(
+            f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
+            json={"confirmed_by": "operator"},
+        ).status_code == 201
+        with session_factory() as session:
+            old = _seed_legacy_schedule(
+                session, post_buffer="1", start="2026-09-11",
+                complete="2026-09-13", estimated="2026-09-14",
+            )
+            session.commit()
+            assert get_project_schedule_output_reader(session).get_latest_confirmed("P1") is None
+        seed = client.get("/api/projects/P1/matrix-editor/session").json()
+        payload = {
+            "expected_active_confirmed_matrix_id": seed["active_confirmed_matrix_id"],
+            "expected_active_confirmed_revision": seed["active_confirmed_revision"],
+            "source_import_id": seed["active_source_import_id"],
+            "source_snapshot_id": seed["active_source_snapshot_id"],
+            "groups": seed["editor_draft"]["groups"],
+            "rows": seed["editor_draft"]["rows"],
+            "cells": seed["editor_draft"]["cells"],
+            "post_test_buffer_days": "1",
+            "planned_test_start_date": "2026-09-11",
+            "planned_test_complete_date": "2026-09-13",
+            "estimated_completion_date": "2026-09-14",
+        }
+        saved = client.put("/api/projects/P1/matrix-editor/session/draft", json=payload)
+        assert saved.status_code == 200, saved.text
+        response = client.post("/api/projects/P1/matrix-editor/session/confirm", json={
+            **payload, "confirmed_by": "operator",
+            "expected_editor_draft_id": saved.json()["editor_draft_id"],
+            "expected_saved_payload_signature": saved.json()["saved_payload_signature"],
+            "expected_legacy_schedule_revision_id": old.revision_id,
+            "expected_legacy_schedule_fingerprint": old.fingerprint,
+        })
+        assert response.status_code == 200, response.text
+        assert response.json()["publish_status"] == "published"
+        assert client.get("/api/projects/P1/project-schedule").json()["confirmed_revision"] is None
+        with session_factory() as session:
+            schedule = get_project_schedule_output_reader(session).get_latest_confirmed("P1")
+            assert schedule is not None
+            assert schedule.test_start_date == "2026-09-11"
+            assert schedule.revision_id.startswith("legacy:cmv-")
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -828,6 +920,7 @@ def test_matrix_editor_session_autosave_rejects_duplicate_row_lineage_without_se
         )
         assert created.status_code == 201
         draft_id = created.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
         confirmed = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
             json={"confirmed_by": "operator"},
@@ -891,6 +984,7 @@ def test_matrix_editor_session_confirm_publishes_schedule_planning_fields(
         )
         assert created.status_code == 201
         draft_id = created.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
         confirmed = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
             json={"confirmed_by": "operator"},
@@ -951,14 +1045,6 @@ def test_matrix_editor_session_confirm_publishes_schedule_planning_fields(
                 "planned_test_start_date": "2026-06-02",
                 "planned_test_complete_date": "2026-06-03",
                 "estimated_completion_date": "2026-06-04",
-                "schedule_confirmation": {
-                    "expected_revision_id": None,
-                    "expected_fingerprint": None,
-                    "post_test_buffer_days": "1",
-                    "test_start_date": "2026-06-02",
-                    "test_complete_date": "2026-06-03",
-                    "estimated_completion_date": "2026-06-04",
-                },
                 "groups": editor_draft["groups"],
                 "rows": rows,
                 "cells": editor_draft["cells"],
@@ -976,9 +1062,7 @@ def test_matrix_editor_session_confirm_publishes_schedule_planning_fields(
         assert version["planned_test_complete_date"] == "2026-06-03"
         assert version["estimated_completion_date"] == "2026-06-04"
         assert payload["confirmed_snapshot"]["rows"][0]["day_expression"] == "0.5x"
-        confirmed_schedule = client.get("/api/projects/P1/project-schedule").json()["confirmed_revision"]
-        assert confirmed_schedule["test_start_date"] == "2026-06-02"
-        assert confirmed_schedule["based_on_confirmed_matrix_id"] == version["confirmed_matrix_id"]
+        assert client.get("/api/projects/P1/project-schedule").json()["confirmed_revision"] is None
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -997,6 +1081,7 @@ def test_matrix_editor_session_confirm_still_rejects_invalid_matrix_day(
         )
         assert created.status_code == 201
         draft_id = created.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
         confirmed = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
             json={"confirmed_by": "operator"},
@@ -1058,6 +1143,7 @@ def test_matrix_editor_session_confirm_after_source_change_updates_active_lineag
         )
         assert draft_a.status_code == 201
         draft_a_id = draft_a.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_a_id)
         confirmed_a = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_a_id}/confirm",
             json={"confirmed_by": "operator"},
@@ -1097,6 +1183,7 @@ def test_matrix_editor_session_confirm_after_source_change_updates_active_lineag
 
         saved_replacement = client.put("/api/projects/P1/matrix-editor/session/draft", json={
             **seed_payload["editor_draft"],
+            **_valid_matrix_dates(),
             "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
             "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
             "source_import_id": source_import_b,
@@ -1110,6 +1197,7 @@ def test_matrix_editor_session_confirm_after_source_change_updates_active_lineag
         response = client.post(
             "/api/projects/P1/matrix-editor/session/confirm",
             json={
+                **_valid_matrix_dates(),
                 "expected_active_confirmed_matrix_id": seed_payload["active_confirmed_matrix_id"],
                 "expected_active_confirmed_revision": seed_payload["active_confirmed_revision"],
                 "source_document_path": "C:/spec_b.docx",
@@ -1165,6 +1253,7 @@ def test_matrix_editor_session_discard_removes_imported_source_replacement_draft
             "/api/projects/P1/matrix-drafts",
             json={"source_import_id": source_import_a, "selected_group_keys": ["g1", "g2"]},
         )
+        _fill_matrix_dates(client, draft_a.json()["record"]["project_matrix_draft_id"])
         confirmed_a = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_a.json()['record']['project_matrix_draft_id']}/confirm",
             json={"confirmed_by": "operator"},
@@ -1224,6 +1313,7 @@ def test_matrix_editor_session_confirm_allows_stale_expected_when_source_is_unch
         )
         assert created.status_code == 201
         draft_id = created.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
         confirmed = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
             json={"confirmed_by": "operator"},
@@ -1237,6 +1327,7 @@ def test_matrix_editor_session_confirm_allows_stale_expected_when_source_is_unch
         assert editor_draft is not None
 
         first_session_payload = {
+            **_valid_matrix_dates(),
             "expected_active_confirmed_matrix_id": stale_seed["active_confirmed_matrix_id"],
             "expected_active_confirmed_revision": stale_seed["active_confirmed_revision"],
             "source_document_path": stale_seed["source_preview_payload"]["source_document_path"],
@@ -1316,6 +1407,7 @@ def test_matrix_editor_session_confirm_rejects_selected_group_sample_without_dig
         )
         assert created.status_code == 201
         draft_id = created.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
         confirmed = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
             json={"confirmed_by": "operator"},
@@ -1376,6 +1468,54 @@ def _client(tmp_path: Path) -> tuple[TestClient, object, object]:
     app.dependency_overrides[get_session] = override_session
     app.dependency_overrides[get_settings] = lambda: settings
     return TestClient(app), engine, session_factory
+
+
+def _fill_matrix_dates(client: TestClient, draft_id: str) -> None:
+    draft = client.get(f"/api/projects/P1/matrix-drafts/{draft_id}").json()
+    saved = client.put(f"/api/projects/P1/matrix-drafts/{draft_id}", json={
+        "groups": draft["groups"], "rows": draft["rows"], "cells": draft["cells"],
+        "post_test_buffer_days": "0",
+        "planned_test_start_date": "2026-09-10",
+        "planned_test_complete_date": "2026-09-10",
+        "estimated_completion_date": "2026-09-10",
+    })
+    assert saved.status_code == 200, saved.text
+
+
+def _seed_legacy_schedule(
+    session: Session, *, post_buffer: str, start: str, complete: str, estimated: str,
+) -> ProjectScheduleRevision:
+    revision = ProjectScheduleRevision(
+        revision_id="psr-historical-1", project_id="P1", revision_sequence=1,
+        state="confirmed", fingerprint="historical-fingerprint", matrix_input_fingerprint="historical-matrix",
+        based_on_confirmed_matrix_id=None, based_on_confirmed_matrix_revision=None,
+        based_on_basic_information_version=None, sample_received_date="",
+        post_test_buffer_days=post_buffer, test_start_date=start,
+        test_complete_date=complete, estimated_completion_date=estimated,
+        confirmed_by="historical operator", confirmed_at="2026-09-01T00:00:00+00:00",
+    )
+    ProjectScheduleRepository(session).add(revision)
+    return revision
+
+
+def _seed_basic_receipt(session: Session) -> None:
+    get_project_basic_information_service(session).confirm(
+        ConfirmProjectBasicInformationCommand(
+            project_id="P1",
+            values={
+                "dl_number": "DL-001",
+                "project_type": "NPD",
+                "product_description": "Connector",
+                "test_item": "Qualification Testing",
+                "tests_to_be_performed": "Qualification Testing",
+                "requested_by": "Test",
+                "project_leader": "Engineer",
+                "lab_performing_tests": "Dongguan",
+                "date_lab_received_samples": "2026-09-01",
+            },
+            confirmed_by="operator",
+        )
+    )
 
 
 def _seed_project(project_id: str, tmp_path: Path) -> None:
@@ -1440,6 +1580,7 @@ class _ReadonlyMatrixEditorSessionService:
 
 def _matrix_editor_payload() -> dict[str, object]:
     return {
+        **_valid_matrix_dates(),
         "expected_active_confirmed_matrix_id": "cmv-1",
         "expected_active_confirmed_revision": 1,
         "source_document_path": "C:/spec.docx",
@@ -1480,6 +1621,15 @@ def _matrix_editor_payload() -> dict[str, object]:
                 "cell_value": "1",
             }
         ],
+    }
+
+
+def _valid_matrix_dates() -> dict[str, str]:
+    return {
+        "post_test_buffer_days": "0",
+        "planned_test_start_date": "2026-09-10",
+        "planned_test_complete_date": "2026-09-10",
+        "estimated_completion_date": "2026-09-10",
     }
 
 

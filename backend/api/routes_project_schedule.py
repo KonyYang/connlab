@@ -9,8 +9,6 @@ from pydantic import BaseModel, Field
 
 from backend.api.dependencies import get_project_schedule_service
 from backend.application.project_schedule_service import (
-    ConfirmProjectScheduleCommand,
-    ProjectScheduleConflictError,
     ProjectScheduleProjectNotFoundError,
     ProjectScheduleReadinessError,
 )
@@ -86,29 +84,13 @@ def confirm_project_schedule(
     request: ConfirmProjectScheduleRequest,
     service=Depends(get_project_schedule_service),
 ):
-    try:
-        revision = service.confirm(
-            ConfirmProjectScheduleCommand(
-                project_id=project_id,
-                expected_revision_id=request.expected_revision_id,
-                expected_fingerprint=request.expected_fingerprint,
-                post_test_buffer_days=request.post_test_buffer_days,
-                test_start_date=request.test_start_date,
-                test_complete_date=request.test_complete_date,
-                estimated_completion_date=request.estimated_completion_date,
-                confirmed_by=request.actor,
-            )
-        )
-    except ProjectScheduleProjectNotFoundError as exc:
-        _raise_project_not_found(exc)
-    except ProjectScheduleConflictError as exc:
-        raise HTTPException(
-            409,
-            detail={"code": "project_schedule_conflict", "message": str(exc)},
-        ) from exc
-    except (ProjectScheduleReadinessError, ValueError) as exc:
-        _raise_readiness(exc)
-    return asdict(revision)
+    raise HTTPException(
+        410,
+        detail={
+            "code": "project_schedule_confirm_retired",
+            "message": "Project Schedule is now confirmed with Matrix. Open Matrix Editor and use Confirm Matrix.",
+        },
+    )
 
 
 def _raise_project_not_found(exc: Exception) -> None:

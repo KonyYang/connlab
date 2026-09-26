@@ -125,7 +125,7 @@ class CustomerFeedbackFormGenerationService:
             schedule = self._project_schedule.get_latest_confirmed(command.project_id)
             if schedule is None:
                 raise CustomerFeedbackReadinessError(
-                    "Confirm Project Schedule before generating Customer Feedback."
+                    "Confirm Matrix plan dates before generating Customer Feedback."
                 )
             identity["estimated_completion_date"] = schedule.estimated_completion_date
         try:

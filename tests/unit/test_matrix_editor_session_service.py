@@ -200,6 +200,10 @@ def test_confirm_session_no_change_returns_http200_semantics() -> None:
         source_import_id=None,
         source_snapshot_id=None,
         confirmed_by="operator",
+        post_test_buffer_days="0",
+        planned_test_start_date="2026-09-01",
+        planned_test_complete_date="2026-09-01",
+        estimated_completion_date="2026-09-01",
         groups=(
             MatrixEditorSessionGroup(
                 draft_group_id="dg-1",
@@ -499,18 +503,19 @@ def test_confirm_first_authority_initializes_default_fee_authority() -> None:
 
 
 @pytest.mark.parametrize("schedule", [
-    {"sample_received_date": "2026-07-24"},
-    {"planned_test_start_date": "2026-09-09"},
+    {"planned_test_start_date": None},
+    {"planned_test_complete_date": ""},
+    {"estimated_completion_date": None},
 ])
-def test_first_matrix_confirm_is_not_blocked_by_partial_legacy_schedule(schedule) -> None:
+def test_first_matrix_confirm_rejects_incomplete_plan(schedule) -> None:
     service = _service(
         active=None, source_snapshot=None,
         draft_persistence_service=_RecordingDraftPersistenceService(),
         matrix_import_commit_service=_RecordingMatrixImportCommitService(),
         confirmed_matrix_authority_service=_RecordingConfirmedAuthorityService(),
     )
-    result = service.confirm_session(replace(_first_confirm_command(), **schedule))
-    assert result.publish_status == "published"
+    with pytest.raises(MatrixEditorSessionError, match="is required"):
+        service.confirm_session(replace(_first_confirm_command(), **schedule))
 
 
 def test_discard_editor_draft_deletes_pending_fee_rebase() -> None:
@@ -628,6 +633,10 @@ def test_confirm_session_no_change_ignores_unselected_source_groups() -> None:
         source_import_id=None,
         source_snapshot_id=None,
         confirmed_by="operator",
+        post_test_buffer_days="0",
+        planned_test_start_date="2026-09-01",
+        planned_test_complete_date="2026-09-01",
+        estimated_completion_date="2026-09-01",
         groups=(
             MatrixEditorSessionGroup(
                 draft_group_id="dg-1",
@@ -695,6 +704,10 @@ def test_confirm_session_treats_group_prefix_as_same_signature() -> None:
         source_import_id=None,
         source_snapshot_id=None,
         confirmed_by="operator",
+        post_test_buffer_days="0",
+        planned_test_start_date="2026-09-01",
+        planned_test_complete_date="2026-09-01",
+        estimated_completion_date="2026-09-01",
         groups=(
             MatrixEditorSessionGroup(
                 draft_group_id="dg-1",
@@ -1280,6 +1293,10 @@ def _saved_revision_draft() -> ProjectMatrixDraftSnapshot:
             created_at="2026-05-27T00:00:00Z",
             updated_at="2026-05-27T00:00:01Z",
             base_confirmed_matrix_id="cmv-1",
+            post_test_buffer_days="0",
+            planned_test_start_date="2026-09-01",
+            planned_test_complete_date="2026-09-01",
+            estimated_completion_date="2026-09-01",
         ),
         groups=(
             ProjectMatrixDraftGroup(
@@ -1331,6 +1348,10 @@ def _source_replacement_draft() -> ProjectMatrixDraftSnapshot:
             created_at="2026-05-28T00:00:00Z",
             updated_at="2026-05-28T00:00:01Z",
             base_confirmed_matrix_id=None,
+            post_test_buffer_days="0",
+            planned_test_start_date="2026-09-01",
+            planned_test_complete_date="2026-09-01",
+            estimated_completion_date="2026-09-01",
         ),
         groups=(
             ProjectMatrixDraftGroup(
@@ -1448,6 +1469,10 @@ def _matrix_equal_saved_revision_draft(
             created_at="2026-07-11T10:00:00+00:00",
             updated_at="2026-07-11T10:01:00+00:00",
             base_confirmed_matrix_id="cmv-1",
+            post_test_buffer_days="0",
+            planned_test_start_date="2026-09-01",
+            planned_test_complete_date="2026-09-01",
+            estimated_completion_date="2026-09-01",
         ),
         groups=(
             ProjectMatrixDraftGroup(
@@ -1557,6 +1582,10 @@ def _confirm_saved_revision_command(
         ),
         expected_editor_draft_id=draft.record.project_matrix_draft_id,
         expected_saved_payload_signature=_build_signature_from_project_draft(draft),
+        post_test_buffer_days=draft.record.post_test_buffer_days,
+        planned_test_start_date=draft.record.planned_test_start_date,
+        planned_test_complete_date=draft.record.planned_test_complete_date,
+        estimated_completion_date=draft.record.estimated_completion_date,
     )
 
 
@@ -1572,6 +1601,10 @@ def _first_confirm_command() -> MatrixEditorSessionConfirmCommand:
         source_import_id=None,
         source_snapshot_id="sms-1",
         confirmed_by="operator",
+        post_test_buffer_days=draft.record.post_test_buffer_days,
+        planned_test_start_date=draft.record.planned_test_start_date,
+        planned_test_complete_date=draft.record.planned_test_complete_date,
+        estimated_completion_date=draft.record.estimated_completion_date,
         groups=tuple(
             MatrixEditorSessionGroup(
                 draft_group_id=group.draft_group_id,
@@ -1623,6 +1656,10 @@ def _build_active_snapshot(sample_quantity_expression: str = "5") -> ConfirmedMa
             status=ConfirmedMatrixStatus.CONFIRMED,
             confirmed_by="operator",
             confirmed_at="2026-05-27T00:00:00Z",
+            post_test_buffer_days="0",
+            planned_test_start_date="2026-09-01",
+            planned_test_complete_date="2026-09-01",
+            estimated_completion_date="2026-09-01",
         ),
         groups=(
             ConfirmedMatrixGroup(

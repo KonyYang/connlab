@@ -158,9 +158,9 @@ describe("MatrixEditorWorkspace save, cancel, and confirm lifecycle", () => {
     expect(request.pre_test_buffer_days).toBeNull();
     expect(request.post_test_buffer_days).toBeNull();
     expect(request.sample_received_date).toBeNull();
-    expect(request.planned_test_start_date).toBeNull();
-    expect(request.planned_test_complete_date).toBeNull();
-    expect(request.estimated_completion_date).toBeNull();
+    expect(request.planned_test_start_date).toBe("2026-06-02");
+    expect(request.planned_test_complete_date).toBe("2026-06-02");
+    expect(request.estimated_completion_date).toBe("2026-06-02");
     expect(request.rows[0].day_expression).toBe("0.5x");
   });
 
@@ -174,7 +174,6 @@ describe("MatrixEditorWorkspace save, cancel, and confirm lifecycle", () => {
 
     expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getAllByText("Test complete is earlier than planned start.").length).toBeGreaterThan(0);
-    expect(apiMocks.confirmProjectSchedule).toHaveBeenCalledTimes(0);
   });
 
   it("returns to Workbench when the server canonicalizes an edited Matrix to no changes", async () => {

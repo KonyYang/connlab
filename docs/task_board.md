@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_MATRIX_SCHEDULE_UNIFIED_CONFIRM",
     "summary": "Unify Project Schedule editing and authority confirmation with Confirm Matrix while retaining existing schedule revisions and safe folder/output gating.",
@@ -45,88 +45,17 @@
     ],
     "activation_head": "9fc60223f98beead8649e60c5f520445badaeaa8",
     "started_at": "2026-09-26T08:41:04.702813Z",
-    "updated_at": "2026-09-26T10:04:33.296147Z",
+    "updated_at": "2026-09-26T14:10:39.230608Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_SCHEDULE_UNIFIED_CONFIRM",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User 2026-09-26: implement sole Matrix authority for four schedule fields, all outputs, and legacy data protection.",
       "requires_user": false
     },
-    "report": {
-      "validation": [
-        {
-          "summary": "Frontend focused tests and Matrix/Folder API integration tests passed on final affected state.",
-          "status": "passed",
-          "name": "Developer focused tests"
-        },
-        {
-          "summary": "Python 3074 passed, 8 skipped, 19 Office deselected; frontend 677 passed, 1 skipped; TypeScript and Vite build passed.",
-          "status": "passed",
-          "name": "Independent QA full gate"
-        },
-        {
-          "summary": "Matrix Editor loaded; schedule card has four edit fields and no independent Confirm schedule button.",
-          "status": "passed",
-          "name": "Browser read-only smoke"
-        },
-        {
-          "summary": "git diff --check clean; all 13 product/test/doc changed paths are inside recorded high-risk scope.",
-          "status": "passed",
-          "name": "Diff and scope"
-        }
-      ],
-      "summary": "Project Schedule edits now use Confirm Matrix in one atomic request, with legacy revisions retained and folder readiness preserved.",
-      "roles": {
-        "reviewer": {
-          "status": "passed",
-          "summary": "Independent standards/spec review: zero remaining blockers."
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Independent full non-Office Python/frontend/build gate and read-only browser check passed."
-        },
-        "planner": {
-          "status": "passed",
-          "summary": "Independent plan covered single-request atomicity, compatibility, folder readiness and risk."
-        },
-        "developer": {
-          "status": "passed",
-          "summary": "TDD red/green implementation with targeted passing checks."
-        },
-        "integrator": {
-          "status": "passed",
-          "summary": "Exact scoped diff reviewed, local commit created and clean HEAD verified."
-        }
-      },
-      "scope_ok": true,
-      "version": 1,
-      "task_id": "TASK_MATRIX_SCHEDULE_UNIFIED_CONFIRM",
-      "schema": "connlab.sol-task-report",
-      "subject": "946b9d76fdd873a109c91b99fc1f6c0f7443df44",
-      "changed_paths": [
-        "backend/api/matrix_editor_session_dtos.py",
-        "backend/api/project_folder_generation_composition.py",
-        "backend/api/routes_matrix_editor_session.py",
-        "docs/PROJECT_CONTEXT.md",
-        "frontend/src/api/client.ts",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.lifecycle.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-        "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.tsx",
-        "frontend/src/features/matrix-editor/useMatrixDraftPersistence.ts",
-        "tests/integration/test_matrix_editor_session_api.py",
-        "tests/integration/test_project_folder_generation_api.py"
-      ],
-      "integration": {
-        "summary": "Commit contains only reviewed in-scope changes plus running task board; worktree clean.",
-        "status": "passed",
-        "subject": "946b9d76fdd873a109c91b99fc1f6c0f7443df44"
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_INTAKE_LTR_ROW_COMPARISON_LAYOUT",

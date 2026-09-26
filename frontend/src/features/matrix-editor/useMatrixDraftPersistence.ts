@@ -20,7 +20,6 @@ type MatrixDraftPersistenceOptions = {
   currentPayload: ProjectMatrixDraftSaveRequest;
   currentSignature: string;
   draftLoading: boolean;
-  hasExternalUnsavedChanges?: boolean;
   durationAuthorities: MatrixEditorSessionDurationAuthority[];
   onBackToWorkbench: () => void;
   onError: (message: string) => void;
@@ -108,7 +107,6 @@ export function useMatrixDraftPersistence({
   currentPayload,
   currentSignature,
   draftLoading,
-  hasExternalUnsavedChanges = false,
   durationAuthorities,
   onBackToWorkbench,
   onError,
@@ -156,14 +154,14 @@ export function useMatrixDraftPersistence({
     currentPayload.cells.some((cell) => cell.cell_value.trim().length > 0);
 
   useEffect(() => {
-    if (!hasUnsavedChanges && !hasExternalUnsavedChanges && saveState !== "saving" && saveState !== "error") return;
+    if (!hasUnsavedChanges && saveState !== "saving" && saveState !== "error") return;
     const warnBeforeLeaving = (event: BeforeUnloadEvent): void => {
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", warnBeforeLeaving);
     return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
-  }, [hasUnsavedChanges, hasExternalUnsavedChanges, saveState]);
+  }, [hasUnsavedChanges, saveState]);
 
   useEffect(() => {
     if (autosaveTimeoutRef.current !== null) {
@@ -391,9 +389,9 @@ export function useMatrixDraftPersistence({
       onBackRef.current();
       return;
     }
-    if (hasUnsavedChanges || hasExternalUnsavedChanges || savedEditorDraftId) {
+    if (hasUnsavedChanges || savedEditorDraftId) {
       const shouldDiscard = window.confirm(
-        "Discard current Matrix and Project Schedule edits and return to Workbench?",
+        "Discard current Matrix edits and return to Workbench?",
       );
       if (!shouldDiscard) {
         return;

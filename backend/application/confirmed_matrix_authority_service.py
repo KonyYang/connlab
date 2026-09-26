@@ -19,6 +19,7 @@ from backend.application.matrix_group_identity import (
 from backend.application.matrix_schedule_planning import (
     MatrixScheduleValidationError,
     calculate_group_test_days,
+    validate_matrix_authority_schedule,
 )
 from backend.application.matrix_step_quantity_authority_builder import (
     build_confirmed_step_quantities,
@@ -311,6 +312,15 @@ def _validate_draft_schedule(
                 for cell in draft.cells
             ),
             selected_group_ids=[group.draft_group_id for group in selected_groups],
+        )
+    except MatrixScheduleValidationError as exc:
+        raise ConfirmedMatrixAuthorityError(str(exc)) from exc
+    try:
+        validate_matrix_authority_schedule(
+            post_test_buffer_days=draft.record.post_test_buffer_days,
+            planned_test_start_date=draft.record.planned_test_start_date,
+            planned_test_complete_date=draft.record.planned_test_complete_date,
+            estimated_completion_date=draft.record.estimated_completion_date,
         )
     except MatrixScheduleValidationError as exc:
         raise ConfirmedMatrixAuthorityError(str(exc)) from exc

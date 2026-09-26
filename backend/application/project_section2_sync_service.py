@@ -198,7 +198,7 @@ class ProjectSection2SyncService:
         schedule = self._project_schedule_reader.get_latest_confirmed(project_id)
         if schedule is None:
             raise ProjectSection2SyncReadinessError(
-                "Confirm Project Schedule before syncing Section 2 dates."
+                "Confirm Matrix plan dates before syncing Section 2 dates."
             )
         forms = self._application_form_store.list_by_project(project_id)
         if not forms:

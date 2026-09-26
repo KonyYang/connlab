@@ -229,7 +229,7 @@ def _publication_schedule(matrix_version, schedule) -> MatrixEditorLiveXlsxExpor
         )
     return MatrixEditorLiveXlsxExportSchedule(
         post_test_buffer_days=getattr(matrix_version, "post_test_buffer_days", None) or "",
-        sample_received_date=getattr(matrix_version, "sample_received_date", None) or "",
+        sample_received_date="",
         planned_test_start_date=getattr(matrix_version, "planned_test_start_date", None) or "",
         planned_test_complete_date=getattr(matrix_version, "planned_test_complete_date", None) or "",
         estimated_completion_date=getattr(matrix_version, "estimated_completion_date", None) or "",

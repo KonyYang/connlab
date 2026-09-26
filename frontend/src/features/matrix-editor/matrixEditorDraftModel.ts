@@ -595,6 +595,10 @@ export function buildAuthorityComparableSignatureFromDraftPayload(
   });
 
   return JSON.stringify({
+    postTestBufferDays: (payload.post_test_buffer_days ?? "").trim(),
+    plannedTestStartDate: (payload.planned_test_start_date ?? "").trim(),
+    plannedTestCompleteDate: (payload.planned_test_complete_date ?? "").trim(),
+    estimatedCompletionDate: (payload.estimated_completion_date ?? "").trim(),
     groups: groups.map((group) => ({
       groupOrder: group.groupOrder,
       groupKey: group.groupKey.trim(),

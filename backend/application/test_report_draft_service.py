@@ -144,7 +144,7 @@ class TestReportDraftService:
         )
         if self._project_schedule is not None and schedule is None:
             raise TestReportDraftGenerationError(
-                "Confirm Project Schedule before generating a Test Report draft."
+                "Confirm Matrix plan dates before generating a Test Report draft."
             )
         report_number = _required_value(values, "dl_number", "DL/LTR Number")
         product_name = _first_value(

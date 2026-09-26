@@ -69,17 +69,16 @@ def test_confirmed_matrix_authority_service_happy_path_copies_scope_and_lineage(
     assert stores.draft_snapshot == before
 
 
-def test_first_matrix_confirmation_ignores_partial_legacy_schedule() -> None:
+def test_first_matrix_confirmation_rejects_missing_matrix_dates() -> None:
     service, stores = _service()
     stores.draft_store.snapshot = replace(stores.draft_snapshot, record=replace(
         stores.draft_snapshot.record, planned_test_start_date=None,
         planned_test_complete_date=None, estimated_completion_date=None,
     ))
-    confirmed = service.confirm_draft(ConfirmProjectMatrixDraftCommand(
-        project_id="P1", project_matrix_draft_id="pmd-1", confirmed_by="operator",
-    ))
-    assert confirmed.version.confirmed_revision == 1
-    assert confirmed.version.sample_received_date == "2026-06-01"
+    with pytest.raises(ConfirmedMatrixAuthorityError, match="planned_test_start_date is required"):
+        service.confirm_draft(ConfirmProjectMatrixDraftCommand(
+            project_id="P1", project_matrix_draft_id="pmd-1", confirmed_by="operator",
+        ))
 
 
 def test_confirmed_matrix_authority_service_copies_step_quantities_to_authority() -> None:

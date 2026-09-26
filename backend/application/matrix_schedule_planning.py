@@ -63,6 +63,42 @@ def parse_buffer_days(value: str | None, *, value_name: str) -> Decimal:
     return _parse_non_negative_decimal(text, value_name=value_name)
 
 
+def validate_matrix_authority_schedule(
+    *,
+    post_test_buffer_days: str | None,
+    planned_test_start_date: str | None,
+    planned_test_complete_date: str | None,
+    estimated_completion_date: str | None,
+) -> None:
+    """Require a complete Matrix-owned plan without depending on Basic Information."""
+    parsed_dates: list[date] = []
+    for name, value in (
+        ("planned_test_start_date", planned_test_start_date),
+        ("planned_test_complete_date", planned_test_complete_date),
+        ("estimated_completion_date", estimated_completion_date),
+    ):
+        text = (value or "").strip()
+        if not text:
+            raise MatrixScheduleValidationError(f"{name} is required.")
+        try:
+            parsed = date.fromisoformat(text)
+        except ValueError as exc:
+            raise MatrixScheduleValidationError(f"{name} must use YYYY-MM-DD format.") from exc
+        if parsed.isoformat() != text:
+            raise MatrixScheduleValidationError(f"{name} must use YYYY-MM-DD format.")
+        parsed_dates.append(parsed)
+    start, complete, estimated = parsed_dates
+    if complete < start:
+        raise MatrixScheduleValidationError(
+            "planned_test_complete_date is earlier than planned_test_start_date."
+        )
+    post_days = parse_buffer_days(post_test_buffer_days, value_name="Post-test buffer days")
+    if Decimal((estimated - complete).days) < post_days:
+        raise MatrixScheduleValidationError(
+            "estimated_completion_date is earlier than planned_test_complete_date plus post-test buffer days."
+        )
+
+
 def count_step_tokens(cell_value: str | None) -> int:
     """Count step-like tokens using the Matrix Editor comma/space token convention."""
     text = (cell_value or "").strip()

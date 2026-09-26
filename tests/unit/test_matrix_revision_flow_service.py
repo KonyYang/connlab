@@ -80,7 +80,7 @@ def test_confirm_revision_draft_happy_path_supersedes_previous_active() -> None:
     assert stores.confirmed_store.superseded_reason == "Update matrix groups"
 
 
-def test_matrix_revision_confirmation_ignores_partial_legacy_schedule() -> None:
+def test_matrix_revision_confirmation_rejects_missing_matrix_dates() -> None:
     service, stores = _service()
     draft = service.create_revision_draft(CreateMatrixRevisionDraftCommand(project_id="P1"))
     draft = replace(draft, record=replace(draft.record,
@@ -88,12 +88,11 @@ def test_matrix_revision_confirmation_ignores_partial_legacy_schedule() -> None:
         planned_test_complete_date=None, estimated_completion_date=None,
     ))
     stores.draft_store.snapshot_by_id[draft.record.project_matrix_draft_id] = draft
-    confirmed = service.confirm_revision_draft(ConfirmMatrixRevisionDraftCommand(
-        project_id="P1", project_matrix_draft_id=draft.record.project_matrix_draft_id,
-        confirmed_by="operator",
-    ))
-    assert confirmed.version.confirmed_revision == 2
-    assert confirmed.version.sample_received_date == "2026-07-24"
+    with pytest.raises(MatrixRevisionFlowError, match="planned_test_start_date is required"):
+        service.confirm_revision_draft(ConfirmMatrixRevisionDraftCommand(
+            project_id="P1", project_matrix_draft_id=draft.record.project_matrix_draft_id,
+            confirmed_by="operator",
+        ))
 
 
 def test_confirm_revision_draft_rejects_stale_base_lineage() -> None:
@@ -355,6 +354,10 @@ def _service(
             status=ConfirmedMatrixStatus.CONFIRMED,
             confirmed_by="operator",
             confirmed_at="2026-05-23T09:00:00+00:00",
+            post_test_buffer_days="0",
+            planned_test_start_date="2026-09-01",
+            planned_test_complete_date="2026-09-01",
+            estimated_completion_date="2026-09-01",
         ),
         groups=(
             ConfirmedMatrixGroup(

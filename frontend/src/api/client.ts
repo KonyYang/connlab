@@ -1784,19 +1784,14 @@ export type MatrixEditorSessionConfirmRequest = {
   planned_test_start_date?: string | null;
   planned_test_complete_date?: string | null;
   estimated_completion_date?: string | null;
-  schedule_confirmation?: {
-    expected_revision_id: string | null;
-    expected_fingerprint: string | null;
-    post_test_buffer_days: string;
-    test_start_date: string;
-    test_complete_date: string;
-    estimated_completion_date: string;
-  } | null;
+  expected_legacy_schedule_revision_id?: string | null;
+  expected_legacy_schedule_fingerprint?: string | null;
 };
 
 export type MatrixEditorSessionDraftSaveRequest = Omit<
   MatrixEditorSessionConfirmRequest,
-  "confirmed_by" | "expected_editor_draft_id" | "expected_saved_payload_signature" | "schedule_confirmation"
+  "confirmed_by" | "expected_editor_draft_id" | "expected_saved_payload_signature" |
+  "expected_legacy_schedule_revision_id" | "expected_legacy_schedule_fingerprint"
 >;
 
 export type MatrixEditorSessionDraftSaveResponse = {
@@ -4314,24 +4309,6 @@ export type ProjectScheduleWorkspace = {
 export function fetchProjectSchedule(projectId: string): Promise<ProjectScheduleWorkspace> {
   return requestJson<ProjectScheduleWorkspace>(
     `/api/projects/${encodeURIComponent(projectId)}/project-schedule`
-  );
-}
-
-export function confirmProjectSchedule(
-  projectId: string,
-  input: {
-    actor: string;
-    expected_revision_id: string | null;
-    expected_fingerprint: string | null;
-    post_test_buffer_days: string;
-    test_start_date: string;
-    test_complete_date: string;
-    estimated_completion_date: string;
-  }
-): Promise<ProjectScheduleRevision> {
-  return requestJson<ProjectScheduleRevision>(
-    `/api/projects/${encodeURIComponent(projectId)}/project-schedule/confirm`,
-    { method: "POST", body: JSON.stringify(input) }
   );
 }
 

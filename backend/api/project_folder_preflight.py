@@ -55,7 +55,7 @@ def package_preflight(project_id, workspace, session, settings, *, rebuilding=Fa
             raise ValueError("Confirm Basic Information before Application Form write-back.")
         schedule = deps.get_project_schedule_output_reader(session).get_latest_confirmed(project_id)
         if schedule is None:
-            raise ValueError("Confirm Project Schedule before Application Form write-back.")
+            raise ValueError("Confirm Matrix plan dates before Application Form write-back.")
         service = deps.get_project_application_form_write_back_service(session, settings)
         indexed = deps.ProjectOfficialWorkspaceRepository(session).get_by_project(project_id)
         if not rebuilding and indexed is not None and indexed.official_folder_path.is_dir():
