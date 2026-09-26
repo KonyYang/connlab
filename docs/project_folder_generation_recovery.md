@@ -73,7 +73,10 @@ not a replacement for configured external business authority.
   when an operator saved files after a locked-folder error. Only these internal stages are discarded;
   the edited original remains untouched. A changed historical folder requires a fresh preview and explicit new
   generation; legacy Continue existing folder preserves its contents. Missing ownership evidence, changed
-  stages, backups, links/junctions, or incomplete cleanup retain the checkpoint for review.
+  stages, backups, or links/junctions retain the checkpoint for review. Once ownership and staged content
+  are proven, the journal retires the unpublished effect before best-effort stage cleanup. Interrupted
+  cleanup may leave an operation-owned orphan stage; it cannot authorize a later retry, which stages
+  fresh content after a new preview. The original business folder remains untouched.
 - A file published before its record commits is reconciled into exactly one matching lineage record.
   A record committed before the progress checkpoint is recognized without generating or publishing again.
 - A legacy workspace moved under the current configured save location can be linked explicitly when

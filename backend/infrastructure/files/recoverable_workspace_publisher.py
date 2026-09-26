@@ -357,6 +357,17 @@ class RecoverableWorkspacePublisher:
                     or active != [target]):
                 raise ValueError("An unexpected active LTR folder appeared after publication; review before recovery.")
         if not owned:
+            staged_official = staged / target.name if effect["whole"] else staged
+            if (tree_hash(staged_official) != effect["sha"]
+                    or file_identity(staged) != effect["publish_identity"]
+                    or file_identity(staged_official) != effect["identity"]):
+                raise ValueError("Workspace stage changed; recovery stopped.")
+            if effect.get("source_book_stage"):
+                source_book_stage = Path(effect["source_book_stage"])
+                if (not source_book_stage.is_dir() or _is_redirected(source_book_stage)
+                        or file_identity(source_book_stage) != effect["source_book_identity"]
+                        or any(source_book_stage.iterdir())):
+                    raise ValueError("Source Book stage changed before publication.")
             self.verify_context()
             conflict, backup = Path(effect["conflict"]), Path(effect["backup"])
             if effect["prior"] is not None:
@@ -421,7 +432,6 @@ class RecoverableWorkspacePublisher:
                         raise ProjectFolderInUseError(str(conflict)) from exc
             if publish_target.exists():
                 raise ValueError("Workspace target has unknown provenance; recovery stopped.")
-            staged_official = staged / target.name if effect["whole"] else staged
             if tree_hash(staged_official) != effect["sha"] or file_identity(staged) != effect["publish_identity"]:
                 raise ValueError("Workspace stage changed; recovery stopped.")
             # Windows rename fails if destination appeared. Staging shares this volume.
@@ -519,14 +529,25 @@ class RecoverableWorkspacePublisher:
             if effect["whole"] and set(staged.iterdir()) != {staged_official, source_stage}:
                 return False
             self.verify_context()
-            # Only the absolute, identity-checked operation stages above are removed.
-            # Fail closed if cleanup cannot finish; never abandon unknown state.
-            for path, _identity in owned_paths:
-                shutil.rmtree(path.resolve())
+            # Retire the checkpoint before cleanup: a partial rmtree must not
+            # leave a durable effect pointing at an incomplete stage.
+            self.state["effects"].pop("workspace")
+            try:
+                self.journal.save(self.state)
+            except OSError:
+                self.state["effects"]["workspace"] = effect
+                raise
         except (OSError, ValueError):
             return False
-        self.state["effects"].pop("workspace")
-        self.journal.save(self.state)
+        for path, identity in owned_paths:
+            try:
+                if (_is_redirected(path) or not path.is_dir()
+                        or path.resolve().parent != root.resolve()
+                        or file_identity(path) != identity):
+                    continue
+                shutil.rmtree(path.resolve())
+            except (OSError, ValueError):
+                pass  # A verified orphan is safer than a corrupt recovery checkpoint.
         return True
 
     def _continue_existing(self, effect, record, staged):

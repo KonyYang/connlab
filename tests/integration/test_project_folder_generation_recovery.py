@@ -19,7 +19,7 @@ from backend.domain import Project, ProjectStatus, FileAsset, FileAssetType, Ltr
 from backend.domain import ExternalResource, ExternalResourceType
 from backend.application.official_project_workspace_service import OfficialWorkspacePreview, OfficialWorkspaceRecord
 from backend.application.project_basic_information_service import ConfirmProjectBasicInformationCommand
-from backend.application.project_folder_generation_service import ProjectFolderGenerationService
+from backend.application.project_folder_generation_service import ProjectFolderGenerationService, ProjectFolderInUseError
 from backend.infrastructure.files.generation_journal import GenerationJournal
 from backend.infrastructure.files.recoverable_workspace_publisher import RecoverableWorkspacePublisher
 from backend.infrastructure.official_workspace_manifest import (
@@ -35,6 +35,114 @@ from backend.infrastructure.files.project_folder_required_forms_gateway import P
 def _settings(root):
     return Settings(data_dir=root / "data", projects_dir=root / "projects", templates_dir=root / "templates",
                     database_path=root / "fixture.sqlite")
+
+
+def _archive_recreate_preview(tmp_path):
+    workspace = tmp_path / "projects" / "DL-001"
+    old, new = workspace / "DL-001 Original", workspace / "DL-001 Confirmed"
+    old.mkdir(parents=True)
+    (old / "operator.txt").write_text("keep", encoding="utf-8")
+    (workspace / "Source Book").mkdir()
+    template = tmp_path / "template"
+    template.mkdir()
+    (template / "template.txt").write_text("new", encoding="utf-8")
+    manifest_path = workspace / ".connlab" / "manifest.json"
+    OfficialWorkspaceManifestGateway().write_adoption(manifest_path, OfficialWorkspaceManifest(
+        1, "P1", "DL-001", str(workspace), str(workspace / "Source Book"),
+        str(old), str(template), "2026-09-25T00:00:00+00:00", stable_folder_identity(old),
+    ))
+    preview = OfficialWorkspacePreview(
+        project_id="P1", dl_number="DL-001", local_workspace_root=workspace.parent,
+        local_workspace_path=workspace, source_book_path=workspace / "Source Book",
+        template_path=template, official_folder_path=new, manifest_path=manifest_path,
+        template_root_mode="template_root", status="completed", blockers=(), warnings=(),
+        planned_paths=(), conflict_paths=(old,),
+    )
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("P1", "backup_and_recreate", "context")
+    state["archive_source_identity_only"] = True
+    journal.save(state)
+    return preview, journal, state, old, new
+
+
+@pytest.mark.parametrize("stage_change", ["empty", "altered"])
+def test_recovery_rejects_changed_stage_before_archive_side_effects(tmp_path, monkeypatch, stage_change):
+    preview, journal, state, old, new = _archive_recreate_preview(tmp_path)
+    original_save = journal.save
+
+    def interrupt_after_checkpoint(saved_state):
+        original_save(saved_state)
+        if saved_state["effects"].get("workspace"):
+            raise OSError("simulated interruption after durable checkpoint")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(journal, "save", interrupt_after_checkpoint)
+        with pytest.raises(OSError, match="simulated interruption"):
+            RecoverableWorkspacePublisher(journal, state).create(
+                preview, "backup_and_recreate", SimpleNamespace(save=lambda record: record),
+            )
+
+    effect = journal.read("P1")["effects"]["workspace"]
+    staged_file = Path(effect["stage"]) / "template.txt"
+    if stage_change == "empty":
+        staged_file.unlink()
+    else:
+        staged_file.write_text("changed", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="stage changed"):
+        RecoverableWorkspacePublisher(journal, journal.read("P1")).recover(
+            SimpleNamespace(save=lambda record: record)
+        )
+
+    assert (old / "operator.txt").read_text(encoding="utf-8") == "keep"
+    assert not (preview.local_workspace_path / "History").exists()
+    assert not Path(effect["backup"]).exists()
+    assert not new.exists()
+
+
+def test_partial_stage_cleanup_does_not_retain_corrupt_checkpoint(tmp_path, monkeypatch):
+    preview, journal, state, old, new = _archive_recreate_preview(tmp_path)
+    real_rename = Path.rename
+    orphan_stages = []
+
+    def deny_old_folder_move(path, target):
+        if path == old:
+            raise PermissionError("simulated WinError 5")
+        return real_rename(path, target)
+
+    def partially_delete_stage(path):
+        orphan_stages.append(Path(path))
+        (Path(path) / "template.txt").unlink()
+        raise PermissionError("simulated partial stage cleanup")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "rename", deny_old_folder_move)
+        patch.setattr(shutil, "rmtree", partially_delete_stage)
+        with pytest.raises(ProjectFolderInUseError, match="DL-001 Original"):
+            RecoverableWorkspacePublisher(journal, state).create(
+                preview, "backup_and_recreate", SimpleNamespace(save=lambda record: record),
+            )
+
+    assert "workspace" not in state["effects"]
+    assert "workspace" not in journal.read("P1")["effects"]
+    assert (old / "operator.txt").read_text(encoding="utf-8") == "keep"
+    assert not new.exists()
+    assert len(orphan_stages) == 1
+    assert orphan_stages[0].is_dir()
+    assert not (orphan_stages[0] / "template.txt").exists()
+
+    retry_state = journal.create("P1", "backup_and_recreate", "context")
+    retry_state["archive_source_identity_only"] = True
+    journal.save(retry_state)
+    result = RecoverableWorkspacePublisher(journal, retry_state).create(
+        preview, "backup_and_recreate", SimpleNamespace(save=lambda record: record),
+    )
+
+    archives = list((preview.local_workspace_path / "History" / "Folders").glob("DL-001 Original *"))
+    assert len(archives) == 1
+    assert (archives[0] / "operator.txt").read_text(encoding="utf-8") == "keep"
+    assert (result.official_folder_path / "template.txt").read_text(encoding="utf-8") == "new"
+    assert orphan_stages[0].is_dir()
 
 
 def test_recoverable_backup_archives_only_active_ltr_child_under_history(tmp_path):
