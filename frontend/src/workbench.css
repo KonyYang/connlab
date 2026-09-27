@@ -995,7 +995,9 @@
 
 .matrix-editor-schedule-card {
   display: grid;
-  gap: 10px;
+  grid-template-columns: minmax(140px, max-content) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px 16px;
   margin-top: 10px;
   padding: 10px;
   border: 1px solid var(--color-border);
@@ -1016,7 +1018,7 @@
 }
 
 .matrix-editor-schedule-header h3 {
-  font-size: 13px;
+  font-size: 19px;
 }
 
 .matrix-editor-schedule-header p {
@@ -1033,8 +1035,12 @@
 
 .matrix-editor-schedule-fields {
   display: grid;
-  grid-template-columns: repeat(6, minmax(92px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+}
+
+.matrix-editor-schedule-error {
+  grid-column: 1 / -1;
 }
 
 .matrix-editor-schedule-fields label {
@@ -9114,6 +9120,13 @@
 
   .matrix-editor-schedule-header strong {
     white-space: normal;
+  }
+}
+
+@media (max-width: 760px) {
+  .matrix-editor-schedule-card {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
   }
 
   .matrix-editor-schedule-fields {

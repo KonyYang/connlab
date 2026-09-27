@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_SCHEDULE_COMPACT_HEADER",
+    "summary": "Reduce Project Schedule card height by putting its title and four editable controls on one desktop row, and enlarge the title to match Test points.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Keep the four existing schedule controls, labels, validation, and edit behavior unchanged. Place Project Schedule at the left and all four current fields in the same row on workstation widths; enlarge its heading to match the Test points heading. At narrower widths, allow a readable responsive wrap/stack rather than horizontal clipping. CSS and focused presentation test only.",
+    "scope_paths": [
+      "frontend/src/workbench.css",
+      "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.test.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "ce5e9d205df4a71c1dbf85002b478c08a9561f4e",
+    "started_at": "2026-09-27T01:06:47.852875Z",
+    "updated_at": "2026-09-27T01:06:47.852875Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_MATRIX_SCHEDULE_UNIFIED_CONFIRM",
     "tier": "high_risk",
