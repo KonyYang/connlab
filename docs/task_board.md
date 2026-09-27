@@ -11,8 +11,23 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_SECTION_COLUMN_WIDTH",
+    "summary": "Widen the Matrix Editor Section column so its header stays on one line.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Increase the existing Section column width in the Matrix Editor main table just enough for the Section header to remain on one line at narrow viewport widths; preserve cell content, editing behavior, and all other columns.",
+    "scope_paths": [
+      "frontend/src/workbench.css"
+    ],
+    "risk_reasons": [],
+    "activation_head": "37bd8a6d6ef4e5b01f18e302e25383b6a351f3a2",
+    "started_at": "2026-09-27T02:14:40.461812Z",
+    "updated_at": "2026-09-27T02:14:40.461812Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_MATRIX_SCHEDULE_COMPACT_HEADER",
     "tier": "micro",
