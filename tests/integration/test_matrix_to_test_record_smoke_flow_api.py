@@ -22,6 +22,7 @@ from backend.infrastructure.storage.repositories import (
     SourceMatrixImportRepository,
 )
 from backend.shared.config import Settings
+from tests.integration.test_confirmed_matrix_authority_api import _fill_matrix_dates
 
 
 def _client(tmp_path: Path) -> tuple[TestClient, object, object]:
@@ -164,6 +165,7 @@ def test_matrix_to_test_record_smoke_flow_preserves_source_and_excludes_unselect
         ]
         source_import_id = commit_body["source_import_id"]
         draft_id = commit_body["project_matrix_draft"]["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
 
         confirm = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",

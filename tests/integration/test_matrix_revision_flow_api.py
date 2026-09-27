@@ -24,6 +24,7 @@ from backend.infrastructure.storage.repositories import (
     SourceMatrixImportRepository,
 )
 from backend.shared.config import Settings
+from tests.integration.test_confirmed_matrix_authority_api import _fill_matrix_dates
 
 
 def test_matrix_revision_flow_api_happy_path(tmp_path: Path) -> None:
@@ -37,6 +38,7 @@ def test_matrix_revision_flow_api_happy_path(tmp_path: Path) -> None:
         )
         assert created.status_code == 201
         base_draft_id = created.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, base_draft_id)
         confirmed_base = client.post(
             f"/api/projects/P1/matrix-drafts/{base_draft_id}/confirm",
             json={"confirmed_by": "operator"},
@@ -82,6 +84,7 @@ def test_matrix_revision_flow_api_uniqueness_and_validation(tmp_path: Path) -> N
         )
         assert created.status_code == 201
         base_draft_id = created.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, base_draft_id)
         confirmed_base = client.post(
             f"/api/projects/P1/matrix-drafts/{base_draft_id}/confirm",
             json={"confirmed_by": "operator"},

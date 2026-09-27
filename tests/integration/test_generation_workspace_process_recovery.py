@@ -42,6 +42,7 @@ def _confirm_basic_information(session):
                 "requested_by": "Test",
                 "project_leader": "Engineer",
                 "lab_performing_tests": "Dongguan",
+                "date_lab_received_samples": "2026-09-05",
             },
             confirmed_by="operator",
         )
@@ -75,14 +76,15 @@ def _confirm_basic_information(session):
     try:
         draft = ok(client.post("/api/projects/P1/matrix-drafts", json={
             "source_import_id": source_id, "selected_group_keys": ["g1", "g2"]}))
-        ok(client.post(f"/api/projects/P1/matrix-drafts/{draft['record']['project_matrix_draft_id']}/confirm",
+        draft_id = draft["record"]["project_matrix_draft_id"]
+        ok(client.put(f"/api/projects/P1/matrix-drafts/{draft_id}", json={
+            "groups": draft["groups"], "rows": draft["rows"], "cells": draft["cells"],
+            "post_test_buffer_days": "0", "planned_test_start_date": "2026-09-06",
+            "planned_test_complete_date": "2026-09-15",
+            "estimated_completion_date": "2026-09-15",
+        }))
+        ok(client.post(f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
                        json={"confirmed_by": "operator"}))
-        schedule = ok(client.get("/api/projects/P1/project-schedule"))["confirmed_revision"]
-        ok(client.post("/api/projects/P1/project-schedule/confirm", json={
-            "actor": "operator", "expected_revision_id": schedule["revision_id"] if schedule else None,
-            "expected_fingerprint": schedule["fingerprint"] if schedule else None,
-            "post_test_buffer_days": "0", "test_start_date": "2026-09-06",
-            "test_complete_date": "2026-09-15", "estimated_completion_date": "2026-09-15"}))
         fee_draft = ok(client.get("/api/projects/P1/confirmed-matrix/fee-draft"))
         fee_rows = [{
             "source_line_id": f"{line['line_id']}:{token}:{index}",

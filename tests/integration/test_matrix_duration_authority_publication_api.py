@@ -11,6 +11,7 @@ from backend.application.source_matrix_import_persistence_service import (
 from backend.infrastructure.storage.repositories import SourceMatrixImportRepository
 from tests.integration.test_confirmed_matrix_authority_api import (
     _client,
+    _fill_matrix_dates,
     _seed_project,
 )
 from tests.integration.test_matrix_typed_duration_authority_round_trip_api import (
@@ -34,6 +35,7 @@ def test_first_confirm_and_revision_preserve_duration_authority(
         )
         assert created.status_code == 201
         draft_id = created.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
 
         first_confirm = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",

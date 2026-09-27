@@ -252,6 +252,10 @@ def _draft_save_payload(draft: dict[str, object]) -> dict[str, object]:
     cells = draft["cells"]
     assert isinstance(groups, list) and isinstance(rows, list) and isinstance(cells, list)
     return {
+        "post_test_buffer_days": "0",
+        "planned_test_start_date": "2026-06-02",
+        "planned_test_complete_date": "2026-06-04",
+        "estimated_completion_date": "2026-06-04",
         "groups": groups,
         "rows": rows,
         "cells": [

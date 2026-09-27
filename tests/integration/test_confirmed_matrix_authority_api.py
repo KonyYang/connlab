@@ -187,12 +187,13 @@ def test_get_active_confirmed_matrix_snapshot_api_returns_latest_active(
         )
         assert created.status_code == 201
         draft_id = created.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
 
         confirmed = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
             json={"confirmed_by": "operator"},
         )
-        assert confirmed.status_code == 201
+        assert confirmed.status_code == 201, confirmed.text
         confirmed_payload = confirmed.json()
 
         active = client.get("/api/projects/P1/confirmed-matrix/active-snapshot")
@@ -224,6 +225,7 @@ def test_confirm_project_matrix_draft_api_conflict_when_active_exists(tmp_path: 
         )
         assert created.status_code == 201
         draft_id = created.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
 
         first = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
@@ -364,6 +366,18 @@ def test_confirm_project_matrix_draft_api_ignores_legacy_schedule_duration(tmp_p
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
+
+
+def _fill_matrix_dates(client: TestClient, draft_id: str) -> None:
+    draft = client.get(f"/api/projects/P1/matrix-drafts/{draft_id}").json()
+    saved = client.put(f"/api/projects/P1/matrix-drafts/{draft_id}", json={
+        "groups": draft["groups"], "rows": draft["rows"], "cells": draft["cells"],
+        "post_test_buffer_days": "0",
+        "planned_test_start_date": "2026-06-02",
+        "planned_test_complete_date": "2026-06-04",
+        "estimated_completion_date": "2026-06-04",
+    })
+    assert saved.status_code == 200, saved.text
 
 
 def _client(tmp_path: Path) -> tuple[TestClient, object, object]:

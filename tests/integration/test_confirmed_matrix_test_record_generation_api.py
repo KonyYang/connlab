@@ -23,6 +23,7 @@ from backend.infrastructure.storage.repositories.intake_package import (
 from backend.shared.config import Settings, TestRecordSettings
 from tests.integration.test_confirmed_matrix_test_record_preview_api import (
     _client,
+    _fill_matrix_dates,
     _seed_project,
     _seed_source_import,
 )
@@ -48,6 +49,7 @@ def test_confirmed_matrix_test_record_generation_api_downloads_docx(tmp_path: Pa
             json={"source_import_id": source_import_id, "selected_group_keys": ["g1"]},
         )
         draft_id = draft.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
         confirm = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
             json={"confirmed_by": "operator"},
@@ -131,6 +133,7 @@ def test_confirmed_matrix_test_record_generation_api_blocks_without_basic_inform
             json={"source_import_id": source_import_id, "selected_group_keys": ["g1"]},
         )
         draft_id = draft.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
         confirm = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
             json={"confirmed_by": "operator"},

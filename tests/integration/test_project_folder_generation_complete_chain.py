@@ -34,7 +34,14 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
         source_id = fixture["_seed_source_import"]("P1", tmp_path)
         draft = _ok(client.post("/api/projects/P1/matrix-drafts", json={
             "source_import_id": source_id, "selected_group_keys": ["g1", "g2"]}))
-        _ok(client.post(f"/api/projects/P1/matrix-drafts/{draft['record']['project_matrix_draft_id']}/confirm",
+        draft_id = draft["record"]["project_matrix_draft_id"]
+        _ok(client.put(f"/api/projects/P1/matrix-drafts/{draft_id}", json={
+            "groups": draft["groups"], "rows": draft["rows"], "cells": draft["cells"],
+            "post_test_buffer_days": "0", "planned_test_start_date": "2026-09-06",
+            "planned_test_complete_date": "2026-09-15",
+            "estimated_completion_date": "2026-09-15",
+        }))
+        _ok(client.post(f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
                         json={"confirmed_by": "operator"}))
         source = tmp_path / "application.docx"
         source.write_bytes(b"original submitted application")
@@ -67,22 +74,6 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
             "test_item": "Qualification Testing",
             "lab_performing_tests": "Dongguan", "date_lab_received_samples": "2026-09-05",
             "condition_of_samples_when_received": "Acceptable"}}))
-        schedule = _ok(client.get("/api/projects/P1/project-schedule"))
-        _ok(client.post("/api/projects/P1/project-schedule/confirm", json={
-            "actor": "operator",
-            "expected_revision_id": (
-                schedule["confirmed_revision"]["revision_id"]
-                if schedule["confirmed_revision"] else None
-            ),
-            "expected_fingerprint": (
-                schedule["confirmed_revision"]["fingerprint"]
-                if schedule["confirmed_revision"] else None
-            ),
-            "post_test_buffer_days": "0",
-            "test_start_date": "2026-09-06",
-            "test_complete_date": "2026-09-15",
-            "estimated_completion_date": "2026-09-15",
-        }))
         fee_draft = _ok(client.get("/api/projects/P1/confirmed-matrix/fee-draft"))
         fee_rows = [{
             "source_line_id": f"{line['line_id']}:{token}:{index}",
@@ -209,23 +200,59 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
         assert blocked_items["test_status"]["status"] == "current"
         assert blocked_preview["start_blockers"]
         assert blocked_preview["workspace_preview"]["file_preflight"]["package_ready"] is False
-        confirmed_schedule = _ok(client.get("/api/projects/P1/project-schedule"))["confirmed_revision"]
-        _ok(client.post("/api/projects/P1/project-schedule/confirm", json={
-            "actor": "operator", "expected_revision_id": confirmed_schedule["revision_id"],
-            "expected_fingerprint": confirmed_schedule["fingerprint"], "post_test_buffer_days": "0",
-            "test_start_date": "2026-09-06", "test_complete_date": "2026-09-16",
-            "estimated_completion_date": "2026-09-16"}))
+        record_template = template / "FDQF-E-036 Test Record.docx"
+        record_template.write_bytes(b"controlled template revision 2")
+        template_changed = _ok(client.get(forms_url))
+        template_changed_items = {item["key"]: item for item in template_changed["items"]}
+        assert template_changed_items["test_record"]["action"] == "update"
+        assert template_changed_items["test_status"]["action"] == "skip"
+        record_template.write_bytes(b"controlled template")
+        revision = _ok(client.post("/api/projects/P1/matrix-revisions"))
+        revision_id = revision["record"]["project_matrix_draft_id"]
+        _ok(client.put(f"/api/projects/P1/matrix-drafts/{revision_id}", json={
+            "groups": revision["groups"], "rows": revision["rows"], "cells": revision["cells"],
+            "post_test_buffer_days": "0", "planned_test_start_date": "2026-09-06",
+            "planned_test_complete_date": "2026-09-16",
+            "estimated_completion_date": "2026-09-16",
+        }))
+        _ok(client.post(f"/api/projects/P1/matrix-drafts/{revision_id}/confirm-revision", json={
+            "confirmed_by": "operator", "superseded_reason": "Updated completion date",
+        }))
+        stale_outputs = _ok(client.get(forms_url))
+        stale_items = {item["key"]: item for item in stale_outputs["items"]}
+        assert stale_items["fee_form"]["action"] == "blocked"
+        assert stale_items["test_record"]["action"] == "update"
+        assert stale_items["test_status"]["action"] == "update"
+        revised_fee_draft = _ok(client.get("/api/projects/P1/confirmed-matrix/fee-draft"))
+        revised_fee_rows = [{
+            "source_line_id": f"{line['line_id']}:{token}:{index}",
+            "confirmed_group_id": line["confirmed_group_id"],
+            "confirmed_row_id": line["confirmed_row_id"],
+            "step_token": token, "step_index": index,
+            "spend_time": "0", "unit_price": "0", "unit_type": "per sample",
+            "units": "1", "base_fee": "0", "discount": "0%", "testing_fee": "0",
+        } for group in revised_fee_draft["groups"] for line in group["line_items"]
+          for index, token in enumerate(line["step_tokens"])]
+        revised_pricing = _ok(client.put("/api/projects/P1/confirmed-matrix/fee-evaluation/pricing-draft",
+                                  json={"rows": revised_fee_rows, "summary": {
+                                      "condition_confirmation_spend_time": "0",
+                                      "external_cost": "0", "lab_manpower_hourly_rate": "200",
+                                  }}))
+        _ok(client.post("/api/projects/P1/confirmed-fee/versions", json={
+            "confirmed_by": "operator", "expected_pricing_draft_edit_id": revised_pricing["saved_draft_edit_id"],
+            "expected_generation": revised_pricing["saved_generation"],
+            "expected_payload_fingerprint": revised_pricing["saved_payload_fingerprint"],
+            "expected_validation_token": revised_pricing["saved_validation_token"],
+            "summary": {key: "0" for key in (
+                "testing_fee_total", "working_hours", "lab_manpower_cost", "external_cost", "grand_cost"
+            )},
+        }))
         changed = _ok(client.get(forms_url))
         changed_items = {item["key"]: item for item in changed["items"]}
         assert changed_items["customer_feedback_form"]["action"] == "update"
-        for key in ("fee_form", "test_record", "test_status"):
-            assert changed_items[key]["action"] == "skip", changed_items[key]
-        record_template = template / "FDQF-E-036 Test Record.docx"
-        record_template.write_bytes(b"controlled template revision 2")
-        changed = _ok(client.get(forms_url))
-        changed_items = {item["key"]: item for item in changed["items"]}
+        assert changed_items["fee_form"]["action"] == "update", changed_items
         assert changed_items["test_record"]["action"] == "update"
-        assert changed_items["test_status"]["action"] == "skip"
+        assert changed_items["test_status"]["action"] == "update"
         assert _ok(client.post(url + "/start", json=request))["operation_id"] == started["operation_id"]
         assert _ok(client.post(url + "/resume", json={"operation_id": started["operation_id"]}))["status"] == "completed"
         assert not callbacks

@@ -24,6 +24,7 @@ from backend.infrastructure.storage.repositories import (
     SourceMatrixImportRepository,
 )
 from backend.shared.config import Settings
+from tests.integration.test_confirmed_matrix_authority_api import _fill_matrix_dates
 
 
 def test_confirmed_matrix_runtime_projection_api_happy_path(tmp_path: Path) -> None:
@@ -37,6 +38,7 @@ def test_confirmed_matrix_runtime_projection_api_happy_path(tmp_path: Path) -> N
         )
         assert create_draft.status_code == 201
         draft_id = create_draft.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, draft_id)
         confirm = client.post(
             f"/api/projects/P1/matrix-drafts/{draft_id}/confirm",
             json={"confirmed_by": "operator"},

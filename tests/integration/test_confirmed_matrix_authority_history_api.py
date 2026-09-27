@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from backend.api.main import app
+from tests.integration.test_confirmed_matrix_authority_api import _fill_matrix_dates
 from tests.integration.test_matrix_revision_flow_api import (
     _client,
     _seed_project,
@@ -35,6 +36,7 @@ def test_confirmed_matrix_authority_history_api_returns_desc_history_with_recomm
         )
         assert created.status_code == 201
         base_draft_id = created.json()["record"]["project_matrix_draft_id"]
+        _fill_matrix_dates(client, base_draft_id)
 
         confirmed_base = client.post(
             f"/api/projects/P1/matrix-drafts/{base_draft_id}/confirm",
@@ -57,6 +59,10 @@ def test_confirmed_matrix_authority_history_api_returns_desc_history_with_recomm
         save_revision = client.put(
             f"/api/projects/P1/matrix-drafts/{revision_draft_id}",
             json={
+                "post_test_buffer_days": "0",
+                "planned_test_start_date": "2026-06-02",
+                "planned_test_complete_date": "2026-06-04",
+                "estimated_completion_date": "2026-06-04",
                 "groups": revision_draft["groups"],
                 "rows": revision_draft["rows"],
                 "cells": revised_cells,
