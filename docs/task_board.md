@@ -11,77 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_MATRIX_SCHEDULE_COMPACT_HEADER",
-    "summary": "Reduce Project Schedule card height by putting its title and four editable controls on one desktop row, and enlarge the title to match Test points.",
-    "tier": "micro",
-    "route": "sol_direct",
-    "scope": "Keep the four existing schedule controls, labels, validation, and edit behavior unchanged. Place Project Schedule at the left and all four current fields in the same row on workstation widths; enlarge its heading to match the Test points heading. At narrower widths, allow a readable responsive wrap/stack rather than horizontal clipping. CSS and focused presentation test only.",
-    "scope_paths": [
-      "frontend/src/workbench.css",
-      "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.test.tsx"
-    ],
-    "risk_reasons": [],
-    "activation_head": "ce5e9d205df4a71c1dbf85002b478c08a9561f4e",
-    "started_at": "2026-09-27T01:06:47.852875Z",
-    "updated_at": "2026-09-27T01:59:18.984523Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_MATRIX_SCHEDULE_COMPACT_HEADER",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_MATRIX_SCHEDULE_COMPACT_HEADER",
-      "subject": "38fc4aca6a63f7b156191de666237d492e1db257",
-      "summary": "Implemented the compact Matrix Schedule card layout and renamed its heading to Schedule per user feedback, preserving existing schedule behavior.",
-      "scope_ok": true,
-      "changed_paths": [
-        "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.tsx",
-        "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.test.tsx",
-        "frontend/src/workbench.css"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "summary": "npm.cmd test -- --run src/features/matrix-editor/MatrixSchedulePlanningCard.test.tsx (7 passed)"
-        },
-        {
-          "status": "passed",
-          "summary": "npm.cmd run build"
-        },
-        {
-          "status": "passed",
-          "summary": "git diff --check"
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "summary": "Updated the heading and its visible-text regression assertion; reviewed the exact diff."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "mode": "direct_primary",
-        "summary": "Committed the verified revision as 38fc4aca6a63f7b156191de666237d492e1db257."
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_MATRIX_SCHEDULE_UNIFIED_CONFIRM",
-    "tier": "high_risk",
-    "subject": "24d2f1ad5a2a02a28fe2b1d64c797bced1ad3567",
-    "summary": "Unify Project Schedule editing and authority confirmation with Confirm Matrix while retaining existing schedule revisions and safe folder/output gating.",
+    "task_id": "TASK_MATRIX_SCHEDULE_COMPACT_HEADER",
+    "tier": "micro",
+    "subject": "38fc4aca6a63f7b156191de666237d492e1db257",
+    "summary": "Reduce Project Schedule card height by putting its title and four editable controls on one desktop row, and enlarge the title to match Test points.",
     "disposition": "completed",
-    "decision_ref": "User 2026-09-27: 关闭",
-    "closed_at": "2026-09-27T00:53:13.268897Z"
+    "decision_ref": "User final response: 关闭 (2026-09-27)",
+    "closed_at": "2026-09-27T02:11:24.372783Z"
   },
   "retained_history": [
     {
