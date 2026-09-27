@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_SCHEDULE_COMPACT_HEADER",
     "summary": "Reduce Project Schedule card height by putting its title and four editable controls on one desktop row, and enlarge the title to match Test points.",
@@ -25,17 +25,54 @@
     "risk_reasons": [],
     "activation_head": "ce5e9d205df4a71c1dbf85002b478c08a9561f4e",
     "started_at": "2026-09-27T01:06:47.852875Z",
-    "updated_at": "2026-09-27T01:54:31.521113Z",
+    "updated_at": "2026-09-27T01:59:18.984523Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_SCHEDULE_COMPACT_HEADER",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User feedback 2026-09-27: rename Project Schedule to Schedule.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_SCHEDULE_COMPACT_HEADER",
+      "subject": "38fc4aca6a63f7b156191de666237d492e1db257",
+      "summary": "Implemented the compact Matrix Schedule card layout and renamed its heading to Schedule per user feedback, preserving existing schedule behavior.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.tsx",
+        "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.test.tsx",
+        "frontend/src/workbench.css"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "summary": "npm.cmd test -- --run src/features/matrix-editor/MatrixSchedulePlanningCard.test.tsx (7 passed)"
+        },
+        {
+          "status": "passed",
+          "summary": "npm.cmd run build"
+        },
+        {
+          "status": "passed",
+          "summary": "git diff --check"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Updated the heading and its visible-text regression assertion; reviewed the exact diff."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "mode": "direct_primary",
+        "summary": "Committed the verified revision as 38fc4aca6a63f7b156191de666237d492e1db257."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_SCHEDULE_UNIFIED_CONFIRM",
