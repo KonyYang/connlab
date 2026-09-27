@@ -17,6 +17,7 @@ from backend.api.dependencies import (
     get_matrix_editor_llcr_cr_record_generation_service,
     get_matrix_editor_llcr_cr_record_publication_service,
 )
+from backend.api.project_folder_write_guard import require_project_folder_write_slot
 from backend.application.confirmed_matrix_llcr_cr_record_generation_service import (
     MatrixEditorLlcrCrRecordPublicationService,
     PreviewMatrixEditorLlcrCrPublicationCommand,
@@ -152,7 +153,10 @@ def preview_matrix_editor_llcr_cr_record_publication(
     }
 
 
-@router.post("/api/projects/{project_id}/matrix-editor/llcr-cr-record-publication/publish")
+@router.post(
+    "/api/projects/{project_id}/matrix-editor/llcr-cr-record-publication/publish",
+    dependencies=[Depends(require_project_folder_write_slot)],
+)
 def publish_matrix_editor_llcr_cr_record(
     project_id: str,
     request: MatrixEditorLlcrCrRecordPublishRequest,
@@ -161,7 +165,7 @@ def publish_matrix_editor_llcr_cr_record(
     ),
 ) -> dict:
     try:
-        result = service.publish(PublishMatrixEditorLlcrCrPublicationCommand(
+        result = service.publish_under_folder_write_slot(PublishMatrixEditorLlcrCrPublicationCommand(
             _draft_command(project_id, request), request.preview_token,
             request.conflict_action, request.matrix_has_pending_changes,
         ))

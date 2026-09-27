@@ -3,8 +3,12 @@ from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
+import pytest
+from sqlalchemy import create_engine
 
 from backend.api.dependencies import (
+    get_session,
+    get_settings,
     get_matrix_editor_llcr_cr_record_generation_service,
     get_matrix_editor_llcr_cr_record_publication_service,
 )
@@ -18,10 +22,15 @@ from backend.application.matrix_editor_llcr_cr_record_generation_service import 
 from backend.infrastructure.files.llcr_cr_specialized_record_artifact_store import (
     LlcrCrSpecializedRecordArtifactStore,
 )
+from backend.infrastructure.files.generation_journal import GenerationJournal
 from backend.infrastructure.office.llcr_cr_specialized_record_workbook_gateway import (
     LlcrCrSpecializedRecordWorkbookGateway,
 )
+from backend.domain import Project
 from backend.domain.enums import LtrStatus
+from backend.infrastructure.storage.database import create_session_factory, init_db
+from backend.infrastructure.storage.repositories.project import ProjectRepository
+from backend.shared.config import Settings
 
 
 def test_matrix_editor_llcr_download_uses_current_ui_draft_without_confirmed_matrix(
@@ -144,7 +153,7 @@ def test_publication_preview_and_publish_routes_preserve_reviewed_contract(tmp_p
                 existing_file=True, blockers=(), preview_token="review-token",
             )
 
-        def publish(self, command):
+        def publish_under_folder_write_slot(self, command):
             assert command.preview_token == "review-token"
             assert command.conflict_action == "archive"
             return MatrixEditorLlcrCrPublicationResult(
@@ -172,6 +181,109 @@ def test_publication_preview_and_publish_routes_preserve_reviewed_contract(tmp_p
     assert published.json()["archive_path"] == str(tmp_path / "History" / "form.xlsx")
 
 
+def test_publication_route_holds_folder_lock_for_service_publication(tmp_path: Path) -> None:
+    """The route must hold the folder lock through its guarded service write."""
+    data_dir = tmp_path / "data"
+    folder_journal = GenerationJournal(data_dir / "project_folder_generation")
+    engine = create_engine(f"sqlite:///{(tmp_path / 'fixture.sqlite').as_posix()}")
+    init_db(engine)
+    sessions = create_session_factory(engine)
+    with sessions() as session:
+        ProjectRepository(session).create(Project(
+            project_id="P1", project_no="DL-001", product_name="Connector", requestor="Test",
+        ))
+        session.commit()
+
+    def guarded_session():
+        with sessions() as session:
+            yield session
+            with pytest.raises(ValueError, match="already running"):
+                with folder_journal.lock("P1"):
+                    pass
+
+    class _Publication:
+        def publish_under_folder_write_slot(self, command):
+            with pytest.raises(ValueError, match="already running"):
+                with folder_journal.lock(command.draft.project_id):
+                    pass
+            return MatrixEditorLlcrCrPublicationResult(
+                project_id="P1", file_name="form.xlsx",
+                target_path=tmp_path / "Test results" / "form.xlsx",
+                archive_path=None,
+            )
+
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        data_dir=data_dir, projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates", database_path=tmp_path / "test.sqlite",
+    )
+    app.dependency_overrides[get_session] = guarded_session
+    app.dependency_overrides[get_matrix_editor_llcr_cr_record_publication_service] = lambda: _Publication()
+    try:
+        client = TestClient(app)
+        request = {"source": "matrix_editor_current_ui_state", "record_type": "llcr",
+                   "groups": [], "rows": [], "preview_token": "reviewed",
+                   "conflict_action": "archive"}
+        response = client.post(
+            "/api/projects/P1/matrix-editor/llcr-cr-record-publication/publish", json=request,
+        )
+        with folder_journal.lock("P1"):
+            concurrent = client.post(
+                "/api/projects/P1/matrix-editor/llcr-cr-record-publication/publish", json=request,
+            )
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+    assert response.status_code == 200, response.text
+    assert response.json()["file_name"] == "form.xlsx"
+    assert concurrent.status_code == 409
+    assert "already running" in concurrent.json()["detail"]
+
+
+@pytest.mark.parametrize("registry_state", ["trash", "history"])
+def test_publication_route_rejects_retained_project_before_service(tmp_path: Path, registry_state: str) -> None:
+    engine = create_engine(f"sqlite:///{(tmp_path / 'fixture.sqlite').as_posix()}")
+    init_db(engine)
+    sessions = create_session_factory(engine)
+    with sessions() as session:
+        ProjectRepository(session).create(Project(
+            project_id="P1", project_no="DL-001", product_name="Connector", requestor="Test",
+            registry_state=registry_state,
+        ))
+        session.commit()
+    entered = []
+
+    class _Publication:
+        def publish_under_folder_write_slot(self, _command):
+            entered.append(True)
+            raise AssertionError("Retained project entered contact form publication")
+
+    def isolated_session():
+        with sessions() as session:
+            yield session
+
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        data_dir=tmp_path / "data", projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates", database_path=tmp_path / "fixture.sqlite",
+    )
+    app.dependency_overrides[get_session] = isolated_session
+    app.dependency_overrides[get_matrix_editor_llcr_cr_record_publication_service] = lambda: _Publication()
+    try:
+        response = TestClient(app).post(
+            "/api/projects/P1/matrix-editor/llcr-cr-record-publication/publish",
+            json={"source": "matrix_editor_current_ui_state", "record_type": "llcr",
+                  "groups": [], "rows": [], "preview_token": "reviewed",
+                  "conflict_action": "archive"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "project_registry_read_only"
+    assert entered == []
+
+
 def test_draft_download_with_stale_preview_token_is_rejected(tmp_path: Path) -> None:
     class _Publication:
         def validate_download(self, command, token):
@@ -194,7 +306,7 @@ def test_draft_download_with_stale_preview_token_is_rejected(tmp_path: Path) -> 
 
 def test_publication_permission_failure_returns_recovery_instruction() -> None:
     class _Publication:
-        def publish(self, _command):
+        def publish_under_folder_write_slot(self, _command):
             raise PermissionError(5, "Access denied to measured form")
 
     app.dependency_overrides[get_matrix_editor_llcr_cr_record_publication_service] = lambda: _Publication()

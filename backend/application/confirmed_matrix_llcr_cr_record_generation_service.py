@@ -282,13 +282,25 @@ class MatrixEditorLlcrCrRecordPublicationService:
     def publish(
         self, command: PublishMatrixEditorLlcrCrPublicationCommand,
     ) -> MatrixEditorLlcrCrPublicationResult:
+        """Publish directly, acquiring the project-folder lock in this service."""
+        return self._publish(command, folder_lock_held=False)
+
+    def publish_under_folder_write_slot(
+        self, command: PublishMatrixEditorLlcrCrPublicationCommand,
+    ) -> MatrixEditorLlcrCrPublicationResult:
+        """Publish only when the API guard already holds the project-folder lock."""
+        return self._publish(command, folder_lock_held=True)
+
+    def _publish(
+        self, command: PublishMatrixEditorLlcrCrPublicationCommand, *, folder_lock_held: bool,
+    ) -> MatrixEditorLlcrCrPublicationResult:
         if self._journal is None or self._writer is None or self._outputs is None or self._staging_root is None:
             raise ValueError("Official LLCR/CR publication is not configured.")
         if command.conflict_action not in {"none", "archive"}:
             raise ValueError("Only explicit archive is supported for an existing LLCR/CR form.")
         project_id = command.draft.project_id
         folder_lock = (self._folder_journal.lock(project_id)
-                       if self._folder_journal is not None else nullcontext())
+                       if self._folder_journal is not None and not folder_lock_held else nullcontext())
         with folder_lock, self._journal.lock(project_id):
             if self._write_guard is not None:
                 self._write_guard(project_id)
