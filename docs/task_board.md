@@ -11,74 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_MATRIX_SECTION_COLUMN_WIDTH",
-    "summary": "Widen the Matrix Editor Section column so its header stays on one line.",
-    "tier": "micro",
-    "route": "sol_direct",
-    "scope": "Increase the existing Section column width in the Matrix Editor main table just enough for the Section header to remain on one line at narrow viewport widths; preserve cell content, editing behavior, and all other columns.",
-    "scope_paths": [
-      "frontend/src/workbench.css"
-    ],
-    "risk_reasons": [],
-    "activation_head": "37bd8a6d6ef4e5b01f18e302e25383b6a351f3a2",
-    "started_at": "2026-09-27T02:14:40.461812Z",
-    "updated_at": "2026-09-27T02:19:01.765679Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_MATRIX_SECTION_COLUMN_WIDTH",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_MATRIX_SECTION_COLUMN_WIDTH",
-      "subject": "e95575dc90a23c557500ad6810a5a2cacd8e1981",
-      "summary": "Widened the Matrix Editor Section column from 48px to 64px so the header remains on one line, with other table behavior unchanged.",
-      "scope_ok": true,
-      "changed_paths": [
-        "frontend/src/workbench.css"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "summary": "Browser visual/DOM check at 654px viewport: Section header text rendered on one line in a 64px column."
-        },
-        {
-          "status": "passed",
-          "summary": "npm.cmd run build"
-        },
-        {
-          "status": "passed",
-          "summary": "git diff --check"
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "summary": "Reviewed the exact CSS diff; both duplicated main-table column-width rules now use 64px."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "mode": "direct_primary",
-        "summary": "Committed the verified change as e95575dc90a23c557500ad6810a5a2cacd8e1981."
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_MATRIX_SCHEDULE_COMPACT_HEADER",
+    "task_id": "TASK_MATRIX_SECTION_COLUMN_WIDTH",
     "tier": "micro",
-    "subject": "38fc4aca6a63f7b156191de666237d492e1db257",
-    "summary": "Reduce Project Schedule card height by putting its title and four editable controls on one desktop row, and enlarge the title to match Test points.",
+    "subject": "e95575dc90a23c557500ad6810a5a2cacd8e1981",
+    "summary": "Widen the Matrix Editor Section column so its header stays on one line.",
     "disposition": "completed",
     "decision_ref": "User final response: 关闭 (2026-09-27)",
-    "closed_at": "2026-09-27T02:11:24.372783Z"
+    "closed_at": "2026-09-27T02:23:55.680167Z"
   },
   "retained_history": [
     {
