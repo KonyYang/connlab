@@ -15,6 +15,8 @@ def test_contact_measurement_migration_adds_payload_columns_to_legacy_tables() -
             connection.exec_driver_sql(
                 "CREATE TABLE confirmed_matrix_step_quantities (confirmed_step_quantity_id TEXT)"
             )
+            connection.exec_driver_sql("CREATE TABLE project_matrix_draft_records (project_matrix_draft_id TEXT)")
+            connection.exec_driver_sql("CREATE TABLE confirmed_matrix_versions (confirmed_matrix_id TEXT)")
 
         migrate_matrix_contact_measurement_columns(engine)
 
@@ -31,7 +33,15 @@ def test_contact_measurement_migration_adds_payload_columns_to_legacy_tables() -
                     "PRAGMA table_info(confirmed_matrix_step_quantities)"
                 )
             }
+            draft_root_columns = {
+                row[1] for row in connection.exec_driver_sql("PRAGMA table_info(project_matrix_draft_records)")
+            }
+            confirmed_root_columns = {
+                row[1] for row in connection.exec_driver_sql("PRAGMA table_info(confirmed_matrix_versions)")
+            }
         assert "contact_plan_json" in draft_columns
         assert "contact_plan_json" in confirmed_columns
+        assert {"point_profile_json", "point_overrides_json"}.issubset(draft_root_columns)
+        assert {"point_profile_json", "point_overrides_json"}.issubset(confirmed_root_columns)
     finally:
         engine.dispose()

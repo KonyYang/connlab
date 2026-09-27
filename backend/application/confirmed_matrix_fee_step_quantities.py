@@ -14,6 +14,7 @@ from backend.domain import (
 from backend.application.contact_point_profile_confirmed_consumer_adapter import (
     EffectiveConfirmedPointProfile,
 )
+from backend.application.matrix_test_points_authority import effective_point_count
 from backend.modules.fee_evaluation import FeeStepQuantityContext
 from backend.modules.test_plan.matrix_step_sequence_validation import ParsedStepToken
 
@@ -88,27 +89,38 @@ def build_profile_reading_contexts(
     *,
     parsed_tokens: tuple[ParsedStepToken, ...],
     profile: EffectiveConfirmedPointProfile,
+    group: ConfirmedMatrixGroup | None = None,
+    row: ConfirmedMatrixRow | None = None,
 ) -> tuple[FeeStepQuantityContext, ...]:
     """Build LLCR-only contexts without consulting legacy Step quantities."""
     if profile.is_usable:
         assert profile.readings_per_sample is not None
         assert profile.lineage is not None
-        return tuple(
-            FeeStepQuantityContext(
+        contexts = []
+        for token in parsed_tokens:
+            count = (
+                str(effective_point_count(
+                    profile, group_id=group.draft_group_id, row_id=row.draft_row_id,
+                    step_sequence=token.sequence,
+                    step_suffix_note=_suffix_identity_value(token.suffix_note),
+                    record_type="llcr",
+                )) if group is not None and row is not None and getattr(profile, "step_overrides", ())
+                else profile.readings_per_sample
+            )
+            contexts.append(FeeStepQuantityContext(
                 step_token=token.raw_token,
                 step_sequence=token.sequence,
                 step_suffix_note=token.suffix_note,
-                test_points_per_sample=profile.readings_per_sample,
+                test_points_per_sample=count,
                 readings_per_point="1",
-                contact_points_per_sample=profile.readings_per_sample,
-                total_readings=profile.readings_per_sample,
+                contact_points_per_sample=count,
+                total_readings=count,
                 source=profile.lineage,
-                review_required=False,
-                review_reason=None,
+                review_required=count == "0",
+                review_reason="LLCR step has no selected point IDs." if count == "0" else None,
                 matched=True,
-            )
-            for token in parsed_tokens
-        )
+            ))
+        return tuple(contexts)
     return tuple(
         FeeStepQuantityContext(
             step_token=token.raw_token,

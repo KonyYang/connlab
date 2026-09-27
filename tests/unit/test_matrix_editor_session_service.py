@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import date
+from types import SimpleNamespace
 
 import pytest
 
@@ -55,6 +56,156 @@ from backend.domain import (
     SourceMatrixRowSnapshot,
     SourceMatrixSnapshot,
 )
+from backend.domain.matrix_contact_measurement_models import (
+    MatrixPointCategory,
+    MatrixPointProfile,
+    MatrixStepPointCategory,
+    MatrixStepPointOverride,
+)
+from backend.application.contact_point_profile_confirmed_consumer_adapter import EffectiveConfirmedPointProfile
+from backend.application.matrix_test_points_authority import validate_matrix_point_targets
+from backend.application.confirmed_matrix_authority_service import (
+    ConfirmProjectMatrixDraftCommand, ConfirmedMatrixAuthorityService,
+    _build_confirmed_snapshot,
+)
+
+
+class _LegacyProfileAdapter:
+    def __init__(self, profile: EffectiveConfirmedPointProfile) -> None:
+        self.profile = profile
+
+    def get_effective(self, project_id: str) -> EffectiveConfirmedPointProfile:
+        assert project_id == "P1"
+        return self.profile
+
+
+def _legacy_profile(expression: str | None) -> EffectiveConfirmedPointProfile:
+    return EffectiveConfirmedPointProfile(
+        status="confirmed", readings_per_sample="2", revision_id="legacy-1",
+        revision_sequence=1, fingerprint="legacy-hash", lineage="legacy", message=None,
+        categories=({"category_id": "c1", "record_prefix": "HP", "included": True,
+                     "count_per_sample": 2, "point_expression": expression},),
+        cr_category_ids=(), delta_r_enabled=True,
+    )
+
+
+def test_seed_prefills_only_explicit_legacy_point_ids() -> None:
+    service = _service(active=_build_active_snapshot(), source_snapshot=None,
+                       point_profile_adapter=_LegacyProfileAdapter(_legacy_profile("1,3")))
+    seed = service.get_seed(project_id="P1")
+    assert seed.editor_draft is not None
+    assert seed.editor_draft.point_profile == MatrixPointProfile(
+        categories=(MatrixPointCategory("HP", "1,3", True),), delta_r_enabled=True,
+    )
+    assert seed.point_profile_warning is None
+    assert seed.point_profile_prefilled_from_legacy is True
+
+
+def test_seed_never_promotes_legacy_count_to_contiguous_ids() -> None:
+    service = _service(active=_build_active_snapshot(), source_snapshot=None,
+                       point_profile_adapter=_LegacyProfileAdapter(_legacy_profile(None)))
+    seed = service.get_seed(project_id="P1")
+    assert seed.editor_draft is not None
+    assert seed.editor_draft.point_profile is None
+    assert "without explicit point IDs" in (seed.point_profile_warning or "")
+    assert seed.point_profile_prefilled_from_legacy is False
+
+
+@pytest.mark.parametrize("test_item", (
+    "CR at Specified Current (HP contacts only)",
+    "CR at rated current HP/LP Contacts only",
+))
+def test_cr_named_steps_accept_narrower_point_exception(test_item: str) -> None:
+    profile = MatrixPointProfile((MatrixPointCategory("HP", "1-4", True),))
+    override = MatrixStepPointOverride(
+        "group-1", "row-1", 1, "", (MatrixStepPointCategory("HP", "1-2"),),
+    )
+
+    validate_matrix_point_targets(
+        (override,), profile=profile,
+        groups=(SimpleNamespace(draft_group_id="group-1", is_selected=True),),
+        rows=(SimpleNamespace(draft_row_id="row-1", test_item=test_item, is_sample_row=False),),
+        cells=(SimpleNamespace(draft_group_id="group-1", draft_row_id="row-1", cell_value="1"),),
+    )
+
+
+def test_matrix_point_profile_subsets_are_checked_before_confirmation() -> None:
+    service = _service(active=_build_active_snapshot(), source_snapshot=None)
+    command = _confirm_saved_revision_command(_saved_revision_draft())
+    profile = MatrixPointProfile(
+        categories=(MatrixPointCategory(prefix="HP", point_expression="1,3", cr_selected=True),),
+        delta_r_enabled=True,
+    )
+    override = MatrixStepPointOverride(
+        draft_group_id="dg-1", draft_row_id="dr-1", step_sequence=1,
+        step_suffix_note="", categories=(MatrixStepPointCategory(prefix="HP", point_expression="2"),),
+    )
+
+    with pytest.raises(MatrixEditorSessionError, match="outside the project Point Profile"):
+        service.confirm_session(replace(command, point_profile=profile, point_overrides=(override,)))
+
+
+def test_cr_step_rejects_exception_using_category_not_selected_for_cr() -> None:
+    service = _service(active=_build_active_snapshot(), source_snapshot=None)
+    command = _confirm_saved_revision_command(_saved_revision_draft())
+    profile = MatrixPointProfile((
+        MatrixPointCategory("SIG", "1-2", False), MatrixPointCategory("PWR", "1", True),
+    ))
+    override = MatrixStepPointOverride(
+        "dg-1", "dr-1", 1, "", (MatrixStepPointCategory("SIG", "1"),),
+    )
+
+    with pytest.raises(MatrixEditorSessionError, match="not selected for CR"):
+        service.confirm_session(replace(command, point_profile=profile, point_overrides=(override,)))
+
+
+def test_first_matrix_confirmation_carries_saved_point_authority() -> None:
+    draft = _saved_revision_draft()
+    profile = MatrixPointProfile((MatrixPointCategory("SIG", "1-2", True),))
+    overrides = (MatrixStepPointOverride(
+        "dg-1", "dr-1", 1, "", (MatrixStepPointCategory("SIG", "2"),),
+    ),)
+    draft = replace(draft, record=replace(
+        draft.record, point_profile=profile, point_overrides=overrides,
+    ))
+
+    snapshot = _build_confirmed_snapshot(
+        draft=draft, selected_groups=draft.groups, confirmed_by="operator",
+    )
+
+    assert snapshot.version.point_profile == profile
+    assert snapshot.version.point_overrides == overrides
+
+
+def test_first_confirmation_persists_canonical_point_authority_not_raw_draft() -> None:
+    draft = _saved_revision_draft()
+    raw_profile = MatrixPointProfile((MatrixPointCategory(" SIG ", "1,2,3", True),))
+    raw_overrides = (MatrixStepPointOverride(
+        "dg-1", "dr-1", 1, " ", (MatrixStepPointCategory(" SIG ", "2,3"),),
+    ),)
+    draft = replace(draft, record=replace(
+        draft.record, point_profile=raw_profile, point_overrides=raw_overrides,
+    ))
+    service = ConfirmedMatrixAuthorityService(
+        project_store=SimpleNamespace(get=lambda _id: object()),
+        draft_store=SimpleNamespace(get=lambda _id: draft),
+        confirmed_store=SimpleNamespace(
+            get_active_by_project=lambda _id: None,
+            create_snapshot=lambda snapshot: snapshot,
+        ),
+    )
+
+    confirmed = service.confirm_draft(ConfirmProjectMatrixDraftCommand(
+        project_id="P1", project_matrix_draft_id="pmd-edit", confirmed_by="operator",
+    ))
+
+    assert confirmed.version.point_profile == MatrixPointProfile((
+        MatrixPointCategory("SIG", "1-3", True),
+    ))
+    assert confirmed.version.point_overrides == (MatrixStepPointOverride(
+        "dg-1", "dr-1", 1, "", (MatrixStepPointCategory("SIG", "2-3"),),
+    ),)
+    assert draft.record.point_profile == raw_profile
 
 
 def test_get_seed_when_source_snapshot_missing_returns_unavailable_message() -> None:
@@ -443,6 +594,23 @@ def test_confirm_session_publishes_contact_plan_only_saved_revision() -> None:
     assert result.confirmed_snapshot.version.confirmed_revision == 2
     assert result.confirmed_snapshot.step_quantities[0].contact_plan == contact_plan
     assert result.confirmed_snapshot.step_quantities[0].contact_points_per_sample == "33"
+
+
+def test_confirm_session_publishes_profile_only_saved_revision() -> None:
+    draft = _saved_revision_draft()
+    profile = MatrixPointProfile(
+        categories=(MatrixPointCategory(prefix="HP", point_expression="1,3", cr_selected=True),),
+        delta_r_enabled=False,
+    )
+    draft = replace(draft, record=replace(draft.record, point_profile=profile))
+    service = _service(active=_build_active_snapshot(), source_snapshot=None,
+                       draft_store=_SavedDraftStore(draft))
+
+    result = service.confirm_session(_confirm_saved_revision_command(draft))
+
+    assert result.publish_status == "published"
+    assert result.confirmed_snapshot is not None
+    assert result.confirmed_snapshot.version.point_profile == profile
 
 
 def test_confirm_session_publishes_matrix_equal_revision_when_contact_plan_changes() -> None:
@@ -1200,6 +1368,7 @@ def _service(
     confirmed_matrix_authority_service=None,
     pending_fee_rebase_service=None,
     fee_rebase_promotion_service=None,
+    point_profile_adapter=None,
 ):
     return MatrixEditorSessionService(
         project_store=_ProjectStore(),
@@ -1215,6 +1384,7 @@ def _service(
         or _ConfirmedAuthorityService(),
         pending_fee_rebase_service=pending_fee_rebase_service,
         fee_rebase_promotion_service=fee_rebase_promotion_service,
+        point_profile_adapter=point_profile_adapter,
     )
 
 

@@ -40,11 +40,6 @@ const ProjectBasicInformationPage = lazy(() =>
     default: module.ProjectBasicInformationPage,
   }))
 );
-const ProjectContactMeasurementSetupPage = lazy(() =>
-  import("./pages/ProjectContactMeasurementSetupPage").then((module) => ({
-    default: module.ProjectContactMeasurementSetupPage,
-  }))
-);
 const ProjectWorkbenchPage = lazy(() =>
   import("./pages/ProjectWorkbenchPage").then((module) => ({
     default: module.ProjectWorkbenchPage,
@@ -76,7 +71,6 @@ type Route =
       initialValuesMode?: "draft" | "authoritative";
     }
   | { name: "projectReportWorkspace"; projectId: string }
-  | { name: "projectContactMeasurementSetup"; projectId: string }
   | { name: "settings" }
   | { name: "tools" }
   | { name: "notFound" };
@@ -139,7 +133,7 @@ function parseRoute(pathname: string): Route {
   );
   if (contactMeasurementSetupMatch) {
     return {
-      name: "projectContactMeasurementSetup",
+      name: "projectMatrixEditor",
       projectId: decodeURIComponent(contactMeasurementSetupMatch[1]),
     };
   }
@@ -237,8 +231,6 @@ export default function App(): ReactElement {
         ? "workbench"
       : route.name === "projectReportWorkspace"
         ? "workbench"
-      : route.name === "projectContactMeasurementSetup"
-        ? "workbench"
       : route.name === "intakePackage" || route.name === "intakeCaseReview"
         ? "intake"
         : route.name;
@@ -251,8 +243,6 @@ export default function App(): ReactElement {
         ? "Basic Information"
       : route.name === "projectReportWorkspace"
         ? "Report Workspace"
-      : route.name === "projectContactMeasurementSetup"
-        ? "Test Points Setup"
         : undefined;
 
   return (
@@ -337,9 +327,6 @@ export default function App(): ReactElement {
         <ProjectMatrixEditorPage
           projectId={route.projectId}
           onBackToWorkbench={() => navigate(`/projects/${encodeURIComponent(route.projectId)}`)}
-          onOpenContactMeasurementSetup={() =>
-            navigate(`/projects/${encodeURIComponent(route.projectId)}/contact-measurement-setup`)
-          }
         />
       )}
       {route.name === "projectFeeEvaluation" && (
@@ -364,14 +351,6 @@ export default function App(): ReactElement {
         <ProjectReportWorkspacePage
           projectId={route.projectId}
           onBackToWorkbench={() => navigate(`/projects/${encodeURIComponent(route.projectId)}`)}
-        />
-      )}
-      {route.name === "projectContactMeasurementSetup" && (
-        <ProjectContactMeasurementSetupPage
-          projectId={route.projectId}
-          onBackToMatrix={() =>
-            navigate(`/projects/${encodeURIComponent(route.projectId)}/matrix-editor`)
-          }
         />
       )}
       {route.name === "settings" && <SettingsPage />}

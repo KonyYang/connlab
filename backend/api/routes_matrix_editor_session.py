@@ -45,6 +45,8 @@ from backend.api.matrix_editor_session_response_mappers import (
     _to_session_groups,
     _to_session_rows,
     _to_session_duration_authorities,
+    _to_point_profile,
+    _to_point_overrides,
 )
 from backend.application.project_schedule_service import (
     ProjectScheduleConflictError,
@@ -75,6 +77,9 @@ def get_matrix_editor_session_seed(
         editor_source_snapshot_id=seed.editor_source_snapshot_id,
         editor_draft=(
             MatrixEditorSessionDraftResponse(
+                point_profile=(MatrixPointProfileDTO(**asdict(seed.editor_draft.point_profile))
+                               if seed.editor_draft.point_profile else None),
+                point_overrides=[MatrixStepPointOverrideDTO(**asdict(item)) for item in seed.editor_draft.point_overrides],
                 step_text_overrides=[MatrixEditorSessionStepTextOverride(**asdict(item)) for item in seed.editor_draft.step_text_overrides],
                 groups=[
                     MatrixEditorSessionGroupResponse(
@@ -140,6 +145,8 @@ def get_matrix_editor_session_seed(
         stale_draft_present=seed.stale_draft_present,
         draft_updated_at=seed.draft_updated_at,
         saved_payload_signature=seed.saved_payload_signature,
+        point_profile_warning=seed.point_profile_warning,
+        point_profile_prefilled_from_legacy=seed.point_profile_prefilled_from_legacy,
     )
 
 
@@ -167,6 +174,8 @@ def save_matrix_editor_session_draft(
                 groups=_to_session_groups(request.groups),
                 rows=_to_session_rows(request.rows),
                 cells=_to_session_cells(request.cells),
+                point_profile=_to_point_profile(request.point_profile),
+                point_overrides=_to_point_overrides(request.point_overrides),
                 step_text_overrides=(tuple(ProjectMatrixDraftStepTextOverride(**item.model_dump()) for item in request.step_text_overrides)
                                      if request.step_text_overrides is not None else None),
                 duration_authorities=_to_session_duration_authorities(
@@ -296,6 +305,8 @@ def confirm_matrix_editor_session(
                     groups=_to_session_groups(request.groups),
                     rows=_to_session_rows(request.rows),
                     cells=_to_session_cells(request.cells),
+                    point_profile=_to_point_profile(request.point_profile),
+                    point_overrides=_to_point_overrides(request.point_overrides),
                     step_text_overrides=(
                         tuple(ProjectMatrixDraftStepTextOverride(**item.model_dump())
                               for item in request.step_text_overrides)

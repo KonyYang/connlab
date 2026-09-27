@@ -6,6 +6,8 @@ import type {
   MatrixEditorTestRecordDraftRequest,
   MatrixPreviewResponse,
   MatrixStepTextOverride,
+  MatrixTestPointOverride,
+  MatrixTestPointProfile,
   ProjectMatrixDraft,
   ProjectMatrixDraftSaveRequest,
 } from "../../api/client";
@@ -373,6 +375,8 @@ export function buildSessionDraftFromProjectMatrixDraft(
       draft.duration_authorities
     ),
     step_text_overrides: draft.step_text_overrides ?? [],
+    point_profile: draft.point_profile ?? null,
+    point_overrides: draft.point_overrides ?? [],
   };
 }
 
@@ -405,6 +409,8 @@ export function buildDraftSavePayload(
   schedulePlan: MatrixSchedulePlan,
   durationAuthorities: MatrixEditorSessionDurationAuthority[] = [],
   stepTextOverrides: MatrixStepTextOverride[] = [],
+  pointProfile: MatrixTestPointProfile | null = null,
+  pointOverrides: MatrixTestPointOverride[] = [],
 ): ProjectMatrixDraftSaveRequest {
   const payloadGroups = groups.map((group, index) => ({
     draft_group_id: group.draftGroupId ?? group.id,
@@ -467,6 +473,8 @@ export function buildDraftSavePayload(
       lineage_fingerprint: item.lineage_fingerprint,
       authority_revision: item.authority_revision,
     })),
+    point_profile: pointProfile,
+    point_overrides: pointOverrides,
   };
 }
 
@@ -653,6 +661,28 @@ export function buildAuthorityComparableSignatureFromDraftPayload(
             `${right.draftGroupId}:${right.draftRowId}:${right.stepSequence}:${right.stepSuffixNote}`
           )
       ),
+    pointProfile: payload.point_profile ? {
+      deltaREnabled: payload.point_profile.delta_r_enabled,
+      categories: payload.point_profile.categories.map((category) => ({
+        prefix: category.prefix.trim(),
+        pointExpression: category.point_expression.trim(),
+        crSelected: category.cr_selected,
+      })),
+    } : null,
+    pointOverrides: [...(payload.point_overrides ?? [])]
+      .map((item) => ({
+        draftGroupId: item.draft_group_id,
+        draftRowId: item.draft_row_id,
+        stepSequence: item.step_sequence,
+        stepSuffixNote: item.step_suffix_note.trim(),
+        categories: item.categories.map((category) => ({
+          prefix: category.prefix.trim(), pointExpression: category.point_expression.trim(),
+        })),
+      }))
+      .sort((left, right) =>
+        `${left.draftGroupId}:${left.draftRowId}:${left.stepSequence}:${left.stepSuffixNote}`
+          .localeCompare(`${right.draftGroupId}:${right.draftRowId}:${right.stepSequence}:${right.stepSuffixNote}`)
+      ),
   });
 }
 
@@ -668,6 +698,8 @@ export function buildAuthorityComparableSignatureFromDraft(
     schedulePlan,
     draft.duration_authorities ?? [],
     draft.step_text_overrides ?? [],
+    draft.point_profile ?? null,
+    draft.point_overrides ?? [],
   );
   return buildAuthorityComparableSignatureFromDraftPayload(payload);
 }

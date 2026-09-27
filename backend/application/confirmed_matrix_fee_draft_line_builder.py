@@ -156,7 +156,8 @@ def build_group_lines(
             and effective_point_profile is not None
             and effective_point_profile.is_usable
             and (
-                effective_contact_plan is None
+                snapshot.version.point_profile is not None
+                or effective_contact_plan is None
                 or effective_contact_plan.legacy_fallback_allowed
             )
         )
@@ -170,6 +171,8 @@ def build_group_lines(
             step_quantities = build_profile_reading_contexts(
                 parsed_tokens=parsed_tokens,
                 profile=effective_point_profile or _missing_point_profile(),
+                group=group,
+                row=row,
             )
         elif rule is not None and rule.rule_id == "fee_rule_contact_resistance_specified_current":
             step_quantities = resolve_cr_specified_current_readings(
@@ -178,6 +181,7 @@ def build_group_lines(
                 parsed_tokens=parsed_tokens,
                 effective_plan=effective_contact_plan,
                 effective_point_profile=effective_point_profile,
+                matrix_point_authority=snapshot.version.point_profile is not None,
             )
         else:
             step_quantities = build_step_quantity_contexts(

@@ -23,6 +23,8 @@ const apiMocks = vi.hoisted(() => ({
   previewMatrixEditorLiveXlsxPublication: vi.fn(),
   publishMatrixEditorLiveXlsx: vi.fn(),
   generateMatrixEditorLlcrCrRecordDraftDownload: vi.fn(),
+  previewMatrixEditorLlcrCrRecordPublication: vi.fn(),
+  publishMatrixEditorLlcrCrRecord: vi.fn(),
   previewProjectTestPlanMatrixFromUpload: vi.fn(),
   previewProjectTestPlanMatrixFromPath: vi.fn(),
   previewProjectTestPlanMatrixFromSourceCandidate: vi.fn(),
@@ -104,6 +106,8 @@ vi.mock("../../api/client", () => {
     previewMatrixEditorLiveXlsxPublication: apiMocks.previewMatrixEditorLiveXlsxPublication,
     publishMatrixEditorLiveXlsx: apiMocks.publishMatrixEditorLiveXlsx,
     generateMatrixEditorLlcrCrRecordDraftDownload: apiMocks.generateMatrixEditorLlcrCrRecordDraftDownload,
+    previewMatrixEditorLlcrCrRecordPublication: apiMocks.previewMatrixEditorLlcrCrRecordPublication,
+    publishMatrixEditorLlcrCrRecord: apiMocks.publishMatrixEditorLlcrCrRecord,
     previewProjectTestPlanMatrixFromUpload: apiMocks.previewProjectTestPlanMatrixFromUpload,
     previewProjectTestPlanMatrixFromPath: apiMocks.previewProjectTestPlanMatrixFromPath,
     previewProjectTestPlanMatrixFromSourceCandidate: apiMocks.previewProjectTestPlanMatrixFromSourceCandidate,
@@ -454,6 +458,10 @@ export function installMatrixEditorWorkspaceTestLifecycle(): void {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       }),
       fileName: "P1_LLCR_Record_Preview_Unconfirmed_Matrix_draft.xlsx",
+    });
+    apiMocks.previewMatrixEditorLlcrCrRecordPublication.mockResolvedValue({
+      project_id: "P1", mode: "download", status: "ready", authority_status: "unconfirmed",
+      target_path: null, existing_file: false, blockers: [], preview_token: "llcr-cr-draft-token",
     });
     if (!window.URL.createObjectURL) {
       Object.defineProperty(window.URL, "createObjectURL", {

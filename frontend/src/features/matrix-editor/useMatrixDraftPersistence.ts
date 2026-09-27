@@ -100,6 +100,8 @@ function buildSessionDraftSaveRequest(
     cells: currentPayload.cells,
     step_text_overrides: currentPayload.step_text_overrides ?? [],
     duration_authorities: durationAuthorities,
+    point_profile: currentPayload.point_profile ?? null,
+    point_overrides: currentPayload.point_overrides ?? [],
   };
 }
 

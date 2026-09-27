@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -41,6 +42,9 @@ from backend.infrastructure.storage.repositories import (
     SourceMatrixImportRepository,
 )
 from backend.shared.config import Settings
+from backend.domain.matrix_contact_measurement_models import (
+    MatrixPointCategory, MatrixPointProfile, MatrixStepPointCategory, MatrixStepPointOverride,
+)
 
 
 def test_confirmed_matrix_authority_repository_create_and_get_active_roundtrip(
@@ -59,6 +63,15 @@ def test_confirmed_matrix_authority_repository_create_and_get_active_roundtrip(
                 draft=draft_snapshot,
                 status=ConfirmedMatrixStatus.CONFIRMED,
             )
+            snapshot = replace(snapshot, version=replace(
+                snapshot.version,
+                point_profile=MatrixPointProfile((MatrixPointCategory("SIG", "1,3", True),)),
+                point_overrides=(MatrixStepPointOverride(
+                    draft_snapshot.groups[0].draft_group_id,
+                    draft_snapshot.rows[0].draft_row_id,
+                    1, "", (MatrixStepPointCategory("SIG", "3"),),
+                ),),
+            ))
             repo = ConfirmedMatrixAuthorityRepository(session)
             repo.create_snapshot(snapshot)
             session.commit()
@@ -70,6 +83,8 @@ def test_confirmed_matrix_authority_repository_create_and_get_active_roundtrip(
             assert len(loaded.groups) == 2
             assert len(loaded.rows) == 2
             assert len(loaded.cells) == 2
+            assert loaded.version.point_profile == snapshot.version.point_profile
+            assert loaded.version.point_overrides == snapshot.version.point_overrides
 
             active = repo.get_active_by_project("P1")
             assert active is not None

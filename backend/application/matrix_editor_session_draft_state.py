@@ -250,6 +250,8 @@ class MatrixEditorSessionDraftStateMixin:
                     planned_test_start_date=command.planned_test_start_date,
                     planned_test_complete_date=command.planned_test_complete_date,
                     estimated_completion_date=command.estimated_completion_date,
+                    point_profile=command.point_profile,
+                    point_overrides=command.point_overrides,
                 )
             )
         except (

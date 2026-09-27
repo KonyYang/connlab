@@ -44,7 +44,7 @@ def test_point_profile_draft_write_returns_typed_disabled_no_write() -> None:
     assert response.json()["detail"]["code"] == "contact_point_profile_draft_disabled"
 
 
-def test_point_profile_direct_confirm_uses_confirmed_fingerprint_boundary() -> None:
+def test_point_profile_direct_confirm_is_retired_without_touching_legacy_authority() -> None:
     lifecycle = _DirectLifecycle()
     app.dependency_overrides[get_contact_point_profile_lifecycle_service] = lambda: lifecycle
     try:
@@ -60,16 +60,13 @@ def test_point_profile_direct_confirm_uses_confirmed_fingerprint_boundary() -> N
             })
     finally:
         app.dependency_overrides.clear()
-    assert response.status_code == 200
-    assert response.json()["state"] == "confirmed"
-    assert response.json()["cr_coverage"]["mode"] == "custom"
-    assert lifecycle.cr_coverage_mode == "custom"
-    assert lifecycle.delta_r_enabled is False
-    assert response.json()["delta_r_enabled"] is False
-    assert lifecycle.categories[0]["cr_selected"] is True
+    assert response.status_code == 410
+    assert response.json()["detail"]["code"] == "contact_point_profile_confirm_retired"
+    assert lifecycle.cr_coverage_mode == ""
+    assert lifecycle.categories == []
 
 
-def test_point_profile_direct_confirm_maps_duplicate_retained_identity_to_typed_validation() -> None:
+def test_point_profile_direct_confirm_rejects_stale_legacy_payload_without_validation_write() -> None:
     app.dependency_overrides[get_contact_point_profile_lifecycle_service] = lambda: _DuplicateIdentityLifecycle()
     try:
         with TestClient(app) as client:
@@ -83,11 +80,8 @@ def test_point_profile_direct_confirm_maps_duplicate_retained_identity_to_typed_
             })
     finally:
         app.dependency_overrides.clear()
-    assert response.status_code == 422
-    assert response.json()["detail"] == {
-        "code": "contact_point_profile_validation",
-        "message": "Point Profile category ids must be unique.",
-    }
+    assert response.status_code == 410
+    assert response.json()["detail"]["code"] == "contact_point_profile_confirm_retired"
 
 
 class _ReadService:

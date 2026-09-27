@@ -116,17 +116,11 @@ def save_draft(project_id: str, request: PointProfileCommandRequest):
 
 
 @router.post("/confirm", response_model=PointProfileRevisionResponse)
-def confirm(project_id: str, request: PointProfileDirectConfirmRequest, service=Depends(get_contact_point_profile_lifecycle_service)):
-    try:
-        result = service.confirm_direct(
-            project_id, request.expected_confirmed_revision_id, request.expected_confirmed_revision_fingerprint,
-            [item.model_dump() for item in request.categories], request.actor,
-            cr_coverage_mode=request.cr_coverage_mode,
-            delta_r_enabled=request.delta_r_enabled,
-        )
-    except (ContactPointProfileLifecycleError, ValueError) as exc:
-        _raise_command_error(exc)
-    return _command_response(result, "confirmed")
+def confirm(project_id: str, request: PointProfileDirectConfirmRequest):
+    raise HTTPException(410, detail={
+        "code": "contact_point_profile_confirm_retired",
+        "message": "Edit Test points in Matrix Editor and use Confirm Matrix.",
+    })
 
 
 def _command_response(result: dict[str, object], state: str) -> dict[str, object]:

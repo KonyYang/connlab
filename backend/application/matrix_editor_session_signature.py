@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
+
 from backend.application.matrix_step_text_overrides import step_text_signature
 
 from typing import Any
@@ -123,6 +125,8 @@ def _build_signature_from_session_payload(
             for row_idx, row in enumerate(rows)
         ],
         "schedule": _schedule_signature_from_command(command),
+        "point_profile": asdict(command.point_profile) if command.point_profile else None,
+        "point_overrides": _point_override_signature(command.point_overrides or (), group_index, row_index),
         "step_text_overrides": step_text_signature(command.step_text_overrides, group_index, row_index),
         "duration_authorities": sorted(
             (
@@ -166,6 +170,11 @@ def build_matrix_editor_saved_payload_signature(command: MatrixEditorSessionConf
             {item.draft_row_id: index for index, item in enumerate(rows)},
         ),
         "draft_group_selection": [item.is_selected for item in groups],
+        "draft_point_overrides": _point_override_signature(
+            command.point_overrides or (),
+            {item.draft_group_id: index for index, item in enumerate(groups)},
+            {item.draft_row_id: index for index, item in enumerate(rows)},
+        ),
     })
 
 def _schedule_signature_from_command(
@@ -242,6 +251,12 @@ def _build_signature_from_confirmed(snapshot: ConfirmedMatrixSnapshot) -> str:
             for row_idx, row in enumerate(rows)
         ],
         "schedule": _schedule_signature_from_confirmed(snapshot),
+        "point_profile": asdict(snapshot.version.point_profile) if snapshot.version.point_profile else None,
+        "point_overrides": _point_override_signature(snapshot.version.point_overrides, {
+            group.draft_group_id: index for index, group in enumerate(groups)
+        }, {
+            row.draft_row_id: index for index, row in enumerate(rows)
+        }),
         "step_text_overrides": step_text_signature(snapshot.step_text_overrides, group_index, row_index, confirmed=True),
         "duration_authorities": sorted(
             (
@@ -344,11 +359,25 @@ def build_project_matrix_draft_payload_signature(
         planned_test_start_date=draft.record.planned_test_start_date,
         planned_test_complete_date=draft.record.planned_test_complete_date,
         estimated_completion_date=draft.record.estimated_completion_date,
+        point_profile=draft.record.point_profile,
+        point_overrides=draft.record.point_overrides,
     )
     return build_matrix_editor_saved_payload_signature(command)
 
 
 _build_signature_from_project_draft = build_project_matrix_draft_payload_signature
+
+
+def _point_override_signature(overrides, group_index, row_index):
+    return sorted(
+        (
+            group_index[item.draft_group_id], row_index[item.draft_row_id],
+            item.step_sequence, item.step_suffix_note,
+            tuple((category.prefix, category.point_expression) for category in item.categories),
+        )
+        for item in overrides
+        if item.draft_group_id in group_index and item.draft_row_id in row_index
+    )
 
 
 def _build_manual_preview_payload(

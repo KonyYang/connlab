@@ -81,6 +81,42 @@ def test_completed_workspace_requires_explicit_in_place_intent_to_keep_custom_fo
     assert len(queued) == 1
 
 
+def test_start_retains_reviewed_contact_record_targets_for_safe_publication(tmp_path):
+    queued = []
+    reviewed = {"llcr": {"target": "D:/project/Test results/DL-001 LLCR Record.xlsx",
+                         "prior": {"sha": "reviewed", "identity": [1, 2]},
+                         "action": "archive_generate", "preview_fingerprint": "matrix"}}
+    service = ProjectFolderGenerationService(
+        GenerationJournal(tmp_path), lambda _: "matrix", lambda _state, _name: None,
+        queued.append,
+        preview=lambda _project_id, _intent: {
+            "expected_context": "reviewed-preview", "contact_record_targets": reviewed,
+        },
+    )
+    service.start("P1", None, "reviewed-preview", "request")
+    assert service.journal.read("P1")["contact_record_targets"] == reviewed
+
+
+def test_previous_release_v2_journal_can_resume_without_new_contact_form_approval(tmp_path):
+    journal = GenerationJournal(tmp_path)
+    state = journal.create("P1", None, "same")
+    state.update(preview_context_version=2, preview_context="previous-token")
+    journal.save(state)
+    queued = []
+    service = ProjectFolderGenerationService(
+        journal, lambda _: "same", lambda _state, _name: None, queued.append,
+        preview=lambda _project_id, _intent: {
+            "expected_context": "new-token", "previous_expected_context": "previous-token",
+        },
+    )
+
+    resumed = service.resume("P1", state["operation_id"])
+
+    assert resumed["status"] == "queued"
+    assert len(queued) == 1
+    assert "contact_record_targets" not in journal.read("P1")
+
+
 @pytest.mark.parametrize("failure", [PermissionError, OSError])
 def test_failed_finalization_requires_resume_not_replacement(tmp_path, caplog, failure):
     import logging

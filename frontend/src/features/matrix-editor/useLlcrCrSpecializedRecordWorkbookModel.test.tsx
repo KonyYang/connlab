@@ -4,16 +4,24 @@ import { useLlcrCrSpecializedRecordWorkbookModel } from "./useLlcrCrSpecializedR
 
 const apiMocks = vi.hoisted(() => ({
   generateDraft: vi.fn(),
+  previewPublication: vi.fn(),
+  publish: vi.fn(),
 }));
 
 vi.mock("../../api/client", () => ({
   generateMatrixEditorLlcrCrRecordDraftDownload: apiMocks.generateDraft,
+  previewMatrixEditorLlcrCrRecordPublication: apiMocks.previewPublication,
+  publishMatrixEditorLlcrCrRecord: apiMocks.publish,
 }));
 
 describe("useLlcrCrSpecializedRecordWorkbookModel", () => {
   beforeEach(() => vi.resetAllMocks());
 
   it("shows the current-draft generation error when CR is not required", async () => {
+    apiMocks.previewPublication.mockResolvedValue({
+      mode: "download", status: "ready", authority_status: "unconfirmed",
+      target_path: null, existing_file: false, blockers: [], preview_token: "draft-token",
+    });
     apiMocks.generateDraft.mockRejectedValue(
       new Error("Current Matrix draft does not require CR."),
     );
@@ -36,10 +44,15 @@ describe("useLlcrCrSpecializedRecordWorkbookModel", () => {
     await act(async () => {
       await result.current.downloadWorkbook();
     });
+    expect(result.current.pending?.mode).toBe("download");
+    await act(async () => {
+      await result.current.confirmDownload();
+    });
 
     expect(apiMocks.generateDraft).toHaveBeenCalledWith("P1", {
       ...draftRequest,
       record_type: "cr",
+      preview_token: "draft-token",
     });
     expect(result.current.error).toBe("Current Matrix draft does not require CR.");
   });

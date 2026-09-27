@@ -1,6 +1,7 @@
 """New-process recovery through the real runner, SQLite and fake form generator."""
 
 from pathlib import Path
+from hashlib import sha256
 import json
 import os
 import runpy
@@ -15,6 +16,7 @@ from sqlalchemy import create_engine
 
 from backend.api import dependencies as deps
 from backend.api.project_folder_generation_composition import ProjectFolderGenerationRunner
+from backend.api.project_folder_preflight import contact_record_preflight
 from backend.domain import Project, ProjectStatus, FileAsset, FileAssetType, LtrRecord, LtrStatus
 from backend.domain import ExternalResource, ExternalResourceType
 from backend.application.official_project_workspace_service import OfficialWorkspacePreview, OfficialWorkspaceRecord
@@ -30,11 +32,305 @@ from backend.infrastructure.storage.project_schedule_schema_migration import boo
 from backend.shared.config import Settings
 from backend.application.project_application_form_write_back_service import ProjectApplicationFormWriteBackService
 from backend.infrastructure.files.project_folder_required_forms_gateway import ProjectFolderRequiredFormsFileGateway
+from backend.infrastructure.files.project_folder_required_forms_gateway import RecoverableContactRecordPublisher
 
 
 def _settings(root):
     return Settings(data_dir=root / "data", projects_dir=root / "projects", templates_dir=root / "templates",
                     database_path=root / "fixture.sqlite")
+
+
+def test_contact_record_publication_archives_measured_form_without_overwriting_and_recovers(tmp_path):
+    workspace = tmp_path / "DL-001"
+    target = workspace / "Official" / "Test results" / "DL-001 LLCR Record.xlsx"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"measured readings")
+    source = tmp_path / "new.xlsx"
+    source.write_bytes(b"new blank form")
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("P1", "update_in_place", "matrix-v2")
+    original = {"sha": sha256(target.read_bytes()).hexdigest(),
+                "identity": [target.stat().st_dev, target.stat().st_ino]}
+    publisher = RecoverableContactRecordPublisher(journal, state, workspace, lambda: None)
+
+    publisher.publish("llcr", source, target, original)
+
+    archives = list((workspace / "History" / "Test results").glob("DL-001 LLCR Record *.xlsx"))
+    assert len(archives) == 1
+    assert archives[0].read_bytes() == b"measured readings"
+    assert target.read_bytes() == b"new blank form"
+    assert not Path(state["effects"]["llcr_cr_records:llcr"]["stage"]).exists()
+    publisher.recover()
+    assert archives[0].read_bytes() == b"measured readings"
+    assert target.read_bytes() == b"new blank form"
+
+
+def test_contact_record_recovery_rejects_modified_history_without_touching_current_form(tmp_path):
+    workspace = tmp_path / "DL-001"
+    target = workspace / "Official" / "Test results" / "DL-001 LLCR Record.xlsx"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"measured")
+    original = {"sha": sha256(target.read_bytes()).hexdigest(),
+                "identity": [target.stat().st_dev, target.stat().st_ino]}
+    source = tmp_path / "blank.xlsx"
+    source.write_bytes(b"blank")
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("P1", "update_in_place", "matrix")
+    publisher = RecoverableContactRecordPublisher(journal, state, workspace, lambda: None)
+    publisher.publish("llcr", source, target, original)
+    archive = workspace / "History" / "Test results" / f"DL-001 LLCR Record {state['operation_id']}.xlsx"
+    archive.write_bytes(b"operator amended history")
+
+    with pytest.raises(ValueError, match="Archived contact record changed"):
+        publisher.recover()
+
+    assert target.read_bytes() == b"blank"
+    assert archive.read_bytes() == b"operator amended history"
+
+
+def test_contact_record_publication_rejects_old_file_changed_after_preview(tmp_path):
+    workspace = tmp_path / "DL-001"
+    target = workspace / "Official" / "Test results" / "DL-001 CR Record.xlsx"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"original measurements")
+    original = {"sha": sha256(target.read_bytes()).hexdigest(),
+                "identity": [target.stat().st_dev, target.stat().st_ino]}
+    target.write_bytes(b"new operator measurements")
+    source = tmp_path / "new.xlsx"
+    source.write_bytes(b"blank form")
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("P1", "update_in_place", "matrix-v2")
+
+    with pytest.raises(ValueError, match="changed"):
+        RecoverableContactRecordPublisher(journal, state, workspace, lambda: None).publish(
+            "cr", source, target, original,
+        )
+
+    assert target.read_bytes() == b"new operator measurements"
+    assert not (workspace / "History" / "Test results").exists()
+
+
+def test_contact_record_recovery_after_archive_never_overwrites_new_manual_target(tmp_path, monkeypatch):
+    workspace = tmp_path / "DL-001"
+    target = workspace / "Official" / "Test results" / "DL-001 LLCR Record.xlsx"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"old measured data")
+    original = {"sha": sha256(target.read_bytes()).hexdigest(),
+                "identity": [target.stat().st_dev, target.stat().st_ino]}
+    source = tmp_path / "blank.xlsx"
+    source.write_bytes(b"new blank")
+    journal = GenerationJournal(tmp_path / "journal")
+    state = journal.create("P1", "update_in_place", "matrix")
+    publisher = RecoverableContactRecordPublisher(journal, state, workspace, lambda: None)
+    original_link = os.link
+
+    def interrupt_before_new(source_path, destination, *args, **kwargs):
+        if Path(destination) == target:
+            raise OSError("interrupted after archive")
+        return original_link(source_path, destination, *args, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "link", interrupt_before_new)
+        with pytest.raises(OSError, match="interrupted after archive"):
+            publisher.publish("llcr", source, target, original)
+    archive = workspace / "History" / "Test results" / f"DL-001 LLCR Record {state['operation_id']}.xlsx"
+    assert archive.read_bytes() == b"old measured data"
+    assert not target.exists()
+    target.write_bytes(b"operator added a different file")
+    with pytest.raises(ValueError, match="changed|appeared"):
+        publisher.recover()
+    assert target.read_bytes() == b"operator added a different file"
+    assert archive.read_bytes() == b"old measured data"
+
+
+def test_runner_contact_form_step_archives_old_measurements_and_recovers_registration(tmp_path, monkeypatch):
+    settings = _settings(tmp_path)
+    engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
+    Base.metadata.create_all(engine)
+    sessions = create_session_factory(engine)
+    workspace = tmp_path / "DL-001"
+    official = workspace / "DL-001 Operator Folder"
+    target = official / "Test results" / "DL-001 LLCR Record.xlsx"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"operator measurements")
+    source_book = workspace / "Source Book"
+    source_book.mkdir()
+    record = OfficialWorkspaceRecord(
+        "workspace", "P1", "DL-001", workspace, source_book, official,
+        workspace / ".connlab" / "manifest.json", tmp_path / "template", "2026-09-25",
+    )
+    with sessions() as session:
+        deps.ProjectRepository(session).create(Project(
+            project_id="P1", project_no="DL-001", product_name="Fixture",
+            requestor="Test", status=ProjectStatus.DRAFT,
+        ))
+        deps.ProjectOfficialWorkspaceRepository(session).save(record)
+        session.commit()
+    runner = ProjectFolderGenerationRunner(sessions, settings)
+    runner.context = lambda _: "confirmed-matrix"
+    state = runner.journal.create("P1", "update_in_place", "confirmed-matrix")
+    state["completed_steps"] = ["workspace"]
+    state["workspace_directories"] = {
+        key: {"path": str(path), "identity": [path.stat().st_dev, path.stat().st_ino]}
+        for key, path in (("local_workspace_path", workspace), ("official_folder_path", official),
+                          ("source_book_path", source_book))
+    }
+    state["contact_record_targets"] = {"llcr": {
+        "target": str(target), "prior": {"sha": sha256(target.read_bytes()).hexdigest(),
+                                       "identity": [target.stat().st_dev, target.stat().st_ino]},
+        "action": "archive_generate", "preview_fingerprint": "matrix-v2-points",
+    }}
+    runner.journal.save(state)
+    projection = SimpleNamespace(
+        status="ready", preview_fingerprint="matrix-v2-points",
+        confirmed_matrix_id="matrix-1", confirmed_revision=2,
+    )
+    monkeypatch.setattr(deps, "get_llcr_cr_record_workbook_preview_service",
+                        lambda _session: SimpleNamespace(preview=lambda *_args: projection))
+    written = []
+
+    def write(_self, *, output_path, projection):
+        written.append(output_path)
+        output_path.write_bytes(b"new blank form")
+        return output_path
+
+    monkeypatch.setattr("backend.api.project_folder_generation_composition.LlcrCrSpecializedRecordWorkbookGateway.write", write)
+    from backend.application.project_output_record_service import ProjectOutputRecordService
+    register = ProjectOutputRecordService.register_output
+    fail = [True]
+
+    def interrupt_after_publication(self, command):
+        if fail[0]:
+            raise OSError("simulated crash before output registration")
+        return register(self, command)
+
+    monkeypatch.setattr(ProjectOutputRecordService, "register_output", interrupt_after_publication)
+    try:
+        with pytest.raises(OSError, match="simulated crash"):
+            runner.run_step(state, "llcr_cr_records")
+        assert target.read_bytes() == b"new blank form"
+        assert not list((settings.data_dir / "stage" / state["operation_id"]).glob("*.xlsx"))
+        archive = workspace / "History" / "Test results" / f"DL-001 LLCR Record {state['operation_id']}.xlsx"
+        assert archive.read_bytes() == b"operator measurements"
+        fail[0] = False
+        runner.run_step(state, "llcr_cr_records")
+        assert len(written) == 1
+        with sessions() as session:
+            records = deps.get_project_output_record_service(session).list_records("P1")
+            assert len(records) == 1
+            assert records[0].output_path == str(target)
+            assert records[0].output_sha256 == sha256(b"new blank form").hexdigest()
+            assert str(archive) in records[0].note
+        assert not Path(state["effects"]["llcr_cr_records:llcr"]["stage"]).exists()
+        old_target = target.read_bytes()
+        legacy = runner.journal.create("P1", "update_in_place", "confirmed-matrix")
+        legacy["completed_steps"] = ["workspace"]
+        legacy["workspace_directories"] = state["workspace_directories"]
+        runner.journal.save(legacy)
+        runner.run_step(legacy, "llcr_cr_records")
+        assert "older operation" in legacy["warnings"][0]
+        assert target.read_bytes() == old_target
+    finally:
+        runner.pool.shutdown()
+        engine.dispose()
+
+
+def test_contact_record_preview_skips_only_missing_explicit_points_and_shows_history_move(tmp_path, monkeypatch):
+    workspace = SimpleNamespace(
+        dl_number="DL-001", official_folder_path=tmp_path / "Official",
+    )
+    target = workspace.official_folder_path / "Test results" / "DL-001 LLCR Record.xlsx"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"measured")
+    snapshot = SimpleNamespace(
+        version=SimpleNamespace(point_profile=None),
+        rows=[SimpleNamespace(confirmed_row_id="row", test_item="LLCR")],
+        step_quantities=[SimpleNamespace(confirmed_row_id="row")],
+    )
+    monkeypatch.setattr(deps, "ConfirmedMatrixAuthorityRepository",
+                        lambda _session: SimpleNamespace(get_active_by_project=lambda _project_id: snapshot))
+
+    targets, items = contact_record_preflight("P1", workspace, object())
+    assert items[0]["action"] == "skip"
+    assert "Test points" in items[0]["message"]
+    assert target.read_bytes() == b"measured"
+
+    snapshot.version.point_profile = object()
+    projection = SimpleNamespace(status="ready", preview_fingerprint="matrix-fp")
+    monkeypatch.setattr(deps, "get_llcr_cr_record_workbook_preview_service",
+                        lambda _session: SimpleNamespace(preview=lambda *_args: projection))
+    targets, items = contact_record_preflight("P1", workspace, object())
+    assert items[0]["action"] == "archive_generate"
+    assert "History/Test results" in items[0]["message"]
+    assert targets["llcr"]["prior"]["sha"] == sha256(b"measured").hexdigest()
+    assert target.read_bytes() == b"measured"
+
+    rebuild_targets, rebuild_items = contact_record_preflight(
+        "P1", workspace, object(), rebuilding=True,
+    )
+    assert rebuild_targets["llcr"]["prior"] is None
+    assert "History/Folders" in rebuild_items[0]["message"]
+
+    projection.status = "blocked"
+    projection.diagnostics = [SimpleNamespace(message="Sample count is invalid")]
+    targets, items = contact_record_preflight("P1", workspace, object())
+    assert items[0]["status"] == "blocked"
+    assert "Sample count" in items[0]["message"]
+
+
+@pytest.mark.parametrize("contact_kind,expected_kind", [
+    ("llcr", "llcr"),
+    ("cr_specified_current", "cr"),
+])
+def test_contact_record_preview_recognizes_structured_contact_plan_for_legacy_test_names(
+    tmp_path, monkeypatch, contact_kind, expected_kind,
+):
+    workspace = SimpleNamespace(dl_number="DL-001", official_folder_path=tmp_path / "Official")
+    snapshot = SimpleNamespace(
+        version=SimpleNamespace(point_profile=object()),
+        rows=[SimpleNamespace(confirmed_row_id="row", test_item="Contact measurement")],
+        step_quantities=[SimpleNamespace(
+            confirmed_row_id="row",
+            contact_plan=SimpleNamespace(included=True, contact_kind=contact_kind),
+        )],
+    )
+    monkeypatch.setattr(deps, "ConfirmedMatrixAuthorityRepository",
+                        lambda _session: SimpleNamespace(get_active_by_project=lambda _project_id: snapshot))
+    projection = SimpleNamespace(status="ready", preview_fingerprint="matrix-fp")
+    monkeypatch.setattr(deps, "get_llcr_cr_record_workbook_preview_service",
+                        lambda _session: SimpleNamespace(preview=lambda *_args: projection))
+
+    targets, items = contact_record_preflight("P1", workspace, object())
+
+    assert list(targets) == [expected_kind]
+    assert items[0]["action"] == "generate"
+    assert Path(targets[expected_kind]["target"]).name == f"DL-001 {expected_kind.upper()} Record.xlsx"
+
+
+@pytest.mark.parametrize("status,diagnostics", [
+    ("empty", []),
+    ("blocked", [SimpleNamespace(code="step_point_coverage_empty", message="No points for this step")]),
+])
+def test_contact_record_preview_skips_only_explicitly_missing_point_coverage(
+    tmp_path, monkeypatch, status, diagnostics,
+):
+    workspace = SimpleNamespace(dl_number="DL-001", official_folder_path=tmp_path / "Official")
+    snapshot = SimpleNamespace(
+        version=SimpleNamespace(point_profile=object()),
+        rows=[SimpleNamespace(confirmed_row_id="row", test_item="CR")],
+        step_quantities=[SimpleNamespace(confirmed_row_id="row")],
+    )
+    monkeypatch.setattr(deps, "ConfirmedMatrixAuthorityRepository",
+                        lambda _session: SimpleNamespace(get_active_by_project=lambda _project_id: snapshot))
+    projection = SimpleNamespace(status=status, preview_fingerprint=None, diagnostics=diagnostics)
+    monkeypatch.setattr(deps, "get_llcr_cr_record_workbook_preview_service",
+                        lambda _session: SimpleNamespace(preview=lambda *_args: projection))
+
+    targets, items = contact_record_preflight("P1", workspace, object())
+
+    assert items[0]["action"] == "skip"
+    assert "CR" in items[0]["message"]
+    assert targets["cr"]["prior"] is None
 
 
 def _archive_recreate_preview(tmp_path):

@@ -10,6 +10,7 @@ from typing import Any, Callable, Literal, Protocol
 from uuid import uuid4
 
 from backend.domain.project_matrix_draft_models import ProjectMatrixDraftStepTextOverride
+from backend.domain.matrix_contact_measurement_models import MatrixPointProfile, MatrixStepPointOverride
 
 from backend.application.confirmed_matrix_authority_service import (
     ConfirmProjectMatrixDraftCommand,
@@ -274,6 +275,8 @@ class MatrixEditorSessionDraft:
     cells: tuple[MatrixEditorSessionCell, ...]
     duration_authorities: tuple[MatrixEditorSessionDurationAuthority, ...] = ()
     step_text_overrides: tuple[ProjectMatrixDraftStepTextOverride, ...] = ()
+    point_profile: MatrixPointProfile | None = None
+    point_overrides: tuple[MatrixStepPointOverride, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -303,6 +306,8 @@ class MatrixEditorSessionSeed:
     stale_draft_present: bool = False
     draft_updated_at: str | None = None
     saved_payload_signature: str | None = None
+    point_profile_warning: str | None = None
+    point_profile_prefilled_from_legacy: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -331,6 +336,8 @@ class MatrixEditorSessionConfirmCommand:
     estimated_completion_date: str | None = None
     expected_editor_draft_id: str | None = None
     expected_saved_payload_signature: str | None = None
+    point_profile: MatrixPointProfile | None = None
+    point_overrides: tuple[MatrixStepPointOverride, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -356,6 +363,8 @@ class MatrixEditorSessionDraftSaveCommand:
     planned_test_start_date: str | None = None
     planned_test_complete_date: str | None = None
     estimated_completion_date: str | None = None
+    point_profile: MatrixPointProfile | None = None
+    point_overrides: tuple[MatrixStepPointOverride, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)

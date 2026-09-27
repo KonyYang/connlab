@@ -169,6 +169,8 @@ def _build_editor_draft_from_active(
         groups=groups,
         rows=rows,
         cells=cells,
+        point_profile=active.version.point_profile,
+        point_overrides=active.version.point_overrides,
         step_text_overrides=draft_step_text_overrides(active.step_text_overrides, group_by_confirmed, row_by_confirmed),
         duration_authorities=tuple(
             MatrixEditorSessionDurationAuthority(
@@ -238,6 +240,8 @@ def _build_editor_draft_from_project_draft(
         groups=groups,
         rows=rows,
         cells=cells,
+        point_profile=draft.record.point_profile,
+        point_overrides=draft.record.point_overrides,
         step_text_overrides=draft.step_text_overrides,
         duration_authorities=tuple(
             MatrixEditorSessionDurationAuthority(
@@ -281,6 +285,8 @@ def _confirm_command_from_save_command(
         rows=command.rows,
         cells=command.cells,
         duration_authorities=command.duration_authorities,
+        point_profile=command.point_profile,
+        point_overrides=command.point_overrides,
         step_text_overrides=command.step_text_overrides,
         pre_test_buffer_days=command.pre_test_buffer_days,
         post_test_buffer_days=command.post_test_buffer_days,

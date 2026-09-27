@@ -9,6 +9,10 @@ from backend.application.confirmed_matrix_llcr_cr_record_projection import (
 from backend.application.contact_point_profile_confirmed_consumer_adapter import (
     EffectiveConfirmedPointProfile,
 )
+from backend.application.matrix_test_points_authority import effective_matrix_point_profile
+from backend.domain.matrix_contact_measurement_models import (
+    MatrixPointCategory, MatrixPointProfile, MatrixStepPointCategory, MatrixStepPointOverride,
+)
 from backend.domain import (
     ConfirmedMatrixGroup,
     ConfirmedMatrixRow,
@@ -161,6 +165,47 @@ def test_point_profile_projection_builds_separate_type_views_from_matrix_stages(
     assert [section.category_id for section in cr.sections] == ["ppc-2"]
     assert cr.sections[0].stages[0].test_current_ampere == "10"
     assert [row.contact_id for row in cr.sections[0].rows] == ["2", "4", "2", "4"]
+
+
+def test_matrix_point_subset_limits_only_the_selected_llcr_stage() -> None:
+    source = _matrix_with_llcr_and_cr_stages()
+    snapshot = replace(source, version=replace(
+        source.version,
+        point_profile=MatrixPointProfile((MatrixPointCategory("SIG", "1-3", True),)),
+        point_overrides=(MatrixStepPointOverride(
+            source.groups[0].draft_group_id, source.rows[2].draft_row_id, 3, "",
+            (MatrixStepPointCategory("SIG", "2"),),
+        ),),
+    ))
+    profile = effective_matrix_point_profile(snapshot)
+    assert profile is not None
+
+    projection = build_point_profile_llcr_cr_record_projection(snapshot, profile, "llcr")
+
+    assert projection.status == "ready"
+    assert projection.sections[0].stages[0].point_ids == ("1", "2", "3")
+    assert projection.sections[0].stages[1].point_ids == ("2",)
+
+
+def test_matrix_point_subset_omits_points_unused_by_every_stage() -> None:
+    source = _matrix_with_llcr_and_cr_stages()
+    overrides = tuple(MatrixStepPointOverride(
+        source.groups[0].draft_group_id, row.draft_row_id, sequence, "",
+        (MatrixStepPointCategory("SIG", "2"),),
+    ) for row, sequence in ((source.rows[0], 1), (source.rows[2], 3)))
+    snapshot = replace(source, version=replace(
+        source.version,
+        point_profile=MatrixPointProfile((MatrixPointCategory("SIG", "1-3", True),)),
+        point_overrides=overrides,
+    ))
+    profile = effective_matrix_point_profile(snapshot)
+    assert profile is not None
+
+    projection = build_point_profile_llcr_cr_record_projection(snapshot, profile, "llcr")
+
+    assert projection.status == "ready"
+    assert projection.sections[0].readings_per_sample == 1
+    assert [row.contact_id for row in projection.sections[0].rows] == ["2", "2"]
 
 
 def test_point_profile_projection_uses_explicit_ids_in_entered_order_without_category_prefix() -> None:

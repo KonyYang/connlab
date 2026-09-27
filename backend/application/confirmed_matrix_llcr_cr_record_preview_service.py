@@ -12,6 +12,7 @@ from backend.application.confirmed_matrix_llcr_cr_record_projection import (
     build_llcr_cr_record_projection,
 )
 from backend.domain import ConfirmedMatrixSnapshot
+from backend.application.matrix_test_points_authority import effective_matrix_point_profile
 
 
 class LlcrCrRecordWorkbookPreviewNotFoundError(LookupError):
@@ -39,6 +40,9 @@ class LlcrCrRecordWorkbookPreviewService:
             raise LlcrCrRecordWorkbookPreviewNotFoundError(
                 "Active confirmed Matrix not found."
             )
+        matrix_profile = effective_matrix_point_profile(snapshot)
+        if matrix_profile is not None:
+            return build_point_profile_llcr_cr_record_projection(snapshot, matrix_profile, record_type)
         if self._consumer_adapter is None:
             return _legacy_type_projection(build_llcr_cr_record_projection(snapshot), record_type)
         effective = self._consumer_adapter.get_effective(project_id)

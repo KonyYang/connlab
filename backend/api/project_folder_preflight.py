@@ -1,6 +1,105 @@
 """Read-only package readiness using the existing file-specific previews."""
 
+import os
+from pathlib import Path
+
+from backend.application.confirmed_matrix_llcr_cr_record_projection import matrix_record_type
+
 from backend.shared.operation_diagnostics import safe_text
+from backend.infrastructure.files.recoverable_output_publisher import file_hash, file_identity
+from backend.infrastructure.official_workspace_manifest import OfficialWorkspaceManifestGateway
+
+
+def contact_record_preflight(project_id, workspace, session, *, rebuilding=False):
+    """Preview optional formal LLCR/CR files and bind old-file identity to approval."""
+    from backend.api import dependencies as deps
+
+    snapshot = deps.ConfirmedMatrixAuthorityRepository(session).get_active_by_project(project_id)
+    if snapshot is None or workspace.official_folder_path is None:
+        return {}, []
+    rows = {row.confirmed_row_id: row for row in snapshot.rows}
+    kinds = set()
+    for quantity in snapshot.step_quantities:
+        row = rows.get(quantity.confirmed_row_id)
+        if row is None:
+            continue
+        kind = matrix_record_type(row, quantity)
+        if kind is not None:
+            kinds.add(kind)
+    if not kinds:
+        return {}, []
+    targets, items = {}, []
+    for kind in ("llcr", "cr"):
+        if kind not in kinds:
+            continue
+        label = f"{kind.upper()} blank record"
+        dl = "".join(ch if ch.isalnum() or ch in {"-", " "} else " " for ch in workspace.dl_number).strip(" .")
+        target = workspace.official_folder_path / "Test results" / f"{dl} {kind.upper()} Record.xlsx"
+        entry = {"target": str(target), "prior": None, "preview_fingerprint": None, "action": "skip"}
+        template = getattr(workspace, "template_path", None)
+        template_form = Path(template) / "Test results" / target.name if template else None
+        if (template_form is not None and (rebuilding or getattr(workspace, "status", None) == "ready")
+                and os.path.lexists(template_form)):
+            status, action = "blocked", "blocked"
+            message = (
+                f"The project template already contains {target.name}; review it before "
+                "generating a new official blank form."
+            )
+        elif snapshot.version.point_profile is None:
+            status, action = "current", "skip"
+            message = f"{kind.upper()} form was skipped: confirm explicit Test points in Matrix Editor first."
+        else:
+            projection = deps.get_llcr_cr_record_workbook_preview_service(session).preview(project_id, kind)
+            missing_coverage = projection.status == "empty" or (
+                projection.status == "blocked"
+                and bool(projection.diagnostics)
+                and all(
+                    getattr(diagnostic, "code", None) in {
+                        "step_point_coverage_empty", "point_profile_not_confirmed",
+                    }
+                    for diagnostic in projection.diagnostics
+                )
+            )
+            if missing_coverage:
+                status, action = "current", "skip"
+                message = (
+                    f"{kind.upper()} form was skipped: no explicit Test points cover "
+                    "the confirmed Matrix steps."
+                )
+            elif projection.status != "ready" or not projection.preview_fingerprint:
+                status, action = "blocked", "blocked"
+                message = (projection.diagnostics[0].message if projection.diagnostics
+                           else f"{kind.upper()} record projection needs review.")
+            else:
+                entry["preview_fingerprint"] = projection.preview_fingerprint
+                try:
+                    paths = (target, *target.parents)
+                    if OfficialWorkspaceManifestGateway.first_redirected_path(*paths) is not None:
+                        raise ValueError("Contact record path redirects through a link or junction.")
+                    if os.path.lexists(target) and not target.is_file():
+                        raise ValueError("Existing contact record is not a regular file.")
+                    sha = None if rebuilding else file_hash(target)
+                    entry["prior"] = {"sha": sha, "identity": file_identity(target)} if sha else None
+                    action = "archive_generate" if sha else "generate"
+                    status = "ready"
+                    message = (f"Existing {kind.upper()} file, including any measurements, will be moved to "
+                               "History/Test results before a new blank form is created."
+                               if sha else (
+                                   f"Existing folder contents remain in History/Folders; create a new {kind.upper()} "
+                                   "blank form in Test results."
+                                   if rebuilding and os.path.lexists(target)
+                                   else f"Create a new {kind.upper()} blank form in Test results."
+                               ))
+                except (OSError, ValueError) as exc:
+                    status, action = "blocked", "blocked"
+                    message = f"Cannot verify {kind.upper()} form target: {exc}"
+        entry["action"] = action
+        if action == "skip":
+            entry["warning"] = message
+        targets[kind] = entry
+        items.append({"key": f"{kind}_record", "label": label,
+                      "status": status, "action": action, "message": safe_text(message)})
+    return targets, items
 
 
 def package_preflight(project_id, workspace, session, settings, *, rebuilding=False):
@@ -14,6 +113,10 @@ def package_preflight(project_id, workspace, session, settings, *, rebuilding=Fa
             project_id, planned_workspace=planned, rebuilding=rebuilding)
         items.extend({"key": item.key, "label": item.label, "status": item.status,
                       "action": item.action, "message": safe_text(item.message)} for item in forms.items)
+        contact_targets, contact_items = contact_record_preflight(
+            project_id, planned, session, rebuilding=rebuilding,
+        )
+        items.extend(contact_items)
         materials = deps.get_project_request_material_collection_service(session).preview(
             project_id, planned_workspace=planned, rebuilding=rebuilding)
         materials_ready = not materials.blockers and all(
@@ -43,6 +146,7 @@ def package_preflight(project_id, workspace, session, settings, *, rebuilding=Fa
                                     if source_inside_target else safe_text("; ".join([*materials.blockers, *material_errors] or materials.warnings)
                                              or "Source materials are ready for collection."))})
     else:
+        contact_targets = {}
         from backend.application.project_folder_required_forms_service import REQUIRED_FORM_DEFINITIONS
         for key, label, *_ in REQUIRED_FORM_DEFINITIONS:
             items.append({"key": key, "label": label, "status": "blocked", "action": "blocked",
@@ -73,4 +177,5 @@ def package_preflight(project_id, workspace, session, settings, *, rebuilding=Fa
     items.append({key: application[key] for key in ("key", "label", "status", "action", "message")})
     return {"directory_status": workspace.status,
             "package_ready": directory_ready and all(item["status"] in {"ready", "current"} for item in items),
+            "contact_record_targets": contact_targets,
             "items": items}

@@ -255,10 +255,12 @@ def write_macro_style_contact_resistance_category_sheet(
                 sheet.cell(row, calculated_point, point_id)
                 if stage_index == 0:
                     initial_corrected_rows.append(row)
+                selected_points = getattr(stage, "point_ids", None)
+                point_is_selected = selected_points is None or point_id in selected_points
                 for sample_index in range(1, max_samples + 1):
                     raw_column = raw_start + sample_index - 1
                     corrected_column = corrected_start + sample_index - 1
-                    if sample_index > section.sample_count:
+                    if sample_index > section.sample_count or not point_is_selected:
                         sheet.cell(row, raw_column).fill = _MACRO_UNUSED_FILL
                         sheet.cell(row, corrected_column).fill = _MACRO_UNUSED_FILL
                         if delta_start is not None:
@@ -746,8 +748,14 @@ def _write_group_block(
         sheet.cell(row, 2, record.contact_id)
         sheet.cell(row, 3, record.contact_label)
         column = 4
-        for stage_index, _stage in enumerate(section.stages):
+        for stage_index, stage in enumerate(section.stages):
             stage_width = _stage_width(record_type, delta_r_enabled, stage_index)
+            selected_points = getattr(stage, "point_ids", None)
+            if selected_points is not None and record.contact_id not in selected_points:
+                for offset in range(stage_width):
+                    sheet.cell(row, column + offset).fill = _MACRO_UNUSED_FILL
+                column += stage_width
+                continue
             raw = f"{get_column_letter(column)}{row}"
             corrected_column = column + 1
             corrected = f"{get_column_letter(corrected_column)}{row}"

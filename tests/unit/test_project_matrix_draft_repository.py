@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -33,6 +34,9 @@ from backend.infrastructure.storage.repositories import (
     SourceMatrixImportRepository,
 )
 from backend.shared.config import Settings
+from backend.domain.matrix_contact_measurement_models import (
+    MatrixPointCategory, MatrixPointProfile, MatrixStepPointCategory, MatrixStepPointOverride,
+)
 
 
 def test_project_matrix_draft_repository_create_and_get_roundtrip(tmp_path: Path) -> None:
@@ -109,7 +113,14 @@ def test_project_matrix_draft_repository_create_and_get_roundtrip(tmp_path: Path
                 ),
             )
             snapshot = ProjectMatrixDraftSnapshot(
-                record=record,
+                record=replace(
+                    record,
+                    point_profile=MatrixPointProfile((MatrixPointCategory("SIG", "1,3", True),)),
+                    point_overrides=(MatrixStepPointOverride(
+                        "pmdg-1", "pmdr-1", 1, "",
+                        (MatrixStepPointCategory("SIG", "3"),),
+                    ),),
+                ),
                 groups=groups,
                 rows=rows,
                 cells=cells,
@@ -127,6 +138,8 @@ def test_project_matrix_draft_repository_create_and_get_roundtrip(tmp_path: Path
             assert loaded.cells[0].cell_value == "1"
             assert repo.get_by_project_and_source_import("P1", source_import_id) is not None
             assert loaded.record.base_confirmed_matrix_id is None
+            assert loaded.record.point_profile == snapshot.record.point_profile
+            assert loaded.record.point_overrides == snapshot.record.point_overrides
     finally:
         engine.dispose()
 

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel
+from backend.domain.matrix_contact_measurement_models import (
+    MatrixPointCategory, MatrixPointProfile, MatrixStepPointCategory, MatrixStepPointOverride,
+)
 
 from backend.api.dependencies import get_matrix_editor_session_service
 from backend.api.lifecycle_errors import (
@@ -39,6 +42,25 @@ router = APIRouter(tags=["matrix-editor-session"])
 
 
 from backend.api.matrix_editor_session_dtos import *
+
+
+def _to_point_profile(item: MatrixPointProfileDTO | None) -> MatrixPointProfile | None:
+    if item is None:
+        return None
+    return MatrixPointProfile(
+        categories=tuple(MatrixPointCategory(**category.model_dump()) for category in item.categories),
+        delta_r_enabled=item.delta_r_enabled,
+    )
+
+
+def _to_point_overrides(items: list[MatrixStepPointOverrideDTO] | None) -> tuple[MatrixStepPointOverride, ...] | None:
+    if items is None:
+        return None
+    return tuple(MatrixStepPointOverride(
+        draft_group_id=item.draft_group_id, draft_row_id=item.draft_row_id,
+        step_sequence=item.step_sequence, step_suffix_note=item.step_suffix_note,
+        categories=tuple(MatrixStepPointCategory(**category.model_dump()) for category in item.categories),
+    ) for item in items)
 
 def _to_session_groups(
     groups: list[MatrixEditorSessionGroupRequest],

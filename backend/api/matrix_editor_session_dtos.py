@@ -11,6 +11,30 @@ from backend.api.project_matrix_draft_dtos import (
 )
 
 
+class MatrixPointCategoryDTO(BaseModel):
+    prefix: str
+    point_expression: str
+    cr_selected: bool = True
+
+
+class MatrixPointProfileDTO(BaseModel):
+    categories: list[MatrixPointCategoryDTO]
+    delta_r_enabled: bool = True
+
+
+class MatrixStepPointCategoryDTO(BaseModel):
+    prefix: str
+    point_expression: str
+
+
+class MatrixStepPointOverrideDTO(BaseModel):
+    draft_group_id: str
+    draft_row_id: str
+    step_sequence: int
+    step_suffix_note: str = ""
+    categories: list[MatrixStepPointCategoryDTO]
+
+
 class MatrixEditorSessionGroupResponse(BaseModel):
     """Session editor group response model."""
 
@@ -73,6 +97,8 @@ class MatrixEditorSessionDraftResponse(BaseModel):
     groups: list[MatrixEditorSessionGroupResponse]
     rows: list[MatrixEditorSessionRowResponse]
     cells: list[MatrixEditorSessionCellResponse]
+    point_profile: MatrixPointProfileDTO | None = None
+    point_overrides: list[MatrixStepPointOverrideDTO] = Field(default_factory=list)
     step_text_overrides: list[MatrixEditorSessionStepTextOverride] = Field(default_factory=list)
     duration_authorities: list[MatrixEditorSessionDurationAuthorityResponse] = Field(
         default_factory=list
@@ -105,6 +131,8 @@ class MatrixEditorSessionSeedResponse(BaseModel):
     stale_draft_present: bool = False
     draft_updated_at: str | None = None
     saved_payload_signature: str | None = None
+    point_profile_warning: str | None = None
+    point_profile_prefilled_from_legacy: bool = False
 
 
 class MatrixEditorSessionGroupRequest(BaseModel):
@@ -177,6 +205,8 @@ class MatrixEditorSessionConfirmRequest(BaseModel):
     groups: list[MatrixEditorSessionGroupRequest]
     rows: list[MatrixEditorSessionRowRequest]
     cells: list[MatrixEditorSessionCellRequest]
+    point_profile: MatrixPointProfileDTO | None = None
+    point_overrides: list[MatrixStepPointOverrideDTO] | None = None
     step_text_overrides: list[MatrixEditorSessionStepTextOverride] | None = None
     duration_authorities: list[MatrixEditorSessionDurationAuthorityRequest] = Field(
         default_factory=list
@@ -206,6 +236,8 @@ class MatrixEditorSessionDraftSaveRequest(BaseModel):
     groups: list[MatrixEditorSessionGroupRequest]
     rows: list[MatrixEditorSessionRowRequest]
     cells: list[MatrixEditorSessionCellRequest]
+    point_profile: MatrixPointProfileDTO | None = None
+    point_overrides: list[MatrixStepPointOverrideDTO] | None = None
     step_text_overrides: list[MatrixEditorSessionStepTextOverride] | None = None
     duration_authorities: list[MatrixEditorSessionDurationAuthorityRequest] = Field(
         default_factory=list

@@ -7,6 +7,11 @@ from dataclasses import asdict
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
+from backend.domain.matrix_contact_measurement_models import (
+    point_overrides_from_json, point_overrides_to_json,
+    point_profile_from_json, point_profile_to_json,
+)
+
 from backend.domain import (
     contact_plan_from_json,
     contact_plan_to_json,
@@ -78,6 +83,8 @@ class ProjectMatrixDraftRepository:
         record_row.planned_test_complete_date = snapshot.record.planned_test_complete_date
         record_row.estimated_completion_date = snapshot.record.estimated_completion_date
         record_row.method_sync_context_json = snapshot.record.method_sync_context_json
+        record_row.point_profile_json = point_profile_to_json(snapshot.record.point_profile)
+        record_row.point_overrides_json = point_overrides_to_json(snapshot.record.point_overrides)
         self._session.execute(delete(ProjectMatrixDraftStepTextOverrideModel).where(
             ProjectMatrixDraftStepTextOverrideModel.project_matrix_draft_id == snapshot.record.project_matrix_draft_id
         ))
@@ -390,6 +397,8 @@ def _to_record_model(record: ProjectMatrixDraftRecord) -> ProjectMatrixDraftReco
         planned_test_complete_date=record.planned_test_complete_date,
         estimated_completion_date=record.estimated_completion_date,
         method_sync_context_json=record.method_sync_context_json,
+        point_profile_json=point_profile_to_json(record.point_profile),
+        point_overrides_json=point_overrides_to_json(record.point_overrides),
     )
 
 
@@ -490,6 +499,8 @@ def _to_record_domain(row: ProjectMatrixDraftRecordModel) -> ProjectMatrixDraftR
         planned_test_complete_date=row.planned_test_complete_date,
         estimated_completion_date=row.estimated_completion_date,
         method_sync_context_json=row.method_sync_context_json,
+        point_profile=point_profile_from_json(row.point_profile_json),
+        point_overrides=point_overrides_from_json(row.point_overrides_json),
     )
 
 

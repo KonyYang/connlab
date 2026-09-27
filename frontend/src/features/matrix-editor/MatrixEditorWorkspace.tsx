@@ -23,6 +23,8 @@ import {
   type MatrixEditorSessionDurationAuthority,
   type MatrixEditorSessionSeed,
   type MatrixEditorSessionConfirmResponse,
+  type MatrixTestPointOverride,
+  type MatrixTestPointProfile,
   type MatrixPreviewResponse,
   type ProjectScheduleWorkspace,
 } from "../../api/client";
@@ -42,10 +44,13 @@ import {
   useMatrixDraftPersistence,
   type MatrixDraftSaveState,
 } from "./useMatrixDraftPersistence";
-import { ContactMeasurementPlanSummaryCard } from "../contact-measurement-plan/ContactMeasurementPlanSummaryCard";
+import {
+  MatrixTestPointsEditor,
+  matrixTestPointsValidation,
+  type MatrixTestPointStepOption,
+} from "../contact-measurement-plan/MatrixTestPointsEditor";
 import { MatrixAutoGrowTextarea } from "./MatrixAutoGrowTextarea";
 import { MatrixStepWorkspace } from "./MatrixStepWorkspace";
-import { useProjectPointProfileSummaryModel } from "../contact-measurement-plan/useProjectPointProfileSummaryModel";
 import { LlcrCrRecordDownloadAction } from "./LlcrCrRecordDownloadAction";
 import {
   calculateMatrixSchedule,
@@ -154,10 +159,16 @@ function testRecordDraftFileName(projectReference: string, projectId: string): s
   return `${safeReference || "ConnLab"} Test Record draft.docx`;
 }
 
+function contactRecordType(testItem: string): "LLCR" | "CR" | null {
+  const normalized = testItem.toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
+  if (normalized.includes("LLCR") || (normalized.includes("CONTACT RESISTANCE") && normalized.includes("LOW LEVEL"))) return "LLCR";
+  if (normalized === "CR" || normalized.startsWith("CR ") || normalized.includes("CONTACT RESISTANCE")) return "CR";
+  return null;
+}
+
 export function MatrixEditorWorkspace({
   projectId,
   onBackToWorkbench,
-  onOpenContactMeasurementSetup,
 }: MatrixEditorWorkspaceProps): ReactElement {
   const topBarActionsRoot = useTopBarActionsRoot();
   const model = useMatrixEditorContext(projectId);
@@ -205,7 +216,26 @@ export function MatrixEditorWorkspace({
   const [activeAuthorityBaselineSignature, setActiveAuthorityBaselineSignature] = useState<string | null>(null);
   const [durationAuthorities, setDurationAuthorities] =
     useState<MatrixEditorSessionDurationAuthority[]>([]);
-  const pointProfileSummary = useProjectPointProfileSummaryModel(projectId);
+  const [pointProfile, setPointProfile] = useState<MatrixTestPointProfile | null>(null);
+  const [pointOverrides, setPointOverrides] = useState<MatrixTestPointOverride[]>([]);
+  const [pointProfileWarning, setPointProfileWarning] = useState<string | null>(null);
+  const pointStepOptions = useMemo<MatrixTestPointStepOption[]>(() => groupColumns.filter((group) => group.isSelected).flatMap((group) =>
+    editableRows.flatMap((row) => {
+      const recordType = contactRecordType(row.item);
+      if (row.isSampleRow || !recordType) return [];
+      return parseStepTokens(row.groups[group.id] ?? "").tokens.map((token) => ({
+        draftGroupId: group.draftGroupId ?? group.id,
+        draftRowId: row.draftRowId ?? row.id,
+        stepSequence: token.sequence,
+        stepSuffixNote: token.suffixNote ?? "",
+        recordType,
+        label: `Group ${group.name || group.groupKey} · Step ${token.rawToken} · ${row.item}`,
+      }));
+    })
+  ), [groupColumns, editableRows]);
+  const pointValidation = useMemo(() => matrixTestPointsValidation(
+    pointProfile, pointOverrides, pointStepOptions,
+  ), [pointProfile, pointOverrides, pointStepOptions]);
   const [sourceUnavailableMessage, setSourceUnavailableMessage] = useState<string | null>(null);
   const revisionDraftReloadPendingRef = useRef(false);
 
@@ -216,7 +246,9 @@ export function MatrixEditorWorkspace({
     schedulePlan,
     durationAuthorities,
     buildStepTextOverrides(editableRows, groupColumns, stepOutputOverrides),
-  ), [editableRows, groupColumns, sampleValues, schedulePlan, durationAuthorities, stepOutputOverrides]);
+    pointProfile,
+    pointOverrides,
+  ), [editableRows, groupColumns, sampleValues, schedulePlan, durationAuthorities, stepOutputOverrides, pointProfile, pointOverrides]);
   const currentSaveSignature = useMemo(
     () => buildAuthorityComparableSignatureFromDraftPayload(currentSavePayload),
     [currentSavePayload]
@@ -245,6 +277,8 @@ export function MatrixEditorWorkspace({
     setEditableRows(nextRows);
     setSampleValues(nextSamples);
     setDurationAuthorities(draft.duration_authorities ?? []);
+    setPointProfile(draft.point_profile ?? null);
+    setPointOverrides(draft.point_overrides ?? []);
     setStepOutputOverrides(nextStepOverrides);
     setSampleMergeNotes({});
     setSchedulePlan(displaySchedulePlan);
@@ -257,6 +291,8 @@ export function MatrixEditorWorkspace({
       nextSchedulePlan,
       draft.duration_authorities ?? [],
       buildStepTextOverrides(nextRows, nextGroups, nextStepOverrides),
+      draft.point_profile ?? null,
+      draft.point_overrides ?? [],
     );
     setActiveAuthorityConfirmed(false);
     setConfirmActiveState("idle");
@@ -298,7 +334,7 @@ export function MatrixEditorWorkspace({
     onError: setConfirmActiveMessage,
     projectId,
     readonlyMessage: isLifecycleReadonly ? lifecycleReadonlyView.message : null,
-    saveBlockedReason: groupIdentityErrorMessage || null,
+    saveBlockedReason: groupIdentityErrorMessage || pointValidation || null,
     sourcePreview: importPreview,
   });
   const {
@@ -324,6 +360,7 @@ export function MatrixEditorWorkspace({
         if (cancelled) {
           return;
         }
+        setPointProfileWarning(seed.point_profile_warning ?? null);
         if (seed.editor_draft) {
           const loadedSchedulePlan = schedulePlanFromSeed(seed);
           const loadedSignature = applyDraftSnapshotToEditor(
@@ -338,7 +375,12 @@ export function MatrixEditorWorkspace({
             seed,
           });
           setActiveAuthorityBaselineSignature(
-            buildAuthorityComparableSignatureFromDraft(seed.editor_draft, loadedSchedulePlan)
+            buildAuthorityComparableSignatureFromDraft(
+              seed.point_profile_prefilled_from_legacy
+                ? { ...seed.editor_draft, point_profile: null, point_overrides: [] }
+                : seed.editor_draft,
+              loadedSchedulePlan,
+            )
           );
         } else {
           const defaultRows = buildInitialMatrixRows();
@@ -350,6 +392,8 @@ export function MatrixEditorWorkspace({
           setSampleValues(defaultSamples);
           setSampleMergeNotes({});
           setDurationAuthorities([]);
+          setPointProfile(null);
+          setPointOverrides([]);
           setStepOutputOverrides({});
           setSchedulePlan(defaultSchedulePlan);
           setSelectedGroupId(defaultGroups[0]?.id ?? null);
@@ -416,6 +460,7 @@ export function MatrixEditorWorkspace({
           return;
         }
         setSourceUnavailableMessage(null);
+        setPointProfileWarning(null);
         setActiveAuthorityBaselineSignature(null);
         draftPersistence.clearAfterLoadFailure();
         if (revisionDraftReloadPendingRef.current) {
@@ -663,6 +708,21 @@ export function MatrixEditorWorkspace({
     sampleValues,
     currentSavePayload.step_text_overrides,
   );
+  const getLlcrCrDraftRequest = () => {
+    const request = getTestRecordDraftRequest();
+    const selectedGroups = groupColumns.filter((group) => group.isSelected);
+    return {
+      ...request,
+      groups: request.groups.map((group, index) => ({
+        ...group, draft_group_id: selectedGroups[index].draftGroupId ?? selectedGroups[index].id,
+      })),
+      rows: request.rows.map((row, index) => ({
+        ...row, draft_row_id: editableRows[index].draftRowId ?? editableRows[index].id,
+      })),
+      point_profile: pointProfile,
+      point_overrides: pointOverrides,
+    };
+  };
   const canGenerateTestRecord =
     selectedDraftGroupIds.size > 0 && hasAnyStepTokenValue && !hasStepTokenError && !hasGroupIdentityError;
   const canGenerateTestStatus =
@@ -757,6 +817,7 @@ export function MatrixEditorWorkspace({
   const hasMatrixAuthorityChanges =
     !activeConfirmedMatrixId ||
     isSourceLineageReplacement ||
+    (activeAuthorityBaselineSignature !== null && currentSaveSignature !== activeAuthorityBaselineSignature) ||
     hasUnsavedChanges ||
     saveState === "dirty" ||
     saveState === "saving" ||
@@ -791,6 +852,8 @@ export function MatrixEditorWorkspace({
       ? "No project id."
       : hasMatrixValidationError || hasMatrixDayError
         ? groupIdentityErrorMessage || groupNameErrorMessage || stepTokenErrorMessage || Object.values(scheduleCalculation.rowErrors)[0]
+        : pointValidation
+          ? pointValidation
         : (
             !schedulePlan.plannedTestStartDate ||
             !schedulePlan.plannedTestCompleteDate ||
@@ -2180,23 +2243,29 @@ export function MatrixEditorWorkspace({
               {revisionDraftActionMessage}
             </p>
           ) : null}
-          <ContactMeasurementPlanSummaryCard
-            summary={pointProfileSummary.summary}
-            loading={pointProfileSummary.loading}
-            onOpenSetup={() => onOpenContactMeasurementSetup?.()}
+          <MatrixTestPointsEditor
+            profile={pointProfile}
+            warning={pointProfileWarning}
+            overrides={pointOverrides}
+            stepOptions={pointStepOptions}
+            readOnly={isLifecycleReadonly || confirmActiveState === "loading"}
+            onProfileChange={(nextProfile) => { markUnsaved(); setPointProfile(nextProfile); }}
+            onOverridesChange={(nextOverrides) => { markUnsaved(); setPointOverrides(nextOverrides); }}
             recordActions={{
               llcr: (
                 <LlcrCrRecordDownloadAction
                   projectId={projectId}
                   recordType="llcr"
-                  getDraftRequest={getTestRecordDraftRequest}
+                  getDraftRequest={getLlcrCrDraftRequest}
+                  matrixHasPendingChanges={hasMatrixAuthorityChanges}
                 />
               ),
               cr: (
                 <LlcrCrRecordDownloadAction
                   projectId={projectId}
                   recordType="cr"
-                  getDraftRequest={getTestRecordDraftRequest}
+                  getDraftRequest={getLlcrCrDraftRequest}
+                  matrixHasPendingChanges={hasMatrixAuthorityChanges}
                 />
               ),
             }}

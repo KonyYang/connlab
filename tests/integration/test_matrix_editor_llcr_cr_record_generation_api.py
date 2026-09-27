@@ -6,12 +6,12 @@ from openpyxl import load_workbook
 
 from backend.api.dependencies import (
     get_matrix_editor_llcr_cr_record_generation_service,
+    get_matrix_editor_llcr_cr_record_publication_service,
+)
+from backend.application.confirmed_matrix_llcr_cr_record_generation_service import (
+    MatrixEditorLlcrCrPublicationPreview, MatrixEditorLlcrCrPublicationResult,
 )
 from backend.api.main import app
-from backend.application.contact_point_profile_confirmed_consumer_adapter import (
-    EffectiveConfirmedPointProfile,
-)
-from backend.application.contact_point_profile_expression import parse_point_expression
 from backend.application.matrix_editor_llcr_cr_record_generation_service import (
     MatrixEditorLlcrCrRecordGenerationService,
 )
@@ -83,6 +83,135 @@ def test_matrix_editor_llcr_download_preserves_explicit_point_ids_and_order(
     ]
 
 
+def test_draft_llcr_step_exception_marks_untested_cells_without_formulas(
+    tmp_path: Path,
+) -> None:
+    response = _post_current_ui_draft(tmp_path, "1", None, point_overrides=[{
+        "draft_group_id": "group-id", "draft_row_id": "row-id",
+        "step_sequence": 6, "step_suffix_note": "",
+        "categories": [{"prefix": "SIG", "point_expression": "2"}],
+    }])
+
+    assert response.status_code == 200
+    output = tmp_path / "step-subset.xlsx"
+    output.write_bytes(response.content)
+    workbook = load_workbook(output, data_only=False)
+    try:
+        sheet = workbook["SIG"]
+        assert [sheet.cell(row, 3).value for row in range(10, 14)] == ["1", "2", "1", "2"]
+        assert sheet["D12"].value is None
+        assert sheet["J12"].value is None
+        assert sheet["K12"].value is None
+        assert sheet["D12"].fill.fgColor.rgb == "00E7E6E6"
+        assert sheet["J13"].data_type == "f"
+    finally:
+        workbook.close()
+
+
+def test_draft_cr_step_exception_marks_untested_cells_without_formulas(
+    tmp_path: Path,
+) -> None:
+    response = _post_current_ui_draft(
+        tmp_path, "1", None, record_type="cr", test_item="Contact Resistance (Power)",
+        point_overrides=[{
+            "draft_group_id": "group-id", "draft_row_id": "row-id",
+            "step_sequence": 6, "step_suffix_note": "",
+            "categories": [{"prefix": "SIG", "point_expression": "2"}],
+        }],
+    )
+
+    assert response.status_code == 200
+    output = tmp_path / "cr-step-subset.xlsx"
+    output.write_bytes(response.content)
+    workbook = load_workbook(output, data_only=False)
+    try:
+        sheet = workbook["SIG"]
+        assert sheet["D12"].value is None
+        assert sheet["J12"].value is None
+        assert sheet["D12"].fill.fgColor.rgb == "00E7E6E6"
+        assert sheet["J13"].data_type == "f"
+    finally:
+        workbook.close()
+
+
+def test_publication_preview_and_publish_routes_preserve_reviewed_contract(tmp_path: Path) -> None:
+    class _Publication:
+        def preview(self, command):
+            assert command.draft.project_id == "P1"
+            return MatrixEditorLlcrCrPublicationPreview(
+                project_id="P1", mode="official", status="conflict",
+                authority_status="confirmed", target_path=tmp_path / "Test results" / "form.xlsx",
+                existing_file=True, blockers=(), preview_token="review-token",
+            )
+
+        def publish(self, command):
+            assert command.preview_token == "review-token"
+            assert command.conflict_action == "archive"
+            return MatrixEditorLlcrCrPublicationResult(
+                project_id="P1", file_name="form.xlsx",
+                target_path=tmp_path / "Test results" / "form.xlsx",
+                archive_path=tmp_path / "History" / "form.xlsx",
+            )
+
+    app.dependency_overrides[get_matrix_editor_llcr_cr_record_publication_service] = lambda: _Publication()
+    request = {
+        "source": "matrix_editor_current_ui_state", "record_type": "llcr",
+        "groups": [], "rows": [], "point_overrides": [],
+    }
+    try:
+        client = TestClient(app)
+        preview = client.post("/api/projects/P1/matrix-editor/llcr-cr-record-publication/preview", json=request)
+        published = client.post("/api/projects/P1/matrix-editor/llcr-cr-record-publication/publish",
+                                json={**request, "preview_token": "review-token", "conflict_action": "archive"})
+    finally:
+        app.dependency_overrides.clear()
+    assert preview.status_code == 200
+    assert preview.json()["preview_token"] == "review-token"
+    assert preview.json()["mode"] == "official"
+    assert published.status_code == 200
+    assert published.json()["archive_path"] == str(tmp_path / "History" / "form.xlsx")
+
+
+def test_draft_download_with_stale_preview_token_is_rejected(tmp_path: Path) -> None:
+    class _Publication:
+        def validate_download(self, command, token):
+            assert command.draft.project_id == "P1"
+            assert token == "stale-token"
+            raise ValueError("download preview changed")
+
+    app.dependency_overrides[get_matrix_editor_llcr_cr_record_publication_service] = lambda: _Publication()
+    try:
+        response = TestClient(app).post(
+            "/api/projects/P1/matrix-editor/llcr-cr-record-draft/generate",
+            json={"source": "matrix_editor_current_ui_state", "record_type": "llcr",
+                  "groups": [], "rows": [], "preview_token": "stale-token"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 422
+    assert "changed" in response.json()["detail"]
+
+
+def test_publication_permission_failure_returns_recovery_instruction() -> None:
+    class _Publication:
+        def publish(self, _command):
+            raise PermissionError(5, "Access denied to measured form")
+
+    app.dependency_overrides[get_matrix_editor_llcr_cr_record_publication_service] = lambda: _Publication()
+    try:
+        response = TestClient(app).post(
+            "/api/projects/P1/matrix-editor/llcr-cr-record-publication/publish",
+            json={"source": "matrix_editor_current_ui_state", "record_type": "llcr",
+                  "groups": [], "rows": [], "preview_token": "reviewed",
+                  "conflict_action": "archive"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 409
+    assert "Access denied" in response.json()["detail"]
+    assert "Retry this reviewed action" in response.json()["detail"]
+
+
 def _post_current_ui_draft(
     tmp_path: Path,
     sample_quantity_expression: str,
@@ -90,9 +219,12 @@ def _post_current_ui_draft(
     *,
     point_expression: str = "1-2",
     point_category: str = "SIG",
+    point_overrides: list[dict] | None = None,
+    record_type: str = "llcr",
+    test_item: str = "Contact Resistance (Low Level)",
 ):
     generation = MatrixEditorLlcrCrRecordGenerationService(
-        point_profile_adapter=_PointProfileAdapter(point_expression, point_category),
+        point_profile_adapter=_PointProfileAdapter(),
         workbook_gateway=LlcrCrSpecializedRecordWorkbookGateway(),
         artifact_store=LlcrCrSpecializedRecordArtifactStore(tmp_path / "generated"),
         ltr_store=_LtrStore(),
@@ -105,10 +237,19 @@ def _post_current_ui_draft(
             "/api/projects/P1/matrix-editor/llcr-cr-record-draft/generate",
             json={
                 "source": "matrix_editor_current_ui_state",
-                "record_type": "llcr",
+                "record_type": record_type,
+                "point_profile": {
+                    "categories": [{
+                        "prefix": point_category, "point_expression": point_expression,
+                        "cr_selected": True,
+                    }],
+                    "delta_r_enabled": True,
+                },
+                "point_overrides": point_overrides or [],
                 "groups": [
                     {
                         "group_key": "group_6",
+                        "draft_group_id": "group-id",
                         "group_label": "6",
                         "sample_quantity_expression": sample_quantity_expression,
                         "sample_note": sample_note,
@@ -116,7 +257,8 @@ def _post_current_ui_draft(
                 ],
                 "rows": [
                     {
-                        "test_item": "Contact Resistance (Low Level)",
+                        "test_item": test_item,
+                        "draft_row_id": "row-id",
                         "section": "6.1",
                         "method": "EIA-364-23D",
                         "condition": "20 mV, 100 mA",
@@ -144,30 +286,5 @@ class _LtrStore:
 
 
 class _PointProfileAdapter:
-    def __init__(self, point_expression: str, point_category: str) -> None:
-        self._point_expression = point_expression
-        self._point_category = point_category
-
-    def get_effective(self, project_id: str) -> EffectiveConfirmedPointProfile:
-        assert project_id == "P1"
-        point_count = parse_point_expression(self._point_expression).count
-        return EffectiveConfirmedPointProfile(
-            status="confirmed",
-            readings_per_sample=str(point_count),
-            revision_id="profile-1",
-            revision_sequence=1,
-            fingerprint="profile-fingerprint",
-            lineage="Confirmed Project Point Profile",
-            message=None,
-            categories=(
-                {
-                    "category_id": "signal",
-                    "category_ordinal": 0,
-                    "label": self._point_category,
-                    "count_per_sample": point_count,
-                    "record_prefix": self._point_category,
-                    "included": True,
-                    "point_expression": self._point_expression,
-                },
-            ),
-        )
+    def get_effective(self, project_id: str):
+        raise AssertionError("Draft download must not read the independent Point Profile authority.")

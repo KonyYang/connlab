@@ -150,6 +150,8 @@ def _build_confirmed_snapshot_from_session_draft(
             draft.record.planned_test_complete_date
         ),
         estimated_completion_date=_normalize_optional_text(draft.record.estimated_completion_date),
+        point_profile=draft.record.point_profile,
+        point_overrides=draft.record.point_overrides,
     )
     sorted_groups = sorted(selected_groups, key=lambda item: item.group_order)
     groups: list[ConfirmedMatrixGroup] = []

@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
+import os
 
 from backend.api import dependencies as deps
 from backend.api.project_folder_preflight import package_preflight
@@ -17,6 +18,9 @@ from backend.domain import ProjectOutputKind, ProjectOutputSource, ProjectOutput
 from backend.infrastructure.files.generation_journal import GenerationJournal, fingerprint
 from backend.infrastructure.files.recoverable_output_publisher import RecoverableOutputPublisher, file_hash, file_identity
 from backend.infrastructure.files.recoverable_workspace_publisher import RecoverableWorkspacePublisher, tree_hash
+from backend.infrastructure.files.project_folder_required_forms_gateway import RecoverableContactRecordPublisher
+from backend.infrastructure.office.llcr_cr_specialized_record_workbook_gateway import LlcrCrSpecializedRecordWorkbookGateway
+from uuid import uuid4
 
 
 PROJECT_SCHEDULE_GENERATION_BLOCKER = (
@@ -55,6 +59,12 @@ class ProjectFolderGenerationRunner:
                 raise ValueError("Generation inputs changed before final cleanup.")
 
         verify_context()
+        with self.sessions() as session:
+            workspace = deps.ProjectOfficialWorkspaceRepository(session).get_by_project(state["project_id"])
+            if workspace is not None:
+                RecoverableContactRecordPublisher(
+                    self.journal, state, workspace.local_workspace_path, verify_context,
+                ).verify_completed()
         RecoverableWorkspacePublisher(self.journal, state, verify_context=verify_context).finalize()
 
     def context(self, project_id):
@@ -118,7 +128,10 @@ class ProjectFolderGenerationRunner:
         preview = self.preview(project_id, intent)
         if preview["expected_context"] == expected_context:
             return True
-        return allow_legacy and preview.get("legacy_expected_context") == expected_context
+        return allow_legacy and expected_context in {
+            preview.get("legacy_expected_context"),
+            preview.get("previous_expected_context"),
+        }
 
     def preview(self, project_id, intent="create"):
         if intent not in {"create", "backup_rebuild", "update_in_place"}:
@@ -186,13 +199,22 @@ class ProjectFolderGenerationRunner:
                 # an incomplete target fingerprint. Start rechecks this blocker.
                 target_facts = None
                 start_blockers.append("Cannot verify the existing folder identity. Check folder access before generation.")
+            workspace_preview = _preview_response(preview).model_dump()
+            file_preflight = package_preflight(
+                project_id, preview, session, self.settings, rebuilding=rebuilding
+            )
+            contact_record_targets = file_preflight.pop("contact_record_targets", {})
             token_payload = {
                 "context": current_context,
                 "preview": preview,
                 "targets": target_facts,
                 "manifest": file_hash(preview.manifest_path) if preview.manifest_path else None,
+                "contact_record_targets": contact_record_targets,
             }
-            legacy_token = fingerprint(token_payload)
+            legacy_payload = {key: value for key, value in token_payload.items()
+                              if key != "contact_record_targets"}
+            legacy_token = fingerprint(legacy_payload)
+            previous_token = fingerprint({**legacy_payload, "intent": intent})
             if (rebuilding and saved_operation is not None
                     and saved_operation["status"] != "completed"
                     and saved_operation.get("preview_context_version") is None):
@@ -203,17 +225,13 @@ class ProjectFolderGenerationRunner:
                     old_paths = (old_preview.conflict_paths or
                                  ((old_preview.official_folder_path,) if old_preview.official_folder_path else ()))
                     legacy_token = fingerprint({
-                        **token_payload,
+                        **legacy_payload,
                         "preview": old_preview,
                         "targets": [(str(path), tree_hash(path)) for path in old_paths],
                     })
                 except (OSError, ValueError):
                     legacy_token = None
             token = fingerprint({**token_payload, "intent": intent})
-            workspace_preview = _preview_response(preview).model_dump()
-            file_preflight = package_preflight(
-                project_id, preview, session, self.settings, rebuilding=rebuilding
-            )
             if rebuilding and len(preview.conflict_paths) == 1:
                 archived_source = preview.conflict_paths[0]
                 archived_root = archived_source.resolve()
@@ -268,6 +286,7 @@ class ProjectFolderGenerationRunner:
             return {
                 "expected_context": token,
                 "legacy_expected_context": legacy_token,
+                "previous_expected_context": previous_token,
                 "recovery": recovery,
                 "start_blockers": start_blockers,
                 "review_conflicts": review_conflicts,
@@ -276,6 +295,7 @@ class ProjectFolderGenerationRunner:
                     "generation_context": token,
                     "file_preflight": file_preflight,
                 },
+                "contact_record_targets": contact_record_targets,
             }
 
     def run_step(self, state, name):
@@ -294,9 +314,18 @@ class ProjectFolderGenerationRunner:
                 publication_root = (workspace_record.local_workspace_path / ".connlab" / "generation" / state["operation_id"]
                                     if workspace_record is not None and name != "workspace" else None)
                 publisher = RecoverableOutputPublisher(self.journal, state, name, verify_context, publication_root)
+                contact_publisher = (
+                    RecoverableContactRecordPublisher(
+                        self.journal, state, workspace_record.local_workspace_path, verify_context,
+                    ) if workspace_record is not None and name != "workspace" else None
+                )
                 publisher.verify_completed_files()
+                if contact_publisher is not None:
+                    contact_publisher.verify_completed()
                 outputs = deps.get_project_output_record_service(session)
                 publisher.recover_files(lambda payload: self._register_once(outputs, payload))
+                if contact_publisher is not None:
+                    contact_publisher.recover(lambda payload: self._register_once(outputs, payload))
                 if name == "workspace":
                     def verify_initial_preview():
                         intent = (
@@ -313,7 +342,7 @@ class ProjectFolderGenerationRunner:
                             project_id,
                             state["preview_context"],
                             intent,
-                            allow_legacy=state.get("preview_context_version") is None,
+                            allow_legacy=state.get("preview_context_version") in {None, 2},
                         ):
                             raise ValueError("Workspace preview or target changed. Refresh and review before generating.")
                     workspace = RecoverableWorkspacePublisher(self.journal, state, verify_context, verify_initial_preview)
@@ -342,6 +371,10 @@ class ProjectFolderGenerationRunner:
                     # Required-form files are expected to be absent at this stage; its own preview owns readiness.
                 elif name == "application_form":
                     deps.get_project_application_form_write_back_service(session, self.settings).write_back(project_id, recovery=publisher)
+                elif name == "llcr_cr_records":
+                    self._generate_contact_records(
+                        state, session, workspace_record, outputs, contact_publisher,
+                    )
                 else:
                     # Generated Office inputs are reproducible; they do not need the
                     # durable journal's deep project-hash path. Keep operation isolation
@@ -373,10 +406,93 @@ class ProjectFolderGenerationRunner:
                         self._require_result(service.generate(command, recovery=publisher))
                 # Any publication/registration gap is reconciled before committing this step.
                 publisher.recover_files(lambda payload: self._register_once(outputs, payload))
+                if contact_publisher is not None:
+                    contact_publisher.recover(lambda payload: self._register_once(outputs, payload))
                 session.commit()
             except BaseException:
                 session.rollback()
                 raise
+
+    def _generate_contact_records(self, state, session, workspace, outputs, publisher):
+        """Publish only the reviewed, Matrix-confirmed contact forms at chain end."""
+        if publisher is None or workspace is None:
+            raise ValueError("Project folder must be ready before contact record generation.")
+        approved = state.get("contact_record_targets")
+        if approved is None:
+            # A journal begun by an older release never approved a newly added step.
+            state.setdefault("warnings", []).append(
+                "LLCR/CR forms were not generated by this older operation; review a new preview."
+            )
+            self.journal.save(state)
+            return
+        for kind in ("llcr", "cr"):
+            item = approved.get(kind)
+            if item is None:
+                continue
+            if item["action"] == "skip":
+                warning = item.get("warning") or f"{kind.upper()} blank form skipped: confirm explicit Test points first."
+                if warning not in state.setdefault("warnings", []):
+                    state["warnings"].append(warning)
+                    self.journal.save(state)
+                continue
+            if item["action"] not in {"generate", "archive_generate"}:
+                raise ValueError("Contact record target was not approved for generation.")
+            if f"llcr_cr_records:{kind}" in state["effects"]:
+                continue  # recover() already reconciled publication and registration.
+            projection = deps.get_llcr_cr_record_workbook_preview_service(session).preview(
+                state["project_id"], kind,
+            )
+            if projection.status != "ready" or projection.preview_fingerprint != item["preview_fingerprint"]:
+                raise ValueError("Confirmed Matrix Test points changed. Review contact forms again.")
+            target = Path(item["target"])
+            if target.parent != workspace.official_folder_path / "Test results":
+                raise ValueError("Contact record target does not belong to the official Test results folder.")
+            stage_root = self.settings.data_dir / "stage" / state["operation_id"]
+            stage_root.mkdir(parents=True, exist_ok=True)
+            source = stage_root / f"{kind}-{uuid4().hex}.xlsx"
+            if os.path.lexists(source):
+                raise ValueError("Contact record stage path unexpectedly exists.")
+            LlcrCrSpecializedRecordWorkbookGateway().write(
+                output_path=source, projection=projection,
+            )
+            source_parent_identity = file_identity(stage_root)
+            source_identity = file_identity(source)
+            source_sha = file_hash(source)
+            source_size = source.stat().st_size
+            archive_path = (
+                workspace.local_workspace_path / "History" / "Test results"
+                / f"{target.stem} {state['operation_id']}{target.suffix}"
+            )
+            try:
+                summary = outputs.get_status_summary(state["project_id"])
+                record = RegisterProjectOutputCommand(
+                    project_id=state["project_id"],
+                    output_kind=(ProjectOutputKind.LLCR_RECORD_FORM if kind == "llcr"
+                                 else ProjectOutputKind.CR_RECORD_FORM),
+                    status=ProjectOutputStatus.CURRENT,
+                    source=ProjectOutputSource.SYSTEM_GENERATED,
+                    output_path=str(target),
+                    draft_id=summary.active_draft_id,
+                    output_sha256=source_sha,
+                    output_size_bytes=source_size,
+                    source_context_signature=(
+                        f"contact-record:{kind}|matrix:{projection.confirmed_matrix_id}"
+                        f"@{projection.confirmed_revision}|{projection.preview_fingerprint}"
+                    ),
+                    note=(
+                        f"Previous form preserved at {archive_path}; sha256={item['prior']['sha']}."
+                        if item["prior"] is not None else None
+                    ),
+                )
+                publisher.publish(kind, source, target, item["prior"], record)
+            finally:
+                # Only the freshly generated, unchanged source belongs to this runner.
+                if (file_identity(stage_root) == source_parent_identity
+                        and os.path.lexists(source) and not source.is_symlink()
+                        and source.is_file() and file_identity(source) == source_identity
+                        and file_hash(source) == source_sha and source.stat().st_size == source_size):
+                    source.unlink()
+        publisher.recover(lambda payload: self._register_once(outputs, payload))
 
     @staticmethod
     def _register_once(outputs, payload):

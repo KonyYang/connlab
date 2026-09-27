@@ -6,12 +6,16 @@ from dataclasses import dataclass, replace
 from typing import Mapping
 
 from backend.application.matrix_step_text_output import MatrixStepTextOutputOverride, draft_step_text_lookup
+from backend.application.contact_point_profile_confirmed_consumer_adapter import EffectiveConfirmedPointProfile
 from backend.domain.confirmed_matrix_authority_models import ConfirmedMatrixStepTextOverride
 
 from backend.application.confirmed_matrix_llcr_cr_record_projection import (
     LlcrCrRecordProjection,
+    _matrix_record_type,
     build_point_profile_llcr_cr_record_projection,
 )
+from backend.application.matrix_test_points_authority import effective_matrix_point_profile
+from backend.domain.matrix_contact_measurement_models import MatrixPointProfile, MatrixStepPointOverride
 from backend.domain import (
     ConfirmedMatrixGroup,
     ConfirmedMatrixRow,
@@ -33,6 +37,7 @@ class MatrixEditorLlcrCrRecordGroupInput:
     group_label: str
     sample_quantity_expression: str
     sample_note: str | None = None
+    draft_group_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +51,7 @@ class MatrixEditorLlcrCrRecordRowInput:
     requirement: str = ""
     is_sample_row: bool = False
     group_values: Mapping[str, str] | None = None
+    draft_row_id: str | None = None
 
 
 def build_matrix_editor_llcr_cr_record_projection(
@@ -55,6 +61,7 @@ def build_matrix_editor_llcr_cr_record_projection(
     groups: tuple[MatrixEditorLlcrCrRecordGroupInput, ...],
     rows: tuple[MatrixEditorLlcrCrRecordRowInput, ...],
     point_profile,
+    point_overrides: tuple[MatrixStepPointOverride, ...] = (),
     step_text_overrides: tuple[MatrixStepTextOutputOverride, ...] = (),
 ) -> LlcrCrRecordProjection:
     """Build a no-authority workbook projection from the supplied live draft."""
@@ -63,10 +70,33 @@ def build_matrix_editor_llcr_cr_record_projection(
         groups=groups,
         rows=rows,
         step_text_overrides=step_text_overrides,
+        point_profile=(None if isinstance(point_profile, EffectiveConfirmedPointProfile)
+                       else point_profile),
+        point_overrides=point_overrides,
+    )
+    if point_overrides:
+        rows_by_id = {row.confirmed_row_id: row for row in snapshot.rows}
+        targets = {
+            (quantity.draft_group_id, quantity.draft_row_id,
+             quantity.step_sequence, (quantity.step_suffix_note or "").strip())
+            for quantity in snapshot.step_quantities
+            if _matrix_record_type(rows_by_id.get(quantity.confirmed_row_id), quantity)
+            in {"llcr", "cr"}
+        }
+        for override in point_overrides:
+            identity = (
+                override.draft_group_id, override.draft_row_id,
+                override.step_sequence, override.step_suffix_note.strip(),
+            )
+            if identity not in targets:
+                raise ValueError("Draft point exception does not identify a LLCR/CR step.")
+    effective = (
+        point_profile if isinstance(point_profile, EffectiveConfirmedPointProfile)
+        else effective_matrix_point_profile(snapshot)
     )
     projection = build_point_profile_llcr_cr_record_projection(
         snapshot,
-        point_profile,
+        effective,
         record_type,
     )
     return replace(
@@ -83,6 +113,8 @@ def _draft_snapshot(
     groups: tuple[MatrixEditorLlcrCrRecordGroupInput, ...],
     rows: tuple[MatrixEditorLlcrCrRecordRowInput, ...],
     step_text_overrides: tuple[MatrixStepTextOutputOverride, ...] = (),
+    point_profile: MatrixPointProfile | None = None,
+    point_overrides: tuple[MatrixStepPointOverride, ...] = (),
 ) -> ConfirmedMatrixSnapshot:
     version = ConfirmedMatrixVersion(
         confirmed_matrix_id=_DRAFT_MATRIX_ID,
@@ -95,12 +127,14 @@ def _draft_snapshot(
         status=ConfirmedMatrixStatus.SUPERSEDED,
         confirmed_by="matrix-editor-preview",
         confirmed_at="",
+        point_profile=point_profile,
+        point_overrides=point_overrides,
     )
     projected_groups = tuple(
         ConfirmedMatrixGroup(
             confirmed_group_id=f"draft-group-{index}",
             confirmed_matrix_id=_DRAFT_MATRIX_ID,
-            draft_group_id=f"draft-group-{index}",
+            draft_group_id=group.draft_group_id or f"draft-group-{index}",
             source_group_snapshot_id=None,
             group_order=index,
             group_key=group.group_key.strip(),
@@ -116,10 +150,12 @@ def _draft_snapshot(
     }
     projected_rows: list[ConfirmedMatrixRow] = []
     quantities: list[ConfirmedMatrixStepQuantity] = []
+    row_id_by_order: dict[int, str] = {}
     for row_index, row in enumerate(rows, start=1):
         if row.is_sample_row:
             continue
-        row_id = f"draft-row-{row_index}"
+        row_id = row.draft_row_id or f"draft-row-{row_index}"
+        row_id_by_order[row_index] = row_id
         projected_row = ConfirmedMatrixRow(
             confirmed_row_id=row_id,
             confirmed_matrix_id=_DRAFT_MATRIX_ID,
@@ -169,7 +205,7 @@ def _draft_snapshot(
         step_text_overrides=tuple(
             ConfirmedMatrixStepTextOverride(
                 confirmed_group_id=group_by_key[group].confirmed_group_id,
-                confirmed_row_id=f"draft-row-{row_order}",
+                confirmed_row_id=row_id_by_order[row_order],
                 step_sequence=sequence, step_suffix_note=suffix,
                 description=item.description, requirement=item.requirement,
             )

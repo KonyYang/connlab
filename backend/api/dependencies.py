@@ -146,6 +146,7 @@ from backend.application.confirmed_matrix_test_record_preview_service import (
 )
 from backend.application.confirmed_matrix_llcr_cr_record_generation_service import (
     LlcrCrRecordWorkbookGenerationService,
+    MatrixEditorLlcrCrRecordPublicationService,
 )
 from backend.application.confirmed_matrix_llcr_cr_record_preview_service import (
     LlcrCrRecordWorkbookPreviewService,
@@ -1036,6 +1037,7 @@ def get_matrix_editor_session_service(
             draft_store=matrix_draft_store,
             confirmed_store=confirmed_store,
         ),
+        point_profile_adapter=_confirmed_contact_point_profile_consumer_adapter(session),
         pending_fee_rebase_service=MatrixFeePendingRebaseService(
             draft_store=matrix_draft_store,
             pending_store=MatrixFeePendingRebaseRepository(session),
@@ -1463,6 +1465,61 @@ def get_matrix_editor_llcr_cr_record_generation_service(
             settings.data_dir / "generated_llcr_cr_record_drafts"
         ),
         ltr_store=LtrRecordRepository(session),
+    )
+
+
+def get_matrix_editor_llcr_cr_record_publication_service(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> MatrixEditorLlcrCrRecordPublicationService:
+    """Use a separate recoverable journal for direct LLCR/CR formal publication."""
+    from backend.infrastructure.files.generation_journal import GenerationJournal
+    from backend.infrastructure.official_workspace_manifest import (
+        OfficialWorkspaceManifestGateway, stable_folder_identity,
+    )
+    from backend.application.project_lifecycle_write_guard import LifecycleWriteOperation
+
+    def verify_workspace(workspace) -> bool:
+        try:
+            local, official, manifest_path = (
+                Path(workspace.local_workspace_path), Path(workspace.official_folder_path),
+                Path(workspace.manifest_path),
+            )
+            paths = (local, official, manifest_path, official / "Test results")
+            if (not local.is_dir() or not official.is_dir() or not manifest_path.is_file()
+                    or not (official / "Test results").is_dir()
+                    or OfficialWorkspaceManifestGateway.first_redirected_path(
+                        *(parent for path in paths for parent in (path, *path.parents))
+                    ) is not None):
+                return False
+            manifest = OfficialWorkspaceManifestGateway().read(manifest_path)
+            return bool(
+                isinstance(manifest, dict)
+                and manifest.get("project_id") == workspace.project_id
+                and manifest.get("dl_number") == workspace.dl_number
+                and manifest.get("local_workspace_path") == str(local)
+                and manifest.get("official_project_folder_path") == str(official)
+                and (manifest.get("official_folder_identity") is None
+                     or manifest["official_folder_identity"] == stable_folder_identity(official))
+            )
+        except (OSError, ValueError, TypeError):
+            return False
+
+    guard = get_project_lifecycle_write_guard(session)
+    return MatrixEditorLlcrCrRecordPublicationService(
+        confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        preview_service=get_llcr_cr_record_workbook_preview_service(session),
+        workspace_store=ProjectOfficialWorkspaceRepository(session),
+        workspace_verifier=verify_workspace,
+        journal=GenerationJournal(settings.data_dir / "llcr_cr_record_publication"),
+        folder_generation_journal=GenerationJournal(settings.data_dir / "project_folder_generation"),
+        workbook_gateway=LlcrCrSpecializedRecordWorkbookGateway(),
+        output_service=get_project_output_record_service(session),
+        staging_root=settings.data_dir / "stage" / "llcr_cr_record_publication",
+        commit=session.commit,
+        write_guard=lambda project_id: guard.require_write_allowed(
+            project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE,
+        ),
     )
 
 

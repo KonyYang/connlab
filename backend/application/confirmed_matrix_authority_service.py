@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 from backend.application.matrix_step_text_overrides import confirmed_step_text_overrides
+from backend.application.matrix_test_points_authority import (
+    validate_matrix_point_targets,
+    validate_matrix_test_points,
+)
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Protocol
 from uuid import uuid4
@@ -137,9 +141,23 @@ class ConfirmedMatrixAuthorityService:
                 raise ConfirmedMatrixAuthorityError(
                     "Selected groups must have nonblank sample quantity expression."
                 )
+        try:
+            point_profile, point_overrides = validate_matrix_test_points(
+                draft.record.point_profile, draft.record.point_overrides,
+            )
+            validate_matrix_point_targets(
+                point_overrides, profile=point_profile,
+                groups=draft.groups, rows=draft.rows, cells=draft.cells,
+            )
+        except ValueError as exc:
+            raise ConfirmedMatrixAuthorityError(str(exc)) from exc
         _validate_draft_schedule(draft, selected_groups)
         snapshot = _build_confirmed_snapshot(
-            draft=draft,
+            draft=replace(draft, record=replace(
+                draft.record,
+                point_profile=point_profile,
+                point_overrides=point_overrides,
+            )),
             selected_groups=selected_groups,
             confirmed_by=confirmed_by,
         )
@@ -188,6 +206,8 @@ def _build_confirmed_snapshot(
             draft.record.planned_test_complete_date
         ),
         estimated_completion_date=_normalize_optional_text(draft.record.estimated_completion_date),
+        point_profile=draft.record.point_profile,
+        point_overrides=draft.record.point_overrides,
     )
     sorted_groups = sorted(selected_groups, key=lambda item: item.group_order)
     groups: list[ConfirmedMatrixGroup] = []

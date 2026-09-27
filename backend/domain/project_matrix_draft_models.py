@@ -6,7 +6,9 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 
 from backend.domain.enums import ProjectMatrixDraftStatus
-from backend.domain.matrix_contact_measurement_models import MatrixStepContactPlan
+from backend.domain.matrix_contact_measurement_models import (
+    MatrixPointProfile, MatrixStepContactPlan, MatrixStepPointOverride,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +30,8 @@ class ProjectMatrixDraftRecord:
     planned_test_complete_date: str | None = None
     estimated_completion_date: str | None = None
     method_sync_context_json: str | None = None
+    point_profile: MatrixPointProfile | None = None
+    point_overrides: tuple[MatrixStepPointOverride, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

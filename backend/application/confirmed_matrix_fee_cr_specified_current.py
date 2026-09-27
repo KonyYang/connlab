@@ -11,6 +11,7 @@ from backend.application.contact_measurement_plan_confirmed_consumer_adapter imp
 from backend.application.contact_point_profile_confirmed_consumer_adapter import (
     EffectiveConfirmedPointProfile,
 )
+from backend.application.matrix_test_points_authority import effective_point_count
 from backend.domain import ConfirmedMatrixGroup, ConfirmedMatrixRow
 from backend.modules.fee_evaluation import FeeStepQuantityContext
 from backend.modules.fee_evaluation import CrSpecifiedCurrentAuthority
@@ -27,9 +28,10 @@ def resolve_cr_specified_current_readings(
     parsed_tokens: tuple[ParsedStepToken, ...],
     effective_plan: EffectiveContactMeasurementPlan | None,
     effective_point_profile: EffectiveConfirmedPointProfile | None = None,
+    matrix_point_authority: bool = False,
 ) -> tuple[FeeStepQuantityContext, ...]:
     """Return the formal CR plan, or the confirmed project-profile fallback."""
-    if _profile_fallback_allowed(effective_plan) and _profile_cr_is_usable(
+    if (matrix_point_authority or _profile_fallback_allowed(effective_plan)) and _profile_cr_is_usable(
         effective_point_profile
     ):
         return _profile_contexts(
@@ -189,7 +191,11 @@ def _profile_contexts(
             step_sequence=token.sequence,
             step_suffix_note=_suffix(token.suffix_note),
             contact_kind="cr_specified_current",
-            readings_per_sample=format(parsed, "f"),
+            readings_per_sample=(str(effective_point_count(
+                profile, group_id=group.draft_group_id, row_id=row.draft_row_id,
+                step_sequence=token.sequence, step_suffix_note=_suffix(token.suffix_note),
+                record_type="cr",
+            )) if getattr(profile, "step_overrides", ()) else format(parsed, "f")),
             revision_id=profile.revision_id,
             revision_sequence=profile.revision_sequence,
             fingerprint=profile.fingerprint,
@@ -197,6 +203,11 @@ def _profile_contexts(
         )
         for token in parsed_tokens
     )
+    if len({item.readings_per_sample for item in authorities}) > 1:
+        return _blocked(
+            parsed_tokens,
+            "Confirmed Matrix CR steps have different point counts; review Fee Evaluation manually.",
+        )
     return tuple(
         _context(token, authority)
         for token, authority in zip(parsed_tokens, authorities, strict=True)

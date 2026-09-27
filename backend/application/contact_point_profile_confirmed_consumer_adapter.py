@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from backend.domain.matrix_contact_measurement_models import MatrixStepPointOverride
 
 from backend.application.contact_point_profile_fingerprint import (
     point_profile_fingerprint,
@@ -24,7 +25,9 @@ class EffectiveConfirmedPointProfile:
     cr_readings_per_sample: str | None = None
     categories: tuple[dict[str, object], ...] = ()
     cr_category_ids: tuple[str, ...] = ()
+    cr_selection_explicit: bool = False
     delta_r_enabled: bool = True
+    step_overrides: tuple[MatrixStepPointOverride, ...] = ()
 
     @property
     def is_usable(self) -> bool:

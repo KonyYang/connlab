@@ -7,6 +7,11 @@ from dataclasses import asdict
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from backend.domain.matrix_contact_measurement_models import (
+    point_overrides_from_json, point_overrides_to_json,
+    point_profile_from_json, point_profile_to_json,
+)
+
 from backend.domain import (
     contact_plan_from_json,
     contact_plan_to_json,
@@ -201,6 +206,8 @@ def _to_version_model(version: ConfirmedMatrixVersion) -> ConfirmedMatrixVersion
         planned_test_start_date=version.planned_test_start_date,
         planned_test_complete_date=version.planned_test_complete_date,
         estimated_completion_date=version.estimated_completion_date,
+        point_profile_json=point_profile_to_json(version.point_profile),
+        point_overrides_json=point_overrides_to_json(version.point_overrides),
     )
 
 
@@ -321,6 +328,8 @@ def _to_version_domain(row: ConfirmedMatrixVersionModel) -> ConfirmedMatrixVersi
         planned_test_start_date=row.planned_test_start_date,
         planned_test_complete_date=row.planned_test_complete_date,
         estimated_completion_date=row.estimated_completion_date,
+        point_profile=point_profile_from_json(row.point_profile_json),
+        point_overrides=point_overrides_from_json(row.point_overrides_json),
     )
 
 

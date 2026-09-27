@@ -78,6 +78,8 @@ class ProjectMatrixDraftRecordModel(Base):
     planned_test_complete_date: Mapped[str | None] = mapped_column(String(32))
     estimated_completion_date: Mapped[str | None] = mapped_column(String(32))
     method_sync_context_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    point_profile_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    point_overrides_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class ProjectMatrixDraftGroupModel(Base):

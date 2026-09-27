@@ -99,6 +99,39 @@ Do not use a dated snapshot as a substitute for the code.
   review metadata and excluded-group context, never reinsert deleted test rows. Existing schedule
   tables and external project outputs are not replaced to deploy this change.
 
+### Test points in Matrix Editor
+
+- LLCR/CR project point IDs and any selected Group/step subset are edited in the Matrix Editor draft.
+  They become authority only through `Confirm Matrix`, together with the rest of the Matrix. A step
+  without an exception inherits the project points; an exception may narrow, never add, point IDs.
+- Older independently confirmed point profiles remain readable as migration evidence. Only explicit
+  IDs with a matching count may prefill the Matrix editor for review; count-only suggestions must not
+  become authoritative point IDs. The retired independent Setup confirmation cannot publish a second
+  authority. Fee and LLCR/CR record projections prefer the confirmed Matrix point plan; older
+  projects without one can still read their existing point-profile authority for compatibility.
+  That read-only fallback does not guess IDs or publish a new independent point authority.
+- A workbook downloaded from an unconfirmed Matrix editor is a draft preview, not a formal test record.
+  IR and DWV have separate sample/pin/test combinations and remain outside this point-plan workflow.
+- LLCR/CR form actions in Matrix Editor first check whether the current on-screen Matrix matches the
+  confirmed authority. Unconfirmed edits stay in a browser-downloaded preview; a verified confirmed
+  Matrix may publish into its `Test results` folder. A same-name formal form requires explicit approval
+  to preserve the old file under local `History/Test results` before saving a new blank form. No
+  measured form is silently overwritten, and changed files or interrupted publication fail closed.
+- If a CR fee row combines steps with different selected point counts, Matrix confirmation remains
+  available, but that fee line requires human review rather than pricing from only the first step.
+- An approved Create folder operation generates LLCR/CR blank workbooks in the official `Test results`
+  folder only for confirmed Matrix steps with explicit point IDs. Missing point coverage skips the
+  corresponding optional form with a warning; other projection or path failures block publication.
+  The preview binds the target and any existing file's hash and filesystem identity. In an approved
+  in-place update, an unchanged same-name file is moved without replacement to the local
+  `History/Test results` before the new blank form is published without overwriting. Interrupted
+  moves and output registration are journaled and fail closed if an operator changes either file.
+  Whole-folder Backup and Rebuild instead retains the former business folder under `History/Folders`.
+- Historical Matrix rows identified as LLCR/CR only by their structured contact plan are recognized
+  for formal form generation, even when the test-item label is nonstandard. The current Matrix Editor
+  exception picker still recognizes contact tests by label; it cannot edit a Group/step exception
+  for such a legacy row without a reviewed classification migration.
+
 ```text
 React frontend -> FastAPI routes -> application modules -> domain/interfaces
                                                         ^

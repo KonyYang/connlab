@@ -31,6 +31,7 @@ from backend.application.confirmed_matrix_fee_draft_line_builder import (
 from backend.application.contact_point_profile_confirmed_consumer_adapter import (
     ContactPointProfileConfirmedConsumerAdapter,
 )
+from backend.application.matrix_test_points_authority import effective_matrix_point_profile
 from backend.application.contact_measurement_plan_confirmed_consumer_adapter import (
     ContactMeasurementPlanConfirmedConsumerAdapter,
 )
@@ -76,11 +77,9 @@ class ConfirmedMatrixFeeDraftService:
             if self._contact_measurement_adapter is not None
             else None
         )
-        effective_point_profile = (
-            self._contact_point_profile_adapter.get_effective(command.project_id)
-            if self._contact_point_profile_adapter is not None
-            else None
-        )
+        effective_point_profile = effective_matrix_point_profile(snapshot)
+        if effective_point_profile is None and self._contact_point_profile_adapter is not None:
+            effective_point_profile = self._contact_point_profile_adapter.get_effective(command.project_id)
         groups = build_groups(
             snapshot=snapshot,
             library=library,

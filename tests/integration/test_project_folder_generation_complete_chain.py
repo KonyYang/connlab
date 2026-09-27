@@ -146,7 +146,8 @@ def test_one_start_completes_all_real_steps_and_reconnect_never_rewrites_outputs
         completed = _ok(client.get(url))
         assert completed["status"] == "completed", completed
         assert completed["completed_steps"] == ["workspace", "materials", "check", "customer_feedback_form",
-                                                  "fee_form", "test_record", "test_status", "application_form"]
+                                              "fee_form", "test_record", "test_status", "application_form",
+                                              "llcr_cr_records"]
         # Regenerable Office inputs must not inherit the durable journal's deep hash path.
         assert staged_paths
         for path in staged_paths:

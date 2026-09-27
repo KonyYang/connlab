@@ -5,7 +5,7 @@ from uuid import uuid4
 from backend.shared.operation_diagnostics import operation, stage, record_failure, diagnostic_message
 
 GENERATION_STEPS = ("workspace", "materials", "check", "customer_feedback_form", "fee_form",
-                    "test_record", "test_status", "application_form")
+                    "test_record", "test_status", "application_form", "llcr_cr_records")
 
 
 class ProjectFolderInUseError(PermissionError):
@@ -65,8 +65,9 @@ class ProjectFolderGenerationService:
                 request_id=request_id,
                 owner=self.owner,
                 preview_context=expected_context,
-                preview_context_version=2,
+                preview_context_version=3,
                 archive_source_identity_only=strategy == "backup_and_recreate",
+                contact_record_targets=current_preview.get("contact_record_targets", {}),
             )
             self.journal.save(state)
         self.dispatch(lambda: self.run(project_id, state["operation_id"]))
@@ -104,7 +105,11 @@ class ProjectFolderGenerationService:
                     state.get("preview_context_version") is None
                     and preview.get("legacy_expected_context") == expected
                 )
-                if not (matches_current or matches_legacy):
+                matches_previous = (
+                    state.get("preview_context_version") == 2
+                    and preview.get("previous_expected_context") == expected
+                )
+                if not (matches_current or matches_legacy or matches_previous):
                     raise ValueError(
                         "Workspace preview or target changed. Refresh and review before generating."
                     )
@@ -140,7 +145,11 @@ class ProjectFolderGenerationService:
                     self.journal.save(state)
                     with stage("folder_finalization"):
                         self.finalize(state)
-                    state.update(status="completed", finalization_pending=False, message="Project folder generation completed.")
+                    warnings = state.get("warnings", ())
+                    message = "Project folder generation completed."
+                    if warnings:
+                        message += " " + " ".join(warnings)
+                    state.update(status="completed", finalization_pending=False, message=message)
                     self.journal.save(state)
                 except Exception as exc:
                     record_failure(exc)

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 from typing import Protocol
 
 from backend.domain.project_matrix_draft_models import ProjectMatrixDraftStepTextOverride
+from backend.domain.matrix_contact_measurement_models import MatrixPointProfile, MatrixStepPointOverride
 
 from backend.application.project_matrix_duration_authority_payload import (
     ProjectMatrixDraftPersistenceError,
@@ -157,6 +158,8 @@ class UpdateProjectMatrixDraftCommand:
     duration_authorities_present: bool = False
     duration_authorities: tuple[ProjectMatrixDurationAuthorityInput, ...] | None = None
     step_text_overrides: tuple[ProjectMatrixDraftStepTextOverride, ...] | None = None
+    point_profile: MatrixPointProfile | None = None
+    point_overrides: tuple[MatrixStepPointOverride, ...] | None = None
 
 
 class ProjectMatrixDraftPersistenceService:
@@ -246,4 +249,9 @@ class ProjectMatrixDraftPersistenceService:
         if len(command.rows) == 0:
             raise ProjectMatrixDraftPersistenceError("At least one row is required.")
         normalized = _build_updated_snapshot(existing, command)
+        normalized = replace(normalized, record=replace(
+            normalized.record,
+            point_profile=command.point_profile if command.point_profile is not None else existing.record.point_profile,
+            point_overrides=command.point_overrides if command.point_overrides is not None else existing.record.point_overrides,
+        ))
         return self._drafts.replace_snapshot(normalized)

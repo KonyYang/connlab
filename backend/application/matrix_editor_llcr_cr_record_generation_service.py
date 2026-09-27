@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Protocol
 
 from backend.application.matrix_step_text_output import MatrixStepTextOutputOverride
+from backend.domain.matrix_contact_measurement_models import MatrixPointProfile, MatrixStepPointOverride
+from backend.application.matrix_test_points_authority import validate_matrix_test_points
 
 from backend.application.confirmed_matrix_llcr_cr_record_projection import (
     LlcrCrRecordProjection,
@@ -59,6 +61,8 @@ class GenerateMatrixEditorLlcrCrRecordCommand:
     groups: tuple[MatrixEditorLlcrCrRecordGroupInput, ...]
     rows: tuple[MatrixEditorLlcrCrRecordRowInput, ...]
     step_text_overrides: tuple[MatrixStepTextOutputOverride, ...] = ()
+    point_profile: MatrixPointProfile | None = None
+    point_overrides: tuple[MatrixStepPointOverride, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,13 +93,14 @@ class MatrixEditorLlcrCrRecordGenerationService:
         self,
         command: GenerateMatrixEditorLlcrCrRecordCommand,
     ) -> MatrixEditorLlcrCrRecordGenerationResult:
-        profile = self._point_profile_adapter.get_effective(command.project_id)
+        profile, overrides = validate_matrix_test_points(command.point_profile, command.point_overrides)
         projection = build_matrix_editor_llcr_cr_record_projection(
             project_id=command.project_id,
             record_type=command.record_type,
             groups=command.groups,
             rows=command.rows,
             point_profile=profile,
+            point_overrides=overrides,
             step_text_overrides=command.step_text_overrides,
         )
         projection = replace(

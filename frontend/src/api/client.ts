@@ -1493,6 +1493,8 @@ export type ProjectMatrixDraft = {
   cells: ProjectMatrixDraftCell[];
   step_text_overrides?: MatrixStepTextOverride[];
   duration_authorities?: MatrixDurationAuthority[];
+  point_profile?: MatrixTestPointProfile | null;
+  point_overrides?: MatrixTestPointOverride[];
 };
 
 export type LlcrCrRecordWorkbookDiagnostic = {
@@ -1653,6 +1655,27 @@ export type ProjectMatrixDraftSaveRequest = {
   planned_test_start_date?: string | null;
   planned_test_complete_date?: string | null;
   estimated_completion_date?: string | null;
+  point_profile?: MatrixTestPointProfile | null;
+  point_overrides?: MatrixTestPointOverride[];
+};
+
+export type MatrixTestPointCategory = {
+  prefix: string;
+  point_expression: string;
+  cr_selected: boolean;
+};
+
+export type MatrixTestPointProfile = {
+  categories: MatrixTestPointCategory[];
+  delta_r_enabled: boolean;
+};
+
+export type MatrixTestPointOverride = {
+  draft_group_id: string;
+  draft_row_id: string;
+  step_sequence: number;
+  step_suffix_note: string;
+  categories: Pick<MatrixTestPointCategory, "prefix" | "point_expression">[];
 };
 
 export type ProjectMatrixDraftDurationAuthorityInput = {
@@ -1725,6 +1748,8 @@ export type MatrixEditorSessionDraft = {
   cells: MatrixEditorSessionDraftCell[];
   duration_authorities?: MatrixEditorSessionDurationAuthority[];
   step_text_overrides?: MatrixStepTextOverride[];
+  point_profile?: MatrixTestPointProfile | null;
+  point_overrides?: MatrixTestPointOverride[];
 };
 
 export type MatrixStepTextOverride = {
@@ -1738,6 +1763,8 @@ export type MatrixStepTextOverride = {
 
 export type MatrixEditorSessionSeed = {
   project_id: string;
+  point_profile_warning?: string | null;
+  point_profile_prefilled_from_legacy?: boolean;
   active_confirmed_matrix_id?: string | null;
   active_confirmed_revision?: number | null;
   active_source_import_id?: string | null;
@@ -1778,6 +1805,8 @@ export type MatrixEditorSessionConfirmRequest = {
   cells: MatrixEditorSessionDraftCell[];
   duration_authorities?: MatrixEditorSessionDurationAuthority[];
   step_text_overrides?: MatrixStepTextOverride[];
+  point_profile?: MatrixTestPointProfile | null;
+  point_overrides?: MatrixTestPointOverride[];
   pre_test_buffer_days?: string | null;
   post_test_buffer_days?: string | null;
   sample_received_date?: string | null;
@@ -1823,6 +1852,7 @@ export type MatrixEditorSessionConfirmResponse = {
 };
 
 export type MatrixEditorTestRecordDraftGroupRequest = {
+  draft_group_id?: string;
   group_key: string;
   group_label: string;
   sample_quantity_expression: string;
@@ -1830,6 +1860,7 @@ export type MatrixEditorTestRecordDraftGroupRequest = {
 };
 
 export type MatrixEditorTestRecordDraftRowRequest = {
+  draft_row_id?: string;
   test_item: string;
   section: string;
   method: string;
@@ -1843,6 +1874,8 @@ export type MatrixEditorTestRecordDraftRequest = {
   source: "matrix_editor_current_ui_state";
   groups: MatrixEditorTestRecordDraftGroupRequest[];
   rows: MatrixEditorTestRecordDraftRowRequest[];
+  point_profile?: MatrixTestPointProfile | null;
+  point_overrides?: MatrixTestPointOverride[];
   step_text_overrides?: Array<{
     group_key: string;
     row_order: number;
@@ -2157,6 +2190,25 @@ export type MatrixEditorTestStatusDraftRequest = MatrixEditorTestRecordDraftRequ
 
 export type MatrixEditorLlcrCrRecordDraftRequest = MatrixEditorTestRecordDraftRequest & {
   record_type: LlcrCrRecordType;
+  matrix_has_pending_changes?: boolean;
+};
+
+export type MatrixEditorLlcrCrRecordPublicationPreview = {
+  project_id: string;
+  mode: "download" | "official";
+  status: "ready" | "conflict" | "blocked";
+  authority_status: "confirmed" | "unconfirmed";
+  target_path: string | null;
+  existing_file: boolean;
+  blockers: string[];
+  preview_token: string;
+};
+
+export type MatrixEditorLlcrCrRecordPublicationResult = {
+  project_id: string;
+  file_name: string;
+  target_path: string;
+  archive_path: string | null;
 };
 
 export type MatrixResolvedDirectoryCandidate = {
@@ -5505,7 +5557,7 @@ export function customerReportDraftDownloadUrl(
 
 export function generateMatrixEditorLlcrCrRecordDraftDownload(
   projectId: string,
-  input: MatrixEditorLlcrCrRecordDraftRequest
+  input: MatrixEditorLlcrCrRecordDraftRequest & { preview_token?: string }
 ): Promise<BlobDownloadResponse> {
   return requestBlobResponse(
     `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/llcr-cr-record-draft/generate`,
@@ -5514,6 +5566,29 @@ export function generateMatrixEditorLlcrCrRecordDraftDownload(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     }
+  );
+}
+
+export function previewMatrixEditorLlcrCrRecordPublication(
+  projectId: string,
+  input: MatrixEditorLlcrCrRecordDraftRequest
+): Promise<MatrixEditorLlcrCrRecordPublicationPreview> {
+  return requestJson<MatrixEditorLlcrCrRecordPublicationPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/llcr-cr-record-publication/preview`,
+    { method: "POST", body: JSON.stringify(input) }
+  );
+}
+
+export function publishMatrixEditorLlcrCrRecord(
+  projectId: string,
+  input: MatrixEditorLlcrCrRecordDraftRequest & {
+    preview_token: string;
+    conflict_action: "none" | "archive";
+  }
+): Promise<MatrixEditorLlcrCrRecordPublicationResult> {
+  return requestJson<MatrixEditorLlcrCrRecordPublicationResult>(
+    `/api/projects/${encodeURIComponent(projectId)}/matrix-editor/llcr-cr-record-publication/publish`,
+    { method: "POST", body: JSON.stringify(input) }
   );
 }
 

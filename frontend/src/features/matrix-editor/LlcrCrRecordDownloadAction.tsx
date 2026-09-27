@@ -5,28 +5,60 @@ import type {
 import "../../contact-measurement-plan.css";
 import { useLlcrCrSpecializedRecordWorkbookModel } from "./useLlcrCrSpecializedRecordWorkbookModel";
 
-export function LlcrCrRecordDownloadAction({ projectId, recordType, getDraftRequest }: {
+export function LlcrCrRecordDownloadAction({ projectId, recordType, getDraftRequest, matrixHasPendingChanges = false }: {
   projectId: string;
   recordType: LlcrCrRecordType;
   getDraftRequest: () => MatrixEditorTestRecordDraftRequest;
+  matrixHasPendingChanges?: boolean;
 }) {
   const model = useLlcrCrSpecializedRecordWorkbookModel(
     projectId,
     recordType,
     getDraftRequest,
+    matrixHasPendingChanges,
   );
   const label = recordType.toUpperCase();
   return <div className="llcr-cr-record-download">
     <button
       className="contact-measurement-button is-compact"
       type="button"
-      disabled={model.busy}
-      title={`Download an unconfirmed ${label} preview workbook from the current Matrix draft and Test points.`}
+      disabled={model.busy || Boolean(model.pending)}
+      title={`Check whether the current ${label} form belongs in Downloads or the project Test results folder.`}
       onClick={() => void model.downloadWorkbook()}
     >
-      {model.busy ? `Generating ${label}...` : `Download ${label}`}
+      {model.busy ? `Checking ${label}...` : `${label} Form`}
     </button>
     {model.error ? <p className="llcr-cr-record-error" role="alert">{model.error}</p> : null}
     {model.message ? <p className="llcr-cr-record-success" role="status">{model.message}</p> : null}
+    {model.pending ? <div className="official-output-conflict-backdrop">
+      <section
+        className="official-output-conflict-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`${recordType}-form-confirm-title`}
+      >
+        <h3 id={`${recordType}-form-confirm-title`}>
+          {model.pending.mode === "download"
+            ? `Download ${label} preview?`
+            : `Update existing ${label} Form?`}
+        </h3>
+        <p>
+          {model.pending.mode === "download"
+            ? `This ${label} preview will be saved to your browser Downloads, not the project folder. ${model.pending.authority_status === "unconfirmed" ? "It uses the current unconfirmed Matrix draft." : "The official project folder is not available."}`
+            : `The existing ${label} form may contain measured results. It will be preserved in History/Test results before a new blank form is saved to Test results.`}
+        </p>
+        <div className="official-output-conflict-actions">
+          {model.pending.mode === "download" ? (
+            <button className="contact-measurement-button" type="button" disabled={model.busy}
+              onClick={() => void model.confirmDownload()}>Download preview</button>
+          ) : (
+            <button className="contact-measurement-button" type="button" disabled={model.busy}
+              onClick={() => void model.archiveAndPublish()}>Archive old file and save new</button>
+          )}
+          <button className="contact-measurement-button" type="button" disabled={model.busy}
+            onClick={model.cancel}>Cancel</button>
+        </div>
+      </section>
+    </div> : null}
   </div>;
 }

@@ -32,6 +32,67 @@ class MatrixStepContactPlan:
     families: tuple[MatrixStepContactFamily, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class MatrixPointCategory:
+    prefix: str
+    point_expression: str
+    cr_selected: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class MatrixPointProfile:
+    categories: tuple[MatrixPointCategory, ...]
+    delta_r_enabled: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class MatrixStepPointCategory:
+    prefix: str
+    point_expression: str
+
+
+@dataclass(frozen=True, slots=True)
+class MatrixStepPointOverride:
+    draft_group_id: str
+    draft_row_id: str
+    step_sequence: int
+    step_suffix_note: str
+    categories: tuple[MatrixStepPointCategory, ...]
+
+
+def point_profile_to_json(profile: MatrixPointProfile | None) -> str | None:
+    return json.dumps(asdict(profile), separators=(",", ":"), sort_keys=True) if profile else None
+
+
+def point_profile_from_json(value: str | None) -> MatrixPointProfile | None:
+    if not value:
+        return None
+    payload = json.loads(value)
+    return MatrixPointProfile(
+        categories=tuple(MatrixPointCategory(**category) for category in payload["categories"]),
+        delta_r_enabled=bool(payload["delta_r_enabled"]),
+    )
+
+
+def point_overrides_to_json(overrides: tuple[MatrixStepPointOverride, ...]) -> str:
+    return json.dumps([asdict(item) for item in overrides], separators=(",", ":"), sort_keys=True)
+
+
+def point_overrides_from_json(value: str | None) -> tuple[MatrixStepPointOverride, ...]:
+    if not value:
+        return ()
+    return tuple(
+        MatrixStepPointOverride(
+            draft_group_id=item["draft_group_id"],
+            draft_row_id=item["draft_row_id"],
+            step_sequence=int(item["step_sequence"]),
+            step_suffix_note=item["step_suffix_note"],
+            categories=tuple(MatrixStepPointCategory(**category) for category in item["categories"]),
+        )
+        for item in json.loads(value)
+    )
+
+
 def contact_plan_to_json(plan: MatrixStepContactPlan | None) -> str | None:
     """Serialize typed contact authority for local SQLite storage."""
     if plan is None:

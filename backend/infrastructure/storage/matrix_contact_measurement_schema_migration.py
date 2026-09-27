@@ -30,3 +30,12 @@ def migrate_matrix_contact_measurement_columns(engine: Engine) -> None:
                 connection.exec_driver_sql(
                     f"ALTER TABLE {table_name} ADD COLUMN contact_plan_json TEXT"
                 )
+        for table_name in ("project_matrix_draft_records", "confirmed_matrix_versions"):
+            if table_name not in table_names:
+                continue
+            columns = {
+                row[1] for row in connection.exec_driver_sql(f"PRAGMA table_info({table_name})").all()
+            }
+            for column in ("point_profile_json", "point_overrides_json"):
+                if column not in columns:
+                    connection.exec_driver_sql(f"ALTER TABLE {table_name} ADD COLUMN {column} TEXT")

@@ -11,6 +11,10 @@ from backend.application.contact_point_profile_confirmed_consumer_adapter import
     EffectiveConfirmedPointProfile,
 )
 from backend.domain import ConfirmedMatrixCell
+from backend.domain.matrix_contact_measurement_models import (
+    MatrixPointCategory, MatrixPointProfile, MatrixStepPointCategory,
+    MatrixStepPointOverride,
+)
 from tests.unit.test_confirmed_matrix_fee_draft_service import (
     _ConfirmedStore,
     _fixture_row,
@@ -139,6 +143,87 @@ def test_fee_draft_uses_profile_when_measurement_plan_is_disabled() -> None:
     draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
 
     assert draft.groups[0].line_items[0].units == Decimal("20")
+
+
+def test_confirmed_matrix_cr_step_subset_precedes_legacy_measurement_plan() -> None:
+    row = _fixture_row("CONTACT RESISTANCE, SPECIFIED CURRENT")
+    snapshot = _snapshot(row=row)
+    snapshot = replace(snapshot, version=replace(
+        snapshot.version,
+        point_profile=MatrixPointProfile((MatrixPointCategory("HP", "1-4", True),)),
+        point_overrides=(MatrixStepPointOverride(
+            "pmdg-1", row.draft_row_id, 1, "",
+            (MatrixStepPointCategory("HP", "2-3"),),
+        ),),
+    ))
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(active=snapshot),
+        contact_measurement_adapter=_ContactAdapter("complete"),
+        contact_point_profile_adapter=_ProfileAdapter(_confirmed_profile(readings_per_sample="9")),
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.units == Decimal("10")
+    assert any(item.field == "units" and "Confirmed Matrix" in (item.source or "")
+               for item in line.field_metadata)
+
+
+def test_confirmed_matrix_cr_different_step_point_counts_require_manual_fee_review() -> None:
+    row = _fixture_row("CONTACT RESISTANCE, SPECIFIED CURRENT")
+    snapshot = _snapshot(row=row, cell_value="1,2")
+    snapshot = replace(snapshot, version=replace(
+        snapshot.version,
+        point_profile=MatrixPointProfile((MatrixPointCategory("HP", "1-4", True),)),
+        point_overrides=(
+            MatrixStepPointOverride("pmdg-1", row.draft_row_id, 1, "",
+                                    (MatrixStepPointCategory("HP", "1-2"),)),
+            MatrixStepPointOverride("pmdg-1", row.draft_row_id, 2, "",
+                                    (MatrixStepPointCategory("HP", "1-3"),)),
+        ),
+    ))
+    service = ConfirmedMatrixFeeDraftService(confirmed_store=_ConfirmedStore(active=snapshot))
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.review_required is True
+    assert (line.unit_price, line.units, line.testing_fee) == (None, None, None)
+    assert "different point counts" in (line.review_reason or "")
+
+
+def test_confirmed_matrix_cr_equal_step_point_counts_remain_auto_priced() -> None:
+    row = _fixture_row("CONTACT RESISTANCE, SPECIFIED CURRENT")
+    snapshot = _snapshot(row=row, cell_value="1,2")
+    snapshot = replace(snapshot, version=replace(
+        snapshot.version,
+        point_profile=MatrixPointProfile((MatrixPointCategory("HP", "1-2", True),)),
+    ))
+    service = ConfirmedMatrixFeeDraftService(confirmed_store=_ConfirmedStore(active=snapshot))
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    line = draft.groups[0].line_items[0]
+    assert line.review_required is False
+    assert (line.unit_price, line.units) == (Decimal("10"), Decimal("10"))
+
+
+def test_confirmed_matrix_llcr_points_precede_legacy_measurement_plan() -> None:
+    row = _fixture_row("Contact Resistance (Low Level)")
+    snapshot = _snapshot(row=row)
+    snapshot = replace(snapshot, version=replace(
+        snapshot.version,
+        point_profile=MatrixPointProfile((MatrixPointCategory("HP", "1-3", True),)),
+    ))
+    service = ConfirmedMatrixFeeDraftService(
+        confirmed_store=_ConfirmedStore(active=snapshot),
+        contact_measurement_adapter=_ContactAdapter("complete"),
+    )
+
+    draft = service.build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
+
+    assert draft.groups[0].line_items[0].units == Decimal("15")
 
 
 def test_fee_draft_blocks_profile_fallback_for_active_measurement_plan_omission() -> None:

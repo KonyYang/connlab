@@ -187,6 +187,8 @@ class ProjectOutputKind(StrEnum):
     SECTION2_WRITE_BACK = "section2_write_back"
     TEST_RECORD_FORM = "test_record_form"
     TEST_STATUS = "test_status"
+    LLCR_RECORD_FORM = "llcr_record_form"
+    CR_RECORD_FORM = "cr_record_form"
     FEE_EVALUATION = "fee_evaluation"
     CUSTOMER_FEEDBACK_FORM = "customer_feedback_form"
     APPROVAL_PACKAGE = "approval_package"

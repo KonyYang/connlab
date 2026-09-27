@@ -33,6 +33,11 @@ from backend.application.matrix_fee_pending_rebase_service import (
     DeletePendingRebaseForMatrixDraftCommand,
     RebaseAfterMatrixAutosaveCommand,
 )
+from backend.application.matrix_test_points_authority import (
+    validate_matrix_point_targets, validate_matrix_test_points,
+)
+from backend.application.contact_point_profile_expression import parse_point_expression
+from backend.domain.matrix_contact_measurement_models import MatrixPointCategory, MatrixPointProfile
 from backend.application.matrix_fee_rebase_promotion_service import PromoteMatrixFeeRebaseCommand
 from backend.application.project_matrix_draft_persistence_service import (
     ProjectMatrixDraftPersistenceService,
@@ -92,6 +97,7 @@ class MatrixEditorSessionService(
         fee_rebase_promotion_service: FeeRebasePromotionService | None = None,
         fee_rule_version_provider: Callable[[], str] | None = None,
         lifecycle_write_guard: ProjectLifecycleWriteGuard | None = None,
+        point_profile_adapter=None,
     ) -> None:
         self._projects = project_store
         self._confirmed = confirmed_store
@@ -109,6 +115,7 @@ class MatrixEditorSessionService(
             fee_rule_version_provider or _active_fee_rule_version_id
         )
         self._lifecycle_write_guard = lifecycle_write_guard
+        self._point_profile_adapter = point_profile_adapter
 
     def get_seed(self, *, project_id: str) -> MatrixEditorSessionSeed:
         """Build one Matrix Editor seed from active authority and source snapshot lineage."""
@@ -121,6 +128,7 @@ class MatrixEditorSessionService(
             else self._get_unconfirmed_editor_draft(project_id)
         )
         if active is None and current_draft is None:
+            _legacy_profile, profile_warning = self._legacy_profile_seed(project_id)
             return MatrixEditorSessionSeed(
                 project_id=project_id,
                 active_confirmed_matrix_id=None,
@@ -134,6 +142,7 @@ class MatrixEditorSessionService(
                 source_status="not_required",
                 source_unavailable_message=None,
                 stale_draft_present=stale_draft_present,
+                point_profile_warning=profile_warning,
             )
         if current_draft is not None:
             editor_draft = _build_editor_draft_from_project_draft(current_draft)
@@ -156,6 +165,13 @@ class MatrixEditorSessionService(
             draft_updated_at = None
             saved_payload_signature = None
             schedule_source = active.version
+        point_profile_warning = None
+        point_profile_prefilled_from_legacy = False
+        if editor_draft.point_profile is None:
+            legacy_profile, point_profile_warning = self._legacy_profile_seed(project_id)
+            if legacy_profile is not None:
+                editor_draft = replace(editor_draft, point_profile=legacy_profile)
+                point_profile_prefilled_from_legacy = True
         active_confirmed_matrix_id = (
             active.version.confirmed_matrix_id if active is not None else None
         )
@@ -194,6 +210,8 @@ class MatrixEditorSessionService(
                 stale_draft_present=stale_draft_present,
                 draft_updated_at=draft_updated_at,
                 saved_payload_signature=saved_payload_signature,
+                point_profile_warning=point_profile_warning,
+                point_profile_prefilled_from_legacy=point_profile_prefilled_from_legacy,
             )
         import_record = (
             self._sources.get_import(editor_source_import_id)
@@ -228,6 +246,8 @@ class MatrixEditorSessionService(
             stale_draft_present=stale_draft_present,
             draft_updated_at=draft_updated_at,
             saved_payload_signature=saved_payload_signature,
+            point_profile_warning=point_profile_warning,
+            point_profile_prefilled_from_legacy=point_profile_prefilled_from_legacy,
         )
 
     def save_editor_draft(
@@ -244,6 +264,7 @@ class MatrixEditorSessionService(
         active = self._confirmed.get_active_by_project(command.project_id)
         expected_command = _confirm_command_from_save_command(command, confirmed_by="autosave")
         self._validate_expected_active(expected_command, active)
+        expected_command = self._resolve_point_payload(expected_command, active)
         if active is None:
             draft = self._get_unconfirmed_editor_draft(command.project_id)
             if draft is None and not command.source_import_id and not command.source_snapshot_id:
@@ -405,6 +426,7 @@ class MatrixEditorSessionService(
             raise MatrixEditorSessionError("confirmed_by is required.")
         active = self._confirmed.get_active_by_project(command.project_id)
         self._validate_expected_active(command, active)
+        command = self._resolve_point_payload(command, active)
         if command.step_text_overrides is None and active is not None:
             # Legacy partial clients omit this field. Preserve its existing authority,
             # including the current saved draft, rather than implicitly clearing it.
@@ -505,6 +527,79 @@ class MatrixEditorSessionService(
             fee_rebase_promotion_error=promotion.error,
         )
 
+    def _resolve_point_payload(
+        self,
+        command: MatrixEditorSessionConfirmCommand,
+        active: ConfirmedMatrixSnapshot | None,
+    ) -> MatrixEditorSessionConfirmCommand:
+        current = (
+            self._get_current_editor_draft(active) if active is not None
+            else self._get_unconfirmed_editor_draft(command.project_id)
+        )
+        if current is None and command.expected_editor_draft_id:
+            candidate = self._drafts.get(command.expected_editor_draft_id)
+            if candidate is not None and candidate.record.project_id == command.project_id:
+                if active is None or candidate.record.base_confirmed_matrix_id == active.version.confirmed_matrix_id:
+                    current = candidate
+        profile = command.point_profile
+        if profile is None:
+            profile = current.record.point_profile if current is not None else None
+            if profile is None and active is not None:
+                profile = active.version.point_profile
+        overrides = command.point_overrides
+        if overrides is None:
+            overrides = current.record.point_overrides if current is not None else None
+            if overrides is None and active is not None:
+                overrides = active.version.point_overrides
+        try:
+            profile, overrides = validate_matrix_test_points(profile, overrides or ())
+            validate_matrix_point_targets(
+                overrides, profile=profile,
+                groups=command.groups, rows=command.rows, cells=command.cells,
+            )
+        except ValueError as exc:
+            raise MatrixEditorSessionError(str(exc)) from exc
+        return replace(command, point_profile=profile, point_overrides=overrides)
+
+    def _legacy_profile_seed(self, project_id: str) -> tuple[MatrixPointProfile | None, str | None]:
+        if self._point_profile_adapter is None:
+            return None, None
+        legacy = self._point_profile_adapter.get_effective(project_id)
+        if not legacy.is_usable or not legacy.categories:
+            warning = (
+                "Existing Point Profile needs review before Matrix can use its point IDs."
+                if legacy.status in {"authority_corrupt", "stale", "draft"} else None
+            )
+            return None, warning
+        selected = set(legacy.cr_category_ids)
+        categories = []
+        for category in legacy.categories:
+            if not category.get("included", True):
+                continue
+            expression = category.get("point_expression")
+            if not isinstance(expression, str):
+                return None, "Legacy Point Profile contains counts without explicit point IDs; enter actual IDs before Confirm Matrix."
+            try:
+                points = parse_point_expression(expression)
+            except ValueError:
+                return None, "Legacy Point Profile has invalid point IDs; review before Confirm Matrix."
+            if points.count != int(category.get("count_per_sample") or 0):
+                return None, "Legacy Point Profile point count conflicts with its IDs; review before Confirm Matrix."
+            categories.append(MatrixPointCategory(
+                prefix=str(category["record_prefix"]),
+                point_expression=points.canonical,
+                cr_selected=(not selected or str(category["category_id"]) in selected),
+            ))
+        if not categories:
+            return None, None
+        try:
+            profile, _ = validate_matrix_test_points(
+                MatrixPointProfile(tuple(categories), legacy.delta_r_enabled), (),
+            )
+        except ValueError:
+            return None, "Legacy Point Profile cannot be migrated automatically; review its point IDs."
+        return profile, None
+
 
 
 def _active_fee_rule_version_id() -> str:
@@ -519,7 +614,6 @@ def _validate_session_group_identities(
         raise MatrixEditorSessionError(
             format_duplicate_matrix_group_key_message(duplicate_group_keys)
         )
-
 
 _build_signature_from_project_draft = build_project_matrix_draft_payload_signature
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import json
@@ -65,6 +65,7 @@ class LlcrCrRecordStage:
     requirement: str
     test_current_ampere: str | None = None
     description_is_override: bool = False
+    point_ids: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,7 +147,7 @@ def build_point_profile_llcr_cr_record_projection(
         matching = [
             quantity
             for quantity in group_quantities
-            if _matrix_record_type(rows.get(quantity.confirmed_row_id), quantity) == record_type
+            if matrix_record_type(rows.get(quantity.confirmed_row_id), quantity) == record_type
         ]
         if matching:
             targets.append((group, matching))
@@ -168,7 +169,10 @@ def build_point_profile_llcr_cr_record_projection(
     categories = tuple(
         category for category in effective_profile.categories if bool(category.get("included", True))
     )
-    if record_type == "cr" and effective_profile.cr_category_ids:
+    if record_type == "cr" and (
+        effective_profile.cr_category_ids
+        or getattr(effective_profile, "cr_selection_explicit", False)
+    ):
         selected = set(effective_profile.cr_category_ids)
         categories = tuple(
             category for category in categories if str(category.get("category_id")) in selected
@@ -198,6 +202,7 @@ def build_point_profile_llcr_cr_record_projection(
             record_type,
             confirmed_step_text_lookup(snapshot),
         )
+        first_section_index = len(sections)
         for category in categories:
             try:
                 points = parse_point_expression(category.get("point_expression")).points
@@ -214,6 +219,17 @@ def build_point_profile_llcr_cr_record_projection(
                 continue
             prefix = str(category.get("record_prefix") or "").strip().upper()
             label = str(category.get("label") or prefix).strip()
+            category_stages = tuple(
+                _stage_with_selected_points(
+                    stage, points=points, category_id=str(category.get("category_id") or ""),
+                    group=group, quantity=quantity, effective_profile=effective_profile,
+                )
+                for stage, quantity in zip(stages, matching, strict=True)
+            )
+            if not any(stage.point_ids for stage in category_stages):
+                continue
+            used_points = {point for stage in category_stages for point in stage.point_ids}
+            visible_points = tuple(point for point in points if point in used_points)
             materialized_rows = tuple(
                 LlcrCrRecordRow(
                     sample_index=sample,
@@ -221,7 +237,7 @@ def build_point_profile_llcr_cr_record_projection(
                     contact_label=label,
                 )
                 for sample in range(1, sample_count + 1)
-                for point in points
+                for point in visible_points
             )
             sections.append(
                 LlcrCrRecordSection(
@@ -233,15 +249,27 @@ def build_point_profile_llcr_cr_record_projection(
                     group_label=group.group_label.strip(),
                     source_step=", ".join(stage.source_step for stage in stages),
                     sample_count=sample_count,
-                    readings_per_sample=len(points),
+                    readings_per_sample=len(visible_points),
                     rows=materialized_rows,
                     category_id=str(category.get("category_id") or ""),
                     category_label=label,
-                    point_expression=str(category.get("point_expression") or ""),
-                    stages=stages,
+                    point_expression=",".join(visible_points),
+                    stages=category_stages,
                     record_prefix=prefix,
                 )
             )
+        for stage_index, quantity in enumerate(matching):
+            if not any(
+                section.stages[stage_index].point_ids
+                for section in sections[first_section_index:]
+            ):
+                diagnostics.append(LlcrCrRecordDiagnostic(
+                    code="step_point_coverage_empty", severity="blocked",
+                    message="This LLCR/CR step has no selected point IDs.",
+                    confirmed_group_id=group.confirmed_group_id,
+                    confirmed_row_id=quantity.confirmed_row_id,
+                    step_sequence=quantity.step_sequence,
+                ))
     status = _projection_status(sections, diagnostics)
     fingerprint = (
         _point_profile_fingerprint(snapshot, effective_profile, record_type, sections, diagnostics)
@@ -257,6 +285,31 @@ def build_point_profile_llcr_cr_record_projection(
         tuple(diagnostics),
         fingerprint,
     )
+
+
+def _stage_with_selected_points(
+    stage: LlcrCrRecordStage,
+    *,
+    points: tuple[str, ...],
+    category_id: str,
+    group: object,
+    quantity: ConfirmedMatrixStepQuantity,
+    effective_profile: object,
+) -> LlcrCrRecordStage:
+    identity = (
+        group.draft_group_id, quantity.draft_row_id,
+        quantity.step_sequence, _suffix_identity(quantity.step_suffix_note),
+    )
+    override = next((item for item in getattr(effective_profile, "step_overrides", ()) if (
+        item.draft_group_id, item.draft_row_id,
+        item.step_sequence, item.step_suffix_note,
+    ) == identity), None)
+    if override is None:
+        return replace(stage, point_ids=points)
+    category = next((item for item in override.categories
+                     if item.prefix.casefold() == category_id.casefold()), None)
+    selected = parse_point_expression(category.point_expression).points if category else ()
+    return replace(stage, point_ids=selected)
 
 
 def build_llcr_cr_record_projection(
@@ -554,7 +607,7 @@ def _previous_matrix_row(
     return None
 
 
-def _matrix_record_type(row, quantity: ConfirmedMatrixStepQuantity) -> str | None:
+def matrix_record_type(row, quantity: ConfirmedMatrixStepQuantity) -> str | None:
     text_value = re.sub(
         r"[^A-Z0-9]+", " ", str(getattr(row, "test_item", "") or "").upper()
     ).strip()
@@ -562,7 +615,7 @@ def _matrix_record_type(row, quantity: ConfirmedMatrixStepQuantity) -> str | Non
         "CONTACT RESISTANCE" in text_value and "LOW LEVEL" in text_value
     ):
         return "llcr"
-    if text_value == "CR" or "CONTACT RESISTANCE" in text_value:
+    if text_value == "CR" or text_value.startswith("CR ") or "CONTACT RESISTANCE" in text_value:
         return "cr"
     plan = quantity.contact_plan
     if plan is not None and plan.included:
@@ -571,6 +624,9 @@ def _matrix_record_type(row, quantity: ConfirmedMatrixStepQuantity) -> str | Non
         if plan.contact_kind == "cr_specified_current":
             return "cr"
     return None
+
+
+_matrix_record_type = matrix_record_type  # Compatibility for the draft record projection.
 
 
 def _test_current_ampere(condition: str) -> str | None:
