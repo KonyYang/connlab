@@ -25,8 +25,16 @@
     "risk_reasons": [],
     "activation_head": "ce5e9d205df4a71c1dbf85002b478c08a9561f4e",
     "started_at": "2026-09-27T01:06:47.852875Z",
-    "updated_at": "2026-09-27T01:06:47.852875Z",
-    "checkpoint": null,
+    "updated_at": "2026-09-27T01:54:31.521113Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_MATRIX_SCHEDULE_COMPACT_HEADER",
+      "stage": "revision",
+      "status": "running",
+      "summary": "User feedback 2026-09-27: rename Project Schedule to Schedule.",
+      "requires_user": false
+    },
     "report": null
   },
   "last_closed": {

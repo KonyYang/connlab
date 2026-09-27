@@ -43,7 +43,7 @@ describe("MatrixSchedulePlanningCard", () => {
       />
     );
 
-    expect(screen.getByText("Project Schedule")).toBeTruthy();
+    expect(screen.getByText("Schedule")).toBeTruthy();
     expect(screen.queryByText(/Longest Test Group/)).toBeNull();
     expect(screen.getByLabelText("Test complete").classList.contains("is-invalid")).toBe(true);
     expect(screen.getByLabelText("Test complete").getAttribute("aria-invalid")).toBe("true");

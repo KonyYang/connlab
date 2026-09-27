@@ -48,7 +48,7 @@ export function MatrixSchedulePlanningCard({
   return (
     <section className="matrix-editor-schedule-card" aria-label="Project schedule planning">
       <header className="matrix-editor-schedule-header">
-        <h3>Project Schedule</h3>
+        <h3>Schedule</h3>
       </header>
 
       <div className="matrix-editor-schedule-fields">
