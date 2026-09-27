@@ -133,10 +133,10 @@ def test_missing_confirmed_matrix_is_readiness_blocker() -> None:
         service.preview(ProjectSection2SyncCommand(project_id="P1"))
 
 
-def test_missing_confirmed_schedule_is_readiness_blocker() -> None:
+def test_missing_confirmed_matrix_plan_dates_is_readiness_blocker() -> None:
     service, _ = _service(form=_form(), snapshot=_snapshot(), schedule=None)
 
-    with pytest.raises(ProjectSection2SyncReadinessError, match="Project Schedule"):
+    with pytest.raises(ProjectSection2SyncReadinessError, match="Confirm Matrix plan dates"):
         service.preview(ProjectSection2SyncCommand(project_id="P1"))
 
 
