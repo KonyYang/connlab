@@ -101,6 +101,17 @@ the board/writer are compatibility names, not instructions to select GPT-5.6 Sol
 
 ## Task tiers
 
+- Allow at most **one main task plus one scope-independent micro task**. Parallel writers use distinct
+  branches/worktrees and the primary board's task IDs; never activate a worktree-local board copy.
+  Reserve file/directory scopes and shared write resources, then develop independently. Integrate and
+  close through the shared writer lock, serially. Read-only discussions do not occupy a slot.
+- For parallel-capable work, Submit with `-WorktreeRoot` and `-Slot main|micro`; use the current primary
+  scripts with `-RepositoryRoot` pointing to primary. The writer resolves linked worktrees to that same
+  authority. Do not run copied/old workflow scripts inside task branches.
+- The first isolated Submit upgrades only an idle legacy board. Never migrate a running legacy task.
+  Legacy single-task commands remain available until that upgrade. Parallel micro tasks still have no
+  Plan approval or role chain. Close/revise must always name the intended task ID.
+
 - **Micro:** localized and unambiguous; Astra implements, self-reviews, and runs targeted validation.
 - **Standard:** substantive but not high risk; one Astra work unit plans, implements, self-reviews, and
   runs targeted feedback checks; one focused review follows, then QA runs the complete matrix once.

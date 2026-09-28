@@ -265,8 +265,7 @@ def test_stale_board_hash_is_zero_write(repo: Path) -> None:
 
 
 def test_stale_lock_file_does_not_block_recovery(repo: Path) -> None:
-    lock = repo / "tmp" / "connlab_sol_task.lock"
-    lock.parent.mkdir()
+    lock = repo / ".git" / "connlab_sol_task.lock"
     lock.write_text("stale-after-restart", encoding="utf-8")
 
     result = submit(repo, "TASK_AFTER_RESTART", "micro")

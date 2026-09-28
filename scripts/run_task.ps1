@@ -15,6 +15,10 @@ param(
 
     [string]$ExpectedBoardSha256,
     [string]$RepositoryRoot,
+    [string]$WorktreeRoot,
+    [ValidateSet("main", "micro")]
+    [string]$Slot,
+    [string]$ResourcesJson = "[]",
     [switch]$Preview,
     [switch]$Json
 )
@@ -110,75 +114,10 @@ function Invoke-PythonJsonArgv {
     }
 }
 
+if ($WorktreeRoot) { $arguments += @("--worktree-root", $WorktreeRoot) }
+if ($Slot) { $arguments += @("--slot", $Slot) }
+$arguments += @("--resources-json", $ResourcesJson)
+if ($Action -eq "Close") { $arguments += "--publish-close" }
 $invocation = Invoke-PythonJsonArgv -ArgumentList $arguments
-$exitCode = [int]$invocation[0]
-$output = [string]$invocation[1]
-if ($exitCode -ne 0 -or $Action -ne "Close") {
-    Write-Output $output
-    exit $exitCode
-}
-
-$closeResult = $output | ConvertFrom-Json
-$boardPath = "docs/task_board.md"
-$statusLines = @(& git -C $RepositoryRoot status --porcelain=v1 --untracked-files=all)
-if ($LASTEXITCODE -ne 0) {
-    throw "Unable to inspect Git status after Close."
-}
-$changedPaths = @($statusLines | ForEach-Object {
-    if ($_.Length -ge 4) { $_.Substring(3).Replace("\", "/") } else { $_ }
-})
-if ($changedPaths.Count -ne 1 -or $changedPaths[0] -ne $boardPath) {
-    throw "Close may commit only docs/task_board.md; found: $($changedPaths -join ', ')"
-}
-
-& git -C $RepositoryRoot add -- $boardPath
-if ($LASTEXITCODE -ne 0) {
-    throw "Unable to stage the closed task board."
-}
-$stagedPaths = @(& git -C $RepositoryRoot diff --cached --name-only)
-if ($LASTEXITCODE -ne 0 -or $stagedPaths.Count -ne 1 -or $stagedPaths[0].Replace("\", "/") -ne $boardPath) {
-    throw "Close commit staging was not board-only."
-}
-
-$commitMessage = if ($Disposition -eq "completed") {
-    "close($Task): publish completed task"
-} else {
-    "close($Task): record cancelled task"
-}
-& git -C $RepositoryRoot commit -m $commitMessage | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    throw "Unable to commit the closed task board."
-}
-$closeHead = @(& git -C $RepositoryRoot rev-parse HEAD) -join ""
-if ($LASTEXITCODE -ne 0) {
-    throw "Unable to resolve the close commit."
-}
-$closeResult | Add-Member -NotePropertyName close_commit -NotePropertyValue $closeHead
-
-if ($Disposition -eq "cancelled") {
-    $closeResult | Add-Member -NotePropertyName publication -NotePropertyValue ([pscustomobject]@{
-        code = "SKIPPED_CANCELLED_CLOSE"
-        changed = $false
-    })
-    Write-Output ($closeResult | ConvertTo-Json -Compress -Depth 12)
-    exit 0
-}
-
-$publishHelper = Join-Path $PSScriptRoot "connlab_publish_closed_task.py"
-$publishArguments = @(
-    $publishHelper, "--repo-root", $RepositoryRoot,
-    "--task-id", $Task, "--expected-head", $closeHead, "--json"
-)
-$publicationInvocation = Invoke-PythonJsonArgv -ArgumentList $publishArguments
-$publicationExitCode = [int]$publicationInvocation[0]
-$publication = ([string]$publicationInvocation[1]) | ConvertFrom-Json
-if ($publicationExitCode -ne 0) {
-    $publication | Add-Member -NotePropertyName close_result -NotePropertyValue $closeResult
-    $publication | Add-Member -NotePropertyName close_commit -NotePropertyValue $closeHead -Force
-    Write-Output ($publication | ConvertTo-Json -Compress -Depth 12)
-    exit $publicationExitCode
-}
-
-$closeResult | Add-Member -NotePropertyName publication -NotePropertyValue $publication
-Write-Output ($closeResult | ConvertTo-Json -Compress -Depth 12)
-exit 0
+Write-Output ([string]$invocation[1])
+exit ([int]$invocation[0])

@@ -24,17 +24,19 @@ through safe in-scope local work. Stop earlier only for:
 - a repeated failure whose cause cannot be established safely.
 
 Do not ask for routine Plan, role, test-command, bounded-fix, or clean-local-integration approval.
-WIP is one; only explicit Close or Cancel releases it. When a task is `ready_for_close`, interpret the
+WIP is at most one main task plus one independent micro task; only explicit Close or Cancel releases
+that task's slot. A legacy version-1 board stays single-task until idle upgrade. When a task is `ready_for_close`, interpret the
 next User message as follows:
 
 - final `关闭`: close the completed task, commit the board-only close transition, and run the safe
   `origin/master` publication gate; an unmistakable cancellation closes and commits locally without
   publication;
 - an in-scope defect, acceptance finding, or adjustment: run `Revise` and continue the same task;
-- a materially unrelated request: keep WIP unless that message also explicitly closes or cancels the
-  current task, in which case `CloseAndSubmit` may perform the atomic rollover.
+- a materially unrelated micro request: use the free micro slot only if scope and shared write
+  resources are independent; otherwise keep it queued. `CloseAndSubmit` may replace only the selected
+  task when the User explicitly closes/cancels it and requests the replacement.
 
-For Micro and Standard tasks, `scope_paths` is an initial navigation aid rather than a frozen file
+For legacy single-task Micro and Standard tasks, `scope_paths` is an initial navigation aid rather than a frozen file
 allowlist: Astra may touch additional files required by the same User-requested behavior when the exact
 Git diff is reported and review attests `scope_ok`. Material behavior expansion still requires the
 User. High-risk tasks retain an exact approved-path allowlist and fail closed on any extra path.
@@ -49,7 +51,8 @@ Use for a localized, unambiguous change at an existing seam with no high-risk fa
 inspect relevant seam -> implement -> self-review exact diff -> targeted validation -> finish
 ```
 
-No formal Plan, role chain, worktree, separate Reviewer, or independent QA. Do not load unrelated
+No formal Plan, role chain, separate Reviewer, or independent QA. A worktree is required for
+parallel-capable slots, not legacy direct execution. Do not load unrelated
 documents or skills.
 
 ### Standard
@@ -75,8 +78,8 @@ destructive behavior, broad architecture change, or an unresolved material produ
 Planner -> Developer -> Reviewer -> QA -> Integrator -> finish
 ```
 
-Use independent contexts and automatic compact handoffs. A worktree is optional isolation chosen from
-actual risk, not a mandatory host. Routine plans still do not require User approval when they stay
+Use independent contexts and automatic compact handoffs. A worktree is optional for legacy single-task
+execution and required for a parallel-capable slot. Routine plans still do not require User approval when they stay
 inside the request and existing authority.
 The independent contexts here are a project requirement for high-risk execution. When the environment
 permits delegation, assign bounded roles using its agent tools and pass compact context. A general
@@ -148,8 +151,9 @@ Public commands are `Submit`, `Revise`, `Close`, and `CloseAndSubmit` through
   `connlab_publish_closed_task.py`; `cancelled` is committed locally and never published.
 - `close-and-submit`: when one User message explicitly closes or cancels the current task and requests
   a complete next task, record the old decision and activate the next request in one locked board
-  transition. It preserves WIP=1 and fails without writing on identity, request, state, cleanliness,
-  or board-hash errors. It does not automatically commit or publish because the next task is active.
+  transition. It preserves the other task and fails without writing on identity, request, state,
+  cleanliness, or board-hash errors. Version 2 commits its board checkpoint but never publishes this
+  rollover; version 1 retains its existing caller-committed behavior.
 
 Routine callers use the compact structured result and `next_action`; they do not reread this document,
 command help, or writer source before each transition. They invoke `Revise` automatically before
@@ -171,9 +175,59 @@ action. At `ready_for_close`, final Close releases WIP; in-scope feedback trigge
 execution without another planning or close ceremony.
 
 For a completed terminal Close, publication is a separate fail-closed Git gate after the local close
-commit. It requires the expected HEAD on clean `master`, an idle board whose matching `last_closed`
+commit. It requires the expected HEAD on clean `master`, a matching `last_closed` (and an idle board in version 1) whose
 disposition is `completed`, a first-parent diff containing only `docs/task_board.md`, and upstream
 `origin/master`. It fetches first, permits only a fast-forward ordinary push, then verifies the
 advertised remote SHA with `ls-remote`. It never force-pushes, rebases, resets, stashes, or cleans.
 Remote, network, or authentication failure returns a typed blocker while preserving the valid local
 close commit; the task remains closed locally and GitHub synchronization remains pending.
+
+## Lightweight parallel slots (version 2)
+
+No new roles or scheduler. Use one primary board and the existing commands. For new work that should
+allow an independent micro task, use an isolated main branch/worktree from the start. The first
+`Submit -WorktreeRoot <absolute path> -Slot main` upgrades an **idle** version-1 board in place,
+preserving last_closed and history. It never migrates a running legacy task. Current legacy tasks
+finish and close with the old interface; the next isolated Submit opts into the new format.
+
+- Always call the current primary scripts, not a historical copy checked out in a task branch.
+  `-RepositoryRoot` is primary; linked roots are mechanically resolved to the same primary authority.
+  `inspect --task-id ID` selects that task; unqualified inspect lists both. Every write names an ID.
+- Submit registers an existing clean named branch/worktree at primary HEAD; it does not create or
+  delete one. Use the app's worktree lifecycle tools, then a named branch. Slots are `main` (any tier)
+  and `micro` (micro only); slot duplication or a third task fails without writing.
+- Declare concrete `scope_paths` (files or directories) and `-ResourcesJson '["shared-write-target"]'`
+  (default `[]`). Windows case-insensitive parent/child path overlaps and shared resource names block
+  concurrent admission. Agents must also check semantic dependencies: disjoint paths alone do not
+  prove independent API/state behavior. Shared databases/output folders stay exclusive; independent
+  browser tests use different ports and test data. Never declare `docs/task_board.md` as branch scope.
+- Scope reservations are checked again on the exact final diff. Micro/standard `amend-scope` can
+  extend the same requested behavior after checking peer overlap, with no User approval ceremony.
+  High-risk corrections keep explicit approval and exact committed-diff requirements. Material
+  expansion and new shared resources still require re-evaluating independence before more writes.
+- Primary is the clean integration coordinator, not a development worktree. Version-2 transitions
+  automatically commit only the board under the common Git-directory lock. Other task worktrees may
+  be dirty. Stale board hashes and occupied locks are blockers, not automatic retry instructions.
+- `finish` consumes the existing tier-proportionate report (integration status may be `pending`, not
+  an invented passed merge) on the clean exact task HEAD and integrates
+  under the same lock. If primary code changed since the task's merge base, merge current master into
+  the task branch, review and rerun affected validation before resubmitting. Board-only changes do not
+  invalidate product validation. A normal no-ff merge preserves parents; no reset/rebase/force occurs.
+- A crash after the exact integration commit but before board recording is recognized from Git parents,
+  subject, tree and the deterministic integration message; the next finish records that merge instead
+  of repeating it. Other partial Git states fail closed. A board commit failure leaves the durable
+  transition for inspection: verify and commit that board-only checkpoint under the shared lock before
+  continuing; do not replay activation/integration. Successful transitions need no caller board commit.
+- Close/cancel/revise target one ID and leave the peer intact. Cancellation never deletes its branch
+  or worktree or rolls back integrated code. CloseAndSubmit atomically replaces the selected task with
+  the declared replacement slot/worktree if capacity and independence checks pass; never publishes.
+- Public Close holds the same lock through board commit and the publication gate. Reconnection can
+  resume the matching last close without another commit. With an unintegrated peer, completed Close
+  may publish because that peer's code is absent from master. With an integrated but unclosed peer
+  (including revision), publication is deferred until its final Close; no unaccepted delivery is
+  pushed as a side effect. Cancellation still does not authorize publication.
+
+Acceptance: two independent tasks recover separately; overlap/resource conflict/third task reject
+without board or HEAD change; dirty peer does not block a micro completion; stale validation cannot
+integrate; closure and publication never consume another task. Tests use disposable repositories and
+local bare remotes, never real project data or GitHub.

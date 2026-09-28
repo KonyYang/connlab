@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
@@ -107,6 +108,10 @@ def exact_json(raw: str | None, *, schema: str, fields: set[str], code: str) -> 
 
 
 def validate_control(control: Any) -> None:
+    if isinstance(control, dict) and control.get("version") == 2:
+        from connlab_parallel_task import validate_control as validate_parallel
+        validate_parallel(control)
+        return
     fields = {
         "schema",
         "version",
@@ -183,9 +188,26 @@ def render_board(prefix: str, control: dict[str, Any], suffix: str) -> bytes:
     ).encode("utf-8")
 
 
+_HELD_LOCKS: set[str] = set()
+
+
+def primary_root(root: Path) -> Path:
+    listing = run_git(root, "worktree", "list", "--porcelain")
+    if listing.returncode or not listing.stdout.startswith("worktree "):
+        raise Blocked("BLOCKED_GIT_INVALID", "Primary worktree cannot be resolved.")
+    return Path(listing.stdout.splitlines()[0][9:]).resolve()
+
+
 @contextmanager
 def board_lock(root: Path) -> Iterator[None]:
-    lock = root / "tmp/connlab_sol_task.lock"
+    common = run_git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    if common.returncode:
+        raise Blocked("BLOCKED_GIT_INVALID", "Common Git directory cannot be resolved.")
+    lock = Path(common.stdout.strip()) / "connlab_sol_task.lock"
+    key = str(lock.resolve())
+    if key in _HELD_LOCKS:
+        yield
+        return
     lock.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(lock, os.O_CREAT | os.O_RDWR)
     locked = False
@@ -208,9 +230,11 @@ def board_lock(root: Path) -> Iterator[None]:
             except OSError as exc:
                 raise Blocked("BLOCKED_LOCKED", "Another board write is active.") from exc
         locked = True
+        _HELD_LOCKS.add(key)
         yield
     finally:
         if locked:
+            _HELD_LOCKS.discard(key)
             if os.name == "nt":
                 os.lseek(descriptor, 0, os.SEEK_SET)
                 msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
@@ -280,6 +304,10 @@ def result(
     changed: bool = False,
     reason: str = "",
 ) -> dict[str, Any]:
+    if isinstance(control, dict) and control.get("version") == 2:
+        from connlab_parallel_task import result as parallel_result
+        return parallel_result(code, command, root, control, before, after,
+                               task_id=task_id, changed=changed, reason=reason)
     active = control.get("active") if isinstance(control, dict) else None
     return {
         "schema": "connlab.sol-task-result",
@@ -401,7 +429,7 @@ def checkpoint(args: argparse.Namespace, root: Path) -> tuple[str, str, dict[str
     return update_board(root, args.expected_board_sha256, mutate)
 
 
-def report_payload(raw: str | None, task_id: str | None) -> dict[str, Any]:
+def report_payload(raw: str | None, task_id: str | None, *, pending_integration: bool = False) -> dict[str, Any]:
     payload = exact_json(
         raw,
         schema=REPORT_SCHEMA,
@@ -439,7 +467,8 @@ def report_payload(raw: str | None, task_id: str | None) -> dict[str, Any]:
         raise Blocked("BLOCKED_REPORT_INCOMPLETE", "At least one passing validation result is required.")
     if not isinstance(payload["roles"], dict):
         raise Blocked("BLOCKED_REPORT_INCOMPLETE", "Role results are required.")
-    if not isinstance(payload["integration"], dict) or payload["integration"].get("status") != "passed":
+    integration_states = {"passed", "pending"} if pending_integration else {"passed"}
+    if not isinstance(payload["integration"], dict) or payload["integration"].get("status") not in integration_states:
         raise Blocked("BLOCKED_REPORT_INCOMPLETE", "Successful integration facts are required.")
     return payload
 
@@ -657,6 +686,10 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--checkpoint-json")
     value.add_argument("--result-json")
     value.add_argument("--decision-ref")
+    value.add_argument("--worktree-root")
+    value.add_argument("--slot", choices=("main", "micro"))
+    value.add_argument("--resources-json", default="[]")
+    value.add_argument("--publish-close", action="store_true")
     value.add_argument("--disposition", choices=("completed", "cancelled"), default="completed")
     value.add_argument("--json", action="store_true")
     return value
@@ -668,10 +701,19 @@ def main() -> int:
     control: dict[str, Any] | None = None
     before: str | None = None
     try:
+        root = primary_root(root)
         _, control, _, raw = read_board(root)
         before = sha256(raw)
         if args.command == "inspect":
-            payload = result("ALLOW_INSPECT", "inspect", root, control, before, before, reason="Compact task state inspected.")
+            payload = result("ALLOW_INSPECT", "inspect", root, control, before, before, task_id=args.task_id, reason="Compact task state inspected.")
+        elif args.command == "close" and args.publish_close:
+            from connlab_task_close import close_and_publish
+            payload = close_and_publish(args, root)
+        elif control.get("version") == 2 or args.worktree_root or args.slot:
+            from connlab_parallel_task import transition
+            before, after, control = transition(args, root)
+            payload = result("ALLOW_" + args.command.upper().replace("-", "_"), args.command,
+                             root, control, before, after, task_id=args.task_id, changed=True)
         else:
             handlers: dict[str, tuple[Callable[..., tuple[str, str, dict[str, Any]]], str]] = {
                 "submit": (submit, "ALLOW_SUBMIT"),
@@ -696,7 +738,7 @@ def main() -> int:
                 reason=f"{args.command.title()} completed.",
             )
         print(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
-        return 0
+        return 2 if payload["code"].startswith("BLOCKED_") else 0
     except Blocked as exc:
         try:
             _, control, _, raw = read_board(root)
@@ -711,6 +753,7 @@ def main() -> int:
             before,
             after,
             task_id=args.task_id,
+            changed=before is not None and after != before,
             reason=exc.reason,
         )
         print(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
@@ -718,4 +761,6 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    sys.modules["connlab_sol_task"] = sys.modules[__name__]
     raise SystemExit(main())

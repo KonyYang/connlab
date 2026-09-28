@@ -40,9 +40,9 @@ def git(repo: Path, *args: str, remote: bool = False) -> str:
     return completed.stdout.strip()
 
 
-def read_control(repo: Path) -> dict:
+def read_control(repo: Path, revision: str | None = None) -> dict:
     try:
-        text = (repo / BOARD).read_text(encoding="utf-8")
+        text = git(repo, "show", f"{revision}:{BOARD.as_posix()}") if revision else (repo / BOARD).read_text(encoding="utf-8")
         payload = text.split(BEGIN, 1)[1].split(END, 1)[0]
         payload = payload.split("```json", 1)[1].rsplit("```", 1)[0]
         return json.loads(payload)
@@ -54,7 +54,35 @@ def block(code: str, message: str, **facts: object) -> NoReturn:
     raise GateBlocked(code, message, **facts)
 
 
+def verify_parallel_close(before: dict, after: dict, task_id: str) -> None:
+    """A board-only diff alone does not prove it closes this task without altering its peer."""
+    from connlab_sol_task import closed_task
+    entry = before.get("tasks", {}).get(task_id)
+    last = after.get("last_closed") or {}
+    if not entry or last.get("task_id") != task_id:
+        block("BLOCKED_CLOSE_COMMIT_SCOPE", "Expected an exact selected-task close transition.")
+    if last.get("disposition") == "completed" and (entry.get("state") != "ready_for_close" or not entry.get("integrated_head")):
+        block("BLOCKED_CLOSE_COMMIT_SCOPE", "Completed close requires a previously integrated delivery.")
+    expected = json.loads(json.dumps(before))
+    del expected["tasks"][task_id]
+    if expected["last_closed"]:
+        expected["retained_history"].append(expected["last_closed"])
+    expected["last_closed"] = closed_task(entry["task"], disposition=last.get("disposition"),
+        decision_ref=last.get("decision_ref"), fallback_subject=last.get("subject"), timestamp=last.get("closed_at"))
+    if expected != after:
+        block("BLOCKED_CLOSE_COMMIT_SCOPE", "Close also changed unrelated task authority.")
+
+
 def publish(repo: Path, task_id: str, expected_head: str) -> dict:
+    from connlab_sol_task import Blocked, board_lock
+    try:
+        with board_lock(repo):
+            return _publish(repo, task_id, expected_head)
+    except Blocked as exc:
+        block(exc.code, exc.reason)
+
+
+def _publish(repo: Path, task_id: str, expected_head: str) -> dict:
     head = git(repo, "rev-parse", "HEAD")
     if head != expected_head:
         block("BLOCKED_HEAD_MISMATCH", "HEAD does not match the expected close commit.", head=head)
@@ -67,7 +95,15 @@ def publish(repo: Path, task_id: str, expected_head: str) -> dict:
         block("BLOCKED_DIRTY_WORKTREE", "Working tree and index must be clean before publication.")
 
     control = read_control(repo)
-    if control.get("state") != "idle" or control.get("active") is not None:
+    if control.get("version") == 2:
+        from connlab_sol_task import Blocked, validate_control
+        try:
+            validate_control(control)
+        except Blocked as exc:
+            block("BLOCKED_BOARD_INVALID", exc.reason)
+        if task_id in control["tasks"] or any(e["integrated_head"] for e in control["tasks"].values()):
+            block("BLOCKED_BOARD_STATE", "An integrated delivery still awaits User closure.")
+    elif control.get("state") != "idle" or control.get("active") is not None:
         block("BLOCKED_BOARD_STATE", "Task board must be idle with no active task.")
     last_closed = control.get("last_closed") or {}
     if last_closed.get("task_id") != task_id:
@@ -76,6 +112,8 @@ def publish(repo: Path, task_id: str, expected_head: str) -> dict:
         block("BLOCKED_CLOSE_DISPOSITION", "Only a completed close may be published.")
 
     parent = git(repo, "rev-parse", "HEAD^")
+    if control.get("version") == 2:
+        verify_parallel_close(read_control(repo, parent), control, task_id)
     changed_paths = [
         line.replace("\\", "/")
         for line in git(repo, "diff", "--name-only", parent, head).splitlines()
