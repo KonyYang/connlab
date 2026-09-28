@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_TEST_DAYS_TYPOGRAPHY",
     "summary": "Increase the Matrix Editor Test Days summary-row text to match surrounding editor typography.",
@@ -24,9 +24,47 @@
     "risk_reasons": [],
     "activation_head": "4043ca8d059035bfe7cb2dcb320f1e4de636c612",
     "started_at": "2026-09-28T23:47:29.844737Z",
-    "updated_at": "2026-09-28T23:47:29.844737Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-28T23:52:47.926671Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_MATRIX_TEST_DAYS_TYPOGRAPHY",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_TEST_DAYS_TYPOGRAPHY",
+      "subject": "97e1bdb2f86b9361bccd5048f732362ae559c5ab",
+      "summary": "Raised Test Days row text to 13px and removed bold styling.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/workbench.css"
+      ],
+      "validation": [
+        {
+          "name": "Browser style check",
+          "status": "passed",
+          "evidence": "13px font size; normal weight 400; matches 13px table body."
+        },
+        {
+          "name": "git show --check",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "evidence": "Committed change on master; clean tree."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_SCHEDULE_INLINE_FIELDS",
