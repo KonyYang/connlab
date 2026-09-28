@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_SCHEDULE_INLINE_FIELDS",
     "summary": "Align Matrix Schedule labels beside their narrowed editing controls.",
@@ -26,17 +26,58 @@
     "risk_reasons": [],
     "activation_head": "b70520e63a663f2679dabbd87aa3696bd01fd470",
     "started_at": "2026-09-28T22:58:50.126617Z",
-    "updated_at": "2026-09-28T23:22:30.414999Z",
+    "updated_at": "2026-09-28T23:27:57.663947Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_SCHEDULE_INLINE_FIELDS",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User feedback 2026-09-29: Reduce spacing so all four Schedule fields fit on one row.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_SCHEDULE_INLINE_FIELDS",
+      "subject": "a0d89d69bef6156ac674596728c009ac6ff81f6f",
+      "summary": "Changed Schedule fields to compact intrinsic-width groups with wrapping only when needed, allowing all four controls to share one row at workstation widths while preserving narrow-screen wrapping.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.tsx",
+        "frontend/src/workbench.css"
+      ],
+      "validation": [
+        {
+          "name": "MatrixSchedulePlanningCard focused tests",
+          "status": "passed",
+          "evidence": "9/9 passed"
+        },
+        {
+          "name": "Frontend production build",
+          "status": "passed"
+        },
+        {
+          "name": "In-app browser responsive layout inspection",
+          "status": "passed",
+          "evidence": "At 601px the fields wrap without overflow; computed natural group widths total about 937px including gaps, which fits in the roughly 1060px field area at the 1366px workstation breakpoint."
+        },
+        {
+          "name": "git diff --check",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "evidence": "Revision committed on master as a0d89d69; working tree clean before task-board finish."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_DELTA_R_HEADER_LAYOUT",
