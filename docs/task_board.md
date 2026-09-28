@@ -11,80 +11,33 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
-    "task_id": "TASK_MATRIX_DELTA_R_HEADER_LAYOUT",
-    "summary": "Move the Matrix editor ΔR toggle into the LLCR/CR project-points header row.",
+    "task_id": "TASK_MATRIX_SCHEDULE_INLINE_FIELDS",
+    "summary": "Align Matrix Schedule labels beside their narrowed editing controls.",
     "tier": "micro",
     "route": "sol_direct",
-    "scope": "Place the existing ΔR checkbox in the right-side header controls alongside LLCR Form and CR Form, keeping the title on the left. Preserve its value, accessibility label, disabled behavior, and functionality; allow responsive wrapping without a standalone full-width ΔR row.",
+    "scope": "In the Matrix Editor Schedule card, simplify the visible post-test label to “Post-test”, place each of the four field labels immediately left of its existing editor, enlarge labels modestly, and narrow editors so label and control fit on one line when space allows. Preserve accessible names, input values, validation, calculations, and responsive readability.",
     "scope_paths": [
-      "frontend/src/features/contact-measurement-plan/MatrixTestPointsEditor.tsx",
-      "frontend/src/contact-measurement-plan.css",
-      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx"
+      "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.tsx",
+      "frontend/src/workbench.css",
+      "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.test.tsx"
     ],
     "risk_reasons": [],
-    "activation_head": "4f1d7e796db7d8872b51a7b4c2b4827dc778bfd0",
-    "started_at": "2026-09-28T22:29:28.032416Z",
-    "updated_at": "2026-09-28T22:50:58.819635Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_MATRIX_DELTA_R_HEADER_LAYOUT",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_MATRIX_DELTA_R_HEADER_LAYOUT",
-      "subject": "ffe04d0ea0c4d6f9d79570a55d75559d83bc0a84",
-      "summary": "Moved the ΔR control into the LLCR/CR project-points header; removed the Test points explanatory paragraph and exposed its reminder as a heading hover tooltip.",
-      "scope_ok": true,
-      "changed_paths": [
-        "frontend/src/contact-measurement-plan.css",
-        "frontend/src/features/contact-measurement-plan/MatrixTestPointsEditor.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "result": "57/57 tests passed",
-          "name": "MatrixEditorWorkspace.editing.test.tsx"
-        },
-        {
-          "status": "passed",
-          "result": "tsc -b and vite build passed",
-          "name": "frontend production build"
-        },
-        {
-          "status": "passed",
-          "result": "Test points heading title contains the reminder and the paragraph text is absent",
-          "name": "Browser UI check"
-        }
-      ],
-      "roles": {
-        "developer": {
-          "summary": "Implemented and self-reviewed the exact diff",
-          "status": "passed"
-        }
-      },
-      "integration": {
-        "summary": "Changes committed directly on master; no merge required",
-        "status": "passed"
-      }
-    }
+    "activation_head": "b70520e63a663f2679dabbd87aa3696bd01fd470",
+    "started_at": "2026-09-28T22:58:50.126617Z",
+    "updated_at": "2026-09-28T22:58:50.126617Z",
+    "checkpoint": null,
+    "report": null
   },
   "last_closed": {
-    "task_id": "TASK_LIGHTWEIGHT_PARALLEL_TASKS",
-    "tier": "standard",
-    "subject": "4813c4a45217fd8c195df9427a90434a270597f8",
-    "summary": "Support one main task and one isolated micro task with serial integration.",
+    "task_id": "TASK_MATRIX_DELTA_R_HEADER_LAYOUT",
+    "tier": "micro",
+    "subject": "ffe04d0ea0c4d6f9d79570a55d75559d83bc0a84",
+    "summary": "Move the Matrix editor ΔR toggle into the LLCR/CR project-points header row.",
     "disposition": "completed",
-    "decision_ref": "User accepted and requested task closure in this chat.",
-    "closed_at": "2026-09-28T10:04:53.577594Z"
+    "decision_ref": "User requested CloseAndSubmit: 关闭并开始 Schedule 调整 (2026-09-29)",
+    "closed_at": "2026-09-28T22:58:50.126617Z"
   },
   "retained_history": [
     {
