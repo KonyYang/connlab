@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_DELTA_R_HEADER_LAYOUT",
     "summary": "Move the Matrix editor ΔR toggle into the LLCR/CR project-points header row.",
@@ -26,17 +26,56 @@
     "risk_reasons": [],
     "activation_head": "4f1d7e796db7d8872b51a7b4c2b4827dc778bfd0",
     "started_at": "2026-09-28T22:29:28.032416Z",
-    "updated_at": "2026-09-28T22:41:29.138615Z",
+    "updated_at": "2026-09-28T22:50:58.819635Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_DELTA_R_HEADER_LAYOUT",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User feedback 2026-09-29: Replace Test points explanatory paragraph with a hover reminder.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_MATRIX_DELTA_R_HEADER_LAYOUT",
+      "subject": "ffe04d0ea0c4d6f9d79570a55d75559d83bc0a84",
+      "summary": "Moved the ΔR control into the LLCR/CR project-points header; removed the Test points explanatory paragraph and exposed its reminder as a heading hover tooltip.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/contact-measurement-plan.css",
+        "frontend/src/features/contact-measurement-plan/MatrixTestPointsEditor.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "result": "57/57 tests passed",
+          "name": "MatrixEditorWorkspace.editing.test.tsx"
+        },
+        {
+          "status": "passed",
+          "result": "tsc -b and vite build passed",
+          "name": "frontend production build"
+        },
+        {
+          "status": "passed",
+          "result": "Test points heading title contains the reminder and the paragraph text is absent",
+          "name": "Browser UI check"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "summary": "Implemented and self-reviewed the exact diff",
+          "status": "passed"
+        }
+      },
+      "integration": {
+        "summary": "Changes committed directly on master; no merge required",
+        "status": "passed"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_LIGHTWEIGHT_PARALLEL_TASKS",
