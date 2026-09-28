@@ -427,6 +427,11 @@ class MatrixEditorSessionService(
         active = self._confirmed.get_active_by_project(command.project_id)
         self._validate_expected_active(command, active)
         command = self._resolve_point_payload(command, active)
+        if command.point_overrides:
+            raise MatrixEditorSessionError(
+                "Group/step Test point exceptions are no longer supported. "
+                "Use project-wide points in Matrix Editor before confirming."
+            )
         if command.step_text_overrides is None and active is not None:
             # Legacy partial clients omit this field. Preserve its existing authority,
             # including the current saved draft, rather than implicitly clearing it.

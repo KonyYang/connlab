@@ -127,6 +127,11 @@ class ConfirmedMatrixAuthorityService:
             raise ConfirmedMatrixAuthorityError(
                 "At least one selected group is required for confirmation."
             )
+        if draft.record.point_overrides:
+            raise ConfirmedMatrixAuthorityError(
+                "Group/step Test point exceptions are no longer supported. "
+                "Use project-wide points in Matrix Editor before confirming."
+            )
         duplicate_group_keys = find_duplicate_matrix_group_keys(selected_groups)
         if duplicate_group_keys:
             raise ConfirmedMatrixAuthorityError(

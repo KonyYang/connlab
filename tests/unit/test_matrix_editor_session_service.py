@@ -65,7 +65,8 @@ from backend.domain.matrix_contact_measurement_models import (
 from backend.application.contact_point_profile_confirmed_consumer_adapter import EffectiveConfirmedPointProfile
 from backend.application.matrix_test_points_authority import validate_matrix_point_targets
 from backend.application.confirmed_matrix_authority_service import (
-    ConfirmProjectMatrixDraftCommand, ConfirmedMatrixAuthorityService,
+    ConfirmProjectMatrixDraftCommand, ConfirmedMatrixAuthorityError,
+    ConfirmedMatrixAuthorityService,
     _build_confirmed_snapshot,
 )
 
@@ -145,6 +146,35 @@ def test_matrix_point_profile_subsets_are_checked_before_confirmation() -> None:
         service.confirm_session(replace(command, point_profile=profile, point_overrides=(override,)))
 
 
+def test_matrix_confirmation_rejects_retired_step_point_exceptions() -> None:
+    service = _service(active=_build_active_snapshot(), source_snapshot=None)
+    command = _confirm_saved_revision_command(_saved_revision_draft())
+    profile = MatrixPointProfile((MatrixPointCategory("HP", "1-4", True),))
+    override = MatrixStepPointOverride(
+        "dg-1", "dr-1", 1, "", (MatrixStepPointCategory("HP", "1-2"),),
+    )
+
+    with pytest.raises(MatrixEditorSessionError, match="Use project-wide points"):
+        service.confirm_session(replace(command, point_profile=profile, point_overrides=(override,)))
+
+
+def test_matrix_confirmation_does_not_inherit_hidden_legacy_exceptions() -> None:
+    profile = MatrixPointProfile((MatrixPointCategory("HP", "1-4", True),))
+    override = MatrixStepPointOverride(
+        "dg-1", "dr-1", 1, "", (MatrixStepPointCategory("HP", "1-2"),),
+    )
+    active = _build_active_snapshot()
+    active = replace(active, version=replace(
+        active.version, point_profile=profile, point_overrides=(override,),
+    ))
+    service = _service(active=active, source_snapshot=None)
+    command = _confirm_saved_revision_command(_saved_revision_draft())
+    command = replace(command, rows=(replace(command.rows[0], test_item="LLCR"),))
+
+    with pytest.raises(MatrixEditorSessionError, match="Use project-wide points"):
+        service.confirm_session(replace(command, point_profile=None, point_overrides=None))
+
+
 def test_cr_step_rejects_exception_using_category_not_selected_for_cr() -> None:
     service = _service(active=_build_active_snapshot(), source_snapshot=None)
     command = _confirm_saved_revision_command(_saved_revision_draft())
@@ -177,14 +207,35 @@ def test_first_matrix_confirmation_carries_saved_point_authority() -> None:
     assert snapshot.version.point_overrides == overrides
 
 
+def test_first_matrix_confirmation_rejects_saved_step_point_exceptions() -> None:
+    draft = _saved_revision_draft()
+    draft = replace(draft, record=replace(
+        draft.record,
+        point_profile=MatrixPointProfile((MatrixPointCategory("SIG", "1-2", True),)),
+        point_overrides=(MatrixStepPointOverride(
+            "dg-1", "dr-1", 1, "", (MatrixStepPointCategory("SIG", "2"),),
+        ),),
+    ))
+    service = ConfirmedMatrixAuthorityService(
+        project_store=SimpleNamespace(get=lambda _id: object()),
+        draft_store=SimpleNamespace(get=lambda _id: draft),
+        confirmed_store=SimpleNamespace(
+            get_active_by_project=lambda _id: None,
+            create_snapshot=lambda snapshot: snapshot,
+        ),
+    )
+
+    with pytest.raises(ConfirmedMatrixAuthorityError, match="Use project-wide points"):
+        service.confirm_draft(ConfirmProjectMatrixDraftCommand(
+            project_id="P1", project_matrix_draft_id="pmd-edit", confirmed_by="operator",
+        ))
+
+
 def test_first_confirmation_persists_canonical_point_authority_not_raw_draft() -> None:
     draft = _saved_revision_draft()
     raw_profile = MatrixPointProfile((MatrixPointCategory(" SIG ", "1,2,3", True),))
-    raw_overrides = (MatrixStepPointOverride(
-        "dg-1", "dr-1", 1, " ", (MatrixStepPointCategory(" SIG ", "2,3"),),
-    ),)
     draft = replace(draft, record=replace(
-        draft.record, point_profile=raw_profile, point_overrides=raw_overrides,
+        draft.record, point_profile=raw_profile, point_overrides=(),
     ))
     service = ConfirmedMatrixAuthorityService(
         project_store=SimpleNamespace(get=lambda _id: object()),
@@ -202,9 +253,7 @@ def test_first_confirmation_persists_canonical_point_authority_not_raw_draft() -
     assert confirmed.version.point_profile == MatrixPointProfile((
         MatrixPointCategory("SIG", "1-3", True),
     ))
-    assert confirmed.version.point_overrides == (MatrixStepPointOverride(
-        "dg-1", "dr-1", 1, "", (MatrixStepPointCategory("SIG", "2-3"),),
-    ),)
+    assert confirmed.version.point_overrides == ()
     assert draft.record.point_profile == raw_profile
 
 

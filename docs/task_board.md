@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_MATRIX_TEST_POINTS_SINGLE_AUTHORITY",
     "summary": "Unify Test points draft/confirmation with Matrix authority and safely publish LLCR/CR forms to project Test results.",
@@ -92,134 +92,17 @@
     ],
     "activation_head": "03b4b015b8842c86cc7299c8e9c330a0270c7678",
     "started_at": "2026-09-27T02:48:00.644593Z",
-    "updated_at": "2026-09-27T14:30:00.840366Z",
+    "updated_at": "2026-09-27T23:28:09.693497Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_TEST_POINTS_SINGLE_AUTHORITY",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User confirmed Group/step point subsets are no longer needed; simplify Test points card and preserve old authority.",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_MATRIX_TEST_POINTS_SINGLE_AUTHORITY",
-      "subject": "110a0f8849f94c2af87ea6f49826850974a7fa04",
-      "summary": "Matrix Editor Test points share Confirm Matrix authority; LLCR/CR formal Test results publication now uses one project-folder lock while retaining explicit History archive and registry protection.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/api/dependencies.py",
-        "backend/api/matrix_editor_session_dtos.py",
-        "backend/api/matrix_editor_session_response_mappers.py",
-        "backend/api/project_folder_generation_composition.py",
-        "backend/api/project_folder_preflight.py",
-        "backend/api/routes_contact_point_profile.py",
-        "backend/api/routes_matrix_editor_llcr_cr_record_generation.py",
-        "backend/api/routes_matrix_editor_session.py",
-        "backend/application/confirmed_matrix_authority_service.py",
-        "backend/application/confirmed_matrix_fee_cr_specified_current.py",
-        "backend/application/confirmed_matrix_fee_draft_line_builder.py",
-        "backend/application/confirmed_matrix_fee_draft_service.py",
-        "backend/application/confirmed_matrix_fee_step_quantities.py",
-        "backend/application/confirmed_matrix_llcr_cr_record_generation_service.py",
-        "backend/application/confirmed_matrix_llcr_cr_record_preview_service.py",
-        "backend/application/confirmed_matrix_llcr_cr_record_projection.py",
-        "backend/application/contact_point_profile_confirmed_consumer_adapter.py",
-        "backend/application/matrix_editor_confirmed_snapshot_builder.py",
-        "backend/application/matrix_editor_llcr_cr_record_generation_service.py",
-        "backend/application/matrix_editor_llcr_cr_record_projection.py",
-        "backend/application/matrix_editor_session_contracts.py",
-        "backend/application/matrix_editor_session_draft_state.py",
-        "backend/application/matrix_editor_session_projection.py",
-        "backend/application/matrix_editor_session_service.py",
-        "backend/application/matrix_editor_session_signature.py",
-        "backend/application/matrix_test_points_authority.py",
-        "backend/application/project_folder_generation_service.py",
-        "backend/application/project_matrix_draft_persistence_service.py",
-        "backend/domain/confirmed_matrix_authority_models.py",
-        "backend/domain/enums.py",
-        "backend/domain/matrix_contact_measurement_models.py",
-        "backend/domain/project_matrix_draft_models.py",
-        "backend/infrastructure/files/project_folder_required_forms_gateway.py",
-        "backend/infrastructure/office/llcr_cr_record_workbook_layout.py",
-        "backend/infrastructure/storage/matrix_contact_measurement_schema_migration.py",
-        "backend/infrastructure/storage/models_confirmed_matrix_authority.py",
-        "backend/infrastructure/storage/models_project_matrix_draft.py",
-        "backend/infrastructure/storage/repositories/confirmed_matrix_authority.py",
-        "backend/infrastructure/storage/repositories/project_matrix_draft.py",
-        "docs/PROJECT_CONTEXT.md",
-        "frontend/src/api/client.ts",
-        "frontend/src/App.tsx",
-        "frontend/src/contact-measurement-plan.css",
-        "frontend/src/features/contact-measurement-plan/MatrixTestPointsEditor.tsx",
-        "frontend/src/features/matrix-editor/LlcrCrRecordDownloadAction.test.tsx",
-        "frontend/src/features/matrix-editor/LlcrCrRecordDownloadAction.tsx",
-        "frontend/src/features/matrix-editor/matrixEditorDraftModel.ts",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.testSupport.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-        "frontend/src/features/matrix-editor/useLlcrCrSpecializedRecordWorkbookModel.test.tsx",
-        "frontend/src/features/matrix-editor/useLlcrCrSpecializedRecordWorkbookModel.ts",
-        "frontend/src/features/matrix-editor/useMatrixDraftPersistence.ts",
-        "tests/integration/test_contact_point_profile_api.py",
-        "tests/integration/test_matrix_editor_llcr_cr_record_generation_api.py",
-        "tests/integration/test_project_folder_generation_complete_chain.py",
-        "tests/integration/test_project_folder_generation_recovery.py",
-        "tests/unit/test_confirmed_matrix_authority_repository.py",
-        "tests/unit/test_confirmed_matrix_fee_draft_profile_consumer.py",
-        "tests/unit/test_confirmed_matrix_llcr_cr_record_generation_service.py",
-        "tests/unit/test_confirmed_matrix_llcr_cr_record_projection.py",
-        "tests/unit/test_matrix_contact_measurement_schema_migration.py",
-        "tests/unit/test_matrix_editor_session_service.py",
-        "tests/unit/test_project_folder_generation_service.py",
-        "tests/unit/test_project_matrix_draft_repository.py"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "command": "python -m pytest focused LLCR/CR publication, folder guard, registry lock suites",
-          "result": "37 passed on final implementation bytes."
-        },
-        {
-          "status": "passed",
-          "command": "scripts/run_tests.ps1 -Suite Python -PythonExe C:\\PythonEnvs\\connlab\\.venv\\Scripts\\python.exe",
-          "result": "3108 passed, 8 skipped, 19 installed-Office tests deselected; clean commit 110a0f88."
-        },
-        {
-          "status": "passed",
-          "command": "git diff --check HEAD^ HEAD",
-          "result": "No whitespace errors."
-        }
-      ],
-      "roles": {
-        "integrator": {
-          "status": "passed",
-          "evidence": "Independent clean HEAD and exact 65-path scope audit passed; no guard path change."
-        },
-        "qa": {
-          "status": "passed",
-          "evidence": "Independent final Python suite on clean commit: 3108 passed, 8 skipped, 19 Office deselected."
-        },
-        "planner": {
-          "status": "passed",
-          "evidence": "Independent original high-risk plan and domain boundary review completed."
-        },
-        "reviewer": {
-          "status": "passed",
-          "evidence": "Independent P1 race finding corrected; final route and active/trash/history checks re-reviewed without findings."
-        },
-        "developer": {
-          "status": "passed",
-          "evidence": "Reproduced exact 409 in RED test, fixed route/service lock ownership, 37 focused tests passed."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "evidence": "Clean master subject 110a0f88, parent 900ab2cf; all 65 non-board paths match approved scope, no external project file publication by agent."
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_SECTION_COLUMN_WIDTH",

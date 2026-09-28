@@ -101,9 +101,11 @@ Do not use a dated snapshot as a substitute for the code.
 
 ### Test points in Matrix Editor
 
-- LLCR/CR project point IDs and any selected Group/step subset are edited in the Matrix Editor draft.
-  They become authority only through `Confirm Matrix`, together with the rest of the Matrix. A step
-  without an exception inherits the project points; an exception may narrow, never add, point IDs.
+- LLCR/CR project point IDs are shared by all Matrix steps and edited in the Matrix Editor draft.
+  They become authority only through `Confirm Matrix`, together with the rest of the Matrix. New
+  Group/step point subsets are no longer supported. Existing confirmed versions retain their saved
+  subsets for historical reading and projections; an old draft with subsets must be explicitly
+  switched to project-wide points before another Matrix confirmation, never cleared on load.
 - Older independently confirmed point profiles remain readable as migration evidence. Only explicit
   IDs with a matching count may prefill the Matrix editor for review; count-only suggestions must not
   become authoritative point IDs. The retired independent Setup confirmation cannot publish a second
@@ -128,9 +130,8 @@ Do not use a dated snapshot as a substitute for the code.
   moves and output registration are journaled and fail closed if an operator changes either file.
   Whole-folder Backup and Rebuild instead retains the former business folder under `History/Folders`.
 - Historical Matrix rows identified as LLCR/CR only by their structured contact plan are recognized
-  for formal form generation, even when the test-item label is nonstandard. The current Matrix Editor
-  exception picker still recognizes contact tests by label; it cannot edit a Group/step exception
-  for such a legacy row without a reviewed classification migration.
+  for formal form generation, even when the test-item label is nonstandard. Their saved historical
+  point subsets remain readable; new Matrix versions use the project-wide point IDs.
 
 ```text
 React frontend -> FastAPI routes -> application modules -> domain/interfaces

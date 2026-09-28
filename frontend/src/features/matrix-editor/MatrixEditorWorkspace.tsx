@@ -47,7 +47,6 @@ import {
 import {
   MatrixTestPointsEditor,
   matrixTestPointsValidation,
-  type MatrixTestPointStepOption,
 } from "../contact-measurement-plan/MatrixTestPointsEditor";
 import { MatrixAutoGrowTextarea } from "./MatrixAutoGrowTextarea";
 import { MatrixStepWorkspace } from "./MatrixStepWorkspace";
@@ -219,23 +218,13 @@ export function MatrixEditorWorkspace({
   const [pointProfile, setPointProfile] = useState<MatrixTestPointProfile | null>(null);
   const [pointOverrides, setPointOverrides] = useState<MatrixTestPointOverride[]>([]);
   const [pointProfileWarning, setPointProfileWarning] = useState<string | null>(null);
-  const pointStepOptions = useMemo<MatrixTestPointStepOption[]>(() => groupColumns.filter((group) => group.isSelected).flatMap((group) =>
-    editableRows.flatMap((row) => {
-      const recordType = contactRecordType(row.item);
-      if (row.isSampleRow || !recordType) return [];
-      return parseStepTokens(row.groups[group.id] ?? "").tokens.map((token) => ({
-        draftGroupId: group.draftGroupId ?? group.id,
-        draftRowId: row.draftRowId ?? row.id,
-        stepSequence: token.sequence,
-        stepSuffixNote: token.suffixNote ?? "",
-        recordType,
-        label: `Group ${group.name || group.groupKey} · Step ${token.rawToken} · ${row.item}`,
-      }));
-    })
-  ), [groupColumns, editableRows]);
+  const hasCrMatrixStep = useMemo(() => groupColumns.some((group) => group.isSelected &&
+    editableRows.some((row) => !row.isSampleRow && contactRecordType(row.item) === "CR" &&
+      parseStepTokens(row.groups[group.id] ?? "").tokens.length > 0)),
+  [groupColumns, editableRows]);
   const pointValidation = useMemo(() => matrixTestPointsValidation(
-    pointProfile, pointOverrides, pointStepOptions,
-  ), [pointProfile, pointOverrides, pointStepOptions]);
+    pointProfile, pointOverrides, hasCrMatrixStep,
+  ), [pointProfile, pointOverrides, hasCrMatrixStep]);
   const [sourceUnavailableMessage, setSourceUnavailableMessage] = useState<string | null>(null);
   const revisionDraftReloadPendingRef = useRef(false);
 
@@ -2247,7 +2236,7 @@ export function MatrixEditorWorkspace({
             profile={pointProfile}
             warning={pointProfileWarning}
             overrides={pointOverrides}
-            stepOptions={pointStepOptions}
+            hasCrMatrixStep={hasCrMatrixStep}
             readOnly={isLifecycleReadonly || confirmActiveState === "loading"}
             onProfileChange={(nextProfile) => { markUnsaved(); setPointProfile(nextProfile); }}
             onOverridesChange={(nextOverrides) => { markUnsaved(); setPointOverrides(nextOverrides); }}

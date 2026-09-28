@@ -40,64 +40,54 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     })));
   });
 
-  it("keeps a Group/step point subset as a Matrix draft exception", async () => {
+  it("shows only project-wide point controls and keeps both form actions beside their heading", async () => {
     const seed = buildSessionSeed();
     seed.editor_draft.rows[0].test_item = "LLCR";
     seed.editor_draft.point_profile = {
       categories: [{ prefix: "HP", point_expression: "1-5", cr_selected: true }],
       delta_r_enabled: true,
     };
-    seed.editor_draft.point_overrides = [];
     apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce(seed);
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
-    const step = await screen.findByRole("combobox", { name: "Group and step for Test point exception" });
-    fireEvent.change(step, { target: { value: JSON.stringify(["group-1", "row-1", 1, ""]) } });
-    fireEvent.click(screen.getByRole("button", { name: "Add step exception" }));
-    fireEvent.change(screen.getByRole("textbox", { name: /Group 1 · Step 1 · LLCR Test point IDs 1/ }), { target: { value: "1,3" } });
+    const heading = await screen.findByRole("heading", { name: "LLCR / CR project points" });
+    const header = heading.closest("header") as HTMLElement;
+    expect(within(header).getByRole("button", { name: "LLCR Form" })).toBeTruthy();
+    expect(within(header).getByRole("button", { name: "CR Form" })).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: "Delta R for LLCR" })).toBeTruthy();
+    expect(screen.queryByText("Group / step exceptions")).toBeNull();
+    expect(screen.queryByText("IR")).toBeNull();
+    expect(screen.queryByText("DWV")).toBeNull();
+  });
 
-    await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalled(), { timeout: 1600 });
-    expect(apiMocks.saveMatrixEditorSessionDraft.mock.lastCall?.[1].point_overrides).toEqual([{
+  it("preserves old point subsets until the operator explicitly clears them in the Matrix draft", async () => {
+    const seed = buildSessionSeed();
+    seed.editor_draft.rows[0].test_item = "LLCR";
+    seed.editor_draft.point_profile = {
+      categories: [{ prefix: "HP", point_expression: "1-5", cr_selected: true }],
+      delta_r_enabled: true,
+    };
+    const previous = [{
       draft_group_id: "group-1", draft_row_id: "row-1", step_sequence: 1,
       step_suffix_note: "", categories: [{ prefix: "HP", point_expression: "1,3" }],
-    }]);
-    expect(apiMocks.confirmProjectPointProfile).not.toHaveBeenCalled();
-    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false);
-  });
-
-  it("offers a point exception for a CR at Specified Current Matrix step", async () => {
-    const seed = buildSessionSeed();
-    seed.editor_draft.rows[0].test_item = "CR at Specified Current (HP contacts only)";
-    seed.editor_draft.point_profile = {
-      categories: [{ prefix: "HP", point_expression: "1-5", cr_selected: true }],
-      delta_r_enabled: true,
-    };
+    }];
+    seed.editor_draft.point_overrides = previous;
     apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce(seed);
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
-    const options = await screen.findByRole("combobox", { name: "Group and step for Test point exception" });
-    expect(options.textContent).toContain("CR at Specified Current (HP contacts only)");
-  });
-
-  it("blocks Confirm Matrix for point IDs outside the shared project set", async () => {
-    const seed = buildSessionSeed();
-    seed.editor_draft.rows[0].test_item = "LLCR";
-    seed.editor_draft.point_profile = {
-      categories: [{ prefix: "HP", point_expression: "1-5", cr_selected: true }],
-      delta_r_enabled: true,
-    };
-    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce(seed);
-    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
-
-    fireEvent.change(await screen.findByRole("combobox", { name: "Group and step for Test point exception" }),
-      { target: { value: JSON.stringify(["group-1", "row-1", 1, ""]) } });
-    fireEvent.click(screen.getByRole("button", { name: "Add step exception" }));
-    fireEvent.change(screen.getByRole("textbox", { name: /Group 1 · Step 1 · LLCR Test point IDs 1/ }),
-      { target: { value: "9" } });
-
-    expect(screen.getByRole("alert").textContent).toContain("subset");
+    const clear = await screen.findByRole("button", { name: "Use project-wide points" });
+    expect(screen.getByRole("alert").textContent).toContain("previously confirmed");
     expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(apiMocks.saveMatrixEditorSessionDraft).not.toHaveBeenCalled();
     expect(apiMocks.confirmMatrixEditorSession).not.toHaveBeenCalled();
+    fireEvent.click(clear);
+    await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalled(), { timeout: 1600 });
+    expect(apiMocks.saveMatrixEditorSessionDraft.mock.lastCall?.[1].point_overrides).toEqual([]);
+    await waitFor(() => expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Matrix" }));
+    await waitFor(() => expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledWith("P1", expect.objectContaining({
+      point_overrides: [],
+    })));
   });
 
   it("blocks Confirm Matrix when CR steps have no CR-enabled project point category", async () => {
@@ -152,17 +142,13 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     })));
   });
 
-  it("passes current Matrix draft points and stable step IDs to LLCR preview generation", async () => {
+  it("passes current project-wide Matrix draft points and stable IDs to LLCR preview generation", async () => {
     const seed = buildSessionSeed();
     seed.editor_draft.rows[0].test_item = "LLCR";
     seed.editor_draft.point_profile = {
       categories: [{ prefix: "HP", point_expression: "1-5", cr_selected: true }],
       delta_r_enabled: true,
     };
-    seed.editor_draft.point_overrides = [{
-      draft_group_id: "group-1", draft_row_id: "row-1", step_sequence: 1,
-      step_suffix_note: "", categories: [{ prefix: "HP", point_expression: "1,3" }],
-    }];
     apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce(seed);
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
 
@@ -170,7 +156,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     await waitFor(() => expect(apiMocks.previewMatrixEditorLlcrCrRecordPublication).toHaveBeenCalled());
     expect(apiMocks.previewMatrixEditorLlcrCrRecordPublication.mock.lastCall?.[1]).toEqual(expect.objectContaining({
       point_profile: seed.editor_draft.point_profile,
-      point_overrides: seed.editor_draft.point_overrides,
+      point_overrides: [],
       groups: [expect.objectContaining({ draft_group_id: "group-1" })],
       rows: [expect.objectContaining({ draft_row_id: "row-1" })],
     }));
@@ -1074,9 +1060,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     await waitFor(() => expect(apiMocks.fetchMatrixEditorSession).toHaveBeenCalledTimes(1));
 
     const testPoints = screen.getByRole("region", { name: "Test points" });
-    const llcrRow = within(testPoints).getByText("LLCR").closest("div");
-    expect(llcrRow).toBeTruthy();
-    expect(within(llcrRow as HTMLElement).getByRole("button", { name: "LLCR Form" })).toBeTruthy();
+    expect(within(testPoints).getByRole("button", { name: "LLCR Form" })).toBeTruthy();
     expect(screen.queryByRole("region", { name: "LLCR and CR tables" })).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Samples 1"), {
