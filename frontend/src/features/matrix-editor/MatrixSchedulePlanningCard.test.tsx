@@ -50,6 +50,21 @@ describe("MatrixSchedulePlanningCard", () => {
     expect(screen.getByLabelText("Planned start").classList.contains("is-invalid")).toBe(false);
   });
 
+  it("shortens the visible post-test label while preserving its accessible field name", () => {
+    render(
+      <MatrixSchedulePlanningCard
+        plan={emptyPlan}
+        calculation={buildCalculation()}
+        onChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Post-test", { exact: true })).toBeTruthy();
+    expect(screen.queryByText("Post-test buffer", { exact: true })).toBeNull();
+    expect(screen.queryByText("days", { exact: true })).toBeNull();
+    expect(screen.getByLabelText("Post-test buffer")).toBeTruthy();
+  });
+
   it("shows date values in native date input format", () => {
     render(
       <MatrixSchedulePlanningCard

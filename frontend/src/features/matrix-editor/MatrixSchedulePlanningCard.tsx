@@ -54,10 +54,7 @@ export function MatrixSchedulePlanningCard({
       <div className="matrix-editor-schedule-fields">
         <label>
           <span className="matrix-editor-schedule-field-label">
-            <span>Post-test buffer</span>
-            <span className="matrix-editor-schedule-unit" aria-hidden="true">
-              days
-            </span>
+            Post-test
           </span>
           <input
             className={calculation.bufferErrors.postTestBufferDays ? "is-invalid" : undefined}
