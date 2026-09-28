@@ -49,8 +49,7 @@ export function MatrixTestPointsEditor({
   };
 
   return <section className="contact-measurement-summary matrix-test-points-editor" aria-label="Test points">
-    <header className="contact-measurement-summary-header"><h3>Test points</h3></header>
-    <p>Project point IDs are shared. Any changes here remain a Matrix draft until Confirm Matrix.</p>
+    <header className="contact-measurement-summary-header"><h3 title="Project point IDs are shared. Any changes here remain a Matrix draft until Confirm Matrix.">Test points</h3></header>
     {warning && !profile ? <p className="contact-measurement-summary-warning" role="status">{warning}</p> : null}
     <div className="project-point-profile-card">
       <header className="project-point-profile-header">

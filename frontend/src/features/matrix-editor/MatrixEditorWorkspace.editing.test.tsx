@@ -55,6 +55,9 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     expect(within(header).getByRole("button", { name: "LLCR Form" })).toBeTruthy();
     expect(within(header).getByRole("button", { name: "CR Form" })).toBeTruthy();
     expect(within(header).getByRole("checkbox", { name: "Delta R for LLCR" })).toBeTruthy();
+    const testPointsHeading = screen.getByRole("heading", { name: "Test points" });
+    expect(testPointsHeading.getAttribute("title")).toBe("Project point IDs are shared. Any changes here remain a Matrix draft until Confirm Matrix.");
+    expect(screen.queryByText("Project point IDs are shared. Any changes here remain a Matrix draft until Confirm Matrix.")).toBeNull();
     expect(screen.queryByText("Group / step exceptions")).toBeNull();
     expect(screen.queryByText("IR")).toBeNull();
     expect(screen.queryByText("DWV")).toBeNull();
