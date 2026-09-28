@@ -53,19 +53,6 @@ export function MatrixSchedulePlanningCard({
 
       <div className="matrix-editor-schedule-fields">
         <label>
-          <span className="matrix-editor-schedule-field-label">
-            Post-test
-          </span>
-          <input
-            className={calculation.bufferErrors.postTestBufferDays ? "is-invalid" : undefined}
-            disabled={readOnly}
-            inputMode="decimal"
-            value={plan.postTestBufferDays}
-            aria-label="Post-test buffer"
-            onChange={(event) => updateField("postTestBufferDays", event.target.value)}
-          />
-        </label>
-        <label>
           <span>Planned start</span>
           <input
             className={`matrix-editor-schedule-date-input ${dateInputClass("plannedTestStartDate") ?? ""}`.trim()}
@@ -87,6 +74,17 @@ export function MatrixSchedulePlanningCard({
             type="date"
             value={plan.plannedTestCompleteDate}
             onChange={(event) => updateField("plannedTestCompleteDate", event.target.value)}
+          />
+        </label>
+        <label>
+          <span className="matrix-editor-schedule-field-label">Post-test</span>
+          <input
+            className={`matrix-editor-schedule-buffer-input ${calculation.bufferErrors.postTestBufferDays ? "is-invalid" : ""}`.trim()}
+            disabled={readOnly}
+            inputMode="decimal"
+            value={plan.postTestBufferDays}
+            aria-label="Post-test buffer"
+            onChange={(event) => updateField("postTestBufferDays", event.target.value)}
           />
         </label>
         <label>

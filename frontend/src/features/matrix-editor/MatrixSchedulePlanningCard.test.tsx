@@ -65,6 +65,26 @@ describe("MatrixSchedulePlanningCard", () => {
     expect(screen.getByLabelText("Post-test buffer")).toBeTruthy();
   });
 
+  it("places Post-test immediately before Estimated completion", () => {
+    const { container } = render(
+      <MatrixSchedulePlanningCard
+        plan={emptyPlan}
+        calculation={buildCalculation()}
+        onChange={vi.fn()}
+      />
+    );
+
+    const fieldOrder = Array.from(container.querySelectorAll("input"))
+      .map((input) => input.getAttribute("aria-label"));
+
+    expect(fieldOrder).toEqual([
+      "Planned start",
+      "Test complete",
+      "Post-test buffer",
+      "Estimated completion",
+    ]);
+  });
+
   it("shows date values in native date input format", () => {
     render(
       <MatrixSchedulePlanningCard
