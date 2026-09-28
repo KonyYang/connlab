@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_MATRIX_DELTA_R_HEADER_LAYOUT",
+    "summary": "Move the Matrix editor ΔR toggle into the LLCR/CR project-points header row.",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Place the existing ΔR checkbox in the right-side header controls alongside LLCR Form and CR Form, keeping the title on the left. Preserve its value, accessibility label, disabled behavior, and functionality; allow responsive wrapping without a standalone full-width ΔR row.",
+    "scope_paths": [
+      "frontend/src/features/contact-measurement-plan/MatrixTestPointsEditor.tsx",
+      "frontend/src/contact-measurement-plan.css",
+      "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "4f1d7e796db7d8872b51a7b4c2b4827dc778bfd0",
+    "started_at": "2026-09-28T22:29:28.032416Z",
+    "updated_at": "2026-09-28T22:29:28.032416Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_LIGHTWEIGHT_PARALLEL_TASKS",
     "tier": "standard",

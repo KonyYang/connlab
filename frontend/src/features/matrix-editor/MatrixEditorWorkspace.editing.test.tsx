@@ -54,7 +54,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     const header = heading.closest("header") as HTMLElement;
     expect(within(header).getByRole("button", { name: "LLCR Form" })).toBeTruthy();
     expect(within(header).getByRole("button", { name: "CR Form" })).toBeTruthy();
-    expect(screen.getByRole("checkbox", { name: "Delta R for LLCR" })).toBeTruthy();
+    expect(within(header).getByRole("checkbox", { name: "Delta R for LLCR" })).toBeTruthy();
     expect(screen.queryByText("Group / step exceptions")).toBeNull();
     expect(screen.queryByText("IR")).toBeNull();
     expect(screen.queryByText("DWV")).toBeNull();

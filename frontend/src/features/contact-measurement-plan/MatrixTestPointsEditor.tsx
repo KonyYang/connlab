@@ -55,13 +55,15 @@ export function MatrixTestPointsEditor({
     <div className="project-point-profile-card">
       <header className="project-point-profile-header">
         <h4>LLCR / CR project points</h4>
-        <div className="matrix-test-points-form-actions">{recordActions?.llcr}{recordActions?.cr}</div>
+        <div className="matrix-test-points-header-controls">
+          <label className="project-point-profile-delta-r">
+            <input type="checkbox" aria-label="Delta R for LLCR" checked={current.delta_r_enabled} disabled={readOnly}
+              onChange={(event) => onProfileChange({ ...current, delta_r_enabled: event.target.checked })} />
+            <span>ΔR</span>
+          </label>
+          <div className="matrix-test-points-form-actions">{recordActions?.llcr}{recordActions?.cr}</div>
+        </div>
       </header>
-      <label className="project-point-profile-delta-r">
-        <input type="checkbox" aria-label="Delta R for LLCR" checked={current.delta_r_enabled} disabled={readOnly}
-          onChange={(event) => onProfileChange({ ...current, delta_r_enabled: event.target.checked })} />
-        <span>ΔR</span>
-      </label>
       <table className="project-point-profile-table"><thead><tr>
         <th scope="col">Point category</th><th scope="col">Test point IDs</th><th scope="col" className="project-point-profile-cr-cell">CR</th><th scope="col" className="project-point-profile-action">
           <button type="button" className="contact-measurement-button is-compact" disabled={readOnly || current.categories.length >= 256}
