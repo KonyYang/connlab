@@ -26,8 +26,16 @@
     "risk_reasons": [],
     "activation_head": "b70520e63a663f2679dabbd87aa3696bd01fd470",
     "started_at": "2026-09-28T22:58:50.126617Z",
-    "updated_at": "2026-09-28T22:58:50.126617Z",
-    "checkpoint": null,
+    "updated_at": "2026-09-28T23:12:11.330672Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_MATRIX_SCHEDULE_INLINE_FIELDS",
+      "stage": "revision",
+      "status": "running",
+      "summary": "User feedback 2026-09-29: Move Post-test before Estimated completion and further narrow schedule editors.",
+      "requires_user": false
+    },
     "report": null
   },
   "last_closed": {
