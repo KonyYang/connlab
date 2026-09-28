@@ -1034,9 +1034,10 @@
 }
 
 .matrix-editor-schedule-fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-  gap: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
 }
 
 .matrix-editor-schedule-error {
@@ -1044,10 +1045,11 @@
 }
 
 .matrix-editor-schedule-fields label {
-  display: grid;
-  grid-template-columns: minmax(max-content, auto) minmax(0, 1fr);
+  display: flex;
+  flex: 0 0 auto;
   align-items: center;
-  column-gap: 8px;
+  gap: 8px;
+  width: max-content;
   color: var(--color-ink-muted);
   font-size: 14px;
   line-height: 1.25;
@@ -1059,7 +1061,8 @@
 }
 
 .matrix-editor-schedule-fields input {
-  width: 100%;
+  flex: 0 0 140px;
+  width: 140px;
   min-width: 0;
   max-width: 140px;
   min-height: 36px;
@@ -1070,6 +1073,7 @@
 }
 
 .matrix-editor-schedule-fields .matrix-editor-schedule-buffer-input {
+  flex-basis: 56px;
   width: 56px;
   max-width: 56px;
 }
