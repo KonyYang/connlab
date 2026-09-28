@@ -11,82 +11,31 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
-    "task_id": "TASK_MATRIX_SCHEDULE_INLINE_FIELDS",
-    "summary": "Align Matrix Schedule labels beside their narrowed editing controls.",
+    "task_id": "TASK_MATRIX_TEST_DAYS_TYPOGRAPHY",
+    "summary": "Increase the Matrix Editor Test Days summary-row text to match surrounding editor typography.",
     "tier": "micro",
     "route": "sol_direct",
-    "scope": "In the Matrix Editor Schedule card, simplify the visible post-test label to “Post-test”, place each of the four field labels immediately left of its existing editor, enlarge labels modestly, and narrow editors so label and control fit on one line when space allows. Preserve accessible names, input values, validation, calculations, and responsive readability.",
+    "scope": "Adjust the Test Days row font size to match the Matrix editor table text, without changing row content, alignment, or calculations.",
     "scope_paths": [
-      "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.tsx",
-      "frontend/src/workbench.css",
-      "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.test.tsx"
+      "frontend/src/workbench.css"
     ],
     "risk_reasons": [],
-    "activation_head": "b70520e63a663f2679dabbd87aa3696bd01fd470",
-    "started_at": "2026-09-28T22:58:50.126617Z",
-    "updated_at": "2026-09-28T23:27:57.663947Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_MATRIX_SCHEDULE_INLINE_FIELDS",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_MATRIX_SCHEDULE_INLINE_FIELDS",
-      "subject": "a0d89d69bef6156ac674596728c009ac6ff81f6f",
-      "summary": "Changed Schedule fields to compact intrinsic-width groups with wrapping only when needed, allowing all four controls to share one row at workstation widths while preserving narrow-screen wrapping.",
-      "scope_ok": true,
-      "changed_paths": [
-        "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixSchedulePlanningCard.tsx",
-        "frontend/src/workbench.css"
-      ],
-      "validation": [
-        {
-          "name": "MatrixSchedulePlanningCard focused tests",
-          "status": "passed",
-          "evidence": "9/9 passed"
-        },
-        {
-          "name": "Frontend production build",
-          "status": "passed"
-        },
-        {
-          "name": "In-app browser responsive layout inspection",
-          "status": "passed",
-          "evidence": "At 601px the fields wrap without overflow; computed natural group widths total about 937px including gaps, which fits in the roughly 1060px field area at the 1366px workstation breakpoint."
-        },
-        {
-          "name": "git diff --check",
-          "status": "passed"
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed"
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "evidence": "Revision committed on master as a0d89d69; working tree clean before task-board finish."
-      }
-    }
+    "activation_head": "4043ca8d059035bfe7cb2dcb320f1e4de636c612",
+    "started_at": "2026-09-28T23:47:29.844737Z",
+    "updated_at": "2026-09-28T23:47:29.844737Z",
+    "checkpoint": null,
+    "report": null
   },
   "last_closed": {
-    "task_id": "TASK_MATRIX_DELTA_R_HEADER_LAYOUT",
+    "task_id": "TASK_MATRIX_SCHEDULE_INLINE_FIELDS",
     "tier": "micro",
-    "subject": "ffe04d0ea0c4d6f9d79570a55d75559d83bc0a84",
-    "summary": "Move the Matrix editor ΔR toggle into the LLCR/CR project-points header row.",
+    "subject": "a0d89d69bef6156ac674596728c009ac6ff81f6f",
+    "summary": "Align Matrix Schedule labels beside their narrowed editing controls.",
     "disposition": "completed",
-    "decision_ref": "User requested CloseAndSubmit: 关闭并开始 Schedule 调整 (2026-09-29)",
-    "closed_at": "2026-09-28T22:58:50.126617Z"
+    "decision_ref": "User authorized closing Schedule task and starting Test Days typography task.",
+    "closed_at": "2026-09-28T23:47:29.844737Z"
   },
   "retained_history": [
     {
