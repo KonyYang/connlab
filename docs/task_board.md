@@ -26,8 +26,16 @@
     "risk_reasons": [],
     "activation_head": "4f1d7e796db7d8872b51a7b4c2b4827dc778bfd0",
     "started_at": "2026-09-28T22:29:28.032416Z",
-    "updated_at": "2026-09-28T22:29:28.032416Z",
-    "checkpoint": null,
+    "updated_at": "2026-09-28T22:41:29.138615Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_MATRIX_DELTA_R_HEADER_LAYOUT",
+      "stage": "revision",
+      "status": "running",
+      "summary": "User feedback 2026-09-29: Replace Test points explanatory paragraph with a hover reminder.",
+      "requires_user": false
+    },
     "report": null
   },
   "last_closed": {
