@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_TEST_POINTS_SINGLE_AUTHORITY",
     "summary": "Unify Test points draft/confirmation with Matrix authority and safely publish LLCR/CR forms to project Test results.",
@@ -92,17 +92,135 @@
     ],
     "activation_head": "03b4b015b8842c86cc7299c8e9c330a0270c7678",
     "started_at": "2026-09-27T02:48:00.644593Z",
-    "updated_at": "2026-09-27T23:28:09.693497Z",
+    "updated_at": "2026-09-28T00:15:12.708924Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_TEST_POINTS_SINGLE_AUTHORITY",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User confirmed Group/step point subsets are no longer needed; simplify Test points card and preserve old authority.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "version": 1,
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/dependencies.py",
+        "backend/api/matrix_editor_session_dtos.py",
+        "backend/api/matrix_editor_session_response_mappers.py",
+        "backend/api/project_folder_generation_composition.py",
+        "backend/api/project_folder_preflight.py",
+        "backend/api/routes_contact_point_profile.py",
+        "backend/api/routes_matrix_editor_llcr_cr_record_generation.py",
+        "backend/api/routes_matrix_editor_session.py",
+        "backend/application/confirmed_matrix_authority_service.py",
+        "backend/application/confirmed_matrix_fee_cr_specified_current.py",
+        "backend/application/confirmed_matrix_fee_draft_line_builder.py",
+        "backend/application/confirmed_matrix_fee_draft_service.py",
+        "backend/application/confirmed_matrix_fee_step_quantities.py",
+        "backend/application/confirmed_matrix_llcr_cr_record_generation_service.py",
+        "backend/application/confirmed_matrix_llcr_cr_record_preview_service.py",
+        "backend/application/confirmed_matrix_llcr_cr_record_projection.py",
+        "backend/application/contact_point_profile_confirmed_consumer_adapter.py",
+        "backend/application/matrix_editor_confirmed_snapshot_builder.py",
+        "backend/application/matrix_editor_llcr_cr_record_generation_service.py",
+        "backend/application/matrix_editor_llcr_cr_record_projection.py",
+        "backend/application/matrix_editor_session_contracts.py",
+        "backend/application/matrix_editor_session_draft_state.py",
+        "backend/application/matrix_editor_session_projection.py",
+        "backend/application/matrix_editor_session_service.py",
+        "backend/application/matrix_editor_session_signature.py",
+        "backend/application/matrix_test_points_authority.py",
+        "backend/application/project_folder_generation_service.py",
+        "backend/application/project_matrix_draft_persistence_service.py",
+        "backend/domain/confirmed_matrix_authority_models.py",
+        "backend/domain/enums.py",
+        "backend/domain/matrix_contact_measurement_models.py",
+        "backend/domain/project_matrix_draft_models.py",
+        "backend/infrastructure/files/project_folder_required_forms_gateway.py",
+        "backend/infrastructure/office/llcr_cr_record_workbook_layout.py",
+        "backend/infrastructure/storage/matrix_contact_measurement_schema_migration.py",
+        "backend/infrastructure/storage/models_confirmed_matrix_authority.py",
+        "backend/infrastructure/storage/models_project_matrix_draft.py",
+        "backend/infrastructure/storage/repositories/confirmed_matrix_authority.py",
+        "backend/infrastructure/storage/repositories/project_matrix_draft.py",
+        "docs/PROJECT_CONTEXT.md",
+        "frontend/src/App.tsx",
+        "frontend/src/api/client.ts",
+        "frontend/src/contact-measurement-plan.css",
+        "frontend/src/features/contact-measurement-plan/MatrixTestPointsEditor.tsx",
+        "frontend/src/features/matrix-editor/LlcrCrRecordDownloadAction.test.tsx",
+        "frontend/src/features/matrix-editor/LlcrCrRecordDownloadAction.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.testSupport.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/features/matrix-editor/matrixEditorDraftModel.ts",
+        "frontend/src/features/matrix-editor/useLlcrCrSpecializedRecordWorkbookModel.test.tsx",
+        "frontend/src/features/matrix-editor/useLlcrCrSpecializedRecordWorkbookModel.ts",
+        "frontend/src/features/matrix-editor/useMatrixDraftPersistence.ts",
+        "tests/integration/test_contact_point_profile_api.py",
+        "tests/integration/test_matrix_editor_llcr_cr_record_generation_api.py",
+        "tests/integration/test_project_folder_generation_complete_chain.py",
+        "tests/integration/test_project_folder_generation_recovery.py",
+        "tests/unit/test_confirmed_matrix_authority_repository.py",
+        "tests/unit/test_confirmed_matrix_fee_draft_profile_consumer.py",
+        "tests/unit/test_confirmed_matrix_llcr_cr_record_generation_service.py",
+        "tests/unit/test_confirmed_matrix_llcr_cr_record_projection.py",
+        "tests/unit/test_matrix_contact_measurement_schema_migration.py",
+        "tests/unit/test_matrix_editor_session_service.py",
+        "tests/unit/test_project_folder_generation_service.py",
+        "tests/unit/test_project_matrix_draft_repository.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "result": "Python 3111 passed, 8 skipped, 19 Office deselected; Vitest passed; Vite build passed.",
+          "command": "scripts/run_tests.ps1 -Suite All"
+        },
+        {
+          "status": "passed",
+          "result": "No whitespace errors.",
+          "command": "git diff --check HEAD^ HEAD"
+        },
+        {
+          "status": "passed",
+          "result": "LLCR/CR Form buttons visible in point header; exception and placeholder labels absent; no authority confirmed.",
+          "command": "local Matrix Editor UI smoke"
+        }
+      ],
+      "schema": "connlab.sol-task-report",
+      "roles": {
+        "reviewer": {
+          "evidence": "Independent standards and spec review: 0 blocking findings.",
+          "status": "passed"
+        },
+        "developer": {
+          "evidence": "TDD red/green; focused Vitest 57/57 and pytest 65/65.",
+          "status": "passed"
+        },
+        "qa": {
+          "evidence": "Independent full gate passed on final code bytes.",
+          "status": "passed"
+        },
+        "planner": {
+          "evidence": "Independent legacy authority and migration plan.",
+          "status": "passed"
+        },
+        "integrator": {
+          "evidence": "Independent exact scope and clean local commit audit.",
+          "status": "passed"
+        }
+      },
+      "subject": "7b782f92e0025b5b2fd8073bde7be98e89b91aeb",
+      "task_id": "TASK_MATRIX_TEST_POINTS_SINGLE_AUTHORITY",
+      "summary": "Retired new Group/step Test point exceptions, simplified Matrix Test points actions, and preserved historical point authority.",
+      "integration": {
+        "status": "passed",
+        "subject": "7b782f92e0025b5b2fd8073bde7be98e89b91aeb",
+        "evidence": "Local commit integrated on master; clean worktree; no push or close."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_SECTION_COLUMN_WIDTH",
