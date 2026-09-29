@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FeeEvaluationDraft, FeeEvaluationLineItem } from "../../api/client";
 import {
-  feePricingReuseTargets,
   applyFeeEvaluationPreviewEdits,
   buildFeeEvaluationCostRisk,
   buildFeeEvaluationEditedExportPayload,
@@ -20,24 +19,6 @@ import {
 } from "./feeEvaluationPreviewModel";
 
 describe("feeEvaluationPreviewModel", () => {
-  it("reuses a price only across groups with the same confirmed test and conditions", () => {
-    const source = buildFeeEvaluationPreviewRows(createDraft()).find((row) => row.rowKind === "matrix_step")!;
-    const same = { ...source, lineId: "same", groupKey: "Ab", groupLabel: "Ab" };
-    const changed = { ...source, lineId: "changed", groupKey: "Ac", groupLabel: "Ac", pricingMatchKey: "other-condition" };
-    const sameGroup = { ...source, lineId: "same-group" };
-
-    expect(feePricingReuseTargets([source, same, changed, sameGroup], source.lineId).map((row) => row.lineId)).toEqual(["same"]);
-  });
-
-  it("also permits explicit reuse for identical unmatched tests", () => {
-    const draft = createDraft();
-    const line = draft.groups[0].line_items[0];
-    line.matched_rule_id = null;
-    const source = buildFeeEvaluationPreviewRows(draft).find((row) => row.rowKind === "matrix_step")!;
-    const same = { ...source, lineId: "same", groupKey: "Ab", groupLabel: "Ab" };
-    expect(feePricingReuseTargets([source, same], source.lineId)).toEqual([same]);
-  });
-
   it("compares complete Fee row values without depending on saved row order", () => {
     const payload = buildFeeEvaluationEditedExportPayload(
       buildFeeEvaluationPreviewRows(createDraft()),

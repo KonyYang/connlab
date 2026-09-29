@@ -69,7 +69,6 @@ export type FeeEvaluationPreviewRow = {
   fieldMetadata: FeeEvaluationPreviewFieldMetadata[];
   rowKind: "matrix_step" | "sample_preparation" | "manual_trailing";
   groupTone: "tone-a" | "tone-b" | "manual";
-  pricingMatchKey?: string;
 };
 
 export type FeeEvaluationPreviewFieldMetadata = {
@@ -168,24 +167,6 @@ export function buildFeeEvaluationPreviewRows(
         )
       : [buildReportPreparationFallbackRow()];
   return [...rows, ...manualRows];
-}
-
-export function feePricingReuseTargets(
-  rows: FeeEvaluationPreviewRow[],
-  sourceLineId: string
-): FeeEvaluationPreviewRow[] {
-  const source = rows.find((row) => row.lineId === sourceLineId);
-  if (!source || source.rowKind !== "matrix_step" || !source.pricingMatchKey) return [];
-  return rows.filter(
-    (row) => row.lineId !== sourceLineId && row.rowKind === "matrix_step" &&
-      row.groupKey !== source.groupKey && row.pricingMatchKey === source.pricingMatchKey
-  );
-}
-
-function pricingMatchKey(line: FeeEvaluationLineItem): string | undefined {
-  if (!line.test_item.trim()) return undefined;
-  return [line.matched_rule_id ?? "", line.test_item, line.section, line.method,
-    line.condition, line.requirement].map((value) => value.trim().toLowerCase()).join("\u001f");
 }
 
 export function buildFeeEvaluationPreviewTotals(
@@ -606,7 +587,6 @@ function buildMatrixStepRows(
       fieldMetadata: mapFieldMetadata(line.field_metadata ?? []),
       rowKind: "matrix_step" as const,
       groupTone,
-      pricingMatchKey: pricingMatchKey(line),
       stepSortValue: parseStepSortValue(stepDisplay),
       sourceLineOrder,
       sourceTokenOrder: index,

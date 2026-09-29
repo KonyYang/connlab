@@ -7,7 +7,6 @@ import type {
   FeeEvaluationUpdateBlocker,
 } from "./feeEvaluationPreviewModel";
 import { FEE_UNIT_TYPE_OPTIONS } from "./feeEvaluationPreviewModel";
-import { feePricingReuseTargets } from "./feeEvaluationPreviewModel";
 
 type FeeEvaluationPreviewTableProps = {
   importControl?: ReactNode;
@@ -31,13 +30,11 @@ type FeeEvaluationPreviewTableProps = {
     field: FeeEvaluationEditableField,
     value: string
   ) => void;
-  onApplyPricingToMatchingRows?: (lineId: string) => void;
   saveState: FeePricingDraftSaveState;
   suppressedSaveMessage?: string | null;
   scopeFeeLabel: string;
   groupOptions: string[];
   rows: FeeEvaluationPreviewRow[];
-  pricingReuseRows?: FeeEvaluationPreviewRow[];
   totals: FeeEvaluationPreviewTotals;
   updateFeeBlockersByRowId?: Record<string, FeeEvaluationUpdateBlocker>;
 };
@@ -92,13 +89,11 @@ export function FeeEvaluationPreviewTable({
   onGenerateFeeFile,
   onGroupFilterChange,
   onRowEditChange,
-  onApplyPricingToMatchingRows,
   saveState,
   suppressedSaveMessage = null,
   scopeFeeLabel,
   groupOptions,
   rows,
-  pricingReuseRows,
   totals,
   updateFeeBlockersByRowId = {},
 }: FeeEvaluationPreviewTableProps): ReactElement {
@@ -331,16 +326,6 @@ export function FeeEvaluationPreviewTable({
                       row={row}
                       updateBlocker={updateFeeBlockersByRowId[row.lineId]}
                     />
-                    {!readOnly && onApplyPricingToMatchingRows &&
-                    row.unitPrice.trim() && Number.isFinite(Number(row.unitPrice)) &&
-                    feePricingReuseTargets(pricingReuseRows ?? rows, row.lineId).length > 0 ? (
-                      <button type="button" className="fee-evaluation-price-reuse"
-                        onClick={() => onApplyPricingToMatchingRows(row.lineId)}
-                        title="Copy Unit Price and Unit Type to rows with the same confirmed test and conditions in other Groups; each row remains editable."
-                      >
-                        Apply price to {feePricingReuseTargets(pricingReuseRows ?? rows, row.lineId).length} matching rows
-                      </button>
-                    ) : null}
                   </td>
                   <td>
                     <EditablePreviewInput

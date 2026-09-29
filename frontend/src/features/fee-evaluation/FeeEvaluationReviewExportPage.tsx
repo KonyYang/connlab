@@ -51,7 +51,6 @@ import {
   buildFeeEvaluationUpdateBlockers,
   applyFeeEvaluationPreviewEdits,
   filterFeeEvaluationPreviewRowsForScope,
-  feePricingReuseTargets,
   feeEvaluationPricingDraftCas as pricingDraftCasStateFromResponse,
   feeEvaluationPricingDraftCasEquals as pricingDraftCasEquals,
   feeEvaluationPricingDraftCasRequest as pricingDraftCasRequest,
@@ -1194,26 +1193,6 @@ export function FeeEvaluationReviewExportPage({
     markPricingDraftDirty();
   }
 
-  function handleApplyPricingToMatchingRows(lineId: string): void {
-    if (isLifecycleReadonly) return;
-    const source = previewRows.find((row) => row.lineId === lineId);
-    if (!source || !source.unitPrice.trim() || !Number.isFinite(Number(source.unitPrice))) return;
-    const targets = feePricingReuseTargets(previewRows, lineId);
-    if (!targets.length) return;
-    setPreviewEdits((current) => {
-      const next = { ...current };
-      for (const target of targets) {
-        next[target.lineId] = {
-          ...(next[target.lineId] ?? {}),
-          unitPrice: source.unitPrice,
-          unitType: source.unitType,
-        };
-      }
-      return next;
-    });
-    markPricingDraftDirty();
-  }
-
   function markPricingDraftDirty(): void {
     if (isLifecycleReadonly) {
       return;
@@ -1391,7 +1370,6 @@ export function FeeEvaluationReviewExportPage({
         onGenerateFeeFile={handleGenerateFeeFile}
         onGroupFilterChange={setPreviewGroupFilter}
         onRowEditChange={handlePreviewRowEditChange}
-        onApplyPricingToMatchingRows={handleApplyPricingToMatchingRows}
         readOnly={isLifecycleReadonly || pricingDraftLoadStatus === "error" ||
           isCancellingPricingSession || confirmFeeActionState.kind === "confirming"}
         saveState={saveState}
@@ -1402,7 +1380,6 @@ export function FeeEvaluationReviewExportPage({
         }
         scopeFeeLabel={selectedPreviewTotal}
         rows={visiblePreviewRows}
-        pricingReuseRows={previewRows}
         totals={previewTotals}
         updateFeeBlockersByRowId={updateFeeBlockersByRowId}
       />

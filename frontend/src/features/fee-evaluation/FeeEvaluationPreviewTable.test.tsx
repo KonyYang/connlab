@@ -5,11 +5,11 @@ import { FeeEvaluationPreviewTable } from "./FeeEvaluationPreviewTable";
 import type { FeeEvaluationPreviewRow } from "./feeEvaluationPreviewModel";
 
 describe("FeeEvaluationPreviewTable", () => {
-  it("offers explicit cross-group price reuse without hiding independent row editing", () => {
-    const onApply = vi.fn();
+  it("keeps prices independently editable without repeated bulk-price actions", () => {
+    const onRowEditChange = vi.fn();
     const source = {
       lineId: "line-a", groupKey: "Aa", groupLabel: "Aa", rowKind: "matrix_step",
-      pricingMatchKey: "same-confirmed-test", description: "IR", stepToken: "1",
+      description: "IR", stepToken: "1",
       unitPrice: "5", unitType: "per reading", units: "", baseFee: "",
       discount: "0", spendTime: "0", testingFee: "Pending", notes: "",
       status: "pending", reviewReason: null, fieldMetadata: [], groupTone: "tone-a",
@@ -18,19 +18,20 @@ describe("FeeEvaluationPreviewTable", () => {
       costPreviewValues={{ conditionConfirmationSpendTime: "0", externalCost: "0", externalCostNote: "", labManpowerHourlyRate: "200" }}
       costRisk={{ severity: "none", message: null }} confirmFeeActionState={{ kind: "idle" }}
       downloadState={{ kind: "idle" }} feeFormButtonLabel="Download Draft Fee Form"
-      draftPreviewNotice={null} groupFilter="Aa" groupOptions={["Aa", "Ab"]}
+      draftPreviewNotice={null} groupFilter="all" groupOptions={["Aa", "Ab"]}
       identityLine="DL-2026-001" labManpowerCostLabel="0"
       onCostPreviewChange={vi.fn()} onGenerateFeeFile={vi.fn()} onGroupFilterChange={vi.fn()}
-      onRowEditChange={vi.fn()} onApplyPricingToMatchingRows={onApply}
-      rows={[source]}
-      pricingReuseRows={[source, { ...source, lineId: "line-b", groupKey: "Ab", groupLabel: "Ab" }]}
+      onRowEditChange={onRowEditChange}
+      rows={[source, { ...source, lineId: "line-b", groupKey: "Ab", groupLabel: "Ab" }]}
       saveState={{ kind: "idle", message: null }} scopeFeeLabel="Pending"
       totals={{ testFeeTotal: "0", workingHours: "0", grandCost: "0", labManpowerCost: "0", externalCost: "0", preparedBy: "", approvedBy: "", confirmationLabel: "" }}
     />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: /Apply price to 1 matching rows/ })[0]);
-    expect(onApply).toHaveBeenCalledWith("line-a");
-    expect(screen.getAllByLabelText("Unit Price for IR")).toHaveLength(1);
+    expect(screen.queryAllByRole("button", { name: /Apply price to/ })).toHaveLength(0);
+    const prices = screen.getAllByLabelText("Unit Price for IR");
+    expect(prices).toHaveLength(2);
+    fireEvent.change(prices[0], { target: { value: "25" } });
+    expect(onRowEditChange).toHaveBeenCalledWith("line-a", "unitPrice", "25");
   });
 
   afterEach(() => {
