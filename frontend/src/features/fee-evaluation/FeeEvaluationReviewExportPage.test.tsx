@@ -676,6 +676,7 @@ describe("FeeEvaluationReviewExportPage", () => {
   it("shows when the current Fee values are already confirmed", async () => {
     const draft = createDraftWithResolvedSingleLine();
     const savedPayload = currentAuthorityPricingDraftPayload();
+    savedPayload.manual_rows?.reverse();
     const sourceRows = buildFeeEvaluationPreviewRows(draft);
     const hydrated = hydrateFeeEvaluationPreviewEditsFromSavedDraft(
       sourceRows,
@@ -719,6 +720,59 @@ describe("FeeEvaluationReviewExportPage", () => {
     expect(
       await screen.findByRole("button", { name: "Generate Official Fee Form" })
     ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty("disabled", true);
+  });
+
+  it("explains unavailable project-folder storage on the draft download button", async () => {
+    arrangeSuccessfulContext();
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithResolvedSingleLine());
+    apiMocks.previewFeeFormPublication.mockResolvedValue({
+      mode: "download",
+      status: "ready",
+      authority_status: "unconfirmed",
+      official_folder_unavailable_reason: "No official project folder is linked to this project. Fee Form can only be downloaded as a draft.",
+      existing_file: false,
+      existing_modified_at: null,
+      blockers: [],
+      preview_token: "draft-preview",
+    });
+
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Download Draft Fee Form" }).getAttribute("title"))
+      .toContain("No official project folder is linked to this project"));
+  });
+
+  it("shows a draft-download action when confirmed Fee has lost its official folder", async () => {
+    arrangeSuccessfulContext({
+      pricingDraft: currentPricingDraftResponse({
+        status: "current_v2",
+        saved_draft_edit_id: "fed-1",
+        saved_generation: 1,
+        saved_source_context_fingerprint: "context-1",
+        saved_payload_fingerprint: "payload-1",
+        saved_validation_token: "token-1",
+        payload: currentAuthorityPricingDraftPayload(),
+      }),
+      confirmedFee: createConfirmedFeeLatest({ status: "current", pricingDraftEditId: "fed-1" }),
+    });
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithResolvedSingleLine());
+    apiMocks.previewFeeFormPublication.mockResolvedValue({
+      mode: "download",
+      status: "ready",
+      authority_status: "confirmed",
+      official_folder_unavailable_reason: "The recorded official project folder is unavailable. Fee Form can only be downloaded as a draft.",
+      existing_file: false,
+      existing_modified_at: null,
+      blockers: [],
+      preview_token: "draft-preview",
+    });
+
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Download Draft Fee Form" }).getAttribute("title"))
+      .toContain("The recorded official project folder is unavailable"));
+    expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty("disabled", true);
   });
 
   it("refreshes Matrix-aligned Sample preparation units during reviewed rebase", async () => {

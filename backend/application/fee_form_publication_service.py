@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from hashlib import sha256
@@ -118,6 +119,7 @@ class FeeFormPublicationPreview:
     blockers: tuple[str, ...]
     preview_token: str
     basic_information_values: dict[str, str] | None = None
+    official_folder_unavailable_reason: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,33 +164,34 @@ class FeeFormPublicationService:
                         str(getattr(fee, "pricing_snapshot_json"))
                     )
                 )
-                authority_matches = confirmed_values == command.current_values
+                authority_matches = _same_fee_values(confirmed_values, command.current_values)
             except (AttributeError, KeyError, TypeError, ValueError):
                 authority_matches = False
         authority_status = "confirmed" if authority_matches else "unconfirmed"
+        workspace = self._workspaces.get_by_project(command.project_id)
+        official_value = getattr(workspace, "official_folder_path", None)
+        if workspace is None:
+            folder_reason = "No official project folder is linked to this project. Fee Form can only be downloaded as a draft."
+        elif not official_value or not Path(official_value).is_dir():
+            folder_reason = "The recorded official project folder is unavailable. Fee Form can only be downloaded as a draft."
+        else:
+            folder_reason = None
         if not authority_matches:
             return self._preview(
                 command,
                 mode="download",
                 authority_status=authority_status,
                 basic_information=basic,
+                official_folder_unavailable_reason=folder_reason,
             )
 
-        workspace = self._workspaces.get_by_project(command.project_id)
-        if workspace is None:
+        if folder_reason is not None:
             return self._preview(
                 command,
                 mode="download",
                 authority_status=authority_status,
                 basic_information=basic,
-            )
-        official_value = getattr(workspace, "official_folder_path", None)
-        if not official_value or not Path(official_value).is_dir():
-            return self._preview(
-                command,
-                mode="download",
-                authority_status=authority_status,
-                basic_information=basic,
+                official_folder_unavailable_reason=folder_reason,
             )
         official = Path(official_value)
         if basic is None:
@@ -354,6 +357,7 @@ class FeeFormPublicationService:
         blockers: tuple[str, ...] = (),
         basic_information=None,
         confirmed_fee=None,
+        official_folder_unavailable_reason: str | None = None,
     ) -> FeeFormPublicationPreview:
         payload = {
             "project_id": command.project_id,
@@ -387,7 +391,19 @@ class FeeFormPublicationService:
                 if basic_information is not None
                 else None
             ),
+            official_folder_unavailable_reason=official_folder_unavailable_reason,
         )
+
+
+def _same_fee_values(
+    left: FeeEvaluationEditedExportValues, right: FeeEvaluationEditedExportValues
+) -> bool:
+    return (
+        left.summary == right.summary
+        and Counter(left.rows) == Counter(right.rows)
+        and Counter(left.manual_rows) == Counter(right.manual_rows)
+        and Counter(left.inactive_rows) == Counter(right.inactive_rows)
+    )
 
 
 def _safe_file_stem(value: str) -> str:

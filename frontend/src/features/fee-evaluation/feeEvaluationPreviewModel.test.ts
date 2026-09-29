@@ -3,6 +3,7 @@ import type { FeeEvaluationDraft, FeeEvaluationLineItem } from "../../api/client
 import {
   applyFeeEvaluationPreviewEdits,
   buildFeeEvaluationCostRisk,
+  buildFeeEvaluationEditedExportPayload,
   buildFeeEvaluationLabManpowerCost,
   buildFeeEvaluationPreviewGrandCost,
   buildFeeEvaluationPreviewRows,
@@ -13,10 +14,30 @@ import {
   calculateFeePreviewTestingFee,
   FEE_UNIT_TYPE_OPTIONS,
   filterFeeEvaluationPreviewRowsForScope,
+  feeEvaluationPricingDraftSignature,
   hydrateFeeEvaluationPreviewEditsFromSavedDraft,
 } from "./feeEvaluationPreviewModel";
 
 describe("feeEvaluationPreviewModel", () => {
+  it("compares complete Fee row values without depending on saved row order", () => {
+    const payload = buildFeeEvaluationEditedExportPayload(
+      buildFeeEvaluationPreviewRows(createDraft()),
+      {
+        conditionConfirmationSpendTime: "0",
+        externalCost: "0",
+        externalCostNote: "",
+        labManpowerHourlyRate: "200",
+      }
+    );
+    const reordered = {
+      ...payload,
+      rows: [...payload.rows].reverse(),
+      manual_rows: [...(payload.manual_rows ?? [])].reverse(),
+    };
+    expect(feeEvaluationPricingDraftSignature(reordered)).toBe(feeEvaluationPricingDraftSignature(payload));
+    reordered.rows[0] = { ...reordered.rows[0], unit_price: "999" };
+    expect(feeEvaluationPricingDraftSignature(reordered)).not.toBe(feeEvaluationPricingDraftSignature(payload));
+  });
   it("keeps fractional hours for manpower calculation before display rounding", () => {
     const row = buildFeeEvaluationPreviewRows(createDraft())[0];
     const rows = [{...row, spendTime: "0.25"}];

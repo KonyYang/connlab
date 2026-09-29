@@ -183,6 +183,7 @@ def test_fee_form_publication_routes_preserve_preview_and_conflict_contract(
         "existing_modified_at": "2026-08-28T10:30:00+08:00",
         "blockers": [],
         "preview_token": "preview-token",
+        "official_folder_unavailable_reason": None,
     }
     assert isinstance(service.preview_commands[0], PreviewFeeFormPublicationCommand)
     assert service.preview_commands[0].project_id == "P1"
@@ -481,6 +482,7 @@ class _FakeFeeFormPublicationService:
             existing_modified_at="2026-08-28T10:30:00+08:00",
             blockers=(),
             preview_token="preview-token",
+            official_folder_unavailable_reason=None,
         )
 
     def execute(self, command: ExecuteFeeFormPublicationCommand):

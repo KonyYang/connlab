@@ -3285,6 +3285,7 @@ export type FeeFormPublicationPreview = {
   existing_modified_at: string | null;
   blockers: string[];
   preview_token: string;
+  official_folder_unavailable_reason?: string | null;
 };
 
 export type FeeFormPublicationResult = {

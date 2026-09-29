@@ -8,6 +8,8 @@ import pytest
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportSummary,
     FeeEvaluationEditedExportValues,
+    FeeEvaluationEditedExportRow,
+    FeeEvaluationEditedManualRow,
 )
 from backend.application.fee_evaluation_pricing_draft_serialization import (
     edited_values_to_json,
@@ -30,6 +32,10 @@ def test_preview_downloads_draft_when_no_official_workspace_exists(tmp_path: Pat
     assert preview.mode == "download"
     assert preview.status == "ready"
     assert preview.authority_status == "confirmed"
+    assert preview.official_folder_unavailable_reason == (
+        "No official project folder is linked to this project. "
+        "Fee Form can only be downloaded as a draft."
+    )
 
 
 def test_preview_downloads_draft_when_recorded_official_folder_is_missing(
@@ -45,6 +51,39 @@ def test_preview_downloads_draft_when_recorded_official_folder_is_missing(
     assert preview.status == "ready"
     assert preview.blockers == ()
     assert preview.authority_status == "confirmed"
+    assert preview.official_folder_unavailable_reason == (
+        "The recorded official project folder is unavailable. "
+        "Fee Form can only be downloaded as a draft."
+    )
+
+
+def test_confirmed_fee_matches_reordered_saved_rows_but_not_changed_values(tmp_path: Path) -> None:
+    first = FeeEvaluationEditedExportRow(
+        "line-1", "group-1", "row-1", "1", 0, "0", "10", "per sample", "1", "0", "0%", "10", ""
+    )
+    second = FeeEvaluationEditedExportRow(
+        "line-2", "group-2", "row-2", "2", 0, "0", "20", "per sample", "1", "0", "0%", "20", ""
+    )
+    manual_first = FeeEvaluationEditedManualRow(
+        "sample_preparation", "0", "50", "per sample", "1", "0", "0%", "50", "",
+        "group-1", "g1", "Group 1",
+    )
+    manual_second = FeeEvaluationEditedManualRow(
+        "report_preparation", "4", "600", "per report", "1", "0", "0%", "600", ""
+    )
+    saved = FeeEvaluationEditedExportValues(
+        (first, second), _values().summary, (manual_first, manual_second)
+    )
+    service = _service(tmp_path, workspace=_workspace(tmp_path), values=saved)
+    reordered = FeeEvaluationEditedExportValues(
+        (second, first), saved.summary, (manual_second, manual_first)
+    )
+
+    assert service.preview(PreviewFeeFormPublicationCommand("P1", reordered)).mode == "official"
+    changed = FeeEvaluationEditedExportValues(
+        (second, first), _values(external_cost="99").summary, reordered.manual_rows
+    )
+    assert service.preview(PreviewFeeFormPublicationCommand("P1", changed)).mode == "download"
 
 
 def test_preview_downloads_draft_when_current_values_are_not_confirmed(
@@ -186,12 +225,14 @@ def _workspace(tmp_path: Path):
     )
 
 
-def _service(tmp_path: Path, *, workspace) -> FeeFormPublicationService:
+def _service(
+    tmp_path: Path, *, workspace, values: FeeEvaluationEditedExportValues | None = None
+) -> FeeFormPublicationService:
     fee = SimpleNamespace(
         confirmed_fee_id="fee-1",
         confirmed_fee_revision=2,
         pricing_draft_edit_id="draft-1",
-        pricing_snapshot_json=edited_values_to_json(_values()),
+        pricing_snapshot_json=edited_values_to_json(values or _values()),
     )
     outputs = _Outputs()
     service = FeeFormPublicationService(

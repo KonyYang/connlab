@@ -410,7 +410,7 @@ export const feeEvaluationPricingDraftSignature = (
   payload: FeeEvaluationEditedFileExportRequest
 ): string =>
   JSON.stringify({
-    rows: payload.rows.map((row) => ({
+    rows: canonicalPricingRows(payload.rows.map((row) => ({
       source_line_id: row.source_line_id,
       confirmed_group_id: row.confirmed_group_id,
       confirmed_row_id: row.confirmed_row_id,
@@ -424,8 +424,8 @@ export const feeEvaluationPricingDraftSignature = (
       discount: row.discount,
       testing_fee: row.testing_fee,
       notes: row.notes,
-    })),
-    manual_rows: (payload.manual_rows ?? []).map((row) => ({
+    }))),
+    manual_rows: canonicalPricingRows((payload.manual_rows ?? []).map((row) => ({
       row_kind: row.row_kind,
       confirmed_group_id: row.confirmed_group_id ?? "",
       group_key: row.group_key ?? "",
@@ -438,7 +438,7 @@ export const feeEvaluationPricingDraftSignature = (
       discount: row.discount,
       testing_fee: row.testing_fee,
       notes: row.notes,
-    })),
+    }))),
     summary: {
       condition_confirmation_spend_time:
         payload.summary.condition_confirmation_spend_time,
@@ -447,6 +447,16 @@ export const feeEvaluationPricingDraftSignature = (
       lab_manpower_hourly_rate: payload.summary.lab_manpower_hourly_rate,
     },
   });
+
+function canonicalPricingRows<T>(rows: T[]): T[] {
+  // Saved drafts and Matrix-derived page rows can have different presentation
+  // orders. Pricing authority compares complete row values, not row positions.
+  return rows.sort((left, right) => {
+    const leftValue = JSON.stringify(left);
+    const rightValue = JSON.stringify(right);
+    return leftValue < rightValue ? -1 : leftValue > rightValue ? 1 : 0;
+  });
+}
 
 export function calculateFeePreviewTestingFee(input: {
   unitPrice: string;

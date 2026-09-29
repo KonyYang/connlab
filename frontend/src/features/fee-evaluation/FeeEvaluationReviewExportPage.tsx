@@ -148,6 +148,7 @@ export function FeeEvaluationReviewExportPage({
   });
   const [feeFormConfirmation, setFeeFormConfirmation] =
     useState<FeeFormPublicationPreview | null>(null);
+  const [feeFormFolderHint, setFeeFormFolderHint] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<FeePricingDraftSaveState>({
     kind: "loading",
   });
@@ -187,6 +188,7 @@ export function FeeEvaluationReviewExportPage({
   useEffect(() => {
     let active = true;
     setContextState({ kind: "loading" });
+    setFeeFormFolderHint(null);
     void loadPageContext(projectId)
       .then((context) => {
         if (active) {
@@ -623,6 +625,24 @@ export function FeeEvaluationReviewExportPage({
     () => pricingDraftSignature(currentPricingDraftPayload),
     [currentPricingDraftPayload]
   );
+  useEffect(() => {
+    if (draftState.kind !== "ready" ||
+        !["current", "missing"].includes(pricingDraftLoadStatus) ||
+        hasUserEditedPricingDraft || confirmedFeeState.kind === "loading") {
+      return;
+    }
+    let active = true;
+    void previewFeeFormPublication(projectId, currentPricingDraftPayload)
+      .then((preview) => {
+        if (active) setFeeFormFolderHint(preview.official_folder_unavailable_reason ?? null);
+      })
+      .catch(() => {
+        // The click path performs its own authoritative preview and reports errors.
+        if (active) setFeeFormFolderHint(null);
+      });
+    return () => { active = false; };
+  }, [projectId, currentPricingDraftSignature, draftState.kind,
+    pricingDraftLoadStatus, hasUserEditedPricingDraft, confirmedFeeState.kind]);
   const hasPricingDraftLocalChanges =
     hasUserEditedPricingDraft &&
     savedLocalPricingSignature !== currentPricingDraftSignature;
@@ -640,16 +660,6 @@ export function FeeEvaluationReviewExportPage({
   );
   const lifecycleReadonlyView = deriveProjectLifecycleReadonlyView(lifecycle);
   const isLifecycleReadonly = lifecycleReadonlyView.readonly;
-  const confirmFeeDisabledReason = isLifecycleReadonly
-    ? lifecycleReadonlyView.message
-    : confirmFeeBlocker({
-        draftState,
-        confirmedFeeState,
-        isCancellingPricingSession,
-        pricingDraftLoadStatus,
-        saveState,
-        updateFeeBlockerMessage: firstUpdateFeeBlocker?.message ?? null,
-      });
   const currentFeeIsConfirmed =
     confirmedFeeState.kind === "ready" &&
     confirmedFeeState.data.status === "current" &&
@@ -660,10 +670,25 @@ export function FeeEvaluationReviewExportPage({
     !hasPricingDraftLocalChanges &&
     serverPricingPayloadSignature !== null &&
     serverPricingPayloadSignature === currentPricingDraftSignature;
+  const confirmFeeDisabledReason = isLifecycleReadonly
+    ? lifecycleReadonlyView.message
+    : confirmFeeBlocker({
+        draftState,
+        confirmedFeeState,
+        isCancellingPricingSession,
+        pricingDraftLoadStatus,
+        saveState,
+        currentFeeIsConfirmed,
+        updateFeeBlockerMessage: firstUpdateFeeBlocker?.message ?? null,
+      });
   const draftPreviewNotice = feeFileDownloadBlocker(draftState);
-  const feeFormButtonLabel = currentFeeIsConfirmed
+  const feeFormButtonLabel = currentFeeIsConfirmed && !feeFormFolderHint
     ? "Generate Official Fee Form"
     : "Download Draft Fee Form";
+  const feeFormButtonTitle = feeFormFolderHint ?? (
+    currentFeeIsConfirmed ? feeFormButtonLabel :
+      "Confirm Fee to publish an official Fee Form; this action downloads a draft."
+  );
   const feeFormImportControl = (
     <FeeFormImportControl
       key={projectId}
@@ -702,7 +727,7 @@ export function FeeEvaluationReviewExportPage({
           type="button"
           onClick={handleGenerateFeeFile}
           disabled={downloadState.kind === "running"}
-          title={feeFormButtonLabel}
+          title={feeFormButtonTitle}
         >
           {downloadState.kind === "running" ? "Generating..." : feeFormButtonLabel}
         </button>
@@ -1316,6 +1341,7 @@ export function FeeEvaluationReviewExportPage({
         identityLine={previewIdentityLine}
         downloadState={downloadState}
         feeFormButtonLabel={feeFormButtonLabel}
+        feeFormButtonTitle={feeFormButtonTitle}
         draftPreviewNotice={draftPreviewNotice}
         onCostPreviewChange={handleCostPreviewChange}
         onGenerateFeeFile={handleGenerateFeeFile}
@@ -1446,6 +1472,7 @@ function confirmFeeBlocker(input: {
   isCancellingPricingSession: boolean;
   pricingDraftLoadStatus: PricingDraftLoadStatus;
   saveState: FeePricingDraftSaveState;
+  currentFeeIsConfirmed: boolean;
   updateFeeBlockerMessage: string | null;
 }): string | null {
   if (input.draftState.kind === "loading") {
@@ -1476,6 +1503,9 @@ function confirmFeeBlocker(input: {
   // real context conflicts remain protected by the backend on every retry.
   if (input.updateFeeBlockerMessage) {
     return input.updateFeeBlockerMessage;
+  }
+  if (input.currentFeeIsConfirmed) {
+    return "Current Fee is already confirmed. Edit a value to confirm a new version.";
   }
   return null;
 }

@@ -19,6 +19,7 @@ type FeeEvaluationPreviewTableProps = {
   identityLine: string;
   downloadState: FeeFileDownloadState;
   feeFormButtonLabel: "Download Draft Fee Form" | "Generate Official Fee Form";
+  feeFormButtonTitle?: string;
   draftPreviewNotice: string | null;
   readOnly?: boolean;
   onCostPreviewChange: (field: keyof FeeEvaluationCostPreviewValues, value: string) => void;
@@ -81,6 +82,7 @@ export function FeeEvaluationPreviewTable({
   identityLine,
   downloadState,
   feeFormButtonLabel,
+  feeFormButtonTitle,
   draftPreviewNotice,
   readOnly = false,
   onCostPreviewChange,
@@ -110,7 +112,7 @@ export function FeeEvaluationPreviewTable({
               type="button"
               onClick={onGenerateFeeFile}
               disabled={downloadState.kind === "running"}
-              title={feeFormButtonLabel}
+              title={feeFormButtonTitle ?? feeFormButtonLabel}
             >
               {downloadState.kind === "running" ? "Generating..." : feeFormButtonLabel}
             </button>

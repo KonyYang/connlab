@@ -102,6 +102,7 @@ class FeeFormPublicationPreviewResponse(BaseModel):
     existing_modified_at: str | None
     blockers: list[str]
     preview_token: str
+    official_folder_unavailable_reason: str | None = None
 
 
 class FeeFormPublicationResultResponse(BaseModel):
@@ -280,6 +281,7 @@ def preview_fee_form_publication(
         existing_modified_at=preview.existing_modified_at,
         blockers=list(preview.blockers),
         preview_token=preview.preview_token,
+        official_folder_unavailable_reason=preview.official_folder_unavailable_reason,
     )
 
 

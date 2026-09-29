@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_CONFIRM_STATE_AND_FOLDER_HINT",
+    "summary": "Fix Fee confirmation re-entry state and explain unavailable project folder on Fee Form action",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Make Fee content comparison insensitive to row ordering, reflect confirmed unchanged state on re-entry, and provide an actionable hover reason when the official project folder cannot be used.",
+    "scope_paths": [
+      "frontend/src/features/fee-evaluation",
+      "backend/application/fee_form_publication_service.py",
+      "backend/application/fee_evaluation_pricing_draft_serialization.py",
+      "tests/unit/test_fee_form_publication_service.py"
+    ],
+    "risk_reasons": [],
+    "activation_head": "ad5993d56fc080ca7c737160e999d41b96239e12",
+    "started_at": "2026-09-29T00:07:48.538762Z",
+    "updated_at": "2026-09-29T00:07:48.538762Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_MATRIX_TEST_DAYS_TYPOGRAPHY",
     "tier": "micro",
