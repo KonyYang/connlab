@@ -30,6 +30,7 @@ def test_thermal_shock_canonical_condition_uses_existing_hourly_fee_rule() -> No
 
     assert result.unit_price == Decimal("30")
     assert result.unit_label == "hour"
-    assert result.units == Decimal("25")
-    assert result.base_fee == Decimal("0")
-    assert result.testing_fee == Decimal("750")
+    assert result.units is None
+    assert result.base_fee is None
+    assert result.testing_fee is None
+    assert result.review_required is True

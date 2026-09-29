@@ -89,8 +89,20 @@ def _duration_reading_result(
     context: FeeDefaultFillContext,
 ) -> FeeDefaultFillResult | None:
     """Select an explicit IR/DWV tier or leave its duration price pending."""
+    revised = (rule.rule_id == "fee_rule_insulation_resistance" and rule.source_row == 31) or (
+        rule.rule_id == "fee_rule_dielectric_withstanding_voltage" and rule.source_row == 32
+    )
     durations = _duration_seconds(context.condition)
     if not durations:
+        if revised:
+            return manual_required(
+                rule=rule,
+                unit_label="reading",
+                unit_price=None,
+                base_fee=None,
+                review_reason="Confirm 1-minute/2-minute price, test-point count and base fee.",
+                manual_fields=("unit_price", "units", "base_fee", "testing_fee"),
+            )
         return _pending_duration_reading_result(rule=rule)
     if durations == {Decimal("60")}:
         duration_seconds = Decimal("60")
@@ -99,6 +111,28 @@ def _duration_reading_result(
     else:
         return None
     unit_price = Decimal("5") if duration_seconds == Decimal("60") else Decimal("10")
+    if revised:
+        readings_per_sample, quantity_review, _ = matrix_step_readings_per_sample(
+            context.step_quantities
+        )
+        samples = parse_simple_sample_quantity(context.sample_quantity_expression)
+        units = (
+            samples * readings_per_sample
+            if samples is not None and readings_per_sample is not None and readings_per_sample > 0
+            else None
+        )
+        return manual_required(
+            rule=rule,
+            unit_label="reading",
+            unit_price=unit_price,
+            units=units,
+            base_fee=None,
+            review_reason=(
+                quantity_review or "Confirm test-point count and sample quantity"
+                if units is None else "Confirm specimen-preparation base fee"
+            ),
+            manual_fields=(("units",) if units is None else ()) + ("base_fee", "testing_fee"),
+        )
     return calculated_result(
         spend_time=None,
         unit_label="reading",
@@ -292,6 +326,15 @@ def _dust_hour_result(
     context: FeeDefaultFillContext,
 ) -> FeeDefaultFillResult:
     """Apply the reviewed one-hour Dust default unless duration is explicit."""
+    if rule.unit_label == "time":
+        return manual_required(
+            rule=rule,
+            unit_label="time",
+            unit_price=rule.unit_price.amount,
+            base_fee=rule.base_fee.amount,
+            review_reason=rule.review_reason or "Confirm dust run count and preparation fee.",
+            manual_fields=("units", "base_fee", "testing_fee"),
+        )
     hours = _first_decimal(_HOUR_PATTERN, _combined_text(context)) or Decimal("1")
     return calculated_result(
         spend_time=None,

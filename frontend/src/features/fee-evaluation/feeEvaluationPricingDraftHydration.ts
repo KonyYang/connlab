@@ -199,6 +199,7 @@ export function formatUnitTypeForPreview(value: string): string {
     day: "per day",
     photo: "per photo",
     report: "per report",
+    reagent: "per reagent",
     "per sample": "per sample",
     "per reading": "per reading",
     "per contact": "per contact",
@@ -208,6 +209,7 @@ export function formatUnitTypeForPreview(value: string): string {
     "per day": "per day",
     "per photo": "per photo",
     "per report": "per report",
+    "per reagent": "per reagent",
   };
   return map[normalized] ?? value.trim();
 }

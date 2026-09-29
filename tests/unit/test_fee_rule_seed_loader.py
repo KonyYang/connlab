@@ -21,14 +21,27 @@ _SEEDS = Path(__file__).parents[2] / "backend" / "modules" / "fee_evaluation" / 
 def test_load_active_fee_rule_library_uses_complete_reference_snapshot() -> None:
     library = load_active_fee_rule_library()
 
-    assert library.version.version_id == "fee_rules_v2026_08_23_r11"
-    assert library.version.source_file_name == "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
+    assert library.version.version_id == "fee_rules_v2026_09_15"
+    assert library.version.source_file_name == "FDQF-E-176 Testing Fee Evaluation_Rev_F_20260915.xlsx"
     assert library.version.source_sheet == "Unit Price Reference"
     assert library.version.source_hash == (
-        "sha256:fb788038631aa0a12f1a052b630513718d9fa1bb64bae647e897e18529ef8a5d"
+        "sha256:c230445ad8620ee4d6ad178717d45f0a7d75b249342db3e98b752aa5db56d27f"
     )
     assert library.version.effective_from_basis == "project.sample_received_date"
     assert any(rule.rule_id == "fee_rule_report_preparation" for rule in library.rules)
+
+    source_rules = [rule for rule in library.rules if rule.source_kind == "unit_price_reference"]
+    assert {rule.source_row for rule in source_rules} == set(range(4, 53))
+    assert next(rule for rule in library.rules if rule.rule_id == "fee_rule_thermal_cycling_3_5c").unit_price.amount == 30
+    assert next(rule for rule in library.rules if rule.rule_id == "fee_rule_mfg_class_iiia").unit_price.amount == 1500
+    assert next(rule for rule in library.rules if rule.rule_id == "fee_rule_dust_benign").unit_price.amount == 3000
+    assert next(rule for rule in library.rules if rule.rule_id == "fee_rule_plating_thickness").unit_price.amount == 15
+    assert next(rule for rule in library.rules if rule.rule_id == "fee_rule_visual_exam").unit_price.amount == 15
+
+
+def test_prior_rule_seed_remains_loadable_with_original_prices() -> None:
+    library = load_fee_rule_library(_SEEDS / "fee_rules_v2026_08_23_r11.json")
+    assert next(rule for rule in library.rules if rule.rule_id == "fee_rule_dust_benign").unit_price.amount == 1800
 
 
 def test_old_seed_loads_with_backward_compatible_provenance_defaults() -> None:

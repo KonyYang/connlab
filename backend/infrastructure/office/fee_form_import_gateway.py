@@ -9,7 +9,7 @@ import xlrd
 
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_ROWS = 10000
-UNIT_TYPES = {f"per {unit}" for unit in ("sample", "reading", "contact", "cycle", "time", "hour", "day", "photo", "report")}
+UNIT_TYPES = {f"per {unit}" for unit in ("sample", "reading", "contact", "cycle", "time", "hour", "day", "photo", "report", "reagent")}
 
 
 def read_fee_form(data: bytes, filename: str) -> dict:

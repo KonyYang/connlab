@@ -21,6 +21,17 @@ def test_normalize_fee_rule_text_handles_mixed_language_punctuation() -> None:
     assert normalized == "visual examination 外观检查"
 
 
+def test_shock_force_tiers_remain_distinct_in_revised_reference() -> None:
+    matcher = FeeRuleMatcher(load_active_fee_rule_library())
+    low = matcher.match_test_item("Shock (half sine≤50G)")
+    high = matcher.match_test_item("Shock (half sine>50G)")
+
+    assert low.rule is not None and low.rule.rule_id == "fee_rule_shock_half_sine"
+    assert high.rule is not None and high.rule.rule_id == "fee_rule_shock_half_sine_high_g"
+    assert low.rule.unit_price.amount == Decimal("30")
+    assert high.rule.unit_price.amount == Decimal("60")
+
+
 def test_fee_rule_matcher_supports_exact_alias_match() -> None:
     matcher = FeeRuleMatcher(load_active_fee_rule_library())
 
@@ -273,7 +284,7 @@ def test_crimp_wending_tensile_strength_matches_mechanical_force(
     assert result.status == "matched"
     assert result.rule is not None
     assert result.rule.rule_id == "fee_rule_mechanical_force"
-    assert result.rule.source_row == 22
+    assert result.rule.source_row == 23
 
 
 @pytest.mark.parametrize(

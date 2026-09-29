@@ -50,6 +50,7 @@ ALLOWED_UNIT_LABELS: tuple[str, ...] = (
     "contact",
     "time",
     "report",
+    "reagent",
 )
 
 SUPPORTED_EFFECTIVE_FROM_BASES: tuple[str, ...] = ("project.sample_received_date",)

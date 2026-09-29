@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -31,8 +32,12 @@ from backend.domain import (
     ConfirmedMatrixStatus,
     ConfirmedMatrixVersion,
 )
+from backend.modules.fee_evaluation.fee_rule_seed_loader import load_fee_rule_library
 
 _FALLBACK_SOURCE = "Matrix Fee automatic Base Fee fallback"
+_OLD_LIBRARY = load_fee_rule_library(
+    Path(__file__).parents[2] / "backend" / "modules" / "fee_evaluation" / "seeds" / "fee_rules_v2026_08_23_r11.json"
+)
 
 
 @pytest.mark.parametrize("group_count", (1, 2))
@@ -53,7 +58,7 @@ def test_approved_temperature_alias_uses_hours_and_common_base_fee(
     assert all(line.unit_label == "hour" for line in lines)
     assert all(line.unit_price == Decimal("15") for line in lines)
     assert all((line.status, line.review_reason, line.units) == ("review_required", "Missing confirmed duration authority", None) for line in lines)
-    assert all(line.base_fee == Decimal("0") for line in lines)
+    assert all(line.base_fee is None for line in lines)
     assert all(line.testing_fee is None for line in lines)
     assert all(_source(line, "base_fee") == "high temperature life" for line in lines)
 
@@ -93,7 +98,7 @@ def test_approved_temperature_alias_without_hours_keeps_dependencies_pending() -
     assert line.review_reason == "Missing confirmed duration authority"
     assert line.unit_price == Decimal("15")
     assert line.units is None
-    assert line.base_fee == Decimal("0")
+    assert line.base_fee is None
     assert line.testing_fee is None
 
 
@@ -143,7 +148,8 @@ def test_automatic_defaults_bind_base_fee_value_and_metadata_source() -> None:
         _snapshot(
             test_item="Thermal shock",
             condition="10h",
-        )
+        ),
+        rule_library=_OLD_LIBRARY,
     )
 
     result = build_current_pricing_defaults("P1", service)
@@ -169,7 +175,8 @@ def test_reviewed_rebase_preserves_proven_manual_fields() -> None:
             _snapshot(
                 test_item="Thermal shock",
                 condition="10h",
-            )
+            ),
+            rule_library=_OLD_LIBRARY,
         ),
     ).automatic_values
     row = defaults.rows[0]
@@ -222,8 +229,8 @@ def _first_line(service: ConfirmedMatrixFeeDraftService):
     return draft.groups[0].line_items[0]
 
 
-def _service(snapshot: ConfirmedMatrixSnapshot) -> ConfirmedMatrixFeeDraftService:
-    return ConfirmedMatrixFeeDraftService(confirmed_store=_Store(snapshot))
+def _service(snapshot: ConfirmedMatrixSnapshot, *, rule_library=None) -> ConfirmedMatrixFeeDraftService:
+    return ConfirmedMatrixFeeDraftService(confirmed_store=_Store(snapshot), rule_library=rule_library)
 
 
 class _Store:

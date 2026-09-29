@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from dataclasses import replace
 
 from backend.application.confirmed_matrix_fee_draft_models import FeeEvaluationLineItem
 from backend.domain import ConfirmedMatrixGroup, ConfirmedMatrixSnapshot
@@ -98,9 +99,17 @@ def build_report_preparation_line(
     *,
     snapshot: ConfirmedMatrixSnapshot,
     rule_version_id: str,
+    rule: FeeRule | None = None,
 ) -> FeeEvaluationLineItem:
+    selected_rule = rule or _REPORT_PREPARATION_RULE
+    if rule is not None and rule.review_required and len(snapshot.groups) > 1:
+        selected_rule = replace(
+            rule,
+            review_required=False,
+            unit_price=FeeAmount(amount=Decimal("0"), text="Multi-group report fee waived"),
+        )
     result = build_fee_default_fill(
-        rule=_REPORT_PREPARATION_RULE,
+        rule=selected_rule,
         context=FeeDefaultFillContext(
             test_item="Report preparation",
             method="",
@@ -130,11 +139,11 @@ def build_report_preparation_line(
         condition="",
         requirement="",
         step_tokens=(),
-        matched_rule_id=_REPORT_PREPARATION_RULE.rule_id,
+        matched_rule_id=selected_rule.rule_id,
         matched_rule_version_id=rule_version_id,
-        matched_rule_name=_REPORT_PREPARATION_RULE.display_name,
+        matched_rule_name=selected_rule.display_name,
         match_reason="backend_manual_default",
-        calculation_strategy=_REPORT_PREPARATION_RULE.calculation_strategy,
+        calculation_strategy=selected_rule.calculation_strategy,
         unit_label=result.unit_label,
         unit_price=result.unit_price,
         units=result.units,

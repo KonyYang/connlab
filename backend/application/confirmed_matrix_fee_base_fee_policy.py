@@ -40,6 +40,7 @@ def apply_matrix_fee_line_policies(
     testing_fee = _testing_fee(calculation, base_fee)
     metadata = _replace_derived_metadata(
         calculation=calculation,
+        base_fee=base_fee,
         base_fee_source=base_fee_source,
         testing_fee=testing_fee,
         testing_fee_source=testing_fee_source,
@@ -63,7 +64,29 @@ def apply_matrix_fee_line_policies(
 def _automatic_base_fee(
     calculation: FeeCalculationResult,
     rule: FeeRule | None,
-) -> tuple[Decimal, str]:
+) -> tuple[Decimal | None, str]:
+    revised_hourly_base = (
+        rule is not None
+        and rule.base_fee.amount == Decimal("200")
+        and 4 <= (rule.source_row or 0) <= 10
+    )
+    if revised_hourly_base:
+        calculated = next(
+            (item for item in calculation.field_metadata if item.field == "base_fee" and item.state == "auto_filled"),
+            None,
+        )
+        if calculation.base_fee is not None and calculated is not None:
+            return calculation.base_fee, calculated.source or "Confirmed Matrix duration authority"
+        return None, rule.display_name
+    if (
+        rule is not None
+        and (
+            (rule.rule_id == "fee_rule_insulation_resistance" and rule.source_row == 31)
+            or (rule.rule_id == "fee_rule_dielectric_withstanding_voltage" and rule.source_row == 32)
+        )
+        and any(item.field == "base_fee" and item.state == "manual_required" for item in calculation.field_metadata)
+    ):
+        return None, rule.display_name
     if rule is not None and rule.base_fee.amount is not None:
         return rule.base_fee.amount, rule.display_name
     calculated_metadata = next(
@@ -88,12 +111,13 @@ def _automatic_base_fee(
 
 def _testing_fee(
     calculation: FeeCalculationResult,
-    base_fee: Decimal,
+    base_fee: Decimal | None,
 ) -> Decimal | None:
     if (
         calculation.unit_price is None
         or calculation.units is None
         or calculation.discount_percent is None
+        or base_fee is None
     ):
         return None
     return (
@@ -107,6 +131,7 @@ def _testing_fee(
 def _replace_derived_metadata(
     *,
     calculation: FeeCalculationResult,
+    base_fee: Decimal | None,
     base_fee_source: str,
     testing_fee: Decimal | None,
     testing_fee_source: str,
@@ -114,7 +139,7 @@ def _replace_derived_metadata(
     metadata: list[FeeFieldMetadata] = []
     testing_fee_recorded = False
     for item in calculation.field_metadata:
-        if item.field == "base_fee":
+        if item.field == "base_fee" and base_fee is not None:
             continue
         if item.field == "testing_fee":
             if testing_fee is not None:
@@ -123,7 +148,8 @@ def _replace_derived_metadata(
                 continue
             testing_fee_recorded = True
         metadata.append(item)
-    metadata.append(_automatic("base_fee", base_fee_source))
+    if base_fee is not None:
+        metadata.append(_automatic("base_fee", base_fee_source))
     if testing_fee is not None:
         metadata.append(_automatic("testing_fee", testing_fee_source))
     return tuple(metadata)

@@ -45,12 +45,12 @@ def test_each_group_uses_only_its_own_confirmed_duration_authority() -> None:
     assert (line_1.units, line_1.unit_price, line_1.testing_fee) == (
         Decimal("48"),
         Decimal("15"),
-        Decimal("720"),
+        Decimal("920"),
     )
     assert (line_2.units, line_2.unit_price, line_2.testing_fee) == (
         Decimal("72"),
         Decimal("15"),
-        Decimal("1080"),
+        Decimal("1280"),
     )
     assert "lineage-g1" in _field_source(line_1, "units")
     assert "lineage-g2" in _field_source(line_2, "units")

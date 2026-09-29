@@ -6725,6 +6725,30 @@
 }
 
 .fee-evaluation-preview-table td:nth-child(4) strong,
+.fee-evaluation-price-reuse {
+  display: block;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.fee-evaluation-group-samples {
+  display: block;
+  color: var(--color-ink-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.fee-evaluation-price-reuse:hover {
+  text-decoration: underline;
+}
+
 .fee-evaluation-preview-table td:nth-child(4) span {
   display: inline;
 }

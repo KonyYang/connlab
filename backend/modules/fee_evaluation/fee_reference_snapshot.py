@@ -15,6 +15,10 @@ EXPECTED_SOURCE_SHEET = "Unit Price Reference"
 EXPECTED_SOURCE_HASH = "sha256:fb788038631aa0a12f1a052b630513718d9fa1bb64bae647e897e18529ef8a5d"
 EXPECTED_EFFECTIVE_ROWS = frozenset(range(4, 48))
 EXPECTED_POLICY_ROWS = frozenset({49})
+REVISED_SOURCE_FILE_NAME = "FDQF-E-176 Testing Fee Evaluation_Rev_F_20260915.xlsx"
+REVISED_SOURCE_HASH = "sha256:c230445ad8620ee4d6ad178717d45f0a7d75b249342db3e98b752aa5db56d27f"
+REVISED_EFFECTIVE_ROWS = frozenset(range(4, 53))
+REVISED_POLICY_ROWS = frozenset({54})
 _SOURCE_HASH_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
@@ -86,8 +90,9 @@ def load_fee_reference_snapshot(path: Path) -> FeeReferenceSnapshot:
     rows = _parse_rows(root.get("rows"))
     policies = _parse_policies(root.get("policies"))
     _validate_source(source)
-    _validate_row_coverage(rows)
-    _validate_policy_coverage(policies)
+    effective_rows, policy_rows = expected_reference_rows(source)
+    _validate_row_coverage(rows, effective_rows)
+    _validate_policy_coverage(policies, policy_rows)
     return FeeReferenceSnapshot(source=source, rows=rows, policies=policies)
 
 
@@ -166,13 +171,13 @@ def _parse_policies(payload: Any) -> tuple[FeeReferencePolicy, ...]:
 
 def _validate_source(source: FeeReferenceSource) -> None:
     """Require the approved workbook identity and an ISO capture timestamp."""
-    if source.source_file_name != EXPECTED_SOURCE_FILE_NAME:
+    if source.source_file_name not in {EXPECTED_SOURCE_FILE_NAME, REVISED_SOURCE_FILE_NAME}:
         raise FeeReferenceSnapshotValidationError("Unexpected source file name.")
     if source.source_sheet != EXPECTED_SOURCE_SHEET:
         raise FeeReferenceSnapshotValidationError("Unexpected source sheet.")
     if not _SOURCE_HASH_PATTERN.fullmatch(source.source_hash):
         raise FeeReferenceSnapshotValidationError("Invalid source hash format.")
-    if source.source_hash != EXPECTED_SOURCE_HASH:
+    if source.source_hash != expected_reference_hash(source.source_file_name):
         raise FeeReferenceSnapshotValidationError("Unexpected source hash.")
     try:
         datetime.fromisoformat(source.captured_at)
@@ -180,41 +185,52 @@ def _validate_source(source: FeeReferenceSource) -> None:
         raise FeeReferenceSnapshotValidationError("source.captured_at must be ISO-8601 compatible.") from exc
 
 
-def _validate_row_coverage(rows: tuple[FeeReferenceRow, ...]) -> None:
-    """Require exactly one effective source row for every row from 4 through 47."""
+def expected_reference_hash(source_file_name: str) -> str:
+    """Identify a reviewed immutable source workbook version."""
+    return REVISED_SOURCE_HASH if source_file_name == REVISED_SOURCE_FILE_NAME else EXPECTED_SOURCE_HASH
+
+
+def expected_reference_rows(source: FeeReferenceSource) -> tuple[frozenset[int], frozenset[int]]:
+    if source.source_file_name == REVISED_SOURCE_FILE_NAME:
+        return REVISED_EFFECTIVE_ROWS, REVISED_POLICY_ROWS
+    return EXPECTED_EFFECTIVE_ROWS, EXPECTED_POLICY_ROWS
+
+
+def _validate_row_coverage(rows: tuple[FeeReferenceRow, ...], expected_rows: frozenset[int]) -> None:
+    """Require one effective source row for the selected workbook version."""
     row_numbers = [row.source_row for row in rows]
     duplicate = _first_duplicate(row_numbers)
     if duplicate is not None:
         raise FeeReferenceSnapshotValidationError(f"Duplicate source row: {duplicate}")
     actual = set(row_numbers)
-    missing = sorted(EXPECTED_EFFECTIVE_ROWS - actual)
+    missing = sorted(expected_rows - actual)
     if missing:
         raise FeeReferenceSnapshotValidationError(f"Missing effective source rows: {_join_rows(missing)}")
-    unexpected = sorted(actual - EXPECTED_EFFECTIVE_ROWS)
+    unexpected = sorted(actual - expected_rows)
     if unexpected:
         raise FeeReferenceSnapshotValidationError(
             f"Unexpected effective source rows: {_join_rows(unexpected)}"
         )
 
 
-def _validate_policy_coverage(policies: tuple[FeeReferencePolicy, ...]) -> None:
+def _validate_policy_coverage(policies: tuple[FeeReferencePolicy, ...], expected_rows: frozenset[int]) -> None:
     """Require exactly the approved policy row and complete policy text."""
     row_numbers = [policy.source_row for policy in policies]
     duplicate = _first_duplicate(row_numbers)
     if duplicate is not None:
         raise FeeReferenceSnapshotValidationError(f"Duplicate policy row: {duplicate}")
     actual = set(row_numbers)
-    missing = sorted(EXPECTED_POLICY_ROWS - actual)
+    missing = sorted(expected_rows - actual)
     if missing:
         raise FeeReferenceSnapshotValidationError(f"Missing policy rows: {_join_rows(missing)}")
-    unexpected = sorted(actual - EXPECTED_POLICY_ROWS)
+    unexpected = sorted(actual - expected_rows)
     if unexpected:
         raise FeeReferenceSnapshotValidationError(f"Unexpected policy rows: {_join_rows(unexpected)}")
     policy = policies[0]
     if policy.policy_type != "discount_principles":
-        raise FeeReferenceSnapshotValidationError("Unexpected policy type for row 49.")
+        raise FeeReferenceSnapshotValidationError("Unexpected policy type for discount policy row.")
     if not policy.text.strip():
-        raise FeeReferenceSnapshotValidationError("Policy row 49 text is required.")
+        raise FeeReferenceSnapshotValidationError("Discount policy text is required.")
 
 
 def _first_duplicate(values: list[int]) -> int | None:

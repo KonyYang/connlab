@@ -39,6 +39,32 @@ _RATE_SPECIFIC_THERMAL_CYCLING_RULE_IDS = {
     "fee_rule_thermal_cycling_3_5c",
     "fee_rule_thermal_cycling_5c",
 }
+_REVISED_HOURLY_BASE_THRESHOLDS = {
+    "fee_rule_high_temperature_life": Decimal("96"),
+    "fee_rule_low_temperature_life": Decimal("96"),
+    "fee_rule_temperature_humidity": Decimal("96"),
+    "fee_rule_steam_aging": Decimal("16"),
+    "fee_rule_thermal_shock": Decimal("10"),
+    "fee_rule_thermal_cycling_3_5c": Decimal("24"),
+    "fee_rule_thermal_cycling_5c": Decimal("24"),
+}
+
+
+def _has_revised_hourly_base(rule: FeeRule) -> bool:
+    return rule.base_fee.amount == Decimal("200") and rule.rule_id in _REVISED_HOURLY_BASE_THRESHOLDS
+
+
+def _contextual_hour_price(rule: FeeRule, context: FeeDefaultFillContext) -> Decimal | None:
+    if rule.rule_id != "fee_rule_temperature_humidity" or not _has_revised_hourly_base(rule):
+        return hour_unit_price(rule)
+    normalized = normalize_fee_rule_text(_combined_text(context))
+    steady = "steady" in normalized.split()
+    cyclic = "cyclic" in normalized.split()
+    if steady == cyclic:
+        return None
+    return Decimal("20") if steady else Decimal("25")
+
+
 def build_fee_default_fill(
     *,
     rule: FeeRule,
@@ -48,20 +74,39 @@ def build_fee_default_fill(
     if rule.rule_id == "fee_rule_sample_preparation":
         return _sample_preparation_result(rule=rule, context=context)
     if rule.rule_id == "fee_rule_report_preparation":
+        if rule.review_required:
+            return manual_required(
+                rule=rule,
+                unit_label="report",
+                unit_price=rule.unit_price.amount,
+                units=Decimal("1"),
+                base_fee=rule.base_fee.amount,
+                review_reason=rule.review_reason or "Confirm report preparation fee.",
+                manual_fields=("unit_price", "testing_fee"),
+            )
         return calculated_result(
             spend_time=Decimal("4"),
             unit_label="report",
-            unit_price=rule.unit_price.amount or Decimal("600"),
+            unit_price=rule.unit_price.amount if rule.unit_price.amount is not None else Decimal("600"),
             units=Decimal("1"),
             base_fee=ZERO,
             discount_percent=ONE_HUNDRED,
             source=rule.display_name,
         )
     if rule.rule_id == "fee_rule_visual_exam":
+        if rule.source_row == 50 and rule.review_required:
+            return manual_required(
+                rule=rule,
+                unit_label="photo",
+                unit_price=rule.unit_price.amount,
+                base_fee=rule.base_fee.amount,
+                review_reason=rule.review_reason or "Confirm chargeable photo count.",
+                manual_fields=("units", "testing_fee"),
+            )
         return calculated_result(
             spend_time=Decimal("0.5"),
             unit_label="photo",
-            unit_price=rule.unit_price.amount or Decimal("10"),
+            unit_price=rule.unit_price.amount if rule.unit_price.amount is not None else Decimal("10"),
             units=Decimal("3"),
             base_fee=ZERO,
             discount_percent=ONE_HUNDRED,
@@ -93,6 +138,8 @@ def build_fee_default_fill(
         return _cycle_result(rule=rule, context=context)
     if rule.rule_id == "fee_rule_reseating":
         return _reseating_cycle_result(rule=rule, context=context)
+    if _has_revised_hourly_base(rule):
+        return _duration_hour_result(rule=rule, context=context)
     if rule.rule_id in {
         "fee_rule_high_temperature_life",
         "fee_rule_salt_spray_nss",
@@ -227,6 +274,34 @@ def _reseating_cycle_result(*, rule: FeeRule, context: FeeDefaultFillContext) ->
 
 def _duration_hour_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> FeeDefaultFillResult:
     authority = context.duration_authority
+    if _has_revised_hourly_base(rule):
+        unit_price = _contextual_hour_price(rule, context)
+        if authority is None or not authority.is_valid or unit_price is None:
+            return manual_required(
+                rule=rule,
+                unit_label="hour",
+                unit_price=unit_price,
+                base_fee=None,
+                review_reason=(
+                    "Confirm steady-state or cyclic temperature/humidity mode."
+                    if unit_price is None else _duration_authority_review_reason(authority)
+                ),
+                manual_fields=(("unit_price",) if unit_price is None else ())
+                + ("units", "base_fee", "testing_fee"),
+            )
+        return calculated_result(
+            spend_time=None,
+            unit_label="hour",
+            unit_price=unit_price,
+            units=authority.normalized_hours,
+            base_fee=(
+                Decimal("200")
+                if authority.normalized_hours < _REVISED_HOURLY_BASE_THRESHOLDS[rule.rule_id]
+                else ZERO
+            ),
+            discount_percent=ZERO,
+            source=authority.source,
+        )
     if authority is None or not authority.is_valid:
         review_reason = _duration_authority_review_reason(authority)
         temperature_base_fee = (

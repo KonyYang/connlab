@@ -1,4 +1,5 @@
 from decimal import Decimal
+from dataclasses import replace
 
 import pytest
 
@@ -11,6 +12,7 @@ from backend.modules.fee_evaluation.fee_rule_models import (
     FeeAmount,
     FeeRule,
 )
+from backend.modules.fee_evaluation import load_active_fee_rule_library
 
 
 def _rule(rule_id: str, price: str) -> FeeRule:
@@ -79,6 +81,21 @@ def test_approved_high_temperature_rule_uses_typed_hours_only() -> None:
         "Confirmed Matrix duration authority: revision 1 "
         "(confirmed-1; lineage-fp)"
     )
+
+
+@pytest.mark.parametrize(("hours", "base_fee"), [("48", "200"), ("120", "0")])
+def test_revised_high_temperature_base_fee_uses_confirmed_duration(hours: str, base_fee: str) -> None:
+    rule = next(
+        rule for rule in load_active_fee_rule_library().rules
+        if rule.rule_id == "fee_rule_high_temperature_life"
+    )
+    result = build_fee_default_fill(
+        rule=rule,
+        context=_context(replace(_authority(), normalized_hours=Decimal(hours))),
+    )
+
+    assert result.base_fee == Decimal(base_fee)
+    assert result.testing_fee == Decimal("15") * Decimal(hours) + Decimal(base_fee)
 
 
 def test_salt_spray_rule_uses_the_same_typed_hour_authority() -> None:

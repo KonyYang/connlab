@@ -11,6 +11,7 @@ from backend.modules.fee_evaluation.fee_rule_models import (
 )
 
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+|[\u4e00-\u9fff]+")
+_LIMIT_PATTERN = re.compile(r"(?<=\w)\s*(<=|≤|>=|≥|>|<)\s*(?=\d)")
 _MATING_UNMATING_FORCE_PATTERN = re.compile(
     r"^\s*mating\s*/\s*un\s*-?\s*mating\s+force\s*$",
     re.IGNORECASE,
@@ -42,7 +43,15 @@ def normalize_fee_rule_text(value: str | None) -> str:
     base_key = _canonical_mating_unmating_force(value)
     if base_key is not None:
         return base_key
-    lowered = value.strip().lower()
+    return normalize_fee_rule_alias(value)
+
+
+def normalize_fee_rule_alias(value: str) -> str:
+    """Keep comparison tiers distinct without canonicalizing reviewed force aliases."""
+    lowered = _LIMIT_PATTERN.sub(
+        lambda match: " le " if match.group(1) in {"<=", "≤", "<"} else " gt ",
+        value.strip().lower(),
+    )
     return " ".join(_TOKEN_PATTERN.findall(lowered))
 
 

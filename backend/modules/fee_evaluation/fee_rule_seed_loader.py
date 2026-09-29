@@ -136,9 +136,10 @@ def validate_fee_rule_library(library: FeeRuleLibrary) -> None:
                 f"Rule {rule.rule_id} has unsupported unit_label: {rule.unit_label}"
             )
         if rule.source_kind == "unit_price_reference":
-            if rule.source_row not in range(4, 48):
+            max_source_row = 52 if version.source_file_name == "FDQF-E-176 Testing Fee Evaluation_Rev_F_20260915.xlsx" else 47
+            if rule.source_row not in range(4, max_source_row + 1):
                 raise FeeRuleSeedValidationError(
-                    f"Rule {rule.rule_id} source_row must be between 4 and 47."
+                    f"Rule {rule.rule_id} source_row must be between 4 and {max_source_row}."
                 )
         elif rule.source_row is not None:
             raise FeeRuleSeedValidationError(
@@ -287,7 +288,9 @@ def _parse_decimal(value: Any, context: str) -> Decimal:
 
 
 def _normalize_alias_for_validation(value: str) -> str:
-    return " ".join(re.split(r"[^a-z0-9\u4e00-\u9fff]+", value.lower().strip())).strip()
+    from backend.modules.fee_evaluation.fee_rule_matcher import normalize_fee_rule_alias
+
+    return normalize_fee_rule_alias(value)
 
 
 def _validate_created_at(value: str) -> None:

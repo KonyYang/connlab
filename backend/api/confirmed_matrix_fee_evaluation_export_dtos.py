@@ -24,7 +24,7 @@ FEE_EDITED_UNIT_TYPES = {
     "per sample", "per reading", "per contact", "per cycle", "per time",
     "per hour", "per day", "per photo", "per report", "sample", "reading",
     "contact", "cycle", "time", "hour", "day", "photo", "report", "group",
-    "specimen", "pending",
+    "specimen", "reagent", "per reagent", "pending",
 }
 
 

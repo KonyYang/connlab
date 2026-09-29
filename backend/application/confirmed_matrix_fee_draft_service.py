@@ -90,6 +90,10 @@ class ConfirmedMatrixFeeDraftService:
             build_report_preparation_line(
                 snapshot=snapshot,
                 rule_version_id=library.version.version_id,
+                rule=next(
+                    (rule for rule in library.rules if rule.rule_id == "fee_rule_report_preparation"),
+                    None,
+                ),
             ),
         )
         line_items = tuple(
@@ -115,7 +119,7 @@ class ConfirmedMatrixFeeDraftService:
                 pricing_effective_from=snapshot.version.sample_received_date,
                 generated_at=_now_iso(),
             ),
-            draft_status=_draft_status(groups, warnings),
+            draft_status=_draft_status(groups, warnings, manual_line_items),
             total_fee=total_fee,
             review_required_count=review_required_count + len(warnings),
             groups=groups,

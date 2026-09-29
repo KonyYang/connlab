@@ -61,11 +61,11 @@ def test_ir_and_dwv_leave_price_pending_without_duration_text(
 
     assert result.unit_label == "reading"
     assert result.unit_price is None
-    assert result.units == Decimal("1")
-    assert result.base_fee == Decimal("0")
+    assert result.units is None
+    assert result.base_fee is None
     assert result.testing_fee is None
     assert result.review_required is True
-    assert result.review_reason == "Confirm 1-minute/2-minute price."
+    assert "test-point count" in (result.review_reason or "")
     assert _field_state(result, "unit_price") == "manual_required"
 
 
@@ -117,13 +117,32 @@ def test_ir_and_dwv_select_duration_price_from_matrix_condition(
 
     assert result.unit_label == "reading"
     assert result.unit_price == expected_unit_price
-    assert result.units == Decimal("1")
-    assert result.base_fee == Decimal("0")
-    assert result.testing_fee == expected_unit_price
-    assert result.review_required is False
-    assert result.review_reason is None
+    assert result.units is None
+    assert result.base_fee is None
+    assert result.testing_fee is None
+    assert result.review_required is True
+    assert "test-point count" in (result.review_reason or "")
     assert _field_state(result, "unit_price") == "auto_filled"
-    assert _field_state(result, "base_fee") == "auto_filled"
+    assert _field_state(result, "units") == "manual_required"
+
+
+def test_ir_uses_only_confirmed_step_point_count_and_still_reviews_base_fee() -> None:
+    match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item("INSULATION RESISTANCE")
+    assert match.rule is not None
+    result = build_fee_default_fill(
+        rule=match.rule,
+        context=_context(
+            test_item="INSULATION RESISTANCE",
+            condition="1 minute",
+            sample_quantity_expression="5",
+            step_quantities=(_step_quantity(test_points_per_sample="3", readings_per_point="2"),),
+        ),
+    )
+
+    assert result.unit_price == Decimal("5")
+    assert result.units == Decimal("30")
+    assert result.base_fee is None
+    assert result.review_required is True
 
 
 @pytest.mark.parametrize("condition", ["90 seconds", "60 seconds / 120 seconds"])
@@ -668,7 +687,7 @@ def test_current_rating_fully_reuses_temperature_rise_defaults() -> None:
     match = FeeRuleMatcher(load_active_fee_rule_library()).match_test_item("Current Rating")
     assert match.rule is not None
     assert match.rule.rule_id == "fee_rule_temperature_rise"
-    assert match.rule.source_row == 33
+    assert match.rule.source_row == 35
 
     result = build_fee_default_fill(
         rule=match.rule,

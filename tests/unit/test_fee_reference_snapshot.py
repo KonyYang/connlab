@@ -76,6 +76,17 @@ def test_production_snapshot_has_exact_source_coverage_and_policy_text() -> None
     )
 
 
+def test_revised_snapshot_captures_new_source_rows_and_policy_without_changing_old_version() -> None:
+    snapshot = load_fee_reference_snapshot(_SEEDS / "fee_reference_rows_v2026_09_15.json")
+
+    assert snapshot.source.source_file_name.endswith("20260915.xlsx")
+    assert {row.source_row for row in snapshot.rows} == set(range(4, 53))
+    assert snapshot.policies[0].source_row == 54
+    assert snapshot.rows[5].unit_price_text == "30/h"
+    assert snapshot.rows[24].english_description.strip() == "LLCR"
+    assert "3000" in snapshot.rows[11].unit_price_text
+
+
 @pytest.mark.parametrize(
     ("rows", "message"),
     [

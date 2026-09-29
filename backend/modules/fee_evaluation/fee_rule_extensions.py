@@ -10,6 +10,10 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
+from backend.modules.fee_evaluation.fee_reference_snapshot import (
+    REVISED_EFFECTIVE_ROWS,
+    REVISED_SOURCE_FILE_NAME,
+)
 from backend.modules.fee_evaluation.fee_rule_models import (
     ALLOWED_CALCULATION_STRATEGIES,
     ALLOWED_UNIT_LABELS,
@@ -74,7 +78,7 @@ def load_fee_rule_extensions(path: Path) -> FeeRuleExtensionSet:
     version = _parse_version(root.get("version"))
     source_rules = _parse_source_rules(root.get("source_rules"))
     extension_rules = _parse_extension_rules(root.get("extension_rules"))
-    _validate_coverage(source_rules)
+    _validate_coverage(source_rules, version.source_file_name)
     _validate_cross_section_identity(source_rules, extension_rules)
     return FeeRuleExtensionSet(
         version=version,
@@ -180,17 +184,18 @@ def _parse_extension_rules(payload: Any) -> tuple[FeeRule, ...]:
     return tuple(rules)
 
 
-def _validate_coverage(rules: tuple[FeeSourceRuleExtension, ...]) -> None:
+def _validate_coverage(rules: tuple[FeeSourceRuleExtension, ...], source_file_name: str) -> None:
     """Require exactly one source mapping for every effective source row."""
     row_numbers = [rule.source_row for rule in rules]
     duplicate = _first_duplicate(row_numbers)
     if duplicate is not None:
         raise FeeRuleExtensionValidationError(f"Duplicate source mapping: {duplicate}")
     actual = set(row_numbers)
-    missing = sorted(EXPECTED_SOURCE_ROWS - actual)
+    expected = REVISED_EFFECTIVE_ROWS if source_file_name == REVISED_SOURCE_FILE_NAME else EXPECTED_SOURCE_ROWS
+    missing = sorted(expected - actual)
     if missing:
         raise FeeRuleExtensionValidationError(f"Missing source mappings: {_joined(missing)}")
-    unexpected = sorted(actual - EXPECTED_SOURCE_ROWS)
+    unexpected = sorted(actual - expected)
     if unexpected:
         raise FeeRuleExtensionValidationError(f"Unexpected source mappings: {_joined(unexpected)}")
 
@@ -335,4 +340,6 @@ def _joined(values: list[int]) -> str:
 
 def _normalize_alias(value: str) -> str:
     """Normalize aliases consistently with the runtime seed validator."""
-    return " ".join(re.split(r"[^a-z0-9\u4e00-\u9fff]+", value.lower().strip())).strip()
+    from backend.modules.fee_evaluation.fee_rule_matcher import normalize_fee_rule_alias
+
+    return normalize_fee_rule_alias(value)

@@ -34,10 +34,10 @@ def test_fee_draft_header_uses_confirmed_matrix_version_sample_received_date() -
     assert draft.header.project_id == "P1"
     assert draft.header.confirmed_matrix_id == "cmv-1"
     assert draft.header.confirmed_revision == 1
-    assert draft.header.pricing_rule_version_id == "fee_rules_v2026_08_23_r11"
-    assert draft.header.pricing_source_file_name == "FDQF-E-176 Testing Fee Evaluation_Rev_F-v1.xls"
+    assert draft.header.pricing_rule_version_id == "fee_rules_v2026_09_15"
+    assert draft.header.pricing_source_file_name == "FDQF-E-176 Testing Fee Evaluation_Rev_F_20260915.xlsx"
     assert draft.header.pricing_effective_from == "2026-06-03"
-    assert draft.draft_status == "ready"
+    assert draft.draft_status == "needs_review"
 
 
 def test_fee_draft_not_found_when_no_active_authority() -> None:
@@ -69,9 +69,9 @@ def test_fee_draft_autofills_visual_exam_defaults() -> None:
     assert line.status == "calculated"
     assert line.review_required is False
     assert line.matched_rule_id == "fee_rule_visual_exam"
-    assert line.matched_rule_version_id == "fee_rules_v2026_08_23_r11"
+    assert line.matched_rule_version_id == "fee_rules_v2026_09_15"
     assert line.calculation_strategy == "per_photo"
-    assert line.unit_price == Decimal("10")
+    assert line.unit_price == Decimal("15")
     assert line.units == Decimal("3")
     assert line.discount_percent == Decimal("100")
     assert line.testing_fee == Decimal("0")
@@ -98,7 +98,7 @@ def test_fee_draft_autofills_examination_of_product_as_visual_exam_defaults() ->
     assert line.matched_rule_id == "fee_rule_visual_exam"
     assert line.calculation_strategy == "per_photo"
     assert line.spend_time == "0.5"
-    assert line.unit_price == Decimal("10")
+    assert line.unit_price == Decimal("15")
     assert line.unit_label == "photo"
     assert line.units == Decimal("3")
     assert line.discount_percent == Decimal("100")
@@ -209,11 +209,11 @@ def test_fee_draft_uses_class_iiia_price_for_explicit_class() -> None:
     line = draft.groups[0].line_items[0]
     assert line.status == "calculated"
     assert line.matched_rule_id == "fee_rule_mfg_class_iiia"
-    assert line.unit_price == Decimal("1600")
+    assert line.unit_price == Decimal("1500")
     assert line.unit_label == "day"
     assert line.units == Decimal("2")
     assert line.base_fee == Decimal("0")
-    assert line.testing_fee == Decimal("3200")
+    assert line.testing_fee == Decimal("3000")
 
 
 def test_fee_draft_keeps_incomplete_mfg_phase_duration_pending() -> None:
@@ -327,12 +327,13 @@ def test_fee_draft_includes_backend_owned_manual_default_rows() -> None:
     report_line = draft.manual_line_items[0]
     assert report_line.line_id == "manual-report-preparation"
     assert report_line.test_item == "Report preparation"
-    assert report_line.spend_time == "4"
-    assert report_line.unit_price == Decimal("600")
+    assert report_line.spend_time == ""
+    assert report_line.unit_price is None
     assert report_line.unit_label == "report"
     assert report_line.units == Decimal("1")
-    assert report_line.discount_percent == Decimal("100")
-    assert report_line.testing_fee == Decimal("0")
+    assert report_line.discount_percent == Decimal("0")
+    assert report_line.testing_fee is None
+    assert report_line.review_required is True
 
 
 def test_fee_draft_sums_additive_sample_preparation_quantity_and_keeps_free_default() -> None:
@@ -419,10 +420,10 @@ def test_fee_draft_defaults_insulation_resistance_without_duration() -> None:
     assert line.status == "review_required"
     assert line.unit_label == "reading"
     assert line.unit_price is None
-    assert line.units == Decimal("1")
-    assert line.base_fee == Decimal("0")
+    assert line.units is None
+    assert line.base_fee is None
     assert line.testing_fee is None
-    assert line.review_reason == "Confirm 1-minute/2-minute price."
+    assert "test-point count" in (line.review_reason or "")
 
 
 def test_fee_draft_uses_insulation_resistance_duration_price_from_condition() -> None:
@@ -438,13 +439,13 @@ def test_fee_draft_uses_insulation_resistance_duration_price_from_condition() ->
     line = draft.groups[0].line_items[0]
 
     assert line.matched_rule_id == "fee_rule_insulation_resistance"
-    assert line.status == "calculated"
+    assert line.status == "review_required"
     assert line.unit_label == "reading"
     assert line.unit_price == Decimal("10")
-    assert line.units == Decimal("1")
-    assert line.base_fee == Decimal("0")
-    assert line.testing_fee == Decimal("10")
-    assert line.review_reason is None
+    assert line.units is None
+    assert line.base_fee is None
+    assert line.testing_fee is None
+    assert "test-point count" in (line.review_reason or "")
 
 
 def test_fee_draft_leaves_dwv_price_pending_when_condition_has_only_current_limit() -> None:
@@ -466,10 +467,10 @@ def test_fee_draft_leaves_dwv_price_pending_when_condition_has_only_current_limi
     assert line.status == "review_required"
     assert line.unit_label == "reading"
     assert line.unit_price is None
-    assert line.units == Decimal("1")
-    assert line.base_fee == Decimal("0")
+    assert line.units is None
+    assert line.base_fee is None
     assert line.testing_fee is None
-    assert line.review_reason == "Confirm 1-minute/2-minute price."
+    assert "test-point count" in (line.review_reason or "")
 
 
 def test_fee_draft_uses_temperature_rise_rule_for_current_rating() -> None:
@@ -528,7 +529,7 @@ def test_fee_draft_defaults_non_rise_temperature_items_to_per_hour(
     assert line.unit_price == Decimal("15")
     assert line.unit_label == "hour"
     assert line.units is None
-    assert line.base_fee == Decimal("0")
+    assert line.base_fee is None
     assert line.testing_fee is None
 
 

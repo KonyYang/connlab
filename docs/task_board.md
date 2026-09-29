@@ -11,8 +11,28 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_REFERENCE_20260915_RULE_OPTIMIZATION",
+    "summary": "Upgrade Fee Evaluation pricing reference and improve confirmed Matrix quantity and rule matching",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Versioned 2026-09-15 Unit Price Reference seed, confirmed Matrix-derived fee defaults, safe matching and same-condition manual reuse, with regression tests; no external workbook mutation or IR/DWV Test points schema",
+    "scope_paths": [
+      "backend/modules/fee_evaluation",
+      "backend/application/confirmed_matrix_fee_draft_service.py",
+      "backend/application/confirmed_matrix_fee_draft_line_builder.py",
+      "frontend/src/features/fee-evaluation",
+      "tests/unit",
+      "tests/integration"
+    ],
+    "risk_reasons": [],
+    "activation_head": "587cddc10cc5a5a27d06933a114ec4073d5f6720",
+    "started_at": "2026-09-29T09:59:15.465452Z",
+    "updated_at": "2026-09-29T09:59:15.465452Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FEE_CONFIRM_STATE_AND_FOLDER_HINT",
     "tier": "standard",

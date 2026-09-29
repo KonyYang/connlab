@@ -247,7 +247,7 @@ def test_reviewed_save_stale_cas_is_typed_and_does_not_overwrite(tmp_path) -> No
             project_id="P1",
             confirmed_matrix_id="matrix-1",
             confirmed_revision=2,
-            fee_rule_version_id="fee_rules_v2026_08_23_r11",
+            fee_rule_version_id="fee_rules_v2026_09_15",
         )
     assert persisted is not None
     assert persisted.generation == 2
@@ -357,8 +357,15 @@ def _cr_build(*, plan_id: str, revision: int, units: str, testing_fee: str):
     )
     return replace(
         result,
+        draft=replace(
+            result.draft,
+            header=replace(
+                result.draft.header,
+                pricing_rule_version_id="fee_rules_v2026_09_15",
+            ),
+        ),
         rule_library=SimpleNamespace(
-            version=SimpleNamespace(version_id="fee_rules_v2026_08_23_r11")
+            version=SimpleNamespace(version_id="fee_rules_v2026_09_15")
         ),
         effective_measurement_plan=plan,
     )

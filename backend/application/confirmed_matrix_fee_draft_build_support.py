@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from backend.application.confirmed_matrix_fee_draft_models import (
     FeeDraftStatus,
     FeeEvaluationGroup,
+    FeeEvaluationLineItem,
     FeeEvaluationWarning,
 )
 from backend.domain import ConfirmedMatrixSnapshot
@@ -33,6 +34,7 @@ def root_warnings(snapshot: ConfirmedMatrixSnapshot) -> list[FeeEvaluationWarnin
 def draft_status(
     groups: tuple[FeeEvaluationGroup, ...],
     warnings: list[FeeEvaluationWarning],
+    manual_line_items: tuple[FeeEvaluationLineItem, ...] = (),
 ) -> FeeDraftStatus:
     """Return the existing aggregate Fee draft status."""
     if warnings:
@@ -44,5 +46,7 @@ def draft_status(
         for group in groups
         for item in (*group.manual_line_items, *group.line_items)
     ):
+        return "needs_review"
+    if any(item.review_required for item in manual_line_items):
         return "needs_review"
     return "ready"
