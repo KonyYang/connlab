@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FEE_REMOVE_REUSE_BUTTONS_20260930",
     "summary": "Remove per-row Fee price reuse action",
@@ -25,9 +25,59 @@
     "risk_reasons": [],
     "activation_head": "b298da84b696846652faefeaf3aa7d49311c295a",
     "started_at": "2026-09-29T23:01:38.868864Z",
-    "updated_at": "2026-09-29T23:01:38.868864Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-29T23:07:26.919794Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_FEE_REMOVE_REUSE_BUTTONS_20260930",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.test.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.test.ts",
+        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts",
+        "frontend/src/workbench.css"
+      ],
+      "integration": {
+        "detail": "Clean master HEAD; no publication",
+        "status": "passed"
+      },
+      "schema": "connlab.sol-task-report",
+      "roles": {
+        "developer": {
+          "detail": "Implementation and focused self-review passed",
+          "status": "passed"
+        }
+      },
+      "version": 1,
+      "subject": "591b69d21a62b070510ec7c902fd2a34782baf29",
+      "summary": "Removed per-row cross-group price copy action and its unused matching logic; individual price editing and Fee Form import remain.",
+      "validation": [
+        {
+          "name": "targeted frontend",
+          "detail": "40 tests passed; red test reproduced repeated actions before change",
+          "status": "passed"
+        },
+        {
+          "name": "production build",
+          "detail": "TypeScript and Vite build passed",
+          "status": "passed"
+        },
+        {
+          "name": "browser",
+          "detail": "No bulk price buttons, Import Fee Form present, 100 editable price fields visible",
+          "status": "passed"
+        }
+      ],
+      "task_id": "TASK_FEE_REMOVE_REUSE_BUTTONS_20260930"
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_REFERENCE_20260915_RULE_OPTIMIZATION",
