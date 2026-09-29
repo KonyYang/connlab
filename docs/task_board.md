@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_FEE_REFERENCE_20260915_RULE_OPTIMIZATION",
     "summary": "Upgrade Fee Evaluation pricing reference and improve confirmed Matrix quantity and rule matching",
@@ -29,110 +29,17 @@
     "risk_reasons": [],
     "activation_head": "587cddc10cc5a5a27d06933a114ec4073d5f6720",
     "started_at": "2026-09-29T09:59:15.465452Z",
-    "updated_at": "2026-09-29T14:37:55.051698Z",
+    "updated_at": "2026-09-29T15:59:04.759172Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_FEE_REFERENCE_20260915_RULE_OPTIMIZATION",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User 2026-09-29: Confirmed Matrix sample quantities or Test points must refresh Fee defaults on re-entry; same Matrix retains manually confirmed Units, new Matrix does not apply old Units.",
       "requires_user": false
     },
-    "report": {
-      "validation": [
-        {
-          "status": "passed",
-          "detail": "741 Fee Python passed, 3 skipped; 26 Matrix session passed",
-          "name": "Prior Fee and Matrix implementation suite"
-        },
-        {
-          "status": "passed",
-          "detail": "135 frontend tests plus tsc/Vite build passed before backend-only revision",
-          "name": "Prior Fee frontend tests and production build"
-        },
-        {
-          "status": "passed",
-          "detail": "99 passed, 3070 deselected on final backend code",
-          "name": "Revision affected Fee pricing draft suite"
-        },
-        {
-          "status": "passed",
-          "detail": "Confirmed Matrix samples 5/7, matched price/unit apply across groups, autosave/reload, IR Base Fee blank versus explicit zero, blocked Confirm; no business project touched",
-          "name": "Isolated browser acceptance"
-        }
-      ],
-      "summary": "2026-09-15 Fee reference and confirmed-Matrix pricing rules delivered. Isolated browser acceptance found and fixed pricing-draft response converting an unreviewed IR base-fee blank to zero; refresh retains blank while explicit zero remains distinct. Unrelated Office COM broad-suite errors were not counted as passing.",
-      "subject": "2f5b04e7247141e2bc3fb0d9463956b8c2a59f1f",
-      "scope_ok": true,
-      "integration": {
-        "status": "passed",
-        "detail": "Exact master HEAD and clean worktree; no publication"
-      },
-      "changed_paths": [
-        "backend/api/confirmed_matrix_fee_evaluation_export_dtos.py",
-        "backend/api/routes_confirmed_matrix_fee_evaluation_pricing_draft.py",
-        "backend/application/confirmed_matrix_fee_base_fee_policy.py",
-        "backend/application/confirmed_matrix_fee_draft_build_support.py",
-        "backend/application/confirmed_matrix_fee_draft_service.py",
-        "backend/application/confirmed_matrix_fee_manual_defaults.py",
-        "backend/infrastructure/office/fee_form_import_gateway.py",
-        "backend/modules/fee_evaluation/fee_default_fill.py",
-        "backend/modules/fee_evaluation/fee_reference_snapshot.py",
-        "backend/modules/fee_evaluation/fee_reviewed_extension_defaults.py",
-        "backend/modules/fee_evaluation/fee_rule_extensions.py",
-        "backend/modules/fee_evaluation/fee_rule_matcher.py",
-        "backend/modules/fee_evaluation/fee_rule_models.py",
-        "backend/modules/fee_evaluation/fee_rule_seed_loader.py",
-        "backend/modules/fee_evaluation/seeds/active_fee_rule_seed.json",
-        "backend/modules/fee_evaluation/seeds/fee_reference_rows_v2026_09_15.json",
-        "backend/modules/fee_evaluation/seeds/fee_rule_extensions_v2026_09_15.json",
-        "backend/modules/fee_evaluation/seeds/fee_rules_v2026_09_15.json",
-        "docs/fee_reference_20260915.md",
-        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.test.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
-        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.test.ts",
-        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts",
-        "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.ts",
-        "frontend/src/workbench.css",
-        "scripts/build_fee_reference_20260915.py",
-        "tests/integration/test_confirmed_matrix_fee_draft_api.py",
-        "tests/integration/test_confirmed_matrix_fee_draft_dependent_fields_api.py",
-        "tests/integration/test_confirmed_matrix_fee_evaluation_export_api.py",
-        "tests/integration/test_fee_evaluation_pricing_draft_api.py",
-        "tests/integration/test_fee_pricing_draft_measurement_plan_rebase_attestation.py",
-        "tests/integration/test_matrix_editor_session_api.py",
-        "tests/unit/test_confirmed_matrix_fee_draft_rule_resolution.py",
-        "tests/unit/test_confirmed_matrix_fee_draft_service.py",
-        "tests/unit/test_fee_default_fill.py",
-        "tests/unit/test_fee_default_fill_explicit_hour_authority.py",
-        "tests/unit/test_fee_evaluation_pricing_draft_persistence_service.py",
-        "tests/unit/test_fee_reference_snapshot.py",
-        "tests/unit/test_fee_rule_matcher.py",
-        "tests/unit/test_fee_rule_seed_loader.py",
-        "tests/unit/test_fee_rule_temperature_force_alias_safe_rebase.py",
-        "tests/unit/test_matrix_fee_rebase_promotion_service.py",
-        "tests/unit/test_task_365c_fee_compatibility.py"
-      ],
-      "version": 1,
-      "task_id": "TASK_FEE_REFERENCE_20260915_RULE_OPTIMIZATION",
-      "roles": {
-        "qa": {
-          "status": "passed",
-          "detail": "99 affected Fee pricing-draft tests and isolated browser acceptance; earlier Fee/Matrix/frontend suite and build retained; unrelated Office COM broad-suite attempt did not pass"
-        },
-        "developer": {
-          "status": "passed",
-          "detail": "TDD red/green API regression and affected checks"
-        },
-        "reviewer": {
-          "status": "passed",
-          "detail": "Focused same-agent standards/spec review of exact revision diff; no unresolved findings"
-        }
-      },
-      "schema": "connlab.sol-task-report"
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_FEE_CONFIRM_STATE_AND_FOLDER_HINT",
