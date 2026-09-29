@@ -108,6 +108,31 @@ def test_pricing_draft_put_saves_payload_and_get_can_return_current_payload() ->
     assert get_response.json()["payload"]["summary"]["external_cost_note"] == "tooling"
 
 
+def test_pricing_draft_round_trip_keeps_unreviewed_base_fee_blank() -> None:
+    service = _Service(_missing_result())
+    app.dependency_overrides[get_fee_evaluation_pricing_draft_service] = lambda: service
+    payload = _payload()
+    payload["rows"][0]["base_fee"] = ""
+    payload["rows"][0]["testing_fee"] = ""
+    try:
+        client = TestClient(app)
+        save_response = client.put(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/pricing-draft",
+            json=payload,
+        )
+        get_response = client.get(
+            "/api/projects/P1/confirmed-matrix/fee-evaluation/pricing-draft"
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert save_response.status_code == 200
+    assert get_response.status_code == 200
+    assert service.commands[0].edited_values.rows[0].base_fee == ""
+    assert save_response.json()["payload"]["rows"][0]["base_fee"] == ""
+    assert get_response.json()["payload"]["rows"][0]["base_fee"] == ""
+
+
 def test_pricing_draft_get_exposes_v2_operator_field_ownership() -> None:
     values = _edited_values()
     source_context = FeePricingDraftSourceContext(

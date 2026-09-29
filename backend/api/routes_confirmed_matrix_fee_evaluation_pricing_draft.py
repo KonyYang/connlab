@@ -280,7 +280,7 @@ def _to_payload(
                 unit_price=_pending_numeric_text(row.unit_price),
                 unit_type=_saveable_unit_type(row.unit_type),
                 units=_pending_numeric_text(row.units),
-                base_fee=_saveable_numeric_text(row.base_fee, "0"),
+                base_fee=_saveable_base_fee_text(row.base_fee),
                 discount=_saveable_discount(row.discount),
                 testing_fee=_pending_numeric_text(row.testing_fee),
                 notes=row.notes,
@@ -309,7 +309,7 @@ def _to_payload(
                 unit_price=_pending_numeric_text(row.unit_price),
                 unit_type=_saveable_unit_type(row.unit_type),
                 units=_pending_numeric_text(row.units),
-                base_fee=_saveable_numeric_text(row.base_fee, "0"),
+                base_fee=_saveable_base_fee_text(row.base_fee),
                 discount=_saveable_discount(row.discount),
                 testing_fee=_pending_numeric_text(row.testing_fee),
                 notes=row.notes,
@@ -329,6 +329,11 @@ def _saveable_numeric_text(value: str, fallback: str) -> str:
     if not normalized or normalized.lower() == "pending":
         return fallback
     return normalized
+
+
+def _saveable_base_fee_text(value: str) -> str:
+    # A blank is an unreviewed manual-required fee, unlike the legacy Pending sentinel.
+    return "" if not value.strip() else _saveable_numeric_text(value, "0")
 
 
 def _pending_numeric_text(value: str) -> str:
