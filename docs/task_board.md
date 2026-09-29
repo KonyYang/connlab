@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FEE_CONFIRM_STATE_AND_FOLDER_HINT",
     "summary": "Fix Fee confirmation re-entry state and explain unavailable project folder on Fee Form action",
@@ -27,9 +27,76 @@
     "risk_reasons": [],
     "activation_head": "ad5993d56fc080ca7c737160e999d41b96239e12",
     "started_at": "2026-09-29T00:07:48.538762Z",
-    "updated_at": "2026-09-29T00:07:48.538762Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-29T00:27:09.479222Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_FEE_CONFIRM_STATE_AND_FOLDER_HINT",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "scope_ok": true,
+      "task_id": "TASK_FEE_CONFIRM_STATE_AND_FOLDER_HINT",
+      "schema": "connlab.sol-task-report",
+      "summary": "Fee confirmation recognizes equal reordered values; unchanged Confirm is disabled; unavailable official folder explains draft-download action.",
+      "validation": [
+        {
+          "name": "Python Fee Form service and API",
+          "status": "passed",
+          "result": "31 passed"
+        },
+        {
+          "name": "Frontend Fee Evaluation",
+          "status": "passed",
+          "result": "86 passed"
+        },
+        {
+          "name": "Frontend production build",
+          "status": "passed",
+          "result": "tsc and vite build passed"
+        },
+        {
+          "name": "Read-only browser smoke",
+          "status": "passed",
+          "result": "Current project shows official form action and disabled unchanged Confirm"
+        }
+      ],
+      "version": 1,
+      "integration": {
+        "summary": "Scoped commit at clean master HEAD, exact task diff verified",
+        "status": "passed"
+      },
+      "changed_paths": [
+        "backend/api/routes_confirmed_matrix_fee_evaluation_export.py",
+        "backend/application/fee_form_publication_service.py",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
+        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.test.ts",
+        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts",
+        "tests/integration/test_confirmed_matrix_fee_file_download_api.py",
+        "tests/unit/test_fee_form_publication_service.py"
+      ],
+      "roles": {
+        "qa": {
+          "summary": "Backend, frontend, build and read-only browser matrix passed",
+          "status": "passed"
+        },
+        "developer": {
+          "summary": "Regression RED/GREEN and implementation complete",
+          "status": "passed"
+        },
+        "reviewer": {
+          "summary": "Same-agent standards and requirement diff review; no material findings",
+          "status": "passed"
+        }
+      },
+      "subject": "c6940c6bd4218ab1f801c0057872e2f8e96b4ecb"
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_TEST_DAYS_TYPOGRAPHY",
