@@ -11,132 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_FEE_REFERENCE_20260915_RULE_OPTIMIZATION",
-    "summary": "Upgrade Fee Evaluation pricing reference and improve confirmed Matrix quantity and rule matching",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Versioned 2026-09-15 Unit Price Reference seed, confirmed Matrix-derived fee defaults, safe matching and same-condition manual reuse, with regression tests; no external workbook mutation or IR/DWV Test points schema",
-    "scope_paths": [
-      "backend/modules/fee_evaluation",
-      "backend/application/confirmed_matrix_fee_draft_service.py",
-      "backend/application/confirmed_matrix_fee_draft_line_builder.py",
-      "frontend/src/features/fee-evaluation",
-      "tests/unit",
-      "tests/integration"
-    ],
-    "risk_reasons": [],
-    "activation_head": "587cddc10cc5a5a27d06933a114ec4073d5f6720",
-    "started_at": "2026-09-29T09:59:15.465452Z",
-    "updated_at": "2026-09-29T16:30:44.590210Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_FEE_REFERENCE_20260915_RULE_OPTIMIZATION",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "roles": {
-        "reviewer": {
-          "detail": "Focused exact-diff review; no actionable findings",
-          "status": "passed"
-        },
-        "qa": {
-          "status": "passed"
-        },
-        "developer": {
-          "status": "passed"
-        }
-      },
-      "integration": {
-        "detail": "Clean master HEAD; no publication",
-        "status": "passed"
-      },
-      "changed_paths": [
-        "backend/api/confirmed_matrix_fee_evaluation_export_dtos.py",
-        "backend/api/routes_confirmed_matrix_fee_evaluation_pricing_draft.py",
-        "backend/application/confirmed_matrix_fee_base_fee_policy.py",
-        "backend/application/confirmed_matrix_fee_draft_build_support.py",
-        "backend/application/confirmed_matrix_fee_draft_service.py",
-        "backend/application/confirmed_matrix_fee_manual_defaults.py",
-        "backend/infrastructure/office/fee_form_import_gateway.py",
-        "backend/modules/fee_evaluation/fee_default_fill.py",
-        "backend/modules/fee_evaluation/fee_reference_snapshot.py",
-        "backend/modules/fee_evaluation/fee_reviewed_extension_defaults.py",
-        "backend/modules/fee_evaluation/fee_rule_extensions.py",
-        "backend/modules/fee_evaluation/fee_rule_matcher.py",
-        "backend/modules/fee_evaluation/fee_rule_models.py",
-        "backend/modules/fee_evaluation/fee_rule_seed_loader.py",
-        "backend/modules/fee_evaluation/seeds/active_fee_rule_seed.json",
-        "backend/modules/fee_evaluation/seeds/fee_reference_rows_v2026_09_15.json",
-        "backend/modules/fee_evaluation/seeds/fee_rule_extensions_v2026_09_15.json",
-        "backend/modules/fee_evaluation/seeds/fee_rules_v2026_09_15.json",
-        "docs/fee_reference_20260915.md",
-        "frontend/src/api/client.ts",
-        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.test.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.tsx",
-        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.test.ts",
-        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts",
-        "frontend/src/features/fee-evaluation/feeEvaluationPricingDraftHydration.ts",
-        "frontend/src/workbench.css",
-        "scripts/build_fee_reference_20260915.py",
-        "tests/integration/test_confirmed_matrix_fee_draft_api.py",
-        "tests/integration/test_confirmed_matrix_fee_draft_dependent_fields_api.py",
-        "tests/integration/test_confirmed_matrix_fee_evaluation_export_api.py",
-        "tests/integration/test_fee_evaluation_pricing_draft_api.py",
-        "tests/integration/test_fee_pricing_draft_measurement_plan_rebase_attestation.py",
-        "tests/integration/test_matrix_editor_session_api.py",
-        "tests/unit/test_confirmed_matrix_fee_draft_rule_resolution.py",
-        "tests/unit/test_confirmed_matrix_fee_draft_service.py",
-        "tests/unit/test_fee_default_fill.py",
-        "tests/unit/test_fee_default_fill_explicit_hour_authority.py",
-        "tests/unit/test_fee_evaluation_pricing_draft_persistence_service.py",
-        "tests/unit/test_fee_reference_snapshot.py",
-        "tests/unit/test_fee_rule_matcher.py",
-        "tests/unit/test_fee_rule_seed_loader.py",
-        "tests/unit/test_fee_rule_temperature_force_alias_safe_rebase.py",
-        "tests/unit/test_matrix_fee_rebase_promotion_service.py",
-        "tests/unit/test_task_365c_fee_compatibility.py"
-      ],
-      "scope_ok": true,
-      "version": 1,
-      "summary": "Versioned Fee price rules and confirmed-Matrix-derived defaults; preserve manually confirmed Units for unchanged Matrix and reject stale pricing payloads after Matrix revision.",
-      "schema": "connlab.sol-task-report",
-      "task_id": "TASK_FEE_REFERENCE_20260915_RULE_OPTIMIZATION",
-      "subject": "14e522976833ddfbc71d8d6d7e9a44856a567ecc",
-      "validation": [
-        {
-          "status": "passed",
-          "name": "frontend",
-          "detail": "706 passed, 1 skipped; TypeScript and Vite production build passed"
-        },
-        {
-          "status": "passed",
-          "name": "python",
-          "detail": "3143 passed, 8 skipped, 19 deselected"
-        },
-        {
-          "status": "passed",
-          "name": "browser",
-          "detail": "Read-only smoke on current project; revision transition covered in isolated tests"
-        }
-      ]
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_FEE_CONFIRM_STATE_AND_FOLDER_HINT",
+    "task_id": "TASK_FEE_REFERENCE_20260915_RULE_OPTIMIZATION",
     "tier": "standard",
-    "subject": "c6940c6bd4218ab1f801c0057872e2f8e96b4ecb",
-    "summary": "Fix Fee confirmation re-entry state and explain unavailable project folder on Fee Form action",
+    "subject": "14e522976833ddfbc71d8d6d7e9a44856a567ecc",
+    "summary": "Upgrade Fee Evaluation pricing reference and improve confirmed Matrix quantity and rule matching",
     "disposition": "completed",
-    "decision_ref": "User explicit close request.",
-    "closed_at": "2026-09-29T05:04:11.430731Z"
+    "decision_ref": "User explicit final close request in side conversation on 2026-09-30.",
+    "closed_at": "2026-09-29T22:52:45.287224Z"
   },
   "retained_history": [
     {
