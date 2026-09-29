@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_REMOVE_REUSE_BUTTONS_20260930",
+    "summary": "Remove per-row Fee price reuse action",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Remove Apply price to matching rows UI and unused local bulk-copy logic; keep manual row editing and Fee Form import.",
+    "scope_paths": [
+      "frontend/src/features/fee-evaluation",
+      "frontend/src/workbench.css"
+    ],
+    "risk_reasons": [],
+    "activation_head": "b298da84b696846652faefeaf3aa7d49311c295a",
+    "started_at": "2026-09-29T23:01:38.868864Z",
+    "updated_at": "2026-09-29T23:01:38.868864Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FEE_REFERENCE_20260915_RULE_OPTIMIZATION",
     "tier": "standard",
