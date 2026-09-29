@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from backend.domain import (
     Project,
     ProjectStatus,
 )
+from backend.domain.matrix_contact_measurement_models import MatrixPointCategory, MatrixPointProfile
 from backend.infrastructure.storage.database import (
     create_database_engine,
     create_session_factory,
@@ -153,6 +155,67 @@ def test_fee_draft_api_uses_confirmed_point_profile_for_llcr_units(tmp_path: Pat
             and item["source"].startswith("Confirmed Project Point Profile: revision 1")
             for item in line["field_metadata"]
         )
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
+def test_fee_draft_api_reloads_revised_matrix_samples_and_points(tmp_path: Path) -> None:
+    client, engine, _ = _client(tmp_path)
+    try:
+        _seed_project("P1", tmp_path)
+        _seed_llcr_snapshot("P1", tmp_path, matrix_point_expression="1-2")
+
+        first = client.get("/api/projects/P1/confirmed-matrix/fee-draft")
+        assert first.status_code == 200
+        assert first.json()["groups"][0]["manual_line_items"][0]["units"] == "5"
+        assert first.json()["groups"][0]["line_items"][0]["units"] == "10"
+
+        session_factory = create_session_factory(engine)
+        with session_factory() as session:
+            repo = ConfirmedMatrixAuthorityRepository(session)
+            previous = repo.get_active_by_project("P1")
+            assert previous is not None
+            revised = replace(
+                previous,
+                version=replace(
+                    previous.version,
+                    confirmed_matrix_id="cmv-llcr-2",
+                    confirmed_revision=2,
+                    point_profile=MatrixPointProfile(
+                        (MatrixPointCategory("HP", "1-3", True),)
+                    ),
+                ),
+                groups=(replace(
+                    previous.groups[0],
+                    confirmed_matrix_id="cmv-llcr-2",
+                    confirmed_group_id="cmg-llcr-2",
+                    sample_quantity_expression="7",
+                ),),
+                rows=(replace(
+                    previous.rows[0],
+                    confirmed_matrix_id="cmv-llcr-2",
+                    confirmed_row_id="cmr-llcr-2",
+                ),),
+                cells=(replace(
+                    previous.cells[0],
+                    confirmed_matrix_id="cmv-llcr-2",
+                    confirmed_cell_id="cmc-llcr-2",
+                    confirmed_group_id="cmg-llcr-2",
+                    confirmed_row_id="cmr-llcr-2",
+                ),),
+            )
+            repo.supersede_active_and_create_snapshot(
+                previous_active_confirmed_matrix_id=previous.version.confirmed_matrix_id,
+                snapshot=revised,
+            )
+            session.commit()
+
+        second = client.get("/api/projects/P1/confirmed-matrix/fee-draft")
+        assert second.status_code == 200
+        assert second.json()["header"]["confirmed_revision"] == 2
+        assert second.json()["groups"][0]["manual_line_items"][0]["units"] == "7"
+        assert second.json()["groups"][0]["line_items"][0]["units"] == "21"
     finally:
         app.dependency_overrides.clear()
         engine.dispose()
@@ -332,6 +395,7 @@ def _seed_llcr_snapshot(
     *,
     test_item: str = "Contact Resistance (Low Level)",
     sample_quantity_expression: str = "5",
+    matrix_point_expression: str | None = None,
 ) -> None:
     settings = _settings(tmp_path)
     engine = create_database_engine(settings)
@@ -347,6 +411,10 @@ def _seed_llcr_snapshot(
                     is_active_authority=True, status=ConfirmedMatrixStatus.CONFIRMED,
                     confirmed_by="operator", confirmed_at="2026-07-15T10:00:00+08:00",
                     sample_received_date="2026-06-03",
+                    point_profile=(
+                        MatrixPointProfile((MatrixPointCategory("HP", matrix_point_expression, True),))
+                        if matrix_point_expression is not None else None
+                    ),
                 ),
                 groups=(ConfirmedMatrixGroup(
                     confirmed_group_id="cmg-llcr", confirmed_matrix_id="cmv-llcr",

@@ -92,6 +92,7 @@ describe("FeeEvaluationReviewExportPage", () => {
   it.each([
     ["Spend Time for group Group 1 step 1", "0.25", "4.8", "950"],
     ["Units for Sample preparation", "7", "4.5", "900"],
+    ["Units for Visual Examination", "7", "4.5", "900"],
     ["Base Fee for Visual Examination", "", "4.5", "900"],
     ["Discount for Visual Examination", "", "4.5", "900"],
     ["Notes for Visual Examination", " operator note ", "4.5", "900"],
@@ -128,6 +129,9 @@ describe("FeeEvaluationReviewExportPage", () => {
     view.unmount();
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
     expect(await screen.findByRole("button", {name: "Generate Official Fee Form"})).toBeTruthy();
+    if (label.startsWith("Units for ")) {
+      expect(screen.getByLabelText(label)).toHaveProperty("value", value);
+    }
   });
 
   it.each([false, true])("confirms a man-hour edit equal to the automatic default after save and reload (autosaved: %s)", async (autosaved) => {
@@ -856,6 +860,76 @@ describe("FeeEvaluationReviewExportPage", () => {
       );
     });
     expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not restore saved Units from an older Matrix when pricing responses lag the current Fee draft", async () => {
+    const draft = createDraftWithResolvedSingleLine();
+    draft.header.confirmed_matrix_id = "cmv-2";
+    draft.header.confirmed_revision = 2;
+    draft.groups[0].sample_quantity_expression = "7";
+    draft.groups[0].manual_line_items[0].units = "7";
+    draft.groups[0].line_items[0].units = "15";
+    const oldPayload = currentAuthorityPricingDraftPayload();
+    oldPayload.manual_rows![0].units = "99";
+    const oldResponse = currentPricingDraftResponse({
+      status: "current_v2",
+      saved_generation: 1,
+      saved_source_context_fingerprint: "old-context",
+      saved_payload_fingerprint: "old-payload",
+      saved_validation_token: "old-token",
+      payload: oldPayload,
+    });
+    arrangeSuccessfulContext({ pricingDraft: oldResponse });
+    let resolvePricingDraft!: (response: Record<string, unknown>) => void;
+    apiMocks.getFeeEvaluationPricingDraft.mockReturnValue(
+      new Promise<Record<string, unknown>>((resolve) => {
+        resolvePricingDraft = resolve;
+      })
+    );
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(draft);
+
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    expect(await screen.findByLabelText("Units for Sample preparation")).toHaveProperty("value", "7");
+    await waitFor(() => expect(apiMocks.getFeeEvaluationPricingDraft).toHaveBeenCalled());
+    await act(async () => {
+      resolvePricingDraft(oldResponse);
+    });
+    expect(screen.getByLabelText("Units for Sample preparation")).toHaveProperty("value", "7");
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty("disabled", true);
+    });
+    expect(await screen.findByText(/Matrix or Fee rules changed while loading Fee Evaluation/)).toBeTruthy();
+  });
+
+  it("shows revised Matrix sample and reading defaults instead of old Fee values on re-entry", async () => {
+    const draft = createDraftWithResolvedSingleLine();
+    draft.header.confirmed_matrix_id = "cmv-2";
+    draft.header.confirmed_revision = 2;
+    draft.groups[0].sample_quantity_expression = "7";
+    draft.groups[0].manual_line_items[0].units = "7";
+    draft.groups[0].line_items[0].test_item = "Contact Resistance at Low Level";
+    draft.groups[0].line_items[0].units = "21";
+    arrangeSuccessfulContext({
+      pricingDraft: currentPricingDraftResponse({
+        status: "blocked",
+        current_confirmed_matrix_id: "cmv-2",
+        current_confirmed_revision: 2,
+        saved_confirmed_matrix_id: "cmv-1",
+        saved_confirmed_revision: 1,
+        saved_draft_edit_id: null,
+        payload: null,
+      }),
+      confirmedFee: createConfirmedFeeLatest({ status: "stale" }),
+    });
+    apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(draft);
+
+    render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    expect(await screen.findByLabelText("Units for Sample preparation")).toHaveProperty("value", "7");
+    await screen.findByText("Saved pricing draft belongs to an older Matrix or fee rule version. Current defaults are shown.");
+    expect(screen.getByLabelText("Units for Contact Resistance at Low Level")).toHaveProperty("value", "21");
+    expect(screen.getByRole("button", { name: "Download Draft Fee Form" })).toBeTruthy();
   });
 
   it("requires an explicit replacement choice for an existing official Fee Form", async () => {

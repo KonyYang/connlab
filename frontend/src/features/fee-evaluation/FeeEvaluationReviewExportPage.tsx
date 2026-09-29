@@ -328,6 +328,28 @@ export function FeeEvaluationReviewExportPage({
         if (!active) {
           return;
         }
+        if (
+          result.current_confirmed_matrix_id !== draftState.draft.header.confirmed_matrix_id ||
+          result.current_confirmed_revision !== draftState.draft.header.confirmed_revision ||
+          result.current_fee_rule_version_id !== draftState.draft.header.pricing_rule_version_id
+        ) {
+          // These requests may straddle a Matrix confirmation. Never apply an
+          // older saved Fee payload to rows built from a newer authority.
+          baselinePricingPayloadRef.current = null;
+          baselinePricingContextRef.current = null;
+          baselinePricingCasRef.current = null;
+          pricingDraftCasRef.current = null;
+          sessionOwnedPricingCasRef.current = null;
+          setLatestSavedPricingDraftId(null);
+          setSavedLocalPricingSignature(null);
+          setServerPricingPayloadSignature(null);
+          setPricingDraftLoadStatus("error");
+          setSaveState({
+            kind: "error",
+            message: "Matrix or Fee rules changed while loading Fee Evaluation. Refresh to review current defaults.",
+          });
+          return;
+        }
         if (isCurrentPricingDraftResponse(result)) {
           const loadedCas = pricingDraftCasStateFromResponse(result);
           const currentV2 = isCurrentV2PricingDraftResponse(result);
@@ -781,6 +803,7 @@ export function FeeEvaluationReviewExportPage({
       draftState.kind !== "ready" ||
       !hasPricingDraftLocalChanges ||
       pricingDraftLoadStatus === "rebase_required" ||
+      pricingDraftLoadStatus === "error" ||
       isLifecycleReadonly ||
       cancellingRef.current ||
       explicitSaveRef.current ||
@@ -1369,7 +1392,7 @@ export function FeeEvaluationReviewExportPage({
         onGroupFilterChange={setPreviewGroupFilter}
         onRowEditChange={handlePreviewRowEditChange}
         onApplyPricingToMatchingRows={handleApplyPricingToMatchingRows}
-        readOnly={isLifecycleReadonly ||
+        readOnly={isLifecycleReadonly || pricingDraftLoadStatus === "error" ||
           isCancellingPricingSession || confirmFeeActionState.kind === "confirming"}
         saveState={saveState}
         suppressedSaveMessage={

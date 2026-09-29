@@ -4833,7 +4833,8 @@ export function getFeeEvaluationPricingDraft(
   projectId: string
 ): Promise<FeeEvaluationPricingDraftResponse> {
   return requestJson<FeeEvaluationPricingDraftResponse>(
-    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/fee-evaluation/pricing-draft`
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-matrix/fee-evaluation/pricing-draft`,
+    { cache: "no-store" }
   );
 }
 
@@ -4869,7 +4870,8 @@ export function getConfirmedFeeLatest(
   projectId: string
 ): Promise<ConfirmedFeeLatestResponse> {
   return requestJson<ConfirmedFeeLatestResponse>(
-    `/api/projects/${encodeURIComponent(projectId)}/confirmed-fee/latest`
+    `/api/projects/${encodeURIComponent(projectId)}/confirmed-fee/latest`,
+    { cache: "no-store" }
   );
 }
 
