@@ -87,6 +87,7 @@ import {
   extractMarkerKey,
   formatConciseItemSectionNote,
   parseStepTokens,
+  detectStepDescriptionFamily,
   replaceItemSectionNoteSection,
   restoreStepTextOverrides,
   stripLeadingMarkerPrefix,
@@ -218,6 +219,18 @@ export function MatrixEditorWorkspace({
   const [pointProfile, setPointProfile] = useState<MatrixTestPointProfile | null>(null);
   const [pointOverrides, setPointOverrides] = useState<MatrixTestPointOverride[]>([]);
   const [pointProfileWarning, setPointProfileWarning] = useState<string | null>(null);
+  const electricalCoverage = useMemo(() => {
+    const result: { ir: string[]; dwv: string[] } = { ir: [], dwv: [] };
+    for (const group of groupColumns.filter((item) => item.isSelected)) {
+      for (const row of editableRows.filter((item) => !item.isSampleRow)) {
+        const family = detectStepDescriptionFamily(row.item);
+        if (family !== "IR" && family !== "DWV") continue;
+        const tokens = parseStepTokens(row.groups[group.id] ?? "").tokens;
+        if (tokens.length) result[family === "IR" ? "ir" : "dwv"].push(`Group ${group.name}: ${tokens.map((item) => item.rawToken).join(", ")}`);
+      }
+    }
+    return result;
+  }, [groupColumns, editableRows]);
   const hasCrMatrixStep = useMemo(() => groupColumns.some((group) => group.isSelected &&
     editableRows.some((row) => !row.isSampleRow && contactRecordType(row.item) === "CR" &&
       parseStepTokens(row.groups[group.id] ?? "").tokens.length > 0)),
@@ -2233,6 +2246,7 @@ export function MatrixEditorWorkspace({
             </p>
           ) : null}
           <MatrixTestPointsEditor
+            electricalCoverage={electricalCoverage}
             profile={pointProfile}
             warning={pointProfileWarning}
             overrides={pointOverrides}

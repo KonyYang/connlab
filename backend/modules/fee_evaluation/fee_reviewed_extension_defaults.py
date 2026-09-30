@@ -92,16 +92,25 @@ def _duration_reading_result(
     revised = (rule.rule_id == "fee_rule_insulation_resistance" and rule.source_row == 31) or (
         rule.rule_id == "fee_rule_dielectric_withstanding_voltage" and rule.source_row == 32
     )
+    units = None
+    quantity_review = None
+    if revised:
+        readings_per_sample, quantity_review, _ = matrix_step_readings_per_sample(context.step_quantities)
+        samples = parse_primary_sample_quantity(context.sample_quantity_expression)
+        if samples is not None and readings_per_sample is not None and readings_per_sample > 0:
+            units = samples * readings_per_sample
     durations = _duration_seconds(context.condition)
-    if not durations:
+    if not durations or (revised and durations not in ({Decimal("60")}, {Decimal("120")})):
         if revised:
             return manual_required(
                 rule=rule,
                 unit_label="reading",
                 unit_price=None,
+                units=units,
                 base_fee=None,
-                review_reason="Confirm 1-minute/2-minute price, test-point count and base fee.",
-                manual_fields=("unit_price", "units", "base_fee", "testing_fee"),
+                review_reason=("Confirm 1-minute/2-minute price and base fee." if units is not None
+                               else "Confirm 1-minute/2-minute price, test-point count and base fee."),
+                manual_fields=("unit_price",) + (("units",) if units is None else ()) + ("base_fee", "testing_fee"),
             )
         return _pending_duration_reading_result(rule=rule)
     if durations == {Decimal("60")}:
@@ -112,15 +121,6 @@ def _duration_reading_result(
         return None
     unit_price = Decimal("5") if duration_seconds == Decimal("60") else Decimal("10")
     if revised:
-        readings_per_sample, quantity_review, _ = matrix_step_readings_per_sample(
-            context.step_quantities
-        )
-        samples = parse_primary_sample_quantity(context.sample_quantity_expression)
-        units = (
-            samples * readings_per_sample
-            if samples is not None and readings_per_sample is not None and readings_per_sample > 0
-            else None
-        )
         return manual_required(
             rule=rule,
             unit_label="reading",

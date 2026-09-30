@@ -43,6 +43,8 @@ class MatrixPointCategory:
 class MatrixPointProfile:
     categories: tuple[MatrixPointCategory, ...]
     delta_r_enabled: bool = True
+    ir_points_per_sample: str | None = None
+    dwv_points_per_sample: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,7 +63,14 @@ class MatrixStepPointOverride:
 
 
 def point_profile_to_json(profile: MatrixPointProfile | None) -> str | None:
-    return json.dumps(asdict(profile), separators=(",", ":"), sort_keys=True) if profile else None
+    if profile is None:
+        return None
+    payload = asdict(profile)
+    # Adding optional electrical settings must not alter legacy LLCR/CR fingerprints.
+    for key in ("ir_points_per_sample", "dwv_points_per_sample"):
+        if payload[key] is None:
+            del payload[key]
+    return json.dumps(payload, separators=(",", ":"), sort_keys=True)
 
 
 def point_profile_from_json(value: str | None) -> MatrixPointProfile | None:
@@ -71,6 +80,8 @@ def point_profile_from_json(value: str | None) -> MatrixPointProfile | None:
     return MatrixPointProfile(
         categories=tuple(MatrixPointCategory(**category) for category in payload["categories"]),
         delta_r_enabled=bool(payload["delta_r_enabled"]),
+        ir_points_per_sample=payload.get("ir_points_per_sample"),
+        dwv_points_per_sample=payload.get("dwv_points_per_sample"),
     )
 
 

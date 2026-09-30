@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from uuid import uuid4
+from dataclasses import replace
+
+from backend.application.matrix_test_points_authority import electrical_test_kind
 
 from backend.domain import (
     ConfirmedMatrixSnapshot,
@@ -40,7 +43,8 @@ def carry_forward_step_quantities(
                 test_points_per_sample=quantity.test_points_per_sample,
                 readings_per_point=quantity.readings_per_point,
                 contact_points_per_sample=quantity.contact_points_per_sample,
-                source="confirmed_matrix_carry_forward",
+                source=(quantity.source if quantity.source == "matrix_electrical_test_points"
+                        else "confirmed_matrix_carry_forward"),
                 review_required=quantity.review_required,
                 review_reason=quantity.review_reason,
                 updated_at=updated_at,
@@ -90,6 +94,12 @@ def build_confirmed_step_quantities(
                 continue
             seen.add(identity)
             draft_quantity = quantity_by_identity.get(identity)
+            kind = electrical_test_kind(rows_by_id[cell.draft_row_id].test_item)
+            profile = draft.record.point_profile
+            count = getattr(profile, f"{kind}_points_per_sample", None) if kind else None
+            electrical_owned = kind and (count is not None or (
+                draft_quantity is not None and draft_quantity.source == "matrix_electrical_test_points"
+            ))
             confirmed.append(
                 ConfirmedMatrixStepQuantity(
                     confirmed_step_quantity_id=f"cmsq-{uuid4().hex}",
@@ -119,4 +129,14 @@ def build_confirmed_step_quantities(
                     contact_plan=draft_quantity.contact_plan if draft_quantity else None,
                 )
             )
+            if electrical_owned:
+                # One measurement at each configured point. Missing/cleared settings
+                # must not resurrect a quantity carried from an older Matrix version.
+                confirmed[-1] = replace(
+                    confirmed[-1], test_points_per_sample=count,
+                    readings_per_point="1" if count is not None else None,
+                    contact_points_per_sample=None, contact_plan=None,
+                    source="matrix_electrical_test_points", review_required=count is None,
+                    review_reason=f"Set {kind.upper()} test points in Matrix Editor." if count is None else None,
+                )
     return confirmed

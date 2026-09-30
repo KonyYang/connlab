@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from hashlib import sha256
 
 from backend.application.contact_point_profile_expression import (
@@ -24,6 +25,25 @@ from backend.modules.test_plan.matrix_step_sequence_validation import parse_step
 _PREFIX = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}\Z")
 
 
+def electrical_test_kind(test_item: str) -> str | None:
+    """Recognize electrical measurement rows, never arbitrary step descriptions."""
+    text = re.sub(r"[^A-Z0-9]+", " ", test_item.upper()).strip()
+    if re.search(r"\bIR\b|\bINSULATION RESISTANCE\b", text):
+        return "ir"
+    if re.search(r"\bDWV\b|\bDIELECTRIC WITHSTANDING VOLTAGE\b", text):
+        return "dwv"
+    return None
+
+
+def _validated_electrical_count(value: str | None, kind: str) -> str | None:
+    text = (value or "").strip()
+    if not text:
+        return None
+    if not re.fullmatch(r"[0-9]{1,5}", text) or not 1 <= int(text) <= 8192:
+        raise ValueError(f"{kind} test points per sample must be a whole number from 1 to 8192.")
+    return str(int(text))
+
+
 def validate_matrix_test_points(
     profile: MatrixPointProfile | None,
     overrides: tuple[MatrixStepPointOverride, ...],
@@ -33,8 +53,10 @@ def validate_matrix_test_points(
         if overrides:
             raise ValueError("A project Point Profile is required before step exceptions.")
         return None, ()
-    if not profile.categories or len(profile.categories) > 256:
-        raise ValueError("Project Point Profile requires 1-256 categories.")
+    ir_count = _validated_electrical_count(profile.ir_points_per_sample, "IR")
+    dwv_count = _validated_electrical_count(profile.dwv_points_per_sample, "DWV")
+    if len(profile.categories) > 256:
+        raise ValueError("Project Point Profile allows at most 256 categories.")
     seen_prefixes: set[str] = set()
     project_points: dict[str, set[str]] = {}
     categories: list[MatrixPointCategory] = []
@@ -54,7 +76,7 @@ def validate_matrix_test_points(
         categories.append(MatrixPointCategory(prefix, parsed.canonical, category.cr_selected))
     if total > 8192:
         raise ValueError("Project Point Profile may contain at most 8192 points.")
-    profile = MatrixPointProfile(tuple(categories), profile.delta_r_enabled)
+    profile = MatrixPointProfile(tuple(categories), profile.delta_r_enabled, ir_count, dwv_count)
     normalized_overrides: list[MatrixStepPointOverride] = []
     seen_steps: set[tuple[str, str, int, str]] = set()
     for override in overrides:
@@ -112,7 +134,7 @@ def validate_matrix_point_targets(
     cr_categories = {
         item.prefix.casefold() for item in profile.categories if item.cr_selected
     } if profile is not None else set()
-    if profile is not None and "cr" in targets.values() and not cr_categories:
+    if profile is not None and profile.categories and "cr" in targets.values() and not cr_categories:
         raise ValueError("CR Matrix steps require at least one category selected for CR.")
     for override in overrides:
         identity = (
@@ -141,7 +163,7 @@ def effective_matrix_point_profile(
 ) -> EffectiveConfirmedPointProfile | None:
     """Project a confirmed Matrix-owned profile into existing Fee/record consumers."""
     profile = snapshot.version.point_profile
-    if profile is None:
+    if profile is None or not profile.categories:
         return None
     profile, overrides = validate_matrix_test_points(profile, snapshot.version.point_overrides)
     assert profile is not None
@@ -156,7 +178,8 @@ def effective_matrix_point_profile(
     } for index, category in enumerate(profile.categories))
     cr_ids = tuple(category.prefix.casefold() for category in profile.categories if category.cr_selected)
     fingerprint = sha256((
-        (point_profile_to_json(profile) or "") + point_overrides_to_json(overrides)
+        (point_profile_to_json(replace(profile, ir_points_per_sample=None, dwv_points_per_sample=None)) or "")
+        + point_overrides_to_json(overrides)
     ).encode("utf-8")).hexdigest()
     return EffectiveConfirmedPointProfile(
         status="confirmed",

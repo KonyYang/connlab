@@ -1668,6 +1668,8 @@ export type MatrixTestPointCategory = {
 export type MatrixTestPointProfile = {
   categories: MatrixTestPointCategory[];
   delta_r_enabled: boolean;
+  ir_points_per_sample?: string | null;
+  dwv_points_per_sample?: string | null;
 };
 
 export type MatrixTestPointOverride = {

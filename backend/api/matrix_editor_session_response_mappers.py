@@ -50,6 +50,8 @@ def _to_point_profile(item: MatrixPointProfileDTO | None) -> MatrixPointProfile 
     return MatrixPointProfile(
         categories=tuple(MatrixPointCategory(**category.model_dump()) for category in item.categories),
         delta_r_enabled=item.delta_r_enabled,
+        ir_points_per_sample=item.ir_points_per_sample,
+        dwv_points_per_sample=item.dwv_points_per_sample,
     )
 
 

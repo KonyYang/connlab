@@ -113,7 +113,15 @@ Do not use a dated snapshot as a substitute for the code.
   projects without one can still read their existing point-profile authority for compatibility.
   That read-only fallback does not guess IDs or publish a new independent point authority.
 - A workbook downloaded from an unconfirmed Matrix editor is a draft preview, not a formal test record.
-  IR and DWV have separate sample/pin/test combinations and remain outside this point-plan workflow.
+  IR and DWV have separate optional per-sample measurement-point counts in the same Matrix draft.
+  Each point means one reading, not a connector pin or a sample number. Counts apply to all selected
+  Matrix steps of that test, become authority only with `Confirm Matrix`, and populate the existing
+  confirmed Step quantity snapshot. Fee consumes samples × points (the first quantity in `5+5(d)`),
+  never live Matrix draft values. Clearing a previously confirmed electrical count restores quantity
+  review; newly added steps inherit the configured count, removed/unselected steps do not contribute.
+  LLCR/CR IDs and their compatibility fingerprints remain independent of these electrical counts.
+  Historical JSON profiles without electrical settings remain readable without migration. IR/DWV
+  result-workbook generation and automated specification point extraction are not implemented here.
 - LLCR/CR form actions in Matrix Editor first check whether the current on-screen Matrix matches the
   confirmed authority. Unconfirmed edits stay in a browser-downloaded preview; a verified confirmed
   Matrix may publish into its `Test results` folder. A same-name formal form requires explicit approval
