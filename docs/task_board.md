@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FEE_MATRIX_SELECTIVE_REUSE_20260930",
     "summary": "Selectively reuse confirmed Fee edits across Matrix revisions",
@@ -34,9 +34,73 @@
     "risk_reasons": [],
     "activation_head": "855aab3bdc2d1d02e5dffb5144b41813170d3c27",
     "started_at": "2026-09-29T23:36:50.997026Z",
-    "updated_at": "2026-09-29T23:36:50.997026Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-09-30T00:34:27.616779Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_FEE_MATRIX_SELECTIVE_REUSE_20260930",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "subject": "c426f24799a74609aeddb0a76ca716b3ff262f3c",
+      "integration": {
+        "status": "passed",
+        "mode": "direct_primary"
+      },
+      "task_id": "TASK_FEE_MATRIX_SELECTIVE_REUSE_20260930",
+      "scope_ok": true,
+      "version": 1,
+      "changed_paths": [
+        "backend/api/dependencies.py",
+        "backend/application/matrix_fee_draft_rebase_service.py",
+        "backend/application/matrix_fee_pending_rebase_source.py",
+        "backend/application/matrix_fee_rebase_promotion_service.py",
+        "backend/application/matrix_fee_rebase_promotion_values.py",
+        "backend/modules/fee_evaluation/fee_default_fill.py",
+        "backend/modules/fee_evaluation/fee_reviewed_extension_defaults.py",
+        "backend/modules/fee_evaluation/fee_step_quantity_defaults.py",
+        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
+        "tests/integration/test_confirmed_matrix_fee_draft_api.py",
+        "tests/integration/test_matrix_editor_session_api.py",
+        "tests/unit/test_confirmed_matrix_fee_draft_service.py",
+        "tests/unit/test_fee_default_fill.py",
+        "tests/unit/test_matrix_fee_draft_rebase_service.py",
+        "tests/unit/test_matrix_fee_rebase_promotion_service.py"
+      ],
+      "summary": "Selectively reuse operator-confirmed Fee values across Matrix revisions; recalculate quantity-dependent Units and totals, retain first Matrix sample count for pricing, preserve original expression display.",
+      "validation": [
+        {
+          "name": "Python non-Office full gate: 3154 passed, 8 skipped",
+          "status": "passed"
+        },
+        {
+          "name": "Frontend Vitest suite",
+          "status": "passed"
+        },
+        {
+          "name": "Frontend Vite production build",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "qa": {
+          "status": "passed",
+          "summary": "Full Python non-Office, frontend tests, and production build completed on final code state."
+        },
+        "reviewer": {
+          "status": "passed",
+          "summary": "Focused same-agent standards and spec review; no outstanding findings."
+        },
+        "developer": {
+          "status": "passed",
+          "summary": "TDD red/green, implementation, and targeted checks completed."
+        }
+      },
+      "schema": "connlab.sol-task-report"
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_REMOVE_REUSE_BUTTONS_20260930",
