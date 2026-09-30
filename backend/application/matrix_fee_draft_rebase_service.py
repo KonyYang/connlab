@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import re
 
 from backend.application.fee_evaluation_edited_export_values import (
@@ -51,6 +52,7 @@ class MatrixFeeRebaseSourceRow:
     lineage: MatrixFeeRebaseLineage
     edited_row: FeeEvaluationEditedExportRow
     rebase_key: MatrixFeeRebaseKey | None = None
+    default_row: FeeEvaluationEditedExportRow | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,10 +116,18 @@ class MatrixFeeDraftRebaseService:
         target_rows: tuple[MatrixFeeRebaseTargetRow, ...],
         source_manual_rows: tuple[FeeEvaluationEditedManualRow, ...],
         target_groups: tuple[MatrixFeeRebaseTargetGroup, ...],
+        source_manual_defaults: tuple[FeeEvaluationEditedManualRow, ...] = (),
+        target_manual_defaults: tuple[FeeEvaluationEditedManualRow, ...] = (),
     ) -> MatrixFeeRebaseResult:
         """Return rebased active rows, inactive rows, and manual rows."""
         source_lookup = _index_source_rows(source_rows)
         _assert_unique_target_rows(target_rows)
+        unique_sources = _unique_strong_row_sources(source_rows)
+        target_row_counts: dict[tuple[str, str], int] = {}
+        for target in target_rows:
+            target_key = _key_for(target.lineage)
+            bucket = (target_key.group_identity, target_key.row_identity)
+            target_row_counts[bucket] = target_row_counts.get(bucket, 0) + 1
         used_source_keys: set[MatrixFeeRebaseKey] = set()
         active_rows: list[FeeEvaluationEditedExportRow] = []
         preserved_count = 0
@@ -126,6 +136,8 @@ class MatrixFeeDraftRebaseService:
         for target in target_rows:
             key = _key_for(target.lineage)
             source = source_lookup.get(key)
+            if source is None and target_row_counts[(key.group_identity, key.row_identity)] == 1:
+                source = unique_sources.get((key.group_identity, key.row_identity))
             if source is None:
                 active_rows.append(target.default_row)
                 added_count += 1
@@ -134,9 +146,10 @@ class MatrixFeeDraftRebaseService:
                 _copy_editable_fee_values(
                     source=source.edited_row,
                     target_default=target.default_row,
+                    source_default=source.default_row,
                 )
             )
-            used_source_keys.add(key)
+            used_source_keys.add(_source_key(source))
             preserved_count += 1
 
         inactive_removed_rows = tuple(
@@ -153,6 +166,8 @@ class MatrixFeeDraftRebaseService:
         manual_rows, preserved_manual_count, removed_manual_count = _rebase_manual_rows(
             source_manual_rows=source_manual_rows,
             target_groups=target_groups,
+            source_manual_defaults=source_manual_defaults,
+            target_manual_defaults=target_manual_defaults,
         )
         return MatrixFeeRebaseResult(
             active_rows=tuple(active_rows),
@@ -215,27 +230,73 @@ def _row_signature(lineage: MatrixFeeRebaseLineage) -> str:
 
 def _copy_editable_fee_values(
     *,
-    source: FeeEvaluationEditedExportRow,
-    target_default: FeeEvaluationEditedExportRow,
-) -> FeeEvaluationEditedExportRow:
+    source: FeeEvaluationEditedExportRow | FeeEvaluationEditedManualRow,
+    target_default: FeeEvaluationEditedExportRow | FeeEvaluationEditedManualRow,
+    source_default: FeeEvaluationEditedExportRow | FeeEvaluationEditedManualRow | None,
+) -> FeeEvaluationEditedExportRow | FeeEvaluationEditedManualRow:
     """Copy only editable pricing fields from source onto target lineage."""
+    units = source.units
+    testing_fee = source.testing_fee
+    if (
+        source_default is not None
+        and _quantity_changed(source_default.units, target_default.units)
+        and _quantity_dependent(source.unit_type)
+        and _unit_type_key(source.unit_type) == _unit_type_key(target_default.unit_type)
+    ):
+        units = target_default.units
+        testing_fee = _recalculate_testing_fee(source, units) or target_default.testing_fee
     return replace(
         target_default,
         spend_time=source.spend_time,
         unit_price=source.unit_price,
         unit_type=source.unit_type,
-        units=source.units,
+        units=units,
         base_fee=source.base_fee,
         discount=source.discount,
-        testing_fee=source.testing_fee,
+        testing_fee=testing_fee,
         notes=source.notes,
     )
+
+
+def _quantity_changed(previous: str, current: str) -> bool:
+    try:
+        return Decimal(previous) != Decimal(current)
+    except InvalidOperation:
+        return False
+
+
+def _quantity_dependent(unit_type: str) -> bool:
+    return _unit_type_key(unit_type) in {
+        "sample", "specimen", "reading", "point", "hour", "day", "cycle"
+    }
+
+
+def _unit_type_key(unit_type: str) -> str:
+    return _normalize(unit_type).removeprefix("per ")
+
+
+def _recalculate_testing_fee(
+    row: FeeEvaluationEditedExportRow | FeeEvaluationEditedManualRow, units: str,
+) -> str | None:
+    try:
+        price = Decimal(row.unit_price)
+        quantity = Decimal(units)
+        base_fee = Decimal(row.base_fee)
+        discount = Decimal(row.discount.strip().rstrip("%"))
+    except InvalidOperation:
+        return None
+    amount = (
+        price * quantity * (Decimal("1") - discount / Decimal("100")) + base_fee
+    ).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    return format(amount, "f")
 
 
 def _rebase_manual_rows(
     *,
     source_manual_rows: tuple[FeeEvaluationEditedManualRow, ...],
     target_groups: tuple[MatrixFeeRebaseTargetGroup, ...],
+    source_manual_defaults: tuple[FeeEvaluationEditedManualRow, ...],
+    target_manual_defaults: tuple[FeeEvaluationEditedManualRow, ...],
 ) -> tuple[tuple[FeeEvaluationEditedManualRow, ...], int, int]:
     target_by_key, target_by_label = _index_target_groups(target_groups)
     rows: list[FeeEvaluationEditedManualRow] = []
@@ -253,16 +314,35 @@ def _rebase_manual_rows(
         if target_group is None:
             removed_count += 1
             continue
-        rows.append(
-            replace(
-                row,
-                confirmed_group_id=target_group.confirmed_group_id,
-                group_key=target_group.group_key,
-                group_label=target_group.group_label,
-            )
+        target_row = replace(
+            row,
+            confirmed_group_id=target_group.confirmed_group_id,
+            group_key=target_group.group_key,
+            group_label=target_group.group_label,
         )
+        source_default = _manual_default_for(row, source_manual_defaults)
+        target_default = _manual_default_for(target_row, target_manual_defaults)
+        if source_default is not None and target_default is not None:
+            target_row = _copy_editable_fee_values(
+                source=target_row, target_default=target_default,
+                source_default=source_default,
+            )
+        rows.append(target_row)
         preserved_count += 1
     return tuple(rows), preserved_count, removed_count
+
+
+def _manual_default_for(
+    row: FeeEvaluationEditedManualRow,
+    candidates: tuple[FeeEvaluationEditedManualRow, ...],
+) -> FeeEvaluationEditedManualRow | None:
+    identity = _normalize(row.group_key) or _normalize(row.group_label)
+    return next(
+        (candidate for candidate in candidates
+         if candidate.row_kind == row.row_kind
+         and (_normalize(candidate.group_key) or _normalize(candidate.group_label)) == identity),
+        None,
+    )
 
 
 def _index_source_rows(
@@ -277,6 +357,17 @@ def _index_source_rows(
             )
         lookup[key] = row
     return lookup
+
+
+def _unique_strong_row_sources(
+    source_rows: tuple[MatrixFeeRebaseSourceRow, ...],
+) -> dict[tuple[str, str], MatrixFeeRebaseSourceRow]:
+    grouped: dict[tuple[str, str], list[MatrixFeeRebaseSourceRow]] = {}
+    for source in source_rows:
+        key = _source_key(source)
+        if key.row_identity.startswith(("source:", "draft:")):
+            grouped.setdefault((key.group_identity, key.row_identity), []).append(source)
+    return {key: rows[0] for key, rows in grouped.items() if len(rows) == 1}
 
 
 def _source_key(row: MatrixFeeRebaseSourceRow) -> MatrixFeeRebaseKey:

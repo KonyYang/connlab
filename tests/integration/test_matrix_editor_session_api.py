@@ -643,8 +643,8 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
         assert confirmed_saved.status_code == 200
         confirmed_payload = confirmed_saved.json()
         assert confirmed_payload["publish_status"] == "published"
-        assert confirmed_payload["fee_rebase_promotion_status"] == "promoted"
-        assert confirmed_payload["fee_rebase_promotion_summary"]["preserved_count"] >= 1
+        # An unconfirmed Fee edit is not authority for a new Matrix revision.
+        assert confirmed_payload["fee_rebase_promotion_status"] == "default_promoted"
         assert (
             confirmed_payload["confirmed_snapshot"]["rows"][0]["method"]
             == "Updated autosaved method"
@@ -664,8 +664,8 @@ def test_matrix_editor_session_autosave_restore_confirm_and_discard(
         assert promoted.edited_values.rows[0].source_line_id.startswith(
             confirmed_payload["confirmed_snapshot"]["version"]["confirmed_matrix_id"]
         )
-        assert promoted.edited_values.rows[0].notes == "previous pricing note"
-        assert promoted.edited_values.summary.external_cost_note == "previous summary"
+        assert promoted.edited_values.rows[0].notes != "previous pricing note"
+        assert promoted.edited_values.summary.external_cost_note != "previous summary"
 
         latest_seed = client.get("/api/projects/P1/matrix-editor/session")
         assert latest_seed.status_code == 200

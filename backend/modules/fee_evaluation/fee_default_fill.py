@@ -13,8 +13,7 @@ from backend.modules.fee_evaluation.fee_default_fill_common import (
     calculated_result,
     hour_unit_price,
     manual_required,
-    parse_sample_preparation_quantity,
-    parse_simple_sample_quantity,
+    parse_primary_sample_quantity,
 )
 from backend.modules.fee_evaluation.fee_default_fill_models import (
     FeeDefaultFillContext,
@@ -200,7 +199,7 @@ def build_fee_default_fill(
 
 
 def _cycle_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> FeeDefaultFillResult:
-    sample_qty = parse_simple_sample_quantity(context.sample_quantity_expression)
+    sample_qty = parse_primary_sample_quantity(context.sample_quantity_expression)
     cycles = _first_decimal(_CYCLE_PATTERN, _combined_text(context))
     if cycles is None:
         return manual_required(
@@ -250,7 +249,7 @@ def _cycle_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> FeeDefaul
 
 
 def _reseating_cycle_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> FeeDefaultFillResult:
-    sample_qty = parse_simple_sample_quantity(context.sample_quantity_expression)
+    sample_qty = parse_primary_sample_quantity(context.sample_quantity_expression)
     cycles = _first_decimal(_CYCLE_PATTERN, _combined_text(context)) or Decimal("3")
     if sample_qty is None:
         return manual_required(
@@ -398,7 +397,7 @@ def _per_sample_result(
     context: FeeDefaultFillContext,
     unit_price: Decimal,
 ) -> FeeDefaultFillResult:
-    sample_qty = parse_simple_sample_quantity(context.sample_quantity_expression)
+    sample_qty = parse_primary_sample_quantity(context.sample_quantity_expression)
     if sample_qty is None:
         return manual_required(
             rule=rule,
@@ -424,7 +423,7 @@ def _sample_preparation_result(
     rule: FeeRule,
     context: FeeDefaultFillContext,
 ) -> FeeDefaultFillResult:
-    sample_qty = parse_sample_preparation_quantity(context.sample_quantity_expression)
+    sample_qty = parse_primary_sample_quantity(context.sample_quantity_expression)
     if sample_qty is None:
         return manual_required(
             rule=rule,
@@ -450,7 +449,7 @@ def _temperature_rise_result(
     rule: FeeRule,
     context: FeeDefaultFillContext,
 ) -> FeeDefaultFillResult:
-    sample_qty = parse_simple_sample_quantity(context.sample_quantity_expression)
+    sample_qty = parse_primary_sample_quantity(context.sample_quantity_expression)
     if sample_qty is not None and sample_qty <= 0:
         sample_qty = None
     current = _first_decimal(_CURRENT_PATTERN, _combined_text(context))
@@ -545,7 +544,7 @@ def _fallback_result(*, rule: FeeRule, context: FeeDefaultFillContext) -> FeeDef
             manual_fields=("base_fee", "testing_fee"),
         )
     if rule.calculation_strategy in {"per_sample", "per_specimen"}:
-        sample_qty = parse_simple_sample_quantity(context.sample_quantity_expression)
+        sample_qty = parse_primary_sample_quantity(context.sample_quantity_expression)
         if sample_qty is None:
             return manual_required(
                 rule=rule,

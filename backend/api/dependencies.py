@@ -1053,6 +1053,7 @@ def get_matrix_editor_session_service(
             pending_store=MatrixFeePendingRebaseRepository(session),
             pricing_draft_store=FeeEvaluationPricingDraftEditRepository(session),
             confirmed_fee_store=ConfirmedFeeAuthorityRepository(session),
+            confirmed_matrix_store=confirmed_store,
             rebase_service=MatrixFeeDraftRebaseService(),
             contact_measurement_adapter=_confirmed_contact_measurement_consumer_adapter(
                 session,

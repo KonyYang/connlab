@@ -23,6 +23,7 @@ from backend.application.contact_point_profile_confirmed_consumer_adapter import
 from backend.application.confirmed_fee_review_markers import AUTO_REBASE_FEE_CONFIRMATION_NOTE
 from backend.application.confirmed_fee_pricing_snapshot import (
     encode_confirmed_fee_pricing_snapshot,
+    edited_values_payload_from_confirmed_fee_snapshot,
 )
 from backend.application.fee_evaluation_edited_export_values import (
     FeeEvaluationEditedExportValues,
@@ -35,6 +36,7 @@ from backend.application.fee_evaluation_pricing_draft_persistence_service import
     FeeEvaluationPricingDraftSnapshot,
 )
 from backend.application.fee_evaluation_pricing_draft_serialization import (
+    edited_values_from_payload,
     edited_values_to_json,
 )
 from backend.application.matrix_fee_draft_rebase_service import (
@@ -144,6 +146,11 @@ class ConfirmedFeePromotionStore(Protocol):
         """Return Confirmed Fee versions for one project ordered ascending."""
 
 
+class ConfirmedMatrixHistoryStore(Protocol):
+    def get(self, confirmed_matrix_id: str) -> ConfirmedMatrixSnapshot | None:
+        """Read the Matrix snapshot used by an earlier Fee confirmation."""
+
+
 class MatrixFeeRebasePromotionService:
     """Promote pending or fallback Matrix-to-Fee rebase output."""
 
@@ -153,6 +160,7 @@ class MatrixFeeRebasePromotionService:
         pending_store: MatrixFeePendingRebaseReadStore,
         pricing_draft_store: FeePricingDraftPromotionStore,
         confirmed_fee_store: ConfirmedFeePromotionStore | None = None,
+        confirmed_matrix_store: ConfirmedMatrixHistoryStore | None = None,
         rebase_service: MatrixFeeDraftRebaseService | None = None,
         contact_measurement_adapter: ContactMeasurementPlanConfirmedConsumerAdapter | None = None,
         contact_point_profile_adapter: ContactPointProfileConfirmedConsumerAdapter | None = None,
@@ -161,6 +169,7 @@ class MatrixFeeRebasePromotionService:
         self._pending_store = pending_store
         self._pricing_draft_store = pricing_draft_store
         self._confirmed_fee_store = confirmed_fee_store
+        self._confirmed_matrix_store = confirmed_matrix_store
         self._rebase = rebase_service or MatrixFeeDraftRebaseService()
         self._contact_measurement_adapter = contact_measurement_adapter
         self._contact_point_profile_adapter = contact_point_profile_adapter
@@ -173,7 +182,7 @@ class MatrixFeeRebasePromotionService:
         new_confirmed_matrix: ConfirmedMatrixSnapshot,
         fee_rule_version_id: str,
     ) -> MatrixFeeRebasePromotionResult:
-        """Create the default Matrix-bound Fee draft and authority after first confirm."""
+        """Keep the existing first-Matrix Fee initialization behavior."""
         try:
             snapshot = self._save_default_draft(
                 project_id=project_id,
@@ -194,6 +203,29 @@ class MatrixFeeRebasePromotionService:
     ) -> MatrixFeeRebasePromotionResult:
         """Best-effort promotion that never fails Matrix Confirm."""
         try:
+            if self._confirmed_fee_store is not None:
+                confirmed_source = self._load_confirmed_source(command)
+                if confirmed_source is None:
+                    self._save_default_draft(
+                        project_id=command.project_id,
+                        new_confirmed_matrix=command.new_confirmed_matrix,
+                        fee_rule_version_id=command.fee_rule_version_id,
+                    )
+                    return MatrixFeeRebasePromotionResult(status="default_promoted")
+                source_pricing, source_matrix = confirmed_source
+                result = self._fallback_rebase(command, source_pricing, source_matrix)
+                edited_values = remap_rebase_result_to_confirmed_matrix(
+                    rebase_result=result,
+                    previous_pricing_draft=source_pricing,
+                    new_confirmed_matrix=command.new_confirmed_matrix,
+                )
+                self._save_promoted_draft(command, edited_values)
+                self._pending_store.delete_by_matrix_draft(
+                    command.saved_matrix_draft.record.project_matrix_draft_id
+                )
+                return MatrixFeeRebasePromotionResult(
+                    status="fallback_promoted", summary=result.summary,
+                )
             previous_pricing = self._load_previous_pricing(command)
             pending = self._pending_store.get_by_context(
                 project_matrix_draft_id=(
@@ -265,6 +297,41 @@ class MatrixFeeRebasePromotionService:
                 error=f"Fee rebase promotion failed: {exc}",
             )
 
+    def _load_confirmed_source(
+        self,
+        command: PromoteMatrixFeeRebaseCommand,
+    ) -> tuple[FeeEvaluationPricingDraftSnapshot, ConfirmedMatrixSnapshot] | None:
+        assert self._confirmed_fee_store is not None
+        reviewed = next(
+            (version for version in reversed(self._confirmed_fee_store.list_by_project(command.project_id))
+             if version.confirmed_by != "ConnLab Auto"),
+            None,
+        )
+        if reviewed is None or reviewed.fee_rule_version_id != command.fee_rule_version_id:
+            return None
+        if reviewed.confirmed_matrix_id == command.previous_confirmed_matrix.version.confirmed_matrix_id:
+            source_matrix = command.previous_confirmed_matrix
+        elif self._confirmed_matrix_store is not None:
+            source_matrix = self._confirmed_matrix_store.get(reviewed.confirmed_matrix_id)
+        else:
+            raise ValueError("Confirmed Fee source Matrix history is unavailable.")
+        if source_matrix is None or source_matrix.version.project_id != command.project_id:
+            raise ValueError("Confirmed Fee source Matrix history is unavailable.")
+        payload = edited_values_payload_from_confirmed_fee_snapshot(reviewed.pricing_snapshot_json)
+        if payload is None:
+            raise ValueError("Confirmed Fee source values cannot be read safely.")
+        source_pricing = FeeEvaluationPricingDraftSnapshot(
+            draft_edit_id=reviewed.pricing_draft_edit_id,
+            project_id=reviewed.project_id,
+            confirmed_matrix_id=reviewed.confirmed_matrix_id,
+            confirmed_revision=reviewed.confirmed_revision,
+            fee_rule_version_id=reviewed.fee_rule_version_id,
+            edited_values=edited_values_from_payload(dict(payload)),
+            created_at=reviewed.confirmed_at,
+            updated_at=reviewed.confirmed_at,
+        )
+        return source_pricing, source_matrix
+
     def _load_previous_pricing(
         self,
         command: PromoteMatrixFeeRebaseCommand,
@@ -281,27 +348,81 @@ class MatrixFeeRebasePromotionService:
         self,
         command: PromoteMatrixFeeRebaseCommand,
         previous_pricing: FeeEvaluationPricingDraftSnapshot,
+        source_matrix: ConfirmedMatrixSnapshot | None = None,
     ) -> MatrixFeeRebaseResult:
         previous_basic_fill = build_basic_fill_from_confirmed_snapshot(
-            command.previous_confirmed_matrix
+            source_matrix or command.previous_confirmed_matrix
         )
         structural_keys = _structural_rebase_keys_from_matrix_draft(
             command.saved_matrix_draft
+        )
+        source_defaults = self._automatic_values(
+            command.project_id, source_matrix or command.previous_confirmed_matrix
+        )
+        target_defaults = self._automatic_values(
+            command.project_id, command.new_confirmed_matrix
         )
         result = self._rebase.rebase(
             source_rows=_source_rows_from_basic_fill(
                 previous_basic_fill.groups,
                 source_values=previous_pricing.edited_values,
                 structural_keys=structural_keys,
+                source_defaults=source_defaults,
             ),
-            target_rows=_target_rows_from_matrix_draft(command.saved_matrix_draft),
+            target_rows=self._target_rows_with_defaults(command, target_defaults),
             source_manual_rows=previous_pricing.edited_values.manual_rows,
             target_groups=_target_groups_from_matrix_draft(command.saved_matrix_draft),
+            source_manual_defaults=source_defaults.manual_rows,
+            target_manual_defaults=target_defaults.manual_rows,
         )
         return _filter_hard_deleted_inactive_rows(
             result,
             structural_keys=structural_keys,
         )
+
+    def _automatic_values(
+        self, project_id: str, matrix: ConfirmedMatrixSnapshot,
+    ) -> FeeEvaluationEditedExportValues:
+        draft = ConfirmedMatrixFeeDraftService(
+            confirmed_store=_SingleConfirmedMatrixStore(matrix),
+            contact_measurement_adapter=self._contact_measurement_adapter,
+            contact_point_profile_adapter=self._contact_point_profile_adapter,
+        ).build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id=project_id))
+        return edited_values_from_fee_draft(draft)
+
+    def _target_rows_with_defaults(
+        self, command: PromoteMatrixFeeRebaseCommand,
+        current_defaults: FeeEvaluationEditedExportValues,
+    ):
+        matrix = command.new_confirmed_matrix
+        group_ids = {group.confirmed_group_id: group.draft_group_id for group in matrix.groups}
+        row_ids = {row.confirmed_row_id: row.draft_row_id for row in matrix.rows}
+        by_draft_identity = {
+            (group_ids[row.confirmed_group_id], row_ids[row.confirmed_row_id],
+             row.step_token, row.step_index): row
+            for row in current_defaults.rows
+        }
+        targets = []
+        for target in _target_rows_from_matrix_draft(command.saved_matrix_draft):
+            current = by_draft_identity.get(
+                (target.lineage.confirmed_group_id, target.lineage.confirmed_row_id,
+                 target.lineage.step_token, target.lineage.step_index)
+            )
+            if current is None:
+                targets.append(target)
+                continue
+            draft_default = replace(
+                target.default_row,
+                spend_time=current.spend_time,
+                unit_price=current.unit_price,
+                unit_type=current.unit_type,
+                units=current.units,
+                base_fee=current.base_fee,
+                discount=current.discount,
+                testing_fee=current.testing_fee,
+            )
+            targets.append(replace(target, default_row=draft_default))
+        return tuple(targets)
 
     def _save_promoted_draft(
         self,

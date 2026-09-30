@@ -10,7 +10,7 @@ from backend.modules.fee_evaluation.fee_default_fill_common import (
     auto,
     calculated_result,
     manual_required,
-    parse_simple_sample_quantity,
+    parse_primary_sample_quantity,
 )
 from backend.modules.fee_evaluation.fee_default_fill_models import (
     FeeDefaultFillContext,
@@ -115,7 +115,7 @@ def _duration_reading_result(
         readings_per_sample, quantity_review, _ = matrix_step_readings_per_sample(
             context.step_quantities
         )
-        samples = parse_simple_sample_quantity(context.sample_quantity_expression)
+        samples = parse_primary_sample_quantity(context.sample_quantity_expression)
         units = (
             samples * readings_per_sample
             if samples is not None and readings_per_sample is not None and readings_per_sample > 0
@@ -232,7 +232,7 @@ def _mechanical_force_per_sample_result(
     context: FeeDefaultFillContext,
 ) -> FeeDefaultFillResult:
     """Apply the reviewed 50-per-sample mating and latch force path."""
-    sample_quantity = parse_simple_sample_quantity(context.sample_quantity_expression)
+    sample_quantity = parse_primary_sample_quantity(context.sample_quantity_expression)
     if sample_quantity is None:
         return manual_required(
             rule=rule,
@@ -259,7 +259,7 @@ def _mechanical_force_sample_reading_result(
     context: FeeDefaultFillContext,
 ) -> FeeDefaultFillResult:
     """Use one priced reading per Matrix sample for reviewed force labels."""
-    sample_quantity = parse_simple_sample_quantity(context.sample_quantity_expression)
+    sample_quantity = parse_primary_sample_quantity(context.sample_quantity_expression)
     if sample_quantity is None:
         return manual_required(
             rule=rule,
@@ -299,7 +299,7 @@ def _specified_current_resistance_result(
         )
     readings_per_specimen = Decimal(authority.readings_per_sample)
     unit_price = Decimal("10") if readings_per_specimen <= Decimal("10") else Decimal("5")
-    sample_quantity = parse_simple_sample_quantity(context.sample_quantity_expression)
+    sample_quantity = parse_primary_sample_quantity(context.sample_quantity_expression)
     if sample_quantity is None or sample_quantity <= ZERO or sample_quantity != sample_quantity.to_integral_value():
         return manual_required(
             rule=rule,

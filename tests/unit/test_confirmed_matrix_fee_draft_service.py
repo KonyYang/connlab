@@ -336,7 +336,7 @@ def test_fee_draft_includes_backend_owned_manual_default_rows() -> None:
     assert report_line.review_required is True
 
 
-def test_fee_draft_sums_additive_sample_preparation_quantity_and_keeps_free_default() -> None:
+def test_fee_draft_uses_primary_additive_sample_quantity_and_keeps_free_default() -> None:
     service = ConfirmedMatrixFeeDraftService(
         confirmed_store=_ConfirmedStore(active=_snapshot(sample_quantity_expression="3+3"))
     )
@@ -346,7 +346,7 @@ def test_fee_draft_sums_additive_sample_preparation_quantity_and_keeps_free_defa
     sample_line = draft.groups[0].manual_line_items[0]
     assert sample_line.status == "calculated"
     assert sample_line.review_required is False
-    assert sample_line.units == Decimal("6")
+    assert sample_line.units == Decimal("3")
     assert sample_line.discount_percent == Decimal("100")
     assert sample_line.testing_fee == Decimal("0")
 

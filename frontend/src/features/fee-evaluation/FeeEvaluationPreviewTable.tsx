@@ -303,7 +303,7 @@ export function FeeEvaluationPreviewTable({
                   <td>
                     {row.groupLabel}
                     {row.rowKind === "sample_preparation" && row.sampleQuantityExpression ? (
-                      <small className="fee-evaluation-group-samples" title="Sample quantity from confirmed Matrix">
+                      <small className="fee-evaluation-group-samples" title="Confirmed Matrix sample quantity; pricing uses the first number in a + expression.">
                         Samples: {row.sampleQuantityExpression}
                       </small>
                     ) : null}

@@ -73,14 +73,14 @@ def test_confirmed_matrix_fee_draft_api_happy_path(tmp_path: Path) -> None:
         engine.dispose()
 
 
-def test_fee_draft_api_sums_additive_sample_preparation_quantity(tmp_path: Path) -> None:
+def test_fee_draft_api_uses_first_additive_sample_preparation_quantity(tmp_path: Path) -> None:
     client, engine, _ = _client(tmp_path)
     try:
         _seed_project("P1", tmp_path)
         _seed_active_confirmed_snapshot(
             "P1",
             tmp_path,
-            sample_quantity_expression="3+3",
+            sample_quantity_expression="3+3(d)",
         )
 
         response = client.get("/api/projects/P1/confirmed-matrix/fee-draft")
@@ -89,7 +89,7 @@ def test_fee_draft_api_sums_additive_sample_preparation_quantity(tmp_path: Path)
         sample_line = response.json()["groups"][0]["manual_line_items"][0]
         assert sample_line["status"] == "calculated"
         assert sample_line["review_required"] is False
-        assert sample_line["units"] == "6"
+        assert sample_line["units"] == "3"
         assert sample_line["discount_percent"] == "100"
         assert sample_line["testing_fee"] == "0"
     finally:

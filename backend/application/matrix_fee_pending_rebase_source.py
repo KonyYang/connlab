@@ -24,12 +24,17 @@ def source_rows_from_basic_fill(
     *,
     source_values: FeeEvaluationEditedExportValues | None,
     structural_keys: set[MatrixFeeRebaseKey],
+    source_defaults: FeeEvaluationEditedExportValues | None = None,
 ) -> tuple[MatrixFeeRebaseSourceRow, ...]:
     """Build rebase source rows from current basic-fill plus hidden rows."""
     edited_by_identity = (
         {edited_row_identity(row): row for row in source_values.rows}
         if source_values is not None
         else {}
+    )
+    defaults_by_identity = (
+        {edited_row_identity(row): row for row in source_defaults.rows}
+        if source_defaults is not None else {}
     )
     hidden_by_key = _hidden_rows_by_key(
         source_values,
@@ -60,6 +65,7 @@ def source_rows_from_basic_fill(
                 MatrixFeeRebaseSourceRow(
                     lineage=lineage,
                     edited_row=active_edit or hidden_edit or default_row,
+                    default_row=defaults_by_identity.get(edited_row_identity(default_row)),
                 )
             )
     rows.extend(

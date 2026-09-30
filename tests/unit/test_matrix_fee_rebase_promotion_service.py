@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from backend.application.confirmed_matrix_fee_template_basic_fill_service import (
@@ -414,7 +416,120 @@ def test_service_fallback_uses_previous_context_rows_and_preserves_summary() -> 
     )
 
 
-def test_service_creates_default_fee_authority_when_no_previous_pricing_draft() -> None:
+def test_matrix_revision_uses_last_operator_confirmed_fee_not_unsaved_edits() -> None:
+    from backend.application.fee_evaluation_pricing_draft_serialization import edited_values_to_json
+    from backend.application.matrix_fee_rebase_promotion_values import summary_from_edited_values
+
+    pricing_store = _PricingStore(previous=_previous_pricing_draft(notes="unconfirmed change"))
+    confirmed_values = _previous_pricing_draft(notes="confirmed price").edited_values
+    confirmed_store = _ConfirmedFeeStore()
+    confirmed_store.create(ConfirmedFeeVersion(
+        confirmed_fee_id="fee-confirmed", project_id="P1", confirmed_fee_revision=1,
+        confirmed_matrix_id="cmv-old", confirmed_revision=1,
+        fee_rule_version_id="fee-rules-v1", pricing_draft_edit_id="pricing-old",
+        pricing_effective_from=None, summary=summary_from_edited_values(confirmed_values),
+        pricing_snapshot_json=edited_values_to_json(confirmed_values),
+        confirmed_by="operator", confirmed_at="2026-06-15T00:01:00+00:00",
+    ))
+    service = MatrixFeeRebasePromotionService(
+        pending_store=_PendingStore(None), pricing_draft_store=pricing_store,
+        confirmed_fee_store=confirmed_store,
+    )
+
+    result = service.promote_after_matrix_confirm(_promotion_command())
+
+    assert result.status == "fallback_promoted", result.error
+    assert pricing_store.saved is not None
+    assert pricing_store.saved.edited_values.rows[0].notes == "confirmed price"
+    assert confirmed_store.get_latest_by_project("P1").confirmed_fee_id == "fee-confirmed"
+
+
+def test_matrix_sample_increase_updates_only_dependent_confirmed_fee_units() -> None:
+    from backend.application.fee_evaluation_pricing_draft_serialization import edited_values_to_json
+    from backend.application.matrix_fee_rebase_promotion_values import summary_from_edited_values
+
+    prior = _previous_pricing_draft(notes="keep price")
+    preparation = FeeEvaluationEditedManualRow(
+        row_kind="sample_preparation", confirmed_group_id="cmg-old",
+        group_key="G1", group_label="Group 1", spend_time="0.5",
+        unit_price="50", unit_type="per sample", units="4",
+        base_fee="0", discount="0%", testing_fee="200", notes="partial sample",
+    )
+    confirmed_values = replace(prior.edited_values, manual_rows=(preparation,))
+    confirmed_store = _ConfirmedFeeStore()
+    confirmed_store.create(ConfirmedFeeVersion(
+        confirmed_fee_id="fee-confirmed", project_id="P1", confirmed_fee_revision=1,
+        confirmed_matrix_id="cmv-old", confirmed_revision=1,
+        fee_rule_version_id="fee-rules-v1", pricing_draft_edit_id="pricing-old",
+        pricing_effective_from=None, summary=summary_from_edited_values(confirmed_values),
+        pricing_snapshot_json=edited_values_to_json(confirmed_values),
+        confirmed_by="operator", confirmed_at="2026-06-15T00:01:00+00:00",
+    ))
+    new_matrix = _confirmed_snapshot("cmv-new", 2, "cmg-new", "cmr-new")
+    new_matrix = replace(new_matrix, groups=(replace(
+        new_matrix.groups[0], sample_quantity_expression="7+5(d)"
+    ),))
+    draft = _draft()
+    draft = replace(draft, groups=(replace(
+        draft.groups[0], sample_quantity_expression="7+5(d)"
+    ),))
+    command = replace(_promotion_command(), new_confirmed_matrix=new_matrix,
+                      saved_matrix_draft=draft)
+    pricing_store = _PricingStore(previous=prior)
+    service = MatrixFeeRebasePromotionService(
+        pending_store=_PendingStore(None), pricing_draft_store=pricing_store,
+        confirmed_fee_store=confirmed_store,
+    )
+
+    result = service.promote_after_matrix_confirm(command)
+
+    assert result.status == "fallback_promoted", result.error
+    assert pricing_store.saved is not None
+    assert pricing_store.saved.edited_values.rows[0].unit_price == prior.edited_values.rows[0].unit_price
+    assert pricing_store.saved.edited_values.manual_rows[0].units == "7"
+    assert pricing_store.saved.edited_values.manual_rows[0].testing_fee == "350"
+    assert confirmed_store.get_latest_by_project("P1").confirmed_fee_id == "fee-confirmed"
+
+
+def test_two_matrix_revisions_keep_last_operator_confirmed_fee_as_source() -> None:
+    from backend.application.fee_evaluation_pricing_draft_serialization import edited_values_to_json
+    from backend.application.matrix_fee_rebase_promotion_values import summary_from_edited_values
+
+    historical = _confirmed_snapshot("cmv-old", 1, "cmg-old", "cmr-old")
+    intermediate = _confirmed_snapshot("cmv-middle", 2, "cmg-middle", "cmr-middle")
+    latest = _confirmed_snapshot("cmv-new", 3, "cmg-new", "cmr-new")
+    confirmed_values = _previous_pricing_draft(notes="last confirmed").edited_values
+    confirmed_store = _ConfirmedFeeStore()
+    confirmed_store.create(ConfirmedFeeVersion(
+        confirmed_fee_id="fee-v1", project_id="P1", confirmed_fee_revision=1,
+        confirmed_matrix_id="cmv-old", confirmed_revision=1,
+        fee_rule_version_id="fee-rules-v1", pricing_draft_edit_id="pricing-v1",
+        pricing_effective_from=None, summary=summary_from_edited_values(confirmed_values),
+        pricing_snapshot_json=edited_values_to_json(confirmed_values),
+        confirmed_by="operator", confirmed_at="2026-06-15T00:01:00+00:00",
+    ))
+    pricing_store = _PricingStore(previous=replace(
+        _previous_pricing_draft(notes="unconfirmed at V2"),
+        confirmed_matrix_id="cmv-middle", confirmed_revision=2,
+    ))
+    service = MatrixFeeRebasePromotionService(
+        pending_store=_PendingStore(None), pricing_draft_store=pricing_store,
+        confirmed_fee_store=confirmed_store,
+        confirmed_matrix_store=_MatrixHistoryStore(historical),
+    )
+    command = replace(_promotion_command(), previous_confirmed_matrix=intermediate,
+                      new_confirmed_matrix=latest,
+                      saved_matrix_draft=_draft(base_confirmed_matrix_id="cmv-middle"))
+
+    result = service.promote_after_matrix_confirm(command)
+
+    assert result.status == "fallback_promoted", result.error
+    assert pricing_store.saved is not None
+    assert pricing_store.saved.edited_values.rows[0].notes == "last confirmed"
+    assert confirmed_store.get_latest_by_project("P1").confirmed_fee_id == "fee-v1"
+
+
+def test_matrix_revision_without_confirmed_fee_prepares_defaults_for_operator_review() -> None:
     pricing_store = _PricingStore(previous=None)
     fee_store = _ConfirmedFeeStore()
     service = MatrixFeeRebasePromotionService(
@@ -436,10 +551,7 @@ def test_service_creates_default_fee_authority_when_no_previous_pricing_draft() 
     assert pricing_store.saved.edited_values.manual_rows[0].row_kind == (
         "sample_preparation"
     )
-    assert fee_store.versions
-    assert fee_store.versions[0].confirmed_matrix_id == "cmv-new"
-    assert fee_store.versions[0].pricing_draft_edit_id == pricing_store.saved.draft_edit_id
-    assert fee_store.versions[0].summary.testing_fee_total == "0.00"
+    assert fee_store.versions == []
 
 
 def test_service_initializes_default_fee_authority_after_first_matrix_confirm() -> None:
@@ -869,3 +981,11 @@ class _ConfirmedFeeStore:
 
     def list_by_project(self, project_id: str) -> tuple[ConfirmedFeeVersion, ...]:
         return tuple(version for version in self.versions if version.project_id == project_id)
+
+
+class _MatrixHistoryStore:
+    def __init__(self, snapshot: ConfirmedMatrixSnapshot) -> None:
+        self.snapshot = snapshot
+
+    def get(self, confirmed_matrix_id: str) -> ConfirmedMatrixSnapshot | None:
+        return self.snapshot if self.snapshot.version.confirmed_matrix_id == confirmed_matrix_id else None

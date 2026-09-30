@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 
 from backend.application.fee_evaluation_edited_export_values import (
@@ -67,6 +69,133 @@ def test_matching_rows_preserve_edited_fee_values_and_target_lineage() -> None:
             notes="operator edit",
         ),
     )
+
+
+def test_changed_reading_quantity_recalculates_units_with_confirmed_manual_price() -> None:
+    source = _source_row(
+        _lineage(source_row_snapshot_id="llcr-row"),
+        unit_type="per reading", unit_price="2", units="35", base_fee="0",
+        discount="0%", testing_fee="70", notes="partial points",
+    )
+    source = replace(source, default_row=replace(source.edited_row, units="50", testing_fee="100"))
+    target = _target_row(
+        _lineage(source_row_snapshot_id="llcr-row"),
+        unit_type="per reading", units="70", unit_price="1.5", base_fee="0",
+        discount="0%", testing_fee="105",
+    )
+
+    result = MatrixFeeDraftRebaseService().rebase(
+        source_rows=(source,), target_rows=(target,), source_manual_rows=(),
+        target_groups=(_target_group(),),
+    )
+
+    assert result.active_rows[0].units == "70"
+    assert result.active_rows[0].unit_price == "2"
+    assert result.active_rows[0].testing_fee == "140"
+    assert result.active_rows[0].notes == "partial points"
+
+
+def test_unchanged_quantity_preserves_manual_units_despite_matrix_revision() -> None:
+    source = _source_row(_lineage(source_row_snapshot_id="llcr-row"), units="35")
+    source = replace(source, default_row=replace(source.edited_row, units="50"))
+    target = _target_row(_lineage(source_row_snapshot_id="llcr-row"), units="50")
+
+    result = MatrixFeeDraftRebaseService().rebase(
+        source_rows=(source,), target_rows=(target,), source_manual_rows=(),
+        target_groups=(_target_group(),),
+    )
+
+    assert result.active_rows[0].units == "35"
+
+
+def test_changed_quantity_uses_fee_form_money_rounding() -> None:
+    source = _source_row(
+        _lineage(source_row_snapshot_id="reading-row"),
+        unit_type="per reading", unit_price="1.25", units="2",
+        base_fee="0", discount="0%", testing_fee="3",
+    )
+    source = replace(source, default_row=replace(source.edited_row, units="2"))
+    target = _target_row(
+        _lineage(source_row_snapshot_id="reading-row"),
+        unit_type="per reading", units="3", unit_price="1.25",
+    )
+
+    result = MatrixFeeDraftRebaseService().rebase(
+        source_rows=(source,), target_rows=(target,), source_manual_rows=(),
+        target_groups=(_target_group(),),
+    )
+
+    assert result.active_rows[0].testing_fee == "4"
+
+
+def test_fixed_quote_keeps_confirmed_units_when_sample_count_changes() -> None:
+    source = _source_row(
+        _lineage(source_row_snapshot_id="fixed-quote"),
+        unit_type="per test", units="1", unit_price="200", testing_fee="200",
+    )
+    source = replace(
+        source,
+        default_row=replace(source.edited_row, unit_type="per sample", units="5"),
+    )
+    target = _target_row(
+        _lineage(source_row_snapshot_id="fixed-quote"),
+        unit_type="per sample", units="7", unit_price="20",
+    )
+
+    result = MatrixFeeDraftRebaseService().rebase(
+        source_rows=(source,), target_rows=(target,), source_manual_rows=(),
+        target_groups=(_target_group(),),
+    )
+
+    assert result.active_rows[0].unit_type == "per test"
+    assert result.active_rows[0].units == "1"
+    assert result.active_rows[0].testing_fee == "200"
+
+
+def test_inserting_prior_step_keeps_unique_original_step_pricing() -> None:
+    source = _source_row(
+        _lineage(source_row_snapshot_id="stable-row", step_token="2"),
+        unit_price="88", notes="operator quote",
+    )
+    target = _target_row(
+        _lineage(source_row_snapshot_id="stable-row", step_token="3"),
+        unit_price="10",
+    )
+
+    result = MatrixFeeDraftRebaseService().rebase(
+        source_rows=(source,), target_rows=(target,), source_manual_rows=(),
+        target_groups=(_target_group(),),
+    )
+
+    assert result.active_rows[0].unit_price == "88"
+    assert result.active_rows[0].notes == "operator quote"
+
+
+def test_new_row_gets_current_defaults_without_inheriting_other_row_price() -> None:
+    source = _source_row(_lineage(source_row_snapshot_id="old-row"), unit_price="88")
+    target = _target_row(_lineage(source_row_snapshot_id="new-row"), unit_price="10")
+
+    result = MatrixFeeDraftRebaseService().rebase(
+        source_rows=(source,), target_rows=(target,), source_manual_rows=(),
+        target_groups=(_target_group(),),
+    )
+
+    assert result.active_rows[0].unit_price == "10"
+    assert result.summary.added_count == 1
+
+
+def test_ambiguous_repeated_steps_do_not_copy_one_price_to_all() -> None:
+    source = _source_row(_lineage(source_row_snapshot_id="repeated-row", step_token="1"), unit_price="88")
+    first = _target_row(_lineage(source_row_snapshot_id="repeated-row", step_token="2"), unit_price="10")
+    second = _target_row(_lineage(source_row_snapshot_id="repeated-row", step_token="3"), unit_price="12")
+
+    result = MatrixFeeDraftRebaseService().rebase(
+        source_rows=(source,), target_rows=(first, second), source_manual_rows=(),
+        target_groups=(_target_group(),),
+    )
+
+    assert [row.unit_price for row in result.active_rows] == ["10", "12"]
+    assert result.summary.added_count == 2
 
 
 def test_text_only_matrix_edit_preserves_values_with_source_snapshot_id() -> None:
@@ -263,6 +392,26 @@ def test_sample_preparation_manual_row_matches_by_group_key_or_label() -> None:
         ),
     )
     assert result.summary.preserved_manual_count == 1
+
+
+def test_sample_preparation_recalculates_units_when_group_sample_count_changes() -> None:
+    previous = _manual_row(
+        row_kind="sample_preparation", group_key="G1", group_label="Group 1",
+        unit_type="per sample", unit_price="50", units="4", base_fee="0",
+        discount="0%", testing_fee="200",
+    )
+    prior_default = replace(previous, units="5", testing_fee="250")
+    new_default = replace(previous, confirmed_group_id="new-group", units="7", testing_fee="350")
+
+    result = MatrixFeeDraftRebaseService().rebase(
+        source_rows=(), target_rows=(), source_manual_rows=(previous,),
+        target_groups=(_target_group(),),
+        source_manual_defaults=(prior_default,), target_manual_defaults=(new_default,),
+    )
+
+    assert result.manual_rows[0].units == "7"
+    assert result.manual_rows[0].unit_price == "50"
+    assert result.manual_rows[0].testing_fee == "350"
 
 
 def test_sample_preparation_manual_row_matches_by_group_label_when_key_is_missing() -> None:

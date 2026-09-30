@@ -124,18 +124,19 @@ def _rows_from_fee_line(line: FeeEvaluationLineItem) -> tuple[FeeEvaluationEdite
 
 def _sample_preparation_row(group: FeeEvaluationGroup) -> FeeEvaluationEditedManualRow:
     first_line = group.line_items[0]
+    automatic = group.manual_line_items[0] if group.manual_line_items else None
     return FeeEvaluationEditedManualRow(
         row_kind="sample_preparation",
         confirmed_group_id=first_line.confirmed_group_id,
         group_key=group.group_key,
         group_label=group.group_label,
-        spend_time="0",
-        unit_price="0",
-        unit_type="per sample",
-        units="1",
-        base_fee="0",
-        discount="0%",
-        testing_fee="0",
+        spend_time=_text_or_zero(automatic.spend_time) if automatic else "0",
+        unit_price=_decimal_text(automatic.unit_price, "0") if automatic else "0",
+        unit_type=(automatic.unit_label or "per sample") if automatic else "per sample",
+        units=_decimal_text(automatic.units, "1") if automatic else "1",
+        base_fee=_decimal_text(automatic.base_fee, "0") if automatic else "0",
+        discount=f"{_decimal_text(automatic.discount_percent, '0')}%" if automatic else "0%",
+        testing_fee=_decimal_text(automatic.testing_fee, "0") if automatic else "0",
         notes="",
     )
 
