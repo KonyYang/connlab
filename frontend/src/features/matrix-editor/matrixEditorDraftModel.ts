@@ -665,6 +665,7 @@ export function buildAuthorityComparableSignatureFromDraftPayload(
       deltaREnabled: payload.point_profile.delta_r_enabled,
       irPointsPerSample: (payload.point_profile.ir_points_per_sample ?? "").trim(),
       dwvPointsPerSample: (payload.point_profile.dwv_points_per_sample ?? "").trim(),
+      electricalPointPairs: (payload.point_profile.electrical_point_pairs ?? "").trim(),
       categories: payload.point_profile.categories.map((category) => ({
         prefix: category.prefix.trim(),
         pointExpression: category.point_expression.trim(),

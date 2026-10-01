@@ -18,14 +18,22 @@ export function matrixTestPointsValidation(
 ): string | null {
   if (overrides.length) return "Use project-wide points before confirming this Matrix.";
   if (!profile) return null;
-  for (const kind of ["ir", "dwv"] as const) {
-    const value = (profile[`${kind}_points_per_sample`] ?? "").trim();
-    if (value && (!/^[0-9]{1,5}$/.test(value) || Number(value) < 1 || Number(value) > 8192)) {
-      return "IR / DWV points per sample must be a whole number from 1 to 8192.";
+  if (profile.electrical_point_pairs != null) {
+    const text = profile.electrical_point_pairs.trim();
+    const count = text.split(/[,，;；、\r\n]/).filter((part) => part.trim()).length;
+    if (text && (!count || count > 8192 || text.length > 65536)) {
+      return "IR / DWV test points must contain 1 to 8192 measurement pairs (maximum 65536 characters).";
     }
-  }
-  if ((profile.ir_points_per_sample ?? "").trim() !== (profile.dwv_points_per_sample ?? "").trim()) {
-    return "Previous IR/DWV counts differ. Enter one shared point count.";
+  } else {
+    for (const kind of ["ir", "dwv"] as const) {
+      const value = (profile[`${kind}_points_per_sample`] ?? "").trim();
+      if (value && (!/^[0-9]{1,5}$/.test(value) || Number(value) < 1 || Number(value) > 8192)) {
+        return "Legacy IR / DWV counts must be a whole number from 1 to 8192.";
+      }
+    }
+    if ((profile.ir_points_per_sample ?? "").trim() !== (profile.dwv_points_per_sample ?? "").trim()) {
+      return "Previous IR/DWV counts differ. Enter shared test points.";
+    }
   }
   const profileError = profile.categories.length ? pointProfileValidation(profile.categories.map((category) => ({
     category_id: null, ...category,
@@ -54,7 +62,7 @@ export function MatrixTestPointsEditor({
   const current = profile ?? EMPTY_PROFILE;
   const irCount = (current.ir_points_per_sample ?? "").trim();
   const dwvCount = (current.dwv_points_per_sample ?? "").trim();
-  const sharedCount = irCount === dwvCount ? current.ir_points_per_sample ?? "" : "";
+  const sharedPoints = current.electrical_point_pairs ?? (irCount === dwvCount ? current.ir_points_per_sample ?? "" : "");
   const editableCategories = current.categories.length ? current.categories : [{ prefix: "", point_expression: "", cr_selected: true }];
   const validation = matrixTestPointsValidation(profile, overrides, hasCrMatrixStep);
   const setCategory = (index: number, patch: Partial<MatrixTestPointProfile["categories"][number]>) => {
@@ -93,17 +101,18 @@ export function MatrixTestPointsEditor({
       </tr>)}</tbody></table>
     </div>
     <div className="project-point-profile-card">
-      <header className="project-point-profile-header">
+      <header className="project-point-profile-header matrix-test-points-shared-pairs">
         <h4>IR / DWV test points</h4>
-        <label className="matrix-test-points-shared-count">
-          <span>Points per sample</span>
-          <input type="text" inputMode="numeric" className="project-point-profile-input"
-            aria-label="IR / DWV points per sample" disabled={readOnly}
-            placeholder="Not set" value={sharedCount}
-            title="Shared by IR and DWV across all Matrix groups. One reading per point per sample; Confirm Matrix to update Fee quantities."
-            onChange={(event) => onProfileChange({ ...current,
-              ir_points_per_sample: event.target.value, dwv_points_per_sample: event.target.value })} />
-        </label>
+        <textarea rows={1} className="project-point-profile-input"
+          aria-label="IR / DWV test points" disabled={readOnly}
+          placeholder="Odd&Even, P1&P2, P1 and S2; PE-HOUSING" value={sharedPoints}
+          title="IR/DWV share these measurement pairs across all Matrix groups. Separate pairs with commas, semicolons or 、. Confirm Matrix to update Fee quantities. Legacy numeric counts remain supported."
+          onChange={(event) => {
+            const value = event.target.value;
+            const legacyCount = /^[0-9]+$/.test(value.trim());
+            onProfileChange({ ...current, electrical_point_pairs: legacyCount ? null : value,
+              ir_points_per_sample: legacyCount ? value : null, dwv_points_per_sample: legacyCount ? value : null });
+          }} />
       </header>
     </div>
     {overrides.length ? <div className="matrix-test-points-migration" role="alert">

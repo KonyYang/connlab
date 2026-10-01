@@ -45,6 +45,7 @@ class MatrixPointProfile:
     delta_r_enabled: bool = True
     ir_points_per_sample: str | None = None
     dwv_points_per_sample: str | None = None
+    electrical_point_pairs: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,7 +68,7 @@ def point_profile_to_json(profile: MatrixPointProfile | None) -> str | None:
         return None
     payload = asdict(profile)
     # Adding optional electrical settings must not alter legacy LLCR/CR fingerprints.
-    for key in ("ir_points_per_sample", "dwv_points_per_sample"):
+    for key in ("ir_points_per_sample", "dwv_points_per_sample", "electrical_point_pairs"):
         if payload[key] is None:
             del payload[key]
     return json.dumps(payload, separators=(",", ":"), sort_keys=True)
@@ -82,6 +83,7 @@ def point_profile_from_json(value: str | None) -> MatrixPointProfile | None:
         delta_r_enabled=bool(payload["delta_r_enabled"]),
         ir_points_per_sample=payload.get("ir_points_per_sample"),
         dwv_points_per_sample=payload.get("dwv_points_per_sample"),
+        electrical_point_pairs=payload.get("electrical_point_pairs"),
     )
 
 

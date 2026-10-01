@@ -52,6 +52,7 @@ def _to_point_profile(item: MatrixPointProfileDTO | None) -> MatrixPointProfile 
         delta_r_enabled=item.delta_r_enabled,
         ir_points_per_sample=item.ir_points_per_sample,
         dwv_points_per_sample=item.dwv_points_per_sample,
+        electrical_point_pairs=item.electrical_point_pairs,
     )
 
 

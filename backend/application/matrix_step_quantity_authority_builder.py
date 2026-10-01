@@ -5,7 +5,7 @@ from __future__ import annotations
 from uuid import uuid4
 from dataclasses import replace
 
-from backend.application.matrix_test_points_authority import electrical_test_kind
+from backend.application.matrix_test_points_authority import electrical_point_count, electrical_test_kind
 
 from backend.domain import (
     ConfirmedMatrixSnapshot,
@@ -73,6 +73,9 @@ def build_confirmed_step_quantities(
         for item in draft.step_quantities
     }
     rows_by_id = {row.draft_row_id: row for row in draft.rows if not row.is_sample_row}
+    electrical_counts = {
+        kind: electrical_point_count(draft.record.point_profile, kind) for kind in ("ir", "dwv")
+    }
     confirmed: list[ConfirmedMatrixStepQuantity] = []
     seen: set[tuple[str, str, int, str | None]] = set()
     for cell in draft.cells:
@@ -95,8 +98,7 @@ def build_confirmed_step_quantities(
             seen.add(identity)
             draft_quantity = quantity_by_identity.get(identity)
             kind = electrical_test_kind(rows_by_id[cell.draft_row_id].test_item)
-            profile = draft.record.point_profile
-            count = getattr(profile, f"{kind}_points_per_sample", None) if kind else None
+            count = electrical_counts[kind] if kind else None
             electrical_owned = kind and (count is not None or (
                 draft_quantity is not None and draft_quantity.source == "matrix_electrical_test_points"
             ))

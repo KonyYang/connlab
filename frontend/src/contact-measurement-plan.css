@@ -47,14 +47,16 @@
   flex-wrap: wrap;
 }
 
-.matrix-test-points-shared-count {
-  display: inline-flex;
-  align-items: center;
+.matrix-test-points-editor .matrix-test-points-shared-pairs {
+  justify-content: flex-start;
   gap: 8px;
 }
 
-.matrix-test-points-shared-count .project-point-profile-input {
-  width: 96px;
+.matrix-test-points-shared-pairs .project-point-profile-input {
+  flex: 1 1 240px;
+  min-width: 0;
+  width: auto;
+  resize: vertical;
 }
 
 .matrix-test-points-editor .project-point-profile-delta-r {

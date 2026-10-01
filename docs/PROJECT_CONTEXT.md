@@ -113,11 +113,19 @@ Do not use a dated snapshot as a substitute for the code.
   projects without one can still read their existing point-profile authority for compatibility.
   That read-only fallback does not guess IDs or publish a new independent point authority.
 - A workbook downloaded from an unconfirmed Matrix editor is a draft preview, not a formal test record.
-  IR and DWV share one optional per-sample measurement-point count in the same Matrix draft.
-  The editor has one compact project-wide input, without Group/step settings or coverage lists.
-  The existing separate JSON fields remain readable for compatibility; edits write the same count
-  to both. Unequal legacy counts require an explicit shared value before another editor confirmation,
-  never overwritten on load. Each point means one reading, not a connector pin or a sample number.
+  IR and DWV share optional measurement-pair text in the same Matrix draft (`electrical_point_pairs`).
+  One compact text box sits beside `IR / DWV test points`, without a separate count label, categories,
+  Group/step settings or coverage lists. Commas, Chinese commas, semicolons, Chinese semicolons,
+  ideographic commas and line breaks separate pairs; empty entries are ignored. Pair operators such
+  as `&`, `and` and `-` belong to the label, never split endpoints. For example,
+  `Odd&Even，P1&P2, P1 and S2；PE-HOUSING` is four readings per sample. Text is retained for reopening;
+  the backend derives the count (at most 8192 pairs and 65536 characters) rather than trusting a
+  client-supplied count. Blank text clears electrical points; separator-only text is invalid.
+  Existing separate numeric JSON fields remain readable for compatibility, with no label guessing or
+  writes on load. Numeric-only editor input retains legacy count behavior. Unequal legacy counts
+  require an explicit shared value before another editor confirmation. New pair text takes precedence
+  over legacy counts, including an explicit clear. Each pair means one reading, not two connector
+  pins or a sample number.
   The shared count applies to all selected IR/DWV steps, becomes authority only with `Confirm Matrix`,
   and populates the existing confirmed Step quantity snapshot. Fee consumes samples × points (the first quantity in `5+5(d)`),
   never live Matrix draft values. Clearing a previously confirmed electrical count restores quantity

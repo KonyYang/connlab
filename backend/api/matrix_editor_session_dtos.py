@@ -22,6 +22,7 @@ class MatrixPointProfileDTO(BaseModel):
     delta_r_enabled: bool = True
     ir_points_per_sample: str | None = None
     dwv_points_per_sample: str | None = None
+    electrical_point_pairs: str | None = None
 
 
 class MatrixStepPointCategoryDTO(BaseModel):

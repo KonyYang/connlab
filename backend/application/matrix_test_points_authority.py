@@ -44,6 +44,23 @@ def _validated_electrical_count(value: str | None, kind: str) -> str | None:
     return str(int(text))
 
 
+def electrical_point_count(profile: MatrixPointProfile | None, kind: str) -> str | None:
+    """Count measurement pairs as opaque labels; retain legacy count-only authority."""
+    if profile is None:
+        return None
+    if profile.electrical_point_pairs is None:
+        return _validated_electrical_count(getattr(profile, f"{kind}_points_per_sample"), kind.upper())
+    text = profile.electrical_point_pairs.strip()
+    if not text:
+        return None
+    # Pair operators belong to the label, not the list grammar. Empty separators
+    # never create extra measurements, including a pasted trailing delimiter.
+    count = sum(bool(part.strip()) for part in re.split(r"[,，;；、\r\n]", text))
+    if not count or count > 8192 or len(text) > 65536:
+        raise ValueError("IR / DWV test points must contain 1 to 8192 measurement pairs (maximum 65536 characters).")
+    return str(count)
+
+
 def validate_matrix_test_points(
     profile: MatrixPointProfile | None,
     overrides: tuple[MatrixStepPointOverride, ...],
@@ -53,8 +70,14 @@ def validate_matrix_test_points(
         if overrides:
             raise ValueError("A project Point Profile is required before step exceptions.")
         return None, ()
-    ir_count = _validated_electrical_count(profile.ir_points_per_sample, "IR")
-    dwv_count = _validated_electrical_count(profile.dwv_points_per_sample, "DWV")
+    pairs = profile.electrical_point_pairs
+    if pairs is not None:
+        electrical_point_count(profile, "ir")
+        ir_count = dwv_count = None
+        pairs = pairs.strip()
+    else:
+        ir_count = _validated_electrical_count(profile.ir_points_per_sample, "IR")
+        dwv_count = _validated_electrical_count(profile.dwv_points_per_sample, "DWV")
     if len(profile.categories) > 256:
         raise ValueError("Project Point Profile allows at most 256 categories.")
     seen_prefixes: set[str] = set()
@@ -76,7 +99,7 @@ def validate_matrix_test_points(
         categories.append(MatrixPointCategory(prefix, parsed.canonical, category.cr_selected))
     if total > 8192:
         raise ValueError("Project Point Profile may contain at most 8192 points.")
-    profile = MatrixPointProfile(tuple(categories), profile.delta_r_enabled, ir_count, dwv_count)
+    profile = MatrixPointProfile(tuple(categories), profile.delta_r_enabled, ir_count, dwv_count, pairs)
     normalized_overrides: list[MatrixStepPointOverride] = []
     seen_steps: set[tuple[str, str, int, str]] = set()
     for override in overrides:
@@ -178,7 +201,8 @@ def effective_matrix_point_profile(
     } for index, category in enumerate(profile.categories))
     cr_ids = tuple(category.prefix.casefold() for category in profile.categories if category.cr_selected)
     fingerprint = sha256((
-        (point_profile_to_json(replace(profile, ir_points_per_sample=None, dwv_points_per_sample=None)) or "")
+        (point_profile_to_json(replace(profile, ir_points_per_sample=None, dwv_points_per_sample=None,
+                                      electrical_point_pairs=None)) or "")
         + point_overrides_to_json(overrides)
     ).encode("utf-8")).hexdigest()
     return EffectiveConfirmedPointProfile(

@@ -1670,6 +1670,7 @@ export type MatrixTestPointProfile = {
   delta_r_enabled: boolean;
   ir_points_per_sample?: string | null;
   dwv_points_per_sample?: string | null;
+  electrical_point_pairs?: string | null;
 };
 
 export type MatrixTestPointOverride = {

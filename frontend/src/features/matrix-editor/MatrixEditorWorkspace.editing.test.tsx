@@ -17,17 +17,50 @@ import { MatrixEditorWorkspace } from "./MatrixEditorWorkspace";
 installMatrixEditorWorkspaceTestLifecycle();
 
 describe("MatrixEditorWorkspace editing behavior", () => {
+  it("saves shared IR/DWV measurement pair text without a redundant visible count label", async () => {
+    const seed = buildSessionSeed();
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce(seed);
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    const points = await screen.findByRole("textbox", { name: "IR / DWV test points" });
+    expect(screen.queryByText("Points per sample")).toBeNull();
+    const expression = "Odd&Even，P1&P2, P1 and S2； PE-HOUSING";
+    fireEvent.change(points, { target: { value: expression } });
+    await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft.mock.lastCall?.[1].point_profile).toEqual(
+      expect.objectContaining({ electrical_point_pairs: expression, ir_points_per_sample: null, dwv_points_per_sample: null })
+    ), { timeout: 1600 });
+    await waitFor(() => expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Matrix" }));
+    await waitFor(() => expect(apiMocks.confirmMatrixEditorSession.mock.lastCall?.[1].point_profile).toEqual(
+      expect.objectContaining({ electrical_point_pairs: expression })
+    ));
+  });
+
   it("restores electrical points without treating reopening as a Matrix edit", async () => {
     const seed = buildSessionSeed();
     seed.editor_draft.point_profile = { categories: [], delta_r_enabled: true, ir_points_per_sample: "2", dwv_points_per_sample: "2" };
     apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce(seed);
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
-    const points = await screen.findByRole("textbox", { name: "IR / DWV points per sample" });
+    const points = await screen.findByRole("textbox", { name: "IR / DWV test points" });
     expect((points as HTMLInputElement).value).toBe("2");
     expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
     expect(apiMocks.confirmMatrixEditorSession).not.toHaveBeenCalled();
     fireEvent.change(points, { target: { value: "0" } });
-    expect(screen.getAllByText("IR / DWV points per sample must be a whole number from 1 to 8192.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Legacy IR / DWV counts must be a whole number from 1 to 8192.").length).toBeGreaterThan(0);
+    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("restores pair text without autosaving and rejects separator-only input", async () => {
+    const seed = buildSessionSeed();
+    seed.editor_draft.point_profile = { categories: [], delta_r_enabled: true,
+      electrical_point_pairs: "Odd&Even，P1&P2", ir_points_per_sample: null, dwv_points_per_sample: null };
+    apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce(seed);
+    render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
+    const points = await screen.findByRole("textbox", { name: "IR / DWV test points" });
+    expect((points as HTMLTextAreaElement).value).toBe("Odd&Even，P1&P2");
+    expect(apiMocks.saveMatrixEditorSessionDraft).not.toHaveBeenCalled();
+    expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(points, { target: { value: "， ; 、" } });
+    expect(screen.getAllByText("IR / DWV test points must contain 1 to 8192 measurement pairs (maximum 65536 characters).").length).toBeGreaterThan(0);
     expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -36,7 +69,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     seed.editor_draft.rows[0].test_item = "Insulation Resistance";
     apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce(seed);
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
-    const points = await screen.findByRole("textbox", { name: "IR / DWV points per sample" });
+    const points = await screen.findByRole("textbox", { name: "IR / DWV test points" });
     fireEvent.change(points, { target: { value: "2" } });
     await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalled(), { timeout: 1600 });
     expect(apiMocks.saveMatrixEditorSessionDraft.mock.lastCall?.[1].point_profile).toEqual(expect.objectContaining({
@@ -54,9 +87,9 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     seed.editor_draft.point_profile = { categories: [], delta_r_enabled: true, ir_points_per_sample: "1", dwv_points_per_sample: "2" };
     apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce(seed);
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
-    const points = await screen.findByRole("textbox", { name: "IR / DWV points per sample" });
+    const points = await screen.findByRole("textbox", { name: "IR / DWV test points" });
     expect((points as HTMLInputElement).value).toBe("");
-    expect(screen.getAllByText("Previous IR/DWV counts differ. Enter one shared point count.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Previous IR/DWV counts differ. Enter shared test points.").length).toBeGreaterThan(0);
     expect(apiMocks.saveMatrixEditorSessionDraft).not.toHaveBeenCalled();
     expect((screen.getByRole("button", { name: "Confirm Matrix" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(points, { target: { value: "3" } });
@@ -74,10 +107,10 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     };
     apiMocks.fetchMatrixEditorSession.mockResolvedValueOnce(seed);
     render(<MatrixEditorWorkspace projectId="P1" onBackToWorkbench={() => {}} />);
-    fireEvent.change(await screen.findByRole("textbox", { name: "IR / DWV points per sample" }), { target: { value: "" } });
+    fireEvent.change(await screen.findByRole("textbox", { name: "IR / DWV test points" }), { target: { value: "" } });
     await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft.mock.lastCall?.[1].point_profile).toEqual({
       categories: [{ prefix: "HP", point_expression: "1-5", cr_selected: true }], delta_r_enabled: true,
-      ir_points_per_sample: "", dwv_points_per_sample: "",
+      ir_points_per_sample: null, dwv_points_per_sample: null, electrical_point_pairs: "",
     }), { timeout: 1600 });
   });
 
@@ -123,7 +156,7 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     expect(testPointsHeading.getAttribute("title")).toBe("Project point IDs are shared. Any changes here remain a Matrix draft until Confirm Matrix.");
     expect(screen.queryByText("Project point IDs are shared. Any changes here remain a Matrix draft until Confirm Matrix.")).toBeNull();
     expect(screen.queryByText("Group / step exceptions")).toBeNull();
-    expect(screen.getByRole("textbox", { name: "IR / DWV points per sample" })).toBeTruthy();
+    expect(screen.getByRole("textbox", { name: "IR / DWV test points" })).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "IR test points per sample" })).toBeNull();
     expect(screen.queryByRole("textbox", { name: "DWV test points per sample" })).toBeNull();
   });

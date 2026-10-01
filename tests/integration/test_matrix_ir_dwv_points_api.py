@@ -33,7 +33,8 @@ def _payload(seed, *, ir="1", dwv="2"):
             "expected_active_confirmed_matrix_id": seed["active_confirmed_matrix_id"],
             "expected_active_confirmed_revision": seed["active_confirmed_revision"],
             "point_profile": {"categories": [], "delta_r_enabled": True,
-                              "ir_points_per_sample": ir, "dwv_points_per_sample": dwv}}
+                              "ir_points_per_sample": ir, "dwv_points_per_sample": dwv,
+                              "electrical_point_pairs": None}}
 
 
 def test_ir_dwv_draft_points_publish_only_on_confirm_and_refresh_fee(tmp_path: Path):
@@ -109,6 +110,79 @@ def test_shared_points_generate_the_same_units_for_ir_and_dwv(imported_session):
     assert [line["units"] for line in lines] == ["10", "10"]
 
 
+def test_shared_pair_text_is_retained_and_prices_only_after_matrix_confirmation(imported_session):
+    client, seed = imported_session
+    expression = "Odd&Even，P1&P2, P1 and S2； PE-HOUSING"
+    payload = _payload(seed, ir=None, dwv=None)
+    payload["point_profile"]["electrical_point_pairs"] = expression
+    saved = client.put("/api/projects/P1/matrix-editor/session/draft", json=payload)
+    assert saved.status_code == 200, saved.text
+    reopened = client.get("/api/projects/P1/matrix-editor/session").json()
+    assert reopened["editor_draft"]["point_profile"]["electrical_point_pairs"] == expression
+    assert reopened["active_confirmed_matrix_id"] is None
+    confirmed = client.post("/api/projects/P1/matrix-editor/session/confirm", json={
+        **payload, "confirmed_by": "operator",
+        "expected_editor_draft_id": saved.json()["editor_draft_id"],
+        "expected_saved_payload_signature": saved.json()["saved_payload_signature"]})
+    assert confirmed.status_code in (200, 201), confirmed.text
+    lines = client.get("/api/projects/P1/confirmed-matrix/fee-draft").json()["groups"][0]["line_items"]
+    assert [line["units"] for line in lines] == ["20", "20"]
+    assert client.get("/api/projects/P1/matrix-editor/session").json()["editor_draft"]["point_profile"]["electrical_point_pairs"] == expression
+    seed = client.get("/api/projects/P1/matrix-editor/session").json()
+    updated = _payload(seed, ir=None, dwv=None)
+    updated["point_profile"]["electrical_point_pairs"] = "P1&P2、P1 and S2；PE-HOUSING"
+    updated["groups"][0]["sample_quantity_expression"] = "7+7"
+    saved = client.put("/api/projects/P1/matrix-editor/session/draft", json=updated)
+    assert saved.status_code == 200, saved.text
+    assert [line["units"] for line in client.get("/api/projects/P1/confirmed-matrix/fee-draft").json()["groups"][0]["line_items"]] == ["20", "20"]
+    confirmed = client.post("/api/projects/P1/matrix-editor/session/confirm", json={
+        **updated, "confirmed_by": "operator",
+        "expected_editor_draft_id": saved.json()["editor_draft_id"],
+        "expected_saved_payload_signature": saved.json()["saved_payload_signature"]})
+    assert confirmed.status_code in (200, 201), confirmed.text
+    assert [line["units"] for line in client.get("/api/projects/P1/confirmed-matrix/fee-draft").json()["groups"][0]["line_items"]] == ["21", "21"]
+    seed = client.get("/api/projects/P1/matrix-editor/session").json()
+    cleared = _payload(seed, ir="9", dwv="9")
+    cleared["point_profile"]["electrical_point_pairs"] = ""
+    saved = client.put("/api/projects/P1/matrix-editor/session/draft", json=cleared)
+    assert saved.status_code == 200, saved.text
+    confirmed = client.post("/api/projects/P1/matrix-editor/session/confirm", json={
+        **cleared, "confirmed_by": "operator",
+        "expected_editor_draft_id": saved.json()["editor_draft_id"],
+        "expected_saved_payload_signature": saved.json()["saved_payload_signature"]})
+    assert confirmed.status_code in (200, 201), confirmed.text
+    lines = client.get("/api/projects/P1/confirmed-matrix/fee-draft").json()["groups"][0]["line_items"]
+    assert all(line["units"] is None and line["review_required"] for line in lines)
+
+
+@pytest.mark.parametrize("pairs,units", [
+    ("Odd&Even，P1&P2, P1 and S2；PE-HOUSING、P3&P4;P5&P6", "30"),
+    (" , P1&P2；；P1 and S2、 ", "10"),
+    ("PE-HOUSING", "5"),
+    ("Odd&Even\nPE-HOUSING", "10"),
+])
+def test_pair_separators_do_not_split_the_endpoints(imported_session, pairs, units):
+    client, seed = imported_session
+    payload = _payload(seed, ir=None, dwv=None)
+    payload["point_profile"]["electrical_point_pairs"] = pairs
+    confirmed = client.post("/api/projects/P1/matrix-editor/session/confirm", json={**payload, "confirmed_by": "operator"})
+    assert confirmed.status_code in (200, 201), confirmed.text
+    lines = client.get("/api/projects/P1/confirmed-matrix/fee-draft").json()["groups"][0]["line_items"]
+    assert [line["units"] for line in lines] == [units, units]
+
+
+@pytest.mark.parametrize("pairs", ["， , ;；、", "P1&P2," * 8193, "A" * 65537],
+                         ids=["separators-only", "too-many-pairs", "too-long"])
+def test_invalid_pair_list_is_rejected_before_publishing(imported_session, pairs):
+    client, seed = imported_session
+    payload = _payload(seed, ir=None, dwv=None)
+    payload["point_profile"]["electrical_point_pairs"] = pairs
+    result = client.post("/api/projects/P1/matrix-editor/session/confirm", json={**payload, "confirmed_by": "operator"})
+    assert result.status_code == 422
+    assert "measurement pairs" in result.text
+    assert client.get("/api/projects/P1/matrix-editor/session").json()["active_confirmed_matrix_id"] is None
+
+
 def test_added_steps_inherit_points_and_clearing_cannot_reuse_old_counts(imported_session):
     client, seed = imported_session
     initial = client.post("/api/projects/P1/matrix-editor/session/confirm", json={
@@ -153,6 +227,8 @@ def test_electrical_settings_leave_llcr_cr_projection_and_fingerprint_unchanged(
     updated = effective_matrix_point_profile(replace(snapshot, version=replace(
         snapshot.version, point_profile=replace(profile, ir_points_per_sample="1", dwv_points_per_sample="2"))))
     assert original == updated
+    pair_profile = replace(profile, electrical_point_pairs="Odd&Even，PE-HOUSING")
+    assert original == effective_matrix_point_profile(replace(snapshot, version=replace(snapshot.version, point_profile=pair_profile)))
 
 
 def test_confirmed_electrical_points_rebase_fee_editor_units_without_losing_prices(imported_session):
