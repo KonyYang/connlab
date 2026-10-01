@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_IR_DWV_TEST_POINTS_20260930",
     "summary": "Add confirmed Matrix IR/DWV points and Fee quantities",
@@ -33,17 +33,79 @@
     "risk_reasons": [],
     "activation_head": "536f5082336d0feab82ba3e60d9fa47bc9da1f8f",
     "started_at": "2026-09-30T14:45:40.768073Z",
-    "updated_at": "2026-10-01T00:49:43.450631Z",
+    "updated_at": "2026-10-01T01:03:19.040002Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_IR_DWV_TEST_POINTS_20260930",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User approves shared IR/DWV measurement-pair text, compact adjacent input, no Points per sample label on 2026-10-01.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "summary": "Shared IR/DWV measurement-pair text box sits directly beside the heading, without redundant count label, category or Group controls. Original pair labels persist in Matrix-owned JSON; backend counts nonempty comma/semicolon/ideographic-comma/newline separated entries, preserving internal &, and and hyphens. Confirm Matrix alone publishes samples times pairs to Fee. Legacy numeric values remain readable, unequal legacy values require explicit user correction, clears cannot resurrect old quantities, LLCR/CR fingerprints unchanged. No source document or business output writes.",
+      "changed_paths": [
+        "backend/api/matrix_editor_session_dtos.py",
+        "backend/api/matrix_editor_session_response_mappers.py",
+        "backend/application/matrix_step_quantity_authority_builder.py",
+        "backend/application/matrix_test_points_authority.py",
+        "backend/domain/matrix_contact_measurement_models.py",
+        "backend/modules/fee_evaluation/fee_reviewed_extension_defaults.py",
+        "docs/PROJECT_CONTEXT.md",
+        "frontend/src/api/client.ts",
+        "frontend/src/contact-measurement-plan.css",
+        "frontend/src/features/contact-measurement-plan/MatrixTestPointsEditor.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+        "frontend/src/features/matrix-editor/matrixEditorDraftModel.ts",
+        "tests/integration/test_matrix_ir_dwv_points_api.py"
+      ],
+      "subject": "af1ef613190c4bf6ddd277c0992a4d30c34db1f2",
+      "version": 1,
+      "integration": {
+        "status": "passed",
+        "summary": "Clean local master implementation commit af1ef613190c4bf6ddd277c0992a4d30c34db1f2; exact activation-to-subject paths reported; no unrelated edits or external publication."
+      },
+      "validation": [
+        {
+          "name": "Final affected Python matrix",
+          "status": "passed",
+          "result": "449 passed, one existing Starlette deprecation warning. Covers Matrix sessions, JSON persistence, quantity authority, Fee and LLCR/CR consumers; installed-Office marked tests excluded."
+        },
+        {
+          "name": "Final affected frontend",
+          "status": "passed",
+          "result": "361 passed, one pre-existing skip across Matrix editor, contact-measurement and Fee Evaluation."
+        },
+        {
+          "name": "Frontend production build",
+          "status": "passed",
+          "result": "npm run build passed TypeScript and Vite after final code and test changes."
+        },
+        {
+          "name": "Actual browser visual smoke",
+          "status": "passed",
+          "result": "Read-only localhost Matrix page inspected in separate browser tab. One adjacent shared text area, no Points per sample label or IR/DWV categories; LLCR/CR intact; Confirm disabled with no edit. No typing or business data modification."
+        }
+      ],
+      "scope_ok": true,
+      "task_id": "TASK_MATRIX_IR_DWV_TEST_POINTS_20260930",
+      "roles": {
+        "reviewer": {
+          "status": "passed",
+          "summary": "Primary-agent sequential Standards and Spec review on exact final diff; no outstanding findings. JSON optional field preserves old contact hashes, backend calculates quantities once per profile, no new categories/Group controls, no new dependency or file output features. Not independent agent review."
+        },
+        "developer": {
+          "status": "passed",
+          "summary": "RED/GREEN API: absent pair field failed persisted reopening then passed saved text and confirmed Fee Units. RED/GREEN UI: missing text box failed then draft save/confirm passed. Tests cover four-pair sample, separator syntax, limits, numeric legacy, changes from 5 samples/4 pairs to 7 samples/3 pairs, clear precedence and confirmation-only updates."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "449 Python and 361 frontend passed on final reviewed state, one prior frontend skip; production build and actual browser visual check passed. Browser was read-only; save/confirm behavior exercised via isolated API and UI tests, not live business project writes. No packaged release run claimed."
+        }
+      },
+      "schema": "connlab.sol-task-report"
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_MATRIX_SELECTIVE_REUSE_20260930",
