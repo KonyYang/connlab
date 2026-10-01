@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_MATRIX_IR_DWV_TEST_POINTS_20260930",
     "summary": "Add confirmed Matrix IR/DWV points and Fee quantities",
@@ -33,17 +33,79 @@
     "risk_reasons": [],
     "activation_head": "536f5082336d0feab82ba3e60d9fa47bc9da1f8f",
     "started_at": "2026-09-30T14:45:40.768073Z",
-    "updated_at": "2026-09-30T23:59:08.312150Z",
+    "updated_at": "2026-10-01T00:08:57.606374Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_IR_DWV_TEST_POINTS_20260930",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requests one shared IR/DWV point count and compact project-wide UI on 2026-10-01.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "scope_ok": true,
+      "integration": {
+        "status": "passed",
+        "summary": "Clean local master subject 2273d88c1790f20bc8e526bd8feda1b7f230597b. No external publication."
+      },
+      "changed_paths": [
+        "backend/api/matrix_editor_session_dtos.py",
+        "backend/api/matrix_editor_session_response_mappers.py",
+        "backend/application/matrix_step_quantity_authority_builder.py",
+        "backend/application/matrix_test_points_authority.py",
+        "backend/domain/matrix_contact_measurement_models.py",
+        "backend/modules/fee_evaluation/fee_reviewed_extension_defaults.py",
+        "docs/PROJECT_CONTEXT.md",
+        "frontend/src/api/client.ts",
+        "frontend/src/contact-measurement-plan.css",
+        "frontend/src/features/contact-measurement-plan/MatrixTestPointsEditor.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+        "frontend/src/features/matrix-editor/matrixEditorDraftModel.ts",
+        "tests/integration/test_matrix_ir_dwv_points_api.py"
+      ],
+      "task_id": "TASK_MATRIX_IR_DWV_TEST_POINTS_20260930",
+      "validation": [
+        {
+          "name": "Final Python IR/DWV API integration",
+          "status": "passed",
+          "result": "12 passed, including shared count Units, confirm-only authority, clearing and legacy compatibility."
+        },
+        {
+          "name": "Final affected frontend regression",
+          "status": "passed",
+          "result": "359 passed, one pre-existing skip across Matrix editor, contact measurement and Fee Evaluation."
+        },
+        {
+          "name": "Final frontend production build",
+          "status": "passed",
+          "result": "TypeScript and Vite passed after final code and test changes."
+        },
+        {
+          "name": "Read-only browser visual smoke",
+          "status": "passed",
+          "result": "Actual localhost Matrix page shows one shared IR/DWV input, no Group/step list, unchanged LLCR/CR controls and no dirty state on load. Focus-only screenshot; no business data writes."
+        }
+      ],
+      "summary": "Implemented confirmed Matrix IR/DWV quantity authority and one compact shared project-wide count. No Group detail settings or additional buttons. Legacy split JSON remains compatible; unequal legacy values require explicit operator entry with no saving on load. Confirm Matrix publishes Fee quantities. No source documents or business files were changed.",
+      "version": 1,
+      "roles": {
+        "reviewer": {
+          "status": "passed",
+          "summary": "Sequential primary-agent review of exact diff: Standards and Spec both no outstanding findings. Unused coverage calculation/export removed; no independent reviewer claimed."
+        },
+        "qa": {
+          "status": "passed",
+          "summary": "Current final revision: 12 Python and 359 frontend passes with one pre-existing skip, production build and actual browser visual check. Original broader backend validation remains in implementation history; no repeated full backend run or packaged release execution claimed."
+        },
+        "developer": {
+          "status": "passed",
+          "summary": "RED: three expected missing-shared-input failures. GREEN: restore/save/confirm, unequal legacy counts, clearing and unchanged contact points. Backend implementation unchanged in this UI revision."
+        }
+      },
+      "subject": "2273d88c1790f20bc8e526bd8feda1b7f230597b"
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_MATRIX_SELECTIVE_REUSE_20260930",
