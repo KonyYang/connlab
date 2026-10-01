@@ -56,8 +56,16 @@
     ],
     "activation_head": "29c0b9de3335d5c1e8beb0f3f2f559889ac572fd",
     "started_at": "2026-10-01T03:23:28.767007Z",
-    "updated_at": "2026-10-01T03:23:28.767007Z",
-    "checkpoint": null,
+    "updated_at": "2026-10-01T04:08:22.514778Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_362_IR_DWV_RECORD_WORKBOOK_20261001",
+      "stage": "p1_golden_gate",
+      "status": "blocked",
+      "summary": "P1 writer core and 19 focused tests pass; full non-Office Python gate passes 3193 tests. Golden comparison fails with 90 non-data cell differences, so P2/P3 are prohibited. External template backup/purification is also deferred because ~$IR&DWV Template.xlsx reappeared.",
+      "requires_user": true
+    },
     "report": null
   },
   "last_closed": {
