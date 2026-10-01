@@ -47,6 +47,16 @@
   flex-wrap: wrap;
 }
 
+.matrix-test-points-shared-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.matrix-test-points-shared-count .project-point-profile-input {
+  width: 96px;
+}
+
 .matrix-test-points-editor .project-point-profile-delta-r {
   margin-top: 0;
 }

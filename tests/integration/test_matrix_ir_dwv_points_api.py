@@ -100,6 +100,15 @@ def test_invalid_ir_point_count_is_rejected_without_publishing(imported_session,
     assert client.get("/api/projects/P1/matrix-editor/session").json()["active_confirmed_matrix_id"] is None
 
 
+def test_shared_points_generate_the_same_units_for_ir_and_dwv(imported_session):
+    client, seed = imported_session
+    result = client.post("/api/projects/P1/matrix-editor/session/confirm", json={
+        **_payload(seed, ir="2", dwv="2"), "confirmed_by": "operator"})
+    assert result.status_code in (200, 201), result.text
+    lines = client.get("/api/projects/P1/confirmed-matrix/fee-draft").json()["groups"][0]["line_items"]
+    assert [line["units"] for line in lines] == ["10", "10"]
+
+
 def test_added_steps_inherit_points_and_clearing_cannot_reuse_old_counts(imported_session):
     client, seed = imported_session
     initial = client.post("/api/projects/P1/matrix-editor/session/confirm", json={

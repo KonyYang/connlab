@@ -154,7 +154,7 @@ function containsAliasToken(normalizedText: string, alias: string): boolean {
   return ` ${normalizedText} `.includes(` ${aliasNormalized} `);
 }
 
-export function detectStepDescriptionFamily(testItem: string): StepDescriptionFamily | null {
+function detectStepDescriptionFamily(testItem: string): StepDescriptionFamily | null {
   const normalized = normalizeStepItemForMatch(testItem);
   if (normalized.length === 0) {
     return null;

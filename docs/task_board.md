@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_MATRIX_IR_DWV_TEST_POINTS_20260930",
     "summary": "Add confirmed Matrix IR/DWV points and Fee quantities",
@@ -33,80 +33,17 @@
     "risk_reasons": [],
     "activation_head": "536f5082336d0feab82ba3e60d9fa47bc9da1f8f",
     "started_at": "2026-09-30T14:45:40.768073Z",
-    "updated_at": "2026-09-30T15:42:28.762243Z",
+    "updated_at": "2026-09-30T23:59:08.312150Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_MATRIX_IR_DWV_TEST_POINTS_20260930",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requests one shared IR/DWV point count and compact project-wide UI on 2026-10-01.",
       "requires_user": false
     },
-    "report": {
-      "roles": {
-        "qa": {
-          "status": "passed",
-          "summary": "One final affected matrix after last implementation/test edits: 490 Python, 357 Vitest, production build, read-only real-browser layout. No whole-repository or packaged-release validation claimed."
-        },
-        "developer": {
-          "status": "passed",
-          "summary": "TDD RED: IR-only profile rejected and inputs absent; known units lost for missing/unsupported duration. GREEN: new 11 API/compatibility tests and 2 UI regressions. Real isolated DB/API verifies confirm-only publication and Fee price preservation with updated quantities."
-        },
-        "reviewer": {
-          "status": "passed",
-          "summary": "Sequential focused Standards and Spec review in primary context, not an independent agent. Exact diff checked against request, old JSON compatibility, optional settings, contact fingerprints, quantity ownership/clearing, selected steps, and Fee authority boundary. No remaining blocking findings."
-        }
-      },
-      "scope_ok": true,
-      "schema": "connlab.sol-task-report",
-      "changed_paths": [
-        "backend/api/matrix_editor_session_dtos.py",
-        "backend/api/matrix_editor_session_response_mappers.py",
-        "backend/application/matrix_step_quantity_authority_builder.py",
-        "backend/application/matrix_test_points_authority.py",
-        "backend/domain/matrix_contact_measurement_models.py",
-        "backend/modules/fee_evaluation/fee_reviewed_extension_defaults.py",
-        "docs/PROJECT_CONTEXT.md",
-        "frontend/src/api/client.ts",
-        "frontend/src/features/contact-measurement-plan/MatrixTestPointsEditor.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
-        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
-        "frontend/src/features/matrix-editor/matrixEditorDraftModel.ts",
-        "frontend/src/features/matrix-editor/matrixStepWorkspaceModel.ts",
-        "tests/integration/test_matrix_ir_dwv_points_api.py"
-      ],
-      "integration": {
-        "status": "passed",
-        "summary": "Clean exact local master commit a830c6305d4fbe2d3838381559def5886193bfff; no unrelated work changed."
-      },
-      "validation": [
-        {
-          "status": "passed",
-          "name": "Backend affected calculation and Matrix/Fee API suite",
-          "result": "490 passed, one existing Starlette deprecation warning"
-        },
-        {
-          "status": "passed",
-          "name": "Frontend Matrix/Test points/Fee suite",
-          "result": "357 passed; one pre-existing skipped profiling test"
-        },
-        {
-          "status": "passed",
-          "name": "Production build",
-          "result": "tsc -b and vite build passed"
-        },
-        {
-          "status": "passed",
-          "name": "In-app browser read-only smoke",
-          "result": "Actual project Matrix page renders separate IR/DWV controls, selected-step coverage, missing-count warning, and unchanged LLCR/CR controls. Business Confirm not clicked."
-        }
-      ],
-      "task_id": "TASK_MATRIX_IR_DWV_TEST_POINTS_20260930",
-      "summary": "Implemented optional Matrix IR/DWV per-sample point settings, confirm-only quantity publication, Fee Units refresh, compatibility, validation, and UI coverage. No business project or supplied attachment edits; no result-workbook generator or release rebuild.",
-      "subject": "a830c6305d4fbe2d3838381559def5886193bfff",
-      "version": 1
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_FEE_MATRIX_SELECTIVE_REUSE_20260930",

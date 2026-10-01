@@ -113,10 +113,13 @@ Do not use a dated snapshot as a substitute for the code.
   projects without one can still read their existing point-profile authority for compatibility.
   That read-only fallback does not guess IDs or publish a new independent point authority.
 - A workbook downloaded from an unconfirmed Matrix editor is a draft preview, not a formal test record.
-  IR and DWV have separate optional per-sample measurement-point counts in the same Matrix draft.
-  Each point means one reading, not a connector pin or a sample number. Counts apply to all selected
-  Matrix steps of that test, become authority only with `Confirm Matrix`, and populate the existing
-  confirmed Step quantity snapshot. Fee consumes samples × points (the first quantity in `5+5(d)`),
+  IR and DWV share one optional per-sample measurement-point count in the same Matrix draft.
+  The editor has one compact project-wide input, without Group/step settings or coverage lists.
+  The existing separate JSON fields remain readable for compatibility; edits write the same count
+  to both. Unequal legacy counts require an explicit shared value before another editor confirmation,
+  never overwritten on load. Each point means one reading, not a connector pin or a sample number.
+  The shared count applies to all selected IR/DWV steps, becomes authority only with `Confirm Matrix`,
+  and populates the existing confirmed Step quantity snapshot. Fee consumes samples × points (the first quantity in `5+5(d)`),
   never live Matrix draft values. Clearing a previously confirmed electrical count restores quantity
   review; newly added steps inherit the configured count, removed/unselected steps do not contribute.
   LLCR/CR IDs and their compatibility fingerprints remain independent of these electrical counts.

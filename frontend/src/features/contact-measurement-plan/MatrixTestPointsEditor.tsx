@@ -21,8 +21,11 @@ export function matrixTestPointsValidation(
   for (const kind of ["ir", "dwv"] as const) {
     const value = (profile[`${kind}_points_per_sample`] ?? "").trim();
     if (value && (!/^[0-9]{1,5}$/.test(value) || Number(value) < 1 || Number(value) > 8192)) {
-      return `${kind.toUpperCase()} test points per sample must be a whole number from 1 to 8192.`;
+      return "IR / DWV points per sample must be a whole number from 1 to 8192.";
     }
+  }
+  if ((profile.ir_points_per_sample ?? "").trim() !== (profile.dwv_points_per_sample ?? "").trim()) {
+    return "Previous IR/DWV counts differ. Enter one shared point count.";
   }
   const profileError = profile.categories.length ? pointProfileValidation(profile.categories.map((category) => ({
     category_id: null, ...category,
@@ -43,13 +46,15 @@ type Props = {
   onProfileChange: (profile: MatrixTestPointProfile) => void;
   onOverridesChange: (overrides: MatrixTestPointOverride[]) => void;
   recordActions?: { llcr: ReactNode; cr: ReactNode };
-  electricalCoverage?: { ir: string[]; dwv: string[] };
 };
 
 export function MatrixTestPointsEditor({
-  profile, warning, overrides, hasCrMatrixStep, readOnly, onProfileChange, onOverridesChange, recordActions, electricalCoverage,
+  profile, warning, overrides, hasCrMatrixStep, readOnly, onProfileChange, onOverridesChange, recordActions,
 }: Props) {
   const current = profile ?? EMPTY_PROFILE;
+  const irCount = (current.ir_points_per_sample ?? "").trim();
+  const dwvCount = (current.dwv_points_per_sample ?? "").trim();
+  const sharedCount = irCount === dwvCount ? current.ir_points_per_sample ?? "" : "";
   const editableCategories = current.categories.length ? current.categories : [{ prefix: "", point_expression: "", cr_selected: true }];
   const validation = matrixTestPointsValidation(profile, overrides, hasCrMatrixStep);
   const setCategory = (index: number, patch: Partial<MatrixTestPointProfile["categories"][number]>) => {
@@ -88,23 +93,18 @@ export function MatrixTestPointsEditor({
       </tr>)}</tbody></table>
     </div>
     <div className="project-point-profile-card">
-      <header className="project-point-profile-header"><h4>IR / DWV test points</h4></header>
-      <p className="contact-measurement-summary-warning">One reading per point per sample. Applies to all selected Matrix steps of the corresponding test. Confirm Matrix to update Fee quantities.</p>
-      <div className="contact-measurement-summary-facts">
-        {(["ir", "dwv"] as const).map((kind) => <div key={kind}>
-          <label>
-            <span>{kind.toUpperCase()} test points per sample</span>
-            <input type="text" inputMode="numeric" className="project-point-profile-input"
-              aria-label={`${kind.toUpperCase()} test points per sample`} disabled={readOnly}
-              placeholder="Not set (example: 1)" value={current[`${kind}_points_per_sample`] ?? ""}
-              title="Count the actual measurement points, not the connector pins or sample numbers."
-              onChange={(event) => onProfileChange({ ...current, [`${kind}_points_per_sample`]: event.target.value })} />
-          </label>
-          <p>{electricalCoverage?.[kind].length ? electricalCoverage[kind].join("; ") : "No selected Matrix steps."}</p>
-          {!current[`${kind}_points_per_sample`]?.trim() && electricalCoverage?.[kind].length ?
-            <p className="contact-measurement-summary-warning">Not set — Fee quantities require review.</p> : null}
-        </div>)}
-      </div>
+      <header className="project-point-profile-header">
+        <h4>IR / DWV test points</h4>
+        <label className="matrix-test-points-shared-count">
+          <span>Points per sample</span>
+          <input type="text" inputMode="numeric" className="project-point-profile-input"
+            aria-label="IR / DWV points per sample" disabled={readOnly}
+            placeholder="Not set" value={sharedCount}
+            title="Shared by IR and DWV across all Matrix groups. One reading per point per sample; Confirm Matrix to update Fee quantities."
+            onChange={(event) => onProfileChange({ ...current,
+              ir_points_per_sample: event.target.value, dwv_points_per_sample: event.target.value })} />
+        </label>
+      </header>
     </div>
     {overrides.length ? <div className="matrix-test-points-migration" role="alert">
       <p>This Matrix contains previously confirmed or saved Group/step point exceptions. Existing authority stays unchanged until you choose project-wide points and Confirm Matrix.</p>
