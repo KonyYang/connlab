@@ -11,81 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_REPORT_AUTOMATION_DOC_BASELINE_20261002",
-    "summary": "Reconcile three report automation documents with current ConnLab implementation",
-    "tier": "micro",
-    "route": "sol_direct",
-    "scope": "Only correct three report design/evidence Markdown documents against current code; preserve historical evidence, distinguish proposals from implemented behavior, no business code or external document writes.",
-    "scope_paths": [
-      "docs/plans/REPORT_AUTOMATION_REAL_SAMPLE_EVIDENCE.md",
-      "docs/plans/REPORT_AUTOMATION_VBA_REFERENCE_MAP.md",
-      "docs/plans/REPORT_RESULT_PHOTO_AUTOMATION_DESIGN.md"
-    ],
-    "risk_reasons": [],
-    "activation_head": "93442a6c72f60b3b11f8366b0faf089efb73aa79",
-    "started_at": "2026-10-02T08:02:43.987501Z",
-    "updated_at": "2026-10-02T08:32:24.764041Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_REPORT_AUTOMATION_DOC_BASELINE_20261002",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_REPORT_AUTOMATION_DOC_BASELINE_20261002",
-      "subject": "2106e342e65b7c1d625aecfca6f8833247a0c355",
-      "summary": "Reconciled three report automation Markdown documents against current ConnLab source. Preserved historical evidence and newer v5 proposal; corrected delivered IR/DWV, LLCR, customer-report, authority, recoverable publication and measurement-source facts. No business code or external artifacts changed; Office historical probes were not rerun.",
-      "scope_ok": true,
-      "changed_paths": [
-        "docs/plans/REPORT_AUTOMATION_REAL_SAMPLE_EVIDENCE.md",
-        "docs/plans/REPORT_AUTOMATION_VBA_REFERENCE_MAP.md",
-        "docs/plans/REPORT_RESULT_PHOTO_AUTOMATION_DESIGN.md"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "name": "Documentation integrity",
-          "result": "Final three documents passed UTF-8 replacement-character, balanced Markdown fence, 25 unique repository reference and 2 relative-link checks."
-        },
-        {
-          "status": "passed",
-          "name": "Exact diff and scope review",
-          "result": "Primary micro self-review verified current code facts, preserved user v5 design updates, distinguished implemented behavior from future proposals, corrected actual RecoverableContactRecordPublisher path, no code/template/external file edits."
-        },
-        {
-          "status": "passed",
-          "name": "Git diff check",
-          "result": "Final staged diff passed git diff --cached --check before commit; working tree clean after content commit."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "context": "Primary micro implementation, documentation/source reconciliation and self-review; no claim of independent-agent review."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "subject": "2106e342e65b7c1d625aecfca6f8833247a0c355",
-        "facts": "Direct master commit includes only three authorized Markdown documents and writer-generated task registration; no unrelated code edits."
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_IR_DWV_DOWNLOAD_NAME_AUTHORITY_20261002",
-    "tier": "standard",
-    "subject": "4457ae6e2af6d44427fbe1d812b0332330f91a52",
-    "summary": "Align IR/DWV download names with confirmed LTR and Matrix authority",
+    "task_id": "TASK_REPORT_AUTOMATION_DOC_BASELINE_20261002",
+    "tier": "micro",
+    "subject": "2106e342e65b7c1d625aecfca6f8833247a0c355",
+    "summary": "Reconcile three report automation documents with current ConnLab implementation",
     "disposition": "completed",
-    "decision_ref": "User final Close 2026-10-02 and approved temporary preservation of three unrelated documents; Matrix confirmation recovery delivered with browser-smoke limitation reported.",
-    "closed_at": "2026-10-02T07:57:59.504767Z"
+    "decision_ref": "User final Close 2026-10-02: three report automation documents reconciled, validated and committed.",
+    "closed_at": "2026-10-02T08:35:36.218394Z"
   },
   "retained_history": [
     {
