@@ -131,10 +131,14 @@ Do not use a dated snapshot as a substitute for the code.
   never live Matrix draft values. Clearing a previously confirmed electrical count restores quantity
   review; newly added steps inherit the configured count, removed/unselected steps do not contribute.
   LLCR/CR IDs and their compatibility fingerprints remain independent of these electrical counts.
-  Historical JSON profiles without electrical settings remain readable without migration. IR/DWV
-  result-workbook generation and automated specification point extraction are not implemented here.
-- LLCR/CR form actions in Matrix Editor first check whether the current on-screen Matrix matches the
-  confirmed authority. Unconfirmed edits stay in a browser-downloaded preview; a verified confirmed
+  Historical JSON profiles without electrical settings remain readable without migration.
+  Automated specification point extraction is not implemented.
+- IR/DWV blank-record workbook generation is implemented through `IR&DWV Form` in Matrix Editor,
+  using the configured Excel template and Matrix groups, sample quantities, measurement pairs,
+  conditions and requirements. IR and DWV share each round's form; measured results remain blank.
+  The writer uses `openpyxl`, not Excel COM.
+- LLCR/CR and IR/DWV form actions in Matrix Editor first check whether the current on-screen Matrix
+  matches the confirmed authority. Unconfirmed edits stay in a browser-downloaded preview; a verified confirmed
   Matrix may publish into its `Test results` folder. A same-name formal form requires explicit approval
   to preserve the old file under local `History/Test results` before saving a new blank form. No
   measured form is silently overwritten, and changed files or interrupted publication fail closed.

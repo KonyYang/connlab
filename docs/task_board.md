@@ -11,8 +11,23 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_DOC_IR_DWV_CONTEXT_SYNC_20261002",
+    "summary": "Correct obsolete IR/DWV workbook implementation status in project context",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Update only docs/PROJECT_CONTEXT.md to reflect implemented IR/DWV template-based blank record generation and draft versus safe official publication; keep automated specification point extraction unimplemented. No code changes; preserve and restore the unrelated untracked photo automation design draft.",
+    "scope_paths": [
+      "docs/PROJECT_CONTEXT.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "1bb4d89c390a241cdb794a0bb3f6ac1d60aea290",
+    "started_at": "2026-10-02T03:43:10.928184Z",
+    "updated_at": "2026-10-02T03:43:10.928184Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_362_IR_DWV_RECORD_WORKBOOK_20261001",
     "tier": "high_risk",
