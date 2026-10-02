@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_362_IR_DWV_RECORD_WORKBOOK_20261001",
     "summary": "Implement IR/DWV Matrix record workbook end to end",
@@ -60,17 +60,110 @@
     ],
     "activation_head": "29c0b9de3335d5c1e8beb0f3f2f559889ac572fd",
     "started_at": "2026-10-01T03:23:28.767007Z",
-    "updated_at": "2026-10-02T00:27:06.658688Z",
+    "updated_at": "2026-10-02T00:32:11.252381Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_362_IR_DWV_RECORD_WORKBOOK_20261001",
-      "stage": "scope_manifest_correction",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User explicitly approved project_folder_required_forms_gateway.py for ir_dwv-only publication reuse and the two ProjectWorkbenchCloseConfirmation files. User approved original P1/P2/P3 and current paired-round/template-preservation/Matrix-requirement revisions. Replace directory navigation entries with the exact committed 34-path task diff; no future or unrelated path is admitted.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_362_IR_DWV_RECORD_WORKBOOK_20261001",
+      "subject": "43b1721163cfc852f5352523d88f4c8bf708b940",
+      "summary": "Complete template-driven paired IR/DWV records, clean execution fields, preserved logo/device/template units, Matrix conditions and requirements, and safe draft/publication chain. Independent final affected QA81passed; unchanged frontend build and isolated browser flow verified. Native Excel/release not run; sample capacity17 and explicit Remarks overflow guard remain.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/dependencies.py",
+        "backend/api/main.py",
+        "backend/api/routes_matrix_editor_ir_dwv_record_generation.py",
+        "backend/application/confirmed_matrix_llcr_cr_record_generation_service.py",
+        "backend/application/external_resource_service.py",
+        "backend/application/matrix_editor_ir_dwv_record_generation_service.py",
+        "backend/application/matrix_editor_ir_dwv_record_projection.py",
+        "backend/domain/enums.py",
+        "backend/infrastructure/files/ir_dwv_record_artifact_store.py",
+        "backend/infrastructure/files/project_folder_required_forms_gateway.py",
+        "backend/infrastructure/office/ir_dwv_record_workbook_gateway.py",
+        "backend/infrastructure/office/ir_dwv_record_workbook_layout.py",
+        "docs/plans/IR_DWV_RECORD_WORKBOOK_GOLDEN_DIFF.md",
+        "docs/plans/IR_DWV_RECORD_WORKBOOK_PLAN.md",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/contact-measurement-plan/MatrixTestPointsEditor.tsx",
+        "frontend/src/features/matrix-editor/IrDwvRecordDownloadAction.test.tsx",
+        "frontend/src/features/matrix-editor/LlcrCrRecordDownloadAction.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.testSupport.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/features/matrix-editor/useLlcrCrSpecializedRecordWorkbookModel.ts",
+        "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.test.tsx",
+        "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.tsx",
+        "frontend/src/features/settings/settingsResourceConfig.ts",
+        "scripts/inventory_ir_dwv_template.py",
+        "tests/fixtures/ir_dwv/IR_DWV_Template.xlsx",
+        "tests/fixtures/ir_dwv/template_inventory.json",
+        "tests/integration/test_external_resource_api.py",
+        "tests/integration/test_matrix_editor_ir_dwv_record_generation_api.py",
+        "tests/unit/test_confirmed_matrix_llcr_cr_record_generation_service.py",
+        "tests/unit/test_external_resource_service.py",
+        "tests/unit/test_ir_dwv_record_projection.py",
+        "tests/unit/test_ir_dwv_record_workbook_gateway.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "name": "final affected writer unit and IR/DWV API",
+          "result": "81 passed; existing deprecation warning;43.28s; final frozen gateway434ec584/test2936bd91"
+        },
+        {
+          "status": "passed",
+          "name": "independent actual current-template files",
+          "result": "3/5/7 samples,9blocks,18requirements,90conditions,1224blankmeasurementcells,72statsformulas,9logos; source07cf and prior syntheticformal/archive unchanged"
+        },
+        {
+          "status": "passed",
+          "name": "unaffected frontend and shared regressions retained",
+          "result": "Earlier151affected+52sharedPython;234frontend37files (opt-in profiling skipped); subsequent72affectedclose-labeltests+TypeScript/Vite157modulebuild exit0. Overlapping counts not summed."
+        },
+        {
+          "status": "passed",
+          "name": "isolated real browser flow and actual artifacts",
+          "result": "Owned8014/5174 draft download, formal publication, cancel, archive, missingpoints/lockedtemplate blockers. Later backend-only deltas covered by affectedtests and actualfiles; final Remarks not rerun browser. Userbusinessfiles/tab preserved; ownedservices stopped."
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed",
+          "context": "Independent Planner (earlier task context) assessed golden-source authority, paired rounds/sequence boundaries, min5 template slots/defaults/logo and units choice; User latest settled units."
+        },
+        "developer": {
+          "status": "passed",
+          "context": "ir_dwv_revision_developer; substantive RED/GREEN evidence; final Remarks7RED failures then7GREEN and31focused checks; freeze recorded."
+        },
+        "reviewer": {
+          "status": "passed",
+          "context": "ir_dwv_p1_reviewer; fullchain findings resolved then final10riskfocused passed; Standards0Spec0; independently inspected9actualblocks and staged-publication fail safety."
+        },
+        "qa": {
+          "status": "passed",
+          "context": "ir_dwv_p1_qa; final81affected tests+read-onlyactualfiles, immutable hashes; retained valid unchanged browser/frontend/build evidence."
+        },
+        "integrator": {
+          "status": "passed",
+          "context": "ir_dwv_final_integrator independently verified cleanmaster43b17211 parentcode51c12a33; board-onlylastdiff/producttree unchanged, activationancestor,34exactapprovedpaths/0drift,frozenhashes/source07cf, actualartifactSHA/size+QAevidence and API/UI wiring. No fullmatrixrepeat, no writes."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "subject": "43b1721163cfc852f5352523d88f4c8bf708b940",
+        "code_subject": "51c12a332ffbdc1b76f24157a2d052394fe4f075",
+        "facts": "Legacy v1 direct master integration clean. Independent Integrator confirmed exact34nonboardpaths, approvedscope amendment, all task commits in ancestry, exactfrozenbytes and zero actionable integration findings; no taskclose/push."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_IR_DWV_TEST_POINTS_20260930",
