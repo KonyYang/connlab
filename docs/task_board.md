@@ -28,8 +28,16 @@
     "risk_reasons": [],
     "activation_head": "58a847ba6abaeed3bfd0a5e4487045682d860b60",
     "started_at": "2026-10-02T04:29:01.724211Z",
-    "updated_at": "2026-10-02T04:29:01.724211Z",
-    "checkpoint": null,
+    "updated_at": "2026-10-02T04:40:34.467957Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_IR_DWV_DOWNLOAD_NAME_AUTHORITY_20261002",
+      "stage": "final-recording",
+      "status": "blocked",
+      "requires_user": true,
+      "summary": "Implementation committed69fde0bce5cc464b7e7d65fc19f66b225133b3f0. RED4failed then GREEN4passed; final QA36 backend +10 frontend passed; primary sequential Standards/Spec review0findings. finish returned BLOCKED_WORKTREE_DIRTY due unrelated untracked REPORT_AUTOMATION_VBA_REFERENCE_MAP.md. PHOTO_AUTOMATION design also reappeared with content changed from preserved stash during work; stash apply refused existing file and did not overwrite it. Preserve both current drafts; exact original stash edbf89681a847713c469a29f5500d4007282dd42 retained. Need User confirm unrelated editing stopped and authorize bounded reversible preservation before finish; do not reset/clean/overwrite/add unrelated files. No browser/release build rerun."
+    },
     "report": null
   },
   "last_closed": {
