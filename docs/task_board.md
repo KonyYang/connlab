@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_BASIC_INFORMATION_CONFIRM_CHANGES_20261002",
     "summary": "Load confirmed Basic Information on entry and confirm only material changes",
@@ -30,9 +30,86 @@
     "risk_reasons": [],
     "activation_head": "10ae47c7c5b69a6d94c6c23a87c42ccf3c56e705",
     "started_at": "2026-10-02T13:33:29.361899Z",
-    "updated_at": "2026-10-02T13:33:29.361899Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-02T13:58:52.971841Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_BASIC_INFORMATION_CONFIRM_CHANGES_20261002",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "changed_paths": [
+        "backend/application/project_basic_information_service.py",
+        "docs/PROJECT_CONTEXT.md",
+        "frontend/src/App.test.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
+        "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.tsx",
+        "frontend/src/features/project-basic-information/basicInformationFieldConfig.ts",
+        "frontend/src/features/project-basic-information/basicInformationSelectors.ts",
+        "frontend/src/features/project-basic-information/useProjectBasicInformationModel.ts",
+        "frontend/src/pages/ProjectBasicInformationPage.tsx",
+        "tests/unit/test_project_basic_information_service.py"
+      ],
+      "integration": {
+        "result": "Scoped local commit cbd1ee72; clean worktree. Protected external photo-automation design hash unchanged. No push or final Close.",
+        "subject": "cbd1ee72f417df06f3be350cb375e324832a70e4",
+        "status": "passed"
+      },
+      "validation": [
+        {
+          "result": "69 passed, 1 existing Starlette deprecation warning. Backend unchanged since this final validation.",
+          "command": "pytest basic-information service/repository/output-identity, LTR synchronization service, and both API suites",
+          "status": "passed"
+        },
+        {
+          "result": "123 passed on final source/test bytes, including pending-save project switch regression.",
+          "command": "npm test -- src/App.test.tsx src/features/project-basic-information src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+          "status": "passed"
+        },
+        {
+          "result": "TypeScript and Vite production build passed after final implementation edit.",
+          "command": "npm run build",
+          "status": "passed"
+        },
+        {
+          "result": "Authority-first entry; changed/reverted Confirm enablement; same-URL document reload restores autosaved draft; Cancel and fresh entry restore authority without deleting draft; UI Confirm returns Workspace; re-entry shows confirmed value and disabled button; repeated public API confirmation keeps version 5, record ID and timestamp unchanged. Browser evidence in tmp/qa_basic_confirm_*.png. Only owned fixture changed; service and test tab stopped.",
+          "command": "In-app browser against isolated 127.0.0.1:8096 production-build fixture and real SQLite/API",
+          "status": "passed"
+        },
+        {
+          "result": "Meaningful RED/GREEN for duplicate authority revisions, authority-first/change detection, route-entry behavior, departed-save callback, and pending-save project switch. Initial ambiguous test selector was corrected before meaningful RED. Exact final diff has no whitespace errors.",
+          "command": "TDD behavioral RED/GREEN plus git diff --check",
+          "status": "passed"
+        }
+      ],
+      "subject": "cbd1ee72f417df06f3be350cb375e324832a70e4",
+      "task_id": "TASK_BASIC_INFORMATION_CONFIRM_CHANGES_20261002",
+      "version": 1,
+      "scope_ok": true,
+      "summary": "Authority-first Basic Information entry, normalized change detection, saved-session refresh recovery, and idempotent confirmation completed. Final targeted tests and isolated browser production-build acceptance passed. No business project data or external design documents modified. Packaged release and full repository suite not run.",
+      "roles": {
+        "qa": {
+          "result": "123 frontend tests; 69 backend tests on unchanged final backend; production build; final-build isolated browser acceptance. No installed-package/full-repository claim.",
+          "context": "/root, final validation pass after last implementation/test edit",
+          "status": "passed"
+        },
+        "reviewer": {
+          "result": "Standards: 0 outstanding findings. Spec: 0 outstanding findings. Departed-save history marker race and cross-project saving-state residue reproduced and fixed; reviewed exact final diff.",
+          "context": "/root, sequential focused review, not an independent agent",
+          "status": "passed"
+        },
+        "developer": {
+          "result": "11 scoped product/test/document files. TDD regression protection; no schema, Office, or external-file changes.",
+          "context": "/root, standard task planning and implementation",
+          "status": "passed"
+        }
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_CREATE_FOLDER_ARCHIVE_ONLY_20261002",
