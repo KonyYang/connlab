@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_REPORT_WORKSPACE_HIDE_AUTHORITY_VERSIONS_20261003",
+    "summary": "Remove permanent Report Workspace authority version strip",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Remove the always-visible Basic Information/Matrix version strip and unused CSS. Preserve all authority/readiness validation and contextual blockers. Update affected public UI assertions and product facts; no backend or business-file mutations.",
+    "scope_paths": [
+      "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+      "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+      "frontend/src/workbench.css",
+      "docs/PROJECT_CONTEXT.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "1f6ffd0a10da13830763a4e0890785dcf77d9607",
+    "started_at": "2026-10-02T23:34:20.905824Z",
+    "updated_at": "2026-10-02T23:34:20.905824Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_REPORT_WORKSPACE_COMPACT_LAYOUT_20261002",
     "tier": "standard",

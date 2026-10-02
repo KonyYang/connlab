@@ -100,6 +100,8 @@ Do not use a dated snapshot as a substitute for the code.
 - Report Workspace shares the global page title/action bar, showing the registered LTR and latest
   confirmed Basic Information description/test item with existing Project fallbacks; unconfirmed
   drafts never supply that label. Optional label lookups do not block report operations.
+- Authority version counters are not displayed in a permanent strip. Existing contextual blockers
+  still explain missing confirmation or mismatched sources; authority checks remain unchanged.
 - Three compact business sections organize Internal Report, Update Internal Report (LLCR import/update
   and Equipment List preview), and Customer Report. There is no numbered wizard or page-wide Confirm.
   LLCR import remains available before the initial report exists. Section updates preserve unrelated

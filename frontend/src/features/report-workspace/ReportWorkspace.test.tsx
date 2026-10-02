@@ -289,7 +289,8 @@ describe("ReportWorkspace", () => {
     expect(await screen.findByRole("heading", { name: "Report Workspace" })).toBeTruthy();
     expect(screen.queryByText("Project project-1")).toBeNull();
     expect(screen.getAllByText(currentReport.file_name!).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Confirmed Matrix r4")).toBeTruthy();
+    expect(screen.queryByText("Confirmed Matrix r4")).toBeNull();
+    expect(screen.queryByText("Basic Information v2")).toBeNull();
     expect(within(screen.getByRole("region", { name: "Internal Report" })).getByText("Official project report")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Generate initial report" })).toBeNull();
 
@@ -312,6 +313,22 @@ describe("ReportWorkspace", () => {
         decisions: [{ result_id: "result-1", outcome: "pass", override_reason: null }],
       })
     );
+  });
+
+  it.each([
+    { authority: { ...state, basic_information_status: "unconfirmed" as const }, blocker: "Confirm Basic Information before generating a report draft." },
+    { authority: { ...state, active_confirmed_matrix_id: null, active_confirmed_matrix_revision: null }, blocker: "Activate a Confirmed Matrix before generating a report draft." },
+  ])("keeps the actionable initial-report blocker: $blocker", async ({ authority, blocker }) => {
+    vi.mocked(api.fetchReportWorkspace).mockResolvedValue(authority);
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue({
+      ...currentReport, status: "missing", mode: null, file_name: null, file_sha256: null, download_url: null,
+    });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    const internal = await screen.findByRole("region", { name: "Internal Report" });
+    expect(within(internal).getByText(blocker)).toBeTruthy();
+    expect(within(internal).getByRole("button", { name: "Generate initial report" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByText("Basic Information v2")).toBeNull();
+    expect(screen.queryByText("Confirmed Matrix r4")).toBeNull();
   });
 
   it("enables initial generation only when no current report exists", async () => {

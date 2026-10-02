@@ -435,13 +435,6 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
           {commandbar}
         </header>
       )}
-      {state ? (
-        <div className="report-workspace-authority" aria-label="Report authority">
-          <span>{state.basic_information_status === "confirmed" ? `Basic Information v${state.confirmed_basic_information_version}` : "Basic Information not confirmed"}</span>
-          <span>{state.active_confirmed_matrix_id ? `Confirmed Matrix r${state.active_confirmed_matrix_revision}` : "No active Confirmed Matrix"}</span>
-        </div>
-      ) : null}
-
       {error ? <ErrorMessage message={error} /> : null}
       {message ? <p className="report-workspace-message" role="status">{message}</p> : null}
 
