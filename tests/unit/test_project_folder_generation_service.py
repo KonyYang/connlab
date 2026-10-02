@@ -301,8 +301,11 @@ def test_locked_existing_folder_explains_resume_and_safe_continue_choices(tmp_pa
     result = service.read("p")
     assert result["status"] == "blocked"
     assert result["can_restart"] is True
-    assert "Windows denied access" in result["message"]
-    assert "rebuild option" in result["message"]
+    assert "could not be moved to History" in result["message"]
+    assert "File Explorer windows or tabs" in result["message"]
+    assert "documents opened from this folder" in result["message"]
+    assert "Create folder again" in result["message"]
+    assert "permission" in result["message"]
     assert "Diagnostic ID:" in result["message"]
 
 
@@ -339,6 +342,8 @@ def test_blocked_folder_reports_access_denial_with_diagnostic_id(tmp_path, caplo
     assert result["status"] == "blocked"
     assert "Diagnostic ID:" in result["message"]
     assert "folder_workspace" in result["message"]
-    assert "denied access" in result["message"]
+    assert "could not be moved to History" in result["message"]
+    assert "File Explorer windows or tabs" in result["message"]
+    assert "permission" in result["message"]
     assert result["operation_id"] in caplog.text
     assert '"winerror": 5' in caplog.text

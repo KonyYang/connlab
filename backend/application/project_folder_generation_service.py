@@ -164,9 +164,10 @@ class ProjectFolderGenerationService:
                         )
                     elif isinstance(exc, ProjectFolderInUseError):
                         message = (
-                            "Windows denied access to the existing project folder. "
-                            "Check permissions or file locks, then resume, or start a new generation and "
-                            "choose a rebuild option after resolving file access."
+                            "The existing project folder could not be moved to History. "
+                            "Close documents opened from this folder and File Explorer windows or tabs "
+                            "viewing this folder or its subfolders, then click Create folder again. "
+                            "If it still fails, check your permission to move the folder."
                         )
                     elif isinstance(exc, OSError):
                         message = (

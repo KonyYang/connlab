@@ -1759,6 +1759,53 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
   });
 });
 
+it.each([
+  "[Stage: folder_fee_form; Diagnostic ID: plain-stage]",
+  "[Windows error: 5; Stage: folder_fee_form; Diagnostic ID: windows-error]",
+  "[Office HRESULT: -2147467259; Stage: folder_fee_form; Diagnostic ID: office-error]",
+])("keeps %s behind collapsed diagnostic details", async (diagnostic) => {
+  const user = userEvent.setup();
+  renderWorkbench({ officialWorkspaceError: `Fee Form is unavailable. ${diagnostic}` });
+  const alert = screen.getByRole("alert");
+  expect(within(alert).getByText("Fee Form is unavailable.").textContent).toBe("Fee Form is unavailable.");
+  const details = within(alert).getByText("Diagnostic details").closest("details");
+  expect(details).toHaveProperty("open", false);
+  await user.click(within(alert).getByText("Diagnostic details"));
+  expect(details).toHaveProperty("open", true);
+  expect(within(details!).getByText(diagnostic)).toBeTruthy();
+});
+
+it("explains the saved legacy folder archive failure without exposing its diagnostic suffix", () => {
+  renderWorkbench({ officialWorkspaceError:
+    "Windows denied access to the existing project folder. Check permissions or file locks, then resume, or start a new generation and choose a rebuild option after resolving file access. [Windows error: 5; Stage: folder_workspace; Diagnostic ID: saved-operation]" });
+  const alert = screen.getByRole("alert");
+  const guidance = within(alert).getByText(/could not be moved to History/);
+  expect(guidance.textContent).toContain("documents opened from this folder");
+  expect(guidance.textContent).toContain("File Explorer windows or tabs");
+  expect(guidance.textContent).toContain("subfolders");
+  expect(guidance.textContent).toContain("Create folder again");
+  expect(guidance.textContent).toContain("permission");
+  expect(guidance.textContent).not.toMatch(/Windows error|Diagnostic ID|Stage:/);
+  expect(within(alert).getByText("Diagnostic details").closest("details")).toHaveProperty("open", false);
+});
+
+it("does not reinterpret unrelated permission errors or hide ordinary bracketed guidance", () => {
+  const message = "Folder storage is unavailable. [Check access permissions] [Stage: inspect folder]";
+  renderWorkbench({ officialWorkspaceError: message });
+  const alert = screen.getByRole("alert");
+  expect(within(alert).getByText(message)).toBeTruthy();
+  expect(within(alert).queryByText("Diagnostic details")).toBeNull();
+  expect(alert.textContent).not.toContain("History");
+});
+
+it("does not treat a generic Windows error 5 as a folder archive failure", () => {
+  renderWorkbench({ officialWorkspaceError: "Folder storage is unavailable. [Windows error: 5; Stage: folder_test_record; Diagnostic ID: other-operation]" });
+  const alert = screen.getByRole("alert");
+  expect(within(alert).getByText("Folder storage is unavailable.")).toBeTruthy();
+  expect(alert.textContent).not.toContain("File Explorer");
+  expect(alert.textContent).not.toContain("History");
+});
+
 it("discloses Create folder outputs and optional form skips without exposing storage paths", async () => {
   const user = userEvent.setup();
   renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, officialWorkspacePreview: {

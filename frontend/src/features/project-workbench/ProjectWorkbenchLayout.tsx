@@ -289,6 +289,7 @@ export function ProjectWorkbenchLayout({
     ?? folderRelocationError
     ?? officialWorkspaceError
     ?? initialWorkspaceResourceBlocker;
+  const folderAlert = deriveProjectFolderAlert(displayedOfficialWorkspaceError ?? "");
   const isSettingsTemplateGenerationBlocker = Boolean(
     displayedOfficialWorkspaceError
     && isSettingsTemplateResourceBlocker(displayedOfficialWorkspaceError)
@@ -667,8 +668,8 @@ export function ProjectWorkbenchLayout({
           role="alert"
         >
           <strong>Project folder workflow</strong>
-          <span>{displayedOfficialWorkspaceError?.replace(/\s*\[Stage:[\s\S]*$/, "")}</span>
-          {displayedOfficialWorkspaceError?.includes("[Stage:") ? <details><summary>Diagnostic details</summary><span>{displayedOfficialWorkspaceError.slice(displayedOfficialWorkspaceError.indexOf("[Stage:"))}</span></details> : null}
+          <span>{folderAlert.guidance}</span>
+          {folderAlert.diagnostic ? <details><summary>Diagnostic details</summary><span>{folderAlert.diagnostic}</span></details> : null}
           {isBasicInformationGenerationBlocker &&
           runtimeModel.basicInformation?.status !== "confirmed" ? (
             <button type="button" onClick={onOpenBasicInformation}>
@@ -822,6 +823,25 @@ export function ProjectWorkbenchLayout({
       ) : null}
     </section>
   );
+}
+
+function deriveProjectFolderAlert(message: string): { guidance: string; diagnostic: string | null } {
+  // Only the backend's complete diagnostic suffix is metadata. Other bracketed
+  // operator guidance remains part of the primary message.
+  const suffix = message.match(/\s*(\[(?:(?:Windows error|Office HRESULT): -?\d+; )?Stage: [A-Za-z0-9_-]+; Diagnostic ID: [A-Za-z0-9_-]+\])$/);
+  const primary = suffix ? message.slice(0, suffix.index).trim() : message;
+  const legacyArchiveMessage = "Windows denied access to the existing project folder. "
+    + "Check permissions or file locks, then resume, or start a new generation and "
+    + "choose a rebuild option after resolving file access.";
+  return {
+    guidance: primary === legacyArchiveMessage
+      ? "The existing project folder could not be moved to History. "
+        + "Close documents opened from this folder and File Explorer windows or tabs "
+        + "viewing this folder or its subfolders, then click Create folder again. "
+        + "If it still fails, check your permission to move the folder."
+      : primary,
+    diagnostic: suffix?.[1] ?? null,
+  };
 }
 
 function isProjectFolderWriteAction(actionTarget: ProjectFolderTaskActionTarget): boolean {
