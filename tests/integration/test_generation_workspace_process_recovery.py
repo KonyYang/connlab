@@ -178,6 +178,8 @@ def test_later_step_refuses_replaced_workspace_directories_but_allows_new_output
 
 
 def _child(root, mode):
+    if mode.startswith("ir_"):
+        return _ir_dwv_child(root, mode)
     settings = _settings(root)
     engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
     runner = ProjectFolderGenerationRunner(create_session_factory(engine), settings)
@@ -347,6 +349,74 @@ def test_changed_folder_after_process_exit_resumes_same_archive_rebuild(tmp_path
     finally:
         runner.pool.shutdown()
         engine.dispose()
+
+
+def _ir_dwv_child(root, window):
+    from backend.application.project_output_record_service import ProjectOutputRecordService
+    settings = _settings(root)
+    engine = create_engine(f"sqlite:///{settings.database_path.as_posix()}")
+    runner = ProjectFolderGenerationRunner(create_session_factory(engine), settings)
+    state = runner.journal.read("P1")
+    if window == "ir_before_db":
+        original = ProjectOutputRecordService.register_output
+        def interrupted_registration(self, command):
+            if command.output_kind.value == "ir_dwv_record_form":
+                os._exit(71)
+            return original(self, command)
+        ProjectOutputRecordService.register_output = interrupted_registration
+    runner.run_step(state, "llcr_cr_records")
+    if window == "ir_after_db":
+        os._exit(72)  # Session committed; the service's step checkpoint has not.
+    runner.pool.shutdown()
+    engine.dispose()
+
+
+@pytest.mark.parametrize("window,exit_code", [("ir_before_db", 71), ("ir_after_db", 72)])
+def test_new_process_recovers_ir_dwv_without_rewriting_workbook_or_duplicate_registration(tmp_path, monkeypatch, window, exit_code):
+    fixture_module = runpy.run_path(str(Path(__file__).with_name("test_project_folder_generation_complete_chain.py")))
+    fixture = fixture_module["seed_create_folder_ir_dwv_project"](tmp_path, monkeypatch)
+    runner = fixture.runner
+    try:
+        fixture.service.start("P1", None, runner.preview_context("P1"), "process-record")
+        fixture.callbacks.clear()
+        state = runner.journal.read("P1")
+        from backend.application.project_folder_generation_service import GENERATION_STEPS
+        for name in GENERATION_STEPS[:-1]:
+            runner.run_step(state, name)
+            state["completed_steps"].append(name)
+            state["step"] += 1
+            runner.journal.save(state)
+        state["status"] = "running"
+        runner.journal.save(state)
+        env = dict(os.environ, PYTHONPATH=str(Path(__file__).parents[2]))
+        def child(mode):
+            return subprocess.run([sys.executable, str(Path(__file__).resolve()), str(tmp_path), mode],
+                                  env=env, capture_output=True, text=True, timeout=40)
+        crashed = child(window)
+        assert crashed.returncode == exit_code, crashed.stdout + crashed.stderr
+        with fixture.sessions() as session:
+            workspace = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
+        target = workspace.official_folder_path / "Test results" / "DL-2026-10-IRDWV IR&DWV Record.xlsx"
+        original_bytes, original_mtime = target.read_bytes(), target.stat().st_mtime_ns
+        assert original_bytes.startswith(b"PK")
+        for _ in range(2):
+            recovered = child("ir_recover")
+            assert recovered.returncode == 0, recovered.stdout + recovered.stderr
+            assert target.read_bytes() == original_bytes and target.stat().st_mtime_ns == original_mtime
+        fixture.service.resume("P1", state["operation_id"])
+        fixture.callbacks.pop()()
+        assert fixture.service.read("P1")["status"] == "completed"
+        with fixture.sessions() as session:
+            records = [record for record in deps.get_project_output_record_service(session).list_records("P1")
+                       if record.output_kind.value == "ir_dwv_record_form"]
+            assert len(records) == 1
+            assert records[0].output_path == str(target)
+        assert target.read_bytes() == original_bytes and target.stat().st_mtime_ns == original_mtime
+    finally:
+        app.dependency_overrides.clear()
+        fixture.client.close()
+        runner.pool.shutdown()
+        fixture.engine.dispose()
 
 
 if __name__ == "__main__":

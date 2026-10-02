@@ -124,9 +124,11 @@ class ProjectFolderGenerationRunner:
     def preview_context(self, project_id, intent="create"):
         return self.preview(project_id, intent)["expected_context"]
 
-    def preview_context_matches(self, project_id, expected_context, intent="create", *, allow_legacy=False):
+    def preview_context_matches(self, project_id, expected_context, intent="create", *, allow_legacy=False, allow_contact=False):
         preview = self.preview(project_id, intent)
         if preview["expected_context"] == expected_context:
+            return True
+        if allow_contact and preview.get("contact_expected_context") == expected_context:
             return True
         return allow_legacy and expected_context in {
             preview.get("legacy_expected_context"),
@@ -215,6 +217,11 @@ class ProjectFolderGenerationRunner:
                               if key != "contact_record_targets"}
             legacy_token = fingerprint(legacy_payload)
             previous_token = fingerprint({**legacy_payload, "intent": intent})
+            # v3 reviewed LLCR/CR only. Its token must remain recoverable without
+            # adding an electrical target to the persisted publication approval.
+            contact_token = fingerprint({**token_payload, "intent": intent,
+                "contact_record_targets": {kind: item for kind, item in contact_record_targets.items()
+                                           if kind in {"llcr", "cr"}}})
             if (rebuilding and saved_operation is not None
                     and saved_operation["status"] != "completed"
                     and saved_operation.get("preview_context_version") is None):
@@ -287,6 +294,7 @@ class ProjectFolderGenerationRunner:
                 "expected_context": token,
                 "legacy_expected_context": legacy_token,
                 "previous_expected_context": previous_token,
+                "contact_expected_context": contact_token,
                 "recovery": recovery,
                 "start_blockers": start_blockers,
                 "review_conflicts": review_conflicts,
@@ -343,6 +351,7 @@ class ProjectFolderGenerationRunner:
                             state["preview_context"],
                             intent,
                             allow_legacy=state.get("preview_context_version") in {None, 2},
+                            allow_contact=state.get("preview_context_version") == 3,
                         ):
                             raise ValueError("Workspace preview or target changed. Refresh and review before generating.")
                     workspace = RecoverableWorkspacePublisher(self.journal, state, verify_context, verify_initial_preview)
@@ -414,7 +423,7 @@ class ProjectFolderGenerationRunner:
                 raise
 
     def _generate_contact_records(self, state, session, workspace, outputs, publisher):
-        """Publish only the reviewed, Matrix-confirmed contact forms at chain end."""
+        """Publish only the reviewed, Matrix-confirmed blank forms at chain end."""
         if publisher is None or workspace is None:
             raise ValueError("Project folder must be ready before contact record generation.")
         approved = state.get("contact_record_targets")
@@ -425,7 +434,8 @@ class ProjectFolderGenerationRunner:
             )
             self.journal.save(state)
             return
-        for kind in ("llcr", "cr"):
+        kinds = ("llcr", "cr", "ir_dwv") if state.get("preview_context_version") == 4 else ("llcr", "cr")
+        for kind in kinds:
             item = approved.get(kind)
             if item is None:
                 continue
@@ -439,11 +449,12 @@ class ProjectFolderGenerationRunner:
                 raise ValueError("Contact record target was not approved for generation.")
             if f"llcr_cr_records:{kind}" in state["effects"]:
                 continue  # recover() already reconciled publication and registration.
-            projection = deps.get_llcr_cr_record_workbook_preview_service(session).preview(
-                state["project_id"], kind,
-            )
+            generation = (deps.get_matrix_editor_ir_dwv_record_generation_service(session, self.settings)
+                          if kind == "ir_dwv" else None)
+            projection = (generation.preview(state["project_id"]) if generation else
+                          deps.get_llcr_cr_record_workbook_preview_service(session).preview(state["project_id"], kind))
             if projection.status != "ready" or projection.preview_fingerprint != item["preview_fingerprint"]:
-                raise ValueError("Confirmed Matrix Test points changed. Review contact forms again.")
+                raise ValueError("Confirmed Matrix record sources changed. Review the blank forms again.")
             target = Path(item["target"])
             if target.parent != workspace.official_folder_path / "Test results":
                 raise ValueError("Contact record target does not belong to the official Test results folder.")
@@ -452,7 +463,8 @@ class ProjectFolderGenerationRunner:
             source = stage_root / f"{kind}-{uuid4().hex}.xlsx"
             if os.path.lexists(source):
                 raise ValueError("Contact record stage path unexpectedly exists.")
-            LlcrCrSpecializedRecordWorkbookGateway().write(
+            writer = generation or LlcrCrSpecializedRecordWorkbookGateway()
+            writer.write(
                 output_path=source, projection=projection,
             )
             source_parent_identity = file_identity(stage_root)
@@ -464,11 +476,16 @@ class ProjectFolderGenerationRunner:
                 / f"{target.stem} {state['operation_id']}{target.suffix}"
             )
             try:
+                if generation:
+                    current = generation.preview(state["project_id"])
+                    if current.status != "ready" or current.preview_fingerprint != projection.preview_fingerprint:
+                        raise ValueError("IR/DWV sources changed during generation. Review the blank form again.")
                 summary = outputs.get_status_summary(state["project_id"])
                 record = RegisterProjectOutputCommand(
                     project_id=state["project_id"],
-                    output_kind=(ProjectOutputKind.LLCR_RECORD_FORM if kind == "llcr"
-                                 else ProjectOutputKind.CR_RECORD_FORM),
+                    output_kind={"llcr": ProjectOutputKind.LLCR_RECORD_FORM,
+                                 "cr": ProjectOutputKind.CR_RECORD_FORM,
+                                 "ir_dwv": ProjectOutputKind.IR_DWV_RECORD_FORM}[kind],
                     status=ProjectOutputStatus.CURRENT,
                     source=ProjectOutputSource.SYSTEM_GENERATED,
                     output_path=str(target),

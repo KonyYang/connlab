@@ -2,7 +2,9 @@
 
 The Workbench starts one backend operation; its browser does not issue the individual document writes.
 The fixed sequence is workspace, request materials, folder check, Customer Feedback, Fee Form, Test
-Record, Test Status, and copied Application Form write-back. Existing per-step endpoints remain available.
+Record, Test Status, copied Application Form write-back, and optional Matrix blank records.
+The last journal step retains its compatibility name `llcr_cr_records` and publishes LLCR, CR and
+one combined IR/DWV workbook when their confirmed Matrix inputs are ready. Existing per-step endpoints remain available.
 Project/Matrix/confirmed Fee/Basic Information and configured source/template authority remain unchanged.
 
 ## Ownership and approval
@@ -27,6 +29,36 @@ Project/Matrix/confirmed Fee/Basic Information and configured source/template au
   Missing inputs do not hide Link existing folder when the workspace identity itself is adoptable.
 - A project-scoped OS file lock serializes generation. The retained per-step mutation routes share the
   lock/unfinished-operation guard so another tab cannot bypass the active operation.
+
+### Matrix blank records
+
+Create folder previews LLCR/CR explicit point coverage and IR/DWV explicit measurement pairs before
+writing. IR and DWV steps share `<registered LTR> IR&DWV Record.xlsx` in `Test results`, generated with
+the existing configured IR/DWV template and `openpyxl`; no measured result is filled. A Matrix with no
+electrical steps does not need that template. Only missing measurement pairs alone permits an IR/DWV
+skip warning: informational diagnostics do not prevent that skip, while invalid samples, ambiguous
+rounds, unavailable templates/layouts or unsafe paths still block the operation.
+
+The approved record projection fingerprint and existing target's SHA-256 and filesystem identity are
+saved in the journal. In-place update preserves an unchanged existing measured workbook under local
+`History/Test results` before publishing a new blank workbook without overwriting. Whole-folder Backup
+and Rebuild preserves those bytes in `History/Folders` and creates the new form in the replacement
+folder. Changing Matrix, template or target after preview requires a fresh approval. IR/DWV projection
+sources are checked again after the workbook is generated and before publication; cleanup removes
+only the unchanged operation-owned stage. File-before-DB and DB-before-checkpoint recovery registers
+one matching output without rewriting the published workbook.
+
+New operations use preview-context version 4. Version 3's preview is reconstructed with LLCR/CR targets
+only at both resume and initial workspace publication gates; saved target approvals remain unchanged.
+Version 1/2 compatibility is retained. No older journal gains IR/DWV approval on recovery. The UI's
+expandable output disclosure consumes current file preflight; the existing rebuild dialog displays
+the newly reviewed list, while resume retains the saved choices.
+
+Acceptance uses isolated SQLite and temporary templates/folders: verify real combined XLSX content
+and blank results, missing-pair skips, stale-source/target rejection, exact measured-file archival,
+v3 recovery without IR/DWV writes, and hard process-exit recovery with stable workbook bytes/mtime.
+The existing filesystem concurrency limitation below still applies; unsupported links/identities
+fail closed and operators must not edit files concurrently with generation.
 
 ## Durable publication
 
@@ -116,7 +148,7 @@ uses the recoverable generation operation for that behavior.
 
 ### Windows overwrite cleanup
 
-After all eight output steps finish, delete-and-rebuild removes only its journal-owned
+After the recorded output steps finish, legacy delete-and-rebuild removes only its journal-owned
 `overwrite-old` recovery copy. Windows ReadOnly attributes on old files or directories can prevent
 this final cleanup even though the new project outputs have already been generated. This is not
 evidence that the configured project root is missing or that document generation failed.

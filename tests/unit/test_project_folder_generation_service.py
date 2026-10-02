@@ -117,6 +117,28 @@ def test_previous_release_v2_journal_can_resume_without_new_contact_form_approva
     assert "contact_record_targets" not in journal.read("P1")
 
 
+def test_v3_journal_resumes_with_original_contact_targets_without_approving_ir_dwv(tmp_path):
+    journal = GenerationJournal(tmp_path)
+    approved = {"llcr": {"action": "skip"}}
+    state = journal.create("P1", None, "same")
+    state.update(preview_context_version=3, preview_context="v3-token", contact_record_targets=approved)
+    journal.save(state)
+    queued = []
+    service = ProjectFolderGenerationService(
+        journal, lambda _: "same", lambda *_: None, queued.append,
+        preview=lambda *_: {"expected_context": "v4-token", "contact_expected_context": "v3-token",
+                            "contact_record_targets": {**approved, "ir_dwv": {"action": "generate"}}},
+    )
+    assert service.resume("P1", state["operation_id"])["status"] == "queued"
+    assert journal.read("P1")["contact_record_targets"] == approved
+
+
+def test_new_folder_operation_versions_approval_for_ir_dwv_targets(tmp_path):
+    service = ProjectFolderGenerationService(GenerationJournal(tmp_path), lambda _: "same", lambda *_: None, lambda _: None)
+    service.start("P1", None, "same", "request")
+    assert service.journal.read("P1")["preview_context_version"] == 4
+
+
 @pytest.mark.parametrize("failure", [PermissionError, OSError])
 def test_failed_finalization_requires_resume_not_replacement(tmp_path, caplog, failure):
     import logging

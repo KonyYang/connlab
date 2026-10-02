@@ -65,7 +65,7 @@ class ProjectFolderGenerationService:
                 request_id=request_id,
                 owner=self.owner,
                 preview_context=expected_context,
-                preview_context_version=3,
+                preview_context_version=4,
                 archive_source_identity_only=strategy == "backup_and_recreate",
                 contact_record_targets=current_preview.get("contact_record_targets", {}),
             )
@@ -109,7 +109,11 @@ class ProjectFolderGenerationService:
                     state.get("preview_context_version") == 2
                     and preview.get("previous_expected_context") == expected
                 )
-                if not (matches_current or matches_legacy or matches_previous):
+                matches_contact = (
+                    state.get("preview_context_version") == 3
+                    and preview.get("contact_expected_context") == expected
+                )
+                if not (matches_current or matches_legacy or matches_previous or matches_contact):
                     raise ValueError(
                         "Workspace preview or target changed. Refresh and review before generating."
                     )

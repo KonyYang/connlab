@@ -40,6 +40,48 @@ def _settings(root):
                     database_path=root / "fixture.sqlite")
 
 
+@pytest.mark.parametrize("errors,expected_action", [
+    ([], "generate"),
+    (["missing_measurement_pairs"], "skip"),
+    (["missing_measurement_pairs", "sample_count_invalid"], "blocked"),
+    (["template_unavailable"], "blocked"),
+])
+def test_ir_dwv_folder_preflight_skips_only_missing_pairs_and_binds_measured_target(
+    tmp_path, monkeypatch, errors, expected_action,
+):
+    workspace = SimpleNamespace(dl_number="DL-001", official_folder_path=tmp_path / "Official")
+    snapshot = SimpleNamespace(
+        version=SimpleNamespace(point_profile=None),
+        rows=[SimpleNamespace(confirmed_row_id="ir", test_item="Insulation Resistance"),
+              SimpleNamespace(confirmed_row_id="dwv", test_item="Dielectric Withstanding Voltage")],
+        step_quantities=[SimpleNamespace(confirmed_row_id="ir", contact_plan=None),
+                         SimpleNamespace(confirmed_row_id="dwv", contact_plan=None)],
+    )
+    monkeypatch.setattr(deps, "ConfirmedMatrixAuthorityRepository",
+                        lambda _: SimpleNamespace(get_active_by_project=lambda _: snapshot))
+    projection = SimpleNamespace(status="blocked" if errors else "ready", preview_fingerprint="ir-fingerprint",
+        diagnostics=[SimpleNamespace(code="equipment_template_defaults", message="Template defaults", level="info"),
+                     *[SimpleNamespace(code=code, message=code, level="error") for code in errors]])
+    monkeypatch.setattr(deps, "get_matrix_editor_ir_dwv_record_generation_service",
+                        lambda *_: SimpleNamespace(preview=lambda *_: projection))
+    targets, items = contact_record_preflight("P1", workspace, object(), settings=_settings(tmp_path))
+    assert list(targets) == ["ir_dwv"]
+    assert items[0]["label"] == "IR&DWV blank record"
+    assert items[0]["action"] == expected_action
+    assert Path(targets["ir_dwv"]["target"]).name == "DL-001 IR&DWV Record.xlsx"
+    if expected_action != "generate":
+        return
+    target = Path(targets["ir_dwv"]["target"])
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"operator measurements")
+    targets, items = contact_record_preflight("P1", workspace, object(), settings=_settings(tmp_path))
+    assert items[0]["action"] == "archive_generate"
+    assert targets["ir_dwv"]["prior"]["sha"] == sha256(b"operator measurements").hexdigest()
+    rebuilding, items = contact_record_preflight("P1", workspace, object(), settings=_settings(tmp_path), rebuilding=True)
+    assert rebuilding["ir_dwv"]["prior"] is None
+    assert "History/Folders" in items[0]["message"]
+
+
 def test_contact_record_publication_archives_measured_form_without_overwriting_and_recovers(tmp_path):
     workspace = tmp_path / "DL-001"
     target = workspace / "Official" / "Test results" / "DL-001 LLCR Record.xlsx"
@@ -88,9 +130,10 @@ def test_contact_record_recovery_rejects_modified_history_without_touching_curre
     assert archive.read_bytes() == b"operator amended history"
 
 
-def test_contact_record_publication_rejects_old_file_changed_after_preview(tmp_path):
+@pytest.mark.parametrize("kind,label", [("cr", "CR"), ("ir_dwv", "IR&DWV")])
+def test_contact_record_publication_rejects_old_file_changed_after_preview(tmp_path, kind, label):
     workspace = tmp_path / "DL-001"
-    target = workspace / "Official" / "Test results" / "DL-001 CR Record.xlsx"
+    target = workspace / "Official" / "Test results" / f"DL-001 {label} Record.xlsx"
     target.parent.mkdir(parents=True)
     target.write_bytes(b"original measurements")
     original = {"sha": sha256(target.read_bytes()).hexdigest(),
@@ -103,7 +146,7 @@ def test_contact_record_publication_rejects_old_file_changed_after_preview(tmp_p
 
     with pytest.raises(ValueError, match="changed"):
         RecoverableContactRecordPublisher(journal, state, workspace, lambda: None).publish(
-            "cr", source, target, original,
+            kind, source, target, original,
         )
 
     assert target.read_bytes() == b"new operator measurements"

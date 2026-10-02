@@ -11,8 +11,43 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_CREATE_FOLDER_IR_DWV_RECORDS_20261002",
+    "summary": "Generate IR/DWV blank records in the Create folder workflow and disclose generated files",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Extend existing confirmed-Matrix contact-record Create folder preflight and recoverable generation to IR/DWV; show generated-file readiness/skip/archive information in creation UI. Preserve existing LLCR/CR, names, authority and measured files; isolated validation only; no measurement-result import or report/photo automation.",
+    "scope_paths": [
+      "backend/api/project_folder_preflight.py",
+      "backend/api/project_folder_generation_composition.py",
+      "backend/application/project_folder_generation_service.py",
+      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+      "tests/integration/test_project_folder_generation_complete_chain.py",
+      "tests/integration/test_project_folder_generation_recovery.py",
+      "tests/integration/test_generation_workspace_process_recovery.py",
+      "tests/unit/test_project_folder_generation_service.py",
+      "docs/PROJECT_CONTEXT.md",
+      "docs/project_folder_generation_recovery.md"
+    ],
+    "risk_reasons": [
+      "authoritative external mutation"
+    ],
+    "activation_head": "d3aef5c9d2c01803f18d4dfdc0ea53e550377ad2",
+    "started_at": "2026-10-02T08:47:00.592399Z",
+    "updated_at": "2026-10-02T09:28:48.143238Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_CREATE_FOLDER_IR_DWV_RECORDS_20261002",
+      "stage": "qa",
+      "status": "running",
+      "summary": "Independent Reviewer passed Standards and Spec after Developer fixed misleading fresh-output disclosure during legacy resume (3 RED/GREEN cases; final Layout 73 passed). Independent QA executing final affected Python/frontend/build matrix and real in-app browser clicks on owned isolated fixtures only. All 11 authorized files frozen; unrelated design doc preserved.",
+      "requires_user": false
+    },
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_REPORT_AUTOMATION_DOC_BASELINE_20261002",
     "tier": "micro",

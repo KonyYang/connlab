@@ -4,14 +4,15 @@ import os
 from pathlib import Path
 
 from backend.application.confirmed_matrix_llcr_cr_record_projection import matrix_record_type
+from backend.application.matrix_test_points_authority import electrical_test_kind
 
 from backend.shared.operation_diagnostics import safe_text
 from backend.infrastructure.files.recoverable_output_publisher import file_hash, file_identity
 from backend.infrastructure.official_workspace_manifest import OfficialWorkspaceManifestGateway
 
 
-def contact_record_preflight(project_id, workspace, session, *, rebuilding=False):
-    """Preview optional formal LLCR/CR files and bind old-file identity to approval."""
+def contact_record_preflight(project_id, workspace, session, *, settings=None, rebuilding=False):
+    """Preview optional Matrix record files and bind old-file identity to approval."""
     from backend.api import dependencies as deps
 
     snapshot = deps.ConfirmedMatrixAuthorityRepository(session).get_active_by_project(project_id)
@@ -26,15 +27,18 @@ def contact_record_preflight(project_id, workspace, session, *, rebuilding=False
         kind = matrix_record_type(row, quantity)
         if kind is not None:
             kinds.add(kind)
+        if electrical_test_kind(row.test_item) is not None:
+            kinds.add("ir_dwv")
     if not kinds:
         return {}, []
     targets, items = {}, []
-    for kind in ("llcr", "cr"):
+    for kind in ("llcr", "cr", "ir_dwv"):
         if kind not in kinds:
             continue
-        label = f"{kind.upper()} blank record"
+        form_label = "IR&DWV" if kind == "ir_dwv" else kind.upper()
+        label = f"{form_label} blank record"
         dl = "".join(ch if ch.isalnum() or ch in {"-", " "} else " " for ch in workspace.dl_number).strip(" .")
-        target = workspace.official_folder_path / "Test results" / f"{dl} {kind.upper()} Record.xlsx"
+        target = workspace.official_folder_path / "Test results" / f"{dl} {form_label} Record.xlsx"
         entry = {"target": str(target), "prior": None, "preview_fingerprint": None, "action": "skip"}
         template = getattr(workspace, "template_path", None)
         template_form = Path(template) / "Test results" / target.name if template else None
@@ -45,31 +49,37 @@ def contact_record_preflight(project_id, workspace, session, *, rebuilding=False
                 f"The project template already contains {target.name}; review it before "
                 "generating a new official blank form."
             )
-        elif snapshot.version.point_profile is None:
+        elif kind != "ir_dwv" and snapshot.version.point_profile is None:
             status, action = "current", "skip"
             message = f"{kind.upper()} form was skipped: confirm explicit Test points in Matrix Editor first."
         else:
-            projection = deps.get_llcr_cr_record_workbook_preview_service(session).preview(project_id, kind)
-            missing_coverage = projection.status == "empty" or (
+            projection = (
+                deps.get_matrix_editor_ir_dwv_record_generation_service(session, settings).preview(project_id)
+                if kind == "ir_dwv" else
+                deps.get_llcr_cr_record_workbook_preview_service(session).preview(project_id, kind)
+            )
+            errors = [diagnostic for diagnostic in projection.diagnostics
+                      if getattr(diagnostic, "level", "error") == "error"] if projection.status != "ready" else []
+            missing_codes = ({"missing_measurement_pairs"} if kind == "ir_dwv" else
+                             {"step_point_coverage_empty", "point_profile_not_confirmed"})
+            missing_coverage = (projection.status == "empty" and kind != "ir_dwv") or (
                 projection.status == "blocked"
-                and bool(projection.diagnostics)
+                and bool(errors)
                 and all(
-                    getattr(diagnostic, "code", None) in {
-                        "step_point_coverage_empty", "point_profile_not_confirmed",
-                    }
-                    for diagnostic in projection.diagnostics
+                    getattr(diagnostic, "code", None) in missing_codes
+                    for diagnostic in errors
                 )
             )
             if missing_coverage:
                 status, action = "current", "skip"
-                message = (
+                message = ("IR&DWV form was skipped: confirm explicit measurement pairs in Matrix Editor first."
+                           if kind == "ir_dwv" else (
                     f"{kind.upper()} form was skipped: no explicit Test points cover "
                     "the confirmed Matrix steps."
-                )
+                ))
             elif projection.status != "ready" or not projection.preview_fingerprint:
                 status, action = "blocked", "blocked"
-                message = (projection.diagnostics[0].message if projection.diagnostics
-                           else f"{kind.upper()} record projection needs review.")
+                message = (errors[0].message if errors else f"{form_label} record projection needs review.")
             else:
                 entry["preview_fingerprint"] = projection.preview_fingerprint
                 try:
@@ -82,17 +92,17 @@ def contact_record_preflight(project_id, workspace, session, *, rebuilding=False
                     entry["prior"] = {"sha": sha, "identity": file_identity(target)} if sha else None
                     action = "archive_generate" if sha else "generate"
                     status = "ready"
-                    message = (f"Existing {kind.upper()} file, including any measurements, will be moved to "
+                    message = (f"Existing {form_label} file, including any measurements, will be moved to "
                                "History/Test results before a new blank form is created."
                                if sha else (
-                                   f"Existing folder contents remain in History/Folders; create a new {kind.upper()} "
+                                   f"Existing folder contents remain in History/Folders; create a new {form_label} "
                                    "blank form in Test results."
                                    if rebuilding and os.path.lexists(target)
-                                   else f"Create a new {kind.upper()} blank form in Test results."
+                                   else f"Create a new {form_label} blank form in Test results."
                                ))
                 except (OSError, ValueError) as exc:
                     status, action = "blocked", "blocked"
-                    message = f"Cannot verify {kind.upper()} form target: {exc}"
+                    message = f"Cannot verify {form_label} form target: {exc}"
         entry["action"] = action
         if action == "skip":
             entry["warning"] = message
@@ -114,7 +124,7 @@ def package_preflight(project_id, workspace, session, settings, *, rebuilding=Fa
         items.extend({"key": item.key, "label": item.label, "status": item.status,
                       "action": item.action, "message": safe_text(item.message)} for item in forms.items)
         contact_targets, contact_items = contact_record_preflight(
-            project_id, planned, session, rebuilding=rebuilding,
+            project_id, planned, session, settings=settings, rebuilding=rebuilding,
         )
         items.extend(contact_items)
         materials = deps.get_project_request_material_collection_service(session).preview(

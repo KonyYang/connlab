@@ -97,6 +97,7 @@ export function ProjectWorkbenchLayout({
     packagePreviewError,
     officialWorkspacePreview,
     officialWorkspaceCreating,
+    officialWorkspaceCanResume,
     officialWorkspaceCanRestart,
     onRefreshOfficialWorkspacePreview,
     officialWorkspaceProgressLabel,
@@ -697,6 +698,15 @@ export function ProjectWorkbenchLayout({
         className={`runtime-console-shell-primary workspace-${shellModel.primaryWorkspace}`}
         aria-label="Matrix"
       >
+        {isActiveMatrixWorkspace && !officialWorkspaceCanResume && !officialWorkspaceCreating
+          && !(showFolderConflictDialog && folderUpdateReview?.resumeRebuild)
+          && officialWorkspacePreview?.project_id === project.project_id
+          && officialWorkspacePreview.file_preflight?.items.length ? (
+          <ProjectFolderOutputList
+            items={officialWorkspacePreview.file_preflight.items}
+            label="Create folder outputs"
+          />
+        ) : null}
         {shellModel.primaryWorkspace === "readonly_archive" ? (
           <div className="runtime-console-region-heading" role="status">
             <h3>{shellModel.primaryWorkspaceLabel}</h3>
@@ -792,6 +802,7 @@ export function ProjectWorkbenchLayout({
           onResumeRebuild={() => { setShowFolderConflictDialog(false); if (folderUpdateReview) void performFolderUpdate(undefined, folderUpdateReview, true); }}
           conflictPaths={folderUpdateReview ? deriveOfficialWorkspaceConflictPaths(folderUpdateReview.preview.workspace_preview) : officialWorkspaceConflictPaths}
           newFolderPath={folderUpdateReview?.preview.workspace_preview.official_project_folder_path ?? null}
+          outputItems={folderUpdateReview?.preview.workspace_preview.file_preflight?.items ?? []}
           onBackup={() => handleProjectFolderConflictChoice("backup_and_recreate")}
           onUpdateInPlace={() => handleProjectFolderConflictChoice("update_in_place")}
           onCancel={() => setShowFolderConflictDialog(false)}
@@ -908,6 +919,7 @@ function ProjectFolderConflictDialog({
   onResumeRebuild,
   conflictPaths,
   newFolderPath,
+  outputItems,
   onBackup,
   onUpdateInPlace,
   onCancel,
@@ -917,6 +929,7 @@ function ProjectFolderConflictDialog({
   onResumeRebuild: () => void;
   conflictPaths: string[];
   newFolderPath: string | null;
+  outputItems: ProjectFolderOutputItem[];
   onBackup: () => void;
   onUpdateInPlace: () => void;
   onCancel: () => void;
@@ -949,6 +962,9 @@ function ProjectFolderConflictDialog({
             ? "Update generated files inside the current project folder without renaming or archiving the whole folder. Existing file safeguards still apply."
             : "The existing project folder and all its files will move to timestamped History. A new folder will be built from the template and latest confirmed information; old files are not copied into the new folder."}
         </p>
+        {!resumeRebuild && outputItems.length ? (
+          <ProjectFolderOutputList items={outputItems} label="Reviewed folder outputs" expanded />
+        ) : null}
         <div className="runtime-console-conflict-actions">
           {resumeRebuild
             ? <button type="button" className="is-primary" onClick={onResumeRebuild}>Resume previous generation</button>
@@ -965,6 +981,41 @@ function ProjectFolderConflictDialog({
       </section>
     </div>
   );
+}
+
+type ProjectFolderOutputItem = NonNullable<NonNullable<ProjectRuntimeConsoleModel["officialWorkspacePreview"]>["file_preflight"]>["items"][number];
+
+function ProjectFolderOutputList({ items, label, expanded = false }: {
+  items: ProjectFolderOutputItem[];
+  label: string;
+  expanded?: boolean;
+}): ReactElement {
+  const outputs = items.filter(item => item.key !== "materials");
+  return (
+    <details aria-label={label} open={expanded || undefined}>
+      <summary>Files created with folder</summary>
+      <ul>
+        {outputs.map(item => {
+          const status = item.action === "skip" ? "Skipped"
+            : item.status === "blocked" || item.status === "conflict" ? "Needs review"
+            : item.action === "archive_generate" ? "Archive existing and create blank form"
+            : item.status === "current" ? "Already current"
+            : item.action === "wait" ? "After materials are collected"
+            : item.key.endsWith("_record") ? "Create blank form" : "Generate or update";
+          return <li key={item.key}><strong>{item.label}</strong> — {status}
+            {item.message ? <p>{safeOutputMessage(item.message)}</p> : null}
+          </li>;
+        })}
+      </ul>
+    </details>
+  );
+}
+
+function safeOutputMessage(message: string): string {
+  const fileLabel = /template/i.test(message) ? "configured template" : "project file";
+  return message.replace(/\s*\[Stage:[\s\S]*$/, "")
+    .replace(/(?:[A-Za-z]:[\\/]|\\\\)[^\r\n]*|(?:^|\s)\/[^\s]+/g, ` ${fileLabel}`)
+    .trim();
 }
 
 function folderName(path: string | null): string | null {

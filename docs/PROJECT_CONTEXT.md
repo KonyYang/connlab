@@ -154,14 +154,22 @@ Do not use a dated snapshot as a substitute for the code.
   confirmed name, while internal download artifacts retain unique task-owned paths.
 - If a CR fee row combines steps with different selected point counts, Matrix confirmation remains
   available, but that fee line requires human review rather than pricing from only the first step.
-- An approved Create folder operation generates LLCR/CR blank workbooks in the official `Test results`
-  folder only for confirmed Matrix steps with explicit point IDs. Missing point coverage skips the
-  corresponding optional form with a warning; other projection or path failures block publication.
+- An approved Create folder operation generates LLCR/CR blank workbooks and one combined
+  `<registered LTR> IR&DWV Record.xlsx` in the official `Test results` folder for corresponding
+  confirmed Matrix steps. LLCR/CR require explicit point IDs; IR/DWV require explicit measurement
+  pairs and use the same configured template, sample quantities, rounds, conditions and requirements
+  as Matrix Editor. Measured results remain blank. Missing point coverage or measurement pairs alone
+  skips the corresponding optional form with a warning; other projection, template or path failures
+  block publication. Projects without electrical steps do not require an IR/DWV template.
   The preview binds the target and any existing file's hash and filesystem identity. In an approved
   in-place update, an unchanged same-name file is moved without replacement to the local
   `History/Test results` before the new blank form is published without overwriting. Interrupted
   moves and output registration are journaled and fail closed if an operator changes either file.
   Whole-folder Backup and Rebuild instead retains the former business folder under `History/Folders`.
+  Create folder offers an expandable generated-file list, and rebuild review uses its fresh preview
+  to show output, skip and archive actions. IR/DWV sources are checked again after workbook creation
+  before publication. Older saved operations retain their original file approvals and cannot acquire
+  IR/DWV generation simply by resuming after an upgrade.
 - Historical Matrix rows identified as LLCR/CR only by their structured contact plan are recognized
   for formal form generation, even when the test-item label is nonstandard. Their saved historical
   point subsets remain readable; new Matrix versions use the project-wide point IDs.

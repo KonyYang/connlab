@@ -1759,6 +1759,77 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
   });
 });
 
+it("discloses Create folder outputs and optional form skips without exposing storage paths", async () => {
+  const user = userEvent.setup();
+  renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, officialWorkspacePreview: {
+    ...folderReview().preview.workspace_preview, project_id: project.project_id, status: "ready",
+    file_preflight: { directory_status: "ready", package_ready: false, items: [
+      { key: "test_record", label: "Test Record", status: "ready", action: "generate", message: "Ready to generate." },
+      { key: "ir_dwv_record", label: "IR&DWV blank record", status: "current", action: "skip", message: "Confirm explicit measurement pairs in Matrix Editor first." },
+      { key: "cr_record", label: "CR blank record", status: "blocked", action: "blocked", message: "Cannot read D:/private/template.xlsx" },
+    ] },
+  } });
+  const outputs = screen.getByLabelText("Create folder outputs");
+  await user.click(within(outputs).getByText("Files created with folder"));
+  expect(outputs.textContent).toContain("Test Record");
+  expect(outputs.textContent).toContain("IR&DWV blank record");
+  expect(outputs.textContent).toContain("Skipped");
+  expect(outputs.textContent).toContain("measurement pairs");
+  expect(outputs.textContent).toContain("Needs review");
+  expect(outputs.textContent).not.toContain("D:/private");
+});
+
+it.each(["resumable", "running", "review"] as const)(
+  "does not promise fresh IR/DWV outputs during %s saved generation recovery",
+  async (state) => {
+    const user = userEvent.setup();
+    const workspace = { ...folderReview().preview.workspace_preview,
+      project_id: project.project_id, status: "completed" as const,
+      file_preflight: { directory_status: "completed", package_ready: true, items: [
+        { key: "ir_dwv_record", label: "IR&DWV blank record", status: "ready", action: "generate", message: "Create a new blank form." },
+      ] },
+    };
+    const review = { ...folderReview(), operationId: "saved-v3", resumeRebuild: true,
+      preview: { ...folderReview().preview, workspace_preview: workspace } };
+    renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+      officialWorkspacePreview: workspace, officialWorkspaceCanResume: state === "resumable",
+      officialWorkspaceCreating: state === "running", onUpdateOfficialWorkspace: vi.fn().mockResolvedValue(review) });
+    if (state === "running") {
+      expect(screen.getByRole("dialog", { name: "Project folder update in progress" })).toBeTruthy();
+    } else {
+      if (state === "resumable") expect(screen.queryByLabelText("Create folder outputs")).toBeNull();
+      await user.click(getProjectFolderCommandButton());
+      expect(await screen.findByRole("button", { name: "Resume previous generation" })).toBeTruthy();
+    }
+    expect(screen.queryByLabelText("Create folder outputs")).toBeNull();
+    expect(screen.queryByLabelText("Reviewed folder outputs")).toBeNull();
+    expect(screen.queryByText("IR&DWV blank record")).toBeNull();
+    expect(screen.queryByText(/Create blank form/)).toBeNull();
+    if (state === "review") {
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(screen.getByLabelText("Create folder outputs")).toBeTruthy();
+    }
+  }
+);
+
+it("uses the fresh reviewed output list in the folder rebuild dialog", async () => {
+  const user = userEvent.setup();
+  const review = folderReview();
+  const fresh = { ...review, preview: { ...review.preview, workspace_preview: {
+    ...review.preview.workspace_preview, file_preflight: { directory_status: "completed", package_ready: true, items: [
+      { key: "ir_dwv_record", label: "IR&DWV blank record", status: "ready", action: "generate", message: "Previous folder stays in History/Folders." },
+    ] },
+  } } };
+  renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+    officialWorkspacePreview: { ...review.preview.workspace_preview, status: "completed" },
+    onUpdateOfficialWorkspace: vi.fn().mockResolvedValue(fresh) });
+  await user.click(getProjectFolderCommandButton());
+  const dialog = await screen.findByRole("dialog", { name: "Project folder already exists" });
+  expect(within(dialog).getByLabelText("Reviewed folder outputs").textContent).toContain("IR&DWV blank record");
+  expect(dialog.textContent).toContain("Create blank form");
+  expect(dialog.textContent).toContain("History/Folders");
+});
+
 it("does not duplicate the operation status with a permanent readiness panel", async () => {
   renderWorkbench({ officialWorkspacePreview: {
     ...folderReview().preview.workspace_preview,

@@ -5,6 +5,7 @@ import runpy
 from types import SimpleNamespace
 from hashlib import sha256
 import pytest
+from openpyxl import load_workbook
 
 from backend.api import dependencies as deps
 from backend.api.main import app
@@ -17,6 +18,241 @@ from backend.infrastructure.office.models import FeeEvaluationWorkbookWriteResul
 def _ok(response):
     assert response.status_code in (200, 201, 202), response.text
     return response.json()
+
+
+def seed_create_folder_ir_dwv_project(root, monkeypatch, *, pairs="Odd&Even，P1&P2", samples="5+5(d)"):
+    """Complete isolated Create folder fixture, reusable for browser/recovery checks."""
+    fixture = runpy.run_path(str(Path(__file__).with_name("test_matrix_editor_session_api.py")))
+    electrical = runpy.run_path(str(Path(__file__).with_name("test_matrix_editor_ir_dwv_record_generation_api.py")))
+    client, engine, sessions = fixture["_client"](root)
+    settings = app.dependency_overrides[deps.get_settings]()
+    with sessions() as session:
+        seeded = electrical["seed_ir_dwv_project"](session, root, project_id="P1", official=False, samples=samples)
+    seed = _ok(client.get("/api/projects/P1/matrix-editor/session"))
+    payload = {**seed["editor_draft"],
+        "source_import_id": seed["editor_source_import_id"], "source_snapshot_id": seed["editor_source_snapshot_id"],
+        "expected_active_confirmed_matrix_id": seed["active_confirmed_matrix_id"],
+        "expected_active_confirmed_revision": seed["active_confirmed_revision"],
+        "point_profile": {"categories": [], "electrical_point_pairs": pairs},
+        "post_test_buffer_days": "0", "planned_test_start_date": "2026-10-01",
+        "planned_test_complete_date": "2026-10-02", "estimated_completion_date": "2026-10-02",
+    }
+    _ok(client.put("/api/projects/P1/matrix-editor/session/draft", json=payload))
+    saved = _ok(client.get("/api/projects/P1/matrix-editor/session"))
+    _ok(client.post("/api/projects/P1/matrix-editor/session/confirm", json={**payload, "confirmed_by": "operator",
+        "expected_editor_draft_id": saved["editor_draft_id"], "expected_saved_payload_signature": saved["saved_payload_signature"]}))
+    source = root / "application.docx"
+    source.write_bytes(b"isolated submitted application")
+    template, output = root / "folder-template", root / "output"
+    output.mkdir()
+    for name in ("E-mail", "Submitted Material", "Photos", "Test results/Final Examination"):
+        (template / name).mkdir(parents=True)
+    for name in ("E-4243_D Customer Feedback Form.xlsx", "FDQF-E-176 Testing Fee Evaluation.xlsx", "FDQF-E-036 Test Record.docx"):
+        (template / name).write_bytes(b"isolated controlled template")
+    with sessions() as session:
+        deps.ApplicationFormRepository(session).create(ApplicationForm("form", "P1", "F1", "1", "Requestor"))
+        deps.FileAssetRepository(session).create(FileAsset("app", "P1", FileAssetType.APPLICATION_FORM,
+            source, original_name=source.name, source_role="selected_application_form", sha256=sha256(source.read_bytes()).hexdigest()))
+        resources = deps.ExternalResourceRepository(session)
+        resources.upsert(ExternalResource("root", ExternalResourceType.PROJECT_OUTPUT_ROOT, output))
+        resources.upsert(ExternalResource("template", ExternalResourceType.PROJECT_FOLDER_TEMPLATE, template))
+        session.commit()
+    _ok(client.post("/api/projects/P1/basic-information/confirm", json={"confirmed_by": "operator", "values": {
+        "dl_number": "DL-2026-10-IRDWV", "project_type": "NPD", "product_description": "Isolated authoritative connector",
+        "tests_to_be_performed": "Qualification Testing", "test_item": "Qualification Testing",
+        "requested_by": "Confirmed requestor", "project_leader": "Engineer", "lab_performing_tests": "Dongguan",
+        "date_lab_received_samples": "2026-10-01", "condition_of_samples_when_received": "Acceptable"}}))
+    fee = _ok(client.get("/api/projects/P1/confirmed-matrix/fee-draft"))
+    rows = [{"source_line_id": f"{line['line_id']}:{token}:{index}",
+        "confirmed_group_id": line["confirmed_group_id"], "confirmed_row_id": line["confirmed_row_id"],
+        "step_token": token, "step_index": index, "spend_time": "0", "unit_price": "0", "unit_type": "per sample",
+        "units": "1", "base_fee": "0", "discount": "0%", "testing_fee": "0"}
+        for group in fee["groups"] for line in group["line_items"] for index, token in enumerate(line["step_tokens"])]
+    pricing = _ok(client.put("/api/projects/P1/confirmed-matrix/fee-evaluation/pricing-draft", json={"rows": rows,
+        "summary": {"condition_confirmation_spend_time": "0", "external_cost": "0", "lab_manpower_hourly_rate": "200"}}))
+    _ok(client.post("/api/projects/P1/confirmed-fee/versions", json={"confirmed_by": "operator",
+        "expected_pricing_draft_edit_id": pricing["saved_draft_edit_id"], "expected_generation": pricing["saved_generation"],
+        "expected_payload_fingerprint": pricing["saved_payload_fingerprint"], "expected_validation_token": pricing["saved_validation_token"],
+        "summary": {key: "0" for key in ("testing_fee_total", "working_hours", "lab_manpower_cost", "external_cost", "grand_cost")}}))
+    def document(_self, **kwargs):
+        path = kwargs["output_path"]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"isolated Office output")
+        return path
+    def application(_self, path, fields):
+        path.write_bytes(b"isolated completed application")
+        return SimpleNamespace(changed_fields=tuple(fields), unchanged_fields=(), warnings=())
+    monkeypatch.setattr(deps.TestRecordDocumentGateway, "generate_from_confirmed_matrix", document)
+    monkeypatch.setattr(deps.FeeEvaluationWorkbookGateway, "generate_matrix_basic_fill",
+                        lambda self, **kwargs: FeeEvaluationWorkbookWriteResult(output_path=document(self, **kwargs), status="generated"))
+    monkeypatch.setattr(deps.CustomerFeedbackWorkbookGateway, "generate", lambda self, **kwargs: (document(self, **kwargs), ()))
+    monkeypatch.setattr(OfficeFacade, "write_word_application_form_fields_with_owned_session", application)
+    runner = ProjectFolderGenerationRunner(sessions, settings)
+    service = runner.service()
+    callbacks = []
+    service.dispatch = callbacks.append
+    app.dependency_overrides[deps.get_project_folder_generation_service] = lambda: service
+    return SimpleNamespace(client=client, engine=engine, sessions=sessions, settings=settings,
+                           runner=runner, service=service, callbacks=callbacks, template=seeded.template,
+                           source=source)
+
+
+def test_create_folder_generates_one_combined_ir_dwv_workbook_and_archives_measured_form(tmp_path, monkeypatch):
+    fixture = seed_create_folder_ir_dwv_project(tmp_path, monkeypatch)
+    client, runner = fixture.client, fixture.runner
+    url = "/api/projects/P1/project-folder/generation"
+    try:
+        preview = _ok(client.get(url + "/preview"))
+        electrical = [item for item in preview["workspace_preview"]["file_preflight"]["items"] if item["key"] == "ir_dwv_record"]
+        assert len(electrical) == 1 and electrical[0]["action"] == "generate"
+        _ok(client.post(url + "/start", json={"expected_context": preview["expected_context"], "request_id": "create"}))
+        fixture.callbacks.pop()()
+        result = _ok(client.get(url))
+        assert result["status"] == "completed", result
+        with fixture.sessions() as session:
+            records = deps.get_project_output_record_service(session).list_records("P1")
+            electrical_records = [record for record in records if record.output_kind.value == "ir_dwv_record_form"]
+            assert len(electrical_records) == 1
+            target = Path(electrical_records[0].output_path)
+            workspace = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
+        assert target.name == "DL-2026-10-IRDWV IR&DWV Record.xlsx"
+        workbook = load_workbook(target)
+        try:
+            sheet = workbook.worksheets[0]
+            assert "Isolated authoritative connector" in str(sheet["I11"].value)
+            assert sheet["C22"].value is None
+            text = " ".join(str(cell.value) for row in sheet for cell in row if cell.value is not None)
+            assert "Odd&Even" in text and "P1&P2" in text and "500 VDC" in text and "1500 VDC" in text
+        finally:
+            workbook.close()
+        original_bytes, original_mtime = target.read_bytes(), target.stat().st_mtime_ns
+        repeated = _ok(client.post(url + "/start", json={"expected_context": preview["expected_context"], "request_id": "create"}))
+        assert repeated["operation_id"] == result["operation_id"]
+        _ok(client.post(url + "/resume", json={"operation_id": result["operation_id"]}))
+        assert not fixture.callbacks
+        assert target.read_bytes() == original_bytes and target.stat().st_mtime_ns == original_mtime
+        target.write_bytes(b"measurements retained exactly")
+        preview = _ok(client.get(url + "/preview?intent=update_in_place"))
+        assert next(item for item in preview["workspace_preview"]["file_preflight"]["items"] if item["key"] == "ir_dwv_record")["action"] == "archive_generate"
+        _ok(client.post(url + "/start", json={"expected_context": preview["expected_context"], "request_id": "update", "conflict_strategy": "update_in_place"}))
+        fixture.callbacks.pop()()
+        assert _ok(client.get(url))["status"] == "completed"
+        archives = list((workspace.local_workspace_path / "History" / "Test results").glob("*IR&DWV Record*.xlsx"))
+        assert len(archives) == 1 and archives[0].read_bytes() == b"measurements retained exactly"
+        assert target.read_bytes().startswith(b"PK")
+    finally:
+        app.dependency_overrides.clear()
+        client.close()
+        runner.pool.shutdown()
+        fixture.engine.dispose()
+
+
+def test_create_folder_completes_with_warning_when_only_explicit_ir_dwv_pairs_are_missing(tmp_path, monkeypatch):
+    fixture = seed_create_folder_ir_dwv_project(tmp_path, monkeypatch, pairs="")
+    try:
+        url = "/api/projects/P1/project-folder/generation"
+        preview = _ok(fixture.client.get(url + "/preview"))
+        item = next(item for item in preview["workspace_preview"]["file_preflight"]["items"] if item["key"] == "ir_dwv_record")
+        assert item["action"] == "skip" and preview["start_blockers"] == []
+        _ok(fixture.client.post(url + "/start", json={"expected_context": preview["expected_context"], "request_id": "skip"}))
+        fixture.callbacks.pop()()
+        result = _ok(fixture.client.get(url))
+        assert result["status"] == "completed" and "measurement pairs" in result["message"]
+        with fixture.sessions() as session:
+            workspace = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
+            assert len(deps.get_project_output_record_service(session).list_records("P1")) == 5
+        assert not list((workspace.official_folder_path / "Test results").glob("*IR&DWV Record.xlsx"))
+    finally:
+        app.dependency_overrides.clear()
+        fixture.client.close()
+        fixture.runner.pool.shutdown()
+        fixture.engine.dispose()
+
+
+@pytest.mark.parametrize("change", ["template", "pairs"])
+def test_create_folder_rejects_stale_ir_dwv_preview_before_creating_directory(tmp_path, monkeypatch, change):
+    fixture = seed_create_folder_ir_dwv_project(tmp_path, monkeypatch)
+    try:
+        preview = _ok(fixture.client.get("/api/projects/P1/project-folder/generation/preview"))
+        if change == "template":
+            fixture.template.write_bytes(fixture.template.read_bytes() + b"template changed")
+        else:
+            seed = _ok(fixture.client.get("/api/projects/P1/matrix-editor/session"))
+            payload = {**seed["editor_draft"], "source_import_id": seed["editor_source_import_id"],
+                "source_snapshot_id": seed["editor_source_snapshot_id"],
+                "expected_active_confirmed_matrix_id": seed["active_confirmed_matrix_id"],
+                "expected_active_confirmed_revision": seed["active_confirmed_revision"],
+                "point_profile": {"categories": [], "electrical_point_pairs": "P3&P4"},
+                "post_test_buffer_days": "0", "planned_test_start_date": "2026-10-01",
+                "planned_test_complete_date": "2026-10-02", "estimated_completion_date": "2026-10-02"}
+            _ok(fixture.client.put("/api/projects/P1/matrix-editor/session/draft", json=payload))
+            saved = _ok(fixture.client.get("/api/projects/P1/matrix-editor/session"))
+            _ok(fixture.client.post("/api/projects/P1/matrix-editor/session/confirm", json={**payload, "confirmed_by": "operator",
+                "expected_editor_draft_id": saved["editor_draft_id"], "expected_saved_payload_signature": saved["saved_payload_signature"]}))
+        denied = fixture.client.post("/api/projects/P1/project-folder/generation/start", json={
+            "expected_context": preview["expected_context"], "request_id": "stale"})
+        assert denied.status_code == 409 and "preview changed" in denied.json()["detail"].lower()
+        assert not fixture.callbacks
+        assert not list((tmp_path / "output").iterdir())
+    finally:
+        app.dependency_overrides.clear()
+        fixture.client.close()
+        fixture.runner.pool.shutdown()
+        fixture.engine.dispose()
+
+
+def test_create_folder_checks_ir_dwv_template_again_after_workbook_generation(tmp_path, monkeypatch):
+    fixture = seed_create_folder_ir_dwv_project(tmp_path, monkeypatch)
+    from backend.application.matrix_editor_ir_dwv_record_generation_service import MatrixEditorIrDwvRecordGenerationService
+    write = MatrixEditorIrDwvRecordGenerationService.write
+    def changed_template(self, **kwargs):
+        result = write(self, **kwargs)
+        fixture.template.write_bytes(fixture.template.read_bytes() + b"changed during generation")
+        return result
+    monkeypatch.setattr(MatrixEditorIrDwvRecordGenerationService, "write", changed_template)
+    try:
+        preview = _ok(fixture.client.get("/api/projects/P1/project-folder/generation/preview"))
+        _ok(fixture.client.post("/api/projects/P1/project-folder/generation/start", json={
+            "expected_context": preview["expected_context"], "request_id": "changed-during-write"}))
+        fixture.callbacks.pop()()
+        result = _ok(fixture.client.get("/api/projects/P1/project-folder/generation"))
+        assert result["status"] == "blocked" and "IR/DWV sources changed" in result["message"]
+        with fixture.sessions() as session:
+            workspace = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
+            assert not any(record.output_kind.value == "ir_dwv_record_form"
+                           for record in deps.get_project_output_record_service(session).list_records("P1"))
+        assert not list((workspace.official_folder_path / "Test results").glob("*IR&DWV Record.xlsx"))
+        assert not list((fixture.settings.data_dir / "stage" / result["operation_id"]).glob("ir_dwv-*.xlsx"))
+    finally:
+        app.dependency_overrides.clear()
+        fixture.client.close()
+        fixture.runner.pool.shutdown()
+        fixture.engine.dispose()
+
+
+def test_v3_operation_uses_original_preview_and_never_adds_ir_dwv_approval(tmp_path, monkeypatch):
+    fixture = seed_create_folder_ir_dwv_project(tmp_path, monkeypatch)
+    try:
+        preview = fixture.runner.preview("P1")
+        started = fixture.service.start("P1", None, preview["expected_context"], "v3-operation")
+        fixture.callbacks.clear()
+        state = fixture.runner.journal.read("P1")
+        state.update(preview_context_version=3, preview_context=preview["contact_expected_context"], contact_record_targets={})
+        fixture.runner.journal.save(state)
+        fixture.service.resume("P1", started["operation_id"])
+        fixture.callbacks.pop()()
+        assert fixture.service.read("P1")["status"] == "completed"
+        assert fixture.runner.journal.read("P1")["contact_record_targets"] == {}
+        with fixture.sessions() as session:
+            workspace = deps.ProjectOfficialWorkspaceRepository(session).get_by_project("P1")
+            assert not any(record.output_kind.value == "ir_dwv_record_form"
+                           for record in deps.get_project_output_record_service(session).list_records("P1"))
+        assert not list((workspace.official_folder_path / "Test results").glob("*IR&DWV Record.xlsx"))
+    finally:
+        app.dependency_overrides.clear()
+        fixture.client.close()
+        fixture.runner.pool.shutdown()
+        fixture.engine.dispose()
 
 
 @pytest.mark.parametrize("include_email", [True, False])
