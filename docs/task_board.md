@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_REPORT_WORKSPACE_HIDE_AUTHORITY_VERSIONS_20261003",
     "summary": "Remove permanent Report Workspace authority version strip",
@@ -27,9 +27,64 @@
     "risk_reasons": [],
     "activation_head": "1f6ffd0a10da13830763a4e0890785dcf77d9607",
     "started_at": "2026-10-02T23:34:20.905824Z",
-    "updated_at": "2026-10-02T23:34:20.905824Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-02T23:40:37.501745Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_REPORT_WORKSPACE_HIDE_AUTHORITY_VERSIONS_20261003",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "task_id": "TASK_REPORT_WORKSPACE_HIDE_AUTHORITY_VERSIONS_20261003",
+      "integration": {
+        "subject": "9ad084e7de66903f099f48c35d6471ce4d5c330b",
+        "result": "Scoped local commit; clean working tree. No backend, report publication, or external authoritative file mutations.",
+        "status": "passed"
+      },
+      "scope_ok": true,
+      "subject": "9ad084e7de66903f099f48c35d6471ce4d5c330b",
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "validation": [
+        {
+          "command": "npm test -- src/features/report-workspace/ReportWorkspace.test.tsx src/features/report-workspace/reportWorkspaceModel.test.ts src/features/report-workspace/useCustomerReportJob.test.tsx",
+          "result": "41 tests passed across 3 files on final source bytes. Targeted RED first failed because the version strip was still visible.",
+          "status": "passed"
+        },
+        {
+          "command": "npm run build",
+          "result": "TypeScript and Vite production build passed on final source bytes.",
+          "status": "passed"
+        },
+        {
+          "command": "In-app browser Report Workspace read-only smoke",
+          "result": "Version strip absent; all 3 report regions remain; missing Internal Report blockers retained; no console errors. Screenshot tmp/report-workspace-no-authority-strip-20261003.png. No business report writes.",
+          "status": "passed"
+        },
+        {
+          "command": "git diff --check",
+          "result": "No whitespace errors.",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "subject": "9ad084e7de66903f099f48c35d6471ce4d5c330b",
+          "result": "Micro task implemented and exact diff self-reviewed by root. No independent reviewer claimed. Existing backend and readiness logic unchanged.",
+          "status": "passed"
+        }
+      },
+      "changed_paths": [
+        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+        "frontend/src/workbench.css",
+        "docs/PROJECT_CONTEXT.md"
+      ],
+      "summary": "Remove permanent authority version strip; retain contextual blockers and all report authority checks."
+    }
   },
   "last_closed": {
     "task_id": "TASK_REPORT_WORKSPACE_COMPACT_LAYOUT_20261002",
