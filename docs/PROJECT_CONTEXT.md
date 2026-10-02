@@ -143,6 +143,9 @@ Do not use a dated snapshot as a substitute for the code.
   Matrix may publish into its `Test results` folder. A same-name formal form requires explicit approval
   to preserve the old file under local `History/Test results` before saving a new blank form. No
   measured form is silently overwritten, and changed files or interrupted publication fail closed.
+  IR/DWV files use the registered LTR plus `IR&DWV Record.xlsx`; unconfirmed downloads add
+  the ` draft` suffix. A confirmed Matrix without an available official folder downloads the
+  confirmed name, while internal download artifacts retain unique task-owned paths.
 - If a CR fee row combines steps with different selected point counts, Matrix confirmation remains
   available, but that fee line requires human review rather than pricing from only the first step.
 - An approved Create folder operation generates LLCR/CR blank workbooks in the official `Test results`

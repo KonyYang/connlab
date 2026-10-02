@@ -3,6 +3,7 @@
 from dataclasses import asdict, replace
 from hashlib import sha256
 import json
+import re
 
 from backend.application.matrix_editor_ir_dwv_record_projection import (
     IrDwvRecordDiagnostic, IrDwvRecordProjection,
@@ -41,11 +42,11 @@ class MatrixEditorIrDwvRecordGenerationService:
         projection = build_ir_dwv_record_projection(snapshot, header=header, source_fingerprint=context)
         return self._validate_projection(projection, diagnostics)
 
-    def generate(self, command):
+    def generate(self, command, *, is_confirmed=False):
         projection = self.build_draft_projection(**{key: getattr(command, key) for key in command.__dataclass_fields__})
-        return self._generate_projection(command, projection)
+        return self._generate_projection(command, projection, is_confirmed=is_confirmed)
 
-    def _generate_projection(self, command, projection):
+    def _generate_projection(self, command, projection, *, is_confirmed=False):
         if projection.status != "ready" or not projection.sections:
             raise ValueError(" ".join(item.message for item in projection.diagnostics if item.level == "error"))
         artifact = self._artifacts.prepare_draft(project_id=command.project_id, record_type="ir_dwv")
@@ -58,7 +59,11 @@ class MatrixEditorIrDwvRecordGenerationService:
             # The artifact belongs to this operation only; never touch a business file.
             artifact.output_path.unlink(missing_ok=True)
             raise
-        return MatrixEditorLlcrCrRecordGenerationResult(command.project_id, "ir_dwv", artifact.file_name, path)
+        # The browser label follows authority; the owned artifact keeps its unique path.
+        ltr_number = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", projection.workbook.request_number).strip(" .")
+        file_name = (f"{ltr_number} IR&DWV Record{'' if is_confirmed else ' draft'}.xlsx"
+                     if ltr_number else artifact.file_name)
+        return MatrixEditorLlcrCrRecordGenerationResult(command.project_id, "ir_dwv", file_name, path)
 
     def write(self, *, output_path, projection):
         return self._writer.write(output_path=output_path, projection=projection.workbook)

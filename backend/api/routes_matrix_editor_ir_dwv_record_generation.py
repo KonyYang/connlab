@@ -31,8 +31,8 @@ def download(project_id: str, request: IrDwvDownloadRequest,
              publication=Depends(get_matrix_editor_ir_dwv_record_publication_service)):
     try:
         draft = _draft_command(project_id, request)
-        publication.validate_download(PreviewMatrixEditorLlcrCrPublicationCommand(draft, request.matrix_has_pending_changes), request.preview_token)
-        result = service.generate(draft)
+        reviewed = publication.validate_download(PreviewMatrixEditorLlcrCrPublicationCommand(draft, request.matrix_has_pending_changes), request.preview_token)
+        result = service.generate(draft, is_confirmed=reviewed.authority_status == "confirmed")
     except (ValueError, OSError) as exc:
         raise HTTPException(422, detail=str(exc)) from exc
     return FileResponse(result.output_path, filename=result.file_name, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

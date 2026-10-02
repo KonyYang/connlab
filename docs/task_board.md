@@ -11,8 +11,27 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_IR_DWV_DOWNLOAD_NAME_AUTHORITY_20261002",
+    "summary": "Align IR/DWV download names with confirmed LTR and Matrix authority",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Retain existing LLCR-shared official Test results publication and archive safety without mutation-policy changes. Correct browser download names to authoritative registered LTR plus IR&DWV Record, with draft suffix only for unconfirmed Matrix; retain isolated internal UUID artifact paths and compatibility when LTR unavailable. Verify confirmed official, confirmed no-folder, unconfirmed and stale-token cases through public API, plus existing LLCR/IR-DWV UI regressions. Update PROJECT_CONTEXT; preserve and restore unrelated design draft.",
+    "scope_paths": [
+      "backend/api/routes_matrix_editor_ir_dwv_record_generation.py",
+      "backend/application/confirmed_matrix_llcr_cr_record_generation_service.py",
+      "backend/application/matrix_editor_ir_dwv_record_generation_service.py",
+      "tests/integration/test_matrix_editor_ir_dwv_record_generation_api.py",
+      "docs/PROJECT_CONTEXT.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "58a847ba6abaeed3bfd0a5e4487045682d860b60",
+    "started_at": "2026-10-02T04:29:01.724211Z",
+    "updated_at": "2026-10-02T04:29:01.724211Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_DOC_IR_DWV_CONTEXT_SYNC_20261002",
     "tier": "micro",

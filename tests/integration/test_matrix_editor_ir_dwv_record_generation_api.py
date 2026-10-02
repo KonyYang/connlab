@@ -92,7 +92,9 @@ def real_project(tmp_path, request):
     init_db(engine)
     sessions = create_session_factory(engine)
     with sessions() as session:
-        seeded = seed_ir_dwv_project(session, tmp_path, samples=getattr(request, "param", "5+5(d)"))
+        options = getattr(request, "param", "5+5(d)")
+        options = options if isinstance(options, dict) else {"samples": options}
+        seeded = seed_ir_dwv_project(session, tmp_path, **options)
     settings = Settings(data_dir=tmp_path / "data", database_path=tmp_path / "smoke.sqlite", templates_dir=tmp_path / "templates", projects_dir=tmp_path / "projects")
     def isolated_session():
         with sessions() as session:
@@ -107,6 +109,37 @@ def real_project(tmp_path, request):
         engine.dispose()
 
 
+@pytest.mark.parametrize("real_project,pending,edited_samples,authority,file_name", [
+    ({"official": False}, False, None, "confirmed", "DL-2026-10-IRDWV IR&DWV Record.xlsx"),
+    ({"official": False}, True, None, "unconfirmed", "DL-2026-10-IRDWV IR&DWV Record draft.xlsx"),
+    ({"official": True}, True, None, "unconfirmed", "DL-2026-10-IRDWV IR&DWV Record draft.xlsx"),
+    ({"official": True}, False, "7", "unconfirmed", "DL-2026-10-IRDWV IR&DWV Record draft.xlsx"),
+], indirect=["real_project"])
+def test_download_name_uses_registered_ltr_and_verified_matrix_authority(
+    real_project, pending, edited_samples, authority, file_name,
+):
+    from urllib.parse import unquote
+    client, seeded, settings = real_project
+    request = {**seeded.request, "matrix_has_pending_changes": pending}
+    if edited_samples is not None:
+        request["groups"][0]["sample_quantity_expression"] = edited_samples
+    base = f"/api/projects/{seeded.project_id}/matrix-editor"
+    preview = client.post(base + "/ir-dwv-record-publication/preview", json=request)
+    assert preview.status_code == 200, preview.text
+    reviewed = preview.json()
+    assert (reviewed["mode"], reviewed["authority_status"]) == ("download", authority)
+    for _ in range(2):
+        downloaded = client.post(base + "/ir-dwv-record-draft/generate",
+                                 json={**request, "preview_token": reviewed["preview_token"]})
+        assert downloaded.status_code == 200, downloaded.text
+        assert downloaded.content.startswith(b"PK")
+        assert unquote(downloaded.headers["content-disposition"]).endswith(file_name)
+    artifacts = tuple((settings.data_dir / "generated_ir_dwv_record_drafts" / seeded.project_id).glob("*.xlsx"))
+    assert len(artifacts) == 2 and artifacts[0] != artifacts[1]
+    if seeded.target is not None:
+        assert not seeded.target.exists()
+
+
 def test_real_di_creates_and_archives_official_ir_dwv_forms(real_project):
     client, seeded, _settings = real_project
     base = f"/api/projects/{seeded.project_id}/matrix-editor/ir-dwv-record-publication"
@@ -115,6 +148,8 @@ def test_real_di_creates_and_archives_official_ir_dwv_forms(real_project):
     assert preview.json()["mode"] == "official" and preview.json()["status"] == "ready"
     created = client.post(base + "/publish", json={**seeded.request, "preview_token": preview.json()["preview_token"], "conflict_action": "none"})
     assert created.status_code == 200, created.text
+    assert created.json()["file_name"] == "DL-2026-10-IRDWV IR&DWV Record.xlsx"
+    assert Path(created.json()["target_path"]) == seeded.target
     workbook = load_workbook(seeded.target)
     try:
         assert "Isolated authoritative connector" in str(workbook.worksheets[0]["I11"].value)
@@ -255,6 +290,7 @@ def test_ir_dwv_download_uses_current_ui_rounds_pairs_and_only_authoritative_hea
     class Publication:
         def validate_download(self, command, token):
             assert token == "reviewed" and command.draft.record_type == "ir_dwv"
+            return SimpleNamespace(authority_status="unconfirmed")
     app.dependency_overrides[get_matrix_editor_ir_dwv_record_generation_service] = lambda: service
     app.dependency_overrides[get_matrix_editor_ir_dwv_record_publication_service] = lambda: Publication()
     request = _request()

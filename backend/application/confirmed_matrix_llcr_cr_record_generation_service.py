@@ -286,11 +286,12 @@ class MatrixEditorLlcrCrRecordPublicationService:
 
     def validate_download(
         self, command: PreviewMatrixEditorLlcrCrPublicationCommand, preview_token: str,
-    ) -> None:
+    ) -> MatrixEditorLlcrCrPublicationPreview:
         current = self.preview(command)
         if current.preview_token != preview_token or current.mode != "download" or current.status != "ready":
             label = "IR/DWV" if command.draft.record_type == "ir_dwv" else "LLCR/CR"
             raise ValueError(f"{label} download preview changed. Preview again before downloading.")
+        return current
 
     def publish(
         self, command: PublishMatrixEditorLlcrCrPublicationCommand,
