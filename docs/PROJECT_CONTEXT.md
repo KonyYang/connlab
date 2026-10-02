@@ -166,8 +166,9 @@ Do not use a dated snapshot as a substitute for the code.
   `History/Test results` before the new blank form is published without overwriting. Interrupted
   moves and output registration are journaled and fail closed if an operator changes either file.
   Whole-folder Backup and Rebuild instead retains the former business folder under `History/Folders`.
-  Create folder offers an expandable generated-file list, and rebuild review uses its fresh preview
-  to show output, skip and archive actions. IR/DWV sources are checked again after workbook creation
+  Workbench and rebuild review omit informational generated-file lists. Generation failures retain
+  actionable error guidance; preflight and explicit archive/rebuild confirmation remain enforced.
+  IR/DWV sources are checked again after workbook creation
   before publication. Older saved operations retain their original file approvals and cannot acquire
   IR/DWV generation simply by resuming after an upgrade.
 - Historical Matrix rows identified as LLCR/CR only by their structured contact plan are recognized

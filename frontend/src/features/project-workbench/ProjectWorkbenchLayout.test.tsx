@@ -1806,24 +1806,40 @@ it("does not treat a generic Windows error 5 as a folder archive failure", () =>
   expect(alert.textContent).not.toContain("History");
 });
 
-it("discloses Create folder outputs and optional form skips without exposing storage paths", async () => {
-  const user = userEvent.setup();
+it.each(["ready", "completed"] as const)("keeps %s folder preflight details out of the normal Workbench", (status) => {
   renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot, officialWorkspacePreview: {
-    ...folderReview().preview.workspace_preview, project_id: project.project_id, status: "ready",
+    ...folderReview().preview.workspace_preview, project_id: project.project_id, status,
     file_preflight: { directory_status: "ready", package_ready: false, items: [
       { key: "test_record", label: "Test Record", status: "ready", action: "generate", message: "Ready to generate." },
       { key: "ir_dwv_record", label: "IR&DWV blank record", status: "current", action: "skip", message: "Confirm explicit measurement pairs in Matrix Editor first." },
-      { key: "cr_record", label: "CR blank record", status: "blocked", action: "blocked", message: "Cannot read D:/private/template.xlsx" },
+      { key: "fee_form", label: "Fee Form", status: "current", action: "skip", message: "Fee Form is already current." },
+      { key: "application_form", label: "Application Form", status: "waiting", action: "wait", message: "After materials are collected." },
     ] },
   } });
-  const outputs = screen.getByLabelText("Create folder outputs");
-  await user.click(within(outputs).getByText("Files created with folder"));
-  expect(outputs.textContent).toContain("Test Record");
-  expect(outputs.textContent).toContain("IR&DWV blank record");
-  expect(outputs.textContent).toContain("Skipped");
-  expect(outputs.textContent).toContain("measurement pairs");
-  expect(outputs.textContent).toContain("Needs review");
-  expect(outputs.textContent).not.toContain("D:/private");
+  expect(screen.queryByLabelText("Create folder outputs")).toBeNull();
+  expect(screen.queryByText("Files created with folder")).toBeNull();
+  expect(screen.queryByText("Confirm explicit measurement pairs in Matrix Editor first.")).toBeNull();
+  expect(screen.queryByText("Ready to generate.")).toBeNull();
+  expect(screen.queryByText("Fee Form is already current.")).toBeNull();
+  expect(screen.queryByText("After materials are collected.")).toBeNull();
+});
+
+it("shows an actual generation failure while omitting ready and skipped file details", () => {
+  const guidance = "IR/DWV form could not be generated. Check the configured template in Settings.";
+  renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot,
+    officialWorkspaceError: `${guidance} [Windows error: 5; Stage: folder_llcr_cr_records; Diagnostic ID: failed-generation]`,
+    officialWorkspacePreview: { ...folderReview().preview.workspace_preview, project_id: project.project_id, status: "completed",
+      file_preflight: { directory_status: "completed", package_ready: true, items: [
+        { key: "test_record", label: "Test Record", status: "ready", action: "generate", message: "Ready to generate." },
+        { key: "cr_record", label: "CR blank record", status: "current", action: "skip", message: "Confirm explicit Test points first." },
+      ] } },
+  });
+  const alert = screen.getByRole("alert");
+  expect(within(alert).getByText(guidance)).toBeTruthy();
+  expect(within(alert).getByText("Diagnostic details").closest("details")).toHaveProperty("open", false);
+  expect(screen.queryByText("Files created with folder")).toBeNull();
+  expect(screen.queryByText("Ready to generate.")).toBeNull();
+  expect(screen.queryByText("Confirm explicit Test points first.")).toBeNull();
 });
 
 it.each(["resumable", "running", "review"] as const)(
@@ -1854,12 +1870,12 @@ it.each(["resumable", "running", "review"] as const)(
     expect(screen.queryByText(/Create blank form/)).toBeNull();
     if (state === "review") {
       await user.click(screen.getByRole("button", { name: "Cancel" }));
-      expect(screen.getByLabelText("Create folder outputs")).toBeTruthy();
+      expect(screen.queryByLabelText("Create folder outputs")).toBeNull();
     }
   }
 );
 
-it("uses the fresh reviewed output list in the folder rebuild dialog", async () => {
+it("keeps file preflight details out of the folder rebuild confirmation", async () => {
   const user = userEvent.setup();
   const review = folderReview();
   const fresh = { ...review, preview: { ...review.preview, workspace_preview: {
@@ -1872,9 +1888,11 @@ it("uses the fresh reviewed output list in the folder rebuild dialog", async () 
     onUpdateOfficialWorkspace: vi.fn().mockResolvedValue(fresh) });
   await user.click(getProjectFolderCommandButton());
   const dialog = await screen.findByRole("dialog", { name: "Project folder already exists" });
-  expect(within(dialog).getByLabelText("Reviewed folder outputs").textContent).toContain("IR&DWV blank record");
-  expect(dialog.textContent).toContain("Create blank form");
-  expect(dialog.textContent).toContain("History/Folders");
+  expect(within(dialog).queryByLabelText("Reviewed folder outputs")).toBeNull();
+  expect(dialog.textContent).not.toContain("IR&DWV blank record");
+  expect(dialog.textContent).not.toContain("Create blank form");
+  expect(dialog.textContent).toContain("all its files will move to timestamped History");
+  expect(within(dialog).getByRole("button", { name: "Backup and Rebuild" })).toBeTruthy();
 });
 
 it("does not duplicate the operation status with a permanent readiness panel", async () => {

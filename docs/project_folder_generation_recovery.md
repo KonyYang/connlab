@@ -50,9 +50,10 @@ one matching output without rewriting the published workbook.
 
 New operations use preview-context version 4. Version 3's preview is reconstructed with LLCR/CR targets
 only at both resume and initial workspace publication gates; saved target approvals remain unchanged.
-Version 1/2 compatibility is retained. No older journal gains IR/DWV approval on recovery. The UI's
-expandable output disclosure consumes current file preflight; the existing rebuild dialog displays
-the newly reviewed list, while resume retains the saved choices.
+Version 1/2 compatibility is retained. No older journal gains IR/DWV approval on recovery. Workbench
+and rebuild review omit informational generated-file lists; actionable generation errors remain
+visible. Preflight and explicit archive/rebuild confirmation are unchanged, while resume retains
+the saved choices.
 
 Acceptance uses isolated SQLite and temporary templates/folders: verify real combined XLSX content
 and blank results, missing-pair skips, stale-source/target rejection, exact measured-file archival,

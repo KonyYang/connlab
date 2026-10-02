@@ -36,7 +36,7 @@
     ],
     "activation_head": "d3aef5c9d2c01803f18d4dfdc0ea53e550377ad2",
     "started_at": "2026-10-02T08:47:00.592399Z",
-    "updated_at": "2026-10-02T10:24:24.530324Z",
+    "updated_at": "2026-10-02T10:54:46.148252Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
@@ -44,7 +44,7 @@
       "stage": "revision",
       "status": "running",
       "requires_user": true,
-      "summary": "Archive-access warning now asks users to close documents and File Explorer windows/tabs viewing the folder or subfolders before retrying Create folder, with a permissions fallback. Existing persisted legacy warning is mapped to the same guidance; complete diagnostic suffixes are collapsed. Independent Developer RED/GREEN and Reviewer passed; independent QA: Python service 20 passed, Layout 79 passed, sequential production build passed on frozen four-file state. Root read-only business browser check saw no current alert, so native warning display was not exercised. Original WinError 5 rename remains awaiting User closing matching Explorer window/tab, then original browser rebuild retry. Business files and unrelated design document unchanged."
+      "summary": "User simplified generated-file disclosure: removed informational lists from Workbench and create/rebuild confirmation; existing generation failure alerts/diagnostics, progress, preflight and archive confirmation remain unchanged. Two approved UI files and two approved context/recovery docs updated. Developer RED 5 failed then targeted GREEN 12 passed; independent Reviewer Standards 0/Spec 0; final independent QA full Layout 81 passed and sequential production build passed on frozen four-file bytes. Root refreshed requested business browser and verified no list, with QA independent screenshot review; no create/rebuild was executed. Previous archive-access warning guidance retained (earlier service 20-test QA passed). Original native WinError 5 archive still awaits User closing matching Explorer window/tab and business retry; this display-only pass does not resolve it. Unrelated design document unchanged."
     },
     "report": null
   },
