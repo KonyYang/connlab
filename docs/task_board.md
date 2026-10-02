@@ -11,78 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_DOC_IR_DWV_CONTEXT_SYNC_20261002",
-    "summary": "Correct obsolete IR/DWV workbook implementation status in project context",
-    "tier": "micro",
-    "route": "sol_direct",
-    "scope": "Update only docs/PROJECT_CONTEXT.md to reflect implemented IR/DWV template-based blank record generation and draft versus safe official publication; keep automated specification point extraction unimplemented. No code changes; preserve and restore the unrelated untracked photo automation design draft.",
-    "scope_paths": [
-      "docs/PROJECT_CONTEXT.md"
-    ],
-    "risk_reasons": [],
-    "activation_head": "1bb4d89c390a241cdb794a0bb3f6ac1d60aea290",
-    "started_at": "2026-10-02T03:43:10.928184Z",
-    "updated_at": "2026-10-02T04:19:38.713083Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_DOC_IR_DWV_CONTEXT_SYNC_20261002",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_DOC_IR_DWV_CONTEXT_SYNC_20261002",
-      "subject": "93434491301e159877e5d26653386ab82f793d5d",
-      "summary": "PROJECT_CONTEXT now reflects implemented IR/DWV blank-record generation and draft/official publication; explicitly states measurement pairs are manually entered/reviewed and confirmed through Confirm Matrix. Automatic specification extraction is not part of the required workflow, not unfinished scope. Documentation only.",
-      "scope_ok": true,
-      "changed_paths": [
-        "docs/PROJECT_CONTEXT.md"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "name": "final documentation self-review against user business clarification and existing code",
-          "result": "Final exact diff replaces not-implemented wording with manual Matrix entry/review and Confirm Matrix authority; implemented workbook/publication description retained. Cross-checked current point-authority documentation and prior actual route/generator/publication inspection; no code or test bytes changed."
-        },
-        {
-          "status": "passed",
-          "name": "final whitespace and scope check",
-          "result": "git diff --check exit0 after final doc edit; only docs/PROJECT_CONTEXT.md and sole-writer board changed. No unit/UI/build rerun needed for literal documentation clarification."
-        },
-        {
-          "status": "passed",
-          "name": "bounded unrelated-draft protection",
-          "result": "Only same untracked photo automation draft stashed at09910ac3159d18435bd42e511511745f199af5d4; initial original SHA2566d928420f27128e5e6395a703cf28e474e9ff62201084d505a569e92abf81647. Restore after close/publication gate and verify byte hash; stash backup retained."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "context": "Primary agent performed bounded document-only micro revision and exact self-review. No independent role or fresh product-test execution claimed."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "subject": "93434491301e159877e5d26653386ab82f793d5d",
-        "code_subject": "93434491301e159877e5d26653386ab82f793d5d",
-        "facts": "Clean direct-master93434491; observed nonboard task diff contains only docs/PROJECT_CONTEXT.md, userclarification within same task; unrelateddraft absent only temporarily in a recoverable single-pathstash."
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_362_IR_DWV_RECORD_WORKBOOK_20261001",
-    "tier": "high_risk",
-    "subject": "01c49338f883ba0fe07b62a4e8e4bedb0775f6b2",
-    "summary": "Implement IR/DWV Matrix record workbook end to end",
+    "task_id": "TASK_DOC_IR_DWV_CONTEXT_SYNC_20261002",
+    "tier": "micro",
+    "subject": "93434491301e159877e5d26653386ab82f793d5d",
+    "summary": "Correct obsolete IR/DWV workbook implementation status in project context",
     "disposition": "completed",
-    "decision_ref": "User explicit final close: 关闭任务, 2026-10-02 after successful IR/DWV sample-width acceptance.",
-    "closed_at": "2026-10-02T02:13:51.795487Z"
+    "decision_ref": "User final close 2026-10-02 after clarification: specification point extraction is not required; manually entered Matrix points are authoritative.",
+    "closed_at": "2026-10-02T04:20:05.226986Z"
   },
   "retained_history": [
     {
