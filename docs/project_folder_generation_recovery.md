@@ -9,6 +9,12 @@ Project/Matrix/confirmed Fee/Basic Information and configured source/template au
 
 ## Ownership and approval
 
+- Workbench `Create folder` uses one creation policy: create a missing folder, or show an explicit
+  whole-folder `Backup and Rebuild` confirmation for a verified existing official folder. It does not
+  compare old business-file contents to choose an update strategy, offer `Update existing folder`,
+  or open a rename/rebind dialog. The confirmation shows the archive source and new authority-derived
+  name; Cancel performs no writes. Unproven ownership, ambiguous folders and unsafe paths still block
+  archival. Retained API compatibility and historical recovery do not add those choices to this entry.
 - `GET .../project-folder/generation/preview` returns the displayed workspace preview and its context
   token together. Start sends that same token and a request ID; conflict confirmation retains the token
   from the displayed dialog. Changed source/configuration/targets require a fresh review, never implicit
@@ -39,11 +45,12 @@ electrical steps does not need that template. Only missing measurement pairs alo
 skip warning: informational diagnostics do not prevent that skip, while invalid samples, ambiguous
 rounds, unavailable templates/layouts or unsafe paths still block the operation.
 
-The approved record projection fingerprint and existing target's SHA-256 and filesystem identity are
-saved in the journal. In-place update preserves an unchanged existing measured workbook under local
+The approved record projection fingerprint is saved in the journal. The retained in-place update API
+also binds an existing target's SHA-256 and filesystem identity and preserves its unchanged measured workbook under local
 `History/Test results` before publishing a new blank workbook without overwriting. Whole-folder Backup
-and Rebuild preserves those bytes in `History/Folders` and creates the new form in the replacement
-folder. Changing Matrix, template or target after preview requires a fresh approval. IR/DWV projection
+and Rebuild preserves those bytes in `History/Folders` without inspecting old business-file contents,
+and creates the new form in the replacement folder. Changing Matrix, template or directory identity
+after preview requires a fresh approval; historical content-bound approvals keep their original checks. IR/DWV projection
 sources are checked again after the workbook is generated and before publication; cleanup removes
 only the unchanged operation-owned stage. File-before-DB and DB-before-checkpoint recovery registers
 one matching output without rewriting the published workbook.

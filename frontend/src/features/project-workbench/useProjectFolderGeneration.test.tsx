@@ -59,39 +59,31 @@ it("does not overlap status reads when focus returns during an outstanding reque
   unmount();
 });
 
-it("uses an advanced preview only after an existing folder needs review", async () => {
-  api.previewProjectFolderGeneration
-    .mockResolvedValueOnce({ expected_context: "ordinary", workspace_preview: { status: "conflict", blockers: ["Review folder"] }, recovery: null })
-    .mockResolvedValueOnce({ expected_context: "advanced", workspace_preview: { status: "conflict", blockers: ["Review folder"] }, recovery: null });
+it("rejects a legacy backup option when the existing folder is not verified", async () => {
+  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "advanced",
+    workspace_preview: { status: "conflict", blockers: ["Existing project folder cannot be linked because Source Book is missing."],
+      conflict_options: [{ key: "backup_and_recreate" }] }, recovery: null });
   api.startProjectFolderGeneration.mockResolvedValue(operation);
   const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
   let review: FolderUpdateReview | undefined;
   await act(async () => { review = (await result.current.update()) || undefined; });
-  expect(review?.preview.expected_context).toBe("advanced");
+  expect(review).toBeUndefined();
+  expect(result.current.error).toContain("Source Book is missing");
   expect(api.previewProjectFolderGeneration.mock.calls).toEqual([
-    ["p", "create"],
     ["p", "backup_rebuild"],
   ]);
   expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
 });
 
-it("requires a separate review before switching from an in-place update to backup and rebuild", async () => {
+it("requires a separate archive approval when handed a retained in-place review", async () => {
   api.previewProjectFolderGeneration
-    .mockResolvedValueOnce({ expected_context: "ordinary", workspace_preview: { status: "completed", blockers: [] }, recovery: null })
-    .mockResolvedValueOnce({ expected_context: "in-place", workspace_preview: { status: "completed", blockers: [] }, recovery: null })
     .mockResolvedValueOnce({ expected_context: "advanced", workspace_preview: { status: "completed", blockers: [] }, recovery: null })
     .mockResolvedValueOnce({ expected_context: "advanced", workspace_preview: { status: "completed", blockers: [] }, recovery: null });
   api.startProjectFolderGeneration.mockResolvedValue(operation);
   const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
 
-  let review: FolderUpdateReview | undefined;
-  await act(async () => { review = (await result.current.update()) || undefined; });
-
-  expect(review?.preview.expected_context).toBe("in-place");
-  expect(api.previewProjectFolderGeneration.mock.calls).toEqual([
-    ["p", "create"],
-    ["p", "update_in_place"],
-  ]);
+  const review = { operationId: null, resumeRebuild: false, intent: "update_in_place" as const,
+    preview: { expected_context: "in-place", workspace_preview: { status: "completed", blockers: [] } } } as FolderUpdateReview;
   expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
 
   let backupReview: FolderUpdateReview | undefined;
@@ -101,35 +93,176 @@ it("requires a separate review before switching from an in-place update to backu
   await act(async () => { await result.current.update("backup_and_recreate", backupReview); });
 
   expect(api.previewProjectFolderGeneration).toHaveBeenLastCalledWith("p", "backup_rebuild");
-  expect(api.previewProjectFolderGeneration).toHaveBeenCalledTimes(4);
+  expect(api.previewProjectFolderGeneration).toHaveBeenCalledTimes(2);
   expect(api.startProjectFolderGeneration).toHaveBeenCalledWith("p", expect.objectContaining({
     expected_context: "advanced",
     conflict_strategy: "backup_and_recreate",
   }));
 });
 
-it("offers an in-place file update for a completed folder without archiving its custom name", async () => {
-  const ordinary = { expected_context: "ordinary", workspace_preview: { status: "completed", blockers: [] }, recovery: null };
-  const inPlace = { expected_context: "in-place", workspace_preview: { status: "completed", blockers: [] }, recovery: null };
-  api.previewProjectFolderGeneration.mockResolvedValueOnce(ordinary).mockResolvedValueOnce(inPlace)
-    .mockResolvedValueOnce(inPlace);
+it("reviews only whole-folder archiving for a completed folder, without an old-file update preview", async () => {
+  const rebuild = { expected_context: "rebuild", workspace_preview: { status: "completed", blockers: [] }, recovery: null };
+  api.previewProjectFolderGeneration.mockResolvedValue(rebuild);
   api.startProjectFolderGeneration.mockResolvedValue(operation);
   const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "ordinary"));
   let review: FolderUpdateReview | undefined;
   await act(async () => { review = (await result.current.update()) || undefined; });
-  expect(review?.intent).toBe("update_in_place");
-  expect(api.previewProjectFolderGeneration.mock.calls).toEqual([
-    ["p", "create"], ["p", "update_in_place"],
-  ]);
-  await act(async () => { await result.current.update("update_in_place", review); });
+  expect(review?.intent).toBe("backup_rebuild");
+  expect(api.previewProjectFolderGeneration.mock.calls).toEqual([["p", "backup_rebuild"]]);
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+  await act(async () => { await result.current.update("backup_and_recreate", review); });
   expect(api.startProjectFolderGeneration).toHaveBeenCalledWith("p", expect.objectContaining({
-    expected_context: "in-place", conflict_strategy: "update_in_place",
+    expected_context: "rebuild", conflict_strategy: "backup_and_recreate",
   }));
 });
 
-it("does not offer an in-place update when its preview has start blockers", async () => {
+it("creates a missing folder with its fresh create approval, without an archive confirmation", async () => {
+  api.previewProjectFolderGeneration.mockImplementation((_project, intent) => Promise.resolve({
+    expected_context: intent === "create" ? "create-ready" : "archive-ready",
+    workspace_preview: { status: "ready", blockers: [] }, recovery: null,
+  }));
+  api.startProjectFolderGeneration.mockResolvedValue(operation);
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  let review: FolderUpdateReview | void;
+  await act(async () => { review = await result.current.update(); });
+  expect(review!).toBeUndefined();
+  expect(api.previewProjectFolderGeneration.mock.calls).toEqual([["p", "backup_rebuild"], ["p", "create"]]);
+  expect(api.startProjectFolderGeneration).toHaveBeenCalledWith("p", expect.objectContaining({
+    expected_context: "create-ready", conflict_strategy: undefined,
+  }));
+});
+
+it("validates fresh create approval when archive preview cannot fingerprint a missing folder", async () => {
+  let finishCreate!: (value: unknown) => void;
   api.previewProjectFolderGeneration
-    .mockResolvedValueOnce({ expected_context: "ordinary", workspace_preview: { status: "completed", blockers: [] }, recovery: null })
+    .mockResolvedValueOnce({ expected_context: "archive-missing", start_blockers: ["Cannot verify the existing folder identity."],
+      workspace_preview: { status: "blocked", blockers: ["Cannot verify the existing folder identity."],
+        file_preflight: { directory_status: "ready", package_ready: true, items: [] } }, recovery: null })
+    .mockImplementationOnce(() => new Promise(resolve => { finishCreate = resolve; }));
+  api.startProjectFolderGeneration.mockResolvedValue(operation);
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  let pending!: Promise<FolderUpdateReview | void>;
+  act(() => { pending = result.current.update(); });
+  await waitFor(() => expect(api.previewProjectFolderGeneration).toHaveBeenLastCalledWith("p", "create"));
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+  await act(async () => {
+    finishCreate({ expected_context: "fresh-create", start_blockers: [],
+      workspace_preview: { status: "ready", blockers: [],
+        file_preflight: { directory_status: "ready", package_ready: true, items: [] } }, recovery: null });
+    await pending;
+  });
+  expect(api.startProjectFolderGeneration).toHaveBeenCalledWith("p", expect.objectContaining({
+    expected_context: "fresh-create", conflict_strategy: undefined,
+  }));
+});
+
+it.each(["completed", "conflict"])("does not fall back to create for a blocked existing %s folder", async (directoryStatus) => {
+  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "archive-blocked", start_blockers: ["Folder identity needs review."],
+    workspace_preview: { status: "blocked", blockers: ["Folder identity needs review."],
+      file_preflight: { directory_status: directoryStatus, package_ready: false, items: [] } }, recovery: null });
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  await act(async () => { await result.current.update(); });
+  expect(api.previewProjectFolderGeneration.mock.calls).toEqual([["p", "backup_rebuild"]]);
+  expect(result.current.error).toContain("Folder identity needs review");
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+});
+
+it("does not bypass fresh create blockers after a missing-folder archive preview", async () => {
+  api.previewProjectFolderGeneration
+    .mockResolvedValueOnce({ expected_context: "archive-missing", start_blockers: ["Cannot verify the existing folder identity."],
+      workspace_preview: { status: "blocked", blockers: ["Cannot verify the existing folder identity."],
+        file_preflight: { directory_status: "ready", package_ready: true, items: [] } }, recovery: null })
+    .mockResolvedValueOnce({ expected_context: "create-blocked", start_blockers: ["Fee template is missing."],
+      workspace_preview: { status: "blocked", blockers: ["Fee template is missing."],
+        file_preflight: { directory_status: "ready", package_ready: false, items: [] } }, recovery: null });
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  await act(async () => { await result.current.update(); });
+  expect(result.current.error).toBe("Fee template is missing.");
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+});
+
+it("uses create approval if a restartable old generation no longer has an existing folder", async () => {
+  api.getProjectFolderGeneration.mockResolvedValue({ ...operation, status: "interrupted", can_restart: true });
+  const recovery = { operation_id: "operation", inputs_match: false, rebuild_pending: false };
+  api.previewProjectFolderGeneration
+    .mockResolvedValueOnce({ expected_context: "archive-ready", workspace_preview: { status: "ready", blockers: [] }, recovery })
+    .mockResolvedValueOnce({ expected_context: "create-ready", workspace_preview: { status: "ready", blockers: [] }, recovery });
+  api.startProjectFolderGeneration.mockResolvedValue(operation);
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  await act(async () => { await result.current.update(); });
+  expect(api.startProjectFolderGeneration).toHaveBeenCalledWith("p", expect.objectContaining({
+    expected_context: "create-ready", conflict_strategy: undefined, replaces_operation_id: "operation",
+  }));
+});
+
+it.each([
+  { workspace_preview: { status: "completed", blockers: [] }, recovery: null },
+  { workspace_preview: { status: "ready", blockers: [] }, recovery: { operation_id: "another", inputs_match: true, rebuild_pending: false } },
+])("does not create when folder or operation changes during create preflight", async (changed) => {
+  api.previewProjectFolderGeneration
+    .mockResolvedValueOnce({ expected_context: "archive-ready", workspace_preview: { status: "ready", blockers: [] }, recovery: null })
+    .mockResolvedValueOnce({ expected_context: "changed", ...changed });
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  await act(async () => { await result.current.update(); });
+  expect(result.current.error).toContain("preview changed");
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+});
+
+it.each(["conflict", "exists", "inconsistent"])("blocks an unverified %s folder despite a retained legacy backup option", async (status) => {
+  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "unsafe",
+    workspace_preview: { status, blockers: ["Folder ownership or location needs review."],
+      conflict_options: [{ key: "backup_and_recreate" }] }, recovery: null });
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  let review: FolderUpdateReview | void;
+  await act(async () => { review = await result.current.update("backup_and_recreate"); });
+  expect(review!).toBeUndefined();
+  expect(result.current.error).toContain("ownership or location");
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+});
+
+it("keeps saved legacy publication recovery distinct from a new archive choice", async () => {
+  api.getProjectFolderGeneration.mockResolvedValue({ ...operation, status: "blocked", can_restart: false });
+  api.previewProjectFolderGeneration.mockImplementation((_project, intent) => Promise.resolve({
+    expected_context: intent === "create" ? "original-recovery" : "new-archive",
+    workspace_preview: { status: "completed", blockers: [] },
+    recovery: { operation_id: "operation", inputs_match: true, rebuild_pending: false },
+  }));
+  api.resumeProjectFolderGeneration.mockResolvedValue(operation);
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  let review: FolderUpdateReview | undefined;
+  await act(async () => { review = (await result.current.update("backup_and_recreate")) || undefined; });
+  expect(review?.resumeRebuild).toBe(true);
+  expect(review?.preview.expected_context).toBe("original-recovery");
+  await act(async () => { await result.current.update(undefined, review, true); });
+  expect(api.resumeProjectFolderGeneration).toHaveBeenCalledWith("p", "operation");
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+  expect(api.previewProjectFolderGeneration.mock.calls).toEqual([["p", "create"], ["p", "create"]]);
+});
+
+it("checks only archive inputs when replacing a safely restartable failed operation", async () => {
+  api.getProjectFolderGeneration.mockResolvedValue({ ...operation, status: "blocked", can_restart: true });
+  api.previewProjectFolderGeneration.mockImplementation((_project, intent) => {
+    if (intent !== "backup_rebuild") throw new Error("Old business files must not be inspected for a new rebuild.");
+    return Promise.resolve({ expected_context: "new-archive",
+      workspace_preview: { status: "completed", blockers: [] },
+      recovery: { operation_id: "operation", inputs_match: false, rebuild_pending: false },
+    });
+  });
+  api.startProjectFolderGeneration.mockResolvedValue(operation);
+  const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
+  let review: FolderUpdateReview | undefined;
+  await act(async () => { review = (await result.current.update("backup_and_recreate")) || undefined; });
+  expect(review?.intent).toBe("backup_rebuild");
+  expect(api.previewProjectFolderGeneration.mock.calls).toEqual([["p", "backup_rebuild"]]);
+  expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
+  await act(async () => { await result.current.update("backup_and_recreate", review); });
+  expect(api.startProjectFolderGeneration).toHaveBeenCalledWith("p", expect.objectContaining({
+    expected_context: "new-archive", conflict_strategy: "backup_and_recreate", replaces_operation_id: "operation",
+  }));
+});
+
+it("does not offer archive approval when its preview has start blockers", async () => {
+  api.previewProjectFolderGeneration
     .mockResolvedValueOnce({
       expected_context: "advanced",
       start_blockers: ["Fee authority changed after the folder was created."],
@@ -245,14 +378,14 @@ it.each([
   expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
 });
 
-it("requires review for an existing unverified folder and rejects stale confirmation", async () => {
-  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "fresh", workspace_preview: { status: "exists", blockers: [] }, recovery: null });
+it("requires review for an eligible existing folder and rejects stale confirmation", async () => {
+  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "fresh", workspace_preview: { status: "completed", blockers: [] }, recovery: null });
   const { result } = renderHook(() => useProjectFolderGeneration("p", vi.fn(), "old"));
   let review: FolderUpdateReview | undefined;
   await act(async () => { review = (await result.current.update()) || undefined; });
   expect(review).toBeTruthy();
   expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();
-  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "changed", workspace_preview: { status: "exists", blockers: [] }, recovery: null });
+  api.previewProjectFolderGeneration.mockResolvedValue({ expected_context: "changed", workspace_preview: { status: "completed", blockers: [] }, recovery: null });
   await act(async () => { await result.current.update("backup_and_recreate", review); });
   expect(result.current.error).toContain("preview changed");
   expect(api.startProjectFolderGeneration).not.toHaveBeenCalled();

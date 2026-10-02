@@ -176,14 +176,16 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
       const latest = await getProjectFolderGeneration(projectId);
       if (!isCurrent()) return;
       if (latest && ["queued", "running"].includes(latest.status)) { accept(latest); return; }
-      const previewIntent = strategy === "backup_and_recreate"
+      const pending = latest && latest.status !== "completed" ? latest : null;
+      const previewIntent = pending && !pending.can_restart ? "create" : strategy === "backup_and_recreate"
         ? "backup_rebuild"
         : strategy === "update_in_place"
         ? "update_in_place"
-        : "create";
+        // Historical publication recovery still checks its originally approved inputs.
+        // New Create folder requests never inspect old files to choose an update mode.
+        : "backup_rebuild";
       let preview = await previewProjectFolderGeneration(projectId, previewIntent);
       if (!isCurrent()) return;
-      const pending = latest && latest.status !== "completed" ? latest : null;
       const operationId = pending?.operation_id ?? null;
       if ((preview.recovery?.operation_id ?? null) !== operationId) {
         throw new Error(
@@ -198,7 +200,6 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
         throw new Error("Project folder preview changed. Review the latest folder state before choosing again.");
       }
       const recovery = preview.recovery;
-      if (strategy && !reviewed) return { preview, operationId, resumeRebuild: false, intent: previewIntent === "update_in_place" ? previewIntent : "backup_rebuild" };
       if (!strategy && pending && recovery?.inputs_match && resumeRebuild && reviewed?.resumeRebuild) {
         const next = await resumeProjectFolderGeneration(projectId, pending.operation_id);
         if (isCurrent()) accept(next);
@@ -210,6 +211,20 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
         }
         throw new Error("The previous publication needs safe recovery before inputs can change. No files were written.");
       }
+      const directoryStatus = preview.workspace_preview.file_preflight?.directory_status
+        ?? preview.workspace_preview.status;
+      if (previewIntent === "backup_rebuild" && directoryStatus === "ready") {
+        // There is nothing to archive; dispatch with the create-specific approval token.
+        preview = await previewProjectFolderGeneration(projectId, "create");
+        if (!isCurrent()) return;
+        if ((preview.recovery?.operation_id ?? null) !== operationId) {
+          throw new Error("Project folder preview changed. Review the latest folder state before choosing again.");
+        }
+        if (preview.start_blockers?.length) throw new Error(preview.start_blockers.join(" "));
+        if (preview.workspace_preview.status !== "ready") {
+          throw new Error("Project folder preview changed. Review the latest folder state before choosing again.");
+        }
+      }
       const workspace = preview.workspace_preview;
       if (preview.start_blockers?.length) throw new Error(preview.start_blockers.join(" "));
       if (workspace.status === "blocked" || (
@@ -218,25 +233,19 @@ export function useProjectFolderGeneration(projectId: string, onCompleted: () =>
       )) {
         throw new Error(workspace.blockers[0] ?? "Project folder needs review before updating.");
       }
-      if (!strategy && workspace.status === "completed") {
-        if (pending) return { preview, operationId, resumeRebuild: false, intent: "backup_rebuild" };
-        preview = await previewProjectFolderGeneration(projectId, "update_in_place");
-        if (!isCurrent()) return;
-        if (preview.start_blockers?.length) throw new Error(preview.start_blockers.join(" "));
-        return { preview, operationId, resumeRebuild: false, intent: "update_in_place" };
-      }
-      if (!strategy && workspace.status === "adoptable") {
+      if (workspace.status === "adoptable") {
         throw new Error("Link the existing project folder before generating outputs.");
       }
-      if (!strategy && ["conflict", "exists", "inconsistent"].includes(workspace.status)) {
-        preview = await previewProjectFolderGeneration(projectId, "backup_rebuild");
-        if (!isCurrent()) return;
+      if (["conflict", "exists", "inconsistent"].includes(workspace.status)) {
+        throw new Error(workspace.blockers[0] ?? "The existing folder's ownership or location cannot be verified. Review the LTR folders before creating a new folder.");
+      }
+      if (!strategy && workspace.status === "completed") {
         return { preview, operationId, resumeRebuild: false, intent: "backup_rebuild" };
       }
-      if (strategy && !reviewed) {
+      if (strategy && !reviewed && workspace.status !== "ready") {
         return { preview, operationId, resumeRebuild: false, intent: previewIntent === "update_in_place" ? previewIntent : "backup_rebuild" };
       }
-      const selected = strategy;
+      const selected = workspace.status === "ready" ? undefined : strategy;
       requestId.current ??= crypto.randomUUID();
       if (pending) requestId.current = crypto.randomUUID();
       const next = await startProjectFolderGeneration(projectId, {

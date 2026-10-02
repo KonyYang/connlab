@@ -161,8 +161,8 @@ Do not use a dated snapshot as a substitute for the code.
   as Matrix Editor. Measured results remain blank. Missing point coverage or measurement pairs alone
   skips the corresponding optional form with a warning; other projection, template or path failures
   block publication. Projects without electrical steps do not require an IR/DWV template.
-  The preview binds the target and any existing file's hash and filesystem identity. In an approved
-  in-place update, an unchanged same-name file is moved without replacement to the local
+  The retained in-place update API binds an existing target's hash and filesystem identity. In that
+  explicitly approved compatibility flow, an unchanged same-name file is moved without replacement to the local
   `History/Test results` before the new blank form is published without overwriting. Interrupted
   moves and output registration are journaled and fail closed if an operator changes either file.
   Whole-folder Backup and Rebuild instead retains the former business folder under `History/Folders`.
@@ -202,9 +202,13 @@ over a new pass-through layer. Introduce an adapter seam only when behavior actu
 - Test development and packaged path resolution when resources or configuration change.
 - Never overwrite an authoritative workbook or existing project folder without the explicit conflict
   and recovery policy authorized by the task.
-- The normal project-folder entry creates a missing folder, opens a healthy indexed folder, or links
-  an existing same-project folder by repairing only its `.connlab` identity manifest and local SQLite
-  binding. Linking never copies, renames, deletes, tree-hashes, or rewrites operator business files.
+- Workbench `Create folder` creates a missing folder or asks for whole-folder `Backup and Rebuild`
+  when a sole existing official folder has verified project ownership. It does not select an update
+  mode by comparing old business files, offer in-place updates, or route through rename/rebind choices.
+  Explicit confirmation shows the old archive source and fresh authority-derived target; Cancel writes
+  nothing. `Open` remains a separate action. Retained linking APIs can repair a same-project folder's
+  `.connlab` identity manifest and local SQLite binding without rewriting business files.
+  Linking never copies, renames, deletes, tree-hashes, or rewrites operator business files.
   Ordinary additions, edits, deletions, and file locks inside the official project folder do not change
   project identity; identity comes from the immutable `project_id`, registered DL number, configured
   workspace boundary, and manifest. Symlinks, junctions, reparse points, unreadable/foreign manifests,
@@ -216,7 +220,7 @@ over a new pass-through layer. Introduce an adapter seam only when behavior actu
   Retained SQLite paths are rechecked against the configured workspace boundary and expected child
   layout before they are treated as completed; no path below any project workspace may be reused as
   a generation template.
-- Rebuild is a separate advanced operation. New rebuilds only offer `Backup and Rebuild`, which moves
+- Existing-folder creation offers only `Backup and Rebuild`, which moves
   the reviewed inner business folder to `LTR/History/Folders/<old name + timestamp>` before creating
   a fresh folder from the configured template and latest confirmed authorities; old business files
   and subfolders stay in History and are never copied into the replacement. The new folder name follows
@@ -237,10 +241,9 @@ over a new pass-through layer. Introduce an adapter seam only when behavior actu
 - New official project folders use the latest confirmed Basic Information product description and
   test item, with existing Project/LTR/application-form fallbacks when absent. The registered LTR
   remains the DL-number authority. Unconfirmed Basic drafts never name official folders. The inner
-  folder's descriptive name is mutable, not project identity. A confirmed name change offers an
-  explicit, identity-checked in-place rename and updates live indexed paths. A uniquely identified
-  manual rename offers explicit rebind while retaining the custom name or adopting the confirmed
-  name. When an indexed folder already exists, the Workbench Create folder action instead offers a
+  folder's descriptive name is mutable, not project identity. Retained relocation APIs support
+  identity-checked rename/rebind and interrupted historical relocations; the Workbench Create folder
+  entry no longer offers these granular choices. When an indexed folder already exists, that entry offers a
   reviewed whole-folder archive/rebuild in that indexed LTR workspace; a changed default save root
   cannot move the new folder elsewhere. A previously queued relocation with no recorded move may
   be superseded only after folder and manifest identity are rechecked; a moved relocation still
