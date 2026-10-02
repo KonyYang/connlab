@@ -132,7 +132,8 @@ Do not use a dated snapshot as a substitute for the code.
   review; newly added steps inherit the configured count, removed/unselected steps do not contribute.
   LLCR/CR IDs and their compatibility fingerprints remain independent of these electrical counts.
   Historical JSON profiles without electrical settings remain readable without migration.
-  Automated specification point extraction is not implemented.
+  Measurement pairs are entered and reviewed manually in Matrix Editor, then become authority through
+  `Confirm Matrix`. Automatic extraction from specifications is not part of the required workflow.
 - IR/DWV blank-record workbook generation is implemented through `IR&DWV Form` in Matrix Editor,
   using the configured Excel template and Matrix groups, sample quantities, measurement pairs,
   conditions and requirements. IR and DWV share each round's form; measured results remain blank.
