@@ -19,27 +19,30 @@
     "route": "full_chain",
     "scope": "Create a missing official folder; existing verified sole owned folder requires whole-folder archive confirmation and fresh generation from templates and latest confirmed authorities. Remove content-based update/rename/rebind choices from the Create folder entry. Preserve legacy persisted-operation recovery, ownership/path/concurrency/lock safeguards and unrelated User work.",
     "scope_paths": [
-      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
-      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
-      "frontend/src/features/project-workbench/useProjectFolderGeneration.ts",
-      "frontend/src/features/project-workbench/useProjectFolderGeneration.test.tsx",
       "docs/PROJECT_CONTEXT.md",
-      "docs/project_folder_generation_recovery.md"
+      "docs/plans/REPORT_AUTOMATION_REAL_SAMPLE_EVIDENCE.md",
+      "docs/plans/REPORT_AUTOMATION_VBA_REFERENCE_MAP.md",
+      "docs/plans/REPORT_RESULT_PHOTO_AUTOMATION_DESIGN.md",
+      "docs/project_folder_generation_recovery.md",
+      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+      "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+      "frontend/src/features/project-workbench/useProjectFolderGeneration.test.tsx",
+      "frontend/src/features/project-workbench/useProjectFolderGeneration.ts"
     ],
     "risk_reasons": [
       "Changes initiation of authoritative external folder archival and replacement"
     ],
     "activation_head": "3f8aac97e5c12b528ad5b5cdc88ed533aa4b5d32",
     "started_at": "2026-10-02T12:05:08.026304Z",
-    "updated_at": "2026-10-02T12:47:25.794477Z",
+    "updated_at": "2026-10-02T12:57:46.087847Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_CREATE_FOLDER_ARCHIVE_ONLY_20261002",
-      "stage": "delivery_scope_registration",
-      "status": "blocked",
-      "summary": "Product commit 818de002 is clean and limited to six approved paths. Independent review, QA (110 Python, 219 frontend, build and isolated browser) and local integration verification passed. Concurrent external commit ba5a7d77 relocated three design docs; activation-to-HEAD diff exceeds the six-path high-risk manifest. Await User approval only for manifest correction recording those existing deletions; no document restoration or additional product edits. External design doc preserved at C:/Users/White/.workbuddy/workspace/connlab-design/REPORT_RESULT_PHOTO_AUTOMATION_DESIGN.md. Do not apply old stash.",
-      "requires_user": true
+      "stage": "scope_manifest_correction",
+      "status": "running",
+      "summary": "User approved on 2026-10-02 only board-manifest correction to record three existing design-document deletions from separate commit ba5a7d77. Do not edit, restore, or recommit those documents; six-file product commit 818de002 unchanged.",
+      "requires_user": false
     },
     "report": null
   },
