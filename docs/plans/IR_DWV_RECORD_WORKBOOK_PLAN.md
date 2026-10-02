@@ -6,6 +6,23 @@
 > 仓库：`D:\PythonProject\connlab`，分支 `master`，工作区当前干净
 > 设计依据：`C:\Users\White\WorkBuddy\2026-10-01-10-24-52\IR_DWV_Record_Button_Design.md`（v2，8 项决策已由用户拍板）
 
+> 2026-10-01 恢复修订：White 在当前对话明确同意推荐验收口径。
+> 历史成品作为排版、样式、合并区和公式参考；业务字段按当前 Matrix /
+> Basic Information 的权威来源逐格校验，不复制历史实测日期、温湿度、
+> 测量结果或错填组号。任何排版差异仍必须解释并验证，不能静默忽略。
+> 本次仍在同一个 `TASK_362_IR_DWV_RECORD_WORKBOOK_20261001` 中完成 P1/P2/P3。
+> 用户另已明确批准补入 `backend/infrastructure/files/project_folder_required_forms_gateway.py`，
+> 仅使既有安全归档/恢复机制接受 `ir_dwv`，不改变 LLCR/CR 或 Create folder 行为。
+> 2026-10-01 用户验收修订（优先于下述历史决策）：同一轮 IR/DWV 共用表格，
+> 不因相邻步骤号不同拆表；下一轮才新增表格。不足五件保留五个物理槽并清空
+> 多余槽，超过五件扩展两侧。保留用户当前模板中的 LOGO、Instrument/Gage ID
+> 默认值；条件按 Matrix 填充，不复制历史测量结果、校准日期或环境值。
+> 用户另批准补入 ProjectWorkbenchCloseConfirmation.tsx 及其同名测试，修复
+> 新增输出类型的显示映射；独立 QA 的 72 项相关测试和生产构建已通过。
+> 2026-10-02 用户明确确认：结果 UNITS 沿用登记模板（当前 GΩ / nA）；
+> 电压、时间及判定要求取对应 Matrix 步骤，包含已有步骤文字覆盖。
+> 判定要求不用于推断或替换结果单位，也不自动换算测量值。
+
 ---
 
 ## 0. 需求一句话
@@ -13,7 +30,7 @@
 在 **Matrix Editor → Test points → `IR / DWV test points` 卡片头部** 增加 `IR&DWV Form` 按钮，
 **逻辑与现有 LLCR Form 按钮完全一致**（预览 → 冲突确认 → 归档发布），
 产出依据 Matrix 构建的 IR/DWV 测试记录表 xlsx；
-**不从零绘制**，而是加载模板 `D:\Source\Template\IR&DWV Template.xlsx`，按「组别 = sheet」「步骤 = 表格块」复制并填值。
+**不从零绘制**，而是加载登记模板，按「组别 = sheet」「IR/DWV 测量轮次 = 表格块」复制并填值；容量不足时增加该组的续页 sheet。
 
 人工现状：多个组别就复制多份 sheet，一个组别有多个测试步骤就在 sheet 内复制粘贴多份表格。要实现的是这个复制过程的自动化。
 
@@ -21,11 +38,17 @@
 
 ## 1. 参考文件（真实存在，已解析）
 
+下表尺寸和第 2 节结构记录的是初始历史模板调查，不是当前模板状态。
+用户保存后的登记模板为一张原型表、22,997 B，SHA256
+`07cf9e81e11fca5c1fb5d94a291aaba6851c0e748563384ef814aa8c048ef7cf`。
+它包含必需 LOGO、设备默认值及 IR/DWV 四行统计公式；执行须读取当前模板，
+不能恢复初始备份覆盖用户修改。最新实测证据见 GOLDEN_DIFF 文档。
+
 | 用途 | 路径 |
 |---|---|
 | 人工成品样例（黄金样例） | `C:\Users\White\Desktop\AI information\Projects\DL-2026-07-115 Custom Pwr 14P VH Qualification Testing\Test results\DL-2026-07-115 BTB 14P IR&DWV Results.xlsx` |
 | 模板 | `D:\Source\Template\IR&DWV Template.xlsx`（39,372 B） |
-| ⚠️ 锁文件 | `D:\Source\Template\~$IR&DWV Template.xlsx` 存在 → **模板当前正被 Excel 打开** |
+| ⚠️ 锁文件 | 初次调查时 `D:\Source\Template\~$IR&DWV Template.xlsx` 存在；2026-10-01 恢复核实已不存在，执行生成/净化时仍须实时检查 |
 
 ---
 
@@ -34,7 +57,7 @@
 ```
 workbook
 └─ sheet「Group N」          ← 1 个组别 = 1 张 sheet
-   ├─ block A（列 B..L）      ← 1 个测试步骤 = 1 份表格
+   ├─ block A（列 B..L）      ← 1 轮 IR/DWV = 1 份表格，单侧未执行时留空
    │   ├─ B1:D2  «AP Product Test Laboratory»   E1:J1 «Equipment Used»   E2:J2 Instrument/Gage ID/Last Cal./Cal Due.
    │   ├─ B3:D3  Amphenol ICC，地址 B4:B7
    │   ├─ B8:D8 Start Date   B9:D9 Finish Date   K8:L8 Amb Temp   K9:L9 Rel.Hum.
@@ -82,7 +105,8 @@ DI    backend/api/dependencies.py
 落盘  data/generated_llcr_cr_record_drafts/  →  项目 Test results/（冲突时旧文件归档 History/Test results）
 ```
 
-**block 描述必须复用这套**（`backend/application/confirmed_matrix_llcr_cr_record_projection.py::_point_profile_stages`）：
+历史实现按单侧步骤复用了下述 LLCR 描述规则；本次修订按配对后的轮次计算，
+避免产生 `After IR` 或两侧重复阶段。显式 description override 仍优先，且不改变 LLCR 实现。
 
 ```python
 if index == 0:                   label = "Initial"
@@ -100,14 +124,14 @@ IR/DWV 步骤筛选沿用既有判定（`test_item` 含 `Insulation Resistance` 
 | # | 议题 | 决策 |
 |---|---|---|
 | **D1** | 按钮落点 | `IR / DWV test points` 卡片 header（`MatrixTestPointsEditor.tsx:103-109`），文案 `IR&DWV Form`，忙碌态 `Checking IR&DWV...`，禁用条件同 LLCR |
-| **D2** | block 判定与描述 | **沿用 LLCR 生成测试表格的描述逻辑**（`_point_profile_stages`：`Initial` / `After {上一行 test_item}` / `Final` + override 优先）。**不新增"工艺阶段"字段** |
+| **D2** | block 判定与描述 | **用户修订**：以组内实际执行顺序和非电气工序边界识别测量轮次，兼容相同步骤号及连续的 IR/DWV 步骤；不按两侧第几次出现盲目配对。单侧缺失留空，重复身份报错。按轮次生成 `Initial` / `After {上一工序}` / `Final`，override 优先；不新增工艺字段，不改变 LLCR |
 | **D3** | 模板注册 | 走既有 `ExternalResourceType` 机制，新增 `IR_DWV_RECORD_TEMPLATE = "ir_dwv_record_template"`（`backend/domain/enums.py:149`），**禁止把 `D:\Source\Template` 硬编码进代码**；资源值可在设置页改。先确认现有"模板目录"资源指向哪里，能复用就复用 |
 | **D4** | block 复制实现 | openpyxl 自研 `copy_block`（值 + 样式 + 合并区 + 行高 + 数字格式 + 公式偏移）。**明确排除 Excel COM/Win32COM**（本机已知 COM 崩溃 `0x800706be`，且 LLCR 链路是纯 openpyxl） |
 | **D5** | 步骤数排版 | **同一 sheet 内往右并排**，block 原点 `B → O → Z`（偏移 +13）；**放不下（或超过容量）就重新生成一张新表格（新 sheet）**，从模板 sheet 复制，命名 `Group 1 (2)`、`Group 1 (3)`…。**不做"换行到下方"**。⚠️ 样品数 ≠ 5 时 block 宽度会变，单 sheet 容量按实际宽度动态算，不能写死 3 |
-| **D6** | 样品数 ≠ 5 | **动态插列**。N > 5：在样品区插入 (N-5) 列（复制相邻列值/样式/数字格式，右侧整体右移）；N < 5：删除多余列；`SAMPLE ID` 写 `1#..N#`；`UNITS` 按列复制；**统计公式范围随实际列数重算**；合并区（`B13:G13`/`H13:L13`、UNITS 行、SAMPLE ID 行等）按新宽度重建。表达式如 `5+5(d)` **只取主样品数**（首个数字 = 5），preview 给 info 诊断。N < 1 或非整数 → blocked |
+| **D6** | 样品数 ≠ 5 | **用户修订**：物理槽数 `max(5,N)`；N > 5 两侧各增加 N-5 槽，N < 5 保留五槽且多余条件/编号/单位/样品标识/数据为空。统计和 Fee 数量使用实际 N，不使用物理槽数；合并区和分页随物理宽度重算。`5+5(d)` 只取首个数字并提示；N < 1 或非整数 blocked |
 | **D7** | 输出与文件名 | **`{项目}/Test results/{DL} IR&DWV Record.xlsx`**（用 `Record`，对齐 LLCR 惯例，不用样例里的 `Results`）。冲突 → 旧文件归档 `History/Test results`；`preview_token` + `require_project_folder_write_slot` 同 LLCR；未确认 Matrix / 文件夹不可用时降级为浏览器下载。草稿目录 `data/generated_ir_dwv_record_drafts/` |
 | **D8** | preview/publish 复用 | 复用 `MatrixEditorLlcrCrRecordPublicationService` 的机制，把 `record_type` 从 `Literal["llcr","cr"]` 放开为受控集合（新增 `ir_dwv`），artifact store / 文件名 / 目标路径按 `record_type` 分支 |
-| **D9** | 表头字段来源 | Request No. / Product Name / Tested / Checked / Approved / Requestor / Start-Finish Date / Amb Temp / Rel.Hum. **与 LLCR 同源**；**Equipment Used 四列取 `EQUIPMENT_CALIBRATION_EXCEL` 设备校准台账**，取不到时留空 + info 诊断，**不 blocked** |
+| **D9** | 表头字段来源 | Request No. / Product Name / Requestor / Start-Finish Date 与现有权威来源一致；无执行来源的人员、环境留空。**用户修订**：未提供明确设备选择时，Instrument/Gage ID 使用当前模板的默认值；不复制模板历史校准日期。每块及续页保留首块 LOGO，登记模板生成前后字节不变 |
 | **D10** | 条件文案（行14..18） | `{n}. {IR|DWV} testing/ {i}# {矩阵行 condition 原文}`，编号 `1..N` = IR、`N+1..2N` = DWV；`mated` / `unmated` **仅当 condition 原文含该词时才附加**，不固定拼接 |
 | **D11** | 数据行 | IR/DWV **共用测量组合文本**（`point_profile.electrical_point_pairs`，即刚交付的共用文本框）→ 每个非空组合一行，行首列写组合原文（如 `Odd&Even`），不拆分 `&` / `and` / `-` |
 | **D12** | 模板可否修改 | **允许净化**（清数据、清冗余列宽），但**必须先备份原件**到 `D:\Source\Template\backup\` 再改（本机回收站 API 不可用，用 `Move-Item`，不要真删） |
@@ -121,14 +145,14 @@ IR/DWV 步骤筛选沿用既有判定（`test_item` 含 `Insulation Resistance` 
 1. 备份模板原件到 `D:\Source\Template\backup\IR&DWV Template.xlsx`（`Move-Item`/`Copy-Item`，不要删除原文件）。
 2. 写「模板资产清单」脚本，输出全部单元格值 / 合并区 / 行高列宽 / 公式 / 条件格式 / 数据验证 / 打印设置，固化为 fixture 作回归基线。
 3. 新增 `backend/infrastructure/office/ir_dwv_record_workbook_layout.py` —— **布局计算器**：所有锚点（block 原点、样品区边界、IR/DWV 子表、行锚点 1/3/8/9/10/11/12/13/14/19/20/21/22/34/37/39/40、统计公式模板）由它统一产出，**禁止在别处硬编码列号**。
-4. 新增 `backend/infrastructure/office/ir_dwv_record_workbook_gateway.py` —— 模板驱动写入：`load_workbook(template)` → 组别复制 sheet → 步骤 `copy_block` → **样品数插/删列** → 填值 → 公式重算。
+4. 新增 `backend/infrastructure/office/ir_dwv_record_workbook_gateway.py` —— 模板驱动写入：`load_workbook(template)` → 组别复制 sheet → 轮次 `copy_block` → **样品槽保留/扩展** → 填值 → 公式重算；每块单独克隆首块 LOGO。
 5. 新增 `backend/infrastructure/files/ir_dwv_record_artifact_store.py`（照抄 LLCR 那份：uuid 命名 + containment 校验）。
 6. 单测：
    - `tests/unit/test_ir_dwv_record_workbook_gateway.py` —— block 复制保真度（合并区/行高/字体/边框/公式偏移）、**样品数 3 / 5 / 7 三档逐格回归**、2/3/4 个步骤、空组合。
    - 模板指纹校验（关键锚点单元格文本比对，不匹配则 blocked）。
-7. **黄金样例比对**：用 DL-2026-07-115 的输入（3 组 × 2 步骤 × 5 样品 × 1 组合）生成，与人工那份 xlsx 做**逐单元格 diff**，列出所有差异并说明是否可接受（允许差异仅限"未填数据区"）。
-8. **闸门**：把 diff 报告写进 `docs/plans/` 或任务文档。**若无法达到逐格一致，立即停下并报告，不要继续 P2/P3。**
-9. 更新 `docs/task_board.md` 控制块 → `ready_for_close`，commit。
+7. **黄金样例比对**：用 DL-2026-07-115 的输入（3 组 × 2 步骤 × 5 样品 × 1 组合）生成，与人工那份 xlsx 做**逐单元格 diff**。历史成品用来核对排版、实际样式属性、合并区和公式；动态字段逐格校验当前权威输入。保留全部差异，区分空白测量区、历史执行值/人工错误和真实格式缺陷。跨工作簿不得用样式内部索引判定格式差异；分组列宽按覆盖范围和工作表缺省宽度比较，不创建缺失列维度来读取。
+8. **闸门**：把 diff 报告写进 `docs/plans/`。**真实格式缺陷或当前权威输入校验失败时，不要继续 P2/P3。** 历史成品的分阶段实测值、错填组号和手工列宽不作为产品硬编码来源；有意的模板驱动差异必须有说明及回归验证。
+9. 通过 P1 闸门后记录恢复检查点，继续同一任务的 P2/P3；仅全部验收完成才进入 `ready_for_close`。
 
 ### P2 — 后端链路
 
@@ -161,6 +185,26 @@ IR/DWV 步骤筛选沿用既有判定（`test_item` 含 `Insulation Resistance` 
 6. 与 Fee 数量做一致性断言（samples × pairs），不一致则 blocked。
 7. 模板净化前**先备份**，不要删除原文件。
 8. 公共盘写入沿用 LLCR 的 `archive` 语义（先归档旧文件再写新）。
+9. 用户本次已修改登记模板；不得用原 backup 覆盖它。写入器只读取模板，
+   输出必须保留其 LOGO 和明确授权的设备默认值，同时清空历史执行数据。
+   无法定位首块 LOGO 时明确 blocked，不静默产出缺 LOGO 的表单。
+
+### 用户修订的实际回归输入
+
+- 项目 `1fb51ecaf71d4a10a95bf08ccca7b369`，Group 2：IR 2/5/8，DWV 3/6/9，
+  中间工序 Thermal Shock 4、Cyclic Temperature and Humidity 7，应生成三块而非六块。
+- 历史 PDF 的 Group 1 IR 4/11、DWV 5/12；Group 2 IR 3/9、DWV 4/10；
+  Group 3 IR 3/11、DWV 4/12，应各两块；历史实测值不是新记录来源。
+- 用户编辑模板首次核对 SHA256：`389c3fe570e1f5f8ec291d1987ba6a7dd06156eb95d79fb11f1855010b699e4a`；
+  原 backup SHA256：`e577747e7e18047e2e5d50062ef73d790d10312731c5c50f02862f15b093bafa`。
+- 用户在 23:22 保存并关闭 Excel 后重新核对：模板 22,997 字节，SHA256
+  `07cf9e81e11fca5c1fb5d94a291aaba6851c0e748563384ef814aa8c048ef7cf`，
+  锁文件已不存在；仍有一个 LOGO、默认设备/编号、空校准日期和 GΩ/nA 单位。
+- 该当前模板的 IR 统计区是四行独立公式（`C36:G36` / `C37:G37`），不是
+  历史 `C36:G37` 合并的 `/`。需兼容这两种真实布局，并保留模板每侧的
+  统计方式；公式范围按实际样品数生成，不能把新模板修改回旧拓扑。
+- 2026-10-02 用户已确认结果 UNITS 沿用登记模板；电压、时间及判定要求取 Matrix。
+  判定要求输出到既有 Remarks，保留步骤文字覆盖；电压和时间单位不能作为结果单位。
 
 ---
 
@@ -175,8 +219,8 @@ IR/DWV 步骤筛选沿用既有判定（`test_item` 含 `Insulation Resistance` 
 
 ## 8. 治理要求（按项目既有流程）
 
-1. 开工前先处理 `docs/task_board.md` 的当前 active 任务（`TASK_MATRIX_IR_DWV_TEST_POINTS_20260930`，state `ready_for_close`）——按 `docs/project_management/SOL_NATIVE_WORKFLOW.md` 的流程推进，再登记新任务（建议 `TASK_362A_IR_DWV_RECORD_TEMPLATE_WRITER` 等，按阶段拆，维持 `wip_limit: 1`）。
-2. 每个阶段结束：更新 task_board 控制块（含 `activation_head`、`updated_at`、checkpoint）、写 lane 证据、commit。
+1. 前置点位任务已关闭；本工单的 P1/P2/P3 在同一高风险任务 `TASK_362_IR_DWV_RECORD_WORKBOOK_20261001` 中执行，维持 `wip_limit: 1`。
+2. 通过唯一看板 writer 保存有用的阶段恢复检查点；测试、独立审查和验收事实保留在本工单、黄金差异报告及最终看板结果，不重复创建 lane 证据。
 3. 提交信息用英文、说明改动范围与验证结果（沿用仓库既有风格）。
 4. **未经验证不标记 accepted**；P1 的黄金样例 diff 未通过则停在该阶段。
 5. 涉及公共盘/项目文件夹的写操作，遵循既有 folder write slot 机制，不要绕过。
@@ -185,11 +229,11 @@ IR/DWV 步骤筛选沿用既有判定（`test_item` 含 `Insulation Resistance` 
 
 ## 9. 完成定义（DoD）
 
-- [ ] 模板已备份，净化版已登记为外部资源 `IR_DWV_RECORD_TEMPLATE`
-- [ ] 布局计算器覆盖样品数 3/5/7、步骤 1..4（第 4 个触发新 sheet）
-- [ ] 单测全绿，含 block 保真度与样品数三档回归
-- [ ] 黄金样例 diff 报告完成，差异仅限未填数据区
-- [ ] 3 个后端端点可用，落盘/归档/降级行为与 LLCR 一致
-- [ ] `IR&DWV Form` 按钮出现在 `IR / DWV test points` 卡片 header，全流程可走通
-- [ ] LLCR/CR 既有测试无回归
-- [ ] task_board 已更新并 commit
+- [x] 模板已备份并登记为外部资源 `IR_DWV_RECORD_TEMPLATE`，公开 validate API 返回 valid；当前用户修改的模板保持不变，SHA 与保真核对见 GOLDEN_DIFF
+- [x] 布局计算器覆盖样品数 3/5/7、多轮 IR/DWV 共表与容量续页（容量依据实际表宽）
+- [x] 受影响单测与 API 验证全绿，含 block 保真度、样品数三档及判定要求回归；最终受影响 QA 81 项通过
+- [x] 黄金样例 diff 报告完成；当前模板/权威输入、历史执行值清空及有意差异有明细与验证
+- [x] 3 个后端端点可用，落盘/归档/降级行为与 LLCR 一致
+- [x] `IR&DWV Form` 位于 `IR / DWV test points` 卡片 header，隔离浏览器全流程已核对
+- [x] LLCR/CR 既有相关测试通过，未改变既有发布行为
+- 看板最终提交与 `ready_for_close` 以唯一 writer 的实际结果为准；独立集成核对后完成，不提前宣称关闭。

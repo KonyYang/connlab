@@ -56,15 +56,15 @@
     ],
     "activation_head": "29c0b9de3335d5c1e8beb0f3f2f559889ac572fd",
     "started_at": "2026-10-01T03:23:28.767007Z",
-    "updated_at": "2026-10-01T04:08:22.514778Z",
+    "updated_at": "2026-10-02T00:07:35.360626Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_362_IR_DWV_RECORD_WORKBOOK_20261001",
-      "stage": "p1_golden_gate",
-      "status": "blocked",
-      "summary": "P1 writer core and 19 focused tests pass; full non-Office Python gate passes 3193 tests. Golden comparison fails with 90 non-data cell differences, so P2/P3 are prohibited. External template backup/purification is also deferred because ~$IR&DWV Template.xlsx reappeared.",
-      "requires_user": true
+      "stage": "matrix_requirement_output_revision",
+      "status": "running",
+      "summary": "User2026-10-02 explicitly resolved resultUNITS: retain template(GOhm/nA), Matrix owns voltage/time/requirements. Main final inspection found requirement already retained per IR/DWV SourceStep but writer Remarks remains blank so requirements not rendered. IndependentDeveloper assigned bounded existingfield output+TDD in gateway/writer tests, Reviewer waitingfreeze; sourceimmutable/noUI/schema change. Retain original fullchainQA/frontendbuild and realisolateddownload evidence; last geometryQA71passed but finalaffectedchecks must rerun after requirementfix. Need committed exactscope reconciliation(approvedpublisher+2closelabel files), independentIntegrator, finishreadyforclose. No newexternaloverwrite/taskclose/publication.",
+      "requires_user": false
     },
     "report": null
   },

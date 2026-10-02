@@ -156,6 +156,7 @@ class ExternalResourceType(StrEnum):
     OFFICIAL_PUBLIC_DRIVE_ROOT = "official_public_drive_root"
     STANDARD_RECORD_EXCEL = "standard_record_excel"
     EQUIPMENT_CALIBRATION_EXCEL = "equipment_calibration_excel"
+    IR_DWV_RECORD_TEMPLATE = "ir_dwv_record_template"
 
 
 class ExternalResourceValidationStatus(StrEnum):
@@ -189,6 +190,7 @@ class ProjectOutputKind(StrEnum):
     TEST_STATUS = "test_status"
     LLCR_RECORD_FORM = "llcr_record_form"
     CR_RECORD_FORM = "cr_record_form"
+    IR_DWV_RECORD_FORM = "ir_dwv_record_form"
     FEE_EVALUATION = "fee_evaluation"
     CUSTOMER_FEEDBACK_FORM = "customer_feedback_form"
     APPROVAL_PACKAGE = "approval_package"

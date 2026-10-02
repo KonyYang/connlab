@@ -2241,6 +2241,10 @@ export function MatrixEditorWorkspace({
             onProfileChange={(nextProfile) => { markUnsaved(); setPointProfile(nextProfile); }}
             onOverridesChange={(nextOverrides) => { markUnsaved(); setPointOverrides(nextOverrides); }}
             recordActions={{
+              ir_dwv: (
+                <LlcrCrRecordDownloadAction projectId={projectId} recordType="ir_dwv"
+                  getDraftRequest={getLlcrCrDraftRequest} matrixHasPendingChanges={hasMatrixAuthorityChanges} />
+              ),
               llcr: (
                 <LlcrCrRecordDownloadAction
                   projectId={projectId}

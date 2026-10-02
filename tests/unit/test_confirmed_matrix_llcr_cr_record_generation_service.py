@@ -330,6 +330,52 @@ def _publication_fixture(tmp_path: Path):
     assert len(outputs.records) == 1
 
 
+def test_ir_dwv_download_token_binds_template_and_header_context(tmp_path):
+    from backend.application.matrix_editor_ir_dwv_record_projection import build_matrix_editor_ir_dwv_record_projection
+    profile = MatrixPointProfile((), electrical_point_pairs="Odd&Even")
+    context = ["source-v1"]
+    def builder(**values):
+        return build_matrix_editor_ir_dwv_record_projection(**values, source_fingerprint=context[0])
+    service = MatrixEditorLlcrCrRecordPublicationService(
+        confirmed_store=SimpleNamespace(get_active_by_project=lambda _: None),
+        preview_service=None, workspace_store=SimpleNamespace(get_by_project=lambda _: None),
+        workspace_verifier=lambda _: False, draft_projection_builder=builder,
+    )
+    draft = GenerateMatrixEditorLlcrCrRecordCommand("P1", "ir_dwv", (MatrixEditorLlcrCrRecordGroupInput("g1", "1", "5"),),
+        (MatrixEditorLlcrCrRecordRowInput("IR", group_values={"g1": "1"}),), point_profile=profile)
+    command = PreviewMatrixEditorLlcrCrPublicationCommand(draft)
+    preview = service.preview(command)
+    assert preview.mode == "download" and preview.status == "ready"
+    context[0] = "source-v2"
+    with pytest.raises(ValueError, match="changed"):
+        service.validate_download(command, preview.preview_token)
+
+
+def test_ir_dwv_form_publishes_with_correct_kind_and_preserves_old_measurements(tmp_path):
+    from backend.application.matrix_editor_ir_dwv_record_projection import build_ir_dwv_record_projection, build_matrix_editor_ir_dwv_record_projection
+    from backend.domain import ProjectOutputKind
+    service, draft, old_target = _publication_fixture(tmp_path)
+    profile = MatrixPointProfile((), electrical_point_pairs="Odd&Even")
+    snapshot = service._confirmed._snapshot
+    snapshot = replace(snapshot, version=replace(snapshot.version, point_profile=profile), rows=(replace(snapshot.rows[0], test_item="IR"),))
+    service._confirmed._snapshot = snapshot
+    service._draft_projection_builder = build_matrix_editor_ir_dwv_record_projection
+    service._preview_service = SimpleNamespace(preview=lambda *args: build_ir_dwv_record_projection(snapshot))
+    class Writer:
+        def write(self, *, output_path, projection):
+            output_path.write_bytes(b"new IR DWV workbook")
+    service._writer = Writer()
+    draft = replace(draft, record_type="ir_dwv", point_profile=profile, rows=(replace(draft.rows[0], test_item="IR"),))
+    target = old_target.with_name("DL-001 IR&DWV Record.xlsx")
+    target.write_bytes(b"previous measured IR DWV")
+    preview = service.preview(PreviewMatrixEditorLlcrCrPublicationCommand(draft))
+    assert preview.status == "conflict" and preview.target_path == target
+    result = service.publish(PublishMatrixEditorLlcrCrPublicationCommand(draft, preview.preview_token, "archive"))
+    assert target.read_bytes() == b"new IR DWV workbook"
+    assert result.archive_path.read_bytes() == b"previous measured IR DWV"
+    assert service._outputs.records[0].output_kind == ProjectOutputKind.IR_DWV_RECORD_FORM
+
+
 class _OutputService:
     def __init__(self) -> None:
         self.records = []

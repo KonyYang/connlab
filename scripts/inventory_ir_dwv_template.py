@@ -3,11 +3,71 @@
 from __future__ import annotations
 
 import argparse
+from copy import copy
 import json
 from pathlib import Path
 from typing import Any
 
 from openpyxl import load_workbook
+
+
+def purify_template(source: Path, output: Path) -> Path:
+    """Create a blank first-block asset; never replace the source or another file."""
+    from backend.infrastructure.office.ir_dwv_record_workbook_gateway import (
+        IrDwvRecordWorkbookGateway, copy_block, copy_block_logos, template_block_logos,
+    )
+    from backend.infrastructure.office.ir_dwv_record_workbook_layout import block_layout
+    source, output = Path(source), Path(output)
+    if source.resolve() == output.resolve():
+        raise ValueError("Template source and purified output must be different files.")
+    if output.exists():
+        raise FileExistsError("Purified output already exists; choose a new path.")
+    IrDwvRecordWorkbookGateway(source).template_fingerprint()
+    original = load_workbook(source, data_only=False)
+    # Keep the source style table in memory: raw StyleArray IDs are workbook-local.
+    purified = original
+    try:
+        prototype, sheet = original.worksheets[0], purified.create_sheet("__purified")
+        sheet.title = "IR&DWV Template"
+        for attribute in ("sheet_format", "sheet_properties", "page_margins", "page_setup", "print_options", "oddHeader", "oddFooter", "evenHeader", "evenFooter", "firstHeader", "firstFooter"):
+            setattr(sheet, attribute, copy(getattr(prototype, attribute)))
+        purified.calculation = copy(original.calculation)
+        sheet.sheet_view.showGridLines = prototype.sheet_view.showGridLines
+        sheet.freeze_panes = prototype.freeze_panes
+        copy_block(prototype, sheet, source_min_row=1, source_max_row=40,
+                   source_min_column=1, source_max_column=14, target_min_row=1, target_min_column=1)
+        copy_block_logos(template_block_logos(prototype), sheet,
+                         block_layout(origin_column=2, sample_count=5, pair_count=0))
+        for row in range(3, 8):
+            for column in (5, 8, 9, 10):
+                if row != 3 or column not in (5, 8):
+                    sheet.cell(row, column).value = None
+        for coordinate, label in {"B8": "Start Date:", "B9": "Finish Date:", "K8": "Amb Temp:", "K9": "Rel. Hum.:",
+                                  "B10": "Item/Process:", "I10": "Request  No.:", "B11": "Remarks:", "I11": "Product Name:",
+                                  "B12": "Tested By:", "E12": "Checked By:", "H12": "Approved By:", "K12": "Requestor:"}.items():
+            sheet[coordinate].value = label
+        for row in range(14, 19):
+            sheet.cell(row, 2).value = None
+            sheet.cell(row, 8).value = None
+        for row in range(22, 34):
+            for column in range(2, 13):
+                sheet.cell(row, column).value = None
+        sheet.print_area = "B1:L40"
+        for other in tuple(purified.worksheets):
+            if other is not sheet:
+                purified.remove(other)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        # Exclusive creation prevents an unnoticed race from overwriting any file.
+        with output.open("xb") as stream:
+            try:
+                purified.save(stream)
+            except Exception:
+                stream.close()
+                output.unlink(missing_ok=True)
+                raise
+    finally:
+        purified.close()
+    return output
 
 
 def _json_value(value: Any) -> Any:
@@ -149,7 +209,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("workbook", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--purify-output", type=Path, help="Create a separate blank template without overwriting any file.")
     args = parser.parse_args()
+    if args.purify_output is not None:
+        print(purify_template(args.workbook, args.purify_output))
+        return
     payload = json.dumps(
         inventory_workbook(args.workbook), ensure_ascii=False, indent=2, sort_keys=True
     )

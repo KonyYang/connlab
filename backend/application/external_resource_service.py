@@ -143,6 +143,15 @@ class ExternalResourceService:
             return _directory_failure(path, "Public Project locations")
         if not path.is_file():
             return f"Expected an existing file: {path}"
+        if resource.resource_type is ExternalResourceType.IR_DWV_RECORD_TEMPLATE:
+            if path.suffix.lower() != ".xlsx":
+                return f"Expected a macro-free .xlsx IR/DWV template: {path}"
+            from backend.infrastructure.office.ir_dwv_record_workbook_gateway import IrDwvRecordWorkbookGateway
+            try:
+                IrDwvRecordWorkbookGateway(path).template_fingerprint()
+            except (OSError, ValueError) as exc:
+                return f"IR/DWV template is not usable: {exc}"
+            return None
         if resource.resource_type is ExternalResourceType.APPLICATION_FORM_TEMPLATE:
             return self._word_failure(path)
         if resource.resource_type in {

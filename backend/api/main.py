@@ -108,6 +108,7 @@ from backend.api.routes_matrix_editor_test_status_generation import (
 from backend.api.routes_matrix_editor_llcr_cr_record_generation import (
     router as matrix_editor_llcr_cr_record_generation_router,
 )
+from backend.api.routes_matrix_editor_ir_dwv_record_generation import router as matrix_editor_ir_dwv_record_generation_router
 from backend.api.routes_matrix_editor_live_xlsx_export import (
     router as matrix_editor_live_xlsx_export_router,
 )
@@ -254,6 +255,7 @@ _include_project_router(matrix_method_version_sync_router)
 _include_project_router(matrix_editor_test_record_generation_router)
 _include_project_router(matrix_editor_test_status_generation_router)
 _include_project_router(matrix_editor_llcr_cr_record_generation_router)
+_include_project_router(matrix_editor_ir_dwv_record_generation_router)
 _include_project_router(matrix_editor_live_xlsx_export_router)
 _include_project_router(project_output_records_router)
 _include_project_router(section2_completion_preview_router)

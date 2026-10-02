@@ -1475,43 +1475,14 @@ def get_matrix_editor_llcr_cr_record_publication_service(
 ) -> MatrixEditorLlcrCrRecordPublicationService:
     """Use a separate recoverable journal for direct LLCR/CR formal publication."""
     from backend.infrastructure.files.generation_journal import GenerationJournal
-    from backend.infrastructure.official_workspace_manifest import (
-        OfficialWorkspaceManifestGateway, stable_folder_identity,
-    )
     from backend.application.project_lifecycle_write_guard import LifecycleWriteOperation
-
-    def verify_workspace(workspace) -> bool:
-        try:
-            local, official, manifest_path = (
-                Path(workspace.local_workspace_path), Path(workspace.official_folder_path),
-                Path(workspace.manifest_path),
-            )
-            paths = (local, official, manifest_path, official / "Test results")
-            if (not local.is_dir() or not official.is_dir() or not manifest_path.is_file()
-                    or not (official / "Test results").is_dir()
-                    or OfficialWorkspaceManifestGateway.first_redirected_path(
-                        *(parent for path in paths for parent in (path, *path.parents))
-                    ) is not None):
-                return False
-            manifest = OfficialWorkspaceManifestGateway().read(manifest_path)
-            return bool(
-                isinstance(manifest, dict)
-                and manifest.get("project_id") == workspace.project_id
-                and manifest.get("dl_number") == workspace.dl_number
-                and manifest.get("local_workspace_path") == str(local)
-                and manifest.get("official_project_folder_path") == str(official)
-                and (manifest.get("official_folder_identity") is None
-                     or manifest["official_folder_identity"] == stable_folder_identity(official))
-            )
-        except (OSError, ValueError, TypeError):
-            return False
 
     guard = get_project_lifecycle_write_guard(session)
     return MatrixEditorLlcrCrRecordPublicationService(
         confirmed_store=ConfirmedMatrixAuthorityRepository(session),
         preview_service=get_llcr_cr_record_workbook_preview_service(session),
         workspace_store=ProjectOfficialWorkspaceRepository(session),
-        workspace_verifier=verify_workspace,
+        workspace_verifier=_verify_matrix_editor_record_workspace,
         journal=GenerationJournal(settings.data_dir / "llcr_cr_record_publication"),
         folder_generation_journal=GenerationJournal(settings.data_dir / "project_folder_generation"),
         workbook_gateway=LlcrCrSpecializedRecordWorkbookGateway(),
@@ -1521,6 +1492,68 @@ def get_matrix_editor_llcr_cr_record_publication_service(
         write_guard=lambda project_id: guard.require_write_allowed(
             project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE,
         ),
+    )
+
+
+def _verify_matrix_editor_record_workspace(workspace) -> bool:
+    from backend.infrastructure.official_workspace_manifest import OfficialWorkspaceManifestGateway, stable_folder_identity
+    try:
+        local, official, manifest_path = (Path(workspace.local_workspace_path), Path(workspace.official_folder_path), Path(workspace.manifest_path))
+        paths = (local, official, manifest_path, official / "Test results")
+        if (not local.is_dir() or not official.is_dir() or not manifest_path.is_file()
+                or not (official / "Test results").is_dir()
+                or OfficialWorkspaceManifestGateway.first_redirected_path(
+                    *(parent for path in paths for parent in (path, *path.parents))) is not None):
+            return False
+        manifest = OfficialWorkspaceManifestGateway().read(manifest_path)
+        return bool(isinstance(manifest, dict)
+                    and manifest.get("project_id") == workspace.project_id
+                    and manifest.get("dl_number") == workspace.dl_number
+                    and manifest.get("local_workspace_path") == str(local)
+                    and manifest.get("official_project_folder_path") == str(official)
+                    and (manifest.get("official_folder_identity") is None
+                         or manifest["official_folder_identity"] == stable_folder_identity(official)))
+    except (OSError, ValueError, TypeError):
+        return False
+
+
+def get_matrix_editor_ir_dwv_record_generation_service(
+    session: Session = Depends(get_session), settings: Settings = Depends(get_settings),
+):
+    from backend.application.matrix_editor_ir_dwv_record_generation_service import MatrixEditorIrDwvRecordGenerationService
+    from backend.infrastructure.office.ir_dwv_record_workbook_gateway import IrDwvRecordWorkbookGateway
+    from backend.infrastructure.files.ir_dwv_record_artifact_store import IrDwvRecordArtifactStore
+    resources = ExternalResourceRepository(session)
+    resource = resources.get_by_type(ExternalResourceType.IR_DWV_RECORD_TEMPLATE)
+    if resource is not None:
+        template = resource.path if resource.active else None
+    else:
+        directory = _active_resource_path(resources, ExternalResourceType.PROJECT_FOLDER_TEMPLATE)
+        template = Path(directory) / "IR&DWV Template.xlsx" if directory else None
+    return MatrixEditorIrDwvRecordGenerationService(
+        confirmed_store=ConfirmedMatrixAuthorityRepository(session),
+        basic_information_store=ProjectBasicInformationRepository(session), ltr_store=LtrRecordRepository(session),
+        workbook_gateway=IrDwvRecordWorkbookGateway(template),
+        artifact_store=IrDwvRecordArtifactStore(settings.data_dir / "generated_ir_dwv_record_drafts"),
+    )
+
+
+def get_matrix_editor_ir_dwv_record_publication_service(
+    session: Session = Depends(get_session), settings: Settings = Depends(get_settings),
+):
+    from backend.infrastructure.files.generation_journal import GenerationJournal
+    from backend.application.project_lifecycle_write_guard import LifecycleWriteOperation
+    generation = get_matrix_editor_ir_dwv_record_generation_service(session, settings)
+    guard = get_project_lifecycle_write_guard(session)
+    return MatrixEditorLlcrCrRecordPublicationService(
+        confirmed_store=ConfirmedMatrixAuthorityRepository(session), preview_service=generation,
+        workspace_store=ProjectOfficialWorkspaceRepository(session), workspace_verifier=_verify_matrix_editor_record_workspace,
+        journal=GenerationJournal(settings.data_dir / "ir_dwv_record_publication"),
+        folder_generation_journal=GenerationJournal(settings.data_dir / "project_folder_generation"),
+        workbook_gateway=generation, draft_projection_builder=generation.build_draft_projection,
+        output_service=get_project_output_record_service(session),
+        staging_root=settings.data_dir / "stage" / "ir_dwv_record_publication", commit=session.commit,
+        write_guard=lambda project_id: guard.require_write_allowed(project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE),
     )
 
 

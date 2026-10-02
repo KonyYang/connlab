@@ -1122,7 +1122,8 @@ export type ExternalResourceType =
   | "project_output_root"
   | "official_public_drive_root"
   | "standard_record_excel"
-  | "equipment_calibration_excel";
+  | "equipment_calibration_excel"
+  | "ir_dwv_record_template";
 
 export type ExternalResourceValidationStatus = "not_validated" | "valid" | "invalid";
 
@@ -2192,9 +2193,10 @@ export type MatrixEditorTestStatusDraftRequest = MatrixEditorTestRecordDraftRequ
 };
 
 export type MatrixEditorLlcrCrRecordDraftRequest = MatrixEditorTestRecordDraftRequest & {
-  record_type: LlcrCrRecordType;
+  record_type: MatrixEditorRecordType;
   matrix_has_pending_changes?: boolean;
 };
+export type MatrixEditorRecordType = LlcrCrRecordType | "ir_dwv";
 
 export type MatrixEditorLlcrCrRecordPublicationPreview = {
   project_id: string;
@@ -2205,6 +2207,7 @@ export type MatrixEditorLlcrCrRecordPublicationPreview = {
   existing_file: boolean;
   blockers: string[];
   preview_token: string;
+  information?: string[];
 };
 
 export type MatrixEditorLlcrCrRecordPublicationResult = {
@@ -2259,6 +2262,7 @@ export type ProjectOutputKind =
   | "section2_write_back"
   | "test_record_form"
   | "test_status"
+  | "ir_dwv_record_form"
   | "fee_evaluation"
   | "customer_feedback_form"
   | "approval_package";
@@ -5573,6 +5577,30 @@ export function generateMatrixEditorLlcrCrRecordDraftDownload(
       body: JSON.stringify(input),
     }
   );
+}
+
+export function generateMatrixEditorIrDwvRecordDraftDownload(
+  projectId: string, input: MatrixEditorLlcrCrRecordDraftRequest & { preview_token?: string }
+): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(`/api/projects/${encodeURIComponent(projectId)}/matrix-editor/ir-dwv-record-draft/generate`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input),
+  });
+}
+
+export function previewMatrixEditorIrDwvRecordPublication(
+  projectId: string, input: MatrixEditorLlcrCrRecordDraftRequest
+): Promise<MatrixEditorLlcrCrRecordPublicationPreview> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/matrix-editor/ir-dwv-record-publication/preview`, {
+    method: "POST", body: JSON.stringify(input),
+  });
+}
+
+export function publishMatrixEditorIrDwvRecord(
+  projectId: string, input: MatrixEditorLlcrCrRecordDraftRequest & { preview_token: string; conflict_action: "none" | "archive" }
+): Promise<MatrixEditorLlcrCrRecordPublicationResult> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/matrix-editor/ir-dwv-record-publication/publish`, {
+    method: "POST", body: JSON.stringify(input),
+  });
 }
 
 export function previewMatrixEditorLlcrCrRecordPublication(

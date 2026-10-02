@@ -19,6 +19,25 @@ from backend.domain import (
 )
 
 
+def test_ir_dwv_template_validation_uses_layout_and_lock_probe_without_office(tmp_path):
+    import shutil
+    template = tmp_path / "IR&DWV Template.xlsx"
+    shutil.copyfile(Path(__file__).parents[1] / "fixtures" / "ir_dwv" / "IR_DWV_Template.xlsx", template)
+    service = ExternalResourceService(_Store(), office=_FakeOffice())
+    service.upsert_resource(ExternalResourceType.IR_DWV_RECORD_TEMPLATE, template, active=True)
+    assert service.validate_resource(ExternalResourceType.IR_DWV_RECORD_TEMPLATE).validation_status is ExternalResourceValidationStatus.VALID
+    lock = template.with_name("~$" + template.name)
+    lock.write_bytes(b"lock")
+    result = service.validate_resource(ExternalResourceType.IR_DWV_RECORD_TEMPLATE)
+    assert result.validation_status is ExternalResourceValidationStatus.INVALID
+    assert result.validation_failure_reason
+    lock.unlink()
+    template.write_bytes(b"not a zip")
+    result = service.validate_resource(ExternalResourceType.IR_DWV_RECORD_TEMPLATE)
+    assert result.validation_status is ExternalResourceValidationStatus.INVALID
+    assert "readable" in result.validation_failure_reason
+
+
 def test_external_resource_service_upserts_and_validates_folder_template(
     tmp_path: Path,
 ) -> None:

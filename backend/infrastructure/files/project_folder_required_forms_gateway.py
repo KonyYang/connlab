@@ -63,7 +63,7 @@ class RecoverableContactRecordPublisher:
         self.verify_context = verify_context
 
     def publish(self, record_type: str, source: Path, target: Path, expected_old: dict | None, record=None) -> None:
-        if record_type not in {"llcr", "cr"}:
+        if record_type not in {"llcr", "cr", "ir_dwv"}:
             raise ValueError("Only LLCR and CR forms are supported.")
         key = f"{self._STEP}:{record_type}"
         effect = self.state["effects"].get(key)

@@ -86,7 +86,7 @@ function OutputStatusSummaryPanel({outputStatusSummary}: {outputStatusSummary: P
 }
 function formatOutputKind(kind: ProjectOutputStatusItem["output_kind"]): string {
   return ({section2_write_back: "Section 2 write-back", test_record_form: "Test Record", test_status: "Test Status",
-    fee_evaluation: "Fee Evaluation", customer_feedback_form: "Customer Feedback", approval_package: "Approval Package"})[kind];
+    ir_dwv_record_form: "IR/DWV Record", fee_evaluation: "Fee Evaluation", customer_feedback_form: "Customer Feedback", approval_package: "Approval Package"})[kind];
 }
 function formatOutputStatus(status: ProjectOutputStatusItem["status"]): string {
   return ({missing: "Not generated", current: "Current", stale: "Needs refresh", manual: "Manually maintained", failed: "Failed"})[status];

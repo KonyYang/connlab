@@ -20,6 +20,24 @@ function setup(onCloseProject = vi.fn()) {
 }
 
 describe("ProjectWorkbenchCloseConfirmation", () => {
+  it("identifies an IR/DWV record that needs review without blocking closure", async () => {
+    const onCloseProject = vi.fn();
+    render(<ProjectWorkbenchCloseConfirmation lifecycleActions={lifecycleActions}
+      lifecycleBusy={false} onCloseProject={onCloseProject} projectIdentity="Connector A"
+      projectReference="DL-2026-01-002" initiallyOpen outputStatusSummary={{project_id: "A", active_draft_id: null,
+        active_draft_version: null, items: [{output_kind: "ir_dwv_record_form", status: "stale",
+          reason: "Matrix test points have changed.", output_path: null, source: null,
+          draft_id: null, draft_version: null, updated_at: null}]}} />);
+    const user = userEvent.setup();
+    const dialog = within(screen.getByRole("dialog"));
+    await user.click(dialog.getByText("View output details"));
+    expect(dialog.getByText("IR/DWV Record: Needs refresh")).toBeTruthy();
+    expect(dialog.getByText("Matrix test points have changed.")).toBeTruthy();
+    await user.selectOptions(dialog.getByLabelText("Close reason"), "completed");
+    await user.click(dialog.getByRole("button", {name: "Close project"}));
+    expect(onCloseProject).toHaveBeenCalledWith("completed", "");
+  });
+
   it("requires a selected reason, permits Completed without a note and summarizes output exceptions", async () => {
     const onCloseProject = vi.fn();
     const user = setup(onCloseProject);

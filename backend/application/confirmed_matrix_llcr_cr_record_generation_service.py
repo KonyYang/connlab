@@ -141,6 +141,7 @@ class MatrixEditorLlcrCrPublicationPreview:
     blockers: tuple[str, ...]
     preview_token: str
     target_facts: dict | None = None
+    information: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,7 +167,7 @@ class MatrixEditorLlcrCrRecordPublicationService:
         self, *, confirmed_store, preview_service: LlcrCrRecordWorkbookPreviewService,
         workspace_store, workspace_verifier, journal=None, workbook_gateway=None,
         output_service=None, staging_root: Path | None = None, commit=None,
-        folder_generation_journal=None, write_guard=None,
+        folder_generation_journal=None, write_guard=None, draft_projection_builder=None,
     ) -> None:
         self._confirmed = confirmed_store
         self._preview_service = preview_service
@@ -179,13 +180,14 @@ class MatrixEditorLlcrCrRecordPublicationService:
         self._commit = commit
         self._folder_journal = folder_generation_journal
         self._write_guard = write_guard
+        self._draft_projection_builder = draft_projection_builder or build_matrix_editor_llcr_cr_record_projection
 
     def preview(
         self, command: PreviewMatrixEditorLlcrCrPublicationCommand,
     ) -> MatrixEditorLlcrCrPublicationPreview:
         draft = command.draft
-        if draft.record_type not in {"llcr", "cr"}:
-            raise ValueError("Record type must be llcr or cr.")
+        if draft.record_type not in {"llcr", "cr", "ir_dwv"}:
+            raise ValueError("Record type must be llcr, cr or ir_dwv.")
         profile, overrides = validate_matrix_test_points(draft.point_profile, draft.point_overrides)
         snapshot = self._confirmed.get_active_by_project(draft.project_id)
         matches = False
@@ -208,18 +210,23 @@ class MatrixEditorLlcrCrRecordPublicationService:
         official_folder = Path(workspace.official_folder_path) if verified else None
         projection_fingerprint = None
         projection_status = None
+        information = ()
         if official_folder is None or not (official_folder / "Test results").is_dir():
             mode, status, target, facts, blockers = "download", "ready", None, None, ()
             try:
-                draft_projection = build_matrix_editor_llcr_cr_record_projection(
+                draft_projection = self._draft_projection_builder(
                     project_id=draft.project_id, record_type=draft.record_type,
                     groups=draft.groups, rows=draft.rows,
                     point_profile=profile, point_overrides=overrides,
                     step_text_overrides=draft.step_text_overrides,
                 )
+                if draft.record_type == "ir_dwv":
+                    projection_fingerprint = draft_projection.preview_fingerprint
+                    projection_status = draft_projection.status
+                    information = tuple(item.message for item in draft_projection.diagnostics if item.level == "info")
                 if draft_projection.status != "ready" or not draft_projection.sections:
                     status = "blocked"
-                    blockers = tuple(item.message for item in draft_projection.diagnostics) or (
+                    blockers = tuple(item.message for item in draft_projection.diagnostics if getattr(item, "level", "error") == "error") or (
                         f"Current Matrix draft does not require {draft.record_type.upper()}.",
                     )
             except ValueError as exc:
@@ -231,7 +238,8 @@ class MatrixEditorLlcrCrRecordPublicationService:
                     "official", "blocked", None, None, ("Official project DL number is missing.",)
                 )
             else:
-                target = official_folder / "Test results" / f"{dl} {draft.record_type.upper()} Record.xlsx"
+                label = "IR&DWV" if draft.record_type == "ir_dwv" else draft.record_type.upper()
+                target = official_folder / "Test results" / f"{dl} {label} Record.xlsx"
                 mode, status, facts, blockers = "official", "ready", None, ()
                 if (OfficialWorkspaceManifestGateway.first_redirected_path(target, *target.parents) is not None
                         or os.path.lexists(target) and not target.is_file()):
@@ -246,9 +254,13 @@ class MatrixEditorLlcrCrRecordPublicationService:
                 projection = self._preview_service.preview(draft.project_id, draft.record_type)
                 projection_fingerprint = projection.preview_fingerprint
                 projection_status = projection.status
+                if draft.record_type == "ir_dwv":
+                    information = tuple(item.message for item in projection.diagnostics if item.level == "info")
                 if projection.status != "ready" or not projection.preview_fingerprint:
                     status = "blocked"
-                    blockers = ("Confirmed Matrix contact form requires review before publication.",)
+                    blockers = (tuple(item.message for item in projection.diagnostics if item.level == "error")
+                                if draft.record_type == "ir_dwv" else ()) or (
+                        "Confirmed Matrix contact form requires review before publication.",)
         token = fingerprint({
             "draft": asdict(draft), "pending": command.matrix_has_pending_changes,
             "confirmed_matrix_id": snapshot.version.confirmed_matrix_id if snapshot else None,
@@ -269,7 +281,7 @@ class MatrixEditorLlcrCrRecordPublicationService:
             project_id=draft.project_id, mode=mode, status=status,
             authority_status="confirmed" if matches else "unconfirmed",
             target_path=target, existing_file=facts is not None,
-            blockers=blockers, preview_token=token, target_facts=facts,
+            blockers=blockers, preview_token=token, target_facts=facts, information=information,
         )
 
     def validate_download(
@@ -277,7 +289,8 @@ class MatrixEditorLlcrCrRecordPublicationService:
     ) -> None:
         current = self.preview(command)
         if current.preview_token != preview_token or current.mode != "download" or current.status != "ready":
-            raise ValueError("LLCR/CR download preview changed. Preview again before downloading.")
+            label = "IR/DWV" if command.draft.record_type == "ir_dwv" else "LLCR/CR"
+            raise ValueError(f"{label} download preview changed. Preview again before downloading.")
 
     def publish(
         self, command: PublishMatrixEditorLlcrCrPublicationCommand,
@@ -354,8 +367,9 @@ class MatrixEditorLlcrCrRecordPublicationService:
         current = self.preview(PreviewMatrixEditorLlcrCrPublicationCommand(
             draft=command.draft, matrix_has_pending_changes=command.matrix_has_pending_changes,
         ))
+        label = "IR/DWV" if command.draft.record_type == "ir_dwv" else "LLCR/CR"
         if current.preview_token != command.preview_token:
-            raise ValueError("LLCR/CR publication target or Matrix changed after preview; preview again.")
+            raise ValueError(f"{label} publication target or Matrix changed after preview; preview again.")
         if current.mode != "official" or current.status not in {"ready", "conflict"} or current.target_path is None:
             raise ValueError("LLCR/CR official form is not ready for publication.")
         if current.existing_file and command.conflict_action != "archive":
@@ -458,8 +472,9 @@ class MatrixEditorLlcrCrRecordPublicationService:
                    / f"{target.stem} {state['operation_id']}{target.suffix}")
         return RegisterProjectOutputCommand(
             project_id=command.draft.project_id,
-            output_kind=(ProjectOutputKind.LLCR_RECORD_FORM if command.draft.record_type == "llcr"
-                         else ProjectOutputKind.CR_RECORD_FORM),
+            output_kind={"llcr": ProjectOutputKind.LLCR_RECORD_FORM,
+                         "cr": ProjectOutputKind.CR_RECORD_FORM,
+                         "ir_dwv": ProjectOutputKind.IR_DWV_RECORD_FORM}[command.draft.record_type],
             status=ProjectOutputStatus.CURRENT,
             source=ProjectOutputSource.SYSTEM_GENERATED,
             output_path=str(target), draft_id=summary.active_draft_id,

@@ -53,7 +53,7 @@ type Props = {
   readOnly: boolean;
   onProfileChange: (profile: MatrixTestPointProfile) => void;
   onOverridesChange: (overrides: MatrixTestPointOverride[]) => void;
-  recordActions?: { llcr: ReactNode; cr: ReactNode };
+  recordActions?: { llcr: ReactNode; cr: ReactNode; ir_dwv?: ReactNode };
 };
 
 export function MatrixTestPointsEditor({
@@ -113,6 +113,7 @@ export function MatrixTestPointsEditor({
             onProfileChange({ ...current, electrical_point_pairs: legacyCount ? null : value,
               ir_points_per_sample: legacyCount ? value : null, dwv_points_per_sample: legacyCount ? value : null });
           }} />
+        <div className="matrix-test-points-form-actions">{recordActions?.ir_dwv}</div>
       </header>
     </div>
     {overrides.length ? <div className="matrix-test-points-migration" role="alert">

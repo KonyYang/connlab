@@ -150,6 +150,30 @@ def test_external_resource_api_picks_directory_path(tmp_path: Path) -> None:
         engine.dispose()
 
 
+def test_ir_dwv_resource_can_pick_register_and_validate_an_xlsx(tmp_path):
+    import shutil
+    from backend.domain import ExternalResourceType
+    chosen = tmp_path / "IR&DWV Template.xlsx"
+    shutil.copyfile(Path(__file__).parents[1] / "fixtures" / "ir_dwv" / "IR_DWV_Template.xlsx", chosen)
+    class Picker:
+        def pick_file(self, kind):
+            assert kind is ExternalResourceType.IR_DWV_RECORD_TEMPLATE
+            return chosen
+        def pick_directory(self, kind):
+            raise AssertionError("IR/DWV must select a file, not a directory")
+    client, engine = _client(tmp_path)
+    app.dependency_overrides[get_local_path_picker_service] = lambda: LocalPathPickerService(Picker())
+    try:
+        selected = client.post("/api/external-resources/ir_dwv_record_template/pick")
+        assert selected.status_code == 200 and selected.json()["path"] == str(chosen)
+        assert client.put("/api/external-resources/ir_dwv_record_template", json={"path": str(chosen), "active": True}).status_code == 200
+        result = client.post("/api/external-resources/ir_dwv_record_template/validate")
+        assert result.status_code == 200 and result.json()["validation_status"] == "valid"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def _client(tmp_path: Path) -> tuple[TestClient, object]:
     """Create an isolated external resource API client."""
     settings = Settings(

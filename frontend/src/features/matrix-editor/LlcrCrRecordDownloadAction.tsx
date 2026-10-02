@@ -1,5 +1,5 @@
 import type {
-  LlcrCrRecordType,
+  MatrixEditorRecordType,
   MatrixEditorTestRecordDraftRequest,
 } from "../../api/client";
 import "../../contact-measurement-plan.css";
@@ -7,7 +7,7 @@ import { useLlcrCrSpecializedRecordWorkbookModel } from "./useLlcrCrSpecializedR
 
 export function LlcrCrRecordDownloadAction({ projectId, recordType, getDraftRequest, matrixHasPendingChanges = false }: {
   projectId: string;
-  recordType: LlcrCrRecordType;
+  recordType: MatrixEditorRecordType;
   getDraftRequest: () => MatrixEditorTestRecordDraftRequest;
   matrixHasPendingChanges?: boolean;
 }) {
@@ -17,7 +17,7 @@ export function LlcrCrRecordDownloadAction({ projectId, recordType, getDraftRequ
     getDraftRequest,
     matrixHasPendingChanges,
   );
-  const label = recordType.toUpperCase();
+  const label = recordType === "ir_dwv" ? "IR&DWV" : recordType.toUpperCase();
   return <div className="llcr-cr-record-download">
     <button
       className="contact-measurement-button is-compact"
@@ -30,6 +30,9 @@ export function LlcrCrRecordDownloadAction({ projectId, recordType, getDraftRequ
     </button>
     {model.error ? <p className="llcr-cr-record-error" role="alert">{model.error}</p> : null}
     {model.message ? <p className="llcr-cr-record-success" role="status">{model.message}</p> : null}
+    {!model.pending && model.information.length ? <ul aria-label={`${label} source information`}>
+      {model.information.map((item) => <li key={item}>{item}</li>)}
+    </ul> : null}
     {model.pending ? <div className="official-output-conflict-backdrop">
       <section
         className="official-output-conflict-panel"
@@ -47,6 +50,7 @@ export function LlcrCrRecordDownloadAction({ projectId, recordType, getDraftRequ
             ? `This ${label} preview will be saved to your browser Downloads, not the project folder. ${model.pending.authority_status === "unconfirmed" ? "It uses the current unconfirmed Matrix draft." : "The official project folder is not available."}`
             : `The existing ${label} form may contain measured results. It will be preserved in History/Test results before a new blank form is saved to Test results.`}
         </p>
+        {model.information.length ? <ul>{model.information.map((item) => <li key={item}>{item}</li>)}</ul> : null}
         <div className="official-output-conflict-actions">
           {model.pending.mode === "download" ? (
             <button className="contact-measurement-button" type="button" disabled={model.busy}

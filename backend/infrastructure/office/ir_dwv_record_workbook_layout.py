@@ -46,6 +46,11 @@ class IrDwvBlockLayout:
     def height(self) -> int:
         return self.footer_revision_row
 
+    @property
+    def sample_slot_count(self) -> int:
+        """The approved form retains five slots even for smaller actual groups."""
+        return max(TEMPLATE_SAMPLE_COUNT, self.sample_count)
+
 
 @dataclass(frozen=True, slots=True)
 class IrDwvBlockPlacement:
@@ -64,12 +69,13 @@ def block_layout(
         raise ValueError("IR/DWV sample count must be a positive integer.")
     if pair_count < 0:
         raise ValueError("IR/DWV measurement pair count cannot be negative.")
+    slot_count = max(TEMPLATE_SAMPLE_COUNT, sample_count)
     ir_start = origin_column + 1
-    ir_end = ir_start + sample_count - 1
+    ir_end = ir_start + slot_count - 1
     dwv_start = ir_end + 1
-    dwv_end = dwv_start + sample_count - 1
+    dwv_end = dwv_start + slot_count - 1
     conditions_start = 14
-    conditions_end = conditions_start + sample_count - 1
+    conditions_end = conditions_start + slot_count - 1
     sequence_row = conditions_end + 1
     units_row = sequence_row + 1
     sample_id_row = units_row + 1
@@ -108,7 +114,7 @@ def block_origins(*, sample_count: int, pair_count: int) -> tuple[int, ...]:
         sample_count=sample_count,
         pair_count=pair_count,
     )
-    if sample_count == TEMPLATE_SAMPLE_COUNT:
+    if layout.sample_slot_count == TEMPLATE_SAMPLE_COUNT:
         return TEMPLATE_FIRST_BLOCK_ORIGINS
     origins: list[int] = []
     origin = TEMPLATE_FIRST_COLUMN
@@ -139,7 +145,9 @@ def plan_block_placements(
     )
 
 
-def dynamic_merge_ranges(layout: IrDwvBlockLayout) -> tuple[str, ...]:
+def dynamic_merge_ranges(
+    layout: IrDwvBlockLayout, *, ir_statistics_separate_rows: bool = False,
+) -> tuple[str, ...]:
     ranges: list[tuple[int, int, int, int]] = []
     origin = layout.origin_column
     last = layout.last_column
@@ -150,10 +158,10 @@ def dynamic_merge_ranges(layout: IrDwvBlockLayout) -> tuple[str, ...]:
 
     add(1, origin, 2, min(origin + 2, last))
     add(1, min(origin + 3, last), 1, min(origin + 8, last))
-    if layout.sample_count >= TEMPLATE_SAMPLE_COUNT:
+    if layout.sample_slot_count >= TEMPLATE_SAMPLE_COUNT:
         add(2, min(origin + 3, last), 2, min(origin + 5, last))
     add(3, origin, 3, min(origin + 2, last))
-    if layout.sample_count >= TEMPLATE_SAMPLE_COUNT:
+    if layout.sample_slot_count >= TEMPLATE_SAMPLE_COUNT:
         add(3, min(origin + 3, last), 3, min(origin + 5, last))
     for row in range(4, 8):
         add(row, origin, row, min(origin + 2, last))
@@ -161,7 +169,7 @@ def dynamic_merge_ranges(layout: IrDwvBlockLayout) -> tuple[str, ...]:
         add(row, origin, row, min(origin + 2, last))
         add(row, max(origin, last - 1), row, last)
 
-    first_header_end = min(last, layout.ir_end_column + (1 if layout.sample_count > 1 else 0))
+    first_header_end = min(last, layout.ir_end_column + 1)
     for row in (10, 11):
         add(row, origin, row, first_header_end)
         add(row, first_header_end + 1, row, last)
@@ -188,9 +196,11 @@ def dynamic_merge_ranges(layout: IrDwvBlockLayout) -> tuple[str, ...]:
     add(
         layout.stats_average_row,
         layout.ir_start_column,
-        layout.stats_stdev_row,
+        layout.stats_average_row if ir_statistics_separate_rows else layout.stats_stdev_row,
         layout.ir_end_column,
     )
+    if ir_statistics_separate_rows:
+        add(layout.stats_stdev_row, layout.ir_start_column, layout.stats_stdev_row, layout.ir_end_column)
     add(layout.stats_average_row, layout.dwv_start_column, layout.stats_average_row, last)
     add(layout.stats_stdev_row, layout.dwv_start_column, layout.stats_stdev_row, last)
 

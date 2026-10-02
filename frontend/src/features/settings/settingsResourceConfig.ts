@@ -49,6 +49,13 @@ export const SHARED_RESOURCE_CONFIGS: SettingsResourceConfig[] = [
     registryBacked: true
   },
   {
+    resourceType: "ir_dwv_record_template",
+    label: "IR/DWV record template",
+    category: "Default locations",
+    expectedKind: "Excel file",
+    registryBacked: true
+  },
+  {
     resourceType: "official_public_drive_root",
     label: "Public Project locations",
     category: "Default locations",

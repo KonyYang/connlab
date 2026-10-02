@@ -3,14 +3,17 @@ import {
   generateMatrixEditorLlcrCrRecordDraftDownload,
   previewMatrixEditorLlcrCrRecordPublication,
   publishMatrixEditorLlcrCrRecord,
-  type LlcrCrRecordType,
+  generateMatrixEditorIrDwvRecordDraftDownload,
+  previewMatrixEditorIrDwvRecordPublication,
+  publishMatrixEditorIrDwvRecord,
+  type MatrixEditorRecordType,
   type MatrixEditorLlcrCrRecordPublicationPreview,
   type MatrixEditorTestRecordDraftRequest,
 } from "../../api/client";
 
 export function useLlcrCrSpecializedRecordWorkbookModel(
   projectId: string,
-  recordType: LlcrCrRecordType,
+  recordType: MatrixEditorRecordType,
   getDraftRequest: () => MatrixEditorTestRecordDraftRequest,
   matrixHasPendingChanges = false,
 ) {
@@ -18,6 +21,10 @@ export function useLlcrCrSpecializedRecordWorkbookModel(
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState<MatrixEditorLlcrCrRecordPublicationPreview | null>(null);
+  const [information, setInformation] = useState<string[]>([]);
+  const previewRecord = recordType === "ir_dwv" ? previewMatrixEditorIrDwvRecordPublication : previewMatrixEditorLlcrCrRecordPublication;
+  const publishRecord = recordType === "ir_dwv" ? publishMatrixEditorIrDwvRecord : publishMatrixEditorLlcrCrRecord;
+  const generateRecord = recordType === "ir_dwv" ? generateMatrixEditorIrDwvRecordDraftDownload : generateMatrixEditorLlcrCrRecordDraftDownload;
   const currentRequest = () => ({
     ...getDraftRequest(), record_type: recordType,
     ...(matrixHasPendingChanges ? { matrix_has_pending_changes: true } : {}),
@@ -29,9 +36,11 @@ export function useLlcrCrSpecializedRecordWorkbookModel(
     setError(null);
     setMessage(null);
     setPending(null);
+    setInformation([]);
     try {
       const request = currentRequest();
-      const preview = await previewMatrixEditorLlcrCrRecordPublication(projectId, request);
+      const preview = await previewRecord(projectId, request);
+      setInformation(preview.information ?? []);
       if (preview.status === "blocked") {
         throw new Error(preview.blockers[0] ?? `${recordType.toUpperCase()} form cannot be generated.`);
       }
@@ -39,7 +48,7 @@ export function useLlcrCrSpecializedRecordWorkbookModel(
         setPending(preview);
         return;
       }
-      const result = await publishMatrixEditorLlcrCrRecord(projectId, {
+      const result = await publishRecord(projectId, {
         ...request, preview_token: preview.preview_token, conflict_action: "none",
       });
       setMessage(`Saved ${result.file_name} to Test results.`);
@@ -56,7 +65,7 @@ export function useLlcrCrSpecializedRecordWorkbookModel(
     setError(null);
     setMessage(null);
     try {
-      const result = await generateMatrixEditorLlcrCrRecordDraftDownload(projectId, {
+      const result = await generateRecord(projectId, {
         ...currentRequest(), preview_token: pending.preview_token,
       });
       const fileName = result.fileName
@@ -85,7 +94,7 @@ export function useLlcrCrSpecializedRecordWorkbookModel(
     setError(null);
     setMessage(null);
     try {
-      const result = await publishMatrixEditorLlcrCrRecord(projectId, {
+      const result = await publishRecord(projectId, {
         ...currentRequest(),
         preview_token: pending.preview_token, conflict_action: "archive",
       });
@@ -102,12 +111,12 @@ export function useLlcrCrSpecializedRecordWorkbookModel(
   };
 
   return {
-    busy, error, message, pending, downloadWorkbook, confirmDownload,
+    busy, error, message, pending, information, downloadWorkbook, confirmDownload,
     archiveAndPublish, cancel: () => setPending(null),
   };
 }
 
-function _message(error: unknown, recordType: LlcrCrRecordType): string {
+function _message(error: unknown, recordType: MatrixEditorRecordType): string {
   return error instanceof Error && error.message.trim()
     ? error.message
     : `Unable to generate the ${recordType.toUpperCase()} file. Review the current Matrix and Test points, then try again.`;

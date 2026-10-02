@@ -157,6 +157,8 @@ describe("MatrixEditorWorkspace editing behavior", () => {
     expect(screen.queryByText("Project point IDs are shared. Any changes here remain a Matrix draft until Confirm Matrix.")).toBeNull();
     expect(screen.queryByText("Group / step exceptions")).toBeNull();
     expect(screen.getByRole("textbox", { name: "IR / DWV test points" })).toBeTruthy();
+    const electricalHeader = screen.getByRole("heading", { name: "IR / DWV test points" }).closest("header") as HTMLElement;
+    expect(within(electricalHeader).getByRole("button", { name: "IR&DWV Form" })).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "IR test points per sample" })).toBeNull();
     expect(screen.queryByRole("textbox", { name: "DWV test points per sample" })).toBeNull();
   });
