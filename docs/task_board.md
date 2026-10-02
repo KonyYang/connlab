@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_REPORT_AUTOMATION_DOC_BASELINE_20261002",
+    "summary": "Reconcile three report automation documents with current ConnLab implementation",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Only correct three report design/evidence Markdown documents against current code; preserve historical evidence, distinguish proposals from implemented behavior, no business code or external document writes.",
+    "scope_paths": [
+      "docs/plans/REPORT_AUTOMATION_REAL_SAMPLE_EVIDENCE.md",
+      "docs/plans/REPORT_AUTOMATION_VBA_REFERENCE_MAP.md",
+      "docs/plans/REPORT_RESULT_PHOTO_AUTOMATION_DESIGN.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "93442a6c72f60b3b11f8366b0faf089efb73aa79",
+    "started_at": "2026-10-02T08:02:43.987501Z",
+    "updated_at": "2026-10-02T08:02:43.987501Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_IR_DWV_DOWNLOAD_NAME_AUTHORITY_20261002",
     "tier": "standard",
