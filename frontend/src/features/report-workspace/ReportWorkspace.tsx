@@ -8,6 +8,8 @@ import {
   type ReactElement,
   type SetStateAction,
 } from "react";
+import { createPortal } from "react-dom";
+import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
 import {
   cancelLlcrResultPreview,
   confirmLlcrResultImport,
@@ -49,11 +51,13 @@ import {
 type ReportWorkspaceProps = {
   projectId: string;
   onBack: () => void;
+  identityLabel?: string;
 };
 
 type BusyAction = "load" | "initial" | "inspect" | "confirm" | "cancel" | "llcr" | "equipment-preview" | "equipment-update" | "publish" | "download" | "customer" | "customer-download" | null;
 
-export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): ReactElement {
+export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector Project" }: ReportWorkspaceProps): ReactElement {
+  const topBarRoot = useTopBarActionsRoot();
   const [state, setState] = useState<ReportWorkspaceState | null>(null);
   const [currentReport, setCurrentReport] = useState<CurrentReport | null>(null);
   const [customerReport, setCustomerReport] = useState<CustomerReportState | null>(null);
@@ -408,6 +412,13 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
     });
   }
 
+  const commandbar = (
+    <div className="report-workspace-commandbar" aria-label="Report Workspace actions">
+      <span className="report-workspace-identity" title={identityLabel}>{identityLabel}</span>
+      <button className="report-workspace-back" onClick={onBack} type="button">Back to Workspace</button>
+    </div>
+  );
+
   if (!state && busyAction === "load" && !error) {
     return (
       <section aria-busy="true" className="report-workspace-page">
@@ -418,82 +429,137 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
 
   return (
     <section className="report-workspace-page">
-      <header className="report-workspace-header">
-        <div>
-          <button className="report-workspace-back" onClick={onBack} type="button">← Project Workbench</button>
-          <p className="report-workspace-eyebrow">Controlled current internal report</p>
+      {topBarRoot ? createPortal(commandbar, topBarRoot) : (
+        <header className="report-workspace-header">
           <h1>Report Workspace</h1>
-          <p>Import confirmed test data and update one controlled report region at a time. Successful changes archive the previous report automatically.</p>
+          {commandbar}
+        </header>
+      )}
+      {state ? (
+        <div className="report-workspace-authority" aria-label="Report authority">
+          <span>{state.basic_information_status === "confirmed" ? `Basic Information v${state.confirmed_basic_information_version}` : "Basic Information not confirmed"}</span>
+          <span>{state.active_confirmed_matrix_id ? `Confirmed Matrix r${state.active_confirmed_matrix_revision}` : "No active Confirmed Matrix"}</span>
         </div>
-        {state ? (
-          <div className="report-workspace-authority-card">
-            <span>Current authority</span>
-            <small>Project {state.project_id}</small>
-            <strong>{state.active_confirmed_matrix_id ? `Confirmed Matrix revision ${state.active_confirmed_matrix_revision}` : "No active Confirmed Matrix"}</strong>
-            <small>{state.basic_information_status === "confirmed" ? `Basic Information version ${state.confirmed_basic_information_version}` : "Basic Information not confirmed"}</small>
-            <small>{reportEntry.statusLabel}</small>
-          </div>
-        ) : null}
-      </header>
+      ) : null}
 
       {error ? <ErrorMessage message={error} /> : null}
       {message ? <p className="report-workspace-message" role="status">{message}</p> : null}
 
       {state && readiness ? (
         <div className="report-workspace-grid">
-          <article className="report-workspace-card report-workspace-card-wide">
+          <section className="report-workspace-card" aria-label="Internal Report">
             <div className="report-workspace-card-heading">
-              <span className="report-workspace-step">01</span>
-              <div><h2>{reportEntry.title}</h2><p>{reportEntry.description}</p></div>
+              <div><h2>Internal Report</h2></div>
             </div>
-            <div className="report-workspace-current-report">
-              <span className={`report-workspace-status report-workspace-status-${reportEntry.kind}`}>
-                {reportEntry.statusLabel}
-              </span>
-              {currentReport?.file_name ? <strong>{currentReport.file_name}</strong> : null}
-              {reportEntry.locationLabel ? <small>{reportEntry.locationLabel}</small> : null}
-            </div>
-            <div className="report-workspace-action-row">
-              {reportEntry.kind === "generate" ? (
-                <button
-                  className="primary-action"
-                  disabled={!readiness.canGenerateInitialDraft || Boolean(busyAction)}
-                  onClick={() => void runAction("initial", async () => {
-                    const revision = await generateInitialReportRevision(projectId);
-                    await refresh();
-                    return `Generated the initial internal report (${revision.file_name}).`;
-                  })}
-                  type="button"
-                >
-                  {busyAction === "initial" ? "Generating..." : "Generate initial report"}
-                </button>
-              ) : null}
-              {reportEntry.kind === "publish" ? (
-                <button
-                  className="primary-action"
-                  disabled={Boolean(busyAction)}
-                  onClick={() => void handlePublishManagedReport()}
-                  type="button"
-                >
-                  {busyAction === "publish" ? "Publishing..." : "Publish current draft to project folder"}
-                </button>
-              ) : null}
-              {currentReport?.status === "ready" ? (
-                <button disabled={Boolean(busyAction)} onClick={() => void handleDownloadCurrent()} type="button">Download current report</button>
-              ) : null}
+            <div className="report-workspace-report-row">
+              <div className="report-workspace-current-report">
+                <span className={`report-workspace-status report-workspace-status-${reportEntry.kind}`}>
+                  {reportEntry.statusLabel}
+                </span>
+                {currentReport?.file_name ? <strong>{currentReport.file_name}</strong> : null}
+                {reportEntry.locationLabel ? <small>{reportEntry.locationLabel}</small> : null}
+              </div>
+              <div className="report-workspace-action-row">
+                {reportEntry.kind === "generate" ? (
+                  <button
+                    className="primary-action"
+                    disabled={!readiness.canGenerateInitialDraft || Boolean(busyAction)}
+                    onClick={() => void runAction("initial", async () => {
+                      const revision = await generateInitialReportRevision(projectId);
+                      await refresh();
+                      return `Generated the initial internal report (${revision.file_name}).`;
+                    })}
+                    type="button"
+                  >
+                    {busyAction === "initial" ? "Generating..." : "Generate initial report"}
+                  </button>
+                ) : null}
+                {reportEntry.kind === "publish" ? (
+                  <button
+                    className="primary-action"
+                    disabled={Boolean(busyAction)}
+                    onClick={() => void handlePublishManagedReport()}
+                    type="button"
+                  >
+                    {busyAction === "publish" ? "Publishing..." : "Publish current draft to project folder"}
+                  </button>
+                ) : null}
+                {currentReport?.status === "ready" ? (
+                  <button disabled={Boolean(busyAction)} onClick={() => void handleDownloadCurrent()} type="button">Download current report</button>
+                ) : null}
+              </div>
             </div>
             {reportEntry.kind === "generate" && readiness.initialDraftBlocker ? <p className="report-workspace-blocker">{readiness.initialDraftBlocker}</p> : null}
-            {reportEntry.kind === "ready" ? <p className="report-workspace-note">Use the section actions below to update test results while preserving manual edits.</p> : null}
             {reportEntry.kind === "managed" ? <p className="report-workspace-note">Create the official project folder before publishing this draft.</p> : null}
             {reportEntry.kind === "blocked" ? <p className="report-workspace-blocker">Multiple internal reports were found. Resolve that conflict before creating or updating a report.</p> : null}
-          </article>
+          </section>
 
-          <article className="report-workspace-card report-workspace-card-wide">
+          <section className="report-workspace-card" aria-label="Update Internal Report">
             <div className="report-workspace-card-heading">
-              <span className="report-workspace-step">02</span>
+              <div><h2>Update Internal Report</h2><p>Update selected sections; other content and manual edits are preserved.</p></div>
+            </div>
+            <div className="report-workspace-update-row">
+              <div className="report-workspace-update-content">
+                <h3>LLCR results</h3>
+                <div className="report-workspace-import-row">
+                  <label className="report-workspace-file-field">
+                    LLCR result workbook
+                    <input
+                      accept=".xlsx"
+                      disabled={Boolean(busyAction)}
+                      onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                      type="file"
+                    />
+                  </label>
+                  <button disabled={!selectedFile || Boolean(busyAction)} onClick={() => void handleInspect()} type="button">
+                    {busyAction === "inspect" ? "Inspecting..." : "Inspect LLCR workbook"}
+                  </button>
+                </div>
+                {latestDataset ? (
+                  <p className="report-workspace-note" title={`Confirmed ${formatDateTime(latestDataset.confirmed_at)}`}>
+                    Dataset r{latestDataset.revision} · {latestDataset.entries.length} results · {latestDataset.source_file_name}
+                  </p>
+                ) : <p className="report-workspace-empty">No confirmed LLCR Result Dataset yet.</p>}
+                <p className="report-workspace-note">LLCR Result and Comment cells and Appendix A</p>
+                {latestDataset && readiness.llcrUpdateBlocker ? <p className="report-workspace-blocker">{readiness.llcrUpdateBlocker}</p> : null}
+              </div>
+              <button
+                className="primary-action"
+                disabled={!readiness.canUpdateLlcr || Boolean(busyAction) || !latestDataset || currentReport?.status !== "ready"}
+                onClick={() => void handleUpdateLlcr()}
+                type="button"
+              >
+                {busyAction === "llcr" ? "Updating..." : "Update LLCR results"}
+              </button>
+            </div>
+            <div className="report-workspace-update-row">
+              <div className="report-workspace-update-content">
+                <h3>Equipment List</h3>
+                <p className="report-workspace-note">Section 7 · EquipmentID.docx and the configured calibration list</p>
+              </div>
+              <button
+                className="primary-action"
+                disabled={Boolean(busyAction) || currentReport?.status !== "ready"}
+                onClick={() => void handleEquipmentPreview()}
+                type="button"
+              >
+                {busyAction === "equipment-preview" ? "Previewing..." : "Preview Equipment List"}
+              </button>
+            </div>
+            {currentReport?.status !== "ready" ? (
+              <p className="report-workspace-blocker">
+                {currentReport?.status === "ambiguous"
+                  ? "Keep exactly one current Internal Report before updating its sections."
+                  : "Generate an Internal Report to update its sections. LLCR import remains available."}
+              </p>
+            ) : null}
+          </section>
+
+          <section className="report-workspace-card" aria-label="Customer Report">
+            <div className="report-workspace-card-heading">
               <div>
-                <h2>Customer report</h2>
-                <p>Generate the controlled E-4515_F customer projection from the current Internal Report. Internal-only detail and appendices are excluded.</p>
+                <h2>Customer Report</h2>
+                <p>From the current Internal Report. Internal-only details and appendices are excluded.</p>
               </div>
             </div>
             <div className="report-workspace-current-report">
@@ -504,7 +570,9 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
               <small>
                 {customerReport?.mode === "official"
                   ? "Same folder as the current Internal Report"
-                  : "Browser download (no official project folder)"}
+                  : currentReport?.status === "ready"
+                    ? "Browser download (no official project folder)"
+                    : "Output location available after the Internal Report is ready"}
               </small>
             </div>
             {customerReport?.warnings.map((warning) => (
@@ -597,88 +665,7 @@ export function ReportWorkspace({ projectId, onBack }: ReportWorkspaceProps): Re
                 </div>
               </div>
             ) : null}
-            <div className="report-workspace-owned-regions" aria-label="Customer report projection boundary">
-              <strong>Source authority</strong>
-              <span>Current Internal Report only</span>
-              <small>An existing customer report is archived before a successful replacement. It is never used as the generation source.</small>
-            </div>
-          </article>
-
-          <article className="report-workspace-card">
-            <div className="report-workspace-card-heading">
-              <span className="report-workspace-step">03</span>
-              <div><h2>Import LLCR results</h2><p>Inspect a workbook against the active Matrix before creating an immutable Result Dataset.</p></div>
-            </div>
-            <label className="report-workspace-file-field">
-              LLCR result workbook
-              <input
-                accept=".xlsx"
-                disabled={Boolean(busyAction)}
-                onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
-                type="file"
-              />
-            </label>
-            <button disabled={!selectedFile || Boolean(busyAction)} onClick={() => void handleInspect()} type="button">
-              {busyAction === "inspect" ? "Inspecting..." : "Inspect LLCR workbook"}
-            </button>
-            <p className="report-workspace-note">Preview does not update the database or report. Confirming always creates a new dataset revision.</p>
-          </article>
-
-          <article className="report-workspace-card">
-            <div className="report-workspace-card-heading">
-              <span className="report-workspace-step">04</span>
-              <div><h2>Update LLCR report section</h2><p>Update controlled LLCR Result and Comment cells together with Appendix A. Purpose, Conclusions, Equipment, images, and later appendices remain unchanged.</p></div>
-            </div>
-            {latestDataset ? (
-              <dl className="report-workspace-dataset-summary">
-                <div><dt>Latest dataset</dt><dd>Revision {latestDataset.revision}</dd></div>
-                <div><dt>Source</dt><dd>{latestDataset.source_file_name}</dd></div>
-                <div><dt>Confirmed</dt><dd>{formatDateTime(latestDataset.confirmed_at)}</dd></div>
-                <div><dt>Results</dt><dd>{latestDataset.entries.length}</dd></div>
-              </dl>
-            ) : <p className="report-workspace-empty">No confirmed LLCR Result Dataset yet.</p>}
-            <button
-              className="primary-action"
-              disabled={!readiness.canUpdateLlcr || Boolean(busyAction) || !latestDataset || currentReport?.status !== "ready"}
-              onClick={() => void handleUpdateLlcr()}
-              type="button"
-            >
-              {busyAction === "llcr" ? "Updating..." : "Update LLCR results"}
-            </button>
-            {readiness.llcrUpdateBlocker ? <p className="report-workspace-blocker">{readiness.llcrUpdateBlocker}</p> : null}
-            {currentReport?.status !== "ready" ? <p className="report-workspace-blocker">{currentReport?.status === "ambiguous" ? "Multiple current internal reports were found. Keep exactly one before updating." : "Generate an initial report before updating LLCR results."}</p> : null}
-            <div className="report-workspace-owned-regions" aria-label="Update boundary">
-              <strong>This action owns</strong>
-              <span>LLCR Result and Comment cells and Appendix A</span>
-              <small>Manually edited Purpose and Conclusions are preserved.</small>
-            </div>
-          </article>
-
-          <article className="report-workspace-card report-workspace-card-wide">
-            <div className="report-workspace-card-heading">
-              <span className="report-workspace-step">05</span>
-              <div>
-                <h2>Update Equipment List</h2>
-                <p>Read EquipmentID.docx from the project folder and match it to the active Equipment calibration Excel configured in Settings.</p>
-              </div>
-            </div>
-            <button
-              className="primary-action"
-              disabled={Boolean(busyAction) || currentReport?.status !== "ready"}
-              onClick={() => void handleEquipmentPreview()}
-              type="button"
-            >
-              {busyAction === "equipment-preview" ? "Previewing..." : "Preview Equipment List"}
-            </button>
-            {currentReport?.status !== "ready" ? (
-              <p className="report-workspace-blocker">Generate or publish the current report before updating Equipment List.</p>
-            ) : null}
-            <div className="report-workspace-owned-regions" aria-label="Equipment update boundary">
-              <strong>This action owns</strong>
-              <span>Section 7 Equipment table body only</span>
-              <small>Purpose, Conclusions, results, images, appendices, and other manual edits are preserved.</small>
-            </div>
-          </article>
+          </section>
         </div>
       ) : null}
 

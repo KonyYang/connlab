@@ -1,13 +1,18 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../../api/client";
 import { ReportWorkspace } from "./ReportWorkspace";
+import { AppShell } from "../../components/layout/AppShell";
+import { ProjectReportWorkspacePage } from "../../pages/ProjectReportWorkspacePage";
 
 vi.mock("../../api/client", async () => {
   const actual = await vi.importActual<typeof import("../../api/client")>("../../api/client");
   return {
     ...actual,
+    getProject: vi.fn(),
+    listProjectLtrs: vi.fn(),
+    getProjectBasicInformation: vi.fn(),
     fetchReportWorkspace: vi.fn(),
     fetchCurrentReport: vi.fn(),
     fetchCurrentCustomerReport: vi.fn(),
@@ -190,16 +195,102 @@ describe("ReportWorkspace", () => {
     expect(screen.getByRole("status").textContent).toContain("Loading Report Workspace...");
   });
 
+  it("shares the top bar and groups existing operations into three business regions", async () => {
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+    render(
+      <AppShell activeRoute="workbench" topBarTitle="Report Workspace">
+        <ReportWorkspace projectId="project-1" identityLabel="DL-001 Connector Qualification Testing" onBack={onBack} />
+      </AppShell>
+    );
+    await screen.findByText(currentReport.file_name!);
+    expect(screen.getAllByRole("heading", { name: "Report Workspace" })).toHaveLength(1);
+    const actions = screen.getByLabelText("Report Workspace actions");
+    expect(screen.getByLabelText("Page actions").contains(actions)).toBe(true);
+    expect(within(actions).getByText("DL-001 Connector Qualification Testing")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Internal Report" })).toBeTruthy();
+    const updates = screen.getByRole("region", { name: "Update Internal Report" });
+    expect(within(updates).getByLabelText("LLCR result workbook")).toBeTruthy();
+    expect(within(updates).getByRole("button", { name: "Preview Equipment List" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Customer Report" })).toBeTruthy();
+    expect(screen.queryByText("Project project-1")).toBeNull();
+    await user.click(within(actions).getByRole("button", { name: "Back to Workspace" }));
+    expect(onBack).toHaveBeenCalledOnce();
+  });
+
+  it("shows the registered LTR and confirmed Basic Information, not draft or stale project descriptions", async () => {
+    vi.mocked(api.getProject).mockResolvedValue({
+      project_id: "project-1", project_no: "OLD-REF", product_name: "Stale product",
+      sample_description: "Stale description", test_item: "Stale test", requestor: "Lab User", status: "active",
+    });
+    vi.mocked(api.listProjectLtrs).mockResolvedValue([
+      { ltr_id: "ltr-1", project_id: "project-1", ltr_number: "DL-001", status: "registered" },
+    ]);
+    vi.mocked(api.getProjectBasicInformation).mockResolvedValue({
+      project_id: "project-1", status: "confirmed",
+      draft: { values: { product_description: "Unconfirmed edit", test_item: "Draft test" } },
+      latest_confirmed: {
+        record_id: "basic-2", project_id: "project-1", status: "confirmed", version: 2,
+        values: { product_description: "Confirmed connector", test_item: "Qualification Testing" },
+        source_signature: "basic-sha", created_at: "2026-10-02", updated_at: "2026-10-02",
+      },
+      field_suggestions: {}, changed_source_fields: [], missing_required_fields: [],
+      missing_required_labels: [], blockers: [], warnings: [],
+    });
+    render(<AppShell activeRoute="workbench" topBarTitle="Report Workspace">
+      <ProjectReportWorkspacePage projectId="project-1" onBackToWorkbench={vi.fn()} />
+    </AppShell>);
+    expect(await screen.findByText("DL-001 Confirmed connector Qualification Testing")).toBeTruthy();
+    expect(screen.queryByText(/Unconfirmed edit|Stale description/)).toBeNull();
+    expect(screen.getAllByRole("heading", { name: "Report Workspace" })).toHaveLength(1);
+  });
+
+  it("keeps report operations available when optional identity lookups fail", async () => {
+    vi.mocked(api.getProject).mockRejectedValue(new Error("Project label unavailable"));
+    vi.mocked(api.listProjectLtrs).mockResolvedValue([
+      { ltr_id: "ltr-1", project_id: "project-1", ltr_number: "DL-001", status: "registered" },
+    ]);
+    vi.mocked(api.getProjectBasicInformation).mockRejectedValue(new Error("Basic label unavailable"));
+    render(<ProjectReportWorkspacePage projectId="project-1" onBackToWorkbench={vi.fn()} />);
+    expect(await screen.findByText("DL-001 Connector Project")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Download current report" }).hasAttribute("disabled")).toBe(false);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps LLCR inspection independent of initial report generation without inventing a missing folder", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue({
+      ...currentReport, status: "missing", mode: null, file_name: null, file_sha256: null,
+      folder_path: null, download_url: null,
+    });
+    vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue({
+      ...customerReport, status: "blocked", mode: "managed_download", file_name: null,
+      can_generate: false, internal_report_sha256: null, warnings: [],
+      blockers: ["A single current Internal Report is required."], download_url: null,
+    });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await screen.findByRole("region", { name: "Update Internal Report" });
+    expect(screen.queryByText("Browser download (no official project folder)")).toBeNull();
+    expect(screen.getByRole("button", { name: "Update LLCR results" }).hasAttribute("disabled")).toBe(true);
+    fireEvent.change(screen.getByLabelText("LLCR result workbook"), {
+      target: { files: [new File(["xlsx"], "LLCR.xlsx")] },
+    });
+    await user.click(screen.getByRole("button", { name: "Inspect LLCR workbook" }));
+    expect(await screen.findByRole("dialog", { name: "LLCR import preview" })).toBeTruthy();
+    expect(api.inspectLlcrResultWorkbook).toHaveBeenCalledOnce();
+    expect(api.generateInitialReportRevision).not.toHaveBeenCalled();
+  });
+
   it("exposes the current report, LLCR import preview, and confirmation", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
     render(<ReportWorkspace projectId="project-1" onBack={onBack} />);
 
     expect(await screen.findByRole("heading", { name: "Report Workspace" })).toBeTruthy();
-    expect(screen.getByText("Project project-1")).toBeTruthy();
+    expect(screen.queryByText("Project project-1")).toBeNull();
     expect(screen.getAllByText(currentReport.file_name!).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Confirmed Matrix revision 4")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Current report ready" })).toBeTruthy();
+    expect(screen.getByText("Confirmed Matrix r4")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Internal Report" })).getByText("Official project report")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Generate initial report" })).toBeNull();
 
     const fileInput = screen.getByLabelText("LLCR result workbook");
@@ -369,7 +460,7 @@ describe("ReportWorkspace", () => {
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
 
-    expect(await screen.findByRole("heading", { name: "Publish current report" })).toBeTruthy();
+    expect(await screen.findByText("ConnLab managed draft")).toBeTruthy();
     expect((await screen.findAllByText("ConnLab managed draft")).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Destination: Official project folder")).toBeTruthy();
     await user.click(
@@ -475,7 +566,7 @@ describe("ReportWorkspace", () => {
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
 
-    expect(await screen.findByRole("heading", { name: "Customer report" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Customer Report" })).toBeTruthy();
     expect(screen.getByText("Needs update")).toBeTruthy();
     expect(screen.getByText(customerReport.warnings[0])).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Update customer report" }));

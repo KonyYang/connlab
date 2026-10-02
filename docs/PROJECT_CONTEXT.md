@@ -95,6 +95,19 @@ Do not use a dated snapshot as a substitute for the code.
   remain available after normal validation. Repeated identical backend confirmation preserves the
   record identity/version; changed fields or source/sample authority create a new immutable version.
 
+### Report Workspace presentation
+
+- Report Workspace shares the global page title/action bar, showing the registered LTR and latest
+  confirmed Basic Information description/test item with existing Project fallbacks; unconfirmed
+  drafts never supply that label. Optional label lookups do not block report operations.
+- Three compact business sections organize Internal Report, Update Internal Report (LLCR import/update
+  and Equipment List preview), and Customer Report. There is no numbered wizard or page-wide Confirm.
+  LLCR import remains available before the initial report exists. Section updates preserve unrelated
+  report content and manual edits; existing preview, confirmation and publication safeguards remain.
+- Customer generation retains real stage/elapsed feedback, task recovery and separate status-query,
+  generation/publication and download retry handling. Layout changes do not change output locations,
+  source authority, file fingerprints, archive rules or backend task lifecycle.
+
 ### Project Schedule in Matrix Editor
 
 - Project Schedule fields are edited in Matrix Editor and confirmed through its single `Confirm Matrix`
