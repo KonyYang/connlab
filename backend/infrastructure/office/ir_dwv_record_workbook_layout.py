@@ -10,7 +10,13 @@ TEMPLATE_SAMPLE_COUNT = 5
 TEMPLATE_PAIR_ROW_COUNT = 12
 TEMPLATE_FIRST_COLUMN = 2
 TEMPLATE_LAST_COLUMN = 37
-TEMPLATE_FIRST_BLOCK_ORIGINS = (2, 15, 26)
+TABLE_GUTTER_COLUMN_COUNT = 2
+# Keep three standard forms; their final column may extend beyond the
+# expanded-sample capacity bound, which must still reject eighteen samples.
+TEMPLATE_FIRST_BLOCK_ORIGINS = tuple(
+    TEMPLATE_FIRST_COLUMN + index * (1 + 2 * TEMPLATE_SAMPLE_COUNT + TABLE_GUTTER_COLUMN_COUNT)
+    for index in range(3)
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -120,7 +126,7 @@ def block_origins(*, sample_count: int, pair_count: int) -> tuple[int, ...]:
     origin = TEMPLATE_FIRST_COLUMN
     while origin + layout.width - 1 <= TEMPLATE_LAST_COLUMN:
         origins.append(origin)
-        origin += layout.width + 2
+        origin += layout.width + TABLE_GUTTER_COLUMN_COUNT
     if not origins:
         raise ValueError("IR/DWV block cannot fit within the template sheet.")
     return tuple(origins)

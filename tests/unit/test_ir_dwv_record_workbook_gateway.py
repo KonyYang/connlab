@@ -618,8 +618,8 @@ def test_writer_resizes_samples_and_rebuilds_conditions_headers_and_statistics(
     ("step_count", "expected_sheets", "expected_origins"),
     [
         (2, ["Group 1"], [2, 15]),
-        (3, ["Group 1"], [2, 15, 26]),
-        (4, ["Group 1", "Group 1 (2)"], [2, 15, 26, 2]),
+        (3, ["Group 1"], [2, 15, 28]),
+        (4, ["Group 1", "Group 1 (2)"], [2, 15, 28, 2]),
     ],
 )
 def test_writer_places_steps_across_sheets(
@@ -643,6 +643,51 @@ def test_writer_places_steps_across_sheets(
     workbook = load_workbook(target)
     assert workbook.sheetnames == expected_sheets
     workbook.close()
+
+
+@pytest.mark.parametrize("samples", [3, 5, 7])
+def test_every_adjacent_record_table_has_two_empty_columns_without_changing_capacity(tmp_path, samples):
+    path = IrDwvRecordWorkbookGateway(FIXTURE).write(
+        output_path=tmp_path / "gutters.xlsx", projection=_projection(samples=samples, steps=4),
+    )
+    workbook = load_workbook(path)
+    try:
+        expected_origins = ([2, 15, 28], [2]) if samples <= 5 else ([2, 19], [2, 19])
+        expected_widths = [16.46484375] * 9 + [17.86328125, 9.0] if samples <= 5 else [16.46484375] * 11 + [17.86328125, 9.0, 9.0, 9.0]
+        footer_row = 39 if samples <= 5 else 41
+        assert len(workbook.worksheets) == 2
+        for sheet, expected in zip(workbook.worksheets, expected_origins, strict=True):
+            origins = [cell.column for cell in sheet[10] if str(cell.value).startswith("Item/Process:")]
+            ends = [cell.column for cell in sheet[footer_row] if cell.value == "FDQF-E-033"]
+            for previous_end, following_origin in zip(ends[:-1], origins[1:], strict=True):
+                assert following_origin - previous_end - 1 == 2
+                gutters = range(previous_end + 1, following_origin)
+                for row in range(1, sheet.max_row + 1):
+                    for column in gutters:
+                        cell = sheet.cell(row, column)
+                        assert cell.value is None
+                        assert all(not side or not side.style for side in (
+                            cell.border.left, cell.border.right, cell.border.top, cell.border.bottom,
+                        ))
+                assert not any(
+                    merged.min_col <= previous_end + 2 and merged.max_col >= previous_end + 1
+                    for merged in sheet.merged_cells.ranges
+                )
+                assert [sheet.column_dimensions[get_column_letter(column)].width for column in gutters] == [14.46484375, 16.46484375]
+            assert origins == expected
+            assert sheet.max_column == ends[-1]
+            # No fixed print area clips a moved form: the output uses its full
+            # used range, which reaches AL for the third five-slot form.
+            assert not sheet.print_area
+            assert len(sheet._images) == len(origins)
+            for origin, end, image in zip(origins, ends, sheet._images, strict=True):
+                assert [sheet.column_dimensions[get_column_letter(column)].width for column in range(origin, end + 1)] == expected_widths
+                assert image.anchor._from.col >= origin - 1
+                assert image.anchor.to.col == end - 1
+                # The template's verified Song-11pt metric makes width9 =72px.
+                assert image.anchor.to.colOff <= 72 * 9525
+    finally:
+        workbook.close()
 
 
 def test_writer_clears_all_template_measurements_when_pairs_are_empty(tmp_path: Path):
@@ -784,6 +829,21 @@ def test_writer_blocks_non_positive_or_non_integer_sample_counts(
             output_path=tmp_path / "record.xlsx",
             projection=_projection(samples=samples),
         )
+
+
+def test_writer_keeps_seventeen_sample_capacity_and_rejects_eighteen(tmp_path):
+    gateway = IrDwvRecordWorkbookGateway(FIXTURE)
+    path = gateway.write(output_path=tmp_path / "seventeen.xlsx", projection=_projection(samples=17))
+    workbook = load_workbook(path)
+    try:
+        assert len(workbook.worksheets) == 1
+        assert workbook.active.max_column == 36
+    finally:
+        workbook.close()
+    rejected = tmp_path / "eighteen.xlsx"
+    with pytest.raises(ValueError, match="cannot fit"):
+        gateway.write(output_path=rejected, projection=_projection(samples=18))
+    assert not rejected.exists()
 
 
 def test_writer_blocks_when_registered_template_has_an_excel_lock(tmp_path: Path):

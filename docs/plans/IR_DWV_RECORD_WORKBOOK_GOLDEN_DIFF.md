@@ -466,3 +466,60 @@ Remarks height uses conservative wrapping estimates with explicit overflow error
 No full-repository, packaged-release or installed-Excel rendering/recalculation pass
 is claimed. Scope reconciliation and independent integration are the last governance
 steps before the sole board writer records `ready_for_close`.
+
+### Two-column separation acceptance revision (2026-10-02)
+
+After the preceding delivery checkpoint, the User supplied a screenshot showing the
+second and third same-sheet forms touching and requested the same two empty columns
+between every adjacent form. The sole writer resumed this same task with `Revise`.
+The earlier final 81-case result does not validate this subsequent layout change.
+
+Independent revision planning retained three forms per five-slot sheet and the
+existing expanded-sample capacity/continuation rules. Developer reproduced the
+symptom through the public writer: `-k every_adjacent_record_table` returned two
+failures (N3/N5) and one pass (N7), 2.53 seconds. In both failures the second form
+ends at Y and the third starts at Z, leaving zero empty columns. The historical
+five-slot origins `(2, 15, 26)` differ from the expanded layout's width-plus-two
+spacing rule. The intended five-slot origins are now B/O/AB `(2, 15, 28)`, with
+M/N and Z/AA as equal two-column gutters. Expanded layouts must still reject 18
+samples rather than gaining capacity as an unintended effect of this correction.
+
+Only the existing layout and writer tests changed. Registered template, formal
+business files, authority selection and safe publication remain unchanged.
+Developer's final focused GREEN passed 35 cases (41 deselected), 19.14 seconds.
+The public writer now checks every same-sheet gap for exactly two blank columns,
+without values, table borders or intersecting merges. It also verifies continuation
+and preserves the existing 17-sample limit, explicitly rejecting 18 samples.
+
+Frozen implementation SHA256:
+
+- Layout: `f88a33c6e1796ce906d4d41181a7fa57bf7c3ecaa41c77c39ed8fbde2137ab6a`.
+- Writer tests: `a67b9a135fd46512433360bbd9dc68ebf497a5768e3cce53b601b474466bb2dc`.
+- Gateway remains `434ec58405808f60f9ce310a80a8d1320ec7c9ecd8c4140ce29f14b811465a01`.
+
+Actual current-source outputs are retained under the owned temporary directory
+`connlab-ir-dwv-final-spacing-z56xdufn`, named `matrix-spacing-{3,5,7}-samples.xlsx`.
+Main inspected a read-only rendering of N5 `W1:AL14`: the second form ends at Y,
+Z/AA are empty, and the third starts at AB. The rendering does not modify or export
+the workbook and is not an installed-Excel rendering/printing claim. LOGO payload
+and physical anchor preservation are checked separately in the actual OOXML.
+Independent Reviewer passed seven focused spacing, continuation and 17/18-capacity
+tests (69 deselected), 5.53 seconds, with Standards 0 / Spec 0. Read-only inspection
+verified all nine actual blocks: 4,530 cell styles, 72 statistics formulas,
+normalized merges, static fields, Units, blank data and LOGO payload/anchor geometry
+remain correct. N3/N5 end at AL without a fixed print area clipping the third block;
+N7 retains two blocks plus continuation. The source SHA256 remains unchanged.
+The preceding requirements sample and this spacing sample use different synthetic
+business inputs; conditions, requirements and stages were checked against each
+sample's own inputs, not falsely reported as entirely identical business values.
+Independent QA ran the complete affected writer unit and IR/DWV API files once on
+these frozen bytes: **85 passed**, one existing deprecation warning, 117.13 seconds,
+exit 0. This supersedes the preceding 81-case result for the subsequently changed
+layout/tests; overlapping counts are not summed. QA independently verified all
+same-sheet two-column gaps, N7 continuation, 17 supported/18 rejected, 72 statistics
+formulas, 1,224 empty measurement cells, template GΩ/nA Units, nine LOGO physical
+frames/right gaps, and immutable registered-source/prior synthetic official/archive
+bytes. No UI/service restart or repeated unaffected frontend build was needed.
+The owned QA evidence log is
+`connlab-ir-dwv-final-browser-qa-wmvh7kb2/round-template-revision-qa.md` in Temp.
+Native Excel rendering/printing and packaged-release execution remain untested.
