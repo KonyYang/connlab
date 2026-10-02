@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_362_IR_DWV_RECORD_WORKBOOK_20261001",
     "summary": "Implement IR/DWV Matrix record workbook end to end",
@@ -60,17 +60,110 @@
     ],
     "activation_head": "29c0b9de3335d5c1e8beb0f3f2f559889ac572fd",
     "started_at": "2026-10-01T03:23:28.767007Z",
-    "updated_at": "2026-10-02T01:22:22.388199Z",
+    "updated_at": "2026-10-02T02:11:02.474319Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_362_IR_DWV_RECORD_WORKBOOK_20261001",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User acceptance feedback 2026-10-02: six samples splits final Group2 round into new sheet; retain group rounds horizontally on same Group sheet with two blank columns; reproduce real browser draft download and repair.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_362_IR_DWV_RECORD_WORKBOOK_20261001",
+      "subject": "01c49338f883ba0fe07b62a4e8e4bedb0775f6b2",
+      "summary": "Complete IR/DWV records and fix sample-expanded third-round continuation: fixed three rounds per sheet N6B/Q/AF and N7B/S/AJ, two-column gutters, fourth-round continuation and max17 retained. Isolated LOGO metric preserves original Remarks budget. Actual requested browser download GREEN and independent final writer/API QA99passed. Native Excel/packaged release not run.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/dependencies.py",
+        "backend/api/main.py",
+        "backend/api/routes_matrix_editor_ir_dwv_record_generation.py",
+        "backend/application/confirmed_matrix_llcr_cr_record_generation_service.py",
+        "backend/application/external_resource_service.py",
+        "backend/application/matrix_editor_ir_dwv_record_generation_service.py",
+        "backend/application/matrix_editor_ir_dwv_record_projection.py",
+        "backend/domain/enums.py",
+        "backend/infrastructure/files/ir_dwv_record_artifact_store.py",
+        "backend/infrastructure/files/project_folder_required_forms_gateway.py",
+        "backend/infrastructure/office/ir_dwv_record_workbook_gateway.py",
+        "backend/infrastructure/office/ir_dwv_record_workbook_layout.py",
+        "docs/plans/IR_DWV_RECORD_WORKBOOK_GOLDEN_DIFF.md",
+        "docs/plans/IR_DWV_RECORD_WORKBOOK_PLAN.md",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/contact-measurement-plan/MatrixTestPointsEditor.tsx",
+        "frontend/src/features/matrix-editor/IrDwvRecordDownloadAction.test.tsx",
+        "frontend/src/features/matrix-editor/LlcrCrRecordDownloadAction.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.testSupport.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/features/matrix-editor/useLlcrCrSpecializedRecordWorkbookModel.ts",
+        "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.test.tsx",
+        "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.tsx",
+        "frontend/src/features/settings/settingsResourceConfig.ts",
+        "scripts/inventory_ir_dwv_template.py",
+        "tests/fixtures/ir_dwv/IR_DWV_Template.xlsx",
+        "tests/fixtures/ir_dwv/template_inventory.json",
+        "tests/integration/test_external_resource_api.py",
+        "tests/integration/test_matrix_editor_ir_dwv_record_generation_api.py",
+        "tests/unit/test_confirmed_matrix_llcr_cr_record_generation_service.py",
+        "tests/unit/test_external_resource_service.py",
+        "tests/unit/test_ir_dwv_record_projection.py",
+        "tests/unit/test_ir_dwv_record_workbook_gateway.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "name": "final affected writer unit and IR/DWV API after sample-width and isolated-logo correction",
+          "result": "99 passed,1 existing deprecation warning,53.84s,exit0; once on frozen layoutdd207eb0/gateway4c546011/testsd68c9589; precise argv and raw hashes in GOLDEN_DIFF."
+        },
+        {
+          "status": "passed",
+          "name": "independent actual current-template artifacts and physical/layout preservation",
+          "result": "N3/5/6/7 three rounds per sheet with two blank column gutters; fourth continuation retained;17 supported18prewriteblocked. Reviewer12LOGOs/96formulas/1512blankmeasurements/652gutters/4530normalizedcellsstyles; QA own source and prior isolatedformal/archive unchanged. LOGO8metric only dedicated callers; original Remarks7budget restored."
+        },
+        {
+          "status": "passed",
+          "name": "requested live project real browser smoke and final download",
+          "result": "Actual localhost5173 project1fb... Matrix Editor click IR&DWV Form→Downloadpreview before565token RED; final613token onlyGroup2,Group6b. Group2 B/Q/AF three rounds,1599cellvaluesstyles/formulasnormalizedsameold,Remarks136.6same;Group6b original2rounds2logos92.4same. FinalSHA b07a0268745d5c918ab065b77a0487a59539037e90cd9d3444123374605aed44. Main viewed readonly finalAC10:AR23render; businessMatrix/template/officialfiles notwritten, originalUsertabpreserved ownedtabclosed."
+        },
+        {
+          "status": "passed",
+          "name": "unchanged UI and safe-publication regressions retained",
+          "result": "No current frontend/API/publication implementation delta; earlier151affected+52sharedPython,234frontend37files with opt-in profiling skipped, subsequent72close-labeltests andTS/Vite157modulebuild, isolated8014/5174 draft/formal/archive/blockers evidence remain valid. Counts overlap, not summed; no new fullrepo/nativeExcel/packagedrelease claim."
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed",
+          "context": "ir_dwv_final_integrator served independent current revision Planner only: sample width must not reduce three-round capacity; N6B/Q/AF N7B/S/AJ, two gutters, fourth oldcontinuation/max17 preserved; exact approvedscope."
+        },
+        "developer": {
+          "status": "passed",
+          "context": "ir_dwv_revision_developer; public capacityRED2failedN6/7, LOGON6RED and laterRemarksboundaryRED1fail1pass; sharedmetricfinding corrected and frozen. Final targeted45passed45deselected27.99s; actualsource3/5/6/7outputs. Claims on intermediatefreeze withdrawn and finalbytes verified."
+        },
+        "reviewer": {
+          "status": "passed",
+          "context": "ir_dwv_p1_reviewer; final19passed71deselected11.84s Standards0/Spec0; sharedLOGO/Remarksfindingclosed; current12logos96formulas1512blank652gutters4530cellsstyles and sourceimmutability verified on finalhashes."
+        },
+        "qa": {
+          "status": "passed",
+          "context": "ir_dwv_p1_qa; final complete99writer/APItests once53.84s + actual3/5/6/7 and finalbusinessdownload compared per-group; source/priorformal/archive immutable. Preliminary overbroadGroup6bdiagnostic corrected, not productfailure or codechange; finalstagepassed."
+        },
+        "integrator": {
+          "status": "passed",
+          "context": "ir_dwv_sample_width_integrator fresh independent context; exactcleanmaster01c49338/parentbdb8d20e/previous99aaa814 and34approvednonboardpaths match; current six-file delta, frozen3hashes/source/download4outputs/priorformalarchive/log/DoD checked Standards0/Spec0. Readonly, no duplicate test/write/push."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "subject": "01c49338f883ba0fe07b62a4e8e4bedb0775f6b2",
+        "code_subject": "01c49338f883ba0fe07b62a4e8e4bedb0775f6b2",
+        "facts": "Legacyv1 directmaster integration clean; fresh independent Integrator verified exact approved34 and6fileacceptance delta, current frozen hashes, final browser artifact and QA99facts/DoD. No current taskclose/publication; nativeExcel/release/fullrepo limitations explicit."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_IR_DWV_TEST_POINTS_20260930",
