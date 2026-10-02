@@ -628,7 +628,7 @@ hash and diff checks pass. Full final affected QA is recorded separately below.
 Final independent QA ran the complete affected files once on the exact frozen
 generator/tests:
 
-`C:/PythonEnvs/connlab/.venv/Scripts/python.exe -m pytest tests/unit/test_ir_dwv_record_workbook_gateway.py tests/integration/test_matrix_editor_ir_dwv_record_generation_api.py -q -p no:cacheprovider`
+`C:/PythonEnvs/connlab/.venv/Scripts/python.exe -m pytest -p no:cacheprovider -m 'not office_integration' tests/unit/test_ir_dwv_record_workbook_gateway.py tests/integration/test_matrix_editor_ir_dwv_record_generation_api.py -q`
 
 **99 passed**, one existing deprecation warning, 53.84 seconds, exit 0. This
 supersedes the preceding 85-case result for the changed implementation/tests;
@@ -648,3 +648,9 @@ or used to change the valid generator. The final browser artifact hash is b07a02
 as recorded above. No native Excel rendering/printing, packaged release execution
 or full-repository test claim is made for this revision. The frontend and safe
 publication chain were unchanged; their earlier valid evidence is retained.
+QA also rechecked the earlier isolated official file SHA256
+`3acc8a10e4218b54c85bcf5b7337f12bcc6c497731642f74946d8c27e72f0e8b`
+and its unique archive/original SHA256
+`2716d02a17246809a56b09c6848be10922afbf07028192545ef4029839df59dc`;
+both remain unchanged. The exact final evidence addendum is retained at
+`C:/Users/White/AppData/Local/Temp/connlab-ir-dwv-final-browser-qa-wmvh7kb2/round-template-revision-qa.md`.
