@@ -11,8 +11,29 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_BASIC_INFORMATION_CONFIRM_CHANGES_20261002",
+    "summary": "Load confirmed Basic Information on entry and confirm only material changes",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Normal entry uses latest confirmed Basic Information. Refresh recovers saved current-session editing without deleting old drafts. Disable Confirm for unchanged confirmed content; re-enable for material field or source/sample changes. First confirmation remains available after validation. Backend repeated identical confirmation is idempotent. Preserve lifecycle/validation/source review and external output behavior.",
+    "scope_paths": [
+      "frontend/src/App.tsx",
+      "frontend/src/App.test.tsx",
+      "frontend/src/features/project-basic-information",
+      "backend/application/project_basic_information_service.py",
+      "tests/unit/test_project_basic_information_service.py",
+      "tests/integration/test_project_basic_information_api.py",
+      "docs/PROJECT_CONTEXT.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "10ae47c7c5b69a6d94c6c23a87c42ccf3c56e705",
+    "started_at": "2026-10-02T13:33:29.361899Z",
+    "updated_at": "2026-10-02T13:33:29.361899Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_CREATE_FOLDER_ARCHIVE_ONLY_20261002",
     "tier": "high_risk",
