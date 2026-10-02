@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_362_IR_DWV_RECORD_WORKBOOK_20261001",
     "summary": "Implement IR/DWV Matrix record workbook end to end",
@@ -60,17 +60,110 @@
     ],
     "activation_head": "29c0b9de3335d5c1e8beb0f3f2f559889ac572fd",
     "started_at": "2026-10-01T03:23:28.767007Z",
-    "updated_at": "2026-10-02T00:35:00.271899Z",
+    "updated_at": "2026-10-02T01:13:42.331679Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_362_IR_DWV_RECORD_WORKBOOK_20261001",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User screenshot acceptance feedback: every adjacent IR/DWV table must have two empty spacer columns; second-to-third table currently touches. Continue same task with bounded spacing regression and template-preserving fix; no external template or business file overwrite.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_362_IR_DWV_RECORD_WORKBOOK_20261001",
+      "subject": "e9e90fee7efe024134981ea7f118c79158aebd75",
+      "summary": "Complete paired template-driven IR/DWV records and acceptance spacing correction: every adjacent form has two empty columns, standard B/O/AB and expanded continuation retained. Independent final writer/API QA85passed; actual source3/5/7 workbooks and spacing render verified. Safe publication and prior frontend/browser flow unchanged. Native Excel/packaged release not run; max17 remains.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/dependencies.py",
+        "backend/api/main.py",
+        "backend/api/routes_matrix_editor_ir_dwv_record_generation.py",
+        "backend/application/confirmed_matrix_llcr_cr_record_generation_service.py",
+        "backend/application/external_resource_service.py",
+        "backend/application/matrix_editor_ir_dwv_record_generation_service.py",
+        "backend/application/matrix_editor_ir_dwv_record_projection.py",
+        "backend/domain/enums.py",
+        "backend/infrastructure/files/ir_dwv_record_artifact_store.py",
+        "backend/infrastructure/files/project_folder_required_forms_gateway.py",
+        "backend/infrastructure/office/ir_dwv_record_workbook_gateway.py",
+        "backend/infrastructure/office/ir_dwv_record_workbook_layout.py",
+        "docs/plans/IR_DWV_RECORD_WORKBOOK_GOLDEN_DIFF.md",
+        "docs/plans/IR_DWV_RECORD_WORKBOOK_PLAN.md",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/contact-measurement-plan/MatrixTestPointsEditor.tsx",
+        "frontend/src/features/matrix-editor/IrDwvRecordDownloadAction.test.tsx",
+        "frontend/src/features/matrix-editor/LlcrCrRecordDownloadAction.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.editing.test.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.testSupport.tsx",
+        "frontend/src/features/matrix-editor/MatrixEditorWorkspace.tsx",
+        "frontend/src/features/matrix-editor/useLlcrCrSpecializedRecordWorkbookModel.ts",
+        "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.test.tsx",
+        "frontend/src/features/project-workbench/ProjectWorkbenchCloseConfirmation.tsx",
+        "frontend/src/features/settings/settingsResourceConfig.ts",
+        "scripts/inventory_ir_dwv_template.py",
+        "tests/fixtures/ir_dwv/IR_DWV_Template.xlsx",
+        "tests/fixtures/ir_dwv/template_inventory.json",
+        "tests/integration/test_external_resource_api.py",
+        "tests/integration/test_matrix_editor_ir_dwv_record_generation_api.py",
+        "tests/unit/test_confirmed_matrix_llcr_cr_record_generation_service.py",
+        "tests/unit/test_external_resource_service.py",
+        "tests/unit/test_ir_dwv_record_projection.py",
+        "tests/unit/test_ir_dwv_record_workbook_gateway.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "name": "final affected writer unit and IR/DWV API after spacing correction",
+          "result": "85 passed,1 existing deprecation warning,117.13s,exit0; frozen layoutf88a33c6/testa67b9a13/gateway434ec584"
+        },
+        {
+          "status": "passed",
+          "name": "independent current-template actual files and visual spacing",
+          "result": "Actual3/5/7: B/O/AB M:N,Z:AA empty; N7B/S+continuationB;17supported18blocked;9logos physicalframes/rightgaps,72formulas,1224blankcells,Units preserved. Source07cf and prior syntheticformal/archive immutable. Main read-onlyN5W1:AL14 renderer confirmed gutters; not native Excel."
+        },
+        {
+          "status": "passed",
+          "name": "unaffected frontend and shared regressions retained",
+          "result": "Earlier151affected+52sharedPython;234frontend37files (opt-in profiling skipped); subsequent72affectedclose-labeltests+TypeScript/Vite157modulebuild exit0. Overlapping counts not summed."
+        },
+        {
+          "status": "passed",
+          "name": "isolated real browser flow and actual artifacts",
+          "result": "Owned8014/5174 draft download, formal publication, cancel, archive, missingpoints/lockedtemplate blockers previously verified. Later backend-only Remarks and spacing covered by final affectedtests/actualfiles; not rerun browser. Userbusinessfiles/tab preserved; ownedservices stopped."
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed",
+          "context": "ir_dwv_final_integrator served independent revision Planner only: bounded same-task all-adjacent two-column correction, retain three forms/five slots and max17/continuation; no new scope/product ambiguity."
+        },
+        "developer": {
+          "status": "passed",
+          "context": "ir_dwv_revision_developer; public writer RED2failed(N3/N5)/1passN7 then final GREEN35passed41deselected19.14s; frozen2file slice and actualsourceoutputs."
+        },
+        "reviewer": {
+          "status": "passed",
+          "context": "ir_dwv_p1_reviewer; Standards0/Spec0;7focused checks passed5.53s; independent4530cellstyles,72formulas,normalizedmerges/staticfields/Units/blankdata/9LOGOs and currentinput requirements verified, source unchanged."
+        },
+        "qa": {
+          "status": "passed",
+          "context": "ir_dwv_p1_qa; complete85affected tests once117.13s plus ownedactual3/5/7 spacing/capacity/content/immutablechecks. Valid unaffected frontend/build/browser evidence retained; no nativeExcel/release claim."
+        },
+        "integrator": {
+          "status": "passed",
+          "context": "ir_dwv_spacing_integrator fresh independent context: cleanmastere9e90fee parentc28b0b77/tree checked; observed34nonboardpaths=approved34; exact5filedelta; frozen layout/test/gateway/board/source and3artifacthashes/evidence match; Standards0/Spec0. No tests/writes repeated."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "subject": "e9e90fee7efe024134981ea7f118c79158aebd75",
+        "code_subject": "e9e90fee7efe024134981ea7f118c79158aebd75",
+        "facts": "Legacyv1 directmaster integration clean; fresh independent Integrator verified exact34approvedpaths and5fileacceptance delta, source/artifact/frozenhashes and actualQA85 facts, API/UI wiring unchanged; no taskclose/push."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_MATRIX_IR_DWV_TEST_POINTS_20260930",
