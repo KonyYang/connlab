@@ -130,7 +130,7 @@ describe("LlcrCrRecordDownloadAction", () => {
     apiMocks.previewMatrixEditorLlcrCrRecordPublication.mockResolvedValue({
       project_id: "P1", mode: "official", status: "ready", authority_status: "confirmed",
       target_path: "C:\\project\\Test results\\P1 CR Record.xlsx",
-      existing_file: false, blockers: [], preview_token: "new-token",
+      existing_file: false, blockers: [], information: ["CR source note retained."], preview_token: "new-token",
     });
     apiMocks.publishMatrixEditorLlcrCrRecord.mockResolvedValue({
       project_id: "P1", file_name: "P1 CR Record.xlsx",
@@ -145,6 +145,7 @@ describe("LlcrCrRecordDownloadAction", () => {
     }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByText(/saved P1 CR Record.xlsx to Test results/i)).toBeTruthy();
+    expect(screen.getByRole("list", { name: "CR source information" }).textContent).toContain("CR source note retained.");
   });
 
   it("does not generate or publish when the authority preview is blocked", async () => {

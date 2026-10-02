@@ -48,15 +48,28 @@
 }
 
 .matrix-test-points-editor .matrix-test-points-shared-pairs {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
   justify-content: flex-start;
   gap: 8px;
 }
 
 .matrix-test-points-shared-pairs .project-point-profile-input {
-  flex: 1 1 240px;
   min-width: 0;
-  width: auto;
+  width: 100%;
   resize: vertical;
+}
+
+.matrix-test-points-shared-pairs .matrix-test-points-form-actions,
+.matrix-test-points-shared-pairs .llcr-cr-record-download {
+  display: contents;
+}
+
+.matrix-test-points-shared-pairs .llcr-cr-record-error,
+.matrix-test-points-shared-pairs .llcr-cr-record-success {
+  grid-column: 1 / -1;
+  max-width: none;
+  text-align: left;
 }
 
 .matrix-test-points-editor .project-point-profile-delta-r {
@@ -620,5 +633,15 @@
   .contact-measurement-action-group,
   .contact-measurement-action-group.is-commit {
     margin-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .matrix-test-points-editor .matrix-test-points-shared-pairs {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+
+  .matrix-test-points-shared-pairs h4 {
+    grid-column: 1 / -1;
   }
 }
