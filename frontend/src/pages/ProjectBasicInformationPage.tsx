@@ -9,18 +9,21 @@ import "../workbench.css";
 type ProjectBasicInformationPageProps = {
   projectId: string;
   initialValuesMode?: ProjectBasicInformationInitialValuesMode;
+  onDraftSaved?: () => void;
   onBackToWorkbench: (options: BackToWorkbenchOptions) => void;
 };
 
 export function ProjectBasicInformationPage({
   projectId,
-  initialValuesMode = "draft",
+  initialValuesMode = "authoritative",
+  onDraftSaved,
   onBackToWorkbench,
 }: ProjectBasicInformationPageProps): ReactElement {
   return (
     <ProjectBasicInformationWorkspace
       projectId={projectId}
       initialValuesMode={initialValuesMode}
+      onDraftSaved={onDraftSaved}
       onBackToWorkbench={onBackToWorkbench}
     />
   );

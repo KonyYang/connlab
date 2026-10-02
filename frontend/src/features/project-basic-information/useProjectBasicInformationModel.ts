@@ -21,6 +21,7 @@ import {
 import { buildProjectIdentityLine } from "../projectIdentity";
 import { getBasicInformationConfirmedBy } from "./currentUserDisplay";
 import { normalizeBasicInformationFieldValues } from "./basicInformationFieldConfig";
+import { requiresBasicInformationConfirmation } from "./basicInformationSelectors";
 
 export type BackToWorkbenchOptions = {
   refreshBasicInformation: boolean;
@@ -36,6 +37,7 @@ export type ProjectBasicInformationModel = {
   loading: boolean;
   saving: boolean;
   confirming: boolean;
+  confirmationRequired: boolean;
   error: string | null;
   savedMessage: string | null;
   lifecycleReadonlyView: ProjectLifecycleReadonlyView;
@@ -46,11 +48,13 @@ export type ProjectBasicInformationModel = {
 
 export function useProjectBasicInformationModel({
   projectId,
-  initialValuesMode = "draft",
+  initialValuesMode = "authoritative",
+  onDraftSaved,
   onBackToWorkbench,
 }: {
   projectId: string;
   initialValuesMode?: ProjectBasicInformationInitialValuesMode;
+  onDraftSaved?: () => void;
   onBackToWorkbench: (options: BackToWorkbenchOptions) => void;
 }): ProjectBasicInformationModel {
   const [response, setResponse] = useState<ProjectBasicInformationResponse | null>(null);
@@ -68,10 +72,15 @@ export function useProjectBasicInformationModel({
   const [draftDirty, setDraftDirty] = useState(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autosaveRevisionRef = useRef(0);
+  const draftSavedCallbackRef = useRef(onDraftSaved);
+  draftSavedCallbackRef.current = onDraftSaved;
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setSaving(false);
+    setDraftDirty(false);
+    setSavedMessage(null);
     setError(null);
     void Promise.all([
       getProjectBasicInformation(projectId),
@@ -137,6 +146,7 @@ export function useProjectBasicInformationModel({
     if (!draftDirty) {
       return;
     }
+    let active = true;
     if (autosaveTimerRef.current) {
       clearTimeout(autosaveTimerRef.current);
     }
@@ -147,25 +157,24 @@ export function useProjectBasicInformationModel({
       setError(null);
       void saveProjectBasicInformationDraft(projectId, draftValues)
         .then((nextResponse) => {
-          if (autosaveRevisionRef.current !== revision) {
+          if (!active || autosaveRevisionRef.current !== revision) {
             return;
           }
           setResponse(nextResponse);
           setSavedMessage("Draft saved automatically.");
           setDraftDirty(false);
+          setSaving(false);
+          draftSavedCallbackRef.current?.();
         })
         .catch((err) => {
-          if (autosaveRevisionRef.current === revision) {
+          if (active && autosaveRevisionRef.current === revision) {
             setError(readonlyAwareErrorMessage(err, "Failed to save Basic Information draft."));
-          }
-        })
-        .finally(() => {
-          if (autosaveRevisionRef.current === revision) {
             setSaving(false);
           }
         });
     }, 500);
     return () => {
+      active = false;
       if (autosaveTimerRef.current) {
         clearTimeout(autosaveTimerRef.current);
       }
@@ -198,6 +207,9 @@ export function useProjectBasicInformationModel({
   async function confirm(): Promise<void> {
     if (lifecycle?.readonly) {
       setError(deriveProjectLifecycleReadonlyView(lifecycle).message);
+      return;
+    }
+    if (confirming || saving || !requiresBasicInformationConfirmation(response, values)) {
       return;
     }
     if (autosaveTimerRef.current) {
@@ -239,6 +251,7 @@ export function useProjectBasicInformationModel({
     loading,
     saving,
     confirming,
+    confirmationRequired: requiresBasicInformationConfirmation(response, values),
     error,
     savedMessage,
     lifecycleReadonlyView: deriveProjectLifecycleReadonlyView(lifecycle),
@@ -254,12 +267,7 @@ function selectAuthoritativeValues(
   if (response.latest_confirmed) {
     return response.latest_confirmed.values;
   }
-  return Object.fromEntries(
-    Object.entries(response.field_suggestions).map(([key, suggestion]) => [
-      key,
-      suggestion.source_value,
-    ])
-  );
+  return response.draft.values;
 }
 
 function readonlyAwareErrorMessage(err: unknown, fallback: string): string {

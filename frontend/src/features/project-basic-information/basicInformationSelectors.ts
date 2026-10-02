@@ -2,6 +2,7 @@ import type { ProjectBasicInformationResponse } from "../../api/client";
 import {
   BASIC_INFORMATION_FIELD_LABELS,
   normalizeBasicInformationFieldValues,
+  normalizeBasicInformationDateValue,
 } from "./basicInformationFieldConfig";
 
 export type BasicInformationDisplayItem = {
@@ -96,4 +97,20 @@ export function selectConfirmedViewItems(
 
 export function sourceReviewMessage(fieldLabel: string): string {
   return `${fieldLabel} changed in source material.`;
+}
+
+export function requiresBasicInformationConfirmation(
+  response: ProjectBasicInformationResponse | null,
+  values: Record<string, string>
+): boolean {
+  if (!response) return false;
+  if (!response.latest_confirmed || response.changed_source_fields.length > 0) return true;
+  const current = normalizeBasicInformationFieldValues(values);
+  const confirmed = normalizeBasicInformationFieldValues(response.latest_confirmed.values);
+  return Array.from(new Set([...Object.keys(current), ...Object.keys(confirmed)])).some((key) => {
+    const normalize = key === "date_lab_received_samples" || key === "requested_completion_date"
+      ? normalizeBasicInformationDateValue
+      : (value: string) => value.trim();
+    return normalize(current[key] ?? "") !== normalize(confirmed[key] ?? "");
+  });
 }

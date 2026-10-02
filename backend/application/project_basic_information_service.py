@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Callable, Protocol
 from uuid import uuid4
 
@@ -317,6 +318,14 @@ class ProjectBasicInformationService:
             self._source_assembler.assemble(project),
             sample_rows,
         )
+        latest = self._records.get_latest_confirmed(command.project_id)
+        if (
+            latest is not None
+            and _confirmation_values(latest.values) == _confirmation_values(values)
+            and latest.source_signature == source_signature
+            and latest.sample_rows == sample_rows
+        ):
+            return self.get(command.project_id)
         next_version = self._records.next_confirmed_version(command.project_id)
         self._records.create_confirmed(
             ProjectBasicInformationRecord(
@@ -480,6 +489,22 @@ def _clean_values(values: dict[str, str]) -> dict[str, str]:
         for key, value in values.items()
         if value is not None and str(value).strip()
     }
+
+
+def _confirmation_values(values: dict[str, str]) -> dict[str, str]:
+    """Compare business content without changing historical stored representations."""
+    normalized = _clean_values(_normalize_basic_information_values(values))
+    for key in ("date_lab_received_samples", "requested_completion_date"):
+        value = normalized.get(key)
+        if value is None:
+            continue
+        for date_format in ("%Y-%m-%d", "%m/%d/%Y", "%d %b %Y", "%d %B %Y"):
+            try:
+                normalized[key] = datetime.strptime(value, date_format).date().isoformat()
+                break
+            except ValueError:
+                continue
+    return normalized
 
 
 def _normalize_basic_information_values(values: dict[str, str]) -> dict[str, str]:

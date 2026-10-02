@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
 import {
   BASIC_INFORMATION_FIELD_PANELS,
+  normalizeBasicInformationDateValue,
   type BasicInformationFieldConfig,
   type BasicInformationFieldGroup,
 } from "./basicInformationFieldConfig";
@@ -20,18 +21,21 @@ import {
 type ProjectBasicInformationWorkspaceProps = {
   projectId: string;
   initialValuesMode?: ProjectBasicInformationInitialValuesMode;
+  onDraftSaved?: () => void;
   onBackToWorkbench: (options: BackToWorkbenchOptions) => void;
 };
 
 export function ProjectBasicInformationWorkspace({
   projectId,
-  initialValuesMode = "draft",
+  initialValuesMode = "authoritative",
+  onDraftSaved,
   onBackToWorkbench,
 }: ProjectBasicInformationWorkspaceProps): ReactElement {
   const topBarActionsRoot = useTopBarActionsRoot();
   const model = useProjectBasicInformationModel({
     projectId,
     initialValuesMode,
+    onDraftSaved,
     onBackToWorkbench,
   });
   const missingLabels = selectCurrentMissingLabels(
@@ -45,6 +49,7 @@ export function ProjectBasicInformationWorkspace({
     model.confirming ||
     model.saving ||
     model.lifecycleReadonlyView.readonly ||
+    !model.confirmationRequired ||
     missingLabels.length > 0 ||
     dateValidation.messages.length > 0;
   const panelIdentity = model.values.dl_number?.trim() || model.identityLabel;
@@ -141,6 +146,9 @@ export function ProjectBasicInformationWorkspace({
 
       <footer className="basic-information-completion-dock">
         {model.saving ? <span>Saving draft automatically...</span> : null}
+        {!model.loading && !model.saving && !model.confirmationRequired ? (
+          <span>No Basic Information changes to confirm.</span>
+        ) : null}
         <div className="basic-information-completion-actions">
           <button type="button" onClick={model.cancel}>
             Cancel
@@ -241,7 +249,7 @@ function BasicInformationField({
     field.required && field.kind !== "select" && field.kind !== "radio"
       ? `${field.label} *`
       : field.label;
-  const displayValue = field.kind === "date" ? normalizeDateInputValue(value) : value;
+  const displayValue = field.kind === "date" ? normalizeBasicInformationDateValue(value) : value;
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const shouldAutoGrowText = field.kind === "textarea" || field.kind === "text";
   const fieldClassName = [
@@ -415,7 +423,7 @@ function selectDateValidation(values: Record<string, string>): DateValidationRes
   };
 
   Object.values(dates).forEach((dateField) => {
-    if (!normalizeDateInputValue(dateField.value ?? "")) {
+    if (!normalizeBasicInformationDateValue(dateField.value ?? "")) {
       missingLabels.add(dateField.label);
     }
   });
@@ -448,55 +456,10 @@ function selectDateValidation(values: Record<string, string>): DateValidationRes
 }
 
 function parseBasicInformationDate(value: string | undefined): Date | null {
-  const normalizedValue = normalizeDateInputValue(value ?? "");
+  const normalizedValue = normalizeBasicInformationDateValue(value ?? "");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedValue)) {
     return null;
   }
   const [year, month, day] = normalizedValue.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day));
-}
-
-function normalizeDateInputValue(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return "";
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
-  }
-  const numericMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (numericMatch) {
-    return `${numericMatch[3]}-${numericMatch[1].padStart(2, "0")}-${numericMatch[2].padStart(
-      2,
-      "0"
-    )}`;
-  }
-  const match = trimmed.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/);
-  if (!match) {
-    return trimmed;
-  }
-  const month = monthNumber(match[2]);
-  if (!month) {
-    return trimmed;
-  }
-  return `${match[3]}-${month}-${match[1].padStart(2, "0")}`;
-}
-
-function monthNumber(monthName: string): string | null {
-  const month = monthName.slice(0, 3).toLowerCase();
-  const months: Record<string, string> = {
-    jan: "01",
-    feb: "02",
-    mar: "03",
-    apr: "04",
-    may: "05",
-    jun: "06",
-    jul: "07",
-    aug: "08",
-    sep: "09",
-    oct: "10",
-    nov: "11",
-    dec: "12",
-  };
-  return months[month] ?? null;
 }

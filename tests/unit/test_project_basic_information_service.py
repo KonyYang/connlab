@@ -272,6 +272,19 @@ def test_changed_sources_after_confirmation_mark_needs_review_without_mutation()
     assert "requested_by" in result.changed_source_fields
     assert result.field_suggestions["requested_by"].needs_review is True
 
+    reviewed = service.confirm(
+        ConfirmProjectBasicInformationCommand(
+            project_id="P1",
+            values=_complete_values(requested_by="MP Cao"),
+            confirmed_by="Lab User",
+        )
+    )
+    assert reviewed.status == "confirmed"
+    assert reviewed.latest_confirmed is not None
+    assert reviewed.latest_confirmed.version == 2
+    assert reviewed.latest_confirmed.values["requested_by"] == "MP Cao"
+    assert reviewed.latest_confirmed.source_signature != confirmed.source_signature
+
 
 def test_source_assembly_keeps_application_test_type_separate_from_sheet_test_type() -> None:
     ltrs = _LtrStore()
@@ -375,6 +388,32 @@ def test_confirm_rejects_missing_required_fields_with_business_labels() -> None:
     assert "Lab Performing the Tests" in exc_info.value.missing_labels
 
 
+@pytest.mark.parametrize("repeated_date", ["20 Jun 2026", "2026-06-20", "6/20/2026"])
+def test_repeated_confirmation_preserves_authority_identity(repeated_date: str) -> None:
+    service = _service()
+    first = service.confirm(
+        ConfirmProjectBasicInformationCommand(
+            project_id="P1",
+            values=_complete_values(date_lab_received_samples="20 Jun 2026"),
+            confirmed_by="Lab User",
+        )
+    ).latest_confirmed
+
+    repeated = service.confirm(
+        ConfirmProjectBasicInformationCommand(
+            project_id="P1",
+            values=_complete_values(
+                project_leader=" Even Yang ",
+                date_lab_received_samples=repeated_date,
+                remarks_po="  ",
+            ),
+            confirmed_by="Another User",
+        )
+    ).latest_confirmed
+
+    assert repeated == first
+
+
 def test_confirm_creates_new_versions_without_overwriting_old_versions() -> None:
     records = _BasicInformationStore()
     service = _service(records=records)
@@ -449,6 +488,21 @@ def test_confirm_freezes_sample_rows_and_detects_later_sample_changes() -> None:
     assert refreshed.status == "needs_review"
     assert "sample_information" in refreshed.changed_source_fields
     assert refreshed.latest_confirmed == confirmed
+
+    # Changed sample authority requires review even if operator fields are identical.
+    rechecked = service.confirm(
+        ConfirmProjectBasicInformationCommand(
+            project_id="P1", values=_complete_values(), confirmed_by="Lab User",
+        )
+    ).latest_confirmed
+    assert rechecked is not None
+    assert rechecked.version == 2
+    assert rechecked.sample_rows[1].plating == "Changed plating"
+    assert service.confirm(
+        ConfirmProjectBasicInformationCommand(
+            project_id="P1", values=_complete_values(), confirmed_by="Lab User",
+        )
+    ).latest_confirmed == rechecked
 
 
 def _service(records: _BasicInformationStore | None = None) -> ProjectBasicInformationService:

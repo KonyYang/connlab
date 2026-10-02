@@ -159,14 +159,12 @@ function parseCurrentRoute(): Route {
   const entryMode = window.history.state?.basicInformationInitialValuesMode;
   return {
     ...route,
-    initialValuesMode: entryMode === "authoritative" ? "authoritative" : "draft",
+    initialValuesMode: entryMode === "draft" ? "draft" : "authoritative",
   };
 }
 
 export default function App(): ReactElement {
   const [route, setRoute] = useState<Route>(parseCurrentRoute);
-  const [cancelledBasicInformationProjectId, setCancelledBasicInformationProjectId] =
-    useState<string | null>(null);
   const [intakeSession, setIntakeSession] =
     useState<IntakeSessionState>(loadIntakeSession);
   const [lastProjectRoute, setLastProjectRoute] = useState<string | null>(() => {
@@ -201,7 +199,6 @@ export default function App(): ReactElement {
     if (intakeInteractionLockReason && route.name === "intake") {
       return;
     }
-    setCancelledBasicInformationProjectId(null);
     if (path === "/projects" && route.name !== "projects" && lastProjectRoute) {
       navigate(lastProjectRoute);
       return;
@@ -210,14 +207,7 @@ export default function App(): ReactElement {
   }
 
   function openBasicInformation(projectId: string): void {
-    const importAuthoritativeVersion = cancelledBasicInformationProjectId === projectId;
-    setCancelledBasicInformationProjectId(null);
-    navigate(
-      `/projects/${encodeURIComponent(projectId)}/basic-information`,
-      importAuthoritativeVersion
-        ? { basicInformationInitialValuesMode: "authoritative" }
-        : {}
-    );
+    navigate(`/projects/${encodeURIComponent(projectId)}/basic-information`);
   }
 
   const activeRoute =
@@ -338,11 +328,20 @@ export default function App(): ReactElement {
       {route.name === "projectBasicInformation" && (
         <ProjectBasicInformationPage
           projectId={route.projectId}
-          initialValuesMode={route.initialValuesMode ?? "draft"}
-          onBackToWorkbench={(options) => {
-            if (!options.refreshBasicInformation) {
-              setCancelledBasicInformationProjectId(route.projectId);
+          initialValuesMode={route.initialValuesMode ?? "authoritative"}
+          onDraftSaved={() => {
+            const current = parseRoute(window.location.pathname);
+            if (current.name !== "projectBasicInformation" || current.projectId !== route.projectId) {
+              return;
             }
+            // Only a successful autosave marks this history entry as refresh-recoverable.
+            window.history.replaceState(
+              { ...window.history.state, basicInformationInitialValuesMode: "draft" },
+              "",
+              window.location.href
+            );
+          }}
+          onBackToWorkbench={() => {
             navigate(`/projects/${encodeURIComponent(route.projectId)}`);
           }}
         />

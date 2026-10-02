@@ -83,6 +83,18 @@ Do not use a dated snapshot as a substitute for the code.
 
 ## Architecture seams
 
+### Basic Information confirmation
+
+- Normal Basic Information entry reads the latest confirmed values; before first confirmation it
+  preserves the initialized/saved draft. Merely entering never deletes or rewrites another draft.
+- A successful autosave marks only the current browser history entry for draft recovery on refresh.
+  Cancel and fresh entry load confirmed authority again; previously saved draft records remain intact.
+- Confirm is disabled when normalized fields equal current authority and source/sample information
+  has not changed. Editing and then reverting does not create a revision; equivalent supported date
+  formats and empty whitespace are not material changes. First confirmation and source/sample review
+  remain available after normal validation. Repeated identical backend confirmation preserves the
+  record identity/version; changed fields or source/sample authority create a new immutable version.
+
 ### Project Schedule in Matrix Editor
 
 - Project Schedule fields are edited in Matrix Editor and confirmed through its single `Confirm Matrix`

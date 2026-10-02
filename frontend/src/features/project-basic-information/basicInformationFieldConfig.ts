@@ -497,3 +497,19 @@ export const BASIC_INFORMATION_FIELD_LABELS: Record<string, string> = [
   labels[field.key] = field.label;
   return labels;
 }, {});
+
+export function normalizeBasicInformationDateValue(value: string): string {
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const numeric = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (numeric) {
+    return `${numeric[3]}-${numeric[1].padStart(2, "0")}-${numeric[2].padStart(2, "0")}`;
+  }
+  const named = trimmed.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/);
+  if (!named) return trimmed;
+  const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+  const month = months.indexOf(named[2].slice(0, 3).toLowerCase()) + 1;
+  return month
+    ? `${named[3]}-${String(month).padStart(2, "0")}-${named[1].padStart(2, "0")}`
+    : trimmed;
+}

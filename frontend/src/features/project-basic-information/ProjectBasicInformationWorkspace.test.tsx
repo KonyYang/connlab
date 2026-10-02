@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
@@ -78,7 +78,7 @@ describe("ProjectBasicInformationWorkspace", () => {
     expect(api.saveProjectBasicInformationDraft).not.toHaveBeenCalled();
   });
 
-  it("uses current source suggestions for authority-mode entry without a confirmed version", async () => {
+  it("preserves saved initialization when no confirmed version exists", async () => {
     const savedDraft = response({ requested_by: "Cancelled draft" });
     api.getProjectBasicInformation.mockResolvedValue({
       ...savedDraft,
@@ -100,9 +100,138 @@ describe("ProjectBasicInformationWorkspace", () => {
       />
     );
 
-    expect(await screen.findByDisplayValue("Current request owner")).toBeTruthy();
-    expect(screen.queryByDisplayValue("Cancelled draft")).toBeNull();
+    expect(await screen.findByDisplayValue("Cancelled draft")).toBeTruthy();
     expect(api.saveProjectBasicInformationDraft).not.toHaveBeenCalled();
+  });
+
+  it("loads authority normally and enables Confirm only for material changes", async () => {
+    const user = userEvent.setup();
+    const authority = response({}, "confirmed");
+    api.getProjectBasicInformation.mockResolvedValue({
+      ...authority,
+      draft: { values: { ...authority.draft.values, project_leader: "Old saved draft" } },
+    });
+    api.saveProjectBasicInformationDraft.mockImplementation(async (_id, values) => ({
+      ...authority, draft: { values },
+    }));
+    render(<ProjectBasicInformationWorkspace projectId="P1" onBackToWorkbench={vi.fn()} />);
+
+    const leader = await screen.findByLabelText("Project Leader");
+    const confirm = screen.getByRole("button", { name: "Confirm" });
+    expect(leader).toHaveProperty("value", "MP Cao");
+    expect(confirm).toHaveProperty("disabled", true);
+    expect(screen.getByText("No Basic Information changes to confirm.")).toBeTruthy();
+    await user.clear(leader);
+    await user.type(leader, "Revised leader");
+    await waitFor(() => expect(confirm).toHaveProperty("disabled", false));
+    await user.clear(leader);
+    await user.type(leader, "MP Cao");
+    await waitFor(() => expect(confirm).toHaveProperty("disabled", true));
+    await user.click(confirm);
+    expect(api.confirmProjectBasicInformation).not.toHaveBeenCalled();
+  });
+
+  it("treats equivalent dates and blank whitespace as unchanged", async () => {
+    const user = userEvent.setup();
+    const authority = response({}, "confirmed");
+    api.getProjectBasicInformation.mockResolvedValue(authority);
+    api.saveProjectBasicInformationDraft.mockImplementation(async (_id, values) => ({
+      ...authority, draft: { values },
+    }));
+    render(<ProjectBasicInformationWorkspace projectId="P1" onBackToWorkbench={vi.fn()} />);
+    await screen.findByLabelText("Lab Received Samples");
+    // The confirmed value is "20 Jun 2026"; the same day entered as ISO is not a change.
+    fireEvent.change(screen.getByLabelText("Lab Received Samples"), {
+      target: { value: "2026-06-20" },
+    });
+    await user.type(screen.getByLabelText("Remarks (PO)"), "  ");
+    expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty("disabled", true);
+  });
+
+  it("allows source or sample review even when visible authority values are unchanged", async () => {
+    const authority = response({}, "confirmed");
+    api.getProjectBasicInformation.mockResolvedValue({
+      ...authority, status: "needs_review", changed_source_fields: ["sample_information"],
+    });
+    render(<ProjectBasicInformationWorkspace projectId="P1" onBackToWorkbench={vi.fn()} />);
+    await screen.findByText("Source review");
+    expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty("disabled", false);
+  });
+
+  it("restores saved session edits in draft mode without changing confirmed authority", async () => {
+    const authority = response({}, "confirmed");
+    api.getProjectBasicInformation.mockResolvedValue({
+      ...authority, draft: { values: { ...authority.draft.values, project_leader: "Saved session leader" } },
+    });
+    render(
+      <ProjectBasicInformationWorkspace
+        projectId="P1" initialValuesMode="draft" onBackToWorkbench={vi.fn()}
+      />
+    );
+    expect(await screen.findByDisplayValue("Saved session leader")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty("disabled", false);
+    expect(api.saveProjectBasicInformationDraft).not.toHaveBeenCalled();
+    expect(api.confirmProjectBasicInformation).not.toHaveBeenCalled();
+  });
+
+  it("marks refresh recovery only after the current edit is successfully saved", async () => {
+    const user = userEvent.setup();
+    const onDraftSaved = vi.fn();
+    api.getProjectBasicInformation.mockResolvedValue(response({}, "confirmed"));
+    let resolveSave!: (value: ProjectBasicInformationResponse) => void;
+    api.saveProjectBasicInformationDraft.mockReturnValue(new Promise((resolve) => { resolveSave = resolve; }));
+    render(
+      <ProjectBasicInformationWorkspace
+        projectId="P1" onDraftSaved={onDraftSaved} onBackToWorkbench={vi.fn()}
+      />
+    );
+    const leader = await screen.findByLabelText("Project Leader");
+    expect(onDraftSaved).not.toHaveBeenCalled();
+    await user.clear(leader);
+    await user.type(leader, "Saved session leader");
+    await waitFor(() => expect(api.saveProjectBasicInformationDraft).toHaveBeenCalled());
+    expect(onDraftSaved).not.toHaveBeenCalled();
+    resolveSave(response({ project_leader: "Saved session leader" }));
+    await waitFor(() => expect(onDraftSaved).toHaveBeenCalledOnce());
+  });
+
+  it("does not mark a new editing session when a departed page finishes saving", async () => {
+    const user = userEvent.setup();
+    const onDraftSaved = vi.fn();
+    api.getProjectBasicInformation.mockResolvedValue(response({}, "confirmed"));
+    let resolveSave!: (value: ProjectBasicInformationResponse) => void;
+    const pendingSave = new Promise<ProjectBasicInformationResponse>((resolve) => { resolveSave = resolve; });
+    api.saveProjectBasicInformationDraft.mockReturnValue(pendingSave);
+    const mounted = render(
+      <ProjectBasicInformationWorkspace
+        projectId="P1" onDraftSaved={onDraftSaved} onBackToWorkbench={vi.fn()}
+      />
+    );
+    await user.type(await screen.findByLabelText("Project Leader"), " changed");
+    await waitFor(() => expect(api.saveProjectBasicInformationDraft).toHaveBeenCalled());
+    mounted.unmount();
+    resolveSave(response({ project_leader: "MP Cao changed" }));
+    await pendingSave;
+    expect(onDraftSaved).not.toHaveBeenCalled();
+  });
+
+  it("does not carry a pending save into another project entry", async () => {
+    const user = userEvent.setup();
+    const authority = response({}, "confirmed");
+    api.getProjectBasicInformation.mockResolvedValue(authority);
+    api.saveProjectBasicInformationDraft.mockReturnValue(new Promise(() => {}));
+    const mounted = render(
+      <ProjectBasicInformationWorkspace projectId="P1" onBackToWorkbench={vi.fn()} />
+    );
+    await user.type(await screen.findByLabelText("Project Leader"), " changed");
+    await screen.findByText("Saving draft automatically...");
+    mounted.rerender(
+      <ProjectBasicInformationWorkspace projectId="P2" onBackToWorkbench={vi.fn()} />
+    );
+    await waitFor(() => expect(screen.getByLabelText("Project Leader")).toHaveProperty("value", "MP Cao"));
+    expect(screen.queryByText("Saving draft automatically...")).toBeNull();
+    await user.type(screen.getByLabelText("Project Leader"), " new");
+    expect(screen.getByRole("button", { name: "Confirm" })).toHaveProperty("disabled", false);
   });
 
   it("loads draft values, auto-saves edits, and keeps DL number in confirm payload", async () => {

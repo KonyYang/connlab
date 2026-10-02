@@ -32,16 +32,19 @@ vi.mock("./pages/ProjectBasicInformationPage", () => ({
   ProjectBasicInformationPage: ({
     projectId,
     initialValuesMode,
+    onDraftSaved,
     onBackToWorkbench,
   }: {
     projectId: string;
     initialValuesMode: "draft" | "authoritative";
+    onDraftSaved: () => void;
     onBackToWorkbench: (options: { refreshBasicInformation: boolean }) => void;
   }) => (
     <section aria-label="Basic Information">
       <output data-testid="basic-information-entry-mode">
         {projectId}:{initialValuesMode}
       </output>
+      <button type="button" onClick={onDraftSaved}>Save draft</button>
       <button
         type="button"
         onClick={() => onBackToWorkbench({ refreshBasicInformation: false })}
@@ -61,13 +64,13 @@ describe("Basic Information route entry behavior", () => {
     window.history.replaceState({}, "", "/projects/P1");
   });
 
-  it("imports the authoritative version only after Cancel and explicit re-entry", async () => {
+  it("imports authority on normal entry and after Cancel", async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(await screen.findByRole("button", { name: "Basic Information" }));
     expect((await screen.findByTestId("basic-information-entry-mode")).textContent).toBe(
-      "P1:draft"
+      "P1:authoritative"
     );
 
     await user.click(screen.getByRole("button", { name: "Cancel" }));
@@ -78,7 +81,7 @@ describe("Basic Information route entry behavior", () => {
     );
   });
 
-  it("keeps the draft-first behavior when returning through sidebar navigation", async () => {
+  it("imports authority on a fresh sidebar return", async () => {
     window.history.replaceState({}, "", "/projects/P1");
     const user = userEvent.setup();
     render(<App />);
@@ -96,11 +99,11 @@ describe("Basic Information route entry behavior", () => {
     await user.click(screen.getByRole("button", { name: "Projects" }));
 
     expect((await screen.findByTestId("basic-information-entry-mode")).textContent).toBe(
-      "P1:draft"
+      "P1:authoritative"
     );
   });
 
-  it("discards the Cancel re-entry marker when navigating away through the sidebar", async () => {
+  it("keeps normal authority entry after cancelling and navigating elsewhere", async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -111,7 +114,32 @@ describe("Basic Information route entry behavior", () => {
     await user.click(await screen.findByRole("button", { name: "Basic Information" }));
 
     expect((await screen.findByTestId("basic-information-entry-mode")).textContent).toBe(
+      "P1:authoritative"
+    );
+  });
+
+  it("loads authority for a direct URL without a saved editing session", async () => {
+    window.history.replaceState({}, "", "/projects/P1/basic-information");
+    render(<App />);
+    expect((await screen.findByTestId("basic-information-entry-mode")).textContent).toBe(
+      "P1:authoritative"
+    );
+  });
+
+  it("recovers saved session edits on reload without changing fresh-entry behavior", async () => {
+    const user = userEvent.setup();
+    const mounted = render(<App />);
+    await user.click(await screen.findByRole("button", { name: "Basic Information" }));
+    await user.click(await screen.findByRole("button", { name: "Save draft" }));
+    mounted.unmount();
+    render(<App />);
+    expect((await screen.findByTestId("basic-information-entry-mode")).textContent).toBe(
       "P1:draft"
+    );
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(await screen.findByRole("button", { name: "Basic Information" }));
+    expect((await screen.findByTestId("basic-information-entry-mode")).textContent).toBe(
+      "P1:authoritative"
     );
   });
 });
