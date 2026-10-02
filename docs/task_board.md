@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_REPORT_WORKSPACE_COMPACT_LAYOUT_20261002",
     "summary": "Unify Report Workspace top bar and three compact business sections",
@@ -27,9 +27,75 @@
     "risk_reasons": [],
     "activation_head": "1d9aba17f094bca6835d74fb557611ff75d100ae",
     "started_at": "2026-10-02T15:28:02.514870Z",
-    "updated_at": "2026-10-02T15:28:02.514870Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-02T15:47:23.070467Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_REPORT_WORKSPACE_COMPACT_LAYOUT_20261002",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "integration": {
+        "result": "Scoped product commit on master, exact 5 changed paths, clean workspace; protected external design document SHA256 unchanged; no stash or push.",
+        "subject": "1d82ecbc050308f4a87ec3fd4dea5227139c16ae",
+        "status": "passed"
+      },
+      "roles": {
+        "qa": {
+          "result": "Same-agent final QA on exact committed bytes: full frontend suite, build and real browser read-only responsive/navigation checks. No packaged release or live Office generation/publication run: presentation-only change.",
+          "subject": "1d82ecbc050308f4a87ec3fd4dea5227139c16ae",
+          "status": "passed"
+        },
+        "developer": {
+          "result": "Current Astra context implemented; TDD RED duplicate heading then GREEN, RED missing confirmed/fallback identity then GREEN; targeted suite 21 passed.",
+          "subject": "1d82ecbc050308f4a87ec3fd4dea5227139c16ae",
+          "status": "passed"
+        },
+        "reviewer": {
+          "result": "Same-agent distinct Standards and Spec passes, not independent agents. Standards: restored LLCR preview eyebrow styling and corrected undefined font token; no unresolved findings. Spec: existing handlers and dialogs preserved, LLCR import independent, no backend changes or new actions; no unresolved findings.",
+          "subject": "1d82ecbc050308f4a87ec3fd4dea5227139c16ae",
+          "status": "passed"
+        }
+      },
+      "subject": "1d82ecbc050308f4a87ec3fd4dea5227139c16ae",
+      "changed_paths": [
+        "docs/PROJECT_CONTEXT.md",
+        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+        "frontend/src/pages/ProjectReportWorkspacePage.tsx",
+        "frontend/src/workbench.css"
+      ],
+      "summary": "Shared Report Workspace top bar, authority identity and three compact business regions; existing report operations preserved.",
+      "version": 1,
+      "validation": [
+        {
+          "command": "npm test (frontend)",
+          "result": "89 files, 757 tests; 1 existing skipped file/test",
+          "status": "passed"
+        },
+        {
+          "command": "npm run build (frontend)",
+          "result": "TypeScript and Vite production build",
+          "status": "passed"
+        },
+        {
+          "command": "In-app browser Report Workspace at 1280x720 and 641x804",
+          "result": "Single shared title, confirmed identity, three regions, no horizontal overflow, independent LLCR picker, current blockers, Back to Workspace and Test Report re-entry; no business file writes",
+          "status": "passed"
+        },
+        {
+          "command": "git diff --check",
+          "result": "No whitespace errors",
+          "status": "passed"
+        }
+      ],
+      "scope_ok": true,
+      "task_id": "TASK_REPORT_WORKSPACE_COMPACT_LAYOUT_20261002"
+    }
   },
   "last_closed": {
     "task_id": "TASK_BASIC_INFORMATION_CONFIRM_CHANGES_20261002",
