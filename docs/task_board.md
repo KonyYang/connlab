@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_REPORT_WORKSPACE_COMPACT_LAYOUT_20261002",
+    "summary": "Unify Report Workspace top bar and three compact business sections",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Implement approved presentation-only redesign: shared top bar with LTR/product identity and Back to Workspace; compact authority strip; Internal Report, Update Internal Report and Customer Report sections without numbered steps; concise contextual messages and responsive layout. Preserve LLCR import independence, preview/confirmation, customer job progress/recovery/retry, all existing API and safe publication rules. No new global Confirm, business actions, backend changes or external business-file mutations during acceptance.",
+    "scope_paths": [
+      "frontend/src/features/report-workspace",
+      "frontend/src/pages/ProjectReportWorkspacePage.tsx",
+      "frontend/src/workbench.css",
+      "docs/PROJECT_CONTEXT.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "1d9aba17f094bca6835d74fb557611ff75d100ae",
+    "started_at": "2026-10-02T15:28:02.514870Z",
+    "updated_at": "2026-10-02T15:28:02.514870Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_BASIC_INFORMATION_CONFIRM_CHANGES_20261002",
     "tier": "standard",
