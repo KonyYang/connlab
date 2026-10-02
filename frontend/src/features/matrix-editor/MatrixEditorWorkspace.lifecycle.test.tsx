@@ -198,7 +198,7 @@ describe("MatrixEditorWorkspace save, cancel, and confirm lifecycle", () => {
     });
   });
 
-  it("keeps edits visible and reports failure when stale confirmation cannot be recovered", async () => {
+  it("keeps edits visible when confirmation reports a changed Matrix authority", async () => {
     apiMocks.confirmMatrixEditorSession
       .mockRejectedValueOnce(new ApiRequestError("stale", 409, { code: "active_matrix_changed" }))
       .mockRejectedValueOnce(new Error("Confirmation unavailable. Please retry."));
@@ -214,13 +214,14 @@ describe("MatrixEditorWorkspace save, cancel, and confirm lifecycle", () => {
     await waitFor(() => expect(apiMocks.saveMatrixEditorSessionDraft).toHaveBeenCalledTimes(1),
       { timeout: 1600 });
     fireEvent.click(screen.getByRole("button", { name: "Confirm Matrix" }));
-    expect(await screen.findByText("Confirmation unavailable. Please retry.")).toBeTruthy();
+    expect(await screen.findByText("Matrix authority changed. Your edits remain here; reload the current Matrix before confirming.")).toBeTruthy();
+    expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(1);
     expect(onBackToWorkbench).not.toHaveBeenCalled();
     expect((screen.getByLabelText("Row 1 method") as HTMLTextAreaElement).value)
       .toBe("Unsaved confirmation must stay visible");
   });
 
-  it("rebases stale confirm and returns to workbench", async () => {
+  it("does not automatically rebase and confirm old edits onto a new authority", async () => {
     apiMocks.confirmMatrixEditorSession
       .mockRejectedValueOnce(new ApiRequestError("stale", 409, { code: "active_matrix_changed", message: "stale" }))
       .mockResolvedValueOnce({ publish_status: "published", message: "Matrix confirmed (v5).", confirmed_snapshot: null });
@@ -241,9 +242,8 @@ describe("MatrixEditorWorkspace save, cancel, and confirm lifecycle", () => {
       { timeout: 1600 }
     );
     fireEvent.click(await screen.findByRole("button", { name: "Confirm Matrix" }));
-    await waitFor(() => {
-      expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(2);
-      expect(onBackToWorkbench).toHaveBeenCalledTimes(1);
-    });
+    await screen.findByText(/Matrix authority changed/);
+    expect(apiMocks.confirmMatrixEditorSession).toHaveBeenCalledTimes(1);
+    expect(onBackToWorkbench).not.toHaveBeenCalled();
   });
 });

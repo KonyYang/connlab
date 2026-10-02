@@ -857,7 +857,7 @@ export function MatrixEditorWorkspace({
           ? "Sample quantity is required for selected groups."
         : isPublishBusy
           ? "Action in progress."
-          : requiresCurrentSavedDraft && !hasCurrentSavedDraft
+          : requiresCurrentSavedDraft && !hasCurrentSavedDraft && !draftPersistence.needsDraftRecovery
             ? saveState === "error"
               ? "Autosave failed. Retry before confirming."
               : "Saving Matrix draft before confirm..."
@@ -1475,30 +1475,28 @@ export function MatrixEditorWorkspace({
         error.detail &&
         typeof error.detail === "object" &&
         "code" in error.detail &&
-        (error.detail as { code?: unknown }).code === "active_matrix_changed"
+        (error.detail as { code?: unknown }).code === "matrix_editor_draft_conflict"
       ) {
+        setConfirmActiveMessage("Recovering Matrix draft before confirmation...");
         try {
           const latestSeed = await fetchMatrixEditorSession(projectId);
-          if (latestSeed.active_confirmed_matrix_id) {
-            draftPersistence.observeAuthority(
-              latestSeed.active_confirmed_matrix_id,
-              latestSeed.active_confirmed_revision ?? null
-            );
-            const retryResponse = await confirmMatrixEditorSession(
-              projectId,
-              buildUnifiedConfirmRequest(
-                latestSeed.active_confirmed_matrix_id,
-                latestSeed.active_confirmed_revision ?? null,
-              )
-            );
-            handleConfirmResponse(retryResponse);
-            return;
-          }
+          const recoveredRequest = await draftPersistence.recoverSavedDraft(latestSeed, MVP_REVISION_CONFIRMED_BY);
+          const retryResponse = await confirmMatrixEditorSession(projectId, {
+            ...recoveredRequest,
+            expected_legacy_schedule_revision_id: scheduleWorkspace?.confirmed_revision?.revision_id ?? null,
+            expected_legacy_schedule_fingerprint: scheduleWorkspace?.confirmed_revision?.fingerprint ?? null,
+          });
+          handleConfirmResponse(retryResponse);
+          return;
         } catch (retryError) {
           setConfirmActiveState("error");
-          setConfirmActiveMessage(parseRequestError(retryError, "Confirm failed. Your edits remain here; retry confirmation."));
+          setConfirmActiveMessage(`Matrix confirmation could not complete. Your edits remain here. ${parseRequestError(retryError, "Retry confirmation after checking the connection.")}`);
           return;
         }
+      }
+      if (error instanceof ApiRequestError && error.status === 409 &&
+          error.detail && typeof error.detail === "object" && "code" in error.detail &&
+          (error.detail as { code?: unknown }).code === "active_matrix_changed") {
         setConfirmActiveState("error");
         setConfirmActiveMessage("Matrix authority changed. Your edits remain here; reload the current Matrix before confirming.");
         return;

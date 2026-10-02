@@ -74,6 +74,12 @@ Do not use a dated snapshot as a substitute for the code.
   string clears that step's text. Description does not change the canonical test-item classification.
 - Manual Matrix drafts can autosave without importing a file; first save establishes reusable manual
   source lineage. Original methods are preserved when no external Standard catalog is available.
+- If Confirm finds that its saved editor draft is missing, the editor preserves local inputs and
+  checks the latest session. Only an unchanged confirmed Matrix with no available working draft can
+  recover: save the captured inputs again and retry confirmation once with the returned draft tokens.
+  A changed authority, another available draft, or edits made during recovery stop confirmation;
+  connection failures leave the inputs available for retry. The editor never automatically rebases
+  and confirms old inputs onto a newer authority or reactivates an archived draft.
 
 ## Architecture seams
 

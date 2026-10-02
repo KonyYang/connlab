@@ -128,6 +128,8 @@ export function useMatrixDraftPersistence({
   const [savedPayloadSignature, setSavedPayloadSignature] = useState<string | null>(null);
   const [savedLocalSignature, setSavedLocalSignature] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [needsDraftRecovery, setNeedsDraftRecovery] = useState(false);
+  const [recoveryInProgress, setRecoveryInProgress] = useState(false);
   const autosaveTimeoutRef = useRef<number | null>(null);
   const autosaveGenerationRef = useRef(0);
   const autosaveInFlightRef = useRef<Promise<MatrixEditorSessionDraftSaveResponse | null> | null>(null);
@@ -135,11 +137,13 @@ export function useMatrixDraftPersistence({
   const latestAutosaveResultRef = useRef<MatrixEditorSessionDraftSaveResponse | null>(null);
   const cancellingRef = useRef(false);
   const currentPayloadRef = useRef(currentPayload);
+  const currentSignatureRef = useRef(currentSignature);
   const durationAuthoritiesRef = useRef(durationAuthorities);
   const sourcePreviewRef = useRef(sourcePreview);
   const onBackRef = useRef(onBackToWorkbench);
   const onErrorRef = useRef(onError);
   currentPayloadRef.current = currentPayload;
+  currentSignatureRef.current = currentSignature;
   durationAuthoritiesRef.current = durationAuthorities;
   sourcePreviewRef.current = sourcePreview;
   onBackRef.current = onBackToWorkbench;
@@ -154,6 +158,20 @@ export function useMatrixDraftPersistence({
   const hasManualMatrixContent = currentPayload.groups.length > 0 &&
     currentPayload.rows.some((row) => !row.is_sample_row && row.test_item.trim().length > 0) &&
     currentPayload.cells.some((cell) => cell.cell_value.trim().length > 0);
+
+  const acceptSavedDraft = (response: MatrixEditorSessionDraftSaveResponse, signature: string): void => {
+    latestAutosaveResultRef.current = response;
+    setSavedEditorDraftId(response.editor_draft_id);
+    setSavedPayloadSignature(response.saved_payload_signature);
+    setSavedLocalSignature(signature);
+    setActiveConfirmedMatrixId(response.active_confirmed_matrix_id);
+    setActiveConfirmedRevision(response.active_confirmed_revision);
+    if (response.source_import_id !== undefined) setSourceImportId(response.source_import_id);
+    if (response.source_snapshot_id !== undefined) setSourceSnapshotId(response.source_snapshot_id);
+    setBaselineSignature(signature);
+    setNeedsDraftRecovery(false);
+    setSaveState("saved");
+  };
 
   useEffect(() => {
     if (!hasUnsavedChanges && saveState !== "saving" && saveState !== "error") return;
@@ -177,6 +195,7 @@ export function useMatrixDraftPersistence({
       draftLoading ||
       Boolean(readonlyMessage) ||
       Boolean(saveBlockedReason) ||
+      recoveryInProgress ||
       cancellingRef.current ||
       isCancelling
     ) {
@@ -211,16 +230,7 @@ export function useMatrixDraftPersistence({
             autosaveGenerationRef.current === generation &&
             !cancellingRef.current
           ) {
-            latestAutosaveResultRef.current = response;
-            setSavedEditorDraftId(response.editor_draft_id);
-            setSavedPayloadSignature(response.saved_payload_signature);
-            setSavedLocalSignature(signatureToSave);
-            setActiveConfirmedMatrixId(response.active_confirmed_matrix_id);
-            setActiveConfirmedRevision(response.active_confirmed_revision);
-            if (response.source_import_id !== undefined) setSourceImportId(response.source_import_id);
-            if (response.source_snapshot_id !== undefined) setSourceSnapshotId(response.source_snapshot_id);
-            setBaselineSignature(signatureToSave);
-            setSaveState("saved");
+            acceptSavedDraft(response, signatureToSave);
           }
           return response;
         })
@@ -263,6 +273,7 @@ export function useMatrixDraftPersistence({
     isCancelling,
     projectId,
     readonlyMessage,
+    recoveryInProgress,
     saveBlockedReason,
     sourceImportId,
     sourceSnapshotId,
@@ -289,6 +300,7 @@ export function useMatrixDraftPersistence({
   }: HydrateSessionOptions): void => {
     invalidatePendingAutosave();
     setBaselineSignature(nextBaselineSignature);
+    setNeedsDraftRecovery(false);
     setSaveState(hasEditorDraft ? "saved" : "idle");
     setActiveConfirmedMatrixId(seed.active_confirmed_matrix_id ?? null);
     setActiveConfirmedRevision(seed.active_confirmed_revision ?? null);
@@ -315,6 +327,7 @@ export function useMatrixDraftPersistence({
     setSavedEditorDraftId(null);
     setSavedPayloadSignature(null);
     setSavedLocalSignature(null);
+    setNeedsDraftRecovery(false);
     setSaveState("error");
   };
 
@@ -329,6 +342,7 @@ export function useMatrixDraftPersistence({
     setSavedPayloadSignature(null);
     setSavedLocalSignature(null);
     setBaselineSignature(nextBaselineSignature);
+    setNeedsDraftRecovery(false);
     latestAutosaveResultRef.current = null;
     setSaveState("saved");
   };
@@ -367,6 +381,67 @@ export function useMatrixDraftPersistence({
     expected_saved_payload_signature: savedPayloadSignature,
     confirmed_by: confirmedBy,
   });
+
+  const recoverSavedDraft = async (
+    latestSeed: MatrixEditorSessionSeed,
+    confirmedBy: string,
+  ): Promise<MatrixEditorSessionConfirmRequest> => {
+    if (currentSignatureRef.current !== currentSignature) {
+      throw new Error("Matrix edits changed while checking the draft. Your edits remain here; confirm again after autosave.");
+    }
+    if (
+      latestSeed.project_id !== projectId ||
+      !activeConfirmedMatrixId ||
+      latestSeed.active_confirmed_matrix_id !== activeConfirmedMatrixId ||
+      (latestSeed.active_confirmed_revision ?? null) !== activeConfirmedRevision
+    ) {
+      throw new Error("Matrix authority changed. Your edits remain here; review the latest Matrix before confirming.");
+    }
+    if (latestSeed.editor_draft_id) {
+      throw new Error("A saved Matrix draft is already available. Your edits remain here; review that draft before confirming.");
+    }
+    if (readonlyMessage || saveBlockedReason || cancellingRef.current) {
+      throw new Error(readonlyMessage ?? saveBlockedReason ?? "Matrix confirmation was cancelled.");
+    }
+    invalidatePendingAutosave();
+    const generation = autosaveGenerationRef.current;
+    const signature = currentSignatureRef.current;
+    const request = buildSessionDraftSaveRequest(
+      currentPayloadRef.current, sourcePreviewRef.current, activeConfirmedMatrixId,
+      activeConfirmedRevision, sourceImportId, sourceSnapshotId, durationAuthoritiesRef.current,
+    );
+    setSavedEditorDraftId(null);
+    setSavedPayloadSignature(null);
+    setSavedLocalSignature(null);
+    setNeedsDraftRecovery(true);
+    setRecoveryInProgress(true);
+    setSaveState("saving");
+    const controller = new AbortController();
+    autosaveAbortControllerRef.current = controller;
+    const saveRequest = saveMatrixEditorSessionDraft(projectId, request, { signal: controller.signal });
+    autosaveInFlightRef.current = saveRequest;
+    try {
+      const response = await saveRequest;
+      if (generation !== autosaveGenerationRef.current || cancellingRef.current) {
+        throw new Error("Matrix session changed. Your edits remain here; confirm again after saving.");
+      }
+      if (signature !== currentSignatureRef.current) {
+        throw new Error("Matrix edits changed while saving. Your edits remain here; confirm again after autosave.");
+      }
+      acceptSavedDraft(response, signature);
+      // Return the captured payload and fresh tokens together; React state updates
+      // are asynchronous and the caller's original closure still holds the old ID.
+      return { ...request, expected_editor_draft_id: response.editor_draft_id,
+        expected_saved_payload_signature: response.saved_payload_signature, confirmed_by: confirmedBy };
+    } catch (error) {
+      if (generation === autosaveGenerationRef.current && !cancellingRef.current) setSaveState("error");
+      throw error;
+    } finally {
+      if (autosaveInFlightRef.current === saveRequest) autosaveInFlightRef.current = null;
+      if (autosaveAbortControllerRef.current === controller) autosaveAbortControllerRef.current = null;
+      setRecoveryInProgress(false);
+    }
+  };
 
   const waitForAutosaveBeforeCancel = async (): Promise<MatrixEditorSessionDraftSaveResponse | null> => {
     const inFlightAutosave = autosaveInFlightRef.current;
@@ -443,7 +518,9 @@ export function useMatrixDraftPersistence({
     hydrateSession,
     isCancelling,
     markUnsaved,
+    needsDraftRecovery,
     observeAuthority,
+    recoverSavedDraft,
     saveState,
     savedEditorDraftId,
     savedPayloadSignature,
