@@ -523,3 +523,128 @@ bytes. No UI/service restart or repeated unaffected frontend build was needed.
 The owned QA evidence log is
 `connlab-ir-dwv-final-browser-qa-wmvh7kb2/round-template-revision-qa.md` in Temp.
 Native Excel rendering/printing and packaged-release execution remain untested.
+
+### Sample-expanded third-round placement revision (2026-10-02)
+
+User acceptance feedback: increasing Group 2 to six samples must keep its third
+round at the right of `Group 2`, not move it prematurely to `Group 2 (2)`.
+The sole writer resumed this same task. Independent Planner selected the smallest
+compatible correction: three rounds per sheet for every supported sample count;
+sample growth widens each block with two-column gutters, while a fourth round keeps
+the existing continuation naming. The independent 17-sample limit remains in place.
+This explicitly supersedes the old template-width-based capacity rule in D5.
+
+Main reproduced through the actual requested Matrix Editor URL in a separate in-app
+browser tab, without editing or confirming business Matrix data. `IR&DWV Form` ->
+`Download preview` produced the owned browser-download token
+`5651fad0b54742fe9651f16d5697fb01`: six IR/DWV sample IDs are present, but Group 2
+has Initial at B10 and After Thermal Shock at Q10, with Final at B10 in a new
+`Group 2 (2)`. A read-only assertion requiring only `Group 2` for its three rounds
+failed with that exact sheet list. The attached older `e98d793...` file instead
+has three five-slot forms and was left unchanged; it is not claimed as the six-sample
+reproduction. Main viewed a read-only rendering of the actual six-sample Final form
+and its current Matrix requirements/conditions before implementation.
+
+The old layout exposes three five-slot origins but computes expanded capacity from
+the template's fixed last column 37. Thus a six-sample block's width13 leaves only
+two slots before that arbitrary boundary. Regression and final verification of the
+correction must exercise the public writer and actual browser download, including
+the rightmost form, gutters, formulas, LOGO, and unchanged group/source data.
+
+Independent Developer's public-writer capacity RED: N6/N7 failed because a third
+round moved to a continuation sheet; N3/N5 passed (2 failed, 2 passed, 76 deselected,
+2.52 seconds). Adding N6 to the independent eight-pixel LOGO geometry check also
+exposed a 9-pixel width error (1,813,725 versus source 1,728,000 EMU). The bounded
+correction uses the approved Normal Song/SimSun 11pt font's verified eight-pixel
+digit metric only for image-anchor column geometry; other fonts retain the existing
+seven-pixel convention. Remarks, row heights, column widths and source fonts are
+not changed. This is not a universal font rasterizer.
+
+Final Developer targeted GREEN: 40 passed, 48 deselected, 99.67 seconds. Owned
+current-source outputs are in `connlab-ir-dwv-three-rounds-z50vxbb1` (Temp), named
+`matrix-three-rounds-{3,5,6,7}-samples.xlsx`. All have three rounds in one Group
+sheet; N6 ends at AR44 and N7 at AX50. N6 gutters O/P and AD/AE, N7 gutters Q/R and
+AH/AI are blank. All actual-source LOGOs preserve 1,728,000 x 1,378,626 EMU frames;
+source SHA256 remains `07cf9e81e11fca5c1fb5d94a291aaba6851c0e748563384ef814aa8c048ef7cf`.
+Final independent review, QA and browser GREEN are recorded below when complete.
+
+Main repeated the real requested page's `IR&DWV Form` -> `Download preview` on
+the frozen revised generator, still without changing or confirming business data.
+The browser produced token `748f17fbd05d481fba879a66cbcec609`, SHA256
+`c2763ae03d586b52784ea433fb0f569af9c4927ab6daae190c36025cbbf353ca`.
+It contains only `Group 2` and `Group 6b`: Group 2's Initial, After Thermal Shock
+and Final are at B10, Q10 and AF10, ending at AR. All 1,560 cells across those
+three forms match the actual pre-fix download's values/styles after translating
+the relocated formula coordinates. The two gutters remain empty, Group 6b is
+unchanged and Group 2 has three LOGOs. The registered template hash is unchanged.
+Main viewed a read-only rendering of AC10:AR23: two blank columns separate the
+preceding form from Final, which has six IR and six DWV conditions/IDs and the
+same Matrix requirements/Units. Neither rendering nor inspection exports or
+modifies a workbook; this is not native Excel rendering or a printing claim.
+
+Review caught an intermediate shared-helper boundary error: `_fill_remarks`
+also used the column-width helper, so changing its default to eight pixels could
+reduce Remarks row height. A public-writer RED with identical requirements/cell
+fonts and differing Normal fonts proved Song11 incorrectly used 48.2 points
+instead of the existing 70.3-point budget (1 failed, 1 passed, 88 deselected,
+2.15 seconds). The correction is isolated to the two LOGO callers via a dedicated
+wrapper; the Remarks helper retains its original seven-pixel default. This
+supersedes the intermediate frozen generator and its claims about row-height
+preservation, rather than treating their partial GREEN as final acceptance.
+
+Final Developer targeted validation on this corrected boundary: **45 passed**,
+45 deselected, 27.99 seconds; diff check passed. Final raw SHA256: layout
+`dd207eb057ce26c4da6ffe9a12e2bc489b62f13da5567ad366e6924a4a4d020a`, gateway
+`4c546011b877a06e4f3b997405defc35d5c0fb2ea8120cc485cad54e3c82c9a4`, writer tests
+`d68c9589e21b32f1a7a751e8a306092caf9676d5c0e6d8052984f1814f73e3e6`.
+Final actual-source outputs are in the new owned Temp directory
+`connlab-ir-dwv-three-rounds-isolated-5sk149tn`, using the same N3/N5/N6/N7 filenames.
+Old `z50vxbb1` outputs and browser `748f17...` remain diagnostic evidence, not the
+final frozen validation. Final QA/review and a repeat actual browser download
+must verify the corrected bytes.
+
+Final Main browser GREEN on the corrected boundary produced token
+`613fc50e52ce4cbc87372f075742641f`, SHA256
+`b07a0268745d5c918ab065b77a0487a59539037e90cd9d3444123374605aed44`.
+Only Group 2/Group 6b remain. B/Q/AF, both two-column gutters and three LOGOs are
+verified. All 1,599 cells across the three Group 2 forms match the pre-fix values
+and styles with formula-coordinate translation; Group 6b is unchanged. Remarks
+row11 height is 136.6 points, exactly matching the pre-fix workbook. Main viewed
+the final read-only AC10:AR23 rendering, not just the intermediate output. The
+registered source hash remains 07cf9e81...; no business Matrix confirmation or
+official-folder write occurred during this user-page smoke test.
+
+Independent Reviewer passed the exact final frozen bytes: **19 passed**, 71
+deselected, 11.84 seconds; Standards 0 / Spec 0. The shared-helper finding is
+closed. Current-source N3/N5/N6/N7 artifacts preserve 12 LOGO payloads/physical
+frames/right margins, 96 actual-sample statistics formulas, 1,512 blank measurement
+cells and 652 blank gutter cells. N3/N5/N7 were compared to the earlier spacing
+artifacts: 4,530 cell values, translated formulas and semantic styles remain the
+same. Remarks heights match their own earlier synthetic inputs (114.5/114.5/114.5/
+70.3 points). These synthetic values differ from the business preview's 136.6
+points because the requirements differ; neither was silently equated. Source
+hash and diff checks pass. Full final affected QA is recorded separately below.
+
+Final independent QA ran the complete affected files once on the exact frozen
+generator/tests:
+
+`C:/PythonEnvs/connlab/.venv/Scripts/python.exe -m pytest tests/unit/test_ir_dwv_record_workbook_gateway.py tests/integration/test_matrix_editor_ir_dwv_record_generation_api.py -q -p no:cacheprovider`
+
+**99 passed**, one existing deprecation warning, 53.84 seconds, exit 0. This
+supersedes the preceding 85-case result for the changed implementation/tests;
+overlapping counts are not added. Independent current-source N3/N5/N6/N7 checks
+cover three-round sheets, fourth-round continuation, two-column gutters, 17/18
+pre-write bounds, 96 statistics formulas, styles/merges, blank measurement cells,
+Units, LOGO physical frames and the preserved Remarks budget. Frozen implementation
+and registered-source hashes match the values above.
+
+QA independently compared final business preview token `613fc50...` to pre-fix
+`5651fad...`: 1,599 Group 2 cell values, translated formulas and semantic styles
+match. Group 2 has B/Q/AF, three LOGOs and unchanged 136.6-point Remarks; Group 6b
+correctly keeps its original two rounds at B/O, two LOGOs and unchanged 92.4-point
+Remarks. A preliminary diagnostic applied Group 2's round/height assumptions to
+Group 6b; this was corrected in the QA script, not treated as a product failure
+or used to change the valid generator. The final browser artifact hash is b07a026...
+as recorded above. No native Excel rendering/printing, packaged release execution
+or full-repository test claim is made for this revision. The frontend and safe
+publication chain were unchanged; their earlier valid evidence is retained.

@@ -9,14 +9,9 @@ from openpyxl.utils import get_column_letter
 TEMPLATE_SAMPLE_COUNT = 5
 TEMPLATE_PAIR_ROW_COUNT = 12
 TEMPLATE_FIRST_COLUMN = 2
-TEMPLATE_LAST_COLUMN = 37
 TABLE_GUTTER_COLUMN_COUNT = 2
-# Keep three standard forms; their final column may extend beyond the
-# expanded-sample capacity bound, which must still reject eighteen samples.
-TEMPLATE_FIRST_BLOCK_ORIGINS = tuple(
-    TEMPLATE_FIRST_COLUMN + index * (1 + 2 * TEMPLATE_SAMPLE_COUNT + TABLE_GUTTER_COLUMN_COUNT)
-    for index in range(3)
-)
+ROUNDS_PER_SHEET = 3
+MAX_SAMPLE_COUNT = 17
 
 
 @dataclass(frozen=True, slots=True)
@@ -120,16 +115,14 @@ def block_origins(*, sample_count: int, pair_count: int) -> tuple[int, ...]:
         sample_count=sample_count,
         pair_count=pair_count,
     )
-    if layout.sample_slot_count == TEMPLATE_SAMPLE_COUNT:
-        return TEMPLATE_FIRST_BLOCK_ORIGINS
-    origins: list[int] = []
-    origin = TEMPLATE_FIRST_COLUMN
-    while origin + layout.width - 1 <= TEMPLATE_LAST_COLUMN:
-        origins.append(origin)
-        origin += layout.width + TABLE_GUTTER_COLUMN_COUNT
-    if not origins:
-        raise ValueError("IR/DWV block cannot fit within the template sheet.")
-    return tuple(origins)
+    if sample_count > MAX_SAMPLE_COUNT:
+        raise ValueError("IR/DWV block cannot fit: sample count exceeds the supported maximum of 17.")
+    # Sample width must not reduce round capacity. Even the widest supported
+    # three-form page ends at column 110, well within Excel's column boundary.
+    return tuple(
+        TEMPLATE_FIRST_COLUMN + index * (layout.width + TABLE_GUTTER_COLUMN_COUNT)
+        for index in range(ROUNDS_PER_SHEET)
+    )
 
 
 def plan_block_placements(

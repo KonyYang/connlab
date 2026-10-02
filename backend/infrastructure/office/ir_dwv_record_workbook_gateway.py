@@ -450,7 +450,7 @@ def copy_block_logos(logos, target: Worksheet, layout: IrDwvBlockLayout) -> None
                 column_offset = image.anchor.to.colOff - horizontal_span
                 while column_offset < 0 and column > 0:
                     column -= 1
-                    column_offset += _column_width_emu(target, column)
+                    column_offset += _logo_column_width_emu(target, column)
                 if column_offset < 0:
                     raise ValueError("IR/DWV template LOGO cannot fit before its right anchor.")
                 image.anchor._from.col = column
@@ -461,22 +461,32 @@ def copy_block_logos(logos, target: Worksheet, layout: IrDwvBlockLayout) -> None
 def _logo_horizontal_span(sheet: Worksheet, anchor):
     if not hasattr(anchor, "to"):
         return None
-    return (sum(_column_width_emu(sheet, column) for column in range(anchor._from.col, anchor.to.col))
+    return (sum(_logo_column_width_emu(sheet, column) for column in range(anchor._from.col, anchor.to.col))
             + anchor.to.colOff - anchor._from.colOff)
 
 
-def _column_width_emu(sheet: Worksheet, column: int) -> int:
+def _logo_column_width_emu(sheet: Worksheet, column: int) -> int:
+    # The current approved Normal font (Song 11pt) was independently measured
+    # at an eight-pixel digit width at 96 dpi. Six-slot forms need that metric:
+    # their wide+narrow anchor span is not equivalent to seven-slot narrow+narrow.
+    # Other fonts retain the standard seven-pixel convention, not a claim of
+    # universal native-font geometry. No runtime font/Office dependency is added.
+    normal = next((style for style in sheet.parent._named_styles if style.builtinId == 0), None)
+    digit_width = 8 if normal is not None and normal.font.name in ("宋体", "SimSun") and normal.font.sz == 11 else 7
+    return _column_width_emu(sheet, column, digit_width=digit_width)
+
+
+def _column_width_emu(sheet: Worksheet, column: int, *, digit_width: int = 7) -> int:
     dimension = _effective_column_dimension(sheet, column + 1)
     if dimension is not None and dimension.hidden:
         return 0
     width = dimension.width if dimension is not None else sheet.sheet_format.defaultColWidth
     if width is None:
         width = DEFAULT_COLUMN_WIDTH
-    # Standard 96-dpi / seven-pixel OpenXML metric for marker rebasing. The
-    # current template's correction is verified at both seven and eight pixels;
-    # this is not a font rasterizer or a claim about arbitrary template fonts.
+    # The existing conservative Remarks budget retains the standard metric;
+    # only the LOGO wrapper selects a template-specific anchor metric.
     # https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.spreadsheet.column
-    pixels = int(((256 * width + int(128 / 7)) / 256) * 7)
+    pixels = int(((256 * width + int(128 / digit_width)) / 256) * digit_width)
     return pixels_to_EMU(pixels)
 
 

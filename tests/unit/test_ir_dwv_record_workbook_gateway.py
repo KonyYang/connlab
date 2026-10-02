@@ -62,7 +62,7 @@ def template_with_separate_ir_statistics(tmp_path):
     return template
 
 
-@pytest.mark.parametrize("samples", [3, 5, 7])
+@pytest.mark.parametrize("samples", [3, 5, 6, 7])
 @pytest.mark.parametrize("pair_count", [1, 13])
 def test_user_template_statistics_keep_both_sides_formulas_and_actual_sample_ranges(tmp_path, template_with_separate_ir_statistics, samples, pair_count):
     from hashlib import sha256
@@ -173,6 +173,35 @@ def test_multiline_requirements_remain_complete_and_visible_after_a_shorter_roun
         workbook.close()
 
 
+@pytest.mark.parametrize("normal_font", ["Calibri", "宋体"])
+def test_logo_font_metric_does_not_reduce_existing_remarks_height_budget(tmp_path, normal_font):
+    from copy import copy
+    from backend.application.matrix_editor_ir_dwv_record_projection import IrDwvRecordSourceStep
+    template_book = load_workbook(FIXTURE)
+    style = next(style for style in template_book._named_styles if style.builtinId == 0)
+    font = copy(style.font)
+    font.name, font.sz = normal_font, 11
+    style.font = font
+    template = tmp_path / "font-template.xlsx"
+    template_book.save(template)
+    template_book.close()
+    base = _projection()
+    # This complete IR label is 36 Latin characters. The established conservative
+    # Remarks budget fits 35, hence two requirement lines plus the Remarks label.
+    source = IrDwvRecordSourceStep("q", "r", 2, "", "2", "IR", "500 VDC", "A" * 20)
+    step = replace(base.groups[0].steps[0], ir_source_step=source)
+    path = IrDwvRecordWorkbookGateway(template).write(
+        output_path=tmp_path / "font-output.xlsx",
+        projection=replace(base, groups=(replace(base.groups[0], steps=(step,)),)),
+    )
+    workbook = load_workbook(path)
+    try:
+        assert workbook.active["B11"].value == "Remarks:\nIR Requirement: " + "A" * 20
+        assert workbook.active.row_dimensions[11].height == pytest.approx(70.3)
+    finally:
+        workbook.close()
+
+
 @pytest.mark.parametrize("requirement", ["X" * 32768, "\n".join(["Acceptance criterion"] * 30)], ids=["cell-text-overflow", "row-height-overflow"])
 def test_requirements_fail_explicitly_instead_of_truncating_or_clipping(tmp_path, requirement):
     from backend.application.matrix_editor_ir_dwv_record_projection import IrDwvRecordSourceStep
@@ -205,7 +234,7 @@ def test_explicitly_empty_requirement_preserves_blank_remarks_template_layout(tm
         source_book.close()
 
 
-@pytest.mark.parametrize("samples,pair_count", [(3, 1), (5, 13), (7, 1)])
+@pytest.mark.parametrize("samples,pair_count", [(3, 1), (5, 13), (6, 1), (7, 1)])
 def test_each_form_clones_first_template_logo_defaults_and_result_units(tmp_path, samples, pair_count):
     from hashlib import sha256
     source_book = load_workbook(FIXTURE)
@@ -247,14 +276,19 @@ def test_each_form_clones_first_template_logo_defaults_and_result_units(tmp_path
         source_book.close()
 
 
-@pytest.mark.parametrize("samples", [3, 5, 7])
-@pytest.mark.parametrize("pixel_widths,expected_width_emu", [
-    ({9.0: 63, 16.46484375: 115, 17.86328125: 125, 14.46484375: 101}, 1556550),
-    ({9.0: 72, 16.46484375: 132, 17.86328125: 143, 14.46484375: 116}, 1728000),
+@pytest.mark.parametrize("samples", [3, 5, 6, 7])
+@pytest.mark.parametrize("normal_font,pixel_widths,expected_width_emu", [
+    ("Calibri", {9.0: 63, 16.46484375: 115, 17.86328125: 125, 14.46484375: 101}, 1556550),
+    ("宋体", {9.0: 72, 16.46484375: 132, 17.86328125: 143, 14.46484375: 116}, 1728000),
 ], ids=["standard-7px-digit", "template-Song-11pt-8px-digit"])
-def test_logo_preserves_displayed_rectangle_and_right_edge_on_every_form(tmp_path, samples, pixel_widths, expected_width_emu):
+def test_logo_preserves_displayed_rectangle_and_right_edge_on_every_form(tmp_path, samples, normal_font, pixel_widths, expected_width_emu):
+    from copy import copy
     from hashlib import sha256
     source_book = load_workbook(FIXTURE)
+    style = next(style for style in source_book._named_styles if style.builtinId == 0)
+    font = copy(style.font)
+    font.name, font.sz = normal_font, 11
+    style.font = font
     source = source_book.worksheets[0]
     source._images = source._images[:1]
     anchor = source._images[0].anchor
@@ -273,6 +307,7 @@ def test_logo_preserves_displayed_rectangle_and_right_edge_on_every_form(tmp_pat
     workbook, source_book = load_workbook(path), load_workbook(template)
     try:
         source = source_book.worksheets[0]
+        assert workbook._named_styles[0].font == source_book._named_styles[0].font
         # K = 125/143 pixels at 7/8-pixel digit metrics, respectively.
         # Native PNG width and cached shape-transform extents are not the frame.
         expected_height_emu = sum(source.row_dimensions[row].height * 12700 for row in range(1, 6)) + 99578 - 202407
@@ -645,16 +680,60 @@ def test_writer_places_steps_across_sheets(
     workbook.close()
 
 
-@pytest.mark.parametrize("samples", [3, 5, 7])
+@pytest.mark.parametrize("samples,expected_origins", [
+    (3, [2, 15, 28]), (5, [2, 15, 28]), (6, [2, 17, 32]), (7, [2, 19, 36]),
+])
+def test_three_rounds_stay_on_the_group_sheet_for_every_sample_width(tmp_path, samples, expected_origins):
+    path = IrDwvRecordWorkbookGateway(FIXTURE).write(
+        output_path=tmp_path / "three-rounds.xlsx", projection=_projection(samples=samples, steps=3),
+    )
+    workbook = load_workbook(path)
+    try:
+        assert workbook.sheetnames == ["Group 1"]
+        assert [cell.column for cell in workbook.active[10] if str(cell.value).startswith("Item/Process:")] == expected_origins
+        assert len(workbook.active._images) == 3
+    finally:
+        workbook.close()
+
+
+def test_three_round_pages_and_fourth_round_continuation_remain_independent_between_groups(tmp_path):
+    base = _projection(samples=6, steps=4)
+    first = replace(base.groups[0], label="Group 2")
+    second = replace(_projection(samples=7, steps=3).groups[0], label="Group 6b")
+    path = IrDwvRecordWorkbookGateway(FIXTURE).write(
+        output_path=tmp_path / "groups.xlsx", projection=replace(base, groups=(first, second)),
+    )
+    workbook = load_workbook(path)
+    try:
+        assert workbook.sheetnames == ["Group 2", "Group 2 (2)", "Group 6b"]
+        for sheet, origins, labels, group in (
+            (workbook["Group 2"], [2, 17, 32], ["Initial", "After Step 1", "After Step 2"], "Group 2"),
+            (workbook["Group 2 (2)"], [2], ["Final"], "Group 2"),
+            (workbook["Group 6b"], [2, 19, 36], ["Initial", "After Step 1", "Final"], "Group 6b"),
+        ):
+            headers = [cell for cell in sheet[10] if str(cell.value).startswith("Item/Process:")]
+            assert [cell.column for cell in headers] == origins
+            assert [cell.value for cell in headers] == [f"Item/Process: {group}  IR&DWV-{label}" for label in labels]
+    finally:
+        workbook.close()
+
+
+@pytest.mark.parametrize("samples", [3, 5, 6, 7])
 def test_every_adjacent_record_table_has_two_empty_columns_without_changing_capacity(tmp_path, samples):
     path = IrDwvRecordWorkbookGateway(FIXTURE).write(
         output_path=tmp_path / "gutters.xlsx", projection=_projection(samples=samples, steps=4),
     )
     workbook = load_workbook(path)
     try:
-        expected_origins = ([2, 15, 28], [2]) if samples <= 5 else ([2, 19], [2, 19])
-        expected_widths = [16.46484375] * 9 + [17.86328125, 9.0] if samples <= 5 else [16.46484375] * 11 + [17.86328125, 9.0, 9.0, 9.0]
-        footer_row = 39 if samples <= 5 else 41
+        first_origins = {3: [2, 15, 28], 5: [2, 15, 28], 6: [2, 17, 32], 7: [2, 19, 36]}[samples]
+        expected_origins = (first_origins, [2])
+        expected_widths = {
+            3: [16.46484375] * 9 + [17.86328125, 9.0],
+            5: [16.46484375] * 9 + [17.86328125, 9.0],
+            6: [16.46484375] * 10 + [17.86328125, 9.0, 9.0],
+            7: [16.46484375] * 11 + [17.86328125, 9.0, 9.0, 9.0],
+        }[samples]
+        footer_row = {3: 39, 5: 39, 6: 40, 7: 41}[samples]
         assert len(workbook.worksheets) == 2
         for sheet, expected in zip(workbook.worksheets, expected_origins, strict=True):
             origins = [cell.column for cell in sheet[10] if str(cell.value).startswith("Item/Process:")]
@@ -802,10 +881,11 @@ def test_template_inventory_matches_the_frozen_fixture():
     ("samples", "step_count", "expected_sheet_indexes"),
     [
         (3, 5, [0, 0, 0, 1, 1]),
-        (7, 3, [0, 0, 1]),
+        (6, 4, [0, 0, 0, 1]),
+        (7, 4, [0, 0, 0, 1]),
     ],
 )
-def test_step_capacity_changes_with_block_width(
+def test_round_capacity_is_independent_of_block_width(
     samples: int,
     step_count: int,
     expected_sheet_indexes: list[int],
@@ -833,11 +913,12 @@ def test_writer_blocks_non_positive_or_non_integer_sample_counts(
 
 def test_writer_keeps_seventeen_sample_capacity_and_rejects_eighteen(tmp_path):
     gateway = IrDwvRecordWorkbookGateway(FIXTURE)
-    path = gateway.write(output_path=tmp_path / "seventeen.xlsx", projection=_projection(samples=17))
+    path = gateway.write(output_path=tmp_path / "seventeen.xlsx", projection=_projection(samples=17, steps=3))
     workbook = load_workbook(path)
     try:
         assert len(workbook.worksheets) == 1
-        assert workbook.active.max_column == 36
+        assert [cell.column for cell in workbook.active[10] if str(cell.value).startswith("Item/Process:")] == [2, 39, 76]
+        assert workbook.active.max_column == 110
     finally:
         workbook.close()
     rejected = tmp_path / "eighteen.xlsx"

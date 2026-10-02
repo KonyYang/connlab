@@ -25,6 +25,9 @@
 > 2026-10-02 间距验收修订：同页每两份表格之间都必须有两列空白；
 > 五槽三份表的起点为 B/O/AB，间隔为 M/N 与 Z/AA，第三份结束于 AL。
 > 大样品布局原有容量与续页规则不变，不能因扩大页面边界而意外允许 18 件。
+> 2026-10-02 后续验收修订：样品增至 6/7 件不能导致第三轮提前续页。
+> 每张 Group sheet 均保留三轮横排，表宽随样品数增加，两轮间空两列；
+> 第四轮沿用既有续页，单块最大 17 样品校验独立保留。这取代旧 D5 的按模板宽度动态分页。
 
 ---
 
@@ -130,7 +133,7 @@ IR/DWV 步骤筛选沿用既有判定（`test_item` 含 `Insulation Resistance` 
 | **D2** | block 判定与描述 | **用户修订**：以组内实际执行顺序和非电气工序边界识别测量轮次，兼容相同步骤号及连续的 IR/DWV 步骤；不按两侧第几次出现盲目配对。单侧缺失留空，重复身份报错。按轮次生成 `Initial` / `After {上一工序}` / `Final`，override 优先；不新增工艺字段，不改变 LLCR |
 | **D3** | 模板注册 | 走既有 `ExternalResourceType` 机制，新增 `IR_DWV_RECORD_TEMPLATE = "ir_dwv_record_template"`（`backend/domain/enums.py:149`），**禁止把 `D:\Source\Template` 硬编码进代码**；资源值可在设置页改。先确认现有"模板目录"资源指向哪里，能复用就复用 |
 | **D4** | block 复制实现 | openpyxl 自研 `copy_block`（值 + 样式 + 合并区 + 行高 + 数字格式 + 公式偏移）。**明确排除 Excel COM/Win32COM**（本机已知 COM 崩溃 `0x800706be`，且 LLCR 链路是纯 openpyxl） |
-| **D5** | 步骤数排版 | **同一 sheet 内往右并排**，block 原点 `B → O → Z`（偏移 +13）；**放不下（或超过容量）就重新生成一张新表格（新 sheet）**，从模板 sheet 复制，命名 `Group 1 (2)`、`Group 1 (3)`…。**不做"换行到下方"**。⚠️ 样品数 ≠ 5 时 block 宽度会变，单 sheet 容量按实际宽度动态算，不能写死 3 |
+| **D5** | 步骤数排版 | **同一 Group sheet 内三轮往右并排**，每轮之间两空列，表宽随样品数增加。N5 起点 B/O/AB，N6 B/Q/AF，N7 B/S/AJ；第三轮不能因样品增多提前续页。第四轮沿用 `Group 1 (2)` 等续页，从模板复制，不换行到下方。最大 17 样品校验独立于每页轮次数保留；旧模板宽度不再决定分页。 |
 | **D6** | 样品数 ≠ 5 | **用户修订**：物理槽数 `max(5,N)`；N > 5 两侧各增加 N-5 槽，N < 5 保留五槽且多余条件/编号/单位/样品标识/数据为空。统计和 Fee 数量使用实际 N，不使用物理槽数；合并区和分页随物理宽度重算。`5+5(d)` 只取首个数字并提示；N < 1 或非整数 blocked |
 | **D7** | 输出与文件名 | **`{项目}/Test results/{DL} IR&DWV Record.xlsx`**（用 `Record`，对齐 LLCR 惯例，不用样例里的 `Results`）。冲突 → 旧文件归档 `History/Test results`；`preview_token` + `require_project_folder_write_slot` 同 LLCR；未确认 Matrix / 文件夹不可用时降级为浏览器下载。草稿目录 `data/generated_ir_dwv_record_drafts/` |
 | **D8** | preview/publish 复用 | 复用 `MatrixEditorLlcrCrRecordPublicationService` 的机制，把 `record_type` 从 `Literal["llcr","cr"]` 放开为受控集合（新增 `ir_dwv`），artifact store / 文件名 / 目标路径按 `record_type` 分支 |
@@ -233,8 +236,8 @@ IR/DWV 步骤筛选沿用既有判定（`test_item` 含 `Insulation Resistance` 
 ## 9. 完成定义（DoD）
 
 - [x] 模板已备份并登记为外部资源 `IR_DWV_RECORD_TEMPLATE`，公开 validate API 返回 valid；当前用户修改的模板保持不变，SHA 与保真核对见 GOLDEN_DIFF
-- [x] 布局计算器覆盖样品数 3/5/7、多轮 IR/DWV 共表与容量续页（容量依据实际表宽）
-- [x] 受影响单测与 API 验证全绿，含 block 保真度、样品数三档、判定要求及两列间隔回归；最终间距修订 QA 85 项通过
+- [x] 布局计算器覆盖样品数 3/5/6/7、多轮 IR/DWV 共表；每页三轮，第四轮续页，与样品增宽独立
+- [x] 当前最终冻结状态受影响单测与 API 独立 QA 99 项通过；独立审查与用户指定页面六样品实际下载验收通过，详情见 GOLDEN_DIFF
 - [x] 黄金样例 diff 报告完成；当前模板/权威输入、历史执行值清空及有意差异有明细与验证
 - [x] 3 个后端端点可用，落盘/归档/降级行为与 LLCR 一致
 - [x] `IR&DWV Form` 位于 `IR / DWV test points` 卡片 header，隔离浏览器全流程已核对
