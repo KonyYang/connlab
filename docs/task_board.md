@@ -31,8 +31,16 @@
     ],
     "activation_head": "3f8aac97e5c12b528ad5b5cdc88ed533aa4b5d32",
     "started_at": "2026-10-02T12:05:08.026304Z",
-    "updated_at": "2026-10-02T12:05:08.026304Z",
-    "checkpoint": null,
+    "updated_at": "2026-10-02T12:47:25.794477Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_CREATE_FOLDER_ARCHIVE_ONLY_20261002",
+      "stage": "delivery_scope_registration",
+      "status": "blocked",
+      "summary": "Product commit 818de002 is clean and limited to six approved paths. Independent review, QA (110 Python, 219 frontend, build and isolated browser) and local integration verification passed. Concurrent external commit ba5a7d77 relocated three design docs; activation-to-HEAD diff exceeds the six-path high-risk manifest. Await User approval only for manifest correction recording those existing deletions; no document restoration or additional product edits. External design doc preserved at C:/Users/White/.workbuddy/workspace/connlab-design/REPORT_RESULT_PHOTO_AUTOMATION_DESIGN.md. Do not apply old stash.",
+      "requires_user": true
+    },
     "report": null
   },
   "last_closed": {
