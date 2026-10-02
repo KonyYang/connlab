@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_DOC_IR_DWV_CONTEXT_SYNC_20261002",
     "summary": "Correct obsolete IR/DWV workbook implementation status in project context",
@@ -24,9 +24,56 @@
     "risk_reasons": [],
     "activation_head": "1bb4d89c390a241cdb794a0bb3f6ac1d60aea290",
     "started_at": "2026-10-02T03:43:10.928184Z",
-    "updated_at": "2026-10-02T03:43:10.928184Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-02T03:45:13.614888Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_DOC_IR_DWV_CONTEXT_SYNC_20261002",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_DOC_IR_DWV_CONTEXT_SYNC_20261002",
+      "subject": "b889ca0b1463e6d6120c6779bccbac24fdcde291",
+      "summary": "Correct PROJECT_CONTEXT to mark IR/DWV blank-record workbook generation implemented, retain automated specification point extraction as unimplemented, and include IR/DWV in draft-versus-safe-official-publication guidance. Documentation only; unrelated untracked design draft preserved in a single-path recovery stash for restoration after board recording.",
+      "scope_ok": true,
+      "changed_paths": [
+        "docs/PROJECT_CONTEXT.md"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "name": "documentation cross-check against implemented entry and generator/publication boundaries",
+          "result": "Read actual IR/DWV routes, generation service and openpyxl writer; UI action tests expose IR&DWV Form; writer clears measured cells; confirmed/draft publication wiring exists. Corrected only obsolete status and shared output guidance."
+        },
+        {
+          "status": "passed",
+          "name": "final exact diff and scope self-review",
+          "result": "git diff --check exit0 after final edits; only PROJECT_CONTEXT content and sole-writer board changed; no product code or tests changed, so no redundant test/build run."
+        },
+        {
+          "status": "passed",
+          "name": "unrelated draft bounded preservation",
+          "result": "Only docs/plans/REPORT_RESULT_PHOTO_AUTOMATION_DESIGN.md stashed at exact72845df92e9f370f259270695833e012320ee6bd; initial SHA2566d928420f27128e5e6395a703cf28e474e9ff62201084d505a569e92abf81647. Backup kept; restoration is immediate post-record housekeeping, not a claimed completed check yet."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "context": "Primary agent implemented documentation-only micro correction, self-reviewed exact diff, and cross-checked actual code. No independent role/test execution claimed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "subject": "b889ca0b1463e6d6120c6779bccbac24fdcde291",
+        "code_subject": "b889ca0b1463e6d6120c6779bccbac24fdcde291",
+        "facts": "Micro direct-master documentation commit b889ca0b on clean primary, exact observed nonboard path docs/PROJECT_CONTEXT.md; no product or unrelated file changes."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_362_IR_DWV_RECORD_WORKBOOK_20261001",
