@@ -22,6 +22,7 @@ vi.mock("../../api/client", async () => {
     previewInternalReportGeneration: vi.fn(),
     generateInternalReport: vi.fn(),
     openLocalProjectFolder: vi.fn(),
+    getPublicFolderWorkflowContext: vi.fn(),
     previewCurrentReportLlcrUpdate: vi.fn(),
     updateCurrentReportLlcr: vi.fn(),
     previewCurrentReportEquipmentList: vi.fn(),
@@ -60,6 +61,13 @@ const currentReport: api.CurrentReport = {
   official_folder_path: "D:\\Test Project\\DL-001\\Official Test",
   can_publish_to_official: false,
   download_url: "/api/projects/project-1/report-workspace/current-report/download",
+};
+
+const folderContext: api.PublicFolderWorkflowContext = {
+  project_id: "project-1", auto_sync_enabled: false, sync_locked: false, submitted_at: null,
+  public_root: null, public_root_class: null, public_folder_year: null, year_source: null, year_evidence: null,
+  local_official_folder_path: currentReport.folder_path, local_official_folder_available: true,
+  public_open_path: null, public_closed_path: null, blockers: ["The public drive is unavailable."], warnings: [],
 };
 
 const customerReport: api.CustomerReportState = {
@@ -162,6 +170,7 @@ describe("ReportWorkspace", () => {
     vi.mocked(api.fetchReportWorkspace).mockResolvedValue(state);
     vi.mocked(api.fetchCurrentReport).mockResolvedValue(currentReport);
     vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue(customerReport);
+    vi.mocked(api.getPublicFolderWorkflowContext).mockResolvedValue(folderContext);
     vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({
       project_id: "project-1", status: "ready", preview_token: "c".repeat(64), requires_confirmation: true,
       mode: "official", current_path: currentReport.file_path!, target_path: currentReport.file_path!, blockers: [],
@@ -197,6 +206,26 @@ describe("ReportWorkspace", () => {
     });
   });
 
+  it("opens an available project folder from the header before any report exists", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue({ ...currentReport, status: "missing", mode: null,
+      file_name: null, file_path: null, file_sha256: null, folder_path: null, download_url: null });
+    render(<AppShell activeRoute="workbench" topBarTitle="Report Workspace">
+      <ReportWorkspace projectId="project-1" onBack={vi.fn()} />
+    </AppShell>);
+    const internal = await screen.findByRole("region", { name: "Internal Report" });
+    const actions = screen.getByLabelText("Report Workspace actions");
+    const open = within(actions).getByRole("button", { name: "Open project folder" });
+    expect(within(actions).getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Open project folder", "Back to Workspace",
+    ]);
+    expect(within(internal).queryByRole("button", { name: /Open.*folder/ })).toBeNull();
+    await waitFor(() => expect(open.hasAttribute("disabled")).toBe(false));
+    await user.click(open);
+    expect(api.getPublicFolderWorkflowContext).toHaveBeenCalledWith("project-1");
+    expect(api.openLocalProjectFolder).toHaveBeenCalledWith("project-1");
+  });
+
   it("shows the current full path once and confirms archive regeneration without writing on cancel", async () => {
     const user = userEvent.setup();
     vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({
@@ -210,8 +239,7 @@ describe("ReportWorkspace", () => {
     expect(within(internal).queryByText(currentReport.file_name!)).toBeNull();
     expect(within(internal).queryByText("Official project report")).toBeNull();
     expect(within(internal).queryByRole("button", { name: "Download current report" })).toBeNull();
-    await user.click(within(internal).getByRole("button", { name: "Open folder" }));
-    expect(api.openLocalProjectFolder).toHaveBeenCalledWith("project-1");
+    expect(within(internal).queryByRole("button", { name: /Open.*folder/ })).toBeNull();
     await user.click(within(internal).getByRole("button", { name: "Generate Internal Report" }));
     const dialog = await screen.findByRole("dialog", { name: "Archive and regenerate Internal Report" });
     expect(within(dialog).getByText(/manual content, results and photos, will be preserved/)).toBeTruthy();
@@ -250,9 +278,75 @@ describe("ReportWorkspace", () => {
     const user = userEvent.setup();
     vi.mocked(api.openLocalProjectFolder).mockResolvedValue({ project_id: "project-1", status: "blocked", message: "Restore or link the project folder.", local_official_folder_path: null });
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Open folder" }));
+    await user.click(await screen.findByRole("button", { name: "Open project folder" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Restore or link the project folder.");
     expect(api.openLocalProjectFolder).toHaveBeenCalledWith("project-1");
+    const open = screen.getByRole("button", { name: "Open project folder" });
+    expect(open.hasAttribute("disabled")).toBe(true);
+    expect(open.parentElement?.title).toBe("Restore or link the project folder.");
+    expect(screen.getByRole("button", { name: "Generate Internal Report" }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it.each([
+    [null, "No project folder is linked. Create or link it in Workspace."],
+    ["D:\\Unavailable folder", "The project folder is unavailable. Restore or link it in Workspace."],
+  ])("explains an unavailable local folder independently of a ready report: %s", async (path, reason) => {
+    vi.mocked(api.getPublicFolderWorkflowContext).mockResolvedValue({ ...folderContext,
+      local_official_folder_path: path, local_official_folder_available: false });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await screen.findByRole("region", { name: "Internal Report" });
+    const open = screen.getByRole("button", { name: "Open project folder" });
+    await waitFor(() => expect(open.parentElement?.title).toBe(reason));
+    expect(open.hasAttribute("disabled")).toBe(true);
+    expect(screen.getByText(currentReport.file_path!)).toBeTruthy();
+    expect(api.openLocalProjectFolder).not.toHaveBeenCalled();
+  });
+
+  it("keeps report generation available when checking the project folder fails", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.getPublicFolderWorkflowContext).mockRejectedValue(new Error("Folder context unavailable"));
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await screen.findByRole("region", { name: "Internal Report" });
+    const open = screen.getByRole("button", { name: "Open project folder" });
+    await waitFor(() => expect(open.parentElement?.title).toBe("Unable to check the project folder. Return to Workspace and retry."));
+    expect(open.hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Generate Internal Report" }));
+    expect(await screen.findByRole("dialog", { name: "Archive and regenerate Internal Report" })).toBeTruthy();
+  });
+
+  it("ignores delayed folder availability after switching project or unmounting", async () => {
+    let resolveOld!: (context: api.PublicFolderWorkflowContext) => void;
+    let resolveNew!: (context: api.PublicFolderWorkflowContext) => void;
+    vi.mocked(api.getPublicFolderWorkflowContext)
+      .mockReturnValueOnce(new Promise((resolve) => { resolveOld = resolve; }))
+      .mockReturnValueOnce(new Promise((resolve) => { resolveNew = resolve; }));
+    const view = render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await screen.findByRole("region", { name: "Internal Report" });
+    view.rerender(<ReportWorkspace projectId="project-2" onBack={vi.fn()} />);
+    const open = screen.getByRole("button", { name: "Open project folder" });
+    expect(open.hasAttribute("disabled")).toBe(true);
+    expect(open.parentElement?.title).toBe("Checking project folder availability...");
+    await act(async () => resolveOld(folderContext));
+    expect(open.hasAttribute("disabled")).toBe(true);
+    expect(open.parentElement?.title).toBe("Checking project folder availability...");
+    view.unmount();
+    await act(async () => resolveNew({ ...folderContext, project_id: "project-2" }));
+    expect(screen.queryByLabelText("Report Workspace actions")).toBeNull();
+  });
+
+  it("ignores a delayed folder-opening failure on another project", async () => {
+    const user = userEvent.setup();
+    let resolveOpen!: (response: api.ProjectFolderOpenResponse) => void;
+    vi.mocked(api.openLocalProjectFolder).mockReturnValueOnce(new Promise((resolve) => { resolveOpen = resolve; }));
+    const view = render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await screen.findByRole("region", { name: "Internal Report" });
+    await user.click(screen.getByRole("button", { name: "Open project folder" }));
+    view.rerender(<ReportWorkspace projectId="project-2" onBack={vi.fn()} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Open project folder" }).hasAttribute("disabled")).toBe(false));
+    await act(async () => resolveOpen({ project_id: "project-1", status: "blocked", message: "Old folder unavailable.", local_official_folder_path: null }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("button", { name: "Open project folder" }).hasAttribute("disabled")).toBe(false);
   });
 
   it("uses a concise transient success after confirmed regeneration", async () => {
@@ -272,10 +366,14 @@ describe("ReportWorkspace", () => {
   it("shows an explicit loading state while workspace authority is loading", () => {
     vi.mocked(api.fetchReportWorkspace).mockReturnValue(new Promise(() => undefined));
     vi.mocked(api.fetchLatestProjectCustomerReportJob).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(api.getPublicFolderWorkflowContext).mockReturnValueOnce(new Promise(() => undefined));
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
 
     expect(screen.getByRole("status").textContent).toContain("Loading Report Workspace...");
+    const open = within(screen.getByLabelText("Report Workspace actions")).getByRole("button", { name: "Open project folder" });
+    expect(open.hasAttribute("disabled")).toBe(true);
+    expect(open.parentElement?.title).toBe("Checking project folder availability...");
   });
 
   it("shares the top bar and groups existing operations into three business regions", async () => {
@@ -336,7 +434,7 @@ describe("ReportWorkspace", () => {
     vi.mocked(api.getProjectBasicInformation).mockRejectedValue(new Error("Basic label unavailable"));
     render(<ProjectReportWorkspacePage projectId="project-1" onBackToWorkbench={vi.fn()} />);
     expect(await screen.findByText("DL-001 Connector Project")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Open folder" }).hasAttribute("disabled")).toBe(false);
+    expect(screen.getByRole("button", { name: "Open project folder" }).hasAttribute("disabled")).toBe(false);
     expect(screen.queryByRole("alert")).toBeNull();
   });
 

@@ -9684,6 +9684,30 @@
   white-space: nowrap;
 }
 
+.report-workspace-header-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.report-workspace-folder-action {
+  display: inline-flex;
+  min-width: 0;
+}
+
+.report-workspace-folder-action[title] {
+  cursor: not-allowed;
+}
+
+.report-workspace-folder-action button:disabled {
+  pointer-events: none;
+}
+
+.report-workspace-header-actions .report-workspace-back {
+  flex-shrink: 1;
+}
+
 .report-workspace-back {
   background: var(--color-action-secondary-bg);
   border: 1px solid var(--color-action-secondary-border);
@@ -9802,6 +9826,7 @@
   padding: 8px 14px;
 }
 
+.report-workspace-header-actions button:disabled,
 .report-workspace-card button:disabled,
 .report-workspace-dialog button:disabled {
   background: var(--color-surface-muted);

@@ -124,8 +124,11 @@ Do not use a dated snapshot as a substitute for the code.
   manual-review blocker. Only owned temporary files are cleaned. Regeneration archives even identical
   output, and its completed revision invalidates the used preview. The new filename follows latest
   confirmed authority, and historical revision downloads follow the retained archive location.
-- Formal current reports provide `Open folder` through the existing project-ID-resolved backend
-  opener; their displayed path is never accepted as opener input. Managed drafts retain Download and
+- The header provides `Open project folder` immediately left of `Back to Workspace`, independently
+  of report existence. Only local official-folder availability enables it; loading, missing,
+  unavailable or failed checks explain the disabled state on hover. Public-drive blockers do not
+  gate this action. It uses the existing project-ID-resolved backend opener, never the displayed
+  report path as input. Managed drafts retain Download and
   explicit publication. Generation success is concise and transient; errors and blockers remain
   actionable. Acceptance covers cancellation, stale sources, same-byte replay, competing writers,
   file/metadata rollback and existing section/customer-report flows using isolated test storage.
