@@ -775,12 +775,43 @@ describe("ReportWorkspace", () => {
     expect(await screen.findByText(/Published the current report to/)).toBeTruthy();
   });
 
+  it.each([false, true])("finishes a healthy equipment update without opening a completion dialog (changed=%s)", async (changed) => {
+    const user = userEvent.setup();
+    vi.mocked(api.updateEquipmentListOneClick).mockResolvedValue({
+      status: "completed", project_id: "project-1", file_name: currentReport.file_name!,
+      changed, current_sha256: "a".repeat(64), archive_path: changed ? "History/Report/old.docx" : null,
+      statistics: { filled: 9, unmatched: [], incomplete: [], expired: [] },
+    });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Update Equipment List" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Update Equipment List" })).toHaveProperty("disabled", false));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByText(/Equipment rows filled/)).toBeNull();
+  });
+
+  it("shows only actual equipment issues with guidance after updating", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.updateEquipmentListOneClick).mockResolvedValue({
+      status: "completed", project_id: "project-1", file_name: currentReport.file_name!,
+      changed: true, current_sha256: "d".repeat(64), archive_path: "History/Report/old.docx",
+      statistics: { filled: 3, unmatched: ["DG-Q-9999"], incomplete: ["DG-Q-0022"], expired: [] },
+    });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Update Equipment List" }));
+    const dialog = await screen.findByRole("dialog", { name: "Equipment List Needs Review" });
+    expect(within(dialog).getByText(/DG-Q-9999/).textContent).toContain("Check registration");
+    expect(within(dialog).getByText(/DG-Q-0022/).textContent).toContain("Complete equipment details");
+    expect(within(dialog).queryByText(/Expired Calibration/)).toBeNull();
+    expect(within(dialog).queryByText(/Equipment rows filled|History\/Report|Report_Rev_A/)).toBeNull();
+  });
+
   it("updates equipment in one click and shows expired statistics only afterwards", async () => {
     const user = userEvent.setup();
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     await user.click(await screen.findByRole("button", { name: "Update Equipment List" }));
-    const dialog = await screen.findByRole("dialog", { name: "Equipment List update completed" });
-    expect(within(dialog).getByText(/Expired calibration: 1/)).toBeTruthy();
+    const dialog = await screen.findByRole("dialog", { name: "Equipment List Needs Review" });
+    expect(within(dialog).getByText(/Expired Calibration.*DG-Q-0033/)).toBeTruthy();
+    expect(within(dialog).queryByText(/Not Registered|Incomplete Information/)).toBeNull();
     expect(api.updateEquipmentListOneClick).toHaveBeenCalledWith("project-1", undefined);
     expect(api.previewCurrentReportEquipmentList).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("I reviewed the expired calibration warning")).toBeNull();
@@ -795,7 +826,7 @@ describe("ReportWorkspace", () => {
     await user.type(within(dialog).getByLabelText("Equipment IDs"), "DG-Q-0033");
     await user.click(within(dialog).getByRole("button", { name: "Save And Update" }));
     expect(api.updateEquipmentListOneClick).toHaveBeenLastCalledWith("project-1", { referencesText: "DG-Q-0033" });
-    expect(await screen.findByRole("dialog", { name: "Equipment List update completed" })).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: "Equipment List Needs Review" })).toBeTruthy();
   });
 
   it("canceling missing equipment selection makes no second request", async () => {

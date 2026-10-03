@@ -117,7 +117,10 @@ def test_preview_matches_equipment_reference_and_warns_when_calibration_expired(
     assert any("expired" in warning.lower() for warning in preview.warnings)
 
 
-def test_preview_formats_legacy_excel_iso_dates_for_the_report(tmp_path: Path) -> None:
+@pytest.mark.parametrize("timezone_suffix", ["", "+00:00"])
+def test_preview_formats_legacy_excel_iso_dates_for_the_report(
+    tmp_path: Path, timezone_suffix: str,
+) -> None:
     service, _updates = _service(
         tmp_path,
         ("DG-Q-0033",),
@@ -126,8 +129,8 @@ def test_preview_formats_legacy_excel_iso_dates_for_the_report(tmp_path: Path) -
                 equipment_id="DG-Q-0033",
                 equipment_name="Test Probe",
                 manufacturer="SunHo (SH9113)",
-                last_calibration_date="2024-08-08T00:00:00+00:00",
-                calibration_due_date="2025-08-07T00:00:00+00:00",
+                last_calibration_date=f"2024-08-08T00:00:00{timezone_suffix}",
+                calibration_due_date=f"2025-08-07T00:00:00{timezone_suffix}",
                 source_sheet="All Equip.",
             ),
         ),

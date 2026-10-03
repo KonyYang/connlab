@@ -116,8 +116,11 @@ Do not use a dated snapshot as a substitute for the code.
     N/A dates are not expired. For DG-L/L-series equipment, the catalog's `Not calibrated` marker
     is preserved in Last Cal. and does not count as missing calibration information; it is not a valid
     date/marker for Q-series equipment or Cal. Due. Actual missing names/manufacturers/dates and
-    invalid due dates still need attention. A completion-only dialog lists filled rows and unmatched/incomplete/
-    expired IDs. No duplicate-source warning or extra equipment authority revision is introduced.
+    invalid due dates still need attention. Healthy completion opens no dialog; only unmatched, incomplete,
+    or expired IDs appear with review guidance, without zero-count statistics or duplicate success details.
+    Equipment catalog reads prefer the existing offline `.xls` reader, falling back to read-only Excel
+    only when it cannot open the workbook; date normalization, row order, limits, and stable hash checks
+    remain unchanged. No duplicate-source warning or extra equipment authority revision is introduced.
     Only a genuinely missing selection opens DOCX upload or pasted-ID entry. A validated complete
     `EquipmentID.docx` is published without replacing an existing path, under the same project writer
     slot; redirected/missing parents and competing file creation fail closed. The saved selection is

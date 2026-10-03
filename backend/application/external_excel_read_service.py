@@ -144,6 +144,7 @@ class ExternalExcelReadService:
                     "Calibration Due Date",
                 ),
                 expected_sheet_name_patterns=(r".*calibration.*", r".*equipment.*"),
+                prefer_offline=True,
             )
             field_names = {
                 "equipment_id": "Equipment ID",
@@ -162,6 +163,7 @@ class ExternalExcelReadService:
                         "Calibration Due Date",
                     ),
                     expected_sheet_name_patterns=(r".*calibration.*", r".*equipment.*"),
+                    prefer_offline=True,
                 )
                 field_names = {
                     "equipment_id": "Equipment ID",
@@ -176,6 +178,7 @@ class ExternalExcelReadService:
                     expected_headers=LEGACY_EQUIPMENT_HEADERS,
                     expected_sheet_names=LEGACY_EQUIPMENT_SHEET_NAMES,
                     layout=legacy_equipment_excel_layout(),
+                    prefer_offline=True,
                 )
                 field_names = {
                     "equipment_id": "ID Number",

@@ -11,8 +11,28 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_EQUIPMENT_UPDATE_PERFORMANCE_FEEDBACK_20261003",
+    "summary": "优化设备清单更新耗时并仅展示异常待确认项",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "测量设备清单更新性能，优化只读台账查询与重复解析；保留来源哈希校验、报告保护、更新和History归档协议；正常完成不弹窗，仅异常或待确认项显示；实际页面验证",
+    "scope_paths": [
+      "backend/application/external_excel_read_service.py",
+      "backend/infrastructure/office",
+      "tests/unit",
+      "tests/integration/test_report_workspace_api.py",
+      "frontend/src/features/report-workspace",
+      "docs/PROJECT_CONTEXT.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "342058fb2393886dedef4a3e6fac493b11d28186",
+    "started_at": "2026-10-03T11:48:39.580110Z",
+    "updated_at": "2026-10-03T11:48:39.580110Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_FEE_GROUP_BASE_DEFAULTS_20261003",
     "tier": "standard",

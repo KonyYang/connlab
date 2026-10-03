@@ -55,6 +55,62 @@ def test_reads_xls_rows_with_xlsx_compatible_header_semantics(tmp_path: Path) ->
     )
 
 
+def test_offline_catalog_read_avoids_excel_startup_and_retains_dates(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    path = _xls_file(tmp_path)
+    book = _FakeXlrdBook([_FakeXlrdSheet("Equipment", [
+        ["Equipment ID", "Calibration Due Date"],
+        ["DG-Q-0033", _FakeXlrdDate(46601)],
+    ])])
+    monkeypatch.setattr(legacy_gateway.xlrd, "open_workbook", lambda *_args, **_kwargs: book)
+    lifecycle = _FakeLifecycle([], open_error=AssertionError("Do not start Excel for a readable catalog"))
+
+    result = OfficeFacade(lifecycle=lifecycle).read_excel_tabular_rows(
+        path, expected_headers=("Equipment ID", "Calibration Due Date"),
+        expected_sheet_names=("Equipment",), prefer_offline=True,
+    )
+
+    assert result.rows == ({"Equipment ID": "DG-Q-0033",
+        "Calibration Due Date": "2027-08-02T00:00:00", "__sheet_name": "Equipment"},)
+    assert lifecycle.open_calls == []
+    assert book.released is True
+
+
+def test_offline_catalog_read_retains_readonly_excel_fallback(tmp_path: Path) -> None:
+    path = _xls_file(tmp_path)
+    lifecycle = _FakeLifecycle([_FakeSheet("Equipment", _FakeUsedRange(
+        2, 2, (("Equipment ID", "Equipment Name"), ("DG-Q-0033", "Test Probe")),
+    ))])
+
+    result = OfficeFacade(lifecycle=lifecycle).read_excel_tabular_rows(
+        path, expected_headers=("Equipment ID", "Equipment Name"), prefer_offline=True,
+    )
+
+    assert result.rows[0]["Equipment Name"] == "Test Probe"
+    assert lifecycle.open_calls == [(path, None, True)]
+    assert lifecycle.handle.close_calls == [False]
+
+
+def test_offline_catalog_range_failure_releases_resources_without_excel_fallback(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    path = _xls_file(tmp_path)
+    sheet = _FakeXlrdSheet("Equipment", [["Equipment ID"]])
+    sheet.nrows = legacy_gateway.MAX_XLS_USED_RANGE_ROWS + 1
+    book = _FakeXlrdBook([sheet])
+    monkeypatch.setattr(legacy_gateway.xlrd, "open_workbook", lambda *_args, **_kwargs: book)
+    lifecycle = _FakeLifecycle([])
+
+    with pytest.raises(LegacyExcelRangeError):
+        OfficeFacade(lifecycle=lifecycle).read_excel_tabular_rows(
+            path, expected_headers=("Equipment ID",), prefer_offline=True,
+        )
+
+    assert lifecycle.open_calls == []
+    assert book.released is True
+
+
 def test_probe_uses_value2_only_when_value_read_fails(tmp_path: Path) -> None:
     path = _xls_file(tmp_path)
     used_range = _FakeUsedRange(
@@ -363,9 +419,10 @@ def test_facade_routes_only_xls_to_legacy_gateway(tmp_path: Path) -> None:
     facade = OfficeFacade(excel_gateway=accepted, legacy_excel_gateway=legacy)
 
     facade.probe_excel_structure(xlsx, expected_headers=("A",))
+    facade.read_excel_tabular_rows(xlsx, expected_headers=("A",), prefer_offline=True)
     facade.read_excel_tabular_rows(xls, expected_headers=("A",))
 
-    assert accepted.calls == [("probe", xlsx)]
+    assert accepted.calls == [("probe", xlsx), ("read", xlsx)]
     assert legacy.calls == [("read", xls)]
 
 
@@ -530,7 +587,10 @@ class _RecordingGateway:
         self.calls.append(("probe", path))
         return object()
 
-    def read_tabular_rows(self, path: Path, **_kwargs):
+    def read_tabular_rows(
+        self, path: Path, *, expected_headers, expected_sheet_names,
+        expected_sheet_name_patterns, layout,
+    ):
         self.calls.append(("read", path))
         return object()
 

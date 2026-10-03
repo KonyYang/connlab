@@ -177,14 +177,20 @@ class OfficeFacade:
         expected_sheet_names: tuple[str, ...] = (),
         expected_sheet_name_patterns: tuple[str, ...] = (),
         layout: ExcelTabularLayout | None = None,
+        prefer_offline: bool = False,
     ) -> ExcelTabularReadResult:
-        """Read header-aligned worksheet rows through the Excel gateway."""
+        """Read rows; saved-value catalogs may opt into offline-first legacy reading."""
         return self._tabular_gateway(Path(source_path)).read_tabular_rows(
             source_path,
             expected_headers=expected_headers,
             expected_sheet_names=expected_sheet_names,
             expected_sheet_name_patterns=expected_sheet_name_patterns,
             layout=layout,
+            **(
+                {"prefer_offline": True}
+                if prefer_offline and Path(source_path).suffix.lower() == ".xls"
+                else {}
+            ),
         )
 
     def open_excel_workbook(

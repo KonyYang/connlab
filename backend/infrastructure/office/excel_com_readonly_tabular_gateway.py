@@ -125,6 +125,7 @@ class ExcelComReadonlyTabularGateway:
         expected_sheet_names: tuple[str, ...] = (),
         expected_sheet_name_patterns: tuple[str, ...] = (),
         layout: ExcelTabularLayout | None = None,
+        prefer_offline: bool = False,
     ) -> ExcelTabularReadResult:
         path = self._validated_path(source_path)
         _sheet_names, sheets = self._read_matching_sheets(
@@ -132,6 +133,7 @@ class ExcelComReadonlyTabularGateway:
             expected_sheet_names,
             expected_sheet_name_patterns,
             normalize_exact=bool(layout and layout.require_unique_sheet_match),
+            prefer_offline=prefer_offline,
         )
         if not sheets:
             raise LegacyExcelReadError("No worksheet matched the expected sheet rules.")
@@ -204,7 +206,16 @@ class ExcelComReadonlyTabularGateway:
         expected_names: tuple[str, ...],
         expected_patterns: tuple[str, ...],
         normalize_exact: bool = False,
+        prefer_offline: bool = False,
     ) -> tuple[tuple[str, ...], list[tuple[str, list[list[str]]]]]:
+        if prefer_offline:
+            try:
+                return _read_xlrd_matching_sheets(
+                    path, expected_names, expected_patterns, normalize_exact=normalize_exact,
+                )
+            except LegacyExcelReadOnlyOpenError:
+                # Only an unsupported/open failure may fall back to Excel; data limits remain errors.
+                pass
         try:
             handle = self._lifecycle.open_excel_workbook(
                 path, modify_password=None, read_only=True
@@ -278,12 +289,16 @@ def _read_xlrd_matching_sheets(
     expected_patterns: tuple[str, ...],
     *,
     normalize_exact: bool,
-    com_error: Exception,
+    com_error: Exception | None = None,
 ) -> tuple[tuple[str, ...], list[tuple[str, list[list[str]]]]]:
-    """Read a legacy workbook without Excel when COM cannot open it."""
+    """Read saved legacy workbook values without starting Excel."""
     try:
         workbook = xlrd.open_workbook(str(path), on_demand=True)
     except Exception as fallback_error:
+        if com_error is None:
+            raise LegacyExcelReadOnlyOpenError(
+                f"Unable to open legacy .xls workbook with xlrd: {_summary(fallback_error)}"
+            ) from fallback_error
         if isinstance(com_error, OfficeAutomationUnavailable):
             raise LegacyExcelComUnavailableError(
                 "Legacy .xls reading requires Microsoft Excel COM and pywin32 on Windows; "

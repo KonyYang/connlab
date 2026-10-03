@@ -124,6 +124,7 @@ def test_read_equipment_rows_supports_legacy_all_equip_layout(tmp_path: Path) ->
     assert result.rows[0].last_calibration_date == "01 Jan 2025"
     assert result.rows[0].calibration_due_date == "01 Jan 2026"
     assert len(office.calls) == 3
+    assert all(call["prefer_offline"] is True for call in office.calls)
     legacy_layout = office.calls[2]["layout"]
     assert legacy_layout.header_row_number == 4
     assert legacy_layout.required_header_columns[0] == (

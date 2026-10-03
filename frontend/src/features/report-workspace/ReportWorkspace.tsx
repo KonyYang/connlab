@@ -538,7 +538,8 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
       setEquipmentSourceOpen(false);
       setEquipmentFile(null);
       setEquipmentIds("");
-      setEquipmentResult(result);
+      const { unmatched, incomplete, expired } = result.statistics;
+      setEquipmentResult(unmatched.length || incomplete.length || expired.length ? result : null);
       try { await refresh(); }
       catch { if (isCurrent()) setError("Equipment List was updated. Reload to refresh report status."); }
     } catch (reason) {
@@ -889,15 +890,11 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
         </EquipmentDialog>
       ) : null}
       {equipmentResult ? (
-        <EquipmentDialog title="Equipment List update completed" busy={false}
+        <EquipmentDialog title="Equipment List Needs Review" busy={false}
           returnFocusTarget={equipmentTrigger.current} onClose={() => setEquipmentResult(null)}>
-          <p>{equipmentResult.changed ? "Updated Equipment List." : "Equipment List was already up to date."}</p>
-          <p>{equipmentResult.file_name}</p>
-          {equipmentResult.archive_path ? <p>The previous report was archived in History/Report.</p> : null}
-          <p>Equipment rows filled: {equipmentResult.statistics.filled}</p>
-          <p>Not registered: {equipmentResult.statistics.unmatched.length}{equipmentResult.statistics.unmatched.length ? " — " + equipmentResult.statistics.unmatched.join(", ") : ""}</p>
-          <p>Missing information: {equipmentResult.statistics.incomplete.length}{equipmentResult.statistics.incomplete.length ? " — " + equipmentResult.statistics.incomplete.join(", ") : ""}</p>
-          <p>Expired calibration: {equipmentResult.statistics.expired.length}{equipmentResult.statistics.expired.length ? " — " + equipmentResult.statistics.expired.join(", ") + ". Calibration due dates are red in the report." : ""}</p>
+          {equipmentResult.statistics.unmatched.length ? <p>Not Registered: {equipmentResult.statistics.unmatched.join(", ")}. Check registration in the calibration workbook.</p> : null}
+          {equipmentResult.statistics.incomplete.length ? <p>Incomplete Information: {equipmentResult.statistics.incomplete.join(", ")}. Complete equipment details and calibration dates.</p> : null}
+          {equipmentResult.statistics.expired.length ? <p>Expired Calibration: {equipmentResult.statistics.expired.join(", ")}. Confirm calibration status before using these instruments. Calibration due dates are red in the report.</p> : null}
           <div className="report-workspace-action-row"><button type="button" onClick={() => setEquipmentResult(null)}>Close</button></div>
         </EquipmentDialog>
       ) : null}
