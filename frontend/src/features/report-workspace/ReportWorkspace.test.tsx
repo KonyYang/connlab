@@ -851,6 +851,20 @@ describe("ReportWorkspace", () => {
     expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
   });
 
+  it.each(["Cancel", "Escape"])("restores the generating button after %s even when opening the modal leaves focus on the page", async (cancelMethod) => {
+    const user = userEvent.setup();
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    const generate = await screen.findByRole("button", { name: "Generate customer report" });
+    // Native browsers can blur the trigger as soon as the modal disables it.
+    fireEvent.click(generate);
+    const dialog = await screen.findByRole("dialog", { name: "Archive and regenerate Customer Report" });
+    if (cancelMethod === "Cancel") await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    else await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(generate);
+    expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
+  });
+
   it("discards a pending customer archive approval when the project changes", async () => {
     const user = userEvent.setup();
     const view = render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);

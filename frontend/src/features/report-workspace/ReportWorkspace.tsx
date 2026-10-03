@@ -73,6 +73,7 @@ type CustomerRegenerationApproval = {
   internalSha: string;
   customerSha: string | null;
   fileName: string | null;
+  returnFocusTarget: HTMLButtonElement;
 };
 
 export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector Project" }: ReportWorkspaceProps): ReactElement {
@@ -357,7 +358,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     });
   }
 
-  async function handleGenerateCustomerReport(): Promise<void> {
+  async function handleGenerateCustomerReport(trigger: HTMLButtonElement): Promise<void> {
     if (!busyAction && !customerReportRecovery && currentReport?.status === "missing") {
       setError(null);
       setSourcePickerOpen(true);
@@ -376,6 +377,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
       internalSha: customerReport.internal_report_sha256,
       customerSha: customerReport.file_sha256,
       fileName: customerReport.file_name,
+      returnFocusTarget: trigger,
     };
     if (approval.fileName) {
       if (!approval.customerSha) {
@@ -666,7 +668,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                     customerJob.downloading ||
                     Boolean(customerReportRecovery)
                   }
-                  onClick={() => void handleGenerateCustomerReport()}
+                  onClick={(event) => void handleGenerateCustomerReport(event.currentTarget)}
                   type="button"
                 >
                   {busyAction === "customer" ? "Generating customer report..." : "Generate customer report"}
@@ -823,6 +825,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
       {customerRegenerationApproval?.fileName ? <CustomerReportRegenerationDialog
         fileName={customerRegenerationApproval.fileName}
         busy={pageBusyAction === "customer" || customerJob.busy}
+        returnFocusTarget={customerRegenerationApproval.returnFocusTarget}
         onCancel={() => setCustomerRegenerationApproval(null)}
         onConfirm={() => void performCustomerGeneration(customerRegenerationApproval)} /> : null}
 

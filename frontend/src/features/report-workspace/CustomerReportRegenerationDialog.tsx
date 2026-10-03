@@ -3,17 +3,17 @@ import { useEffect, useRef } from "react";
 type Props = {
   fileName: string;
   busy: boolean;
+  returnFocusTarget: HTMLButtonElement;
   onCancel: () => void;
   onConfirm: () => void;
 };
 
-export function CustomerReportRegenerationDialog({ fileName, busy, onCancel, onConfirm }: Props) {
+export function CustomerReportRegenerationDialog({ fileName, busy, returnFocusTarget, onCancel, onConfirm }: Props) {
   const dialog = useRef<HTMLElement>(null);
   useEffect(() => {
-    const previous = document.activeElement;
     dialog.current?.querySelector<HTMLButtonElement>("button")?.focus();
-    return () => { if (previous instanceof HTMLElement && previous.isConnected) previous.focus(); };
-  }, []);
+    return () => { if (returnFocusTarget.isConnected && !returnFocusTarget.disabled) returnFocusTarget.focus(); };
+  }, [returnFocusTarget]);
 
   return <div className="report-workspace-dialog-backdrop">
     <section ref={dialog} className="report-workspace-dialog report-workspace-regeneration-dialog"
