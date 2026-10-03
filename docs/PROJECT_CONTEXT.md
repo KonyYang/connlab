@@ -106,7 +106,8 @@ Do not use a dated snapshot as a substitute for the code.
   and Equipment List preview), and Customer Report. There is no numbered wizard or page-wide Confirm.
   LLCR import remains available before the initial report exists. Section updates preserve unrelated
   report content and manual edits; existing preview, confirmation and publication safeguards remain.
-- Internal Report displays its backend-resolved full file path once. The always-visible `Generate
+- The initial report card has no repeated title. Its left-aligned generation action is followed by
+  the current filename in green, without its directory path. The always-visible `Generate
   Internal Report` action initializes an empty slot or asks explicitly to `Archive and regenerate`.
   Cancel does not write files or metadata. A fresh report uses only the approved E-3707_H template,
   latest confirmed Basic Information and active confirmed Matrix; old manual content, results,

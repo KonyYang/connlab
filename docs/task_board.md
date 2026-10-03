@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_REPORT_REMOVE_DUPLICATE_HEADING_20261003",
     "summary": "移除报告卡片重复标题",
@@ -24,51 +24,17 @@
     "risk_reasons": [],
     "activation_head": "56db8460c4fb7846160724dc757ff899bfc6e870",
     "started_at": "2026-10-03T03:18:48.225658Z",
-    "updated_at": "2026-10-03T03:20:55.811629Z",
+    "updated_at": "2026-10-03T03:23:58.468312Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_REPORT_REMOVE_DUPLICATE_HEADING_20261003",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User feedback: show filename only below left-aligned Generate button in green; preserve all report workflows.",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_REPORT_REMOVE_DUPLICATE_HEADING_20261003",
-      "subject": "915fb3268fa92bdc3ea0adaa4681221929a7decd",
-      "summary": "Removed only first card's visible Internal Report heading and wrapper; retained accessible region label, report path and Generate action. No workflow, file or backend behavior changed.",
-      "scope_ok": true,
-      "changed_paths": [
-        "frontend/src/features/report-workspace/ReportWorkspace.tsx"
-      ],
-      "validation": [
-        {
-          "command": "npm run test -- --run src/features/report-workspace/ReportWorkspace.test.tsx src/features/report-workspace/reportWorkspaceModel.test.ts",
-          "status": "passed",
-          "result": "43 passed in 2 files; no skips."
-        },
-        {
-          "command": "In-app Browser actual project report-workspace; screenshot and DOM snapshot; git diff --check",
-          "status": "passed",
-          "result": "Visible heading removed, card height reduced, full path and Generate retained. Other headings/top buttons unchanged. Screenshot inspected, browser error logs empty, diff clean. No external file writes or generation."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "subject": "915fb3268fa92bdc3ea0adaa4681221929a7decd",
-          "result": "Single-agent micro implementation and exact diff self-review, no findings; three JSX lines removed."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "subject": "915fb3268fa92bdc3ea0adaa4681221929a7decd",
-        "result": "Clean committed master, only approved page changed plus sole-writer board registration; local only, await User close."
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_INTERNAL_REPORT_INITIALIZE_REGENERATE_20261003",

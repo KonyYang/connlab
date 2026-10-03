@@ -47,7 +47,6 @@ import {
   createLlcrDecisionDrafts,
   deriveReportEntryState,
   deriveReportWorkspaceReadiness,
-  currentReportDisplayPath,
   type EquipmentOverrideDrafts,
   type LlcrDecisionDrafts,
   type LlcrOutcome,
@@ -216,7 +215,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     () => deriveReportEntryState(currentReport),
     [currentReport]
   );
-  const reportPath = currentReportDisplayPath(currentReport);
+  const reportFileName = currentReport?.status === "ready" ? currentReport.file_name : null;
 
   async function handleInternalAction(action: "initial" | "open-folder", operation: (isCurrent: () => boolean) => Promise<void>): Promise<void> {
     if (busyAction) return;
@@ -549,12 +548,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
       {state && readiness ? (
         <div className="report-workspace-grid">
           <section className="report-workspace-card" aria-label="Internal Report">
-            <div className="report-workspace-report-row">
-              <div className="report-workspace-current-report">
-                {reportPath ? <strong className="report-workspace-report-path">{reportPath}</strong> : (
-                  <span className={`report-workspace-status report-workspace-status-${reportEntry.kind}`}>{reportEntry.statusLabel}</span>
-                )}
-              </div>
+            <div className="report-workspace-report-row report-workspace-initial-report">
               <div className="report-workspace-action-row">
                   <button
                     className="primary-action"
@@ -577,6 +571,11 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                 {currentReport?.status === "ready" && currentReport.mode !== "official" ? (
                   <button disabled={Boolean(busyAction)} onClick={() => void handleDownloadCurrent()} type="button">Download current report</button>
                 ) : null}
+              </div>
+              <div className="report-workspace-current-report">
+                {reportFileName ? <strong className="report-workspace-report-name">{reportFileName}</strong> : (
+                  <span className={`report-workspace-status report-workspace-status-${reportEntry.kind}`}>{reportEntry.statusLabel}</span>
+                )}
               </div>
             </div>
             {readiness.initialDraftBlocker ? <p className="report-workspace-blocker">{readiness.initialDraftBlocker}</p> : null}

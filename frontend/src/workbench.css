@@ -9771,6 +9771,11 @@
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.report-workspace-report-row.report-workspace-initial-report {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+}
+
 .report-workspace-update-row {
   border-top: 1px solid var(--color-border);
   padding-top: 10px;
@@ -9937,7 +9942,8 @@
   overflow-wrap: anywhere;
 }
 
-.report-workspace-report-path {
+.report-workspace-current-report .report-workspace-report-name {
+  color: var(--color-success);
   white-space: normal;
   word-break: break-word;
 }

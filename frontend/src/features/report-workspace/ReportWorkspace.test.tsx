@@ -226,7 +226,7 @@ describe("ReportWorkspace", () => {
     expect(api.openLocalProjectFolder).toHaveBeenCalledWith("project-1");
   });
 
-  it("shows the current full path once and confirms archive regeneration without writing on cancel", async () => {
+  it("shows only the current filename below Generate and confirms archive regeneration without writing on cancel", async () => {
     const user = userEvent.setup();
     vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({
       project_id: "project-1", status: "ready", preview_token: "c".repeat(64),
@@ -235,8 +235,10 @@ describe("ReportWorkspace", () => {
     });
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     const internal = await screen.findByRole("region", { name: "Internal Report" });
-    expect(within(internal).getAllByText(currentReport.file_path!)).toHaveLength(1);
-    expect(within(internal).queryByText(currentReport.file_name!)).toBeNull();
+    const filename = within(internal).getByText(currentReport.file_name!);
+    expect(within(internal).queryByText(currentReport.file_path!)).toBeNull();
+    const generate = within(internal).getByRole("button", { name: "Generate Internal Report" });
+    expect(generate.compareDocumentPosition(filename) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
     expect(within(internal).queryByText("Official project report")).toBeNull();
     expect(within(internal).queryByRole("button", { name: "Download current report" })).toBeNull();
     expect(within(internal).queryByRole("button", { name: /Open.*folder/ })).toBeNull();
@@ -260,14 +262,14 @@ describe("ReportWorkspace", () => {
     expect(api.generateInternalReport).not.toHaveBeenCalled();
   });
 
-  it("keeps the current path and actionable failure then obtains a new preview for retry", async () => {
+  it("keeps the current filename and actionable failure then obtains a new preview for retry", async () => {
     const user = userEvent.setup();
     vi.mocked(api.generateInternalReport).mockRejectedValueOnce(new Error("Confirmed authority changed. Preview generation again."));
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     await user.click(await screen.findByRole("button", { name: "Generate Internal Report" }));
     await user.click(await screen.findByRole("button", { name: "Archive and regenerate" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Confirmed authority changed. Preview generation again.");
-    expect(screen.getByText(currentReport.file_path!)).toBeTruthy();
+    expect(screen.getByText(currentReport.file_name!)).toBeTruthy();
     expect(screen.queryByRole("dialog", { name: "Archive and regenerate Internal Report" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Generate Internal Report" }));
     expect(api.previewInternalReportGeneration).toHaveBeenCalledTimes(2);
@@ -298,7 +300,7 @@ describe("ReportWorkspace", () => {
     const open = screen.getByRole("button", { name: "Open project folder" });
     await waitFor(() => expect(open.parentElement?.title).toBe(reason));
     expect(open.hasAttribute("disabled")).toBe(true);
-    expect(screen.getByText(currentReport.file_path!)).toBeTruthy();
+    expect(screen.getByText(currentReport.file_name!)).toBeTruthy();
     expect(api.openLocalProjectFolder).not.toHaveBeenCalled();
   });
 
@@ -384,7 +386,7 @@ describe("ReportWorkspace", () => {
         <ReportWorkspace projectId="project-1" identityLabel="DL-001 Connector Qualification Testing" onBack={onBack} />
       </AppShell>
     );
-    await screen.findByText(currentReport.file_path!);
+    await screen.findByText(currentReport.file_name!);
     expect(screen.getAllByRole("heading", { name: "Report Workspace" })).toHaveLength(1);
     const actions = screen.getByLabelText("Report Workspace actions");
     expect(screen.getByLabelText("Page actions").contains(actions)).toBe(true);
@@ -469,7 +471,7 @@ describe("ReportWorkspace", () => {
 
     expect(await screen.findByRole("heading", { name: "Report Workspace" })).toBeTruthy();
     expect(screen.queryByText("Project project-1")).toBeNull();
-    expect(screen.getAllByText(currentReport.file_path!).length).toBe(1);
+    expect(screen.getAllByText(currentReport.file_name!).length).toBe(1);
     expect(screen.queryByText("Confirmed Matrix r4")).toBeNull();
     expect(screen.queryByText("Basic Information v2")).toBeNull();
     expect(within(screen.getByRole("region", { name: "Internal Report" })).queryByText("Official project report")).toBeNull();
@@ -650,7 +652,7 @@ describe("ReportWorkspace", () => {
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
 
-    expect(await screen.findByText(managed.file_path!)).toBeTruthy();
+    expect(await screen.findByText(managed.file_name!)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Download current report" })).toBeTruthy();
     await user.click(
       screen.getByRole("button", { name: "Publish current draft to project folder" })
