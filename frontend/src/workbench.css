@@ -9968,7 +9968,7 @@
   overflow-wrap: anywhere;
 }
 
-.report-workspace-current-report .report-workspace-report-name {
+.report-workspace-report-name {
   color: var(--color-success);
   font-size: 13px;
   font-weight: 400;

@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_REPORT_COMBINED_GENERATION_SOURCE_PICKER_20261003",
     "summary": "合并报告生成区并支持内部报告缺失时选择已有 DOCX 生成客户报告下载副本",
@@ -26,77 +26,17 @@
     "risk_reasons": [],
     "activation_head": "d2b6b2b82ee016b2f9fb994dee81806c0482e94e",
     "started_at": "2026-10-03T03:43:49.089751Z",
-    "updated_at": "2026-10-03T04:03:07.682232Z",
+    "updated_at": "2026-10-03T04:17:28.682282Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_REPORT_COMBINED_GENERATION_SOURCE_PICKER_20261003",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User feedback: match customer filename typography and color to Internal Report",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_REPORT_COMBINED_GENERATION_SOURCE_PICKER_20261003",
-      "subject": "95805ac3bd4e9928843e3f4ecdedd375c9bc628e",
-      "summary": "合并左右报告生成区，绿色常规字体展示文件名；内部报告明确缺失时可选择已有 DOCX，通过既有 Tools API 生成下载副本；不改变项目发布或原文件。",
-      "scope_ok": true,
-      "changed_paths": [
-        "docs/PROJECT_CONTEXT.md",
-        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-        "frontend/src/features/report-workspace/CustomerReportSourceDialog.tsx",
-        "frontend/src/features/report-workspace/useUploadedCustomerReportJob.ts",
-        "frontend/src/features/report-workspace/useUploadedCustomerReportJob.test.tsx",
-        "frontend/src/workbench.css"
-      ],
-      "validation": [
-        {
-          "command": "npm test -- src/features/report-workspace/ReportWorkspace.test.tsx src/features/report-workspace/useUploadedCustomerReportJob.test.tsx src/features/report-workspace/useCustomerReportJob.test.tsx",
-          "status": "passed",
-          "result": "58 affected tests passed; RED/GREEN observed for merged layout, source selection and operation expiry."
-        },
-        {
-          "command": "scripts/run_tests.ps1 -Suite Frontend",
-          "status": "passed",
-          "result": "785 tests passed, 1 opt-in profile test skipped; TypeScript and Vite production build passed sequentially."
-        },
-        {
-          "command": "In-app browser UI smoke",
-          "status": "passed",
-          "result": "Observed merged buttons and green normal filename at a7a5a11d; missing report at 1fb51ec opens source picker and Cancel restores actions; no browser errors. Did not execute Office conversion or modify business reports; existing Internal Report SHA256 unchanged."
-        },
-        {
-          "command": "git diff --check",
-          "status": "passed",
-          "result": "No whitespace errors; final scope and clean tree verified."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "subject": "95805ac3bd4e9928843e3f4ecdedd375c9bc628e",
-          "result": "Astra implementation with public UI/API boundary TDD and affected regression tests."
-        },
-        "reviewer": {
-          "status": "passed",
-          "subject": "95805ac3bd4e9928843e3f4ecdedd375c9bc628e",
-          "result": "Distinct focused same-agent Standards and Spec passes; zero unresolved findings. Not an independent agent review."
-        },
-        "qa": {
-          "status": "passed",
-          "subject": "95805ac3bd4e9928843e3f4ecdedd375c9bc628e",
-          "result": "Same-agent final QA pass on exact final code/test bytes: complete frontend test/build and safe UI smoke. Existing Office conversion engine unchanged and not revalidated."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "subject": "95805ac3bd4e9928843e3f4ecdedd375c9bc628e",
-        "result": "Scoped local master commit with clean worktree; no unrelated files and no remote publication."
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_REPORT_REMOVE_DUPLICATE_HEADING_20261003",
