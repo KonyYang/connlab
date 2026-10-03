@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_EQUIPMENT_UPDATE_PERFORMANCE_FEEDBACK_20261003",
     "summary": "优化设备清单更新耗时并仅展示异常待确认项",
@@ -29,9 +29,85 @@
     "risk_reasons": [],
     "activation_head": "342058fb2393886dedef4a3e6fac493b11d28186",
     "started_at": "2026-10-03T11:48:39.580110Z",
-    "updated_at": "2026-10-03T11:48:39.580110Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-03T12:09:24.128134Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_EQUIPMENT_UPDATE_PERFORMANCE_FEEDBACK_20261003",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "integration": {
+        "result": "Local exact validated subject committed, clean working tree; not pushed",
+        "branch": "master",
+        "status": "passed"
+      },
+      "summary": "设备台账离线优先读取，保留只读Excel回退及完整来源/History保护；正常完成不弹窗，仅实际设备问题显示处理提示。",
+      "subject": "b5e3044770019e9d39927fcd243f5c0dbc24650b",
+      "task_id": "TASK_EQUIPMENT_UPDATE_PERFORMANCE_FEEDBACK_20261003",
+      "schema": "connlab.sol-task-report",
+      "changed_paths": [
+        "backend/application/external_excel_read_service.py",
+        "backend/infrastructure/office/excel_com_readonly_tabular_gateway.py",
+        "backend/infrastructure/office/office_facade.py",
+        "docs/PROJECT_CONTEXT.md",
+        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+        "tests/unit/test_equipment_report_update_service.py",
+        "tests/unit/test_excel_com_readonly_tabular_gateway.py",
+        "tests/unit/test_external_excel_read_service.py"
+      ],
+      "scope_ok": true,
+      "validation": [
+        {
+          "name": "backend affected matrix",
+          "result": "117 passed; existing Starlette/httpx deprecation warning",
+          "status": "passed"
+        },
+        {
+          "name": "Report frontend suite",
+          "result": "85 passed",
+          "status": "passed"
+        },
+        {
+          "name": "TypeScript and Vite build",
+          "result": "passed",
+          "status": "passed"
+        },
+        {
+          "name": "real catalog differential",
+          "result": "373 rows; only optional UTC offset representation differs; 9 project rows, warnings and blockers identical",
+          "status": "passed"
+        },
+        {
+          "name": "actual browser smoke",
+          "result": "Repeated click-to-completion 2472ms and 6926ms; no healthy dialog; report SHA256 and History file count unchanged",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "qa": {
+          "context": "same agent final affected matrix and actual browser",
+          "result": "117 backend / 85 frontend / production build / real Office differential",
+          "status": "passed"
+        },
+        "reviewer": {
+          "context": "same agent focused sequential review, not independent",
+          "standards_findings": 0,
+          "status": "passed",
+          "spec_findings": 0
+        },
+        "developer": {
+          "context": "current agent",
+          "result": "Meaningful backend/frontend RED then targeted GREEN; no authority/publication protocol changes",
+          "status": "passed"
+        }
+      },
+      "version": 1
+    }
   },
   "last_closed": {
     "task_id": "TASK_FEE_GROUP_BASE_DEFAULTS_20261003",
