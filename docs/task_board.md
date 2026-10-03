@@ -11,8 +11,29 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_TEMPERATURE_RISE_TOOL_20261003",
+    "summary": "Standalone temperature rise and derating import preview and workbook tool",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Independent Tools workflow, read-only uploads, full precision calculation and new workbook output",
+    "scope_paths": [
+      "backend/modules/temperature_rise",
+      "backend/application/tools_temperature_rise_service.py",
+      "backend/infrastructure/office/temperature_rise_workbook_gateway.py",
+      "backend/api/routes_tools.py",
+      "backend/api/dependencies.py",
+      "frontend/src",
+      "tests"
+    ],
+    "risk_reasons": [],
+    "activation_head": "184cdfe4e2101d183f44780c964f9d6bc0fcc1ee",
+    "started_at": "2026-10-03T16:20:35.945809Z",
+    "updated_at": "2026-10-03T16:20:35.945809Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_TOOLS_CONCISE_UI_20261003",
     "tier": "micro",

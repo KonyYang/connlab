@@ -9,6 +9,7 @@ import {
   type StandaloneCustomerReportJob,
 } from "../api/client";
 import { EquipmentListTool } from "../features/tools/EquipmentListTool";
+import { TemperatureRiseTool } from "../features/tools/TemperatureRiseTool";
 import "../tools.css";
 
 type ToolKey = "customer-report" | "encrypt-copy";
@@ -122,6 +123,7 @@ export function ToolsPage(): ReactElement {
         />
         <EquipmentListTool />
       </div>
+      <TemperatureRiseTool />
     </section>
   );
 }

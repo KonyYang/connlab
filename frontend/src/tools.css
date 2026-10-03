@@ -109,3 +109,20 @@
 .tools-equipment-review { border: 1px solid var(--color-border); border-radius: 10px; padding: 12px; overflow-wrap: anywhere; }
 .tools-equipment-review h4 { margin: 0 0 8px; font-size: 14px; color: var(--color-warning); }
 .tools-equipment-review p { font-size: 14px; color: var(--color-warning); }
+
+.temperature-controls { display: grid; gap: 14px; min-width: 0; margin: 0; padding: 16px; border: 1px solid var(--color-border); border-radius: 10px; }
+.temperature-controls legend { font-weight: 700; }
+.temperature-controls label { display: flex; align-items: center; gap: 8px; }
+.temperature-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.temperature-fields label { flex-wrap: wrap; }
+.temperature-controls input:not([type="checkbox"]), .temperature-controls select { min-width: 0; max-width: 100%; padding: 8px; color: var(--color-ink); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 6px; font: inherit; }
+.temperature-table-scroll { max-width: 100%; overflow-x: auto; }
+.temperature-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.temperature-table th, .temperature-table td { border-bottom: 1px solid var(--color-border); padding: 8px; text-align: left; }
+.temperature-table th { background: var(--color-surface-muted); }
+.temperature-table input:not([type="checkbox"]) { width: 100%; box-sizing: border-box; }
+.temperature-records { max-height: 320px; overflow-y: auto; }
+.temperature-actions { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+.temperature-results { display: grid; gap: 14px; }
+.temperature-rise-tool input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; flex: 0 0 16px; accent-color: var(--color-primary); }
+@media (max-width: 760px) { .temperature-fields { grid-template-columns: 1fr; } }
