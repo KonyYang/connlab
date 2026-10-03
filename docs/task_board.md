@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TOOLS_EQUIPMENT_LIST_UPDATE_20261003",
     "summary": "Tools 添加任意内部报告设备清单更新快捷工具",
@@ -35,9 +35,90 @@
     "risk_reasons": [],
     "activation_head": "a0529e90b7952e83d3b06f67d677423e6b2d1bba",
     "started_at": "2026-10-03T12:54:03.891740Z",
-    "updated_at": "2026-10-03T12:54:03.891740Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-03T13:26:10.784086Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_TOOLS_EQUIPMENT_LIST_UPDATE_20261003",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "task_id": "TASK_TOOLS_EQUIPMENT_LIST_UPDATE_20261003",
+      "version": 1,
+      "scope_ok": true,
+      "validation": [
+        {
+          "detail": "109 affected tests passed; one pre-existing Starlette deprecation warning; Office-marked tests excluded",
+          "status": "passed",
+          "name": "Backend QA"
+        },
+        {
+          "detail": "74 tests passed: ToolsPage, equipment API, ReportWorkspace, App",
+          "status": "passed",
+          "name": "Frontend QA"
+        },
+        {
+          "detail": "TypeScript and Vite production build passed",
+          "status": "passed",
+          "name": "Build"
+        },
+        {
+          "detail": "Final code: document mode 1.98s, 12 rows, only DG-Q-0185 unmatched; text mode 1.34s, 1 deduplicated healthy row. Both original hashes and unrelated manual report content unchanged. Requests use running Vite proxy; no project data mutated.",
+          "status": "passed",
+          "name": "Live API"
+        },
+        {
+          "detail": "Checked missing report, source switching, text entry, and narrow layout. Radios are 16x16. Browser upload automation unavailable; successful file updates/downloads verified at live API plus frontend tests, not claimed as full manual UI upload.",
+          "status": "passed",
+          "name": "Browser interaction"
+        },
+        {
+          "detail": "Exact changed files reviewed; diff check passed; clean local master",
+          "status": "passed",
+          "name": "Diff"
+        }
+      ],
+      "summary": "Tools 新增兼容内部报告设备清单快捷更新，下载副本且保留原件和项目权威",
+      "roles": {
+        "qa": {
+          "context": "Same-agent final affected matrix on reviewed final bytes",
+          "status": "passed"
+        },
+        "developer": {
+          "context": "Same-agent implementation and TDD RED/GREEN at public service/API/UI boundaries",
+          "status": "passed"
+        },
+        "reviewer": {
+          "context": "Separate focused Standards and Spec passes by same agent; zero material remaining findings; no independent-agent claim",
+          "status": "passed"
+        }
+      },
+      "schema": "connlab.sol-task-report",
+      "integration": {
+        "detail": "Exact verified subject committed on clean local master; not published",
+        "status": "passed"
+      },
+      "subject": "757c39d6df9a21cf1d9e430ebe4c3760f108ead7",
+      "changed_paths": [
+        "backend/api/dependencies.py",
+        "backend/api/routes_tools.py",
+        "backend/application/equipment_report_update_service.py",
+        "backend/application/tools_equipment_report_service.py",
+        "backend/infrastructure/office/test_report_document_gateway.py",
+        "docs/PROJECT_CONTEXT.md",
+        "frontend/src/api/client.ts",
+        "frontend/src/api/toolsEquipment.test.ts",
+        "frontend/src/features/tools/EquipmentListTool.tsx",
+        "frontend/src/pages/ToolsPage.test.tsx",
+        "frontend/src/pages/ToolsPage.tsx",
+        "frontend/src/tools.css",
+        "tests/integration/test_tools_equipment_report_api.py",
+        "tests/unit/test_tools_equipment_report_service.py"
+      ]
+    }
   },
   "last_closed": {
     "task_id": "TASK_EQUIPMENT_UPDATE_PERFORMANCE_FEEDBACK_20261003",
