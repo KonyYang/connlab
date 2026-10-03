@@ -560,3 +560,64 @@ def test_one_click_revalidation_rejects_equipment_source_or_catalog_drift(tmp_pa
     updates.update_equipment_list = staging_update
     with pytest.raises(EquipmentReportUpdateError, match="sources changed"):
         service.update_one_click(project_id="P1", updated_by="Operator")
+
+
+@pytest.mark.parametrize("equipment_id", ["DG-L-0002", "DG-L-0005"])
+def test_non_calibrated_l_equipment_preserves_last_calibration_marker_without_missing_warning(
+    tmp_path: Path, equipment_id: str,
+) -> None:
+    service, updates = _service(tmp_path, (equipment_id,), (
+        EquipmentCalibrationRow(equipment_id=equipment_id, equipment_name="Lab fixture",
+            manufacturer="Maker", last_calibration_date="Not calibrated",
+            calibration_due_date="N/A", source_sheet="All Equip."),
+    ))
+    result = service.update_one_click(project_id="P1", updated_by="Operator")
+    assert result.status == "completed"
+    assert result.rows[0].last_calibration == "Not calibrated"
+    assert result.rows[0].status == "matched"
+    assert result.rows[0].expired is False
+    assert updates.commands[0].rows[0].last_calibration == "Not calibrated"
+
+
+@pytest.mark.parametrize("equipment_id,marker", [
+    ("L-0002", " not calibrated "),
+    ("dg-l-0005", " \tNOT  calibrated\n"),
+])
+def test_non_calibrated_marker_accepts_l_alias_case_and_whitespace_but_preserves_text(
+    tmp_path: Path, equipment_id: str, marker: str,
+) -> None:
+    service, _ = _service(tmp_path, (equipment_id,), (
+        EquipmentCalibrationRow(equipment_id=equipment_id, equipment_name="Lab fixture",
+            manufacturer="Maker", last_calibration_date=marker,
+            calibration_due_date="Not applicable", source_sheet="All Equip."),
+    ))
+    row = service.update_one_click(project_id="P1", updated_by="Operator").rows[0]
+    assert row.last_calibration == marker.strip()
+    assert row.status == "matched"
+    assert row.expired is False
+
+
+@pytest.mark.parametrize("equipment_id,last_calibration,manufacturer,due", [
+    ("DG-Q-0033", "Not calibrated", "Maker", "N/A"),
+    ("DG-L-0002", None, "Maker", "N/A"),
+    ("DG-L-0002", "Not calibrated", None, "N/A"),
+    ("DG-L-0002", "Not calibrated", "Maker", "Unknown due"),
+    ("DG-L-0002", "Not calibrated", "Maker", "Not calibrated"),
+])
+def test_non_calibrated_l_marker_does_not_hide_other_missing_or_invalid_fields(
+    tmp_path: Path, equipment_id: str, last_calibration: str | None,
+    manufacturer: str | None, due: str,
+) -> None:
+    service, _ = _service(tmp_path, (equipment_id,), (
+        EquipmentCalibrationRow(equipment_id=equipment_id, equipment_name="Lab fixture",
+            manufacturer=manufacturer, last_calibration_date=last_calibration,
+            calibration_due_date=due, source_sheet="All Equip."),
+    ))
+    row = service.update_one_click(project_id="P1", updated_by="Operator").rows[0]
+    assert row.status == "incomplete"
+    if equipment_id.startswith("DG-Q") or last_calibration is None:
+        assert row.last_calibration == ""
+    if manufacturer is None:
+        assert row.manufacturer == ""
+    if due != "N/A":
+        assert row.calibration_due == ""

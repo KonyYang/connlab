@@ -324,6 +324,7 @@ class EquipmentReportUpdateService:
                     catalog_row.last_calibration_date,
                     label="Last Cal.",
                     issues=issues,
+                    allow_not_calibrated=bool(re.fullmatch(r"L-\d{4}", equipment_reference_key(id_number))),
                 )
                 calibration_due = _safe_report_date(
                     catalog_row.calibration_due_date,
@@ -491,12 +492,15 @@ def _safe_report_date(
     *,
     label: str,
     issues: list[str],
+    allow_not_calibrated: bool = False,
 ) -> str:
     cleaned = (value or "").strip()
     if not cleaned:
         issues.append(label)
         return ""
     if _is_not_applicable(cleaned):
+        return cleaned
+    if allow_not_calibrated and " ".join(cleaned.split()).casefold() == "not calibrated":
         return cleaned
     parsed = _parse_date(cleaned)
     if parsed is None:

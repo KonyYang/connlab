@@ -113,7 +113,10 @@ Do not use a dated snapshot as a substitute for the code.
     in source order, joins the Settings calibration workbook in read order (first match wins), and
     updates only the current report's Section 7 table. Unregistered IDs retain ID-only rows, incomplete
     fields stay blank, and calibration due dates earlier than the operation day are red; today and
-    N/A dates are not expired. A completion-only dialog lists filled rows and unmatched/incomplete/
+    N/A dates are not expired. For DG-L/L-series equipment, the catalog's `Not calibrated` marker
+    is preserved in Last Cal. and does not count as missing calibration information; it is not a valid
+    date/marker for Q-series equipment or Cal. Due. Actual missing names/manufacturers/dates and
+    invalid due dates still need attention. A completion-only dialog lists filled rows and unmatched/incomplete/
     expired IDs. No duplicate-source warning or extra equipment authority revision is introduced.
     Only a genuinely missing selection opens DOCX upload or pasted-ID entry. A validated complete
     `EquipmentID.docx` is published without replacing an existing path, under the same project writer
