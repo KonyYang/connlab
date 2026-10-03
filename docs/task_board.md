@@ -11,101 +11,42 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
-    "task_id": "TASK_REPORT_COMBINED_GENERATION_SOURCE_PICKER_20261003",
-    "summary": "合并报告生成区并支持内部报告缺失时选择已有 DOCX 生成客户报告下载副本",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "前端合并生成区；复用现有 Tools 异步转换 API，不变更项目正式发布逻辑；保留进度和错误恢复",
+    "task_id": "TASK_CUSTOMER_REPORT_SAFE_REGENERATION_DRAFT_20261003",
+    "summary": "Customer Report 安全重新生成与 Draft 下载",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Customer Report 已存在时确认归档重新生成或取消；显式重新生成即使相同内容也归档；缺失项目文件夹走已有下载通道并使用 draft 后缀；保留现有来源、指纹、锁和失败恢复，LLCR及Equipment更新行为不变",
     "scope_paths": [
-      "frontend/src/features/report-workspace",
-      "frontend/src/workbench.css",
+      "backend/application/customer_report_projection_service.py",
+      "backend/infrastructure/files/report_publication_gateway.py",
+      "tests/unit/test_customer_report_projection_service.py",
+      "tests/unit/test_report_publication_gateway.py",
+      "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+      "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+      "frontend/src/features/report-workspace/CustomerReportRegenerationDialog.tsx",
+      "frontend/src/features/report-workspace/useUploadedCustomerReportJob.ts",
+      "frontend/src/features/report-workspace/useUploadedCustomerReportJob.test.tsx",
       "docs/PROJECT_CONTEXT.md"
     ],
-    "risk_reasons": [],
-    "activation_head": "d2b6b2b82ee016b2f9fb994dee81806c0482e94e",
-    "started_at": "2026-10-03T03:43:49.089751Z",
-    "updated_at": "2026-10-03T04:26:58.106908Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_REPORT_COMBINED_GENERATION_SOURCE_PICKER_20261003",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_REPORT_COMBINED_GENERATION_SOURCE_PICKER_20261003",
-      "subject": "b826bf1ce2f17de02378f83016fd13459e3d036a",
-      "summary": "验收反馈已处理：客户报告完成后的进度、耗时卡片和重复下载完成提示不再常驻；绿色文件名保留，排队/运行中的进度、失败和重试继续可见。项目发布与选文件生成逻辑不变。",
-      "scope_ok": true,
-      "changed_paths": [
-        "docs/PROJECT_CONTEXT.md",
-        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-        "frontend/src/features/report-workspace/CustomerReportSourceDialog.tsx",
-        "frontend/src/features/report-workspace/useUploadedCustomerReportJob.ts",
-        "frontend/src/features/report-workspace/useUploadedCustomerReportJob.test.tsx",
-        "frontend/src/workbench.css"
-      ],
-      "validation": [
-        {
-          "command": "npm test -- src/features/report-workspace/ReportWorkspace.test.tsx src/features/report-workspace/useCustomerReportJob.test.tsx src/features/report-workspace/useUploadedCustomerReportJob.test.tsx",
-          "status": "passed",
-          "result": "58 related tests passed on final bytes. Meaningful RED: two completed-state UI assertions failed before fix; GREEN covers official/managed/uploaded completion plus running progress and publication failure."
-        },
-        {
-          "command": "npm run build",
-          "status": "passed",
-          "result": "Final TypeScript and Vite production build passed sequentially after tests."
-        },
-        {
-          "command": "In-app browser smoke",
-          "status": "passed",
-          "result": "a7a5a11d report workspace now shows both green filenames without completed/elapsed card; no browser errors and no report generation triggered. Visual evidence tmp/report-completed-status-removed-20261003.png."
-        },
-        {
-          "command": "git diff --check",
-          "status": "passed",
-          "result": "Exact revision limited to UI rendering guards and regression assertions, plus board; clean scoped commit."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "subject": "b826bf1ce2f17de02378f83016fd13459e3d036a",
-          "result": "TDD UI-seam RED/GREEN; no hook, backend, filesystem or authority changes in this revision."
-        },
-        "reviewer": {
-          "status": "passed",
-          "subject": "b826bf1ce2f17de02378f83016fd13459e3d036a",
-          "result": "Focused same-agent Standards and Spec review of exact revision: zero findings; completed state removed in both workflows, running progress and errors retained."
-        },
-        "qa": {
-          "status": "passed",
-          "subject": "b826bf1ce2f17de02378f83016fd13459e3d036a",
-          "result": "Risk-proportionate final QA: all 58 report-area tests, production build and actual completed-project browser view passed. Unaffected full frontend suite and Office engine not rerun or claimed as current executions."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "subject": "b826bf1ce2f17de02378f83016fd13459e3d036a",
-        "result": "Scoped local master commit, clean tree, no unrelated changes or remote publication."
-      }
-    }
+    "risk_reasons": [
+      "Explicit regeneration archives and replaces an authoritative external customer report"
+    ],
+    "activation_head": "152ae46d0a8ba3162ac22820664f103dd599428b",
+    "started_at": "2026-10-03T06:26:35.015541Z",
+    "updated_at": "2026-10-03T06:26:35.015541Z",
+    "checkpoint": null,
+    "report": null
   },
   "last_closed": {
-    "task_id": "TASK_REPORT_REMOVE_DUPLICATE_HEADING_20261003",
-    "tier": "micro",
-    "subject": "a6d4b4a00c45eb58a3ced61868b0baac10e6da21",
-    "summary": "移除报告卡片重复标题",
+    "task_id": "TASK_REPORT_COMBINED_GENERATION_SOURCE_PICKER_20261003",
+    "tier": "standard",
+    "subject": "b826bf1ce2f17de02378f83016fd13459e3d036a",
+    "summary": "合并报告生成区并支持内部报告缺失时选择已有 DOCX 生成客户报告下载副本",
     "disposition": "completed",
-    "decision_ref": "User final close: 关闭",
-    "closed_at": "2026-10-03T03:30:30.636966Z"
+    "decision_ref": "User authorizes closing current task and opening Customer Report 安全重新生成与 Draft 下载",
+    "closed_at": "2026-10-03T06:26:35.015541Z"
   },
   "retained_history": [
     {
