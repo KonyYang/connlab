@@ -549,9 +549,6 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
       {state && readiness ? (
         <div className="report-workspace-grid">
           <section className="report-workspace-card" aria-label="Internal Report">
-            <div className="report-workspace-card-heading">
-              <div><h2>Internal Report</h2></div>
-            </div>
             <div className="report-workspace-report-row">
               <div className="report-workspace-current-report">
                 {reportPath ? <strong className="report-workspace-report-path">{reportPath}</strong> : (

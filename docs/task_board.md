@@ -11,8 +11,23 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_REPORT_REMOVE_DUPLICATE_HEADING_20261003",
+    "summary": "移除报告卡片重复标题",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Remove only the visible Internal Report heading and its empty heading wrapper from first report card; retain accessible region label, current path, generation action and all workflow behavior. Validate existing related UI tests and actual browser.",
+    "scope_paths": [
+      "frontend/src/features/report-workspace/ReportWorkspace.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "56db8460c4fb7846160724dc757ff899bfc6e870",
+    "started_at": "2026-10-03T03:18:48.225658Z",
+    "updated_at": "2026-10-03T03:18:48.225658Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_INTERNAL_REPORT_INITIALIZE_REGENERATE_20261003",
     "tier": "high_risk",
