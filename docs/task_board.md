@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_REPORT_REMOVE_DUPLICATE_HEADING_20261003",
     "summary": "移除报告卡片重复标题",
@@ -24,17 +24,59 @@
     "risk_reasons": [],
     "activation_head": "56db8460c4fb7846160724dc757ff899bfc6e870",
     "started_at": "2026-10-03T03:18:48.225658Z",
-    "updated_at": "2026-10-03T03:23:58.468312Z",
+    "updated_at": "2026-10-03T03:29:29.197725Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_REPORT_REMOVE_DUPLICATE_HEADING_20261003",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User feedback: show filename only below left-aligned Generate button in green; preserve all report workflows.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_REPORT_REMOVE_DUPLICATE_HEADING_20261003",
+      "subject": "a6d4b4a00c45eb58a3ced61868b0baac10e6da21",
+      "summary": "Removed repeated card heading. Generate is left-aligned above filename only; filename green,13px,normal400 weight. No report generation/archive/file behaviors changed.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+        "frontend/src/workbench.css",
+        "docs/PROJECT_CONTEXT.md"
+      ],
+      "validation": [
+        {
+          "command": "npm run test -- --run src/features/report-workspace/ReportWorkspace.test.tsx src/features/report-workspace/reportWorkspaceModel.test.ts",
+          "status": "passed",
+          "result": "Final exact bytes43passed,0skips. TDD filename-only test RED on prior path display thenGREEN; filename order and existing cancel/retry/managed publication flows covered."
+        },
+        {
+          "command": "npm run build",
+          "status": "passed",
+          "result": "Final exact bytes tsc-b/Vite passed157modules, no warnings."
+        },
+        {
+          "command": "In-app browser actual report workspace738px screenshot inspection; git diff --check",
+          "status": "passed",
+          "result": "Filename only under left Generate,green normal text; no repeated heading/path. Viewed tmp/report-filename-normal-20261003.png; logs empty. No external report writes. diff clean."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "subject": "a6d4b4a00c45eb58a3ced61868b0baac10e6da21",
+          "result": "Single-agent micro implementation plus code-review self-review: Standards0findings,Spec0findings; TDD public UI boundary; no independent agents claimed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "subject": "a6d4b4a00c45eb58a3ced61868b0baac10e6da21",
+        "result": "Clean local master,4product paths coherent in-scope feedback; doc updated. Await User close; no push."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_INTERNAL_REPORT_INITIALIZE_REGENERATE_20261003",
