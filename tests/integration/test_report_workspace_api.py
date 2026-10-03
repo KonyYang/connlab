@@ -32,6 +32,7 @@ from backend.application.current_report_update_service import (
 from backend.application.equipment_report_update_service import (
     EquipmentListPreview,
     EquipmentListReportRow,
+    EquipmentListOneClickResult,
 )
 from backend.domain import ExternalResource, ExternalResourceType, ExternalResourceValidationStatus
 from backend.domain.result_dataset_models import LlcrImportPreview, ReportDraftRevision
@@ -276,6 +277,29 @@ def test_equipment_list_preview_and_controlled_update(tmp_path: Path) -> None:
     assert updated.status_code == 200
     assert updated.json()["file_name"] == report_path.name
     assert equipment_service.command.acknowledge_expired is True
+
+
+def test_equipment_one_click_returns_completed_statistics_and_accepts_pasted_input(tmp_path: Path) -> None:
+    service = _EquipmentService(CurrentReportArtifact(status="ready", mode="official",
+        file_name="report.docx", file_path=tmp_path / "report.docx", file_sha256="a" * 64,
+        history_root=tmp_path / "History"), tmp_path)
+    app.dependency_overrides[get_equipment_report_update_service] = lambda: service
+    response = TestClient(app).post("/api/projects/P1/report-workspace/current-report/equipment/update",
+        data={"references_text": "DG-Q-0033", "updated_by": "Operator"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "completed"
+    assert response.json()["statistics"] == {
+        "filled": 1, "unmatched": [], "incomplete": [], "expired": ["DG-Q-0033"]}
+    assert service.one_click_input == ("DG-Q-0033", None)
+
+
+def test_equipment_one_click_missing_source_returns_only_input_requirement(tmp_path: Path) -> None:
+    service = _EquipmentService(CurrentReportArtifact(status="missing", mode=None,
+        file_name=None, file_path=None, file_sha256=None, history_root=None), tmp_path)
+    service.update_one_click = lambda **kwargs: EquipmentListOneClickResult("source_required")
+    app.dependency_overrides[get_equipment_report_update_service] = lambda: service
+    response = TestClient(app).post("/api/projects/P1/report-workspace/current-report/equipment/update")
+    assert response.json() == {"status": "source_required", "project_id": "P1"}
 
 
 def test_current_customer_report_state_generate_and_download(tmp_path: Path) -> None:
@@ -548,6 +572,11 @@ class _EquipmentService:
             archive_path=self.tmp_path / "History" / "Report" / "old.docx",
             updated_by=command.updated_by,
         )
+
+    def update_one_click(self, *, project_id, updated_by, references_text=None, content=None):
+        self.one_click_input = (references_text, content)
+        result = self.update(SimpleNamespace(project_id=project_id, updated_by=updated_by))
+        return EquipmentListOneClickResult("completed", result, self.preview(project_id=project_id).rows)
 
 
 class _CustomerProjectionService:

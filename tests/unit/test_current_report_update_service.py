@@ -272,6 +272,34 @@ def test_llcr_update_rejects_dataset_stale_for_active_matrix(tmp_path: Path) -> 
         service.preview_llcr_update(project_id="P1", dataset_id="dataset-1")
 
 
+@pytest.mark.parametrize("unchanged,reject_on_call", [(False, 2), (False, 3), (True, 2)])
+def test_equipment_source_revalidation_preserves_report_and_history_on_staging_drift(
+    tmp_path: Path, unchanged: bool, reject_on_call: int,
+) -> None:
+    official = tmp_path / "official"
+    official.mkdir()
+    report = official / "DL-001 Product Qualification Testing Report_Rev_A.docx"
+    original = b"purpose|new-equipment" if unchanged else b"purpose|old-equipment"
+    report.write_bytes(original)
+    service = _service(tmp_path, workspace=_workspace(tmp_path, official), reports=())
+    current = service.get_current_report("P1")
+    calls = 0
+    def check_sources():
+        nonlocal calls
+        calls += 1
+        if calls == reject_on_call:
+            raise CurrentReportUpdateError("Equipment sources changed during update.")
+    with pytest.raises(CurrentReportUpdateError, match="sources changed"):
+        service.update_equipment_list(UpdateCurrentEquipmentListReportCommand(
+            project_id="P1", expected_report_sha256=current.file_sha256 or "",
+            rows=(SimpleNamespace(id_number="DG-Q-0033"),), updated_by="Operator",
+            revalidate_sources=check_sources,
+        ))
+    assert report.read_bytes() == original
+    assert not (tmp_path / "History").exists()
+    assert list(official.iterdir()) == [report]
+
+
 def _service(
     tmp_path: Path,
     *,

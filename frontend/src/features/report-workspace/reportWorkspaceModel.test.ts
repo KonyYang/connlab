@@ -7,8 +7,7 @@ import {
   deriveReportWorkspaceReadiness,
   formatLlcrSummary,
   validateLlcrConfirmation,
-  buildEquipmentExternalOverrides,
-  createEquipmentOverrideDrafts,
+  buildEquipmentSelectionInput,
 } from "./reportWorkspaceModel";
 
 const state: ReportWorkspaceState = {
@@ -175,93 +174,11 @@ describe("reportWorkspaceModel", () => {
     expect(entry.summary_max).toBe("0.00400000000000001");
   });
 
-  it("treats incomplete unmatched equipment details as an optional Word-manual placeholder", () => {
-    const equipment = {
-      project_id: "project-1",
-      status: "ready" as const,
-      current_report: null as never,
-      source_file_name: "EquipmentID.docx",
-      source_sha256: "a".repeat(64),
-      catalog_file_name: "equipment.xlsx",
-      catalog_sha256: "b".repeat(64),
-      rows: [{
-        source_reference: "Customer fixture A",
-        status: "unmatched" as const,
-        item: "",
-        manufacturer: "",
-        id_number: "Customer fixture A",
-        last_calibration: "",
-        calibration_due: "",
-        source_sheet: null,
-        expired: false,
-        external_reason: null,
-      }],
-      blockers: [],
-      warnings: ["Equipment reference was not found; complete it manually in Word."],
-      requires_expired_acknowledgement: false,
-    };
-    const drafts = createEquipmentOverrideDrafts(equipment);
-    expect(buildEquipmentExternalOverrides(equipment, drafts)).toEqual([]);
-    const complete = {
-      "Customer fixture A": {
-        item: "Customer fixture",
-        manufacturer: "Customer supplied",
-        idNumber: "N/A",
-        lastCalibration: "N/A",
-        calibrationDue: "N/A",
-        reason: "Customer-owned fixture",
-      },
-    };
-    expect(buildEquipmentExternalOverrides(equipment, complete)[0]).toMatchObject({
-      source_reference: "Customer fixture A",
-      id_number: "N/A",
-      reason: "Customer-owned fixture",
-    });
-  });
-
-  it("offers optional corrections for incomplete and ambiguous equipment rows", () => {
-    const equipment = {
-      project_id: "project-1",
-      status: "ready" as const,
-      current_report: null as never,
-      source_file_name: "EquipmentID.docx",
-      source_sha256: "a".repeat(64),
-      catalog_file_name: "equipment.xlsx",
-      catalog_sha256: "b".repeat(64),
-      rows: [
-        {
-          source_reference: "DG-Q-0033",
-          status: "incomplete" as const,
-          item: "Digital multimeter",
-          manufacturer: "",
-          id_number: "DG-Q-0033",
-          last_calibration: "01-Jan-2026",
-          calibration_due: "01-Jan-2027",
-          source_sheet: "All Equip.",
-          expired: false,
-          external_reason: null,
-        },
-        {
-          source_reference: "DG-Q-0044",
-          status: "ambiguous" as const,
-          item: "",
-          manufacturer: "",
-          id_number: "DG-Q-0044",
-          last_calibration: "",
-          calibration_due: "",
-          source_sheet: null,
-          expired: false,
-          external_reason: null,
-        },
-      ],
-      blockers: [],
-      warnings: ["Review incomplete and ambiguous rows."],
-      requires_expired_acknowledgement: false,
-    };
-
-    const drafts = createEquipmentOverrideDrafts(equipment);
-
-    expect(Object.keys(drafts)).toEqual(["DG-Q-0033", "DG-Q-0044"]);
-    expect(buildEquipmentExternalOverrides(equipment, drafts)).toEqual([]);
+  it("builds a missing-source selection from a DOCX file or pasted IDs without altering contents", () => {
+    const file = new File(["selection"], "EquipmentID.docx");
+    expect(buildEquipmentSelectionInput(file, "")).toEqual({ file });
+    expect(buildEquipmentSelectionInput(null, "DG-Q-0033\nDG-L-0002")).toEqual({ referencesText: "DG-Q-0033\nDG-L-0002" });
+    expect(buildEquipmentSelectionInput(null, "  ")).toBeNull();
+    expect(() => buildEquipmentSelectionInput(new File(["bad"], "file.xlsx"), "")).toThrow("Choose an EquipmentID .docx");
   });
 });

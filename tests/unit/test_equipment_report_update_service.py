@@ -71,7 +71,7 @@ class _CurrentReportUpdates:
         return "updated"
 
 
-def _service(tmp_path: Path, references: tuple[str, ...], rows: tuple[EquipmentCalibrationRow, ...]):
+def _service(tmp_path: Path, references: tuple[str, ...], rows: tuple[EquipmentCalibrationRow, ...], *, source_reader=None):
     source = tmp_path / "EquipmentID.docx"
     source.write_bytes(b"equipment-source")
     workbook = tmp_path / "equipment.xlsx"
@@ -79,7 +79,7 @@ def _service(tmp_path: Path, references: tuple[str, ...], rows: tuple[EquipmentC
     updates = _CurrentReportUpdates()
     service = EquipmentReportUpdateService(
         workspace_store=_WorkspaceStore(tmp_path),
-        source_reader=_SourceReader(source, references),
+        source_reader=source_reader or _SourceReader(source, references),
         catalog_reader=_CatalogReader(workbook, rows),
         current_report_updates=updates,
         today=lambda: date(2026, 8, 31),
@@ -331,7 +331,7 @@ def test_preview_warns_and_preserves_safe_cells_from_an_incomplete_catalog_row(
     assert any("Manufacturer" in warning for warning in preview.warnings)
 
 
-def test_preview_warns_without_blocking_an_ambiguous_catalog_match(tmp_path: Path) -> None:
+def test_preview_uses_first_catalog_match_without_duplicate_warning(tmp_path: Path) -> None:
     duplicate_rows = tuple(
         EquipmentCalibrationRow(
             equipment_id="DG-Q-0033",
@@ -360,11 +360,11 @@ def test_preview_warns_without_blocking_an_ambiguous_catalog_match(tmp_path: Pat
 
     assert preview.status == "ready"
     assert preview.blockers == tuple()
-    assert preview.rows[0].status == "ambiguous"
+    assert preview.rows[0].status == "matched"
     assert preview.rows[0].id_number == "DG-Q-0033"
-    assert any("multiple calibration rows" in warning for warning in preview.warnings)
+    assert preview.warnings == tuple()
     assert result == "updated"
-    assert updates.commands[0].rows[0].item == ""
+    assert updates.commands[0].rows[0].item == "Digital multimeter 1"
 
 
 def test_complete_external_correction_can_replace_an_incomplete_catalog_row(
@@ -494,3 +494,69 @@ def test_missing_external_files_do_not_disclose_absolute_paths(tmp_path: Path) -
     assert preview.status == "blocked"
     assert any(message == "EquipmentID.docx was not found in the project folder." for message in preview.blockers)
     assert all(str(tmp_path) not in message for message in preview.blockers)
+
+
+def test_one_click_updates_without_expired_ack_and_summarizes_after_completion(tmp_path: Path) -> None:
+    service, updates = _service(tmp_path, ("DG-Q-0033", "dg-q-0033", "DG-L-0999"), (
+        EquipmentCalibrationRow(equipment_id="DG-Q-0033", equipment_name="Meter",
+            manufacturer=None, last_calibration_date="2025-01-01", calibration_due_date="2026-01-01",
+            source_sheet="All Equip."),
+    ))
+    result = service.update_one_click(project_id="P1", updated_by="Lab User")
+    assert result.status == "completed"
+    assert len(result.rows) == 2
+    assert result.rows[0].expired is True
+    assert result.rows[0].manufacturer == ""
+    assert result.rows[1].id_number == "DG-L-0999"
+    assert len(updates.commands) == 1
+
+
+def test_one_click_missing_source_requests_input_without_writing_report(tmp_path: Path) -> None:
+    service, updates = _service(tmp_path, ("DG-Q-0033",), tuple())
+    (tmp_path / "EquipmentID.docx").unlink()
+    result = service.update_one_click(project_id="P1", updated_by="Lab User")
+    assert result.status == "source_required"
+    assert updates.commands == []
+
+
+def test_one_click_unreadable_existing_selection_does_not_offer_import(tmp_path: Path) -> None:
+    from backend.infrastructure.office.equipment_id_document_reader import EquipmentIdDocumentReader
+    service, updates = _service(tmp_path, ("DG-Q-0033",), tuple(), source_reader=EquipmentIdDocumentReader())
+    with pytest.raises(EquipmentReportUpdateError, match="cannot be read"):
+        service.update_one_click(project_id="P1", updated_by="Operator")
+    assert updates.commands == []
+    assert (tmp_path / "EquipmentID.docx").read_bytes() == b"equipment-source"
+
+
+def test_one_click_saves_missing_selection_and_preserves_it_if_report_update_fails(tmp_path: Path) -> None:
+    from backend.infrastructure.office.equipment_id_document_reader import EquipmentIdDocumentReader
+    from backend.application.current_report_update_service import CurrentReportUpdateError
+    service, updates = _service(tmp_path, ("DG-Q-0033",), tuple(), source_reader=EquipmentIdDocumentReader())
+    (tmp_path / "EquipmentID.docx").unlink()
+    def failed(_command):
+        raise CurrentReportUpdateError("Report is locked")
+    updates.update_equipment_list = failed
+    with pytest.raises(EquipmentReportUpdateError, match="locked"):
+        service.update_one_click(project_id="P1", updated_by="Operator", references_text="DG-Q-0033")
+    assert EquipmentIdDocumentReader().read(tmp_path / "EquipmentID.docx").references == ("DG-Q-0033",)
+
+
+def test_one_click_due_today_and_not_applicable_are_not_expired(tmp_path: Path) -> None:
+    service, _ = _service(tmp_path, ("DG-Q-0033", "DG-L-0002"), tuple(
+        EquipmentCalibrationRow(equipment_id=number, equipment_name="Meter", manufacturer="Maker",
+            last_calibration_date="N/A", calibration_due_date=due, source_sheet="All")
+        for number, due in (("DG-Q-0033", "2026-08-31"), ("DG-L-0002", "Not applicable"))
+    ))
+    assert not any(row.expired for row in service.update_one_click(project_id="P1", updated_by="Operator").rows)
+
+
+@pytest.mark.parametrize("changed_file", ["EquipmentID.docx", "equipment.xlsx"])
+def test_one_click_revalidation_rejects_equipment_source_or_catalog_drift(tmp_path: Path, changed_file: str) -> None:
+    service, updates = _service(tmp_path, ("DG-Q-0033",), tuple())
+    def staging_update(command):
+        (tmp_path / changed_file).write_bytes(b"changed while report was staged")
+        command.revalidate_sources()
+        raise AssertionError("Changed sources must prevent publication")
+    updates.update_equipment_list = staging_update
+    with pytest.raises(EquipmentReportUpdateError, match="sources changed"):
+        service.update_one_click(project_id="P1", updated_by="Operator")

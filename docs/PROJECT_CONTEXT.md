@@ -103,11 +103,27 @@ Do not use a dated snapshot as a substitute for the code.
 - Authority version counters are not displayed in a permanent strip. Existing contextual blockers
   still explain missing confirmation or mismatched sources; authority checks remain unchanged.
 - Two compact cards organize report generation and Update Internal Report (LLCR import/update
-  and Equipment List preview). The generation card places Internal Report on the left and Customer
+  and Equipment List update). The generation card places Internal Report on the left and Customer
   Report on the right, with each filename below its action in green, normal-weight text. There is no
   numbered wizard, repeated report heading, or page-wide Confirm.
   LLCR import remains available before the initial report exists. Section updates preserve unrelated
-  report content and manual edits; existing preview, confirmation and publication safeguards remain.
+  report content and manual edits; existing LLCR preview/confirmation and publication safeguards remain.
+  - Equipment List uses one `Update Equipment List` action with no normal preview or calibration
+    acknowledgement. It reads `EquipmentID.docx` in the registered pure-LTR folder, deduplicates IDs
+    in source order, joins the Settings calibration workbook in read order (first match wins), and
+    updates only the current report's Section 7 table. Unregistered IDs retain ID-only rows, incomplete
+    fields stay blank, and calibration due dates earlier than the operation day are red; today and
+    N/A dates are not expired. A completion-only dialog lists filled rows and unmatched/incomplete/
+    expired IDs. No duplicate-source warning or extra equipment authority revision is introduced.
+    Only a genuinely missing selection opens DOCX upload or pasted-ID entry. A validated complete
+    `EquipmentID.docx` is published without replacing an existing path, under the same project writer
+    slot; redirected/missing parents and competing file creation fail closed. The saved selection is
+    retained if the report update later fails, so the next one-click retry reads it directly. Existing
+    but unreadable selections do not offer an overwrite/import fallback. Inputs never authorize an
+    arbitrary server path. Source/catalog stable hashes and configured identities are rechecked after
+    staging (including no-op) and before publication. Changed report revisions retain `History/Report`;
+    unchanged content and due-date colors do not create an archive. Legacy preview/update APIs remain
+    compatible, but the UI no longer exposes external-row corrections or expired-calibration consent.
 - The initial report card has no repeated title. Its left-aligned generation action is followed by
   the current filename in green, without its directory path. The always-visible `Generate
   Internal Report` action initializes an empty slot or asks explicitly to `Archive and regenerate`.

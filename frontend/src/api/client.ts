@@ -5294,6 +5294,25 @@ export type EquipmentListPreview = {
 
 export type EquipmentListUpdateResult = Omit<CurrentReportUpdateResult, "dataset_id">;
 
+export type EquipmentListOneClickResult =
+  | { status: "source_required"; project_id: string }
+  | { status: "completed"; project_id: string; file_name: string; changed: boolean;
+      current_sha256: string; archive_path: string | null;
+      statistics: { filled: number; unmatched: string[]; incomplete: string[]; expired: string[] } };
+
+export function updateEquipmentListOneClick(
+  projectId: string, input?: { file?: File; referencesText?: string }
+): Promise<EquipmentListOneClickResult> {
+  const body = new FormData();
+  if (input?.file) body.append("file", input.file);
+  if (input?.referencesText !== undefined) body.append("references_text", input.referencesText);
+  body.append("updated_by", "Lab User");
+  return requestJson<EquipmentListOneClickResult>(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/current-report/equipment/update`,
+    { method: "POST", body }
+  );
+}
+
 export function fetchReportWorkspace(projectId: string): Promise<ReportWorkspaceState> {
   return requestJson<ReportWorkspaceState>(
     `/api/projects/${encodeURIComponent(projectId)}/report-workspace`

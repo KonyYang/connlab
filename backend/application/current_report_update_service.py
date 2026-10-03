@@ -71,6 +71,7 @@ class CurrentReportFiles(Protocol):
         expected_current_sha256: str,
         history_root: Path,
         update_document: Callable[[Path, Path], Path],
+        pre_publish: Callable[[], None] | None = None,
     ) -> "CurrentReportFileUpdateResult": ...
 
     def publish_new_current(
@@ -129,6 +130,7 @@ class UpdateCurrentEquipmentListReportCommand:
     expected_report_sha256: str
     rows: tuple[object, ...]
     updated_by: str
+    revalidate_sources: Callable[[], None] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -278,15 +280,25 @@ class CurrentReportUpdateService:
             )
         if not command.rows:
             raise CurrentReportUpdateError("Equipment List requires at least one row.")
+        def update_document(source: Path, output: Path) -> Path:
+            if command.revalidate_sources:
+                command.revalidate_sources()
+            result = self._equipment_writer.synchronize_equipment_list(
+                source_path=source, output_path=output, rows=command.rows,
+            )
+            # The file publisher's no-op path precedes pre_publish; protect that path too.
+            if command.revalidate_sources:
+                command.revalidate_sources()
+            return result
+        publication_options = (
+            {"pre_publish": command.revalidate_sources} if command.revalidate_sources else {}
+        )
         published = self._files.publish_update(
             current_path=report.file_path,
             expected_current_sha256=command.expected_report_sha256,
             history_root=report.history_root,
-            update_document=lambda source, output: self._equipment_writer.synchronize_equipment_list(
-                source_path=source,
-                output_path=output,
-                rows=command.rows,
-            ),
+            update_document=update_document,
+            **publication_options,
         )
         return CurrentEquipmentListUpdateResult(
             project_id=command.project_id,

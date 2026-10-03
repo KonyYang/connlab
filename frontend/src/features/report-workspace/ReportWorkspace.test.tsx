@@ -30,6 +30,7 @@ vi.mock("../../api/client", async () => {
     updateCurrentReportLlcr: vi.fn(),
     previewCurrentReportEquipmentList: vi.fn(),
     updateCurrentReportEquipmentList: vi.fn(),
+    updateEquipmentListOneClick: vi.fn(),
     publishManagedReport: vi.fn(),
     downloadCurrentReport: vi.fn(),
     generateCurrentCustomerReport: vi.fn(),
@@ -183,6 +184,11 @@ describe("ReportWorkspace", () => {
     vi.mocked(api.openLocalProjectFolder).mockResolvedValue({ project_id: "project-1", status: "opened", message: "Opened", local_official_folder_path: currentReport.folder_path });
     vi.mocked(api.inspectLlcrResultWorkbook).mockResolvedValue(preview);
     vi.mocked(api.previewCurrentReportEquipmentList).mockResolvedValue(equipmentPreview);
+    vi.mocked(api.updateEquipmentListOneClick).mockResolvedValue({
+      status: "completed", project_id: "project-1", file_name: currentReport.file_name!,
+      changed: true, current_sha256: "d".repeat(64), archive_path: "History/Report/old.docx",
+      statistics: { filled: 1, unmatched: [], incomplete: [], expired: ["DG-Q-0033"] },
+    });
     vi.mocked(api.updateCurrentReportEquipmentList).mockResolvedValue({
       project_id: "project-1",
       file_name: currentReport.file_name!,
@@ -397,7 +403,7 @@ describe("ReportWorkspace", () => {
     expect(screen.getByRole("region", { name: "Internal Report" })).toBeTruthy();
     const updates = screen.getByRole("region", { name: "Update Internal Report" });
     expect(within(updates).getByLabelText("LLCR result workbook")).toBeTruthy();
-    expect(within(updates).getByRole("button", { name: "Preview Equipment List" })).toBeTruthy();
+    expect(within(updates).getByRole("button", { name: "Update Equipment List" })).toBeTruthy();
     const generation = screen.getByRole("region", { name: "Report generation" });
     expect(within(generation).getByRole("button", { name: "Generate Internal Report" })).toBeTruthy();
     expect(within(generation).getByRole("button", { name: "Generate customer report" })).toBeTruthy();
@@ -753,79 +759,71 @@ describe("ReportWorkspace", () => {
     expect(await screen.findByText(/Published the current report to/)).toBeTruthy();
   });
 
-  it("previews EquipmentID matches and requires expired-calibration acknowledgement", async () => {
+  it("updates equipment in one click and shows expired statistics only afterwards", async () => {
     const user = userEvent.setup();
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-
-    await user.click(await screen.findByRole("button", { name: "Preview Equipment List" }));
-
-    expect(await screen.findByRole("dialog", { name: "Equipment List preview" })).toBeTruthy();
-    expect(screen.getByText("Digital multimeter")).toBeTruthy();
-    const updateButton = screen.getByRole("button", { name: "Update Equipment List" });
-    expect(updateButton).toHaveProperty("disabled", true);
-    await user.click(screen.getByLabelText("I reviewed the expired calibration warning"));
-    expect(updateButton).toHaveProperty("disabled", false);
-    await user.click(updateButton);
-
-    expect(api.updateCurrentReportEquipmentList).toHaveBeenCalledWith("project-1", {
-      expected_report_sha256: "a".repeat(64),
-      expected_source_sha256: "b".repeat(64),
-      expected_catalog_sha256: "c".repeat(64),
-      acknowledge_expired: true,
-      external_overrides: [],
-      updated_by: "Lab User",
-    });
-    expect(await screen.findByText(/Updated Equipment List in/)).toBeTruthy();
+    await user.click(await screen.findByRole("button", { name: "Update Equipment List" }));
+    const dialog = await screen.findByRole("dialog", { name: "Equipment List update completed" });
+    expect(within(dialog).getByText(/Expired calibration: 1/)).toBeTruthy();
+    expect(api.updateEquipmentListOneClick).toHaveBeenCalledWith("project-1", undefined);
+    expect(api.previewCurrentReportEquipmentList).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText("I reviewed the expired calibration warning")).toBeNull();
   });
 
-  it("allows an unmatched device to continue as an ID-only Word-manual row", async () => {
+  it("asks for missing equipment IDs, saves pasted selection and then updates", async () => {
     const user = userEvent.setup();
-    const unmatchedPreview: api.EquipmentListPreview = {
-      ...equipmentPreview,
-      requires_expired_acknowledgement: false,
-      warnings: [
-        "Equipment reference 'DG-Q-0851' was not found. It will be added with ID only; complete it manually in Word.",
-      ],
-      rows: [{
-        source_reference: "DG-Q-0851",
-        status: "unmatched",
-        item: "",
-        manufacturer: "",
-        id_number: "DG-Q-0851",
-        last_calibration: "",
-        calibration_due: "",
-        source_sheet: null,
-        expired: false,
-        external_reason: null,
-      }],
-    };
-    vi.mocked(api.previewCurrentReportEquipmentList).mockResolvedValue(unmatchedPreview);
-
+    vi.mocked(api.updateEquipmentListOneClick).mockResolvedValueOnce({ status: "source_required", project_id: "project-1" });
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Preview Equipment List" }));
+    await user.click(await screen.findByRole("button", { name: "Update Equipment List" }));
+    const dialog = await screen.findByRole("dialog", { name: "Provide equipment IDs" });
+    await user.type(within(dialog).getByLabelText("Equipment IDs"), "DG-Q-0033");
+    await user.click(within(dialog).getByRole("button", { name: "Save and update" }));
+    expect(api.updateEquipmentListOneClick).toHaveBeenLastCalledWith("project-1", { referencesText: "DG-Q-0033" });
+    expect(await screen.findByRole("dialog", { name: "Equipment List update completed" })).toBeTruthy();
+  });
 
-    expect(await screen.findByText(/Rows needing attention keep only confirmed values/)).toBeTruthy();
-    await user.type(screen.getByLabelText("Item for DG-Q-0851"), "Thermal shock chamber");
-    await user.click(screen.getByRole("button", { name: "Recheck external entries" }));
+  it("canceling missing equipment selection makes no second request", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.updateEquipmentListOneClick).mockResolvedValueOnce({ status: "source_required", project_id: "project-1" });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Update Equipment List" }));
+    await user.click(within(await screen.findByRole("dialog", { name: "Provide equipment IDs" })).getByRole("button", { name: "Cancel" }));
+    expect(api.updateEquipmentListOneClick).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
 
-    await waitFor(() => {
-      expect(api.previewCurrentReportEquipmentList).toHaveBeenLastCalledWith(
-        "project-1",
-        []
-      );
-    });
-    const updateButton = screen.getByRole("button", { name: "Update Equipment List" });
-    expect(updateButton).toHaveProperty("disabled", false);
-    await user.click(updateButton);
+  it("sends a selected equipment DOCX only when the default source is missing", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.updateEquipmentListOneClick).mockResolvedValueOnce({ status: "source_required", project_id: "project-1" });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Update Equipment List" }));
+    const file = new File(["equipment"], "EquipmentID.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    await user.upload(within(await screen.findByRole("dialog", { name: "Provide equipment IDs" })).getByLabelText("EquipmentID document"), file);
+    await user.click(screen.getByRole("button", { name: "Save and update" }));
+    expect(api.updateEquipmentListOneClick).toHaveBeenLastCalledWith("project-1", { file });
+  });
 
-    expect(api.updateCurrentReportEquipmentList).toHaveBeenCalledWith("project-1", {
-      expected_report_sha256: "a".repeat(64),
-      expected_source_sha256: "b".repeat(64),
-      expected_catalog_sha256: "c".repeat(64),
-      acknowledge_expired: false,
-      external_overrides: [],
-      updated_by: "Lab User",
-    });
+  it("starts one equipment request on double click and ignores a delayed result after changing projects", async () => {
+    let finish!: (result: api.EquipmentListOneClickResult) => void;
+    vi.mocked(api.updateEquipmentListOneClick).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const view = render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    const button = await screen.findByRole("button", { name: "Update Equipment List" });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(api.updateEquipmentListOneClick).toHaveBeenCalledTimes(1);
+    view.rerender(<ReportWorkspace projectId="project-2" onBack={vi.fn()} />);
+    await act(async () => finish({ status: "source_required", project_id: "project-1" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("does not display a delayed equipment failure after unmount", async () => {
+    let fail!: (reason: Error) => void;
+    vi.mocked(api.updateEquipmentListOneClick).mockImplementationOnce(() => new Promise((_resolve, reject) => { fail = reject; }));
+    const view = render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Update Equipment List" }));
+    view.unmount();
+    await act(async () => fail(new Error("Equipment update failed")));
+    expect(screen.queryByText("Equipment update failed")).toBeNull();
   });
 
   it.each(["ready", "stale", "untracked"] as const)("asks before replacing a %s customer report and Cancel or Escape never generates", async (status) => {

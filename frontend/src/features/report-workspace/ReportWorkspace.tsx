@@ -4,9 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
-  type Dispatch,
   type ReactElement,
-  type SetStateAction,
 } from "react";
 import { createPortal } from "react-dom";
 import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
@@ -25,12 +23,11 @@ import {
   isCustomerReportMissingAfterPreviewError,
   publishManagedReport,
   previewCurrentReportLlcrUpdate,
-  previewCurrentReportEquipmentList,
   updateCurrentReportLlcr,
-  updateCurrentReportEquipmentList,
+  updateEquipmentListOneClick,
   type CurrentReport,
   type CustomerReportState,
-  type EquipmentListPreview,
+  type EquipmentListOneClickResult,
   type LlcrImportPreview,
   type ReportWorkspaceState,
   type InternalReportGenerationPreview,
@@ -44,12 +41,10 @@ import { CustomerReportRegenerationDialog } from "./CustomerReportRegenerationDi
 import { LlcrImportPreviewDialog } from "./LlcrImportPreviewDialog";
 import {
   buildLlcrConfirmationDecisions,
-  buildEquipmentExternalOverrides,
-  createEquipmentOverrideDrafts,
+  buildEquipmentSelectionInput,
   createLlcrDecisionDrafts,
   deriveReportEntryState,
   deriveReportWorkspaceReadiness,
-  type EquipmentOverrideDrafts,
   type LlcrDecisionDrafts,
   type LlcrOutcome,
 } from "./reportWorkspaceModel";
@@ -60,7 +55,7 @@ type ReportWorkspaceProps = {
   identityLabel?: string;
 };
 
-type BusyAction = "load" | "initial" | "open-folder" | "inspect" | "confirm" | "cancel" | "llcr" | "equipment-preview" | "equipment-update" | "publish" | "download" | "customer" | "customer-source" | null;
+type BusyAction = "load" | "initial" | "open-folder" | "inspect" | "confirm" | "cancel" | "llcr" | "equipment-update" | "publish" | "download" | "customer" | "customer-source" | null;
 
 type ProjectFolderAvailability = {
   projectId: string;
@@ -87,9 +82,13 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<LlcrImportPreview | null>(null);
   const [decisionDrafts, setDecisionDrafts] = useState<LlcrDecisionDrafts>({});
-  const [equipmentPreview, setEquipmentPreview] = useState<EquipmentListPreview | null>(null);
-  const [equipmentDrafts, setEquipmentDrafts] = useState<EquipmentOverrideDrafts>({});
-  const [acknowledgeExpired, setAcknowledgeExpired] = useState(false);
+  const [equipmentSourceOpen, setEquipmentSourceOpen] = useState(false);
+  const [equipmentFile, setEquipmentFile] = useState<File | null>(null);
+  const [equipmentIds, setEquipmentIds] = useState("");
+  const [equipmentResult, setEquipmentResult] = useState<Extract<EquipmentListOneClickResult, { status: "completed" }> | null>(null);
+  const equipmentRequest = useRef(false);
+  const equipmentSequence = useRef(0);
+  const equipmentTrigger = useRef<HTMLButtonElement>(null);
   const [pageBusyAction, setBusyAction] = useState<BusyAction>("load");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -106,14 +105,14 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const uploadedCustomerJob = useUploadedCustomerReportJob(projectId, (response) => {
     downloadBlob(response.blob, response.fileName || "Customer Report.docx");
   });
-  const busyAction = pageBusyAction ?? (customerJob.busy || uploadedCustomerJob.busy ? "customer" : sourcePickerOpen || customerRegenerationApproval ? "customer-source" : null);
+  const busyAction = pageBusyAction ?? (customerJob.busy || uploadedCustomerJob.busy ? "customer" : sourcePickerOpen || customerRegenerationApproval || equipmentSourceOpen || equipmentResult ? "customer-source" : null);
   const customerRun = useRef<{ regenerating: boolean; hadFile: boolean } | null>(null);
   const activeProject = useRef(projectId);
   activeProject.current = projectId;
 
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; internalRequest.current += 1; };
+    return () => { mounted.current = false; internalRequest.current += 1; equipmentSequence.current += 1; };
   }, []);
 
   useEffect(() => {
@@ -126,6 +125,12 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     customerRequest.current = false;
     customerRun.current = null;
     setCustomerRegenerationApproval(null);
+    equipmentSequence.current += 1;
+    equipmentRequest.current = false;
+    setEquipmentSourceOpen(false);
+    setEquipmentResult(null);
+    setEquipmentFile(null);
+    setEquipmentIds("");
   }, [projectId]);
 
   useEffect(() => {
@@ -156,7 +161,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
       fetchCurrentReport(projectId),
       fetchCurrentCustomerReport(projectId),
     ]);
-    if (activeProject.current === projectId) {
+    if (mounted.current && activeProject.current === projectId) {
       setState(nextState);
       setCurrentReport(nextReport);
       setCustomerReport(nextCustomerReport);
@@ -514,55 +519,44 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     });
   }
 
-  async function handleEquipmentPreview(useDrafts = false): Promise<void> {
-    await runAction("equipment-preview", async () => {
-      const overrides = useDrafts && equipmentPreview
-        ? buildEquipmentExternalOverrides(equipmentPreview, equipmentDrafts)
-        : [];
-      const result = await previewCurrentReportEquipmentList(projectId, overrides);
-      setEquipmentPreview(result);
-      setEquipmentDrafts((current) => {
-        const created = createEquipmentOverrideDrafts(result);
-        return Object.fromEntries(
-          Object.entries(created).map(([key, value]) => [key, current[key] ?? value])
-        );
-      });
-      setAcknowledgeExpired(false);
-      return result.status === "ready"
-        ? `Previewed ${result.rows.length} Equipment List row${result.rows.length === 1 ? "" : "s"}.`
-        : null;
-    });
+  async function handleEquipmentUpdate(input?: { file?: File; referencesText?: string }): Promise<void> {
+    if (equipmentRequest.current || pageBusyAction || customerJob.busy || uploadedCustomerJob.busy) return;
+    equipmentRequest.current = true;
+    const sequence = ++equipmentSequence.current;
+    const isCurrent = () => mounted.current && activeProject.current === projectId && equipmentSequence.current === sequence;
+    setBusyAction("equipment-update");
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await updateEquipmentListOneClick(projectId, input);
+      if (!isCurrent()) return;
+      if (result.status === "source_required") {
+        setEquipmentSourceOpen(true);
+        return;
+      }
+      setEquipmentSourceOpen(false);
+      setEquipmentFile(null);
+      setEquipmentIds("");
+      setEquipmentResult(result);
+      try { await refresh(); }
+      catch { if (isCurrent()) setError("Equipment List was updated. Reload to refresh report status."); }
+    } catch (reason) {
+      if (isCurrent()) {
+        if (input) setEquipmentSourceOpen(false);
+        setError(errorMessage(reason, "Unable to update Equipment List. Check the selection file, calibration workbook and report access, then retry."));
+      }
+    } finally {
+      if (isCurrent()) { equipmentRequest.current = false; setBusyAction(null); }
+    }
   }
 
-  async function handleEquipmentUpdate(): Promise<void> {
-    if (
-      !equipmentPreview
-      || !equipmentPreview.current_report.file_sha256
-      || !equipmentPreview.source_sha256
-      || !equipmentPreview.catalog_sha256
-    ) {
-      return;
+  function handleEquipmentSelection(): void {
+    try {
+      const input = buildEquipmentSelectionInput(equipmentFile, equipmentIds);
+      if (input) void handleEquipmentUpdate(input);
+    } catch (reason) {
+      setError(errorMessage(reason, "Choose a .docx document or paste equipment IDs."));
     }
-    await runAction("equipment-update", async () => {
-      const result = await updateCurrentReportEquipmentList(projectId, {
-        expected_report_sha256: equipmentPreview.current_report.file_sha256!,
-        expected_source_sha256: equipmentPreview.source_sha256!,
-        expected_catalog_sha256: equipmentPreview.catalog_sha256!,
-        acknowledge_expired: acknowledgeExpired,
-        external_overrides: buildEquipmentExternalOverrides(
-          equipmentPreview,
-          equipmentDrafts
-        ),
-        updated_by: "Lab User",
-      });
-      setEquipmentPreview(null);
-      setEquipmentDrafts({});
-      setAcknowledgeExpired(false);
-      await refresh();
-      return result.changed
-        ? `Updated Equipment List in ${result.file_name}. The previous report was archived automatically.`
-        : `Equipment List in ${result.file_name} was already up to date.`;
-    });
   }
 
   async function handlePublishManagedReport(): Promise<void> {
@@ -797,15 +791,16 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
             <div className="report-workspace-update-row">
               <div className="report-workspace-update-content">
                 <h3>Equipment List</h3>
-                <p className="report-workspace-note">Section 7 · EquipmentID.docx and the configured calibration list</p>
+                <p className="report-workspace-note">Section 7 · Project equipment IDs and the configured calibration list</p>
               </div>
               <button
                 className="primary-action"
                 disabled={Boolean(busyAction) || currentReport?.status !== "ready"}
-                onClick={() => void handleEquipmentPreview()}
+                ref={equipmentTrigger}
+                onClick={() => void handleEquipmentUpdate()}
                 type="button"
               >
-                {busyAction === "equipment-preview" ? "Previewing..." : "Preview Equipment List"}
+                {busyAction === "equipment-update" ? "Updating..." : "Update Equipment List"}
               </button>
             </div>
             {currentReport?.status !== "ready" ? (
@@ -868,111 +863,43 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
           </section>
         </div>
       ) : null}
-      {equipmentPreview ? (
-        <div className="report-workspace-dialog-backdrop">
-          <section
-            aria-label="Equipment List preview"
-            aria-modal="true"
-            className="report-workspace-dialog"
-            role="dialog"
-          >
-            <header className="report-workspace-dialog-header">
-              <div>
-                <h2>Equipment List preview</h2>
-                <p>Review every matched or external row before replacing the Section 7 table body.</p>
-              </div>
-              <button
-                disabled={Boolean(busyAction)}
-                onClick={() => {
-                  setEquipmentPreview(null);
-                  setEquipmentDrafts({});
-                  setAcknowledgeExpired(false);
-                }}
-                type="button"
-              >Close</button>
-            </header>
-            <dl className="report-workspace-preview-facts">
-              <div><dt>Selection source</dt><dd>{equipmentPreview.source_file_name ?? "Unavailable"}</dd></div>
-              <div><dt>Calibration source</dt><dd>{equipmentPreview.catalog_file_name ?? "Unavailable"}</dd></div>
-              <div><dt>Rows</dt><dd>{equipmentPreview.rows.length}</dd></div>
-              <div><dt>Preview status</dt><dd>{equipmentPreview.status === "ready" ? "Ready to update" : "Needs attention"}</dd></div>
-            </dl>
-            {equipmentPreview.blockers.length ? (
-              <div className="report-workspace-confirm-errors">
-                {equipmentPreview.blockers.map((item) => <p key={item}>{item}</p>)}
-              </div>
-            ) : null}
-            {equipmentPreview.warnings.length ? (
-              <div className="report-workspace-diagnostics">
-                {equipmentPreview.warnings.map((item) => <p key={item}>{item}</p>)}
-              </div>
-            ) : null}
-            <div className="report-workspace-table-wrap">
-              <table className="report-workspace-table report-workspace-equipment-table">
-                <thead><tr>
-                  <th>Source reference</th><th>Item</th><th>Manufacturer</th><th>ID Number</th><th>Last Cal.</th><th>Cal. Due</th><th>Status</th>
-                </tr></thead>
-                <tbody>
-                  {equipmentPreview.rows.map((row) => {
-                    const draft = equipmentDrafts[row.source_reference];
-                    const editable = row.status !== "matched" && draft;
-                    return (
-                      <tr key={row.source_reference}>
-                        <td>{row.source_reference}</td>
-                        <td>{editable ? <EquipmentInput label={`Item for ${row.source_reference}`} value={draft.item} onChange={(value) => updateEquipmentDraft(setEquipmentDrafts, row.source_reference, "item", value)} /> : row.item}</td>
-                        <td>{editable ? <EquipmentInput label={`Manufacturer for ${row.source_reference}`} value={draft.manufacturer} onChange={(value) => updateEquipmentDraft(setEquipmentDrafts, row.source_reference, "manufacturer", value)} /> : row.manufacturer}</td>
-                        <td>{editable ? <EquipmentInput label={`ID Number for ${row.source_reference}`} value={draft.idNumber} onChange={(value) => updateEquipmentDraft(setEquipmentDrafts, row.source_reference, "idNumber", value)} /> : row.id_number}</td>
-                        <td>{editable ? <EquipmentInput label={`Last calibration for ${row.source_reference}`} value={draft.lastCalibration} onChange={(value) => updateEquipmentDraft(setEquipmentDrafts, row.source_reference, "lastCalibration", value)} /> : row.last_calibration}</td>
-                        <td>{editable ? <EquipmentInput label={`Calibration due for ${row.source_reference}`} value={draft.calibrationDue} onChange={(value) => updateEquipmentDraft(setEquipmentDrafts, row.source_reference, "calibrationDue", value)} /> : row.calibration_due}</td>
-                        <td>
-                          <span className={`report-workspace-equipment-status ${row.status}`}>{equipmentStatusLabel(row.status)}</span>
-                          {row.expired ? <small>Expired</small> : null}
-                          {editable ? <EquipmentInput label={`Explanation for ${row.source_reference}`} value={draft.reason} onChange={(value) => updateEquipmentDraft(setEquipmentDrafts, row.source_reference, "reason", value)} /> : null}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            {equipmentPreview.rows.some((row) => row.status !== "matched") ? (
-              <p className="report-workspace-note">
-                Rows needing attention keep only confirmed values; unresolved cells remain blank.
-                Complete every field and recheck to use a correction, or skip it and finish the blank
-                cells manually in Word.
-              </p>
-            ) : null}
-            {equipmentPreview.requires_expired_acknowledgement ? (
-              <label className="report-workspace-equipment-ack">
-                <input
-                  checked={acknowledgeExpired}
-                  onChange={(event) => setAcknowledgeExpired(event.target.checked)}
-                  type="checkbox"
-                />
-                I reviewed the expired calibration warning
-              </label>
-            ) : null}
-            <div className="report-workspace-dialog-actions">
-              {equipmentPreview.rows.some((row) => row.status !== "matched") ? (
-                <button
-                  disabled={Boolean(busyAction)}
-                  onClick={() => void handleEquipmentPreview(true)}
-                  type="button"
-                >{busyAction === "equipment-preview" ? "Rechecking..." : "Recheck external entries"}</button>
-              ) : null}
-              <button
-                className="primary-action"
-                disabled={
-                  Boolean(busyAction)
-                  || equipmentPreview.status !== "ready"
-                  || (equipmentPreview.requires_expired_acknowledgement && !acknowledgeExpired)
-                }
-                onClick={() => void handleEquipmentUpdate()}
-                type="button"
-              >{busyAction === "equipment-update" ? "Updating..." : "Update Equipment List"}</button>
-            </div>
-          </section>
-        </div>
+      {equipmentSourceOpen ? (
+        <EquipmentDialog title="Provide equipment IDs" busy={pageBusyAction === "equipment-update"}
+          returnFocusTarget={equipmentTrigger.current} onClose={() => { setEquipmentSourceOpen(false); setEquipmentFile(null); setEquipmentIds(""); }}>
+          <p>EquipmentID.docx was not found in the LTR folder. Choose a document or paste equipment IDs. The selection is saved there before updating the report.</p>
+          <label className="report-workspace-file-field">EquipmentID document
+            <input accept=".docx" type="file" disabled={pageBusyAction === "equipment-update"}
+              onChange={(event) => { setEquipmentFile(event.target.files?.[0] ?? null); setEquipmentIds(""); }} />
+          </label>
+          <label className="report-workspace-file-field">Equipment IDs
+            <textarea value={equipmentIds} disabled={pageBusyAction === "equipment-update"}
+              placeholder="One equipment ID per line, or separated by commas"
+              onChange={(event) => { setEquipmentIds(event.target.value); setEquipmentFile(null); }} />
+          </label>
+          {error ? <ErrorMessage message={error} /> : null}
+          <div className="report-workspace-action-row">
+            <button type="button" disabled={pageBusyAction === "equipment-update"}
+              onClick={() => { setEquipmentSourceOpen(false); setEquipmentFile(null); setEquipmentIds(""); }}>Cancel</button>
+            <button type="button" className="primary-action"
+              disabled={pageBusyAction === "equipment-update" || (!equipmentFile && !equipmentIds.trim())}
+              onClick={handleEquipmentSelection}>
+              {pageBusyAction === "equipment-update" ? "Updating..." : "Save and update"}
+            </button>
+          </div>
+        </EquipmentDialog>
+      ) : null}
+      {equipmentResult ? (
+        <EquipmentDialog title="Equipment List update completed" busy={false}
+          returnFocusTarget={equipmentTrigger.current} onClose={() => setEquipmentResult(null)}>
+          <p>{equipmentResult.changed ? "Updated Equipment List." : "Equipment List was already up to date."}</p>
+          <p>{equipmentResult.file_name}</p>
+          {equipmentResult.archive_path ? <p>The previous report was archived in History/Report.</p> : null}
+          <p>Equipment rows filled: {equipmentResult.statistics.filled}</p>
+          <p>Not registered: {equipmentResult.statistics.unmatched.length}{equipmentResult.statistics.unmatched.length ? " — " + equipmentResult.statistics.unmatched.join(", ") : ""}</p>
+          <p>Missing information: {equipmentResult.statistics.incomplete.length}{equipmentResult.statistics.incomplete.length ? " — " + equipmentResult.statistics.incomplete.join(", ") : ""}</p>
+          <p>Expired calibration: {equipmentResult.statistics.expired.length}{equipmentResult.statistics.expired.length ? " — " + equipmentResult.statistics.expired.join(", ") + ". Calibration due dates are red in the report." : ""}</p>
+          <div className="report-workspace-action-row"><button type="button" onClick={() => setEquipmentResult(null)}>Close</button></div>
+        </EquipmentDialog>
       ) : null}
     </section>
   );
@@ -998,46 +925,28 @@ function downloadBlob(blob: Blob, fileName: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-function EquipmentInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
+function EquipmentDialog({ title, busy, onClose, returnFocusTarget, children }: {
+  title: string; busy: boolean; onClose: () => void;
+  returnFocusTarget: HTMLButtonElement | null; children: import("react").ReactNode;
 }): ReactElement {
-  return (
-    <label className="report-workspace-equipment-input">
-      <span>{label}</span>
-      <input
-        aria-label={label}
-        onChange={(event) => onChange(event.target.value)}
-        value={value}
-      />
-    </label>
-  );
-}
-
-function updateEquipmentDraft(
-  setDrafts: Dispatch<SetStateAction<EquipmentOverrideDrafts>>,
-  sourceReference: string,
-  field: keyof EquipmentOverrideDrafts[string],
-  value: string
-): void {
-  setDrafts((current) => ({
-    ...current,
-    [sourceReference]: {
-      ...current[sourceReference],
-      [field]: value,
-    },
-  }));
-}
-
-function equipmentStatusLabel(status: EquipmentListPreview["rows"][number]["status"]): string {
-  if (status === "matched") return "Matched";
-  if (status === "external") return "External";
-  if (status === "ambiguous") return "Ambiguous";
-  if (status === "incomplete") return "Incomplete";
-  return "Not found";
+  const dialog = useRef<HTMLElement>(null);
+  useEffect(() => {
+    dialog.current?.querySelector<HTMLElement>("button, input, textarea")?.focus();
+    return () => { window.setTimeout(() => { if (returnFocusTarget?.isConnected) returnFocusTarget.focus(); }, 0); };
+  }, [returnFocusTarget]);
+  return <div className="report-workspace-dialog-backdrop">
+    <section ref={dialog} className="report-workspace-dialog" role="dialog" aria-modal="true" aria-label={title}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && !busy) onClose();
+        if (event.key !== "Tab") return;
+        const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled), textarea:not(:disabled)"));
+        const first = controls[0], last = controls.at(-1);
+        if (!first) { event.preventDefault(); return; }
+        if (event.shiftKey && document.activeElement === first && last) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }}>
+      <h2>{title}</h2>
+      {children}
+    </section>
+  </div>;
 }

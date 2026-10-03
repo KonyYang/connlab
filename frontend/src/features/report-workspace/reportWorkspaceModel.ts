@@ -1,7 +1,7 @@
 import type {
   CurrentReport,
-  EquipmentListExternalOverride,
-  EquipmentListPreview,
+
+
   LlcrImportPreview,
   LlcrResultEntry,
   ReportWorkspaceState,
@@ -79,17 +79,6 @@ export type LlcrDecisionDraft = {
 };
 
 export type LlcrDecisionDrafts = Record<string, LlcrDecisionDraft>;
-
-export type EquipmentOverrideDraft = {
-  item: string;
-  manufacturer: string;
-  idNumber: string;
-  lastCalibration: string;
-  calibrationDue: string;
-  reason: string;
-};
-
-export type EquipmentOverrideDrafts = Record<string, EquipmentOverrideDraft>;
 
 export type ReportWorkspaceReadiness = {
   canGenerateInitialDraft: boolean;
@@ -176,59 +165,13 @@ export function formatLlcrSummary(entry: LlcrResultEntry): string {
   return `${formatSummaryDecimal(entry.summary_min)} / ${formatSummaryDecimal(entry.summary_max)} / ${formatSummaryDecimal(entry.summary_average)} ${entry.unit}`;
 }
 
-export function createEquipmentOverrideDrafts(
-  preview: EquipmentListPreview
-): EquipmentOverrideDrafts {
-  return Object.fromEntries(
-    preview.rows
-      .filter((row) => row.status !== "matched")
-      .map((row) => [
-        row.source_reference,
-        {
-          item: row.item,
-          manufacturer: row.manufacturer,
-          idNumber: row.id_number,
-          lastCalibration: row.last_calibration,
-          calibrationDue: row.calibration_due,
-          reason: row.external_reason ?? "",
-        },
-      ])
-  );
-}
-
-export function buildEquipmentExternalOverrides(
-  preview: EquipmentListPreview,
-  drafts: EquipmentOverrideDrafts
-): EquipmentListExternalOverride[] {
-  return preview.rows
-    .filter((row) => row.status !== "matched")
-    .filter((row) => {
-      const draft = drafts[row.source_reference];
-      return draft ? isCompleteEquipmentOverrideDraft(draft) : false;
-    })
-    .map((row) => {
-      const draft = drafts[row.source_reference];
-      return {
-        source_reference: row.source_reference,
-        item: draft.item.trim(),
-        manufacturer: draft.manufacturer.trim(),
-        id_number: draft.idNumber.trim(),
-        last_calibration: draft.lastCalibration.trim(),
-        calibration_due: draft.calibrationDue.trim(),
-        reason: draft.reason.trim(),
-      };
-    });
-}
-
-function isCompleteEquipmentOverrideDraft(draft: EquipmentOverrideDraft): boolean {
-  return [
-    draft.item,
-    draft.manufacturer,
-    draft.idNumber,
-    draft.lastCalibration,
-    draft.calibrationDue,
-    draft.reason,
-  ].every((value) => value.trim());
+export function buildEquipmentSelectionInput(file: File | null, referencesText: string):
+  { file: File } | { referencesText: string } | null {
+  if (file) {
+    if (!file.name.toLowerCase().endsWith(".docx")) throw new Error("Choose an EquipmentID .docx document.");
+    return { file };
+  }
+  return referencesText.trim() ? { referencesText } : null;
 }
 
 function formatSummaryDecimal(value: string): string {

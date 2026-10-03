@@ -11,8 +11,40 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_EQUIPMENT_LIST_ONE_CLICK_UPDATE_20261003",
+    "summary": "设备清单一键更新、缺失编号补录与完成统计",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "已讨论的Equipment List一键更新：纯LTR来源缺失补录无覆盖保存、来源编号去重、台账首条匹配、缺失留空、过期到期日标红、完成统计、报告归档及并发保护",
+    "scope_paths": [
+      "backend/application/equipment_report_update_service.py",
+      "backend/application/current_report_update_service.py",
+      "backend/infrastructure/office/equipment_id_document_reader.py",
+      "backend/infrastructure/office/test_report_document_gateway.py",
+      "backend/api/routes_report_workspace.py",
+      "frontend/src/api/client.ts",
+      "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+      "frontend/src/features/report-workspace/reportWorkspaceModel.ts",
+      "frontend/src/features/report-workspace/reportWorkspaceModel.test.ts",
+      "tests/unit/test_equipment_report_update_service.py",
+      "tests/unit/test_equipment_id_document_reader.py",
+      "tests/unit/test_current_report_update_service.py",
+      "tests/unit/test_test_report_document_gateway.py",
+      "tests/integration/test_report_workspace_api.py",
+      "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+      "docs/PROJECT_CONTEXT.md"
+    ],
+    "risk_reasons": [
+      "authoritative report mutation and creation of external EquipmentID.docx; protect History and competing edits"
+    ],
+    "activation_head": "d86c443a772e596d20245d6d484ddf7708a527d5",
+    "started_at": "2026-10-03T07:19:28.897091Z",
+    "updated_at": "2026-10-03T07:19:28.897091Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_CUSTOMER_REPORT_SAFE_REGENERATION_DRAFT_20261003",
     "tier": "high_risk",

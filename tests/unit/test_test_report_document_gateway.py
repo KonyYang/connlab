@@ -351,6 +351,12 @@ def test_synchronize_equipment_list_updates_only_the_equipment_table(
         ],
         ["Customer fixture", "Customer supplied", "N/A", "N/A", "N/A"],
     ]
+    assert all(str(run.font.color.rgb) == "FF0000"
+               for paragraph in equipment.rows[1].cells[4].paragraphs
+               for run in paragraph.runs if run.text)
+    assert all(str(run.font.color.rgb) != "FF0000"
+               for paragraph in equipment.rows[2].cells[4].paragraphs
+               for run in paragraph.runs if run.text)
     assert any(
         paragraph.text == "Reviewer-edited purpose text"
         for paragraph in updated.paragraphs
@@ -427,6 +433,27 @@ def test_report_update_restores_password_protection_after_edit(
     assert calls[0] == ("stage", source)
     assert calls[1][0] == "restore"
     assert output.is_file()
+
+
+def test_equipment_same_dates_change_only_color_then_repeat_is_byte_identical(tmp_path: Path) -> None:
+    from dataclasses import replace
+    gateway = TestReportDocumentGateway()
+    source = tmp_path / "report.docx"
+    gateway.generate(template_path=_build_template(tmp_path / "template.docx"), output_path=source, report=_report())
+    row = EquipmentListReportRow(source_reference="DG-Q-0033", status="matched", item="Meter",
+        manufacturer="Maker", id_number="DG-Q-0033", last_calibration="01-Jan-2025",
+        calibration_due="01-Jan-2026", source_sheet="All", expired=True)
+    red = tmp_path / "red.docx"
+    black = tmp_path / "black.docx"
+    repeated = tmp_path / "repeated.docx"
+    gateway.synchronize_equipment_list(source_path=source, output_path=red, rows=(row,))
+    gateway.synchronize_equipment_list(source_path=red, output_path=black, rows=(replace(row, expired=False),))
+    gateway.synchronize_equipment_list(source_path=black, output_path=repeated, rows=(replace(row, expired=False),))
+    assert red.read_bytes() != black.read_bytes()
+    assert black.read_bytes() == repeated.read_bytes()
+    table = next(table for table in Document(black).tables if [cell.text for cell in table.rows[0].cells]
+                 == ["Item", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due"])
+    assert all(str(run.font.color.rgb) == "000000" for p in table.rows[1].cells[4].paragraphs for run in p.runs if run.text)
 
 
 def test_synchronizes_only_managed_llcr_result_cells_into_a_new_draft(tmp_path: Path) -> None:

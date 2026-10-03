@@ -286,11 +286,13 @@ class TestReportDocumentGateway:
             body_before = document.element.body.xml
             if actual != expected:
                 _replace_equipment_table_rows(equipment, expected)
+            expired = tuple(bool(row.expired) for row in rows)
+            _set_equipment_due_colors(equipment, expired)
             _set_equipment_table_geometry(equipment)
             _apply_report_body_format(document)
             if actual != expected or document.element.body.xml != body_before:
                 document.save(temporary)
-            _audit_equipment_sync(temporary, expected)
+            _audit_equipment_sync(temporary, expected, expired)
             self._protected_package_gateway.restore_password_protection(
                 temporary,
                 protection_state,
@@ -454,6 +456,7 @@ def _set_table_font(table: Table, font_name: str) -> None:
 def _audit_equipment_sync(
     path: Path,
     expected: tuple[tuple[str, str, str, str, str], ...],
+    expired: tuple[bool, ...],
 ) -> None:
     document = Document(path)
     equipment = _find_table(document, _EQUIPMENT_HEADERS, "Equipment table")
@@ -463,6 +466,11 @@ def _audit_equipment_sync(
     )
     if actual != expected:
         raise ValueError("Generated Equipment List does not match the confirmed preview.")
+    for row, is_expired in zip(equipment.rows[1:], expired, strict=True):
+        for paragraph in row.cells[4].paragraphs:
+            for run in paragraph.runs:
+                if run.text and str(run.font.color.rgb) != ("FF0000" if is_expired else "000000"):
+                    raise ValueError("Generated Equipment List calibration date color is inconsistent.")
     id_width = int(equipment._tbl.tblGrid.gridCol_lst[2].get(qn("w:w"), "0"))
     if id_width < _MIN_EQUIPMENT_ID_WIDTH_DXA or any(
         row.cells[2]._tc.get_or_add_tcPr().find(qn("w:noWrap")) is None
@@ -470,6 +478,15 @@ def _audit_equipment_sync(
     ):
         raise ValueError("Generated Equipment List ID Number column may wrap lab IDs.")
     _audit_report_body_format(document)
+
+
+def _set_equipment_due_colors(table: Table, expired: tuple[bool, ...]) -> None:
+    from docx.shared import RGBColor
+
+    for row, is_expired in zip(table.rows[1:], expired, strict=True):
+        for paragraph in row.cells[4].paragraphs:
+            for run in paragraph.runs:
+                run.font.color.rgb = RGBColor.from_string("FF0000" if is_expired else "000000")
 
 
 def _fill_headers(document, report: TestReportDraftData) -> None:

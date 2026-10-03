@@ -24,6 +24,8 @@ class WorkspaceStore(Protocol):
 
 class EquipmentSourceReader(Protocol):
     def read(self, source_path: Path): ...
+    def save_missing(self, source_path: Path, *, content: bytes | None = None,
+                     references_text: str | None = None): ...
 
 
 class EquipmentCatalogReader(Protocol):
@@ -73,6 +75,7 @@ class EquipmentListPreview:
     blockers: tuple[str, ...]
     warnings: tuple[str, ...]
     requires_expired_acknowledgement: bool
+    catalog_source_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +87,13 @@ class EquipmentListUpdateCommand:
     acknowledge_expired: bool
     external_overrides: tuple[EquipmentListExternalOverride, ...]
     updated_by: str
+
+
+@dataclass(frozen=True, slots=True)
+class EquipmentListOneClickResult:
+    status: str
+    update: object | None = None
+    rows: tuple[EquipmentListReportRow, ...] = tuple()
 
 
 class EquipmentReportUpdateService:
@@ -104,6 +114,54 @@ class EquipmentReportUpdateService:
         self._reports = current_report_updates
         self._today = today
 
+    def update_one_click(
+        self, *, project_id: str, updated_by: str,
+        content: bytes | None = None, references_text: str | None = None,
+    ) -> EquipmentListOneClickResult:
+        workspace = self._workspaces.get_by_project(project_id)
+        if workspace is None:
+            raise EquipmentReportUpdateError("Create the official project folder before updating Equipment List.")
+        report = self._reports.get_current_report(project_id)
+        if blockers := _report_blockers(report):
+            raise EquipmentReportUpdateError(" ".join(blockers))
+        root = Path(workspace.local_workspace_path)
+        source_path = root / "EquipmentID.docx"
+        validate_path = getattr(self._source_reader, "validate_path", None)
+        if validate_path:
+            validate_path(source_path)
+        try:
+            source_path.lstat()
+        except FileNotFoundError:
+            if content is None and references_text is None:
+                return EquipmentListOneClickResult("source_required")
+            self._source_reader.save_missing(source_path, content=content, references_text=references_text)
+        else:
+            if content is not None or references_text is not None:
+                raise EquipmentReportUpdateError("EquipmentID.docx now exists. Retry the update without importing.")
+        preview = self.preview(project_id=project_id)
+        if preview.blockers:
+            raise EquipmentReportUpdateError(" ".join(preview.blockers))
+        # A second stable read confirms the Settings catalog identity as well as its bytes.
+        def revalidate() -> None:
+            current = self.preview(project_id=project_id)
+            current_workspace = self._workspaces.get_by_project(project_id)
+            if (current.blockers or current_workspace is None
+                or Path(current_workspace.local_workspace_path) != root
+                or current.source_sha256 != preview.source_sha256
+                or current.catalog_sha256 != preview.catalog_sha256
+                or current.catalog_source_path != preview.catalog_source_path
+                or current.rows != preview.rows):
+                raise EquipmentReportUpdateError("Equipment sources changed during update. Retry Update Equipment List.")
+        try:
+            result = self._reports.update_equipment_list(UpdateCurrentEquipmentListReportCommand(
+                project_id=project_id,
+                expected_report_sha256=preview.current_report.file_sha256 or "",
+                rows=preview.rows, updated_by=updated_by, revalidate_sources=revalidate,
+            ))
+        except CurrentReportUpdateError as exc:
+            raise EquipmentReportUpdateError(str(exc)) from exc
+        return EquipmentListOneClickResult("completed", result, preview.rows)
+
     def preview(
         self,
         *,
@@ -118,6 +176,7 @@ class EquipmentReportUpdateService:
         source_sha256: str | None = None
         catalog_file_name: str | None = None
         catalog_sha256: str | None = None
+        catalog_source_path: Path | None = None
 
         workspace = self._workspaces.get_by_project(project_id)
         if workspace is None:
@@ -126,8 +185,14 @@ class EquipmentReportUpdateService:
             source_path = Path(workspace.local_workspace_path) / "EquipmentID.docx"
             source_file_name = source_path.name
             try:
+                validate_path = getattr(self._source_reader, "validate_path", None)
+                if validate_path:
+                    validate_path(source_path)
+                before = _fingerprint(source_path)
                 source = self._source_reader.read(source_path)
                 source_sha256 = _fingerprint(source.source_path)
+                if source_sha256 != before:
+                    raise ValueError("Equipment selection changed while it was read. Retry the update.")
             except FileNotFoundError:
                 blockers.append(
                     "EquipmentID.docx was not found in the project folder."
@@ -140,8 +205,15 @@ class EquipmentReportUpdateService:
             try:
                 catalog = self._catalog_reader.read_equipment_calibrations()
                 catalog_path = Path(catalog.resource_path)
+                catalog_source_path = catalog_path
                 catalog_file_name = catalog_path.name
+                before = _fingerprint(catalog_path)
+                catalog = self._catalog_reader.read_equipment_calibrations()
+                if Path(catalog.resource_path) != catalog_path:
+                    raise ValueError("The configured equipment workbook changed while reading.")
                 catalog_sha256 = _fingerprint(catalog_path)
+                if catalog_sha256 != before:
+                    raise ValueError("The equipment workbook changed while reading.")
             except (FileNotFoundError, OSError, RuntimeError, ValueError):
                 blockers.append(
                     "Equipment calibration Excel is unavailable or does not match a supported "
@@ -175,6 +247,7 @@ class EquipmentReportUpdateService:
             blockers=tuple(blockers),
             warnings=tuple(warnings),
             requires_expired_acknowledgement=requires_ack,
+            catalog_source_path=catalog_source_path,
         )
 
     def update(self, command: EquipmentListUpdateCommand):
@@ -227,11 +300,15 @@ class EquipmentReportUpdateService:
         }
         rows: list[EquipmentListReportRow] = []
         warnings: list[str] = []
+        seen: set[str] = set()
         for reference in references:
             key = equipment_reference_key(reference)
+            if key in seen:
+                continue
+            seen.add(key)
             matches = indexed.get(key, [])
             override = overrides.get(key)
-            if len(matches) == 1:
+            if matches:
                 catalog_row = matches[0]
                 issues: list[str] = []
                 item = (catalog_row.equipment_name or "").strip()
@@ -294,27 +371,6 @@ class EquipmentReportUpdateService:
                     warnings.append(
                         f"Calibration is expired for {catalog_row.equipment_id} "
                         f"({row.calibration_due})."
-                    )
-                continue
-            if len(matches) > 1:
-                external_row, external_warning = _external_override_row(
-                    reference,
-                    override,
-                    self._today(),
-                )
-                rows.append(external_row or _unresolved_row(reference, "ambiguous"))
-                if external_warning:
-                    warnings.append(external_warning)
-                if external_row is not None:
-                    warnings.append(
-                        f"Equipment reference {reference!r} matches multiple calibration rows. "
-                        "The confirmed preview correction will be used."
-                    )
-                else:
-                    warnings.append(
-                        f"Equipment reference {reference!r} matches multiple calibration rows. "
-                        "Unconfirmed cells will remain blank; correct them in this preview or "
-                        "manually in Word."
                     )
                 continue
             external_row, external_warning = _external_override_row(

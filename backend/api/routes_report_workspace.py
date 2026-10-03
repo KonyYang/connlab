@@ -12,6 +12,7 @@ from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Respons
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
+from starlette.concurrency import run_in_threadpool
 
 from backend.api.dependencies import (
     get_customer_report_projection_service,
@@ -499,6 +500,43 @@ def update_current_report_equipment_list(
         ),
         "updated_by": result.updated_by,
     }
+
+
+@router.post("/api/projects/{project_id}/report-workspace/current-report/equipment/update",
+             dependencies=[Depends(require_project_folder_write_slot)])
+async def update_equipment_list_one_click(
+    project_id: str, file: UploadFile | None = File(default=None),
+    references_text: str | None = Form(default=None), updated_by: str = Form("Lab User"),
+    service: EquipmentReportUpdateService = Depends(get_equipment_report_update_service),
+) -> dict:
+    content = None
+    if file is not None:
+        if not (file.filename or "").casefold().endswith(".docx"):
+            raise HTTPException(422, detail="Choose an EquipmentID .docx document.")
+        content = await file.read(20 * 1024 * 1024 + 1)
+        if len(content) > 20 * 1024 * 1024:
+            raise HTTPException(413, detail="Equipment selection document exceeds the 20 MB limit.")
+    if references_text is not None and len(references_text) > 100000:
+        raise HTTPException(413, detail="Equipment ID text is too long.")
+    try:
+        outcome = await run_in_threadpool(service.update_one_click, project_id=project_id,
+            updated_by=updated_by, content=content, references_text=references_text)
+    except (ValueError, OSError, CurrentReportFileConflictError) as exc:
+        logger.warning("Equipment List update failed for project %s: %s", project_id, exc)
+        raise HTTPException(409, detail="Equipment List could not be updated. Check EquipmentID.docx, the Settings calibration workbook and report access, then retry. No existing selection file is overwritten.") from exc
+    if outcome.status == "source_required":
+        return {"status": "source_required", "project_id": project_id}
+    result = outcome.update
+    return {"status": "completed", "project_id": project_id,
+        "file_name": result.file_name, "changed": result.changed,
+        "current_sha256": result.current_sha256,
+        "archive_path": str(result.archive_path) if result.archive_path else None,
+        "statistics": {
+            "filled": len(outcome.rows),
+            "unmatched": [row.source_reference for row in outcome.rows if row.status == "unmatched"],
+            "incomplete": [row.source_reference for row in outcome.rows if row.status == "incomplete"],
+            "expired": [row.id_number for row in outcome.rows if row.expired],
+        }}
 
 
 @router.post("/api/projects/{project_id}/report-workspace/llcr/inspect")
