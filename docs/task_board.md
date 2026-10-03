@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_CUSTOMER_REPORT_SAFE_REGENERATION_DRAFT_20261003",
     "summary": "Customer Report 安全重新生成与 Draft 下载",
@@ -35,9 +35,95 @@
     ],
     "activation_head": "152ae46d0a8ba3162ac22820664f103dd599428b",
     "started_at": "2026-10-03T06:26:35.015541Z",
-    "updated_at": "2026-10-03T06:26:35.015541Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-03T07:10:13.885396Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_CUSTOMER_REPORT_SAFE_REGENERATION_DRAFT_20261003",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "integration": {
+        "status": "passed",
+        "subject": "43521f7027c29f2e48130db90c8302adaaddec37",
+        "result": "Local master commits e003ca98 task rollover, 67140d37 implementation, 43521f70 focus fix; clean reviewed subject. No merge needed in legacy direct workflow; no push."
+      },
+      "schema": "connlab.sol-task-report",
+      "scope_ok": true,
+      "summary": "Customer Report 已存在时确认归档后重新生成或取消；显式重新生成包括同字节归档；无项目文件夹下载副本加 draft。浏览器验收发现并补修 Cancel/Esc 焦点恢复；业务报告未替换。",
+      "changed_paths": [
+        "backend/application/customer_report_projection_service.py",
+        "backend/infrastructure/files/report_publication_gateway.py",
+        "tests/unit/test_customer_report_projection_service.py",
+        "tests/unit/test_report_publication_gateway.py",
+        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+        "frontend/src/features/report-workspace/CustomerReportRegenerationDialog.tsx",
+        "frontend/src/features/report-workspace/useUploadedCustomerReportJob.ts",
+        "frontend/src/features/report-workspace/useUploadedCustomerReportJob.test.tsx",
+        "docs/PROJECT_CONTEXT.md"
+      ],
+      "version": 1,
+      "validation": [
+        {
+          "command": "pytest -p no:cacheprovider tests/unit/test_report_publication_gateway.py tests/unit/test_customer_report_projection_service.py tests/unit/test_current_report_update_service.py tests/unit/test_internal_report_generation_service.py tests/unit/test_project_customer_report_job_service.py tests/unit/test_tools_customer_report_job_service.py tests/integration/test_project_customer_report_job_api.py tests/integration/test_project_customer_report_runner.py tests/integration/test_internal_report_generation_api.py tests/integration/test_tools_customer_report_job_api.py tests/integration/test_report_workspace_api.py -q",
+          "status": "passed",
+          "result": "90 passed on 67140d37; final focus fix changed frontend only, backend/test bytes unchanged. One Starlette/httpx deprecation warning."
+        },
+        {
+          "command": "npm.cmd test -- src/features/report-workspace",
+          "status": "passed",
+          "result": "Final subject 43521f70: 78 tests passed, no skipped. Developer meaningful RED/GREEN for same-byte archives, draft naming, confirmation and Cancel/Escape focus restoration."
+        },
+        {
+          "command": "npm.cmd run build",
+          "status": "passed",
+          "result": "Final subject TypeScript and Vite production build passed sequentially after affected frontend tests."
+        },
+        {
+          "command": "In-app browser smoke and business report fingerprint comparison",
+          "status": "passed",
+          "result": "Final live existing-report modal: Cancel/Escape no generation, focus returns to trigger, Tab wrapping works. Missing-source picker opens/cancels without upload. Console warnings/errors empty, both business report hashes unchanged. Screenshot tmp/customer-regeneration-qa-final-modal-20261003.png. No live Office conversion or business archive performed. Existing unchanged source-picker Cancel focus-to-body issue is outside scope/non-blocking."
+        },
+        {
+          "command": "git diff --check and exact scope/subject inspection",
+          "status": "passed",
+          "result": "Final clean master, exact ten approved paths, parent/tree checked independently; no unrelated changes or remote publication."
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed",
+          "subject": "43521f7027c29f2e48130db90c8302adaaddec37",
+          "result": "Independent Planner approved minimal compatible archive_unchanged opt-in, captured hashes and draft-only naming; exact ten-file plan and risk-based matrix."
+        },
+        "integrator": {
+          "status": "passed",
+          "subject": "43521f7027c29f2e48130db90c8302adaaddec37",
+          "result": "Independent Integrator verified clean master, parent chain, tree 3fcd2902609a380cbee4440c9188c30653b6266b, exact ten-file cumulative scope and accepted final Reviewer/QA. No integration blocker."
+        },
+        "reviewer": {
+          "status": "passed",
+          "subject": "43521f7027c29f2e48130db90c8302adaaddec37",
+          "result": "Independent Reviewer full initial ten-file change plus focused three-file final fix: Standards0, Spec0; no findings."
+        },
+        "qa": {
+          "status": "passed",
+          "subject": "43521f7027c29f2e48130db90c8302adaaddec37",
+          "result": "Independent final QA: Python90 unchanged-backend evidence, final report-feature78 tests/build/live browser and unchanged business hashes. Earlier full frontend794 + optional performance skip was pre-fix historical only. Source-picker focus residual and no live Office conversion recorded."
+        },
+        "developer": {
+          "status": "passed",
+          "subject": "43521f7027c29f2e48130db90c8302adaaddec37",
+          "result": "Independent Developer TDD: initial Python38 and UI57; bounded focus RED2/GREEN47. No generic Tools/API/job contract changes or external report mutation."
+        }
+      },
+      "subject": "43521f7027c29f2e48130db90c8302adaaddec37",
+      "task_id": "TASK_CUSTOMER_REPORT_SAFE_REGENERATION_DRAFT_20261003"
+    }
   },
   "last_closed": {
     "task_id": "TASK_REPORT_COMBINED_GENERATION_SOURCE_PICKER_20261003",
