@@ -11,115 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_FEE_GROUP_BASE_DEFAULTS_20261003",
-    "summary": "按 Matrix 组数设置默认基本费并显示参考条件悬浮提示",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Multiple confirmed Matrix groups default step Base Fee to zero; single group keeps existing rules; expose rule text on Base Fee hover without replacing manual Fee edits.",
-    "scope_paths": [
-      "backend/application/confirmed_matrix_fee_base_fee_policy.py",
-      "backend/application/confirmed_matrix_fee_draft_line_builder.py",
-      "backend/application/confirmed_matrix_fee_draft_models.py",
-      "backend/api/routes_confirmed_matrix_fee_draft.py",
-      "frontend/src/api/client.ts",
-      "frontend/src/features/fee-evaluation",
-      "tests/unit/test_confirmed_matrix_fee_draft_multi_group_base_fee.py",
-      "tests/integration/test_confirmed_matrix_fee_draft_api.py",
-      "docs/fee_reference_20260915.md"
-    ],
-    "risk_reasons": [],
-    "activation_head": "c664b1531508230504f428f4da9c3258dc20f6f3",
-    "started_at": "2026-10-03T09:22:32.310889Z",
-    "updated_at": "2026-10-03T09:31:16.339623Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_FEE_GROUP_BASE_DEFAULTS_20261003",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "integration": {
-        "method": "Local master task commit; no remote publication",
-        "status": "passed"
-      },
-      "version": 1,
-      "schema": "connlab.sol-task-report",
-      "validation": [
-        {
-          "result": "780 passed, 4 skipped; 76 fee-related unit/integration files; Office integration excluded",
-          "name": "Python Fee regression",
-          "status": "passed"
-        },
-        {
-          "result": "142 passed across 11 test files",
-          "name": "Frontend Fee regression",
-          "status": "passed"
-        },
-        {
-          "result": "TypeScript and Vite passed",
-          "name": "Production build",
-          "status": "passed"
-        },
-        {
-          "result": "99 Base Fee inputs are zero; 86 Matrix step inputs have source reference titles; read-only verification",
-          "name": "Live browser",
-          "status": "passed"
-        },
-        {
-          "result": "No whitespace errors",
-          "name": "Diff check",
-          "status": "passed"
-        }
-      ],
-      "summary": "Multiple confirmed Matrix groups default step Base Fee to zero; single groups retain rules; inputs show source conditions on hover.",
-      "task_id": "TASK_FEE_GROUP_BASE_DEFAULTS_20261003",
-      "changed_paths": [
-        "backend/api/routes_confirmed_matrix_fee_draft.py",
-        "backend/application/confirmed_matrix_fee_base_fee_policy.py",
-        "backend/application/confirmed_matrix_fee_draft_line_builder.py",
-        "backend/application/confirmed_matrix_fee_draft_models.py",
-        "docs/fee_reference_20260915.md",
-        "frontend/src/api/client.ts",
-        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.test.tsx",
-        "frontend/src/features/fee-evaluation/FeeEvaluationPreviewTable.tsx",
-        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.test.ts",
-        "frontend/src/features/fee-evaluation/feeEvaluationPreviewModel.ts",
-        "tests/integration/test_confirmed_matrix_fee_draft_api.py",
-        "tests/integration/test_confirmed_matrix_fee_draft_dependent_fields_api.py",
-        "tests/unit/test_confirmed_matrix_fee_draft_multi_group_base_fee.py",
-        "tests/unit/test_confirmed_matrix_fee_draft_rule_resolution.py"
-      ],
-      "subject": "84ffa8fbc887be6bb8695f86fd6e66186d6b0b05",
-      "scope_ok": true,
-      "roles": {
-        "qa": {
-          "method": "same-agent risk-proportionate complete fee regression and build on final reviewed code",
-          "status": "passed"
-        },
-        "developer": {
-          "method": "same-agent implementation and meaningful RED/GREEN tests",
-          "status": "passed"
-        },
-        "reviewer": {
-          "method": "same-agent focused standards and requirement review; no blocking findings",
-          "status": "passed"
-        }
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_REPORT_HEADER_ICON_TITLE_CASE_20261003",
-    "tier": "micro",
-    "subject": "d3d50bb550c81437cf16ab51d6f595488e8b2b54",
-    "summary": "Report 页标题、工作台返回图标与按钮标题统一",
+    "task_id": "TASK_FEE_GROUP_BASE_DEFAULTS_20261003",
+    "tier": "standard",
+    "subject": "84ffa8fbc887be6bb8695f86fd6e66186d6b0b05",
+    "summary": "按 Matrix 组数设置默认基本费并显示参考条件悬浮提示",
     "disposition": "completed",
     "decision_ref": "User final close: 关闭任务",
-    "closed_at": "2026-10-03T09:07:42.991778Z"
+    "closed_at": "2026-10-03T11:40:52.575104Z"
   },
   "retained_history": [
     {
