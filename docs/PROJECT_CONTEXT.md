@@ -83,6 +83,24 @@ Do not use a dated snapshot as a substitute for the code.
 
 ## Architecture seams
 
+### Standalone Tools equipment update
+
+- Tools includes `Update Equipment List` beside the existing customer-report conversion and encrypted
+  copy tools. It accepts a compatible Internal Report `.docx` plus either an uploaded equipment
+  selection `.docx` or pasted equipment IDs. Calibration data comes from the active Settings workbook.
+- The standalone service shares the project report's ordered matching, ID normalization, first-match,
+  incomplete-field, L-series calibration marker, and expired-date rules. It writes a new
+  `_EquipmentUpdated.docx` download using the existing protected Word adapter; the original report,
+  equipment selection, project registry, current-report authority and History are not changed.
+- Success is shown beside the tool as concise green download feedback. Only actual unmatched,
+  incomplete or expired references need review. Feedback is transported with the download in a bounded
+  header; unusually large issue lists show retained IDs and an explicit remaining count, not silent
+  truncation. Inputs and calibration bytes are checked for changes while preparing the output.
+- Unsupported/unreadable documents or unavailable calibration data stop the download with guidance;
+  only the request-owned temporary uploads/output are cleaned. Leaving Tools suppresses late downloads.
+  Acceptance covers both selection modes, content preservation, original-file protection, failure
+  cleanup, catalog changes, duplicate requests, and the existing two Tools workflows.
+
 ### Basic Information confirmation
 
 - Normal Basic Information entry reads the latest confirmed values; before first confirmation it

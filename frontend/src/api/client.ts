@@ -5600,6 +5600,38 @@ export function generateMatrixEditorLlcrCrRecordDraftDownload(
   );
 }
 
+export type EquipmentReview = {
+  filled: number;
+  unmatched: string[];
+  incomplete: string[];
+  expired: string[];
+  omitted: { unmatched: number; incomplete: number; expired: number };
+};
+
+export async function updateStandaloneEquipmentList(
+  file: File, input: { equipmentFile?: File; referencesText?: string },
+): Promise<BlobDownloadResponse & { review: EquipmentReview }> {
+  const body = new FormData();
+  body.append("file", file);
+  if (input.equipmentFile) body.append("equipment_file", input.equipmentFile);
+  if (input.referencesText !== undefined) body.append("references_text", input.referencesText);
+  const response = await fetch(`${API_BASE}/api/tools/equipment-list`, { method: "POST", body });
+  if (!response.ok) throw await responseError(response);
+  let review: EquipmentReview;
+  try {
+    review = JSON.parse(response.headers.get("x-equipment-review") ?? "null");
+    if (!review || !Number.isInteger(review.filled) || review.filled < 0 ||
+        !["unmatched", "incomplete", "expired"].every((category) => {
+          const key = category as "unmatched" | "incomplete" | "expired";
+          return Array.isArray(review[key]) && review[key].every((item) => typeof item === "string") &&
+            Number.isInteger(review.omitted?.[key]) && review.omitted[key] >= 0;
+        })) throw new Error("Invalid equipment feedback");
+  } catch {
+    throw new Error("Equipment update feedback is unavailable. Retry the update.");
+  }
+  return { ...await blobDownloadFromResponse(response), review };
+}
+
 export type InternalReportGenerationPreview = {
   project_id: string;
   status: "ready" | "blocked";

@@ -227,10 +227,11 @@ class EquipmentReportUpdateService:
                         "EquipmentID.docx does not contain any equipment references."
                     )
                 else:
-                    rows, row_warnings = self._project_rows(
+                    rows, row_warnings = resolve_equipment_rows(
                         source.references,
                         catalog.rows,
                         external_overrides,
+                        today=self._today(),
                     )
                     warnings.extend(row_warnings)
 
@@ -281,117 +282,120 @@ class EquipmentReportUpdateService:
         except CurrentReportUpdateError as exc:
             raise EquipmentReportUpdateError(str(exc)) from exc
 
-    def _project_rows(
-        self,
-        references: tuple[str, ...],
-        catalog_rows: tuple[object, ...],
-        external_overrides: tuple[EquipmentListExternalOverride, ...],
-    ) -> tuple[list[EquipmentListReportRow], list[str]]:
-        indexed: dict[str, list[object]] = {}
-        for catalog_row in catalog_rows:
-            keys = {equipment_reference_key(catalog_row.equipment_id)}
-            if (catalog_row.equipment_name or "").strip():
-                keys.add(equipment_reference_key(catalog_row.equipment_name))
-            for key in keys:
-                indexed.setdefault(key, []).append(catalog_row)
-        overrides = {
-            equipment_reference_key(item.source_reference): item
-            for item in external_overrides
-        }
-        rows: list[EquipmentListReportRow] = []
-        warnings: list[str] = []
-        seen: set[str] = set()
-        for reference in references:
-            key = equipment_reference_key(reference)
-            if key in seen:
-                continue
-            seen.add(key)
-            matches = indexed.get(key, [])
-            override = overrides.get(key)
-            if matches:
-                catalog_row = matches[0]
-                issues: list[str] = []
-                item = (catalog_row.equipment_name or "").strip()
-                manufacturer = (catalog_row.manufacturer or "").strip()
-                id_number = (catalog_row.equipment_id or "").strip()
-                if not item:
-                    issues.append("Item")
-                if not manufacturer:
-                    issues.append("Manufacturer")
-                if not id_number:
-                    issues.append("ID Number")
-                last_calibration = _safe_report_date(
-                    catalog_row.last_calibration_date,
-                    label="Last Cal.",
-                    issues=issues,
-                    allow_not_calibrated=bool(re.fullmatch(r"L-\d{4}", equipment_reference_key(id_number))),
-                )
-                calibration_due = _safe_report_date(
-                    catalog_row.calibration_due_date,
-                    label="Cal. Due",
-                    issues=issues,
-                )
-                expired = bool(calibration_due) and _is_expired(
-                    calibration_due,
-                    self._today(),
-                )
-                row = EquipmentListReportRow(
-                    source_reference=reference,
-                    status="incomplete" if issues else "matched",
-                    item=item,
-                    manufacturer=manufacturer,
-                    id_number=id_number,
-                    last_calibration=last_calibration,
-                    calibration_due=calibration_due,
-                    source_sheet=catalog_row.source_sheet,
-                    expired=expired,
-                )
-                if issues:
-                    external_row, external_warning = _external_override_row(
-                        reference,
-                        override,
-                        self._today(),
-                    )
-                    rows.append(external_row or row)
-                    if external_warning:
-                        warnings.append(external_warning)
-                    if external_row is not None:
-                        warnings.append(
-                            f"Calibration row for {catalog_row.equipment_id!r} is incomplete: "
-                            f"{', '.join(issues)}. The confirmed preview correction will be used."
-                        )
-                    else:
-                        warnings.append(
-                            f"Calibration row for {catalog_row.equipment_id!r} is incomplete: "
-                            f"{', '.join(issues)}. Unconfirmed cells will remain blank; "
-                            "correct them in this preview or manually in Word."
-                        )
-                    continue
-                rows.append(row)
-                if expired:
-                    warnings.append(
-                        f"Calibration is expired for {catalog_row.equipment_id} "
-                        f"({row.calibration_due})."
-                    )
-                continue
-            external_row, external_warning = _external_override_row(
-                reference,
-                override,
-                self._today(),
+
+def resolve_equipment_rows(
+    references: tuple[str, ...],
+    catalog_rows: tuple[object, ...],
+    external_overrides: tuple[EquipmentListExternalOverride, ...] = (),
+    *,
+    today: date,
+) -> tuple[list[EquipmentListReportRow], list[str]]:
+    """Resolve ordered references using the same calibration rules for projects and Tools."""
+    indexed: dict[str, list[object]] = {}
+    for catalog_row in catalog_rows:
+        keys = {equipment_reference_key(catalog_row.equipment_id)}
+        if (catalog_row.equipment_name or "").strip():
+            keys.add(equipment_reference_key(catalog_row.equipment_name))
+        for key in keys:
+            indexed.setdefault(key, []).append(catalog_row)
+    overrides = {
+        equipment_reference_key(item.source_reference): item
+        for item in external_overrides
+    }
+    rows: list[EquipmentListReportRow] = []
+    warnings: list[str] = []
+    seen: set[str] = set()
+    for reference in references:
+        key = equipment_reference_key(reference)
+        if key in seen:
+            continue
+        seen.add(key)
+        matches = indexed.get(key, [])
+        override = overrides.get(key)
+        if matches:
+            catalog_row = matches[0]
+            issues: list[str] = []
+            item = (catalog_row.equipment_name or "").strip()
+            manufacturer = (catalog_row.manufacturer or "").strip()
+            id_number = (catalog_row.equipment_id or "").strip()
+            if not item:
+                issues.append("Item")
+            if not manufacturer:
+                issues.append("Manufacturer")
+            if not id_number:
+                issues.append("ID Number")
+            last_calibration = _safe_report_date(
+                catalog_row.last_calibration_date,
+                label="Last Cal.",
+                issues=issues,
+                allow_not_calibrated=bool(re.fullmatch(r"L-\d{4}", equipment_reference_key(id_number))),
             )
-            if external_row is not None:
-                rows.append(external_row)
+            calibration_due = _safe_report_date(
+                catalog_row.calibration_due_date,
+                label="Cal. Due",
+                issues=issues,
+            )
+            expired = bool(calibration_due) and _is_expired(
+                calibration_due,
+                today,
+            )
+            row = EquipmentListReportRow(
+                source_reference=reference,
+                status="incomplete" if issues else "matched",
+                item=item,
+                manufacturer=manufacturer,
+                id_number=id_number,
+                last_calibration=last_calibration,
+                calibration_due=calibration_due,
+                source_sheet=catalog_row.source_sheet,
+                expired=expired,
+            )
+            if issues:
+                external_row, external_warning = _external_override_row(
+                    reference,
+                    override,
+                    today,
+                )
+                rows.append(external_row or row)
                 if external_warning:
                     warnings.append(external_warning)
+                if external_row is not None:
+                    warnings.append(
+                        f"Calibration row for {catalog_row.equipment_id!r} is incomplete: "
+                        f"{', '.join(issues)}. The confirmed preview correction will be used."
+                    )
+                else:
+                    warnings.append(
+                        f"Calibration row for {catalog_row.equipment_id!r} is incomplete: "
+                        f"{', '.join(issues)}. Unconfirmed cells will remain blank; "
+                        "correct them in this preview or manually in Word."
+                    )
                 continue
-            rows.append(_unresolved_row(reference, "unmatched"))
+            rows.append(row)
+            if expired:
+                warnings.append(
+                    f"Calibration is expired for {catalog_row.equipment_id} "
+                    f"({row.calibration_due})."
+                )
+            continue
+        external_row, external_warning = _external_override_row(
+            reference,
+            override,
+            today,
+        )
+        if external_row is not None:
+            rows.append(external_row)
             if external_warning:
                 warnings.append(external_warning)
-            warnings.append(
-                f"Equipment reference {reference!r} was not found. "
-                "It will be added with ID only; complete it manually in Word."
-            )
-        return rows, warnings
+            continue
+        rows.append(_unresolved_row(reference, "unmatched"))
+        if external_warning:
+            warnings.append(external_warning)
+        warnings.append(
+            f"Equipment reference {reference!r} was not found. "
+            "It will be added with ID only; complete it manually in Word."
+        )
+    return rows, warnings
 
 
 _EQUIPMENT_TOKEN = re.compile(r"(?:DG-)?[QL]-\d{4}", flags=re.IGNORECASE)

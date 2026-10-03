@@ -13,6 +13,7 @@ import shutil
 from statistics import stdev
 import tempfile
 from uuid import uuid4
+from zipfile import BadZipFile
 
 from docx import Document
 from docx.enum.table import (
@@ -26,6 +27,7 @@ from docx.oxml.ns import qn
 from docx.shared import Pt
 from docx.table import Table, _Cell
 from docx.text.paragraph import Paragraph
+from lxml.etree import XMLSyntaxError
 
 from backend.application.confirmed_matrix_test_record_preview_service import (
     is_llcr_test_item,
@@ -277,7 +279,10 @@ class TestReportDocumentGateway:
                 source,
                 temporary,
             )
-            document = Document(temporary)
+            try:
+                document = Document(temporary)
+            except (BadZipFile, KeyError, ValueError, XMLSyntaxError) as exc:
+                raise ValueError("The Internal Report cannot be read. Select a valid .docx report.") from exc
             equipment = _find_table(document, _EQUIPMENT_HEADERS, "Equipment table")
             actual = tuple(
                 tuple(cell.text.strip() for cell in row.cells[:5])

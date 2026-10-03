@@ -200,6 +200,7 @@ from backend.application.customer_report_projection_service import (
     CustomerReportProjectionService,
 )
 from backend.application.equipment_report_update_service import EquipmentReportUpdateService
+from backend.application.tools_equipment_report_service import ToolsEquipmentReportService
 from backend.application.test_report_template_resource import (
     TestReportTemplateResourceStore,
 )
@@ -2366,6 +2367,16 @@ def get_tools_service() -> ToolsService:
     return ToolsService(
         customer_report_writer=CustomerReportDocumentGateway(),
         office_protector=OfficeFilePasswordGateway(),
+    )
+
+
+def get_tools_equipment_report_service(
+    session: Session = Depends(get_session),
+) -> ToolsEquipmentReportService:
+    return ToolsEquipmentReportService(
+        source_reader=EquipmentIdDocumentReader(),
+        catalog_reader=ExternalExcelReadService(ExternalResourceRepository(session)),
+        report_writer=TestReportDocumentGateway(),
     )
 
 

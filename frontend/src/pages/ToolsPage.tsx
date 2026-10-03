@@ -9,6 +9,7 @@ import {
   type StandaloneCustomerReportJob,
 } from "../api/client";
 import { UiIcon } from "../components/common/UiIcon";
+import { EquipmentListTool } from "../features/tools/EquipmentListTool";
 import "../tools.css";
 
 type ToolKey = "customer-report" | "encrypt-copy";
@@ -134,6 +135,7 @@ export function ToolsPage(): ReactElement {
           onSelect={(event) => selectFile("encrypt-copy", event)}
           onRun={() => void run("encrypt-copy")}
         />
+        <EquipmentListTool />
       </div>
 
       <p className="tools-page-note">

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -6,6 +6,7 @@ import {
   encryptStandaloneCopy,
   readStandaloneCustomerReportJob,
   startStandaloneCustomerReport,
+  updateStandaloneEquipmentList,
 } from "../api/client";
 import { ToolsPage } from "./ToolsPage";
 
@@ -14,6 +15,7 @@ vi.mock("../api/client", () => ({
   encryptStandaloneCopy: vi.fn(),
   readStandaloneCustomerReportJob: vi.fn(),
   startStandaloneCustomerReport: vi.fn(),
+  updateStandaloneEquipmentList: vi.fn(),
 }));
 
 const startCustomerReportMock = vi.mocked(startStandaloneCustomerReport);
@@ -127,5 +129,83 @@ describe("ToolsPage", () => {
     await user.click(screen.getByRole("button", { name: "Generate customer report" }));
 
     expect((await screen.findByRole("alert")).textContent).toContain("Select a file first.");
+  });
+
+  it("updates equipment in a downloaded report copy and shows only actual review items", async () => {
+    vi.mocked(updateStandaloneEquipmentList).mockResolvedValue({
+      blob: new Blob(["updated"]), fileName: "Internal_EquipmentUpdated.docx",
+      review: { filled: 2, unmatched: ["DG-Q-9999"], incomplete: [], expired: [],
+                omitted: { unmatched: 0, incomplete: 0, expired: 0 } },
+    });
+    render(<ToolsPage />);
+    const report = new File(["original"], "Internal.docx");
+    fireEvent.change(screen.getByLabelText("Internal Report for Equipment Update"), {
+      target: { files: [report] },
+    });
+    fireEvent.click(screen.getByLabelText("Enter Equipment IDs"));
+    fireEvent.change(screen.getByLabelText("Equipment IDs"), { target: { value: "Q-0033, Q-9999" } });
+    fireEvent.click(screen.getByRole("button", { name: "Update Equipment List" }));
+    expect(await screen.findByText("Updated report downloaded. The original file was not changed.")).toBeTruthy();
+    expect(screen.getByText(/Not Registered: DG-Q-9999/)).toBeTruthy();
+    expect(screen.queryByText(/Missing Information:/)).toBeNull();
+    expect(updateStandaloneEquipmentList).toHaveBeenCalledWith(report, { referencesText: "Q-0033, Q-9999" });
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled();
+  });
+
+  it("uploads equipment selection and hides healthy review information", async () => {
+    vi.mocked(updateStandaloneEquipmentList).mockResolvedValue({
+      blob: new Blob(["copy"]), fileName: "copy.docx",
+      review: { filled: 1, unmatched: [], incomplete: [], expired: [],
+                omitted: { unmatched: 0, incomplete: 0, expired: 0 } },
+    });
+    render(<ToolsPage />);
+    const report = new File(["report"], "report.docx");
+    const selection = new File(["equipment"], "EquipmentID.docx");
+    fireEvent.change(screen.getByLabelText("Internal Report for Equipment Update"), { target: { files: [report] } });
+    fireEvent.change(screen.getByLabelText("Select EquipmentID.docx"), { target: { files: [selection] } });
+    fireEvent.click(screen.getByRole("button", { name: "Update Equipment List" }));
+    expect(await screen.findByText("copy.docx")).toBeTruthy();
+    expect(updateStandaloneEquipmentList).toHaveBeenCalledWith(report, { equipmentFile: selection });
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByLabelText("Enter Equipment IDs"));
+    expect(screen.queryByText("copy.docx")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Update Equipment List" }));
+    expect(screen.getByRole("alert").textContent).toContain("enter equipment IDs");
+    expect(updateStandaloneEquipmentList).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows failed update guidance without starting a download", async () => {
+    vi.mocked(updateStandaloneEquipmentList).mockRejectedValue(new Error("Check the workbook in Settings."));
+    render(<ToolsPage />);
+    fireEvent.change(screen.getByLabelText("Internal Report for Equipment Update"), {
+      target: { files: [new File(["report"], "report.docx")] },
+    });
+    fireEvent.click(screen.getByLabelText("Enter Equipment IDs"));
+    fireEvent.change(screen.getByLabelText("Equipment IDs"), { target: { value: "Q-0033" } });
+    fireEvent.click(screen.getByRole("button", { name: "Update Equipment List" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Settings");
+    expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Updated report downloaded/)).toBeNull();
+  });
+
+  it("prevents repeated requests and discards a completed download after leaving Tools", async () => {
+    let resolve!: (value: Awaited<ReturnType<typeof updateStandaloneEquipmentList>>) => void;
+    vi.mocked(updateStandaloneEquipmentList).mockReturnValue(new Promise((done) => { resolve = done; }));
+    const rendered = render(<ToolsPage />);
+    const reportInput = screen.getByLabelText("Internal Report for Equipment Update");
+    fireEvent.change(reportInput, { target: { files: [new File(["report"], "report.docx")] } });
+    fireEvent.click(screen.getByLabelText("Enter Equipment IDs"));
+    fireEvent.change(screen.getByLabelText("Equipment IDs"), { target: { value: "Q-0033" } });
+    fireEvent.click(screen.getByRole("button", { name: "Update Equipment List" }));
+    const pending = screen.getByRole("button", { name: "Updating..." }) as HTMLButtonElement;
+    expect(pending.disabled).toBe(true);
+    expect((reportInput as HTMLInputElement).disabled).toBe(true);
+    fireEvent.click(pending);
+    expect(updateStandaloneEquipmentList).toHaveBeenCalledTimes(1);
+    rendered.unmount();
+    await act(async () => resolve({ blob: new Blob(["copy"]), fileName: "copy.docx",
+      review: { filled: 1, unmatched: [], incomplete: [], expired: [],
+                omitted: { unmatched: 0, incomplete: 0, expired: 0 } } }));
+    expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
   });
 });
