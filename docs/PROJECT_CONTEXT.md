@@ -102,8 +102,10 @@ Do not use a dated snapshot as a substitute for the code.
   drafts never supply that label. Optional label lookups do not block report operations.
 - Authority version counters are not displayed in a permanent strip. Existing contextual blockers
   still explain missing confirmation or mismatched sources; authority checks remain unchanged.
-- Three compact business sections organize Internal Report, Update Internal Report (LLCR import/update
-  and Equipment List preview), and Customer Report. There is no numbered wizard or page-wide Confirm.
+- Two compact cards organize report generation and Update Internal Report (LLCR import/update
+  and Equipment List preview). The generation card places Internal Report on the left and Customer
+  Report on the right, with each filename below its action in green, normal-weight text. There is no
+  numbered wizard, repeated report heading, or page-wide Confirm.
   LLCR import remains available before the initial report exists. Section updates preserve unrelated
   report content and manual edits; existing preview, confirmation and publication safeguards remain.
 - The initial report card has no repeated title. Its left-aligned generation action is followed by
@@ -112,7 +114,15 @@ Do not use a dated snapshot as a substitute for the code.
   Cancel does not write files or metadata. A fresh report uses only the approved E-3707_H template,
   latest confirmed Basic Information and active confirmed Matrix; old manual content, results,
   equipment and photos remain in `History/Report` and are never copied into the new report. LLCR and
-  Equipment List updates remain separate actions, and customer-report behavior is unchanged.
+  Equipment List updates remain separate actions.
+- `Generate customer report` normally uses the current project's Internal Report with existing
+  publication, History and recovery safeguards. Only an explicitly missing Internal Report opens
+  the source picker for another existing Internal Report `.docx`; ambiguous or unavailable state
+  does not bypass project blockers. The missing-source state is rechecked before uploading.
+  This fallback reuses the Tools conversion API and downloads a copy, leaving the selected original
+  and project report authority unchanged. Its filename is session-local and identified as a downloaded
+  copy. Cancel never uploads; progress, status/download retries and expired-operation errors remain
+  visible, and late responses after project changes or unmount cannot trigger downloads.
 - Generation approval binds the operation, expected report/absence, source record identities and
   content, Matrix revision, template bytes, workspace identities and latest report revision. Fresh
   independent database reads recheck that context after writing and before publication; a changed

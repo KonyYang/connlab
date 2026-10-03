@@ -9776,6 +9776,32 @@
   justify-items: start;
 }
 
+.report-workspace-generation {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.report-workspace-generation > section {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.report-workspace-customer-generation > .report-workspace-action-row {
+  justify-content: flex-end;
+}
+
+@media (max-width: 600px) {
+  .report-workspace-generation {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report-workspace-customer-generation > .report-workspace-action-row {
+    justify-content: flex-start;
+  }
+}
+
 .report-workspace-update-row {
   border-top: 1px solid var(--color-border);
   padding-top: 10px;

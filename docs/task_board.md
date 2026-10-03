@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_REPORT_COMBINED_GENERATION_SOURCE_PICKER_20261003",
+    "summary": "合并报告生成区并支持内部报告缺失时选择已有 DOCX 生成客户报告下载副本",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "前端合并生成区；复用现有 Tools 异步转换 API，不变更项目正式发布逻辑；保留进度和错误恢复",
+    "scope_paths": [
+      "frontend/src/features/report-workspace",
+      "frontend/src/workbench.css",
+      "docs/PROJECT_CONTEXT.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "d2b6b2b82ee016b2f9fb994dee81806c0482e94e",
+    "started_at": "2026-10-03T03:43:49.089751Z",
+    "updated_at": "2026-10-03T03:43:49.089751Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_REPORT_REMOVE_DUPLICATE_HEADING_20261003",
     "tier": "micro",

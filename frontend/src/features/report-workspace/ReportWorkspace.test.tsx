@@ -16,6 +16,9 @@ vi.mock("../../api/client", async () => {
     fetchReportWorkspace: vi.fn(),
     fetchCurrentReport: vi.fn(),
     fetchCurrentCustomerReport: vi.fn(),
+    startStandaloneCustomerReport: vi.fn(),
+    readStandaloneCustomerReportJob: vi.fn(),
+    downloadStandaloneCustomerReport: vi.fn(),
     inspectLlcrResultWorkbook: vi.fn(),
     confirmLlcrResultImport: vi.fn(),
     generateInitialReportRevision: vi.fn(),
@@ -378,7 +381,7 @@ describe("ReportWorkspace", () => {
     expect(open.parentElement?.title).toBe("Checking project folder availability...");
   });
 
-  it("shares the top bar and groups existing operations into three business regions", async () => {
+  it("shares the top bar and combines both report generators above the update section", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
     render(
@@ -395,10 +398,93 @@ describe("ReportWorkspace", () => {
     const updates = screen.getByRole("region", { name: "Update Internal Report" });
     expect(within(updates).getByLabelText("LLCR result workbook")).toBeTruthy();
     expect(within(updates).getByRole("button", { name: "Preview Equipment List" })).toBeTruthy();
-    expect(screen.getByRole("region", { name: "Customer Report" })).toBeTruthy();
+    const generation = screen.getByRole("region", { name: "Report generation" });
+    expect(within(generation).getByRole("button", { name: "Generate Internal Report" })).toBeTruthy();
+    expect(within(generation).getByRole("button", { name: "Generate customer report" })).toBeTruthy();
+    expect(within(generation).getByText(customerReport.file_name!)).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Customer Report" })).toBeNull();
     expect(screen.queryByText("Project project-1")).toBeNull();
     await user.click(within(actions).getByRole("button", { name: "Back to Workspace" }));
     expect(onBack).toHaveBeenCalledOnce();
+  });
+
+  it("chooses an existing internal DOCX only when the current report is missing and downloads a copy", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue({ ...currentReport, status: "missing", mode: null,
+      file_name: null, file_path: null, file_sha256: null, download_url: null });
+    vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue({ ...customerReport,
+      status: "blocked", can_generate: false, file_name: null, warnings: [],
+      blockers: ["A single current Internal Report is required."] });
+    vi.mocked(api.startStandaloneCustomerReport).mockResolvedValue({ operation_id: "uploaded-1",
+      status: "completed", stage: "ready", elapsed_seconds: 1, message: null });
+    vi.mocked(api.downloadStandaloneCustomerReport).mockResolvedValue({ blob: new Blob(["docx"]), fileName: "Other-CR Report.docx" });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Generate customer report" }));
+    const dialog = await screen.findByRole("dialog", { name: "Select Internal Report" });
+    const file = new File(["existing report"], "Other Report.docx");
+    fireEvent.change(within(dialog).getByLabelText("Internal Report file"), { target: { files: [file] } });
+    await user.click(within(dialog).getByRole("button", { name: "Generate customer report" }));
+    expect(await screen.findByText("Other-CR Report.docx")).toBeTruthy();
+    expect(api.startStandaloneCustomerReport).toHaveBeenCalledWith(file);
+    expect(api.downloadStandaloneCustomerReport).toHaveBeenCalledWith("uploaded-1");
+    expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
+    expect(api.generateInternalReport).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog", { name: "Select Internal Report" })).toBeNull();
+  });
+
+  it("cancels the source picker, rejects non-DOCX files, and keeps the source file local", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue({ ...currentReport, status: "missing", mode: null, file_name: null });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Generate customer report" }));
+    const dialog = screen.getByRole("dialog", { name: "Select Internal Report" });
+    fireEvent.change(within(dialog).getByLabelText("Internal Report file"), { target: { files: [new File(["bad"], "report.pdf")] } });
+    expect(within(dialog).getByRole("alert").textContent).toContain(".docx");
+    expect(within(dialog).getByRole("button", { name: "Generate customer report" })).toHaveProperty("disabled", true);
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(api.startStandaloneCustomerReport).not.toHaveBeenCalled();
+    expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
+  });
+
+  it("does not offer an uploaded source to bypass ambiguous internal reports", async () => {
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue({ ...currentReport, status: "ambiguous", file_name: null });
+    vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue({ ...customerReport, status: "blocked", can_generate: false });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    expect(await screen.findByRole("button", { name: "Generate customer report" })).toHaveProperty("disabled", true);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(api.startStandaloneCustomerReport).not.toHaveBeenCalled();
+  });
+
+  it("rechecks the default source and does not upload if a project report appeared", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchCurrentReport).mockResolvedValueOnce({ ...currentReport, status: "missing", file_name: null }).mockResolvedValue(currentReport);
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Generate customer report" }));
+    const dialog = screen.getByRole("dialog", { name: "Select Internal Report" });
+    fireEvent.change(within(dialog).getByLabelText("Internal Report file"), { target: { files: [new File(["source"], "Other.docx")] } });
+    await user.click(within(dialog).getByRole("button", { name: "Generate customer report" }));
+    expect(await screen.findByText("The current Internal Report changed. Review the current report before generating.")).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(api.startStandaloneCustomerReport).not.toHaveBeenCalled();
+    expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
+  });
+
+  it("ignores a missing-source check that finishes after changing project", async () => {
+    const user = userEvent.setup();
+    const missing: api.CurrentReport = { ...currentReport, status: "missing", file_name: null };
+    let resolve!: (value: api.CurrentReport) => void;
+    vi.mocked(api.fetchCurrentReport).mockResolvedValueOnce(missing)
+      .mockImplementationOnce(() => new Promise(r => { resolve = r; })).mockResolvedValue(currentReport);
+    const { rerender } = render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Generate customer report" }));
+    const dialog = screen.getByRole("dialog", { name: "Select Internal Report" });
+    fireEvent.change(within(dialog).getByLabelText("Internal Report file"), { target: { files: [new File(["source"], "Other.docx")] } });
+    await user.click(within(dialog).getByRole("button", { name: "Generate customer report" }));
+    rerender(<ReportWorkspace projectId="project-2" onBack={vi.fn()} />);
+    await act(async () => { resolve(missing); });
+    expect(api.startStandaloneCustomerReport).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("shows the registered LTR and confirmed Basic Information, not draft or stale project descriptions", async () => {
@@ -757,10 +843,9 @@ describe("ReportWorkspace", () => {
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
 
-    expect(await screen.findByRole("heading", { name: "Customer Report" })).toBeTruthy();
-    expect(screen.getByText("Needs update")).toBeTruthy();
+    expect(await screen.findByRole("region", { name: "Customer Report" })).toBeTruthy();
     expect(screen.getByText(customerReport.warnings[0])).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Update customer report" }));
+    await user.click(screen.getByRole("button", { name: "Generate customer report" }));
 
     expect(api.startProjectCustomerReportJob).toHaveBeenCalledWith("project-1", {
       expected_internal_report_sha256: "a".repeat(64),
@@ -804,7 +889,7 @@ describe("ReportWorkspace", () => {
       });
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Update customer report" }));
+    await user.click(await screen.findByRole("button", { name: "Generate customer report" }));
 
     expect(
       await screen.findByRole("alertdialog", { name: "Customer report not found" })
@@ -853,7 +938,7 @@ describe("ReportWorkspace", () => {
     );
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Update customer report" }));
+    await user.click(await screen.findByRole("button", { name: "Generate customer report" }));
     await user.click(
       await screen.findByRole("button", { name: "Cancel" })
     );
@@ -879,7 +964,7 @@ describe("ReportWorkspace", () => {
     });
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Update customer report" }));
+    await user.click(await screen.findByRole("button", { name: "Generate customer report" }));
 
     expect(await screen.findByText(/was already current/)).toBeTruthy();
     expect(screen.queryByText(/archived automatically/)).toBeNull();
@@ -903,7 +988,7 @@ describe("ReportWorkspace", () => {
     });
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    await user.click(await screen.findByRole("button", { name: "Generate and download customer report" }));
+    await user.click(await screen.findByRole("button", { name: "Generate customer report" }));
 
     expect(api.startProjectCustomerReportJob).toHaveBeenCalledWith("project-1", {
       expected_internal_report_sha256: "a".repeat(64),
@@ -930,16 +1015,20 @@ describe("ReportWorkspace", () => {
     });
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     expect(await screen.findByText("Publication failed: The target file changed.")).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Update customer report" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: "Generate customer report" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it("describes a recovered official result without inventing an update or archive", async () => {
+  it("restores an official result without repeating its filename in a permanent success notice", async () => {
+    vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue({ ...customerReport, status: "ready",
+      file_name: "Customer.docx", warnings: [] });
     vi.mocked(api.fetchLatestProjectCustomerReportJob).mockResolvedValue({
       ...completedJob,
       result: { mode: "official", file_name: "Customer.docx", changed: true, archive_path: null },
     });
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
-    expect(await screen.findByText("Customer report is ready (Customer.docx) in the official project folder.")).toBeTruthy();
+    expect(await screen.findByText("Customer.docx")).toBeTruthy();
+    expect(screen.queryByText(/Customer report is ready/)).toBeNull();
+    expect(screen.queryByText(/Updated the customer report|archived automatically/)).toBeNull();
     expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
   });
 });

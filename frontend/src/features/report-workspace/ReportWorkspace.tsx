@@ -13,7 +13,6 @@ import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsConte
 import {
   cancelLlcrResultPreview,
   confirmLlcrResultImport,
-  downloadCurrentCustomerReport,
   downloadCurrentReport,
   fetchCurrentCustomerReport,
   fetchCurrentReport,
@@ -39,6 +38,8 @@ import {
 import { ErrorMessage } from "../../components/common/ErrorMessage";
 import { CustomerReportProgress } from "../../components/common/CustomerReportProgress";
 import { useCustomerReportJob } from "./useCustomerReportJob";
+import { useUploadedCustomerReportJob } from "./useUploadedCustomerReportJob";
+import { CustomerReportSourceDialog } from "./CustomerReportSourceDialog";
 import { LlcrImportPreviewDialog } from "./LlcrImportPreviewDialog";
 import {
   buildLlcrConfirmationDecisions,
@@ -58,7 +59,7 @@ type ReportWorkspaceProps = {
   identityLabel?: string;
 };
 
-type BusyAction = "load" | "initial" | "open-folder" | "inspect" | "confirm" | "cancel" | "llcr" | "equipment-preview" | "equipment-update" | "publish" | "download" | "customer" | "customer-download" | null;
+type BusyAction = "load" | "initial" | "open-folder" | "inspect" | "confirm" | "cancel" | "llcr" | "equipment-preview" | "equipment-update" | "publish" | "download" | "customer" | "customer-source" | null;
 
 type ProjectFolderAvailability = {
   projectId: string;
@@ -83,12 +84,18 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const [message, setMessage] = useState<string | null>(null);
   const [internalGenerationPreview, setInternalGenerationPreview] = useState<InternalReportGenerationPreview | null>(null);
   const [folderAvailability, setFolderAvailability] = useState<ProjectFolderAvailability | null>(null);
+  const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
+  const [checkingSource, setCheckingSource] = useState(false);
+  const sourceRequest = useRef(false);
   const mounted = useRef(true);
   const internalRequest = useRef(0);
   const customerJob = useCustomerReportJob(projectId, (response) => {
     downloadBlob(response.blob, response.fileName || "Customer Report.docx");
   });
-  const busyAction = pageBusyAction ?? (customerJob.busy ? "customer" : null);
+  const uploadedCustomerJob = useUploadedCustomerReportJob(projectId, (response) => {
+    downloadBlob(response.blob, response.fileName || "Customer Report.docx");
+  });
+  const busyAction = pageBusyAction ?? (customerJob.busy || uploadedCustomerJob.busy ? "customer" : sourcePickerOpen ? "customer-source" : null);
   const customerRun = useRef<{ regenerating: boolean; hadFile: boolean } | null>(null);
   const activeProject = useRef(projectId);
   activeProject.current = projectId;
@@ -102,6 +109,9 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     internalRequest.current += 1;
     setInternalGenerationPreview(null);
     setMessage(null);
+    setSourcePickerOpen(false);
+    setCheckingSource(false);
+    sourceRequest.current = false;
   }, [projectId]);
 
   useEffect(() => {
@@ -121,7 +131,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }, [projectId]);
 
   useEffect(() => {
-    if (message !== "Generated the Internal Report.") return;
+    if (!message || (message !== "Generated the Internal Report." && !/^(Generated|Updated|The) .*customer report/.test(message))) return;
     const timer = window.setTimeout(() => setMessage(null), 5000);
     return () => window.clearTimeout(timer);
   }, [message]);
@@ -157,17 +167,17 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
       }
       const result = job.result;
       if (result?.mode !== "official") return;
-      if (!customerRun.current) {
-        setMessage(`Customer report is ready (${result.file_name}) in the official project folder.`);
-      } else if (customerRun.current.regenerating) {
-        setMessage(`Generated a new customer report (${result.file_name}). No previous file was archived.`);
+      if (!customerRun.current) return;
+      if (customerRun.current.regenerating) {
+        setMessage("Generated a new customer report. No previous file was archived.");
       } else if (!result.changed) {
-        setMessage(`The customer report (${result.file_name}) was already current.`);
+        setMessage("The customer report was already current.");
       } else if (!customerRun.current.hadFile) {
-        setMessage(`Generated the customer report (${result.file_name}) in the official project folder.`);
+        setMessage("Generated the customer report.");
       } else {
-        setMessage(`Updated the customer report (${result.file_name}).${result.archive_path ? " The previous customer report was archived automatically." : ""}`);
+        setMessage(`Updated the customer report.${result.archive_path ? " The previous customer report was archived automatically." : ""}`);
       }
+      customerRun.current = null;
     }).catch((reason: unknown) => {
       if (active) setError(errorMessage(reason, "Unable to refresh report status. The generation result is retained; reload to check it."));
     });
@@ -335,6 +345,11 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }
 
   async function handleGenerateCustomerReport(): Promise<void> {
+    if (!busyAction && !customerReportRecovery && currentReport?.status === "missing") {
+      setError(null);
+      setSourcePickerOpen(true);
+      return;
+    }
     if (
       busyAction ||
       customerReportRecovery ||
@@ -379,6 +394,35 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     }
   }
 
+  async function handleGenerateFromUploadedSource(file: File): Promise<boolean> {
+    if (sourceRequest.current || uploadedCustomerJob.busy) return false;
+    sourceRequest.current = true;
+    setCheckingSource(true);
+    const token = internalRequest.current;
+    const isCurrent = () => mounted.current && activeProject.current === projectId && internalRequest.current === token;
+    try {
+      // The report may have appeared since the picker opened. Never silently replace the default source.
+      const latest = await fetchCurrentReport(projectId);
+      if (!isCurrent()) return false;
+      if (latest.status !== "missing") {
+        await refresh();
+        if (isCurrent()) {
+          setSourcePickerOpen(false);
+          setError("The current Internal Report changed. Review the current report before generating.");
+        }
+        return false;
+      }
+      const started = await uploadedCustomerJob.start(file);
+      if (isCurrent() && started) setSourcePickerOpen(false);
+      return started;
+    } catch (reason) {
+      if (isCurrent()) setError(errorMessage(reason, "Unable to check the current Internal Report. Try again."));
+      return false;
+    } finally {
+      if (isCurrent()) { sourceRequest.current = false; setCheckingSource(false); }
+    }
+  }
+
   async function handleConfirmCustomerReportRegeneration(): Promise<void> {
     const recovery = customerReportRecovery;
     if (busyAction || !recovery?.internal_report_sha256) {
@@ -399,17 +443,6 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     } finally {
       setBusyAction(null);
     }
-  }
-
-  async function handleDownloadCustomerReport(): Promise<void> {
-    await runAction("customer-download", async () => {
-      const response = await downloadCurrentCustomerReport(projectId);
-      downloadBlob(
-        response.blob,
-        response.fileName || customerReport?.file_name || "Customer Report.docx"
-      );
-      return "Downloaded the current customer report.";
-    });
   }
 
   async function handleUpdateLlcr(): Promise<void> {
@@ -547,9 +580,10 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
 
       {state && readiness ? (
         <div className="report-workspace-grid">
-          <section className="report-workspace-card" aria-label="Internal Report">
-            <div className="report-workspace-report-row report-workspace-initial-report">
-              <div className="report-workspace-action-row">
+          <section className="report-workspace-card report-workspace-generation" aria-label="Report generation">
+            <section aria-label="Internal Report">
+              <div className="report-workspace-report-row report-workspace-initial-report">
+                <div className="report-workspace-action-row">
                   <button
                     className="primary-action"
                     disabled={!readiness.canGenerateInitialDraft || reportEntry.kind === "blocked" || Boolean(busyAction)}
@@ -558,29 +592,127 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                   >
                     {busyAction === "initial" ? "Generating..." : "Generate Internal Report"}
                   </button>
-                {reportEntry.kind === "publish" ? (
-                  <button
-                    className="primary-action"
-                    disabled={Boolean(busyAction)}
-                    onClick={() => void handlePublishManagedReport()}
-                    type="button"
-                  >
-                    {busyAction === "publish" ? "Publishing..." : "Publish current draft to project folder"}
+                  {reportEntry.kind === "publish" ? (
+                    <button
+                      className="primary-action"
+                      disabled={Boolean(busyAction)}
+                      onClick={() => void handlePublishManagedReport()}
+                      type="button"
+                    >
+                      {busyAction === "publish" ? "Publishing..." : "Publish current draft to project folder"}
+                    </button>
+                  ) : null}
+                  {currentReport?.status === "ready" && currentReport.mode !== "official" ? (
+                    <button disabled={Boolean(busyAction)} onClick={() => void handleDownloadCurrent()} type="button">Download current report</button>
+                  ) : null}
+                </div>
+                <div className="report-workspace-current-report">
+                  {reportFileName ? <span className="report-workspace-report-name">{reportFileName}</span> : (
+                    <span className={`report-workspace-status report-workspace-status-${reportEntry.kind}`}>{reportEntry.statusLabel}</span>
+                  )}
+                </div>
+              </div>
+              {readiness.initialDraftBlocker ? <p className="report-workspace-blocker">{readiness.initialDraftBlocker}</p> : null}
+              {reportEntry.kind === "managed" ? <p className="report-workspace-note">Create the official project folder before publishing this draft.</p> : null}
+              {reportEntry.kind === "blocked" ? <p className="report-workspace-blocker">Multiple internal reports were found. Resolve that conflict before creating or updating a report.</p> : null}
+            </section>
+            <section className="report-workspace-customer-generation" aria-label="Customer Report">
+              <div className="report-workspace-action-row">
+                <button
+                  className="primary-action"
+                  disabled={
+                    (currentReport?.status !== "missing" && !customerReport?.can_generate) ||
+                    Boolean(busyAction) ||
+                    customerJob.downloading ||
+                    Boolean(customerReportRecovery)
+                  }
+                  onClick={() => void handleGenerateCustomerReport()}
+                  type="button"
+                >
+                  {busyAction === "customer" ? "Generating customer report..." : "Generate customer report"}
+                </button>
+                {customerJob.job?.status === "completed" && customerJob.job.result?.mode === "managed_download" ? (
+                  <button type="button" disabled={customerJob.downloading || Boolean(busyAction)} onClick={() => void customerJob.download()}>
+                    {customerJob.downloading ? "Downloading..." : customerJob.downloadError ? "Retry download" : "Download generated copy"}
                   </button>
                 ) : null}
-                {currentReport?.status === "ready" && currentReport.mode !== "official" ? (
-                  <button disabled={Boolean(busyAction)} onClick={() => void handleDownloadCurrent()} type="button">Download current report</button>
-                ) : null}
               </div>
-              <div className="report-workspace-current-report">
-                {reportFileName ? <span className="report-workspace-report-name">{reportFileName}</span> : (
-                  <span className={`report-workspace-status report-workspace-status-${reportEntry.kind}`}>{reportEntry.statusLabel}</span>
-                )}
-              </div>
-            </div>
-            {readiness.initialDraftBlocker ? <p className="report-workspace-blocker">{readiness.initialDraftBlocker}</p> : null}
-            {reportEntry.kind === "managed" ? <p className="report-workspace-note">Create the official project folder before publishing this draft.</p> : null}
-            {reportEntry.kind === "blocked" ? <p className="report-workspace-blocker">Multiple internal reports were found. Resolve that conflict before creating or updating a report.</p> : null}
+              {uploadedCustomerJob.fileName || customerReport?.file_name || customerJob.job?.result?.file_name ? <span className="report-workspace-report-name">
+                {uploadedCustomerJob.fileName || customerReport?.file_name || customerJob.job?.result?.file_name}
+              </span> : null}
+              {uploadedCustomerJob.fileName ? <small className="report-workspace-note">Downloaded copy · selected Internal Report</small> : null}
+              {customerReport?.warnings.map((warning) => (
+                <p className="report-workspace-warning" key={warning}>{warning}</p>
+              ))}
+              {currentReport?.status !== "missing" ? customerReport?.blockers.map((blocker) => (
+                <p className="report-workspace-blocker" key={blocker}>{blocker}</p>
+              )) : null}
+              {uploadedCustomerJob.job ? <CustomerReportProgress stage={uploadedCustomerJob.job.stage}
+                elapsedSeconds={uploadedCustomerJob.job.elapsed_seconds} running={uploadedCustomerJob.busy} /> : null}
+              {uploadedCustomerJob.error ? <p role="alert" className="report-workspace-blocker">{uploadedCustomerJob.error}</p> : null}
+              {uploadedCustomerJob.job?.status === "failed" ? <p role="alert" className="report-workspace-blocker">
+                {uploadedCustomerJob.job.message || "Unable to generate the customer report. Select the source and try again."}
+              </p> : null}
+              {uploadedCustomerJob.queryWarning ? <div role="alert" className="report-workspace-warning">
+                <p>{uploadedCustomerJob.queryWarning}</p>
+                <button type="button" onClick={() => void uploadedCustomerJob.retryQuery()}>Retry status check</button>
+              </div> : null}
+              {uploadedCustomerJob.downloadError ? <div role="alert" className="report-workspace-blocker">
+                <p>{uploadedCustomerJob.downloadError}</p>
+                <button type="button" disabled={uploadedCustomerJob.busy} onClick={() => void uploadedCustomerJob.retryDownload()}>Retry download</button>
+              </div> : null}
+              {customerJob.job ? <CustomerReportProgress
+                stage={customerJob.job.stage}
+                elapsedSeconds={customerJob.elapsed}
+                running={customerJob.job.status === "queued" || customerJob.job.status === "running"}
+              /> : null}
+              {customerJob.error ? <p role="alert" className="report-workspace-blocker">{customerJob.error}</p> : null}
+              {customerJob.queryWarning ? <div role="alert" className="report-workspace-warning">
+                <p>{customerJob.queryWarning}</p>
+                <button type="button" onClick={() => void customerJob.retryQuery()}>Retry status check</button>
+              </div> : null}
+              {customerJob.job?.status === "failed" && customerJob.job.error_code !== "customer_report_missing_after_preview" ?
+                <p role="alert" className="report-workspace-blocker">
+                  {customerJob.job.error_code === "customer_report_publication_failed" ? "Publication failed: " : "Generation failed: "}
+                  {customerJob.job.message || "Unable to generate the customer report."}
+                </p> : null}
+              {customerJob.downloadError ? <p role="alert" className="report-workspace-blocker">{customerJob.downloadError}</p> : null}
+              {customerJob.downloaded ? <p role="status">Generated and downloaded the customer report.</p> : null}
+              {customerReportRecovery ? (
+                <div
+                  aria-labelledby="customer-report-recovery-title"
+                  className="report-workspace-owned-regions"
+                  role="alertdialog"
+                >
+                  <strong id="customer-report-recovery-title">Customer report not found</strong>
+                  <span>
+                    The customer report was deleted or moved from the project folder. Generate a new
+                    report from the current Internal Report?
+                  </span>
+                  <small>No previous file exists, so no History copy will be created.</small>
+                  <div className="report-workspace-action-row">
+                    <button
+                      autoFocus
+                      className="primary-action"
+                      disabled={Boolean(busyAction)}
+                      onClick={() => void handleConfirmCustomerReportRegeneration()}
+                      type="button"
+                    >
+                      {busyAction === "customer"
+                        ? "Generating customer report..."
+                        : "Generate new customer report"}
+                    </button>
+                    <button
+                      disabled={Boolean(busyAction)}
+                      onClick={() => setCustomerReportRecovery(null)}
+                      type="button"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </section>
           </section>
 
           <section className="report-workspace-card" aria-label="Update Internal Report">
@@ -643,120 +775,11 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
               </p>
             ) : null}
           </section>
-
-          <section className="report-workspace-card" aria-label="Customer Report">
-            <div className="report-workspace-card-heading">
-              <div>
-                <h2>Customer Report</h2>
-                <p>From the current Internal Report. Internal-only details and appendices are excluded.</p>
-              </div>
-            </div>
-            <div className="report-workspace-current-report">
-              <span className={`report-workspace-status report-workspace-status-${customerReportStatusTone(customerReport)}`}>
-                {customerReportStatusLabel(customerReport)}
-              </span>
-              {customerReport?.file_name ? <strong>{customerReport.file_name}</strong> : null}
-              <small>
-                {customerReport?.mode === "official"
-                  ? "Same folder as the current Internal Report"
-                  : currentReport?.status === "ready"
-                    ? "Browser download (no official project folder)"
-                    : "Output location available after the Internal Report is ready"}
-              </small>
-            </div>
-            {customerReport?.warnings.map((warning) => (
-              <p className="report-workspace-warning" key={warning}>{warning}</p>
-            ))}
-            {customerReport?.blockers.map((blocker) => (
-              <p className="report-workspace-blocker" key={blocker}>{blocker}</p>
-            ))}
-            {customerJob.job ? <CustomerReportProgress
-              stage={customerJob.job.stage}
-              elapsedSeconds={customerJob.elapsed}
-              running={customerJob.job.status === "queued" || customerJob.job.status === "running"}
-            /> : null}
-            {customerJob.error ? <p role="alert" className="report-workspace-blocker">{customerJob.error}</p> : null}
-            {customerJob.queryWarning ? <div role="alert" className="report-workspace-warning">
-              <p>{customerJob.queryWarning}</p>
-              <button type="button" onClick={() => void customerJob.retryQuery()}>Retry status check</button>
-            </div> : null}
-            {customerJob.job?.status === "failed" && customerJob.job.error_code !== "customer_report_missing_after_preview" ?
-              <p role="alert" className="report-workspace-blocker">
-                {customerJob.job.error_code === "customer_report_publication_failed" ? "Publication failed: " : "Generation failed: "}
-                {customerJob.job.message || "Unable to generate the customer report."}
-              </p> : null}
-            {customerJob.downloadError ? <p role="alert" className="report-workspace-blocker">{customerJob.downloadError}</p> : null}
-            {customerJob.downloaded ? <p role="status">Generated and downloaded the customer report.</p> : null}
-            <div className="report-workspace-action-row">
-              <button
-                className="primary-action"
-                disabled={
-                  !customerReport?.can_generate ||
-                  Boolean(busyAction) ||
-                  customerJob.downloading ||
-                  Boolean(customerReportRecovery)
-                }
-                onClick={() => void handleGenerateCustomerReport()}
-                type="button"
-              >
-                {busyAction === "customer"
-                  ? "Generating customer report..."
-                  : customerReport?.mode === "managed_download"
-                    ? "Generate and download customer report"
-                    : customerReport?.file_name
-                      ? "Update customer report"
-                      : "Generate customer report"}
-              </button>
-              {customerJob.job?.status === "completed" && customerJob.job.result?.mode === "managed_download" ? (
-                <button type="button" disabled={customerJob.downloading || Boolean(busyAction)} onClick={() => void customerJob.download()}>
-                  {customerJob.downloading ? "Downloading..." : customerJob.downloadError ? "Retry download" : "Download generated copy"}
-                </button>
-              ) : null}
-              {customerReport?.download_url ? (
-                <button
-                  disabled={Boolean(busyAction)}
-                  onClick={() => void handleDownloadCustomerReport()}
-                  type="button"
-                >Download customer report</button>
-              ) : null}
-            </div>
-            {customerReportRecovery ? (
-              <div
-                aria-labelledby="customer-report-recovery-title"
-                className="report-workspace-owned-regions"
-                role="alertdialog"
-              >
-                <strong id="customer-report-recovery-title">Customer report not found</strong>
-                <span>
-                  The customer report was deleted or moved from the project folder. Generate a new
-                  report from the current Internal Report?
-                </span>
-                <small>No previous file exists, so no History copy will be created.</small>
-                <div className="report-workspace-action-row">
-                  <button
-                    autoFocus
-                    className="primary-action"
-                    disabled={Boolean(busyAction)}
-                    onClick={() => void handleConfirmCustomerReportRegeneration()}
-                    type="button"
-                  >
-                    {busyAction === "customer"
-                      ? "Generating customer report..."
-                      : "Generate new customer report"}
-                  </button>
-                  <button
-                    disabled={Boolean(busyAction)}
-                    onClick={() => setCustomerReportRecovery(null)}
-                    type="button"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </section>
         </div>
       ) : null}
+
+      {sourcePickerOpen ? <CustomerReportSourceDialog busy={checkingSource || uploadedCustomerJob.busy} error={error || uploadedCustomerJob.error}
+        onCancel={() => setSourcePickerOpen(false)} onGenerate={handleGenerateFromUploadedSource} /> : null}
 
       {preview ? (
         <LlcrImportPreviewDialog
@@ -910,27 +933,6 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
 function formatDateTime(value: string): string {
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
-}
-
-function customerReportStatusLabel(state: CustomerReportState | null): string {
-  if (!state) return "Checking status";
-  if (state.status === "ready") return "Current";
-  if (state.status === "stale") return "Needs update";
-  if (state.status === "untracked") return "Lineage not recorded";
-  if (state.status === "missing") return "Not generated";
-  if (state.status === "ambiguous") return "Multiple reports found";
-  return "Blocked";
-}
-
-function customerReportStatusTone(
-  state: CustomerReportState | null
-): "ready" | "publish" | "generate" | "blocked" {
-  if (!state || state.status === "blocked" || state.status === "ambiguous") {
-    return "blocked";
-  }
-  if (state.status === "ready") return "ready";
-  if (state.status === "missing") return "generate";
-  return "publish";
 }
 
 function errorMessage(reason: unknown, fallback: string): string {
