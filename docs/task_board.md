@@ -11,8 +11,31 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FEE_GROUP_BASE_DEFAULTS_20261003",
+    "summary": "按 Matrix 组数设置默认基本费并显示参考条件悬浮提示",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Multiple confirmed Matrix groups default step Base Fee to zero; single group keeps existing rules; expose rule text on Base Fee hover without replacing manual Fee edits.",
+    "scope_paths": [
+      "backend/application/confirmed_matrix_fee_base_fee_policy.py",
+      "backend/application/confirmed_matrix_fee_draft_line_builder.py",
+      "backend/application/confirmed_matrix_fee_draft_models.py",
+      "backend/api/routes_confirmed_matrix_fee_draft.py",
+      "frontend/src/api/client.ts",
+      "frontend/src/features/fee-evaluation",
+      "tests/unit/test_confirmed_matrix_fee_draft_multi_group_base_fee.py",
+      "tests/integration/test_confirmed_matrix_fee_draft_api.py",
+      "docs/fee_reference_20260915.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "c664b1531508230504f428f4da9c3258dc20f6f3",
+    "started_at": "2026-10-03T09:22:32.310889Z",
+    "updated_at": "2026-10-03T09:22:32.310889Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_REPORT_HEADER_ICON_TITLE_CASE_20261003",
     "tier": "micro",

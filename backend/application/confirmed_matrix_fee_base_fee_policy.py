@@ -34,9 +34,13 @@ def apply_matrix_fee_line_policies(
     calculation: FeeCalculationResult,
     rule: FeeRule | None,
     testing_fee_source: str,
+    confirmed_group_count: int = 1,
 ) -> FeeCalculationResult:
     """Select the automatic Base Fee and derive Testing Fee when safe."""
-    base_fee, base_fee_source = _automatic_base_fee(calculation, rule)
+    if confirmed_group_count > 1:
+        base_fee, base_fee_source = ZERO, "Multiple confirmed Matrix groups: default Base Fee is 0"
+    else:
+        base_fee, base_fee_source = _automatic_base_fee(calculation, rule)
     testing_fee = _testing_fee(calculation, base_fee)
     metadata = _replace_derived_metadata(
         calculation=calculation,

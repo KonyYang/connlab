@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from decimal import Decimal
+
+import pytest
 
 from backend.application.confirmed_matrix_fee_draft_models import (
     FeeEvaluationLineItem,
@@ -26,7 +29,7 @@ from backend.domain import (
     ConfirmedMatrixVersion,
 )
 
-_FALLBACK_SOURCE = "Matrix Fee automatic Base Fee fallback"
+_MULTI_GROUP_SOURCE = "Multiple confirmed Matrix groups: default Base Fee is 0"
 
 
 class _Store:
@@ -40,6 +43,51 @@ class _Store:
     ) -> ConfirmedMatrixSnapshot | None:
         self.read_count += 1
         return self.snapshot if project_id == "P1" else None
+
+
+@pytest.mark.parametrize("group_count", [1, 2])
+@pytest.mark.parametrize(
+    ("test_item", "condition", "single_group_base"),
+    [
+        ("Cable flexing", "", Decimal("200")),
+        ("Mixed Flowing Gas corrosion (MFG)", "1 day", Decimal("300")),
+        ("Steam aging", "", None),
+    ],
+)
+def test_group_count_controls_default_base_fee(
+    group_count: int, test_item: str, condition: str, single_group_base: Decimal | None,
+) -> None:
+    snapshot = _snapshot()
+    groups = snapshot.groups[:group_count]
+    group_ids = {group.confirmed_group_id for group in groups}
+    snapshot = replace(
+        snapshot,
+        groups=groups,
+        rows=(replace(snapshot.rows[0], test_item=test_item, method="", condition=condition),),
+        cells=tuple(cell for cell in snapshot.cells if cell.confirmed_group_id in group_ids),
+    )
+    result = build_current_pricing_defaults(
+        "P1", ConfirmedMatrixFeeDraftService(confirmed_store=_Store(snapshot)),
+    )
+
+    lines = [group.line_items[0] for group in result.fee_draft.groups]
+    expected_base = single_group_base if group_count == 1 else Decimal("0")
+    assert [line.base_fee for line in lines] == [expected_base] * group_count
+    if test_item.startswith("Mixed"):
+        assert [line.testing_fee for line in lines] == (
+            [Decimal("1300")] if group_count == 1 else [Decimal("1000"), Decimal("1000")]
+        )
+        assert [row.base_fee for row in result.automatic_values.rows] == (
+            ["300"] if group_count == 1 else ["0", "0"]
+        )
+    if test_item == "Steam aging":
+        assert all(line.units is None and line.review_required for line in lines)
+        assert all(line.base_fee_reference.startswith("<16hours  200") for line in lines)
+        if group_count > 1:
+            assert all(
+                item.state == "auto_filled"
+                for line in lines for item in line.field_metadata if item.field == "base_fee"
+            )
 
 
 def test_multi_group_draft_applies_common_base_fee_fallback_per_owning_line() -> None:
@@ -139,8 +187,8 @@ def test_multi_group_draft_applies_common_base_fee_fallback_per_owning_line() ->
         ),
     ]
     assert [_base_fee_metadata(line) for line in lines] == [
-        (("auto_filled", _FALLBACK_SOURCE, None),),
-        (("auto_filled", _FALLBACK_SOURCE, None),),
+        (("auto_filled", _MULTI_GROUP_SOURCE, None),),
+        (("auto_filled", _MULTI_GROUP_SOURCE, None),),
     ]
 
     matrix_identities = (
@@ -184,14 +232,14 @@ def test_multi_group_draft_applies_common_base_fee_fallback_per_owning_line() ->
             "fee_rule_temperature_rise",
             True,
             "safe",
-            (("auto_filled", _FALLBACK_SOURCE, True),),
+            (("auto_filled", _MULTI_GROUP_SOURCE, True),),
         ),
         (
             matrix_identities[1],
             "fee_rule_temperature_rise",
             True,
             "safe",
-            (("auto_filled", _FALLBACK_SOURCE, True),),
+            (("auto_filled", _MULTI_GROUP_SOURCE, True),),
         ),
     ]
     assert (

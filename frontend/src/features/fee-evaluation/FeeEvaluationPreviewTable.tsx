@@ -360,6 +360,7 @@ export function FeeEvaluationPreviewTable({
                   <td>
                     <EditablePreviewInput
                       ariaLabel={`Base Fee for ${row.description}`}
+                      title={row.baseFeeReference ?? undefined}
                       disabled={readOnly}
                       fieldState={previewFieldState(row, "baseFee")}
                       value={row.baseFee}
@@ -475,6 +476,7 @@ function EditablePreviewInput({
   inputMode = "decimal",
   onChange,
   placeholder = "Pending",
+  title,
   value,
 }: {
   ariaLabel: string;
@@ -483,6 +485,7 @@ function EditablePreviewInput({
   inputMode?: "decimal" | "text";
   onChange: (value: string) => void;
   placeholder?: string;
+  title?: string;
   value: string;
 }): ReactElement {
   const className = [
@@ -498,6 +501,7 @@ function EditablePreviewInput({
       disabled={disabled}
       inputMode={inputMode}
       placeholder={placeholder}
+      title={title}
       value={editableInputValue(value)}
       onChange={(event) => onChange(event.currentTarget.value)}
     />

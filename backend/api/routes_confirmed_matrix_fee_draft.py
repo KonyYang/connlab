@@ -67,6 +67,7 @@ class FeeEvaluationLineItemResponse(BaseModel):
     unit_price: str | None
     units: str | None
     base_fee: str | None
+    base_fee_reference: str | None = None
     discount_percent: str | None
     testing_fee: str | None
     field_metadata: list[FeeEvaluationFieldMetadataResponse]
@@ -182,6 +183,7 @@ def _to_line_response(line: FeeEvaluationLineItem) -> FeeEvaluationLineItemRespo
         unit_price=_decimal_or_none(line.unit_price),
         units=_decimal_or_none(line.units),
         base_fee=_decimal_or_none(line.base_fee),
+        base_fee_reference=line.base_fee_reference,
         discount_percent=_decimal_or_none(line.discount_percent),
         testing_fee=_decimal_or_none(line.testing_fee),
         field_metadata=[_to_field_metadata_response(metadata) for metadata in line.field_metadata],

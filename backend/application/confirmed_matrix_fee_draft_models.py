@@ -73,6 +73,7 @@ class FeeEvaluationLineItem:
     testing_fee: Decimal | None
     field_metadata: tuple[FeeFieldMetadata, ...]
     warnings: tuple[FeeEvaluationWarning, ...]
+    base_fee_reference: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

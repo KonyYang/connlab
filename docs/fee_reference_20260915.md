@@ -8,4 +8,12 @@ Fee draft defaults read the confirmed Matrix authority, including each Group's s
 
 The price reference changes only the default for a newly built draft. A previously confirmed Fee is not silently rewritten. Verify source/version provenance when comparing old and new outputs. Current scope does not change Fee Form file-saving or historical import behavior.
 
+Matrix-derived step Base Fee defaults depend on the total number of Groups in the confirmed Matrix,
+not the visible Fee group filter. With more than one Group, all step Base Fees default to zero and
+Testing Fee is recalculated from that value. With one Group, the existing fixed-amount and duration
+rules apply; unresolved inputs retain their existing review requirements. Hovering over a step's
+Base Fee input shows its matched Unit Price Reference condition text, such as `<16hours  200`.
+These are editable defaults: saved manual pricing edits and confirmed Fee values keep their existing
+hydration/rebase behavior. Sample preparation and report preparation retain their separate rules.
+
 Regression boundaries: validate the source hash and exact row coverage, maintain old-seed loadability, assert confirmed-Matrix-only quantities, test manual review for missing counts and tiers, preserve user-edited pricing draft conflict/rebase behavior, and test cross-Group copy exclusions for different conditions. Browser checks must avoid confirming or exporting an existing business project's Fee unless using a disposable fixture.

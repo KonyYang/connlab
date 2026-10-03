@@ -58,9 +58,14 @@ def test_approved_temperature_alias_uses_hours_and_common_base_fee(
     assert all(line.unit_label == "hour" for line in lines)
     assert all(line.unit_price == Decimal("15") for line in lines)
     assert all((line.status, line.review_reason, line.units) == ("review_required", "Missing confirmed duration authority", None) for line in lines)
-    assert all(line.base_fee is None for line in lines)
+    expected_base = None if group_count == 1 else Decimal("0")
+    assert all(line.base_fee == expected_base for line in lines)
     assert all(line.testing_fee is None for line in lines)
-    assert all(_source(line, "base_fee") == "high temperature life" for line in lines)
+    expected_source = (
+        "high temperature life" if group_count == 1
+        else "Multiple confirmed Matrix groups: default Base Fee is 0"
+    )
+    assert all(_source(line, "base_fee") == expected_source for line in lines)
 
 
 @pytest.mark.parametrize(
@@ -127,7 +132,7 @@ def test_non_explicit_suggested_base_fee_uses_common_fallback() -> None:
 
 
 @pytest.mark.parametrize("group_count", (1, 2))
-def test_explicit_rule_base_fee_is_preserved_for_every_group(
+def test_explicit_rule_base_fee_applies_only_to_single_group(
     group_count: int,
 ) -> None:
     draft = _service(
@@ -138,9 +143,13 @@ def test_explicit_rule_base_fee_is_preserved_for_every_group(
     ).build_draft(BuildConfirmedMatrixFeeDraftCommand(project_id="P1"))
 
     lines = tuple(group.line_items[0] for group in draft.groups)
-    assert all(line.base_fee == Decimal("500") for line in lines)
-    assert all(line.testing_fee == Decimal("560") for line in lines)
-    assert all(_source(line, "base_fee") == "Shock (Trapzoidal)" for line in lines)
+    assert all(line.base_fee == (Decimal("500") if group_count == 1 else Decimal("0")) for line in lines)
+    assert all(line.testing_fee == (Decimal("560") if group_count == 1 else Decimal("60")) for line in lines)
+    expected_source = (
+        "Shock (Trapzoidal)" if group_count == 1
+        else "Multiple confirmed Matrix groups: default Base Fee is 0"
+    )
+    assert all(_source(line, "base_fee") == expected_source for line in lines)
 
 
 def test_automatic_defaults_bind_base_fee_value_and_metadata_source() -> None:

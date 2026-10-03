@@ -284,6 +284,7 @@ def _build_line_item(
     calculation = _apply_matrix_fee_line_policies(
         calculation=calculation,
         rule=rule,
+        confirmed_group_count=len(snapshot.groups),
         testing_fee_source=(
             cr_authority.source
             if rule is not None
@@ -327,6 +328,7 @@ def _build_line_item(
         testing_fee=calculation.testing_fee,
         field_metadata=calculation.field_metadata,
         warnings=warnings,
+        base_fee_reference=rule.base_fee.text if rule is not None else None,
     )
 
 

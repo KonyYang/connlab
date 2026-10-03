@@ -11,6 +11,7 @@ describe("FeeEvaluationPreviewTable", () => {
       lineId: "line-a", groupKey: "Aa", groupLabel: "Aa", rowKind: "matrix_step",
       description: "IR", stepToken: "1",
       unitPrice: "5", unitType: "per reading", units: "", baseFee: "",
+      baseFeeReference: "<16hours  200\n≥16hour 免基本金",
       discount: "0", spendTime: "0", testingFee: "Pending", notes: "",
       status: "pending", reviewReason: null, fieldMetadata: [], groupTone: "tone-a",
     } as FeeEvaluationPreviewRow;
@@ -32,6 +33,10 @@ describe("FeeEvaluationPreviewTable", () => {
     expect(prices).toHaveLength(2);
     fireEvent.change(prices[0], { target: { value: "25" } });
     expect(onRowEditChange).toHaveBeenCalledWith("line-a", "unitPrice", "25");
+    const baseFees = screen.getAllByLabelText("Base Fee for IR");
+    expect(baseFees[0].getAttribute("title")).toBe(source.baseFeeReference);
+    fireEvent.change(baseFees[0], { target: { value: "200" } });
+    expect(onRowEditChange).toHaveBeenCalledWith("line-a", "baseFee", "200");
   });
 
   afterEach(() => {

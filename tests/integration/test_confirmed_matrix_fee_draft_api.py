@@ -62,6 +62,7 @@ def test_confirmed_matrix_fee_draft_api_happy_path(tmp_path: Path) -> None:
         assert payload["groups"][0]["line_items"][0]["spend_time"] == "0.5"
         assert payload["groups"][0]["line_items"][0]["unit_price"] == "15"
         assert payload["groups"][0]["line_items"][0]["testing_fee"] == "0"
+        assert payload["groups"][0]["line_items"][0]["base_fee_reference"] == "0"
         assert payload["groups"][0]["line_items"][0]["field_metadata"][0] == {
             "field": "spend_time",
             "state": "auto_filled",

@@ -61,6 +61,7 @@ export type FeeEvaluationPreviewRow = {
   unitType: string;
   units: string;
   baseFee: string;
+  baseFeeReference?: string | null;
   discount: string;
   testingFee: string;
   notes: string;
@@ -579,6 +580,7 @@ function buildMatrixStepRows(
       unitType: line.unit_label || line.calculation_strategy || "Pending",
       units: pendingValue(line.units),
       baseFee: blankValue(line.base_fee),
+      baseFeeReference: line.base_fee_reference,
       discount: formatDiscount(line.discount_percent),
       testingFee: pendingValue(line.testing_fee),
       notes: "",
@@ -712,6 +714,7 @@ function buildManualDefaultRow(
     unitType: formatUnitTypeForPreview(line.unit_label || line.calculation_strategy || "Pending"),
     units: pendingValue(line.units),
     baseFee: pendingValue(line.base_fee),
+    baseFeeReference: line.base_fee_reference,
     discount: formatDiscount(line.discount_percent),
     testingFee: pendingValue(line.testing_fee),
     notes: "",

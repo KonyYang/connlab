@@ -19,6 +19,18 @@ import {
 } from "./feeEvaluationPreviewModel";
 
 describe("feeEvaluationPreviewModel", () => {
+  it("retains base fee reference text through expansion and manual price edits", () => {
+    const draft = createDraft();
+    const line = draft.groups[0].line_items[0];
+    line.base_fee_reference = "<16hours  200\n≥16hour 免基本金";
+    draft.groups = [{ ...draft.groups[0], line_items: [line] }];
+    const rows = buildFeeEvaluationPreviewRows(draft).filter((row) => row.rowKind === "matrix_step");
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((row) => row.baseFeeReference === line.base_fee_reference)).toBe(true);
+    const edited = applyFeeEvaluationPreviewEdits(rows, { [rows[0].lineId]: { baseFee: "250" } });
+    expect(edited[0].baseFee).toBe("250");
+    expect(edited[0].baseFeeReference).toBe(line.base_fee_reference);
+  });
   it("compares complete Fee row values without depending on saved row order", () => {
     const payload = buildFeeEvaluationEditedExportPayload(
       buildFeeEvaluationPreviewRows(createDraft()),

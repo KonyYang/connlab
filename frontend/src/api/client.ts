@@ -2710,6 +2710,7 @@ export type FeeEvaluationLineItem = {
   unit_price: string | null;
   units: string | null;
   base_fee: string | null;
+  base_fee_reference?: string | null;
   discount_percent: string | null;
   testing_fee: string | null;
   field_metadata?: FeeEvaluationFieldMetadata[];
