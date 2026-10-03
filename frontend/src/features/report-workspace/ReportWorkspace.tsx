@@ -18,7 +18,9 @@ import {
   fetchCurrentCustomerReport,
   fetchCurrentReport,
   fetchReportWorkspace,
-  generateInitialReportRevision,
+  generateInternalReport,
+  previewInternalReportGeneration,
+  openLocalProjectFolder,
   inspectLlcrResultWorkbook,
   isCustomerReportMissingAfterPreviewError,
   publishManagedReport,
@@ -31,6 +33,7 @@ import {
   type EquipmentListPreview,
   type LlcrImportPreview,
   type ReportWorkspaceState,
+  type InternalReportGenerationPreview,
 } from "../../api/client";
 import { ErrorMessage } from "../../components/common/ErrorMessage";
 import { CustomerReportProgress } from "../../components/common/CustomerReportProgress";
@@ -43,6 +46,7 @@ import {
   createLlcrDecisionDrafts,
   deriveReportEntryState,
   deriveReportWorkspaceReadiness,
+  currentReportDisplayPath,
   type EquipmentOverrideDrafts,
   type LlcrDecisionDrafts,
   type LlcrOutcome,
@@ -54,7 +58,7 @@ type ReportWorkspaceProps = {
   identityLabel?: string;
 };
 
-type BusyAction = "load" | "initial" | "inspect" | "confirm" | "cancel" | "llcr" | "equipment-preview" | "equipment-update" | "publish" | "download" | "customer" | "customer-download" | null;
+type BusyAction = "load" | "initial" | "open-folder" | "inspect" | "confirm" | "cancel" | "llcr" | "equipment-preview" | "equipment-update" | "publish" | "download" | "customer" | "customer-download" | null;
 
 export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector Project" }: ReportWorkspaceProps): ReactElement {
   const topBarRoot = useTopBarActionsRoot();
@@ -71,6 +75,9 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const [pageBusyAction, setBusyAction] = useState<BusyAction>("load");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [internalGenerationPreview, setInternalGenerationPreview] = useState<InternalReportGenerationPreview | null>(null);
+  const mounted = useRef(true);
+  const internalRequest = useRef(0);
   const customerJob = useCustomerReportJob(projectId, (response) => {
     downloadBlob(response.blob, response.fileName || "Customer Report.docx");
   });
@@ -78,6 +85,23 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const customerRun = useRef<{ regenerating: boolean; hadFile: boolean } | null>(null);
   const activeProject = useRef(projectId);
   activeProject.current = projectId;
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; internalRequest.current += 1; };
+  }, []);
+
+  useEffect(() => {
+    internalRequest.current += 1;
+    setInternalGenerationPreview(null);
+    setMessage(null);
+  }, [projectId]);
+
+  useEffect(() => {
+    if (message !== "Generated the Internal Report.") return;
+    const timer = window.setTimeout(() => setMessage(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [message]);
 
   const refresh = useCallback(async () => {
     const [nextState, nextReport, nextCustomerReport] = await Promise.all([
@@ -168,6 +192,49 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     () => deriveReportEntryState(currentReport),
     [currentReport]
   );
+  const reportPath = currentReportDisplayPath(currentReport);
+
+  async function handleInternalAction(action: "initial" | "open-folder", operation: (isCurrent: () => boolean) => Promise<void>): Promise<void> {
+    if (busyAction) return;
+    const request = ++internalRequest.current;
+    const isCurrent = () => mounted.current && activeProject.current === projectId && request === internalRequest.current;
+    setBusyAction(action);
+    setError(null);
+    setMessage(null);
+    try {
+      await operation(isCurrent);
+    } catch (reason) {
+      if (isCurrent()) {
+        setInternalGenerationPreview(null);
+        setError(errorMessage(reason, "Unable to generate the Internal Report. Review the current report and preview again."));
+      }
+    } finally {
+      if (isCurrent()) setBusyAction(null);
+    }
+  }
+
+  async function performInternalGeneration(preview: InternalReportGenerationPreview, isCurrent: () => boolean): Promise<void> {
+    if (!preview.preview_token || !isCurrent()) return;
+    await generateInternalReport(projectId, preview.preview_token, preview.requires_confirmation);
+    if (!isCurrent()) return;
+    setInternalGenerationPreview(null);
+    await refresh();
+    if (isCurrent()) setMessage("Generated the Internal Report.");
+  }
+
+  async function handleGenerateInternalReport(): Promise<void> {
+    await handleInternalAction("initial", async (isCurrent) => {
+      const preview = await previewInternalReportGeneration(projectId);
+      if (!isCurrent()) return;
+      if (preview.status !== "ready" || !preview.preview_token) {
+        setError(preview.blockers.join(" ") || "Resolve the report prerequisites and preview again.");
+      } else if (preview.requires_confirmation) {
+        setInternalGenerationPreview(preview);
+      } else {
+        await performInternalGeneration(preview, isCurrent);
+      }
+    });
+  }
   async function runAction(
     action: Exclude<BusyAction, "load" | null>,
     operation: () => Promise<string | null>
@@ -446,27 +513,19 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
             </div>
             <div className="report-workspace-report-row">
               <div className="report-workspace-current-report">
-                <span className={`report-workspace-status report-workspace-status-${reportEntry.kind}`}>
-                  {reportEntry.statusLabel}
-                </span>
-                {currentReport?.file_name ? <strong>{currentReport.file_name}</strong> : null}
-                {reportEntry.locationLabel ? <small>{reportEntry.locationLabel}</small> : null}
+                {reportPath ? <strong className="report-workspace-report-path">{reportPath}</strong> : (
+                  <span className={`report-workspace-status report-workspace-status-${reportEntry.kind}`}>{reportEntry.statusLabel}</span>
+                )}
               </div>
               <div className="report-workspace-action-row">
-                {reportEntry.kind === "generate" ? (
                   <button
                     className="primary-action"
-                    disabled={!readiness.canGenerateInitialDraft || Boolean(busyAction)}
-                    onClick={() => void runAction("initial", async () => {
-                      const revision = await generateInitialReportRevision(projectId);
-                      await refresh();
-                      return `Generated the initial internal report (${revision.file_name}).`;
-                    })}
+                    disabled={!readiness.canGenerateInitialDraft || reportEntry.kind === "blocked" || Boolean(busyAction)}
+                    onClick={() => void handleGenerateInternalReport()}
                     type="button"
                   >
-                    {busyAction === "initial" ? "Generating..." : "Generate initial report"}
+                    {busyAction === "initial" ? "Generating..." : "Generate Internal Report"}
                   </button>
-                ) : null}
                 {reportEntry.kind === "publish" ? (
                   <button
                     className="primary-action"
@@ -477,12 +536,20 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                     {busyAction === "publish" ? "Publishing..." : "Publish current draft to project folder"}
                   </button>
                 ) : null}
-                {currentReport?.status === "ready" ? (
+                {currentReport?.status === "ready" && currentReport.mode === "official" ? (
+                  <button disabled={Boolean(busyAction)} onClick={() => void handleInternalAction("open-folder", async (isCurrent) => {
+                    try {
+                      const result = await openLocalProjectFolder(projectId);
+                      if (isCurrent() && result.status !== "opened") setError(result.message || "Unable to open the project folder. Check its location and try again.");
+                    }
+                    catch (reason) { if (isCurrent()) setError(errorMessage(reason, "Unable to open the project folder. Check its location and try again.")); }
+                  })} type="button">Open folder</button>
+                ) : currentReport?.status === "ready" ? (
                   <button disabled={Boolean(busyAction)} onClick={() => void handleDownloadCurrent()} type="button">Download current report</button>
                 ) : null}
               </div>
             </div>
-            {reportEntry.kind === "generate" && readiness.initialDraftBlocker ? <p className="report-workspace-blocker">{readiness.initialDraftBlocker}</p> : null}
+            {readiness.initialDraftBlocker ? <p className="report-workspace-blocker">{readiness.initialDraftBlocker}</p> : null}
             {reportEntry.kind === "managed" ? <p className="report-workspace-note">Create the official project folder before publishing this draft.</p> : null}
             {reportEntry.kind === "blocked" ? <p className="report-workspace-blocker">Multiple internal reports were found. Resolve that conflict before creating or updating a report.</p> : null}
           </section>
@@ -677,6 +744,30 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
         />
       ) : null}
 
+      {internalGenerationPreview ? (
+        <div className="report-workspace-dialog-backdrop">
+          <section className="report-workspace-dialog report-workspace-regeneration-dialog" role="dialog" aria-modal="true" aria-labelledby="internal-report-regeneration-title"
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && !busyAction) setInternalGenerationPreview(null);
+              if (event.key === "Tab") {
+                const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+                const first = buttons[0], last = buttons.at(-1);
+                if (event.shiftKey && document.activeElement === first && last) { event.preventDefault(); last.focus(); }
+                else if (!event.shiftKey && document.activeElement === last && first) { event.preventDefault(); first.focus(); }
+              }
+            }}>
+            <h2 id="internal-report-regeneration-title">Archive and regenerate Internal Report</h2>
+            <p>The existing report, including manual content, results and photos, will be preserved in History/Report.</p>
+            <p>The new report uses the approved E-3707_H template and latest confirmed Basic Information and Matrix. Previous manual content, results and photos are not copied; LLCR results and Equipment List can be updated separately.</p>
+            <div className="report-workspace-action-row">
+              <button autoFocus disabled={Boolean(busyAction)} type="button" onClick={() => setInternalGenerationPreview(null)}>Cancel</button>
+              <button className="primary-action" disabled={Boolean(busyAction)} type="button" onClick={() => void handleInternalAction("initial", async (isCurrent) => {
+                await performInternalGeneration(internalGenerationPreview, isCurrent);
+              })}>{busyAction === "initial" ? "Generating..." : "Archive and regenerate"}</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
       {equipmentPreview ? (
         <div className="report-workspace-dialog-backdrop">
           <section

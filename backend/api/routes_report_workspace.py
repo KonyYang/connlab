@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 import shutil
 import tempfile
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Response, UploadFile
@@ -19,6 +20,7 @@ from backend.api.dependencies import (
     get_equipment_report_update_service,
     get_llcr_result_dataset_service,
     get_report_workspace_service,
+    get_internal_report_generation_service,
     get_settings,
     get_test_report_template_resource_store,
 )
@@ -74,6 +76,8 @@ from backend.domain.result_dataset_models import (
     ResultDatasetRevision,
 )
 from backend.shared.config import Settings
+from backend.api.project_folder_write_guard import require_project_folder_write_slot
+from backend.application.internal_report_generation_service import GenerateInternalReportCommand, InternalReportGenerationService
 
 
 @asynccontextmanager
@@ -86,6 +90,7 @@ async def _report_jobs_lifespan(_app):
 
 
 router = APIRouter(tags=["report-workspace"], lifespan=_report_jobs_lifespan)
+logger = logging.getLogger(__name__)
 
 
 class LlcrDecisionRequest(BaseModel):
@@ -102,6 +107,40 @@ class ConfirmLlcrImportRequest(BaseModel):
 
 class GenerateInitialReportRequest(BaseModel):
     created_by: str = "Lab User"
+
+
+class GenerateInternalReportRequest(BaseModel):
+    preview_token: str = Field(min_length=64, max_length=64)
+    archive_and_regenerate: bool = False
+    created_by: str = "Lab User"
+
+
+@router.get("/api/projects/{project_id}/report-workspace/internal-report/generation-preview")
+def preview_internal_report_generation(project_id: str, service: InternalReportGenerationService = Depends(get_internal_report_generation_service)) -> dict:
+    preview = service.preview(project_id)
+    return {"project_id": preview.project_id, "status": preview.status,
+            "preview_token": preview.preview_token, "requires_confirmation": preview.requires_confirmation,
+            "mode": preview.mode, "current_path": str(preview.current_path) if preview.current_path else None,
+            "target_path": str(preview.target_path) if preview.target_path else None,
+            "blockers": list(preview.blockers)}
+
+
+@router.post("/api/projects/{project_id}/report-workspace/internal-report/generate", dependencies=[Depends(require_project_folder_write_slot)])
+def generate_internal_report(project_id: str, request: GenerateInternalReportRequest,
+                             service: InternalReportGenerationService = Depends(get_internal_report_generation_service)) -> dict:
+    try:
+        result = service.generate(GenerateInternalReportCommand(project_id, request.preview_token, request.archive_and_regenerate, request.created_by))
+    except (ValueError, LookupError, CurrentReportFileConflictError) as exc:
+        raise HTTPException(409, detail=str(exc)) from exc
+    except OSError as exc:
+        logger.exception("Internal Report filesystem failure for project %s", project_id)
+        raise HTTPException(409, detail="Report generation or publication failed. Review the current report and History/Report, close Word, check template and folder access, then preview again.") from exc
+    except Exception as exc:
+        logger.exception("Internal Report generation or metadata commit failed for project %s", project_id)
+        raise HTTPException(500, detail="Internal Report generation could not finish. Review the current report and History/Report, then preview again. If the issue persists, check generation logs.") from exc
+    return {"project_id": result.project_id, "mode": result.mode, "file_name": result.file_name,
+            "file_path": str(result.file_path), "file_sha256": result.file_sha256,
+            "archive_path": str(result.archive_path) if result.archive_path else None}
 
 
 class GenerateLlcrReportRequest(BaseModel):
@@ -230,7 +269,7 @@ def get_current_report(
     return _current_report_response(project_id, report)
 
 
-@router.post("/api/projects/{project_id}/report-workspace/current-report/publish")
+@router.post("/api/projects/{project_id}/report-workspace/current-report/publish", dependencies=[Depends(require_project_folder_write_slot)])
 def publish_managed_report(
     project_id: str,
     request: PublishManagedReportRequest,
@@ -270,7 +309,7 @@ def preview_current_report_llcr_update(
     return _current_report_preview_response(project_id, preview)
 
 
-@router.post("/api/projects/{project_id}/report-workspace/current-report/llcr")
+@router.post("/api/projects/{project_id}/report-workspace/current-report/llcr", dependencies=[Depends(require_project_folder_write_slot)])
 def update_current_report_llcr(
     project_id: str,
     request: UpdateCurrentLlcrReportRequest,
@@ -427,7 +466,7 @@ def preview_current_report_equipment_update(
     return _equipment_preview_response(project_id, preview)
 
 
-@router.post("/api/projects/{project_id}/report-workspace/current-report/equipment")
+@router.post("/api/projects/{project_id}/report-workspace/current-report/equipment", dependencies=[Depends(require_project_folder_write_slot)])
 def update_current_report_equipment_list(
     project_id: str,
     request: UpdateEquipmentListRequest,
@@ -531,7 +570,7 @@ def cancel_llcr_preview(
     return Response(status_code=204)
 
 
-@router.post("/api/projects/{project_id}/report-workspace/initial-drafts")
+@router.post("/api/projects/{project_id}/report-workspace/initial-drafts", dependencies=[Depends(require_project_folder_write_slot)])
 def generate_initial_report(
     project_id: str,
     request: GenerateInitialReportRequest = Body(default=GenerateInitialReportRequest()),
@@ -556,7 +595,7 @@ def generate_initial_report(
     return _report_response(revision)
 
 
-@router.post("/api/projects/{project_id}/report-workspace/llcr-drafts")
+@router.post("/api/projects/{project_id}/report-workspace/llcr-drafts", dependencies=[Depends(require_project_folder_write_slot)])
 def generate_llcr_report(
     project_id: str,
     request: GenerateLlcrReportRequest,
@@ -756,6 +795,7 @@ def _current_report_response(project_id: str, item: CurrentReportArtifact) -> di
         "status": item.status,
         "mode": item.mode,
         "file_name": item.file_name,
+        "file_path": str(item.file_path) if item.file_path is not None else None,
         "file_sha256": item.file_sha256,
         "report_revision_id": item.report_revision_id,
         "folder_path": str(item.folder_path) if item.folder_path is not None else None,

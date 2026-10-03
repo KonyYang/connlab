@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import tempfile
 from typing import Callable
 from uuid import uuid4
 
@@ -91,6 +92,122 @@ class ReportPublicationGateway:
             for chunk in iter(lambda: source.read(1024 * 1024), b""):
                 digest.update(chunk)
         return digest.hexdigest()
+
+    def publish_regenerated_current(
+        self,
+        *,
+        source_path: Path,
+        expected_source_sha256: str,
+        current_path: Path | None,
+        expected_current_sha256: str | None,
+        target_path: Path,
+        history_root: Path,
+        persist: Callable[[ReportFilePublicationResult], None],
+        pre_publish: Callable[[], None] | None = None,
+    ) -> ReportFilePublicationResult:
+        """Replace a validated fresh report and retain recovery until metadata commits.
+
+        Explicit regeneration always archives, including byte-identical output. The
+        archive is also the rollback copy when the metadata transaction fails.
+        """
+        source, target = Path(source_path), Path(target_path)
+        current = Path(current_path) if current_path is not None else None
+        if target.suffix.casefold() != ".docx" or not target.parent.is_dir():
+            raise FileNotFoundError("The report destination folder is unavailable. Restore it and preview again.")
+        if self.fingerprint(source) != expected_source_sha256:
+            raise ReportPublicationConflictError("The generated report changed. Generate again.")
+        current_identity = _file_identity(current) if current is not None else None
+
+        def require_current() -> None:
+            if current is not None and (
+                not current.is_file() or self.fingerprint(current) != expected_current_sha256
+                or _file_identity(current) != current_identity
+            ):
+                raise ReportPublicationConflictError("The current report changed. Preview generation again.")
+            if target != current and target.exists():
+                raise ReportPublicationConflictError("A report already occupies the new destination. Resolve the conflict and preview again.")
+
+        require_current()
+        descriptor, staging_name = tempfile.mkstemp(prefix=".report-", suffix=".stage", dir=target.parent)
+        os.close(descriptor)
+        staging = Path(staging_name)
+        staging_identity = _file_identity(staging)
+        archive: Path | None = None
+        archive_identity: tuple[int, int] | None = None
+        published = False
+        old_removed = False
+        committed = False
+        missing_parents = _missing_parents(Path(history_root))
+        try:
+            shutil.copy2(source, staging)
+            staged_hash = self.fingerprint(staging)
+            if staged_hash != expected_source_sha256 or self.fingerprint(source) != expected_source_sha256:
+                raise ReportPublicationConflictError("The generated report changed during publication. Generate again.")
+            if pre_publish:
+                pre_publish()
+            require_current()
+            if current is not None:
+                archive = _reserve_archive_path(Path(history_root), current, self._clock())
+                archive_identity = _file_identity(archive)
+                shutil.copy2(current, archive)
+                if self.fingerprint(archive) != expected_current_sha256:
+                    raise ReportPublicationConflictError("The old report changed during archival. Preview generation again.")
+            if pre_publish:
+                pre_publish()
+            require_current()
+            if current is not None:
+                # Retire the reviewed current file before publishing any active
+                # sibling. No observer ever sees two current internal reports.
+                if _file_identity(archive) != archive_identity or self.fingerprint(archive) != expected_current_sha256:
+                    raise ReportPublicationConflictError("The reserved report archive changed. Review History/Report and preview again.")
+                os.replace(current, archive)
+                old_removed = True
+                archive_identity = _file_identity(archive)
+                if self.fingerprint(archive) != expected_current_sha256 or _file_identity(archive) != current_identity:
+                    raise ReportPublicationConflictError("The report changed while being moved into History. Preview generation again.")
+            if self.fingerprint(staging) != expected_source_sha256:
+                raise ReportPublicationConflictError("The staged report changed before publication. Generate again.")
+            # The existing folder publisher uses the same no-overwrite hard-link
+            # primitive: the first visible target already contains complete bytes.
+            os.link(staging, target)
+            published = True
+            result = ReportFilePublicationResult(target, staged_hash, True, archive)
+            persist(result)
+            committed = True
+            return result
+        except PermissionError as exc:
+            raise ReportPublicationConflictError("Close the report in Word and check folder write access, then preview generation again.") from exc
+        except FileExistsError as exc:
+            raise ReportPublicationConflictError("The report destination changed. Preview generation again.") from exc
+        finally:
+            try:
+                if not committed:
+                    # Restore business files before attempting staging cleanup.
+                    if published:
+                        if (not target.is_file() or self.fingerprint(target) != expected_source_sha256
+                                or _file_identity(target) != staging_identity):
+                            raise ReportPublicationConflictError("The published report changed during rollback. The previous report is retained in History/Report; review both files before retrying.")
+                        target.unlink()
+                    if archive is not None and (
+                        not archive.is_file() or _file_identity(archive) != archive_identity
+                        or self.fingerprint(archive) != expected_current_sha256
+                    ):
+                        raise ReportPublicationConflictError("The recovery archive changed. Retain History/Report for manual review before retrying.")
+                    if old_removed and archive is not None and current is not None:
+                        if current.exists():
+                            raise ReportPublicationConflictError("The old report location changed during rollback. Restore the retained History/Report copy after review.")
+                        os.replace(archive, current)
+                        archive = None
+                    if archive is not None:
+                        archive.unlink()
+                    for directory in missing_parents:
+                        if directory.is_dir() and not any(directory.iterdir()):
+                            directory.rmdir()
+            finally:
+                if staging.exists():
+                    if _file_identity(staging) != staging_identity:
+                        raise ReportPublicationConflictError("Publication staging identity changed. Retain the temporary file and History/Report for review before retrying.")
+                    staging.unlink()
 
     def publish_update(
         self,
@@ -321,6 +438,13 @@ def _is_internal_report_name(stem: str, normalized_dl: str) -> bool:
         return False
     first_token = re.split(r"\s+", normalized, maxsplit=1)[0]
     return not first_token.endswith("-cr") and "customer" not in normalized
+
+
+def _file_identity(path: Path) -> tuple[int, int]:
+    information = path.stat()
+    if not information.st_ino:
+        raise ReportPublicationConflictError("The report filesystem cannot prove file identity. Review the report location before retrying.")
+    return information.st_dev, information.st_ino
 
 
 def _is_customer_report_name(stem: str, normalized_dl: str) -> bool:

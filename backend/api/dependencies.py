@@ -839,6 +839,18 @@ def get_report_workspace_service(
 ) -> ReportWorkspaceService:
     """Build Internal Report draft revision orchestration."""
     confirmed_store = ConfirmedMatrixAuthorityRepository(session)
+
+    def archive_revision_location(project_id, previous_path, archive_path):
+        from sqlalchemy import select
+        from backend.infrastructure.storage.models_result_dataset import ReportDraftRevisionModel
+        for row in session.scalars(select(ReportDraftRevisionModel).where(
+            ReportDraftRevisionModel.project_id == project_id,
+            ReportDraftRevisionModel.file_path == str(previous_path),
+        )).all():
+            # Authority/lineage stays immutable; the retained artifact location
+            # follows its archive so historical download interfaces remain valid.
+            row.file_path = str(archive_path)
+
     return ReportWorkspaceService(
         repository=ResultDatasetRepository(session),
         initial_report_service=get_test_report_draft_service(session),
@@ -850,7 +862,95 @@ def get_report_workspace_service(
         ),
         confirmed_matrix_store=confirmed_store,
         official_workspace_store=ProjectOfficialWorkspaceRepository(session),
+        current_report_reader=get_current_report_update_service(session).get_current_report,
+        archive_revision_location=archive_revision_location,
     )
+
+
+def _read_internal_report_generation_snapshot(session, settings, project_id):
+    from backend.application.internal_report_generation_service import InternalReportGenerationError, InternalReportGenerationSnapshot
+    from backend.application.test_report_draft_service import GenerateTestReportDraftCommand
+    from backend.application.test_report_template_resource import resolve_test_report_template_path
+    from backend.application.project_lifecycle_write_guard import LifecycleWriteOperation
+    from backend.infrastructure.files.generation_journal import json_value
+    from hashlib import sha256
+    import json
+    from backend.infrastructure.official_workspace_manifest import OfficialWorkspaceManifestGateway, stable_folder_identity
+
+    get_project_lifecycle_write_guard(session).require_write_allowed(project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE)
+    files = ReportPublicationGateway()
+    resources = ExternalResourceRepository(session)
+    try:
+        template = resolve_test_report_template_path(resources)
+    except ValueError as exc:
+        raise InternalReportGenerationError(f"{exc} Open Settings > External Resources and select the approved template folder, then preview again.") from exc
+    basic = ProjectBasicInformationRepository(session).get_latest_confirmed(project_id)
+    matrix = ConfirmedMatrixAuthorityRepository(session).get_active_by_project(project_id)
+    workspace = ProjectOfficialWorkspaceRepository(session).get_by_project(project_id)
+    current = get_current_report_update_service(session).get_current_report(project_id)
+    if current.status == "ambiguous":
+        raise InternalReportGenerationError("Multiple current Internal Reports were found. Keep exactly one in the project folder and preview again.")
+    managed_root = settings.data_dir / "generated_test_reports"
+    workspace_identity = None
+    if workspace is not None:
+        local, official, manifest_path = Path(workspace.local_workspace_path), Path(workspace.official_folder_path), Path(workspace.manifest_path)
+        if not local.is_dir() or not official.is_dir() or not manifest_path.is_file():
+            raise InternalReportGenerationError("The registered project folder or its identity file is unavailable. Restore or link the project folder before generating the Internal Report.")
+        configured_root = _active_resource_path(resources, ExternalResourceType.PROJECT_OUTPUT_ROOT)
+        if (configured_root is None or local == Path(configured_root)
+                or not local.is_relative_to(Path(configured_root))
+                or official.parent != local
+                or workspace.source_book_path != local / "Source Book"
+                or manifest_path != local / ".connlab" / "manifest.json"):
+            raise InternalReportGenerationError("The registered project folder does not match the configured project workspace. Review Settings and link the correct folder before generating.")
+        try:
+            manifest = OfficialWorkspaceManifestGateway().read(manifest_path)
+        except (ValueError, OSError) as exc:
+            raise InternalReportGenerationError("The project folder identity file cannot be read. Restore or link the project folder before generating.") from exc
+        if (not isinstance(manifest, dict) or manifest.get("project_id") != project_id
+                or manifest.get("dl_number") != workspace.dl_number
+                or manifest.get("local_workspace_path") != str(local)
+                or manifest.get("official_project_folder_path") != str(official)
+                or (manifest.get("official_folder_identity") is not None
+                    and manifest["official_folder_identity"] != stable_folder_identity(official))):
+            raise InternalReportGenerationError("The project folder identity changed. Review and link the correct folder before generating the Internal Report.")
+        target_dir, mode = official, "official"
+        history = local / "History" / "Report"
+        workspace_identity = (str(configured_root), stable_folder_identity(Path(configured_root)),
+                              stable_folder_identity(local), stable_folder_identity(official), manifest)
+    else:
+        target_dir, mode = managed_root, "managed_draft"
+        history = current.history_root or managed_root / "History" / "Report"
+    if current.mode == "managed_draft" and current.file_path is not None:
+        history = current.history_root
+    prepared = get_test_report_draft_service(session).prepare(GenerateTestReportDraftCommand(
+        project_id, template, target_dir, "official_current" if workspace is not None else "managed_draft",
+    ))
+    if template.is_relative_to(managed_root) or (workspace is not None and template.is_relative_to(Path(configured_root))):
+        raise InternalReportGenerationError("The approved report template cannot be inside project output storage. Select the original template folder in Settings and preview again.")
+    if workspace is None:
+        target_dir = prepared.target_dir
+        history = current.history_root or target_dir / "History" / "Report"
+    elif prepared.report.report_number.casefold() != workspace.dl_number.casefold():
+        raise InternalReportGenerationError("Confirmed Basic Information and the registered project folder use different DL numbers. Review Basic Information and link the correct folder before generating.")
+    paths = [template, target_dir, history, settings.data_dir, settings.data_dir / "internal_report_staging"]
+    if workspace is not None:
+        paths.extend([local, manifest_path])
+    if current.file_path is not None:
+        paths.append(current.file_path)
+    if OfficialWorkspaceManifestGateway.first_redirected_path(*(parent for path in paths for parent in (path, *path.parents))) is not None:
+        raise InternalReportGenerationError("A report, template or project folder redirects through a link or junction. Restore the original location before generating.")
+    latest = ResultDatasetRepository(session).latest_report_revision(project_id)
+    signature = sha256(json.dumps(json_value({"basic": basic, "matrix": matrix, "workspace": workspace,
+        "workspace_identity": workspace_identity, "template_path": template,
+        "template_sha256": files.fingerprint(template),
+        "current_file_identity": stable_folder_identity(current.file_path) if current.file_path else None,
+        "managed_folder_identity": stable_folder_identity(target_dir) if current.mode == "managed_draft" and target_dir.is_dir() else None,
+        "data_root_identity": stable_folder_identity(settings.data_dir) if settings.data_dir.is_dir() else None,
+        "latest_report_revision": latest,
+        "project": ProjectRepository(session).get(project_id)}), default=str,
+        sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+    return InternalReportGenerationSnapshot(prepared, current, target_dir, history, mode, signature)
 
 
 def get_current_report_update_service(
@@ -1221,6 +1321,38 @@ def get_no_ltr_project_cleanup_service(
 def get_settings() -> Settings:
     """Return application settings."""
     return Settings.load()
+
+
+def get_internal_report_generation_service(
+    session: Session = Depends(get_session), settings: Settings = Depends(get_settings),
+):
+    """Compose fresh authority reads independently of the request identity map."""
+    from backend.application.internal_report_generation_service import InternalReportGenerationService
+    workspace_service = get_report_workspace_service(session)
+
+    def read_snapshot(project_id):
+        # Repositories may return cached ORM objects. Independent short read
+        # sessions also discard an earlier read transaction before revalidation.
+        with Session(bind=session.get_bind()) as fresh:
+            return _read_internal_report_generation_snapshot(fresh, settings, project_id)
+
+    def persist(**values):
+        from backend.infrastructure.storage.models import ProjectModel
+        project = session.get(ProjectModel, values["project_id"], populate_existing=True)
+        if project is None:
+            raise ValueError("The project disappeared. Restore it and preview generation again.")
+        # Publish both report metadata and the ordinary registry invalidation in
+        # this rollback-capable commit. The outer registry guard sees the advance
+        # and does not enqueue a second registry mutation after file publication.
+        project.registry_revision += 1
+        workspace_service.register_generated_report(**values)
+
+    return InternalReportGenerationService(
+        read_snapshot=read_snapshot, drafts=get_test_report_draft_service(session),
+        files=ReportPublicationGateway(),
+        persist=persist,
+        staging_root=settings.data_dir / "internal_report_staging",
+    )
 
 
 def get_customer_report_projection_service(

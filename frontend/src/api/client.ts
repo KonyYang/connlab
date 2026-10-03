@@ -5090,6 +5090,7 @@ export type CurrentReport = {
   file_name: string | null;
   file_sha256: string | null;
   report_revision_id: string | null;
+  file_path?: string | null;
   folder_path: string | null;
   official_folder_path: string | null;
   can_publish_to_official: boolean;
@@ -5576,6 +5577,39 @@ export function generateMatrixEditorLlcrCrRecordDraftDownload(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     }
+  );
+}
+
+export type InternalReportGenerationPreview = {
+  project_id: string;
+  status: "ready" | "blocked";
+  preview_token: string | null;
+  requires_confirmation: boolean;
+  mode: "official" | "managed_draft" | null;
+  current_path: string | null;
+  target_path: string | null;
+  blockers: string[];
+};
+
+export type InternalReportGenerationResult = {
+  project_id: string;
+  mode: "official" | "managed_draft";
+  file_name: string;
+  file_path: string;
+  file_sha256: string;
+  archive_path: string | null;
+};
+
+export function previewInternalReportGeneration(projectId: string): Promise<InternalReportGenerationPreview> {
+  return requestJson<InternalReportGenerationPreview>(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/internal-report/generation-preview`
+  );
+}
+
+export function generateInternalReport(projectId: string, previewToken: string, archiveAndRegenerate: boolean): Promise<InternalReportGenerationResult> {
+  return requestJson<InternalReportGenerationResult>(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/internal-report/generate`,
+    { method: "POST", body: JSON.stringify({ preview_token: previewToken, archive_and_regenerate: archiveAndRegenerate }) }
   );
 }
 

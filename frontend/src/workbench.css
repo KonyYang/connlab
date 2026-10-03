@@ -9912,6 +9912,15 @@
   overflow-wrap: anywhere;
 }
 
+.report-workspace-report-path {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.report-workspace-dialog.report-workspace-regeneration-dialog {
+  max-width: 620px;
+}
+
 .report-workspace-current-report small {
   color: var(--color-ink-muted);
 }

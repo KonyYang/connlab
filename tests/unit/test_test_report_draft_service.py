@@ -139,6 +139,24 @@ def test_requires_confirmed_basic_information(tmp_path: Path) -> None:
         )
 
 
+def test_prepares_without_files_and_stages_fresh_report_with_canonical_name(tmp_path: Path) -> None:
+    writer = _Writer()
+    service = TestReportDraftService(
+        preview_service=_PreviewService(_preview()),
+        basic_information_reader=_BasicInformationReader(_basic_information()),
+        writer=writer,
+    )
+    command = GenerateTestReportDraftCommand("P1", _template(tmp_path), tmp_path / "absent", "official_current")
+    prepared = service.prepare(command)
+    assert not command.output_dir.exists()
+    assert not writer.calls
+    output = tmp_path / "stage.docx"
+    result = service.generate_staged(prepared, output_path=output)
+    assert result.output_path == output
+    assert result.file_name == "DL-2026-05-011 Coolpower HDF 3.40mm Qualification Testing Report_Rev_A.docx"
+    assert writer.calls[0]["template_path"] == command.template_path
+
+
 def test_requires_active_confirmed_matrix(tmp_path: Path) -> None:
     service = TestReportDraftService(
         preview_service=_PreviewService(None),

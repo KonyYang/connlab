@@ -106,6 +106,29 @@ Do not use a dated snapshot as a substitute for the code.
   and Equipment List preview), and Customer Report. There is no numbered wizard or page-wide Confirm.
   LLCR import remains available before the initial report exists. Section updates preserve unrelated
   report content and manual edits; existing preview, confirmation and publication safeguards remain.
+- Internal Report displays its backend-resolved full file path once. The always-visible `Generate
+  Internal Report` action initializes an empty slot or asks explicitly to `Archive and regenerate`.
+  Cancel does not write files or metadata. A fresh report uses only the approved E-3707_H template,
+  latest confirmed Basic Information and active confirmed Matrix; old manual content, results,
+  equipment and photos remain in `History/Report` and are never copied into the new report. LLCR and
+  Equipment List updates remain separate actions, and customer-report behavior is unchanged.
+- Generation approval binds the operation, expected report/absence, source record identities and
+  content, Matrix revision, template bytes, workspace identities and latest report revision. Fresh
+  independent database reads recheck that context after writing and before publication; a changed
+  source or target requires another preview. Report generation and retained initial/publish/LLCR/
+  equipment writes share the project-folder writer lock, including unfinished-operation blockers.
+- Fresh generation is staged and validated before the old file is retired. Its collision-safe
+  timestamp archive remains available until report metadata and registry revision commit together.
+  Failed publication or metadata persistence restores the old current file when its locations remain
+  unchanged; a foreign edit during rollback is preserved with the recovery archive and an explicit
+  manual-review blocker. Only owned temporary files are cleaned. Regeneration archives even identical
+  output, and its completed revision invalidates the used preview. The new filename follows latest
+  confirmed authority, and historical revision downloads follow the retained archive location.
+- Formal current reports provide `Open folder` through the existing project-ID-resolved backend
+  opener; their displayed path is never accepted as opener input. Managed drafts retain Download and
+  explicit publication. Generation success is concise and transient; errors and blockers remain
+  actionable. Acceptance covers cancellation, stale sources, same-byte replay, competing writers,
+  file/metadata rollback and existing section/customer-report flows using isolated test storage.
 - Customer generation retains real stage/elapsed feedback, task recovery and separate status-query,
   generation/publication and download retry handling. Layout changes do not change output locations,
   source authority, file fingerprints, archive rules or backend task lifecycle.

@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
+import pytest
 
 from backend.api.dependencies import (
     get_customer_report_projection_service,
@@ -36,6 +37,16 @@ from backend.domain import ExternalResource, ExternalResourceType, ExternalResou
 from backend.domain.result_dataset_models import LlcrImportPreview, ReportDraftRevision
 from backend.shared.config import Settings
 from tests.unit.test_result_dataset_repository import _dataset
+
+
+@pytest.fixture(autouse=True)
+def isolated_generation_storage(tmp_path):
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        data_dir=tmp_path / "data", projects_dir=tmp_path / "projects",
+        templates_dir=tmp_path / "templates", database_path=tmp_path / "db.sqlite3",
+    )
+    yield
+    app.dependency_overrides.clear()
 
 
 def test_report_workspace_llcr_preview_confirm_generate_and_download(tmp_path: Path) -> None:
@@ -166,6 +177,7 @@ def test_current_report_llcr_preview_update_and_download(tmp_path: Path) -> None
 
     assert current.status_code == 200
     assert current.json()["mode"] == "official"
+    assert current.json()["file_path"] == str(report_path)
     assert current.json()["download_url"].endswith("/current-report/download")
     assert preview.status_code == 200
     assert preview.json()["status"] == "ready"

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 import os
+import logging
 from pathlib import Path
 import re
 from typing import Literal, Protocol
@@ -22,6 +23,8 @@ from backend.application.project_basic_information_service import (
     ProjectBasicInformationSampleRow,
 )
 from backend.application.project_schedule_output import ConfirmedProjectScheduleReader
+
+logger = logging.getLogger(__name__)
 
 
 class TestReportDraftGenerationError(ValueError):
@@ -96,6 +99,20 @@ class TestReportDraftGenerationResult:
     __test__ = False
 
 
+@dataclass(frozen=True, slots=True)
+class PreparedTestReportDraft:
+    """Validated authority projection; preparation has no filesystem side effects."""
+
+    template_path: Path
+    report: TestReportDraftData
+    file_name: str
+    target_dir: Path
+    confirmed_basic_information_version: int
+    confirmed_basic_information_source_signature_hash: str
+
+    __test__ = False
+
+
 class TestReportDraftService:
     """Coordinate confirmed report data without exposing Word implementation details."""
 
@@ -119,6 +136,17 @@ class TestReportDraftService:
         command: GenerateTestReportDraftCommand,
     ) -> TestReportDraftGenerationResult:
         """Generate one new draft in ConnLab-controlled storage."""
+        prepared = self.prepare(command)
+        target_dir = prepared.target_dir
+        target_dir.mkdir(parents=True, exist_ok=True)
+        output_path = _reserve_report_path(
+            target_dir / prepared.file_name,
+            allow_numbered_copy=command.publication_mode == "managed_draft",
+        )
+        return self.generate_staged(prepared, output_path=output_path, reserved=True)
+
+    def prepare(self, command: GenerateTestReportDraftCommand) -> PreparedTestReportDraft:
+        """Project only the latest confirmed Basic Information and Matrix."""
         template_path = Path(command.template_path)
         if template_path.suffix.lower() != ".docx":
             raise TestReportDraftGenerationError(
@@ -200,26 +228,32 @@ class TestReportDraftService:
             target_dir = Path(command.output_dir)
             file_name = _report_file_name(report, draft=False)
         elif command.publication_mode == "managed_draft":
-            target_dir = Path(command.output_dir) / _safe_file_component(
-                command.project_id, 80
-            )
+            target_dir = Path(command.output_dir) / _safe_file_component(command.project_id, 80)
             file_name = _report_file_name(report, draft=True)
         else:
             raise TestReportDraftGenerationError(
                 f"Unsupported report publication mode: {command.publication_mode}"
             )
-        target_dir.mkdir(parents=True, exist_ok=True)
-        output_path = _reserve_report_path(
-            target_dir / file_name,
-            allow_numbered_copy=command.publication_mode == "managed_draft",
+        return PreparedTestReportDraft(
+            template_path, report, file_name, target_dir, basic_information.version,
+            basic_information.source_signature_hash,
         )
+
+    def generate_staged(
+        self, prepared: PreparedTestReportDraft, *, output_path: Path, reserved: bool = False,
+    ) -> TestReportDraftGenerationResult:
+        """Write a fresh template into a caller-owned isolated staging destination."""
+        output_path = Path(output_path)
+        if not reserved:
+            _reserve_report_path(output_path, allow_numbered_copy=False)
         try:
             written_path = self._writer.generate(
-                template_path=template_path,
+                template_path=prepared.template_path,
                 output_path=output_path,
-                report=report,
+                report=prepared.report,
             )
-        except (ValueError, FileNotFoundError, OSError) as exc:
+        except Exception as exc:
+            logger.exception("Report template generation failed for project %s at %s", prepared.report.project_id, output_path)
             output_path.unlink(missing_ok=True)
             raise TestReportDraftGenerationError(str(exc)) from exc
         if Path(written_path) != output_path or not output_path.is_file():
@@ -228,13 +262,13 @@ class TestReportDraftService:
                 "Test report writer did not produce the reserved draft path."
             )
         return TestReportDraftGenerationResult(
-            project_id=command.project_id,
-            confirmed_matrix_id=preview.confirmed_matrix_id,
+            project_id=prepared.report.project_id,
+            confirmed_matrix_id=prepared.report.confirmed_matrix_id,
             output_path=output_path,
-            file_name=output_path.name,
-            confirmed_basic_information_version=basic_information.version,
+            file_name=prepared.file_name if not reserved else output_path.name,
+            confirmed_basic_information_version=prepared.confirmed_basic_information_version,
             confirmed_basic_information_source_signature_hash=(
-                basic_information.source_signature_hash
+                prepared.confirmed_basic_information_source_signature_hash
             ),
         )
 

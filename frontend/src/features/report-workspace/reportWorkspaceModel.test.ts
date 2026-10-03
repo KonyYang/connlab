@@ -3,6 +3,7 @@ import type { CurrentReport, LlcrImportPreview, ReportWorkspaceState } from "../
 import {
   buildLlcrConfirmationDecisions,
   deriveReportEntryState,
+  currentReportDisplayPath,
   deriveReportWorkspaceReadiness,
   formatLlcrSummary,
   validateLlcrConfirmation,
@@ -57,6 +58,14 @@ const preview: LlcrImportPreview = {
 };
 
 describe("reportWorkspaceModel", () => {
+  it("displays the backend-resolved full report path and supports legacy path fields", () => {
+    const report: CurrentReport = { status: "ready", mode: "official", file_name: "Report.docx", file_sha256: "a".repeat(64),
+      file_path: "D:\\Project\\Report.docx", folder_path: "D:\\Project", report_revision_id: null, official_folder_path: "D:\\Project",
+      can_publish_to_official: false, download_url: null };
+    expect(currentReportDisplayPath(report)).toBe("D:\\Project\\Report.docx");
+    expect(currentReportDisplayPath({ ...report, file_path: undefined })).toBe("D:\\Project\\Report.docx");
+    expect(currentReportDisplayPath({ ...report, status: "ambiguous" })).toBeNull();
+  });
   it("derives one primary report action from the current artifact state", () => {
     const managed: CurrentReport = {
       status: "ready",

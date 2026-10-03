@@ -89,6 +89,33 @@ def test_initial_report_targets_existing_official_project_folder(tmp_path) -> No
     assert Path(generated.file_path).parent == official_folder
 
 
+@pytest.mark.parametrize("status", ["ready", "ambiguous"])
+def test_legacy_initial_generation_does_not_create_a_second_current_report(tmp_path, status) -> None:
+    repository = _Repository()
+    target = tmp_path / "new-report.docx"
+    service = ReportWorkspaceService(repository=repository, initial_report_service=_InitialService(target),
+        llcr_writer=_Writer(), clock=lambda: "2026-10-03",
+        current_report_reader=lambda project: SimpleNamespace(status=status))
+    with pytest.raises(ValueError, match="Archive and regenerate"):
+        service.generate_initial(GenerateInitialReportCommand("P1", tmp_path / "template.docx", tmp_path, "Operator"))
+    assert not target.exists()
+    assert service.get_state("P1").report_revisions == ()
+
+
+def test_registers_generated_report_without_result_dataset_or_old_report_lineage(tmp_path) -> None:
+    repository = _Repository()
+    target = tmp_path / "fresh.docx"
+    target.write_bytes(b"fresh template report")
+    service = ReportWorkspaceService(repository=repository, initial_report_service=_InitialService(target),
+        llcr_writer=_Writer(), clock=lambda: "2026-10-03")
+    revision = service.register_generated_report(project_id="P1", path=target, confirmed_matrix_id="latest-matrix",
+        created_by="Operator", previous_path=None, archive_path=None)
+    assert revision.confirmed_matrix_id == "latest-matrix"
+    assert revision.result_dataset_id is None
+    assert revision.base_report_revision_id is None
+    assert service.get_state("P1").latest_report_revision == revision
+
+
 def test_customer_report_is_derived_from_selected_internal_revision_without_joining_history(
     tmp_path,
 ) -> None:

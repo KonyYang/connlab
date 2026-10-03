@@ -118,6 +118,8 @@ class ReportWorkspaceService:
         basic_information_reader=None,
         confirmed_matrix_store=None,
         official_workspace_store: OfficialWorkspaceStore | None = None,
+        current_report_reader: Callable[[str], object] | None = None,
+        archive_revision_location: Callable[[str, Path, Path], None] | None = None,
     ) -> None:
         self._repository = repository
         self._initial = initial_report_service
@@ -128,6 +130,8 @@ class ReportWorkspaceService:
         self._basic_information = basic_information_reader
         self._confirmed_matrix = confirmed_matrix_store
         self._official_workspaces = official_workspace_store
+        self._current_report_reader = current_report_reader
+        self._archive_revision_location = archive_revision_location
 
     def get_state(self, project_id: str) -> ReportWorkspaceState:
         reports = self._repository.list_report_revisions(project_id)
@@ -174,6 +178,7 @@ class ReportWorkspaceService:
         self,
         command: GenerateInitialReportCommand,
     ) -> ReportDraftRevision:
+        self._require_initial_report_slot(command.project_id)
         generated = self._initial.generate(
             self._initial_generation_command(
                 project_id=command.project_id,
@@ -182,21 +187,37 @@ class ReportWorkspaceService:
             )
         )
         path = Path(generated.output_path)
-        revision = self._build_report_revision(
-            project_id=command.project_id,
-            path=path,
-            confirmed_matrix_id=generated.confirmed_matrix_id,
-            dataset_id=None,
-            base_report_id=None,
-            created_by=command.created_by,
-        )
         try:
+            revision = self._build_report_revision(
+                project_id=command.project_id, path=path,
+                confirmed_matrix_id=generated.confirmed_matrix_id,
+                dataset_id=None, base_report_id=None, created_by=command.created_by,
+            )
             created = self._repository.create_report_revision(revision)
             self._repository.commit()
             return created
         except Exception:
             self._repository.rollback()
             path.unlink(missing_ok=True)
+            raise
+
+    def register_generated_report(
+        self, *, project_id: str, path: Path, confirmed_matrix_id: str,
+        created_by: str, previous_path: Path | None, archive_path: Path | None,
+    ) -> ReportDraftRevision:
+        """Commit new report metadata while the publication gateway retains rollback."""
+        try:
+            if previous_path is not None and archive_path is not None and self._archive_revision_location is not None:
+                self._archive_revision_location(project_id, previous_path, archive_path)
+            revision = self._build_report_revision(
+                project_id=project_id, path=path, confirmed_matrix_id=confirmed_matrix_id,
+                dataset_id=None, base_report_id=None, created_by=created_by,
+            )
+            created = self._repository.create_report_revision(revision)
+            self._repository.commit()
+            return created
+        except Exception:
+            self._repository.rollback()
             raise
 
     def generate_customer_report(
@@ -314,6 +335,7 @@ class ReportWorkspaceService:
         self,
         command: GenerateLlcrReportCommand,
     ) -> tuple[ReportDraftRevision, Path]:
+        self._require_initial_report_slot(command.project_id)
         generated = self._initial.generate(
             self._initial_generation_command(
                 project_id=command.project_id,
@@ -335,6 +357,12 @@ class ReportWorkspaceService:
         except Exception:
             path.unlink(missing_ok=True)
             raise
+
+    def _require_initial_report_slot(self, project_id: str) -> None:
+        if self._current_report_reader is not None:
+            current = self._current_report_reader(project_id)
+            if current.status != "missing":
+                raise ReportWorkspaceError("A current Internal Report already exists or is ambiguous. Use Generate Internal Report and explicitly Archive and regenerate after resolving any conflict.")
 
     def _initial_generation_command(
         self,

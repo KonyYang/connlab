@@ -15,6 +15,14 @@ export type ReportEntryState = {
   locationLabel: string | null;
 };
 
+export function currentReportDisplayPath(report: CurrentReport | null): string | null {
+  if (report?.status !== "ready" || !report.file_name) return null;
+  if (report.file_path) return report.file_path;
+  if (!report.folder_path) return report.file_name;
+  const separator = report.folder_path.includes("\\") ? "\\" : "/";
+  return `${report.folder_path.replace(/[\\/]$/, "")}${separator}${report.file_name}`;
+}
+
 export function deriveReportEntryState(
   report: CurrentReport | null
 ): ReportEntryState {

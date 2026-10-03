@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../../api/client";
@@ -19,6 +19,9 @@ vi.mock("../../api/client", async () => {
     inspectLlcrResultWorkbook: vi.fn(),
     confirmLlcrResultImport: vi.fn(),
     generateInitialReportRevision: vi.fn(),
+    previewInternalReportGeneration: vi.fn(),
+    generateInternalReport: vi.fn(),
+    openLocalProjectFolder: vi.fn(),
     previewCurrentReportLlcrUpdate: vi.fn(),
     updateCurrentReportLlcr: vi.fn(),
     previewCurrentReportEquipmentList: vi.fn(),
@@ -50,6 +53,7 @@ const currentReport: api.CurrentReport = {
   status: "ready",
   mode: "official",
   file_name: "DL-001 Qualification Testing Report_Rev_A.docx",
+  file_path: "D:\\Test Project\\DL-001\\Official Test\\DL-001 Qualification Testing Report_Rev_A.docx",
   file_sha256: "a".repeat(64),
   report_revision_id: null,
   folder_path: "D:\\Test Project\\DL-001\\Official Test",
@@ -158,6 +162,13 @@ describe("ReportWorkspace", () => {
     vi.mocked(api.fetchReportWorkspace).mockResolvedValue(state);
     vi.mocked(api.fetchCurrentReport).mockResolvedValue(currentReport);
     vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue(customerReport);
+    vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({
+      project_id: "project-1", status: "ready", preview_token: "c".repeat(64), requires_confirmation: true,
+      mode: "official", current_path: currentReport.file_path!, target_path: currentReport.file_path!, blockers: [],
+    });
+    vi.mocked(api.generateInternalReport).mockResolvedValue({ project_id: "project-1", mode: "official", file_name: currentReport.file_name!,
+      file_path: currentReport.file_path!, file_sha256: "d".repeat(64), archive_path: "History/Report/old.docx" });
+    vi.mocked(api.openLocalProjectFolder).mockResolvedValue({ project_id: "project-1", status: "opened", message: "Opened", local_official_folder_path: currentReport.folder_path });
     vi.mocked(api.inspectLlcrResultWorkbook).mockResolvedValue(preview);
     vi.mocked(api.previewCurrentReportEquipmentList).mockResolvedValue(equipmentPreview);
     vi.mocked(api.updateCurrentReportEquipmentList).mockResolvedValue({
@@ -186,6 +197,78 @@ describe("ReportWorkspace", () => {
     });
   });
 
+  it("shows the current full path once and confirms archive regeneration without writing on cancel", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({
+      project_id: "project-1", status: "ready", preview_token: "c".repeat(64),
+      requires_confirmation: true, mode: "official", current_path: currentReport.file_path!,
+      target_path: currentReport.file_path!, blockers: [],
+    });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    const internal = await screen.findByRole("region", { name: "Internal Report" });
+    expect(within(internal).getAllByText(currentReport.file_path!)).toHaveLength(1);
+    expect(within(internal).queryByText(currentReport.file_name!)).toBeNull();
+    expect(within(internal).queryByText("Official project report")).toBeNull();
+    expect(within(internal).queryByRole("button", { name: "Download current report" })).toBeNull();
+    await user.click(within(internal).getByRole("button", { name: "Open folder" }));
+    expect(api.openLocalProjectFolder).toHaveBeenCalledWith("project-1");
+    await user.click(within(internal).getByRole("button", { name: "Generate Internal Report" }));
+    const dialog = await screen.findByRole("dialog", { name: "Archive and regenerate Internal Report" });
+    expect(within(dialog).getByText(/manual content, results and photos, will be preserved/)).toBeTruthy();
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(api.generateInternalReport).not.toHaveBeenCalled();
+  });
+
+  it("ignores a delayed regeneration preview after changing project", async () => {
+    const user = userEvent.setup();
+    let resolvePreview!: (preview: api.InternalReportGenerationPreview) => void;
+    vi.mocked(api.previewInternalReportGeneration).mockReturnValue(new Promise((resolve) => { resolvePreview = resolve; }));
+    const view = render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Generate Internal Report" }));
+    view.rerender(<ReportWorkspace projectId="project-2" onBack={vi.fn()} />);
+    await act(async () => resolvePreview({ project_id: "project-1", status: "ready", preview_token: "c".repeat(64),
+      requires_confirmation: true, mode: "official", current_path: currentReport.file_path!, target_path: currentReport.file_path!, blockers: [] }));
+    expect(screen.queryByRole("dialog", { name: "Archive and regenerate Internal Report" })).toBeNull();
+    expect(api.generateInternalReport).not.toHaveBeenCalled();
+  });
+
+  it("keeps the current path and actionable failure then obtains a new preview for retry", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.generateInternalReport).mockRejectedValueOnce(new Error("Confirmed authority changed. Preview generation again."));
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Generate Internal Report" }));
+    await user.click(await screen.findByRole("button", { name: "Archive and regenerate" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Confirmed authority changed. Preview generation again.");
+    expect(screen.getByText(currentReport.file_path!)).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: "Archive and regenerate Internal Report" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Generate Internal Report" }));
+    expect(api.previewInternalReportGeneration).toHaveBeenCalledTimes(2);
+    expect(await screen.findByRole("button", { name: "Archive and regenerate" })).toBeTruthy();
+  });
+
+  it("shows backend folder-opening blockers without accepting the displayed path as input", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.openLocalProjectFolder).mockResolvedValue({ project_id: "project-1", status: "blocked", message: "Restore or link the project folder.", local_official_folder_path: null });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Open folder" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Restore or link the project folder.");
+    expect(api.openLocalProjectFolder).toHaveBeenCalledWith("project-1");
+  });
+
+  it("uses a concise transient success after confirmed regeneration", async () => {
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await screen.findByRole("button", { name: "Generate Internal Report" });
+    vi.useFakeTimers();
+    try {
+      await act(async () => fireEvent.click(screen.getByRole("button", { name: "Generate Internal Report" })));
+      await act(async () => fireEvent.click(screen.getByRole("button", { name: "Archive and regenerate" })));
+      expect(api.generateInternalReport).toHaveBeenCalledWith("project-1", "c".repeat(64), true);
+      expect(screen.getByText("Generated the Internal Report.")).toBeTruthy();
+      await act(async () => vi.advanceTimersByTimeAsync(5000));
+      expect(screen.queryByText("Generated the Internal Report.")).toBeNull();
+    } finally { vi.useRealTimers(); }
+  });
+
   it("shows an explicit loading state while workspace authority is loading", () => {
     vi.mocked(api.fetchReportWorkspace).mockReturnValue(new Promise(() => undefined));
     vi.mocked(api.fetchLatestProjectCustomerReportJob).mockReturnValue(new Promise(() => undefined));
@@ -203,7 +286,7 @@ describe("ReportWorkspace", () => {
         <ReportWorkspace projectId="project-1" identityLabel="DL-001 Connector Qualification Testing" onBack={onBack} />
       </AppShell>
     );
-    await screen.findByText(currentReport.file_name!);
+    await screen.findByText(currentReport.file_path!);
     expect(screen.getAllByRole("heading", { name: "Report Workspace" })).toHaveLength(1);
     const actions = screen.getByLabelText("Report Workspace actions");
     expect(screen.getByLabelText("Page actions").contains(actions)).toBe(true);
@@ -253,7 +336,7 @@ describe("ReportWorkspace", () => {
     vi.mocked(api.getProjectBasicInformation).mockRejectedValue(new Error("Basic label unavailable"));
     render(<ProjectReportWorkspacePage projectId="project-1" onBackToWorkbench={vi.fn()} />);
     expect(await screen.findByText("DL-001 Connector Project")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Download current report" }).hasAttribute("disabled")).toBe(false);
+    expect(screen.getByRole("button", { name: "Open folder" }).hasAttribute("disabled")).toBe(false);
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
@@ -288,11 +371,11 @@ describe("ReportWorkspace", () => {
 
     expect(await screen.findByRole("heading", { name: "Report Workspace" })).toBeTruthy();
     expect(screen.queryByText("Project project-1")).toBeNull();
-    expect(screen.getAllByText(currentReport.file_name!).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(currentReport.file_path!).length).toBe(1);
     expect(screen.queryByText("Confirmed Matrix r4")).toBeNull();
     expect(screen.queryByText("Basic Information v2")).toBeNull();
-    expect(within(screen.getByRole("region", { name: "Internal Report" })).getByText("Official project report")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Generate initial report" })).toBeNull();
+    expect(within(screen.getByRole("region", { name: "Internal Report" })).queryByText("Official project report")).toBeNull();
+    expect(screen.getByRole("button", { name: "Generate Internal Report" })).toBeTruthy();
 
     const fileInput = screen.getByLabelText("LLCR result workbook");
     fireEvent.change(fileInput, {
@@ -326,12 +409,12 @@ describe("ReportWorkspace", () => {
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     const internal = await screen.findByRole("region", { name: "Internal Report" });
     expect(within(internal).getByText(blocker)).toBeTruthy();
-    expect(within(internal).getByRole("button", { name: "Generate initial report" }).hasAttribute("disabled")).toBe(true);
+    expect(within(internal).getByRole("button", { name: "Generate Internal Report" }).hasAttribute("disabled")).toBe(true);
     expect(screen.queryByText("Basic Information v2")).toBeNull();
     expect(screen.queryByText("Confirmed Matrix r4")).toBeNull();
   });
 
-  it("enables initial generation only when no current report exists", async () => {
+  it("initializes a missing report after an absence-bound preview without archive confirmation", async () => {
     const user = userEvent.setup();
     vi.mocked(api.fetchCurrentReport).mockResolvedValue({
       status: "missing",
@@ -344,27 +427,18 @@ describe("ReportWorkspace", () => {
       can_publish_to_official: false,
       download_url: null,
     });
-    vi.mocked(api.generateInitialReportRevision).mockResolvedValue({
-      report_revision_id: "report-revision-1",
-      revision: 1,
-      file_name: "DL-001 Qualification Testing Report_Rev_A.docx",
-      file_sha256: "b".repeat(64),
-      size_bytes: 1024,
-      confirmed_matrix_id: "matrix-1",
-      result_dataset_id: null,
-      base_report_revision_id: null,
-      created_at: "2026-08-30T09:00:00Z",
-      created_by: "Lab User",
-      download_url: "/api/projects/project-1/report-workspace/revisions/report-revision-1/download",
+    vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({
+      project_id: "project-1", status: "ready", preview_token: "c".repeat(64), requires_confirmation: false,
+      mode: "official", current_path: null, target_path: currentReport.file_path!, blockers: [],
     });
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
 
-    const generateButton = await screen.findByRole("button", { name: "Generate initial report" });
+    const generateButton = await screen.findByRole("button", { name: "Generate Internal Report" });
     expect(generateButton).toHaveProperty("disabled", false);
     await user.click(generateButton);
 
-    expect(api.generateInitialReportRevision).toHaveBeenCalledWith("project-1");
+    expect(api.generateInternalReport).toHaveBeenCalledWith("project-1", "c".repeat(64), false);
   });
 
   it("blocks an outcome override until a reason is supplied", async () => {
@@ -465,6 +539,7 @@ describe("ReportWorkspace", () => {
       ...currentReport,
       mode: "managed_draft",
       file_name: "DL-001 Qualification Testing Report_Rev_A_Draft (9).docx",
+      file_path: "D:\\PythonProject\\connlab\\data\\generated_test_reports\\project-1\\DL-001 Qualification Testing Report_Rev_A_Draft (9).docx",
       folder_path: "D:\\PythonProject\\connlab\\data\\generated_test_reports\\project-1",
       official_folder_path: "D:\\Test Project\\DL-001\\Official Test",
       can_publish_to_official: true,
@@ -477,9 +552,8 @@ describe("ReportWorkspace", () => {
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
 
-    expect(await screen.findByText("ConnLab managed draft")).toBeTruthy();
-    expect((await screen.findAllByText("ConnLab managed draft")).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Destination: Official project folder")).toBeTruthy();
+    expect(await screen.findByText(managed.file_path!)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Download current report" })).toBeTruthy();
     await user.click(
       screen.getByRole("button", { name: "Publish current draft to project folder" })
     );

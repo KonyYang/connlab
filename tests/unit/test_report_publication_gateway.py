@@ -400,3 +400,131 @@ def _write_update(source: Path, output: Path, content: bytes) -> Path:
 def _failing_update(source: Path, output: Path) -> Path:
     output.write_bytes(b"partial")
     raise RuntimeError("Word update failed")
+def test_regeneration_archives_same_bytes_and_rolls_back_failed_metadata(tmp_path: Path) -> None:
+    current = tmp_path / "DL-001 Old Report_Rev_A.docx"
+    current.write_bytes(b"manual report")
+    staged = tmp_path / "staged.docx"
+    staged.write_bytes(b"manual report")
+    target = tmp_path / "DL-001 New Report_Rev_A.docx"
+    gateway = ReportPublicationGateway()
+    history = tmp_path / "History" / "Report"
+
+    def fail_metadata(result):
+        assert result.archive_path.read_bytes() == b"manual report"
+        raise RuntimeError("metadata commit failed")
+
+    with pytest.raises(RuntimeError, match="metadata commit failed"):
+        gateway.publish_regenerated_current(
+            source_path=staged,
+            expected_source_sha256=gateway.fingerprint(staged),
+            current_path=current,
+            expected_current_sha256=gateway.fingerprint(current),
+            target_path=target,
+            history_root=history,
+            persist=fail_metadata,
+        )
+    assert current.read_bytes() == b"manual report"
+    assert not target.exists()
+    assert not history.exists()
+    result = gateway.publish_regenerated_current(
+        source_path=staged,
+        expected_source_sha256=gateway.fingerprint(staged),
+        current_path=current,
+        expected_current_sha256=gateway.fingerprint(current),
+        target_path=target,
+        history_root=history,
+        persist=lambda result: None,
+    )
+    assert result.changed is True
+    assert result.archive_path.read_bytes() == b"manual report"
+    assert not current.exists()
+    assert target.read_bytes() == b"manual report"
+
+
+@pytest.mark.parametrize("same_name", [False, True])
+def test_failed_fresh_publication_restores_retired_report(tmp_path: Path, monkeypatch, same_name: bool) -> None:
+    current = tmp_path / "DL-001 Old Report_Rev_A.docx"
+    current.write_bytes(b"reviewed manual report")
+    source = tmp_path / "staged.docx"
+    source.write_bytes(b"fresh template report")
+    target = current if same_name else tmp_path / "DL-001 New Report_Rev_A.docx"
+    history = tmp_path / "History" / "Report"
+    gateway = ReportPublicationGateway()
+
+    def unavailable_link(staged, published):
+        assert not current.exists()
+        assert not published.exists()
+        assert len(list(history.glob("*.docx"))) == 1
+        raise PermissionError("publication unavailable")
+
+    monkeypatch.setattr(os, "link", unavailable_link)
+    with pytest.raises(ReportPublicationConflictError, match="Close the report"):
+        gateway.publish_regenerated_current(source_path=source, expected_source_sha256=gateway.fingerprint(source),
+            current_path=current, expected_current_sha256=gateway.fingerprint(current), target_path=target,
+            history_root=history, persist=lambda result: pytest.fail("metadata cannot persist before publication"))
+    assert current.read_bytes() == b"reviewed manual report"
+    assert not history.exists()
+    assert list(tmp_path.glob("DL-*.docx")) == [current]
+
+
+def test_regeneration_commit_observes_exactly_one_active_report(tmp_path: Path) -> None:
+    current = tmp_path / "DL-001 Old Report_Rev_A.docx"
+    current.write_bytes(b"manual")
+    source = tmp_path / "source.docx"
+    source.write_bytes(b"fresh")
+    target = tmp_path / "DL-001 New Report_Rev_A.docx"
+    gateway = ReportPublicationGateway()
+
+    def persist(result):
+        assert list(tmp_path.glob("DL-*.docx")) == [target]
+        assert target.read_bytes() == b"fresh"
+        assert result.archive_path.read_bytes() == b"manual"
+
+    gateway.publish_regenerated_current(source_path=source, expected_source_sha256=gateway.fingerprint(source),
+        current_path=current, expected_current_sha256=gateway.fingerprint(current), target_path=target,
+        history_root=tmp_path / "History" / "Report", persist=persist)
+
+
+def test_failed_commit_preserves_a_foreign_same_byte_replacement_and_old_archive(tmp_path: Path) -> None:
+    current = tmp_path / "DL-001 Old Report_Rev_A.docx"
+    current.write_bytes(b"manual")
+    source = tmp_path / "source.docx"
+    source.write_bytes(b"fresh")
+    target = tmp_path / "DL-001 New Report_Rev_A.docx"
+    history = tmp_path / "History" / "Report"
+    gateway = ReportPublicationGateway()
+
+    def racing_commit(result):
+        replacement = tmp_path / "foreign.tmp"
+        replacement.write_bytes(b"fresh")
+        os.replace(replacement, target)
+        raise RuntimeError("metadata commit failed")
+
+    with pytest.raises(ReportPublicationConflictError, match="retained in History"):
+        gateway.publish_regenerated_current(source_path=source, expected_source_sha256=gateway.fingerprint(source),
+            current_path=current, expected_current_sha256=gateway.fingerprint(current), target_path=target,
+            history_root=history, persist=racing_commit)
+    assert target.read_bytes() == b"fresh"
+    assert [archive.read_bytes() for archive in history.glob("*.docx")] == [b"manual"]
+
+
+def test_failed_commit_preserves_externally_edited_recovery_archive(tmp_path: Path) -> None:
+    current = tmp_path / "DL-001 Old Report_Rev_A.docx"
+    current.write_bytes(b"manual")
+    source = tmp_path / "source.docx"
+    source.write_bytes(b"fresh")
+    target = tmp_path / "DL-001 New Report_Rev_A.docx"
+    history = tmp_path / "History" / "Report"
+    gateway = ReportPublicationGateway()
+
+    def racing_commit(result):
+        result.archive_path.write_bytes(b"external archive edit")
+        raise RuntimeError("metadata commit failed")
+
+    with pytest.raises(ReportPublicationConflictError, match="recovery archive changed"):
+        gateway.publish_regenerated_current(source_path=source, expected_source_sha256=gateway.fingerprint(source),
+            current_path=current, expected_current_sha256=gateway.fingerprint(current), target_path=target,
+            history_root=history, persist=racing_commit)
+    assert not target.exists()
+    assert not current.exists()
+    assert [archive.read_bytes() for archive in history.glob("*.docx")] == [b"external archive edit"]
