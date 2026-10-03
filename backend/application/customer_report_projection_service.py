@@ -65,6 +65,7 @@ class CustomerReportFiles(Protocol):
         history_root: Path,
         update_document: Callable[[Path, Path], Path],
         pre_publish: Callable[[], None] | None = None,
+        archive_unchanged: bool = False,
     ): ...
 
 
@@ -304,6 +305,7 @@ class CustomerReportProjectionService:
                 current_path=state.file_path,
                 expected_current_sha256=expected_customer,
                 history_root=current.history_root,
+                archive_unchanged=True,
                 pre_publish=lambda: self._check_current_authority(command.project_id, current),
                 update_document=lambda _customer, output: self._generate_from_expected_source(
                     source_path=current.file_path,
@@ -338,7 +340,10 @@ class CustomerReportProjectionService:
         assert current.file_sha256 is not None
         folder = self._generated_root / _safe_component(command.project_id)
         folder.mkdir(parents=True, exist_ok=True)
-        output = _reserve_path(folder / customer_report_file_name(current.file_name))
+        name = Path(customer_report_file_name(current.file_name))
+        if not re.search(r"[ _-]draft(?: \(\d+\))?$", name.stem, flags=re.IGNORECASE):
+            name = name.with_name(f"{name.stem} draft{name.suffix}")
+        output = _reserve_path(folder / name)
         try:
             written = self._generate_from_expected_source(
                 source_path=current.file_path,

@@ -116,12 +116,21 @@ Do not use a dated snapshot as a substitute for the code.
   equipment and photos remain in `History/Report` and are never copied into the new report. LLCR and
   Equipment List updates remain separate actions.
 - `Generate customer report` normally uses the current project's Internal Report with existing
-  publication, History and recovery safeguards. Only an explicitly missing Internal Report opens
+  publication, History and recovery safeguards. An existing Customer Report requires `Archive and
+  regenerate` or Cancel before starting; approval binds the displayed Internal/Customer file hashes.
+  Explicit regeneration archives even identical output into `History/Report`, while unchanged LLCR
+  and Equipment List section updates retain their no-op behavior. A fresh customer report is staged
+  and source/target hashes are rechecked before archival and atomic replacement; conversion or
+  publication failure leaves the old current report in place. Cancel/Esc never starts generation,
+  and project changes discard the pending approval. Only an explicitly missing Internal Report opens
   the source picker for another existing Internal Report `.docx`; ambiguous or unavailable state
   does not bypass project blockers. The missing-source state is rechecked before uploading.
   This fallback reuses the Tools conversion API and downloads a copy, leaving the selected original
   and project report authority unchanged. Its filename is session-local and identified as a downloaded
-  copy. Cancel never uploads; progress, status/download retries and expired-operation errors remain
+  copy. Both managed-source and selected-source download-only customer reports use a ` draft` filename
+  suffix (an existing Draft suffix is retained, not duplicated). The generic Tools converter's naming
+  is unchanged. Downloads use the browser's configured download location, normally system Downloads.
+  Cancel never uploads; progress, status/download retries and expired-operation errors remain
   visible, and late responses after project changes or unmount cannot trigger downloads.
 - Generation approval binds the operation, expected report/absence, source record identities and
   content, Matrix revision, template bytes, workspace identities and latest report revision. Fresh

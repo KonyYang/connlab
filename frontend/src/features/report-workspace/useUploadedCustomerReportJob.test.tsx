@@ -22,6 +22,27 @@ describe("uploaded customer report lifecycle", () => {
     vi.mocked(api.downloadStandaloneCustomerReport).mockResolvedValue({ blob: new Blob(["report"]), fileName: "Other-CR Report.docx" });
   });
 
+  it.each(["Other-CR Report.docx", "Other-CR Report draft.docx"])("downloads %s with one draft suffix and displays that same filename", async (sourceName) => {
+    vi.mocked(api.startStandaloneCustomerReport).mockResolvedValue(completed);
+    const blob = new Blob(["report"]);
+    vi.mocked(api.downloadStandaloneCustomerReport).mockResolvedValue({ blob, fileName: sourceName });
+    const save = vi.fn();
+    const { result } = renderHook(() => useUploadedCustomerReportJob("project-1", save));
+    await act(async () => { await result.current.start(file); });
+    await waitFor(() => expect(save).toHaveBeenCalledWith({ blob, fileName: "Other-CR Report draft.docx" }));
+    expect(result.current.fileName).toBe("Other-CR Report draft.docx");
+  });
+
+  it("retains a legacy Draft suffix and its collision number without duplicating Draft", async () => {
+    vi.mocked(api.startStandaloneCustomerReport).mockResolvedValue(completed);
+    vi.mocked(api.downloadStandaloneCustomerReport).mockResolvedValue({ blob: new Blob(["report"]), fileName: "Other-CR Report_Draft (9).docx" });
+    const save = vi.fn();
+    const { result } = renderHook(() => useUploadedCustomerReportJob("project-1", save));
+    await act(async () => { await result.current.start(file); });
+    await waitFor(() => expect(result.current.fileName).toBe("Other-CR Report_Draft (9).docx"));
+    expect(save.mock.calls[0][0].fileName).toBe("Other-CR Report_Draft (9).docx");
+  });
+
   it("expires a missing operation rather than keeping generation permanently busy", async () => {
     vi.mocked(api.readStandaloneCustomerReportJob).mockRejectedValue(new api.ApiRequestError("Operation expired", 404));
     const { result } = renderHook(() => useUploadedCustomerReportJob("project-1", vi.fn()));
@@ -39,7 +60,7 @@ describe("uploaded customer report lifecycle", () => {
     expect(api.startStandaloneCustomerReport).toHaveBeenCalledTimes(1);
     expect(result.current.job?.stage).toBe("copying_content");
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(result.current.fileName).toBe("Other-CR Report.docx");
+    expect(result.current.fileName).toBe("Other-CR Report draft.docx");
   });
 
   it("keeps a lost status response recoverable without starting another conversion", async () => {
@@ -52,7 +73,7 @@ describe("uploaded customer report lifecycle", () => {
     await act(async () => { await result.current.start(file); });
     expect(api.startStandaloneCustomerReport).toHaveBeenCalledTimes(1);
     await act(async () => { await result.current.retryQuery(); });
-    await waitFor(() => expect(result.current.fileName).toBe("Other-CR Report.docx"));
+    await waitFor(() => expect(result.current.fileName).toBe("Other-CR Report draft.docx"));
   });
 
   it("retries download without uploading again", async () => {
@@ -92,7 +113,7 @@ describe("uploaded customer report lifecycle", () => {
     expect(result.current.job?.message).toBe("Word could not open the document");
     expect(result.current.busy).toBe(false);
     await act(async () => { await result.current.start(file); });
-    await waitFor(() => expect(result.current.fileName).toBe("Other-CR Report.docx"));
+    await waitFor(() => expect(result.current.fileName).toBe("Other-CR Report draft.docx"));
   });
 
   it.each(["switch", "unmount"])("does not download a late upload after %s", async (change) => {

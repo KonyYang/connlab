@@ -188,6 +188,38 @@ def test_managed_internal_report_generates_a_download_copy_without_publication(
     assert result.file_name == "DL-2026-04-015-CR Qualification Test Report_Rev_A_Draft.docx"
 
 
+def test_explicit_customer_regeneration_archives_even_identical_output(tmp_path: Path) -> None:
+    internal = _write(tmp_path / "DL-2026-04-015 Report_Rev_A.docx", b"internal")
+    customer = _write(tmp_path / "DL-2026-04-015-CR Report_Rev_A.docx", b"internal|customer")
+    template = _write(tmp_path / "template.docx", b"template")
+    service = _service(tmp_path, internal, files=ReportPublicationGateway())
+
+    result = service.generate(CustomerReportGenerationCommand(
+        "project-1", template, _hash(internal), _hash(customer)))
+
+    assert result.changed is True
+    assert result.archive_path is not None
+    assert result.archive_path.parent == tmp_path / "History" / "Report"
+    assert result.archive_path.read_bytes() == b"internal|customer"
+    assert customer.read_bytes() == b"internal|customer"
+
+
+@pytest.mark.parametrize("source_name", ["DL-2026-04-015 Report.docx", "DL-2026-04-015 Report draft.docx"])
+def test_download_only_customer_report_has_one_draft_suffix(tmp_path: Path, source_name: str) -> None:
+    internal = _write(tmp_path / "managed" / source_name, b"internal")
+    template = _write(tmp_path / "template.docx", b"template")
+    service = CustomerReportProjectionService(
+        current_reports=_CurrentReports(_current(internal, mode="managed_draft")),
+        files=ReportPublicationGateway(), writer=_Writer(), generated_root=tmp_path / "generated")
+
+    result = service.generate(CustomerReportGenerationCommand("project-1", template, _hash(internal), None))
+
+    assert result.file_name == "DL-2026-04-015-CR Report draft.docx"
+    assert result.file_path.name == result.file_name
+    assert result.archive_path is None
+    assert internal.read_bytes() == b"internal"
+
+
 def test_multiple_official_customer_reports_block_generation(tmp_path: Path) -> None:
     internal = _write(tmp_path / "DL-2026-04-015 Qualification Test Report_Rev_A.docx", b"internal")
     first = _write(tmp_path / "DL-2026-04-015-CR Report_Rev_A.docx", b"customer-1")
@@ -391,6 +423,7 @@ class _Files:
         history_root,
         update_document,
         pre_publish=None,
+        archive_unchanged=False,
     ):
         current = Path(current_path)
         if _hash(current) != expected_current_sha256:

@@ -100,8 +100,10 @@ export function useUploadedCustomerReportJob(projectId: string, save: (response:
     try {
       const response = await downloadStandaloneCustomerReport(operationId);
       if (!current(token)) return;
-      saveRef.current(response);
-      setFileName(response.fileName || "Customer Report.docx");
+      const name = response.fileName || "Customer Report.docx";
+      const fileName = /[ _-]draft(?: \(\d+\))?\.docx$/i.test(name) ? name : name.replace(/\.docx$/i, " draft.docx");
+      saveRef.current({ ...response, fileName });
+      setFileName(fileName);
     } catch (reason) {
       if (current(token)) {
         if (reason instanceof ApiRequestError && (reason.status === 404 || reason.status === 410)) {

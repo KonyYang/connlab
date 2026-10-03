@@ -190,7 +190,8 @@ def test_unchanged_report_does_not_create_history(tmp_path: Path) -> None:
     assert not history.exists()
 
 
-def test_writer_failure_keeps_current_report_and_leaves_no_history(tmp_path: Path) -> None:
+@pytest.mark.parametrize("archive_unchanged", [False, True])
+def test_writer_failure_keeps_current_report_and_leaves_no_history(tmp_path: Path, archive_unchanged: bool) -> None:
     current = tmp_path / "DL-001 Report.docx"
     current.write_bytes(b"reviewed")
     history = tmp_path / "History" / "Report"
@@ -202,6 +203,7 @@ def test_writer_failure_keeps_current_report_and_leaves_no_history(tmp_path: Pat
             expected_current_sha256=gateway.fingerprint(current),
             history_root=history,
             update_document=_failing_update,
+            archive_unchanged=archive_unchanged,
         )
 
     assert current.read_bytes() == b"reviewed"
@@ -257,9 +259,11 @@ def test_manual_edit_during_staging_wins_and_creates_no_history(tmp_path: Path) 
     assert not history.exists()
 
 
+@pytest.mark.parametrize("archive_unchanged", [False, True])
 def test_locked_publish_never_removes_the_current_report_and_leaves_no_history(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    archive_unchanged: bool,
 ) -> None:
     current = tmp_path / "DL-001 Report.docx"
     current.write_bytes(b"reviewed")
@@ -287,13 +291,33 @@ def test_locked_publish_never_removes_the_current_report_and_leaves_no_history(
             update_document=lambda source, output: _write_update(
                 source,
                 output,
-                b"updated",
+                b"reviewed" if archive_unchanged else b"updated",
             ),
+            archive_unchanged=archive_unchanged,
         )
 
     assert current_existed_during_publish == [True]
     assert current.read_bytes() == b"reviewed"
     assert not history.exists()
+
+
+def test_identical_regeneration_still_rechecks_source_before_publication(tmp_path: Path) -> None:
+    current = tmp_path / "DL-001-CR Report.docx"
+    current.write_bytes(b"reviewed")
+    history = tmp_path / "History" / "Report"
+    gateway = ReportPublicationGateway()
+
+    def stale_source() -> None:
+        raise ReportPublicationConflictError("Internal Report changed")
+
+    with pytest.raises(ReportPublicationConflictError, match="Internal Report changed"):
+        gateway.publish_update(current_path=current, expected_current_sha256=gateway.fingerprint(current),
+            history_root=history, update_document=lambda source, output: _write_update(source, output, b"reviewed"),
+            pre_publish=stale_source, archive_unchanged=True)
+
+    assert current.read_bytes() == b"reviewed"
+    assert not history.exists()
+    assert not list(tmp_path.glob(".*.stage.docx"))
 
 
 def test_publishes_managed_draft_as_new_official_report_without_moving_source(

@@ -40,6 +40,7 @@ import { CustomerReportProgress } from "../../components/common/CustomerReportPr
 import { useCustomerReportJob } from "./useCustomerReportJob";
 import { useUploadedCustomerReportJob } from "./useUploadedCustomerReportJob";
 import { CustomerReportSourceDialog } from "./CustomerReportSourceDialog";
+import { CustomerReportRegenerationDialog } from "./CustomerReportRegenerationDialog";
 import { LlcrImportPreviewDialog } from "./LlcrImportPreviewDialog";
 import {
   buildLlcrConfirmationDecisions,
@@ -67,12 +68,21 @@ type ProjectFolderAvailability = {
   reason?: string;
 };
 
+type CustomerRegenerationApproval = {
+  projectId: string;
+  internalSha: string;
+  customerSha: string | null;
+  fileName: string | null;
+};
+
 export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector Project" }: ReportWorkspaceProps): ReactElement {
   const topBarRoot = useTopBarActionsRoot();
   const [state, setState] = useState<ReportWorkspaceState | null>(null);
   const [currentReport, setCurrentReport] = useState<CurrentReport | null>(null);
   const [customerReport, setCustomerReport] = useState<CustomerReportState | null>(null);
   const [customerReportRecovery, setCustomerReportRecovery] = useState<CustomerReportState | null>(null);
+  const [customerRegenerationApproval, setCustomerRegenerationApproval] = useState<CustomerRegenerationApproval | null>(null);
+  const customerRequest = useRef(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<LlcrImportPreview | null>(null);
   const [decisionDrafts, setDecisionDrafts] = useState<LlcrDecisionDrafts>({});
@@ -95,7 +105,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const uploadedCustomerJob = useUploadedCustomerReportJob(projectId, (response) => {
     downloadBlob(response.blob, response.fileName || "Customer Report.docx");
   });
-  const busyAction = pageBusyAction ?? (customerJob.busy || uploadedCustomerJob.busy ? "customer" : sourcePickerOpen ? "customer-source" : null);
+  const busyAction = pageBusyAction ?? (customerJob.busy || uploadedCustomerJob.busy ? "customer" : sourcePickerOpen || customerRegenerationApproval ? "customer-source" : null);
   const customerRun = useRef<{ regenerating: boolean; hadFile: boolean } | null>(null);
   const activeProject = useRef(projectId);
   activeProject.current = projectId;
@@ -112,6 +122,9 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     setSourcePickerOpen(false);
     setCheckingSource(false);
     sourceRequest.current = false;
+    customerRequest.current = false;
+    customerRun.current = null;
+    setCustomerRegenerationApproval(null);
   }, [projectId]);
 
   useEffect(() => {
@@ -358,19 +371,46 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     ) {
       return;
     }
+    const approval = {
+      projectId,
+      internalSha: customerReport.internal_report_sha256,
+      customerSha: customerReport.file_sha256,
+      fileName: customerReport.file_name,
+    };
+    if (approval.fileName) {
+      if (!approval.customerSha) {
+        setError("The customer report state is incomplete. Reload the latest report before generating.");
+        return;
+      }
+      setError(null);
+      setCustomerRegenerationApproval(approval);
+      return;
+    }
+    await performCustomerGeneration(approval);
+  }
+
+  async function performCustomerGeneration(approval: CustomerRegenerationApproval): Promise<void> {
+    if (customerRequest.current || customerJob.busy || approval.projectId !== activeProject.current) return;
+    customerRequest.current = true;
+    const token = internalRequest.current;
+    const isCurrent = () => mounted.current && activeProject.current === approval.projectId && internalRequest.current === token;
     setBusyAction("customer");
     setError(null);
     setMessage(null);
     try {
-      customerRun.current = { regenerating: false, hadFile: Boolean(customerReport.file_name) };
+      customerRun.current = { regenerating: false, hadFile: Boolean(approval.fileName) };
       await customerJob.start({
-        expected_internal_report_sha256: customerReport.internal_report_sha256,
-        expected_customer_report_sha256: customerReport.file_sha256,
+        expected_internal_report_sha256: approval.internalSha,
+        expected_customer_report_sha256: approval.customerSha,
       });
+      if (isCurrent()) setCustomerRegenerationApproval(null);
     } catch (reason) {
+      if (!isCurrent()) return;
+      setCustomerRegenerationApproval(null);
       if (isCustomerReportMissingAfterPreviewError(reason)) {
         try {
           const refreshed = await refresh();
+          if (!isCurrent()) return;
           if (
             refreshed.customerReport.status === "missing" &&
             refreshed.customerReport.mode === "official" &&
@@ -384,13 +424,13 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
             );
           }
         } catch (refreshReason) {
-          setError(errorMessage(refreshReason, "Unable to refresh the customer report state."));
+          if (isCurrent()) setError(errorMessage(refreshReason, "Unable to refresh the customer report state."));
         }
       } else {
         setError(errorMessage(reason, "Unable to generate the customer report."));
       }
     } finally {
-      setBusyAction(null);
+      if (isCurrent()) { customerRequest.current = false; setBusyAction(null); }
     }
   }
 
@@ -779,6 +819,12 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
 
       {sourcePickerOpen ? <CustomerReportSourceDialog busy={checkingSource || uploadedCustomerJob.busy} error={error || uploadedCustomerJob.error}
         onCancel={() => setSourcePickerOpen(false)} onGenerate={handleGenerateFromUploadedSource} /> : null}
+
+      {customerRegenerationApproval?.fileName ? <CustomerReportRegenerationDialog
+        fileName={customerRegenerationApproval.fileName}
+        busy={pageBusyAction === "customer" || customerJob.busy}
+        onCancel={() => setCustomerRegenerationApproval(null)}
+        onConfirm={() => void performCustomerGeneration(customerRegenerationApproval)} /> : null}
 
       {preview ? (
         <LlcrImportPreviewDialog

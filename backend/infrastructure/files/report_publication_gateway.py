@@ -217,6 +217,7 @@ class ReportPublicationGateway:
         history_root: Path,
         update_document: Callable[[Path, Path], Path],
         pre_publish: Callable[[], None] | None = None,
+        archive_unchanged: bool = False,
     ) -> ReportFilePublicationResult:
         """Publish one staged update without exposing a partially written current file."""
         current = Path(current_path)
@@ -246,7 +247,8 @@ class ReportPublicationGateway:
                 raise ReportPublicationConflictError(
                     "The current report changed after preview. Preview the update again."
                 )
-            if staged_sha256 == current_sha256:
+            # Incremental updates retain their no-op behavior; explicit regeneration does not.
+            if staged_sha256 == current_sha256 and not archive_unchanged:
                 return ReportFilePublicationResult(
                     current_path=current,
                     current_sha256=current_sha256,
