@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_REPORT_COMBINED_GENERATION_SOURCE_PICKER_20261003",
     "summary": "合并报告生成区并支持内部报告缺失时选择已有 DOCX 生成客户报告下载副本",
@@ -26,72 +26,17 @@
     "risk_reasons": [],
     "activation_head": "d2b6b2b82ee016b2f9fb994dee81806c0482e94e",
     "started_at": "2026-10-03T03:43:49.089751Z",
-    "updated_at": "2026-10-03T04:19:53.301716Z",
+    "updated_at": "2026-10-03T04:22:17.551646Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_REPORT_COMBINED_GENERATION_SOURCE_PICKER_20261003",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User feedback: hide completed customer report progress and elapsed card",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_REPORT_COMBINED_GENERATION_SOURCE_PICKER_20261003",
-      "subject": "f205d8048c850968b20e706a86447bf1c7a9249b",
-      "summary": "已修正验收反馈：报告文件名样式不再仅匹配左侧容器；两侧共享绿色、13px、400 字重。原报告生成区和已有 DOCX 来源选择功能保持不变。",
-      "scope_ok": true,
-      "changed_paths": [
-        "docs/PROJECT_CONTEXT.md",
-        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-        "frontend/src/features/report-workspace/CustomerReportSourceDialog.tsx",
-        "frontend/src/features/report-workspace/useUploadedCustomerReportJob.ts",
-        "frontend/src/features/report-workspace/useUploadedCustomerReportJob.test.tsx",
-        "frontend/src/workbench.css"
-      ],
-      "validation": [
-        {
-          "command": "npm run build",
-          "status": "passed",
-          "result": "TypeScript and Vite production build passed on final CSS revision."
-        },
-        {
-          "command": "In-app browser visual acceptance",
-          "status": "passed",
-          "result": "Both actual report filenames present in a7a5a11d report workspace; screenshot visually confirms identical green normal-weight typography. No report generation triggered. Evidence tmp/report-matching-filenames-verified-20261003.png."
-        },
-        {
-          "command": "git diff --check",
-          "status": "passed",
-          "result": "Exact revision is one scoped filename-selector change plus board; no whitespace errors; clean committed worktree."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "subject": "f205d8048c850968b20e706a86447bf1c7a9249b",
-          "result": "CSS-only feedback fix; no source-selection, API, report-generation or test changes since prior 785-pass frontend gate. No new implementation-mirroring CSS tests."
-        },
-        "reviewer": {
-          "status": "passed",
-          "subject": "f205d8048c850968b20e706a86447bf1c7a9249b",
-          "result": "Focused same-agent exact revision review: Standards and Spec zero findings; shared namespaced selector covers both elements, no business changes."
-        },
-        "qa": {
-          "status": "passed",
-          "subject": "f205d8048c850968b20e706a86447bf1c7a9249b",
-          "result": "Risk-proportionate CSS QA: final production build and actual browser visual check passed. Prior functional suite was 785 passed/1 opt-in skipped, not rerun or claimed as executed on this CSS revision. No Office conversion revalidation."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "subject": "f205d8048c850968b20e706a86447bf1c7a9249b",
-        "result": "Scoped revision committed locally on master; clean tree and no remote publication."
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_REPORT_REMOVE_DUPLICATE_HEADING_20261003",

@@ -416,7 +416,7 @@ describe("ReportWorkspace", () => {
       status: "blocked", can_generate: false, file_name: null, warnings: [],
       blockers: ["A single current Internal Report is required."] });
     vi.mocked(api.startStandaloneCustomerReport).mockResolvedValue({ operation_id: "uploaded-1",
-      status: "completed", stage: "ready", elapsed_seconds: 1, message: null });
+      status: "completed", stage: "completed", elapsed_seconds: 1, message: null });
     vi.mocked(api.downloadStandaloneCustomerReport).mockResolvedValue({ blob: new Blob(["docx"]), fileName: "Other-CR Report.docx" });
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     await user.click(await screen.findByRole("button", { name: "Generate customer report" }));
@@ -425,6 +425,8 @@ describe("ReportWorkspace", () => {
     fireEvent.change(within(dialog).getByLabelText("Internal Report file"), { target: { files: [file] } });
     await user.click(within(dialog).getByRole("button", { name: "Generate customer report" }));
     expect(await screen.findByText("Other-CR Report.docx")).toBeTruthy();
+    expect(screen.queryByText("Customer report generation completed.")).toBeNull();
+    expect(screen.queryByText(/seconds elapsed/)).toBeNull();
     expect(api.startStandaloneCustomerReport).toHaveBeenCalledWith(file);
     expect(api.downloadStandaloneCustomerReport).toHaveBeenCalledWith("uploaded-1");
     expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
@@ -994,7 +996,9 @@ describe("ReportWorkspace", () => {
       expected_internal_report_sha256: "a".repeat(64),
       expected_customer_report_sha256: null,
     });
-    expect(await screen.findByText("Generated and downloaded the customer report.")).toBeTruthy();
+    expect(await screen.findByText("Customer.docx")).toBeTruthy();
+    expect(screen.queryByText("Generated and downloaded the customer report.")).toBeNull();
+    expect(screen.queryByText("Customer report generation completed.")).toBeNull();
   });
 
   it("recovers real progress above the disabled generation button", async () => {
@@ -1027,6 +1031,8 @@ describe("ReportWorkspace", () => {
     });
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     expect(await screen.findByText("Customer.docx")).toBeTruthy();
+    expect(screen.queryByText("Customer report generation completed.")).toBeNull();
+    expect(screen.queryByText(/seconds elapsed/)).toBeNull();
     expect(screen.queryByText(/Customer report is ready/)).toBeNull();
     expect(screen.queryByText(/Updated the customer report|archived automatically/)).toBeNull();
     expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();

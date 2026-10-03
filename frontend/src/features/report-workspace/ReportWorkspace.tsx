@@ -647,7 +647,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
               {currentReport?.status !== "missing" ? customerReport?.blockers.map((blocker) => (
                 <p className="report-workspace-blocker" key={blocker}>{blocker}</p>
               )) : null}
-              {uploadedCustomerJob.job ? <CustomerReportProgress stage={uploadedCustomerJob.job.stage}
+              {uploadedCustomerJob.job?.status === "queued" || uploadedCustomerJob.job?.status === "running" ? <CustomerReportProgress stage={uploadedCustomerJob.job.stage}
                 elapsedSeconds={uploadedCustomerJob.job.elapsed_seconds} running={uploadedCustomerJob.busy} /> : null}
               {uploadedCustomerJob.error ? <p role="alert" className="report-workspace-blocker">{uploadedCustomerJob.error}</p> : null}
               {uploadedCustomerJob.job?.status === "failed" ? <p role="alert" className="report-workspace-blocker">
@@ -661,7 +661,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                 <p>{uploadedCustomerJob.downloadError}</p>
                 <button type="button" disabled={uploadedCustomerJob.busy} onClick={() => void uploadedCustomerJob.retryDownload()}>Retry download</button>
               </div> : null}
-              {customerJob.job ? <CustomerReportProgress
+              {customerJob.job?.status === "queued" || customerJob.job?.status === "running" ? <CustomerReportProgress
                 stage={customerJob.job.stage}
                 elapsedSeconds={customerJob.elapsed}
                 running={customerJob.job.status === "queued" || customerJob.job.status === "running"}
@@ -677,7 +677,6 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                   {customerJob.job.message || "Unable to generate the customer report."}
                 </p> : null}
               {customerJob.downloadError ? <p role="alert" className="report-workspace-blocker">{customerJob.downloadError}</p> : null}
-              {customerJob.downloaded ? <p role="status">Generated and downloaded the customer report.</p> : null}
               {customerReportRecovery ? (
                 <div
                   aria-labelledby="customer-report-recovery-title"
