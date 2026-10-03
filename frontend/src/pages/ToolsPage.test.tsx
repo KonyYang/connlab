@@ -66,9 +66,12 @@ describe("ToolsPage", () => {
     const file = new File(["internal"], "sample.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
 
     await user.upload(screen.getByLabelText("Select Internal Report"), file);
-    await user.click(screen.getByRole("button", { name: "Generate customer report" }));
+    await user.click(screen.getByRole("button", { name: "Generate Customer Report" }));
 
-    expect(await screen.findByText("Customer report generated and downloaded.")).toBeTruthy();
+    expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("sample-CR.docx");
+    expect(screen.queryByText(/seconds elapsed/)).toBeNull();
+    await user.upload(screen.getByLabelText("Select Internal Report"), new File(["next"], "next.docx"));
+    expect(screen.queryByRole("status")).toBeNull();
     expect(startCustomerReportMock).toHaveBeenCalledWith(file);
     expect(readCustomerReportMock).toHaveBeenCalledWith("operation-1");
     expect(downloadCustomerReportMock).toHaveBeenCalledWith("operation-1");
@@ -91,7 +94,7 @@ describe("ToolsPage", () => {
     const file = new File(["internal"], "large-report.docx");
 
     await user.upload(screen.getByLabelText("Select Internal Report"), file);
-    await user.click(screen.getByRole("button", { name: "Generate customer report" }));
+    await user.click(screen.getByRole("button", { name: "Generate Customer Report" }));
     expect(await screen.findByText(/Waiting for the previous customer-report task/)).toBeTruthy();
 
     releaseStatus?.({
@@ -106,27 +109,27 @@ describe("ToolsPage", () => {
     expect(screen.getByText(/19 seconds elapsed/)).toBeTruthy();
   });
 
-  it("explains that encryption leaves the original untouched", async () => {
+  it("identifies the downloaded encrypted copy and keeps password guidance concise", async () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
     const file = new File(["internal"], "sample.docx");
 
     expect(
-      screen.getByText(/same ConnLab Office password is required to open and edit the copy/i),
+      screen.getByText(/Uses the ConnLab Office password/i),
     ).toBeTruthy();
 
     await user.upload(screen.getByLabelText("Select Office file"), file);
-    await user.click(screen.getByRole("button", { name: "Create encrypted copy" }));
+    await user.click(screen.getByRole("button", { name: "Create Encrypted Copy" }));
 
     expect(encryptCopyMock).toHaveBeenCalledWith(file);
-    expect(await screen.findByText(/original file was not changed/)).toBeTruthy();
+    expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("sample_Secured.docx");
   });
 
   it("requires a file before running a tool", async () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
 
-    await user.click(screen.getByRole("button", { name: "Generate customer report" }));
+    await user.click(screen.getByRole("button", { name: "Generate Customer Report" }));
 
     expect((await screen.findByRole("alert")).textContent).toContain("Select a file first.");
   });
@@ -145,7 +148,7 @@ describe("ToolsPage", () => {
     fireEvent.click(screen.getByLabelText("Enter Equipment IDs"));
     fireEvent.change(screen.getByLabelText("Equipment IDs"), { target: { value: "Q-0033, Q-9999" } });
     fireEvent.click(screen.getByRole("button", { name: "Update Equipment List" }));
-    expect(await screen.findByText("Updated report downloaded. The original file was not changed.")).toBeTruthy();
+    expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("Internal_EquipmentUpdated.docx");
     expect(screen.getByText(/Not Registered: DG-Q-9999/)).toBeTruthy();
     expect(screen.queryByText(/Missing Information:/)).toBeNull();
     expect(updateStandaloneEquipmentList).toHaveBeenCalledWith(report, { referencesText: "Q-0033, Q-9999" });
@@ -185,7 +188,7 @@ describe("ToolsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Update Equipment List" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Settings");
     expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
-    expect(screen.queryByText(/Updated report downloaded/)).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("prevents repeated requests and discards a completed download after leaving Tools", async () => {

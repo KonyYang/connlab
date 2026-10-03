@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_TOOLS_CONCISE_UI_20261003",
+    "summary": "精简 Tools 页面重复说明和正常状态信息",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "仅精简 Tools 展示层，保留输入、运行状态、绿色结果文件名与异常提示，不改变 API 或文件操作",
+    "scope_paths": [
+      "frontend/src/pages/ToolsPage.tsx",
+      "frontend/src/pages/ToolsPage.test.tsx",
+      "frontend/src/features/tools/EquipmentListTool.tsx",
+      "frontend/src/tools.css"
+    ],
+    "risk_reasons": [],
+    "activation_head": "8bd16ae9739bfa67c912b51130b25cabaa719ecd",
+    "started_at": "2026-10-03T15:49:12.111414Z",
+    "updated_at": "2026-10-03T15:49:12.111414Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_TOOLS_EQUIPMENT_LIST_UPDATE_20261003",
     "tier": "standard",

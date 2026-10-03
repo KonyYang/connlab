@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import { updateStandaloneEquipmentList, type EquipmentReview } from "../../api/client";
-import { UiIcon } from "../../components/common/UiIcon";
 
 export function EquipmentListTool(): ReactElement {
   const [report, setReport] = useState<File | null>(null);
@@ -58,17 +57,14 @@ export function EquipmentListTool(): ReactElement {
 
   return <article className="tools-card tools-equipment-card">
     <div className="tools-card-heading">
-      <span className="tools-card-icon" aria-hidden="true"><UiIcon name="file" /></span>
       <h3>Update Equipment List</h3>
     </div>
-    <p>Update the Equipment List in any compatible Internal Report using the calibration workbook configured in Settings.</p>
     <label className="tools-file-picker">
       <span>Internal Report for Equipment Update</span>
       <input type="file" accept=".docx" disabled={busy} onChange={(event) => {
         setReport(event.target.files?.[0] ?? null); clearFeedback();
       }} />
     </label>
-    <div className="tools-selected-file">{report?.name ?? "No file selected"}</div>
     <fieldset className="tools-equipment-source" disabled={busy}>
       <legend>Equipment Source</legend>
       <div className="tools-equipment-modes">
@@ -91,15 +87,12 @@ export function EquipmentListTool(): ReactElement {
         }} />
       </label>}
     </fieldset>
-    <p className="tools-card-hint">Downloads an _EquipmentUpdated copy. The original report and project folders are not changed.</p>
+    <p className="tools-card-hint">Calibration list from Settings.</p>
     {error && <p className="tools-feedback tools-feedback-error" role="alert">{error}</p>}
     <button className="primary-action" type="button" disabled={busy} onClick={() => void run()}>
       {busy ? "Updating..." : "Update Equipment List"}
     </button>
-    {name && <div className="tools-equipment-completion" role="status">
-      <p>Updated report downloaded. The original file was not changed.</p>
-      <span>{name}</span>
-    </div>}
+    {name && <p className="tools-feedback tools-feedback-success" role="status" aria-label="Downloaded File">{name}</p>}
     {review && <EquipmentReviewFeedback review={review} />}
   </article>;
 }

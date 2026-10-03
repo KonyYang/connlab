@@ -8,7 +8,6 @@ import {
   type BlobDownloadResponse,
   type StandaloneCustomerReportJob,
 } from "../api/client";
-import { UiIcon } from "../components/common/UiIcon";
 import { EquipmentListTool } from "../features/tools/EquipmentListTool";
 import "../tools.css";
 
@@ -18,13 +17,13 @@ type ToolState = {
   file: File | null;
   busy: boolean;
   error: string | null;
-  message: string | null;
+  downloadedFileName: string | null;
   progress: StandaloneCustomerReportJob | null;
 };
 
 const INITIAL_STATE: Record<ToolKey, ToolState> = {
-  "customer-report": { file: null, busy: false, error: null, message: null, progress: null },
-  "encrypt-copy": { file: null, busy: false, error: null, message: null, progress: null },
+  "customer-report": { file: null, busy: false, error: null, downloadedFileName: null, progress: null },
+  "encrypt-copy": { file: null, busy: false, error: null, downloadedFileName: null, progress: null },
 };
 
 const CUSTOMER_REPORT_POLL_DELAY_MS = 750;
@@ -45,7 +44,7 @@ export function ToolsPage(): ReactElement {
     const file = event.target.files?.[0] ?? null;
     setState((current) => ({
       ...current,
-      [tool]: { file, busy: false, error: null, message: null, progress: null },
+      [tool]: { file, busy: false, error: null, downloadedFileName: null, progress: null },
     }));
   }
 
@@ -54,13 +53,13 @@ export function ToolsPage(): ReactElement {
     if (!current.file) {
       setState((value) => ({
         ...value,
-        [tool]: { ...value[tool], error: "Select a file first.", message: null },
+        [tool]: { ...value[tool], error: "Select a file first.", downloadedFileName: null },
       }));
       return;
     }
     setState((value) => ({
       ...value,
-      [tool]: { ...value[tool], busy: true, error: null, message: null, progress: null },
+      [tool]: { ...value[tool], busy: true, error: null, downloadedFileName: null, progress: null },
     }));
     const token = ++runTokens.current[tool];
     const isCurrentRun = () => runTokens.current[tool] === token;
@@ -74,17 +73,15 @@ export function ToolsPage(): ReactElement {
         })
         : await encryptStandaloneCopy(current.file);
       if (!isCurrentRun()) return;
-      downloadBlob(response, response.fileName ?? fallbackName(tool, current.file));
+      const fileName = response.fileName ?? fallbackName(tool, current.file);
+      downloadBlob(response, fileName);
       setState((value) => ({
         ...value,
         [tool]: {
           ...value[tool],
           busy: false,
           progress: null,
-          message:
-            tool === "customer-report"
-              ? "Customer report generated and downloaded."
-              : "Encrypted copy generated and downloaded. The original file was not changed.",
+          downloadedFileName: fileName,
         },
       }));
     } catch (error) {
@@ -102,52 +99,35 @@ export function ToolsPage(): ReactElement {
   }
 
   return (
-    <section className="tools-page" aria-labelledby="tools-page-title">
-      <header className="tools-page-header">
-        <div>
-          <span className="eyebrow">INDEPENDENT FILE TOOLS</span>
-          <h2 id="tools-page-title">Tools</h2>
-          <p>Run safe file operations without opening a project. Sources are kept unchanged.</p>
-        </div>
-        <span className="tools-page-icon" aria-hidden="true"><UiIcon name="tools" /></span>
-      </header>
-
+    <section className="tools-page" aria-label="Tools">
       <div className="tools-grid">
         <ToolCard
           title="Internal Report → Customer Report"
-          description="Convert a compatible ConnLab Internal Report into a customer-facing report using the approved template."
-          hint="Only .docx Internal Reports with the ConnLab report marker are accepted."
           accept=".docx"
           state={state["customer-report"]}
           inputLabel="Select Internal Report"
-          actionLabel="Generate customer report"
+          actionLabel="Generate Customer Report"
           onSelect={(event) => selectFile("customer-report", event)}
           onRun={() => void run("customer-report")}
         />
         <ToolCard
-          title="Encrypt a copy"
-          description="Create a password-protected copy of one Word, Excel, or PowerPoint file."
-          hint="The output receives a _Secured suffix. The original file is never replaced. The same ConnLab Office password is required to open and edit the copy. Excel files must start with a DL-YYYY-MM-NNN number."
+          title="Encrypt a Copy"
+          hint="Uses the ConnLab Office password."
           accept=".doc,.docx,.xls,.xlsx,.pptx"
           state={state["encrypt-copy"]}
           inputLabel="Select Office file"
-          actionLabel="Create encrypted copy"
+          actionLabel="Create Encrypted Copy"
           onSelect={(event) => selectFile("encrypt-copy", event)}
           onRun={() => void run("encrypt-copy")}
         />
         <EquipmentListTool />
       </div>
-
-      <p className="tools-page-note">
-        Downloads use the browser's configured download location. No project folder is modified by these tools.
-      </p>
     </section>
   );
 }
 
 function ToolCard({
   title,
-  description,
   hint,
   accept,
   state,
@@ -157,8 +137,7 @@ function ToolCard({
   onRun,
 }: {
   title: string;
-  description: string;
-  hint: string;
+  hint?: string;
   accept: string;
   state: ToolState;
   inputLabel: string;
@@ -169,26 +148,23 @@ function ToolCard({
   return (
     <article className="tools-card">
       <div className="tools-card-heading">
-        <span className="tools-card-icon" aria-hidden="true"><UiIcon name="file" /></span>
         <h3>{title}</h3>
       </div>
-      <p>{description}</p>
       <label className="tools-file-picker">
         <span>{inputLabel}</span>
         <input type="file" accept={accept} disabled={state.busy} onChange={onSelect} />
       </label>
-      <div className="tools-selected-file" aria-live="polite">
-        {state.file ? state.file.name : "No file selected"}
-      </div>
-      <p className="tools-card-hint">{hint}</p>
+      {hint && <p className="tools-card-hint">{hint}</p>}
       {state.error && <p className="tools-feedback tools-feedback-error" role="alert">{state.error}</p>}
-      {state.message && <p className="tools-feedback tools-feedback-success" role="status">{state.message}</p>}
-      {state.progress && (
+      {state.busy && state.progress && (
         <CustomerReportProgress stage={state.progress.stage} elapsedSeconds={state.progress.elapsed_seconds} />
       )}
       <button className="primary-action" type="button" disabled={state.busy} onClick={onRun}>
         {state.busy ? (state.progress ? "Generating..." : "Starting...") : actionLabel}
       </button>
+      {state.downloadedFileName && <p className="tools-feedback tools-feedback-success" role="status" aria-label="Downloaded File">
+        {state.downloadedFileName}
+      </p>}
     </article>
   );
 }
