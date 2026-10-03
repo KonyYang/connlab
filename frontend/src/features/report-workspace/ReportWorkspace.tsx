@@ -87,6 +87,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const [equipmentFile, setEquipmentFile] = useState<File | null>(null);
   const [equipmentIds, setEquipmentIds] = useState("");
   const [equipmentResult, setEquipmentResult] = useState<Extract<EquipmentListOneClickResult, { status: "completed" }> | null>(null);
+  const [equipmentStatus, setEquipmentStatus] = useState<string | null>(null);
   const equipmentRequest = useRef(false);
   const equipmentSequence = useRef(0);
   const equipmentTrigger = useRef<HTMLButtonElement>(null);
@@ -130,6 +131,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     equipmentRequest.current = false;
     setEquipmentSourceOpen(false);
     setEquipmentResult(null);
+    setEquipmentStatus(null);
     setEquipmentFile(null);
     setEquipmentIds("");
   }, [projectId]);
@@ -526,6 +528,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     const sequence = ++equipmentSequence.current;
     const isCurrent = () => mounted.current && activeProject.current === projectId && equipmentSequence.current === sequence;
     setBusyAction("equipment-update");
+    setEquipmentStatus(null);
     setError(null);
     setMessage(null);
     try {
@@ -540,6 +543,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
       setEquipmentIds("");
       const { unmatched, incomplete, expired } = result.statistics;
       setEquipmentResult(unmatched.length || incomplete.length || expired.length ? result : null);
+      setEquipmentStatus(result.changed ? "Equipment List Updated." : "Equipment List Is Up To Date.");
       try { await refresh(); }
       catch { if (isCurrent()) setError("Equipment List was updated. Reload to refresh report status."); }
     } catch (reason) {
@@ -793,7 +797,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                 {busyAction === "llcr" ? "Updating..." : "Update LLCR Results"}
               </button>
             </div>
-            <div className="report-workspace-update-row">
+            <div className="report-workspace-update-row report-workspace-equipment-action">
               <button
                 className="primary-action"
                 disabled={Boolean(busyAction) || currentReport?.status !== "ready"}
@@ -803,6 +807,11 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
               >
                 {busyAction === "equipment-update" ? "Updating..." : "Update Equipment List"}
               </button>
+              {equipmentStatus ? (
+                <span className="report-workspace-equipment-completion" role="status" aria-label="Equipment List update status">
+                  {equipmentStatus}
+                </span>
+              ) : null}
             </div>
             {currentReport?.status !== "ready" ? (
               <p className="report-workspace-blocker">
@@ -890,7 +899,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
         </EquipmentDialog>
       ) : null}
       {equipmentResult ? (
-        <EquipmentDialog title="Equipment List Needs Review" busy={false}
+        <EquipmentDialog title="Equipment List Needs Review" busy={false} compact
           returnFocusTarget={equipmentTrigger.current} onClose={() => setEquipmentResult(null)}>
           {equipmentResult.statistics.unmatched.length ? <p>Not Registered: {equipmentResult.statistics.unmatched.join(", ")}. Check registration in the calibration workbook.</p> : null}
           {equipmentResult.statistics.incomplete.length ? <p>Incomplete Information: {equipmentResult.statistics.incomplete.join(", ")}. Complete equipment details and calibration dates.</p> : null}
@@ -922,8 +931,9 @@ function downloadBlob(blob: Blob, fileName: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-function EquipmentDialog({ title, busy, onClose, returnFocusTarget, children }: {
+function EquipmentDialog({ title, busy, compact = false, onClose, returnFocusTarget, children }: {
   title: string; busy: boolean; onClose: () => void;
+  compact?: boolean;
   returnFocusTarget: HTMLButtonElement | null; children: import("react").ReactNode;
 }): ReactElement {
   const dialog = useRef<HTMLElement>(null);
@@ -932,7 +942,7 @@ function EquipmentDialog({ title, busy, onClose, returnFocusTarget, children }: 
     return () => { window.setTimeout(() => { if (returnFocusTarget?.isConnected) returnFocusTarget.focus(); }, 0); };
   }, [returnFocusTarget]);
   return <div className="report-workspace-dialog-backdrop">
-    <section ref={dialog} className="report-workspace-dialog" role="dialog" aria-modal="true" aria-label={title}
+    <section ref={dialog} className={`report-workspace-dialog${compact ? " report-workspace-equipment-review" : ""}`} role="dialog" aria-modal="true" aria-label={title}
       onKeyDown={(event) => {
         if (event.key === "Escape" && !busy) onClose();
         if (event.key !== "Tab") return;

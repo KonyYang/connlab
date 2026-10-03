@@ -787,6 +787,9 @@ describe("ReportWorkspace", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Update Equipment List" })).toHaveProperty("disabled", false));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.queryByText(/Equipment rows filled/)).toBeNull();
+    expect(screen.getByRole("status", { name: "Equipment List update status" }).textContent).toBe(
+      changed ? "Equipment List Updated." : "Equipment List Is Up To Date.",
+    );
   });
 
   it("shows only actual equipment issues with guidance after updating", async () => {
@@ -803,6 +806,35 @@ describe("ReportWorkspace", () => {
     expect(within(dialog).getByText(/DG-Q-0022/).textContent).toContain("Complete equipment details");
     expect(within(dialog).queryByText(/Expired Calibration/)).toBeNull();
     expect(within(dialog).queryByText(/Equipment rows filled|History\/Report|Report_Rev_A/)).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("status", { name: "Equipment List update status" }).textContent).toBe("Equipment List Updated.");
+  });
+
+  it("clears equipment completion on retry and project change without claiming a failed request succeeded", async () => {
+    const user = userEvent.setup();
+    const completed: api.EquipmentListOneClickResult = {
+      status: "completed", project_id: "project-1", file_name: currentReport.file_name!,
+      changed: true, current_sha256: "d".repeat(64), archive_path: "History/Report/old.docx",
+      statistics: { filled: 3, unmatched: [], incomplete: [], expired: [] },
+    };
+    vi.mocked(api.updateEquipmentListOneClick).mockResolvedValue(completed);
+    const view = render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Update Equipment List" }));
+    expect(await screen.findByRole("status", { name: "Equipment List update status" })).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Update Equipment List" })).toHaveProperty("disabled", false));
+    let rejectRequest!: (reason: Error) => void;
+    vi.mocked(api.updateEquipmentListOneClick).mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectRequest = reject; }));
+    await user.click(screen.getByRole("button", { name: "Update Equipment List" }));
+    expect(screen.queryByRole("status", { name: "Equipment List update status" })).toBeNull();
+    await act(async () => rejectRequest(new Error("Report is locked. Close it and retry.")));
+    expect(await screen.findByText("Report is locked. Close it and retry.")).toBeTruthy();
+    expect(screen.queryByRole("status", { name: "Equipment List update status" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Update Equipment List" }));
+    expect(await screen.findByRole("status", { name: "Equipment List update status" })).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Update Equipment List" })).toHaveProperty("disabled", false));
+    view.rerender(<ReportWorkspace projectId="project-2" onBack={vi.fn()} />);
+    expect(screen.queryByRole("status", { name: "Equipment List update status" })).toBeNull();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Update Equipment List" })).toHaveProperty("disabled", false));
   });
 
   it("updates equipment in one click and shows expired statistics only afterwards", async () => {
