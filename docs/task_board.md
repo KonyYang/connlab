@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_INTERNAL_REPORT_INITIALIZE_REGENERATE_20261003",
     "summary": "Internal Report 初始化与安全重新生成",
@@ -44,104 +44,17 @@
     ],
     "activation_head": "59eaa8b2b4882478ceea5368bbcfcfe07eb89923",
     "started_at": "2026-10-03T00:49:35.493203Z",
-    "updated_at": "2026-10-03T01:52:58.733394Z",
+    "updated_at": "2026-10-03T02:27:35.284321Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_INTERNAL_REPORT_INITIALIZE_REGENERATE_20261003",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User approved header Open project folder left of Back to Workspace, availability-based enabled state and disabled tooltip; no generation changes.",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_INTERNAL_REPORT_INITIALIZE_REGENERATE_20261003",
-      "subject": "206edd1b5acd06acf4fd2a0368031a59565f0283",
-      "summary": "Initialize and explicitly archive/rebuild Internal Reports solely from approved template and latest confirmed Basic Information/Matrix. Full current path once, always Generate, official Open folder, managed download compatibility. Stage validation, fresh reads, preview replay/source guards, project lock, ownership-aware rollback and atomic metadata. No automatic LLCR/equipment integration.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/application/internal_report_generation_service.py",
-        "backend/api/dependencies.py",
-        "backend/api/routes_report_workspace.py",
-        "backend/infrastructure/files/report_publication_gateway.py",
-        "backend/application/test_report_draft_service.py",
-        "backend/application/report_workspace_service.py",
-        "tests/unit/test_internal_report_generation_service.py",
-        "tests/unit/test_report_publication_gateway.py",
-        "tests/unit/test_test_report_draft_service.py",
-        "tests/unit/test_report_workspace_service.py",
-        "tests/integration/test_report_workspace_api.py",
-        "tests/integration/test_internal_report_generation_api.py",
-        "frontend/src/api/client.ts",
-        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-        "frontend/src/features/report-workspace/reportWorkspaceModel.ts",
-        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-        "frontend/src/features/report-workspace/reportWorkspaceModel.test.ts",
-        "frontend/src/workbench.css",
-        "docs/PROJECT_CONTEXT.md"
-      ],
-      "validation": [
-        {
-          "command": "C:/PythonEnvs/connlab/.venv/Scripts/python.exe -m pytest -q tests/unit/test_internal_report_generation_service.py tests/integration/test_internal_report_generation_api.py tests/unit/test_report_publication_gateway.py tests/unit/test_test_report_draft_service.py tests/integration/test_test_report_draft_api.py tests/unit/test_test_report_document_gateway.py tests/unit/test_report_workspace_service.py tests/integration/test_report_workspace_api.py tests/unit/test_current_report_update_service.py tests/unit/test_equipment_report_update_service.py tests/unit/test_customer_report_projection_service.py tests/unit/test_project_customer_report_job_service.py tests/unit/test_customer_report_document_gateway.py tests/unit/test_customer_report_subprocess_runner.py tests/integration/test_project_customer_report_job_api.py tests/integration/test_project_customer_report_runner.py tests/unit/test_tools_customer_report_job_service.py tests/integration/test_tools_customer_report_job_api.py tests/integration/test_project_registry_generation_lock.py tests/integration/test_project_registry_management_api.py",
-          "status": "passed",
-          "result": "Independent QA: 181 passed, 0 skipped, one existing Starlette/httpx deprecation warning; 65.38s."
-        },
-        {
-          "command": "npm test (cwd frontend)",
-          "status": "passed",
-          "result": "Independent QA: 89 files / 765 tests passed; one opt-in MatrixEditorWorkspace.profile test skipped because VITE_MATRIX_PROFILE unset; 37.33s. Existing expected error-path stderr tests passed."
-        },
-        {
-          "command": "npm run build (cwd frontend; after npm test)",
-          "status": "passed",
-          "result": "Independent QA: tsc -b and Vite passed; 157 modules, no build warnings."
-        },
-        {
-          "command": "In-app Browser: isolated live API/SQLite/files + real document gateway; initial/cancel/archive regenerate",
-          "status": "passed",
-          "result": "Root actual browser: one current report; Cancel preserved manual SHA with no History and revision1; approved regeneration archived exact old bytes and fresh report excluded manual marker. Production project preview+Cancel only, SHA 692bb15247634efca3d1b02a0d50f6f3b5506242648049413d7edfa57fff83a7 unchanged. Both browser error logs empty. QA independently audited screenshots/DOCX/SQLite. Contract test template used; no release package or COM rendering verification."
-        },
-        {
-          "command": "git diff --check 36f1510d28034c9befd7d1048b61ae264f3850ec..206edd1b5acd06acf4fd2a0368031a59565f0283; git status --porcelain=v1",
-          "status": "passed",
-          "result": "Reviewer/Integrator/QA confirmed exact 19 approved files, clean master and pinned candidate. Temporary browser artifacts ignored; owned servers/tab stopped, original user tab retained."
-        }
-      ],
-      "roles": {
-        "planner": {
-          "status": "passed",
-          "subject": "36f1510d28034c9befd7d1048b61ae264f3850ec",
-          "result": "Independent internal_report_planner code-grounded plan; approved 19-file scope and public-seam safety tests; no unresolved product choice."
-        },
-        "developer": {
-          "status": "passed",
-          "subject": "206edd1b5acd06acf4fd2a0368031a59565f0283",
-          "result": "Independent internal_report_developer implemented with public behavior TDD RED/GREEN: missing service/seams/full path; real SQLite Decimal; foreign replacement/recovery archive safety. Final 69 targeted Python and 37 UI passed before immutable commit."
-        },
-        "reviewer": {
-          "status": "passed",
-          "subject": "206edd1b5acd06acf4fd2a0368031a59565f0283",
-          "result": "Independent internal_report_reviewer read-only exact base-to-candidate standards/spec review; 0 findings; approved pinned candidate."
-        },
-        "qa": {
-          "status": "passed",
-          "subject": "206edd1b5acd06acf4fd2a0368031a59565f0283",
-          "result": "Independent internal_report_qa ran complete 20-suite relevant Python matrix, all frontend tests and sequential production build; independently audited persisted browser artifacts; no findings."
-        },
-        "integrator": {
-          "status": "passed",
-          "subject": "206edd1b5acd06acf4fd2a0368031a59565f0283",
-          "result": "Independent internal_report_integrator verified parent registration/activation ancestry, clean tree, exact approved 19 paths, no artifact/dependency/schema/packaging expansion, and passing Reviewer/QA evidence. Approved ready_for_close."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "subject": "206edd1b5acd06acf4fd2a0368031a59565f0283",
-        "result": "All independent contexts passed on exact candidate; no business report overwritten. No release package/COM render claim; filesystem lacking stable identity/hardlink fails closed, foreign recovery edits retained for manual review. Local candidate only; await final User close/publication gate."
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_REPORT_WORKSPACE_HIDE_AUTHORITY_VERSIONS_20261003",
