@@ -11,45 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
-  "active": {
-    "task_id": "TASK_TEMPERATURE_RISE_TOOL_20261003",
-    "summary": "Standalone temperature rise and derating import preview and workbook tool",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Independent Tools workflow, read-only uploads, full precision calculation and new workbook output",
-    "scope_paths": [
-      "backend/modules/temperature_rise",
-      "backend/application/tools_temperature_rise_service.py",
-      "backend/infrastructure/office/temperature_rise_workbook_gateway.py",
-      "backend/api/routes_tools.py",
-      "backend/api/dependencies.py",
-      "frontend/src",
-      "tests"
-    ],
-    "risk_reasons": [],
-    "activation_head": "184cdfe4e2101d183f44780c964f9d6bc0fcc1ee",
-    "started_at": "2026-10-03T16:20:35.945809Z",
-    "updated_at": "2026-10-03T23:31:58.176400Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_RISE_TOOL_20261003",
-      "stage": "revision",
-      "status": "running",
-      "summary": "User requested full withdrawal of this standalone tool; remove only its code, integrations and dedicated tests, preserving data and Git history.",
-      "requires_user": false
-    },
-    "report": null
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_TOOLS_CONCISE_UI_20261003",
-    "tier": "micro",
-    "subject": "ca1b1dcb49af57973822820397646c7c98da8607",
-    "summary": "精简 Tools 页面重复说明和正常状态信息",
-    "disposition": "completed",
-    "decision_ref": "User final close: 关闭任务",
-    "closed_at": "2026-10-03T16:04:56.626365Z"
+    "task_id": "TASK_TEMPERATURE_RISE_TOOL_20261003",
+    "tier": "standard",
+    "subject": "94d346807ace21cb0b0b51ab6062664c3e5dcd5b",
+    "summary": "Standalone temperature rise and derating import preview and workbook tool",
+    "disposition": "cancelled",
+    "decision_ref": "User cancelled and requested complete withdrawal because the core temperature-rise curve output did not meet the original workbook. Feature withdrawn in 94d346807ace21cb0b0b51ab6062664c3e5dcd5b; 31 Python regressions, 814 frontend tests, backend compilation and TypeScript/Vite build passed. Preserve data and Git history; do not publish.",
+    "closed_at": "2026-10-03T23:36:11.959485Z"
   },
   "retained_history": [
     {
