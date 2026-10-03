@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_REPORT_HEADER_ICON_TITLE_CASE_20261003",
+    "summary": "Report 页标题、工作台返回图标与按钮标题统一",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "用户最新明确指令“开始执行”授权落实此前确认的三项设计：Report标题、第3款返回图标、当前页面按钮首字母大写；先前“只设计不修改代码”已被最新执行指令替代。不改报告生成保存、不发布",
+    "scope_paths": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/common/UiIcon.tsx",
+      "frontend/src/features/report-workspace",
+      "frontend/src/workbench.css"
+    ],
+    "risk_reasons": [],
+    "activation_head": "34713ff4e3814808cfdf654236231c0c6c01a099",
+    "started_at": "2026-10-03T08:53:16.480928Z",
+    "updated_at": "2026-10-03T08:53:16.480928Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_EQUIPMENT_LIST_ONE_CLICK_UPDATE_20261003",
     "tier": "high_risk",

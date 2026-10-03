@@ -39,7 +39,7 @@ export function CustomerReportSourceDialog({ busy, error: requestError, onCancel
       {requestError ? <p role="alert">{requestError}</p> : null}
       <div className="report-workspace-action-row">
         <button type="button" className="primary-action" disabled={!file || busy} onClick={() => { if (file) void onGenerate(file); }}>
-          {busy ? "Checking source..." : "Generate customer report"}
+          {busy ? "Checking Source..." : "Generate Customer Report"}
         </button>
         <button type="button" disabled={busy} onClick={onCancel}>Cancel</button>
       </div>

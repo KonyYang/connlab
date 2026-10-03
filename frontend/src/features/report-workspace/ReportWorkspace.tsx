@@ -33,6 +33,7 @@ import {
   type InternalReportGenerationPreview,
 } from "../../api/client";
 import { ErrorMessage } from "../../components/common/ErrorMessage";
+import testWorkbenchIcon from "./test-workbench.png";
 import { CustomerReportProgress } from "../../components/common/CustomerReportProgress";
 import { useCustomerReportJob } from "./useCustomerReportJob";
 import { useUploadedCustomerReportJob } from "./useUploadedCustomerReportJob";
@@ -581,6 +582,10 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
 
   const commandbar = (
     <div className="report-workspace-commandbar" aria-label="Report Workspace actions">
+      <button className="report-workspace-back report-workspace-return" onClick={onBack} type="button"
+        aria-label="Back To Workspace" title="Back To Workspace">
+        <img src={testWorkbenchIcon} alt="" aria-hidden="true" width="32" height="32" />
+      </button>
       <span className="report-workspace-identity" title={identityLabel}>{identityLabel}</span>
       <div className="report-workspace-header-actions">
         <span className="report-workspace-folder-action" title={folderDisabledReason} tabIndex={folderDisabledReason ? 0 : undefined}>
@@ -595,9 +600,8 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
             } catch (reason) {
               if (isCurrent()) setError(errorMessage(reason, "Unable to open the project folder. Check its location and try again."));
             }
-          })} type="button">Open project folder</button>
+          })} type="button">Open Project Folder</button>
         </span>
-        <button className="report-workspace-back" onClick={onBack} type="button">Back to Workspace</button>
       </div>
     </div>
   );
@@ -606,7 +610,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     <section className="report-workspace-page" aria-busy={!state && busyAction === "load" && !error}>
       {topBarRoot ? createPortal(commandbar, topBarRoot) : (
         <header className="report-workspace-header">
-          <h1>Report Workspace</h1>
+          <h1>Report</h1>
           {commandbar}
         </header>
       )}
@@ -635,11 +639,11 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                       onClick={() => void handlePublishManagedReport()}
                       type="button"
                     >
-                      {busyAction === "publish" ? "Publishing..." : "Publish current draft to project folder"}
+                      {busyAction === "publish" ? "Publishing..." : "Publish Current Draft To Project Folder"}
                     </button>
                   ) : null}
                   {currentReport?.status === "ready" && currentReport.mode !== "official" ? (
-                    <button disabled={Boolean(busyAction)} onClick={() => void handleDownloadCurrent()} type="button">Download current report</button>
+                    <button disabled={Boolean(busyAction)} onClick={() => void handleDownloadCurrent()} type="button">Download Current Report</button>
                   ) : null}
                 </div>
                 <div className="report-workspace-current-report">
@@ -665,11 +669,11 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                   onClick={(event) => void handleGenerateCustomerReport(event.currentTarget)}
                   type="button"
                 >
-                  {busyAction === "customer" ? "Generating customer report..." : "Generate customer report"}
+                  {busyAction === "customer" ? "Generating Customer Report..." : "Generate Customer Report"}
                 </button>
                 {customerJob.job?.status === "completed" && customerJob.job.result?.mode === "managed_download" ? (
                   <button type="button" disabled={customerJob.downloading || Boolean(busyAction)} onClick={() => void customerJob.download()}>
-                    {customerJob.downloading ? "Downloading..." : customerJob.downloadError ? "Retry download" : "Download generated copy"}
+                    {customerJob.downloading ? "Downloading..." : customerJob.downloadError ? "Retry Download" : "Download Generated Copy"}
                   </button>
                 ) : null}
               </div>
@@ -691,11 +695,11 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
               </p> : null}
               {uploadedCustomerJob.queryWarning ? <div role="alert" className="report-workspace-warning">
                 <p>{uploadedCustomerJob.queryWarning}</p>
-                <button type="button" onClick={() => void uploadedCustomerJob.retryQuery()}>Retry status check</button>
+                <button type="button" onClick={() => void uploadedCustomerJob.retryQuery()}>Retry Status Check</button>
               </div> : null}
               {uploadedCustomerJob.downloadError ? <div role="alert" className="report-workspace-blocker">
                 <p>{uploadedCustomerJob.downloadError}</p>
-                <button type="button" disabled={uploadedCustomerJob.busy} onClick={() => void uploadedCustomerJob.retryDownload()}>Retry download</button>
+                <button type="button" disabled={uploadedCustomerJob.busy} onClick={() => void uploadedCustomerJob.retryDownload()}>Retry Download</button>
               </div> : null}
               {customerJob.job?.status === "queued" || customerJob.job?.status === "running" ? <CustomerReportProgress
                 stage={customerJob.job.stage}
@@ -705,7 +709,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
               {customerJob.error ? <p role="alert" className="report-workspace-blocker">{customerJob.error}</p> : null}
               {customerJob.queryWarning ? <div role="alert" className="report-workspace-warning">
                 <p>{customerJob.queryWarning}</p>
-                <button type="button" onClick={() => void customerJob.retryQuery()}>Retry status check</button>
+                <button type="button" onClick={() => void customerJob.retryQuery()}>Retry Status Check</button>
               </div> : null}
               {customerJob.job?.status === "failed" && customerJob.job.error_code !== "customer_report_missing_after_preview" ?
                 <p role="alert" className="report-workspace-blocker">
@@ -734,8 +738,8 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                       type="button"
                     >
                       {busyAction === "customer"
-                        ? "Generating customer report..."
-                        : "Generate new customer report"}
+                        ? "Generating Customer Report..."
+                        : "Generate New Customer Report"}
                     </button>
                     <button
                       disabled={Boolean(busyAction)}
@@ -768,7 +772,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                     />
                   </label>
                   <button disabled={!selectedFile || Boolean(busyAction)} onClick={() => void handleInspect()} type="button">
-                    {busyAction === "inspect" ? "Inspecting..." : "Inspect LLCR workbook"}
+                    {busyAction === "inspect" ? "Inspecting..." : "Inspect LLCR Workbook"}
                   </button>
                 </div>
                 {latestDataset ? (
@@ -785,7 +789,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                 onClick={() => void handleUpdateLlcr()}
                 type="button"
               >
-                {busyAction === "llcr" ? "Updating..." : "Update LLCR results"}
+                {busyAction === "llcr" ? "Updating..." : "Update LLCR Results"}
               </button>
             </div>
             <div className="report-workspace-update-row">
@@ -854,7 +858,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
               <button autoFocus disabled={Boolean(busyAction)} type="button" onClick={() => setInternalGenerationPreview(null)}>Cancel</button>
               <button className="primary-action" disabled={Boolean(busyAction)} type="button" onClick={() => void handleInternalAction("initial", async (isCurrent) => {
                 await performInternalGeneration(internalGenerationPreview, isCurrent);
-              })}>{busyAction === "initial" ? "Generating..." : "Archive and regenerate"}</button>
+              })}>{busyAction === "initial" ? "Generating..." : "Archive And Regenerate"}</button>
             </div>
           </section>
         </div>
@@ -879,7 +883,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
             <button type="button" className="primary-action"
               disabled={pageBusyAction === "equipment-update" || (!equipmentFile && !equipmentIds.trim())}
               onClick={handleEquipmentSelection}>
-              {pageBusyAction === "equipment-update" ? "Updating..." : "Save and update"}
+              {pageBusyAction === "equipment-update" ? "Updating..." : "Save And Update"}
             </button>
           </div>
         </EquipmentDialog>

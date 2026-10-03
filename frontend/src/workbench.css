@@ -9730,6 +9730,30 @@
   text-transform: uppercase;
 }
 
+.report-workspace-return {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+}
+
+.report-workspace-return img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.report-workspace-back:hover {
+  background: var(--color-surface-muted);
+}
+
+.report-workspace-back:focus-visible {
+  outline: 3px solid rgba(31, 102, 209, 0.26);
+  outline-offset: 2px;
+}
+
 .report-workspace-message {
   background: var(--color-surface);
   border: 1px solid var(--color-success);
@@ -10316,13 +10340,11 @@
   }
 
   .report-workspace-commandbar {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .report-workspace-identity {
-    flex-basis: 100%;
-    white-space: normal;
-    overflow-wrap: anywhere;
+    white-space: nowrap;
   }
 
   .report-workspace-preview-facts,

@@ -232,7 +232,7 @@ export default function App(): ReactElement {
       : route.name === "projectBasicInformation"
         ? "Basic Information"
       : route.name === "projectReportWorkspace"
-        ? "Report Workspace"
+        ? "Report"
         : undefined;
 
   return (

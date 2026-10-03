@@ -33,7 +33,7 @@ export function CustomerReportRegenerationDialog({ fileName, busy, returnFocusTa
       <div className="report-workspace-action-row">
         <button type="button" disabled={busy} onClick={onCancel}>Cancel</button>
         <button type="button" className="primary-action" disabled={busy} onClick={onConfirm}>
-          {busy ? "Generating customer report..." : "Archive and regenerate"}
+          {busy ? "Generating Customer Report..." : "Archive And Regenerate"}
         </button>
       </div>
     </section>

@@ -148,7 +148,7 @@ export function LlcrImportPreviewDialog({
             onClick={onConfirm}
             type="button"
           >
-            {confirming ? "Confirming..." : "Confirm LLCR dataset"}
+            {confirming ? "Confirming..." : "Confirm LLCR Dataset"}
           </button>
         </footer>
       </section>
