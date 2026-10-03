@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_EQUIPMENT_LIST_ONE_CLICK_UPDATE_20261003",
     "summary": "设备清单一键更新、缺失编号补录与完成统计",
@@ -41,9 +41,103 @@
     ],
     "activation_head": "d86c443a772e596d20245d6d484ddf7708a527d5",
     "started_at": "2026-10-03T07:19:28.897091Z",
-    "updated_at": "2026-10-03T07:19:28.897091Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-03T08:20:57.161862Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_EQUIPMENT_LIST_ONE_CLICK_UPDATE_20261003",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_EQUIPMENT_LIST_ONE_CLICK_UPDATE_20261003",
+      "subject": "b6ee0bb3775ea1ba5697a4de874a9c9ad06fc835",
+      "summary": "Equipment List 一键更新：缺失来源补录无覆盖保存、编号去重及台账首条匹配、缺失留空、过期到期日标红、完成统计；独立审查和最终QA通过",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/routes_report_workspace.py",
+        "backend/application/current_report_update_service.py",
+        "backend/application/equipment_report_update_service.py",
+        "backend/infrastructure/office/equipment_id_document_reader.py",
+        "backend/infrastructure/office/test_report_document_gateway.py",
+        "docs/PROJECT_CONTEXT.md",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+        "frontend/src/features/report-workspace/reportWorkspaceModel.test.ts",
+        "frontend/src/features/report-workspace/reportWorkspaceModel.ts",
+        "tests/integration/test_report_workspace_api.py",
+        "tests/unit/test_current_report_update_service.py",
+        "tests/unit/test_equipment_id_document_reader.py",
+        "tests/unit/test_equipment_report_update_service.py",
+        "tests/unit/test_test_report_document_gateway.py"
+      ],
+      "validation": [
+        {
+          "kind": "python",
+          "status": "passed",
+          "summary": "独立QA：10个相关单元/集成模块122 passed，10.98s；1条既有Starlette弃用警告"
+        },
+        {
+          "kind": "frontend",
+          "status": "passed",
+          "summary": "独立QA：2个ReportWorkspace/model Vitest模块59 passed，6.61s"
+        },
+        {
+          "kind": "build",
+          "status": "passed",
+          "summary": "独立QA：Vitest之后串行TypeScript/Vite生产构建成功"
+        },
+        {
+          "kind": "browser",
+          "status": "passed",
+          "summary": "独立QA：隔离API fixture+真实生产UI，601x804补录upload/paste、Cancel/Escape、focus/Tab循环、已有来源一键与完成统计；不是真实项目写入E2E"
+        },
+        {
+          "kind": "diff",
+          "status": "passed",
+          "summary": "独立Reviewer/QA/Integrator diff check通过，scope16无越界"
+        }
+      ],
+      "roles": {
+        "reviewer": {
+          "summary": "独立全部diff Standards0 Spec0",
+          "status": "passed",
+          "context": "/root/equipment_reviewer"
+        },
+        "planner": {
+          "summary": "只读代码数据流与精确16路径/风险验收规划",
+          "status": "passed",
+          "context": "/root/equipment_planner"
+        },
+        "integrator": {
+          "summary": "独立确认subject,parent,scope16,clean master与实际角色证据",
+          "status": "passed",
+          "context": "/root/equipment_integrator"
+        },
+        "qa": {
+          "summary": "122Python/59Vitest/build/隔离浏览器通过；未写真实项目或人工Word视觉检查",
+          "status": "passed",
+          "context": "/root/equipment_qa"
+        },
+        "developer": {
+          "summary": "TDD RED/GREEN与最终反馈74Python/59Vitest通过",
+          "status": "passed",
+          "context": "/root/equipment_developer"
+        }
+      },
+      "integration": {
+        "summary": "本地提交已核验；未推送远端。特殊文件系统不支持硬链接时补录安全失败，无覆盖降级。",
+        "branch": "master",
+        "status": "passed",
+        "subject": "b6ee0bb3775ea1ba5697a4de874a9c9ad06fc835",
+        "parent": "d86c443a772e596d20245d6d484ddf7708a527d5"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_CUSTOMER_REPORT_SAFE_REGENERATION_DRAFT_20261003",
