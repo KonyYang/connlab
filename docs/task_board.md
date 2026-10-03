@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TOOLS_CONCISE_UI_20261003",
     "summary": "精简 Tools 页面重复说明和正常状态信息",
@@ -27,9 +27,50 @@
     "risk_reasons": [],
     "activation_head": "8bd16ae9739bfa67c912b51130b25cabaa719ecd",
     "started_at": "2026-10-03T15:49:12.111414Z",
-    "updated_at": "2026-10-03T15:49:12.111414Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-03T15:55:16.674623Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_TOOLS_CONCISE_UI_20261003",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "version": 1,
+      "changed_paths": [
+        "frontend/src/features/tools/EquipmentListTool.tsx",
+        "frontend/src/pages/ToolsPage.test.tsx",
+        "frontend/src/pages/ToolsPage.tsx",
+        "frontend/src/tools.css"
+      ],
+      "integration": {
+        "status": "passed",
+        "summary": "Exact subject committed locally to master; clean worktree, no remote publication before User Close."
+      },
+      "schema": "connlab.sol-task-report",
+      "subject": "ca1b1dcb49af57973822820397646c7c98da8607",
+      "summary": "Tools 去掉介绍卡和重复状态，三工具仅保留必要输入、运行反馈、绿色下载文件名和实际异常；API及文件处理不变。",
+      "task_id": "TASK_TOOLS_CONCISE_UI_20261003",
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "summary": "Same Astra agent implementation and sequential Standards/Spec self-review; 0 findings on each axis."
+        }
+      },
+      "scope_ok": true,
+      "validation": [
+        {
+          "status": "passed",
+          "summary": "TDD: 3 failures before change; ToolsPage 8 passed after change. Final related frontend 74 passed; TypeScript/Vite build passed; diff check passed."
+        },
+        {
+          "status": "passed",
+          "summary": "Live in-app browser narrow layout inspected; customer/equipment missing-source errors, equipment text mode and clean reload verified. Successful downloads covered by component tests; no real Office regeneration required."
+        }
+      ]
+    }
   },
   "last_closed": {
     "task_id": "TASK_TOOLS_EQUIPMENT_LIST_UPDATE_20261003",
