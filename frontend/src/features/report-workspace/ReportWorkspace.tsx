@@ -789,10 +789,6 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
               </button>
             </div>
             <div className="report-workspace-update-row">
-              <div className="report-workspace-update-content">
-                <h3>Equipment List</h3>
-                <p className="report-workspace-note">Section 7 · Project equipment IDs and the configured calibration list</p>
-              </div>
               <button
                 className="primary-action"
                 disabled={Boolean(busyAction) || currentReport?.status !== "ready"}
