@@ -11,89 +11,51 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
-    "task_id": "TASK_REPORT_WORKSPACE_HIDE_AUTHORITY_VERSIONS_20261003",
-    "summary": "Remove permanent Report Workspace authority version strip",
-    "tier": "micro",
-    "route": "sol_direct",
-    "scope": "Remove the always-visible Basic Information/Matrix version strip and unused CSS. Preserve all authority/readiness validation and contextual blockers. Update affected public UI assertions and product facts; no backend or business-file mutations.",
+    "task_id": "TASK_INTERNAL_REPORT_INITIALIZE_REGENERATE_20261003",
+    "summary": "Internal Report 初始化与安全重新生成",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Simplify Internal Report card: display report full path once, concise nonpersistent success, always-present Generate Internal Report, official Open folder vs managed download. Initialize or explicitly confirm archive/rebuild from approved template + latest confirmed Basic Information and Matrix only; retain old manual content solely in History/Report, preserve old file on failures, revalidate source/target/authority, serialize project writes. Preserve partial LLCR/equipment updates, existing managed publication and legacy interfaces. No automatic LLCR/equipment/photo import and no generic task platform; isolated tests only, no existing business-report mutation.",
     "scope_paths": [
+      "backend/application/internal_report_generation_service.py",
+      "backend/api/dependencies.py",
+      "backend/api/routes_report_workspace.py",
+      "backend/infrastructure/files/report_publication_gateway.py",
+      "backend/application/test_report_draft_service.py",
+      "backend/application/report_workspace_service.py",
+      "tests/unit/test_internal_report_generation_service.py",
+      "tests/unit/test_report_publication_gateway.py",
+      "tests/unit/test_test_report_draft_service.py",
+      "tests/unit/test_report_workspace_service.py",
+      "tests/integration/test_report_workspace_api.py",
+      "tests/integration/test_internal_report_generation_api.py",
+      "frontend/src/api/client.ts",
       "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+      "frontend/src/features/report-workspace/reportWorkspaceModel.ts",
       "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+      "frontend/src/features/report-workspace/reportWorkspaceModel.test.ts",
       "frontend/src/workbench.css",
       "docs/PROJECT_CONTEXT.md"
     ],
-    "risk_reasons": [],
-    "activation_head": "1f6ffd0a10da13830763a4e0890785dcf77d9607",
-    "started_at": "2026-10-02T23:34:20.905824Z",
-    "updated_at": "2026-10-02T23:40:37.501745Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_REPORT_WORKSPACE_HIDE_AUTHORITY_VERSIONS_20261003",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "task_id": "TASK_REPORT_WORKSPACE_HIDE_AUTHORITY_VERSIONS_20261003",
-      "integration": {
-        "subject": "9ad084e7de66903f099f48c35d6471ce4d5c330b",
-        "result": "Scoped local commit; clean working tree. No backend, report publication, or external authoritative file mutations.",
-        "status": "passed"
-      },
-      "scope_ok": true,
-      "subject": "9ad084e7de66903f099f48c35d6471ce4d5c330b",
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "validation": [
-        {
-          "command": "npm test -- src/features/report-workspace/ReportWorkspace.test.tsx src/features/report-workspace/reportWorkspaceModel.test.ts src/features/report-workspace/useCustomerReportJob.test.tsx",
-          "result": "41 tests passed across 3 files on final source bytes. Targeted RED first failed because the version strip was still visible.",
-          "status": "passed"
-        },
-        {
-          "command": "npm run build",
-          "result": "TypeScript and Vite production build passed on final source bytes.",
-          "status": "passed"
-        },
-        {
-          "command": "In-app browser Report Workspace read-only smoke",
-          "result": "Version strip absent; all 3 report regions remain; missing Internal Report blockers retained; no console errors. Screenshot tmp/report-workspace-no-authority-strip-20261003.png. No business report writes.",
-          "status": "passed"
-        },
-        {
-          "command": "git diff --check",
-          "result": "No whitespace errors.",
-          "status": "passed"
-        }
-      ],
-      "roles": {
-        "developer": {
-          "subject": "9ad084e7de66903f099f48c35d6471ce4d5c330b",
-          "result": "Micro task implemented and exact diff self-reviewed by root. No independent reviewer claimed. Existing backend and readiness logic unchanged.",
-          "status": "passed"
-        }
-      },
-      "changed_paths": [
-        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-        "frontend/src/workbench.css",
-        "docs/PROJECT_CONTEXT.md"
-      ],
-      "summary": "Remove permanent authority version strip; retain contextual blockers and all report authority checks."
-    }
+    "risk_reasons": [
+      "Authoritative external Word report archive and replacement; must preserve existing report on generation, publication, or persistence failure."
+    ],
+    "activation_head": "59eaa8b2b4882478ceea5368bbcfcfe07eb89923",
+    "started_at": "2026-10-03T00:49:35.493203Z",
+    "updated_at": "2026-10-03T00:49:35.493203Z",
+    "checkpoint": null,
+    "report": null
   },
   "last_closed": {
-    "task_id": "TASK_REPORT_WORKSPACE_COMPACT_LAYOUT_20261002",
-    "tier": "standard",
-    "subject": "1d82ecbc050308f4a87ec3fd4dea5227139c16ae",
-    "summary": "Unify Report Workspace top bar and three compact business sections",
+    "task_id": "TASK_REPORT_WORKSPACE_HIDE_AUTHORITY_VERSIONS_20261003",
+    "tier": "micro",
+    "subject": "9ad084e7de66903f099f48c35d6471ce4d5c330b",
+    "summary": "Remove permanent Report Workspace authority version strip",
     "disposition": "completed",
-    "decision_ref": "User final Close on 2026-10-03 after ready_for_close delivery; preserve disclosed release-package and live Office verification limitations.",
-    "closed_at": "2026-10-02T23:31:31.508883Z"
+    "decision_ref": "User explicitly closes completed small task and opens Internal Report initialization/safe-regeneration on 2026-10-03; local rollover only, no publication.",
+    "closed_at": "2026-10-03T00:49:35.493203Z"
   },
   "retained_history": [
     {
