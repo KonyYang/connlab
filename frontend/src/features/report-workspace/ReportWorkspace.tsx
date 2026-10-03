@@ -573,7 +573,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                 ) : null}
               </div>
               <div className="report-workspace-current-report">
-                {reportFileName ? <strong className="report-workspace-report-name">{reportFileName}</strong> : (
+                {reportFileName ? <span className="report-workspace-report-name">{reportFileName}</span> : (
                   <span className={`report-workspace-status report-workspace-status-${reportEntry.kind}`}>{reportEntry.statusLabel}</span>
                 )}
               </div>

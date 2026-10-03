@@ -9944,6 +9944,8 @@
 
 .report-workspace-current-report .report-workspace-report-name {
   color: var(--color-success);
+  font-size: 13px;
+  font-weight: 400;
   white-space: normal;
   word-break: break-word;
 }
