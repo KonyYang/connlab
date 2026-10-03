@@ -11,92 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_REPORT_HEADER_ICON_TITLE_CASE_20261003",
-    "summary": "Report 页标题、工作台返回图标与按钮标题统一",
-    "tier": "micro",
-    "route": "sol_direct",
-    "scope": "用户最新明确指令“开始执行”授权落实此前确认的三项设计：Report标题、第3款返回图标、当前页面按钮首字母大写；先前“只设计不修改代码”已被最新执行指令替代。不改报告生成保存、不发布",
-    "scope_paths": [
-      "frontend/src/App.tsx",
-      "frontend/src/components/common/UiIcon.tsx",
-      "frontend/src/features/report-workspace",
-      "frontend/src/workbench.css"
-    ],
-    "risk_reasons": [],
-    "activation_head": "34713ff4e3814808cfdf654236231c0c6c01a099",
-    "started_at": "2026-10-03T08:53:16.480928Z",
-    "updated_at": "2026-10-03T09:06:35.625432Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_REPORT_HEADER_ICON_TITLE_CASE_20261003",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "task_id": "TASK_REPORT_HEADER_ICON_TITLE_CASE_20261003",
-      "validation": [
-        {
-          "check": "Affected Vitest tests",
-          "result": "90 tests in 6 files passed",
-          "status": "passed"
-        },
-        {
-          "status": "passed",
-          "check": "TypeScript and Vite production build"
-        },
-        {
-          "check": "Browser smoke and visual comparison",
-          "result": "640x804 viewport, icon loaded, Enter returned same project Workspace, no horizontal overflow",
-          "status": "passed"
-        },
-        {
-          "status": "passed",
-          "check": "git diff --check"
-        }
-      ],
-      "version": 1,
-      "integration": {
-        "branch": "master",
-        "status": "passed",
-        "publication": "not requested"
-      },
-      "summary": "Report title, approved workbench return icon and page action capitalization completed",
-      "subject": "d3d50bb550c81437cf16ab51d6f595488e8b2b54",
-      "changed_paths": [
-        "design-qa.md",
-        "frontend/src/App.tsx",
-        "frontend/src/features/report-workspace/CustomerReportRegenerationDialog.tsx",
-        "frontend/src/features/report-workspace/CustomerReportSourceDialog.tsx",
-        "frontend/src/features/report-workspace/LlcrImportPreviewDialog.tsx",
-        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-        "frontend/src/features/report-workspace/test-workbench.png",
-        "frontend/src/workbench.css"
-      ],
-      "roles": {
-        "developer": {
-          "mode": "micro same-agent implementation, standards and spec self-review",
-          "status": "passed",
-          "findings": "No material findings"
-        }
-      },
-      "schema": "connlab.sol-task-report",
-      "scope_ok": true
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_EQUIPMENT_LIST_ONE_CLICK_UPDATE_20261003",
-    "tier": "high_risk",
-    "subject": "a421d2de0c8a038737b05b05757e90b2184114e3",
-    "summary": "设备清单一键更新、缺失编号补录与完成统计",
+    "task_id": "TASK_REPORT_HEADER_ICON_TITLE_CASE_20261003",
+    "tier": "micro",
+    "subject": "d3d50bb550c81437cf16ab51d6f595488e8b2b54",
+    "summary": "Report 页标题、工作台返回图标与按钮标题统一",
     "disposition": "completed",
     "decision_ref": "User final close: 关闭任务",
-    "closed_at": "2026-10-03T08:48:20.829496Z"
+    "closed_at": "2026-10-03T09:07:42.991778Z"
   },
   "retained_history": [
     {
