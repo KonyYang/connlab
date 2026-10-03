@@ -20,7 +20,6 @@ from backend.api.dependencies import (
     get_tools_customer_report_job_service,
     get_tools_service,
     get_tools_equipment_report_service,
-    get_tools_temperature_rise_service,
 )
 from backend.application.tools_customer_report_job_service import (
     ToolsCustomerReportJobService,
@@ -31,49 +30,10 @@ from backend.application.test_report_template_resource import (
 )
 from backend.application.tools_service import ToolsError, ToolsService
 from backend.application.tools_equipment_report_service import ToolsEquipmentReportService
-from backend.application.tools_temperature_rise_service import ToolsTemperatureRiseService
 from backend.shared.config import Settings
 
 
 router = APIRouter(prefix="/api/tools", tags=["tools"])
-
-
-@router.post("/temperature-rise/{action}", response_model=None)
-def temperature_rise_tool(
-    action: Literal["preview", "suggest", "analyze", "export"],
-    file: UploadFile = File(...),
-    options: str | None = Form(default=None),
-    service: ToolsTemperatureRiseService = Depends(get_tools_temperature_rise_service),
-    settings: Settings = Depends(get_settings),
-) -> dict[str, object] | FileResponse:
-    root = Path(tempfile.mkdtemp(prefix="tools-temperature-rise-", dir=settings.data_dir))
-    source = root / _safe_upload_name(file.filename, fallback="readings.csv")
-    output = root / "output" / f"{source.stem}_TemperatureRise.xlsx"
-    downloaded = False
-    try:
-        _save_upload(file, source)
-        if action == "preview":
-            return service.preview(source)
-        try:
-            parameters = json.loads(options or "{}")
-        except json.JSONDecodeError as exc:
-            raise ValueError("Measurement settings could not be read. Preview the source and confirm them again.") from exc
-        if action == "suggest":
-            return service.suggest(source, parameters)
-        if action == "analyze":
-            return service.analyze(source, parameters)
-        result = service.export(source, output, parameters)
-        response = FileResponse(result, filename=output.name,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            background=BackgroundTask(shutil.rmtree, root, ignore_errors=True))
-        downloaded = True
-        return response
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    finally:
-        file.file.close()
-        if not downloaded:
-            shutil.rmtree(root, ignore_errors=True)
 
 
 class CustomerReportJobResponse(BaseModel):

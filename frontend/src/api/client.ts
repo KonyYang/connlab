@@ -5579,47 +5579,6 @@ export function encryptStandaloneCopy(file: File): Promise<BlobDownloadResponse>
   });
 }
 
-export type TemperatureChannel = { column: number; sample: string; point: string };
-export type TemperatureMapping = { ambient: number; current: number; channels: TemperatureChannel[] };
-export type TemperatureBlock = {
-  id: string; sheet: string; header_row: number; headers: string[]; row_count: number;
-  records: { row: number; values: (string | number | null)[] }[];
-  suggested_mapping: TemperatureMapping; current_metadata: (string | number | boolean | null)[]; candidate_rows: number[];
-};
-export type TemperatureOptions = {
-  block_id: string; mapping: TemperatureMapping; selected_rows: number[];
-  current_mode: "amperes" | "voltage"; current_gain: number; zero_intercept: boolean; include_origin: boolean;
-  target_rise: number; max_temperature: number; ambient_temperatures: number[]; derating_factor: number;
-};
-export type TemperatureCurve = { a: number; b: number; c: number; r_squared: number };
-export type TemperatureAnalysis = {
-  points: { row: number; current: number; maximum: number; average_of_max: number; single_max: Record<string, number> }[];
-  candidate_rows: number[]; max_curve: TemperatureCurve; avg_curve: TemperatureCurve; target_current: number;
-  derating: { ambient: number; allowable_rise: number; basic_current: number; derated_current: number }[];
-  extrapolated: boolean;
-};
-
-export function previewTemperatureRise(file: File): Promise<{ blocks: TemperatureBlock[] }> {
-  const body = new FormData(); body.append("file", file);
-  return requestJson("/api/tools/temperature-rise/preview", { method: "POST", body });
-}
-
-export function suggestTemperatureRise(file: File, blockId: string, currentColumn: number): Promise<{ candidate_rows: number[] }> {
-  const body = new FormData(); body.append("file", file);
-  body.append("options", JSON.stringify({ block_id: blockId, current_column: currentColumn }));
-  return requestJson("/api/tools/temperature-rise/suggest", { method: "POST", body });
-}
-
-export function analyzeTemperatureRise(file: File, options: TemperatureOptions): Promise<TemperatureAnalysis> {
-  const body = new FormData(); body.append("file", file); body.append("options", JSON.stringify(options));
-  return requestJson("/api/tools/temperature-rise/analyze", { method: "POST", body });
-}
-
-export function exportTemperatureRise(file: File, options: TemperatureOptions): Promise<BlobDownloadResponse> {
-  const body = new FormData(); body.append("file", file); body.append("options", JSON.stringify(options));
-  return requestBlobResponse("/api/tools/temperature-rise/export", { method: "POST", body });
-}
-
 export function customerReportDraftDownloadUrl(
   projectId: string,
   reportRevisionId: string
