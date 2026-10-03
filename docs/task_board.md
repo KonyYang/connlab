@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_REPORT_HEADER_ICON_TITLE_CASE_20261003",
     "summary": "Report 页标题、工作台返回图标与按钮标题统一",
@@ -27,9 +27,67 @@
     "risk_reasons": [],
     "activation_head": "34713ff4e3814808cfdf654236231c0c6c01a099",
     "started_at": "2026-10-03T08:53:16.480928Z",
-    "updated_at": "2026-10-03T08:53:16.480928Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-03T09:06:35.625432Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_REPORT_HEADER_ICON_TITLE_CASE_20261003",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "task_id": "TASK_REPORT_HEADER_ICON_TITLE_CASE_20261003",
+      "validation": [
+        {
+          "check": "Affected Vitest tests",
+          "result": "90 tests in 6 files passed",
+          "status": "passed"
+        },
+        {
+          "status": "passed",
+          "check": "TypeScript and Vite production build"
+        },
+        {
+          "check": "Browser smoke and visual comparison",
+          "result": "640x804 viewport, icon loaded, Enter returned same project Workspace, no horizontal overflow",
+          "status": "passed"
+        },
+        {
+          "status": "passed",
+          "check": "git diff --check"
+        }
+      ],
+      "version": 1,
+      "integration": {
+        "branch": "master",
+        "status": "passed",
+        "publication": "not requested"
+      },
+      "summary": "Report title, approved workbench return icon and page action capitalization completed",
+      "subject": "d3d50bb550c81437cf16ab51d6f595488e8b2b54",
+      "changed_paths": [
+        "design-qa.md",
+        "frontend/src/App.tsx",
+        "frontend/src/features/report-workspace/CustomerReportRegenerationDialog.tsx",
+        "frontend/src/features/report-workspace/CustomerReportSourceDialog.tsx",
+        "frontend/src/features/report-workspace/LlcrImportPreviewDialog.tsx",
+        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+        "frontend/src/features/report-workspace/test-workbench.png",
+        "frontend/src/workbench.css"
+      ],
+      "roles": {
+        "developer": {
+          "mode": "micro same-agent implementation, standards and spec self-review",
+          "status": "passed",
+          "findings": "No material findings"
+        }
+      },
+      "schema": "connlab.sol-task-report",
+      "scope_ok": true
+    }
   },
   "last_closed": {
     "task_id": "TASK_EQUIPMENT_LIST_ONE_CLICK_UPDATE_20261003",
