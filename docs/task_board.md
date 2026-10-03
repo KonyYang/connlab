@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_RISE_TOOL_20261003",
     "summary": "Standalone temperature rise and derating import preview and workbook tool",
@@ -30,9 +30,100 @@
     "risk_reasons": [],
     "activation_head": "184cdfe4e2101d183f44780c964f9d6bc0fcc1ee",
     "started_at": "2026-10-03T16:20:35.945809Z",
-    "updated_at": "2026-10-03T16:20:35.945809Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-03T17:06:10.280462Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_RISE_TOOL_20261003",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_RISE_TOOL_20261003",
+      "subject": "8851a2d93bc69cad88e039e2577bb7ee0990201f",
+      "summary": "Standalone measurement import, mapping and point confirmation, full precision temperature rise/derating and new four-sheet XLSX with native charts completed.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/dependencies.py",
+        "backend/api/routes_tools.py",
+        "backend/application/tools_temperature_rise_service.py",
+        "backend/infrastructure/office/temperature_rise_workbook_gateway.py",
+        "backend/modules/temperature_rise/__init__.py",
+        "backend/modules/temperature_rise/calculation.py",
+        "frontend/src/api/client.ts",
+        "frontend/src/features/tools/TemperatureRiseTool.test.tsx",
+        "frontend/src/features/tools/TemperatureRiseTool.tsx",
+        "frontend/src/pages/ToolsPage.tsx",
+        "frontend/src/tools.css",
+        "tests/integration/test_tools_temperature_rise_api.py",
+        "tests/unit/test_temperature_rise.py",
+        "tests/unit/test_temperature_rise_workbook.py"
+      ],
+      "validation": [
+        {
+          "name": "Complete non-Office Python gate",
+          "status": "passed",
+          "passed": 3427,
+          "skipped": 8,
+          "deselected": 19
+        },
+        {
+          "name": "Complete frontend Vitest gate",
+          "status": "passed",
+          "passed": 819,
+          "skipped": 1,
+          "files_passed": 92,
+          "files_skipped": 1
+        },
+        {
+          "name": "TypeScript and Vite production build",
+          "status": "passed"
+        },
+        {
+          "name": "Real Library text measurement CSV and new workbook golden verification",
+          "status": "passed",
+          "records": 300,
+          "channels": 20,
+          "samples": 5,
+          "target_current": 66.54585225949421,
+          "original_xlsx_bytes": "unavailable; no claim of original workbook byte verification"
+        },
+        {
+          "name": "Real browser Tools workflow",
+          "status": "passed",
+          "viewports": [
+            1366,
+            768
+          ],
+          "errors": 0,
+          "upload_cleanup": "passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "context": "Implementation agent; TDD RED/GREEN; targeted Python 23 and UI 13 tests passed; exact diff self-reviewed"
+        },
+        "reviewer": {
+          "status": "passed",
+          "context": "Independent parent /root context; focused standards/spec review; three findings resolved and reviewed"
+        },
+        "qa": {
+          "status": "passed",
+          "context": "Implementation agent sequential final QA; complete repository gate once plus real browser and sample validation"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "method": "Legacy direct local master implementation commit",
+        "subject": "8851a2d93bc69cad88e039e2577bb7ee0990201f",
+        "published": false
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_TOOLS_CONCISE_UI_20261003",
