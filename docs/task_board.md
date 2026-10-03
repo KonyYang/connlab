@@ -11,132 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_EQUIPMENT_LIST_ONE_CLICK_UPDATE_20261003",
-    "summary": "设备清单一键更新、缺失编号补录与完成统计",
-    "tier": "high_risk",
-    "route": "full_chain",
-    "scope": "已讨论的Equipment List一键更新：纯LTR来源缺失补录无覆盖保存、来源编号去重、台账首条匹配、缺失留空、过期到期日标红、完成统计、报告归档及并发保护",
-    "scope_paths": [
-      "backend/application/equipment_report_update_service.py",
-      "backend/application/current_report_update_service.py",
-      "backend/infrastructure/office/equipment_id_document_reader.py",
-      "backend/infrastructure/office/test_report_document_gateway.py",
-      "backend/api/routes_report_workspace.py",
-      "frontend/src/api/client.ts",
-      "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-      "frontend/src/features/report-workspace/reportWorkspaceModel.ts",
-      "frontend/src/features/report-workspace/reportWorkspaceModel.test.ts",
-      "tests/unit/test_equipment_report_update_service.py",
-      "tests/unit/test_equipment_id_document_reader.py",
-      "tests/unit/test_current_report_update_service.py",
-      "tests/unit/test_test_report_document_gateway.py",
-      "tests/integration/test_report_workspace_api.py",
-      "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-      "docs/PROJECT_CONTEXT.md"
-    ],
-    "risk_reasons": [
-      "authoritative report mutation and creation of external EquipmentID.docx; protect History and competing edits"
-    ],
-    "activation_head": "d86c443a772e596d20245d6d484ddf7708a527d5",
-    "started_at": "2026-10-03T07:19:28.897091Z",
-    "updated_at": "2026-10-03T08:44:14.261769Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_EQUIPMENT_LIST_ONE_CLICK_UPDATE_20261003",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_EQUIPMENT_LIST_ONE_CLICK_UPDATE_20261003",
-      "subject": "a421d2de0c8a038737b05b05757e90b2184114e3",
-      "summary": "Equipment List one-click update complete, including label simplification and DG-L Last Cal. Not calibrated preservation without false incomplete status; other date and data validation unchanged.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/api/routes_report_workspace.py",
-        "backend/application/current_report_update_service.py",
-        "backend/application/equipment_report_update_service.py",
-        "backend/infrastructure/office/equipment_id_document_reader.py",
-        "backend/infrastructure/office/test_report_document_gateway.py",
-        "docs/PROJECT_CONTEXT.md",
-        "frontend/src/api/client.ts",
-        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-        "frontend/src/features/report-workspace/reportWorkspaceModel.test.ts",
-        "frontend/src/features/report-workspace/reportWorkspaceModel.ts",
-        "tests/integration/test_report_workspace_api.py",
-        "tests/unit/test_current_report_update_service.py",
-        "tests/unit/test_equipment_id_document_reader.py",
-        "tests/unit/test_equipment_report_update_service.py",
-        "tests/unit/test_test_report_document_gateway.py"
-      ],
-      "validation": [
-        {
-          "summary": "Independent QA final DG-L revision: six affected service/source/report/API/legacy-layout modules83passed11.30s, one existingStarlettewarning; temporaryDOCX text preservation covered.",
-          "status": "passed",
-          "kind": "python"
-        },
-        {
-          "summary": "Independent Reviewer Standards0Spec0; Integrator verified cleanmaster,exactsubject,parent and cumulative16pathsallowlist; diffcheckpassed.",
-          "status": "passed",
-          "kind": "diff"
-        },
-        {
-          "summary": "Frontend unchanged by DG-L correction; prior independent51ReportWorkspace tests and model8tests retained for unchanged bytes. No new build/browser or real-project report-write run claimed.",
-          "status": "passed",
-          "kind": "retained_unchanged_frontend"
-        }
-      ],
-      "roles": {
-        "reviewer": {
-          "summary": "Independent DG-L revision Standards0Spec0,4paths reviewed; original untouched-file review retained.",
-          "status": "passed",
-          "context": "/root/equipment_reviewer"
-        },
-        "planner": {
-          "summary": "Independent DG-L correction plan: canonicalL LastCal marker only, no blanketN/A or due-field exemption; initial scope16 plan retained.",
-          "status": "passed",
-          "context": "/root/equipment_planner"
-        },
-        "integrator": {
-          "summary": "Independent cleanmaster,subject,parent,current4paths and cumulative16allowlist verified; untouchedHistory/locks/publication.",
-          "status": "passed",
-          "context": "/root/equipment_integrator"
-        },
-        "qa": {
-          "summary": "Independent final sixPythonmodules83passed11.30s; no duplicate frontend/build/browser unchanged by correction.",
-          "status": "passed",
-          "context": "/root/equipment_qa"
-        },
-        "developer": {
-          "summary": "Independent public-serviceRED2fail; expanded9boundarytestsGREEN; finaltwoPythonmodules52passed9.01s; realtemporaryDOCX marker verified.",
-          "status": "passed",
-          "context": "/root/equipment_developer"
-        }
-      },
-      "integration": {
-        "summary": "Local correction committed; no push or real-project report mutation. TemporaryDOCX verifies marker; no manualWord visual inspection.",
-        "branch": "master",
-        "status": "passed",
-        "subject": "a421d2de0c8a038737b05b05757e90b2184114e3",
-        "parent": "25eb0aeaf689e19ebf6ebfbb2b3e828d1beec241"
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_CUSTOMER_REPORT_SAFE_REGENERATION_DRAFT_20261003",
+    "task_id": "TASK_EQUIPMENT_LIST_ONE_CLICK_UPDATE_20261003",
     "tier": "high_risk",
-    "subject": "43521f7027c29f2e48130db90c8302adaaddec37",
-    "summary": "Customer Report 安全重新生成与 Draft 下载",
+    "subject": "a421d2de0c8a038737b05b05757e90b2184114e3",
+    "summary": "设备清单一键更新、缺失编号补录与完成统计",
     "disposition": "completed",
-    "decision_ref": "User final close: 关闭",
-    "closed_at": "2026-10-03T07:12:48.178636Z"
+    "decision_ref": "User final close: 关闭任务",
+    "closed_at": "2026-10-03T08:48:20.829496Z"
   },
   "retained_history": [
     {
