@@ -201,6 +201,8 @@ from backend.application.customer_report_projection_service import (
 )
 from backend.application.equipment_report_update_service import EquipmentReportUpdateService
 from backend.application.tools_equipment_report_service import ToolsEquipmentReportService
+from backend.application.tools_temperature_service import ToolsTemperatureService
+from backend.infrastructure.office.temperature_workbook_gateway import TemperatureWorkbookGateway
 from backend.application.test_report_template_resource import (
     TestReportTemplateResourceStore,
 )
@@ -2360,6 +2362,10 @@ def get_matrix_method_version_sync_service(
 def get_local_path_picker_service() -> LocalPathPickerService:
     """Build the native local path picker service."""
     return LocalPathPickerService(WindowsPathPicker())
+
+
+def get_tools_temperature_service() -> ToolsTemperatureService:
+    return ToolsTemperatureService(TemperatureWorkbookGateway())
 
 
 def get_tools_service() -> ToolsService:

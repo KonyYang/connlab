@@ -1,43 +1,77 @@
-# Report header visual and regression acceptance
+# Temperature Rise & Derating — Design QA
 
-Task: `TASK_REPORT_HEADER_ICON_TITLE_CASE_20261003` (2026-10-03).
-Final result: **passed**.
+final result: passed
 
-## Scope and changed paths
+## Comparison targets and normalization
 
-- `frontend/src/App.tsx`: Report route title.
-- `frontend/src/features/report-workspace/ReportWorkspace.tsx`: title, icon-only return, action labels.
-- `frontend/src/features/report-workspace/test-workbench.png`: transparent approved-concept icon asset.
-- `frontend/src/features/report-workspace/CustomerReportSourceDialog.tsx`: source dialog action labels.
-- `frontend/src/features/report-workspace/CustomerReportRegenerationDialog.tsx`: regeneration action labels.
-- `frontend/src/features/report-workspace/LlcrImportPreviewDialog.tsx`: dataset confirmation label.
-- `frontend/src/features/report-workspace/ReportWorkspace.test.tsx`: accessible return regression and updated label expectations.
-- `frontend/src/workbench.css`: icon size, focus/hover state and single-line header.
-- `docs/task_board.md`: execution registration only.
+- Source visual truth: `C:/Users/White/.codex/generated_images/01a02cd2-b111-7c53-a4b3-d1e1802d7ed3/exec-14c884a2-7bf5-434d-9594-0c669e952996.png` (selected third concept, 1330×1182).
+- Implementation: `http://localhost:5173/tools/temperature-rise` in the real ConnLab shell.
+- Evidence directory: `C:/Users/White/.codex/visualizations/2026/08/23/01a02cd2-b111-7c53-a4b3-d1e1802d7ed3/`.
+- Full-view evidence: `temperature-desktop-final.png`, 1315×1182 screenshot at 1330×1182 CSS viewport;
+  browser scrollbar accounts for the 15px difference. No synthetic image scaling or density conversion.
+- Focused analysis evidence: `temperature-analysis-final.png`, same viewport, scrolled to expose both
+  charts, coefficients, equations/R² and calculated current. Source and implementation were displayed
+  together in each final comparison input, not judged from paths or memory.
+- Responsive evidence: `temperature-narrow-review.png` (723×804 at 738×804) and
+  `temperature-narrow-final.png` (528×804 at 543×804). Native table scroll is deliberate; no page overflow.
+- State: real supplied workbook, 20 channels / four per sample, confirmed, both charts and current
+  calculated. Desktop overview collapses the preparation details. The source shows three illustrative
+  rows; implementation exposes 50 real rows per preview page and editable mapping when expanded.
 
-No report generation, publication, archival, filename, API or business-data behavior changed.
+## Findings and comparison history
 
-## Source and render evidence
+1. Initial comparison — blocked: [P1] actions inherited unstyled browser buttons; [P2] coefficient
+   labels crowded input columns. Added scoped existing ConnLab action tokens and a fixed row-label
+   column with readable inputs. Re-capture: `temperature-desktop-refined.png`.
+2. Final wide comparison — blocked: [P2] both Derating annotation labels sat above their points and
+   approached/crossed the curves. Placed Basic above and derated below, bounded within the chart.
+   A further focused check increased lower-label clearance. The final desktop and narrow captures
+   show separate labels without curve/text collisions.
+3. Post-fix full and focused comparison — passed: no actionable P0/P1/P2 differences remain.
 
-Approved concept #3: `C:/Users/White/.codex/generated_images/01a02cd2-b111-7c53-a4b3-d1e1802d7ed3/exec-6e3cbf90-2c0c-4f3e-b5cf-48eedc190b03.png`.
+## Required fidelity surfaces
 
-Final full viewport: `C:/Users/White/.codex/visualizations/2026/08/23/01a02cd2-b111-7c53-a4b3-d1e1802d7ed3/report-header-final.jpg`.
+- Typography: existing ConnLab system font and weights retained; page/section hierarchy and form
+  labels are legible. Native file chooser follows OS language. Smaller dense-data text is deliberate.
+  Coefficient labels no longer collide; narrow text wraps inside panels.
+- Spacing/layout: full-width preparation then two analysis columns, stacking below 850px, as intended.
+  Expanded mapping and reversible editing add vertical space requested after the concept selection.
+  Panels and buttons use existing radii and spacing. Sticky download remains reachable.
+- Colors/tokens: ConnLab light canvas, pale blue controls, green confirmed/download feedback, amber
+  review and red error. MAX orange / AVG blue and Basic red / derated orange remain consistent.
+- Image quality/assets: no decorative imagery introduced. Curves are actual numeric SVG plots,
+  not raster mock screenshots or fake artwork. Existing navigation icons reused; native Excel charts
+  were separately rendered and inspected at full resolution.
+- Copy/content: named channel roles, original row numbers, explicit scale guidance, Confirm Data and
+  quiet feedback replace illustrative mock content. Application text contains no design-preview label.
+  Equations/R² and exact results sit outside the plot to keep data readable at narrow widths.
+- Interaction/accessibility: labels, native selects/checkboxes, visible focus styles, disabled gates,
+  live status, review/error messages, table scrolling, collapsible sections and precise results checked.
+  No screen-reader audit was performed; this is a practical visual/interaction acceptance check.
 
-Source and render were inspected together, focusing on the header and workbench glyph. The selected waveform instrument, circular dial and two-legged bench are retained in a transparent asset. Existing blue typography, pale surfaces and rounded buttons remain consistent with ConnLab. The title is intentionally shortened to Report and action capitalization updated per the later user decisions. The source is a concept sheet, not a pixel-identical screenshot of the existing page.
+## Tested flows and accepted differences
 
-Native browser viewport: 640 x 804 CSS pixels; saved screenshot: 640 x 804 pixels. Report route for project `d5d7a57fce1e48959c54336e398dd87b`, existing reports, no modal. Return button is 40 x 40 at x=123.46, y=6, immediately after Report. Image display is 32 x 32. Project identity truncates normally; document scroll width 625 is below viewport width 640. No horizontal overflow was observed. Visible body controls retain their existing placement and report names remain green, normal-weight text.
+- Import, spare-channel replacement, row exclusion/restoration, confirmation and invalidation;
+  both chart buttons, coefficients, current and download action all exercised against the live backend.
+- Browser console warnings/errors: none in final isolated smoke tab.
+- The real shell intentionally keeps its existing Tools header/sidebar rather than the concept's
+  added branding/breadcrumb. Range is two editable numeric fields. Arbitrary source-column mapping
+  replaces a simple C:V text field; it is required by the user's later raw-data review discussion.
+- Windows/system fonts and browser-rendered plots are not a pixel-exact raster recreation; information
+  architecture, chart meaning, color distinction and primary operations match the selected design.
+- OS download-completion event is not exposed by this in-app automation; HTTP/feedback and the exact
+  export service's native Excel file were verified separately. No blocking layout defect remains.
 
-## Interaction and validation
+## Implementation checklist
 
-- New public-seam regression failed before implementation (old title), then passed.
-- Final affected Vitest run: 6 files, 90 tests passed.
-- Final `npm run build`: TypeScript and Vite passed; icon asset bundled.
-- Enter on Back To Workspace navigated to the same project's Workspace; Report page restored afterward.
-- Button has accessible name and native tooltip Back To Workspace; decorative image has empty alt text. Hover/focus treatment is explicit.
-- Page loaded normally after full navigation; the screenshot's fatal page state was not reproduced. One transient Vite hot-reload error occurred during asset installation, before final reload/build; it is not evidence of a persistent page failure.
+- [x] Recheck scoped actions, coefficient grid and chart label clearances after fixes.
+- [x] Compare full page and focused chart regions with the source in the same input.
+- [x] Check expanded data-review flow and narrow stacked layout.
+- [x] Run final affected UI tests and TypeScript/Vite build.
+- [x] Preserve source workbook, generate a separate native-chart Excel file, inspect in Excel.
 
-## Review and iteration
+## Follow-up polish
 
-Same-agent standards and requirement review: no material findings. An initial inline icon draft was replaced with the approved-concept transparent asset before final acceptance. Dialog, retry, download and loading action labels were checked alongside normal page actions; field labels, filenames and explanatory text were intentionally left unchanged.
-
-Residual boundary: visual smoke acceptance was at the actual 640px window, not an exhaustive device matrix. No external document generation was exercised because the changes do not touch that behavior.
+P3: optional larger-viewport density tuning after operator acceptance; no workflow expansion is needed
+for this delivery. Full keyboard/screen-reader audit and very large production scanner files remain
+future acceptance coverage, not claims made by this visual check.

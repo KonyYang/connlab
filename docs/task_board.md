@@ -11,8 +11,31 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_TEMPERATURE_RISE_DERATING_20261004",
+    "summary": "Temperature rise and Derating tool with confirmed data preparation and native Excel charts",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Implement the approved third layout, channel mapping/replacement/reordering, reversible row/column exclusions, human-confirmed anomaly review, macro-equivalent calculations, charts and independent Excel download. Verify original preservation, existing Tools, tests and browser flow; deliver ready_for_close.",
+    "scope_paths": [
+      "backend/domain",
+      "backend/application",
+      "backend/infrastructure/office",
+      "backend/api",
+      "frontend/src",
+      "tests",
+      "docs/PROJECT_CONTEXT.md",
+      "docs/temperature_rise_tool.md",
+      "design-qa.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "6a12e5dc00ab14180b07fcffb32301d8ec10d8f1",
+    "started_at": "2026-10-04T01:53:59.879053Z",
+    "updated_at": "2026-10-04T01:53:59.879053Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_RISE_TOOL_20261003",
     "tier": "standard",

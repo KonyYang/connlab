@@ -87,6 +87,7 @@ from backend.api.routes_confirmed_matrix_test_record_generation import (
 from backend.api.routes_test_report_draft import router as test_report_draft_router
 from backend.api.routes_report_workspace import router as report_workspace_router
 from backend.api.routes_tools import router as tools_router
+from backend.api.routes_tools_temperature import router as tools_temperature_router
 from backend.api.routes_confirmed_matrix_authority_history import (
     router as confirmed_matrix_authority_history_router,
 )
@@ -248,6 +249,7 @@ _include_project_router(confirmed_matrix_test_record_generation_router)
 _include_project_router(test_report_draft_router)
 _include_project_router(report_workspace_router)
 _include_project_router(tools_router)
+_include_project_router(tools_temperature_router)
 _include_project_router(confirmed_matrix_authority_history_router)
 _include_project_router(confirmed_matrix_active_snapshot_router)
 _include_project_router(matrix_editor_session_router)

@@ -28,7 +28,7 @@ const INITIAL_STATE: Record<ToolKey, ToolState> = {
 
 const CUSTOMER_REPORT_POLL_DELAY_MS = 750;
 
-export function ToolsPage(): ReactElement {
+export function ToolsPage({ onOpenTemperatureRise = () => { window.location.assign('/tools/temperature-rise'); } }: { onOpenTemperatureRise?: () => void } = {}): ReactElement {
   const [state, setState] = useState(INITIAL_STATE);
   const runTokens = useRef<Record<ToolKey, number>>({
     "customer-report": 0,
@@ -121,6 +121,10 @@ export function ToolsPage(): ReactElement {
           onRun={() => void run("encrypt-copy")}
         />
         <EquipmentListTool />
+        <article className="tools-card">
+          <div className="tools-card-heading"><h3>Temperature Rise &amp; Derating</h3></div>
+          <button className="primary-action" type="button" onClick={onOpenTemperatureRise}>Generate Temperature-Rise Curves</button>
+        </article>
       </div>
     </section>
   );

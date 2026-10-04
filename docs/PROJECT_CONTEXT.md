@@ -83,6 +83,19 @@ Do not use a dated snapshot as a substitute for the code.
 
 ## Architecture seams
 
+### Standalone Tools temperature curves
+
+- `Tools > Generate Temperature-Rise Curves` opens `/tools/temperature-rise`. It reads scanner
+  `.xls/.xlsx/.xlsm` values without VBA, requires human confirmation of column roles, ordered sample
+  channels and row exclusions, and writes only an independent download. Original source files and
+  all project/report authorities remain untouched.
+- `temperature_rise` owns the pure stable-stage/statistics/fit/current/Derating calculations;
+  `temperature_data_preparation` validates operator selections and flags suspicious readings.
+  `ToolsTemperatureService` coordinates a workbook port; `TemperatureWorkbookGateway` owns bounded
+  Excel IO and native charts. The UI keeps one editable session and invalidates dependent results
+  after input changes; late responses cannot revive discarded state.
+- See `docs/temperature_rise_tool.md` for numerical baselines, scope, limitations and acceptance.
+
 ### Standalone Tools equipment update
 
 - Tools includes `Update Equipment List` beside the existing customer-report conversion and encrypted

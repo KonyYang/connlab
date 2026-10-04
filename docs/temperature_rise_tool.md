@@ -1,0 +1,133 @@
+# Temperature Rise and Derating Tool
+
+Status: implemented and locally validated; awaiting user acceptance for task
+`TASK_TEMPERATURE_RISE_DERATING_20261004`.
+
+## Scope and acceptance
+
+The Tools entry opens a dedicated page using the selected third design: a full-width Initial Data
+preparation area above two analysis panels (Temperature Rise and Derating). At narrow widths the
+panels stack. Existing ConnLab navigation, fonts, controls and quiet feedback remain in use.
+
+- Read `.xls`, `.xlsx` and `.xlsm` without executing VBA or changing the source.
+- Let the user choose the sheet, header and data rows, ambient and current columns, current scale,
+  thermocouples per sample, and ordered sample/channel mapping. A spare source channel can replace
+  any failed channel. Channel order determines sample/thermocouple slots and is shown explicitly.
+- Exclude/restore rows and channels without changing source data. Retain original row numbers and
+  column letters. Suspicious rows are suggestions only; the user confirms their inclusion/exclusion.
+- Confirm the prepared data before analysis. A later input/mapping/exclusion change invalidates
+  dependent charts, coefficients, current and downloads. Late responses must not restore stale data.
+- Generate T-riseChart, retrieve and edit MAX/AVG coefficients, calculate current from MAX and a
+  target rise, and generate Derating from AVG and the working-temperature parameters.
+- Download an independent `.xlsx` containing Initial Data, T-riseChart and Derating, with native XY
+  charts, polynomial trendlines, equations, R² and review provenance. No save-before-clear dialogs.
+- Preserve other Tools functions and all project/Matrix/report authority.
+
+## Calculation contract
+
+The baseline is the user-supplied `T-rise&Derating Rev20161002.xlsm`, SHA-256
+`2b2565e5d5db5d342d77db4eed21cccce37ff2b2e41c59e2a4c302b745b4f402`.
+Its Initial Data is already manually cleaned; it is not evidence that every scanner has the same
+column order or that zero-current rows should automatically be removed.
+
+Within each current stage, adjacent relative change is at most 1% of the previous nonzero current.
+Use the last row of each stable stage (at least two successive readings). This is current stability,
+not a thermal-equilibrium assertion. Subtract that row's ambient from each thermocouple. For each
+sample take its highest rise, then plot the highest sample maximum and the mean of sample maxima.
+Insert an origin point when the first plotted current is nonzero. Fit second-degree polynomials,
+optionally constrained to zero intercept. Show six coefficient decimals; calculations use the
+effective editable six-decimal values. Display R² as squared correlation of observed and fitted
+values, matching desktop Excel's native polynomial trendline labels, including forced-zero fits.
+
+Current uses the nonnegative increasing-branch root of `a I² + b I + c = target rise`.
+Derating requires zero intercept and uses AVG coefficients with `rise = max temperature - ambient`.
+The derated current is 80% of Basic current. Include the exact requested ambient annotation, even
+when it falls between step points. Validate finite values, fit rank, roots, units and grouping.
+
+Baseline expected stage source rows: 81, 131, 181, 231, 281, 331. MAX coefficients:
+0.004677, 0.139598, 0; AVG: 0.004630, 0.122028, 0. Target 30 °C gives 66.5444574215 A.
+At ambient 75 °C, max 105 °C: Basic 68.3888159321 A and 80% 54.7110527456 A.
+
+## Boundaries and implementation sequence
+
+1. Pure domain calculations and macro baseline tests; workbook reader/writer and native-chart checks.
+2. Thin stateless Tools API; uploaded data and explicit preparation choices, with bounded inputs.
+3. Data preparation and analysis UI with invalidation, reversible edits and real chart rendering.
+4. Focused review, affected test matrix, production build, browser smoke and exported-file inspection.
+
+Domain has no Office, HTTP or UI dependency. Infrastructure owns workbook IO. Application owns
+preparation/validation and orchestration. Frontend API modules own transport; feature components own
+the editable session. No new database persistence, Excel COM or full spreadsheet editor is required.
+
+## Verification and risks
+
+Use the real scanner fixture and independently saved macro outcomes, plus synthetic reordered
+columns, replacement channels, power-drop/tail-zero rows, missing cells, unequal group sizes,
+insufficient stages, invalid roots and stale-response cases. Check exported native chart series,
+references, formulas and visual appearance; a successful ZIP export alone is insufficient.
+Review numerical rounding, current scaling (scanner metadata may say VDC despite pre-applied gain),
+human-confirmed anomalies and input-change invalidation. Browser smoke must exercise preparation,
+both charts and download at wide and narrow widths. Final goal completion requires ready_for_close.
+
+## Completed verification (2026-10-04)
+
+- Python 3.11 ConnLab runtime: 62 affected backend tests passed, including the existing Tools and
+  Office-boundary tests. One existing Starlette/httpx deprecation warning remains.
+- Frontend full suite: 820 passed, one existing skip. After the final chart-label-only adjustment,
+  the six affected temperature UI/transport tests passed again, and TypeScript/Vite build passed.
+- Browser: imported the supplied 300-row scanner sheet; automatically suggested C:V, ambient W,
+  current X, scale 1 and four thermocouples per sample. Explicit confirmation, both charts, editable
+  coefficients, 66.54 A current, 68.39/54.71 A Derating and download feedback passed.
+- A disposable workbook with a failed D channel and spare Y channel verified replacement at Sample
+  1 / TC 2. Zero-current rows 100 and 331 were flagged, manually excluded, and the remaining 298 rows
+  analyzed. Restoring rows invalidated prior results and required confirmation again.
+- Desktop 1330×1182 and narrow 738×804 / 543×804 checked. No page-level horizontal overflow or browser
+  error/warning logs in the final isolated smoke tab. See `design-qa.md` for visual comparisons.
+- The final generated `.xlsx` was opened read-only in a separate hidden desktop Excel instance,
+  both native charts rendered, trendline coefficients/R² checked, and formula values at 75°C matched
+  the baseline. The supplied `.xlsm` SHA-256 remained unchanged; no VBA ran.
+- Review was a sequential same-agent standards pass and specification pass, not independent-agent
+  review. Resolved findings: filesystem ownership moved to the infrastructure port; Chinese scanner
+  metadata excluded from channel guesses; JSON download header corrected; invalid duplicate OOXML
+  line fills removed; R² aligned with native Excel; very small current scale rejected clearly;
+  chart annotation spacing corrected. No remaining blocking finding.
+
+### Standards review
+
+Reviewed the working-tree diff against the repository dependency direction, explicit resource
+ownership, small-scope changes and existing Tools contracts. Domain remains independent; temporary
+files and workbook handles are infrastructure-owned; no new framework, persistence or COM runtime
+dependency was introduced. The workbook port has a present testing/IO boundary, not speculative scope.
+Outstanding findings: 0.
+
+### Specification review
+
+Checked the accepted third layout and subsequent mapping/exclusion requirements against the live
+workflow and tests. Original files, macro safety, manual confirmation, current-stage baseline,
+six-decimal coefficients, both real curves and independent export are covered. No old save-before-clear
+dialog, arbitrary report writes or general-purpose spreadsheet editor was added. Operator save-location
+and session-persistence limitations are explicit below. Outstanding blocking findings: 0.
+
+Review summary: Standards 0 outstanding; Specification 0 outstanding blocking findings.
+
+## Operator acceptance and limitations
+
+1. Tools → Generate Temperature-Rise Curves → select scanner workbook.
+2. Check sheet, original header/data row numbers, ambient/current roles and current multiplier.
+   Expand Sample & Channel Mapping; assign each sample's thermocouples, including spare replacements.
+3. In Data Preview select original row numbers or ranges, exclude/restore rows as needed, and Confirm
+   Data. Warnings are never silently deleted; keeping flagged rows needs explicit acknowledgment.
+4. Generate T-riseChart → Get Coefficients → Calculate Current / Generate Derating → Download Excel.
+
+Selections are an in-memory editing session, not a saved project. Refreshing or leaving the page
+requires reimport; download the result before leaving. This is not a general cell editor: correct
+individual source values in Excel, then reimport. All samples currently use the same confirmed
+thermocouple count. Formula inputs are read from Excel's saved cached values; uncached formulas must
+be recalculated and saved in Excel first. Files are bounded to 25 MB, expanded XML 100 MB, 20,000 rows,
+256 columns and 1,000,000 cells. Current-stage stability is not proof of thermal equilibrium.
+
+The browser smoke verified the download action, HTTP success and filename feedback; the in-app
+automation did not expose a completed OS download event. Browser save location therefore remains
+user/browser-controlled. The bytes from the same export service were separately validated in desktop
+Excel. Native Excel charts are editable; the standalone workbook is a result snapshot, not a new
+macro-driven editor or automatic report write-back.

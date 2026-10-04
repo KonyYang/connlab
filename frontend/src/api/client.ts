@@ -3235,7 +3235,7 @@ export type BlobDownloadResponse = {
   fileName: string | null;
 };
 
-async function requestBlobResponse(
+export async function requestBlobResponse(
   path: string,
   init?: RequestInit
 ): Promise<BlobDownloadResponse> {

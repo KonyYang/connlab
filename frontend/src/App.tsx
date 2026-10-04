@@ -56,6 +56,9 @@ const SettingsPage = lazy(() =>
 const ToolsPage = lazy(() =>
   import("./pages/ToolsPage").then((module) => ({ default: module.ToolsPage }))
 );
+const TemperatureRisePage = lazy(() =>
+  import("./pages/TemperatureRisePage").then((module) => ({ default: module.TemperatureRisePage }))
+);
 
 type Route =
   | { name: "projects" }
@@ -73,6 +76,7 @@ type Route =
   | { name: "projectReportWorkspace"; projectId: string }
   | { name: "settings" }
   | { name: "tools" }
+  | { name: "temperatureRise" }
   | { name: "notFound" };
 
 function parseRoute(pathname: string): Route {
@@ -90,6 +94,9 @@ function parseRoute(pathname: string): Route {
 
   if (pathname === "/tools") {
     return { name: "tools" };
+  }
+  if (pathname === "/tools/temperature-rise") {
+    return { name: "temperatureRise" };
   }
 
   const intakePackageMatch = pathname.match(/^\/intake\/([^/]+)$/);
@@ -211,7 +218,7 @@ export default function App(): ReactElement {
   }
 
   const activeRoute =
-    route.name === "projectDetail"
+    route.name === "temperatureRise" ? "tools" : route.name === "projectDetail"
       ? "workbench"
       : route.name === "projectMatrixEditor"
         ? "workbench"
@@ -353,7 +360,8 @@ export default function App(): ReactElement {
         />
       )}
       {route.name === "settings" && <SettingsPage />}
-      {route.name === "tools" && <ToolsPage />}
+      {route.name === "tools" && <ToolsPage onOpenTemperatureRise={() => navigate('/tools/temperature-rise')} />}
+      {route.name === "temperatureRise" && <TemperatureRisePage onBack={() => navigate('/tools')} />}
       {route.name === "notFound" && (
         <section className="panel">
           <h2>Page not found</h2>
