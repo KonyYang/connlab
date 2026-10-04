@@ -15,7 +15,6 @@ from openpyxl.chart import ScatterChart, Series, Reference
 from openpyxl.chart.data_source import NumData, NumVal, NumFmt
 from openpyxl.chart.label import DataLabelList
 from openpyxl.chart.shapes import GraphicalProperties
-from openpyxl.chart.trendline import Trendline, TrendlineLabel
 from openpyxl.chart.layout import Layout, ManualLayout
 from openpyxl.chart.axis import ChartLines
 from openpyxl.chart.legend import LegendEntry
@@ -26,7 +25,8 @@ import xlrd
 
 from backend.application.temperature_data_preparation import PreparedData
 from backend.domain.temperature_data import DataSelection, WorkbookTable, column_letter
-from backend.domain.temperature_rise import Coefficients, TemperatureRiseAnalysis, DeratingAnalysis, calculate_current
+from backend.domain.temperature_rise import Coefficients, TemperatureRiseAnalysis, DeratingAnalysis
+from backend.infrastructure.office.temperature_rise_report_sheet import build_rise_report
 
 MAX_ROWS = 20000
 MAX_COLUMNS = 256
@@ -108,11 +108,13 @@ class TemperatureWorkbookGateway:
         initial.title = 'Initial Data'
         rise = book.create_sheet('T-riseChart')
         derated = book.create_sheet('Derating')
-        caches: dict[str, dict[str, float]] = {name: {} for name in book.sheetnames}
+        caches: dict[str, dict[str, float | str]] = {name: {} for name in book.sheetnames}
         _initial_sheet(initial, table, selection, prepared)
-        _rise_sheet(rise, analysis, maximum_coefficients, average_coefficients, target_rise, caches[rise.title])
+        build_rise_report(rise, table=table, selection=selection, analysis=analysis,
+            maximum=maximum_coefficients, average=average_coefficients, target=target_rise,
+            caches=caches[rise.title], chart=_chart('Temperature Rise vs Applied Current', 'Applied Current (A)', 'T-rise (°C)'))
         _derating_sheet(derated, derating, caches[derated.title])
-        for sheet in book:
+        for sheet in (initial, derated):
             _style_sheet(sheet)
         book.calculation = CalcProperties(calcId=191029, fullCalcOnLoad=True)
         memory = BytesIO()
@@ -184,59 +186,6 @@ def _initial_sheet(sheet, table, selection, prepared):
     sheet.auto_filter.ref = f'A5:{get_column_letter(len(headers))}{sheet.max_row}'
     sheet.freeze_panes = 'B6'
     sheet.row_dimensions[5].height = 48
-
-
-def _rise_sheet(sheet, analysis, maximum, average, target, caches):
-    _text(sheet, 'A1', 'Temperature Rise vs Current')
-    _text(sheet, 'A2', 'Last reading of each stable current stage (adjacent change ≤ 1%); rise relative to same-row ambient.')
-    _text(sheet, 'A3', 'AVG is the mean of sample maxima. Original Row 0 denotes the inserted origin.')
-    samples = len(analysis.points[0].sample_maxima)
-    headers = ['Original Row', 'Current (A)', 'Max ΔT (°C)', 'Avg Of Max ΔT (°C)']
-    headers += [f'Sample {i + 1} Max (°C)' for i in range(samples)]
-    headers += [f'TC {i + 1} ΔT (°C)' for i in range(len(analysis.points[0].rises))]
-    for i, header in enumerate(headers, 1):
-        _text(sheet, f'{get_column_letter(i)}5', header)
-    for point in analysis.points:
-        sheet.append([point.source_row or 0, point.current, point.maximum, point.average, *point.sample_maxima, *point.rises])
-    end = 5 + len(analysis.points)
-    coefficient_row = end + 3
-    sheet.cell(coefficient_row, 1, 'Effective Coefficients')
-    for i, value in enumerate(('Curve', 'a', 'b', 'c', 'Fitted R²'), 1):
-        sheet.cell(coefficient_row + 1, i, value)
-    for offset, (name, coefficients, fit) in enumerate((('MAX', maximum, analysis.maximum_fit), ('AVG', average, analysis.average_fit)), 2):
-        sheet.cell(coefficient_row + offset, 1, name)
-        for i, value in enumerate((coefficients.a, coefficients.b, coefficients.c, fit.r_squared), 2):
-            sheet.cell(coefficient_row + offset, i, value).number_format = '0.000000'
-    _text(sheet, f'A{coefficient_row + 4}', 'Chart trendlines use the plotted readings; current and Derating use the effective coefficients above.')
-    if target is not None:
-        maximum_row = coefficient_row + 2
-        result_row = coefficient_row + 6
-        sheet.cell(result_row, 1, 'Target Rise (°C)')
-        sheet.cell(result_row, 2, target)
-        sheet.cell(result_row + 1, 1, 'Current (A)')
-        coordinate = f'B{result_row + 1}'
-        sheet[coordinate] = f'=(-C{maximum_row}+SQRT(C{maximum_row}^2-4*B{maximum_row}*(D{maximum_row}-B{result_row})))/(2*B{maximum_row})'
-        caches[coordinate] = calculate_current(maximum, target)
-    chart = _chart('Temperature Rise vs Current', 'Current (A)', 'Temperature Rise (°C)')
-    for index, (column, title, color, symbol) in enumerate(((3, 'Max ΔT', 'E87922', 'diamond'), (4, 'Avg Of Max ΔT', '1F66D1', 'circle'))):
-        series = _series(sheet, 2, column, 6, end, title, color)
-        # OOXML line fills are a choice; openpyxl does not clear the old solid fill.
-        series.graphicalProperties.line.solidFill = None
-        series.graphicalProperties.line.noFill = True
-        series.marker.symbol = symbol
-        series.marker.size = 6
-        series.marker.graphicalProperties.solidFill = color
-        series.marker.graphicalProperties.line.solidFill = color
-        series.trendline = Trendline(trendlineType='poly', order=2, name=f'{title} Fit',
-            intercept=0 if analysis.zero_intercept else None, dispEq=True, dispRSqr=True,
-            trendlineLbl=TrendlineLabel(numFmt=NumFmt(formatCode='0.000000', sourceLinked=False),
-                layout=Layout(manualLayout=ManualLayout(x=.2, y=.16 + .1 * index, xMode='edge', yMode='edge'))))
-        series.trendline.spPr = GraphicalProperties()
-        series.trendline.spPr.line.solidFill = color
-        chart.series.append(series)
-    chart.legend.position = 'b'
-    sheet.add_chart(chart, f'A{coefficient_row + 10}')
-    sheet.freeze_panes = 'C6'
 
 
 def _derating_sheet(sheet, result, caches):
@@ -370,7 +319,11 @@ def _formula_caches(content, caches):
                             node = cell.find(f'{{{namespace}}}v')
                             if node is None:
                                 node = ET.SubElement(cell, f'{{{namespace}}}v')
-                            node.text = repr(value)
+                            if isinstance(value, str):
+                                cell.set('t', 'str')
+                                node.text = value
+                            else:
+                                node.text = repr(value)
                     data = ET.tostring(root, encoding='utf-8')
             target.writestr(entry, data)
     return output.getvalue()

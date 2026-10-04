@@ -131,3 +131,52 @@ automation did not expose a completed OS download event. Browser save location t
 user/browser-controlled. The bytes from the same export service were separately validated in desktop
 Excel. Native Excel charts are editable; the standalone workbook is a result snapshot, not a new
 macro-driven editor or automatic report write-back.
+
+## Report-ready Excel revision (2026-10-04)
+
+The export now follows the supplied `DL-2026-07-115 T-Rise Summary and CR.xlsx` T-riseChart
+layout and the pasted statistical table/chart on pages 10–11 of
+`DL-2024-12-050 EK200 Connector Qualification Testing Report_Rev_A.docx`.
+Both references are read-only design evidence, not calculation authority or report write targets.
+
+- T-riseChart starts with the original endpoint readings, preserving all source columns and original
+  row numbers. There is no fabricated raw reading for the inserted origin. The next block computes
+  channel rise with formulas using the confirmed channel order, selected ambient and current scale.
+- The report table transposes applied current into columns and sample/thermocouple into rows.
+  Sample maxima have blue shading; overall Max and Avg of Max have orange shading. Numeric display
+  is one decimal, without rounding the underlying measurements/statistics. Borders, compact Arial
+  text and wrapped labels support copying the table into Word.
+- The adjacent native XY chart uses orange diamonds for Max and deep-blue squares for Avg of Max.
+  Its bold, color-matched equation labels include the curve name and R². Labels are linked to
+  worksheet LINEST/RSQ-equivalent formulas, not static text copied from the reference. Editing the
+  endpoint cells recalculates statistics, fits and labels in desktop Excel. The original stage
+  selection is fixed: editing a cell does not rerun ConnLab's stage detection or row confirmation.
+- The visible y/a/b/c/x calculator remains editable. Default coefficients follow the fit rounded
+  to six decimals; explicit MAX/AVG overrides supplied by the operator remain literal values.
+  Changing y recomputes current. Manually overriding calculator coefficients does not change the
+  chart fit. Derating retains its separate editable coefficient/temperature inputs and baseline.
+- Excel's Name Box can select `KeyStageReadings`, `StageTemperatureRise`, `TemperatureRiseSummary`,
+  `CurrentCalculator` and `AverageCoefficients`. Copy `TemperatureRiseSummary` and the chart
+  separately into the report. The synthetic zero-current column is identified by a cell comment.
+  Report pagination depends on sample/stage counts; a five-sample table may occupy a separate page.
+
+Implementation stays in the workbook infrastructure: the gateway owns file lifecycle and caches,
+and `temperature_rise_report_sheet.py` owns report sheet layout. No UI, API, domain calculation,
+Office runtime dependency, automatic Word assembly or source-file mutation was introduced.
+
+Revision acceptance includes export regression tests, existing temperature/Tools boundary coverage,
+native Excel recalculation, actual Excel-to-Word table and chart paste, rendered visual inspection,
+and SHA-256 preservation of all supplied source/reference files. Validated formula inputs have no
+Excel errors. An operator entering invalid coefficients/negative discriminants directly in Excel
+can still produce Excel formula errors; the export is not a replacement for input confirmation.
+
+Revision verification: 56 affected backend tests passed (one existing Starlette/httpx deprecation
+warning). Independent hidden desktop Excel instances opened the final export and three disposable
+edge workbooks: unconstrained intercept, all-zero rise, and explicit coefficient overrides. All
+formula cells were error-free; coefficients and R² matched the domain baseline. The exported table
+and chart were actually pasted into a disposable Word document and its rendered pages inspected.
+Baseline current remained 66.5444574215 A; changing y to 40°C gave 78.7522250715 A; editing an endpoint
+updated the linked chart equation. Derating at 75°C remained 68.3888159321/54.7110527456 A.
+All three source/reference SHA-256 digests were unchanged. Sequential same-agent standards and
+specification review found no outstanding blocking issue. Frontend was untouched, so its earlier
+validated tests/build remain applicable; they were not rerun for this export-only revision.
