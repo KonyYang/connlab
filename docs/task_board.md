@@ -11,145 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_TEMPERATURE_RISE_DERATING_20261004",
-    "summary": "Temperature rise and Derating tool with confirmed data preparation and native Excel charts",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Implement the approved third layout, channel mapping/replacement/reordering, reversible row/column exclusions, human-confirmed anomaly review, macro-equivalent calculations, charts and independent Excel download. Verify original preservation, existing Tools, tests and browser flow; deliver ready_for_close.",
-    "scope_paths": [
-      "backend/domain",
-      "backend/application",
-      "backend/infrastructure/office",
-      "backend/api",
-      "frontend/src",
-      "tests",
-      "docs/PROJECT_CONTEXT.md",
-      "docs/temperature_rise_tool.md",
-      "design-qa.md"
-    ],
-    "risk_reasons": [],
-    "activation_head": "6a12e5dc00ab14180b07fcffb32301d8ec10d8f1",
-    "started_at": "2026-10-04T01:53:59.879053Z",
-    "updated_at": "2026-10-04T05:01:02.789102Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_RISE_DERATING_20261004",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_RISE_DERATING_20261004",
-      "subject": "0bcfe3009fe00a22ef8c9cf773777a644d2cf657",
-      "summary": "Implemented temperature-rise/Derating tool and revised Excel export against supplied T-riseChart and Group 6 report references: traceable endpoint rows, formula-driven report tables, editable current calculator and linked bold colored equations; ready for acceptance.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/api/dependencies.py",
-        "backend/api/main.py",
-        "backend/api/routes_tools_temperature.py",
-        "backend/api/temperature_schemas.py",
-        "backend/application/temperature_data_preparation.py",
-        "backend/application/tools_temperature_service.py",
-        "backend/domain/temperature_data.py",
-        "backend/domain/temperature_rise.py",
-        "backend/infrastructure/office/temperature_rise_report_sheet.py",
-        "backend/infrastructure/office/temperature_workbook_gateway.py",
-        "design-qa.md",
-        "docs/PROJECT_CONTEXT.md",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/App.tsx",
-        "frontend/src/api/client.ts",
-        "frontend/src/api/temperature.test.ts",
-        "frontend/src/api/temperature.ts",
-        "frontend/src/features/temperature/ChannelMapping.tsx",
-        "frontend/src/features/temperature/DataPreview.tsx",
-        "frontend/src/features/temperature/TemperatureCharts.tsx",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx",
-        "frontend/src/pages/ToolsPage.tsx",
-        "tests/fixtures/temperature_rise/scanner.json",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_data_preparation.py",
-        "tests/unit/test_temperature_rise_calculations.py",
-        "tests/unit/test_temperature_workbook_gateway.py"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "check": "Final report-ready export revision: 56 affected backend tests; endpoint/mapping/current-scale/formula-cache/operator-override/native-chart contracts and existing Tools/Office boundary checks passed"
-        },
-        {
-          "status": "passed",
-          "check": "Final workbook opened read-only in desktop Excel; no formula errors, native charts rendered; modifying y recalculated current and modifying an endpoint updated linked fit/equation/R²; all source SHA-256 digests unchanged"
-        },
-        {
-          "status": "passed",
-          "check": "Native Excel edge workbooks: unconstrained intercept, all-zero rise, and explicit coefficient overrides recalculated without errors and matched domain values; actual table/chart pasted into temporary Word and rendered pages inspected"
-        },
-        {
-          "status": "passed",
-          "check": "Export-only revision standards/specification review completed sequentially by the same agent; no blocking findings; frontend unchanged and not redundantly retested"
-        },
-        {
-          "status": "passed",
-          "check": "62 affected backend tests on ConnLab Python 3.11; existing Tools and Office-boundary coverage included"
-        },
-        {
-          "status": "passed",
-          "check": "Full frontend 820 passed / one existing skip; final chart-label adjustment followed by six affected tests and TypeScript/Vite build"
-        },
-        {
-          "status": "passed",
-          "check": "Live browser import, spare-channel replacement, reversible exclusions, confirmation/invalidation, both curves, current and download feedback; wide/narrow screenshots; no console errors"
-        },
-        {
-          "status": "passed",
-          "check": "Final export read-only opened in desktop Excel; both native charts rendered, formula and trendline baseline matched; original source SHA unchanged"
-        },
-        {
-          "status": "passed",
-          "check": "Sequential standards/spec review and iterative source-versus-render design QA; git diff check clean"
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "mode": "same-agent implementation with RED/GREEN behavioral slices"
-        },
-        "reviewer": {
-          "status": "passed",
-          "mode": "same-agent sequential standards and specification passes; not independent-agent review",
-          "evidence": "docs/temperature_rise_tool.md and design-qa.md"
-        },
-        "qa": {
-          "status": "passed",
-          "mode": "same-agent final affected matrix, browser and desktop Excel verification",
-          "limitation": "In-app automation does not expose completed OS download event; HTTP/filename and exported workbook independently verified"
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "branch": "master",
-        "publication": "Local only; user acceptance/Close still required"
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_TEMPERATURE_RISE_TOOL_20261003",
+    "task_id": "TASK_TEMPERATURE_RISE_DERATING_20261004",
     "tier": "standard",
-    "subject": "94d346807ace21cb0b0b51ab6062664c3e5dcd5b",
-    "summary": "Standalone temperature rise and derating import preview and workbook tool",
-    "disposition": "cancelled",
-    "decision_ref": "User cancelled and requested complete withdrawal because the core temperature-rise curve output did not meet the original workbook. Feature withdrawn in 94d346807ace21cb0b0b51ab6062664c3e5dcd5b; 31 Python regressions, 814 frontend tests, backend compilation and TypeScript/Vite build passed. Preserve data and Git history; do not publish.",
-    "closed_at": "2026-10-03T23:36:11.959485Z"
+    "subject": "0bcfe3009fe00a22ef8c9cf773777a644d2cf657",
+    "summary": "Temperature rise and Derating tool with confirmed data preparation and native Excel charts",
+    "disposition": "completed",
+    "decision_ref": "User accepted the completed temperature-rise and report-ready Excel work and explicitly requested task closure on 2026-10-04.",
+    "closed_at": "2026-10-04T06:55:34.579747Z"
   },
   "retained_history": [
     {
