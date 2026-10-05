@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_RISE_CHART_LABELS_20261005",
     "summary": "Align T-riseChart panes and linked full curve labels with reference",
@@ -26,17 +26,54 @@
     "risk_reasons": [],
     "activation_head": "be2c5e699449a85eb99c3752c22afe80320b3809",
     "started_at": "2026-10-05T08:45:40.816466Z",
-    "updated_at": "2026-10-05T09:19:25.574682Z",
+    "updated_at": "2026-10-05T09:28:36.971732Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_RISE_CHART_LABELS_20261005",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requests both endpoint tables to use Scan and Time in columns A and B; update data and dependent references, retaining previous chart refinements.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_RISE_CHART_LABELS_20261005",
+      "subject": "df55b04ea4484e3fb4fdef08a85b6325ef308a88",
+      "summary": "T-riseChart has no frozen panes, linked full upper-left chart labels and aligned Scan/Time in both endpoint tables. Source-to-export mapping preserves temperatures, current scale, fit/calculator and Derating.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/infrastructure/office/temperature_rise_report_sheet.py",
+        "docs/temperature_rise_tool.md",
+        "tests/unit/test_temperature_workbook_gateway.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "check": "RED: old abbreviated names/frozen panes and five old identifier-layout failures reproduced before each fix; Boolean metadata cache failure reproduced then repaired. GREEN: final affected matrix 61 passed, one existing deprecation warning"
+        },
+        {
+          "status": "passed",
+          "check": "Final implementation opened read-only in isolated desktop Excel: no formula errors/frozen panes; scan/time identical in both blocks with actual counter 50 (not source row 81); complete timestamps rendered. C2 edit recalculated rise and fit, A51 rename updated series/equation. Calculator 66.5444574215 A and Derating 68.3888159321/54.7110527456 A preserved"
+        },
+        {
+          "status": "passed",
+          "check": "Source macro and new Desktop reference SHA-256 unchanged; exact diff self-reviewed on standards/specification axes with zero findings; git diff check passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "mode": "same-agent micro implementation, self-review and targeted verification; no independent-agent claims"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "branch": "master",
+        "publication": "Local commit only; final User Close remains required"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_RISE_DERATING_20261004",
