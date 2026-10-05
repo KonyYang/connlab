@@ -356,3 +356,8 @@ The subsequent 2026-10-06 feedback removes the duplicate content heading and its
 styles. In AppShell the Initial Data panel is now the first content block; the top-bar title and
 return icon remain. Standalone rendering still retains its return control. Exact-diff self-review
 found no outstanding issues; 15 affected page/TopBar tests and `tsc -b frontend` passed on this state.
+
+The next localized feedback also removes the `Initial Data` heading alone. Excel File selection,
+mapping and data confirmation are unchanged. The exact diff has no outstanding review findings;
+all 10 temperature-page tests passed, including absence of that heading and retention of Excel File.
+No additional backend/build/typecheck/browser run was needed for this single literal removal.

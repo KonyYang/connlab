@@ -49,6 +49,8 @@ describe('temperature preparation and calculation workflow', () => {
     const banner = screen.getByRole('banner');
     expect(within(banner).getByRole('heading', { name: 'Temperature Rise' })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Temperature Rise & Derating' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Initial Data' })).toBeNull();
+    expect(screen.getByLabelText('Excel File')).toBeTruthy();
     const back = within(banner).getByRole('button', { name: 'Back To Tools' });
     expect(back.textContent).toBe('');
     expect(back.getAttribute('title')).toBe('Back To Tools');

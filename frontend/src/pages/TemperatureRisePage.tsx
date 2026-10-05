@@ -22,7 +22,6 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
     {topBarRoot && createPortal(backButton, topBarRoot)}
     {!topBarRoot && backButton}
     <section className="temperature-panel temperature-initial">
-      <h3>Initial Data</h3>
       <div className="temperature-import-fields">
         <label className="temperature-file">Excel File<input type="file" accept=".xls,.xlsx,.xlsm" onChange={event => tool.load(event.target.files?.[0] ?? null)} /></label>
         {s.table && <>
