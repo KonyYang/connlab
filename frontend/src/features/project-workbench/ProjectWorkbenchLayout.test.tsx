@@ -45,7 +45,7 @@ vi.mock("./FeeEvaluationStatusSummary", () => ({
 
 vi.mock("./TestReportDraftButton", () => ({
   TestReportDraftButton: ({ onOpen }: { onOpen: () => void }) => (
-    <button onClick={onOpen} type="button">Test Report</button>
+    <button onClick={onOpen} type="button">Report</button>
   ),
 }));
 
@@ -138,7 +138,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     const actionBar = screen.getByLabelText("Project Workbench actions");
     expect(actionBar.textContent).toMatch(
-      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Test Report/
+      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Report/
     );
     expect(screen.getByRole("button", { name: "Matrix Editor" })).toHaveProperty(
       "disabled",
@@ -439,7 +439,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
 
     const actionBar = screen.getByLabelText("Project Workbench actions");
     expect(actionBar.textContent).toMatch(
-      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Test Report/
+      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Report/
     );
     expect(screen.getByRole("button", { name: "Matrix Editor" })).toHaveProperty(
       "disabled",
@@ -487,12 +487,12 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(screen.getByRole("button", { name: "Matrix Editor" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Fee Evaluation" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Basic Information" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Test Report" })).toHaveProperty(
+    expect(screen.getByRole("button", { name: "Report" })).toHaveProperty(
       "disabled",
       false
     );
     expect(actionBar.textContent).toMatch(
-      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Test Report/
+      /Matrix Editor\s*Fee Evaluation\s*Basic Information\s*Report/
     );
     await user.click(screen.getByRole("button", { name: "Basic Information" }));
     expect(onOpenBasicInformation).toHaveBeenCalledTimes(1);
@@ -567,7 +567,7 @@ describe("ProjectWorkbenchLayout lifecycle modes", () => {
     expect(projectState.querySelector(".runtime-console-state-context")).toBeNull();
     const actionBar = screen.getByLabelText("Project Workbench actions");
     expect(actionBar.textContent).toMatch(
-      /Fee Evaluation\s*Basic Information\s*Test Report/
+      /Fee Evaluation\s*Basic Information\s*Report/
     );
     expect(actionBar.textContent).not.toContain("Matrix Editor");
     expect(screen.getByRole("button", { name: "Fee Evaluation" })).toHaveProperty(

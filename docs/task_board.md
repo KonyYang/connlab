@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_TOOLS_RETURN_ICON_20261005",
     "summary": "Replace temperature tool text return with Tools title-bar icon",
@@ -26,58 +26,17 @@
     "risk_reasons": [],
     "activation_head": "81263f74335a1b4694102bbd7e2afc3ff9384326",
     "started_at": "2026-10-05T13:05:12.555802Z",
-    "updated_at": "2026-10-05T13:08:46.049635Z",
+    "updated_at": "2026-10-05T13:43:06.455930Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_TOOLS_RETURN_ICON_20261005",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User follow-up acceptance refinement: simplify the Workspace navigation button label from Test Report to Report while preserving navigation.",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_TOOLS_RETURN_ICON_20261005",
-      "subject": "77d038e997ef1e0223876e39e53062f886a566ab",
-      "summary": "Back To Tools is a Tools icon in the existing top action portal beside the Tools title, with tooltip and accessible name. Body text action removed; return navigation and calculations unchanged.",
-      "scope_ok": true,
-      "changed_paths": [
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "check": "RED: header return icon absent before change. GREEN: 12 affected frontend tests passed, covering keyboard activation, no duplicate/orphan action, top-bar compatibility and temperature workflow/API."
-        },
-        {
-          "status": "passed",
-          "check": "Final TypeScript tsc -b and Vite production build passed sequentially after tests."
-        },
-        {
-          "status": "passed",
-          "check": "In-app browser at 680x804: 40x40 icon 8px right of Tools, tooltip/accessible name present, no body return action. Mouse and Enter returned to /tools; no orphan icon after navigation. Restored /tools/temperature-rise and saved screenshot."
-        },
-        {
-          "status": "passed",
-          "check": "Sequential same-agent Standards and Specification exact-diff review: zero outstanding findings. git diff --check passed. Backend/domain calculations untouched."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "mode": "same-agent micro implementation, two-axis self-review and targeted verification; no independent-agent claims"
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "branch": "master",
-        "publication": "Local only; final User Close remains required"
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_RISE_CHART_LABELS_20261005",

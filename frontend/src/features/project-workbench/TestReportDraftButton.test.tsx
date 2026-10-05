@@ -7,9 +7,9 @@ describe("TestReportDraftButton", () => {
     const onOpen = vi.fn();
     render(<TestReportDraftButton onOpen={onOpen} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Test Report" }));
+    fireEvent.click(screen.getByRole("button", { name: "Report" }));
 
     expect(onOpen).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "Test Report" }).hasAttribute("disabled")).toBe(false);
+    expect(screen.getByRole("button", { name: "Report" }).hasAttribute("disabled")).toBe(false);
   });
 });

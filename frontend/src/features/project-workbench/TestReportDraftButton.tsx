@@ -14,7 +14,7 @@ export function TestReportDraftButton({
         title="Open Report Workspace"
         type="button"
       >
-        Test Report
+        Report
       </button>
     </div>
   );
