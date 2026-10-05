@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_TEMPERATURE_TOOLS_RETURN_ICON_20261005",
+    "summary": "Replace temperature tool text return with Tools title-bar icon",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Move Back To Tools into the existing top action slot immediately to the right of Tools; reuse the Tools icon with accessible label and tooltip; retain return navigation and all calculation behavior.",
+    "scope_paths": [
+      "frontend/src/pages/TemperatureRisePage.tsx",
+      "frontend/src/pages/TemperatureRisePage.test.tsx",
+      "frontend/src/features/temperature/temperature.css"
+    ],
+    "risk_reasons": [],
+    "activation_head": "81263f74335a1b4694102bbd7e2afc3ff9384326",
+    "started_at": "2026-10-05T13:05:12.555802Z",
+    "updated_at": "2026-10-05T13:05:12.555802Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_RISE_CHART_LABELS_20261005",
     "tier": "micro",

@@ -1,5 +1,8 @@
 import type { ReactElement } from 'react';
+import { createPortal } from 'react-dom';
 import type { Coefficients } from '../api/temperature';
+import { UiIcon } from '../components/common/UiIcon';
+import { useTopBarActionsRoot } from '../components/layout/TopBarActionsContext';
 import { ChannelMapping, sourceColumns } from '../features/temperature/ChannelMapping';
 import { DataPreview } from '../features/temperature/DataPreview';
 import { RiseChart, DeratingChart } from '../features/temperature/TemperatureCharts';
@@ -7,12 +10,16 @@ import { useTemperatureTool } from '../features/temperature/useTemperatureTool';
 import '../features/temperature/temperature.css';
 
 export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactElement {
+  const topBarRoot = useTopBarActionsRoot();
   const tool = useTemperatureTool();
   const s = tool.state;
   const busy = Boolean(s.busy);
   const columns = s.table && s.selection ? sourceColumns(s.table, s.selection.header_row) : [];
+  const backButton = <button type="button" className="temperature-tools-return" onClick={onBack}
+    aria-label="Back To Tools" title="Back To Tools"><UiIcon name="tools" /></button>;
   return <section className="temperature-page" aria-label="Temperature Rise & Derating">
-    <div className="temperature-page-heading"><h2>Temperature Rise &amp; Derating</h2><button type="button" onClick={onBack}>Back To Tools</button></div>
+    {topBarRoot && createPortal(backButton, topBarRoot)}
+    <div className="temperature-page-heading"><h2>Temperature Rise &amp; Derating</h2>{!topBarRoot && backButton}</div>
     <section className="temperature-panel temperature-initial">
       <h3>Initial Data</h3>
       <div className="temperature-import-fields">

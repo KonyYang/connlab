@@ -1,8 +1,9 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '../api/temperature';
 import { TemperatureRisePage } from './TemperatureRisePage';
+import { AppShell } from '../components/layout/AppShell';
 
 vi.mock('../api/temperature', () => ({
   importTemperatureWorkbook: vi.fn(), prepareTemperatureData: vi.fn(), analyzeTemperatureData: vi.fn(),
@@ -38,6 +39,23 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(api.prepareTemperatureData).mockResolvedValue({ ready: true, issues: [], measurements: [] });
     vi.mocked(api.analyzeTemperatureData).mockResolvedValue(analysis);
     vi.mocked(api.calculateTemperatureCurrent).mockResolvedValue({ current: 30 });
+  });
+
+  it('returns through an accessible icon in the Tools header, without a duplicate content button', async () => {
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+    const view = render(<AppShell activeRoute="tools"><TemperatureRisePage onBack={onBack} /></AppShell>);
+    const banner = screen.getByRole('banner');
+    expect(within(banner).getByRole('heading', { name: 'Tools' })).toBeTruthy();
+    const back = within(banner).getByRole('button', { name: 'Back To Tools' });
+    expect(back.textContent).toBe('');
+    expect(back.getAttribute('title')).toBe('Back To Tools');
+    expect(within(screen.getByRole('main')).queryByRole('button', { name: 'Back To Tools' })).toBeNull();
+    back.focus();
+    await user.keyboard('{Enter}');
+    expect(onBack).toHaveBeenCalledOnce();
+    view.unmount();
+    expect(screen.queryByRole('button', { name: 'Back To Tools' })).toBeNull();
   });
 
   it('requires confirmation, supports replacement and row restoration, and invalidates downstream results', async () => {
