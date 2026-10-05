@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_RISE_CHART_LABELS_20261005",
     "summary": "Align T-riseChart panes and linked full curve labels with reference",
@@ -26,17 +26,59 @@
     "risk_reasons": [],
     "activation_head": "be2c5e699449a85eb99c3752c22afe80320b3809",
     "started_at": "2026-10-05T08:45:40.816466Z",
-    "updated_at": "2026-10-05T09:43:35.255373Z",
+    "updated_at": "2026-10-05T09:50:01.755164Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_RISE_CHART_LABELS_20261005",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requests reference-style Derating chart and no frozen A column; preserve calculations and previous T-rise refinements.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_RISE_CHART_LABELS_20261005",
+      "subject": "fbd9955434208b8c1a8f992d6bbb1166c3c77afc",
+      "summary": "T-riseChart has linked full upper-left labels and aligned Scan/Time endpoint columns. Both chart sheets have no frozen panes. Derating matches the supplied chart style with bold colored point labels and a live blue guide ending at the selected Basic current. Numerical baselines and source files remain unchanged.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/infrastructure/office/temperature_rise_report_sheet.py",
+        "backend/infrastructure/office/temperature_workbook_gateway.py",
+        "docs/temperature_rise_tool.md",
+        "tests/unit/test_temperature_workbook_gateway.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "check": "RED: previous T-rise/identifier failures and two Derating frozen-pane failures reproduced before implementation. Native Excel exposed inherited three-decimal label formatting, repaired via source display formats. GREEN: final affected matrix 62 passed, one existing deprecation warning"
+        },
+        {
+          "status": "passed",
+          "check": "Final implementation opened read-only in isolated desktop Excel: no formula errors/frozen panes; scan/time identical in both blocks with actual counter 50 (not source row 81); complete timestamps rendered. C2 edit recalculated rise and fit, A51 rename updated series/equation. Calculator 66.5444574215 A and Derating 68.3888159321/54.7110527456 A preserved"
+        },
+        {
+          "status": "passed",
+          "check": "Source macro and new Desktop reference SHA-256 unchanged; exact diff self-reviewed on standards/specification axes with zero findings; git diff check passed"
+        },
+        {
+          "status": "passed",
+          "check": "Final Derating workbook rendered in isolated read-only desktop Excel: labels 68.4/54.7 at 75C, no frozen panes/formula errors, two curve legend entries. F10 edit to 80C updated labels to 61.5/49.2 and blue guide X/end-current. Existing T-rise full names and calculator 66.5444574215 A preserved. Current source T-rise&Derating.xlsm SHA-256 unchanged."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "mode": "same-agent micro implementation, self-review and targeted verification; no independent-agent claims"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "branch": "master",
+        "publication": "Local commit only; final User Close remains required"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_RISE_DERATING_20261004",
