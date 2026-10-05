@@ -1,5 +1,7 @@
 """Report-ready temperature-rise tables and editable native Excel chart labels."""
 
+import re
+
 from openpyxl.chart import Reference, Series
 from openpyxl.chart.data_source import NumData, NumVal, StrRef, StrData, StrVal
 from openpyxl.chart.series import SeriesLabel
@@ -21,9 +23,9 @@ AVG_COLOR = '00008B'
 
 def build_rise_report(sheet, *, table, selection, analysis, maximum, average, target, caches, chart):
     stages = [point for point in analysis.points if point.source_row is not None]
-    raw_rows = _key_readings(sheet, table, selection, stages)
+    raw_rows, raw_columns = _key_readings(sheet, table, selection, stages)
     rise_header = len(stages) + 6
-    rise_rows = _stage_rises(sheet, selection, stages, raw_rows, rise_header, caches)
+    rise_rows = _stage_rises(sheet, selection, stages, raw_rows, raw_columns, rise_header, caches)
     summary_header = rise_header + len(stages) + 6
     maximum_row, average_row = _summary(sheet, selection, analysis, rise_rows, summary_header, caches)
     calculator_header = average_row + 2
@@ -44,6 +46,7 @@ def build_rise_report(sheet, *, table, selection, analysis, maximum, average, ta
     for column in range(1, max(table.width + 2, chart_column + 13)):
         sheet.column_dimensions[get_column_letter(column)].width = 10
     sheet.column_dimensions['A'].width = 30
+    sheet.column_dimensions['B'].width = 24
 
 
 def _literal(sheet, row, column, value):
@@ -78,53 +81,81 @@ def _table_style(sheet, start, end, width):
     sheet.row_dimensions[start].height = 36
 
 
+def _reading_column_order(table, selection):
+    headers = table.rows[selection.header_row - 1]
+    measured = {*selection.temperature_columns, selection.ambient_column, selection.current_column}
+    identifiers = []
+    for pattern in (r'\bscan\b|扫描|序号', r'\b(?:time|timestamp|date)\b|时间|日期'):
+        matches = [column for column, label in enumerate(headers, 1)
+                   if column not in measured and re.search(pattern, str(label).casefold())]
+        identifiers.append(matches[0] if len(matches) == 1 else None)
+    if identifiers[0] == identifiers[1]:
+        identifiers = [None, None]
+    # Missing/ambiguous metadata stays blank; all original source columns remain available.
+    return (*identifiers, *(column for column in range(1, table.width + 1) if column not in identifiers))
+
+
 def _key_readings(sheet, table, selection, stages):
-    _literal(sheet, 1, 1, 'Original Row')
-    for column, label in enumerate(table.rows[selection.header_row - 1], 2):
+    order = _reading_column_order(table, selection)
+    source_columns = {source: column for column, source in enumerate(order, 1) if source is not None}
+    headers = table.rows[selection.header_row - 1]
+    for column, source in enumerate(order, 1):
+        label = ('扫描', '时间')[column - 1] if column <= 2 else (headers[source - 1] if source <= len(headers) else None)
         _literal(sheet, 1, column, label)
     locations = {}
     for row, point in enumerate(stages, 2):
         locations[point.source_row] = row
-        _literal(sheet, row, 1, point.source_row)
-        for column, value in enumerate(table.rows[point.source_row - 1], 2):
-            _literal(sheet, row, column, value)
-    _table_style(sheet, 1, len(stages) + 1, table.width + 1)
+        values = table.rows[point.source_row - 1]
+        for source, column in source_columns.items():
+            _literal(sheet, row, column, values[source - 1] if source <= len(values) else None)
+    _table_style(sheet, 1, len(stages) + 1, len(order))
     measured_columns = {*selection.temperature_columns, selection.ambient_column, selection.current_column}
-    for row in sheet.iter_rows(min_row=2, max_row=len(stages) + 1, min_col=2, max_col=table.width + 1):
-        for cell in row:
-            cell.number_format = '0.000' if cell.column - 1 in measured_columns else 'General'
-    _name(sheet, 'KeyStageReadings', 1, len(stages) + 1, table.width + 1)
+    for row in range(2, len(stages) + 2):
+        for column, source in enumerate(order, 1):
+            sheet.cell(row, column).number_format = '0.000' if source in measured_columns else 'General'
+    _name(sheet, 'KeyStageReadings', 1, len(stages) + 1, len(order))
     sheet['A1'].comment = Comment(
-        'Last retained reading of each stable current stage. Source values and source column order are preserved. '
-        'Only the analysis block applies the confirmed current scale and channel mapping. No synthetic raw origin.', 'ConnLab')
-    return locations
+        'Last retained reading of each stable current stage. Source values are preserved; scan/time are shown first. '
+        'Only the analysis block applies the confirmed current scale and channel mapping. No synthetic raw origin. '
+        'These exported data rows correspond, in order, to original worksheet rows: '
+        + ', '.join(str(point.source_row) for point in stages) + '. See Initial Data for complete original rows.', 'ConnLab')
+    return locations, source_columns
 
 
-def _stage_rises(sheet, selection, stages, raw_rows, header, caches):
+def _stage_rises(sheet, selection, stages, raw_rows, raw_columns, header, caches):
     channels = len(selection.temperature_columns)
-    ambient_column = get_column_letter(selection.ambient_column + 1)
-    _literal(sheet, header, 1, 'Original Row')
+    ambient_column = get_column_letter(raw_columns[selection.ambient_column])
+    for column, label in enumerate(('扫描', '时间'), 1):
+        _literal(sheet, header, column, label)
     for slot in range(channels):
-        _literal(sheet, header, slot + 2,
+        _literal(sheet, header, slot + 3,
                  f'{slot // selection.thermocouples_per_sample + 1}#- T{slot % selection.thermocouples_per_sample + 1} (°C)')
-    _literal(sheet, header, channels + 2, 'Ambient (°C)')
-    _literal(sheet, header, channels + 3, 'Current (A)')
+    _literal(sheet, header, channels + 3, 'Ambient (°C)')
+    _literal(sheet, header, channels + 4, 'Current (A)')
     locations = {}
     for row, point in enumerate(stages, header + 1):
         locations[point.source_row] = row
         source = raw_rows[point.source_row]
-        _literal(sheet, row, 1, point.source_row)
+        for column in (1, 2):
+            identifier = sheet.cell(source, column)
+            if isinstance(identifier.value, bool):
+                _literal(sheet, row, column, identifier.value)
+            elif identifier.value is not None:
+                _formula(sheet, row, column, f'={identifier.coordinate}', identifier.value, caches)
         for slot, column in enumerate(selection.temperature_columns):
-            _formula(sheet, row, slot + 2,
-                     f'={get_column_letter(column + 1)}{source}-${ambient_column}{source}', point.rises[slot], caches)
+            _formula(sheet, row, slot + 3,
+                     f'={get_column_letter(raw_columns[column])}{source}-${ambient_column}{source}', point.rises[slot], caches)
         # Lookup ambient through the selected role, never through physical last-column assumptions.
         ambient = sheet[f'{ambient_column}{source}'].value
-        _formula(sheet, row, channels + 2, f'={ambient_column}{source}', ambient, caches)
-        _formula(sheet, row, channels + 3,
-                 f'={get_column_letter(selection.current_column + 1)}{source}*{selection.current_multiplier!r}',
+        _formula(sheet, row, channels + 3, f'={ambient_column}{source}', ambient, caches)
+        _formula(sheet, row, channels + 4,
+                 f'={get_column_letter(raw_columns[selection.current_column])}{source}*{selection.current_multiplier!r}',
                  point.current, caches)
-    _table_style(sheet, header, header + len(stages), channels + 3)
-    _name(sheet, 'StageTemperatureRise', header, header + len(stages), channels + 3)
+    _table_style(sheet, header, header + len(stages), channels + 4)
+    for row in range(header + 1, header + len(stages) + 1):
+        for column in (1, 2):
+            sheet.cell(row, column).number_format = 'General'
+    _name(sheet, 'StageTemperatureRise', header, header + len(stages), channels + 4)
     sheet.cell(header, 1).comment = Comment('Temperature rise = selected channel temperature − same-row ambient.', 'ConnLab')
     return locations
 
@@ -152,13 +183,13 @@ def _summary(sheet, selection, analysis, rise_rows, header, caches):
             sheet.cell(header, column).comment = Comment('Inserted origin, not a recorded scanner stage.', 'ConnLab')
         else:
             source = rise_rows[point.source_row]
-            _formula(sheet, header, column, f'={get_column_letter(channels + 3)}{source}', point.current, caches)
+            _formula(sheet, header, column, f'={get_column_letter(channels + 4)}{source}', point.current, caches)
         for slot, value in enumerate(point.rises):
             row = header + 1 + slot + slot // count
             if point.source_row is None:
                 _literal(sheet, row, column, 0)
             else:
-                _formula(sheet, row, column, f'={get_column_letter(slot + 2)}{source}', value, caches)
+                _formula(sheet, row, column, f'={get_column_letter(slot + 3)}{source}', value, caches)
         for sample, row in enumerate(max_rows):
             _formula(sheet, row, column, f'=MAX({letter}{row-count}:{letter}{row-1})', point.sample_maxima[sample], caches)
         references = ','.join(f'{letter}{row}' for row in max_rows)

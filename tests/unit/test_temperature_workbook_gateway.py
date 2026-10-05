@@ -125,14 +125,59 @@ def test_report_export_has_traceable_key_readings_and_copyable_formula_summary(t
     raw_range = next(book.defined_names['KeyStageReadings'].destinations)[1]
     raw = sheet[raw_range.replace('$', '')]
     assert len(raw) == 7  # six genuine endpoints, no fabricated raw row for the inserted origin
-    assert [row[0].value for row in raw[1:]] == [p.source_row for p in analysis.points if p.source_row]
-    assert raw[1][1].value == 81  # original scanner scan, distinct from source row 51
+    assert [cell.value for cell in raw[0][:2]] == ['扫描', '时间']
+    assert raw[1][0].value == 81  # original scanner scan, distinct from source row 51
+    assert raw[1][1].value is None  # This fixture has no scanner time; never invent one.
+    assert '51' in raw[0][0].comment.text  # Original worksheet row is still traceable.
     assert not sheet.protection.sheet
     book.close()
     cached = load_workbook(output, data_only=True)
     values = cached['T-riseChart'][summary.replace('$', '')]
     assert [cell.value for cell in values[-2][1:]] == pytest.approx([p.maximum for p in analysis.points])
     assert [cell.value for cell in values[-1][1:]] == pytest.approx([p.average for p in analysis.points])
+    cached.close()
+
+
+@pytest.mark.parametrize('identifier_headers', [('扫描', '时间'), ('Scan', 'Time')])
+@pytest.mark.parametrize('boolean_identifier', [False, True])
+def test_endpoint_tables_share_scan_time_columns_without_changing_readings(tmp_path, identifier_headers, boolean_identifier):
+    headers = (*identifier_headers, 'TC1', 'Spare', 'Ambient', 'Current')
+    rows = ((10, '8/19 18:06:10', 29, 27, 25, 10),
+            (50, '8/19 18:56:10', 30, 28, 25, 10),
+            (100, '8/19 19:46:10', 39, 37, 25, 20),
+            (150, '8/19 20:36:10', 40, 38, 25, 20),
+            (200, '8/19 21:26:10', 54, 52, 25, 30),
+            (300, '8/19 22:16:10', 55, 53, 25, 30))
+    if boolean_identifier:
+        rows = tuple((False, *row[1:]) for row in rows)
+    table = WorkbookTable('scanner.xlsx', ('Data',), 'Data', (headers, *rows))
+    selection = DataSelection(1, 2, 7, 5, 6, (4, 3), 2)
+    prepared = prepare_data(table, selection)
+    analysis = analyze_temperature_rise(prepared.measurements, thermocouples_per_sample=2, zero_intercept=True)
+    output = tmp_path / 'scan-time.xlsx'
+    TemperatureWorkbookGateway().write(output, table=table, selection=selection, prepared=prepared,
+        analysis=analysis, maximum_coefficients=analysis.maximum_fit.coefficients,
+        average_coefficients=analysis.average_fit.coefficients, target_rise=30, derating=None)
+    book = load_workbook(output)
+    sheet = book['T-riseChart']
+    raw = sheet[next(book.defined_names['KeyStageReadings'].destinations)[1].replace('$', '')]
+    rises = sheet[next(book.defined_names['StageTemperatureRise'].destinations)[1].replace('$', '')]
+    for block in (raw, rises):
+        assert [cell.value for cell in block[0][:2]] == ['扫描', '时间']
+        assert all(cell.value != 'Original Row' for cell in block[0])
+    assert [tuple(cell.value for cell in row[:2]) for row in raw[1:]] == [rows[i][:2] for i in (1, 3, 5)]
+    assert rises[1][0].value is False if boolean_identifier else rises[1][0].value == '=A2'
+    assert rises[1][1].value == '=B2'
+    assert rises[1][2].value == '=D2-$E2'  # Confirmed spare replaces the first channel.
+    assert book['Initial Data']['A6'].value == 2  # Original row tracking remains intact.
+    book.close()
+    cached = load_workbook(output, data_only=True)
+    sheet = cached['T-riseChart']
+    rises = sheet[next(cached.defined_names['StageTemperatureRise'].destinations)[1].replace('$', '')]
+    assert [tuple(cell.value for cell in row[:2]) for row in rises[1:]] == [rows[i][:2] for i in (1, 3, 5)]
+    assert [row[2].value for row in rises[1:]] == [3, 13, 28]
+    summary = sheet[next(cached.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
+    assert [cell.value for cell in summary[-2][1:]] == pytest.approx([0, 5, 15, 30])
     cached.close()
 
 
@@ -215,12 +260,14 @@ def test_report_formulas_honor_spare_channel_order_current_scale_and_unconstrain
     book = load_workbook(output)
     sheet = book['T-riseChart']
     raw = sheet[next(book.defined_names['KeyStageReadings'].destinations)[1].replace('$', '')]
-    assert raw[1][2].value == '=1+1'
-    assert raw[1][2].data_type == 's'
+    assert raw[1][0].value is None  # Scanner Note is not a scan counter.
+    assert raw[1][1].value == '10:00'
+    assert raw[1][3].value == '=1+1'
+    assert raw[1][3].data_type == 's'
     rises = sheet[next(book.defined_names['StageTemperatureRise'].destinations)[1].replace('$', '')]
-    assert rises[1][1].value == '=F2-$E2'  # TC1 first, replacement Spare second
-    assert rises[1][2].value == '=D2-$E2'
-    assert rises[1][-1].value == '=B2*0.001'
+    assert rises[1][2].value == '=G2-$F2'  # TC1 first, replacement Spare second
+    assert rises[1][3].value == '=E2-$F2'
+    assert rises[1][-1].value == '=C2*0.001'
     summary = next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')
     assert sheet._charts[0].series[0].trendline.intercept is None
     assert any('LINEST(' in cell.value and 'TRUE' in cell.value

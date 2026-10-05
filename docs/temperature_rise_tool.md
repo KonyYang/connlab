@@ -139,8 +139,8 @@ layout and the pasted statistical table/chart on pages 10–11 of
 `DL-2024-12-050 EK200 Connector Qualification Testing Report_Rev_A.docx`.
 Both references are read-only design evidence, not calculation authority or report write targets.
 
-- T-riseChart starts with the original endpoint readings, preserving all source columns and original
-  row numbers. There is no fabricated raw reading for the inserted origin. The next block computes
+- T-riseChart starts with the original endpoint readings, preserving all source values and original
+  row traceability. There is no fabricated raw reading for the inserted origin. The next block computes
   channel rise with formulas using the confirmed channel order, selected ambient and current scale.
 - The report table transposes applied current into columns and sample/thermocouple into rows.
   Sample maxima have blue shading; overall Max and Avg of Max have orange shading. Numeric display
@@ -201,3 +201,25 @@ Read-only desktop Excel showed no formula errors and no frozen panes on T-riseCh
 rendered without clipping. Renaming A51 updated the native series and equation without changing the
 current result. Current and Derating baselines above remained unchanged, as did both source hashes.
 Sequential same-agent review found Standards 0 / Specification 0 outstanding findings.
+
+### Follow-up: aligned Scan / Time columns
+
+Both endpoint tables now lead with A `扫描` and B `时间` (rows 1–7 and 12–18 for the six-stage
+baseline). These contain the scanner's actual scan counter and time from the same endpoint record,
+not the original Excel row number. Recognizable, unique Chinese/English identifier columns move to
+the front; confirmed measurement roles take priority and all other source columns remain in relative
+order. Missing or ambiguous identifier fields stay blank rather than borrowing a measurement or
+inventing a scan/time. Original worksheet row numbers remain in Initial Data and the existing A1
+provenance note. The time column is widened for the complete scanner timestamp.
+
+Temperature channels begin at C in the rise block. Their references, ambient/current references and
+the summary formulas use the source-to-export mapping, preserving replacement-channel order and
+current scaling. Chart labels, panes, fit/calculator and Derating semantics remain unchanged.
+
+Follow-up verification: RED checks reproduced the old Original Row/shifted identifier layout; final
+61 affected tests passed, including Chinese/English headers, missing fields, reordered channels,
+current scaling, literal source strings and Boolean metadata type preservation. Read-only desktop
+Excel confirmed identical A/B values in both blocks, complete timestamps, no formula errors and
+live recalculation after a C2 temperature edit. The rendered top 18 rows were visually inspected;
+calculator/Derating baselines and source hashes remained unchanged. Same-agent exact-diff review
+found no outstanding Standards or Specification issue.
