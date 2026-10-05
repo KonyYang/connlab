@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_TOOLS_RETURN_ICON_20261005",
     "summary": "Replace temperature tool text return with Tools title-bar icon",
@@ -26,17 +26,61 @@
     "risk_reasons": [],
     "activation_head": "81263f74335a1b4694102bbd7e2afc3ff9384326",
     "started_at": "2026-10-05T13:05:12.555802Z",
-    "updated_at": "2026-10-05T13:43:06.455930Z",
+    "updated_at": "2026-10-05T13:45:48.786442Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_TOOLS_RETURN_ICON_20261005",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User follow-up acceptance refinement: simplify the Workspace navigation button label from Test Report to Report while preserving navigation.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_TOOLS_RETURN_ICON_20261005",
+      "subject": "effaf89ade660d3b6524f25f6221a4f4e4ce5b67",
+      "summary": "Temperature tool return icon beside Tools remains verified; follow-up Workspace navigation label simplified from Test Report to Report with navigation unchanged.",
+      "scope_ok": true,
+      "changed_paths": [
+        "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+        "frontend/src/features/project-workbench/TestReportDraftButton.test.tsx",
+        "frontend/src/features/project-workbench/TestReportDraftButton.tsx",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "check": "Current final copy adjustment: 78 tests passed in TestReportDraftButton and ProjectWorkbenchLayout suites. git diff --check passed. Only button literal and affected test expectations changed."
+        },
+        {
+          "status": "passed",
+          "check": "Live browser: Workspace Report label present; clicking opens Report page with existing project identity. Returned to Workspace; screenshot saved."
+        },
+        {
+          "status": "passed",
+          "check": "Prior unchanged temperature icon files retain verified 12 affected tests, TypeScript/Vite build, mouse/keyboard navigation and screenshot evidence recorded before revision. Literal-only follow-up does not affect these files or build structure; full build not repeated."
+        },
+        {
+          "status": "passed",
+          "check": "Same-agent exact-diff inspection: no scope, safety or navigation regressions; no backend, source data or report generation changes."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "mode": "same-agent micro implementation, self-review and targeted validation; no independent review claims"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "branch": "master",
+        "publication": "Local only; final User Close remains required"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_RISE_CHART_LABELS_20261005",
