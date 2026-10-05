@@ -57,7 +57,7 @@ def test_export_contains_native_xy_charts_formulas_cached_values_and_source_mapp
     assert [series.trendline.order for series in book['T-riseChart']._charts[0].series] == [2, 2]
     assert all(series.trendline.intercept == 0 for series in book['T-riseChart']._charts[0].series)
     assert 'SQRT' in book['Derating']['B6'].value
-    assert book['Derating'].freeze_panes == 'B6'
+    assert book['Derating'].freeze_panes is None
     assert book['Initial Data']['B5'].value.startswith('Sample 1 / TC 1')
     book.close()
     cached = load_workbook(output, data_only=True)
@@ -90,7 +90,7 @@ def test_export_refuses_existing_file(tmp_path):
     assert source.read_bytes() == b'keep'
 
 
-def _report_export(tmp_path, maximum=None, average=None):
+def _report_export(tmp_path, maximum=None, average=None, *, include_derating=False):
     rows = baseline_rows()
     table = WorkbookTable('scanner.xlsx', ('Initial Data',), 'Initial Data', (
         ('Scan', *(f'TC{i}' for i in range(1, 21)), 'Ambient', 'Current'),
@@ -101,8 +101,59 @@ def _report_export(tmp_path, maximum=None, average=None):
     output = tmp_path / 'report-ready.xlsx'
     TemperatureWorkbookGateway().write(output, table=table, selection=selection, prepared=prepared,
         analysis=analysis, maximum_coefficients=maximum or analysis.maximum_fit.coefficients,
-        average_coefficients=average or analysis.average_fit.coefficients, target_rise=30, derating=None)
+        average_coefficients=average or analysis.average_fit.coefficients, target_rise=30,
+        derating=generate_derating(average or analysis.average_fit.coefficients,
+            max_temperature=105, step=2.5, ambient_point=75) if include_derating else None)
     return output, analysis
+
+
+def test_derating_chart_matches_reference_and_guide_follows_editable_ambient_point(tmp_path):
+    output, _ = _report_export(tmp_path, include_derating=True)
+    book = load_workbook(output)
+    sheet = book['Derating']
+    chart = sheet._charts[0]
+    assert sheet.freeze_panes is None
+    assert chart.graphical_properties.solidFill.srgbClr == 'FFFFE0'
+    assert [series.tx.v for series in chart.series[:2]] == ['Basic', '80% Derating']
+    colors = ['8B0000', 'FFA500']
+    assert [series.graphicalProperties.line.solidFill.srgbClr for series in chart.series[:2]] == colors
+    for series, color in zip(chart.series[2:4], colors):
+        assert series.marker.symbol == 'circle'
+        assert series.marker.graphicalProperties.line.solidFill.srgbClr == color
+        assert series.dLbls.numFmt == '0.0'
+        assert series.dLbls.dLblPos == 'r'
+        font = series.dLbls.txPr.p[0].pPr.defRPr
+        assert font.b and font.solidFill.srgbClr == color
+    for axis in (chart.x_axis, chart.y_axis):
+        assert axis.majorGridlines.spPr.line.prstDash == 'dash'
+    assert chart.x_axis.majorUnit == 5
+    assert chart.x_axis.scaling.max == 105
+    assert [entry.idx for entry in chart.legend.legendEntry if entry.delete] == [2, 3, 4]
+    assert chart.legend.layout.manualLayout.x < .15
+    assert sheet['F13'].value == '=$F$10'
+    assert sheet['F14'].value == '=$F$10'
+    assert sheet['G14'].value == '=$G$10'
+    assert sheet['G10'].number_format == sheet['H10'].number_format == '0.0'
+    guide = chart.series[4]
+    assert guide.graphicalProperties.line.solidFill.srgbClr == '0000FF'
+    assert guide.graphicalProperties.line.prstDash == 'dash'
+    assert [float(point.v) for point in guide.xVal.numRef.numCache.pt] == [75, 75]
+    assert [float(point.v) for point in guide.yVal.numRef.numCache.pt] == pytest.approx([0, 68.38881593205294])
+    book.close()
+    cached = load_workbook(output, data_only=True)
+    assert cached['Derating']['G14'].value == pytest.approx(68.38881593205294)
+    assert cached['Derating']['F13'].value == cached['Derating']['F14'].value == 75
+    cached.close()
+    with ZipFile(output) as archive:
+        ns = {'c': 'http://schemas.openxmlformats.org/drawingml/2006/chart',
+              'a': 'http://schemas.openxmlformats.org/drawingml/2006/main'}
+        root = ET.fromstring(archive.read('xl/charts/chart2.xml'))
+        assert root.find('.//c:plotArea/c:spPr/a:solidFill/a:srgbClr', ns).get('val') == 'FFFFFF'
+        assert root.findall('.//c:scatterChart/c:ser', ns)[4].find('c:marker/c:symbol', ns).get('val') == 'none'
+        titles = root.findall('.//c:title', ns)
+        assert [''.join(t.itertext()) for t in titles] == [
+            'Current Carrying Capacity De-rating Curve', 'Ambient Temperature [°C]', 'Current [Amp]']
+        assert all(t.find('.//a:defRPr', ns).get('b') == '1' for t in titles)
 
 
 def test_report_export_has_traceable_key_readings_and_copyable_formula_summary(tmp_path):

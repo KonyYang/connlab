@@ -184,8 +184,9 @@ validated tests/build remain applicable; they were not rerun for this export-onl
 ## Chart labels and navigation refinement (2026-10-05)
 
 The Desktop reference workbook and screenshot establish the presentation for this narrow revision.
-T-riseChart no longer freezes column A or its top row; Initial Data and Derating keep their existing
-navigation. The two chart series reference the summary's column-A names, `Max T-Rise` and
+T-riseChart no longer freezes column A or its top row; Initial Data keeps its existing navigation.
+Derating's subsequent presentation refinement below also removes frozen panes. The two chart series
+reference the summary's column-A names, `Max T-Rise` and
 `Avg of max T-Rise on each sample`. Equation helper names also reference those cells, so editing a
 summary name in Excel updates both the legend and its linked equation label. Orange and deep-blue
 bold equation/R² labels are stacked inside the upper-left plot area, with room for the full AVG name.
@@ -223,3 +224,27 @@ Excel confirmed identical A/B values in both blocks, complete timestamps, no for
 live recalculation after a C2 temperature edit. The rendered top 18 rows were visually inspected;
 calculator/Derating baselines and source hashes remained unchanged. Same-agent exact-diff review
 found no outstanding Standards or Specification issue.
+
+### Follow-up: reference-style Derating chart
+
+Derating now follows the supplied `T-rise&Derating.xlsm` and screenshot: pale-yellow chart area,
+white plot, deep-red Basic and orange 80% Derating curves, bold title/axis labels, dashed gray grid,
+5°C horizontal ticks and a bottom-left legend containing only the two curves. The vertical current
+scale remains automatic rather than forcing the reference's 160 A maximum onto other measurements.
+Selected ambient points use matching colored circles and bold one-decimal values to their right.
+Only display precision changes; underlying numbers retain full precision. Derating has no frozen
+row or column, while Initial Data retains its existing panes.
+
+The blue dashed guide now ends at the selected Basic current instead of the initial maximum current.
+Its endpoints reference the editable ambient/current cells, with cached values for immediate viewing.
+Changing F10 in Excel moves the guide, markers and labels together. Existing coefficient and maximum
+temperature inputs, domain calculations and T-riseChart presentation remain unchanged. The supplied
+macro workbook is read-only style evidence; no macros are run and no source file is overwritten.
+
+Verification: the old frozen-pane behavior failed two RED export checks before implementation.
+The final affected backend matrix passed 62 tests (one existing Starlette/httpx deprecation warning).
+An isolated, read-only desktop Excel instance rendered the final chart with labels 68.4 / 54.7 A at
+75°C; changing F10 to 80°C updated the labels to 61.5 / 49.2 A and moved the guide to its Basic point.
+No formula errors or frozen panes were present. The 66.5444574215 A T-rise calculator baseline and
+full series names remained intact; source SHA-256 was unchanged. Sequential same-agent Standards
+and Specification review found zero outstanding findings. No frontend files changed.

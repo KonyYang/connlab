@@ -18,6 +18,8 @@ from openpyxl.chart.shapes import GraphicalProperties
 from openpyxl.chart.layout import Layout, ManualLayout
 from openpyxl.chart.axis import ChartLines
 from openpyxl.chart.legend import LegendEntry
+from openpyxl.chart.text import RichText
+from openpyxl.drawing.text import CharacterProperties, Paragraph, ParagraphProperties
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.workbook.properties import CalcProperties
 from openpyxl.utils import get_column_letter
@@ -211,35 +213,70 @@ def _derating_sheet(sheet, result, caches):
         caches[f'B{row}'], caches[f'C{row}'] = point.basic, point.derated
     sheet['G10'] = '=(-$G$6+SQRT($G$6^2+4*$F$6*($I$6-F10)))/(2*$F$6)'
     sheet['H10'] = '=G10*0.8'
+    # Excel can inherit label formatting from these source cells despite chart numFmt.
+    for coordinate in ('G10', 'H10'):
+        sheet[coordinate].number_format = '0.0'
     caches['G10'], caches['H10'] = result.annotation.basic, result.annotation.derated
-    chart = _chart('Current vs Ambient Temperature', 'Ambient Temperature (°C)', 'Current (A)')
+    chart = _chart('Current Carrying Capacity De-rating Curve', 'Ambient Temperature [°C]', 'Current [Amp]')
+    _style_derating_chart(chart)
     end = 5 + len(result.points)
-    for col, title, color in ((2, 'Basic (100%)', 'BE3030'), (3, '80% Derating', 'E87922')):
+    for col, title, color in ((2, 'Basic', '8B0000'), (3, '80% Derating', 'FFA500')):
         series = _series(sheet, 1, col, 6, end, title, color, caches)
         series.smooth = True
         series.marker.symbol = 'none'
         chart.series.append(series)
-    for col, color, title in ((7, 'BE3030', 'Basic At Ambient Point'), (8, 'E87922', 'Derated At Ambient Point')):
+    for col, color, title in ((7, '8B0000', 'Basic At Ambient Point'), (8, 'FFA500', 'Derated At Ambient Point')):
         series = _series(sheet, 6, col, 10, 10, title, color, caches)
         series.marker.symbol = 'circle'
         series.marker.size = 7
         series.marker.graphicalProperties.solidFill = color
+        series.marker.graphicalProperties.line.solidFill = color
         series.graphicalProperties.line.solidFill = None
         series.graphicalProperties.line.noFill = True
         series.dLbls = DataLabelList(showVal=True, showLegendKey=False, showCatName=False,
-            showSerName=False, showPercent=False, numFmt='0.00" A"', dLblPos='r')
+            showSerName=False, showPercent=False, numFmt='0.0', dLblPos='r',
+            txPr=_chart_text_properties(color=color, bold=True))
         chart.series.append(series)
-    for coordinate, value in {'F13': result.annotation.ambient, 'F14': result.annotation.ambient,
-                              'G13': 0, 'G14': result.points[0].basic}.items():
+    # The guide ends at the selected Basic point and follows edits to the ambient input.
+    for coordinate, value in {'F13': '=$F$10', 'F14': '=$F$10', 'G13': 0, 'G14': '=$G$10'}.items():
         sheet[coordinate] = value
-    guide = _series(sheet, 6, 7, 13, 14, f'Ambient {result.annotation.ambient:g} °C', '647084')
+    caches.update(F13=result.annotation.ambient, F14=result.annotation.ambient, G14=result.annotation.basic)
+    guide = _series(sheet, 6, 7, 13, 14, 'Ambient Point', '0000FF', caches)
     guide.graphicalProperties.line.prstDash = 'dash'
+    guide.marker.symbol = 'none'
     chart.series.append(guide)
     chart.x_axis.scaling.max = result.max_temperature
     chart.legend.position = 'b'
     chart.legend.legendEntry = [LegendEntry(idx=index, delete=True) for index in (2, 3, 4)]
     sheet.add_chart(chart, 'E17')
-    sheet.freeze_panes = 'B6'
+    sheet.freeze_panes = None
+
+
+def _chart_text_properties(*, color='000000', bold=False, size=1100):
+    properties = CharacterProperties(b=bold, sz=size, solidFill=color)
+    return RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=properties), endParaRPr=properties)])
+
+
+def _style_derating_chart(chart):
+    chart.graphical_properties = GraphicalProperties(solidFill='FFFFE0')
+    chart.plot_area.spPr = GraphicalProperties(solidFill='FFFFFF')
+    chart.title.txPr = _chart_text_properties(bold=True, size=1400)
+    for paragraph in chart.title.tx.rich.p:
+        paragraph.pPr = ParagraphProperties(defRPr=CharacterProperties(b=True, sz=1400))
+    for axis in (chart.x_axis, chart.y_axis):
+        axis.title.txPr = _chart_text_properties(bold=True)
+        for paragraph in axis.title.tx.rich.p:
+            paragraph.pPr = ParagraphProperties(defRPr=CharacterProperties(b=True, sz=1100))
+        axis.txPr = _chart_text_properties()
+        axis.majorGridlines.spPr.line.solidFill = '808080'
+        axis.majorGridlines.spPr.line.prstDash = 'dash'
+    chart.x_axis.majorUnit = 5
+    chart.x_axis.numFmt = NumFmt(formatCode='0', sourceLinked=False)
+    chart.layout = Layout(manualLayout=ManualLayout(layoutTarget='inner', xMode='edge', yMode='edge',
+        x=.1, y=.09, w=.87, h=.76))
+    chart.legend.txPr = _chart_text_properties()
+    chart.legend.layout = Layout(manualLayout=ManualLayout(x=.07, y=.94, w=.45, h=.04,
+        xMode='edge', yMode='edge'))
 
 
 def _chart(title, x_title, y_title):
