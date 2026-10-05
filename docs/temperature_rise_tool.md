@@ -361,3 +361,32 @@ The next localized feedback also removes the `Initial Data` heading alone. Excel
 mapping and data confirmation are unchanged. The exact diff has no outstanding review findings;
 all 10 temperature-page tests passed, including absence of that heading and retention of Excel File.
 No additional backend/build/typecheck/browser run was needed for this single literal removal.
+
+### Follow-up: Load Initial Data control (2026-10-06)
+
+The visible `Excel File` label and browser-localized file control are replaced with a native button
+named `Load Initial Data`, opening a hidden file input accepting the same `.xls/.xlsx/.xlsm` formats.
+The selected filename appears beside it and wraps on narrow screens. The feature hook still owns
+import orchestration; cancelling selection preserves the imported workbook. Resetting the input's
+value after selection allows choosing the same file again without duplicating draft state.
+
+TDD evidence: the new page interaction test failed on the old visible label, then passed with the
+new button. It verifies Enter activation, import, filename feedback, cancellation and same-file
+reselection. Final QA passed 18 page/API/TopBar tests, TypeScript and Vite build sequentially.
+Live browser inspection at 680×804 confirmed the button, hidden original control, absent Excel File
+label, retained top title and no horizontal overflow. No workbook was loaded or cleared for that
+inspection. Native OS chooser interaction was represented by the DOM boundary in tests, not
+automated against the user's filesystem. Backend and calculation behavior are unchanged.
+
+#### Standards
+
+Same-agent exact-diff review: the control reuses page button/focus tokens, native keyboard semantics,
+and the existing feature hook; no extra dependency, abstraction, request channel or source mutation.
+The filename uses React text escaping. Zero outstanding findings.
+
+#### Spec
+
+Same-agent exact-diff review: the unwanted label and native chooser text are no longer visible;
+`Load Initial Data` triggers the existing file selection/import path, retains filename feedback and
+does not clear data on cancellation. Original data review remains. Zero outstanding findings.
+Summary: Standards 0; Spec 0. `git diff --check` passed.

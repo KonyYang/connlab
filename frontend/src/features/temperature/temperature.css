@@ -16,6 +16,8 @@
 .temperature-page button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .temperature-page button:disabled { cursor: not-allowed; background: var(--color-surface-muted); border-color: var(--color-border); color: var(--color-ink-muted); opacity: .65; }
 .temperature-import-fields { display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1fr); gap: 12px; align-items: end; }
+.temperature-file { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; min-width: 0; }
+.temperature-file-name { color: var(--color-ink-muted); font-size: 13px; overflow-wrap: anywhere; min-width: 0; }
 .temperature-region-correction { display: grid; gap: 12px; min-width: 0; }
 .temperature-region-correction > p { margin: 0; font-size: 13px; }
 .temperature-region-correction form { display: grid; gap: 12px; justify-items: start; color: var(--color-ink); }

@@ -29,7 +29,7 @@ const analysis: api.TemperatureAnalysis = {
 };
 
 async function upload() {
-  fireEvent.change(screen.getByLabelText('Excel File'), { target: { files: [new File(['x'], 'scanner.xlsx')] } });
+  fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['x'], 'scanner.xlsx')] } });
   await screen.findByRole('button', { name: 'Confirm Data' });
 }
 
@@ -42,6 +42,28 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(api.calculateTemperatureCurrent).mockResolvedValue({ current: 30 });
   });
 
+  it('loads initial data through a keyboard-accessible button and keeps it when selection is cancelled', async () => {
+    const user = userEvent.setup();
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    expect(screen.queryByText('Excel File')).toBeNull();
+    const button = screen.getByRole('button', { name: 'Load Initial Data' });
+    const input = screen.getByLabelText('Load Initial Data');
+    const picker = vi.spyOn(input as HTMLInputElement, 'click');
+    button.focus();
+    await user.keyboard('{Enter}');
+    expect(picker).toHaveBeenCalledOnce();
+    const file = new File(['x'], 'scanner.xlsx');
+    await user.upload(input, file);
+    await screen.findByRole('button', { name: 'Confirm Data' });
+    expect(screen.getByText('scanner.xlsx')).toBeTruthy();
+    expect(api.importTemperatureWorkbook).toHaveBeenCalledWith(file, undefined);
+    fireEvent.change(input, { target: { files: [] } });
+    expect(screen.getByText('scanner.xlsx')).toBeTruthy();
+    expect(api.importTemperatureWorkbook).toHaveBeenCalledOnce();
+    await user.upload(input, file);
+    expect(api.importTemperatureWorkbook).toHaveBeenCalledTimes(2);
+  });
+
   it('returns through an accessible icon in the Tools header, without a duplicate content button', async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
@@ -50,7 +72,7 @@ describe('temperature preparation and calculation workflow', () => {
     expect(within(banner).getByRole('heading', { name: 'Temperature Rise' })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Temperature Rise & Derating' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Initial Data' })).toBeNull();
-    expect(screen.getByLabelText('Excel File')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Load Initial Data' })).toBeTruthy();
     const back = within(banner).getByRole('button', { name: 'Back To Tools' });
     expect(back.textContent).toBe('');
     expect(back.getAttribute('title')).toBe('Back To Tools');
@@ -85,7 +107,7 @@ describe('temperature preparation and calculation workflow', () => {
       region_issue: 'No data region could be identified. Check the sheet or set the header and data rows manually.',
     });
     render(<TemperatureRisePage onBack={() => undefined} />);
-    fireEvent.change(screen.getByLabelText('Excel File'), { target: { files: [new File(['x'], 'scanner.xlsx')] } });
+    fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['x'], 'scanner.xlsx')] } });
     await screen.findByRole('alert');
     expect(screen.getByLabelText('Sheet Name')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Confirm Data' })).toBeNull();
@@ -163,7 +185,7 @@ describe('temperature preparation and calculation workflow', () => {
       table: structuredClone(imported.table), selection: null, region_issue: 'Multiple possible data regions were found.',
     }).mockRejectedValueOnce(new Error('The header needs at least three columns.'));
     render(<TemperatureRisePage onBack={() => undefined} />);
-    fireEvent.change(screen.getByLabelText('Excel File'), { target: { files: [new File(['x'], 'ambiguous.xlsx')] } });
+    fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['x'], 'ambiguous.xlsx')] } });
     await screen.findByLabelText('Header Row');
     await user.type(screen.getByLabelText('Header Row'), '1');
     await user.type(screen.getByLabelText('First Data Row'), '2');
@@ -179,7 +201,7 @@ describe('temperature preparation and calculation workflow', () => {
     next.table.file_name = 'next.xlsx';
     next.table.rows[0][1] = 'New TC';
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(next);
-    fireEvent.change(screen.getByLabelText('Excel File'), { target: { files: [new File(['new'], 'next.xlsx')] } });
+    fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['new'], 'next.xlsx')] } });
     await screen.findByRole('button', { name: 'Confirm Data' });
     await act(async () => resolve(imported));
     expect((screen.getByLabelText('Sample 1 / TC 1') as HTMLSelectElement).selectedOptions[0].textContent).toContain('New TC');
@@ -206,7 +228,7 @@ describe('temperature preparation and calculation workflow', () => {
     let resolve!: (value: typeof imported) => void;
     vi.mocked(api.importTemperatureWorkbook).mockReturnValue(new Promise(done => { resolve = done; }));
     const view = render(<TemperatureRisePage onBack={() => undefined} />);
-    fireEvent.change(screen.getByLabelText('Excel File'), { target: { files: [new File(['x'], 'scanner.xlsx')] } });
+    fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['x'], 'scanner.xlsx')] } });
     view.unmount();
     await act(async () => resolve(imported));
     expect(api.analyzeTemperatureData).not.toHaveBeenCalled();

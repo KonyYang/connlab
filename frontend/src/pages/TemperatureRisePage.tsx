@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import { useRef, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
 import type { Coefficients } from '../api/temperature';
 import { UiIcon } from '../components/common/UiIcon';
@@ -12,6 +12,7 @@ import '../features/temperature/temperature.css';
 
 export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactElement {
   const topBarRoot = useTopBarActionsRoot();
+  const fileInput = useRef<HTMLInputElement>(null);
   const tool = useTemperatureTool();
   const s = tool.state;
   const busy = Boolean(s.busy);
@@ -23,7 +24,16 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
     {!topBarRoot && backButton}
     <section className="temperature-panel temperature-initial">
       <div className="temperature-import-fields">
-        <label className="temperature-file">Excel File<input type="file" accept=".xls,.xlsx,.xlsm" onChange={event => tool.load(event.target.files?.[0] ?? null)} /></label>
+        <div className="temperature-file">
+          <button type="button" onClick={() => fileInput.current?.click()}>Load Initial Data</button>
+          <input ref={fileInput} type="file" hidden aria-label="Load Initial Data" accept=".xls,.xlsx,.xlsm"
+            onChange={event => {
+              const file = event.target.files?.[0];
+              if (file) tool.load(file);
+              event.target.value = '';
+            }} />
+          {s.file && <span className="temperature-file-name">{s.file.name}</span>}
+        </div>
         {s.table && <>
           <label>Sheet Name<select value={s.table.sheet_name} disabled={busy} onChange={event => tool.load(s.file, event.target.value)}>{s.table.sheet_names.map(name => <option key={name}>{name}</option>)}</select></label>
         </>}
