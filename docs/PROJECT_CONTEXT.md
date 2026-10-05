@@ -86,7 +86,7 @@ Do not use a dated snapshot as a substitute for the code.
 ### Standalone Tools temperature curves
 
 - `Tools > Generate Temperature-Rise Curves` opens `/tools/temperature-rise`. It reads scanner
-  `.xls/.xlsx/.xlsm` values without VBA, requires human confirmation of column roles, ordered sample
+  `.xls/.xlsx/.xlsm/.csv` values without VBA, requires human confirmation of column roles, ordered sample
   channels and row exclusions, and writes only an independent download. Original source files and
   all project/report authorities remain untouched.
 - `temperature_rise` owns the pure stable-stage/statistics/fit/current/Derating calculations;

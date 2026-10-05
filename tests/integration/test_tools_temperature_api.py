@@ -1,5 +1,6 @@
 from hashlib import sha256
-from io import BytesIO
+from io import BytesIO, StringIO
+import csv
 
 from fastapi.testclient import TestClient
 from openpyxl import Workbook, load_workbook
@@ -52,6 +53,39 @@ def test_import_prepare_analyze_and_download_round_trip_without_project_authorit
     assert 'scanner_T-rise_Derating.xlsx' in download.headers['content-disposition']
     book = load_workbook(BytesIO(download.content), data_only=True)
     assert book['Derating']['C36'].value == pytest.approx(54.71105274564235)
+    book.close()
+    assert sha256(source).hexdigest() == digest
+
+
+def test_utf16_scanner_csv_uses_the_same_confirmation_calculation_and_excel_download_flow():
+    stream = StringIO(newline='')
+    writer = csv.writer(stream, delimiter='\t')
+    writer.writerow(['名称:', '扫描仪数据'])
+    writer.writerow(['扫描', '时间', *(f'TC{i}' for i in range(1, 21)), 'Ambient', 'Current'])
+    for row in baseline_rows():
+        writer.writerow([row.source_row, '2024/10/28 17:10:16:391', *row.temperatures, row.ambient, row.current])
+    source = stream.getvalue().encode('utf-16')
+    digest = sha256(source).hexdigest()
+    client = TestClient(app)
+    imported = client.post('/api/tools/temperature-rise/import', files={'file': ('../scanner.csv', source)})
+    assert imported.status_code == 200, imported.text
+    data = imported.json()
+    assert data['table']['file_name'] == 'scanner.csv'
+    assert data['table']['rows'][0] == ['名称:', '扫描仪数据']
+    assert data['region_issue'] is None
+    assert data['selection']['header_row'] == 2
+    request = {'table': data['table'], 'selection': data['selection'], 'zero_intercept': True}
+    assert client.post('/api/tools/temperature-rise/prepare', json=request).json()['ready']
+    analyzed = client.post('/api/tools/temperature-rise/analyze', json=request)
+    assert analyzed.status_code == 200, analyzed.text
+    assert analyzed.json()['maximum_fit']['coefficients']['a'] == .004677
+    download = client.post('/api/tools/temperature-rise/download', json=request)
+    assert download.status_code == 200, download.text[:300]
+    assert 'scanner_T-rise_Derating.xlsx' in download.headers['content-disposition']
+    book = load_workbook(BytesIO(download.content), data_only=False)
+    assert len(book['T-riseChart']._charts) == 1
+    assert book['Initial Data']['B6'].value == baseline_rows()[0].temperatures[0]
+    assert book['Initial Data']['A2'].value == 'Source: scanner.csv / Initial Data'
     book.close()
     assert sha256(source).hexdigest() == digest
 

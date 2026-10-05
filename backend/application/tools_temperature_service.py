@@ -93,8 +93,8 @@ def safe_workbook_name(name: str) -> str:
     name = re.split(r'[/\\]', name)[-1]
     name = re.sub(r'[<>:"|?*\x00-\x1f]', '_', name).strip(' .')
     stem, suffix = Path(name).stem, Path(name).suffix.lower()
-    if suffix not in ('.xls', '.xlsx', '.xlsm'):
-        raise ValueError('Select an Excel .xls, .xlsx or .xlsm file.')
+    if suffix not in ('.xls', '.xlsx', '.xlsm', '.csv'):
+        raise ValueError('Select an Excel .xls, .xlsx, .xlsm or CSV .csv file.')
     if not stem or stem.upper() in {'CON', 'PRN', 'AUX', 'NUL', *(f'COM{i}' for i in range(1, 10)), *(f'LPT{i}' for i in range(1, 10))}:
         stem = 'Scanner Data'
     return stem[:140] + suffix

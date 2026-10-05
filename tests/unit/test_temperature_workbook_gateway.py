@@ -1,5 +1,6 @@
 from hashlib import sha256
-from io import BytesIO
+from io import BytesIO, StringIO
+import csv
 from zipfile import ZipFile
 import xml.etree.ElementTree as ET
 
@@ -34,6 +35,59 @@ def test_reader_preserves_bytes_and_accepts_explicit_sheet(tmp_path):
     assert sha256(source.read_bytes()).hexdigest() == digest
     with pytest.raises(ValueError, match='sheet'):
         TemperatureWorkbookGateway().read(source, sheet_name='Absent')
+
+
+@pytest.mark.parametrize('encoding', ['utf-8-sig', 'utf-16', 'gb18030'])
+@pytest.mark.parametrize('delimiter', [',', '\t', ';'])
+def test_csv_reader_preserves_scanner_metadata_quotes_decimal_values_and_row_positions(tmp_path, encoding, delimiter):
+    stream = StringIO(newline='')
+    writer = csv.writer(stream, delimiter=delimiter)
+    writer.writerows([
+        ['名称:', '扫描仪, "原始数据"'],
+        ['通道', '名称', '功能', '增益', '偏移'],
+        ['101', '1_H1', '温度', '1', '0'],
+        ['扫描', '时间', '101 <1_H1> (C)', '313 <ambient> (C)', '317 <Current> (VDC)'],
+        ['1', '2024/10/28 17:10:16:391', '29.328', '25.465', '3.0010263'],
+        [],
+        ['2', '2024/10/28 17:11:16:375', '', '25.459', '0'],
+    ])
+    source = tmp_path / 'scanner.CSV'
+    content = stream.getvalue().encode(encoding)
+    source.write_bytes(content)
+    table = TemperatureWorkbookGateway().read(source)
+    assert source.read_bytes() == content
+    assert table.sheet_names == ('Initial Data',)
+    assert table.rows[0] == ('名称:', '扫描仪, "原始数据"')
+    assert table.rows[4][-1] == '3.0010263'
+    assert table.rows[5] == ()
+    assert table.rows[6][2] is None
+    choice = suggest_selection(table)
+    assert (choice.header_row, choice.start_row, choice.end_row) == (4, 5, 7)
+    assert choice.excluded_rows == ()
+    review = prepare_data(table, choice)
+    assert not review.ready
+    assert review.measurements[0].current == 3.0010263
+    assert review.measurements[0].ambient == 25.465
+    with pytest.raises(ValueError, match='sheet'):
+        TemperatureWorkbookGateway().read(source, sheet_name='Absent')
+
+
+@pytest.mark.parametrize('content', [b'\xff', b'Scan,Time,TC,Ambient,Current\n1,"unterminated', b'a\x00,b\n1,2'])
+def test_csv_reader_reports_unreadable_encoding_or_malformed_data(content):
+    with pytest.raises(ValueError, match='CSV'):
+        TemperatureWorkbookGateway().read_upload(content, 'bad.csv')
+
+
+@pytest.mark.parametrize(('limit', 'value', 'content'), [
+    ('MAX_ROWS', 2, b'a,b\n1,2\n3,4'),
+    ('MAX_COLUMNS', 2, b'a,b,c\n1,2,3'),
+    ('MAX_CELLS', 5, b'a,b\n1,2\n3,4'),
+    ('MAX_FILE_BYTES', 3, b'a,b\n1,2'),
+])
+def test_csv_reader_obeys_existing_import_resource_limits(monkeypatch, limit, value, content):
+    monkeypatch.setattr('backend.infrastructure.office.temperature_workbook_gateway.' + limit, value)
+    with pytest.raises(ValueError, match='Limit|25 MB'):
+        TemperatureWorkbookGateway().read_upload(content, 'large.csv')
 
 
 def test_export_contains_native_xy_charts_formulas_cached_values_and_source_mapping(tmp_path):

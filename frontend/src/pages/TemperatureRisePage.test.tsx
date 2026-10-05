@@ -72,7 +72,8 @@ describe('temperature preparation and calculation workflow', () => {
     expect(within(banner).getByRole('heading', { name: 'Temperature Rise' })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Temperature Rise & Derating' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Initial Data' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Load Initial Data' })).toBeTruthy();
+    expect(within(banner).getByRole('button', { name: 'Load Initial Data' })).toBeTruthy();
+    expect(within(screen.getByRole('main')).queryByRole('button', { name: 'Load Initial Data' })).toBeNull();
     const back = within(banner).getByRole('button', { name: 'Back To Tools' });
     expect(back.textContent).toBe('');
     expect(back.getAttribute('title')).toBe('Back To Tools');
@@ -82,6 +83,28 @@ describe('temperature preparation and calculation workflow', () => {
     expect(onBack).toHaveBeenCalledOnce();
     view.unmount();
     expect(screen.queryByRole('button', { name: 'Back To Tools' })).toBeNull();
+  });
+
+  it('loads CSV from the header without bypassing column and row confirmation', async () => {
+    const user = userEvent.setup();
+    const data = structuredClone(imported);
+    data.table.file_name = 'scanner.csv';
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(data);
+    render(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
+    const button = within(screen.getByRole('banner')).getByRole('button', { name: 'Load Initial Data' });
+    const input = screen.getByLabelText('Load Initial Data');
+    const picker = vi.spyOn(input as HTMLInputElement, 'click');
+    await user.click(button);
+    expect(picker).toHaveBeenCalledOnce();
+    const file = new File(['Scan,TC1,Ambient,Current\n1,25,20,3.0010263'], 'scanner.csv', { type: 'text/csv' });
+    await user.upload(input, file);
+    await screen.findByRole('button', { name: 'Confirm Data' });
+    expect(api.importTemperatureWorkbook).toHaveBeenCalledWith(file, undefined);
+    expect(screen.getByText('scanner.csv')).toBeTruthy();
+    expect(screen.getByLabelText('Ambient Column')).toBeTruthy();
+    expect(screen.getByLabelText('Current Column')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Generate T-riseChart' }).hasAttribute('disabled')).toBe(true);
+    expect(api.prepareTemperatureData).not.toHaveBeenCalled();
   });
 
   it('uses the detected region without showing row settings or success notices', async () => {

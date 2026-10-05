@@ -2,6 +2,10 @@
 .temperature-section-heading, .temperature-confirm, .temperature-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .top-bar-tools:has(.temperature-tools-return) { grid-template-columns: max-content minmax(0,1fr); }
 .top-bar-tools:has(.temperature-tools-return) .top-bar-actions { justify-content: flex-start; }
+.temperature-header-actions { display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; }
+.temperature-load-initial-data, .temperature-page .temperature-load-initial-data { margin-left: auto; flex-shrink: 0; border: 1px solid var(--color-action-secondary-border); border-radius: 10px; padding: 9px 14px; background: var(--color-action-secondary-bg); color: var(--color-action-secondary-text); font: inherit; font-size: 13px; font-weight: 600; line-height: 1.4; cursor: pointer; }
+.temperature-load-initial-data:hover { background: var(--color-action-secondary-hover); }
+.temperature-load-initial-data:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .temperature-tools-return, .temperature-page .temperature-tools-return { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; height: 40px; padding: 0; border: 1px solid var(--color-action-secondary-border); border-radius: 10px; background: var(--color-action-secondary-bg); color: var(--color-primary); cursor: pointer; }
 .temperature-tools-return .ui-icon { width: 28px; height: 28px; }
 .temperature-tools-return:hover { background: var(--color-action-secondary-hover); }

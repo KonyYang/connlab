@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time
-from io import BytesIO
+from io import BytesIO, StringIO
+from itertools import islice
+import csv
 from math import isfinite
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -38,6 +40,8 @@ MAX_FILE_BYTES = 25 * 1024 * 1024
 
 class TemperatureWorkbookGateway:
     def read_upload(self, content: bytes, file_name: str, *, sheet_name: str | None = None) -> WorkbookTable:
+        if len(content) > MAX_FILE_BYTES:
+            raise ValueError('Select a data file smaller than 25 MB.')
         with TemporaryDirectory(prefix='connlab-temperature-import-') as directory:
             source = Path(directory) / Path(file_name).name
             source.write_bytes(content)
@@ -56,11 +60,13 @@ class TemperatureWorkbookGateway:
 
     def read(self, source_path: Path, *, sheet_name: str | None = None) -> WorkbookTable:
         source = Path(source_path)
-        if source.suffix.lower() not in ('.xlsx', '.xlsm', '.xls'):
-            raise ValueError('Select an Excel .xlsx, .xlsm or .xls file.')
+        if source.suffix.lower() not in ('.xlsx', '.xlsm', '.xls', '.csv'):
+            raise ValueError('Select an Excel .xlsx, .xlsm, .xls or CSV .csv file.')
         if source.stat().st_size > MAX_FILE_BYTES:
-            raise ValueError('Select a workbook smaller than 25 MB.')
+            raise ValueError('Select a data file smaller than 25 MB.')
         try:
+            if source.suffix.lower() == '.csv':
+                return _read_csv(source, sheet_name)
             if source.suffix.lower() == '.xls':
                 return self._read_xls(source, sheet_name)
             with ZipFile(source) as archive:
@@ -132,6 +138,54 @@ def _choose_sheet(names, requested):
     if requested and requested not in names:
         raise ValueError('The selected sheet is no longer available. Choose a listed sheet.')
     return requested or next((name for name in names if name.replace(' ', '').lower() == 'initialdata'), names[0])
+
+
+def _read_csv(source: Path, requested: str | None) -> WorkbookTable:
+    name = _choose_sheet(('Initial Data',), requested)
+    text = _decode_csv(source.read_bytes())
+    delimiter = _csv_delimiter(text)
+    rows = []
+    width = 0
+    try:
+        for row in csv.reader(StringIO(text, newline=''), delimiter=delimiter, strict=True):
+            width = max(width, len(row))
+            _check_dimensions(len(rows) + 1, width)
+            # Keep decimal readings as literal source text; preparation parses them without rounding.
+            rows.append(tuple(value if value != '' else None for value in row))
+    except csv.Error as exc:
+        raise ValueError('The CSV could not be read. Check its separators and quoted fields.') from exc
+    return _table(source.name, ('Initial Data',), name, rows)
+
+
+def _decode_csv(content: bytes) -> str:
+    if content.startswith((b'\xff\xfe', b'\xfe\xff')):
+        encodings = ('utf-16',)
+    else:
+        encodings = ('utf-8-sig', 'gb18030')
+    for encoding in encodings:
+        try:
+            text = content.decode(encoding)
+        except UnicodeError:
+            continue
+        if '\x00' in text:
+            break
+        return text
+    raise ValueError('The CSV encoding could not be read. Export it as UTF-8, UTF-16 or GB18030 text.')
+
+
+def _csv_delimiter(text: str) -> str:
+    # Scanner metadata is not a uniform table, so whole-file dialect sniffing is unreliable.
+    # Compare parsed records, not raw separator counts inside quoted labels.
+    scores = []
+    for delimiter in ('\t', ',', ';'):
+        try:
+            widths = [len(row) for row in islice(csv.reader(StringIO(text, newline=''), delimiter=delimiter), 100)]
+        except csv.Error:
+            continue
+        scores.append(((sum(width > 1 for width in widths), sum(widths)), delimiter))
+    if not scores or max(scores)[0][0] == 0:
+        raise ValueError('The CSV has no readable columns. Use comma, tab or semicolon separators.')
+    return max(scores)[1]
 
 
 def _check_dimensions(rows: int, columns: int) -> None:

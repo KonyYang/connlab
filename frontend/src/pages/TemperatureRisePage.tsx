@@ -19,20 +19,23 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
   const columns = s.table && s.selection ? sourceColumns(s.table, s.selection.header_row) : [];
   const backButton = <button type="button" className="temperature-tools-return" onClick={onBack}
     aria-label="Back To Tools" title="Back To Tools"><UiIcon name="tools" /></button>;
+  const headerActions = <div className="temperature-header-actions">
+    {backButton}
+    <button type="button" className="temperature-load-initial-data" onClick={() => fileInput.current?.click()}>Load Initial Data</button>
+  </div>;
   return <section className="temperature-page" aria-label="Temperature Rise & Derating">
-    {topBarRoot && createPortal(backButton, topBarRoot)}
-    {!topBarRoot && backButton}
-    <section className="temperature-panel temperature-initial">
+    {topBarRoot && createPortal(headerActions, topBarRoot)}
+    {!topBarRoot && headerActions}
+    <input ref={fileInput} type="file" hidden aria-label="Load Initial Data" accept=".xls,.xlsx,.xlsm,.csv"
+      onChange={event => {
+        const file = event.target.files?.[0];
+        if (file) tool.load(file);
+        event.target.value = '';
+      }} />
+    {s.file && <section className="temperature-panel temperature-initial">
       <div className="temperature-import-fields">
         <div className="temperature-file">
-          <button type="button" onClick={() => fileInput.current?.click()}>Load Initial Data</button>
-          <input ref={fileInput} type="file" hidden aria-label="Load Initial Data" accept=".xls,.xlsx,.xlsm"
-            onChange={event => {
-              const file = event.target.files?.[0];
-              if (file) tool.load(file);
-              event.target.value = '';
-            }} />
-          {s.file && <span className="temperature-file-name">{s.file.name}</span>}
+          <span className="temperature-file-name">{s.file.name}</span>
         </div>
         {s.table && <>
           <label>Sheet Name<select value={s.table.sheet_name} disabled={busy} onChange={event => tool.load(s.file, event.target.value)}>{s.table.sheet_names.map(name => <option key={name}>{name}</option>)}</select></label>
@@ -55,7 +58,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         <div className="temperature-confirm"><span className={s.confirmed ? 'temperature-success' : 'temperature-hint'} role="status">{s.confirmed ? 'Data Confirmed' : 'Review the channel mapping and data rows, then confirm.'}</span>
           <button type="button" className="primary-action" disabled={busy || s.confirmed} onClick={() => void tool.confirm()}>Confirm Data</button></div>
       </>}
-    </section>
+    </section>}
     <div className="temperature-analysis-grid">
       <section className="temperature-panel">
         <h3>Temperature Rise (T-riseChart)</h3>

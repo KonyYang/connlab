@@ -9,7 +9,7 @@ The Tools entry opens a dedicated page using the selected third design: a full-w
 preparation area above two analysis panels (Temperature Rise and Derating). At narrow widths the
 panels stack. Existing ConnLab navigation, fonts, controls and quiet feedback remain in use.
 
-- Read `.xls`, `.xlsx` and `.xlsm` without executing VBA or changing the source.
+- Read `.xls`, `.xlsx`, `.xlsm` and scanner `.csv` without executing VBA or changing the source.
 - Automatically locate a unique scanner header and data region; show row settings only for missing
   or ambiguous recognition. Let the user choose the sheet, ambient and current columns,
   thermocouples per sample, and ordered sample/channel mapping. A spare source channel can replace
@@ -390,3 +390,51 @@ Same-agent exact-diff review: the unwanted label and native chooser text are no 
 `Load Initial Data` triggers the existing file selection/import path, retains filename feedback and
 does not clear data on cancellation. Original data review remains. Zero outstanding findings.
 Summary: Standards 0; Spec 0. `git diff --check` passed.
+
+### Follow-up: header import action and scanner CSV (2026-10-06)
+
+`Load Initial Data` now occupies the far right of the `Temperature Rise` title bar. The Tools return
+icon stays next to the title; no duplicate load button or empty import card remains in the content.
+The hidden file input, cancellation/reselection behavior and existing editable session are retained.
+After import, the selected filename and data preparation controls remain in the content area.
+
+CSV is another infrastructure input to the same table/preparation contract, not a separate calculation
+path. The reader handles BOM-marked UTF-16, UTF-8 (with/without BOM) and GB18030, and recognizes comma,
+tab or semicolon separators from parsed records including nonuniform scanner preambles. Quoted labels,
+Chinese text, internal blank/error rows, source record positions and literal decimal readings are
+retained. Unsupported encodings, malformed quotes and existing file/table resource limits fail clearly.
+There is no rounding, new current conversion, automatic row deletion or source-file write. Download
+remains a standalone macro-free `.xlsx` with the existing formulas and native charts.
+
+The supplied `3A new.csv` is UTF-16 LE with tab-separated fields, 44 header/preamble records and 403
+measurement records. Both the integration boundary and the running localhost service selected header
+44 and rows 45–447. `3.0010263` and the timestamp suffix survive import, and source SHA-256 remains
+`b2903c3ce08de283af8c02498dafccf4306da26aa528beac5a62b338e65824ff`. Its 30 thermocouples,
+ambient channel 313 and four voltage-labelled signal channels still require operator role/grouping
+confirmation. The existing fallback current/temperature suggestions are not a verified assignment;
+choose the intended current channel and remove other signal channels from thermocouple mapping.
+
+TDD: 17 new backend cases and two updated/new header cases first failed for missing CSV support/header
+placement. A first sandbox test run had temporary-directory permission errors; the authorized rerun
+established the functional RED evidence. Final affected QA: 66 backend tests and 19 frontend tests
+passed; TypeScript and Vite production build passed sequentially. One pre-existing Starlette/httpx
+deprecation warning remains. Browser inspection at 680×804 verified one header load button aligned
+with the title and at the right edge, hidden input accepting `.csv`, no empty import panel and no
+page-level horizontal overflow. Native OS picker interactions are covered at the React DOM boundary,
+not automated; the running import endpoint independently accepted the real attachment. Direct loopback
+validation bypassed the host's HTTP proxy after its proxy-only request returned 502.
+
+#### Standards
+
+Same-agent focused exact-diff review: infrastructure owns decoding/CSV parsing and temporary resources;
+the application retains filename validation and preparation; the page reuses the shared header portal,
+native keyboard semantics and design tokens. No dependency, persistence, COM or external source mutation
+was introduced. Existing bounds are checked during CSV parsing. Zero outstanding findings.
+
+#### Spec
+
+Same-agent focused exact-diff review: the action is in the top title row at the far right and accepts
+the supplied scanner CSV; original Excel formats and human confirmation remain supported. Metadata,
+missing/zero rows and decimal source readings are preserved; exported chart styles/calculations remain
+unchanged. Multi-signal role assignment remains an explicit operator responsibility, not silently
+inferred from the filename. Zero outstanding findings. Summary: Standards 0; Spec 0.
