@@ -351,3 +351,8 @@ are unchanged. Exact-diff self-review found no outstanding standards or specific
 Affected page/TopBar tests passed 15 tests and TypeScript `tsc -b frontend` passed. This literal title
 change does not alter data, calculation or export behavior; backend and production build matrices
 were not rerun.
+
+The subsequent 2026-10-06 feedback removes the duplicate content heading and its wrapper/unused
+styles. In AppShell the Initial Data panel is now the first content block; the top-bar title and
+return icon remain. Standalone rendering still retains its return control. Exact-diff self-review
+found no outstanding issues; 15 affected page/TopBar tests and `tsc -b frontend` passed on this state.

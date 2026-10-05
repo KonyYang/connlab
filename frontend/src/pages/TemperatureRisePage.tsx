@@ -20,7 +20,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
     aria-label="Back To Tools" title="Back To Tools"><UiIcon name="tools" /></button>;
   return <section className="temperature-page" aria-label="Temperature Rise & Derating">
     {topBarRoot && createPortal(backButton, topBarRoot)}
-    <div className="temperature-page-heading"><h2>Temperature Rise &amp; Derating</h2>{!topBarRoot && backButton}</div>
+    {!topBarRoot && backButton}
     <section className="temperature-panel temperature-initial">
       <h3>Initial Data</h3>
       <div className="temperature-import-fields">

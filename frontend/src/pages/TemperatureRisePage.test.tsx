@@ -48,6 +48,7 @@ describe('temperature preparation and calculation workflow', () => {
     const view = render(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={onBack} /></AppShell>);
     const banner = screen.getByRole('banner');
     expect(within(banner).getByRole('heading', { name: 'Temperature Rise' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Temperature Rise & Derating' })).toBeNull();
     const back = within(banner).getByRole('button', { name: 'Back To Tools' });
     expect(back.textContent).toBe('');
     expect(back.getAttribute('title')).toBe('Back To Tools');
