@@ -11,7 +11,7 @@ panels stack. Existing ConnLab navigation, fonts, controls and quiet feedback re
 
 - Read `.xls`, `.xlsx` and `.xlsm` without executing VBA or changing the source.
 - Automatically locate a unique scanner header and data region; show row settings only for missing
-  or ambiguous recognition. Let the user choose the sheet, ambient and current columns, current scale,
+  or ambiguous recognition. Let the user choose the sheet, ambient and current columns,
   thermocouples per sample, and ordered sample/channel mapping. A spare source channel can replace
   any failed channel. Channel order determines sample/thermocouple slots and is shown explicitly.
 - Exclude/restore rows and channels without changing source data. Retain original row numbers and
@@ -114,7 +114,7 @@ Review summary: Standards 0 outstanding; Specification 0 outstanding blocking fi
 ## Operator acceptance and limitations
 
 1. Tools → Generate Temperature-Rise Curves → select scanner workbook.
-2. Check sheet, ambient/current roles and current multiplier. Header/data row settings are hidden
+2. Check sheet and ambient/current roles. Header/data row settings are hidden
    after successful recognition. On a recognition warning, inspect Source Rows, select a different
    sheet or enter the header/first/last rows and Apply Data Rows; this does not confirm the readings.
    Expand Sample & Channel Mapping; assign each sample's thermocouples, including spare replacements.
@@ -303,3 +303,42 @@ ambiguous regions retain a recovery path; confirmation, role review and suspicio
 remain. Fixed a false-header boundary that could skip error records; tests first reproduced it.
 Scanner configuration and scan-control preambles also have regression protection. Zero outstanding
 findings. Summary: Standards 0; Spec 0.
+
+### Follow-up: remove the extra current-conversion UI
+
+Re-reading the supplied VBA confirmed that `ampVal = ws.Cells(row, lastValidCol).Value` takes the
+decimal current reading directly; the rise formula subtracts the penultimate ambient column from
+each thermocouple reading. The `Scale To Amperes` input and its conversion guidance were a ConnLab
+extension, not controls in that macro. They are now removed, with no hidden advanced replacement.
+The three visible mapping fields are Ambient Column, Current Column and Thermocouples Per Sample.
+
+The page uses the imported current values as amperes without adding conversion or rounding; the
+selected ambient values remain the subtraction reference, not a way to calculate current. Inputs
+must already contain the intended current measurements, as in the original macro workflow. Existing
+transport/export scaling support is unchanged for API compatibility, but the normal page does not
+offer it and all preparation/analysis/download requests fix it to the identity value 1, including
+legacy non-identity suggestions. No source, numerical fit, report chart
+style or row-review behavior changes.
+
+Revision validation (2026-10-05): the new UI regression first failed while the extra input remained;
+the legacy non-identity suggestion then failed at the preparation boundary. Both passed after removal
+and identity enforcement. The final affected frontend matrix passed 17 tests (temperature page,
+temperature API and TopBar); `tsc -b` and the Vite production build passed sequentially. The export
+regression also verifies that an old non-identity suggestion cannot change downloaded results.
+A read-only preparation check preserved decimal current 17.596362 and ambient 20.625 exactly.
+Backend code did not change in this revision; the preceding 56-test backend matrix was not rerun.
+The live 856×804 page has only three mapping fields, no conversion hint or input, no new alerts and
+no horizontal overflow. Inspection preserved the user's imported workbook and current selections.
+
+#### Revision Standards Review
+
+Reviewed the exact revision diff: the common request boundary covers prepare, analyze and export;
+source rows are not mutated, API compatibility remains, and the responsive grid follows the existing
+control layout. Same-agent sequential review, not an independent review. Zero outstanding findings.
+
+#### Revision Spec Review
+
+Confirmed against the supplied VBA that direct decimal current readings and ambient subtraction are
+retained. The extra input and hint are removed without an advanced replacement; channel review,
+data confirmation and chart/export behavior remain. Zero outstanding findings. `git diff --check`
+passed.

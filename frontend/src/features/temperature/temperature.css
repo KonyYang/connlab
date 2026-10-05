@@ -22,7 +22,7 @@
 .temperature-region-correction form { display: grid; gap: 12px; justify-items: start; color: var(--color-ink); }
 .temperature-region-fields { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; width: 100%; }
 .temperature-region-correction .temperature-detail { color: var(--color-ink); }
-.temperature-mapping-fields { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
+.temperature-mapping-fields { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
 .temperature-page .temperature-hint { margin: 0; color: var(--color-ink-muted); font-size: 13px; font-weight: 400; }
 .temperature-detail { min-width: 0; border: 1px solid var(--color-border); border-radius: 10px; padding: 12px; }
 .temperature-detail summary { cursor: pointer; font-size: 14px; font-weight: 600; }

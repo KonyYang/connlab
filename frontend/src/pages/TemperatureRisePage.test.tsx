@@ -105,6 +105,32 @@ describe('temperature preparation and calculation workflow', () => {
     expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(false);
   });
 
+  it('uses decimal current and ambient values directly without an extra conversion setting', async () => {
+    const user = userEvent.setup();
+    const decimal = structuredClone(imported);
+    decimal.table.rows[1] = [1, 24.987654, 25.123456, 20.625, 17.596362, 26];
+    decimal.selection.current_multiplier = .001; // A legacy suggestion must not apply a hidden conversion.
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(decimal);
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    expect(screen.queryByLabelText('Scale To Amperes')).toBeNull();
+    expect(screen.queryByText(/Use 1 for readings already in A/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /conversion|scale/i })).toBeNull();
+    expect(screen.getByLabelText('Ambient Column')).toBeTruthy();
+    expect(screen.getByLabelText('Current Column')).toBeTruthy();
+    expect(screen.getByLabelText('Thermocouples Per Sample')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    expect(api.prepareTemperatureData).toHaveBeenCalledWith(expect.objectContaining({
+      table: expect.objectContaining({ rows: decimal.table.rows }),
+      selection: expect.objectContaining({ current_column: 5, ambient_column: 4, current_multiplier: 1 }),
+    }));
+    await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
+    expect(api.analyzeTemperatureData).toHaveBeenCalledWith(expect.objectContaining({
+      table: expect.objectContaining({ rows: decimal.table.rows }),
+      selection: expect.objectContaining({ current_multiplier: 1 }),
+    }));
+  });
+
   it('requires confirmation, supports replacement and row restoration, and invalidates downstream results', async () => {
     const user = userEvent.setup();
     render(<TemperatureRisePage onBack={() => undefined} />);
@@ -203,6 +229,9 @@ describe('temperature preparation and calculation workflow', () => {
 
   it('clears affected calculations when coefficients change and exports the chosen values', async () => {
     const user = userEvent.setup();
+    const legacy = structuredClone(imported);
+    legacy.selection.current_multiplier = .001;
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(legacy);
     vi.mocked(api.generateTemperatureDerating).mockResolvedValue({
       points: [{ ambient: 0, basic: 100, derated: 80 }, { ambient: 105, basic: 0, derated: 0 }],
       annotation: { ambient: 75, basic: 60, derated: 48 }, coefficients, max_temperature: 105, step: 2.5,
@@ -226,6 +255,7 @@ describe('temperature preparation and calculation workflow', () => {
       await user.click(screen.getByRole('button', { name: 'Download Excel' }));
       await screen.findByText('curves.xlsx');
       expect(api.downloadTemperatureWorkbook).toHaveBeenCalledWith(expect.objectContaining({
+        selection: expect.objectContaining({ current_multiplier: 1 }),
         average_coefficients: { a: .02, b: .2, c: 0 }, target_rise: 30,
         derating: { max_temperature: 105, step: 2.5, ambient_point: 75 },
       }));

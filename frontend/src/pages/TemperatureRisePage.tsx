@@ -35,10 +35,8 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         <div className="temperature-mapping-fields">
           <label>Ambient Column<select value={s.selection.ambient_column} disabled={busy} onChange={event => tool.changeData({ ambient_column: Number(event.target.value) })}>{columns.map(col => <option key={col.id} value={col.id}>{col.label}</option>)}</select></label>
           <label>Current Column<select value={s.selection.current_column} disabled={busy} onChange={event => tool.changeData({ current_column: Number(event.target.value) })}>{columns.map(col => <option key={col.id} value={col.id}>{col.label}</option>)}</select></label>
-          <label>Scale To Amperes<input type="number" step="any" min="0" value={s.selection.current_multiplier} disabled={busy} onChange={event => tool.changeData({ current_multiplier: Number(event.target.value) })} /></label>
           <label>Thermocouples Per Sample<input type="number" min="1" max="254" value={s.selection.thermocouples_per_sample} disabled={busy} onChange={event => tool.changeData({ thermocouples_per_sample: Number(event.target.value) })} /></label>
         </div>
-        <p className="temperature-hint">Confirm the column meanings and scale. Use 1 for readings already in A, or 0.001 for mA. Scanner voltage labels may already include a current conversion.</p>
         <ChannelMapping key={`mapping-${s.table.sheet_name}-${s.table.file_name}`} table={s.table} selection={s.selection} onChange={tool.changeData} disabled={busy} />
         <DataPreview key={`preview-${s.table.sheet_name}-${s.table.file_name}`} table={s.table} selection={s.selection} issues={s.review?.issues ?? []} onChange={tool.changeData} disabled={busy} />
         {Boolean(s.review?.issues.length) && <section className="temperature-review" aria-label="Data Needs Review">

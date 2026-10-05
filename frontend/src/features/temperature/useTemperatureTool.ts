@@ -73,7 +73,9 @@ export function useTemperatureTool() {
 
   function request(): api.PreparationRequest {
     if (!state.table || !state.selection) throw new Error('Import a workbook first.');
-    return { table: state.table, selection: state.selection, acknowledge_warnings: state.acknowledged, zero_intercept: state.zeroIntercept };
+    // Match the macro: use measured current directly, including any decimal places.
+    return { table: state.table, selection: { ...state.selection, current_multiplier: 1 },
+      acknowledge_warnings: state.acknowledged, zero_intercept: state.zeroIntercept };
   }
   const confirm = () => run('Checking Data...', () => api.prepareTemperatureData(request()), review => ({ review, confirmed: review.ready }));
   const analyze = () => run('Generating T-riseChart...', () => api.analyzeTemperatureData(request()), analysis => ({ ...clearResults, analysis }));
