@@ -57,6 +57,7 @@ def test_export_contains_native_xy_charts_formulas_cached_values_and_source_mapp
     assert [series.trendline.order for series in book['T-riseChart']._charts[0].series] == [2, 2]
     assert all(series.trendline.intercept == 0 for series in book['T-riseChart']._charts[0].series)
     assert 'SQRT' in book['Derating']['B6'].value
+    assert book['Derating'].freeze_panes == 'B6'
     assert book['Initial Data']['B5'].value.startswith('Sample 1 / TC 1')
     book.close()
     cached = load_workbook(output, data_only=True)
@@ -113,7 +114,7 @@ def test_report_export_has_traceable_key_readings_and_copyable_formula_summary(t
     assert block[0][0].value == 'Applied Current (A)'
     labels = [row[0].value for row in block]
     assert labels[1:6] == ['1#- T1', '1#- T2', '1#- T3', '1#- T4', '1# Max T-Rise']
-    assert labels[-2:] == ['Max T-Rise', 'Avg of Max T-Rise on Each Sample']
+    assert labels[-2:] == ['Max T-Rise', 'Avg of max T-Rise on each sample']
     assert block[1][2].data_type == 'f'
     assert block[5][2].value.startswith('=MAX(')
     assert block[-1][2].value.startswith('=AVERAGE(')
@@ -154,8 +155,8 @@ def test_report_export_has_editable_y_calculator_and_named_bold_colored_equation
         labels = root.findall('.//c:trendline/c:trendlineLbl', ns)
         assert len(labels) == 2
         equations = [''.join(e.itertext()) for e in labels]
-        assert 'Max: y =' in equations[0]
-        assert 'Avg of Max: y =' in equations[1]
+        assert 'Max T-Rise: y =' in equations[0]
+        assert 'Avg of max T-Rise on each sample: y =' in equations[1]
         colors = []
         for label in labels:
             assert label.find('.//a:defRPr', ns).get('b') == '1'
@@ -165,6 +166,35 @@ def test_report_export_has_editable_y_calculator_and_named_bold_colored_equation
     cached = load_workbook(output, data_only=True)
     assert cached['T-riseChart'][calculator[1][-1].coordinate].value == pytest.approx(66.54445742154181)
     cached.close()
+
+
+def test_report_chart_names_follow_summary_cells_and_labels_stack_at_upper_left(tmp_path):
+    output, _ = _report_export(tmp_path)
+    book = load_workbook(output)
+    sheet = book['T-riseChart']
+    assert sheet.freeze_panes is None
+    assert book['Initial Data'].freeze_panes == 'B6'
+    assert book['Derating'].freeze_panes is None  # No Derating was requested for this export.
+    summary = sheet[next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
+    labels = [row[0] for row in summary[-2:]]
+    chart = sheet._charts[0]
+    positions = []
+    for series, cell in zip(chart.series, labels):
+        title = series.tx.strRef
+        assert title.f == f"'T-riseChart'!$A${cell.row}"
+        assert title.strCache.pt[0].v == cell.value
+        label = series.trendline.trendlineLbl
+        equation_cell = sheet[label.tx.strRef.f.split('!')[1].replace('$', '')]
+        name_cell = sheet[f'A{equation_cell.row}']
+        assert name_cell.value == f'=A{cell.row}'
+        assert label.tx.strRef.strCache.pt[0].v.startswith(cell.value + ': y = ')
+        position = label.layout.manualLayout
+        assert .1 <= position.x <= .2  # Inside the left of the plot, not the axes or right edge.
+        assert .1 <= position.y <= .4
+        positions.append(position)
+    assert positions[0].x == positions[1].x
+    assert positions[1].y > positions[0].y
+    book.close()
 
 
 @pytest.mark.parametrize('constant_rise', [False, True])

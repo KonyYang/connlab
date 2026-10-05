@@ -2,6 +2,7 @@
 
 from openpyxl.chart import Reference, Series
 from openpyxl.chart.data_source import NumData, NumVal, StrRef, StrData, StrVal
+from openpyxl.chart.series import SeriesLabel
 from openpyxl.chart.text import Text, RichText
 from openpyxl.chart.trendline import Trendline, TrendlineLabel
 from openpyxl.chart.layout import Layout, ManualLayout
@@ -32,7 +33,7 @@ def build_rise_report(sheet, *, table, selection, analysis, maximum, average, ta
                                calculator_header + 6, caches)
     _rise_chart(sheet, analysis, chart, summary_header, maximum_row, average_row, label_rows, caches)
     _name(sheet, 'TemperatureRiseSummary', summary_header, average_row, len(analysis.points) + 1)
-    sheet.freeze_panes = 'B2'
+    sheet.freeze_panes = None
     sheet.sheet_view.showGridLines = False
     sheet.sheet_properties.pageSetUpPr.fitToPage = True
     sheet.page_setup.orientation = 'landscape'
@@ -143,7 +144,7 @@ def _summary(sheet, selection, analysis, rise_rows, header, caches):
         _literal(sheet, row, 1, f'{sample}# Max T-Rise')
     maximum_row, average_row = header + channels + samples + 1, header + channels + samples + 2
     _literal(sheet, maximum_row, 1, 'Max T-Rise')
-    _literal(sheet, average_row, 1, 'Avg of Max T-Rise on Each Sample')
+    _literal(sheet, average_row, 1, 'Avg of max T-Rise on each sample')
     for column, point in enumerate(analysis.points, 2):
         letter = get_column_letter(column)
         if point.source_row is None:
@@ -234,10 +235,11 @@ def _fit_equations(sheet, analysis, current_row, maximum_row, average_row, heade
     for column, label in enumerate(('Chart Fit', 'a', 'b', 'c', 'R²', 'Equation'), 1):
         _literal(sheet, header, column, label)
     rows = []
-    for row, (name, source, fit) in enumerate((('Max', maximum_row, analysis.maximum_fit),
-                                              ('Avg of Max', average_row, analysis.average_fit)), header + 1):
+    for row, (source, fit) in enumerate(((maximum_row, analysis.maximum_fit),
+                                        (average_row, analysis.average_fit)), header + 1):
         rows.append(row)
-        _literal(sheet, row, 1, name)
+        name = sheet.cell(source, 1).value
+        _formula(sheet, row, 1, f'=A{source}', name, caches)
         y_range = f'$B${source}:${end}${source}'
         intercept = 'FALSE' if analysis.zero_intercept else 'TRUE'
         regression = f'LINEST({y_range},{x_range}^{{1;2}},{intercept})'
@@ -270,7 +272,10 @@ def _rise_chart(sheet, analysis, chart, current_row, maximum_row, average_row, l
                                                        (average_row, 'Avg of Max', AVG_COLOR, 'square'))):
         x = Reference(sheet, min_col=2, max_col=end, min_row=current_row)
         y = Reference(sheet, min_col=2, max_col=end, min_row=row)
-        series = Series(y, x, title=name)
+        series = Series(y, x)
+        series.tx = SeriesLabel(strRef=StrRef(
+            f=f'{quote_sheetname(sheet.title)}!$A${row}',
+            strCache=StrData(ptCount=1, pt=[StrVal(idx=0, v=sheet.cell(row, 1).value)])))
         for source, reference in ((current_row, series.xVal.numRef), (row, series.yVal.numRef)):
             values = [caches.get(sheet.cell(source, col).coordinate, sheet.cell(source, col).value) for col in range(2, end + 1)]
             reference.numCache = NumData(formatCode='0.0', ptCount=len(values), pt=[NumVal(idx=i, v=v) for i, v in enumerate(values)])
@@ -285,8 +290,8 @@ def _rise_chart(sheet, analysis, chart, current_row, maximum_row, average_row, l
             f=f'{quote_sheetname(sheet.title)}!${label_coordinate[0]}${label_rows[index]}',
             strCache=StrData(ptCount=1, pt=[StrVal(idx=0, v=caches[label_coordinate])]))),
             txPr=RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=properties), endParaRPr=properties)]),
-            layout=Layout(manualLayout=ManualLayout(x=.58 if index == 0 else .55,
-                y=.16 if index == 0 else .60, xMode='edge', yMode='edge')))
+            layout=Layout(manualLayout=ManualLayout(x=.15,
+                y=.14 if index == 0 else .27, xMode='edge', yMode='edge')))
         series.trendline = Trendline(trendlineType='poly', order=2, name=f'Fit ({name})',
             intercept=0 if analysis.zero_intercept else None, dispEq=True, dispRSqr=True, trendlineLbl=label)
         series.trendline.spPr = GraphicalProperties()

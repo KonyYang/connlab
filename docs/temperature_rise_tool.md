@@ -180,3 +180,24 @@ updated the linked chart equation. Derating at 75°C remained 68.3888159321/54.7
 All three source/reference SHA-256 digests were unchanged. Sequential same-agent standards and
 specification review found no outstanding blocking issue. Frontend was untouched, so its earlier
 validated tests/build remain applicable; they were not rerun for this export-only revision.
+
+## Chart labels and navigation refinement (2026-10-05)
+
+The Desktop reference workbook and screenshot establish the presentation for this narrow revision.
+T-riseChart no longer freezes column A or its top row; Initial Data and Derating keep their existing
+navigation. The two chart series reference the summary's column-A names, `Max T-Rise` and
+`Avg of max T-Rise on each sample`. Equation helper names also reference those cells, so editing a
+summary name in Excel updates both the legend and its linked equation label. Orange and deep-blue
+bold equation/R² labels are stacked inside the upper-left plot area, with room for the full AVG name.
+
+No stage selection, numerical fit, calculator, Derating formula, source file, UI or API behavior changes.
+Regression coverage checks the exported native references, cached names, pane state and label layout.
+Acceptance additionally uses read-only desktop Excel to render the chart, check formula errors and
+rename a summary label in memory; the supplied files must retain their SHA-256 digests. Manual label
+repositioning may still be useful for unusual data distributions or names longer than the reference.
+
+Verification completed: 57 affected backend tests passed (one existing Starlette/httpx deprecation).
+Read-only desktop Excel showed no formula errors and no frozen panes on T-riseChart; both full labels
+rendered without clipping. Renaming A51 updated the native series and equation without changing the
+current result. Current and Derating baselines above remained unchanged, as did both source hashes.
+Sequential same-agent review found Standards 0 / Specification 0 outstanding findings.

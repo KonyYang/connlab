@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_RISE_CHART_LABELS_20261005",
+    "summary": "Align T-riseChart panes and linked full curve labels with reference",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Remove T-riseChart frozen panes, link curve/equation names to column A and position bold colored labels at upper left; retain calculations and other sheets",
+    "scope_paths": [
+      "backend/infrastructure/office/temperature_rise_report_sheet.py",
+      "tests/unit/test_temperature_workbook_gateway.py",
+      "docs/temperature_rise_tool.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "be2c5e699449a85eb99c3752c22afe80320b3809",
+    "started_at": "2026-10-05T08:45:40.816466Z",
+    "updated_at": "2026-10-05T08:45:40.816466Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_RISE_DERATING_20261004",
     "tier": "standard",
