@@ -240,6 +240,8 @@ export default function App(): ReactElement {
         ? "Basic Information"
       : route.name === "projectReportWorkspace"
         ? "Report"
+      : route.name === "temperatureRise"
+        ? "Temperature Rise"
         : undefined;
 
   return (

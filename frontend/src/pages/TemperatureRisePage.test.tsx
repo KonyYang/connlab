@@ -45,9 +45,9 @@ describe('temperature preparation and calculation workflow', () => {
   it('returns through an accessible icon in the Tools header, without a duplicate content button', async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
-    const view = render(<AppShell activeRoute="tools"><TemperatureRisePage onBack={onBack} /></AppShell>);
+    const view = render(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={onBack} /></AppShell>);
     const banner = screen.getByRole('banner');
-    expect(within(banner).getByRole('heading', { name: 'Tools' })).toBeTruthy();
+    expect(within(banner).getByRole('heading', { name: 'Temperature Rise' })).toBeTruthy();
     const back = within(banner).getByRole('button', { name: 'Back To Tools' });
     expect(back.textContent).toBe('');
     expect(back.getAttribute('title')).toBe('Back To Tools');

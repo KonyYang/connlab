@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_AUTO_DATA_REGION_20261005",
     "summary": "Auto-detect scanner data region and show row settings only for detection exceptions",
@@ -36,86 +36,17 @@
     "risk_reasons": [],
     "activation_head": "5419b7d3883a6ab3ecfe78c32730e266ebca26c0",
     "started_at": "2026-10-05T14:37:57.566451Z",
-    "updated_at": "2026-10-05T15:30:38.416695Z",
+    "updated_at": "2026-10-05T23:29:23.726442Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_AUTO_DATA_REGION_20261005",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requested Temperature Rise as the temperature tool header title, retaining the Tools return icon and parent Tools title.",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_AUTO_DATA_REGION_20261005",
-      "subject": "900f1a785ffa739145b9a77700abea965cdd0530",
-      "summary": "Scanner row settings are hidden after unique recognition; failed/ambiguous imports retain raw preview and manual correction. The extra current-conversion UI and hint are removed; the page uses decimal current readings directly. Data confirmation, role mapping and anomalous readings remain explicit.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/api/routes_tools_temperature.py",
-        "backend/application/temperature_data_preparation.py",
-        "backend/application/tools_temperature_service.py",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/api/temperature.test.ts",
-        "frontend/src/api/temperature.ts",
-        "frontend/src/features/temperature/DataRegionCorrection.tsx",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_data_preparation.py"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "check": "TDD RED/GREEN at preparation, import API and page interaction seams. Review regressions first reproduced false-header error-row skipping and configuration/control preamble misidentification; fixed and included in final QA."
-        },
-        {
-          "status": "passed",
-          "check": "Original final backend matrix: 56 passed, one existing Starlette/httpx deprecation warning; backend unchanged in revision, not rerun. Final revision frontend matrix: 17 passed. TypeScript tsc -b and Vite production build passed sequentially."
-        },
-        {
-          "status": "passed",
-          "check": "Revision TDD RED/GREEN: removed conversion control and hint, verified decimal source rows unchanged at prepare/analyze, and identity scaling at prepare/analyze/export even after a legacy non-identity import suggestion. Read-only backend preparation check retained current 17.596362 and ambient 20.625 exactly."
-        },
-        {
-          "status": "passed",
-          "check": "Running localhost API: unreadable-region recovery retained source rows, manual correction accepted, tail zero-current warning blocked unacknowledged analysis. Real XLSM auto region 31/32/331 with 300 confirmed records and unchanged MAX/AVG coefficients; source SHA-256 unchanged, no VBA."
-        },
-        {
-          "status": "passed",
-          "check": "Live browser 856x804: normal row controls and detection alerts absent, mapping/preview/Confirm Data retained, no horizontal page overflow. Revision read-only check: only ambient/current/TC count mapping fields, conversion control and hint absent; existing imported user draft preserved. Exception interaction verified in React tests and live API rather than OS picker automation."
-        },
-        {
-          "status": "passed",
-          "check": "Exact working-tree diff including new correction component reviewed sequentially for Standards and Spec. Both axes zero outstanding findings; git diff --check passed."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "mode": "same-agent standard implementation with evidence-backed TDD slices"
-        },
-        "reviewer": {
-          "status": "passed",
-          "mode": "same-agent sequential Standards and Spec review; not independent agents",
-          "evidence": "docs/temperature_rise_tool.md"
-        },
-        "qa": {
-          "status": "passed",
-          "mode": "same-agent affected matrix, production build, live API and browser checks",
-          "limitation": "Exception workflow tested via React and live API; no native OS file-picker or full screen-reader automation."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "branch": "master",
-        "publication": "Local only; final User Close remains required"
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_TOOLS_RETURN_ICON_20261005",

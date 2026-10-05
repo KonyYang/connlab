@@ -342,3 +342,12 @@ Confirmed against the supplied VBA that direct decimal current readings and ambi
 retained. The extra input and hint are removed without an advanced replacement; channel review,
 data confirmation and chart/export behavior remain. Zero outstanding findings. `git diff --check`
 passed.
+
+### Follow-up: temperature-page title (2026-10-06)
+
+The temperature route now overrides the top-bar title with `Temperature Rise`; the parent `/tools`
+route still uses `Tools`. The Tools return icon and the content heading `Temperature Rise & Derating`
+are unchanged. Exact-diff self-review found no outstanding standards or specification issues.
+Affected page/TopBar tests passed 15 tests and TypeScript `tsc -b frontend` passed. This literal title
+change does not alter data, calculation or export behavior; backend and production build matrices
+were not rerun.
