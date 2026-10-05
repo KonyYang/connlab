@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_AUTO_DATA_REGION_20261005",
     "summary": "Auto-detect scanner data region and show row settings only for detection exceptions",
@@ -36,17 +36,103 @@
     "risk_reasons": [],
     "activation_head": "5419b7d3883a6ab3ecfe78c32730e266ebca26c0",
     "started_at": "2026-10-05T14:37:57.566451Z",
-    "updated_at": "2026-10-05T23:35:49.777240Z",
+    "updated_at": "2026-10-05T23:38:33.736817Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_AUTO_DATA_REGION_20261005",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requested hiding Excel File label and replacing browser-localized file chooser with a Load Initial Data button; retain workbook import and filename feedback.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_AUTO_DATA_REGION_20261005",
+      "subject": "1300ea2e237f29166446e523ce6c6073a38e5d86",
+      "summary": "Scanner regions auto-detect with exception recovery; current decimals are used directly. The header is Temperature Rise with Tools return; duplicate headings are removed. Load Initial Data replaces the Excel File label and localized chooser, retains filename feedback and safe cancellation/reselection. Data confirmation and anomalous-reading review remain explicit.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/routes_tools_temperature.py",
+        "backend/application/temperature_data_preparation.py",
+        "backend/application/tools_temperature_service.py",
+        "docs/temperature_rise_tool.md",
+        "frontend/src/App.tsx",
+        "frontend/src/api/temperature.test.ts",
+        "frontend/src/api/temperature.ts",
+        "frontend/src/features/temperature/DataRegionCorrection.tsx",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx",
+        "tests/integration/test_tools_temperature_api.py",
+        "tests/unit/test_temperature_data_preparation.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "check": "Latest Load Initial Data revision: TDD RED on visible Excel File label, GREEN for keyboard activation, import, filename feedback, cancellation and same-file reselection. Final 18 page/API/TopBar tests, TypeScript and Vite build passed sequentially. Exact diff Standards/Spec reviews 0 findings and diff check passed. Browser read-only at 680x804 confirmed named button, native input hidden, label absent, top title retained, no overflow; no user data modified. Native OS chooser not automated; tested at DOM boundary. Backend unchanged, not rerun."
+        },
+        {
+          "status": "passed",
+          "check": "Earlier Initial Data heading deletion: 10 temperature-page tests passed on that state. Only the heading was deleted; data import/confirmation and top title/return remained. Exact diff self-reviewed, zero outstanding findings, git diff --check passed. Backend/build/typecheck/browser not rerun for that single literal removal."
+        },
+        {
+          "status": "passed",
+          "check": "Earlier 2026-10-06 duplicate-heading removal: 15 page/TopBar tests and tsc -b frontend passed; exact diff self-reviewed and git diff --check passed. Heading wrapper and obsolete styles removed, AppShell top title and return icon retained, standalone return preserved. No data/calculation changes; backend/build/browser checks not rerun for that localized removal."
+        },
+        {
+          "status": "passed",
+          "check": "TDD RED/GREEN at preparation, import API and page interaction seams. Review regressions first reproduced false-header error-row skipping and configuration/control preamble misidentification; fixed and included in final QA."
+        },
+        {
+          "status": "passed",
+          "check": "Original final backend matrix: 56 passed, one existing Starlette/httpx deprecation warning; backend unchanged in revisions, not rerun. Current-conversion revision frontend matrix: 17 passed, TypeScript tsc -b and Vite production build passed sequentially. Latest literal title revision: 15 page/TopBar tests and tsc -b frontend passed; production build not rerun for the literal title change."
+        },
+        {
+          "status": "passed",
+          "check": "2026-10-06 title revision exact diff self-reviewed: App route override is Temperature Rise only on temperatureRise; default Tools title, return icon and content heading unchanged. Standards/Spec zero outstanding findings. git diff --check passed."
+        },
+        {
+          "status": "passed",
+          "check": "Revision TDD RED/GREEN: removed conversion control and hint, verified decimal source rows unchanged at prepare/analyze, and identity scaling at prepare/analyze/export even after a legacy non-identity import suggestion. Read-only backend preparation check retained current 17.596362 and ambient 20.625 exactly."
+        },
+        {
+          "status": "passed",
+          "check": "Running localhost API: unreadable-region recovery retained source rows, manual correction accepted, tail zero-current warning blocked unacknowledged analysis. Real XLSM auto region 31/32/331 with 300 confirmed records and unchanged MAX/AVG coefficients; source SHA-256 unchanged, no VBA."
+        },
+        {
+          "status": "passed",
+          "check": "Live browser 856x804: normal row controls and detection alerts absent, mapping/preview/Confirm Data retained, no horizontal page overflow. Revision read-only check: only ambient/current/TC count mapping fields, conversion control and hint absent; existing imported user draft preserved. Exception interaction verified in React tests and live API rather than OS picker automation."
+        },
+        {
+          "status": "passed",
+          "check": "Exact working-tree diff including new correction component reviewed sequentially for Standards and Spec. Both axes zero outstanding findings; git diff --check passed."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "mode": "same-agent standard implementation with evidence-backed TDD slices"
+        },
+        "reviewer": {
+          "status": "passed",
+          "mode": "same-agent sequential Standards and Spec review; not independent agents",
+          "evidence": "docs/temperature_rise_tool.md"
+        },
+        "qa": {
+          "status": "passed",
+          "mode": "same-agent affected matrix, production build, live API and browser checks",
+          "limitation": "Exception workflow tested via React and live API; no native OS file-picker or full screen-reader automation."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "branch": "master",
+        "publication": "Local only; final User Close remains required"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_TOOLS_RETURN_ICON_20261005",
