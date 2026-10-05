@@ -33,22 +33,20 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         event.target.value = '';
       }} />
     {s.file && <section className="temperature-panel temperature-initial">
-      <div className="temperature-import-fields">
-        <div className="temperature-file">
-          <span className="temperature-file-name">{s.file.name}</span>
-        </div>
-        {s.table && <>
-          <label>Sheet Name<select value={s.table.sheet_name} disabled={busy} onChange={event => tool.load(s.file, event.target.value)}>{s.table.sheet_names.map(name => <option key={name}>{name}</option>)}</select></label>
-        </>}
+      <div className="temperature-file">
+        <span className="temperature-file-name">{s.file.name}</span>
       </div>
+      {s.table && <div className="temperature-import-fields">
+          <label>Sheet Name<select value={s.table.sheet_name} disabled={busy} onChange={event => tool.load(s.file, event.target.value)}>{s.table.sheet_names.map(name => <option key={name}>{name}</option>)}</select></label>
+          {s.selection && <>
+            <label>Ambient Column<select value={s.selection.ambient_column} disabled={busy} onChange={event => tool.changeData({ ambient_column: Number(event.target.value) })}>{columns.map(col => <option key={col.id} value={col.id}>{col.label}</option>)}</select></label>
+            <label>Current Column<select value={s.selection.current_column} disabled={busy} onChange={event => tool.changeData({ current_column: Number(event.target.value) })}>{columns.map(col => <option key={col.id} value={col.id}>{col.label}</option>)}</select></label>
+            <label>Thermocouples Per Sample<input type="number" min="1" max="254" value={s.selection.thermocouples_per_sample} disabled={busy} onChange={event => tool.changeData({ thermocouples_per_sample: Number(event.target.value) })} /></label>
+          </>}
+      </div>}
       {s.table && s.region_issue && <DataRegionCorrection table={s.table} message={s.region_issue}
         disabled={busy} onApply={tool.correctRegion} />}
       {s.table && s.selection && <>
-        <div className="temperature-mapping-fields">
-          <label>Ambient Column<select value={s.selection.ambient_column} disabled={busy} onChange={event => tool.changeData({ ambient_column: Number(event.target.value) })}>{columns.map(col => <option key={col.id} value={col.id}>{col.label}</option>)}</select></label>
-          <label>Current Column<select value={s.selection.current_column} disabled={busy} onChange={event => tool.changeData({ current_column: Number(event.target.value) })}>{columns.map(col => <option key={col.id} value={col.id}>{col.label}</option>)}</select></label>
-          <label>Thermocouples Per Sample<input type="number" min="1" max="254" value={s.selection.thermocouples_per_sample} disabled={busy} onChange={event => tool.changeData({ thermocouples_per_sample: Number(event.target.value) })} /></label>
-        </div>
         <ChannelMapping key={`mapping-${s.table.sheet_name}-${s.table.file_name}`} table={s.table} selection={s.selection} onChange={tool.changeData} disabled={busy} />
         <DataPreview key={`preview-${s.table.sheet_name}-${s.table.file_name}`} table={s.table} selection={s.selection} issues={s.review?.issues ?? []} onChange={tool.changeData} disabled={busy} />
         {Boolean(s.review?.issues.length) && <section className="temperature-review" aria-label="Data Needs Review">

@@ -438,3 +438,36 @@ the supplied scanner CSV; original Excel formats and human confirmation remain s
 missing/zero rows and decimal source readings are preserved; exported chart styles/calculations remain
 unchanged. Multi-signal role assignment remains an explicit operator responsibility, not silently
 inferred from the filename. Zero outstanding findings. Summary: Standards 0; Spec 0.
+
+### Follow-up: compact import parameter row (2026-10-06)
+
+Sheet Name, Ambient Column, Current Column and Thermocouples Per Sample now share one compact
+four-field row below the selected filename. Labels use the existing sans font at 12px with a 4px
+label/control gap; controls have 32px minimum height and the row has 8px field spacing. Native labels,
+tab order, disabled states, sheet reload and mapping handlers remain unchanged. The exception-only
+data-region recovery still has its sheet selector even when no mapping can be suggested.
+
+The obsolete separate three-field mapping row and its breakpoint overrides are removed. On windows
+too narrow for readable controls, only the parameter row can scroll horizontally; the page itself
+does not expand or stack these four fields into additional rows.
+
+Final verification: 19 existing page/API/TopBar tests, TypeScript and Vite build passed on the exact
+implementation state. Browser read-only inspection at 856×804 showed all four labels/controls at the
+same vertical position, a 58px parameter row, and no page-level horizontal overflow. The user's loaded
+`3A new.csv`, Initial Data sheet, ambient 33, current 37 and TC count 1 survived hot reload unchanged.
+No live selection was edited to test layout; narrow-width containment follows the local scroll rule,
+not a newly run resized-browser check. Backend and calculation code did not change and were not rerun.
+This reversible presentation-only regrouping reused behavioral regressions rather than adding tests
+that freeze DOM grouping or CSS values.
+
+#### Standards
+
+Same-agent exact-diff review: display-only composition/styles remain in the temperature page/feature;
+existing semantic labels, focus styles, tokens and single draft state are retained. No new abstraction,
+request path, source mutation or business rule. Removed orphaned responsive mapping styles. Findings: 0.
+
+#### Spec
+
+Same-agent exact-diff review: the four named parameters share one compact row; filename feedback,
+editing, sheet switching, exception recovery and data confirmation remain available. No unrelated
+mapping or chart controls were altered. Findings: 0. Summary: Standards 0; Spec 0.
