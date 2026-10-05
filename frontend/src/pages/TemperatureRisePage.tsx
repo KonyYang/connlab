@@ -5,6 +5,7 @@ import { UiIcon } from '../components/common/UiIcon';
 import { useTopBarActionsRoot } from '../components/layout/TopBarActionsContext';
 import { ChannelMapping, sourceColumns } from '../features/temperature/ChannelMapping';
 import { DataPreview } from '../features/temperature/DataPreview';
+import { DataRegionCorrection } from '../features/temperature/DataRegionCorrection';
 import { RiseChart, DeratingChart } from '../features/temperature/TemperatureCharts';
 import { useTemperatureTool } from '../features/temperature/useTemperatureTool';
 import '../features/temperature/temperature.css';
@@ -24,13 +25,12 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
       <h3>Initial Data</h3>
       <div className="temperature-import-fields">
         <label className="temperature-file">Excel File<input type="file" accept=".xls,.xlsx,.xlsm" onChange={event => tool.load(event.target.files?.[0] ?? null)} /></label>
-        {s.table && s.selection && <>
+        {s.table && <>
           <label>Sheet Name<select value={s.table.sheet_name} disabled={busy} onChange={event => tool.load(s.file, event.target.value)}>{s.table.sheet_names.map(name => <option key={name}>{name}</option>)}</select></label>
-          <label>Header Row<input type="number" min="1" max={s.table.rows.length} value={s.selection.header_row} disabled={busy} onChange={event => tool.changeData({ header_row: Number(event.target.value) })} /></label>
-          <label>First Data Row<input type="number" min="2" value={s.selection.start_row} disabled={busy} onChange={event => tool.changeData({ start_row: Number(event.target.value) })} /></label>
-          <label>Last Data Row<input type="number" min="2" max={s.table.rows.length} value={s.selection.end_row} disabled={busy} onChange={event => tool.changeData({ end_row: Number(event.target.value) })} /></label>
         </>}
       </div>
+      {s.table && s.region_issue && <DataRegionCorrection table={s.table} message={s.region_issue}
+        disabled={busy} onApply={tool.correctRegion} />}
       {s.table && s.selection && <>
         <div className="temperature-mapping-fields">
           <label>Ambient Column<select value={s.selection.ambient_column} disabled={busy} onChange={event => tool.changeData({ ambient_column: Number(event.target.value) })}>{columns.map(col => <option key={col.id} value={col.id}>{col.label}</option>)}</select></label>

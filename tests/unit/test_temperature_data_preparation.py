@@ -2,7 +2,7 @@ from copy import deepcopy
 
 import pytest
 
-from backend.application.temperature_data_preparation import DataSelection, prepare_data
+from backend.application.temperature_data_preparation import DataSelection, prepare_data, suggest_selection
 from backend.domain.temperature_data import WorkbookTable
 
 
@@ -71,3 +71,39 @@ def test_suggested_mapping_excludes_chinese_scanner_metadata():
     assert selection.temperature_columns == (3, 4, 5, 6)
     assert selection.thermocouples_per_sample == 4
     assert selection.current_multiplier == 1
+
+
+def test_automatic_region_ignores_preamble_and_footer_but_keeps_suspicious_rows():
+    source = WorkbookTable('scanner.xlsx', ('Data',), 'Data', (
+        ('Scanner settings',),
+        (101, 'Ambient T', 'Type T', 'C', 'Temp (Type T)#Auto', False, 1, 0),
+        ('Scan count:', 'Start condition:', 'Immediate', 'Stop condition:', 'User stop'),
+        ('扫描', '时间', 'TC1', 'Ambient', 'Current'),
+        (1, '17:17', None, 20, 10), (2, '17:18', 25, 20, 10),
+        (), (3, '17:19', 25, 20, 0),
+        (4, '17:20', None, None, None), ('End of acquisition',), (),
+    ))
+    choice = suggest_selection(source)
+    assert (choice.header_row, choice.start_row, choice.end_row) == (4, 5, 9)
+    assert choice.excluded_rows == ()
+    review = prepare_data(source, choice)
+    assert any(issue.source_row == 5 and issue.code == 'invalid_reading' for issue in review.issues)
+    assert any(issue.source_row == 8 and issue.code == 'zero_current' for issue in review.issues)
+    assert not review.ready
+
+
+@pytest.mark.parametrize('rows', [
+    (('Notes', 'Only text', 'No readings'), ('more', 'notes', 'here')),
+    (('TC1', 'Ambient', 'Current'), ('missing', None, None)),
+    ((25, 20, 10), (26, 20, 10)),
+    (('TC1', 'Ambient', 'Current'), (25, 20, 10), (),
+     ('TC1', 'Ambient', 'Current'), (26, 20, 20)),
+    (('TC1', 'Ambient', 'Current'), (25, 20, 10),
+     ('TC1 error', 'Ambient error', 'Current error')),
+    (('TC1', 'Ambient', 'Current'),
+     ('TC1 error', 'Ambient error', 'Current error'), (25, 20, 10)),
+])
+def test_automatic_region_rejects_missing_or_ambiguous_data_instead_of_guessing_row_two(rows):
+    source = WorkbookTable('scanner.xlsx', ('Data',), 'Data', rows)
+    with pytest.raises(ValueError, match='data region'):
+        suggest_selection(source)

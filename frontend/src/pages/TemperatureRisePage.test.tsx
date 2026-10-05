@@ -10,6 +10,7 @@ vi.mock('../api/temperature', () => ({
   calculateTemperatureCurrent: vi.fn(), generateTemperatureDerating: vi.fn(), downloadTemperatureWorkbook: vi.fn(),
 }));
 const imported = {
+  region_issue: null,
   table: { file_name: 'scanner.xlsx', sheet_names: ['Data'], sheet_name: 'Data', rows: [
     ['Scan', 'TC1', 'TC2', 'Ambient', 'Current', 'Spare'],
     [1, 24, 25, 20, 10, 26], [2, 24, 25, 20, 10, 26], [3, 29, 30, 20, 20, 31], [4, 29, 30, 20, 20, 31],
@@ -58,6 +59,52 @@ describe('temperature preparation and calculation workflow', () => {
     expect(screen.queryByRole('button', { name: 'Back To Tools' })).toBeNull();
   });
 
+  it('uses the detected region without showing row settings or success notices', async () => {
+    const user = userEvent.setup();
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    for (const label of ['Header Row', 'First Data Row', 'Last Data Row']) {
+      expect(screen.queryByLabelText(label)).toBeNull();
+    }
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByLabelText('Ambient Column')).toBeTruthy();
+    expect(screen.getByLabelText('Current Column')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    expect(api.prepareTemperatureData).toHaveBeenCalledWith(expect.objectContaining({
+      selection: expect.objectContaining({ header_row: 1, start_row: 2, end_row: 5 }),
+    }));
+  });
+
+  it('shows row correction only when detection fails and requires confirmation after recovery', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce({
+      table: structuredClone(imported.table), selection: null,
+      region_issue: 'No data region could be identified. Check the sheet or set the header and data rows manually.',
+    });
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    fireEvent.change(screen.getByLabelText('Excel File'), { target: { files: [new File(['x'], 'scanner.xlsx')] } });
+    await screen.findByRole('alert');
+    expect(screen.getByLabelText('Sheet Name')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Confirm Data' })).toBeNull();
+    expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByLabelText('Header Row') as HTMLInputElement).value).toBe('');
+    expect(screen.getByRole('region', { name: 'Source Rows' }).textContent).toContain('TC1');
+    expect((screen.getByRole('button', { name: 'Apply Data Rows' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.type(screen.getByLabelText('Header Row'), '1');
+    await user.type(screen.getByLabelText('First Data Row'), '2');
+    await user.type(screen.getByLabelText('Last Data Row'), '5');
+    await user.click(screen.getByRole('button', { name: 'Apply Data Rows' }));
+    await screen.findByRole('button', { name: 'Confirm Data' });
+    expect(api.importTemperatureWorkbook).toHaveBeenLastCalledWith(expect.any(File), 'Data', {
+      header_row: 1, start_row: 2, end_row: 5,
+    });
+    expect(screen.queryByLabelText('Header Row')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('requires confirmation, supports replacement and row restoration, and invalidates downstream results', async () => {
     const user = userEvent.setup();
     render(<TemperatureRisePage onBack={() => undefined} />);
@@ -79,6 +126,37 @@ describe('temperature preparation and calculation workflow', () => {
     expect(screen.queryByRole('img', { name: 'Temperature Rise vs Current' })).toBeNull();
     expect(screen.queryByLabelText('Calculated Current')).toBeNull();
     expect((screen.getByRole('button', { name: 'Download Excel' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('retains correction entries after a failed request and ignores its late response after another upload', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce({
+      table: structuredClone(imported.table), selection: null, region_issue: 'Multiple possible data regions were found.',
+    }).mockRejectedValueOnce(new Error('The header needs at least three columns.'));
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    fireEvent.change(screen.getByLabelText('Excel File'), { target: { files: [new File(['x'], 'ambiguous.xlsx')] } });
+    await screen.findByLabelText('Header Row');
+    await user.type(screen.getByLabelText('Header Row'), '1');
+    await user.type(screen.getByLabelText('First Data Row'), '2');
+    await user.type(screen.getByLabelText('Last Data Row'), '5');
+    await user.click(screen.getByRole('button', { name: 'Apply Data Rows' }));
+    await screen.findByText('The header needs at least three columns.');
+    expect((screen.getByLabelText('Header Row') as HTMLInputElement).value).toBe('1');
+    expect(screen.queryByRole('button', { name: 'Confirm Data' })).toBeNull();
+    let resolve!: (value: api.WorkbookImportResult) => void;
+    vi.mocked(api.importTemperatureWorkbook).mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    await user.click(screen.getByRole('button', { name: 'Apply Data Rows' }));
+    const next = structuredClone(imported);
+    next.table.file_name = 'next.xlsx';
+    next.table.rows[0][1] = 'New TC';
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(next);
+    fireEvent.change(screen.getByLabelText('Excel File'), { target: { files: [new File(['new'], 'next.xlsx')] } });
+    await screen.findByRole('button', { name: 'Confirm Data' });
+    await act(async () => resolve(imported));
+    expect((screen.getByLabelText('Sample 1 / TC 1') as HTMLSelectElement).selectedOptions[0].textContent).toContain('New TC');
+    expect(screen.queryByLabelText('Header Row')).toBeNull();
+    expect(api.prepareTemperatureData).not.toHaveBeenCalled();
+    expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('keeps flagged readings until an explicit review choice', async () => {

@@ -5,7 +5,9 @@ from pathlib import Path
 from typing import Protocol
 import re
 
-from backend.application.temperature_data_preparation import PreparedData, prepare_data, suggest_selection
+from backend.application.temperature_data_preparation import (
+    DataRegionError, PreparedData, prepare_data, selection_for_region, suggest_selection,
+)
 from backend.domain.temperature_data import DataSelection, WorkbookTable
 from backend.domain.temperature_rise import (
     Coefficients, DeratingAnalysis, TemperatureRiseAnalysis, analyze_temperature_rise,
@@ -28,14 +30,28 @@ class DeratingParameters:
     ambient_point: float = 75
 
 
+@dataclass(frozen=True)
+class WorkbookImportResult:
+    table: WorkbookTable
+    selection: DataSelection | None
+    region_issue: str | None = None
+
+
 class ToolsTemperatureService:
     def __init__(self, workbook: TemperatureWorkbookPort):
         self.workbook = workbook
 
-    def import_workbook(self, content: bytes, name: str, sheet_name: str | None = None):
+    def import_workbook(self, content: bytes, name: str, sheet_name: str | None = None,
+                        *, region: tuple[int, int, int] | None = None) -> WorkbookImportResult:
         file_name = safe_workbook_name(name)
         table = self.workbook.read_upload(content, file_name, sheet_name=sheet_name)
-        return table, suggest_selection(table)
+        if region is not None:
+            return WorkbookImportResult(table, selection_for_region(table, *region))
+        try:
+            return WorkbookImportResult(table, suggest_selection(table))
+        except DataRegionError as exc:
+            # A readable source stays available for manual recovery, not an accepted guess.
+            return WorkbookImportResult(table, None, str(exc))
 
     def analyze(self, table: WorkbookTable, selection: DataSelection, *, zero_intercept: bool,
                 acknowledge_warnings: bool = False) -> TemperatureRiseAnalysis:

@@ -92,24 +92,70 @@ def _validate_selection(table: WorkbookTable, selection: DataSelection) -> None:
         raise ValueError("Excluded rows must be inside the selected data range.")
 
 
+class DataRegionError(ValueError):
+    """The workbook is readable, but no unique scanner region can be selected."""
+
+
+_METADATA_WORDS = ('scan', 'time', 'date', '序号', '扫描', '时间')
+_HEADER_WORDS = (*_METADATA_WORDS, 'ambient', 'current', 'amp', '环境', '电流',
+                 'tc', 'thermocouple', 'temperature', '温度')
+
+
+def _is_number(value: object) -> bool:
+    try:
+        _number(value)
+        return True
+    except ValueError:
+        return False
+
+
+def _is_header(row: tuple) -> bool:
+    # Scanner channel-configuration rows also contain names, but have numeric/Boolean settings.
+    if any(isinstance(value, bool) or _is_number(value) for value in row):
+        return False
+    labels = [str(value).strip().casefold() for value in row
+              if isinstance(value, str) and value.strip() and not _is_number(value)]
+    if any(label.endswith((':', '：')) for label in labels):
+        return False  # Key/value metadata such as "Scan count:" is not a measurement header.
+    return len(labels) >= 3 and any(word in label for label in labels for word in _HEADER_WORDS)
+
+
 def suggest_selection(table: WorkbookTable) -> DataSelection:
-    """Editable initial guesses, never a substitute for operator confirmation."""
-    width = table.width
-    if width < 3 or len(table.rows) < 2:
-        raise ValueError("The sheet needs a header and numeric temperature, ambient and current columns.")
-    start = 2
-    for index, row in enumerate(table.rows[1:], 2):
-        numeric = 0
-        for cell in row:
-            try:
-                _number(cell)
-                numeric += 1
-            except ValueError:
-                pass
-        if numeric >= max(3, width // 2):
-            start = index
-            break
-    header = table.rows[start - 2]
+    """Locate one labelled scanner block; never replace failed detection with row 2."""
+    headers = [index for index, row in enumerate(table.rows, 1) if _is_header(row)]
+    if len(headers) != 1 or headers[0] == len(table.rows):
+        reason = 'Multiple possible data regions were found.' if len(headers) > 1 else 'No data region could be identified.'
+        raise DataRegionError(reason + ' Check the sheet or set the header and data rows manually.')
+    header_row = headers[0]
+    choice = selection_for_region(table, header_row, header_row + 1, len(table.rows))
+    readings = (*choice.temperature_columns, choice.ambient_column, choice.current_column)
+    metadata = [column for column, label in enumerate(table.rows[header_row - 1], 1)
+                if column not in readings and any(word in str(label).casefold() for word in _METADATA_WORDS)]
+    last_record = None
+    has_numeric_readings = False
+    for row_number in range(choice.start_row, len(table.rows) + 1):
+        row = table.rows[row_number - 1]
+        values = [row[column - 1] if column <= len(row) else None for column in readings]
+        has_numeric_readings |= sum(_is_number(value) for value in values) >= max(3, len(readings) // 2)
+        # Keep incomplete records, interruptions and zero-current tails for explicit review.
+        if any(value is not None and str(value).strip() for value in values) or any(
+            column <= len(row) and row[column - 1] is not None
+            and (_is_number(row[column - 1]) or ':' in str(row[column - 1])) for column in metadata
+        ):
+            last_record = row_number
+    if not has_numeric_readings or last_record is None:
+        raise DataRegionError('No data region could be identified. Check the sheet or set the header and data rows manually.')
+    return selection_for_region(table, header_row, choice.start_row, last_record)
+
+
+def selection_for_region(table: WorkbookTable, header_row: int, start_row: int, end_row: int) -> DataSelection:
+    """Build editable column suggestions from an automatic or operator-selected region."""
+    if not 1 <= header_row < start_row <= end_row <= len(table.rows):
+        raise ValueError('Choose a header row before the data, and a data range inside the selected sheet.')
+    header = table.rows[header_row - 1]
+    width = len(header)
+    if width < 3:
+        raise ValueError('The header needs at least three columns for temperature, ambient and current.')
     def named_column(words: tuple[str, ...], fallback: int) -> int:
         return next((i for i, value in enumerate(header, 1)
                      if any(word in str(value).casefold() for word in words)), fallback)
@@ -118,6 +164,6 @@ def suggest_selection(table: WorkbookTable) -> DataSelection:
     temperatures = tuple(i for i in range(1, width + 1)
                          if i not in (ambient, current)
                          and not any(word in str(header[i - 1] if i <= len(header) else '').casefold()
-                                     for word in ('scan', 'time', 'date', '序号', '扫描', '时间')))
+                                     for word in _METADATA_WORDS))
     per_sample = 4 if len(temperatures) % 4 == 0 else 1
-    return DataSelection(start - 1, start, len(table.rows), ambient, current, temperatures, per_sample)
+    return DataSelection(header_row, start_row, end_row, ambient, current, temperatures, per_sample)

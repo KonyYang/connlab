@@ -4,13 +4,14 @@ import * as api from '../../api/temperature';
 export type CoefficientFields = Record<keyof api.Coefficients, string>;
 type State = {
   file: File | null; table: api.WorkbookTable | null; selection: api.DataSelection | null;
+  region_issue: string | null;
   review: api.PreparedData | null; acknowledged: boolean; confirmed: boolean; zeroIntercept: boolean;
   analysis: api.TemperatureAnalysis | null; maximum: CoefficientFields | null; average: CoefficientFields | null;
   targetRise: string; current: number | null; maxTemperature: string; step: string; ambientPoint: string;
   derating: api.DeratingAnalysis | null; busy: string | null; error: string | null; downloaded: string | null;
 };
 const initial: State = {
-  file: null, table: null, selection: null, review: null, acknowledged: false, confirmed: false, zeroIntercept: true,
+  file: null, table: null, selection: null, region_issue: null, review: null, acknowledged: false, confirmed: false, zeroIntercept: true,
   analysis: null, maximum: null, average: null, targetRise: '30', current: null,
   maxTemperature: '105', step: '2.5', ambientPoint: '75', derating: null, busy: null, error: null, downloaded: null,
 };
@@ -61,6 +62,13 @@ export function useTemperatureTool() {
       selection.excluded_rows = selection.excluded_rows.filter(row => row >= selection.start_row && row <= selection.end_row);
       return { ...old, ...clearResults, selection, review: null, acknowledged: false, confirmed: false, busy: null, error: null };
     });
+  }
+
+  function correctRegion(region: api.DataRegion) {
+    const { file, table } = state;
+    if (!file || !table) return;
+    return run('Checking Data Rows...', () => api.importTemperatureWorkbook(file, table.sheet_name, region),
+      result => ({ ...result, ...clearResults, review: null, acknowledged: false, confirmed: false }));
   }
 
   function request(): api.PreparationRequest {
@@ -120,6 +128,6 @@ export function useTemperatureTool() {
       return fileName;
     }), downloaded => ({ downloaded }));
   }
-  return { state, load, changeData, confirm, analyze, acknowledge, zeroIntercept,
+  return { state, load, changeData, correctRegion, confirm, analyze, acknowledge, zeroIntercept,
     getCoefficients, editCoefficient, editParameter, current, derating, download };
 }

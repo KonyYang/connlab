@@ -1,6 +1,5 @@
 """Independent temperature-data tools; no project identity or filesystem paths in inputs."""
 
-from dataclasses import asdict
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Response
@@ -26,12 +25,18 @@ def _call(operation):
 
 @router.post('/import')
 def import_temperature_workbook(file: UploadFile = File(...), sheet_name: str | None = Form(None),
+                                header_row: int | None = Form(None, ge=1, le=20000),
+                                start_row: int | None = Form(None, ge=2, le=20000),
+                                end_row: int | None = Form(None, ge=2, le=20000),
                                 service: ToolsTemperatureService = Depends(get_tools_temperature_service)):
     content = file.file.read(25 * 1024 * 1024 + 1)
     if len(content) > 25 * 1024 * 1024:
         raise HTTPException(status_code=422, detail='Select a workbook smaller than 25 MB.')
-    table, selection = _call(lambda: service.import_workbook(content, file.filename or 'Scanner.xlsx', sheet_name))
-    return {'table': asdict(table), 'selection': asdict(selection)}
+    rows = (header_row, start_row, end_row)
+    if any(row is not None for row in rows) and any(row is None for row in rows):
+        raise HTTPException(status_code=422, detail='Set all three rows to correct the data region.')
+    region = rows if all(row is not None for row in rows) else None
+    return _call(lambda: service.import_workbook(content, file.filename or 'Scanner.xlsx', sheet_name, region=region))
 
 
 @router.post('/prepare')

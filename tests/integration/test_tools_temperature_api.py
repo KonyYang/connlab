@@ -28,6 +28,10 @@ def test_import_prepare_analyze_and_download_round_trip_without_project_authorit
     imported = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', source)})
     assert imported.status_code == 200, imported.text
     data = imported.json()
+    assert data['region_issue'] is None
+    assert data['selection']['header_row'] == 1
+    assert data['selection']['start_row'] == 2
+    assert data['selection']['end_row'] == 301
     request = {'table': data['table'], 'selection': data['selection'], 'acknowledge_warnings': False, 'zero_intercept': True}
     confirmed = client.post('/api/tools/temperature-rise/prepare', json=request)
     assert confirmed.status_code == 200
@@ -73,3 +77,79 @@ def test_import_rejects_unreadable_files_and_download_name_uses_no_client_path()
     assert response.status_code == 422
     data = client.post('/api/tools/temperature-rise/import', files={'file': ('../scanner.xlsx', scanner_bytes())}).json()
     assert data['table']['file_name'] == 'scanner.xlsx'
+
+
+def test_unidentified_region_retains_source_for_manual_recovery_and_still_requires_data_validation():
+    book = Workbook()
+    book.active.title = 'Data'
+    book.active.append(['Probe', 'Room', 'Supply'])
+    book.active.append([25, 20, 10])
+    book.active.append([26, 20, 0])
+    stream = BytesIO()
+    book.save(stream)
+    book.close()
+    content = stream.getvalue()
+    client = TestClient(app)
+    imported = client.post('/api/tools/temperature-rise/import', files={'file': ('custom.xlsx', content)})
+    assert imported.status_code == 200
+    data = imported.json()
+    assert data['selection'] is None
+    assert 'data region' in data['region_issue']
+    assert data['table']['rows'] == [['Probe', 'Room', 'Supply'], [25, 20, 10], [26, 20, 0]]
+    assert client.post('/api/tools/temperature-rise/analyze', json={
+        'table': data['table'], 'selection': None,
+    }).status_code == 422
+
+    recovered = client.post('/api/tools/temperature-rise/import', files={'file': ('custom.xlsx', content)},
+                            data={'header_row': 1, 'start_row': 2, 'end_row': 3})
+    assert recovered.status_code == 200
+    data = recovered.json()
+    assert data['region_issue'] is None
+    assert data['selection']['start_row'] == 2
+    assert data['selection']['excluded_rows'] == []
+    review = client.post('/api/tools/temperature-rise/prepare', json={
+        'table': data['table'], 'selection': data['selection'],
+    }).json()
+    assert not review['ready']
+    assert any(issue['code'] == 'zero_current' for issue in review['issues'])
+    for override in ({'header_row': 1}, {'header_row': 2, 'start_row': 2, 'end_row': 3},
+                     {'header_row': 1, 'start_row': 2, 'end_row': 99}):
+        assert client.post('/api/tools/temperature-rise/import', files={'file': ('custom.xlsx', content)},
+                           data=override).status_code == 422
+
+
+def test_multiple_regions_require_operator_choice_and_a_different_sheet_can_recover_automatically():
+    book = Workbook()
+    sheet = book.active
+    sheet.title = 'Ambiguous'
+    header = ['Scan', 'Time', 'TC1', 'Ambient', 'Current']
+    sheet.append(header)
+    sheet.append([1, '17:17', 25, 20, 10])
+    sheet.append(header)
+    sheet.append([2, '17:18', 30, 20, 20])
+    other = book.create_sheet('Complete')
+    other.append(header)
+    other.append([1, '17:17', 25, 20, 10])
+    other.append([2, '17:18', 25, 20, 0])
+    stream = BytesIO()
+    book.save(stream)
+    book.close()
+    content = stream.getvalue()
+    client = TestClient(app)
+    def import_sheet(**data):
+        response = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', content)}, data=data)
+        assert response.status_code == 200, response.text
+        return response.json()
+
+    ambiguous = import_sheet(sheet_name='Ambiguous')
+    assert ambiguous['selection'] is None
+    assert 'Multiple' in ambiguous['region_issue']
+    assert len(ambiguous['table']['rows']) == 4
+    manual = import_sheet(sheet_name='Ambiguous', header_row=3, start_row=4, end_row=4)
+    assert manual['selection']['header_row'] == 3
+    assert manual['region_issue'] is None
+    automatic = import_sheet(sheet_name='Complete')
+    assert automatic['region_issue'] is None
+    assert automatic['selection']['end_row'] == 3
+    assert automatic['selection']['excluded_rows'] == []
+    assert automatic['table']['rows'][-1][-1] == 0

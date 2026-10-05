@@ -1,7 +1,7 @@
 # Temperature Rise and Derating Tool
 
-Status: implemented and locally validated; awaiting user acceptance for task
-`TASK_TEMPERATURE_RISE_DERATING_20261004`.
+Status: implemented. Current refinement: automatic data-region selection with exception-only row
+correction (`TASK_TEMPERATURE_AUTO_DATA_REGION_20261005`).
 
 ## Scope and acceptance
 
@@ -10,7 +10,8 @@ preparation area above two analysis panels (Temperature Rise and Derating). At n
 panels stack. Existing ConnLab navigation, fonts, controls and quiet feedback remain in use.
 
 - Read `.xls`, `.xlsx` and `.xlsm` without executing VBA or changing the source.
-- Let the user choose the sheet, header and data rows, ambient and current columns, current scale,
+- Automatically locate a unique scanner header and data region; show row settings only for missing
+  or ambiguous recognition. Let the user choose the sheet, ambient and current columns, current scale,
   thermocouples per sample, and ordered sample/channel mapping. A spare source channel can replace
   any failed channel. Channel order determines sample/thermocouple slots and is shown explicitly.
 - Exclude/restore rows and channels without changing source data. Retain original row numbers and
@@ -113,7 +114,9 @@ Review summary: Standards 0 outstanding; Specification 0 outstanding blocking fi
 ## Operator acceptance and limitations
 
 1. Tools → Generate Temperature-Rise Curves → select scanner workbook.
-2. Check sheet, original header/data row numbers, ambient/current roles and current multiplier.
+2. Check sheet, ambient/current roles and current multiplier. Header/data row settings are hidden
+   after successful recognition. On a recognition warning, inspect Source Rows, select a different
+   sheet or enter the header/first/last rows and Apply Data Rows; this does not confirm the readings.
    Expand Sample & Channel Mapping; assign each sample's thermocouples, including spare replacements.
 3. In Data Preview select original row numbers or ranges, exclude/restore rows as needed, and Confirm
    Data. Warnings are never silently deleted; keeping flagged rows needs explicit acknowledgment.
@@ -248,3 +251,55 @@ An isolated, read-only desktop Excel instance rendered the final chart with labe
 No formula errors or frozen panes were present. The 66.5444574215 A T-rise calculator baseline and
 full series names remained intact; source SHA-256 was unchanged. Sequential same-agent Standards
 and Specification review found zero outstanding findings. No frontend files changed.
+
+## Automatic data-region selection (2026-10-05)
+
+Normal imports show only the file and sheet selector before column/channel review. Header Row,
+First Data Row and Last Data Row are hidden, without an automatic-detection success notice.
+Recognition requires one labelled scanner header and numeric measurement evidence. Numeric/Boolean
+channel configuration and colon-ended key/value metadata are not headers. Missing headers, competing
+headers/blocks or header-like error records require operator correction instead of a row-2 guess.
+
+Readable but unidentified imports retain the source table, no accepted selection, and an actionable
+region warning. Only then does the UI show blank row inputs and a paginated Source Rows preview.
+Sheet selection stays available. Apply Data Rows validates the range and restores column/channel
+review; Confirm Data is still required before chart generation. Failed corrections retain the entries,
+and late responses cannot replace a newer upload.
+
+Incomplete readings, internal blank rows, interruptions and zero-current tails inside the region are
+retained for existing review/exclusion controls. A data range is not proof of valid readings, correct
+roles or thermal stability. Unfamiliar labels, numeric channel headers and multiple tables can need
+manual correction. This is not an Excel cell editor or a guarantee of recognition for every scanner.
+Source workbooks and VBA are untouched.
+
+Verification on the final implementation:
+
+- Backend affected matrix: 56 passed, including recognition, ambiguous/error records, manual recovery,
+  invalid ranges, numerical/export contracts and Tools boundaries. One existing Starlette/httpx
+  deprecation warning remains.
+- Frontend affected matrix: 16 passed, including hidden normal settings, exception-only correction,
+  retry, stale-response isolation, multipart values, confirmation, channel/row changes and title-bar
+  compatibility. TypeScript and Vite production build passed.
+- The running localhost service passed unknown-header import/manual recovery with unchanged table
+  values. A retained zero-current row blocked unacknowledged analysis. The supplied XLSM selected
+  header 31, rows 32–331, ambient W, current X and 20 thermocouples; its 300 rows confirmed and produced
+  unchanged MAX/AVG coefficients. Source SHA-256 was unchanged; no VBA ran.
+- Live browser at 856×804 showed no row-number settings, no detection alert and no page-level overflow.
+  Existing sheet/channel choices and the unconfirmed draft survived hot reload. The exception flow
+  was checked through React interaction tests and the live API, not OS file-picker automation or a
+  full screen-reader audit.
+
+### Standards
+
+Sequential same-agent review against AGENTS.md and the frontend guide: application owns recognition,
+infrastructure retains file lifecycle, typed API owns transport, feature components own local inputs.
+No new dependency, persistence, COM, source write or unrelated scope. Zero outstanding findings after
+removing unused serialization code and simplifying single-region selection.
+
+### Spec
+
+Sequential same-agent review against the approved request: normal row controls hidden; missing or
+ambiguous regions retain a recovery path; confirmation, role review and suspicious-row handling
+remain. Fixed a false-header boundary that could skip error records; tests first reproduced it.
+Scanner configuration and scan-control preambles also have regression protection. Zero outstanding
+findings. Summary: Standards 0; Spec 0.
