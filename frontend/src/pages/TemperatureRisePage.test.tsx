@@ -166,7 +166,7 @@ describe('temperature preparation and calculation workflow', () => {
     expect(screen.queryByRole('button', { name: /conversion|scale/i })).toBeNull();
     expect(screen.getByLabelText('Ambient Column')).toBeTruthy();
     expect(screen.getByLabelText('Current Column')).toBeTruthy();
-    expect(screen.getByLabelText('Thermocouples Per Sample')).toBeTruthy();
+    expect(screen.getByLabelText('Thermocouples/Sample')).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(api.prepareTemperatureData).toHaveBeenCalledWith(expect.objectContaining({
       table: expect.objectContaining({ rows: decimal.table.rows }),

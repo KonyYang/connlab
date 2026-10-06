@@ -41,7 +41,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
           {s.selection && <>
             <label>Ambient Column<select value={s.selection.ambient_column} disabled={busy} onChange={event => tool.changeData({ ambient_column: Number(event.target.value) })}>{columns.map(col => <option key={col.id} value={col.id}>{col.label}</option>)}</select></label>
             <label>Current Column<select value={s.selection.current_column} disabled={busy} onChange={event => tool.changeData({ current_column: Number(event.target.value) })}>{columns.map(col => <option key={col.id} value={col.id}>{col.label}</option>)}</select></label>
-            <label>Thermocouples Per Sample<input type="number" min="1" max="254" value={s.selection.thermocouples_per_sample} disabled={busy} onChange={event => tool.changeData({ thermocouples_per_sample: Number(event.target.value) })} /></label>
+            <label className="temperature-sample-count">Thermocouples/Sample<input type="number" min="1" max="254" value={s.selection.thermocouples_per_sample} disabled={busy} onChange={event => tool.changeData({ thermocouples_per_sample: Number(event.target.value) })} /></label>
           </>}
       </div>}
       {s.table && s.region_issue && <DataRegionCorrection table={s.table} message={s.region_issue}

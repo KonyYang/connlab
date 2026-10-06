@@ -471,3 +471,30 @@ request path, source mutation or business rule. Removed orphaned responsive mapp
 Same-agent exact-diff review: the four named parameters share one compact row; filename feedback,
 editing, sheet switching, exception recovery and data confirmation remain available. No unrelated
 mapping or chart controls were altered. Findings: 0. Summary: Standards 0; Spec 0.
+
+### Follow-up: labels beside controls (2026-10-06)
+
+The four import fields now use inline label/control pairs: labels are on the left and narrower
+native selects/number input are on the right. The last field is named `Thermocouples/Sample`, with a
+56px number input. The entire parameter row remains horizontal; small windows retain local scrolling
+instead of causing page overflow. Long selected channel/sheet text may be clipped in the narrow closed
+select; full option text remains in its native menu. Source choices and numerical limits are unchanged.
+
+Final verification: 19 page/API/TopBar tests passed, including the updated accessible label assertion;
+TypeScript and Vite build passed sequentially. Read-only browser inspection at 856×804 confirmed a
+40px parameter row, all controls aligned, and no row/page overflow. Imported CSV, sheet, ambient,
+current and TC count survived unchanged. Existing correction, confirmation and export regressions
+passed. Backend unchanged; no backend rerun or narrow-window resize check was needed for this local
+presentation/copy adjustment. `git diff --check` passed.
+
+#### Standards
+
+Same-agent exact-diff review: scoped CSS handles alignment/width; native nested labels preserve
+keyboard naming, draft handlers and disabled states. No additional state, request or dependency.
+Findings: 0.
+
+#### Spec
+
+Same-agent exact-diff review: `Thermocouples/Sample` replaces the requested label, its narrowed editor
+sits immediately to the right, and the three preceding fields receive the same treatment. No mapping,
+calculation or source-selection semantics change. Findings: 0. Summary: Standards 0; Spec 0.
