@@ -5,13 +5,14 @@ export type CoefficientFields = Record<keyof api.Coefficients, string>;
 type State = {
   file: File | null; table: api.WorkbookTable | null; selection: api.DataSelection | null;
   region_issue: string | null;
+  channel_layout: api.ChannelLayout | null; manualZeroIntercept: boolean;
   review: api.PreparedData | null; acknowledged: boolean; confirmed: boolean; zeroIntercept: boolean;
   analysis: api.TemperatureAnalysis | null; maximum: CoefficientFields | null; average: CoefficientFields | null;
   targetRise: string; current: number | null; maxTemperature: string; step: string; ambientPoint: string;
   derating: api.DeratingAnalysis | null; busy: string | null; error: string | null; downloaded: string | null;
 };
 const initial: State = {
-  file: null, table: null, selection: null, region_issue: null, review: null, acknowledged: false, confirmed: false, zeroIntercept: true,
+  file: null, table: null, selection: null, region_issue: null, channel_layout: null, manualZeroIntercept: false, review: null, acknowledged: false, confirmed: false, zeroIntercept: true,
   analysis: null, maximum: null, average: null, targetRise: '30', current: null,
   maxTemperature: '105', step: '2.5', ambientPoint: '75', derating: null, busy: null, error: null, downloaded: null,
 };
@@ -49,9 +50,12 @@ export function useTemperatureTool() {
 
   function load(file: File | null, sheetName?: string) {
     generation.current += 1;
-    setState(old => ({ ...initial, file, zeroIntercept: old.zeroIntercept }));
+    setState({ ...initial, file });
     if (!file) return;
-    void run('Reading Workbook...', () => api.importTemperatureWorkbook(file, sheetName), result => ({ ...result, file }));
+    void run('Reading Workbook...', () => api.importTemperatureWorkbook(file, sheetName), result => ({
+      ...result, channel_layout: result.channel_layout ?? null, file,
+      zeroIntercept: result.channel_layout?.zero_intercept_default ?? true,
+    }));
   }
 
   function changeData(patch: Partial<api.DataSelection>) {
@@ -59,8 +63,13 @@ export function useTemperatureTool() {
     setState(old => {
       if (!old.selection) return old;
       const selection = { ...old.selection, ...patch };
+      selection.temperature_columns = selection.temperature_columns.filter(column =>
+        column !== selection.current_column && column !== selection.ambient_column);
       selection.excluded_rows = selection.excluded_rows.filter(row => row >= selection.start_row && row <= selection.end_row);
-      return { ...old, ...clearResults, selection, review: null, acknowledged: false, confirmed: false, busy: null, error: null };
+      const zeroIntercept = !old.manualZeroIntercept && (patch.current_column !== undefined || patch.ambient_column !== undefined)
+        ? !old.channel_layout?.stable_current_columns.some(column => column !== selection.current_column && column !== selection.ambient_column)
+        : old.zeroIntercept;
+      return { ...old, ...clearResults, selection, zeroIntercept, review: null, acknowledged: false, confirmed: false, busy: null, error: null };
     });
   }
 
@@ -68,7 +77,9 @@ export function useTemperatureTool() {
     const { file, table } = state;
     if (!file || !table) return;
     return run('Checking Data Rows...', () => api.importTemperatureWorkbook(file, table.sheet_name, region),
-      result => ({ ...result, ...clearResults, review: null, acknowledged: false, confirmed: false }));
+      result => ({ ...result, channel_layout: result.channel_layout ?? null, ...clearResults,
+        zeroIntercept: state.manualZeroIntercept ? state.zeroIntercept : result.channel_layout?.zero_intercept_default ?? true,
+        review: null, acknowledged: false, confirmed: false }));
   }
 
   function request(): api.PreparationRequest {
@@ -85,7 +96,7 @@ export function useTemperatureTool() {
   }
   function zeroIntercept(zeroIntercept: boolean) {
     generation.current += 1;
-    setState(old => ({ ...old, ...clearResults, zeroIntercept, busy: null, error: null }));
+    setState(old => ({ ...old, ...clearResults, zeroIntercept, manualZeroIntercept: true, busy: null, error: null }));
   }
   function getCoefficients() {
     setState(old => old.analysis ? { ...old, maximum: fields(old.analysis.maximum_fit.coefficients),

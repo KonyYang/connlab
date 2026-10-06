@@ -8,6 +8,7 @@ import re
 from backend.application.temperature_data_preparation import (
     DataRegionError, PreparedData, prepare_data, selection_for_region, suggest_selection,
 )
+from backend.application.temperature_channel_layout import ChannelLayout, inspect_channel_layout
 from backend.domain.temperature_data import DataSelection, WorkbookTable
 from backend.domain.temperature_rise import (
     Coefficients, DeratingAnalysis, TemperatureRiseAnalysis, analyze_temperature_rise,
@@ -35,6 +36,7 @@ class WorkbookImportResult:
     table: WorkbookTable
     selection: DataSelection | None
     region_issue: str | None = None
+    channel_layout: ChannelLayout | None = None
 
 
 class ToolsTemperatureService:
@@ -46,12 +48,17 @@ class ToolsTemperatureService:
         file_name = safe_workbook_name(name)
         table = self.workbook.read_upload(content, file_name, sheet_name=sheet_name)
         if region is not None:
-            return WorkbookImportResult(table, selection_for_region(table, *region))
+            return self._import_result(table, selection_for_region(table, *region))
         try:
-            return WorkbookImportResult(table, suggest_selection(table))
+            return self._import_result(table, suggest_selection(table))
         except DataRegionError as exc:
             # A readable source stays available for manual recovery, not an accepted guess.
             return WorkbookImportResult(table, None, str(exc))
+
+    @staticmethod
+    def _import_result(table: WorkbookTable, selection: DataSelection) -> WorkbookImportResult:
+        layout = inspect_channel_layout(table, selection.header_row, selection.start_row, selection.end_row)
+        return WorkbookImportResult(table, selection, channel_layout=layout)
 
     def analyze(self, table: WorkbookTable, selection: DataSelection, *, zero_intercept: bool,
                 acknowledge_warnings: bool = False) -> TemperatureRiseAnalysis:

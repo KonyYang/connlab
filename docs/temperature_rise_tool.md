@@ -1,7 +1,7 @@
 # Temperature Rise and Derating Tool
 
-Status: implemented. Current refinement: automatic data-region selection with exception-only row
-correction (`TASK_TEMPERATURE_AUTO_DATA_REGION_20261005`).
+Status: implemented. Current refinement: automatic sample grouping and exception-only channel
+adjustments (`TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007`).
 
 ## Scope and acceptance
 
@@ -117,7 +117,8 @@ Review summary: Standards 0 outstanding; Specification 0 outstanding blocking fi
 2. Check sheet and ambient/current roles. Header/data row settings are hidden
    after successful recognition. On a recognition warning, inspect Source Rows, select a different
    sheet or enter the header/first/last rows and Apply Data Rows; this does not confirm the readings.
-   Expand Sample & Channel Mapping; assign each sample's thermocouples, including spare replacements.
+   Review the sample/channel summary. Expand View Channels for all assignments; use Adjust Channels
+   only for replacement, exclusion, addition or reassignment exceptions.
 3. In Data Preview select original row numbers or ranges, exclude/restore rows as needed, and Confirm
    Data. Warnings are never silently deleted; keeping flagged rows needs explicit acknowledgment.
 4. Generate T-riseChart → Get Coefficients → Calculate Current / Generate Derating → Download Excel.
@@ -410,9 +411,9 @@ The supplied `3A new.csv` is UTF-16 LE with tab-separated fields, 44 header/prea
 measurement records. Both the integration boundary and the running localhost service selected header
 44 and rows 45–447. `3.0010263` and the timestamp suffix survive import, and source SHA-256 remains
 `b2903c3ce08de283af8c02498dafccf4306da26aa528beac5a62b338e65824ff`. Its 30 thermocouples,
-ambient channel 313 and four voltage-labelled signal channels still require operator role/grouping
-confirmation. The existing fallback current/temperature suggestions are not a verified assignment;
-choose the intended current channel and remove other signal channels from thermocouple mapping.
+ambient channel 313 and four voltage-labelled signal channels still require operator role confirmation.
+The 2026-10-07 refinement below recognizes the three sample prefixes and separates the four electrical
+columns; automatic suggestions do not replace the final human confirmation.
 
 TDD: 17 new backend cases and two updated/new header cases first failed for missing CSV support/header
 placement. A first sandbox test run had temporary-directory permission errors; the authorized rerun
@@ -498,3 +499,78 @@ Findings: 0.
 Same-agent exact-diff review: `Thermocouples/Sample` replaces the requested label, its narrowed editor
 sits immediately to the right, and the three preceding fields receive the same treatment. No mapping,
 calculation or source-selection semantics change. Findings: 0. Summary: Standards 0; Spec 0.
+
+## Exception-only channel preparation (2026-10-07)
+
+`temperature_channel_layout.py` owns automatic role/group suggestions; preparation validates the
+confirmed assignments, while infrastructure retains source IO and workbook output. The UI displays
+one compact sample/count summary, collapsed View Channels and an Adjust Channels action, not a
+selector and three buttons for every thermocouple. All edits still invalidate derived results and
+require Confirm Data; stale requests cannot reintroduce prior mappings/results.
+
+- Scanner names such as `<1_H1A>` group channels by sample prefix, not hardware channel number or
+  source adjacency. Equal named group sizes suggest Thermocouples/Sample. Interleaved columns are
+  reordered logically without editing the upload. Unnamed spares remain available for explicit
+  replacement/addition; inconsistent group sizes require explicit adjustment before confirmation.
+  Unlabelled legacy inputs retain their existing fallback and operator review.
+- Whole-column replacement uses one target slot and one spare source column. Exclude/restore, direct
+  Move To Position, Add Channel and Reset Mapping remain reversible. No per-row replacement, automatic
+  source deletion or general cell editor is introduced.
+- Electrical headers, including scanner VDC labels, are role candidates. A unique varying candidate
+  is suggested as the main current; ambiguous candidates show a role-confirmation warning. These
+  labels do not prove a physical conversion: input values must already be amperes, as in the macro.
+- Auxiliary currents stay in the original preview and are added with original values to the derived
+  Initial Data export. They do not enter thermocouple statistics or the selected-current curve.
+  Sustained powered auxiliary readings (at least two valid readings, all >=0.1 A, total spread <=1%)
+  default Zero Intercept off. This is a default, not a lock: manual changes survive row/mapping edits.
+  A newly imported file/sheet receives its own inferred default.
+- For the selected current, `|I| < 0.1 A` is normalized to zero for calculation and flagged as unpowered.
+  The original source value is unchanged. Select Unpowered Rows only selects flagged rows; the operator
+  must separately exclude or explicitly keep them. Entire records are not automatically discarded,
+  because auxiliary currents may remain powered.
+
+The supplied `3A new.csv` is a specific acceptance fixture: 3 samples x 10 channels, ambient AG,
+main current AI, stable auxiliary AH/AJ/AK. These positions/counts are not hard-coded. Derating's
+existing zero-intercept requirement remains unchanged; enabling it requires regenerating the fit.
+
+Acceptance: backend suggestion/preparation/API/export tests, frontend replacement/reset/review/stale
+response tests, TypeScript/build, and an isolated real-CSV browser check. Risks: header naming can be
+ambiguous; a stable column alone is not evidence of thermal equilibrium; all samples still require
+the same confirmed thermocouple count. Sources must remain unchanged and normal channels must not
+reappear as individual editable cards.
+
+### Verification and review
+
+TDD captured failing tests for the former all-non-role-columns mapping, near-zero normalization,
+unequal named groups and mixed electrical/group warnings before the corresponding fixes. Final
+affected QA: 77 backend tests and 29 frontend tests passed; TypeScript and Vite build passed
+sequentially. The existing Starlette/httpx deprecation warning remains; no dependency update was
+introduced. The matrix includes original macro-fit, native chart/style/export and Tools regressions.
+
+The isolated browser tab imported the real CSV: 403 records, 3 x 10 probes, AG ambient, AI selected
+current, and auxiliary AH/AJ/AK. Zero Intercept defaulted off. Confirm Data flagged 47 unpowered
+records; explicit selection/exclusion and reconfirmation left 356 readings. T-riseChart and
+coefficient retrieval succeeded; the effective MAX coefficients yielded 21.58 A at 30°C. Excluding
+and restoring one channel cleared old results and required confirmation again. The 1280 x 720 normal
+view and 543 x 804 exception editor were inspected; no page-level horizontal overflow or browser
+error/warning logs were found. Temporary viewport settings were reset; the user's original tab was
+not reimported or cleared.
+
+The browser displayed `3A new_T-rise_Derating.xlsx` after download; OS download completion was not
+exposed by the in-app browser. A separate disposable export from the same service was inspected:
+all retained auxiliary values match every included source row, and the native T-riseChart has no
+frozen panes. This is file-structure/value verification, not a new desktop-Excel rendering claim.
+The real source SHA-256 remains
+`b2903c3ce08de283af8c02498dafccf4306da26aa528beac5a62b338e65824ff`.
+
+Standards review: same-agent sequential exact-diff check of ownership, public seams, reversible
+editing, escaping, resource lifecycle and scope. Suggestions/preparation are application-owned;
+workbook IO remains infrastructure-owned; no new dependency, persistence, COM or source mutation.
+Zero outstanding findings.
+
+Specification review: separate same-agent pass against the confirmed sample/current rules and
+exception-only UI. Unequal named group counts now block untouched suggestions even when the total
+is divisible; electrical ambiguity warnings are separate from mapping warnings, so a temperature
+edit cannot hide an unresolved current-role warning. Stable auxiliaries are retained/not plotted,
+manual intercept changes survive edits, and unpowered rows are not silently deleted. Derating's
+existing zero-intercept prerequisite remains explicit. Zero outstanding blocking findings.

@@ -35,6 +35,8 @@ export function DataPreview({ table, selection, issues, disabled, onChange }: {
     <div className="temperature-actions">
       <label>Rows To Select<input aria-label="Rows To Select" value={range} disabled={disabled} placeholder="32-50, 82" onChange={event => setRange(event.target.value)} /></label>
       <button type="button" onClick={selectRange} disabled={disabled || !range}>Select Rows</button>
+      {issues.some(issue => issue.code === 'zero_current') && <button type="button" disabled={disabled} onClick={() =>
+        setSelected([...new Set(issues.filter(issue => issue.code === 'zero_current').map(issue => issue.source_row))])}>Select Unpowered Rows</button>}
       <button type="button" disabled={disabled || !selected.length} onClick={() => { onChange({ excluded_rows: [...new Set([...excluded, ...selected])].sort((a, b) => a - b) }); setSelected([]); }}>Exclude Selected Rows</button>
       <button type="button" disabled={disabled || !selected.some(row => excluded.has(row))} onClick={() => { onChange({ excluded_rows: [...excluded].filter(row => !selected.includes(row)) }); setSelected([]); }}>Restore Selected Rows</button>
       <button type="button" disabled={disabled || !excluded.size} onClick={() => onChange({ excluded_rows: [] })}>Restore All Rows</button>

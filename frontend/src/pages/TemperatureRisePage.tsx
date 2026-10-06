@@ -47,7 +47,15 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
       {s.table && s.region_issue && <DataRegionCorrection table={s.table} message={s.region_issue}
         disabled={busy} onApply={tool.correctRegion} />}
       {s.table && s.selection && <>
-        <ChannelMapping key={`mapping-${s.table.sheet_name}-${s.table.file_name}`} table={s.table} selection={s.selection} onChange={tool.changeData} disabled={busy} />
+        {s.channel_layout?.current_issue && !s.confirmed && <p className="temperature-hint">{s.channel_layout.current_issue}</p>}
+        <ChannelMapping key={`mapping-${s.table.sheet_name}-${s.table.file_name}-${s.selection.header_row}-${s.selection.start_row}-${s.selection.end_row}`}
+          table={s.table} selection={s.selection} layout={s.channel_layout} onChange={tool.changeData} disabled={busy} />
+        {Boolean(s.channel_layout?.current_columns.some(column => column !== s.selection?.current_column)) && <details className="temperature-detail">
+          <summary>Other Current Columns <span>Retained / Not Plotted</span></summary>
+          {s.channel_layout?.current_columns.filter(column => column !== s.selection?.current_column).map(column => <p className="temperature-hint" key={column}>
+            {columns[column - 1]?.label}{s.channel_layout?.stable_current_columns.includes(column) ? ' — Stable' : ''}
+          </p>)}
+        </details>}
         <DataPreview key={`preview-${s.table.sheet_name}-${s.table.file_name}`} table={s.table} selection={s.selection} issues={s.review?.issues ?? []} onChange={tool.changeData} disabled={busy} />
         {Boolean(s.review?.issues.length) && <section className="temperature-review" aria-label="Data Needs Review">
           <h4>Data Needs Review</h4><div className="temperature-issue-list">{s.review?.issues.map((issue, index) => <p key={index} className={issue.severity === 'error' ? 'temperature-error' : undefined}>{issue.message}</p>)}</div>
@@ -62,6 +70,8 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         <h3>Temperature Rise (T-riseChart)</h3>
         <div className="temperature-actions"><label className="temperature-check"><input type="checkbox" checked={s.zeroIntercept} disabled={busy} onChange={event => tool.zeroIntercept(event.target.checked)} />Zero Intercept</label>
           <button type="button" disabled={busy || !s.confirmed} onClick={() => void tool.analyze()}>Generate T-riseChart</button></div>
+        {Boolean(s.channel_layout?.stable_current_columns.some(column => column !== s.selection?.current_column && column !== s.selection?.ambient_column)) && !s.manualZeroIntercept &&
+          <p className="temperature-hint">Extra stable current detected; Zero Intercept defaults off.</p>}
         {!s.confirmed && <p className="temperature-hint">Confirm Initial Data to generate the chart.</p>}
         <div className="temperature-coefficients">
           <div className="temperature-section-heading"><span>Polynomial Coefficients (ΔT = aI² + bI + c)</span><button type="button" disabled={busy || !s.analysis} onClick={tool.getCoefficients}>Get Coefficients</button></div>

@@ -5,6 +5,7 @@ from math import isfinite
 
 from backend.domain.temperature_data import DataSelection, WorkbookTable, column_letter
 from backend.domain.temperature_rise import Measurement
+from backend.application.temperature_channel_layout import ChannelLayout, inspect_channel_layout
 
 
 @dataclass(frozen=True)
@@ -20,10 +21,11 @@ class PreparedData:
     measurements: tuple[Measurement, ...]
     issues: tuple[DataIssue, ...]
     ready: bool
+    retained_current_columns: tuple[int, ...] = ()
 
 
 def prepare_data(table: WorkbookTable, selection: DataSelection, *, acknowledge_warnings: bool = False) -> PreparedData:
-    _validate_selection(table, selection)
+    layout = _validate_selection(table, selection)
     measurements: list[Measurement] = []
     issues: list[DataIssue] = []
     excluded = set(selection.excluded_rows)
@@ -42,6 +44,8 @@ def prepare_data(table: WorkbookTable, selection: DataSelection, *, acknowledge_
         if len(values) != len(columns):
             continue
         current = values[0] * selection.current_multiplier
+        if abs(current) < .1:
+            current = 0.
         if not isfinite(current) or current < 0:
             issues.append(DataIssue('invalid_current', 'error', number,
                 f"Row {number}: current must be finite and nonnegative. Check the selected column and current scale."))
@@ -50,7 +54,7 @@ def prepare_data(table: WorkbookTable, selection: DataSelection, *, acknowledge_
         measurements.append(measurement)
         if current == 0:
             issues.append(DataIssue('zero_current', 'warning', number,
-                f"Row {number}: current is zero. Confirm whether this is an interruption or a reading after switch-off."))
+                f"Row {number}: |current| < 0.1 A is treated as unpowered. Review this row; other current columns may still be powered."))
         if len(measurements) > 1:
             previous = measurements[-2]
             if 0 < current < previous.current * .99:
@@ -62,7 +66,9 @@ def prepare_data(table: WorkbookTable, selection: DataSelection, *, acknowledge_
     if not measurements:
         issues.append(DataIssue('no_data', 'error', selection.start_row, "No usable rows remain. Restore rows or correct the mapping."))
     ready = not any(issue.severity == 'error' for issue in issues) and (not issues or acknowledge_warnings)
-    return PreparedData(tuple(measurements), tuple(issues), ready)
+    retained = tuple(column for column in layout.current_columns
+                     if column not in (selection.current_column, selection.ambient_column, *selection.temperature_columns))
+    return PreparedData(tuple(measurements), tuple(issues), ready, retained)
 
 
 def _number(value: object) -> float:
@@ -77,7 +83,7 @@ def _number(value: object) -> float:
     return numeric
 
 
-def _validate_selection(table: WorkbookTable, selection: DataSelection) -> None:
+def _validate_selection(table: WorkbookTable, selection: DataSelection) -> ChannelLayout:
     if not 1 <= selection.header_row < selection.start_row <= selection.end_row <= len(table.rows):
         raise ValueError("Choose a header row before the data, and a data range inside the selected sheet.")
     count = selection.thermocouples_per_sample
@@ -90,6 +96,12 @@ def _validate_selection(table: WorkbookTable, selection: DataSelection) -> None:
         raise ValueError("Current scale must be a finite positive number.")
     if any(not selection.start_row <= row <= selection.end_row for row in selection.excluded_rows):
         raise ValueError("Excluded rows must be inside the selected data range.")
+    layout = inspect_channel_layout(table, selection.header_row, selection.start_row, selection.end_row)
+    if (selection.temperature_columns == layout.temperature_columns
+            and count == layout.thermocouples_per_sample
+            and any(len(group.columns) != count for group in layout.sample_groups)):
+        raise ValueError('Sample channel counts differ. Explicitly adjust the channel assignments before confirming.')
+    return layout
 
 
 class DataRegionError(ValueError):
@@ -156,14 +168,6 @@ def selection_for_region(table: WorkbookTable, header_row: int, start_row: int, 
     width = len(header)
     if width < 3:
         raise ValueError('The header needs at least three columns for temperature, ambient and current.')
-    def named_column(words: tuple[str, ...], fallback: int) -> int:
-        return next((i for i, value in enumerate(header, 1)
-                     if any(word in str(value).casefold() for word in words)), fallback)
-    ambient = named_column(('ambient', '环境'), width - 1)
-    current = named_column(('current', 'amp', '电流'), width)
-    temperatures = tuple(i for i in range(1, width + 1)
-                         if i not in (ambient, current)
-                         and not any(word in str(header[i - 1] if i <= len(header) else '').casefold()
-                                     for word in _METADATA_WORDS))
-    per_sample = 4 if len(temperatures) % 4 == 0 else 1
-    return DataSelection(header_row, start_row, end_row, ambient, current, temperatures, per_sample)
+    layout = inspect_channel_layout(table, header_row, start_row, end_row)
+    return DataSelection(header_row, start_row, end_row, layout.ambient_column,
+                         layout.current_column, layout.temperature_columns, layout.thermocouples_per_sample)

@@ -8,6 +8,7 @@ import pytest
 
 from backend.api.main import app
 from tests.unit.test_temperature_rise_calculations import baseline_rows
+from tests.unit.test_temperature_data_preparation import grouped_scanner
 
 
 def scanner_bytes():
@@ -20,6 +21,39 @@ def scanner_bytes():
     book.save(stream)
     book.close()
     return stream.getvalue()
+
+
+def test_grouped_csv_import_reports_auxiliary_currents_and_nonzero_intercept_default():
+    source_table = grouped_scanner()
+    stream = StringIO(newline='')
+    csv.writer(stream, delimiter='\t').writerows(source_table.rows)
+    source = stream.getvalue().encode('utf-16')
+    client = TestClient(app)
+    response = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.csv', source)})
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result['selection']['current_column'] == 35
+    layout = result['channel_layout']
+    assert layout['current_columns'] == [34, 35, 36, 37]
+    assert layout['stable_current_columns'] == [34, 36, 37]
+    assert [group['sample_id'] for group in layout['sample_groups']] == ['1', '2', '3']
+    assert layout['zero_intercept_default'] is False
+    request = {'table': result['table'], 'selection': result['selection']}
+    review = client.post('/api/tools/temperature-rise/prepare', json=request).json()
+    assert not review['ready']
+    assert [row['current'] for row in review['measurements'][:3]] == [0, 0, 10]
+    assert result['table']['rows'][1][34] == '0.009999'
+    download = client.post('/api/tools/temperature-rise/download', json={
+        **request, 'zero_intercept': False, 'acknowledge_warnings': True,
+    })
+    assert download.status_code == 200, download.text[:300]
+    book = load_workbook(BytesIO(download.content), data_only=True)
+    initial = book['Initial Data']
+    assert initial.max_column == 36
+    assert 'Retained Current [AH:' in initial.cell(5, 34).value
+    assert [float(initial.cell(6, column).value) for column in (34, 35, 36)] == [125.001, 3.001, 1.02]
+    assert initial.cell(6, 33).value == 0  # Only the selected AI current is normalized.
+    book.close()
 
 
 def test_import_prepare_analyze_and_download_round_trip_without_project_authority():

@@ -107,3 +107,94 @@ def test_automatic_region_rejects_missing_or_ambiguous_data_instead_of_guessing_
     source = WorkbookTable('scanner.xlsx', ('Data',), 'Data', rows)
     with pytest.raises(ValueError, match='data region'):
         suggest_selection(source)
+
+
+def grouped_scanner():
+    labels = ['扫描', '时间']
+    # Hardware channel IDs need not encode the sample number; names do.
+    for sample, first in ((1, 101), (2, 111), (3, 201)):
+        labels.extend(f'{first + index} <{sample}_T{index + 1}> (C)' for index in range(10))
+    labels.extend(['313 <ambient> (C)', '315 <High Power> (VDC)',
+                   '316 <Low Power> (VDC)', '317 <A4_B4 Signal> (VDC)', '318 <Others Signal> (VDC)'])
+    rows = [tuple(labels)]
+    for index, current in enumerate((.009999, .011427, 10, 10.01, 20, 20.01), 1):
+        rows.append((index, '17:17', *((25 + sample) for sample in range(30)),
+                     20, 125 + index * .001, current, 3.001, 1.02))
+    return WorkbookTable('scanner.csv', ('Initial Data',), 'Initial Data', tuple(rows))
+
+
+def test_sample_names_group_three_samples_and_choose_only_the_variable_current():
+    source = grouped_scanner()
+    choice = suggest_selection(source)
+    assert choice.temperature_columns == tuple(range(3, 33))
+    assert choice.thermocouples_per_sample == 10
+    assert choice.ambient_column == 33
+    assert choice.current_column == 35
+    assert choice.excluded_rows == ()
+    assert len(source.rows[0]) == 37  # Other currents remain in the source.
+
+
+def test_near_zero_current_is_reviewed_as_unpowered_without_deleting_or_rounding_source():
+    source = grouped_scanner()
+    original = deepcopy(source)
+    choice = DataSelection(1, 2, 7, 33, 35, tuple(range(3, 33)), 10)
+    review = prepare_data(source, choice)
+    assert [row.current for row in review.measurements[:3]] == [0, 0, 10]
+    assert {issue.source_row for issue in review.issues if issue.code == 'zero_current'} == {2, 3}
+    assert not review.ready
+    assert len(review.measurements) == 6
+    assert source == original
+
+
+@pytest.mark.parametrize('current, expected', [(-.099, 0), (.099, 0), (.1, .1), (.100001, .100001)])
+def test_unpowered_threshold_uses_absolute_current_and_keeps_boundary_values(current, expected):
+    source = WorkbookTable('data.xlsx', ('Data',), 'Data', (('TC1', 'Ambient', 'Current'), (25, 20, current)))
+    review = prepare_data(source, DataSelection(1, 2, 2, 2, 3, (1,), 1))
+    assert review.measurements[0].current == expected
+    assert any(issue.code == 'zero_current' for issue in review.issues) == (expected == 0)
+
+
+def test_unequal_named_groups_cannot_silently_be_split_even_when_total_is_divisible():
+    source = WorkbookTable('groups.xlsx', ('Data',), 'Data', (
+        ('Scan', '101 <1_A> (C)', '102 <1_B> (C)', '111 <2_A> (C)',
+         '201 <3_A> (C)', '202 <3_B> (C)', '203 <3_C> (C)', 'Ambient', 'Current'),
+        (1, 25, 26, 25, 25, 26, 27, 20, 10), (2, 25, 26, 25, 25, 26, 27, 20, 10),
+    ))
+    choice = suggest_selection(source)
+    assert choice.thermocouples_per_sample == 2
+    with pytest.raises(ValueError, match='Sample channel counts differ'):
+        prepare_data(source, choice, acknowledge_warnings=True)
+
+
+def test_stable_current_default_is_not_triggered_by_zero_or_missing_auxiliary_readings():
+    from backend.application.temperature_channel_layout import inspect_channel_layout
+    source = WorkbookTable('data.xlsx', ('Data',), 'Data', (
+        ('Scan', 'TC1', 'Ambient', 'Current', 'Aux current'),
+        (1, 25, 20, 10, 0), (2, 30, 20, 20, 0),
+    ))
+    layout = inspect_channel_layout(source, 1, 2, 3)
+    assert layout.stable_current_columns == ()
+    assert layout.zero_intercept_default is True
+
+
+def test_sample_names_group_noncontiguous_source_channels_and_keep_spare_available():
+    source = WorkbookTable('data.xlsx', ('Data',), 'Data', (
+        ('Scan', '101 <1_A> (C)', '201 <2_A> (C)', '102 <1_B> (C)',
+         '202 <2_B> (C)', 'Ambient', 'Current', '999 <spare> (C)'),
+        (1, 25, 26, 27, 28, 20, 10, 29), (2, 25, 26, 27, 28, 20, 10, 29),
+    ))
+    choice = suggest_selection(source)
+    assert choice.temperature_columns == (2, 4, 3, 5)
+    assert choice.thermocouples_per_sample == 2
+    assert len(source.rows[0]) == 8
+
+
+def test_ambiguous_current_warning_is_separate_from_sample_mapping_issues():
+    from backend.application.temperature_channel_layout import inspect_channel_layout
+    source = WorkbookTable('data.xlsx', ('Data',), 'Data', (
+        ('1_A (C)', 'Ambient', 'Current', 'Aux current'),
+        (25, 20, 10, 5), (30, 20, 20, 7),
+    ))
+    layout = inspect_channel_layout(source, 1, 2, 3)
+    assert layout.issues == ()
+    assert 'Confirm the current column' in layout.current_issue

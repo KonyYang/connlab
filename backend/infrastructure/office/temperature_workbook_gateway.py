@@ -235,10 +235,21 @@ def _initial_sheet(sheet, table, selection, prepared):
         headers.append(f'Sample {slot // selection.thermocouples_per_sample + 1} / TC {slot % selection.thermocouples_per_sample + 1} [{column_letter(column)}: {label}] (°C)')
     headers += [f'Ambient [{column_letter(selection.ambient_column)}] (°C)',
                 f'Current [{column_letter(selection.current_column)}] (A)']
+    headers += [f'Retained Current [{column_letter(column)}: {original_header[column - 1]}]'
+                for column in prepared.retained_current_columns]
     for col, header in enumerate(headers, 1):
         _text(sheet, f'{get_column_letter(col)}5', header)
     for row in prepared.measurements:
         sheet.append([row.source_row, *row.temperatures, row.ambient, row.current])
+        source = table.rows[row.source_row - 1]
+        first_retained = len(selection.temperature_columns) + 4
+        for offset, column in enumerate(prepared.retained_current_columns):
+            value = source[column - 1] if column <= len(source) else None
+            coordinate = f'{get_column_letter(first_retained + offset)}{sheet.max_row}'
+            if isinstance(value, str):
+                _text(sheet, coordinate, value)
+            else:
+                sheet[coordinate] = value
     sheet.auto_filter.ref = f'A5:{get_column_letter(len(headers))}{sheet.max_row}'
     sheet.freeze_panes = 'B6'
     sheet.row_dimensions[5].height = 48
