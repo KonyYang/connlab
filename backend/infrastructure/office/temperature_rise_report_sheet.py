@@ -16,6 +16,7 @@ from openpyxl.utils import get_column_letter, quote_sheetname
 from openpyxl.workbook.defined_name import DefinedName
 
 from backend.domain.temperature_rise import calculate_current
+from backend.domain.temperature_data import UNPOWERED_CURRENT_THRESHOLD
 
 MAX_COLOR = 'FFA500'
 AVG_COLOR = '00008B'
@@ -148,8 +149,9 @@ def _stage_rises(sheet, selection, stages, raw_rows, raw_columns, header, caches
         # Lookup ambient through the selected role, never through physical last-column assumptions.
         ambient = sheet[f'{ambient_column}{source}'].value
         _formula(sheet, row, channels + 3, f'={ambient_column}{source}', ambient, caches)
+        current = f'{get_column_letter(raw_columns[selection.current_column])}{source}*{selection.current_multiplier!r}'
         _formula(sheet, row, channels + 4,
-                 f'={get_column_letter(raw_columns[selection.current_column])}{source}*{selection.current_multiplier!r}',
+                 f'=IF(ABS({current})<{UNPOWERED_CURRENT_THRESHOLD},0,{current})',
                  point.current, caches)
     _table_style(sheet, header, header + len(stages), channels + 4)
     for row in range(header + 1, header + len(stages) + 1):

@@ -49,6 +49,41 @@ def test_quadratic_fit_can_retain_nonzero_intercept():
     assert calculate_current(result.coefficients, 10) == pytest.approx(20)
 
 
+@pytest.mark.parametrize('zero_intercept', [False, True])
+def test_measured_zero_current_endpoint_preserves_background_rise(zero_intercept):
+    rows = [Measurement(1, 0, 20, (29, 28)), Measurement(2, 0, 22, (24, 23))]
+    for current in (10, 20, 30):
+        for _ in range(2):
+            rows.append(Measurement(len(rows) + 1, current, 25,
+                (25 + .01 * current ** 2 + .2 * current + 2,
+                 25 + .005 * current ** 2 + .1 * current + 1)))
+    # A shutdown tail is not the pre-energization background reading.
+    rows.extend([Measurement(9, 0, 25, (50, 49)), Measurement(10, 0, 25, (49, 48))])
+    result = analyze_temperature_rise(rows, thermocouples_per_sample=1, zero_intercept=zero_intercept)
+    assert [point.source_row for point in result.points] == [2, 4, 6, 8]
+    assert result.points[0].current == 0
+    assert result.points[0].rises == (2, 1)
+    assert result.points[0].maximum == 2
+    assert result.points[0].average == 1.5
+    if not zero_intercept:
+        assert result.maximum_fit.coefficients == Coefficients(.01, .2, 2)
+        assert result.average_fit.coefficients == Coefficients(.0075, .15, 1.5)
+        assert result.maximum_fit.r_squared == pytest.approx(1)
+        assert calculate_current(result.maximum_fit.coefficients, 10) == pytest.approx(20)
+    else:
+        assert result.maximum_fit.coefficients.c == 0
+        assert result.average_fit.coefficients.c == 0
+
+
+def test_single_zero_reading_before_energization_is_a_real_endpoint():
+    rows = [Measurement(7, 0, 20, (22,))]
+    rows.extend(Measurement(number, current, 20, (rise + 20,))
+                for number, current, rise in ((8, 10, 5), (9, 10, 5), (10, 20, 10), (11, 20, 10)))
+    result = analyze_temperature_rise(rows, thermocouples_per_sample=1, zero_intercept=False)
+    assert [point.source_row for point in result.points] == [7, 9, 11]
+    assert result.maximum_fit.coefficients == Coefficients(.01, .2, 2)
+
+
 def test_derating_includes_end_limit_and_exact_off_grid_annotation():
     result = generate_derating(Coefficients(.01, 0, 0), max_temperature=100, step=30, ambient_point=75)
     assert [point.ambient for point in result.points] == [0, 30, 60, 90, 100]

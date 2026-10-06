@@ -116,7 +116,11 @@ def stable_stage_endpoints(rows: Sequence[Measurement]) -> tuple[Measurement, ..
                     endpoints.append(previous)
                 stable = False
         else:
-            # Explicitly split zero runs; they never establish an energized stable stage.
+            # The macro retains the last zero-current reading before energization.
+            # Background heating from other currents must not become a synthetic (0, 0).
+            if current.current != 0:
+                endpoints.append(previous)
+            # A shutdown tail has no following energized reading and is not a baseline.
             stable = False
     if stable:
         endpoints.append(rows[-1])

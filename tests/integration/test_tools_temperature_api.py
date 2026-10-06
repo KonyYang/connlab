@@ -91,6 +91,41 @@ def test_import_prepare_analyze_and_download_round_trip_without_project_authorit
     assert sha256(source).hexdigest() == digest
 
 
+def test_unchecked_intercept_round_trip_retains_confirmed_background_baseline():
+    stream = StringIO(newline='')
+    writer = csv.writer(stream)
+    writer.writerow(['Scan', 'Time', 'TC1', 'TC2', 'Ambient', 'Current'])
+    writer.writerow([1, '10:00', 29, 28, 20, .009999])
+    writer.writerow([2, '10:01', 24, 23, 22, .011427])
+    for current in (10, 20, 30):
+        for _ in range(2):
+            writer.writerow([current, '10:02', 25 + .01 * current ** 2 + .2 * current + 2,
+                             25 + .005 * current ** 2 + .1 * current + 1, 25, current])
+    source = stream.getvalue().encode('utf-8')
+    client = TestClient(app)
+    imported = client.post('/api/tools/temperature-rise/import', files={'file': ('background.csv', source)})
+    assert imported.status_code == 200, imported.text
+    result = imported.json()
+    request = {'table': result['table'], 'selection': {
+        **result['selection'], 'temperature_columns': [3, 4], 'thermocouples_per_sample': 1,
+        'ambient_column': 5, 'current_column': 6,
+    }, 'zero_intercept': False, 'acknowledge_warnings': True}
+    analyzed = client.post('/api/tools/temperature-rise/analyze', json=request)
+    assert analyzed.status_code == 200, analyzed.text
+    analysis = analyzed.json()
+    assert [point['source_row'] for point in analysis['points']] == [3, 5, 7, 9]
+    assert analysis['points'][0]['maximum'] == 2
+    assert analysis['points'][0]['average'] == 1.5
+    assert analysis['maximum_fit']['coefficients'] == {'a': .01, 'b': .2, 'c': 2}
+    assert analysis['average_fit']['coefficients'] == {'a': .0075, 'b': .15, 'c': 1.5}
+    downloaded = client.post('/api/tools/temperature-rise/download', json=request)
+    assert downloaded.status_code == 200, downloaded.text[:300]
+    book = load_workbook(BytesIO(downloaded.content), data_only=True)
+    area = next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')
+    assert [cell.value for cell in book['T-riseChart'][area][-2][1:]] == [2, 5, 10, 17]
+    book.close()
+
+
 def test_utf16_scanner_csv_uses_the_same_confirmation_calculation_and_excel_download_flow():
     stream = StringIO(newline='')
     writer = csv.writer(stream, delimiter='\t')

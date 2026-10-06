@@ -32,10 +32,15 @@ Its Initial Data is already manually cleaned; it is not evidence that every scan
 column order or that zero-current rows should automatically be removed.
 
 Within each current stage, adjacent relative change is at most 1% of the previous nonzero current.
-Use the last row of each stable stage (at least two successive readings). This is current stability,
+Use the last row of each energized stable stage (at least two successive readings). Also retain the
+last confirmed zero-current row immediately before energization, including a single zero reading.
+Its measured temperature rise may be nonzero because other currents remain powered. A trailing
+shutdown zero run has no following energized stage and is not selected. This is current stability,
 not a thermal-equilibrium assertion. Subtract that row's ambient from each thermocouple. For each
 sample take its highest rise, then plot the highest sample maximum and the mean of sample maxima.
-Insert an origin point when the first plotted current is nonzero. Fit second-degree polynomials,
+Insert an origin point only when the first selected stage current is nonzero; never replace a real
+zero-current reading's rise with zero. This origin-insertion rule applies in both intercept modes,
+as in the VBA. Fit second-degree polynomials,
 optionally constrained to zero intercept. Show six coefficient decimals; calculations use the
 effective editable six-decimal values. Display R² as squared correlation of observed and fitted
 values, matching desktop Excel's native polynomial trendline labels, including forced-zero fits.
@@ -574,3 +579,74 @@ is divisible; electrical ambiguity warnings are separate from mapping warnings, 
 edit cannot hide an unresolved current-role warning. Stable auxiliaries are retained/not plotted,
 manual intercept changes survive edits, and unpowered rows are not silently deleted. Derating's
 existing zero-intercept prerequisite remains explicit. Zero outstanding blocking findings.
+
+## Unchecked Zero Intercept correction — 2026-10-07
+
+The supplied `C:/Users/White/Desktop/T-rise&Derating Rev20161002.xlsm` was read as a ZIP/OLE
+container; VBA was extracted as text, never executed. In the extracted nonblank `GenarateChart`
+listing, lines 780–799 retain the last zero-current row before energization; lines 854–865 subtract
+its actual ambient. Lines 883–903 insert a zero column only if no zero stage is present, independently
+of the checkbox. Lines 1019–1021 / 1044–1046 set the polynomial intercept only when checked;
+lines 405–419 / 463–477 retain the fitted constant when unchecked.
+
+The defect was earlier than the regression solver: ConnLab discarded all zero-current endpoints,
+so a measured heated baseline became an invented `(0, 0)` point. The existing unconstrained solver,
+native trendline automatic intercept and `LINEST(...,TRUE)` were already correct. The fix preserves
+the last confirmed zero reading before an energized stage, including a single reading, and uses its
+actual sample maxima/average. Shutdown tails remain unselected. Without a recorded zero endpoint,
+the macro's synthetic-origin fallback remains in both modes. Checked mode still constrains c to zero
+without falsifying the measured point. No automatic row restoration/deletion is introduced.
+
+Exported stage current formulas now apply the same strict `|I| < 0.1 A` rule as preparation. Raw
+scanner values remain unchanged; Excel recalculation cannot turn a normalized baseline back into
+0.009999 A. The shared cutoff is a domain constant, not an Office dependency.
+
+Important operator boundary: in a multi-current test, the pre-energization zero-current baseline can
+have genuine nonzero heating. Do not exclude every unpowered row indiscriminately; retain the intended
+baseline and separately review interruption/shutdown rows. Existing browser exclusions/results are
+not rewritten. Confirm the reviewed data and regenerate the curve to obtain the corrected result.
+
+### Changed paths in this revision
+
+- `backend/domain/temperature_rise.py`: measured zero-run endpoints.
+- `backend/domain/temperature_data.py`: shared unpowered cutoff.
+- `backend/application/temperature_data_preparation.py`: consume that cutoff, unchanged preparation behavior.
+- `backend/infrastructure/office/temperature_rise_report_sheet.py`: matching editable Excel current formulas.
+- `tests/unit/test_temperature_rise_calculations.py`: real zero baseline, single reading, checked/unchecked and tail cases.
+- `tests/unit/test_temperature_workbook_gateway.py`: source-preserving baseline, native chart and formula caches.
+- `tests/integration/test_tools_temperature_api.py`: import/analyze/download nonzero-intercept round trip.
+- `docs/temperature_rise_tool.md`: corrected numerical contract and acceptance record.
+
+### Standards
+
+Separate same-agent pass: 0 outstanding findings. Domain remains independent of Office/API/UI;
+existing public seams and dependency direction are preserved. No dependency, source mutation or
+authoritative write was introduced. `git diff --check` passed.
+
+### Spec
+
+Separate same-agent pass: 0 outstanding findings. Compared checkbox behavior, zero-stage capture,
+ambient subtraction, fallback origin, coefficients and Excel series against the actual VBA, not an
+assumed intercept-only change. Derating's existing prerequisite is outside this correction and unchanged.
+
+### Validation
+
+- RED: three numerical cases returned a synthetic `source_row=None` instead of the measured baseline;
+  the native export case started with scan 4 instead of scan 2. GREEN: all four passed after correction.
+- Final affected backend matrix: **82 passed**, one existing Starlette/httpx deprecation warning.
+  Includes preparation, original forced-zero macro coefficients, numerical analysis, workbook gateway
+  and API integration. No frontend source changed; frontend build/tests were not redundantly rerun.
+- Supplied 3A CSV, with reviewed rows retained: real baseline row 91, current 0 A, Max 26.544°C,
+  Avg of sample maxima 24.572°C. Unchecked fits were Max `(0.017673, -0.368444, 27.406090)` and
+  Avg `(0.018148, -0.349932, 25.355670)`. Desktop Excel opened only the independently generated copy
+  read-only with macros disabled. Recalculated coefficients matched ConnLab within 1e-8, both series
+  preserved the measured zero point, and intercept remained automatic. Native chart PNG inspected.
+  These are all-row verification results, not acceptance of the source's thermal equilibrium or R².
+- Live `localhost:5173` API probe returned the measured baseline and Max `(0.01, 0.2, 2)`;
+  the active service has loaded the correction. No browser draft or existing result was overwritten.
+- CSV SHA256 stayed `b2903c3ce08de283af8c02498dafccf4306da26aa528beac5a62b338e65824ff`;
+  XLSM stayed `2b2565e5d5db5d342d77db4eed21cccce37ff2b2e41c59e2a4c302b745b4f402`.
+
+Methods used: diagnosing-bugs, tdd, code-review and spreadsheets. Review and QA were sequential
+passes by the same agent, not independent agents. Sample export is a disposable QA copy in the
+task visualization directory; no original CSV/XLSM or report was modified.

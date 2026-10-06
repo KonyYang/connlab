@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from math import isfinite
 
-from backend.domain.temperature_data import DataSelection, WorkbookTable, column_letter
+from backend.domain.temperature_data import DataSelection, WorkbookTable, column_letter, UNPOWERED_CURRENT_THRESHOLD
 from backend.domain.temperature_rise import Measurement
 from backend.application.temperature_channel_layout import ChannelLayout, inspect_channel_layout
 
@@ -44,7 +44,7 @@ def prepare_data(table: WorkbookTable, selection: DataSelection, *, acknowledge_
         if len(values) != len(columns):
             continue
         current = values[0] * selection.current_multiplier
-        if abs(current) < .1:
+        if abs(current) < UNPOWERED_CURRENT_THRESHOLD:
             current = 0.
         if not isfinite(current) or current < 0:
             issues.append(DataIssue('invalid_current', 'error', number,

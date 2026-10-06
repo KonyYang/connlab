@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 CellValue = str | float | int | bool | None
+UNPOWERED_CURRENT_THRESHOLD = .1
 
 
 @dataclass(frozen=True)

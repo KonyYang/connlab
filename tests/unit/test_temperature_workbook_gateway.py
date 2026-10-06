@@ -372,7 +372,7 @@ def test_report_formulas_honor_spare_channel_order_current_scale_and_unconstrain
     rises = sheet[next(book.defined_names['StageTemperatureRise'].destinations)[1].replace('$', '')]
     assert rises[1][2].value == '=G2-$F2'  # TC1 first, replacement Spare second
     assert rises[1][3].value == '=E2-$F2'
-    assert rises[1][-1].value == '=C2*0.001'
+    assert rises[1][-1].value == '=IF(ABS(C2*0.001)<0.1,0,C2*0.001)'
     summary = next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')
     assert sheet._charts[0].series[0].trendline.intercept is None
     assert any('LINEST(' in cell.value and 'TRUE' in cell.value
@@ -396,3 +396,43 @@ def test_report_preserves_operator_coefficient_overrides_instead_of_replacing_th
     assert [cell.value for cell in sheet[maximum_area][1][1:4]] == [.005, .1, 0]
     assert [cell.value for cell in sheet[average_area][1][1:4]] == [.004, .2, 0]
     book.close()
+
+
+def test_unconstrained_export_keeps_measured_zero_baseline_and_normalizes_formula(tmp_path):
+    headers = ('Scan', 'Time', 'TC1', 'TC2', 'Ambient', 'Current')
+    rows = [(1, '10:00', 29, 28, 20, .009999), (2, '10:01', 24, 23, 22, .011427)]
+    for current in (10, 20, 30):
+        for _ in range(2):
+            rows.append((len(rows) + 1, '10:02', 25 + .01 * current ** 2 + .2 * current + 2,
+                         25 + .005 * current ** 2 + .1 * current + 1, 25, current))
+    table = WorkbookTable('background.xlsx', ('Data',), 'Data', (headers, *rows))
+    selection = DataSelection(1, 2, 9, 5, 6, (3, 4), 1)
+    prepared = prepare_data(table, selection, acknowledge_warnings=True)
+    analysis = analyze_temperature_rise(prepared.measurements, thermocouples_per_sample=1, zero_intercept=False)
+    output = tmp_path / 'background-report.xlsx'
+    TemperatureWorkbookGateway().write(output, table=table, selection=selection, prepared=prepared,
+        analysis=analysis, maximum_coefficients=analysis.maximum_fit.coefficients,
+        average_coefficients=analysis.average_fit.coefficients, target_rise=10, derating=None)
+    book = load_workbook(output)
+    sheet = book['T-riseChart']
+    raw_area = next(book.defined_names['KeyStageReadings'].destinations)[1].replace('$', '')
+    rise_area = next(book.defined_names['StageTemperatureRise'].destinations)[1].replace('$', '')
+    summary_area = next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')
+    assert sheet[raw_area][1][0].value == 2
+    assert sheet[raw_area][1][-1].value == .011427  # The scanner reading stays intact.
+    formula = sheet[rise_area][1][-1].value
+    assert 'IF(ABS(' in formula and '<0.1,0,' in formula
+    for series in sheet._charts[0].series:
+        assert series.trendline.intercept is None
+        assert series.xVal.numRef.numCache.pt[0].v == 0
+        assert series.yVal.numRef.numCache.pt[0].v in (2, 1.5)
+    book.close()
+    cached = load_workbook(output, data_only=True)
+    summary = cached['T-riseChart'][summary_area]
+    assert [cell.value for cell in summary[0][1:]] == [0, 10, 20, 30]
+    assert [cell.value for cell in summary[-2][1:]] == [2, 5, 10, 17]
+    assert [cell.value for cell in summary[-1][1:]] == [1.5, 3.75, 7.5, 12.75]
+    assert cached['T-riseChart'][rise_area][1][-1].value == 0
+    calculator = next(cached.defined_names['CurrentCalculator'].destinations)[1].replace('$', '')
+    assert [cell.value for cell in cached['T-riseChart'][calculator][1]] == pytest.approx([10, .01, .2, 2, 20])
+    cached.close()
