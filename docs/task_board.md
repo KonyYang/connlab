@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
     "summary": "Auto-group sample thermocouples and simplify exception-only channel adjustments",
@@ -35,9 +35,86 @@
     "risk_reasons": [],
     "activation_head": "83038fb2502d2d5d065737690455d1144cbac704",
     "started_at": "2026-10-06T22:53:34.408273Z",
-    "updated_at": "2026-10-06T22:53:34.408273Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-06T23:15:57.093805Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
+      "subject": "875ed7c28f1c8d505a2d0c7fc43102ed069db865",
+      "summary": "Auto-group scanner sample channels, show compact summary with reversible exception editing, retain auxiliary currents without plotting, default intercept off for stable extras and review near-zero current without changing source.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/application/temperature_channel_layout.py",
+        "backend/application/temperature_data_preparation.py",
+        "backend/application/tools_temperature_service.py",
+        "backend/infrastructure/office/temperature_workbook_gateway.py",
+        "docs/temperature_rise_tool.md",
+        "frontend/src/api/temperature.ts",
+        "frontend/src/features/temperature/ChannelMapping.tsx",
+        "frontend/src/features/temperature/DataPreview.tsx",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx",
+        "tests/integration/test_tools_temperature_api.py",
+        "tests/unit/test_temperature_data_preparation.py"
+      ],
+      "validation": [
+        {
+          "name": "affected_backend_matrix",
+          "details": "77 passed; existing Starlette/httpx deprecation warning",
+          "status": "passed"
+        },
+        {
+          "name": "affected_frontend_matrix",
+          "details": "29 passed: temperature page/API, Tools and TopBar",
+          "status": "passed"
+        },
+        {
+          "name": "typecheck_and_build",
+          "details": "TypeScript and Vite build passed sequentially",
+          "status": "passed"
+        },
+        {
+          "name": "real_csv_browser_and_export",
+          "details": "3 x 10 groups, AG/AI roles, stable AH/AJ/AK, 47 manually excluded unpowered rows, fit/coefficient/current and invalidation verified; 1280x720 and 543x804 no page overflow; 356-row export auxiliary cells match source; source SHA256 unchanged. OS download completion not exposed; separate same-service export inspected.",
+          "status": "passed"
+        },
+        {
+          "name": "exact_diff",
+          "details": "git diff --check; Standards 0 / Spec 0 outstanding blocking findings",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "qa": {
+          "status": "passed",
+          "details": "Same-agent distinct final QA pass on exact implementation bytes; affected matrix, build, real browser and export validation"
+        },
+        "reviewer": {
+          "status": "passed",
+          "details": "Sequential same-agent focused Standards and Specification passes, not independent agents; resolved unequal-group guard and current-role warning separation"
+        },
+        "developer": {
+          "status": "passed",
+          "details": "Primary Astra work unit; coherent RED/GREEN slices, local implementation and targeted feedback tests"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "subject": "875ed7c28f1c8d505a2d0c7fc43102ed069db865",
+        "details": "In-scope direct-master local commit, clean worktree; no publication or final Close"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_AUTO_DATA_REGION_20261005",
