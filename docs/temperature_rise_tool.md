@@ -1,7 +1,7 @@
 # Temperature Rise and Derating Tool
 
-Status: implemented. Current refinement: automatic sample grouping and exception-only channel
-adjustments (`TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007`).
+Status: implemented. Current refinement: unified raw-data row/column editing using selected mock 2
+(`TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007`).
 
 ## Scope and acceptance
 
@@ -509,7 +509,7 @@ calculation or source-selection semantics change. Findings: 0. Summary: Standard
 
 `temperature_channel_layout.py` owns automatic role/group suggestions; preparation validates the
 confirmed assignments, while infrastructure retains source IO and workbook output. The UI displays
-one compact sample/count summary, collapsed View Channels and an Adjust Channels action, not a
+one compact sample/count summary and a unified Data Preview grid, not a
 selector and three buttons for every thermocouple. All edits still invalidate derived results and
 require Confirm Data; stale requests cannot reintroduce prior mappings/results.
 
@@ -518,9 +518,9 @@ require Confirm Data; stale requests cannot reintroduce prior mappings/results.
   reordered logically without editing the upload. Unnamed spares remain available for explicit
   replacement/addition; inconsistent group sizes require explicit adjustment before confirmation.
   Unlabelled legacy inputs retain their existing fallback and operator review.
-- Whole-column replacement uses one target slot and one spare source column. Exclude/restore, direct
-  Move To Position, Add Channel and Reset Mapping remain reversible. No per-row replacement, automatic
-  source deletion or general cell editor is introduced.
+- Whole-column adjustment uses source-column checkboxes and a small column-header menu. Exclude a
+  failed column, then move a spare before that source position. Exclude/restore and Undo are reversible;
+  no separate replacement/add-channel editor, automatic source deletion or cell editor is introduced.
 - Electrical headers, including scanner VDC labels, are role candidates. A unique varying candidate
   is suggested as the main current; ambiguous candidates show a role-confirmation warning. These
   labels do not prove a physical conversion: input values must already be amperes, as in the macro.
@@ -538,7 +538,7 @@ The supplied `3A new.csv` is a specific acceptance fixture: 3 samples x 10 chann
 main current AI, stable auxiliary AH/AJ/AK. These positions/counts are not hard-coded. Derating's
 existing zero-intercept requirement remains unchanged; enabling it requires regenerating the fit.
 
-Acceptance: backend suggestion/preparation/API/export tests, frontend replacement/reset/review/stale
+Acceptance: backend suggestion/preparation/API/export tests, frontend move/undo/review/stale
 response tests, TypeScript/build, and an isolated real-CSV browser check. Risks: header naming can be
 ambiguous; a stable column alone is not evidence of thermal equilibrium; all samples still require
 the same confirmed thermocouple count. Sources must remain unchanged and normal channels must not
@@ -650,3 +650,68 @@ assumed intercept-only change. Derating's existing prerequisite is outside this 
 Methods used: diagnosing-bugs, tdd, code-review and spreadsheets. Review and QA were sequential
 passes by the same agent, not independent agents. Sample export is a disposable QA copy in the
 task visualization directory; no original CSV/XLSM or report was modified.
+
+## Unified raw-data editor — selected mock 2 (2026-10-07)
+
+The separate ChannelMapping component, View Channels, Other Current Columns and dedicated
+replacement controls are removed. Data Preview now exposes every original source column in one
+spreadsheet, with stable source letters, row/column checkboxes, grouped temperature headings,
+explicit Ambient/Plot Current/retained auxiliary-current roles, and one compact action toolbar.
+
+- Select rows or columns, then Exclude Selected or Restore; selections are mutually exclusive.
+  Exclusions stay visible in muted gray. Source uploads and cell values are never rewritten.
+- For a failed thermocouple, exclude the bad source column, select the spare, and use its column
+  header menu to Move Before the failed source position. Multiple selected temperatures move as
+  an ordered block. Moving an unused spare activates its whole column in the prepared selection.
+- Undo restores the previous row exclusions, temperature ordering and editor state. Later manual
+  ambient/current/sample-count decisions clear old undo history rather than silently reverting roles.
+- Incomplete blocks show Pending Grouping and disable Confirm Data; restore/move the needed columns
+  or explicitly correct the equal count. A complete new order is chunked by the confirmed count,
+  with visible sample/TC assignments for operator review. The UI cannot infer the intended physical
+  wiring of a spare; the operator must place it in the correct position before confirmation.
+- Ambient, plot current and recognized auxiliary electrical roles cannot be excluded/moved as
+  thermocouples. Non-temperature metadata exclusions are editor-only; calculation input continues
+  to use ordered temperature column IDs and excluded row IDs. Auxiliary originals remain retained.
+- Optional range selection and 50-row pagination support large records without separate mapping
+  forms. Unpowered-row selection remains explicit, preserving the measured zero baseline.
+- Every committed data edit invalidates confirmation and downstream calculations through the
+  existing hook. No API contract, formula, native Excel export or Derating behavior changed.
+
+Changed paths: `TemperatureRisePage.tsx` and its tests; temperature feature `DataPreview`,
+`ColumnActions`, `useDataGridEditing`, `sourceColumns`, `DataRegionCorrection`, stylesheet and grid
+tests; removed `ChannelMapping.tsx`; this document and project-root `design-qa.md`.
+
+### Verification
+
+TDD RED: four unified-editor cases failed against the former row-only preview before implementation.
+Final affected QA: **27 frontend tests passed** (grid, page, API adapter and TopBar); TypeScript and
+Vite build passed sequentially on the final source/test bytes. No backend source changed in this
+revision, so the previously recorded 82-test numerical/export matrix was not repeated.
+
+Isolated browser: actual CSV imports as 403 rows, 3×10 probes, AG ambient / AI current and stable
+AH/AJ/AK retained, Zero Intercept off. Explicitly keeping flagged rows generates the real baseline
+Max 26.544°C / Avg 24.572°C. Subsequent exclusions clear the old curve. A disposable 2×2-probe CSV
+verifies excluding D, moving spare I before D, confirmation, curve generation, and two-step Undo;
+both intermediate and restored orders are correct. Console error/warning logs: zero. Desktop,
+856×804 and 543×804 views inspected; no page overflow, menu stays in the viewport. User tab untouched,
+temporary viewport reset, QA tab closed. No native Excel rendering or new screen-reader session.
+
+### Standards
+
+Same-agent exact-diff pass: existing API selection contract and single calculation state reused;
+editor ordering/history and popup lifecycle remain feature-owned. React escapes source headers;
+event listeners clean up, focus returns, source arrays are not mutated, no dependency/Office/COM or
+filesystem mutation path added. Obsolete mapping UI/styles removed. Zero outstanding findings.
+
+### Spec
+
+Separate same-agent pass: selected mock's unified checkbox grid and small header move menu replace
+the requested redundant panels. Row/column exclusion, restoration, whole spare moves, multi-column
+ordering, Undo, incomplete-group confirmation guard, role protection and downstream invalidation
+are verified. Existing analysis panels are intentionally retained; this is a preparation-editor
+revision, not a chart-control rewrite. Visual comparison passed after a header-readability fix.
+Zero outstanding blocking findings. Summary: Standards 0; Spec 0.
+
+Methods used: tdd, image-to-code, design-qa and code-review. Execution/review/QA were sequential
+passes by one agent; no independent-agent review is claimed. Residual domain risk: scanner header
+ambiguity and physical channel positions still require human confirmation before calculating.

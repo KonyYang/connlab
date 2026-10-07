@@ -75,19 +75,19 @@ describe('temperature preparation and calculation workflow', () => {
     });
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
-    expect(screen.getByText('1 Sample / 2 Thermocouples Per Sample / 2 Channels')).toBeTruthy();
+    expect(screen.getByText('1 Sample · 2 TC/Sample · 2 Channels')).toBeTruthy();
     expect(screen.queryByLabelText('Sample 1 / TC 1')).toBeNull();
     expect(screen.queryByRole('button', { name: /Earlier|Later/ })).toBeNull();
     expect((screen.getByLabelText('Zero Intercept') as HTMLInputElement).checked).toBe(false);
     await user.click(screen.getByLabelText('Zero Intercept'));
     await user.click(screen.getByLabelText('Select Row 2'));
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected Rows' }));
+    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     expect((screen.getByLabelText('Zero Intercept') as HTMLInputElement).checked).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(api.prepareTemperatureData).toHaveBeenCalledWith(expect.objectContaining({ zero_intercept: true }));
   });
 
-  it('opens only one exception editor, replaces a complete column and can undo the mapping', async () => {
+  it('blocks an incomplete sample until a spare is moved into position and can undo both operations', async () => {
     const user = userEvent.setup();
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce({ ...structuredClone(imported), channel_layout: {
       temperature_columns: [2, 3], current_columns: [5], stable_current_columns: [], sample_groups: [],
@@ -96,14 +96,18 @@ describe('temperature preparation and calculation workflow', () => {
     } });
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
-    await user.click(screen.getByRole('button', { name: 'Adjust Channels' }));
-    await user.selectOptions(screen.getByLabelText('Target Position'), '1');
-    await user.selectOptions(screen.getByLabelText('Replacement Channel'), '6');
-    await user.click(screen.getByRole('button', { name: 'Replace Channel' }));
+    await user.click(screen.getByLabelText('Select Column C'));
+    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(api.prepareTemperatureData).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Column F Actions' }));
+    await user.selectOptions(screen.getByLabelText('Move Before'), '3');
+    await user.click(screen.getByRole('button', { name: 'Move' }));
     expect(screen.getByText('Confirm the current column used for this curve.')).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.temperature_columns).toEqual([2, 6]);
-    await user.click(screen.getByRole('button', { name: 'Reset Mapping' }));
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.temperature_columns).toEqual([2, 3]);
   });
@@ -223,17 +227,18 @@ describe('temperature preparation and calculation workflow', () => {
     }));
   });
 
-  it('requires confirmation, supports replacement and row restoration, and invalidates downstream results', async () => {
+  it('requires confirmation, supports whole-column moves and row restoration, and invalidates downstream results', async () => {
     const user = userEvent.setup();
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
-    await user.click(screen.getByRole('button', { name: 'Adjust Channels' }));
-    await user.selectOptions(screen.getByLabelText('Target Position'), '1');
-    await user.selectOptions(screen.getByLabelText('Replacement Channel'), '6');
-    await user.click(screen.getByRole('button', { name: 'Replace Channel' }));
+    await user.click(screen.getByLabelText('Select Column C'));
+    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    await user.click(screen.getByRole('button', { name: 'Column F Actions' }));
+    await user.selectOptions(screen.getByLabelText('Move Before'), '3');
+    await user.click(screen.getByRole('button', { name: 'Move' }));
     await user.click(screen.getByLabelText('Select Row 2'));
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected Rows' }));
+    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection).toMatchObject({
       temperature_columns: [2, 6], excluded_rows: [2],
@@ -274,8 +279,8 @@ describe('temperature preparation and calculation workflow', () => {
     fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['new'], 'next.xlsx')] } });
     await screen.findByRole('button', { name: 'Confirm Data' });
     await act(async () => resolve(imported));
-    await user.click(screen.getByText('View Channels'));
-    expect(screen.getByRole('region', { name: 'Sample & Channel Mapping' }).textContent).toContain('New TC');
+    expect(screen.getByRole('region', { name: 'Scanner Data Preview' }).textContent).toContain('New TC');
+    expect(screen.queryByText('View Channels')).toBeNull();
     expect(screen.queryByLabelText('Header Row')).toBeNull();
     expect(api.prepareTemperatureData).not.toHaveBeenCalled();
     expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
@@ -314,13 +319,13 @@ describe('temperature preparation and calculation workflow', () => {
     const user = userEvent.setup();
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
-    await user.click(screen.getByRole('button', { name: 'Adjust Channels' }));
-    await user.selectOptions(screen.getByLabelText('Target Position'), '1');
-    await user.selectOptions(screen.getByLabelText('Move To Position'), '0');
-    await user.click(screen.getByRole('button', { name: 'Move Channel' }));
-    expect((screen.getByLabelText('Target Position') as HTMLSelectElement).selectedOptions[0].textContent).toContain('TC 1 — C');
-    await user.click(screen.getByRole('button', { name: 'Exclude Channel' }));
-    await user.click(screen.getByRole('button', { name: 'Restore Column C' }));
+    await user.click(screen.getByRole('button', { name: 'Column C Actions' }));
+    await user.selectOptions(screen.getByLabelText('Move Before'), '2');
+    await user.click(screen.getByRole('button', { name: 'Move' }));
+    await user.click(screen.getByLabelText('Select Column C'));
+    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    await user.click(screen.getByLabelText('Select Column C'));
+    await user.click(screen.getByRole('button', { name: 'Restore' }));
     vi.mocked(api.prepareTemperatureData).mockResolvedValueOnce({ ready: false, measurements: [],
       issues: [{ code: 'invalid_reading', severity: 'error', source_row: 2, message: 'Row 2: missing reading.' }] });
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));

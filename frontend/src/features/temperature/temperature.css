@@ -35,11 +35,6 @@
 .temperature-detail summary { cursor: pointer; font-size: 14px; font-weight: 600; }
 .temperature-detail summary span { margin-left: 8px; font-size: 12px; color: var(--color-ink-muted); font-weight: 400; }
 .temperature-detail[open] > :not(summary) { margin-top: 12px; }
-.temperature-mapping { display: grid; gap: 10px; min-width: 0; }
-.temperature-mapping > .temperature-section-heading { font-size: 13px; }
-.temperature-adjustments { display: grid; gap: 12px; padding: 12px; border: 1px solid var(--color-border); border-radius: 10px; }
-.temperature-mapping-changes { display: grid; gap: 6px; max-height: 160px; overflow: auto; }
-.temperature-page .temperature-channel-names { white-space: normal; overflow-wrap: anywhere; }
 .temperature-actions { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
 .temperature-actions > label:not(.temperature-check) { max-width: 190px; }
 .temperature-page .temperature-check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 400; }
@@ -49,10 +44,41 @@
 .temperature-page th, .temperature-page td { padding: 8px; border-bottom: 1px solid var(--color-border); text-align: left; white-space: nowrap; }
 .temperature-table-scroll thead th { position: sticky; top: 0; background: var(--color-surface-muted); z-index: 1; }
 .temperature-table-scroll tbody th { font-weight: 400; }
-.temperature-table-scroll tr.is-excluded { opacity: .5; text-decoration: line-through; }
-.temperature-table-scroll tr.needs-review { background: #fff9eb; }
-.temperature-pagination { display: flex; justify-content: space-between; gap: 8px; align-items: center; font-size: 12px; }
-.temperature-pagination button { padding: 6px 10px; font-size: 12px; }
+.temperature-data-editor { min-width: 0; display: grid; gap: 10px; }
+.temperature-data-toolbar, .temperature-data-actions, .temperature-data-footer, .temperature-data-footer > div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.temperature-data-toolbar, .temperature-data-footer { justify-content: space-between; }
+.temperature-data-toolbar > div:first-child { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; }
+.temperature-data-toolbar span, .temperature-data-footer { color: var(--color-ink-muted); font-size: 12px; }
+.temperature-data-actions button, .temperature-data-footer button { padding: 6px 10px; font-size: 12px; }
+.temperature-data-editor .temperature-table-scroll { max-height: 450px; }
+.temperature-page .temperature-source-table { border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.temperature-source-table th, .temperature-source-table td { border-right: 1px solid var(--color-border); padding: 7px 10px; }
+.temperature-source-table thead tr:nth-child(2) th { top: 30px; vertical-align: top; }
+.temperature-source-table .temperature-sample-groups th { height: 30px; padding: 0 10px; box-sizing: border-box; text-align: center; color: var(--color-primary-strong); background: var(--color-action-secondary-bg); }
+.temperature-source-column { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.temperature-source-column button { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; font-size: 12px; border-radius: 5px; }
+.temperature-source-column button .ui-icon { width: 12px; height: 12px; }
+.temperature-source-title, .temperature-source-role { display: block; margin-top: 4px; }
+.temperature-source-title { max-width: 200px; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
+.temperature-source-role { font-size: 11px; color: var(--color-ink-muted); font-weight: 400; }
+.temperature-source-table th.is-selected-column, .temperature-source-table td.is-selected-column { background: var(--color-action-secondary-hover); }
+.temperature-source-table .is-excluded-column, .temperature-source-table .is-excluded-row > * { background: var(--color-surface-muted); color: var(--color-ink-muted); }
+.temperature-source-table .is-excluded-row td:not(:first-child), .temperature-source-table td.is-excluded-column { text-decoration: line-through; }
+.temperature-source-table .is-flagged-row > * { background: #fff9eb; }
+.temperature-row-range { font-size: 12px; }
+.temperature-row-range summary { cursor: pointer; color: var(--color-ink-muted); }
+.temperature-page .temperature-row-range label { display: inline-flex; align-items: center; margin: 8px 8px 0 0; font-size: 12px; font-weight: 400; }
+.temperature-row-range input { max-width: 180px; }
+.temperature-warning { margin: 0; padding: 10px; border: 1px solid #e3cf9f; border-radius: 8px; color: var(--color-warning); font-size: 13px; }
+.temperature-column-menu { position: fixed; z-index: 100; width: min(244px,calc(100vw - 40px)); padding: 12px; display: grid; gap: 10px; border: 1px solid var(--color-action-secondary-border); border-radius: 10px; background: var(--color-surface); color: var(--color-ink); box-shadow: 0 8px 28px #14284226; font: 12px 'Segoe UI',sans-serif; }
+.temperature-column-menu-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.temperature-column-menu-heading span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.temperature-column-menu button, .temperature-column-menu select { border: 1px solid var(--color-action-secondary-border); border-radius: 7px; padding: 7px 9px; background: var(--color-action-secondary-bg); color: var(--color-action-secondary-text); font: inherit; cursor: pointer; }
+.temperature-column-menu select { width: 100%; min-width: 0; background: var(--color-surface); color: var(--color-ink); }
+.temperature-column-menu label { display: grid; gap: 6px; }
+.temperature-column-menu button:disabled { opacity: .5; cursor: not-allowed; }
+.temperature-column-menu .temperature-column-move { justify-self: end; min-width: 80px; background: var(--color-primary); color: #fff; }
+.temperature-column-menu button:focus-visible, .temperature-column-menu select:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .temperature-review { border: 1px solid #e3cf9f; border-radius: 10px; padding: 12px; color: var(--color-warning); }
 .temperature-review h4 { margin: 0 0 8px; font-size: 14px; }
 .temperature-issue-list { max-height: 180px; overflow: auto; }

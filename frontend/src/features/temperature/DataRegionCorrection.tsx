@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { DataRegion, WorkbookTable } from '../../api/temperature';
-import { columnLetter } from './ChannelMapping';
+import { columnLetter } from './sourceColumns';
 
 export function DataRegionCorrection({ table, message, disabled, onApply }: {
   table: WorkbookTable; message: string; disabled: boolean;

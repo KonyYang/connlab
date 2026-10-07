@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
     "summary": "Auto-group sample thermocouples and simplify exception-only channel adjustments",
@@ -35,93 +35,17 @@
     "risk_reasons": [],
     "activation_head": "83038fb2502d2d5d065737690455d1144cbac704",
     "started_at": "2026-10-06T22:53:34.408273Z",
-    "updated_at": "2026-10-06T23:42:27.441335Z",
+    "updated_at": "2026-10-07T05:02:45.380224Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User selected mock 2 and requested unified raw-data row/column editing and header move menu; remove replacement and separate mapping panels.",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "roles": {
-        "reviewer": {
-          "evidence": "docs/temperature_rise_tool.md",
-          "status": "passed",
-          "mode": "same-agent separate Standards and Spec passes, not independent-agent review"
-        },
-        "qa": {
-          "status": "passed",
-          "limitation": "Existing exclusions and cached browser results are deliberately not rewritten; operator must retain intended baseline and regenerate.",
-          "mode": "same-agent final affected backend matrix, native desktop Excel and live API"
-        },
-        "developer": {
-          "mode": "same-agent implementation, failing public baseline/export tests then 7 targeted passing checks",
-          "status": "passed"
-        }
-      },
-      "summary": "Implemented exception-only sample mapping and corrected unchecked-intercept curves to retain measured zero-current background baseline; Excel formulas preserve the same near-zero normalization.",
-      "integration": {
-        "publication": "Local only; awaiting user Close",
-        "status": "passed",
-        "branch": "master"
-      },
-      "scope_ok": true,
-      "version": 1,
-      "validation": [
-        {
-          "name": "affected_backend_matrix",
-          "status": "passed",
-          "details": "82 passed; existing Starlette/httpx deprecation warning. Preparation, original macro baseline, numerical calculation, workbook and API tests."
-        },
-        {
-          "name": "desktop_excel_real_csv",
-          "status": "passed",
-          "details": "3A CSV baseline row 91 retained at 0 A with Max 26.544 C, Avg 24.572 C; native Excel automatic intercept and LINEST coefficients match within 1e-8; chart rendered and inspected; source CSV and XLSM SHA256 unchanged."
-        },
-        {
-          "name": "live_service_probe",
-          "status": "passed",
-          "details": "localhost:5173 API returns measured baseline and Max a=.01 b=.2 c=2; corrected code is live. User browser draft unchanged."
-        },
-        {
-          "name": "previous_frontend_evidence",
-          "status": "passed",
-          "details": "Frontend unchanged in this revision; previous 875ed7c task verification 29 tests plus typecheck/build and mapping browser acceptance retained in documentation. No redundant frontend matrix claimed for this backend-only correction."
-        },
-        {
-          "name": "exact_diff_review",
-          "status": "passed",
-          "details": "Same-agent separate Standards and Spec passes: 0 outstanding findings on the revision; git diff check passed."
-        }
-      ],
-      "subject": "63eed60825aca90d3955db43d9eb814d827b0e48",
-      "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
-      "changed_paths": [
-        "backend/application/temperature_channel_layout.py",
-        "backend/application/temperature_data_preparation.py",
-        "backend/application/tools_temperature_service.py",
-        "backend/domain/temperature_data.py",
-        "backend/domain/temperature_rise.py",
-        "backend/infrastructure/office/temperature_rise_report_sheet.py",
-        "backend/infrastructure/office/temperature_workbook_gateway.py",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/api/temperature.ts",
-        "frontend/src/features/temperature/ChannelMapping.tsx",
-        "frontend/src/features/temperature/DataPreview.tsx",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_data_preparation.py",
-        "tests/unit/test_temperature_rise_calculations.py",
-        "tests/unit/test_temperature_workbook_gateway.py"
-      ]
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_AUTO_DATA_REGION_20261005",

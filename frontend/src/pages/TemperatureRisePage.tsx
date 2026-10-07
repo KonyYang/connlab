@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { Coefficients } from '../api/temperature';
 import { UiIcon } from '../components/common/UiIcon';
 import { useTopBarActionsRoot } from '../components/layout/TopBarActionsContext';
-import { ChannelMapping, sourceColumns } from '../features/temperature/ChannelMapping';
+import { incompleteSampleGroups, sourceColumns } from '../features/temperature/sourceColumns';
 import { DataPreview } from '../features/temperature/DataPreview';
 import { DataRegionCorrection } from '../features/temperature/DataRegionCorrection';
 import { RiseChart, DeratingChart } from '../features/temperature/TemperatureCharts';
@@ -48,21 +48,14 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         disabled={busy} onApply={tool.correctRegion} />}
       {s.table && s.selection && <>
         {s.channel_layout?.current_issue && !s.confirmed && <p className="temperature-hint">{s.channel_layout.current_issue}</p>}
-        <ChannelMapping key={`mapping-${s.table.sheet_name}-${s.table.file_name}-${s.selection.header_row}-${s.selection.start_row}-${s.selection.end_row}`}
-          table={s.table} selection={s.selection} layout={s.channel_layout} onChange={tool.changeData} disabled={busy} />
-        {Boolean(s.channel_layout?.current_columns.some(column => column !== s.selection?.current_column)) && <details className="temperature-detail">
-          <summary>Other Current Columns <span>Retained / Not Plotted</span></summary>
-          {s.channel_layout?.current_columns.filter(column => column !== s.selection?.current_column).map(column => <p className="temperature-hint" key={column}>
-            {columns[column - 1]?.label}{s.channel_layout?.stable_current_columns.includes(column) ? ' — Stable' : ''}
-          </p>)}
-        </details>}
-        <DataPreview key={`preview-${s.table.sheet_name}-${s.table.file_name}`} table={s.table} selection={s.selection} issues={s.review?.issues ?? []} onChange={tool.changeData} disabled={busy} />
+        <DataPreview key={`preview-${s.table.sheet_name}-${s.table.file_name}-${s.selection.header_row}-${s.selection.start_row}-${s.selection.end_row}`}
+          table={s.table} selection={s.selection} layout={s.channel_layout} issues={s.review?.issues ?? []} onChange={tool.changeData} disabled={busy} />
         {Boolean(s.review?.issues.length) && <section className="temperature-review" aria-label="Data Needs Review">
           <h4>Data Needs Review</h4><div className="temperature-issue-list">{s.review?.issues.map((issue, index) => <p key={index} className={issue.severity === 'error' ? 'temperature-error' : undefined}>{issue.message}</p>)}</div>
           {!s.review?.issues.some(issue => issue.severity === 'error') && <label className="temperature-check"><input type="checkbox" checked={s.acknowledged} disabled={busy} onChange={event => tool.acknowledge(event.target.checked)} />Keep Flagged Rows</label>}
         </section>}
-        <div className="temperature-confirm"><span className={s.confirmed ? 'temperature-success' : 'temperature-hint'} role="status">{s.confirmed ? 'Data Confirmed' : 'Review the channel mapping and data rows, then confirm.'}</span>
-          <button type="button" className="primary-action" disabled={busy || s.confirmed} onClick={() => void tool.confirm()}>Confirm Data</button></div>
+        <div className="temperature-confirm"><span className={s.confirmed ? 'temperature-success' : 'temperature-hint'} role="status">{s.confirmed ? 'Data Confirmed' : ''}</span>
+          <button type="button" className="primary-action" disabled={busy || s.confirmed || incompleteSampleGroups(s.selection, s.channel_layout)} onClick={() => void tool.confirm()}>Confirm Data</button></div>
       </>}
     </section>}
     <div className="temperature-analysis-grid">
