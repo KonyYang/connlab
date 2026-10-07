@@ -840,3 +840,29 @@ Changed paths for this revision: `frontend/src/features/temperature/ColumnAction
 `DataPreview.tsx`, `DataPreview.test.tsx`, `sourceColumns.ts`, new `sourcePresentation.ts`,
 `useDataGridEditing.ts`, `temperature.css`, `frontend/src/pages/TemperatureRisePage.tsx`, its test,
 and this document. The sole task-board writer records lifecycle evidence separately.
+
+## Protected header cleanup (2026-10-07)
+
+Ambient and all electrical/current headers omit their non-operable checkboxes and repeated gray
+Ambient/Current/Retained captions. The unit follows the channel number on the first line, for example
+`318 (°C)` with `Ambient T` beneath, or `320 (A)` with `Current` beneath. Untagged headers without a
+channel number append the unit to their single title line. This is preview-only: original scanner
+units remain in hover titles/source data, selector options and calculation/export are unchanged.
+Dynamic widths include the annotated number line; editable temperature headers retain selection,
+right-click and exceptional grouping/exclusion markers.
+
+TDD recorded RED/GREEN for protected-header units/control removal and the subsequent User correction
+placing units after the number. The role-change regression now expects that placement while retaining
+all protection and Undo checks. Final affected QA: **41 tests passed** (18 editor, 16 page, 2 API,
+5 TopBar); TypeScript/Vite build passed on final source/test bytes. Isolated browser checks use actual
+`3A new.csv` and a clearly named disposable example CSV with 318 ambient/320 current: unit lines,
+absent inactive controls and repeated captions verified; console warnings/errors zero. Source files
+and User tab not operated; QA tab closed. No native Excel or new screen-reader session.
+
+Standards: same-agent exact-diff review found zero outstanding issues; existing protected-column
+decision and feature-owned presentation seam reused, no new state/dependency/API changes. Spec:
+separate same-agent pass found zero outstanding issues; Celsius for ambient, amperes for all current
+columns, exact number-line placement and unchanged preparation behavior match the corrected request.
+Methods: tdd and code-review; no independent-agent review claimed. Changed paths: DataPreview.tsx,
+sourcePresentation.ts, DataPreview.test.tsx, TemperatureRisePage.test.tsx and this document; lifecycle
+record via the sole board writer. Existing untagged-source confirmation limitation remains.

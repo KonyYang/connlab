@@ -34,10 +34,12 @@ function textWidth(text: string): number {
 
 export function sourcePresentation(table: WorkbookTable, selection: DataSelection, layout?: ChannelLayout | null) {
   return sourceColumnOptions(table, selection, layout).map(column => {
-    let width = Math.max(column.id <= 2 ? 36 : 56, ...column.heading.map(text => textWidth(text) + 16));
+    const unit = column.id === selection.ambient_column ? '°C' : column.kind === 'current' ? 'A' : null;
+    const heading = column.heading.map((line, index) => unit && index === 0 ? `${line} (${unit})` : line);
+    let width = Math.max(column.id <= 2 ? 36 : 56, ...heading.map(text => textWidth(text) + 16));
     for (let row = selection.start_row; row <= selection.end_row; row++) {
       width = Math.max(width, textWidth(formatSourceReading(table.rows[row - 1]?.[column.id - 1] ?? null, column.kind)) + 16);
     }
-    return { ...column, width };
+    return { ...column, heading, label: `${columnLetter(column.id)} — ${heading.join(' ') || '(No Header)'}`, width };
   });
 }

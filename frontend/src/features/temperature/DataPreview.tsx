@@ -48,9 +48,7 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   });
   const role = (column: number) => {
     if (column <= 2) return '';
-    if (column === selection.ambient_column) return 'Ambient';
-    if (column === selection.current_column) return 'Current';
-    if (columnsById.get(column)?.kind === 'current') return 'Retained';
+    if (grid.protectedColumn(column)) return '';
     if (grid.excludedColumns.includes(column)) return 'Excluded';
     if (activeIndex(column) >= 0) return incomplete ? 'Pending Grouping' : '';
     return '';
@@ -114,8 +112,8 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
             onClick={event => { if (!disabled && !grid.protectedColumn(column) && !(event.target as HTMLElement).closest('input')) grid.selectColumns([column]); }}
             onContextMenu={event => openContextMenu(column, event)}
             onKeyDown={event => { if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) { event.preventDefault(); openMenu(column, event.currentTarget); } }}>
-            <div className="temperature-source-column">{column > 2 && <input type="checkbox" aria-label={`Select Column ${columnLetter(column)}`}
-              disabled={disabled || grid.protectedColumn(column)} checked={grid.selectedColumns.includes(column)}
+            <div className="temperature-source-column">{!grid.protectedColumn(column) && <input type="checkbox" aria-label={`Select Column ${columnLetter(column)}`}
+              disabled={disabled} checked={grid.selectedColumns.includes(column)}
               onChange={event => { closeMenu(); grid.selectColumns(event.target.checked ? [...grid.selectedColumns, column] : grid.selectedColumns.filter(item => item !== column)); }} />}
               <span>{columnLetter(column)}</span></div>
             <span className="temperature-source-title" title={columnsById.get(column)!.original}>

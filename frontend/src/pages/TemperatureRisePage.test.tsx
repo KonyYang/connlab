@@ -57,7 +57,8 @@ describe('temperature preparation and calculation workflow', () => {
     expect(within(current).getAllByRole('option').map(option => (option as HTMLOptionElement).value)).toEqual(['6', '8']);
     expect(within(ambient).getByRole('option', { name: 'E — Ambient' })).toBeTruthy();
     expect(within(current).getByRole('option', { name: 'F — High Power' })).toBeTruthy();
-    expect((screen.getByLabelText('Select Column H') as HTMLInputElement).disabled).toBe(true);
+    expect(screen.queryByLabelText('Select Column H')).toBeNull();
+    expect(screen.getByRole('columnheader', { name: 'H — Aux (A)' })).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(api.prepareTemperatureData).toHaveBeenCalledWith(expect.objectContaining({ table: expect.objectContaining({ rows: source.table.rows }) }));
     await user.selectOptions(current, '8');

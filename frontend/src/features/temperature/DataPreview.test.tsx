@@ -113,6 +113,43 @@ describe('continuous source row selection', () => {
 });
 
 describe('unified scanner data editing', () => {
+  it('places protected-column units immediately after the scanner channel number', () => {
+    const source = structuredClone(table);
+    source.rows[0][6] = '318 <Ambient T> (C)';
+    source.rows[0][7] = '320 <Current> (VDC)';
+    source.rows[0][9] = '315 <High Power> (VDC)';
+    render(<DataPreview table={source} selection={initial} layout={layout} issues={[]} disabled={false} onChange={() => undefined} />);
+    const ambient = screen.getByRole('columnheader', { name: 'G — 318 (°C) Ambient T' });
+    const current = screen.getByRole('columnheader', { name: 'H — 320 (A) Current' });
+    const auxiliary = screen.getByRole('columnheader', { name: 'J — 315 (A) High Power' });
+    expect(within(ambient).getByText('318 (°C)')).toBeTruthy();
+    expect(within(ambient).getByText('Ambient T')).toBeTruthy();
+    expect(within(current).getByText('320 (A)')).toBeTruthy();
+    expect(within(auxiliary).getByText('315 (A)')).toBeTruthy();
+    expect(source.rows[0][6]).toBe('318 <Ambient T> (C)');
+  });
+
+  it('shows Celsius for ambient and amperes for every current column without inactive controls or repeated role captions', () => {
+    render(<Editor />);
+    const ambient = screen.getByRole('columnheader', { name: 'G — Ambient (°C)', exact: true });
+    const current = screen.getByRole('columnheader', { name: 'H — Current (A)', exact: true });
+    const auxiliary = screen.getByRole('columnheader', { name: 'J — Aux (A)', exact: true });
+    for (const header of [ambient, current, auxiliary]) {
+      expect(within(header).queryByRole('checkbox')).toBeNull();
+      fireEvent.contextMenu(header);
+      expect(screen.queryByRole('dialog')).toBeNull();
+    }
+    expect(within(ambient).getByText('Ambient (°C)')).toBeTruthy();
+    expect(within(ambient).queryByText('Ambient', { exact: true })).toBeNull();
+    expect(within(current).getByText('Current (A)')).toBeTruthy();
+    expect(within(current).queryByText('Current', { exact: true })).toBeNull();
+    expect(within(auxiliary).getByText('Aux (A)')).toBeTruthy();
+    expect(within(auxiliary).queryByText('Retained', { exact: true })).toBeNull();
+    expect(table.rows[0][9]).toBe('Aux (VDC)');
+    expect(selected()).toEqual(initial);
+    expect(screen.getByLabelText('Select Column C')).toBeTruthy();
+  });
+
   it('shows compact unit-free headers and rounded readings while retaining the exact source values', () => {
     const source = structuredClone(table);
     source.rows[0][6] = 'Ambient (C)';
@@ -128,8 +165,9 @@ describe('unified scanner data editing', () => {
     const header = screen.getByLabelText('Select Column C').closest('th')!;
     expect(header.textContent).not.toContain('(C)');
     expect(header.textContent).not.toContain('Sample 1 / TC 1');
-    expect(screen.getByLabelText('Select Column H').closest('th')?.textContent).toContain('High Power');
-    expect(screen.getByLabelText('Select Column H').closest('th')?.textContent).not.toContain('VDC');
+    const currentHeader = screen.getByRole('columnheader', { name: 'H — High Power (A)' });
+    expect(currentHeader.textContent).toContain('High Power (A)');
+    expect(currentHeader.textContent).not.toContain('VDC');
     expect(source.rows[1][2]).toBe(24.987654);
     expect(source.rows[1][3]).toBe('-2.34567');
     expect(source.rows[1][7]).toBe(0.009999);
@@ -199,14 +237,14 @@ describe('unified scanner data editing', () => {
     expect((screen.getByLabelText('Select Row 774') as HTMLInputElement).checked).toBe(false);
   });
 
-  it('shows source metadata, sample groups and retained electrical roles directly in the grid', () => {
+  it('shows source metadata, sample groups and electrical units directly in the grid', () => {
     render(<Editor />);
     const grid = screen.getByRole('region', { name: 'Scanner Data Preview' });
     expect(within(grid).getByText('Scan')).toBeTruthy();
     expect(within(grid).getByText('Time')).toBeTruthy();
     expect(within(grid).getByText('Sample 1')).toBeTruthy();
     expect(within(grid).getByText('Sample 2')).toBeTruthy();
-    expect(within(grid).getByText('Retained')).toBeTruthy();
+    expect(within(grid).getByText('Aux (A)')).toBeTruthy();
     expect(within(grid).getByText('0.01').title).toBe('0.009999');
     expect(screen.queryByText('All Source Columns')).toBeNull();
     expect(screen.queryByRole('button', { name: /Replace|Adjust Channels|View Channels/ })).toBeNull();
@@ -238,8 +276,8 @@ describe('unified scanner data editing', () => {
   it('moves multiple selected temperature columns as an ordered block, excluding role columns', async () => {
     const user = userEvent.setup();
     render(<Editor />);
-    expect((screen.getByLabelText('Select Column G') as HTMLInputElement).disabled).toBe(true);
-    expect((screen.getByLabelText('Select Column H') as HTMLInputElement).disabled).toBe(true);
+    expect(screen.queryByLabelText('Select Column G')).toBeNull();
+    expect(screen.queryByLabelText('Select Column H')).toBeNull();
     await user.click(screen.getByLabelText('Select Column E'));
     await user.click(screen.getByLabelText('Select Column F'));
     openColumn('E');
@@ -297,9 +335,9 @@ describe('unified scanner data editing', () => {
     await user.click(screen.getByLabelText('Select Column D'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     await user.selectOptions(screen.getByLabelText('Ambient Role'), '4');
-    expect((screen.getByLabelText('Select Column D') as HTMLInputElement).disabled).toBe(true);
+    expect(screen.queryByLabelText('Select Column D')).toBeNull();
     expect((screen.getByRole('button', { name: 'Undo' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(within(screen.getByLabelText('Select Column D').closest('th')!).getByText('Ambient')).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'D — 102 (°C) 1_B' })).toBeTruthy();
     expect(screen.queryByText('Excluded')).toBeNull();
     expect(selected().ambient_column).toBe(4);
   });

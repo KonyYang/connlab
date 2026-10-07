@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
     "summary": "Auto-group sample thermocouples and simplify exception-only channel adjustments",
@@ -35,95 +35,17 @@
     "risk_reasons": [],
     "activation_head": "83038fb2502d2d5d065737690455d1144cbac704",
     "started_at": "2026-10-06T22:53:34.408273Z",
-    "updated_at": "2026-10-07T12:50:57.350772Z",
+    "updated_at": "2026-10-07T13:09:00.799130Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requested hiding non-operable ambient/current column checkboxes and repeated role captions, with amperes on all current headers and Celsius on the ambient header.",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
-      "subject": "809d52aeebcbe8547d877dbc180cab52963dac2e",
-      "summary": "Unit-aware compact preview delivered: right-click column operations, filtered role choices, display-only decimal formatting, dynamic widths and conflict guard. Existing unified editing and calculation precision preserved.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/application/temperature_channel_layout.py",
-        "backend/application/temperature_data_preparation.py",
-        "backend/application/tools_temperature_service.py",
-        "backend/domain/temperature_data.py",
-        "backend/domain/temperature_rise.py",
-        "backend/infrastructure/office/temperature_rise_report_sheet.py",
-        "backend/infrastructure/office/temperature_workbook_gateway.py",
-        "design-qa.md",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/api/temperature.ts",
-        "frontend/src/features/temperature/ChannelMapping.tsx",
-        "frontend/src/features/temperature/ColumnActions.tsx",
-        "frontend/src/features/temperature/DataPreview.test.tsx",
-        "frontend/src/features/temperature/DataPreview.tsx",
-        "frontend/src/features/temperature/DataRegionCorrection.tsx",
-        "frontend/src/features/temperature/sourceColumns.ts",
-        "frontend/src/features/temperature/sourcePresentation.ts",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useDataGridEditing.ts",
-        "frontend/src/features/temperature/useSourceRowWindow.ts",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_data_preparation.py",
-        "tests/unit/test_temperature_rise_calculations.py",
-        "tests/unit/test_temperature_workbook_gateway.py"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "name": "Final affected frontend matrix",
-          "result": "39 tests passed: DataPreview 16, TemperatureRisePage 16, temperature API 2, TopBar 5; includes RED/GREEN regressions for right-click, clean rounded display, filtered exact-data submission and explicit-unit conflict."
-        },
-        {
-          "status": "passed",
-          "name": "TypeScript and Vite production build",
-          "result": "npm run build passed sequentially after tests on final source/test state."
-        },
-        {
-          "status": "passed",
-          "name": "Isolated browser QA",
-          "result": "Actual CSV: 403 rows, 31 temperature options, 4 current options. Native right-click block menu, Shift+F10 move and Undo passed. No data clipping; compact 56 px temperature columns. At 543x804 A/B stay fixed and popup/page fit. Zero warning/error logs. QA tab closed and viewport reset. Source SHA256 unchanged; User tab not operated."
-        },
-        {
-          "status": "passed",
-          "name": "Exact diff checks",
-          "result": "git diff --check passed; same-agent Standards and Spec passes found zero outstanding findings. No backend, export numeric, dependency or source-file mutation changes in this revision."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "execution": "Same-agent Astra implementation with coherent TDD RED/GREEN slices; precision remains presentation-only."
-        },
-        "reviewer": {
-          "status": "passed",
-          "execution": "Separate same-agent Standards and Spec exact-diff passes, not independent-agent review; zero outstanding findings."
-        },
-        "qa": {
-          "status": "passed",
-          "execution": "Same-agent final 39-test matrix and sequential TypeScript/Vite build, then actual-CSV native browser and responsive checks."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "branch": "master",
-        "subject": "809d52aeebcbe8547d877dbc180cab52963dac2e",
-        "publication": "Local only; final Close not requested."
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_AUTO_DATA_REGION_20261005",
