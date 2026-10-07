@@ -11,123 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
-    "summary": "Auto-group sample thermocouples and simplify exception-only channel adjustments",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Temperature tool import suggestions, channel exception editing, stable auxiliary current defaults and near-zero current review; preserve source files and confirmation.",
-    "scope_paths": [
-      "backend/application/temperature_data_preparation.py",
-      "backend/application/tools_temperature_service.py",
-      "backend/domain/temperature_data.py",
-      "backend/api/temperature_schemas.py",
-      "backend/api/routes_tools_temperature.py",
-      "frontend/src/features/temperature",
-      "frontend/src/pages/TemperatureRisePage.tsx",
-      "frontend/src/pages/TemperatureRisePage.test.tsx",
-      "frontend/src/api/temperature.ts",
-      "tests/unit/test_temperature_data_preparation.py",
-      "tests/integration/test_tools_temperature_api.py",
-      "docs/temperature_rise_tool.md"
-    ],
-    "risk_reasons": [],
-    "activation_head": "83038fb2502d2d5d065737690455d1144cbac704",
-    "started_at": "2026-10-06T22:53:34.408273Z",
-    "updated_at": "2026-10-07T13:15:35.689866Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
-      "subject": "683bcfccd170acd414fc67f9107414ff1e5f5da4",
-      "summary": "Protected ambient/current headers omit inactive checkboxes and repeated captions; Celsius/amperes follow the channel number. Original data and calculations preserved.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/application/temperature_channel_layout.py",
-        "backend/application/temperature_data_preparation.py",
-        "backend/application/tools_temperature_service.py",
-        "backend/domain/temperature_data.py",
-        "backend/domain/temperature_rise.py",
-        "backend/infrastructure/office/temperature_rise_report_sheet.py",
-        "backend/infrastructure/office/temperature_workbook_gateway.py",
-        "design-qa.md",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/api/temperature.ts",
-        "frontend/src/features/temperature/ChannelMapping.tsx",
-        "frontend/src/features/temperature/ColumnActions.tsx",
-        "frontend/src/features/temperature/DataPreview.test.tsx",
-        "frontend/src/features/temperature/DataPreview.tsx",
-        "frontend/src/features/temperature/DataRegionCorrection.tsx",
-        "frontend/src/features/temperature/sourceColumns.ts",
-        "frontend/src/features/temperature/sourcePresentation.ts",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useDataGridEditing.ts",
-        "frontend/src/features/temperature/useSourceRowWindow.ts",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_data_preparation.py",
-        "tests/unit/test_temperature_rise_calculations.py",
-        "tests/unit/test_temperature_workbook_gateway.py"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "name": "Final affected frontend matrix",
-          "result": "41 tests passed: editor 18, page 16, API 2, TopBar 5. RED/GREEN cases cover protected header controls, units and exact number-line placement; role protection/Undo retained."
-        },
-        {
-          "status": "passed",
-          "name": "TypeScript and Vite build",
-          "result": "npm run build passed sequentially on final source/test state."
-        },
-        {
-          "status": "passed",
-          "name": "Browser and exact diff",
-          "result": "Actual CSV and disposable 318-ambient/320-current example verified in isolated localhost tab; no inactive controls or duplicate role captions, units follow channel IDs. Zero console warnings/errors; QA tab closed, User tab and original files untouched. git diff --check passed; Standards 0 / Spec 0 same-agent findings."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "execution": "Same-agent Astra implementation; TDD RED/GREEN and preview-only unit annotation."
-        },
-        "reviewer": {
-          "status": "passed",
-          "execution": "Sequential same-agent Standards and Spec exact-diff passes, zero outstanding findings; not independent agents."
-        },
-        "qa": {
-          "status": "passed",
-          "execution": "Final 41-test affected matrix, sequential TypeScript/Vite build and isolated browser checks passed."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "branch": "master",
-        "subject": "683bcfccd170acd414fc67f9107414ff1e5f5da4",
-        "publication": "Local only; final Close not requested."
-      }
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_TEMPERATURE_AUTO_DATA_REGION_20261005",
+    "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
     "tier": "standard",
-    "subject": "caf291d79a6b45ce554a95b600691521f7f940a7",
-    "summary": "Auto-detect scanner data region and show row settings only for detection exceptions",
+    "subject": "683bcfccd170acd414fc67f9107414ff1e5f5da4",
+    "summary": "Auto-group sample thermocouples and simplify exception-only channel adjustments",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested final closure after the accepted temperature import, CSV support and compact inline parameter refinements.",
-    "closed_at": "2026-10-06T00:08:05.990507Z"
+    "decision_ref": "User explicitly requested final task closure after the accepted temperature preview refinements and verified delivery.",
+    "closed_at": "2026-10-07T15:20:08.452766Z"
   },
   "retained_history": [
     {
