@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_DERATING_COMPACT_LAYOUT_20261008",
     "summary": "Compact Derating inputs and align Generate Derating at row right",
@@ -25,17 +25,62 @@
     "risk_reasons": [],
     "activation_head": "71ca61295f59a281b85dd7cc842a7700de415d1b",
     "started_at": "2026-10-07T23:41:28.527352Z",
-    "updated_at": "2026-10-07T23:50:15.855142Z",
+    "updated_at": "2026-10-07T23:51:42.736341Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_DERATING_COMPACT_LAYOUT_20261008",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requests inline parameter labels and inputs; rename Max Working Temp to Max work Temp and Generate Derating to Derating",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "scope_ok": true,
+      "subject": "fe0a9426773ab46bc81af9d839ef90a12c9ae494",
+      "summary": "Compact Derating controls with inline titles and 64px inputs; Max work Temp (°C) and Derating copy; right-aligned button with responsive wrapping. Logic unchanged.",
+      "version": 1,
+      "integration": {
+        "publication": "not requested",
+        "status": "passed",
+        "branch": "master",
+        "subject": "fe0a9426773ab46bc81af9d839ef90a12c9ae494"
+      },
+      "changed_paths": [
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx"
+      ],
+      "task_id": "TASK_TEMPERATURE_DERATING_COMPACT_LAYOUT_20261008",
+      "schema": "connlab.sol-task-report",
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "review": "Same-agent exact diff self-review; handlers and labels association preserved; only requested UI and corresponding test copy changed; no findings"
+        }
+      },
+      "validation": [
+        {
+          "status": "passed",
+          "result": "30 passed on final state",
+          "command": "npm run test -- src/pages/TemperatureRisePage.test.tsx"
+        },
+        {
+          "status": "passed",
+          "result": "TypeScript and Vite passed",
+          "command": "npm run build"
+        },
+        {
+          "status": "passed",
+          "result": "846px inline labels/inputs and right-aligned button; 560px wrapping without overflow; no console warnings/errors; screenshot saved, temporary tab closed, viewport reset",
+          "command": "browser layout verification"
+        },
+        {
+          "status": "passed",
+          "command": "git diff --check"
+        }
+      ]
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007",
