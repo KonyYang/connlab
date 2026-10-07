@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007",
     "summary": "Automatically populate fitted coefficients when generating T-riseChart",
@@ -27,17 +27,69 @@
     "risk_reasons": [],
     "activation_head": "b3cf34600c4368e734484660d8d5e8bc53c287a3",
     "started_at": "2026-10-07T15:37:55.665299Z",
-    "updated_at": "2026-10-07T23:00:18.626722Z",
+    "updated_at": "2026-10-07T23:08:39.684931Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requested removal of range-selection area and use of A-column scan identifiers in temperature data notices.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "validation": [
+        {
+          "name": "TDD regression slice",
+          "status": "passed",
+          "result": "Four new checks failed before implementation; final affected frontend matrix 47/47 passed on final source/test bytes."
+        },
+        {
+          "name": "Production build",
+          "status": "passed",
+          "result": "TypeScript and Vite production build passed sequentially after final implementation."
+        },
+        {
+          "name": "Isolated browser QA",
+          "status": "passed",
+          "result": "Disposable CSV verified Scan 774 review/hover, no range form, Shift through Scan 800 and unpowered selection; zero console warnings/errors. User tab untouched; QA tab closed."
+        },
+        {
+          "name": "Exact diff review",
+          "status": "passed",
+          "result": "Separate sequential same-agent Standards and Specification passes; zero outstanding findings. Editing source keys and export provenance unchanged."
+        }
+      ],
+      "subject": "21b5a8f432d8b9986c104f89119dc5043e819421",
+      "roles": {
+        "developer": {
+          "execution": "One Astra micro work unit; TDD and sequential same-agent review, no independent-agent claim.",
+          "status": "passed"
+        }
+      },
+      "version": 1,
+      "schema": "connlab.sol-task-report",
+      "integration": {
+        "branch": "master",
+        "status": "passed",
+        "subject": "21b5a8f432d8b9986c104f89119dc5043e819421",
+        "publication": "Local only; final Close not requested."
+      },
+      "scope_ok": true,
+      "changed_paths": [
+        "docs/temperature_rise_tool.md",
+        "frontend/src/features/temperature/DataPreview.test.tsx",
+        "frontend/src/features/temperature/DataPreview.tsx",
+        "frontend/src/features/temperature/TemperatureCharts.tsx",
+        "frontend/src/features/temperature/sourceScan.ts",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx"
+      ],
+      "summary": "Automatic editable coefficients retained; removed row-range form and show A-column scan identifiers in review notices, row feedback, operation errors and stage results.",
+      "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007"
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
