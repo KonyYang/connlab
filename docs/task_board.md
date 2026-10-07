@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007",
     "summary": "Automatically populate fitted coefficients when generating T-riseChart",
@@ -27,9 +27,64 @@
     "risk_reasons": [],
     "activation_head": "b3cf34600c4368e734484660d8d5e8bc53c287a3",
     "started_at": "2026-10-07T15:37:55.665299Z",
-    "updated_at": "2026-10-07T15:37:55.665299Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-07T15:42:50.842395Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "execution": "One Astra micro work unit implemented, tested and self-reviewed; no independent agents."
+        }
+      },
+      "version": 1,
+      "validation": [
+        {
+          "name": "TDD and final affected frontend matrix",
+          "status": "passed",
+          "result": "Expected auto-population failures before implementation; final 44/44 tests passed."
+        },
+        {
+          "name": "TypeScript and Vite production build",
+          "status": "passed",
+          "result": "npm run build passed."
+        },
+        {
+          "name": "Isolated browser smoke",
+          "status": "passed",
+          "result": "Disposable six-row CSV: automatic coefficients, 38.01 A calculation and both charts; no warning/error logs."
+        },
+        {
+          "name": "Exact diff self-review",
+          "status": "passed",
+          "result": "Sequential same-agent standards/spec review; no outstanding finding; git diff --check passed."
+        }
+      ],
+      "subject": "73119988b41ad3674c3e22ccb82609b89f07dfd7",
+      "integration": {
+        "publication": "Local only; final Close not requested.",
+        "status": "passed",
+        "subject": "73119988b41ad3674c3e22ccb82609b89f07dfd7",
+        "branch": "master"
+      },
+      "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007",
+      "schema": "connlab.sol-task-report",
+      "scope_ok": true,
+      "changed_paths": [
+        "docs/temperature_rise_tool.md",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx"
+      ],
+      "summary": "Removed coefficient retrieval button; chart generation automatically fills editable MAX/AVG coefficients used by default export."
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
