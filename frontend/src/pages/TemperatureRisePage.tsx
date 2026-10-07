@@ -1,6 +1,5 @@
 import { useMemo, useRef, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
-import type { Coefficients } from '../api/temperature';
 import { UiIcon } from '../components/common/UiIcon';
 import { useTopBarActionsRoot } from '../components/layout/TopBarActionsContext';
 import { incompleteSampleGroups } from '../features/temperature/sourceColumns';
@@ -75,15 +74,6 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         {Boolean(s.channel_layout?.stable_current_columns.some(column => column !== s.selection?.current_column && column !== s.selection?.ambient_column)) && !s.manualZeroIntercept &&
           <p className="temperature-hint">Extra stable current detected; Zero Intercept defaults off.</p>}
         {!s.confirmed && <p className="temperature-hint">Confirm Initial Data to generate the chart.</p>}
-        <div className="temperature-coefficients">
-          <div className="temperature-section-heading"><span>Polynomial Coefficients (ΔT = aI² + bI + c)</span></div>
-          <table><thead><tr><th>Curve</th><th>a</th><th>b</th><th>c</th></tr></thead><tbody>
-            {(['maximum', 'average'] as const).map(curve => <tr key={curve}><th>{curve === 'maximum' ? 'MAX' : 'AVG'}</th>
-              {(['a', 'b', 'c'] as (keyof Coefficients)[]).map(key => <td key={key}><input type="number" step="any" aria-label={`${curve === 'maximum' ? 'MAX' : 'AVG'} Coefficient ${key}`}
-                value={s[curve]?.[key] ?? ''} placeholder="—" disabled={busy || !s[curve] || (key === 'c' && s.zeroIntercept)} onChange={event => tool.editCoefficient(curve, key, event.target.value)} /></td>)}
-            </tr>)}
-          </tbody></table>
-        </div>
         {s.analysis ? <RiseChart analysis={s.analysis} table={s.table} /> : <p className="temperature-chart-empty">The temperature-rise chart will appear here.</p>}
         <div className="temperature-actions"><label>Target Rise (°C)<input type="number" min="0" step="any" value={s.targetRise} disabled={busy} onChange={event => tool.editParameter('targetRise', event.target.value)} /></label>
           <button type="button" disabled={busy || !s.maximum} onClick={() => void tool.current()}>Calculate Current</button>

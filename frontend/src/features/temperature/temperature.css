@@ -1,5 +1,5 @@
 .temperature-page { display: grid; gap: 16px; padding-bottom: 24px; min-width: 0; }
-.temperature-section-heading, .temperature-confirm, .temperature-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.temperature-confirm, .temperature-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .top-bar-tools:has(.temperature-tools-return) { grid-template-columns: max-content minmax(0,1fr); }
 .top-bar-tools:has(.temperature-tools-return) .top-bar-actions { justify-content: flex-start; }
 .temperature-header-actions { display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; }
@@ -94,13 +94,6 @@
 .temperature-success { color: var(--color-success); font-size: 14px; }
 .temperature-error { color: var(--color-danger); font-size: 14px; overflow-wrap: anywhere; }
 .temperature-analysis-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
-.temperature-coefficients { padding: 10px; border: 1px solid var(--color-border); border-radius: 10px; }
-.temperature-section-heading { font-size: 12px; gap: 8px; flex-wrap: wrap; }
-.temperature-section-heading button { font-size: 12px; padding: 7px 10px; }
-.temperature-coefficients table { table-layout: fixed; }
-.temperature-coefficients th:first-child { width: 52px; }
-.temperature-coefficients td { padding: 7px 3px; }
-.temperature-coefficients input { padding: 6px !important; min-height: 32px; font-size: 12px !important; }
 .temperature-chart { border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); }
 .temperature-chart svg { display: block; width: 100%; height: auto; }
 .temperature-chart text { font: 12px 'Segoe UI', sans-serif; }

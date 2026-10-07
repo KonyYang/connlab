@@ -1,7 +1,7 @@
 # Temperature Rise and Derating Tool
 
-Status: implemented. Current refinement: automatic editable coefficient population on chart generation
-and generation after successful confirmation, with scan-based operator feedback
+Status: implemented. Current refinement: compact chart display with generated coefficients kept
+internally, automatic generation after successful confirmation, and scan-based operator feedback
 (`TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007`);
 unified raw-data row/column editing remains in place without a separate row-range form.
 
@@ -21,7 +21,7 @@ panels stack. Existing ConnLab navigation, fonts, controls and quiet feedback re
   rows are suggestions only; the user confirms their inclusion/exclusion.
 - Confirm the prepared data before analysis. A later input/mapping/exclusion change invalidates
   dependent charts, coefficients, current and downloads. Late responses must not restore stale data.
-- Generate T-riseChart, automatically populate editable MAX/AVG coefficients, calculate current from
+- Generate T-riseChart, automatically retain MAX/AVG fit coefficients, calculate current from
   MAX and a target rise, and generate Derating from AVG and the working-temperature parameters.
 - Download an independent `.xlsx` containing Initial Data, T-riseChart and Derating, with native XY
   charts, polynomial trendlines, equations, R² and review provenance. No save-before-clear dialogs.
@@ -134,9 +134,9 @@ Review summary: Standards 0 outstanding; Specification 0 outstanding blocking fi
 4. Successful Confirm Data automatically generates T-riseChart and, when Zero Intercept is enabled,
    Derating. Review blockers stop the sequence. The Generate buttons remain available for manual
    retries or recalculation after edits; Calculate Current and Download Excel remain explicit actions.
-   MAX/AVG a/b/c populate automatically after chart generation; download uses these values or the user's
-   subsequent edits. Regeneration replaces edits with the new fit; changing source data clears the
-   coefficients and dependent results. In nonzero-intercept mode, c also populates and stays editable.
+   MAX/AVG a/b/c are retained automatically after chart generation for calculation/export without a
+   separate coefficient table. Chart equations remain visible. Regeneration uses the new fit; changing
+   source data clears coefficients and dependent results. Nonzero-intercept mode retains c as well.
 
 Selections are an in-memory editing session, not a saved project. Refreshing or leaving the page
 requires reimport; download the result before leaving. This is not a general cell editor: correct
@@ -976,3 +976,40 @@ Changed paths for this revision: `frontend/src/features/temperature/useTemperatu
 `frontend/src/pages/TemperatureRisePage.test.tsx` and `docs/temperature_rise_tool.md`; lifecycle records
 use the sole board writer. Residual behavior is intentional: invalid Derating parameter values produce
 the same actionable validation error as the enabled manual action, without discarding the rise chart.
+
+## Coefficient display removal (2026-10-08)
+
+Removed the entire Polynomial Coefficients MAX/AVG a/b/c input table, its unused edit action and
+table-specific styles. The fit equations and R² below the chart remain. Internal generated coefficients,
+six-decimal calculation/export values, confirmation-triggered charts and manual Generate retries are
+unchanged. On-page coefficient editing is intentionally removed with the table; source preparation,
+Zero Intercept, target-rise and Derating parameter editing remain available. The exporter and native
+Excel artifacts are unchanged.
+
+TDD: the absence/continued-calculation-and-export regression failed before removal and passed after.
+Existing field-based checks now verify equations, regenerated calculation payloads, parameter
+invalidation and exported fits at the page/API seam. Final affected matrix **55 passed** (30 page,
+18 preview, 2 API, 5 TopBar); TypeScript/Vite production build passed on final source/test bytes.
+An isolated browser with disposable scanner CSV verified no coefficient table before/after analysis,
+both automatic charts, retained equations and current calculation at 38.01 A. Console warnings/errors
+zero; QA tab closed, User tab not operated. No new native Excel rendering check because exporter and
+numerical algorithms are unchanged; generated coefficient payloads remain covered by regression tests.
+
+### Standards
+
+Same-agent exact-diff review: display-only controls/styles and their single unused handler are removed;
+feature-owned coefficient state and async invalidation remain. No new dependencies, API or backend
+changes. Zero outstanding findings.
+
+### Spec
+
+Separate sequential same-agent review: entire selected block removed, charts move up naturally, and
+calculation, auto-generation, equation labels and Excel export retain their prior contracts. No extra
+collapsed editor or replacement panel. Zero outstanding findings. Methods: tdd and code-review;
+no independent-agent review claimed.
+
+Changed paths: `frontend/src/pages/TemperatureRisePage.tsx`,
+`frontend/src/pages/TemperatureRisePage.test.tsx`,
+`frontend/src/features/temperature/useTemperatureTool.ts`,
+`frontend/src/features/temperature/temperature.css` and `docs/temperature_rise_tool.md`; task state
+recorded through the sole board writer. No new residual risk identified beyond the existing tool limits.

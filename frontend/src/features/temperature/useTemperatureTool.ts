@@ -109,11 +109,6 @@ export function useTemperatureTool() {
     generation.current += 1;
     setState(old => ({ ...old, ...clearResults, zeroIntercept, manualZeroIntercept: true, busy: null, error: null }));
   }
-  function editCoefficient(curve: 'maximum' | 'average', key: keyof api.Coefficients, value: string) {
-    generation.current += 1;
-    setState(old => ({ ...old, [curve]: { ...old[curve], [key]: value },
-      ...(curve === 'maximum' ? { current: null } : { derating: null }), downloaded: null, error: null, busy: null }));
-  }
   function editParameter(key: 'targetRise' | 'maxTemperature' | 'step' | 'ambientPoint', value: string) {
     generation.current += 1;
     setState(old => ({ ...old, [key]: value, ...(key === 'targetRise' ? { current: null } : { derating: null }),
@@ -150,5 +145,5 @@ export function useTemperatureTool() {
     }), downloaded => ({ downloaded }));
   }
   return { state, load, changeData, correctRegion, confirm, analyze, acknowledge, zeroIntercept,
-    editCoefficient, editParameter, current, derating, download };
+    editParameter, current, derating, download };
 }
