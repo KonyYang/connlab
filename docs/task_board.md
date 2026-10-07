@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_TEMPERATURE_DERATING_COMPACT_LAYOUT_20261008",
+    "summary": "Compact Derating inputs and align Generate Derating at row right",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Only Derating form layout; preserve parameter behavior and generation eligibility",
+    "scope_paths": [
+      "frontend/src/pages/TemperatureRisePage.tsx",
+      "frontend/src/features/temperature/temperature.css"
+    ],
+    "risk_reasons": [],
+    "activation_head": "71ca61295f59a281b85dd7cc842a7700de415d1b",
+    "started_at": "2026-10-07T23:41:28.527352Z",
+    "updated_at": "2026-10-07T23:41:28.527352Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007",
     "tier": "micro",

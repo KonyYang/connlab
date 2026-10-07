@@ -85,8 +85,8 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
           <label>Max Working Temp (°C)<input type="number" min="0" step="any" value={s.maxTemperature} disabled={busy} onChange={event => tool.editParameter('maxTemperature', event.target.value)} /></label>
           <label>Step (°C)<input type="number" min="0" step="any" value={s.step} disabled={busy} onChange={event => tool.editParameter('step', event.target.value)} /></label>
           <label>Ambient Point (°C)<input type="number" min="0" step="any" value={s.ambientPoint} disabled={busy} onChange={event => tool.editParameter('ambientPoint', event.target.value)} /></label>
+          <button type="button" disabled={busy || !s.average || !s.zeroIntercept} onClick={() => void tool.derating()}>Generate Derating</button>
         </div>
-        <div className="temperature-actions"><button type="button" disabled={busy || !s.average || !s.zeroIntercept} onClick={() => void tool.derating()}>Generate Derating</button></div>
         {!s.zeroIntercept ? <p className="temperature-hint">Enable Zero Intercept and regenerate T-riseChart to use Derating.</p>
           : !s.average && <p className="temperature-hint">Generate T-riseChart first.</p>}
         {s.derating ? <DeratingChart result={s.derating} /> : <p className="temperature-chart-empty">The Basic and 80% Derating curves will appear here.</p>}
