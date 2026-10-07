@@ -42,6 +42,7 @@ export function useTemperatureTool() {
       const result = await operation();
       if (token !== generation.current) return;
       setState(old => ({ ...old, ...success(result), busy: null }));
+      return result;
     } catch (error) {
       if (token !== generation.current) return;
       setState(old => ({ ...old, busy: null, error: error instanceof Error ? error.message : 'The operation could not complete. Retry.' }));
@@ -88,7 +89,14 @@ export function useTemperatureTool() {
     return { table: state.table, selection: { ...state.selection, current_multiplier: 1 },
       acknowledge_warnings: state.acknowledged, zero_intercept: state.zeroIntercept };
   }
-  const confirm = () => run('Checking Data...', () => api.prepareTemperatureData(request()), review => ({ review, confirmed: review.ready }));
+  async function confirm() {
+    const review = await run('Checking Data...', () => api.prepareTemperatureData(request()),
+      review => ({ review, confirmed: review.ready }));
+    if (!review?.ready) return;
+    const analysis = await analyze();
+    // Use this analysis, not state from the render before confirmation. A stale/failed run returns nothing.
+    if (analysis && state.zeroIntercept) await generateDerating(fields(analysis.average_fit.coefficients));
+  }
   const analyze = () => run('Generating T-riseChart...', () => api.analyzeTemperatureData(request()), analysis => ({
     ...clearResults, analysis, maximum: fields(analysis.maximum_fit.coefficients),
     average: fields(analysis.average_fit.coefficients),
@@ -119,10 +127,11 @@ export function useTemperatureTool() {
     if (!state.maximum) throw new Error('Generate T-riseChart first.');
     return api.calculateTemperatureCurrent(numeric(state.maximum), parameter(state.targetRise, 'target rise'));
   }, result => ({ current: result.current }));
-  const derating = () => run('Generating Derating...', () => {
-    if (!state.average) throw new Error('Generate T-riseChart first.');
-    return api.generateTemperatureDerating(numeric(state.average), deratingSettings());
+  const generateDerating = (average: CoefficientFields | null) => run('Generating Derating...', () => {
+    if (!average) throw new Error('Generate T-riseChart first.');
+    return api.generateTemperatureDerating(numeric(average), deratingSettings());
   }, result => ({ derating: result }));
+  const derating = () => generateDerating(state.average);
   async function download() {
     const token = generation.current + 1;
     await run('Preparing Excel...', () => api.downloadTemperatureWorkbook({ ...request(),

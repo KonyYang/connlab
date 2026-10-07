@@ -28,6 +28,10 @@ const analysis: api.TemperatureAnalysis = {
   average_fit: { coefficients, fitted_coefficients: coefficients, r_squared: .999 },
   zero_intercept: true, thermocouples_per_sample: 2,
 };
+const derating: api.DeratingAnalysis = {
+  points: [{ ambient: 0, basic: 100, derated: 80 }, { ambient: 105, basic: 0, derated: 0 }],
+  annotation: { ambient: 75, basic: 60, derated: 48 }, coefficients, max_temperature: 105, step: 2.5,
+};
 
 async function upload() {
   fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['x'], 'scanner.xlsx')] } });
@@ -41,6 +45,104 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(api.prepareTemperatureData).mockResolvedValue({ ready: true, issues: [], measurements: [] });
     vi.mocked(api.analyzeTemperatureData).mockResolvedValue(analysis);
     vi.mocked(api.calculateTemperatureCurrent).mockResolvedValue({ current: 30 });
+    vi.mocked(api.generateTemperatureDerating).mockResolvedValue(derating);
+  });
+
+  it('generates both charts after one successful confirmation using the new rounded AVG fit and chosen settings', async () => {
+    const user = userEvent.setup();
+    let finishReview!: (value: api.PreparedData) => void;
+    let finishRise!: (value: api.TemperatureAnalysis) => void;
+    vi.mocked(api.prepareTemperatureData).mockReturnValueOnce(new Promise(done => { finishReview = done; }));
+    vi.mocked(api.analyzeTemperatureData).mockReturnValueOnce(new Promise(done => { finishRise = done; }));
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    fireEvent.change(screen.getByLabelText('Max Working Temp (°C)'), { target: { value: '125' } });
+    fireEvent.change(screen.getByLabelText('Step (°C)'), { target: { value: '5' } });
+    fireEvent.change(screen.getByLabelText('Ambient Point (°C)'), { target: { value: '80' } });
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    expect(api.analyzeTemperatureData).not.toHaveBeenCalled();
+    expect(api.generateTemperatureDerating).not.toHaveBeenCalled();
+    await act(async () => finishReview({ ready: true, issues: [], measurements: [] }));
+    expect(screen.getByText('Generating T-riseChart...')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(api.generateTemperatureDerating).not.toHaveBeenCalled();
+    await act(async () => finishRise({ ...analysis, average_fit: { ...analysis.average_fit,
+      coefficients: { a: .00987649, b: .12345649, c: 0 } } }));
+    expect(await screen.findByRole('img', { name: 'Temperature Rise vs Current' })).toBeTruthy();
+    expect(await screen.findByRole('img', { name: 'Current vs Ambient Temperature' })).toBeTruthy();
+    expect(api.analyzeTemperatureData).toHaveBeenCalledOnce();
+    expect(api.generateTemperatureDerating).toHaveBeenCalledExactlyOnceWith(
+      { a: .009876, b: .123456, c: 0 }, { max_temperature: 125, step: 5, ambient_point: 80 });
+    expect(api.calculateTemperatureCurrent).not.toHaveBeenCalled();
+    expect(api.downloadTemperatureWorkbook).not.toHaveBeenCalled();
+  });
+
+  it('automatically generates only temperature rise when Zero Intercept is off', async () => {
+    const user = userEvent.setup();
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await user.click(screen.getByLabelText('Zero Intercept'));
+    vi.mocked(api.analyzeTemperatureData).mockResolvedValueOnce({ ...analysis, zero_intercept: false,
+      average_fit: { ...analysis.average_fit, coefficients: { ...coefficients, c: 2 } } });
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    expect(await screen.findByRole('img', { name: 'Temperature Rise vs Current' })).toBeTruthy();
+    expect((screen.getByLabelText('AVG Coefficient c') as HTMLInputElement).value).toBe('2.000000');
+    expect(api.generateTemperatureDerating).not.toHaveBeenCalled();
+    expect((screen.getByRole('button', { name: 'Generate Derating' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it.each(['prepare', 'rise', 'derating'] as const)('stops automatic generation on a %s failure and allows a focused retry', async stage => {
+    const user = userEvent.setup();
+    if (stage === 'prepare') vi.mocked(api.prepareTemperatureData).mockRejectedValueOnce(new Error('Check the data.'));
+    if (stage === 'rise') vi.mocked(api.analyzeTemperatureData).mockRejectedValueOnce(new Error('Check the fit.'));
+    if (stage === 'derating') vi.mocked(api.generateTemperatureDerating).mockRejectedValueOnce(new Error('Check the derating settings.'));
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    expect((await screen.findByRole('alert')).textContent).toContain(stage === 'prepare' ? 'Check the data.' : stage === 'rise' ? 'Check the fit.' : 'Check the derating settings.');
+    expect(screen.queryByRole('img', { name: 'Current vs Ambient Temperature' })).toBeNull();
+    if (stage !== 'derating') expect(api.generateTemperatureDerating).not.toHaveBeenCalled();
+    if (stage === 'prepare') expect(api.analyzeTemperatureData).not.toHaveBeenCalled();
+    if (stage === 'derating') expect(screen.getByRole('img', { name: 'Temperature Rise vs Current' })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: stage === 'prepare' ? 'Confirm Data' : stage === 'rise' ? 'Generate T-riseChart' : 'Generate Derating' }));
+    expect(await screen.findByRole('img', { name: stage === 'derating' ? 'Current vs Ambient Temperature' : 'Temperature Rise vs Current' })).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it.each(['prepare', 'derating'] as const)('does not continue or restore an obsolete automatic %s operation after a new upload', async stage => {
+    const user = userEvent.setup();
+    let finishReview!: (value: api.PreparedData) => void;
+    let finishDerating!: (value: api.DeratingAnalysis) => void;
+    if (stage === 'prepare') vi.mocked(api.prepareTemperatureData).mockReturnValueOnce(new Promise(done => { finishReview = done; }));
+    else vi.mocked(api.generateTemperatureDerating).mockReturnValueOnce(new Promise(done => { finishDerating = done; }));
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByText(stage === 'prepare' ? 'Checking Data...' : 'Generating Derating...');
+    await upload();
+    await act(async () => stage === 'prepare'
+      ? finishReview({ ready: true, issues: [], measurements: [] }) : finishDerating(derating));
+    expect(screen.queryByRole('img', { name: 'Temperature Rise vs Current' })).toBeNull();
+    expect(screen.queryByRole('img', { name: 'Current vs Ambient Temperature' })).toBeNull();
+    expect(screen.queryByText('Data Confirmed')).toBeNull();
+    expect((screen.getByRole('button', { name: 'Download Excel' }) as HTMLButtonElement).disabled).toBe(true);
+    if (stage === 'prepare') {
+      expect(api.analyzeTemperatureData).not.toHaveBeenCalled();
+      expect(api.generateTemperatureDerating).not.toHaveBeenCalled();
+    }
+  });
+
+  it('does not start automatic analysis after confirmation resolves on an unmounted page', async () => {
+    const user = userEvent.setup();
+    let finishReview!: (value: api.PreparedData) => void;
+    vi.mocked(api.prepareTemperatureData).mockReturnValueOnce(new Promise(done => { finishReview = done; }));
+    const view = render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    view.unmount();
+    await act(async () => finishReview({ ready: true, issues: [], measurements: [] }));
+    expect(api.analyzeTemperatureData).not.toHaveBeenCalled();
+    expect(api.generateTemperatureDerating).not.toHaveBeenCalled();
   });
 
   it('automatically fills both fitted coefficient sets and exports them without a retrieval step', async () => {
@@ -55,7 +157,6 @@ describe('temperature preparation and calculation workflow', () => {
       render(<TemperatureRisePage onBack={() => undefined} />);
       await upload();
       await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
-      await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
       await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
       for (const [curve, values] of [['MAX', coefficients], ['AVG', average]] as const) {
         for (const key of ['a', 'b', 'c'] as const) {
@@ -85,7 +186,6 @@ describe('temperature preparation and calculation workflow', () => {
     await upload();
     await user.click(screen.getByLabelText('Zero Intercept'));
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
-    await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
     await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
     const maxC = screen.getByLabelText('MAX Coefficient c') as HTMLInputElement;
     expect(maxC.value).toBe('1.234567');
@@ -112,7 +212,7 @@ describe('temperature preparation and calculation workflow', () => {
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
-    await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
+    await screen.findByText('Generating T-riseChart...');
     await upload();
     await act(async () => resolve(analysis));
     expect(screen.queryByRole('img', { name: 'Temperature Rise vs Current' })).toBeNull();
@@ -339,7 +439,6 @@ describe('temperature preparation and calculation workflow', () => {
       table: expect.objectContaining({ rows: decimal.table.rows }),
       selection: expect.objectContaining({ current_column: 6, ambient_column: 5, current_multiplier: 1 }),
     }));
-    await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
     expect(api.analyzeTemperatureData).toHaveBeenCalledWith(expect.objectContaining({
       table: expect.objectContaining({ rows: decimal.table.rows }),
       selection: expect.objectContaining({ current_multiplier: 1 }),
@@ -362,7 +461,6 @@ describe('temperature preparation and calculation workflow', () => {
     expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection).toMatchObject({
       temperature_columns: [3, 7], excluded_rows: [2],
     });
-    await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
     await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
     await user.click(screen.getByRole('button', { name: 'Calculate Current' }));
     expect((await screen.findByLabelText('Calculated Current')).textContent).toContain('30.00 A');
@@ -412,6 +510,8 @@ describe('temperature preparation and calculation workflow', () => {
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await screen.findByText('Scan 1: current is zero.');
+    expect(api.analyzeTemperatureData).not.toHaveBeenCalled();
+    expect(api.generateTemperatureDerating).not.toHaveBeenCalled();
     expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Select Unpowered Rows' }));
     expect((screen.getByLabelText('Select Scan 1') as HTMLInputElement).checked).toBe(true);
@@ -420,6 +520,7 @@ describe('temperature preparation and calculation workflow', () => {
     await user.click(screen.getByLabelText('Keep Flagged Rows'));
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].acknowledge_warnings).toBe(true);
+    expect(await screen.findByRole('img', { name: 'Current vs Ambient Temperature' })).toBeTruthy();
   });
 
   it('uses A-column scan IDs for review and selects the matching source rows without renumbering them', async () => {
@@ -459,7 +560,6 @@ describe('temperature preparation and calculation workflow', () => {
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
-    await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
     await screen.findByText('Scan 800: replace missing readings.');
     await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
     await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
@@ -522,10 +622,6 @@ describe('temperature preparation and calculation workflow', () => {
     const legacy = structuredClone(imported);
     legacy.selection.current_multiplier = .001;
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(legacy);
-    vi.mocked(api.generateTemperatureDerating).mockResolvedValue({
-      points: [{ ambient: 0, basic: 100, derated: 80 }, { ambient: 105, basic: 0, derated: 0 }],
-      annotation: { ambient: 75, basic: 60, derated: 48 }, coefficients, max_temperature: 105, step: 2.5,
-    });
     vi.mocked(api.downloadTemperatureWorkbook).mockResolvedValue({ blob: new Blob(['xlsx']), fileName: 'curves.xlsx' });
     vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:test'), revokeObjectURL: vi.fn() });
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
@@ -533,10 +629,8 @@ describe('temperature preparation and calculation workflow', () => {
       render(<TemperatureRisePage onBack={() => undefined} />);
       await upload();
       await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
-      await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
-      await user.click(screen.getByRole('button', { name: 'Calculate Current' }));
-      await user.click(screen.getByRole('button', { name: 'Generate Derating' }));
       await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
+      await user.click(screen.getByRole('button', { name: 'Calculate Current' }));
       fireEvent.change(screen.getByLabelText('AVG Coefficient a'), { target: { value: '.02' } });
       expect(screen.queryByRole('img', { name: 'Current vs Ambient Temperature' })).toBeNull();
       expect(screen.getByLabelText('Calculated Current').textContent).toContain('30.00');

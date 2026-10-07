@@ -1,7 +1,8 @@
 # Temperature Rise and Derating Tool
 
 Status: implemented. Current refinement: automatic editable coefficient population on chart generation
-and scan-based operator feedback (`TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007`);
+and generation after successful confirmation, with scan-based operator feedback
+(`TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007`);
 unified raw-data row/column editing remains in place without a separate row-range form.
 
 ## Scope and acceptance
@@ -130,8 +131,10 @@ Review summary: Standards 0 outstanding; Specification 0 outstanding blocking fi
    Data. The separate row-range form is removed. Review notices, row selection labels and Stage Results
    use A-column scan identifiers; internal source-row keys remain unchanged. Warnings are never
    silently deleted; keeping flagged rows needs explicit acknowledgment.
-4. Generate T-riseChart → Calculate Current / Generate Derating → Download Excel. MAX/AVG a/b/c
-   populate automatically after chart generation; download uses these values by default or the user's
+4. Successful Confirm Data automatically generates T-riseChart and, when Zero Intercept is enabled,
+   Derating. Review blockers stop the sequence. The Generate buttons remain available for manual
+   retries or recalculation after edits; Calculate Current and Download Excel remain explicit actions.
+   MAX/AVG a/b/c populate automatically after chart generation; download uses these values or the user's
    subsequent edits. Regeneration replaces edits with the new fit; changing source data clears the
    coefficients and dependent results. In nonzero-intercept mode, c also populates and stays editable.
 
@@ -929,3 +932,47 @@ Changed paths: `frontend/src/features/temperature/DataPreview.tsx`,
 `frontend/src/pages/TemperatureRisePage.test.tsx` and `docs/temperature_rise_tool.md`.
 The existing task also retains its earlier `frontend/src/features/temperature/useTemperatureTool.ts`
 coefficient change; the sole board writer records cumulative completion evidence separately.
+
+## Automatic generation after confirmation (2026-10-08)
+
+Confirm Data now awaits successful, current preparation before generating T-riseChart. A successful
+fit populates both coefficient sets; if Zero Intercept is enabled, Derating follows using that new
+AVG fit rounded to the same six decimals displayed/exported and the current working-temperature
+settings. Nonzero-intercept mode generates temperature rise only, matching existing Derating button
+eligibility. Manual Generate actions remain available and retain their previous scope: a manual
+T-riseChart regeneration clears downstream results but does not itself auto-generate Derating.
+Calculate Current, download, source-file mutation and worksheet calculations are not added to the chain.
+
+The existing request-generation guard now also controls continuation: obsolete or failed stages
+return no result and cannot launch the next stage. Busy/error feedback uses the existing stage labels.
+Review warnings still require an explicit keep/exclude choice. A Derating error retains the successful
+temperature-rise chart and coefficients for correction/retry; any input invalidation still clears
+the affected results. Recognition/import alone never generates charts.
+
+TDD recorded five expected failures before implementation and GREEN after the hook change. Final
+affected matrix: **55 passed** (30 page, 18 preview, 2 API, 5 TopBar); TypeScript/Vite build passed
+sequentially on the final source/test bytes. Coverage includes ordered stages, fresh rounded AVG
+coefficients, custom settings, nonzero-intercept skipping, review blocking, each-stage failure/retry,
+late responses during preparation/analysis/Derating and page unmount. Isolated browser verification
+with the disposable scanner CSV confirmed both charts after one accepted confirmation and only
+temperature rise with Zero Intercept off; console warnings/errors zero. The QA tab was closed and
+the User's imported-data tab was not operated. No new native Excel/export-rendering check: exporter,
+API and numerical algorithms are unchanged.
+
+### Standards
+
+Sequential same-agent exact-diff pass: orchestration stays in the existing feature hook, preserves
+request invalidation, reuses Derating transport/settings and adds no dependency or second state
+channel. Zero outstanding findings.
+
+### Spec
+
+Separate same-agent pass: automatic generation occurs only after successful explicit confirmation;
+Derating uses existing eligibility and the newly generated coefficients; failures and obsolete work
+stop continuation, and manual correction/retry remains available. No unsolicited current calculation
+or download. Zero outstanding findings. Methods: tdd and code-review; not independent-agent review.
+
+Changed paths for this revision: `frontend/src/features/temperature/useTemperatureTool.ts`,
+`frontend/src/pages/TemperatureRisePage.test.tsx` and `docs/temperature_rise_tool.md`; lifecycle records
+use the sole board writer. Residual behavior is intentional: invalid Derating parameter values produce
+the same actionable validation error as the enabled manual action, without discarding the rise chart.
