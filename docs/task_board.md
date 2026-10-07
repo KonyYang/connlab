@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007",
     "summary": "Automatically populate fitted coefficients when generating T-riseChart",
@@ -27,17 +27,69 @@
     "risk_reasons": [],
     "activation_head": "b3cf34600c4368e734484660d8d5e8bc53c287a3",
     "started_at": "2026-10-07T15:37:55.665299Z",
-    "updated_at": "2026-10-07T23:16:09.206069Z",
+    "updated_at": "2026-10-07T23:21:51.992208Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requested automatic T-riseChart after successful Confirm Data, followed by Derating when eligible.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007",
+      "integration": {
+        "status": "passed",
+        "branch": "master",
+        "publication": "Local only; final Close not requested.",
+        "subject": "de61beb94474e5a14c099aa44867e6013eae54ff"
+      },
+      "changed_paths": [
+        "docs/temperature_rise_tool.md",
+        "frontend/src/features/temperature/DataPreview.test.tsx",
+        "frontend/src/features/temperature/DataPreview.tsx",
+        "frontend/src/features/temperature/TemperatureCharts.tsx",
+        "frontend/src/features/temperature/sourceScan.ts",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx"
+      ],
+      "version": 1,
+      "scope_ok": true,
+      "subject": "de61beb94474e5a14c099aa44867e6013eae54ff",
+      "roles": {
+        "developer": {
+          "execution": "One Astra micro work unit; TDD and sequential same-agent review, no independent-agent claim.",
+          "status": "passed"
+        }
+      },
+      "schema": "connlab.sol-task-report",
+      "summary": "Confirmed data automatically generates T-riseChart then eligible Derating using fresh editable coefficients; earlier scan-based feedback and range-form removal retained.",
+      "validation": [
+        {
+          "result": "Five expected new failures before implementation; final matrix 55/55 passed: page30, preview18, API2, TopBar5.",
+          "status": "passed",
+          "name": "TDD and affected regression matrix"
+        },
+        {
+          "result": "TypeScript and Vite production build passed sequentially on final source/test bytes.",
+          "status": "passed",
+          "name": "Production build"
+        },
+        {
+          "result": "Review blocks auto-generation; accepted Confirm Data generated both charts without Generate clicks; Zero Intercept off generated rise only. Zero console warnings/errors. Disposable fixture; user tab untouched; QA tab closed.",
+          "status": "passed",
+          "name": "Isolated browser"
+        },
+        {
+          "result": "Separate sequential same-agent exact-diff passes; no outstanding findings. Existing async invalidation, manual retry/edit and API/numerical boundaries preserved.",
+          "status": "passed",
+          "name": "Standards and Spec review"
+        }
+      ]
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
