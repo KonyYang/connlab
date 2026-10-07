@@ -672,8 +672,9 @@ explicit Ambient/Plot Current/retained auxiliary-current roles, and one compact 
 - Ambient, plot current and recognized auxiliary electrical roles cannot be excluded/moved as
   thermocouples. Non-temperature metadata exclusions are editor-only; calculation input continues
   to use ordered temperature column IDs and excluded row IDs. Auxiliary originals remain retained.
-- Optional range selection and 50-row pagination support large records without separate mapping
-  forms. Unpowered-row selection remains explicit, preserving the measured zero baseline.
+- Continuous virtual scrolling replaces pagination: all source rows are reachable in one scroll
+  region with a fixed header; only nearby rows are mounted. Optional explicit range selection
+  remains available. Unpowered-row selection stays explicit, preserving the measured zero baseline.
 - Every committed data edit invalidates confirmation and downstream calculations through the
   existing hook. No API contract, formula, native Excel export or Derating behavior changed.
 
@@ -715,3 +716,32 @@ Zero outstanding blocking findings. Summary: Standards 0; Spec 0.
 Methods used: tdd, image-to-code, design-qa and code-review. Execution/review/QA were sequential
 passes by one agent; no independent-agent review is claimed. Residual domain risk: scanner header
 ambiguity and physical channel positions still require human confirmation before calculating.
+
+## Continuous preview and Shift selection (2026-10-07)
+
+- Previous/Next/Page controls are removed. The source grid uses a feature-owned row-window hook,
+  a fixed single-line row height, measured viewport/header height, and native vertical/horizontal
+  scrollbars. It adds no dependency and does not change loaded values or calculation/export inputs.
+- Click an original row number or its checkbox to toggle it and establish a range anchor. Shift-click
+  another row selects the inclusive interval in either direction, including offscreen rows; clicking
+  a checked endpoint with Shift clears that interval. Existing unrelated selections remain intact.
+  Shift+Space on a row checkbox works too. Column selection, bulk selection, a committed edit or Undo
+  clears the anchor, preventing an old range from leaking into the next operation.
+- The header checkbox now explicitly selects ALL source rows, not merely mounted/visible rows.
+  A partial selection shows its mixed state. Selection persists as original row IDs while scrolling.
+  Exclude, Restore and Undo retain their existing draft/confirmation invalidation semantics.
+- Large-range checks use sets; source-column and issue lookup data are cached across scrolling.
+  Long source cells remain available in hover titles, rather than expanding the fixed-height rows.
+  Native browser Find/copy only sees mounted rows; use original row IDs/range selection for distant
+  intervals. Excel export still consumes the complete confirmed data, not the rendered row window.
+
+Validation: three new continuous/range cases failed against the old preview before implementation;
+all five new cases pass along with the six existing editor cases. Browser QA uses a disposable
+20,000-row CSV (19,999 data rows): 774→800 selects 27 rows, exclusion updates the count and Undo
+restores it; End reaches original row 20,000 with a fixed header and only 17 rows mounted at the
+bottom. Final affected QA: 32 tests across editor/page/API/TopBar passed; TypeScript and Vite build
+passed sequentially. The final checkbox change was also rechecked in the browser. At 543×804,
+scrolling remains local with no page-width overflow; the temporary viewport was reset. Separate
+same-agent Standards and Spec exact-diff passes found no outstanding issues. The User's original
+tab and source files are not reimported or edited. Numerical fitting,
+Office export and backend code are unchanged. No new screen-reader session is claimed.

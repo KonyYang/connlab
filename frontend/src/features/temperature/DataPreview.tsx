@@ -1,27 +1,33 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChannelLayout, DataIssue, DataSelection, WorkbookTable } from '../../api/temperature';
 import { UiIcon } from '../../components/common/UiIcon';
 import { ColumnActions, type ColumnMenuAnchor } from './ColumnActions';
 import { columnLetter, incompleteSampleGroups, sourceColumns } from './sourceColumns';
 import { useDataGridEditing } from './useDataGridEditing';
+import { SOURCE_ROW_HEIGHT, useSourceRowWindow } from './useSourceRowWindow';
 
 export function DataPreview({ table, selection, layout, issues, disabled, onChange }: {
   table: WorkbookTable; selection: DataSelection; layout?: ChannelLayout | null; issues: DataIssue[];
   disabled: boolean; onChange: (patch: Partial<DataSelection>) => void;
 }) {
   const grid = useDataGridEditing(table, selection, layout, onChange);
-  const [page, setPage] = useState(0);
   const [range, setRange] = useState('');
   const [rangeError, setRangeError] = useState('');
   const [menu, setMenu] = useState<ColumnMenuAnchor | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
-  const columns = sourceColumns(table, selection.header_row);
+  const columns = useMemo(() => sourceColumns(table, selection.header_row), [table, selection.header_row]);
   const incomplete = incompleteSampleGroups(selection, layout);
   const count = Math.max(1, selection.thermocouples_per_sample || 1);
   const total = Math.max(0, selection.end_row - selection.start_row + 1);
-  const pages = Math.max(1, Math.ceil(total / 50));
-  const currentPage = Math.min(page, pages - 1);
-  const rows = Array.from({ length: Math.min(50, total - currentPage * 50) }, (_, index) => selection.start_row + currentPage * 50 + index);
+  const rowWindow = useSourceRowWindow(selection.start_row, total);
+  const { rows } = rowWindow;
+  const selectedRows = useMemo(() => new Set(grid.selectedRows), [grid.selectedRows]);
+  const excludedRows = useMemo(() => new Set(selection.excluded_rows), [selection.excluded_rows]);
+  const flaggedRows = useMemo(() => new Set(issues.map(issue => issue.source_row)), [issues]);
+  const selectAll = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (selectAll.current) selectAll.current.indeterminate = selectedRows.size > 0 && selectedRows.size < total;
+  }, [selectedRows, total]);
   const selectedCount = grid.selectedRows.length + grid.selectedColumns.length;
   const activeIndex = (column: number) => selection.temperature_columns.indexOf(column);
   const groupLabel = (column: number) => !incomplete && activeIndex(column) >= 0 ? `Sample ${Math.floor(activeIndex(column) / count) + 1}` : '';
@@ -71,12 +77,17 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
         <button type="button" disabled={disabled || !grid.canRestore} onClick={grid.restore}>Restore</button>
         <button type="button" disabled={disabled || !grid.canUndo} onClick={grid.undo}>Undo</button></div></div>
     {incomplete && <p className="temperature-warning" role="alert">Incomplete sample group. Restore columns or move a spare into position; each sample needs {count} thermocouples.</p>}
-    <div className="temperature-table-scroll" role="region" aria-label="Scanner Data Preview" tabIndex={0}>
-      <table className="temperature-source-table"><thead>
+    <div ref={rowWindow.viewport} className="temperature-table-scroll" role="region" aria-label="Scanner Data Preview" tabIndex={0}
+      onScroll={event => { closeMenu(); rowWindow.setScrollTop(event.currentTarget.scrollTop); }}>
+      <table className="temperature-source-table" aria-rowcount={total + 2}
+        style={{ minWidth: 160 + grid.order.length * 170 }}>
+        <colgroup><col style={{ width: 40 }} /><col style={{ width: 120 }} />
+          {grid.order.map(column => <col key={column} style={{ width: 170 }} />)}</colgroup>
+        <thead ref={rowWindow.header}>
         <tr className="temperature-sample-groups"><th colSpan={2} />{groups.map((group, index) => <th key={index} colSpan={group.size}>{group.label}</th>)}</tr>
-        <tr><th><input type="checkbox" aria-label="Select Visible Rows" disabled={disabled || !rows.length}
-          checked={Boolean(rows.length) && rows.every(row => grid.selectedRows.includes(row))}
-          onChange={event => { closeMenu(); grid.selectRows(event.target.checked ? [...new Set([...grid.selectedRows, ...rows])] : grid.selectedRows.filter(row => !rows.includes(row))); }} /></th>
+        <tr><th><input ref={selectAll} type="checkbox" aria-label="Select All Rows" disabled={disabled || !total}
+          checked={Boolean(total) && selectedRows.size === total}
+          onChange={event => { closeMenu(); grid.selectRows(event.target.checked ? Array.from({ length: total }, (_, index) => selection.start_row + index) : []); }} /></th>
           <th>Original Row</th>{grid.order.map(column => <th key={column} className={headerClass(column)}>
             <div className="temperature-source-column"><input type="checkbox" aria-label={`Select Column ${columnLetter(column)}`}
               disabled={disabled || grid.protectedColumn(column)} checked={grid.selectedColumns.includes(column)}
@@ -87,18 +98,28 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
             <span className="temperature-source-title" title={String(table.rows[selection.header_row - 1]?.[column - 1] ?? '')}>
               {headerParts(column) ? <>{headerParts(column)![1]}<br />{headerParts(column)![2]} {headerParts(column)![3]}</> : String(table.rows[selection.header_row - 1]?.[column - 1] ?? '')}</span>
             <span className="temperature-source-role">{role(column)}</span></th>)}</tr></thead>
-        <tbody>{rows.map(row => <tr key={row} className={selection.excluded_rows.includes(row) ? 'is-excluded-row' : issues.some(issue => issue.source_row === row) ? 'is-flagged-row' : ''}>
-          <td><input type="checkbox" aria-label={`Select Row ${row}`} disabled={disabled} checked={grid.selectedRows.includes(row)}
-            onChange={event => { closeMenu(); grid.selectRows(event.target.checked ? [...grid.selectedRows, row] : grid.selectedRows.filter(item => item !== row)); }} /></td>
-          <th scope="row">{row}{selection.excluded_rows.includes(row) ? ' (Excluded)' : issues.some(issue => issue.source_row === row) ? ' (Review)' : ''}</th>
-          {grid.order.map(column => <td key={column} className={headerClass(column)}>{String(table.rows[row - 1]?.[column - 1] ?? '')}</td>)}</tr>)}</tbody>
+        <tbody>
+          {rowWindow.topPadding > 0 && <tr aria-hidden="true" className="temperature-row-spacer"><td colSpan={grid.order.length + 2} style={{ height: rowWindow.topPadding }} /></tr>}
+          {rows.map(row => <tr key={row} aria-rowindex={row - selection.start_row + 3} style={{ height: SOURCE_ROW_HEIGHT }}
+            aria-selected={selectedRows.has(row)}
+            className={excludedRows.has(row) ? 'is-excluded-row' : flaggedRows.has(row) ? 'is-flagged-row' : ''}>
+          <td><input type="checkbox" aria-label={`Select Row ${row}`} disabled={disabled} checked={selectedRows.has(row)}
+            onChange={event => { closeMenu(); grid.toggleRow(row, event.target.checked,
+              'shiftKey' in event.nativeEvent && event.nativeEvent.shiftKey === true); }}
+            onKeyDown={event => { if (event.key === ' ' && event.shiftKey) { event.preventDefault(); closeMenu(); grid.toggleRow(row, !selectedRows.has(row), true); } }} /></td>
+          <th scope="row" title="Click to select; Shift-click to select a range"
+            onClick={event => { if (!disabled) { closeMenu(); grid.toggleRow(row, !selectedRows.has(row), event.shiftKey); } }}>
+            {row}{excludedRows.has(row) ? ' (Excluded)' : flaggedRows.has(row) ? ' (Review)' : ''}</th>
+          {grid.order.map(column => <td key={column} className={headerClass(column)} title={String(table.rows[row - 1]?.[column - 1] ?? '')}>
+            {String(table.rows[row - 1]?.[column - 1] ?? '')}</td>)}</tr>)}
+          {rowWindow.bottomPadding > 0 && <tr aria-hidden="true" className="temperature-row-spacer"><td colSpan={grid.order.length + 2} style={{ height: rowWindow.bottomPadding }} /></tr>}
+        </tbody>
       </table></div>
     <div className="temperature-data-footer"><span>{total - selection.excluded_rows.length} Included / {selection.excluded_rows.length} Excluded Rows</span>
       <div>{issues.some(issue => issue.code === 'zero_current') && <button type="button" disabled={disabled}
         onClick={() => grid.selectRows([...new Set(issues.filter(issue => issue.code === 'zero_current').map(issue => issue.source_row))])}>Select Unpowered Rows</button>}
         {selection.excluded_rows.length > 0 && <button type="button" disabled={disabled} onClick={grid.restoreAllRows}>Restore All Rows</button>}
-        <button type="button" disabled={currentPage === 0} onClick={() => { closeMenu(); setPage(currentPage - 1); }}>Previous</button>
-        <span>Page {currentPage + 1} / {pages}</span><button type="button" disabled={currentPage + 1 >= pages} onClick={() => { closeMenu(); setPage(currentPage + 1); }}>Next</button></div></div>
+        </div></div>
     <details className="temperature-row-range"><summary>Select Rows By Range</summary><label>Rows To Select<input value={range} disabled={disabled} onChange={event => setRange(event.target.value)} placeholder="45-91, 120" /></label>
       <button type="button" disabled={disabled || !range.trim()} onClick={selectRange}>Select Rows</button>{rangeError && <p role="alert">{rangeError}</p>}</details>
     {menu && <ColumnActions anchor={menu} columnLabel={columns.find(column => column.id === menu.column)!.label}

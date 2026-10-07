@@ -51,7 +51,13 @@
 .temperature-data-toolbar span, .temperature-data-footer { color: var(--color-ink-muted); font-size: 12px; }
 .temperature-data-actions button, .temperature-data-footer button { padding: 6px 10px; font-size: 12px; }
 .temperature-data-editor .temperature-table-scroll { max-height: 450px; }
-.temperature-page .temperature-source-table { border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.temperature-page .temperature-source-table { border-collapse: separate; border-spacing: 0; font-size: 13px; table-layout: fixed; }
+.temperature-source-table thead { position: sticky; top: 0; z-index: 2; }
+.temperature-source-table thead th { position: static; }
+.temperature-source-table tbody td, .temperature-source-table tbody th { height: 36px; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; }
+.temperature-source-table tbody th { cursor: pointer; user-select: none; }
+.temperature-source-table tbody tr[aria-selected="true"] th { background: var(--color-action-secondary-hover); color: var(--color-primary-strong); }
+.temperature-source-table .temperature-row-spacer td { padding: 0; border: 0; }
 .temperature-source-table th, .temperature-source-table td { border-right: 1px solid var(--color-border); padding: 7px 10px; }
 .temperature-source-table thead tr:nth-child(2) th { top: 30px; vertical-align: top; }
 .temperature-source-table .temperature-sample-groups th { height: 30px; padding: 0 10px; box-sizing: border-box; text-align: center; color: var(--color-primary-strong); background: var(--color-action-secondary-bg); }

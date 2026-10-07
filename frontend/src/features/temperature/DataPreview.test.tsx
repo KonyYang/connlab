@@ -28,6 +28,89 @@ function Editor({ withParameters = false }: { withParameters?: boolean }) {
 }
 function selected() { return JSON.parse(screen.getByLabelText('Prepared Selection').textContent!) as DataSelection; }
 
+function LongEditor({ end = 900 }: { end?: number }) {
+  const [selection, setSelection] = useState({ ...initial, start_row: 774, end_row: end });
+  const source = { ...table, rows: [table.rows[0], ...Array.from({ length: end - 1 }, (_, index) =>
+    [index + 1, '18:00', 24, 25, 26, 27, 20, 10, 28, 3])] };
+  return <><DataPreview table={source} selection={selection} layout={layout} issues={[]} disabled={false}
+    onChange={patch => setSelection(old => ({ ...old, ...patch }))} />
+    <output aria-label="Prepared Selection">{JSON.stringify(selection)}</output></>;
+}
+
+describe('continuous source row selection', () => {
+  it('selects both endpoints and offscreen rows using Shift, then excludes and undoes the whole interval', () => {
+    render(<LongEditor />);
+    fireEvent.click(screen.getByLabelText('Select Row 774'));
+    const viewport = screen.getByRole('region', { name: 'Scanner Data Preview' });
+    fireEvent.scroll(viewport, { target: { scrollTop: 1000 } });
+    fireEvent.click(screen.getByLabelText('Select Row 800'), { shiftKey: true });
+    expect(screen.getByText('27 Selected')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    expect(selected().excluded_rows).toHaveLength(27);
+    expect(selected().excluded_rows[0]).toBe(774);
+    expect(selected().excluded_rows.at(-1)).toBe(800);
+    fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
+    expect(screen.getByText('774 (Excluded)')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(selected().excluded_rows).toEqual([]);
+    expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
+  });
+
+  it('supports reverse Shift selection by clicking original row numbers and Shift deselection', () => {
+    render(<LongEditor />);
+    const viewport = screen.getByRole('region', { name: 'Scanner Data Preview' });
+    fireEvent.scroll(viewport, { target: { scrollTop: 1000 } });
+    fireEvent.click(screen.getByRole('rowheader', { name: '800' }));
+    fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
+    fireEvent.click(screen.getByRole('rowheader', { name: '774' }), { shiftKey: true });
+    expect(screen.getByText('27 Selected')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Select Row 774'));
+    fireEvent.scroll(viewport, { target: { scrollTop: 1000 } });
+    fireEvent.click(screen.getByLabelText('Select Row 800'), { shiftKey: true });
+    expect((screen.getByRole('button', { name: 'Exclude Selected' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('reaches the final source row by scrolling without mounting the whole large workbook', () => {
+    render(<LongEditor end={20000} />);
+    const viewport = screen.getByRole('region', { name: 'Scanner Data Preview' });
+    expect(within(viewport).getAllByRole('checkbox').length).toBeLessThan(100);
+    fireEvent.click(screen.getByLabelText('Select Row 774'));
+    fireEvent.scroll(viewport, { target: { scrollTop: 1000000 } });
+    expect(screen.getByLabelText('Select Row 20000')).toBeTruthy();
+    expect(within(viewport).getAllByRole('checkbox').length).toBeLessThan(100);
+    fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
+    expect((screen.getByLabelText('Select Row 774') as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('selects all source rows rather than only rendered rows and supports clearing the whole selection', () => {
+    render(<LongEditor />);
+    fireEvent.click(screen.getByLabelText('Select Row 774'));
+    const all = screen.getByLabelText('Select All Rows') as HTMLInputElement;
+    expect(all.indeterminate).toBe(true);
+    fireEvent.click(all);
+    expect(screen.getByText('127 Selected')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    expect(selected().excluded_rows).toHaveLength(127);
+    expect(selected().excluded_rows.at(-1)).toBe(900);
+    fireEvent.click(all);
+    fireEvent.click(all);
+    expect((screen.getByRole('button', { name: 'Restore' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('supports Shift+Space and resets the anchor when switching to column editing', () => {
+    render(<LongEditor />);
+    fireEvent.click(screen.getByLabelText('Select Row 774'));
+    fireEvent.keyDown(screen.getByLabelText('Select Row 780'), { key: ' ', shiftKey: true });
+    expect(screen.getByText('7 Selected')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Select Column C'));
+    fireEvent.keyDown(screen.getByLabelText('Select Row 782'), { key: ' ', shiftKey: true });
+    expect(screen.getByText('1 Selected')).toBeTruthy();
+    expect((screen.getByLabelText('Select Column C') as HTMLInputElement).checked).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    expect(selected().excluded_rows).toEqual([782]);
+  });
+});
+
 describe('unified scanner data editing', () => {
   it('shows source metadata, sample groups and retained electrical roles directly in the grid', () => {
     render(<Editor />);
