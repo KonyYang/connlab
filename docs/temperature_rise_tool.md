@@ -787,3 +787,56 @@ findings (removed duplicate index, compact frozen A/B, whole-row highlight and r
 selection). Review and QA are sequential passes by one agent, not independent-agent evidence.
 Methods: tdd and code-review. Residual limitation: native browser Find/copy sees only mounted rows,
 as with the existing virtual preview; full confirmed data still reaches calculation/export.
+
+## Context actions and unit-aware compact preview (2026-10-07)
+
+- Column-arrow buttons are removed. Click a temperature header to select it, or use checkboxes
+  for a block; right-click a header or its data cell to open Exclude/Restore/Move Before operations.
+  Right-click inside a selected block preserves it; an unselected column becomes the selection.
+  Focusable headers also support Shift+F10/the context-menu key, Escape and focus return. Existing
+  protected A/B, ambient and current roles, whole-column moves, Undo and Shift row selection remain.
+- Explicit trailing scanner units take precedence: `(C)` (including temperature spelling variants)
+  is temperature; `(VDC)` is current. Existing V/A/mA spellings remain supported. Ambient choices
+  contain only temperature columns; Current choices contain only electrical columns. Untagged legacy
+  workbooks retain imported/confirmed role suggestions. If an imported role contradicts an explicit
+  unit, show an empty choice and an actionable alert, blocking Confirm until corrected rather than
+  silently choosing a different calculation column.
+- Visible headers/options omit unit suffixes and normal per-channel Sample/TC labels. Sample group
+  bands and exceptional/role markers remain; complete original headers are available on hover.
+- Temperature readings display one decimal and current readings two. Scan/time indexes, malformed
+  readings and blanks retain their source text. Display rounding does not rewrite source arrays,
+  selected column IDs, near-zero review rules, calculation requests or exported numeric data.
+- Content-based column widths replace the previous fixed channel width: compute from all formatted
+  readings and header lines once per imported region/role change, not per scroll/highlight/selection.
+  Keep the 32 px row selector and existing virtual row window; data values are not width-capped.
+
+### Verification and review
+
+TDD: four new public-behavior cases recorded RED then GREEN: context-menu/block selection,
+display-only rounding and clean headers, unit-filtered selectors/exact submitted data, and correction
+of an explicit-unit conflict. Existing operation tests use the new context-menu interaction while
+retaining their move/exclusion/restoration/Undo/invalidation assertions. Final affected matrix:
+**39 tests passed** across DataPreview, TemperatureRisePage, temperature API and TopBar; TypeScript
+and Vite production build passed sequentially on the final source/test bytes.
+
+Isolated browser QA with actual `3A new.csv`: 403 rows, three samples × ten thermocouples,
+31 temperature choices, four current choices, AG ambient/AI curve current and stable AH/AJ/AK
+retained with Zero Intercept off. Multi-column right-click, keyboard Move Before and Undo passed.
+Temperature columns measure 56 px for this file, scan 44 px and time 186 px; no mounted data cells
+are clipped. At 543×804, local scrolling keeps A/B in place, page-width overflow is absent and the
+right-click popup remains within the viewport. Console warnings/errors: zero. Source CSV SHA256
+remains `b2903c3ce08de283af8c02498dafccf4306da26aa528beac5a62b338e65824ff`.
+Temporary viewport reset and QA tab closed; the User's tab was not operated or reimported.
+
+Same-agent Standards pass: shared feature-owned unit/presentation rules, cached sizing and existing
+selection state reused; no backend/API/dependency/Office/source-file mutation introduced. Spec pass:
+right-click operation parity, filtered roles, precision-only display, compact full readings and
+removed redundant per-TC labels match the request. Both exact-diff passes have zero outstanding
+findings; sequential passes do not claim independent-agent review. Methods: tdd and code-review.
+Residual limitation: untagged/ambiguous scanner headers still require role confirmation; native
+Find/copy still sees only mounted virtual rows. No native Excel or new screen-reader session claimed.
+
+Changed paths for this revision: `frontend/src/features/temperature/ColumnActions.tsx`,
+`DataPreview.tsx`, `DataPreview.test.tsx`, `sourceColumns.ts`, new `sourcePresentation.ts`,
+`useDataGridEditing.ts`, `temperature.css`, `frontend/src/pages/TemperatureRisePage.tsx`, its test,
+and this document. The sole task-board writer records lifecycle evidence separately.

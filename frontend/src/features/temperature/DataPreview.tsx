@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, MouseEvent } from 'react';
 import type { ChannelLayout, DataIssue, DataSelection, WorkbookTable } from '../../api/temperature';
-import { UiIcon } from '../../components/common/UiIcon';
 import { ColumnActions, type ColumnMenuAnchor } from './ColumnActions';
-import { columnLetter, incompleteSampleGroups, sourceColumns } from './sourceColumns';
+import { columnLetter, incompleteSampleGroups } from './sourceColumns';
+import { formatSourceReading, sourcePresentation } from './sourcePresentation';
 import { useDataGridEditing } from './useDataGridEditing';
 import { SOURCE_ROW_HEIGHT, useSourceRowWindow } from './useSourceRowWindow';
 
-const COLUMN_WIDTH = { selector: 32, scan: 64, time: 184, channel: 104 };
-const columnWidth = (column: number) => column === 1 ? COLUMN_WIDTH.scan : column === 2 ? COLUMN_WIDTH.time : COLUMN_WIDTH.channel;
+const SELECTOR_WIDTH = 32;
 
 export function DataPreview({ table, selection, layout, issues, disabled, onChange }: {
   table: WorkbookTable; selection: DataSelection; layout?: ChannelLayout | null; issues: DataIssue[];
@@ -19,8 +18,13 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   const [rangeError, setRangeError] = useState('');
   const [menu, setMenu] = useState<ColumnMenuAnchor | null>(null);
   const [activeRow, setActiveRow] = useState<number | null>(null);
+  const columnHeaders = useRef(new Map<number, HTMLTableCellElement>());
   const closeMenu = useCallback(() => setMenu(null), []);
-  const columns = useMemo(() => sourceColumns(table, selection.header_row), [table, selection.header_row]);
+  const columns = useMemo(() => sourcePresentation(table, selection, layout),
+    [table, selection.header_row, selection.start_row, selection.end_row, selection.ambient_column,
+      selection.current_column, selection.temperature_columns, layout]);
+  const columnsById = useMemo(() => new Map(columns.map(column => [column.id, column])), [columns]);
+  const columnWidth = (column: number) => columnsById.get(column)!.width;
   const incomplete = incompleteSampleGroups(selection, layout);
   const count = Math.max(1, selection.thermocouples_per_sample || 1);
   const total = Math.max(0, selection.end_row - selection.start_row + 1);
@@ -45,17 +49,15 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   const role = (column: number) => {
     if (column <= 2) return '';
     if (column === selection.ambient_column) return 'Ambient';
-    if (column === selection.current_column) return 'Plot Current';
-    if (layout?.current_columns.includes(column)) return `Retained / Not Plotted${layout.stable_current_columns.includes(column) ? ' · Stable' : ''}`;
+    if (column === selection.current_column) return 'Current';
+    if (columnsById.get(column)?.kind === 'current') return 'Retained';
     if (grid.excludedColumns.includes(column)) return 'Excluded';
-    if (activeIndex(column) >= 0) return incomplete ? 'Pending Grouping' : `${groupLabel(column)} / TC ${activeIndex(column) % count + 1}`;
-    return grid.movable(column) ? 'Not Plotted' : 'Source';
+    if (activeIndex(column) >= 0) return incomplete ? 'Pending Grouping' : '';
+    return '';
   };
   const headerClass = (column: number) => [column === 1 ? 'temperature-index-scan' : column === 2 ? 'temperature-index-time' : '',
     grid.selectedColumns.includes(column) ? 'is-selected-column' : '',
     grid.excludedColumns.includes(column) ? 'is-excluded-column' : ''].filter(Boolean).join(' ');
-  const headerParts = (column: number) => String(table.rows[selection.header_row - 1]?.[column - 1] ?? '')
-    .match(/^(\d+)\s*<([^>]+)>\s*(.*)$/);
   function selectRange() {
     const parsed = new Set<number>();
     for (const part of range.split(',')) {
@@ -69,11 +71,18 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
     }
     setRangeError(''); grid.selectRows([...parsed]);
   }
-  function openMenu(column: number, trigger: HTMLButtonElement) {
+  function openMenu(column: number, trigger: HTMLElement, point?: { left: number; top: number }) {
+    if (disabled || !grid.movable(column)) return;
     if (!grid.selectedColumns.includes(column) || grid.selectedColumns.some(selected => !grid.movable(selected))) grid.selectColumns([column]);
     const bounds = trigger.getBoundingClientRect();
-    setMenu({ column, trigger, left: Math.max(8, Math.min(bounds.left, window.innerWidth - 276)),
-      top: Math.max(8, Math.min(bounds.bottom + 6, window.innerHeight - 300)) });
+    setMenu({ column, trigger, left: Math.max(8, Math.min(point?.left ?? bounds.left, window.innerWidth - 276)),
+      top: Math.max(8, Math.min(point?.top ?? bounds.bottom + 6, window.innerHeight - 300)) });
+  }
+  function openContextMenu(column: number, event: MouseEvent<HTMLElement>) {
+    const header = columnHeaders.current.get(column);
+    if (!header || disabled || !grid.movable(column)) return;
+    event.preventDefault();
+    openMenu(column, header, { left: event.clientX, top: event.clientY });
   }
   function runAction(action: () => void) { action(); menu?.trigger.focus(); closeMenu(); }
   return <section className="temperature-data-editor" aria-label="Data Preview">
@@ -87,24 +96,30 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
     <div ref={rowWindow.viewport} className="temperature-table-scroll" role="region" aria-label="Scanner Data Preview" tabIndex={0}
       onScroll={event => { closeMenu(); rowWindow.setScrollTop(event.currentTarget.scrollTop); }}>
       <table className="temperature-source-table" aria-rowcount={total + 2}
-        style={{ width: COLUMN_WIDTH.selector + grid.order.reduce((width, column) => width + columnWidth(column), 0),
-          '--temperature-selector-width': `${COLUMN_WIDTH.selector}px`, '--temperature-scan-width': `${COLUMN_WIDTH.scan}px` } as CSSProperties}>
-        <colgroup><col style={{ width: COLUMN_WIDTH.selector }} />
+        style={{ width: SELECTOR_WIDTH + grid.order.reduce((width, column) => width + columnWidth(column), 0),
+          '--temperature-selector-width': `${SELECTOR_WIDTH}px`, '--temperature-scan-width': `${columnWidth(1)}px` } as CSSProperties}>
+        <colgroup><col style={{ width: SELECTOR_WIDTH }} />
           {grid.order.map(column => <col key={column} style={{ width: columnWidth(column) }} />)}</colgroup>
         <thead ref={rowWindow.header}>
         <tr className="temperature-sample-groups"><th colSpan={1 + grid.order.filter(column => column <= 2).length} className="temperature-index-band" />{groups.map((group, index) => <th key={index} colSpan={group.size}>{group.label}</th>)}</tr>
         <tr><th className="temperature-row-selector"><input ref={selectAll} type="checkbox" aria-label="Select All Rows" disabled={disabled || !total}
           checked={Boolean(total) && selectedRows.size === total}
           onChange={event => { closeMenu(); grid.selectRows(event.target.checked ? Array.from({ length: total }, (_, index) => selection.start_row + index) : []); }} /></th>
-          {grid.order.map(column => <th key={column} className={headerClass(column)}>
+          {grid.order.map(column => <th key={column} className={headerClass(column)}
+            ref={element => { if (element) columnHeaders.current.set(column, element); else columnHeaders.current.delete(column); }}
+            tabIndex={grid.movable(column) && !disabled ? 0 : undefined}
+            aria-label={column > 2 ? columnsById.get(column)!.label : undefined}
+            aria-haspopup={grid.movable(column) ? 'dialog' : undefined}
+            aria-expanded={grid.movable(column) ? menu?.column === column : undefined}
+            onClick={event => { if (!disabled && !grid.protectedColumn(column) && !(event.target as HTMLElement).closest('input')) grid.selectColumns([column]); }}
+            onContextMenu={event => openContextMenu(column, event)}
+            onKeyDown={event => { if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) { event.preventDefault(); openMenu(column, event.currentTarget); } }}>
             <div className="temperature-source-column">{column > 2 && <input type="checkbox" aria-label={`Select Column ${columnLetter(column)}`}
               disabled={disabled || grid.protectedColumn(column)} checked={grid.selectedColumns.includes(column)}
               onChange={event => { closeMenu(); grid.selectColumns(event.target.checked ? [...grid.selectedColumns, column] : grid.selectedColumns.filter(item => item !== column)); }} />}
-              {grid.movable(column) ? <button type="button" disabled={disabled} aria-label={`Column ${columnLetter(column)} Actions`}
-                aria-haspopup="dialog" aria-expanded={menu?.column === column} onClick={event => openMenu(column, event.currentTarget)}>{columnLetter(column)}<UiIcon name="chevron-down" /></button>
-                : <span>{columnLetter(column)}</span>}</div>
-            <span className="temperature-source-title" title={String(table.rows[selection.header_row - 1]?.[column - 1] ?? '')}>
-              {headerParts(column) ? <>{headerParts(column)![1]}<br />{headerParts(column)![2]} {headerParts(column)![3]}</> : String(table.rows[selection.header_row - 1]?.[column - 1] ?? '')}</span>
+              <span>{columnLetter(column)}</span></div>
+            <span className="temperature-source-title" title={columnsById.get(column)!.original}>
+              {columnsById.get(column)!.heading.map((line, index) => <span key={index}>{line}</span>)}</span>
             {role(column) && <span className="temperature-source-role" title={role(column)}>{role(column)}</span>}</th>)}</tr></thead>
         <tbody>
           {rowWindow.topPadding > 0 && <tr aria-hidden="true" className="temperature-row-spacer"><td colSpan={grid.order.length + 1} style={{ height: rowWindow.topPadding }} /></tr>}
@@ -119,8 +134,9 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
             onChange={event => { closeMenu(); grid.toggleRow(row, event.target.checked,
               'shiftKey' in event.nativeEvent && event.nativeEvent.shiftKey === true); }}
             onKeyDown={event => { if (event.key === ' ' && event.shiftKey) { event.preventDefault(); closeMenu(); grid.toggleRow(row, !selectedRows.has(row), true); } }} /></td>
-          {grid.order.map(column => <td key={column} className={headerClass(column)} title={String(table.rows[row - 1]?.[column - 1] ?? '')}>
-            {String(table.rows[row - 1]?.[column - 1] ?? '')}</td>)}</tr>)}
+          {grid.order.map(column => <td key={column} className={headerClass(column)} title={String(table.rows[row - 1]?.[column - 1] ?? '')}
+            onContextMenu={event => { setActiveRow(row); openContextMenu(column, event); }}>
+            {formatSourceReading(table.rows[row - 1]?.[column - 1] ?? null, columnsById.get(column)!.kind)}</td>)}</tr>)}
           {rowWindow.bottomPadding > 0 && <tr aria-hidden="true" className="temperature-row-spacer"><td colSpan={grid.order.length + 1} style={{ height: rowWindow.bottomPadding }} /></tr>}
         </tbody>
       </table></div>
@@ -131,7 +147,7 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
         </div></div>
     <details className="temperature-row-range"><summary>Select Rows By Range</summary><label>Rows To Select<input title="Original source worksheet row numbers" value={range} disabled={disabled} onChange={event => setRange(event.target.value)} placeholder="45-91, 120" /></label>
       <button type="button" disabled={disabled || !range.trim()} onClick={selectRange}>Select Rows</button>{rangeError && <p role="alert">{rangeError}</p>}</details>
-    {menu && <ColumnActions anchor={menu} columnLabel={columns.find(column => column.id === menu.column)!.label}
+    {menu && <ColumnActions key={menu.column} anchor={menu} columnLabel={columns.find(column => column.id === menu.column)!.label}
       columns={grid.order.filter(column => grid.movable(column) && !grid.selectedColumns.includes(column)).map(column => columns.find(item => item.id === column)!)}
       selectedCount={grid.selectedColumns.length} disabled={disabled} canExclude={grid.canExclude} canRestore={grid.canRestore}
       onExclude={() => runAction(grid.exclude)} onRestore={() => runAction(grid.restore)} onMove={destination => runAction(() => grid.moveBefore(destination))} onClose={closeMenu} />}

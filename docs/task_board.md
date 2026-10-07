@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
     "summary": "Auto-group sample thermocouples and simplify exception-only channel adjustments",
@@ -35,89 +35,17 @@
     "risk_reasons": [],
     "activation_head": "83038fb2502d2d5d065737690455d1144cbac704",
     "started_at": "2026-10-06T22:53:34.408273Z",
-    "updated_at": "2026-10-07T11:29:27.919100Z",
+    "updated_at": "2026-10-07T12:30:43.858138Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requested context-menu column operations, unit-filtered role selectors, compact unit-free headers without per-TC statistics, display-only rounding, and content-sized columns.",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
-      "subject": "d90e0d059006d6e91144f2951267d7fc37d0a456",
-      "summary": "Unified continuous temperature editor with compact fixed scan/time indexes and independent whole-row highlighting.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/application/temperature_channel_layout.py",
-        "backend/application/temperature_data_preparation.py",
-        "backend/application/tools_temperature_service.py",
-        "backend/domain/temperature_data.py",
-        "backend/domain/temperature_rise.py",
-        "backend/infrastructure/office/temperature_rise_report_sheet.py",
-        "backend/infrastructure/office/temperature_workbook_gateway.py",
-        "design-qa.md",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/api/temperature.ts",
-        "frontend/src/features/temperature/ChannelMapping.tsx",
-        "frontend/src/features/temperature/ColumnActions.tsx",
-        "frontend/src/features/temperature/DataPreview.test.tsx",
-        "frontend/src/features/temperature/DataPreview.tsx",
-        "frontend/src/features/temperature/DataRegionCorrection.tsx",
-        "frontend/src/features/temperature/sourceColumns.ts",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useDataGridEditing.ts",
-        "frontend/src/features/temperature/useSourceRowWindow.ts",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_data_preparation.py",
-        "tests/unit/test_temperature_rise_calculations.py",
-        "tests/unit/test_temperature_workbook_gateway.py"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "name": "Final affected frontend QA",
-          "result": "35 editor/page/API/TopBar tests passed; TypeScript and Vite build passed sequentially after final source/test edits. Page fixtures now retain the same workflow assertions using A scan and B time."
-        },
-        {
-          "status": "passed",
-          "name": "Isolated browser QA",
-          "result": "Disposable 19999-data-row CSV: Original Row and A/B column controls absent; A/B positions fixed after horizontal scroll; compact column widths verified; cell clicks highlight without batch selection; Shift 2 to 10 selects nine rows; exclude and Undo verified; 543px page width contained; logs zero; viewport reset and QA tab closed."
-        },
-        {
-          "status": "passed",
-          "name": "Scope and source preservation",
-          "result": "git diff --check passed; this revision does not change backend, fitting, workbook export or original source data; user draft tab untouched."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "execution": "Same-agent TDD RED/GREEN: three new index/highlight regressions and updated excluded-row assertion failed before implementation; final 14 grid cases pass."
-        },
-        "reviewer": {
-          "status": "passed",
-          "execution": "Separate same-agent Standards and Spec exact-diff passes; zero outstanding findings; not independent-agent review."
-        },
-        "qa": {
-          "status": "passed",
-          "execution": "Same-agent final affected test/build and isolated browser QA."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "branch": "master",
-        "subject": "d90e0d059006d6e91144f2951267d7fc37d0a456",
-        "publication": "Local only; final Close not requested."
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_AUTO_DATA_REGION_20261005",

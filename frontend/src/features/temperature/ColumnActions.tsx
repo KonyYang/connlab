@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { columnLetter } from './sourceColumns';
 
-export type ColumnMenuAnchor = { column: number; left: number; top: number; trigger: HTMLButtonElement };
+export type ColumnMenuAnchor = { column: number; left: number; top: number; trigger: HTMLElement };
 
 export function ColumnActions({ anchor, columnLabel, columns, selectedCount, disabled, canExclude, canRestore, onExclude, onRestore, onMove, onClose }: {
   columnLabel: string;
@@ -34,7 +35,7 @@ export function ColumnActions({ anchor, columnLabel, columns, selectedCount, dis
       window.removeEventListener('resize', close); window.removeEventListener('scroll', scroll, true);
     };
   }, [anchor, onClose]);
-  return createPortal(<div ref={root} role="dialog" aria-label={anchor.trigger.getAttribute('aria-label') ?? 'Column Actions'}
+  return createPortal(<div ref={root} role="dialog" aria-label={`Column ${columnLetter(anchor.column)} Actions`}
     className="temperature-column-menu" style={{ left: anchor.left, top: anchor.top }}>
     <div className="temperature-column-menu-heading"><span title={columnLabel}>{selectedCount === 1 ? columnLabel : `${selectedCount} Columns Selected`}</span>
       <button type="button" onClick={() => { onClose(); anchor.trigger.focus(); }} aria-label="Close Column Actions">Close</button></div>

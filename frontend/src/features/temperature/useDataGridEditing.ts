@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChannelLayout, DataSelection, WorkbookTable } from '../../api/temperature';
-import { isTemperatureColumn, sourceColumns } from './sourceColumns';
+import { isTemperatureColumn, sourceColumnKind, sourceColumns } from './sourceColumns';
 
 type Snapshot = { order: number[]; excludedColumns: number[]; removedTemperatures: number[];
   temperatureColumns: number[]; excludedRows: number[] };
@@ -27,7 +27,7 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
     setRemovedTemperatures(old => old.filter(column => column !== selection.ambient_column && column !== selection.current_column));
   }, [selection.ambient_column, selection.current_column, selection.thermocouples_per_sample]);
   const protectedColumn = (column: number) => column <= 2 || column === selection.ambient_column || column === selection.current_column
-    || Boolean(layout?.current_columns.includes(column));
+    || sourceColumnKind(table, selection, column, layout) === 'current';
   const movable = (column: number) => isTemperatureColumn(table, selection, column, layout);
   const snapshot = (): Snapshot => ({ order, excludedColumns, removedTemperatures,
     temperatureColumns: selection.temperature_columns, excludedRows: selection.excluded_rows });

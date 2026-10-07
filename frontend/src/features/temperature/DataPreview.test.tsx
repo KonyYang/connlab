@@ -27,6 +27,7 @@ function Editor({ withParameters = false }: { withParameters?: boolean }) {
     <output aria-label="Prepared Selection">{JSON.stringify(selection)}</output></>;
 }
 function selected() { return JSON.parse(screen.getByLabelText('Prepared Selection').textContent!) as DataSelection; }
+function openColumn(letter: string) { fireEvent.contextMenu(screen.getByLabelText(`Select Column ${letter}`).closest('th')!); }
 
 function LongEditor({ end = 900 }: { end?: number }) {
   const [selection, setSelection] = useState({ ...initial, start_row: 774, end_row: end });
@@ -112,6 +113,51 @@ describe('continuous source row selection', () => {
 });
 
 describe('unified scanner data editing', () => {
+  it('shows compact unit-free headers and rounded readings while retaining the exact source values', () => {
+    const source = structuredClone(table);
+    source.rows[0][6] = 'Ambient (C)';
+    source.rows[0][7] = 'High Power (VDC)';
+    source.rows[1][2] = 24.987654;
+    source.rows[1][3] = '-2.34567';
+    render(<DataPreview table={source} selection={initial} layout={layout} issues={[]} disabled={false} onChange={() => undefined} />);
+    const row = screen.getByLabelText('Select Row 2').closest('tr')!;
+    expect(within(row).getByRole('cell', { name: '25.0', exact: true })).toBeTruthy();
+    expect(within(row).getByRole('cell', { name: '-2.3', exact: true })).toBeTruthy();
+    expect(within(row).getByRole('cell', { name: '0.01', exact: true }).title).toBe('0.009999');
+    expect(within(row).getByRole('cell', { name: '3.00', exact: true })).toBeTruthy();
+    const header = screen.getByLabelText('Select Column C').closest('th')!;
+    expect(header.textContent).not.toContain('(C)');
+    expect(header.textContent).not.toContain('Sample 1 / TC 1');
+    expect(screen.getByLabelText('Select Column H').closest('th')?.textContent).toContain('High Power');
+    expect(screen.getByLabelText('Select Column H').closest('th')?.textContent).not.toContain('VDC');
+    expect(source.rows[1][2]).toBe(24.987654);
+    expect(source.rows[1][3]).toBe('-2.34567');
+    expect(source.rows[1][7]).toBe(0.009999);
+  });
+
+  it('opens column operations by right-click without dropdown buttons and preserves a selected block', async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    expect(screen.queryByRole('button', { name: 'Column C Actions' })).toBeNull();
+    const header = screen.getByLabelText('Select Column C').closest('th')!;
+    fireEvent.click(header);
+    expect((screen.getByLabelText('Select Column C') as HTMLInputElement).checked).toBe(true);
+    await user.click(screen.getByLabelText('Select Column D'));
+    fireEvent.contextMenu(header, { clientX: 200, clientY: 120 });
+    const menu = screen.getByRole('dialog', { name: 'Column C Actions' });
+    expect(within(menu).getByText('2 Columns Selected')).toBeTruthy();
+    await user.click(within(menu).getByRole('button', { name: 'Exclude Columns' }));
+    expect(selected().temperature_columns).toEqual([5, 6]);
+    header.focus();
+    fireEvent.keyDown(header, { key: 'F10', shiftKey: true });
+    expect(screen.getByRole('dialog', { name: 'Column C Actions' })).toBeTruthy();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(header);
+    fireEvent.contextMenu(screen.getByRole('cell', { name: '24.1', exact: true }), { clientX: 180, clientY: 220 });
+    expect(screen.getByRole('dialog', { name: 'Column C Actions' })).toBeTruthy();
+  });
+
   it('keeps A/B as index-only columns without selection or move controls and omits Original Row', async () => {
     const user = userEvent.setup();
     render(<Editor />);
@@ -122,7 +168,7 @@ describe('unified scanner data editing', () => {
     expect(screen.queryByRole('button', { name: 'Column B Actions' })).toBeNull();
     expect(screen.getByRole('columnheader', { name: 'A Scan' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'B Time' })).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'Column I Actions' }));
+    openColumn('I');
     const destination = within(screen.getByRole('dialog')).getByLabelText('Move Before');
     expect(within(destination).queryByRole('option', { name: 'A — Scan' })).toBeNull();
     expect(within(destination).queryByRole('option', { name: 'B — Time' })).toBeNull();
@@ -160,8 +206,8 @@ describe('unified scanner data editing', () => {
     expect(within(grid).getByText('Time')).toBeTruthy();
     expect(within(grid).getByText('Sample 1')).toBeTruthy();
     expect(within(grid).getByText('Sample 2')).toBeTruthy();
-    expect(within(grid).getByText('Retained / Not Plotted · Stable')).toBeTruthy();
-    expect(within(grid).getByText('0.009999')).toBeTruthy();
+    expect(within(grid).getByText('Retained')).toBeTruthy();
+    expect(within(grid).getByText('0.01').title).toBe('0.009999');
     expect(screen.queryByText('All Source Columns')).toBeNull();
     expect(screen.queryByRole('button', { name: /Replace|Adjust Channels|View Channels/ })).toBeNull();
   });
@@ -174,7 +220,7 @@ describe('unified scanner data editing', () => {
     expect(selected().temperature_columns).toEqual([3, 5, 6]);
     expect(screen.getByRole('alert').textContent).toContain('Incomplete sample group');
     expect(screen.queryByText('Sample 2 / TC 1')).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Column I Actions' }));
+    openColumn('I');
     const menu = screen.getByRole('dialog', { name: 'Column I Actions' });
     await user.selectOptions(within(menu).getByLabelText('Move Before'), '4');
     await user.click(within(menu).getByRole('button', { name: 'Move' }));
@@ -196,7 +242,7 @@ describe('unified scanner data editing', () => {
     expect((screen.getByLabelText('Select Column H') as HTMLInputElement).disabled).toBe(true);
     await user.click(screen.getByLabelText('Select Column E'));
     await user.click(screen.getByLabelText('Select Column F'));
-    await user.click(screen.getByRole('button', { name: 'Column E Actions' }));
+    openColumn('E');
     const menu = screen.getByRole('dialog', { name: 'Column E Actions' });
     expect(within(menu).getByText('2 Columns Selected')).toBeTruthy();
     await user.selectOptions(within(menu).getByLabelText('Move Before'), '3');
@@ -222,10 +268,10 @@ describe('unified scanner data editing', () => {
     await user.click(screen.getByLabelText('Select Row 2'));
     await user.click(screen.getByRole('button', { name: 'Restore' }));
     expect(selected().excluded_rows).toEqual([]);
-    await user.click(screen.getByRole('button', { name: 'Column C Actions' }));
+    openColumn('C');
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Column C Actions' }));
+    expect(document.activeElement).toBe(screen.getByLabelText('Select Column C').closest('th'));
   });
 
   it('selects explicit row ranges without deleting them, rejects out-of-region ranges, and undoes exclusion', async () => {
@@ -253,7 +299,7 @@ describe('unified scanner data editing', () => {
     await user.selectOptions(screen.getByLabelText('Ambient Role'), '4');
     expect((screen.getByLabelText('Select Column D') as HTMLInputElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: 'Undo' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(within(screen.getByRole('columnheader', { name: 'Select Column D D 102 1_B (C) Ambient' })).getByText('Ambient')).toBeTruthy();
+    expect(within(screen.getByLabelText('Select Column D').closest('th')!).getByText('Ambient')).toBeTruthy();
     expect(screen.queryByText('Excluded')).toBeNull();
     expect(selected().ambient_column).toBe(4);
   });

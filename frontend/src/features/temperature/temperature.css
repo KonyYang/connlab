@@ -67,10 +67,11 @@
 .temperature-source-table thead tr:nth-child(2) th { top: 30px; vertical-align: top; }
 .temperature-source-table .temperature-sample-groups th { height: 30px; padding: 0 10px; box-sizing: border-box; text-align: center; color: var(--color-primary-strong); background: var(--color-action-secondary-bg); }
 .temperature-source-column { display: flex; align-items: center; gap: 4px; min-height: 28px; }
-.temperature-source-column button { display: inline-flex; align-items: center; gap: 3px; padding: 3px 5px; font-size: 12px; border-radius: 5px; }
-.temperature-source-column button .ui-icon { width: 12px; height: 12px; }
+.temperature-source-table th[tabindex] { cursor: pointer; }
+.temperature-source-table th[tabindex]:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 .temperature-source-title, .temperature-source-role { display: block; margin-top: 4px; }
 .temperature-source-title { max-width: 200px; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
+.temperature-source-title > span { display: block; }
 .temperature-source-role { font-size: 11px; color: var(--color-ink-muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; }
 .temperature-source-table th.is-selected-column, .temperature-source-table td.is-selected-column { background: var(--color-action-secondary-hover); }
 .temperature-source-table .is-excluded-column, .temperature-source-table .is-excluded-row > * { background: var(--color-surface-muted); color: var(--color-ink-muted); }

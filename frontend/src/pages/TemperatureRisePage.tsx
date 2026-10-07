@@ -1,9 +1,10 @@
-import { useRef, type ReactElement } from 'react';
+import { useMemo, useRef, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
 import type { Coefficients } from '../api/temperature';
 import { UiIcon } from '../components/common/UiIcon';
 import { useTopBarActionsRoot } from '../components/layout/TopBarActionsContext';
-import { incompleteSampleGroups, sourceColumns } from '../features/temperature/sourceColumns';
+import { incompleteSampleGroups } from '../features/temperature/sourceColumns';
+import { sourceColumnOptions } from '../features/temperature/sourcePresentation';
 import { DataPreview } from '../features/temperature/DataPreview';
 import { DataRegionCorrection } from '../features/temperature/DataRegionCorrection';
 import { RiseChart, DeratingChart } from '../features/temperature/TemperatureCharts';
@@ -16,7 +17,13 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
   const tool = useTemperatureTool();
   const s = tool.state;
   const busy = Boolean(s.busy);
-  const columns = s.table && s.selection ? sourceColumns(s.table, s.selection.header_row) : [];
+  const columns = useMemo(() => s.table && s.selection ? sourceColumnOptions(s.table, s.selection, s.channel_layout) : [],
+    [s.table, s.selection?.header_row, s.selection?.ambient_column, s.selection?.current_column, s.selection?.temperature_columns, s.channel_layout]);
+  const ambientValid = columns.some(column => column.id === s.selection?.ambient_column && column.kind === 'temperature');
+  const currentValid = columns.some(column => column.id === s.selection?.current_column && column.kind === 'current');
+  const roleIssue = s.selection && (!ambientValid || !currentValid)
+    ? `Choose ${[!ambientValid && 'Ambient Column (temperature)', !currentValid && 'Current Column (current)'].filter(Boolean).join(' and ')} to match the source units.`
+    : null;
   const backButton = <button type="button" className="temperature-tools-return" onClick={onBack}
     aria-label="Back To Tools" title="Back To Tools"><UiIcon name="tools" /></button>;
   const headerActions = <div className="temperature-header-actions">
@@ -39,11 +46,12 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
       {s.table && <div className="temperature-import-fields">
           <label>Sheet Name<select value={s.table.sheet_name} disabled={busy} onChange={event => tool.load(s.file, event.target.value)}>{s.table.sheet_names.map(name => <option key={name}>{name}</option>)}</select></label>
           {s.selection && <>
-            <label>Ambient Column<select value={s.selection.ambient_column} disabled={busy} onChange={event => tool.changeData({ ambient_column: Number(event.target.value) })}>{columns.map(col => <option key={col.id} value={col.id}>{col.label}</option>)}</select></label>
-            <label>Current Column<select value={s.selection.current_column} disabled={busy} onChange={event => tool.changeData({ current_column: Number(event.target.value) })}>{columns.map(col => <option key={col.id} value={col.id}>{col.label}</option>)}</select></label>
+            <label>Ambient Column<select value={ambientValid ? s.selection.ambient_column : ''} disabled={busy} onChange={event => tool.changeData({ ambient_column: Number(event.target.value) })}>{!ambientValid && <option value="" disabled>Choose Ambient Column</option>}{columns.filter(col => col.kind === 'temperature').map(col => <option key={col.id} value={col.id} title={col.original}>{col.label}</option>)}</select></label>
+            <label>Current Column<select value={currentValid ? s.selection.current_column : ''} disabled={busy} onChange={event => tool.changeData({ current_column: Number(event.target.value) })}>{!currentValid && <option value="" disabled>Choose Current Column</option>}{columns.filter(col => col.kind === 'current').map(col => <option key={col.id} value={col.id} title={col.original}>{col.label}</option>)}</select></label>
             <label className="temperature-sample-count">Thermocouples/Sample<input type="number" min="1" max="254" value={s.selection.thermocouples_per_sample} disabled={busy} onChange={event => tool.changeData({ thermocouples_per_sample: Number(event.target.value) })} /></label>
           </>}
       </div>}
+      {roleIssue && <p role="alert" className="temperature-error">{roleIssue}</p>}
       {s.table && s.region_issue && <DataRegionCorrection table={s.table} message={s.region_issue}
         disabled={busy} onApply={tool.correctRegion} />}
       {s.table && s.selection && <>
@@ -55,7 +63,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
           {!s.review?.issues.some(issue => issue.severity === 'error') && <label className="temperature-check"><input type="checkbox" checked={s.acknowledged} disabled={busy} onChange={event => tool.acknowledge(event.target.checked)} />Keep Flagged Rows</label>}
         </section>}
         <div className="temperature-confirm"><span className={s.confirmed ? 'temperature-success' : 'temperature-hint'} role="status">{s.confirmed ? 'Data Confirmed' : ''}</span>
-          <button type="button" className="primary-action" disabled={busy || s.confirmed || incompleteSampleGroups(s.selection, s.channel_layout)} onClick={() => void tool.confirm()}>Confirm Data</button></div>
+          <button type="button" className="primary-action" disabled={busy || s.confirmed || Boolean(roleIssue) || incompleteSampleGroups(s.selection, s.channel_layout)} onClick={() => void tool.confirm()}>Confirm Data</button></div>
       </>}
     </section>}
     <div className="temperature-analysis-grid">

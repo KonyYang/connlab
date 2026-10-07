@@ -43,6 +43,45 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(api.calculateTemperatureCurrent).mockResolvedValue({ current: 30 });
   });
 
+  it('filters ambient/current choices by scanner units without rounding the submitted data', async () => {
+    const user = userEvent.setup();
+    const source = structuredClone(imported);
+    source.table.rows[0] = ['Scan', 'Time', 'TC1 (C)', 'TC2 (C)', 'Ambient (C)', 'High Power (VDC)', 'Spare (C)', 'Aux (VDC)', 'Status'];
+    source.table.rows[1] = [1, '18:00', 24.987654, 25.123456, 20.625, 17.596362, 26, 3, 'OK'];
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(source);
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    const ambient = screen.getByLabelText('Ambient Column');
+    const current = screen.getByLabelText('Current Column');
+    expect(within(ambient).getAllByRole('option').map(option => (option as HTMLOptionElement).value)).toEqual(['3', '4', '5', '7']);
+    expect(within(current).getAllByRole('option').map(option => (option as HTMLOptionElement).value)).toEqual(['6', '8']);
+    expect(within(ambient).getByRole('option', { name: 'E — Ambient' })).toBeTruthy();
+    expect(within(current).getByRole('option', { name: 'F — High Power' })).toBeTruthy();
+    expect((screen.getByLabelText('Select Column H') as HTMLInputElement).disabled).toBe(true);
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    expect(api.prepareTemperatureData).toHaveBeenCalledWith(expect.objectContaining({ table: expect.objectContaining({ rows: source.table.rows }) }));
+    await user.selectOptions(current, '8');
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.current_column).toBe(8);
+  });
+
+  it('requires correcting a suggested current role that conflicts with an explicit temperature unit', async () => {
+    const user = userEvent.setup();
+    const source = structuredClone(imported);
+    source.table.rows[0] = ['Scan', 'Time', 'TC1 (C)', 'TC2 (C)', 'Ambient (C)', 'Current (VDC)', 'Spare (C)'];
+    source.selection.current_column = 4;
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(source);
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByLabelText('Current Column') as HTMLSelectElement).value).toBe('');
+    expect(screen.getByRole('alert').textContent).toContain('Current Column');
+    await user.selectOptions(screen.getByLabelText('Current Column'), '6');
+    expect(screen.queryByRole('alert')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.current_column).toBe(6);
+  });
+
   it('loads initial data through a keyboard-accessible button and keeps it when selection is cancelled', async () => {
     const user = userEvent.setup();
     render(<TemperatureRisePage onBack={() => undefined} />);
@@ -101,7 +140,7 @@ describe('temperature preparation and calculation workflow', () => {
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(true);
     expect(api.prepareTemperatureData).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Column G Actions' }));
+    fireEvent.contextMenu(screen.getByLabelText('Select Column G').closest('th')!);
     await user.selectOptions(screen.getByLabelText('Move Before'), '4');
     await user.click(screen.getByRole('button', { name: 'Move' }));
     expect(screen.getByText('Confirm the current column used for this curve.')).toBeTruthy();
@@ -235,7 +274,7 @@ describe('temperature preparation and calculation workflow', () => {
     expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
     await user.click(screen.getByLabelText('Select Column D'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
-    await user.click(screen.getByRole('button', { name: 'Column G Actions' }));
+    fireEvent.contextMenu(screen.getByLabelText('Select Column G').closest('th')!);
     await user.selectOptions(screen.getByLabelText('Move Before'), '4');
     await user.click(screen.getByRole('button', { name: 'Move' }));
     await user.click(screen.getByLabelText('Select Row 2'));
@@ -320,7 +359,7 @@ describe('temperature preparation and calculation workflow', () => {
     const user = userEvent.setup();
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
-    await user.click(screen.getByRole('button', { name: 'Column D Actions' }));
+    fireEvent.contextMenu(screen.getByLabelText('Select Column D').closest('th')!);
     await user.selectOptions(screen.getByLabelText('Move Before'), '3');
     await user.click(screen.getByRole('button', { name: 'Move' }));
     await user.click(screen.getByLabelText('Select Column D'));
