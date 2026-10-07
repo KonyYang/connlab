@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
     "summary": "Auto-group sample thermocouples and simplify exception-only channel adjustments",
@@ -35,17 +35,89 @@
     "risk_reasons": [],
     "activation_head": "83038fb2502d2d5d065737690455d1144cbac704",
     "started_at": "2026-10-06T22:53:34.408273Z",
-    "updated_at": "2026-10-07T05:02:45.380224Z",
+    "updated_at": "2026-10-07T05:23:38.916396Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User selected mock 2 and requested unified raw-data row/column editing and header move menu; remove replacement and separate mapping panels.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
+      "subject": "baaf7249608d7393474949037a94eceda9c86704",
+      "summary": "Unified raw-data row/column editing using selected mock 2, preserving automatic sample/current suggestions and corrected macro-fit behavior.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/application/temperature_channel_layout.py",
+        "backend/application/temperature_data_preparation.py",
+        "backend/application/tools_temperature_service.py",
+        "backend/domain/temperature_data.py",
+        "backend/domain/temperature_rise.py",
+        "backend/infrastructure/office/temperature_rise_report_sheet.py",
+        "backend/infrastructure/office/temperature_workbook_gateway.py",
+        "design-qa.md",
+        "docs/temperature_rise_tool.md",
+        "frontend/src/api/temperature.ts",
+        "frontend/src/features/temperature/ChannelMapping.tsx",
+        "frontend/src/features/temperature/ColumnActions.tsx",
+        "frontend/src/features/temperature/DataPreview.test.tsx",
+        "frontend/src/features/temperature/DataPreview.tsx",
+        "frontend/src/features/temperature/DataRegionCorrection.tsx",
+        "frontend/src/features/temperature/sourceColumns.ts",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useDataGridEditing.ts",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx",
+        "tests/integration/test_tools_temperature_api.py",
+        "tests/unit/test_temperature_data_preparation.py",
+        "tests/unit/test_temperature_rise_calculations.py",
+        "tests/unit/test_temperature_workbook_gateway.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "name": "Final affected frontend QA",
+          "result": "27 tests across grid/page/API/TopBar; TypeScript and Vite production build passed on final bytes."
+        },
+        {
+          "status": "passed",
+          "name": "Browser and design QA",
+          "result": "Real CSV plus disposable spare-column fixture; desktop/856/543 layouts, reversible edits, confirmation and measured zero baseline; zero console errors/warnings; design-qa.md passed."
+        },
+        {
+          "status": "passed",
+          "name": "Diff and source preservation",
+          "result": "git diff --check passed; real CSV SHA256 unchanged; user tab not reimported or edited. Backend unchanged in this revision; prior 82-test evidence retained in docs/temperature_rise_tool.md, not rerun."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "execution": "Same-agent implementation and TDD RED/GREEN."
+        },
+        "reviewer": {
+          "status": "passed",
+          "execution": "Separate same-agent Standards and Spec passes; zero outstanding findings; not independent-agent review.",
+          "evidence": "docs/temperature_rise_tool.md and design-qa.md"
+        },
+        "qa": {
+          "status": "passed",
+          "execution": "Same-agent final affected QA and isolated browser verification after final code/test bytes."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "branch": "master",
+        "subject": "baaf7249608d7393474949037a94eceda9c86704",
+        "publication": "Not requested; local commit only."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_AUTO_DATA_REGION_20261005",
