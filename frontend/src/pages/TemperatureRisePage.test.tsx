@@ -56,7 +56,7 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(api.analyzeTemperatureData).mockReturnValueOnce(new Promise(done => { finishRise = done; }));
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
-    fireEvent.change(screen.getByLabelText('Max Working Temp (°C)'), { target: { value: '125' } });
+    fireEvent.change(screen.getByLabelText('Max work Temp (°C)'), { target: { value: '125' } });
     fireEvent.change(screen.getByLabelText('Step (°C)'), { target: { value: '5' } });
     fireEvent.change(screen.getByLabelText('Ambient Point (°C)'), { target: { value: '80' } });
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
@@ -88,7 +88,7 @@ describe('temperature preparation and calculation workflow', () => {
     expect(await screen.findByRole('img', { name: 'Temperature Rise vs Current' })).toBeTruthy();
     expect(screen.getByText(/Avg Of Max ΔT = .*2\.000000/)).toBeTruthy();
     expect(api.generateTemperatureDerating).not.toHaveBeenCalled();
-    expect((screen.getByRole('button', { name: 'Generate Derating' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Derating' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it.each(['prepare', 'rise', 'derating'] as const)('stops automatic generation on a %s failure and allows a focused retry', async stage => {
@@ -104,7 +104,7 @@ describe('temperature preparation and calculation workflow', () => {
     if (stage !== 'derating') expect(api.generateTemperatureDerating).not.toHaveBeenCalled();
     if (stage === 'prepare') expect(api.analyzeTemperatureData).not.toHaveBeenCalled();
     if (stage === 'derating') expect(screen.getByRole('img', { name: 'Temperature Rise vs Current' })).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: stage === 'prepare' ? 'Confirm Data' : stage === 'rise' ? 'Generate T-riseChart' : 'Generate Derating' }));
+    await user.click(screen.getByRole('button', { name: stage === 'prepare' ? 'Confirm Data' : stage === 'rise' ? 'Generate T-riseChart' : 'Derating' }));
     expect(await screen.findByRole('img', { name: stage === 'derating' ? 'Current vs Ambient Temperature' : 'Temperature Rise vs Current' })).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
   });
@@ -171,7 +171,7 @@ describe('temperature preparation and calculation workflow', () => {
       });
       expect(screen.queryByRole('button', { name: 'Get Coefficients' })).toBeNull();
       expect((screen.getByRole('button', { name: 'Calculate Current' }) as HTMLButtonElement).disabled).toBe(false);
-      expect((screen.getByRole('button', { name: 'Generate Derating' }) as HTMLButtonElement).disabled).toBe(false);
+      expect((screen.getByRole('button', { name: 'Derating' }) as HTMLButtonElement).disabled).toBe(false);
       await user.click(screen.getByRole('button', { name: 'Download Excel' }));
       await screen.findByText('automatic.xlsx');
       expect(api.downloadTemperatureWorkbook).toHaveBeenCalledWith(expect.objectContaining({
@@ -636,10 +636,10 @@ describe('temperature preparation and calculation workflow', () => {
       await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
       await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
       await user.click(screen.getByRole('button', { name: 'Calculate Current' }));
-      fireEvent.change(screen.getByLabelText('Max Working Temp (°C)'), { target: { value: '125' } });
+      fireEvent.change(screen.getByLabelText('Max work Temp (°C)'), { target: { value: '125' } });
       expect(screen.queryByRole('img', { name: 'Current vs Ambient Temperature' })).toBeNull();
       expect(screen.getByLabelText('Calculated Current').textContent).toContain('30.00');
-      await user.click(screen.getByRole('button', { name: 'Generate Derating' }));
+      await user.click(screen.getByRole('button', { name: 'Derating' }));
       expect(api.generateTemperatureDerating).toHaveBeenLastCalledWith(coefficients, {
         max_temperature: 125, step: 2.5, ambient_point: 75,
       });
@@ -659,7 +659,7 @@ describe('temperature preparation and calculation workflow', () => {
       await user.click(screen.getByLabelText('Zero Intercept'));
       expect(screen.queryByRole('img', { name: 'Temperature Rise vs Current' })).toBeNull();
       expect(screen.queryByLabelText('Calculated Current')).toBeNull();
-      expect((screen.getByRole('button', { name: 'Generate Derating' }) as HTMLButtonElement).disabled).toBe(true);
+      expect((screen.getByRole('button', { name: 'Derating' }) as HTMLButtonElement).disabled).toBe(true);
     } finally { click.mockRestore(); vi.unstubAllGlobals(); }
   });
 });
