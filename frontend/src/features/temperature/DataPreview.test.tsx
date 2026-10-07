@@ -50,19 +50,19 @@ describe('continuous source row selection', () => {
     expect(selected().excluded_rows[0]).toBe(774);
     expect(selected().excluded_rows.at(-1)).toBe(800);
     fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
-    expect(screen.getByText('774 (Excluded)')).toBeTruthy();
+    expect(screen.getByLabelText('Select Row 774').closest('tr')?.getAttribute('aria-label')).toContain('Excluded');
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     expect(selected().excluded_rows).toEqual([]);
     expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
   });
 
-  it('supports reverse Shift selection by clicking original row numbers and Shift deselection', () => {
+  it('supports reverse Shift checkbox selection and Shift deselection', () => {
     render(<LongEditor />);
     const viewport = screen.getByRole('region', { name: 'Scanner Data Preview' });
     fireEvent.scroll(viewport, { target: { scrollTop: 1000 } });
-    fireEvent.click(screen.getByRole('rowheader', { name: '800' }));
+    fireEvent.click(screen.getByLabelText('Select Row 800'));
     fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
-    fireEvent.click(screen.getByRole('rowheader', { name: '774' }), { shiftKey: true });
+    fireEvent.click(screen.getByLabelText('Select Row 774'), { shiftKey: true });
     expect(screen.getByText('27 Selected')).toBeTruthy();
     fireEvent.click(screen.getByLabelText('Select Row 774'));
     fireEvent.scroll(viewport, { target: { scrollTop: 1000 } });
@@ -112,6 +112,47 @@ describe('continuous source row selection', () => {
 });
 
 describe('unified scanner data editing', () => {
+  it('keeps A/B as index-only columns without selection or move controls and omits Original Row', async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    expect(screen.queryByRole('columnheader', { name: 'Original Row' })).toBeNull();
+    expect(screen.queryByLabelText('Select Column A')).toBeNull();
+    expect(screen.queryByLabelText('Select Column B')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Column A Actions' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Column B Actions' })).toBeNull();
+    expect(screen.getByRole('columnheader', { name: 'A Scan' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'B Time' })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Column I Actions' }));
+    const destination = within(screen.getByRole('dialog')).getByLabelText('Move Before');
+    expect(within(destination).queryByRole('option', { name: 'A — Scan' })).toBeNull();
+    expect(within(destination).queryByRole('option', { name: 'B — Time' })).toBeNull();
+    expect(selected().temperature_columns).toEqual([3, 4, 5, 6]);
+  });
+
+  it('highlights the whole clicked row without changing batch selection or prepared data', () => {
+    render(<Editor />);
+    fireEvent.click(screen.getByLabelText('Select Column C'));
+    fireEvent.click(screen.getByRole('cell', { name: '24.1', exact: true }));
+    const firstRow = screen.getByLabelText('Select Row 2').closest('tr')!;
+    expect(firstRow.getAttribute('aria-current')).toBe('true');
+    expect((screen.getByLabelText('Select Row 2') as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByLabelText('Select Column C') as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByRole('cell', { name: '18:01', exact: true }));
+    expect(firstRow.getAttribute('aria-current')).toBeNull();
+    expect(screen.getByLabelText('Select Row 3').closest('tr')?.getAttribute('aria-current')).toBe('true');
+    expect(selected()).toEqual(initial);
+  });
+
+  it('retains the highlighted source row across virtual scrolling independently of range selection', () => {
+    render(<LongEditor />);
+    const viewport = screen.getByRole('region', { name: 'Scanner Data Preview' });
+    fireEvent.click(within(viewport).getByRole('cell', { name: '773', exact: true }));
+    fireEvent.scroll(viewport, { target: { scrollTop: 1000 } });
+    fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
+    expect(screen.getByLabelText('Select Row 774').closest('tr')?.getAttribute('aria-current')).toBe('true');
+    expect((screen.getByLabelText('Select Row 774') as HTMLInputElement).checked).toBe(false);
+  });
+
   it('shows source metadata, sample groups and retained electrical roles directly in the grid', () => {
     render(<Editor />);
     const grid = screen.getByRole('region', { name: 'Scanner Data Preview' });

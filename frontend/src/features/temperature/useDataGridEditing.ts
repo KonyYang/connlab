@@ -26,7 +26,7 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
     setExcludedColumns(old => old.filter(column => column !== selection.ambient_column && column !== selection.current_column));
     setRemovedTemperatures(old => old.filter(column => column !== selection.ambient_column && column !== selection.current_column));
   }, [selection.ambient_column, selection.current_column, selection.thermocouples_per_sample]);
-  const protectedColumn = (column: number) => column === selection.ambient_column || column === selection.current_column
+  const protectedColumn = (column: number) => column <= 2 || column === selection.ambient_column || column === selection.current_column
     || Boolean(layout?.current_columns.includes(column));
   const movable = (column: number) => isTemperatureColumn(table, selection, column, layout);
   const snapshot = (): Snapshot => ({ order, excludedColumns, removedTemperatures,

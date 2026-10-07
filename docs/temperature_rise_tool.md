@@ -655,7 +655,7 @@ task visualization directory; no original CSV/XLSM or report was modified.
 
 The separate ChannelMapping component, View Channels, Other Current Columns and dedicated
 replacement controls are removed. Data Preview now exposes every original source column in one
-spreadsheet, with stable source letters, row/column checkboxes, grouped temperature headings,
+spreadsheet, with stable source letters, row/temperature-column checkboxes, grouped temperature headings,
 explicit Ambient/Plot Current/retained auxiliary-current roles, and one compact action toolbar.
 
 - Select rows or columns, then Exclude Selected or Restore; selections are mutually exclusive.
@@ -669,7 +669,7 @@ explicit Ambient/Plot Current/retained auxiliary-current roles, and one compact 
   or explicitly correct the equal count. A complete new order is chunked by the confirmed count,
   with visible sample/TC assignments for operator review. The UI cannot infer the intended physical
   wiring of a spare; the operator must place it in the correct position before confirmation.
-- Ambient, plot current and recognized auxiliary electrical roles cannot be excluded/moved as
+- A/B scan/time indexes, ambient, plot current and recognized auxiliary electrical roles cannot be excluded/moved as
   thermocouples. Non-temperature metadata exclusions are editor-only; calculation input continues
   to use ordered temperature column IDs and excluded row IDs. Auxiliary originals remain retained.
 - Continuous virtual scrolling replaces pagination: all source rows are reachable in one scroll
@@ -722,7 +722,7 @@ ambiguity and physical channel positions still require human confirmation before
 - Previous/Next/Page controls are removed. The source grid uses a feature-owned row-window hook,
   a fixed single-line row height, measured viewport/header height, and native vertical/horizontal
   scrollbars. It adds no dependency and does not change loaded values or calculation/export inputs.
-- Click an original row number or its checkbox to toggle it and establish a range anchor. Shift-click
+- Click a row checkbox to toggle it and establish a range anchor. Shift-click
   another row selects the inclusive interval in either direction, including offscreen rows; clicking
   a checked endpoint with Shift clears that interval. Existing unrelated selections remain intact.
   Shift+Space on a row checkbox works too. Column selection, bulk selection, a committed edit or Undo
@@ -745,3 +745,45 @@ scrolling remains local with no page-width overflow; the temporary viewport was 
 same-agent Standards and Spec exact-diff passes found no outstanding issues. The User's original
 tab and source files are not reimported or edited. Numerical fitting,
 Office export and backend code are unchanged. No new screen-reader session is claimed.
+
+## Compact preview and fixed scan/time indexes (2026-10-07)
+
+- Original Row is removed from the displayed grid. A (scan) and B (time) are permanent indexes:
+  no column checkboxes or move actions, and they stay visible during horizontal scrolling. They
+  remain outside the temperature-channel grouping and are not chart series. Internal source row
+  IDs are retained for issue matching, exclusions and API compatibility; the optional range input
+  still uses source worksheet row numbers, explicitly identified by its tooltip.
+- Fixed widths are 32 px for row selection, 64 px for scan, 184 px for timestamps, and 104 px per
+  remaining channel. Long values/headers remain available in hover titles; the grid scrolls locally.
+- Clicking any data cell highlights its entire row without selecting it or changing preparation,
+  confirmation or calculated results. Keyboard focus on a row control also highlights it. Excluded
+  and review rows keep their status background, with an active-row outline. Highlight persists
+  across virtual scrolling; batch actions and Shift ranges continue to use the row checkboxes.
+- Changed paths: `DataPreview.tsx` and its tests, `useDataGridEditing.ts`, `sourceColumns.ts`,
+  `temperature.css`, `TemperatureRisePage.test.tsx`, and this document. No backend, source upload,
+  native workbook export, curve calculation or Derating implementation changed.
+
+### Verification and review
+
+TDD: the three new index/highlight regressions failed before implementation, together with the
+updated excluded-row status assertion; all 14 grid tests then passed. The first affected matrix
+identified three page-test failures because its former fixture put a thermocouple in B. The fixture
+now models the confirmed A scan / B time structure, with every spare-move, restore, Undo and
+downstream-invalidation assertion retained at the corresponding shifted source column IDs.
+Final affected QA: **35 tests passed** across grid/page/API/TopBar; TypeScript and Vite build passed
+sequentially after the final source/test changes.
+
+Isolated browser QA imported the disposable 19,999-data-row CSV: Original Row absent, A/B controls
+absent, compact widths verified, A/B positions unchanged after horizontal scrolling, cell clicks
+highlighted all cells without checking a row, and Shift 2→10 selected nine rows. Exclusion and Undo
+preserved their behavior and status display. At 543×804, scan/time remain visible and page-width
+overflow is absent. Console warnings/errors: zero. Temporary viewport reset and QA tab closed;
+the User's imported tab and source files were not reimported or edited. No new screen-reader or
+native Excel rendering session is claimed.
+
+Separate same-agent code-review passes: Standards 0 outstanding findings (feature-owned local
+highlight, protected indexes, no data mutation/dependency or API changes); Spec 0 outstanding
+findings (removed duplicate index, compact frozen A/B, whole-row highlight and retained bulk
+selection). Review and QA are sequential passes by one agent, not independent-agent evidence.
+Methods: tdd and code-review. Residual limitation: native browser Find/copy sees only mounted rows,
+as with the existing virtual preview; full confirmed data still reaches calculation/export.

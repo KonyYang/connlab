@@ -12,11 +12,12 @@ vi.mock('../api/temperature', () => ({
 const imported = {
   region_issue: null,
   table: { file_name: 'scanner.xlsx', sheet_names: ['Data'], sheet_name: 'Data', rows: [
-    ['Scan', 'TC1', 'TC2', 'Ambient', 'Current', 'Spare'],
-    [1, 24, 25, 20, 10, 26], [2, 24, 25, 20, 10, 26], [3, 29, 30, 20, 20, 31], [4, 29, 30, 20, 20, 31],
+    ['Scan', 'Time', 'TC1', 'TC2', 'Ambient', 'Current', 'Spare'],
+    [1, '18:00', 24, 25, 20, 10, 26], [2, '18:01', 24, 25, 20, 10, 26],
+    [3, '18:02', 29, 30, 20, 20, 31], [4, '18:03', 29, 30, 20, 20, 31],
   ] },
-  selection: { header_row: 1, start_row: 2, end_row: 5, ambient_column: 4, current_column: 5,
-    temperature_columns: [2, 3], thermocouples_per_sample: 2, excluded_rows: [], current_multiplier: 1 },
+  selection: { header_row: 1, start_row: 2, end_row: 5, ambient_column: 5, current_column: 6,
+    temperature_columns: [3, 4], thermocouples_per_sample: 2, excluded_rows: [], current_multiplier: 1 },
 };
 const coefficients = { a: .01, b: .2, c: 0 };
 const analysis: api.TemperatureAnalysis = {
@@ -68,9 +69,9 @@ describe('temperature preparation and calculation workflow', () => {
     const user = userEvent.setup();
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce({
       ...structuredClone(imported), channel_layout: {
-        temperature_columns: [2, 3], current_columns: [5, 6], stable_current_columns: [6],
-        sample_groups: [{ sample_id: '1', columns: [2, 3] }], thermocouples_per_sample: 2,
-        ambient_column: 4, current_column: 5, issues: [], zero_intercept_default: false,
+        temperature_columns: [3, 4], current_columns: [6, 7], stable_current_columns: [7],
+        sample_groups: [{ sample_id: '1', columns: [3, 4] }], thermocouples_per_sample: 2,
+        ambient_column: 5, current_column: 6, issues: [], zero_intercept_default: false,
       },
     });
     render(<TemperatureRisePage onBack={() => undefined} />);
@@ -90,26 +91,26 @@ describe('temperature preparation and calculation workflow', () => {
   it('blocks an incomplete sample until a spare is moved into position and can undo both operations', async () => {
     const user = userEvent.setup();
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce({ ...structuredClone(imported), channel_layout: {
-      temperature_columns: [2, 3], current_columns: [5], stable_current_columns: [], sample_groups: [],
-      thermocouples_per_sample: 2, ambient_column: 4, current_column: 5, issues: [], zero_intercept_default: true,
+      temperature_columns: [3, 4], current_columns: [6], stable_current_columns: [], sample_groups: [],
+      thermocouples_per_sample: 2, ambient_column: 5, current_column: 6, issues: [], zero_intercept_default: true,
       current_issue: 'Confirm the current column used for this curve.',
     } });
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
-    await user.click(screen.getByLabelText('Select Column C'));
+    await user.click(screen.getByLabelText('Select Column D'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(true);
     expect(api.prepareTemperatureData).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Column F Actions' }));
-    await user.selectOptions(screen.getByLabelText('Move Before'), '3');
+    await user.click(screen.getByRole('button', { name: 'Column G Actions' }));
+    await user.selectOptions(screen.getByLabelText('Move Before'), '4');
     await user.click(screen.getByRole('button', { name: 'Move' }));
     expect(screen.getByText('Confirm the current column used for this curve.')).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
-    expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.temperature_columns).toEqual([2, 6]);
+    expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.temperature_columns).toEqual([3, 7]);
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
-    expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.temperature_columns).toEqual([2, 3]);
+    expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.temperature_columns).toEqual([3, 4]);
   });
 
   it('returns through an accessible icon in the Tools header, without a duplicate content button', async () => {
@@ -144,7 +145,7 @@ describe('temperature preparation and calculation workflow', () => {
     const picker = vi.spyOn(input as HTMLInputElement, 'click');
     await user.click(button);
     expect(picker).toHaveBeenCalledOnce();
-    const file = new File(['Scan,TC1,Ambient,Current\n1,25,20,3.0010263'], 'scanner.csv', { type: 'text/csv' });
+    const file = new File(['Scan,Time,TC1,Ambient,Current\n1,18:00,25,20,3.0010263'], 'scanner.csv', { type: 'text/csv' });
     await user.upload(input, file);
     await screen.findByRole('button', { name: 'Confirm Data' });
     expect(api.importTemperatureWorkbook).toHaveBeenCalledWith(file, undefined);
@@ -204,7 +205,7 @@ describe('temperature preparation and calculation workflow', () => {
   it('uses decimal current and ambient values directly without an extra conversion setting', async () => {
     const user = userEvent.setup();
     const decimal = structuredClone(imported);
-    decimal.table.rows[1] = [1, 24.987654, 25.123456, 20.625, 17.596362, 26];
+    decimal.table.rows[1] = [1, '18:00', 24.987654, 25.123456, 20.625, 17.596362, 26];
     decimal.selection.current_multiplier = .001; // A legacy suggestion must not apply a hidden conversion.
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(decimal);
     render(<TemperatureRisePage onBack={() => undefined} />);
@@ -218,7 +219,7 @@ describe('temperature preparation and calculation workflow', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(api.prepareTemperatureData).toHaveBeenCalledWith(expect.objectContaining({
       table: expect.objectContaining({ rows: decimal.table.rows }),
-      selection: expect.objectContaining({ current_column: 5, ambient_column: 4, current_multiplier: 1 }),
+      selection: expect.objectContaining({ current_column: 6, ambient_column: 5, current_multiplier: 1 }),
     }));
     await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
     expect(api.analyzeTemperatureData).toHaveBeenCalledWith(expect.objectContaining({
@@ -232,16 +233,16 @@ describe('temperature preparation and calculation workflow', () => {
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
-    await user.click(screen.getByLabelText('Select Column C'));
+    await user.click(screen.getByLabelText('Select Column D'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
-    await user.click(screen.getByRole('button', { name: 'Column F Actions' }));
-    await user.selectOptions(screen.getByLabelText('Move Before'), '3');
+    await user.click(screen.getByRole('button', { name: 'Column G Actions' }));
+    await user.selectOptions(screen.getByLabelText('Move Before'), '4');
     await user.click(screen.getByRole('button', { name: 'Move' }));
     await user.click(screen.getByLabelText('Select Row 2'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection).toMatchObject({
-      temperature_columns: [2, 6], excluded_rows: [2],
+      temperature_columns: [3, 7], excluded_rows: [2],
     });
     await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
     await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
@@ -274,7 +275,7 @@ describe('temperature preparation and calculation workflow', () => {
     await user.click(screen.getByRole('button', { name: 'Apply Data Rows' }));
     const next = structuredClone(imported);
     next.table.file_name = 'next.xlsx';
-    next.table.rows[0][1] = 'New TC';
+    next.table.rows[0][2] = 'New TC';
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(next);
     fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['new'], 'next.xlsx')] } });
     await screen.findByRole('button', { name: 'Confirm Data' });
@@ -319,17 +320,17 @@ describe('temperature preparation and calculation workflow', () => {
     const user = userEvent.setup();
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
-    await user.click(screen.getByRole('button', { name: 'Column C Actions' }));
-    await user.selectOptions(screen.getByLabelText('Move Before'), '2');
+    await user.click(screen.getByRole('button', { name: 'Column D Actions' }));
+    await user.selectOptions(screen.getByLabelText('Move Before'), '3');
     await user.click(screen.getByRole('button', { name: 'Move' }));
-    await user.click(screen.getByLabelText('Select Column C'));
+    await user.click(screen.getByLabelText('Select Column D'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
-    await user.click(screen.getByLabelText('Select Column C'));
+    await user.click(screen.getByLabelText('Select Column D'));
     await user.click(screen.getByRole('button', { name: 'Restore' }));
     vi.mocked(api.prepareTemperatureData).mockResolvedValueOnce({ ready: false, measurements: [],
       issues: [{ code: 'invalid_reading', severity: 'error', source_row: 2, message: 'Row 2: missing reading.' }] });
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
-    expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.temperature_columns).toEqual([3, 2]);
+    expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.temperature_columns).toEqual([4, 3]);
     await screen.findByText('Row 2: missing reading.');
     expect(screen.queryByLabelText('Keep Flagged Rows')).toBeNull();
     expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
