@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_DERATING_COMPACT_LAYOUT_20261008",
     "summary": "Compact Derating inputs and align Generate Derating at row right",
@@ -25,9 +25,62 @@
     "risk_reasons": [],
     "activation_head": "71ca61295f59a281b85dd7cc842a7700de415d1b",
     "started_at": "2026-10-07T23:41:28.527352Z",
-    "updated_at": "2026-10-07T23:41:28.527352Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-07T23:44:43.530472Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_DERATING_COMPACT_LAYOUT_20261008",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "version": 1,
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "scope": "Layout only; labels and handlers preserved",
+          "review": "Sequential same-agent Standards and Spec review: no findings; no independent reviewer"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "subject": "fe86f5ebad6766a257aadd9862e9dfcf99c73765",
+        "branch": "master",
+        "publication": "not requested"
+      },
+      "task_id": "TASK_TEMPERATURE_DERATING_COMPACT_LAYOUT_20261008",
+      "validation": [
+        {
+          "status": "passed",
+          "result": "30 passed",
+          "command": "npm run test -- src/pages/TemperatureRisePage.test.tsx"
+        },
+        {
+          "status": "passed",
+          "result": "TypeScript/Vite passed",
+          "command": "npm run build"
+        },
+        {
+          "status": "passed",
+          "result": "1280 and 846px same row; 560px wraps without overflow; no warnings/errors; temporary tab closed and viewport reset",
+          "command": "browser layout verification"
+        },
+        {
+          "status": "passed",
+          "command": "git diff --check"
+        }
+      ],
+      "schema": "connlab.sol-task-report",
+      "scope_ok": true,
+      "summary": "Compact Derating input widths and right-aligned Generate Derating in the same wrapping row; logic and eligibility unchanged.",
+      "subject": "fe86f5ebad6766a257aadd9862e9dfcf99c73765",
+      "changed_paths": [
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/pages/TemperatureRisePage.tsx"
+      ]
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007",
