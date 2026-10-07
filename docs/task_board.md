@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007",
     "summary": "Automatically populate fitted coefficients when generating T-riseChart",
@@ -27,17 +27,69 @@
     "risk_reasons": [],
     "activation_head": "b3cf34600c4368e734484660d8d5e8bc53c287a3",
     "started_at": "2026-10-07T15:37:55.665299Z",
-    "updated_at": "2026-10-07T23:29:27.832600Z",
+    "updated_at": "2026-10-07T23:33:26.152302Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requested removal of the redundant polynomial coefficient display block; preserve generated calculations, chart equations and Excel export.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "version": 1,
+      "validation": [
+        {
+          "result": "Absence-and-calculation/export regression failed before removal and passed after; final page30, preview18, API2, TopBar5: 55/55 passed.",
+          "status": "passed",
+          "name": "TDD and final affected frontend matrix"
+        },
+        {
+          "result": "TypeScript/Vite passed sequentially on final source/test bytes.",
+          "status": "passed",
+          "name": "Production build"
+        },
+        {
+          "result": "No coefficient display before/after generation; both automatic charts, equations and 38.01 A calculation verified using disposable CSV. Console warnings/errors zero; User tab untouched; QA tab closed.",
+          "status": "passed",
+          "name": "Isolated browser"
+        },
+        {
+          "result": "Separate sequential same-agent exact-diff passes found no outstanding issues. Table/editor-specific styles and unused edit action removed; API, numerical algorithms, internal coefficients and export unchanged.",
+          "status": "passed",
+          "name": "Standards and Spec review"
+        }
+      ],
+      "scope_ok": true,
+      "schema": "connlab.sol-task-report",
+      "roles": {
+        "developer": {
+          "execution": "One Astra micro work unit; TDD and same-agent review, not independent agents.",
+          "status": "passed"
+        }
+      },
+      "changed_paths": [
+        "docs/temperature_rise_tool.md",
+        "frontend/src/features/temperature/DataPreview.test.tsx",
+        "frontend/src/features/temperature/DataPreview.tsx",
+        "frontend/src/features/temperature/TemperatureCharts.tsx",
+        "frontend/src/features/temperature/sourceScan.ts",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx"
+      ],
+      "subject": "e493138e6313c1c7da0223969f265177858fab75",
+      "summary": "Removed redundant coefficient display/editor while preserving internal fitted values for calculation/export, chart equations and confirmation-triggered generation; scan-based feedback refinements retained.",
+      "integration": {
+        "status": "passed",
+        "subject": "e493138e6313c1c7da0223969f265177858fab75",
+        "publication": "Local only; final Close not requested.",
+        "branch": "master"
+      },
+      "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007"
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
