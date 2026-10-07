@@ -41,17 +41,17 @@ function LongEditor({ end = 900 }: { end?: number }) {
 describe('continuous source row selection', () => {
   it('selects both endpoints and offscreen rows using Shift, then excludes and undoes the whole interval', () => {
     render(<LongEditor />);
-    fireEvent.click(screen.getByLabelText('Select Row 774'));
+    fireEvent.click(screen.getByLabelText('Select Scan 773'));
     const viewport = screen.getByRole('region', { name: 'Scanner Data Preview' });
     fireEvent.scroll(viewport, { target: { scrollTop: 1000 } });
-    fireEvent.click(screen.getByLabelText('Select Row 800'), { shiftKey: true });
+    fireEvent.click(screen.getByLabelText('Select Scan 799'), { shiftKey: true });
     expect(screen.getByText('27 Selected')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     expect(selected().excluded_rows).toHaveLength(27);
     expect(selected().excluded_rows[0]).toBe(774);
     expect(selected().excluded_rows.at(-1)).toBe(800);
     fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
-    expect(screen.getByLabelText('Select Row 774').closest('tr')?.getAttribute('aria-label')).toContain('Excluded');
+    expect(screen.getByLabelText('Select Scan 773').closest('tr')?.getAttribute('aria-label')).toContain('Excluded');
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     expect(selected().excluded_rows).toEqual([]);
     expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
@@ -61,13 +61,13 @@ describe('continuous source row selection', () => {
     render(<LongEditor />);
     const viewport = screen.getByRole('region', { name: 'Scanner Data Preview' });
     fireEvent.scroll(viewport, { target: { scrollTop: 1000 } });
-    fireEvent.click(screen.getByLabelText('Select Row 800'));
+    fireEvent.click(screen.getByLabelText('Select Scan 799'));
     fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
-    fireEvent.click(screen.getByLabelText('Select Row 774'), { shiftKey: true });
+    fireEvent.click(screen.getByLabelText('Select Scan 773'), { shiftKey: true });
     expect(screen.getByText('27 Selected')).toBeTruthy();
-    fireEvent.click(screen.getByLabelText('Select Row 774'));
+    fireEvent.click(screen.getByLabelText('Select Scan 773'));
     fireEvent.scroll(viewport, { target: { scrollTop: 1000 } });
-    fireEvent.click(screen.getByLabelText('Select Row 800'), { shiftKey: true });
+    fireEvent.click(screen.getByLabelText('Select Scan 799'), { shiftKey: true });
     expect((screen.getByRole('button', { name: 'Exclude Selected' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -75,17 +75,17 @@ describe('continuous source row selection', () => {
     render(<LongEditor end={20000} />);
     const viewport = screen.getByRole('region', { name: 'Scanner Data Preview' });
     expect(within(viewport).getAllByRole('checkbox').length).toBeLessThan(100);
-    fireEvent.click(screen.getByLabelText('Select Row 774'));
+    fireEvent.click(screen.getByLabelText('Select Scan 773'));
     fireEvent.scroll(viewport, { target: { scrollTop: 1000000 } });
-    expect(screen.getByLabelText('Select Row 20000')).toBeTruthy();
+    expect(screen.getByLabelText('Select Scan 19999')).toBeTruthy();
     expect(within(viewport).getAllByRole('checkbox').length).toBeLessThan(100);
     fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
-    expect((screen.getByLabelText('Select Row 774') as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText('Select Scan 773') as HTMLInputElement).checked).toBe(true);
   });
 
   it('selects all source rows rather than only rendered rows and supports clearing the whole selection', () => {
     render(<LongEditor />);
-    fireEvent.click(screen.getByLabelText('Select Row 774'));
+    fireEvent.click(screen.getByLabelText('Select Scan 773'));
     const all = screen.getByLabelText('Select All Rows') as HTMLInputElement;
     expect(all.indeterminate).toBe(true);
     fireEvent.click(all);
@@ -100,11 +100,11 @@ describe('continuous source row selection', () => {
 
   it('supports Shift+Space and resets the anchor when switching to column editing', () => {
     render(<LongEditor />);
-    fireEvent.click(screen.getByLabelText('Select Row 774'));
-    fireEvent.keyDown(screen.getByLabelText('Select Row 780'), { key: ' ', shiftKey: true });
+    fireEvent.click(screen.getByLabelText('Select Scan 773'));
+    fireEvent.keyDown(screen.getByLabelText('Select Scan 779'), { key: ' ', shiftKey: true });
     expect(screen.getByText('7 Selected')).toBeTruthy();
     fireEvent.click(screen.getByLabelText('Select Column C'));
-    fireEvent.keyDown(screen.getByLabelText('Select Row 782'), { key: ' ', shiftKey: true });
+    fireEvent.keyDown(screen.getByLabelText('Select Scan 781'), { key: ' ', shiftKey: true });
     expect(screen.getByText('1 Selected')).toBeTruthy();
     expect((screen.getByLabelText('Select Column C') as HTMLInputElement).checked).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
@@ -157,7 +157,7 @@ describe('unified scanner data editing', () => {
     source.rows[1][2] = 24.987654;
     source.rows[1][3] = '-2.34567';
     render(<DataPreview table={source} selection={initial} layout={layout} issues={[]} disabled={false} onChange={() => undefined} />);
-    const row = screen.getByLabelText('Select Row 2').closest('tr')!;
+    const row = screen.getByLabelText('Select Scan 1').closest('tr')!;
     expect(within(row).getByRole('cell', { name: '25.0', exact: true })).toBeTruthy();
     expect(within(row).getByRole('cell', { name: '-2.3', exact: true })).toBeTruthy();
     expect(within(row).getByRole('cell', { name: '0.01', exact: true }).title).toBe('0.009999');
@@ -217,13 +217,13 @@ describe('unified scanner data editing', () => {
     render(<Editor />);
     fireEvent.click(screen.getByLabelText('Select Column C'));
     fireEvent.click(screen.getByRole('cell', { name: '24.1', exact: true }));
-    const firstRow = screen.getByLabelText('Select Row 2').closest('tr')!;
+    const firstRow = screen.getByLabelText('Select Scan 1').closest('tr')!;
     expect(firstRow.getAttribute('aria-current')).toBe('true');
-    expect((screen.getByLabelText('Select Row 2') as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByLabelText('Select Scan 1') as HTMLInputElement).checked).toBe(false);
     expect((screen.getByLabelText('Select Column C') as HTMLInputElement).checked).toBe(true);
     fireEvent.click(screen.getByRole('cell', { name: '18:01', exact: true }));
     expect(firstRow.getAttribute('aria-current')).toBeNull();
-    expect(screen.getByLabelText('Select Row 3').closest('tr')?.getAttribute('aria-current')).toBe('true');
+    expect(screen.getByLabelText('Select Scan 2').closest('tr')?.getAttribute('aria-current')).toBe('true');
     expect(selected()).toEqual(initial);
   });
 
@@ -233,8 +233,8 @@ describe('unified scanner data editing', () => {
     fireEvent.click(within(viewport).getByRole('cell', { name: '773', exact: true }));
     fireEvent.scroll(viewport, { target: { scrollTop: 1000 } });
     fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
-    expect(screen.getByLabelText('Select Row 774').closest('tr')?.getAttribute('aria-current')).toBe('true');
-    expect((screen.getByLabelText('Select Row 774') as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByLabelText('Select Scan 773').closest('tr')?.getAttribute('aria-current')).toBe('true');
+    expect((screen.getByLabelText('Select Scan 773') as HTMLInputElement).checked).toBe(false);
   });
 
   it('shows source metadata, sample groups and electrical units directly in the grid', () => {
@@ -299,11 +299,11 @@ describe('unified scanner data editing', () => {
     await user.click(screen.getByRole('button', { name: 'Restore' }));
     expect(selected().temperature_columns).toEqual([3, 4, 5, 6]);
     await user.click(screen.getByLabelText('Select Column C'));
-    await user.click(screen.getByLabelText('Select Row 2'));
+    await user.click(screen.getByLabelText('Select Scan 1'));
     expect((screen.getByLabelText('Select Column C') as HTMLInputElement).checked).toBe(false);
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     expect(selected().excluded_rows).toEqual([2]);
-    await user.click(screen.getByLabelText('Select Row 2'));
+    await user.click(screen.getByLabelText('Select Scan 1'));
     await user.click(screen.getByRole('button', { name: 'Restore' }));
     expect(selected().excluded_rows).toEqual([]);
     openColumn('C');
@@ -312,20 +312,19 @@ describe('unified scanner data editing', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Select Column C').closest('th'));
   });
 
-  it('selects explicit row ranges without deleting them, rejects out-of-region ranges, and undoes exclusion', async () => {
-    const user = userEvent.setup();
+  it('removes the row-number range form while retaining reversible Shift selection', () => {
     render(<Editor />);
-    await user.click(screen.getByText('Select Rows By Range'));
-    await user.type(screen.getByLabelText('Rows To Select'), '1-3');
-    await user.click(screen.getByRole('button', { name: 'Select Rows' }));
-    expect(screen.getByRole('alert').textContent).toContain('Choose rows 2–3');
-    await user.clear(screen.getByLabelText('Rows To Select'));
-    await user.type(screen.getByLabelText('Rows To Select'), '2-3');
-    await user.click(screen.getByRole('button', { name: 'Select Rows' }));
+    expect(screen.queryByText('Select Rows By Range')).toBeNull();
+    expect(screen.queryByLabelText('Rows To Select')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Select Rows', exact: true })).toBeNull();
+    const first = screen.getByLabelText('Select Scan 1');
+    expect(first.getAttribute('title')).toBe('Scan 1');
+    fireEvent.click(first);
+    fireEvent.click(screen.getByLabelText('Select Scan 2'), { shiftKey: true });
     expect(selected().excluded_rows).toEqual([]);
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     expect(selected().excluded_rows).toEqual([2, 3]);
-    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     expect(selected().excluded_rows).toEqual([]);
   });
 

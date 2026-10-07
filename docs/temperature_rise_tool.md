@@ -1,7 +1,8 @@
 # Temperature Rise and Derating Tool
 
 Status: implemented. Current refinement: automatic editable coefficient population on chart generation
-(`TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007`); unified raw-data row/column editing remains in place.
+and scan-based operator feedback (`TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007`);
+unified raw-data row/column editing remains in place without a separate row-range form.
 
 ## Scope and acceptance
 
@@ -14,8 +15,9 @@ panels stack. Existing ConnLab navigation, fonts, controls and quiet feedback re
   or ambiguous recognition. Let the user choose the sheet, ambient and current columns,
   thermocouples per sample, and ordered sample/channel mapping. A spare source channel can replace
   any failed channel. Channel order determines sample/thermocouple slots and is shown explicitly.
-- Exclude/restore rows and channels without changing source data. Retain original row numbers and
-  column letters. Suspicious rows are suggestions only; the user confirms their inclusion/exclusion.
+- Exclude/restore rows and channels without changing source data. Retain original row keys for
+  provenance and column letters; use A-column scan identifiers in operator feedback. Suspicious
+  rows are suggestions only; the user confirms their inclusion/exclusion.
 - Confirm the prepared data before analysis. A later input/mapping/exclusion change invalidates
   dependent charts, coefficients, current and downloads. Late responses must not restore stale data.
 - Generate T-riseChart, automatically populate editable MAX/AVG coefficients, calculate current from
@@ -122,10 +124,12 @@ Review summary: Standards 0 outstanding; Specification 0 outstanding blocking fi
 2. Check sheet and ambient/current roles. Header/data row settings are hidden
    after successful recognition. On a recognition warning, inspect Source Rows, select a different
    sheet or enter the header/first/last rows and Apply Data Rows; this does not confirm the readings.
-   Review the sample/channel summary. Expand View Channels for all assignments; use Adjust Channels
-   only for replacement, exclusion, addition or reassignment exceptions.
-3. In Data Preview select original row numbers or ranges, exclude/restore rows as needed, and Confirm
-   Data. Warnings are never silently deleted; keeping flagged rows needs explicit acknowledgment.
+   Review the sample/channel summary and make exceptional column adjustments in Data Preview.
+3. Identify records using A Scan and B Time. Select rows directly; Shift-click an endpoint checkbox
+   selects the continuous block, including offscreen records. Exclude/restore as needed and Confirm
+   Data. The separate row-range form is removed. Review notices, row selection labels and Stage Results
+   use A-column scan identifiers; internal source-row keys remain unchanged. Warnings are never
+   silently deleted; keeping flagged rows needs explicit acknowledgment.
 4. Generate T-riseChart → Calculate Current / Generate Derating → Download Excel. MAX/AVG a/b/c
    populate automatically after chart generation; download uses these values by default or the user's
    subsequent edits. Regeneration replaces edits with the new fit; changing source data clears the
@@ -890,3 +894,38 @@ columns, exact number-line placement and unchanged preparation behavior match th
 Methods: tdd and code-review; no independent-agent review claimed. Changed paths: DataPreview.tsx,
 sourcePresentation.ts, DataPreview.test.tsx, TemperatureRisePage.test.tsx and this document; lifecycle
 record via the sole board writer. Existing untagged-source confirmation limitation remains.
+
+## Scan-based feedback and range-form removal (2026-10-08)
+
+Removed Select Rows By Range, its parser/state and unused styles. Data Needs Review notices,
+row-checkbox labels/hover feedback, row-specific operation errors and Stage Results now identify
+records using A-column Scan, not physical file row numbers. String identifiers retain leading zeros.
+A missing scan displays Unavailable instead of inventing a file-row identifier; synthetic chart
+origins remain Origin. Source-row keys still drive exclusion/restoration and API requests, so repeated
+or nonconsecutive scan identifiers do not change the records being edited. Worksheet-boundary recovery
+settings and exported source-row provenance intentionally remain unchanged.
+
+TDD: four new behavioral checks failed before implementation; the final affected frontend matrix
+passed **47 tests** (22 page, 18 preview, 2 API, 5 TopBar). TypeScript/Vite production build passed on
+the final source/test bytes. Tests cover leading-zero scans, missing scans, API error presentation,
+Stage Results, unchanged exclusion keys, reversible Shift selection and stale-response protections.
+An isolated browser with disposable seven-record CSV verified Scan 774 review feedback, absence of
+the range form, checkbox hover labels, Select Unpowered Rows, and Shift selection through Scan 800
+across scan-number gaps. Console warnings/errors: zero. QA tab closed; User tab/data not operated.
+
+Standards review (same-agent exact diff): presentation-only mapping is shared at the temperature
+feature seam; no backend/API/dependency/source-workbook mutation or editing-key change. Zero
+outstanding findings. Specification review (separate sequential same-agent pass): removed area,
+scan-based notices and preserved selection/exclusion behavior match the request. Zero outstanding
+findings; no independent-agent review claimed. Methods: tdd and code-review. Residual limitation:
+plain API errors use the existing Row N prefix contract; missing scan values are visibly unavailable.
+
+Changed paths: `frontend/src/features/temperature/DataPreview.tsx`,
+`frontend/src/features/temperature/DataPreview.test.tsx`,
+`frontend/src/features/temperature/TemperatureCharts.tsx`,
+`frontend/src/features/temperature/sourceScan.ts`,
+`frontend/src/features/temperature/temperature.css`,
+`frontend/src/pages/TemperatureRisePage.tsx`,
+`frontend/src/pages/TemperatureRisePage.test.tsx` and `docs/temperature_rise_tool.md`.
+The existing task also retains its earlier `frontend/src/features/temperature/useTemperatureTool.ts`
+coefficient change; the sole board writer records cumulative completion evidence separately.

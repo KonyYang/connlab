@@ -1,4 +1,5 @@
-import type { Coefficients, DeratingAnalysis, TemperatureAnalysis } from '../../api/temperature';
+import type { Coefficients, DeratingAnalysis, TemperatureAnalysis, WorkbookTable } from '../../api/temperature';
+import { sourceScan } from './sourceScan';
 
 type Point = { x: number; y: number };
 type Trace = { name: string; color: string; points: Point[]; markers?: boolean; line?: boolean };
@@ -46,7 +47,7 @@ function XYChart({ title, xTitle, yTitle, traces, guide, xLimit }: {
   </div>;
 }
 
-export function RiseChart({ analysis }: { analysis: TemperatureAnalysis }) {
+export function RiseChart({ analysis, table }: { analysis: TemperatureAnalysis; table: WorkbookTable | null }) {
   const max = Math.max(...analysis.points.map(point => point.current));
   const fitPoints = (coef: Coefficients) => Array.from({ length: 101 }, (_, i) => ({ x: max * i / 100, y: polynomial(coef, max * i / 100) }));
   const traces: Trace[] = [
@@ -58,8 +59,8 @@ export function RiseChart({ analysis }: { analysis: TemperatureAnalysis }) {
   return <><XYChart title="Temperature Rise vs Current" xTitle="Current (A)" yTitle="Temperature Rise (°C)" traces={traces} />
     <div className="temperature-equations"><p style={{ color: MAX_COLOR }}>Max ΔT = {equation(analysis.maximum_fit.coefficients)}<br />R² = {analysis.maximum_fit.r_squared.toFixed(6)}</p>
       <p style={{ color: AVG_COLOR }}>Avg Of Max ΔT = {equation(analysis.average_fit.coefficients)}<br />R² = {analysis.average_fit.r_squared.toFixed(6)}</p></div>
-    <details className="temperature-detail"><summary>Stage Results</summary><div className="temperature-table-scroll"><table><thead><tr><th>Original Row</th><th>Current (A)</th><th>Max ΔT (°C)</th><th>Avg Of Max ΔT (°C)</th></tr></thead>
-      <tbody>{analysis.points.map((point, i) => <tr key={i}><td>{point.source_row ?? 'Origin'}</td><td>{point.current.toFixed(3)}</td><td>{point.maximum.toFixed(3)}</td><td>{point.average.toFixed(3)}</td></tr>)}</tbody></table></div></details>
+    <details className="temperature-detail"><summary>Stage Results</summary><div className="temperature-table-scroll"><table><thead><tr><th>Scan</th><th>Current (A)</th><th>Max ΔT (°C)</th><th>Avg Of Max ΔT (°C)</th></tr></thead>
+      <tbody>{analysis.points.map((point, i) => <tr key={i}><td>{point.source_row === null ? 'Origin' : sourceScan(table, point.source_row) ?? 'Unavailable'}</td><td>{point.current.toFixed(3)}</td><td>{point.maximum.toFixed(3)}</td><td>{point.average.toFixed(3)}</td></tr>)}</tbody></table></div></details>
   </>;
 }
 

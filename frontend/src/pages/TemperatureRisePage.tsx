@@ -5,6 +5,7 @@ import { UiIcon } from '../components/common/UiIcon';
 import { useTopBarActionsRoot } from '../components/layout/TopBarActionsContext';
 import { incompleteSampleGroups } from '../features/temperature/sourceColumns';
 import { sourceColumnOptions } from '../features/temperature/sourcePresentation';
+import { scanMessage } from '../features/temperature/sourceScan';
 import { DataPreview } from '../features/temperature/DataPreview';
 import { DataRegionCorrection } from '../features/temperature/DataRegionCorrection';
 import { RiseChart, DeratingChart } from '../features/temperature/TemperatureCharts';
@@ -59,7 +60,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         <DataPreview key={`preview-${s.table.sheet_name}-${s.table.file_name}-${s.selection.header_row}-${s.selection.start_row}-${s.selection.end_row}`}
           table={s.table} selection={s.selection} layout={s.channel_layout} issues={s.review?.issues ?? []} onChange={tool.changeData} disabled={busy} />
         {Boolean(s.review?.issues.length) && <section className="temperature-review" aria-label="Data Needs Review">
-          <h4>Data Needs Review</h4><div className="temperature-issue-list">{s.review?.issues.map((issue, index) => <p key={index} className={issue.severity === 'error' ? 'temperature-error' : undefined}>{issue.message}</p>)}</div>
+          <h4>Data Needs Review</h4><div className="temperature-issue-list">{s.review?.issues.map((issue, index) => <p key={index} className={issue.severity === 'error' ? 'temperature-error' : undefined}>{scanMessage(s.table, issue.message, issue.source_row)}</p>)}</div>
           {!s.review?.issues.some(issue => issue.severity === 'error') && <label className="temperature-check"><input type="checkbox" checked={s.acknowledged} disabled={busy} onChange={event => tool.acknowledge(event.target.checked)} />Keep Flagged Rows</label>}
         </section>}
         <div className="temperature-confirm"><span className={s.confirmed ? 'temperature-success' : 'temperature-hint'} role="status">{s.confirmed ? 'Data Confirmed' : ''}</span>
@@ -83,7 +84,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
             </tr>)}
           </tbody></table>
         </div>
-        {s.analysis ? <RiseChart analysis={s.analysis} /> : <p className="temperature-chart-empty">The temperature-rise chart will appear here.</p>}
+        {s.analysis ? <RiseChart analysis={s.analysis} table={s.table} /> : <p className="temperature-chart-empty">The temperature-rise chart will appear here.</p>}
         <div className="temperature-actions"><label>Target Rise (°C)<input type="number" min="0" step="any" value={s.targetRise} disabled={busy} onChange={event => tool.editParameter('targetRise', event.target.value)} /></label>
           <button type="button" disabled={busy || !s.maximum} onClick={() => void tool.current()}>Calculate Current</button>
           {s.current !== null && <output aria-label="Calculated Current" className="temperature-result">{s.current.toFixed(2)} A</output>}</div>
@@ -103,7 +104,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
     </div>
     <footer className="temperature-footer"><div aria-live="polite">
       {s.busy && <p role="status">{s.busy}</p>}
-      {s.error && <p role="alert" className="temperature-error">{s.error}</p>}
+      {s.error && <p role="alert" className="temperature-error">{scanMessage(s.table, s.error)}</p>}
       {s.downloaded && <p role="status" className="temperature-success">{s.downloaded}</p>}
     </div><button type="button" className="primary-action" disabled={busy || !s.analysis} onClick={() => void tool.download()}>Download Excel</button></footer>
   </section>;

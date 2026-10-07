@@ -4,6 +4,7 @@ import type { ChannelLayout, DataIssue, DataSelection, WorkbookTable } from '../
 import { ColumnActions, type ColumnMenuAnchor } from './ColumnActions';
 import { columnLetter, incompleteSampleGroups } from './sourceColumns';
 import { formatSourceReading, sourcePresentation } from './sourcePresentation';
+import { scanLabel } from './sourceScan';
 import { useDataGridEditing } from './useDataGridEditing';
 import { SOURCE_ROW_HEIGHT, useSourceRowWindow } from './useSourceRowWindow';
 
@@ -14,8 +15,6 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   disabled: boolean; onChange: (patch: Partial<DataSelection>) => void;
 }) {
   const grid = useDataGridEditing(table, selection, layout, onChange);
-  const [range, setRange] = useState('');
-  const [rangeError, setRangeError] = useState('');
   const [menu, setMenu] = useState<ColumnMenuAnchor | null>(null);
   const [activeRow, setActiveRow] = useState<number | null>(null);
   const columnHeaders = useRef(new Map<number, HTMLTableCellElement>());
@@ -56,19 +55,6 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   const headerClass = (column: number) => [column === 1 ? 'temperature-index-scan' : column === 2 ? 'temperature-index-time' : '',
     grid.selectedColumns.includes(column) ? 'is-selected-column' : '',
     grid.excludedColumns.includes(column) ? 'is-excluded-column' : ''].filter(Boolean).join(' ');
-  function selectRange() {
-    const parsed = new Set<number>();
-    for (const part of range.split(',')) {
-      const match = part.trim().match(/^(\d+)(?:\s*-\s*(\d+))?$/);
-      if (!match) { setRangeError('Enter row numbers or ranges, such as 45-91, 120.'); return; }
-      const first = Number(match[1]), last = Number(match[2] ?? match[1]);
-      if (first < selection.start_row || last > selection.end_row || last < first) {
-        setRangeError(`Choose rows ${selection.start_row}–${selection.end_row}.`); return;
-      }
-      for (let row = first; row <= last; row++) parsed.add(row);
-    }
-    setRangeError(''); grid.selectRows([...parsed]);
-  }
   function openMenu(column: number, trigger: HTMLElement, point?: { left: number; top: number }) {
     if (disabled || !grid.movable(column)) return;
     if (!grid.selectedColumns.includes(column) || grid.selectedColumns.some(selected => !grid.movable(selected))) grid.selectColumns([column]);
@@ -124,11 +110,11 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
           {rows.map(row => <tr key={row} aria-rowindex={row - selection.start_row + 3} style={{ height: SOURCE_ROW_HEIGHT }}
             aria-selected={selectedRows.has(row)}
             aria-current={activeRow === row ? 'true' : undefined}
-            aria-label={excludedRows.has(row) ? `Scan ${table.rows[row - 1]?.[0]} · Excluded` : flaggedRows.has(row) ? `Scan ${table.rows[row - 1]?.[0]} · Needs Review` : undefined}
+            aria-label={excludedRows.has(row) ? `${scanLabel(table, row)} · Excluded` : flaggedRows.has(row) ? `${scanLabel(table, row)} · Needs Review` : undefined}
             onClick={() => setActiveRow(row)} onFocus={() => setActiveRow(row)}
             className={excludedRows.has(row) ? 'is-excluded-row' : flaggedRows.has(row) ? 'is-flagged-row' : ''}>
-          <td className="temperature-row-selector"><input type="checkbox" aria-label={`Select Row ${row}`} disabled={disabled} checked={selectedRows.has(row)}
-            title={`Scan ${table.rows[row - 1]?.[0]} · Source Row ${row}${excludedRows.has(row) ? ' · Excluded' : flaggedRows.has(row) ? ' · Needs Review' : ''}`}
+          <td className="temperature-row-selector"><input type="checkbox" aria-label={`Select ${scanLabel(table, row)}`} disabled={disabled} checked={selectedRows.has(row)}
+            title={`${scanLabel(table, row)}${excludedRows.has(row) ? ' · Excluded' : flaggedRows.has(row) ? ' · Needs Review' : ''}`}
             onChange={event => { closeMenu(); grid.toggleRow(row, event.target.checked,
               'shiftKey' in event.nativeEvent && event.nativeEvent.shiftKey === true); }}
             onKeyDown={event => { if (event.key === ' ' && event.shiftKey) { event.preventDefault(); closeMenu(); grid.toggleRow(row, !selectedRows.has(row), true); } }} /></td>
@@ -143,8 +129,6 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
         onClick={() => grid.selectRows([...new Set(issues.filter(issue => issue.code === 'zero_current').map(issue => issue.source_row))])}>Select Unpowered Rows</button>}
         {selection.excluded_rows.length > 0 && <button type="button" disabled={disabled} onClick={grid.restoreAllRows}>Restore All Rows</button>}
         </div></div>
-    <details className="temperature-row-range"><summary>Select Rows By Range</summary><label>Rows To Select<input title="Original source worksheet row numbers" value={range} disabled={disabled} onChange={event => setRange(event.target.value)} placeholder="45-91, 120" /></label>
-      <button type="button" disabled={disabled || !range.trim()} onClick={selectRange}>Select Rows</button>{rangeError && <p role="alert">{rangeError}</p>}</details>
     {menu && <ColumnActions key={menu.column} anchor={menu} columnLabel={columns.find(column => column.id === menu.column)!.label}
       columns={grid.order.filter(column => grid.movable(column) && !grid.selectedColumns.includes(column)).map(column => columns.find(item => item.id === column)!)}
       selectedCount={grid.selectedColumns.length} disabled={disabled} canExclude={grid.canExclude} canRestore={grid.canRestore}

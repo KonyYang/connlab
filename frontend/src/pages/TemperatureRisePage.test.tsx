@@ -199,7 +199,7 @@ describe('temperature preparation and calculation workflow', () => {
     expect(screen.queryByRole('button', { name: /Earlier|Later/ })).toBeNull();
     expect((screen.getByLabelText('Zero Intercept') as HTMLInputElement).checked).toBe(false);
     await user.click(screen.getByLabelText('Zero Intercept'));
-    await user.click(screen.getByLabelText('Select Row 2'));
+    await user.click(screen.getByLabelText('Select Scan 1'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     expect((screen.getByLabelText('Zero Intercept') as HTMLInputElement).checked).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
@@ -356,7 +356,7 @@ describe('temperature preparation and calculation workflow', () => {
     fireEvent.contextMenu(screen.getByLabelText('Select Column G').closest('th')!);
     await user.selectOptions(screen.getByLabelText('Move Before'), '4');
     await user.click(screen.getByRole('button', { name: 'Move' }));
-    await user.click(screen.getByLabelText('Select Row 2'));
+    await user.click(screen.getByLabelText('Select Scan 1'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection).toMatchObject({
@@ -411,15 +411,79 @@ describe('temperature preparation and calculation workflow', () => {
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
-    await screen.findByText('Row 2: current is zero.');
+    await screen.findByText('Scan 1: current is zero.');
     expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Select Unpowered Rows' }));
-    expect((screen.getByLabelText('Select Row 2') as HTMLInputElement).checked).toBe(true);
-    expect((screen.getByLabelText('Select Row 3') as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByLabelText('Select Scan 1') as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText('Select Scan 2') as HTMLInputElement).checked).toBe(false);
     expect(api.prepareTemperatureData).toHaveBeenCalledTimes(1);
     await user.click(screen.getByLabelText('Keep Flagged Rows'));
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].acknowledge_warnings).toBe(true);
+  });
+
+  it('uses A-column scan IDs for review and selects the matching source rows without renumbering them', async () => {
+    const user = userEvent.setup();
+    const source = structuredClone(imported);
+    source.table.rows[1][0] = '00774';
+    source.table.rows[2][0] = 800;
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(source);
+    vi.mocked(api.prepareTemperatureData).mockResolvedValueOnce({ ready: false, measurements: [], issues: [
+      { code: 'zero_current', severity: 'warning', source_row: 2, message: 'Row 2: current is zero.' },
+      { code: 'invalid_reading', severity: 'error', source_row: 3, message: 'Row 3, column C: missing reading.' },
+      { code: 'no_data', severity: 'error', source_row: 2, message: 'No usable rows remain.' },
+    ] });
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByText('Scan 00774: current is zero.');
+    expect(screen.getByText('Scan 800, column C: missing reading.')).toBeTruthy();
+    expect(screen.getByText('No usable rows remain.')).toBeTruthy();
+    const review = screen.getByRole('region', { name: 'Data Needs Review' });
+    expect(review.textContent).not.toMatch(/Row [23]/);
+    await user.click(screen.getByRole('button', { name: 'Select Unpowered Rows' }));
+    expect((screen.getByLabelText('Select Scan 00774') as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText('Select Scan 800') as HTMLInputElement).checked).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.excluded_rows).toEqual([2]);
+  });
+
+  it('shows scan IDs in analysis errors and stage results while preserving the synthetic origin', async () => {
+    const user = userEvent.setup();
+    const source = structuredClone(imported);
+    source.table.rows[2][0] = 800;
+    source.table.rows[4][0] = '00850';
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(source);
+    vi.mocked(api.analyzeTemperatureData).mockRejectedValueOnce(new Error('Row 3: replace missing readings.'));
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
+    await screen.findByText('Scan 800: replace missing readings.');
+    await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
+    await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
+    await user.click(screen.getByText('Stage Results', { exact: true }));
+    const stageTable = screen.getByRole('columnheader', { name: 'Scan', exact: true }).closest('table')!;
+    expect(within(stageTable).getByRole('cell', { name: 'Origin', exact: true })).toBeTruthy();
+    expect(within(stageTable).getByRole('cell', { name: '800', exact: true })).toBeTruthy();
+    expect(within(stageTable).getByRole('cell', { name: '00850', exact: true })).toBeTruthy();
+    expect(screen.queryByRole('columnheader', { name: 'Original Row' })).toBeNull();
+  });
+
+  it('does not invent a scan ID when the A-column value is missing', async () => {
+    const user = userEvent.setup();
+    const source = structuredClone(imported);
+    source.table.rows[1][0] = '';
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(source);
+    vi.mocked(api.prepareTemperatureData).mockResolvedValueOnce({ ready: false, measurements: [], issues: [
+      { code: 'invalid_reading', severity: 'error', source_row: 2, message: 'Row 2: missing reading.' },
+    ] });
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByText('Scan unavailable: missing reading.');
+    expect(screen.queryByText('Row 2: missing reading.')).toBeNull();
   });
 
   it('ignores a completed import after leaving the page', async () => {
@@ -448,7 +512,7 @@ describe('temperature preparation and calculation workflow', () => {
       issues: [{ code: 'invalid_reading', severity: 'error', source_row: 2, message: 'Row 2: missing reading.' }] });
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.temperature_columns).toEqual([4, 3]);
-    await screen.findByText('Row 2: missing reading.');
+    await screen.findByText('Scan 1: missing reading.');
     expect(screen.queryByLabelText('Keep Flagged Rows')).toBeNull();
     expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
   });
