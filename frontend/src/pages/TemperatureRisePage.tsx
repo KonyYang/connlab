@@ -75,7 +75,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
           <p className="temperature-hint">Extra stable current detected; Zero Intercept defaults off.</p>}
         {!s.confirmed && <p className="temperature-hint">Confirm Initial Data to generate the chart.</p>}
         <div className="temperature-coefficients">
-          <div className="temperature-section-heading"><span>Polynomial Coefficients (ΔT = aI² + bI + c)</span><button type="button" disabled={busy || !s.analysis} onClick={tool.getCoefficients}>Get Coefficients</button></div>
+          <div className="temperature-section-heading"><span>Polynomial Coefficients (ΔT = aI² + bI + c)</span></div>
           <table><thead><tr><th>Curve</th><th>a</th><th>b</th><th>c</th></tr></thead><tbody>
             {(['maximum', 'average'] as const).map(curve => <tr key={curve}><th>{curve === 'maximum' ? 'MAX' : 'AVG'}</th>
               {(['a', 'b', 'c'] as (keyof Coefficients)[]).map(key => <td key={key}><input type="number" step="any" aria-label={`${curve === 'maximum' ? 'MAX' : 'AVG'} Coefficient ${key}`}
@@ -96,8 +96,8 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
           <label>Ambient Point (°C)<input type="number" min="0" step="any" value={s.ambientPoint} disabled={busy} onChange={event => tool.editParameter('ambientPoint', event.target.value)} /></label>
         </div>
         <div className="temperature-actions"><button type="button" disabled={busy || !s.average || !s.zeroIntercept} onClick={() => void tool.derating()}>Generate Derating</button></div>
-        {!s.zeroIntercept ? <p className="temperature-hint">Enable Zero Intercept, regenerate T-riseChart and get its coefficients to use Derating.</p>
-          : !s.average && <p className="temperature-hint">Get AVG coefficients from T-riseChart first.</p>}
+        {!s.zeroIntercept ? <p className="temperature-hint">Enable Zero Intercept and regenerate T-riseChart to use Derating.</p>
+          : !s.average && <p className="temperature-hint">Generate T-riseChart first.</p>}
         {s.derating ? <DeratingChart result={s.derating} /> : <p className="temperature-chart-empty">The Basic and 80% Derating curves will appear here.</p>}
       </section>
     </div>

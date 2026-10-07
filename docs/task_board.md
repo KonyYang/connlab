@@ -11,8 +11,26 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007",
+    "summary": "Automatically populate fitted coefficients when generating T-riseChart",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Remove the redundant coefficient retrieval step; preserve manual edits, invalidation and default Excel export values.",
+    "scope_paths": [
+      "frontend/src/features/temperature/useTemperatureTool.ts",
+      "frontend/src/pages/TemperatureRisePage.tsx",
+      "frontend/src/pages/TemperatureRisePage.test.tsx",
+      "docs/temperature_rise_tool.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "b3cf34600c4368e734484660d8d5e8bc53c287a3",
+    "started_at": "2026-10-07T15:37:55.665299Z",
+    "updated_at": "2026-10-07T15:37:55.665299Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007",
     "tier": "standard",

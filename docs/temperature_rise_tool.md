@@ -1,7 +1,7 @@
 # Temperature Rise and Derating Tool
 
-Status: implemented. Current refinement: unified raw-data row/column editing using selected mock 2
-(`TASK_TEMPERATURE_EXCEPTION_MAPPING_20261007`).
+Status: implemented. Current refinement: automatic editable coefficient population on chart generation
+(`TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007`); unified raw-data row/column editing remains in place.
 
 ## Scope and acceptance
 
@@ -18,8 +18,8 @@ panels stack. Existing ConnLab navigation, fonts, controls and quiet feedback re
   column letters. Suspicious rows are suggestions only; the user confirms their inclusion/exclusion.
 - Confirm the prepared data before analysis. A later input/mapping/exclusion change invalidates
   dependent charts, coefficients, current and downloads. Late responses must not restore stale data.
-- Generate T-riseChart, retrieve and edit MAX/AVG coefficients, calculate current from MAX and a
-  target rise, and generate Derating from AVG and the working-temperature parameters.
+- Generate T-riseChart, automatically populate editable MAX/AVG coefficients, calculate current from
+  MAX and a target rise, and generate Derating from AVG and the working-temperature parameters.
 - Download an independent `.xlsx` containing Initial Data, T-riseChart and Derating, with native XY
   charts, polynomial trendlines, equations, R² and review provenance. No save-before-clear dialogs.
 - Preserve other Tools functions and all project/Matrix/report authority.
@@ -126,7 +126,10 @@ Review summary: Standards 0 outstanding; Specification 0 outstanding blocking fi
    only for replacement, exclusion, addition or reassignment exceptions.
 3. In Data Preview select original row numbers or ranges, exclude/restore rows as needed, and Confirm
    Data. Warnings are never silently deleted; keeping flagged rows needs explicit acknowledgment.
-4. Generate T-riseChart → Get Coefficients → Calculate Current / Generate Derating → Download Excel.
+4. Generate T-riseChart → Calculate Current / Generate Derating → Download Excel. MAX/AVG a/b/c
+   populate automatically after chart generation; download uses these values by default or the user's
+   subsequent edits. Regeneration replaces edits with the new fit; changing source data clears the
+   coefficients and dependent results. In nonzero-intercept mode, c also populates and stays editable.
 
 Selections are an in-memory editing session, not a saved project. Refreshing or leaving the page
 requires reimport; download the result before leaving. This is not a general cell editor: correct
@@ -134,6 +137,27 @@ individual source values in Excel, then reimport. All samples currently use the 
 thermocouple count. Formula inputs are read from Excel's saved cached values; uncached formulas must
 be recalculated and saved in Excel first. Files are bounded to 25 MB, expanded XML 100 MB, 20,000 rows,
 256 columns and 1,000,000 cells. Current-stage stability is not proof of thermal equilibrium.
+
+## Automatic coefficient refinement (2026-10-07)
+
+The separate Get Coefficients action is removed. A successful analysis atomically updates the chart
+and both six-decimal coefficient sets using the existing request-generation guard. Manual edits,
+Zero Intercept behavior and dependent-result invalidation remain unchanged. No automatic download,
+new API request, numerical algorithm change or source-workbook mutation is introduced.
+
+- Regression evidence: before implementation, auto-population and direct calculation workflows
+  failed; after implementation, all 44 affected frontend tests passed (19 page, 18 preview, two
+  transport and five top-bar tests). TypeScript/Vite production build passed on the same source state.
+- An isolated browser tab with disposable six-row scanner CSV verified automatic a/b/c values,
+  direct 38.01 A calculation and both charts without coefficient retrieval; no warning/error logs.
+  The tab was closed without operating the user's imported-data tab.
+- Standards review: sequential same-agent review found no outstanding issue in hook ownership,
+  async guarding, editable-state preservation, transport boundaries or scope. No new dependency.
+- Specification review: button removed; both MAX and AVG export values default to the generated
+  coefficients, remain editable, refresh on regeneration and clear on input changes. Tests cover
+  nonzero c and late analysis after upload. No outstanding blocking finding.
+- Residual boundary: the workbook exporter itself is unchanged; default and edited coefficient
+  payloads are verified at the existing API seam. No new desktop Excel rendering run was required.
 
 The browser smoke verified the download action, HTTP success and filename feedback; the in-app
 automation did not expose a completed OS download event. Browser save location therefore remains

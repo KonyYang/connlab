@@ -43,6 +43,84 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(api.calculateTemperatureCurrent).mockResolvedValue({ current: 30 });
   });
 
+  it('automatically fills both fitted coefficient sets and exports them without a retrieval step', async () => {
+    const user = userEvent.setup();
+    const average = { a: .009876, b: .123456, c: 0 };
+    vi.mocked(api.analyzeTemperatureData).mockResolvedValueOnce({ ...analysis,
+      average_fit: { ...analysis.average_fit, coefficients: average } });
+    vi.mocked(api.downloadTemperatureWorkbook).mockResolvedValue({ blob: new Blob(['xlsx']), fileName: 'automatic.xlsx' });
+    vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:test'), revokeObjectURL: vi.fn() });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    try {
+      render(<TemperatureRisePage onBack={() => undefined} />);
+      await upload();
+      await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+      await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
+      await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
+      for (const [curve, values] of [['MAX', coefficients], ['AVG', average]] as const) {
+        for (const key of ['a', 'b', 'c'] as const) {
+          expect((screen.getByLabelText(`${curve} Coefficient ${key}`) as HTMLInputElement).value).toBe(values[key].toFixed(6));
+        }
+      }
+      expect(screen.queryByRole('button', { name: 'Get Coefficients' })).toBeNull();
+      expect((screen.getByRole('button', { name: 'Calculate Current' }) as HTMLButtonElement).disabled).toBe(false);
+      expect((screen.getByRole('button', { name: 'Generate Derating' }) as HTMLButtonElement).disabled).toBe(false);
+      await user.click(screen.getByRole('button', { name: 'Download Excel' }));
+      await screen.findByText('automatic.xlsx');
+      expect(api.downloadTemperatureWorkbook).toHaveBeenCalledWith(expect.objectContaining({
+        maximum_coefficients: coefficients, average_coefficients: average,
+      }));
+      expect(click).toHaveBeenCalledOnce();
+    } finally { click.mockRestore(); vi.unstubAllGlobals(); }
+  });
+
+  it('refreshes editable nonzero-intercept coefficients on regeneration and clears them when data changes', async () => {
+    const user = userEvent.setup();
+    const maximum = { a: .012345, b: .234567, c: 1.234567 };
+    const average = { a: .009876, b: .123456, c: .987654 };
+    vi.mocked(api.analyzeTemperatureData).mockResolvedValue({ ...analysis, zero_intercept: false,
+      maximum_fit: { ...analysis.maximum_fit, coefficients: maximum },
+      average_fit: { ...analysis.average_fit, coefficients: average } });
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await user.click(screen.getByLabelText('Zero Intercept'));
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
+    await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
+    const maxC = screen.getByLabelText('MAX Coefficient c') as HTMLInputElement;
+    expect(maxC.value).toBe('1.234567');
+    expect(maxC.disabled).toBe(false);
+    fireEvent.change(maxC, { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('AVG Coefficient a'), { target: { value: '.02' } });
+    await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
+    expect(maxC.value).toBe('1.234567');
+    expect((screen.getByLabelText('AVG Coefficient a') as HTMLInputElement).value).toBe('0.009876');
+    await user.selectOptions(screen.getByLabelText('Ambient Column'), '3');
+    for (const curve of ['MAX', 'AVG']) {
+      for (const key of ['a', 'b', 'c']) {
+        const field = screen.getByLabelText(`${curve} Coefficient ${key}`) as HTMLInputElement;
+        expect(field.value).toBe('');
+        expect(field.disabled).toBe(true);
+      }
+    }
+  });
+
+  it('does not populate coefficients from a late analysis after another upload', async () => {
+    const user = userEvent.setup();
+    let resolve!: (value: api.TemperatureAnalysis) => void;
+    vi.mocked(api.analyzeTemperatureData).mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
+    await upload();
+    await act(async () => resolve(analysis));
+    expect(screen.queryByRole('img', { name: 'Temperature Rise vs Current' })).toBeNull();
+    expect((screen.getByLabelText('MAX Coefficient a') as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('AVG Coefficient a') as HTMLInputElement).value).toBe('');
+    expect((screen.getByRole('button', { name: 'Calculate Current' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('filters ambient/current choices by scanner units without rounding the submitted data', async () => {
     const user = userEvent.setup();
     const source = structuredClone(imported);
@@ -286,7 +364,6 @@ describe('temperature preparation and calculation workflow', () => {
     });
     await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
     await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
-    await user.click(screen.getByRole('button', { name: 'Get Coefficients' }));
     await user.click(screen.getByRole('button', { name: 'Calculate Current' }));
     expect((await screen.findByLabelText('Calculated Current')).textContent).toContain('30.00 A');
     await user.click(screen.getByRole('button', { name: 'Restore All Rows' }));
@@ -393,7 +470,6 @@ describe('temperature preparation and calculation workflow', () => {
       await upload();
       await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
       await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
-      await user.click(screen.getByRole('button', { name: 'Get Coefficients' }));
       await user.click(screen.getByRole('button', { name: 'Calculate Current' }));
       await user.click(screen.getByRole('button', { name: 'Generate Derating' }));
       await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });

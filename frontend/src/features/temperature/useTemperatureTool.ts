@@ -89,7 +89,10 @@ export function useTemperatureTool() {
       acknowledge_warnings: state.acknowledged, zero_intercept: state.zeroIntercept };
   }
   const confirm = () => run('Checking Data...', () => api.prepareTemperatureData(request()), review => ({ review, confirmed: review.ready }));
-  const analyze = () => run('Generating T-riseChart...', () => api.analyzeTemperatureData(request()), analysis => ({ ...clearResults, analysis }));
+  const analyze = () => run('Generating T-riseChart...', () => api.analyzeTemperatureData(request()), analysis => ({
+    ...clearResults, analysis, maximum: fields(analysis.maximum_fit.coefficients),
+    average: fields(analysis.average_fit.coefficients),
+  }));
   function acknowledge(acknowledged: boolean) {
     generation.current += 1;
     setState(old => ({ ...old, ...clearResults, confirmed: false, acknowledged, busy: null }));
@@ -97,10 +100,6 @@ export function useTemperatureTool() {
   function zeroIntercept(zeroIntercept: boolean) {
     generation.current += 1;
     setState(old => ({ ...old, ...clearResults, zeroIntercept, manualZeroIntercept: true, busy: null, error: null }));
-  }
-  function getCoefficients() {
-    setState(old => old.analysis ? { ...old, maximum: fields(old.analysis.maximum_fit.coefficients),
-      average: fields(old.analysis.average_fit.coefficients), current: null, derating: null, downloaded: null, error: null } : old);
   }
   function editCoefficient(curve: 'maximum' | 'average', key: keyof api.Coefficients, value: string) {
     generation.current += 1;
@@ -117,11 +116,11 @@ export function useTemperatureTool() {
       step: parameter(state.step, 'step'), ambient_point: parameter(state.ambientPoint, 'ambient point') };
   }
   const current = () => run('Calculating Current...', () => {
-    if (!state.maximum) throw new Error('Get Coefficients first.');
+    if (!state.maximum) throw new Error('Generate T-riseChart first.');
     return api.calculateTemperatureCurrent(numeric(state.maximum), parameter(state.targetRise, 'target rise'));
   }, result => ({ current: result.current }));
   const derating = () => run('Generating Derating...', () => {
-    if (!state.average) throw new Error('Get Coefficients first.');
+    if (!state.average) throw new Error('Generate T-riseChart first.');
     return api.generateTemperatureDerating(numeric(state.average), deratingSettings());
   }, result => ({ derating: result }));
   async function download() {
@@ -142,5 +141,5 @@ export function useTemperatureTool() {
     }), downloaded => ({ downloaded }));
   }
   return { state, load, changeData, correctRegion, confirm, analyze, acknowledge, zeroIntercept,
-    getCoefficients, editCoefficient, editParameter, current, derating, download };
+    editCoefficient, editParameter, current, derating, download };
 }
