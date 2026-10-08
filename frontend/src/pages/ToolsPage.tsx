@@ -30,6 +30,7 @@ const CUSTOMER_REPORT_POLL_DELAY_MS = 750;
 
 export function ToolsPage({ onOpenTemperatureRise = () => { window.location.assign('/tools/temperature-rise'); } }: { onOpenTemperatureRise?: () => void } = {}): ReactElement {
   const [state, setState] = useState(INITIAL_STATE);
+  const runningTools = useRef(new Set<ToolKey>());
   const runTokens = useRef<Record<ToolKey, number>>({
     "customer-report": 0,
     "encrypt-copy": 0,
@@ -42,38 +43,46 @@ export function ToolsPage({ onOpenTemperatureRise = () => { window.location.assi
 
   function selectFile(tool: ToolKey, event: ChangeEvent<HTMLInputElement>): void {
     const file = event.target.files?.[0] ?? null;
+    if (runningTools.current.has(tool)) return;
+    if (tool === "customer-report") {
+      event.target.value = "";
+      if (file) void run(tool, file);
+      return;
+    }
     setState((current) => ({
       ...current,
       [tool]: { file, busy: false, error: null, downloadedFileName: null, progress: null },
     }));
   }
 
-  async function run(tool: ToolKey): Promise<void> {
-    const current = state[tool];
-    if (!current.file) {
+  async function run(tool: ToolKey, selectedFile?: File): Promise<void> {
+    if (runningTools.current.has(tool)) return;
+    const file = selectedFile ?? state[tool].file;
+    if (!file) {
       setState((value) => ({
         ...value,
         [tool]: { ...value[tool], error: "Select a file first.", downloadedFileName: null },
       }));
       return;
     }
+    runningTools.current.add(tool);
     setState((value) => ({
       ...value,
-      [tool]: { ...value[tool], busy: true, error: null, downloadedFileName: null, progress: null },
+      [tool]: { file, busy: true, error: null, downloadedFileName: null, progress: null },
     }));
     const token = ++runTokens.current[tool];
     const isCurrentRun = () => runTokens.current[tool] === token;
     try {
       const response = tool === "customer-report"
-        ? await runCustomerReportJob(current.file, isCurrentRun, (progress) => {
+        ? await runCustomerReportJob(file, isCurrentRun, (progress) => {
           setState((value) => ({
             ...value,
             [tool]: { ...value[tool], progress },
           }));
         })
-        : await encryptStandaloneCopy(current.file);
+        : await encryptStandaloneCopy(file);
       if (!isCurrentRun()) return;
-      const fileName = response.fileName ?? fallbackName(tool, current.file);
+      const fileName = response.fileName ?? fallbackName(tool, file);
       downloadBlob(response, fileName);
       setState((value) => ({
         ...value,
@@ -95,6 +104,8 @@ export function ToolsPage({ onOpenTemperatureRise = () => { window.location.assi
           error: error instanceof Error ? error.message : "The tool could not complete.",
         },
       }));
+    } finally {
+      runningTools.current.delete(tool);
     }
   }
 
@@ -107,6 +118,7 @@ export function ToolsPage({ onOpenTemperatureRise = () => { window.location.assi
           state={state["customer-report"]}
           inputLabel="Select Internal Report"
           actionLabel="Generate Customer Report"
+          pickAndRun
           onSelect={(event) => selectFile("customer-report", event)}
           onRun={() => void run("customer-report")}
         />
@@ -139,6 +151,7 @@ function ToolCard({
   actionLabel,
   onSelect,
   onRun,
+  pickAndRun = false,
 }: {
   title: string;
   hint?: string;
@@ -148,22 +161,26 @@ function ToolCard({
   actionLabel: string;
   onSelect: (event: ChangeEvent<HTMLInputElement>) => void;
   onRun: () => void;
+  pickAndRun?: boolean;
 }): ReactElement {
+  const fileInput = useRef<HTMLInputElement>(null);
   return (
-    <article className="tools-card">
-      <div className="tools-card-heading">
+    <article className="tools-card" aria-label={title}>
+      {!pickAndRun && <div className="tools-card-heading">
         <h3>{title}</h3>
-      </div>
-      <label className="tools-file-picker">
+      </div>}
+      {pickAndRun ? <input ref={fileInput} type="file" hidden aria-label={inputLabel}
+        accept={accept} disabled={state.busy} onChange={onSelect} /> : <label className="tools-file-picker">
         <span>{inputLabel}</span>
         <input type="file" accept={accept} disabled={state.busy} onChange={onSelect} />
-      </label>
+      </label>}
       {hint && <p className="tools-card-hint">{hint}</p>}
       {state.error && <p className="tools-feedback tools-feedback-error" role="alert">{state.error}</p>}
       {state.busy && state.progress && (
         <CustomerReportProgress stage={state.progress.stage} elapsedSeconds={state.progress.elapsed_seconds} />
       )}
-      <button className="primary-action" type="button" disabled={state.busy} onClick={onRun}>
+      <button className="primary-action" type="button" disabled={state.busy}
+        onClick={pickAndRun ? () => fileInput.current?.click() : onRun}>
         {state.busy ? (state.progress ? "Generating..." : "Starting...") : actionLabel}
       </button>
       {state.downloadedFileName && <p className="tools-feedback tools-feedback-success" role="status" aria-label="Downloaded File">

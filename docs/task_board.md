@@ -11,8 +11,24 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
+    "summary": "Use one file-picker action to generate a customer report in Tools",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Customer report card only: one visible button opens file chooser and selecting a file immediately runs existing conversion; preserve cancellation, progress, error, download, and other tools",
+    "scope_paths": [
+      "frontend/src/pages/ToolsPage.tsx",
+      "frontend/src/pages/ToolsPage.test.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "d11e507e111e8de817faacce2268f09d0daad8f3",
+    "started_at": "2026-10-08T10:53:22.399537Z",
+    "updated_at": "2026-10-08T10:53:22.399537Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_CURRENT_MAX_STYLE_20261008",
     "tier": "micro",

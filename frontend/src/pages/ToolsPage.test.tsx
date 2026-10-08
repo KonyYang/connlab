@@ -60,18 +60,15 @@ describe("ToolsPage", () => {
     encryptCopyMock.mockResolvedValue({ blob: new Blob(["secured"]), fileName: "sample_Secured.docx" });
   });
 
-  it("converts a selected Internal Report and downloads the returned customer report", async () => {
+  it("generates and downloads a customer report immediately after choosing its source", async () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
     const file = new File(["internal"], "sample.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
 
     await user.upload(screen.getByLabelText("Select Internal Report"), file);
-    await user.click(screen.getByRole("button", { name: "Generate Customer Report" }));
 
     expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("sample-CR.docx");
     expect(screen.queryByText(/seconds elapsed/)).toBeNull();
-    await user.upload(screen.getByLabelText("Select Internal Report"), new File(["next"], "next.docx"));
-    expect(screen.queryByRole("status")).toBeNull();
     expect(startCustomerReportMock).toHaveBeenCalledWith(file);
     expect(readCustomerReportMock).toHaveBeenCalledWith("operation-1");
     expect(downloadCustomerReportMock).toHaveBeenCalledWith("operation-1");
@@ -94,7 +91,6 @@ describe("ToolsPage", () => {
     const file = new File(["internal"], "large-report.docx");
 
     await user.upload(screen.getByLabelText("Select Internal Report"), file);
-    await user.click(screen.getByRole("button", { name: "Generate Customer Report" }));
     expect(await screen.findByText(/Waiting for the previous customer-report task/)).toBeTruthy();
 
     releaseStatus?.({
@@ -125,13 +121,71 @@ describe("ToolsPage", () => {
     expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("sample_Secured.docx");
   });
 
-  it("requires a file before running a tool", async () => {
+  it("opens the hidden source picker from its only button and does nothing when cancelled", async () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
+    const picker = screen.getByLabelText("Select Internal Report") as HTMLInputElement;
+    const choose = vi.spyOn(picker, "click");
 
     await user.click(screen.getByRole("button", { name: "Generate Customer Report" }));
+    expect(choose).toHaveBeenCalledTimes(1);
+    expect(picker.hidden).toBe(true);
+    expect(screen.queryByText("Select Internal Report")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Internal Report → Customer Report" })).toBeNull();
+    fireEvent.change(picker, { target: { files: [] } });
+    expect(startCustomerReportMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("button", { name: "Generate Customer Report" })).toBeTruthy();
+  });
 
-    expect((await screen.findByRole("alert")).textContent).toContain("Select a file first.");
+  it("allows choosing the same report again after failure and preserves feedback when cancelled", async () => {
+    startCustomerReportMock.mockRejectedValueOnce(new Error("Choose a compatible Internal Report."));
+    const user = userEvent.setup();
+    render(<ToolsPage />);
+    const picker = screen.getByLabelText("Select Internal Report") as HTMLInputElement;
+    const file = new File(["internal"], "sample.docx");
+    await user.upload(picker, file);
+    expect((await screen.findByRole("alert")).textContent).toContain("compatible Internal Report");
+    expect(picker.value).toBe("");
+    fireEvent.change(picker, { target: { files: [] } });
+    expect(screen.getByRole("alert").textContent).toContain("compatible Internal Report");
+    expect(startCustomerReportMock).toHaveBeenCalledTimes(1);
+    await user.upload(picker, file);
+    expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("sample-CR.docx");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(startCustomerReportMock).toHaveBeenCalledTimes(2);
+    expect(startCustomerReportMock).toHaveBeenLastCalledWith(file);
+  });
+
+  it("blocks repeated selections while starting and discards report completion after leaving Tools", async () => {
+    let complete!: (value: Awaited<ReturnType<typeof startStandaloneCustomerReport>>) => void;
+    startCustomerReportMock.mockReturnValueOnce(new Promise(done => { complete = done; }));
+    const user = userEvent.setup();
+    const rendered = render(<ToolsPage />);
+    const picker = screen.getByLabelText("Select Internal Report") as HTMLInputElement;
+    const file = new File(["internal"], "sample.docx");
+    await user.upload(picker, file);
+    expect(picker.disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Starting..." }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(picker, { target: { files: [file] } });
+    expect(startCustomerReportMock).toHaveBeenCalledTimes(1);
+    rendered.unmount();
+    await act(async () => complete({ operation_id: "operation-1", status: "completed", stage: "completed", elapsed_seconds: 1, message: null }));
+    expect(downloadCustomerReportMock).not.toHaveBeenCalled();
+    expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
+  });
+
+  it("discards a late customer report download after leaving Tools", async () => {
+    startCustomerReportMock.mockResolvedValueOnce({ operation_id: "operation-1", status: "completed", stage: "completed", elapsed_seconds: 1, message: null });
+    let complete!: (value: Awaited<ReturnType<typeof downloadStandaloneCustomerReport>>) => void;
+    downloadCustomerReportMock.mockReturnValueOnce(new Promise(done => { complete = done; }));
+    const user = userEvent.setup();
+    const rendered = render(<ToolsPage />);
+    await user.upload(screen.getByLabelText("Select Internal Report"), new File(["internal"], "sample.docx"));
+    expect(downloadCustomerReportMock).toHaveBeenCalledWith("operation-1");
+    rendered.unmount();
+    await act(async () => complete({ blob: new Blob(["report"]), fileName: "late-CR.docx" }));
+    expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
   });
 
   it("updates equipment in a downloaded report copy and shows only actual review items", async () => {
