@@ -11,79 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
-    "summary": "Use one file-picker action to generate a customer report in Tools",
-    "tier": "micro",
-    "route": "sol_direct",
-    "scope": "Customer report card only: one visible button opens file chooser and selecting a file immediately runs existing conversion; preserve cancellation, progress, error, download, and other tools",
-    "scope_paths": [
-      "frontend/src/pages/ToolsPage.tsx",
-      "frontend/src/pages/ToolsPage.test.tsx"
-    ],
-    "risk_reasons": [],
-    "activation_head": "d11e507e111e8de817faacce2268f09d0daad8f3",
-    "started_at": "2026-10-08T10:53:22.399537Z",
-    "updated_at": "2026-10-08T22:57:56.949071Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "scope_ok": true,
-      "version": 1,
-      "summary": "Compact Tools card actions with equipment source confirmation; temperature entry uses exact requested Select T-rise Data and Drawing Curves copy, preserving styling and navigation.",
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "review": "Exact singular-to-plural literal change self-reviewed against latest User request; no other source changes. No findings.",
-          "tdd": "This revision is a literal/copy and existing-class fix; no new implementation-mirroring tests. Earlier equipment dialog RED/GREEN retained in Git history."
-        }
-      },
-      "subject": "1a0399c45c629356d0a75d1867c8013fabd409e3",
-      "validation": [
-        {
-          "result": "15 tests passed on final plural-label state",
-          "command": "npm run test -- src/pages/ToolsPage.test.tsx",
-          "status": "passed"
-        },
-        {
-          "result": "No whitespace errors; only Drawing Curve to Drawing Curves source change; style and callback unchanged. Prior build and browser verification precede this literal-only correction, not rerun.",
-          "command": "git diff --check and exact diff self-review",
-          "status": "passed"
-        }
-      ],
-      "schema": "connlab.sol-task-report",
-      "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
-      "integration": {
-        "status": "passed",
-        "publication": "not requested",
-        "subject": "1a0399c45c629356d0a75d1867c8013fabd409e3",
-        "branch": "master"
-      },
-      "changed_paths": [
-        "frontend/src/pages/ToolsPage.tsx",
-        "frontend/src/pages/ToolsPage.test.tsx",
-        "frontend/src/features/tools/EquipmentListTool.tsx",
-        "frontend/src/features/tools/EquipmentSourceDialog.tsx",
-        "frontend/src/tools.css"
-      ]
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_TEMPERATURE_CURRENT_MAX_STYLE_20261008",
+    "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
     "tier": "micro",
-    "subject": "67cbe7fa6a329299a67917d7a86afefbabb6a2b8",
-    "summary": "Match calculated current color to Max curve and use bold text",
+    "subject": "1a0399c45c629356d0a75d1867c8013fabd409e3",
+    "summary": "Use one file-picker action to generate a customer report in Tools",
     "disposition": "completed",
     "decision_ref": "User final authorization: 关闭任务",
-    "closed_at": "2026-10-08T00:00:46.691359Z"
+    "closed_at": "2026-10-08T22:59:04.069000Z"
   },
   "retained_history": [
     {
