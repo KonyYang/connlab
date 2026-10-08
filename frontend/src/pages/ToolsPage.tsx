@@ -117,7 +117,7 @@ export function ToolsPage({ onOpenTemperatureRise = () => { window.location.assi
           accept=".docx"
           state={state["customer-report"]}
           inputLabel="Select Internal Report"
-          actionLabel="Select Internal Report → Generate Customer Report"
+          actionLabel="Generate Customer Report"
           pickAndRun
           onSelect={(event) => selectFile("customer-report", event)}
           onRun={() => void run("customer-report")}
@@ -166,9 +166,9 @@ function ToolCard({
   const fileInput = useRef<HTMLInputElement>(null);
   return (
     <article className="tools-card" aria-label={title}>
-      {!pickAndRun && <div className="tools-card-heading">
-        <h3>{title}</h3>
-      </div>}
+      <div className="tools-card-heading">
+        <h3>{pickAndRun ? inputLabel : title}</h3>
+      </div>
       {pickAndRun ? <input ref={fileInput} type="file" hidden aria-label={inputLabel}
         accept={accept} disabled={state.busy} onChange={onSelect} /> : <label className="tools-file-picker">
         <span>{inputLabel}</span>
@@ -179,7 +179,7 @@ function ToolCard({
       {state.busy && state.progress && (
         <CustomerReportProgress stage={state.progress.stage} elapsedSeconds={state.progress.elapsed_seconds} />
       )}
-      <button className="primary-action" type="button" disabled={state.busy}
+      <button className={pickAndRun ? "primary-action tools-picker-action" : "primary-action"} type="button" disabled={state.busy}
         onClick={pickAndRun ? () => fileInput.current?.click() : onRun}>
         {state.busy ? (state.progress ? "Generating..." : "Starting...") : actionLabel}
       </button>

@@ -121,21 +121,23 @@ describe("ToolsPage", () => {
     expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("sample_Secured.docx");
   });
 
-  it("opens the hidden source picker from its only button and does nothing when cancelled", async () => {
+  it("shows the source instruction above one short picker button and does nothing when cancelled", async () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
     const picker = screen.getByLabelText("Select Internal Report") as HTMLInputElement;
     const choose = vi.spyOn(picker, "click");
 
-    await user.click(screen.getByRole("button", { name: "Select Internal Report → Generate Customer Report" }));
+    const instruction = screen.getByRole("heading", { name: "Select Internal Report" });
+    const action = screen.getByRole("button", { name: "Generate Customer Report" });
+    expect(instruction.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await user.click(action);
     expect(choose).toHaveBeenCalledTimes(1);
     expect(picker.hidden).toBe(true);
-    expect(screen.queryByText("Select Internal Report")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Internal Report → Customer Report" })).toBeNull();
     fireEvent.change(picker, { target: { files: [] } });
     expect(startCustomerReportMock).not.toHaveBeenCalled();
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(screen.getByRole("button", { name: "Select Internal Report → Generate Customer Report" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Generate Customer Report" })).toBeTruthy();
   });
 
   it("allows choosing the same report again after failure and preserves feedback when cancelled", async () => {

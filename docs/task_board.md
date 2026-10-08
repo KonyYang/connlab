@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
     "summary": "Use one file-picker action to generate a customer report in Tools",
@@ -25,52 +25,17 @@
     "risk_reasons": [],
     "activation_head": "d11e507e111e8de817faacce2268f09d0daad8f3",
     "started_at": "2026-10-08T10:53:22.399537Z",
-    "updated_at": "2026-10-08T11:18:06.879843Z",
+    "updated_at": "2026-10-08T11:19:31.879011Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requests Internal Report prompt above a smaller customer report button",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
-      "integration": {
-        "status": "passed",
-        "subject": "2f5b95d9d859ce9bd080f8f34e506106d5b65927",
-        "branch": "master",
-        "publication": "not requested"
-      },
-      "scope_ok": true,
-      "version": 1,
-      "validation": [
-        {
-          "status": "passed",
-          "command": "npm run test -- src/pages/ToolsPage.test.tsx",
-          "result": "All 11 tests passed on final revised state, including labelled button opens picker, cancellation, automatic conversion, retry, progress and unmount protection"
-        },
-        {
-          "status": "passed",
-          "command": "git diff --check",
-          "result": "No whitespace errors; current revision changes only one button literal and two matching test expectations"
-        }
-      ],
-      "roles": {
-        "developer": {
-          "review": "Same-agent exact revision diff review: requirement and standards satisfied; no findings. Prior implementation reviewed separately. Copy-only revision needs no additional build or browser matrix.",
-          "status": "passed"
-        }
-      },
-      "subject": "2f5b95d9d859ce9bd080f8f34e506106d5b65927",
-      "summary": "One-button customer report workflow retained; button now explicitly says Select Internal Report → Generate Customer Report.",
-      "changed_paths": [
-        "frontend/src/pages/ToolsPage.test.tsx",
-        "frontend/src/pages/ToolsPage.tsx"
-      ]
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_CURRENT_MAX_STYLE_20261008",

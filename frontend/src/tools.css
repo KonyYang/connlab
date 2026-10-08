@@ -45,6 +45,11 @@
   font-size: 18px;
 }
 
+.tools-picker-action {
+  justify-self: start;
+  max-width: 100%;
+}
+
 .tools-file-picker {
   display: grid;
   gap: 8px;
