@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_CURRENT_MAX_STYLE_20261008",
     "summary": "Match calculated current color to Max curve and use bold text",
@@ -26,9 +26,62 @@
     "risk_reasons": [],
     "activation_head": "63a7ef4009379a772b5fd5ebf2e0bdac1978f7a0",
     "started_at": "2026-10-07T23:59:05.591125Z",
-    "updated_at": "2026-10-07T23:59:05.591125Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-08T00:00:21.687062Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_CURRENT_MAX_STYLE_20261008",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "integration": {
+        "branch": "master",
+        "subject": "67cbe7fa6a329299a67917d7a86afefbabb6a2b8",
+        "publication": "not requested",
+        "status": "passed"
+      },
+      "changed_paths": [
+        "frontend/src/features/temperature/TemperatureCharts.tsx",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/pages/TemperatureRisePage.tsx"
+      ],
+      "validation": [
+        {
+          "result": "30 passed",
+          "command": "npm run test -- src/pages/TemperatureRisePage.test.tsx",
+          "status": "passed"
+        },
+        {
+          "result": "TypeScript/Vite passed",
+          "command": "npm run build",
+          "status": "passed"
+        },
+        {
+          "result": "Current 66.54 A and Max equation both rgb(220,112,33); current weight 700; Derating summary remains blue/400; user state untouched; screenshot saved",
+          "command": "read-only browser style verification",
+          "status": "passed"
+        },
+        {
+          "command": "git diff --check",
+          "status": "passed"
+        }
+      ],
+      "summary": "Calculated Current reuses exact Max curve orange and has 700 bold text; calculation and Derating summary unchanged.",
+      "task_id": "TASK_TEMPERATURE_CURRENT_MAX_STYLE_20261008",
+      "scope_ok": true,
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "roles": {
+        "developer": {
+          "review": "Exact diff self-review: style only, same color constant, no calculation change, separate modifier avoids changing Derating summary; no findings",
+          "status": "passed"
+        }
+      },
+      "subject": "67cbe7fa6a329299a67917d7a86afefbabb6a2b8"
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_DERATING_COMPACT_LAYOUT_20261008",
