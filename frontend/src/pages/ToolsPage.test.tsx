@@ -105,20 +105,67 @@ describe("ToolsPage", () => {
     expect(screen.getByText(/19 seconds elapsed/)).toBeTruthy();
   });
 
-  it("identifies the downloaded encrypted copy and keeps password guidance concise", async () => {
+  it("creates and downloads an encrypted copy immediately after choosing an Office file", async () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
     const file = new File(["internal"], "sample.docx");
 
-    expect(
-      screen.getByText(/Uses the ConnLab Office password/i),
-    ).toBeTruthy();
-
-    await user.upload(screen.getByLabelText("Select Office file"), file);
-    await user.click(screen.getByRole("button", { name: "Create Encrypted Copy" }));
+    await user.upload(screen.getByLabelText(/Select Office File/i), file);
 
     expect(encryptCopyMock).toHaveBeenCalledWith(file);
     expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("sample_Secured.docx");
+  });
+
+  it("shows Office file guidance above one picker button and leaves cancellation idle", async () => {
+    const user = userEvent.setup();
+    render(<ToolsPage />);
+    const picker = screen.getByLabelText("Select Office File") as HTMLInputElement;
+    const choose = vi.spyOn(picker, "click");
+    const instruction = screen.getByRole("heading", { name: "Select Office File" });
+    const action = screen.getByRole("button", { name: "Create Encrypted Copy" });
+    expect(instruction.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(picker.hidden).toBe(true);
+    expect(screen.queryByRole("heading", { name: "Encrypt a Copy" })).toBeNull();
+    await user.click(action);
+    expect(choose).toHaveBeenCalledTimes(1);
+    fireEvent.change(picker, { target: { files: [] } });
+    expect(encryptCopyMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps encryption failure feedback on cancellation and allows retrying the same Office file", async () => {
+    encryptCopyMock.mockRejectedValueOnce(new Error("Close the Office file and try again."));
+    const user = userEvent.setup();
+    render(<ToolsPage />);
+    const picker = screen.getByLabelText("Select Office File") as HTMLInputElement;
+    const file = new File(["office"], "sample.docx");
+    await user.upload(picker, file);
+    expect((await screen.findByRole("alert")).textContent).toContain("Close the Office file");
+    expect(picker.value).toBe("");
+    fireEvent.change(picker, { target: { files: [] } });
+    expect(screen.getByRole("alert").textContent).toContain("Close the Office file");
+    expect(encryptCopyMock).toHaveBeenCalledTimes(1);
+    await user.upload(picker, file);
+    expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("sample_Secured.docx");
+    expect(encryptCopyMock).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("prevents repeated encryption selections and discards a late download after leaving Tools", async () => {
+    let complete!: (value: Awaited<ReturnType<typeof encryptStandaloneCopy>>) => void;
+    encryptCopyMock.mockReturnValueOnce(new Promise(done => { complete = done; }));
+    const user = userEvent.setup();
+    const rendered = render(<ToolsPage />);
+    const picker = screen.getByLabelText("Select Office File") as HTMLInputElement;
+    const file = new File(["office"], "sample.xlsx");
+    await user.upload(picker, file);
+    expect(picker.disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Starting..." }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(picker, { target: { files: [file] } });
+    expect(encryptCopyMock).toHaveBeenCalledTimes(1);
+    rendered.unmount();
+    await act(async () => complete({ blob: new Blob(["secured"]), fileName: "sample_Secured.xlsx" }));
+    expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
   });
 
   it("shows the source instruction above one short picker button and does nothing when cancelled", async () => {

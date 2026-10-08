@@ -44,15 +44,8 @@ export function ToolsPage({ onOpenTemperatureRise = () => { window.location.assi
   function selectFile(tool: ToolKey, event: ChangeEvent<HTMLInputElement>): void {
     const file = event.target.files?.[0] ?? null;
     if (runningTools.current.has(tool)) return;
-    if (tool === "customer-report") {
-      event.target.value = "";
-      if (file) void run(tool, file);
-      return;
-    }
-    setState((current) => ({
-      ...current,
-      [tool]: { file, busy: false, error: null, downloadedFileName: null, progress: null },
-    }));
+    event.target.value = "";
+    if (file) void run(tool, file);
   }
 
   async function run(tool: ToolKey, selectedFile?: File): Promise<void> {
@@ -124,11 +117,11 @@ export function ToolsPage({ onOpenTemperatureRise = () => { window.location.assi
         />
         <ToolCard
           title="Encrypt a Copy"
-          hint="Uses the ConnLab Office password."
           accept=".doc,.docx,.xls,.xlsx,.pptx"
           state={state["encrypt-copy"]}
-          inputLabel="Select Office file"
+          inputLabel="Select Office File"
           actionLabel="Create Encrypted Copy"
+          pickAndRun
           onSelect={(event) => selectFile("encrypt-copy", event)}
           onRun={() => void run("encrypt-copy")}
         />
