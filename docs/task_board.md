@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
     "summary": "Use one file-picker action to generate a customer report in Tools",
@@ -25,17 +25,66 @@
     "risk_reasons": [],
     "activation_head": "d11e507e111e8de817faacce2268f09d0daad8f3",
     "started_at": "2026-10-08T10:53:22.399537Z",
-    "updated_at": "2026-10-08T12:11:01.689856Z",
+    "updated_at": "2026-10-08T12:22:32.834164Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User approves compact equipment entry: choose report then confirm equipment source in keyboard-accessible dialog; preserve safe copy download and review feedback",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "roles": {
+        "developer": {
+          "tdd": "Observed missing source dialog RED against previous implementation, implemented GREEN, added cancellation and focus coverage; final 25-test matrix passed.",
+          "review": "Same-agent sequential Standards and Spec review of exact diff; zero actionable findings on either axis. Backend and Office code unchanged.",
+          "status": "passed"
+        }
+      },
+      "scope_ok": true,
+      "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
+      "subject": "82acba16cad413d5f23348b089e7e08a0018666f",
+      "integration": {
+        "branch": "master",
+        "publication": "not requested",
+        "subject": "82acba16cad413d5f23348b089e7e08a0018666f",
+        "status": "passed"
+      },
+      "schema": "connlab.sol-task-report",
+      "validation": [
+        {
+          "result": "25 tests passed on final source state",
+          "status": "passed",
+          "command": "npm run test -- src/pages/ToolsPage.test.tsx src/api/toolsEquipment.test.ts src/App.test.tsx"
+        },
+        {
+          "result": "TypeScript and Vite production build passed",
+          "status": "passed",
+          "command": "npm run build"
+        },
+        {
+          "result": "No whitespace errors",
+          "status": "passed",
+          "command": "git diff --check"
+        },
+        {
+          "result": "Picker opens dialog; same-file reopening, explicit blank-source validation, editable manual IDs, Tab modal confinement, Escape/Cancel with opener focus restore and narrow 560x804 layout verified. No live Office update executed.",
+          "status": "passed",
+          "command": "In-app browser equipment dialog verification"
+        }
+      ],
+      "version": 1,
+      "changed_paths": [
+        "frontend/src/pages/ToolsPage.tsx",
+        "frontend/src/pages/ToolsPage.test.tsx",
+        "frontend/src/features/tools/EquipmentListTool.tsx",
+        "frontend/src/features/tools/EquipmentSourceDialog.tsx",
+        "frontend/src/tools.css"
+      ],
+      "summary": "Tools cards use compact picker actions; equipment update chooses report then explicitly confirms equipment source in a native modal. Existing API, download-copy and review feedback are preserved."
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_CURRENT_MAX_STYLE_20261008",
