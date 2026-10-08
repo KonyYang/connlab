@@ -3,7 +3,8 @@ import { sourceScan } from './sourceScan';
 
 type Point = { x: number; y: number };
 type Trace = { name: string; color: string; points: Point[]; markers?: boolean; line?: boolean };
-const MAX_COLOR = '#dc7021', AVG_COLOR = '#1f66d1';
+export const MAX_COLOR = '#dc7021';
+const AVG_COLOR = '#1f66d1';
 const polynomial = (coef: Coefficients, x: number) => (coef.a * x + coef.b) * x + coef.c;
 const equation = (coef: Coefficients) => `${coef.a.toFixed(6)} I² ${coef.b < 0 ? '−' : '+'} ${Math.abs(coef.b).toFixed(6)} I ${coef.c < 0 ? '−' : '+'} ${Math.abs(coef.c).toFixed(6)}`;
 

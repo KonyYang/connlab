@@ -7,7 +7,7 @@ import { sourceColumnOptions } from '../features/temperature/sourcePresentation'
 import { scanMessage } from '../features/temperature/sourceScan';
 import { DataPreview } from '../features/temperature/DataPreview';
 import { DataRegionCorrection } from '../features/temperature/DataRegionCorrection';
-import { RiseChart, DeratingChart } from '../features/temperature/TemperatureCharts';
+import { RiseChart, DeratingChart, MAX_COLOR } from '../features/temperature/TemperatureCharts';
 import { useTemperatureTool } from '../features/temperature/useTemperatureTool';
 import '../features/temperature/temperature.css';
 
@@ -77,7 +77,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         {s.analysis ? <RiseChart analysis={s.analysis} table={s.table} /> : <p className="temperature-chart-empty">The temperature-rise chart will appear here.</p>}
         <div className="temperature-actions"><label>Target Rise (°C)<input type="number" min="0" step="any" value={s.targetRise} disabled={busy} onChange={event => tool.editParameter('targetRise', event.target.value)} /></label>
           <button type="button" disabled={busy || !s.maximum} onClick={() => void tool.current()}>Calculate Current</button>
-          {s.current !== null && <output aria-label="Calculated Current" className="temperature-result">{s.current.toFixed(2)} A</output>}</div>
+          {s.current !== null && <output aria-label="Calculated Current" className="temperature-result temperature-current-result" style={{ color: MAX_COLOR }}>{s.current.toFixed(2)} A</output>}</div>
       </section>
       <section className="temperature-panel">
         <h3>Derating</h3>

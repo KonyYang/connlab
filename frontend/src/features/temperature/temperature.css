@@ -104,6 +104,7 @@
 .temperature-equations { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12px; }
 .temperature-equations p { margin: 0; }
 .temperature-result { color: var(--color-primary-strong); font-size: 16px; margin: 0; }
+.temperature-current-result { font-weight: 700; }
 .temperature-derating-fields { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .temperature-page .temperature-derating-fields > label { display: flex; align-items: center; flex: 0 0 auto; gap: 6px; max-width: 100%; }
 .temperature-page .temperature-derating-fields input { width: 64px; flex: 0 0 64px; }

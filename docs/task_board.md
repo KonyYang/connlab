@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_TEMPERATURE_CURRENT_MAX_STYLE_20261008",
+    "summary": "Match calculated current color to Max curve and use bold text",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Calculated Current display only; preserve calculation and Derating summary styling",
+    "scope_paths": [
+      "frontend/src/pages/TemperatureRisePage.tsx",
+      "frontend/src/features/temperature/TemperatureCharts.tsx",
+      "frontend/src/features/temperature/temperature.css"
+    ],
+    "risk_reasons": [],
+    "activation_head": "63a7ef4009379a772b5fd5ebf2e0bdac1978f7a0",
+    "started_at": "2026-10-07T23:59:05.591125Z",
+    "updated_at": "2026-10-07T23:59:05.591125Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_DERATING_COMPACT_LAYOUT_20261008",
     "tier": "micro",
