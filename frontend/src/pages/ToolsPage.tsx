@@ -127,8 +127,8 @@ export function ToolsPage({ onOpenTemperatureRise = () => { window.location.assi
         />
         <EquipmentListTool />
         <article className="tools-card">
-          <div className="tools-card-heading"><h3>Temperature Rise &amp; Derating</h3></div>
-          <button className="primary-action" type="button" onClick={onOpenTemperatureRise}>Generate Temperature-Rise Curves</button>
+          <div className="tools-card-heading"><h3>Temperature Rise</h3></div>
+          <button className="primary-action tools-picker-action" type="button" onClick={onOpenTemperatureRise}>Plot Curves</button>
         </article>
       </div>
     </section>
