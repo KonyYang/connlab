@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
     "summary": "Use one file-picker action to generate a customer report in Tools",
@@ -25,17 +25,63 @@
     "risk_reasons": [],
     "activation_head": "d11e507e111e8de817faacce2268f09d0daad8f3",
     "started_at": "2026-10-08T10:53:22.399537Z",
-    "updated_at": "2026-10-08T11:19:31.879011Z",
+    "updated_at": "2026-10-08T11:21:18.971625Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requests Internal Report prompt above a smaller customer report button",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "changed_paths": [
+        "frontend/src/pages/ToolsPage.test.tsx",
+        "frontend/src/pages/ToolsPage.tsx",
+        "frontend/src/tools.css"
+      ],
+      "integration": {
+        "subject": "2114210d924dc43176635a1ae3a2501941ed533c",
+        "branch": "master",
+        "publication": "not requested",
+        "status": "passed"
+      },
+      "scope_ok": true,
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "subject": "2114210d924dc43176635a1ae3a2501941ed533c",
+      "summary": "Select Internal Report is now the title above a content-width Generate Customer Report button; existing single-picker automatic generation workflow retained.",
+      "validation": [
+        {
+          "result": "11 tests passed on final state; RED first failed for missing source heading, then GREEN verifies title before short button, chooser and cancellation",
+          "command": "npm run test -- src/pages/ToolsPage.test.tsx",
+          "status": "passed"
+        },
+        {
+          "result": "TypeScript and Vite production build passed on final state",
+          "command": "npm run build",
+          "status": "passed"
+        },
+        {
+          "result": "Title above content-width button visually verified in temporary Tools tab; screenshot saved; user tab untouched",
+          "command": "In-app browser layout check",
+          "status": "passed"
+        },
+        {
+          "result": "No whitespace errors",
+          "command": "git diff --check",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "review": "Same-agent Standards and Spec passes on exact revision diff: zero findings in each. Scoped CSS changes only customer report picker button; other tools and APIs unchanged.",
+          "status": "passed"
+        }
+      },
+      "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008"
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_CURRENT_MAX_STYLE_20261008",
