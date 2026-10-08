@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
     "summary": "Use one file-picker action to generate a customer report in Tools",
@@ -25,63 +25,17 @@
     "risk_reasons": [],
     "activation_head": "d11e507e111e8de817faacce2268f09d0daad8f3",
     "started_at": "2026-10-08T10:53:22.399537Z",
-    "updated_at": "2026-10-08T11:26:23.475820Z",
+    "updated_at": "2026-10-08T12:11:01.689856Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User approves compact equipment entry: choose report then confirm equipment source in keyboard-accessible dialog; preserve safe copy download and review feedback",
       "requires_user": false
     },
-    "report": {
-      "changed_paths": [
-        "frontend/src/pages/ToolsPage.test.tsx",
-        "frontend/src/pages/ToolsPage.tsx",
-        "frontend/src/tools.css"
-      ],
-      "validation": [
-        {
-          "result": "24 tests passed on final state; TDD RED confirmed no encryption request after selection in old implementation, GREEN verifies automatic encryption/download, cancellation, same-file retry, duplicate request protection and unmount safety",
-          "status": "passed",
-          "command": "npm run test -- src/pages/ToolsPage.test.tsx src/api/toolsEquipment.test.ts src/App.test.tsx"
-        },
-        {
-          "result": "TypeScript and Vite production build passed on final state",
-          "status": "passed",
-          "command": "npm run build"
-        },
-        {
-          "result": "Title, compact button, native single-file chooser and cancellation verified in temporary tab. Screenshot saved; user tab untouched. Actual Office encryption not re-executed live; API unchanged.",
-          "status": "passed",
-          "command": "In-app browser encrypted-copy smoke"
-        },
-        {
-          "result": "No whitespace errors",
-          "status": "passed",
-          "command": "git diff --check"
-        }
-      ],
-      "roles": {
-        "developer": {
-          "review": "Same-agent sequential Standards and Spec review on exact revision diff: zero findings in each. User explicitly extended compact interaction to encryption card; other tools and backend unchanged.",
-          "status": "passed"
-        }
-      },
-      "version": 1,
-      "schema": "connlab.sol-task-report",
-      "summary": "Customer report and encrypted-copy tools now use instruction titles above compact picker buttons; choosing a file immediately invokes the existing operation and downloads the result. Password configuration and encryption implementation unchanged.",
-      "scope_ok": true,
-      "subject": "5819419c2ab3bfd6633dc2d4c582dce0d596c7b1",
-      "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
-      "integration": {
-        "subject": "5819419c2ab3bfd6633dc2d4c582dce0d596c7b1",
-        "publication": "not requested",
-        "branch": "master",
-        "status": "passed"
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_CURRENT_MAX_STYLE_20261008",

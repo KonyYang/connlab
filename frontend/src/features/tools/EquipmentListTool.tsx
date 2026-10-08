@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import { updateStandaloneEquipmentList, type EquipmentReview } from "../../api/client";
+import { EquipmentSourceDialog, type EquipmentSourceSelection } from "./EquipmentSourceDialog";
 
 export function EquipmentListTool(): ReactElement {
   const [report, setReport] = useState<File | null>(null);
-  const [equipment, setEquipment] = useState<File | null>(null);
-  const [mode, setMode] = useState<"file" | "text">("file");
-  const [text, setText] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
   const [review, setReview] = useState<EquipmentReview | null>(null);
   const token = useRef(0);
   const running = useRef(false);
+  const reportInput = useRef<HTMLInputElement>(null);
+  const openButton = useRef<HTMLButtonElement>(null);
   useEffect(() => () => { token.current += 1; }, []);
 
   function clearFeedback(): void {
@@ -20,19 +21,15 @@ export function EquipmentListTool(): ReactElement {
     setReview(null);
   }
 
-  async function run(): Promise<void> {
+  async function run(source: EquipmentSourceSelection): Promise<void> {
     if (running.current) return;
     clearFeedback();
     if (!report) { setError("Select an Internal Report .docx first."); return; }
-    if (mode === "file" ? !equipment : !text.trim()) {
-      setError("Select EquipmentID.docx or enter equipment IDs."); return;
-    }
     const current = ++token.current;
     running.current = true;
     setBusy(true);
     try {
-      const result = await updateStandaloneEquipmentList(report, mode === "file"
-        ? { equipmentFile: equipment! } : { referencesText: text.trim() });
+      const result = await updateStandaloneEquipmentList(report, source);
       if (current !== token.current) return;
       const fileName = result.fileName ?? `${report.name.replace(/\.docx$/i, "")}_EquipmentUpdated.docx`;
       const url = URL.createObjectURL(result.blob);
@@ -48,6 +45,7 @@ export function EquipmentListTool(): ReactElement {
       }
       setName(fileName);
       setReview(result.review);
+      setDialogOpen(false);
     } catch (caught) {
       if (current === token.current) setError(caught instanceof Error ? caught.message : "The report could not be updated.");
     } finally {
@@ -55,43 +53,24 @@ export function EquipmentListTool(): ReactElement {
     }
   }
 
-  return <article className="tools-card tools-equipment-card">
+  return <article className="tools-card tools-equipment-card" aria-label="Update Equipment List">
     <div className="tools-card-heading">
-      <h3>Update Equipment List</h3>
+      <h3>Select Internal Report</h3>
     </div>
-    <label className="tools-file-picker">
-      <span>Internal Report for Equipment Update</span>
-      <input type="file" accept=".docx" disabled={busy} onChange={(event) => {
-        setReport(event.target.files?.[0] ?? null); clearFeedback();
+    <input ref={reportInput} type="file" hidden aria-label="Internal Report for Equipment Update" accept=".docx" disabled={busy}
+      onChange={(event) => {
+        const file = event.target.files?.[0] ?? null;
+        event.target.value = "";
+        if (running.current || !file) return;
+        setReport(file); clearFeedback(); setDialogOpen(true);
       }} />
-    </label>
-    <fieldset className="tools-equipment-source" disabled={busy}>
-      <legend>Equipment Source</legend>
-      <div className="tools-equipment-modes">
-        <label><input type="radio" name="equipment-source" checked={mode === "file"} onChange={() => {
-          setMode("file"); setText(""); clearFeedback();
-        }} /> EquipmentID.docx</label>
-        <label><input type="radio" name="equipment-source" checked={mode === "text"} onChange={() => {
-          setMode("text"); setEquipment(null); clearFeedback();
-        }} /> Enter Equipment IDs</label>
-      </div>
-      {mode === "file" ? <label className="tools-file-picker">
-        <span>Select EquipmentID.docx</span>
-        <input type="file" accept=".docx" onChange={(event) => {
-          setEquipment(event.target.files?.[0] ?? null); clearFeedback();
-        }} />
-      </label> : <label className="tools-file-picker">
-        <span>Equipment IDs</span>
-        <textarea rows={3} placeholder="DG-Q-0033, DG-L-0002" value={text} onChange={(event) => {
-          setText(event.target.value); clearFeedback();
-        }} />
-      </label>}
-    </fieldset>
-    <p className="tools-card-hint">Calibration list from Settings.</p>
-    {error && <p className="tools-feedback tools-feedback-error" role="alert">{error}</p>}
-    <button className="primary-action" type="button" disabled={busy} onClick={() => void run()}>
-      {busy ? "Updating..." : "Update Equipment List"}
+    <button ref={openButton} className="primary-action tools-picker-action" type="button" disabled={busy || dialogOpen}
+      onClick={() => reportInput.current?.click()}>
+      Update Equipment List
     </button>
+    {dialogOpen && report && <EquipmentSourceDialog reportName={report.name} busy={busy} error={error}
+      returnFocus={openButton} onCancel={() => { if (!running.current) setDialogOpen(false); }} onUpdate={run}
+      onSourceChange={() => setError(null)} />}
     {name && <p className="tools-feedback tools-feedback-success" role="status" aria-label="Downloaded File">{name}</p>}
     {review && <EquipmentReviewFeedback review={review} />}
   </article>;

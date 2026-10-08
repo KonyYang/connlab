@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -25,6 +25,9 @@ const encryptCopyMock = vi.mocked(encryptStandaloneCopy);
 
 describe("ToolsPage", () => {
   beforeEach(() => {
+    // jsdom does not implement the browser's native dialog lifecycle.
+    HTMLDialogElement.prototype.showModal ??= function () { this.setAttribute("open", ""); };
+    HTMLDialogElement.prototype.close ??= function () { this.removeAttribute("open"); };
     vi.clearAllMocks();
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     vi.stubGlobal("URL", {
@@ -174,7 +177,8 @@ describe("ToolsPage", () => {
     const picker = screen.getByLabelText("Select Internal Report") as HTMLInputElement;
     const choose = vi.spyOn(picker, "click");
 
-    const instruction = screen.getByRole("heading", { name: "Select Internal Report" });
+    const instruction = within(screen.getByRole("article", { name: "Internal Report → Customer Report" }))
+      .getByRole("heading", { name: "Select Internal Report" });
     const action = screen.getByRole("button", { name: "Generate Customer Report" });
     expect(instruction.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     await user.click(action);
@@ -248,14 +252,48 @@ describe("ToolsPage", () => {
     fireEvent.change(screen.getByLabelText("Internal Report for Equipment Update"), {
       target: { files: [report] },
     });
+    const sourceDialog = screen.getByRole("dialog", { name: "Equipment Source" });
+    expect(updateStandaloneEquipmentList).not.toHaveBeenCalled();
     fireEvent.click(screen.getByLabelText("Enter Equipment IDs"));
     fireEvent.change(screen.getByLabelText("Equipment IDs"), { target: { value: "Q-0033, Q-9999" } });
-    fireEvent.click(screen.getByRole("button", { name: "Update Equipment List" }));
+    fireEvent.click(within(sourceDialog).getByRole("button", { name: "Update" }));
     expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("Internal_EquipmentUpdated.docx");
     expect(screen.getByText(/Not Registered: DG-Q-9999/)).toBeTruthy();
     expect(screen.queryByText(/Missing Information:/)).toBeNull();
     expect(updateStandaloneEquipmentList).toHaveBeenCalledWith(report, { referencesText: "Q-0033, Q-9999" });
     expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled();
+  });
+
+  it("opens the equipment source dialog only after choosing a report and returns focus on cancellation", async () => {
+    const user = userEvent.setup();
+    render(<ToolsPage />);
+    const card = screen.getByRole("article", { name: "Update Equipment List" });
+    expect(within(card).getByRole("heading", { name: "Select Internal Report" })).toBeTruthy();
+    expect(within(card).getAllByRole("button")).toHaveLength(1);
+    const opener = within(card).getByRole("button", { name: "Update Equipment List" });
+    const picker = screen.getByLabelText("Internal Report for Equipment Update") as HTMLInputElement;
+    const choose = vi.spyOn(picker, "click");
+    await user.click(opener);
+    expect(choose).toHaveBeenCalledTimes(1);
+    expect(picker.hidden).toBe(true);
+    fireEvent.change(picker, { target: { files: [] } });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const report = new File(["report"], "Internal.docx");
+    fireEvent.change(picker, { target: { files: [report] } });
+    expect(picker.value).toBe("");
+    let sourceDialog = screen.getByRole("dialog", { name: "Equipment Source" });
+    expect(within(sourceDialog).getByText("Internal.docx")).toBeTruthy();
+    expect(document.activeElement).toBe(within(sourceDialog).getByLabelText("EquipmentID.docx"));
+    await user.click(within(sourceDialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
+    expect(document.body.style.overflow).not.toBe("hidden");
+    fireEvent.change(picker, { target: { files: [report] } });
+    sourceDialog = screen.getByRole("dialog", { name: "Equipment Source" });
+    fireEvent(sourceDialog, new Event("cancel", { cancelable: true }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
+    expect(updateStandaloneEquipmentList).not.toHaveBeenCalled();
   });
 
   it("uploads equipment selection and hides healthy review information", async () => {
@@ -268,14 +306,17 @@ describe("ToolsPage", () => {
     const report = new File(["report"], "report.docx");
     const selection = new File(["equipment"], "EquipmentID.docx");
     fireEvent.change(screen.getByLabelText("Internal Report for Equipment Update"), { target: { files: [report] } });
+    const sourceDialog = screen.getByRole("dialog", { name: "Equipment Source" });
     fireEvent.change(screen.getByLabelText("Select EquipmentID.docx"), { target: { files: [selection] } });
-    fireEvent.click(screen.getByRole("button", { name: "Update Equipment List" }));
+    fireEvent.click(within(sourceDialog).getByRole("button", { name: "Update" }));
     expect(await screen.findByText("copy.docx")).toBeTruthy();
     expect(updateStandaloneEquipmentList).toHaveBeenCalledWith(report, { equipmentFile: selection });
     expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Internal Report for Equipment Update"), { target: { files: [report] } });
     fireEvent.click(screen.getByLabelText("Enter Equipment IDs"));
     expect(screen.queryByText("copy.docx")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Update Equipment List" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
     expect(screen.getByRole("alert").textContent).toContain("enter equipment IDs");
     expect(updateStandaloneEquipmentList).toHaveBeenCalledTimes(1);
   });
@@ -288,10 +329,18 @@ describe("ToolsPage", () => {
     });
     fireEvent.click(screen.getByLabelText("Enter Equipment IDs"));
     fireEvent.change(screen.getByLabelText("Equipment IDs"), { target: { value: "Q-0033" } });
-    fireEvent.click(screen.getByRole("button", { name: "Update Equipment List" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Settings");
     expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
     expect(screen.queryByRole("status")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Equipment IDs"), { target: { value: "  Q-0034  " } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    vi.mocked(updateStandaloneEquipmentList).mockResolvedValueOnce({ blob: new Blob(["updated"]), fileName: "retry.docx",
+      review: { filled: 1, unmatched: [], incomplete: [], expired: [], omitted: { unmatched: 0, incomplete: 0, expired: 0 } } });
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("retry.docx");
+    expect(updateStandaloneEquipmentList).toHaveBeenLastCalledWith(expect.any(File), { referencesText: "Q-0034" });
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("prevents repeated requests and discards a completed download after leaving Tools", async () => {
@@ -302,16 +351,21 @@ describe("ToolsPage", () => {
     fireEvent.change(reportInput, { target: { files: [new File(["report"], "report.docx")] } });
     fireEvent.click(screen.getByLabelText("Enter Equipment IDs"));
     fireEvent.change(screen.getByLabelText("Equipment IDs"), { target: { value: "Q-0033" } });
-    fireEvent.click(screen.getByRole("button", { name: "Update Equipment List" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
     const pending = screen.getByRole("button", { name: "Updating..." }) as HTMLButtonElement;
     expect(pending.disabled).toBe(true);
     expect((reportInput as HTMLInputElement).disabled).toBe(true);
     fireEvent.click(pending);
     expect(updateStandaloneEquipmentList).toHaveBeenCalledTimes(1);
+    const sourceDialog = screen.getByRole("dialog", { name: "Equipment Source" });
+    expect((within(sourceDialog).getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent(sourceDialog, new Event("cancel", { cancelable: true }));
+    expect(screen.getByRole("dialog", { name: "Equipment Source" })).toBeTruthy();
     rendered.unmount();
     await act(async () => resolve({ blob: new Blob(["copy"]), fileName: "copy.docx",
       review: { filled: 1, unmatched: [], incomplete: [], expired: [],
                 omitted: { unmatched: 0, incomplete: 0, expired: 0 } } }));
     expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
+    expect(document.body.style.overflow).not.toBe("hidden");
   });
 });

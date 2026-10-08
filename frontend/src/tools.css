@@ -114,3 +114,20 @@
 .tools-equipment-review { border: 1px solid var(--color-border); border-radius: 10px; padding: 12px; overflow-wrap: anywhere; }
 .tools-equipment-review h4 { margin: 0 0 8px; font-size: 14px; color: var(--color-warning); }
 .tools-equipment-review p { font-size: 14px; color: var(--color-warning); }
+
+.tools-equipment-dialog {
+  box-sizing: border-box;
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 24px;
+  overflow: auto;
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+}
+.tools-equipment-dialog[open] { display: grid; gap: 16px; }
+.tools-equipment-dialog::backdrop { background: rgb(23 32 51 / 35%); }
+.tools-equipment-dialog h2 { margin: 0; font-size: 20px; }
+.tools-dialog-report { overflow-wrap: anywhere; }
+.tools-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
