@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
     "summary": "Use one file-picker action to generate a customer report in Tools",
@@ -25,66 +25,17 @@
     "risk_reasons": [],
     "activation_head": "d11e507e111e8de817faacce2268f09d0daad8f3",
     "started_at": "2026-10-08T10:53:22.399537Z",
-    "updated_at": "2026-10-08T22:57:15.966803Z",
+    "updated_at": "2026-10-08T22:57:29.884992Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User correction: button copy must be Drawing Curves (plural).",
       "requires_user": false
     },
-    "report": {
-      "scope_ok": true,
-      "version": 1,
-      "summary": "Compact Tools card actions with equipment source confirmation; temperature entry uses exact requested Select T-rise Data and Drawing Curve copy, retaining compact styling and existing navigation.",
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "review": "Exact two-line copy revision self-reviewed; matches User wording; styling and navigation callback unchanged. No findings.",
-          "tdd": "This revision is a literal/copy and existing-class fix; no new implementation-mirroring tests. Earlier equipment dialog RED/GREEN retained in Git history."
-        }
-      },
-      "subject": "2598ab578629a357786a216acd84ed8e0b705d70",
-      "validation": [
-        {
-          "status": "passed",
-          "command": "npm run test -- src/pages/ToolsPage.test.tsx",
-          "result": "15 tests passed on final state"
-        },
-        {
-          "status": "passed",
-          "command": "npm run build",
-          "result": "TypeScript and Vite production build passed"
-        },
-        {
-          "status": "passed",
-          "command": "git diff --check",
-          "result": "No whitespace errors"
-        },
-        {
-          "status": "passed",
-          "command": "In-app browser temperature card verification",
-          "result": "Live Tools page heading Select T-rise Data and button Drawing Curve confirmed, compact styling retained. Final screenshot saved; previous navigation check retained since callback unchanged."
-        }
-      ],
-      "schema": "connlab.sol-task-report",
-      "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
-      "integration": {
-        "status": "passed",
-        "publication": "not requested",
-        "subject": "2598ab578629a357786a216acd84ed8e0b705d70",
-        "branch": "master"
-      },
-      "changed_paths": [
-        "frontend/src/pages/ToolsPage.tsx",
-        "frontend/src/pages/ToolsPage.test.tsx",
-        "frontend/src/features/tools/EquipmentListTool.tsx",
-        "frontend/src/features/tools/EquipmentSourceDialog.tsx",
-        "frontend/src/tools.css"
-      ]
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_CURRENT_MAX_STYLE_20261008",
