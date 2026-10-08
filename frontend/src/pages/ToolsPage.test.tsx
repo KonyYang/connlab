@@ -127,7 +127,7 @@ describe("ToolsPage", () => {
     const picker = screen.getByLabelText("Select Internal Report") as HTMLInputElement;
     const choose = vi.spyOn(picker, "click");
 
-    await user.click(screen.getByRole("button", { name: "Generate Customer Report" }));
+    await user.click(screen.getByRole("button", { name: "Select Internal Report → Generate Customer Report" }));
     expect(choose).toHaveBeenCalledTimes(1);
     expect(picker.hidden).toBe(true);
     expect(screen.queryByText("Select Internal Report")).toBeNull();
@@ -135,7 +135,7 @@ describe("ToolsPage", () => {
     fireEvent.change(picker, { target: { files: [] } });
     expect(startCustomerReportMock).not.toHaveBeenCalled();
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(screen.getByRole("button", { name: "Generate Customer Report" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Select Internal Report → Generate Customer Report" })).toBeTruthy();
   });
 
   it("allows choosing the same report again after failure and preserves feedback when cancelled", async () => {

@@ -117,7 +117,7 @@ export function ToolsPage({ onOpenTemperatureRise = () => { window.location.assi
           accept=".docx"
           state={state["customer-report"]}
           inputLabel="Select Internal Report"
-          actionLabel="Generate Customer Report"
+          actionLabel="Select Internal Report → Generate Customer Report"
           pickAndRun
           onSelect={(event) => selectFile("customer-report", event)}
           onRun={() => void run("customer-report")}
