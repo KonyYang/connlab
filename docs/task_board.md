@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
     "summary": "Use one file-picker action to generate a customer report in Tools",
@@ -25,9 +25,63 @@
     "risk_reasons": [],
     "activation_head": "d11e507e111e8de817faacce2268f09d0daad8f3",
     "started_at": "2026-10-08T10:53:22.399537Z",
-    "updated_at": "2026-10-08T10:53:22.399537Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-08T11:00:35.906663Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "validation": [
+        {
+          "result": "21 tests passed on final source state",
+          "status": "passed",
+          "command": "npm run test -- src/pages/ToolsPage.test.tsx src/api/toolsEquipment.test.ts src/App.test.tsx"
+        },
+        {
+          "result": "TypeScript and Vite production build passed",
+          "status": "passed",
+          "command": "npm run build"
+        },
+        {
+          "result": "One-button layout, native file chooser, cancellation, automatic start and readable error for disposable invalid DOCX verified; valid Office generation not executed live",
+          "status": "passed",
+          "command": "In-app browser smoke at 846px and 560px"
+        },
+        {
+          "result": "No whitespace errors",
+          "status": "passed",
+          "command": "git diff --check"
+        }
+      ],
+      "subject": "55d7ceae6f1adf5985fe3a7cdb5766df0e966d2d",
+      "integration": {
+        "branch": "master",
+        "status": "passed",
+        "publication": "not requested",
+        "subject": "55d7ceae6f1adf5985fe3a7cdb5766df0e966d2d"
+      },
+      "schema": "connlab.sol-task-report",
+      "scope_ok": true,
+      "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
+      "version": 1,
+      "changed_paths": [
+        "frontend/src/pages/ToolsPage.test.tsx",
+        "frontend/src/pages/ToolsPage.tsx"
+      ],
+      "summary": "Customer report card now has one visible button; choosing a source immediately starts existing conversion and download, while cancellation preserves feedback.",
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "tdd": "Expected RED: two failing one-action tests before implementation; GREEN: final related matrix passed",
+          "review": "Same-agent sequential Standards and Spec review: zero findings in either axis; no independent agents"
+        }
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_CURRENT_MAX_STYLE_20261008",
