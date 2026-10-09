@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
     "summary": "Normalize temperature editor columns and preserve sample groups through balanced exclusions",
@@ -32,17 +32,91 @@
     "risk_reasons": [],
     "activation_head": "ab95f5e485be65a6626bc67e8f493b66b0fbc42b",
     "started_at": "2026-10-09T00:07:00.551432Z",
-    "updated_at": "2026-10-09T22:56:40.238942Z",
+    "updated_at": "2026-10-09T23:00:02.234169Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requests immediate move on destination selection without Move confirmation button",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
+      "schema": "connlab.sol-task-report",
+      "scope_ok": true,
+      "subject": "be0dac9c16e6db11af4219d554b69b59a0bc32b7",
+      "integration": {
+        "status": "passed",
+        "details": "Exact clean local commit be0dac9c16e6db11af4219d554b69b59a0bc32b7; prior task work retained, no push or Close.",
+        "context": "local master"
+      },
+      "summary": "Effective sample columns and header selection retained; choosing Move Before destination now moves immediately, closes the action-only popup and remains undoable.",
+      "validation": [
+        {
+          "name": "Immediate move regression",
+          "status": "passed",
+          "details": "Meaningful RED on the prior default destination and confirmation flow, GREEN after implementation at the actual DataPreview interaction seam."
+        },
+        {
+          "name": "Affected frontend matrix",
+          "status": "passed",
+          "details": "All 58 tests passed on final code/test bytes: 27 DataPreview and 31 TemperatureRisePage, including spare/block moves, exclusions, Undo, protected roles and downstream invalidation."
+        },
+        {
+          "name": "Production build",
+          "status": "passed",
+          "details": "TypeScript and Vite passed sequentially after tests."
+        },
+        {
+          "name": "Isolated browser",
+          "status": "passed",
+          "details": "Empty initial destination; F moves before C immediately with popup closed and F focus; Undo restores; Shift-selected four-column block moves to end immediately; Undo and Escape passed; no console warning/error logs. User tab not operated."
+        },
+        {
+          "name": "Prior unchanged numerical/API baseline",
+          "status": "passed",
+          "details": "88 preparation/calculation/workbook/API tests passed in initial grouping revision; unchanged by this popup-only refinement and not rerun. Prior evidence remains in docs/temperature_rise_tool.md."
+        }
+      ],
+      "changed_paths": [
+        "backend/api/temperature_schemas.py",
+        "backend/application/temperature_data_preparation.py",
+        "backend/domain/temperature_data.py",
+        "docs/temperature_rise_tool.md",
+        "frontend/src/api/temperature.ts",
+        "frontend/src/features/temperature/ColumnActions.tsx",
+        "frontend/src/features/temperature/DataPreview.test.tsx",
+        "frontend/src/features/temperature/DataPreview.tsx",
+        "frontend/src/features/temperature/sampleGroups.ts",
+        "frontend/src/features/temperature/sourceColumns.ts",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useDataGridEditing.ts",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "tests/integration/test_tools_temperature_api.py",
+        "tests/unit/test_temperature_data_preparation.py"
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "details": "TDD RED/GREEN through public grid/menu seam; removed redundant local destination state and Move-only CSS; migrated existing move scenarios.",
+          "context": "same agent"
+        },
+        "qa": {
+          "status": "passed",
+          "details": "Risk-proportionate complete affected tests, build and isolated UI checks passed on final code/test state.",
+          "context": "same-agent final QA"
+        },
+        "reviewer": {
+          "status": "passed",
+          "details": "Exact diff reviewed independently by axis; zero outstanding findings. Existing owner still handles ordering/Undo, no scope creep, accessible dialog and focus/dismissal retained.",
+          "context": "same-agent sequential Standards and Spec passes"
+        }
+      },
+      "version": 1
+    }
   },
   "last_closed": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
