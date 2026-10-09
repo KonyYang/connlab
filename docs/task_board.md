@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
     "summary": "Normalize temperature editor columns and preserve sample groups through balanced exclusions",
@@ -32,17 +32,91 @@
     "risk_reasons": [],
     "activation_head": "ab95f5e485be65a6626bc67e8f493b66b0fbc42b",
     "started_at": "2026-10-09T00:07:00.551432Z",
-    "updated_at": "2026-10-09T23:10:26.101476Z",
+    "updated_at": "2026-10-09T23:12:56.110272Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requests one-line Move Before with black dropdown triangle instead of separate Choose Column field",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "version": 1,
+      "roles": {
+        "qa": {
+          "details": "Complete affected tests, build and isolated UI verification passed on final code/test state.",
+          "status": "passed",
+          "context": "same-agent final QA"
+        },
+        "reviewer": {
+          "details": "Exact diff: zero outstanding findings per axis. CSS is feature-scoped, black triangle follows explicit User request, native accessibility/focus retained, no speculative abstractions or scope expansion.",
+          "status": "passed",
+          "context": "same-agent sequential Standards and Spec passes"
+        },
+        "developer": {
+          "details": "TDD RED/GREEN at DataPreview public seam; native select retained without new state or dependencies.",
+          "status": "passed",
+          "context": "same agent"
+        }
+      },
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/temperature_schemas.py",
+        "backend/application/temperature_data_preparation.py",
+        "backend/domain/temperature_data.py",
+        "docs/temperature_rise_tool.md",
+        "frontend/src/api/temperature.ts",
+        "frontend/src/features/temperature/ColumnActions.tsx",
+        "frontend/src/features/temperature/DataPreview.test.tsx",
+        "frontend/src/features/temperature/DataPreview.tsx",
+        "frontend/src/features/temperature/sampleGroups.ts",
+        "frontend/src/features/temperature/sourceColumns.ts",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useDataGridEditing.ts",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "tests/integration/test_tools_temperature_api.py",
+        "tests/unit/test_temperature_data_preparation.py"
+      ],
+      "subject": "8fc5c950f57f65d54f31b9e04ecaaec9a4007d91",
+      "integration": {
+        "details": "Clean exact local commit 8fc5c950f57f65d54f31b9e04ecaaec9a4007d91; prior task changes retained, no push or Close.",
+        "status": "passed",
+        "context": "local master"
+      },
+      "schema": "connlab.sol-task-report",
+      "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
+      "summary": "Effective sample columns and immediate movement retained; Move Before is now a single native dropdown row with a black triangle, without the separate Choose Column field.",
+      "validation": [
+        {
+          "name": "Single-row regression",
+          "details": "Amended public grid/menu test RED on old Choose Column presentation then GREEN. Empty destination still cannot trigger movement on open.",
+          "status": "passed"
+        },
+        {
+          "name": "Affected frontend matrix",
+          "details": "58 tests passed on final code/test bytes: 27 DataPreview and 31 TemperatureRisePage. Existing immediate movement, protected roles, spare/block moves, Undo and focus behavior retained.",
+          "status": "passed"
+        },
+        {
+          "name": "Production build",
+          "details": "TypeScript and Vite production build passed.",
+          "status": "passed"
+        },
+        {
+          "name": "Isolated browser",
+          "details": "Borderless one-row Move Before, black triangle rgb(0,0,0), native AX expanded candidate menu after click; selection immediately moves F before C and dismisses popup; Undo restores. Zero console warning/error logs. User tab not operated.",
+          "status": "passed"
+        },
+        {
+          "name": "Prior unchanged numerical/API baseline",
+          "details": "88 backend preparation/calculation/workbook/API tests passed in initial grouping revision, not rerun for this presentation-only change. API/numerical behavior unchanged.",
+          "status": "passed"
+        }
+      ]
+    }
   },
   "last_closed": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
