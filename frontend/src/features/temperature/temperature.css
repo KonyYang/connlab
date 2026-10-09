@@ -83,7 +83,9 @@
 .temperature-column-menu { position: fixed; z-index: 100; width: min(244px,calc(100vw - 40px)); padding: 12px; display: grid; gap: 10px; border: 1px solid var(--color-action-secondary-border); border-radius: 10px; background: var(--color-surface); color: var(--color-ink); box-shadow: 0 8px 28px #14284226; font: 12px 'Segoe UI',sans-serif; }
 .temperature-column-menu button, .temperature-column-menu select { border: 1px solid var(--color-action-secondary-border); border-radius: 7px; padding: 7px 9px; background: var(--color-action-secondary-bg); color: var(--color-action-secondary-text); font: inherit; cursor: pointer; }
 .temperature-column-menu select { width: 100%; min-width: 0; background: var(--color-surface); color: var(--color-ink); }
-.temperature-column-menu label { display: grid; gap: 6px; }
+.temperature-column-destination { position: relative; }
+.temperature-column-destination::after { content: ''; position: absolute; right: 9px; top: 50%; transform: translateY(-50%); border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid #000; pointer-events: none; }
+.temperature-column-destination select { appearance: none; padding-right: 26px; border-color: transparent; background: transparent; }
 .temperature-column-menu button:disabled { opacity: .5; cursor: not-allowed; }
 .temperature-column-menu button:focus-visible, .temperature-column-menu select:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .temperature-review { border: 1px solid #e3cf9f; border-radius: 10px; padding: 12px; color: var(--color-warning); }

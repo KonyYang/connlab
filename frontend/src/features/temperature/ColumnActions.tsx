@@ -37,13 +37,13 @@ export function ColumnActions({ anchor, columns, selectedCount, disabled, canExc
     className="temperature-column-menu" style={{ left: anchor.left, top: anchor.top }}>
     <button type="button" disabled={disabled || !canExclude} onClick={onExclude}>Exclude Column{selectedCount > 1 ? 's' : ''}</button>
     {canRestore && <button type="button" disabled={disabled} onClick={onRestore}>Restore Column{selectedCount > 1 ? 's' : ''}</button>}
-    <label>Move Before<select value="" disabled={disabled} onChange={event => {
+    <div className="temperature-column-destination"><select aria-label="Move Before" value="" disabled={disabled} onChange={event => {
       const destination = event.target.value;
       if (destination) onMove(destination === 'end' ? null : Number(destination));
     }}>
-      <option value="" disabled>Choose Column</option>
+      <option value="" disabled>Move Before</option>
       {columns.map(column => <option key={column.id} value={column.id}>{column.label}</option>)}
       <option value="end">End Of Temperature Columns</option>
-    </select></label>
+    </select></div>
   </div>, document.body);
 }

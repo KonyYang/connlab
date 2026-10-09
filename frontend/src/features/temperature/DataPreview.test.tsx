@@ -257,6 +257,8 @@ describe('unified scanner data editing', () => {
     const menu = screen.getByRole('dialog', { name: 'Column E Actions' });
     const destination = within(menu).getByRole('combobox', { name: 'Move Before' });
     expect((destination as HTMLSelectElement).value).toBe('');
+    expect(within(destination).getByRole('option', { name: 'Move Before', exact: true }).getAttribute('value')).toBe('');
+    expect(within(menu).queryByText('Choose Column', { exact: true })).toBeNull();
     expect(selected()).toEqual(initial);
     expect(within(menu).queryByRole('button', { name: 'Move', exact: true })).toBeNull();
     await user.selectOptions(destination, '3');

@@ -23,8 +23,11 @@ are removed. The highlighted column(s) and toolbar selection count remain the vi
 the dialog keeps its accessible column name. Outside click, Escape, scrolling and resize dismiss it.
 Keyboard focus starts on the first enabled action, Tab wraps within the popup, and Escape returns
 focus to the source header. No selection, preparation or numerical behavior is changed.
-The Move confirmation button is also removed: Move Before starts at a disabled Choose Column
-placeholder, so opening the menu does not move anything. Choosing a destination immediately moves
+The Move confirmation button is also removed. Move Before is a single borderless native dropdown
+row with a black triangle on its right; its empty destination displays Move Before instead of a
+separate label and Choose Column field. Clicking the row/triangle expands the candidate columns,
+with native keyboard and accessible combobox behavior retained. Opening the menu does not move
+anything. Choosing a destination immediately moves
 the selected column/block and closes the menu, returning focus to the source header. End Of
 Temperature Columns uses the existing placement rule; Undo restores the previous data selection.
 Immediate-move validation: the new grid interaction test failed before the change and passed after
@@ -34,6 +37,12 @@ destination and Escape; console warnings/errors were zero. Sequential same-agent
 review found no outstanding issues. Changed paths for this refinement: `ColumnActions.tsx`,
 `DataPreview.test.tsx`, `temperature.css`, `frontend/src/pages/TemperatureRisePage.test.tsx` and this
 document. No source-file, API or numerical changes; the User's existing tab was not operated.
+Single-row refinement validation: the amended interaction test failed on the old Choose Column
+presentation, then passed. The complete 58-test preview/page matrix and production build passed on
+the final code/test state. An isolated browser confirmed a black triangle, native expanded options,
+immediate move and Undo with no console warnings/errors; the User tab was not operated. Sequential
+same-agent Standards/Spec review found zero outstanding findings. Refinement paths: `ColumnActions.tsx`,
+`DataPreview.test.tsx`, `temperature.css` and this document; board changes are lifecycle-only.
 Popup refinement validation: 26 preview tests and the production build passed. An isolated browser
 confirmed the action-only popup, outside-click dismissal and Escape focus restoration with no console
 warnings/errors. The exact local diff received sequential same-agent Standards/Spec passes with zero
