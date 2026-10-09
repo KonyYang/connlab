@@ -103,7 +103,6 @@ describe('column header selection', () => {
     const menu = screen.getByRole('dialog', { name: 'Column E Actions' });
     expect(screen.getByText('2 Selected')).toBeTruthy();
     await user.selectOptions(within(menu).getByLabelText('Move Before'), '3');
-    await user.click(within(menu).getByRole('button', { name: 'Move' }));
     expect(selected().temperature_columns).toEqual([5, 6, 3, 4]);
     fireEvent.click(columnHeader('F'));
     fireEvent.click(columnHeader('C'), { shiftKey: true });
@@ -251,6 +250,31 @@ describe('continuous source row selection', () => {
 });
 
 describe('unified scanner data editing', () => {
+  it('moves immediately when a destination is chosen, closes the menu and supports undo and end placement', async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    openColumn('E');
+    const menu = screen.getByRole('dialog', { name: 'Column E Actions' });
+    const destination = within(menu).getByRole('combobox', { name: 'Move Before' });
+    expect((destination as HTMLSelectElement).value).toBe('');
+    expect(selected()).toEqual(initial);
+    expect(within(menu).queryByRole('button', { name: 'Move', exact: true })).toBeNull();
+    await user.selectOptions(destination, '3');
+    expect(selected().temperature_columns).toEqual([5, 3, 4, 6]);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(columnHeader('E'));
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(selected()).toEqual(initial);
+    openColumn('C');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Move Before' }), 'end');
+    expect(selected().temperature_columns).toEqual([4, 5, 6, 3]);
+    expect(selected().ambient_column).toBe(7);
+    expect(selected().current_column).toBe(8);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(selected()).toEqual(initial);
+  });
+
   it('dismisses the compact column menu by outside click or Escape and keeps keyboard focus within its actions', async () => {
     const user = userEvent.setup();
     render(<Editor />);
@@ -261,7 +285,7 @@ describe('unified scanner data editing', () => {
     const exclude = within(menu).getByRole('button', { name: 'Exclude Column', exact: true });
     expect(document.activeElement).toBe(exclude);
     await user.tab({ shift: true });
-    expect(document.activeElement).toBe(within(menu).getByRole('button', { name: 'Move', exact: true }));
+    expect(document.activeElement).toBe(within(menu).getByRole('combobox', { name: 'Move Before' }));
     await user.tab();
     expect(document.activeElement).toBe(exclude);
     await user.click(screen.getByRole('heading', { name: 'Data Preview' }));
@@ -429,7 +453,6 @@ describe('unified scanner data editing', () => {
     openColumn('I');
     const menu = screen.getByRole('dialog', { name: 'Column I Actions' });
     await user.selectOptions(within(menu).getByLabelText('Move Before'), '4');
-    await user.click(within(menu).getByRole('button', { name: 'Move' }));
     expect(selected().temperature_columns).toEqual([3, 9, 5, 6]);
     expect(screen.queryByRole('alert')).toBeNull();
     const cells = within(screen.getByRole('region', { name: 'Scanner Data Preview' })).getAllByRole('row')[1].querySelectorAll('td');
@@ -452,7 +475,6 @@ describe('unified scanner data editing', () => {
     const menu = screen.getByRole('dialog', { name: 'Column E Actions' });
     expect(screen.getByText('2 Selected')).toBeTruthy();
     await user.selectOptions(within(menu).getByLabelText('Move Before'), '3');
-    await user.click(within(menu).getByRole('button', { name: 'Move' }));
     expect(selected().temperature_columns).toEqual([5, 6, 3, 4]);
     expect(selected().ambient_column).toBe(7);
     expect(selected().current_column).toBe(8);

@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
     "summary": "Normalize temperature editor columns and preserve sample groups through balanced exclusions",
@@ -32,86 +32,17 @@
     "risk_reasons": [],
     "activation_head": "ab95f5e485be65a6626bc67e8f493b66b0fbc42b",
     "started_at": "2026-10-09T00:07:00.551432Z",
-    "updated_at": "2026-10-09T22:50:16.911199Z",
+    "updated_at": "2026-10-09T22:56:40.238942Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requests immediate move on destination selection without Move confirmation button",
       "requires_user": false
     },
-    "report": {
-      "subject": "05dbaa7e388896aca063718ba6ba53433dcf2c69",
-      "version": 1,
-      "roles": {
-        "qa": {
-          "context": "same-agent final QA",
-          "details": "Risk-proportionate complete preview matrix, build and isolated browser passed.",
-          "status": "passed"
-        },
-        "reviewer": {
-          "context": "same-agent sequential Standards and Spec passes",
-          "details": "Zero outstanding findings per axis on exact popup diff; unused title prop/styles removed, accessible dialog name retained.",
-          "status": "passed"
-        },
-        "developer": {
-          "context": "same agent",
-          "details": "TDD at actual grid/menu seam; first Close test RED then GREEN, amended heading test RED then GREEN.",
-          "status": "passed"
-        }
-      },
-      "scope_ok": true,
-      "summary": "Sample-preserving effective columns and header multi-selection retained; popup now contains actions only, without redundant Close or column heading. Outside click, Escape and keyboard focus remain functional.",
-      "validation": [
-        {
-          "status": "passed",
-          "details": "26 preview tests passed on final code/test state; meaningful RED/GREEN for removal and dismissal/focus behavior.",
-          "name": "Popup refinement preview matrix"
-        },
-        {
-          "status": "passed",
-          "details": "TypeScript/Vite passed sequentially after tests.",
-          "name": "Production build"
-        },
-        {
-          "status": "passed",
-          "details": "No visible popup heading or Close; outside click dismisses, Escape dismisses and restores source-header focus; zero console warning/error logs. User tab not operated.",
-          "name": "Isolated browser"
-        },
-        {
-          "status": "passed",
-          "details": "Earlier 56 header-selection frontend tests and 88 grouping backend tests passed in prior implementation/revision. Current change is popup presentation-only; API, numerical and selection logic unchanged. Evidence retained in docs/temperature_rise_tool.md.",
-          "name": "Prior unchanged behavior"
-        }
-      ],
-      "schema": "connlab.sol-task-report",
-      "integration": {
-        "context": "local master",
-        "details": "Exact in-scope popup revision committed at clean HEAD 05dbaa7e; prior task work retained, no push or Close.",
-        "status": "passed"
-      },
-      "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
-      "changed_paths": [
-        "backend/api/temperature_schemas.py",
-        "backend/application/temperature_data_preparation.py",
-        "backend/domain/temperature_data.py",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/api/temperature.ts",
-        "frontend/src/features/temperature/ColumnActions.tsx",
-        "frontend/src/features/temperature/DataPreview.test.tsx",
-        "frontend/src/features/temperature/DataPreview.tsx",
-        "frontend/src/features/temperature/sampleGroups.ts",
-        "frontend/src/features/temperature/sourceColumns.ts",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useDataGridEditing.ts",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_data_preparation.py"
-      ]
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",

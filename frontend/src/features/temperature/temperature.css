@@ -85,7 +85,6 @@
 .temperature-column-menu select { width: 100%; min-width: 0; background: var(--color-surface); color: var(--color-ink); }
 .temperature-column-menu label { display: grid; gap: 6px; }
 .temperature-column-menu button:disabled { opacity: .5; cursor: not-allowed; }
-.temperature-column-menu .temperature-column-move { justify-self: end; min-width: 80px; background: var(--color-primary); color: #fff; }
 .temperature-column-menu button:focus-visible, .temperature-column-menu select:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .temperature-review { border: 1px solid #e3cf9f; border-radius: 10px; padding: 12px; color: var(--color-warning); }
 .temperature-review h4 { margin: 0 0 8px; font-size: 14px; }

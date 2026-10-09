@@ -364,7 +364,6 @@ describe('temperature preparation and calculation workflow', () => {
     expect(api.prepareTemperatureData).not.toHaveBeenCalled();
     fireEvent.contextMenu(columnHeader('G'));
     await user.selectOptions(screen.getByLabelText('Move Before'), '4');
-    await user.click(screen.getByRole('button', { name: 'Move' }));
     expect((screen.getByLabelText('Thermocouples/Sample') as HTMLInputElement).value).toBe('2');
     expect(screen.getByText('Confirm the current column used for this curve.')).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
@@ -498,7 +497,6 @@ describe('temperature preparation and calculation workflow', () => {
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     fireEvent.contextMenu(columnHeader('G'));
     await user.selectOptions(screen.getByLabelText('Move Before'), '4');
-    await user.click(screen.getByRole('button', { name: 'Move' }));
     await user.click(screen.getByLabelText('Select Scan 1'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
@@ -647,7 +645,6 @@ describe('temperature preparation and calculation workflow', () => {
     await upload();
     fireEvent.contextMenu(columnHeader('D'));
     await user.selectOptions(screen.getByLabelText('Move Before'), '3');
-    await user.click(screen.getByRole('button', { name: 'Move' }));
     await user.click(columnHeader('D'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     await user.click(columnHeader('D'));

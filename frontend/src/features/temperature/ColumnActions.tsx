@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { columnLetter } from './sourceColumns';
 
@@ -10,7 +10,6 @@ export function ColumnActions({ anchor, columns, selectedCount, disabled, canExc
   onMove: (column: number | null) => void; onClose: () => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
-  const [destination, setDestination] = useState(columns[0]?.id.toString() ?? 'end');
   useEffect(() => {
     const close = () => { onClose(); anchor.trigger.focus(); };
     const key = (event: KeyboardEvent) => {
@@ -38,10 +37,13 @@ export function ColumnActions({ anchor, columns, selectedCount, disabled, canExc
     className="temperature-column-menu" style={{ left: anchor.left, top: anchor.top }}>
     <button type="button" disabled={disabled || !canExclude} onClick={onExclude}>Exclude Column{selectedCount > 1 ? 's' : ''}</button>
     {canRestore && <button type="button" disabled={disabled} onClick={onRestore}>Restore Column{selectedCount > 1 ? 's' : ''}</button>}
-    <label>Move Before<select value={destination} disabled={disabled} onChange={event => setDestination(event.target.value)}>
+    <label>Move Before<select value="" disabled={disabled} onChange={event => {
+      const destination = event.target.value;
+      if (destination) onMove(destination === 'end' ? null : Number(destination));
+    }}>
+      <option value="" disabled>Choose Column</option>
       {columns.map(column => <option key={column.id} value={column.id}>{column.label}</option>)}
       <option value="end">End Of Temperature Columns</option>
     </select></label>
-    <button type="button" className="temperature-column-move" disabled={disabled} onClick={() => onMove(destination === 'end' ? null : Number(destination))}>Move</button>
   </div>, document.body);
 }
