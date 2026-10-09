@@ -16,18 +16,34 @@ const layout: ChannelLayout = { ...initial, current_columns: [8, 10], stable_cur
   sample_groups: [{ sample_id: '1', columns: [3, 4] }, { sample_id: '2', columns: [5, 6] }],
   issues: [], zero_intercept_default: false };
 
-function Editor({ withParameters = false }: { withParameters?: boolean }) {
-  const [selection, setSelection] = useState(initial);
+function Editor({ withParameters = false, source = table, starting = initial, importedLayout = layout }: {
+  withParameters?: boolean; source?: WorkbookTable; starting?: DataSelection; importedLayout?: ChannelLayout;
+}) {
+  const [selection, setSelection] = useState(starting);
   return <>{withParameters && <label>Ambient Role<select value={selection.ambient_column} onChange={event => {
     const ambient_column = Number(event.target.value);
     setSelection(old => ({ ...old, ambient_column, temperature_columns: old.temperature_columns.filter(column => column !== ambient_column) }));
   }}>{table.rows[0].map((_, index) => <option key={index} value={index + 1}>{index + 1}</option>)}</select></label>}
-    <DataPreview table={table} selection={selection} layout={layout} issues={[]} disabled={false}
+    <DataPreview table={source} selection={selection} layout={importedLayout} issues={[]} disabled={false}
     onChange={patch => setSelection(old => ({ ...old, ...patch }))} />
     <output aria-label="Prepared Selection">{JSON.stringify(selection)}</output></>;
 }
 function selected() { return JSON.parse(screen.getByLabelText('Prepared Selection').textContent!) as DataSelection; }
 function openColumn(letter: string) { fireEvent.contextMenu(screen.getByLabelText(`Select Column ${letter}`).closest('th')!); }
+
+function FourThermocoupleEditor() {
+  const source: WorkbookTable = { ...table, rows: [
+    ['Scan', 'Time', ...Array.from({ length: 12 }, (_, index) =>
+      `${101 + index} <${Math.floor(index / 4) + 1}_T${index % 4 + 1}> (C)`), 'Ambient (C)', 'Current (VDC)'],
+    [1, '18:00', 21, 99, 23, 24, 31, 99, 33, 34, 41, 99, 43, 44, 20, 10],
+  ] };
+  const starting = { ...initial, end_row: 2, temperature_columns: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+    thermocouples_per_sample: 4, ambient_column: 15, current_column: 16 };
+  return <Editor source={source} starting={starting} importedLayout={{ ...layout, ...starting,
+    current_columns: [16], stable_current_columns: [],
+    sample_groups: [{ sample_id: '1', columns: [3, 4, 5, 6] }, { sample_id: '2', columns: [7, 8, 9, 10] },
+      { sample_id: '3', columns: [11, 12, 13, 14] }] }} />;
+}
 
 function LongEditor({ end = 900 }: { end?: number }) {
   const [selection, setSelection] = useState({ ...initial, start_row: 774, end_row: end });
@@ -39,6 +55,46 @@ function LongEditor({ end = 900 }: { end?: number }) {
 }
 
 describe('continuous source row selection', () => {
+  it('preserves three original samples when their second thermocouples are excluded, restores them and undoes both count changes', () => {
+    render(<FourThermocoupleEditor />);
+    for (const letter of ['D', 'H', 'L']) fireEvent.click(screen.getByLabelText(`Select Column ${letter}`));
+    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    expect(selected().thermocouples_per_sample).toBe(3);
+    expect(selected().temperature_columns).toEqual([3, 5, 6, 7, 9, 10, 11, 13, 14]);
+    expect(selected().sample_groups).toEqual([[3, 5, 6], [7, 9, 10], [11, 13, 14]]);
+    expect(screen.getByText('3 Samples · 3 TC/Sample · 9 Channels')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+    const headers = screen.getAllByRole('columnheader');
+    expect(headers.slice(-3).map(header => header.getAttribute('aria-label')?.split(' ')[0])).toEqual(['D', 'H', 'L']);
+    for (const letter of ['D', 'H', 'L']) fireEvent.click(screen.getByLabelText(`Select Column ${letter}`));
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    expect(selected().thermocouples_per_sample).toBe(4);
+    expect(selected().temperature_columns).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(selected().thermocouples_per_sample).toBe(3);
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(selected().thermocouples_per_sample).toBe(4);
+  });
+  it('keeps each temperature sample contiguous, followed by ambient, main current and other currents, without a second header band', () => {
+    const source = { ...table, rows: [
+      ['Scan', 'Time', '101 <1_A> (C)', '102 <1_B> (C)', 'Ambient (C)', 'Current (VDC)',
+        '103 <2_A> (C)', '104 <2_B> (C)', 'Aux (VDC)', 'Spare (C)'],
+      [1, '18:00', 24, 25, 20, 10, 26, 27, 3, 28],
+    ] };
+    const starting = { ...initial, end_row: 2, temperature_columns: [3, 4, 7, 8], ambient_column: 5, current_column: 6 };
+    render(<Editor source={source} starting={starting} importedLayout={{ ...layout, ...starting,
+      current_columns: [6, 9], stable_current_columns: [9],
+      sample_groups: [{ sample_id: '1', columns: [3, 4] }, { sample_id: '2', columns: [7, 8] }] }} />);
+    const headers = within(screen.getByRole('region', { name: 'Scanner Data Preview' })).getAllByRole('columnheader');
+    expect(within(headers[1]).getByText('A', { exact: true })).toBeTruthy();
+    expect(within(headers[2]).getByText('B', { exact: true })).toBeTruthy();
+    expect(headers.slice(3).map(header => header.getAttribute('aria-label')?.split(' ')[0]))
+      .toEqual(['C', 'D', 'G', 'H', 'E', 'F', 'I', 'J']);
+    expect(screen.queryByText('Sample 1', { exact: true })).toBeNull();
+    expect(headers[3].getAttribute('aria-description')).toBe('Sample 1');
+    expect(headers[5].getAttribute('aria-description')).toBe('Sample 2');
+    expect(selected()).toEqual(starting);
+  });
   it('selects both endpoints and offscreen rows using Shift, then excludes and undoes the whole interval', () => {
     render(<LongEditor />);
     fireEvent.click(screen.getByLabelText('Select Scan 773'));
@@ -237,13 +293,13 @@ describe('unified scanner data editing', () => {
     expect((screen.getByLabelText('Select Scan 773') as HTMLInputElement).checked).toBe(false);
   });
 
-  it('shows source metadata, sample groups and electrical units directly in the grid', () => {
+  it('shows source metadata and electrical units without a separate sample heading band', () => {
     render(<Editor />);
     const grid = screen.getByRole('region', { name: 'Scanner Data Preview' });
     expect(within(grid).getByText('Scan')).toBeTruthy();
     expect(within(grid).getByText('Time')).toBeTruthy();
-    expect(within(grid).getByText('Sample 1')).toBeTruthy();
-    expect(within(grid).getByText('Sample 2')).toBeTruthy();
+    expect(within(grid).queryByText('Sample 1', { exact: true })).toBeNull();
+    expect(within(grid).queryByText('Sample 2', { exact: true })).toBeNull();
     expect(within(grid).getByText('Aux (A)')).toBeTruthy();
     expect(within(grid).getByText('0.01').title).toBe('0.009999');
     expect(screen.queryByText('All Source Columns')).toBeNull();
@@ -264,7 +320,7 @@ describe('unified scanner data editing', () => {
     await user.click(within(menu).getByRole('button', { name: 'Move' }));
     expect(selected().temperature_columns).toEqual([3, 9, 5, 6]);
     expect(screen.queryByRole('alert')).toBeNull();
-    const cells = within(screen.getByRole('region', { name: 'Scanner Data Preview' })).getAllByRole('row')[2].querySelectorAll('td');
+    const cells = within(screen.getByRole('region', { name: 'Scanner Data Preview' })).getAllByRole('row')[1].querySelectorAll('td');
     expect(Array.from(cells).map(cell => cell.textContent)).toContain('28.5');
     expect(table.rows[1]).toEqual([1, '18:00', 24.1, 25.2, 26.3, 27.4, 20.5, 0.009999, 28.5, 3]);
     await user.click(screen.getByRole('button', { name: 'Undo' }));
@@ -339,5 +395,17 @@ describe('unified scanner data editing', () => {
     expect(screen.getByRole('columnheader', { name: 'D — 102 (°C) 1_B' })).toBeTruthy();
     expect(screen.queryByText('Excluded')).toBeNull();
     expect(selected().ambient_column).toBe(4);
+  });
+
+  it('can still restore a different excluded thermocouple after an ambient role decision', async () => {
+    const user = userEvent.setup();
+    render(<Editor withParameters />);
+    for (const letter of ['D', 'F']) fireEvent.click(screen.getByLabelText(`Select Column ${letter}`));
+    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    await user.selectOptions(screen.getByLabelText('Ambient Role'), '4');
+    fireEvent.click(screen.getByLabelText('Select Column F'));
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    expect(selected().temperature_columns).toEqual([3, 5, 6]);
+    expect(screen.getByRole('alert').textContent).toContain('Incomplete sample group');
   });
 });

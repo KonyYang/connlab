@@ -1,4 +1,5 @@
 import type { ChannelLayout, DataSelection, WorkbookTable } from '../../api/temperature';
+import { sampleGroups } from './sampleGroups';
 
 export function columnLetter(index: number): string {
   let value = '';
@@ -38,8 +39,7 @@ export function incompleteSampleGroups(selection: DataSelection, layout?: Channe
   const count = selection.thermocouples_per_sample;
   if (!Number.isInteger(count) || count < 1 || !selection.temperature_columns.length
     || selection.temperature_columns.length % count !== 0) return true;
-  // An untouched uneven import remains invalid, even if its total is divisible.
-  return Boolean(layout && count === layout.thermocouples_per_sample
-    && selection.temperature_columns.join(',') === layout.temperature_columns.join(',')
-    && layout.sample_groups.some(group => group.columns.length !== count));
+  const groups = sampleGroups(selection, layout);
+  return groups.some(group => group.length !== count)
+    || groups.flat().join(',') !== selection.temperature_columns.join(',');
 }

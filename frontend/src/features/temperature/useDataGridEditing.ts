@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChannelLayout, DataSelection, WorkbookTable } from '../../api/temperature';
 import { isTemperatureColumn, sourceColumnKind, sourceColumns } from './sourceColumns';
+import { equalSampleSize, includedSamples, moveSampleSlots, retainExcludedSlots, sampleGroups } from './sampleGroups';
 
 type Snapshot = { order: number[]; excludedColumns: number[]; removedTemperatures: number[];
-  temperatureColumns: number[]; excludedRows: number[] };
+  temperatureColumns: number[]; excludedRows: number[]; slots: number[][];
+  sampleGroups: number[][] | null | undefined; count: number };
 
 export function useDataGridEditing(table: WorkbookTable, selection: DataSelection,
   layout: ChannelLayout | null | undefined, onChange: (patch: Partial<DataSelection>) => void) {
@@ -15,13 +17,21 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
   });
   const [excludedColumns, setExcludedColumns] = useState<number[]>([]);
   const [removedTemperatures, setRemovedTemperatures] = useState<number[]>([]);
+  // Keep excluded slots for restoration; only included groups go into the request.
+  const [slots, setSlots] = useState(() => sampleGroups(selection, layout));
   const [history, setHistory] = useState<Snapshot[]>([]);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [selectedColumns, setSelectedColumns] = useState<number[]>([]);
   const rowAnchor = useRef<number | null>(null);
+  const committedParameters = useRef([selection.ambient_column, selection.current_column, selection.thermocouples_per_sample]);
   // Undo never rolls back a later role/count decision from the parameter row.
   useEffect(() => {
+    const parameters = [selection.ambient_column, selection.current_column, selection.thermocouples_per_sample];
+    if (parameters.every((value, index) => value === committedParameters.current[index])) return;
+    committedParameters.current = parameters;
     setHistory([]); setSelectedRows([]); setSelectedColumns([]);
+    setSlots(previous => retainExcludedSlots(sampleGroups(selection, layout), previous,
+      removedTemperatures.filter(column => column !== selection.ambient_column && column !== selection.current_column)));
     rowAnchor.current = null;
     setExcludedColumns(old => old.filter(column => column !== selection.ambient_column && column !== selection.current_column));
     setRemovedTemperatures(old => old.filter(column => column !== selection.ambient_column && column !== selection.current_column));
@@ -30,11 +40,17 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
     || sourceColumnKind(table, selection, column, layout) === 'current';
   const movable = (column: number) => isTemperatureColumn(table, selection, column, layout);
   const snapshot = (): Snapshot => ({ order, excludedColumns, removedTemperatures,
-    temperatureColumns: selection.temperature_columns, excludedRows: selection.excluded_rows });
-  function commit(next: Snapshot) {
+    temperatureColumns: selection.temperature_columns, excludedRows: selection.excluded_rows,
+    slots, sampleGroups: selection.sample_groups, count: selection.thermocouples_per_sample });
+  function commit(next: Snapshot, columnsChanged = false) {
     setHistory(old => [...old, snapshot()]);
     setOrder(next.order); setExcludedColumns(next.excludedColumns); setRemovedTemperatures(next.removedTemperatures);
-    onChange({ temperature_columns: next.temperatureColumns, excluded_rows: next.excludedRows });
+    setSlots(next.slots);
+    const groups = includedSamples(next.slots, next.temperatureColumns);
+    const count = columnsChanged ? equalSampleSize(groups) ?? next.count : next.count;
+    committedParameters.current = [selection.ambient_column, selection.current_column, count];
+    onChange({ temperature_columns: columnsChanged ? groups.flat() : next.temperatureColumns, excluded_rows: next.excludedRows,
+      ...(columnsChanged ? { sample_groups: groups, thermocouples_per_sample: count } : {}) });
     setSelectedRows([]); setSelectedColumns([]);
     rowAnchor.current = null;
   }
@@ -64,7 +80,7 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
       const columns = selectedColumns.filter(column => !protectedColumn(column));
       commit({ ...snapshot(), excludedColumns: [...new Set([...excludedColumns, ...columns])],
         removedTemperatures: [...new Set([...removedTemperatures, ...columns.filter(column => selection.temperature_columns.includes(column))])],
-        temperatureColumns: selection.temperature_columns.filter(column => !columns.includes(column)) });
+        temperatureColumns: selection.temperature_columns.filter(column => !columns.includes(column)) }, true);
     }
   }
   function restore() {
@@ -76,7 +92,7 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
       const active = new Set([...selection.temperature_columns, ...restored]);
       commit({ ...snapshot(), excludedColumns: excludedColumns.filter(column => !selectedColumns.includes(column)),
         removedTemperatures: removedTemperatures.filter(column => !selectedColumns.includes(column)),
-        temperatureColumns: order.filter(column => active.has(column) && movable(column)) });
+        temperatureColumns: slots.flat().filter(column => active.has(column) && movable(column)) }, true);
     }
   }
   function moveBefore(destination: number | null) {
@@ -89,24 +105,38 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
     next.splice(index, 0, ...moving);
     // Moving an unused spare into the temperature block activates the entire source column.
     const active = new Set([...selection.temperature_columns, ...moving]);
+    const temperatureColumns = next.filter(column => active.has(column) && movable(column));
     commit({ ...snapshot(), order: next, excludedColumns: excludedColumns.filter(column => !moving.includes(column)),
       removedTemperatures: removedTemperatures.filter(column => !moving.includes(column)),
-      temperatureColumns: next.filter(column => active.has(column) && movable(column)) });
+      slots: moveSampleSlots(slots, moving, destination, selection.temperature_columns, temperatureColumns, selection.thermocouples_per_sample),
+      temperatureColumns }, true);
   }
   function undo() {
     const previous = history.at(-1);
     if (!previous) return;
     setHistory(old => old.slice(0, -1)); setOrder(previous.order); setExcludedColumns(previous.excludedColumns);
     setRemovedTemperatures(previous.removedTemperatures); setSelectedColumns([]); setSelectedRows([]);
+    setSlots(previous.slots);
     rowAnchor.current = null;
-    onChange({ temperature_columns: previous.temperatureColumns, excluded_rows: previous.excludedRows });
+    committedParameters.current = [selection.ambient_column, selection.current_column, previous.count];
+    onChange({ temperature_columns: previous.temperatureColumns, excluded_rows: previous.excludedRows,
+      sample_groups: previous.sampleGroups, thermocouples_per_sample: previous.count });
   }
   const excludedRowSet = new Set(selection.excluded_rows);
   const canExclude = selectedRows.some(row => !excludedRowSet.has(row))
     || selectedColumns.some(column => !protectedColumn(column) && !excludedColumns.includes(column));
   const canRestore = selectedRows.some(row => excludedRowSet.has(row))
     || selectedColumns.some(column => excludedColumns.includes(column));
-  return { order, excludedColumns, selectedRows, selectedColumns, selectRows, selectColumns, toggleRow,
+  // Presentation order never changes source positions or values used by preparation/export.
+  const active = selection.temperature_columns.filter(column => !protectedColumn(column));
+  const roles = [selection.ambient_column, selection.current_column,
+    ...order.filter(column => column > 2 && column !== selection.ambient_column
+      && column !== selection.current_column && sourceColumnKind(table, selection, column, layout) === 'current')];
+  const fixed = new Set([1, 2, ...active, ...roles]);
+  const remaining = order.filter(column => !fixed.has(column));
+  const displayOrder = [1, 2, ...active, ...roles, ...remaining.filter(column => !excludedColumns.includes(column)),
+    ...remaining.filter(column => excludedColumns.includes(column))];
+  return { order: displayOrder, excludedColumns, selectedRows, selectedColumns, selectRows, selectColumns, toggleRow,
     exclude, restore, moveBefore, undo, protectedColumn, movable, canExclude, canRestore, canUndo: Boolean(history.length),
     restoreAllRows: () => commit({ ...snapshot(), excludedRows: [] }) };
 }

@@ -23,6 +23,40 @@ def scanner_bytes():
     return stream.getvalue()
 
 
+def test_balanced_thermocouple_exclusion_preserves_sample_maxima_in_analysis_and_download():
+    headers = ['Scan', 'Time', *(f'{101 + i} <{i // 4 + 1}_T{i % 4 + 1}> (C)' for i in range(12)),
+               'Ambient (C)', 'Current (VDC)']
+    rows = [headers]
+    for current in (10, 20, 30):
+        for _ in range(2):
+            rows.append([len(rows), '18:00', 21, 99, 23, 24, 31, 99, 33, 34, 41, 99, 43, 44, 20, current])
+    groups = [[3, 5, 6], [7, 9, 10], [11, 13, 14]]
+    request = {'table': {'file_name': 'balanced.csv', 'sheet_names': ['Data'], 'sheet_name': 'Data', 'rows': rows},
+               'selection': {'header_row': 1, 'start_row': 2, 'end_row': 7, 'ambient_column': 15,
+                             'current_column': 16, 'temperature_columns': [3, 5, 6, 7, 9, 10, 11, 13, 14],
+                             'thermocouples_per_sample': 3, 'sample_groups': groups}}
+    client = TestClient(app)
+    response = client.post('/api/tools/temperature-rise/analyze', json=request)
+    assert response.status_code == 200, response.text
+    point = response.json()['points'][1]
+    assert point['sample_maxima'] == [4, 14, 24]
+    assert point['maximum'] == 24
+    assert point['average'] == 14  # Average of sample maxima, not all thermocouples.
+    downloaded = client.post('/api/tools/temperature-rise/download', json=request)
+    assert downloaded.status_code == 200, downloaded.text[:300]
+    book = load_workbook(BytesIO(downloaded.content), data_only=True)
+    assert book['Initial Data'].cell(6, 2).value == 21
+    assert book['Initial Data'].cell(6, 3).value == 23
+    book.close()
+    # A divisible total is insufficient: the first original sample cannot disappear.
+    uneven = {**request, 'selection': {**request['selection'], 'temperature_columns': list(range(7, 15)),
+                                      'thermocouples_per_sample': 4,
+                                      'sample_groups': [[], [7, 8, 9, 10], [11, 12, 13, 14]]}}
+    rejected = client.post('/api/tools/temperature-rise/prepare', json=uneven)
+    assert rejected.status_code == 422
+    assert 'sample' in rejected.text.lower()
+
+
 def test_grouped_csv_import_reports_auxiliary_currents_and_nonzero_intercept_default():
     source_table = grouped_scanner()
     stream = StringIO(newline='')

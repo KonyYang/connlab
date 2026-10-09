@@ -4,6 +4,7 @@ export type WorkbookTable = { file_name: string; sheet_names: string[]; sheet_na
 export type DataSelection = {
   header_row: number; start_row: number; end_row: number; ambient_column: number; current_column: number;
   temperature_columns: number[]; thermocouples_per_sample: number; excluded_rows: number[]; current_multiplier: number;
+  sample_groups?: number[][] | null;
 };
 export type DataRegion = Pick<DataSelection, 'header_row' | 'start_row' | 'end_row'>;
 export type ChannelLayout = {

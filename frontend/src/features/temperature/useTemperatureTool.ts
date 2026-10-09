@@ -66,6 +66,12 @@ export function useTemperatureTool() {
       const selection = { ...old.selection, ...patch };
       selection.temperature_columns = selection.temperature_columns.filter(column =>
         column !== selection.current_column && column !== selection.ambient_column);
+      if (patch.thermocouples_per_sample !== undefined && !('sample_groups' in patch)) {
+        // A manual count edit explicitly establishes new consecutive blocks.
+        delete selection.sample_groups;
+      } else if (selection.sample_groups) {
+        selection.sample_groups = selection.sample_groups.map(group => group.filter(column => selection.temperature_columns.includes(column)));
+      }
       selection.excluded_rows = selection.excluded_rows.filter(row => row >= selection.start_row && row <= selection.end_row);
       const zeroIntercept = !old.manualZeroIntercept && (patch.current_column !== undefined || patch.ambient_column !== undefined)
         ? !old.channel_layout?.stable_current_columns.some(column => column !== selection.current_column && column !== selection.ambient_column)

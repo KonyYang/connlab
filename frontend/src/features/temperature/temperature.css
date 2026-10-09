@@ -56,16 +56,18 @@
 .temperature-source-table thead th { position: static; }
 .temperature-source-table tbody td, .temperature-source-table tbody th { height: 36px; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; }
 .temperature-source-table tbody td { background: var(--color-surface); }
-.temperature-source-table .temperature-row-selector, .temperature-source-table .temperature-index-scan, .temperature-source-table .temperature-index-time, .temperature-source-table .temperature-index-band { position: sticky; z-index: 1; }
-.temperature-source-table .temperature-row-selector, .temperature-source-table .temperature-index-band { left: 0; }
+.temperature-source-table .temperature-row-selector, .temperature-source-table .temperature-index-scan, .temperature-source-table .temperature-index-time { position: sticky; z-index: 1; }
+.temperature-source-table .temperature-row-selector { left: 0; }
 .temperature-source-table .temperature-index-scan { left: var(--temperature-selector-width); }
 .temperature-source-table .temperature-index-time { left: calc(var(--temperature-selector-width) + var(--temperature-scan-width)); border-right: 2px solid var(--color-border); }
 .temperature-source-table tbody tr[aria-current="true"] > * { box-shadow: inset 0 1px 0 var(--color-primary), inset 0 -1px 0 var(--color-primary); }
 .temperature-source-table tbody tr[aria-current="true"]:not(.is-excluded-row):not(.is-flagged-row) > * { background: var(--color-action-secondary-hover); }
 .temperature-source-table .temperature-row-spacer td { padding: 0; border: 0; }
 .temperature-source-table th, .temperature-source-table td { border-right: 1px solid var(--color-border); padding: 7px 6px; }
-.temperature-source-table thead tr:nth-child(2) th { top: 30px; vertical-align: top; }
-.temperature-source-table .temperature-sample-groups th { height: 30px; padding: 0 10px; box-sizing: border-box; text-align: center; color: var(--color-primary-strong); background: var(--color-action-secondary-bg); }
+.temperature-source-table thead th { vertical-align: top; }
+.temperature-source-table thead th.temperature-sample-primary { background: var(--color-action-secondary-bg); }
+.temperature-source-table thead th.temperature-sample-alternate { background: var(--color-surface-muted); }
+.temperature-source-table thead th.temperature-sample-start { border-left: 2px solid var(--color-border); }
 .temperature-source-column { display: flex; align-items: center; gap: 4px; min-height: 28px; }
 .temperature-source-table th[tabindex] { cursor: pointer; }
 .temperature-source-table th[tabindex]:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
@@ -73,7 +75,7 @@
 .temperature-source-title { max-width: 200px; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
 .temperature-source-title > span { display: block; }
 .temperature-source-role { font-size: 11px; color: var(--color-ink-muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; }
-.temperature-source-table th.is-selected-column, .temperature-source-table td.is-selected-column { background: var(--color-action-secondary-hover); }
+.temperature-source-table thead th.is-selected-column, .temperature-source-table td.is-selected-column { background: var(--color-action-secondary-hover); }
 .temperature-source-table .is-excluded-column, .temperature-source-table .is-excluded-row > * { background: var(--color-surface-muted); color: var(--color-ink-muted); }
 .temperature-source-table .is-excluded-row td:not(:first-child), .temperature-source-table td.is-excluded-column { text-decoration: line-through; }
 .temperature-source-table .is-flagged-row > * { background: #fff9eb; }

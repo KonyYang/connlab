@@ -11,8 +11,31 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
+    "summary": "Normalize temperature editor columns and preserve sample groups through balanced exclusions",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Temperature source grid ordering, sample grouping, exclusions, headers and regression protection",
+    "scope_paths": [
+      "frontend/src/features/temperature",
+      "frontend/src/api/temperature.ts",
+      "frontend/src/styles",
+      "backend/domain/temperature_data.py",
+      "backend/api/temperature_schemas.py",
+      "backend/application/temperature_data_preparation.py",
+      "tests/unit/test_temperature_data_preparation.py",
+      "tests/integration/test_temperature_api.py",
+      "docs/temperature_rise_tool.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "ab95f5e485be65a6626bc67e8f493b66b0fbc42b",
+    "started_at": "2026-10-09T00:07:00.551432Z",
+    "updated_at": "2026-10-09T00:07:00.551432Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
     "tier": "micro",

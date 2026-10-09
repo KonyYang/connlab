@@ -5,6 +5,7 @@ import { ColumnActions, type ColumnMenuAnchor } from './ColumnActions';
 import { columnLetter, incompleteSampleGroups } from './sourceColumns';
 import { formatSourceReading, sourcePresentation } from './sourcePresentation';
 import { scanLabel } from './sourceScan';
+import { sampleGroups } from './sampleGroups';
 import { useDataGridEditing } from './useDataGridEditing';
 import { SOURCE_ROW_HEIGHT, useSourceRowWindow } from './useSourceRowWindow';
 
@@ -26,6 +27,7 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   const columnWidth = (column: number) => columnsById.get(column)!.width;
   const incomplete = incompleteSampleGroups(selection, layout);
   const count = Math.max(1, selection.thermocouples_per_sample || 1);
+  const sampleCount = sampleGroups(selection, layout).length;
   const total = Math.max(0, selection.end_row - selection.start_row + 1);
   const rowWindow = useSourceRowWindow(selection.start_row, total);
   const { rows } = rowWindow;
@@ -39,12 +41,11 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   const selectedCount = grid.selectedRows.length + grid.selectedColumns.length;
   const activeIndex = (column: number) => selection.temperature_columns.indexOf(column);
   const groupLabel = (column: number) => !incomplete && activeIndex(column) >= 0 ? `Sample ${Math.floor(activeIndex(column) / count) + 1}` : '';
-  const groups: { label: string; size: number }[] = [];
-  grid.order.filter(column => column > 2).forEach(column => {
-    const label = groupLabel(column);
-    if (groups.at(-1)?.label === label) groups[groups.length - 1].size++;
-    else groups.push({ label, size: 1 });
-  });
+  const groupClass = (column: number) => {
+    if (!groupLabel(column)) return '';
+    const index = activeIndex(column);
+    return `temperature-sample-${Math.floor(index / count) % 2 ? 'alternate' : 'primary'}${index % count === 0 ? ' temperature-sample-start' : ''}`;
+  };
   const role = (column: number) => {
     if (column <= 2) return '';
     if (grid.protectedColumn(column)) return '';
@@ -71,7 +72,7 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   function runAction(action: () => void) { action(); menu?.trigger.focus(); closeMenu(); }
   return <section className="temperature-data-editor" aria-label="Data Preview">
     <div className="temperature-data-toolbar"><div><h3>Data Preview</h3>
-      <span>{Math.ceil(selection.temperature_columns.length / count)} {selection.temperature_columns.length === count ? 'Sample' : 'Samples'} · {count} TC/Sample · {selection.temperature_columns.length} Channels</span></div>
+      <span>{sampleCount} {sampleCount === 1 ? 'Sample' : 'Samples'} · {count} TC/Sample · {selection.temperature_columns.length} Channels</span></div>
       <div className="temperature-data-actions"><span>{selectedCount ? `${selectedCount} Selected` : ''}</span>
         <button type="button" disabled={disabled || !grid.canExclude} onClick={grid.exclude}>Exclude Selected</button>
         <button type="button" disabled={disabled || !grid.canRestore} onClick={grid.restore}>Restore</button>
@@ -79,20 +80,21 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
     {incomplete && <p className="temperature-warning" role="alert">Incomplete sample group. Restore columns or move a spare into position; each sample needs {count} thermocouples.</p>}
     <div ref={rowWindow.viewport} className="temperature-table-scroll" role="region" aria-label="Scanner Data Preview" tabIndex={0}
       onScroll={event => { closeMenu(); rowWindow.setScrollTop(event.currentTarget.scrollTop); }}>
-      <table className="temperature-source-table" aria-rowcount={total + 2}
+      <table className="temperature-source-table" aria-rowcount={total + 1}
         style={{ width: SELECTOR_WIDTH + grid.order.reduce((width, column) => width + columnWidth(column), 0),
           '--temperature-selector-width': `${SELECTOR_WIDTH}px`, '--temperature-scan-width': `${columnWidth(1)}px` } as CSSProperties}>
         <colgroup><col style={{ width: SELECTOR_WIDTH }} />
           {grid.order.map(column => <col key={column} style={{ width: columnWidth(column) }} />)}</colgroup>
         <thead ref={rowWindow.header}>
-        <tr className="temperature-sample-groups"><th colSpan={1 + grid.order.filter(column => column <= 2).length} className="temperature-index-band" />{groups.map((group, index) => <th key={index} colSpan={group.size}>{group.label}</th>)}</tr>
         <tr><th className="temperature-row-selector"><input ref={selectAll} type="checkbox" aria-label="Select All Rows" disabled={disabled || !total}
           checked={Boolean(total) && selectedRows.size === total}
           onChange={event => { closeMenu(); grid.selectRows(event.target.checked ? Array.from({ length: total }, (_, index) => selection.start_row + index) : []); }} /></th>
-          {grid.order.map(column => <th key={column} className={headerClass(column)}
+          {grid.order.map(column => <th key={column} className={[headerClass(column), groupClass(column)].filter(Boolean).join(' ')}
             ref={element => { if (element) columnHeaders.current.set(column, element); else columnHeaders.current.delete(column); }}
             tabIndex={grid.movable(column) && !disabled ? 0 : undefined}
             aria-label={column > 2 ? columnsById.get(column)!.label : undefined}
+            aria-description={groupLabel(column) || undefined}
+            title={groupLabel(column) || undefined}
             aria-haspopup={grid.movable(column) ? 'dialog' : undefined}
             aria-expanded={grid.movable(column) ? menu?.column === column : undefined}
             onClick={event => { if (!disabled && !grid.protectedColumn(column) && !(event.target as HTMLElement).closest('input')) grid.selectColumns([column]); }}
@@ -107,7 +109,7 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
             {role(column) && <span className="temperature-source-role" title={role(column)}>{role(column)}</span>}</th>)}</tr></thead>
         <tbody>
           {rowWindow.topPadding > 0 && <tr aria-hidden="true" className="temperature-row-spacer"><td colSpan={grid.order.length + 1} style={{ height: rowWindow.topPadding }} /></tr>}
-          {rows.map(row => <tr key={row} aria-rowindex={row - selection.start_row + 3} style={{ height: SOURCE_ROW_HEIGHT }}
+          {rows.map(row => <tr key={row} aria-rowindex={row - selection.start_row + 2} style={{ height: SOURCE_ROW_HEIGHT }}
             aria-selected={selectedRows.has(row)}
             aria-current={activeRow === row ? 'true' : undefined}
             aria-label={excludedRows.has(row) ? `${scanLabel(table, row)} · Excluded` : flaggedRows.has(row) ? `${scanLabel(table, row)} · Needs Review` : undefined}

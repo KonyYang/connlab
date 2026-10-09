@@ -61,6 +61,20 @@ def test_required_missing_data_cannot_be_acknowledged_away():
 def test_invalid_mapping_or_range_is_rejected(changes):
     with pytest.raises(ValueError):
         prepare_data(table(), selection(**changes))
+
+
+@pytest.mark.parametrize('groups', [(), ((), (5, 6)), ((6,), (5,)), ((5,), (5,))])
+def test_explicit_sample_groups_cannot_omit_duplicate_or_reorder_confirmed_channels(groups):
+    with pytest.raises(ValueError, match='Sample'):
+        prepare_data(table(), selection(thermocouples_per_sample=1, sample_groups=groups))
+
+
+def test_explicit_sample_groups_and_legacy_selections_produce_the_same_measurements():
+    legacy = prepare_data(table(), selection(thermocouples_per_sample=1))
+    grouped = prepare_data(table(), selection(thermocouples_per_sample=1, sample_groups=((5,), (6,))))
+    assert grouped == legacy
+
+
 def test_suggested_mapping_excludes_chinese_scanner_metadata():
     from backend.application.temperature_data_preparation import suggest_selection
     table = WorkbookTable('scanner.xlsm', ('Initial Data',), 'Initial Data', (

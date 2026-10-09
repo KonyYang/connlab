@@ -31,6 +31,7 @@ class DataSelection:
     thermocouples_per_sample: int
     excluded_rows: tuple[int, ...] = ()
     current_multiplier: float = 1.
+    sample_groups: tuple[tuple[int, ...], ...] | None = None
 
 
 def column_letter(index: int) -> str:

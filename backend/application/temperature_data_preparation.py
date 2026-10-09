@@ -89,6 +89,11 @@ def _validate_selection(table: WorkbookTable, selection: DataSelection) -> Chann
     count = selection.thermocouples_per_sample
     if count < 1 or not selection.temperature_columns or len(selection.temperature_columns) % count:
         raise ValueError("Select complete samples with the same number of thermocouples per sample.")
+    if selection.sample_groups is not None:
+        groups = selection.sample_groups
+        if (not groups or any(len(group) != count for group in groups)
+                or tuple(column for group in groups for column in group) != selection.temperature_columns):
+            raise ValueError('Sample channel counts differ or their order does not match. Restore or move channels before confirming.')
     columns = (selection.ambient_column, selection.current_column, *selection.temperature_columns)
     if len(set(columns)) != len(columns) or any(not 1 <= col <= table.width for col in columns):
         raise ValueError("Assign each source column once: ambient, current and thermocouples must be distinct.")
@@ -97,7 +102,7 @@ def _validate_selection(table: WorkbookTable, selection: DataSelection) -> Chann
     if any(not selection.start_row <= row <= selection.end_row for row in selection.excluded_rows):
         raise ValueError("Excluded rows must be inside the selected data range.")
     layout = inspect_channel_layout(table, selection.header_row, selection.start_row, selection.end_row)
-    if (selection.temperature_columns == layout.temperature_columns
+    if (selection.sample_groups is None and selection.temperature_columns == layout.temperature_columns
             and count == layout.thermocouples_per_sample
             and any(len(group.columns) != count for group in layout.sample_groups)):
         raise ValueError('Sample channel counts differ. Explicitly adjust the channel assignments before confirming.')

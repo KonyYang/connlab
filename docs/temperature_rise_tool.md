@@ -1,9 +1,53 @@
 # Temperature Rise and Derating Tool
 
-Status: implemented. Current refinement: compact chart display with generated coefficients kept
-internally, automatic generation after successful confirmation, and scan-based operator feedback
-(`TASK_TEMPERATURE_AUTO_COEFFICIENTS_20261007`);
-unified raw-data row/column editing remains in place without a separate row-range form.
+Status: implemented. Current refinement: contiguous effective temperature columns and reversible,
+sample-preserving exclusion. Compact charts, automatic generation after confirmation and scan-based
+operator feedback remain in place.
+
+## Effective-column grouping
+
+The preview orders A/B, active thermocouples, ambient, selected main current, other retained currents,
+unused source columns, then excluded columns. This is logical presentation, not a source-file rewrite.
+The extra Sample header band is removed; alternating restrained header tones, a group boundary and
+accessible/hover sample descriptions identify consecutive groups. Electrical columns are protected
+and never counted as thermocouples.
+
+Exclusion retains the original sample slots. Removing TC2 from every four-TC sample automatically
+changes the count to three and preserves per-sample maxima/average-of-maxima. Restore and Undo retain
+membership and count. Uneven/empty groups block confirmation even when the total is divisible.
+Spare moves into an incomplete group's retained slot repair that sample; explicit moves of complete
+blocks or a manual count edit can establish new consecutive groups. Later role/count decisions clear
+older Undo history, but unrelated excluded channels remain restorable.
+
+The optional `selection.sample_groups` carries active source-column groups through preparation,
+analysis and download; the backend checks equal positive counts and exact ordered coverage. Legacy
+requests without it retain their existing contract. Numerical fits, original values, other-current
+retention and Zero Intercept defaults are unchanged. Regression acceptance covers balanced TC2
+exclusion, unequal-but-divisible rejection, restore/Undo, spare/block moves, role changes and actual
+analysis/Excel download. No authoritative workbook, project record or database schema is mutated.
+
+Validation: 59 affected frontend tests and 88 preparation/calculation/workbook/API tests passed;
+TypeScript/Vite production build passed. The initial frontend matrix had one test-only A/B text-node
+assertion failure; that assertion was corrected and its complete 21-test preview file passed again.
+The other passing files were unchanged. Isolated browser QA confirmed the three-sample 4→3 case,
+actual chart generation, unequal-count blocking and right-click restoration; no browser console
+warnings/errors. The stale local API reload process was restarted through `run_backend.ps1` and its
+OpenAPI contract verified. No manual operation was performed in the User's tab, but React development
+hot refresh rebuilt that session during the hook update: the original file needs reimporting.
+Source bytes are untouched. Excel download values were inspected with openpyxl, not native Excel.
+
+Sequential same-agent code-review passes: Standards — zero outstanding findings (feature-owned
+group/slot helpers, typed bounded compatible request, existing application validation); Spec — zero
+outstanding findings (agreed ordering, single header, preserved groups/count, reversible edits and
+unchanged calculation defaults). Methods used: tdd and code-review; no independent review claimed.
+
+Changed paths: `frontend/src/api/temperature.ts`; feature files `DataPreview.tsx`,
+`DataPreview.test.tsx`, `sampleGroups.ts`, `sourceColumns.ts`, `temperature.css`,
+`useDataGridEditing.ts`, `useTemperatureTool.ts` under `frontend/src/features/temperature/`;
+`frontend/src/pages/TemperatureRisePage.test.tsx`; `backend/api/temperature_schemas.py`;
+`backend/application/temperature_data_preparation.py`; `backend/domain/temperature_data.py`;
+`tests/unit/test_temperature_data_preparation.py`; `tests/integration/test_tools_temperature_api.py`;
+this document. Task lifecycle state is recorded only by the board writer.
 
 ## Scope and acceptance
 
