@@ -6,6 +6,28 @@ operator feedback remain in place.
 
 ## Effective-column grouping
 
+Column headers now replace the column checkboxes: plain click selects one, Ctrl-click toggles a
+noncontiguous selection, and Shift-click selects the inclusive displayed range from the last plain
+or Ctrl-click anchor. Ctrl+Shift adds a range; Meta also toggles. Repeated Shift endpoints retain
+the anchor. Right-click preserves an already selected block; an unselected header becomes the
+selection. Space/Enter select a focused header with the same modifiers, and ContextMenu/Shift+F10
+opens its operations. A/B, ambient and all current roles remain protected and are skipped in ranges.
+Selecting rows, committing edits, Undo, or changing roles/count resets the column anchor. Row
+checkboxes and row Shift selection are unchanged; presentation precision never changes source values.
+Acceptance covers click/toggle, forward/reverse/reordered ranges, protected/disabled headers, keyboard
+block movement, balanced exclusion/restoration and Undo. This is only a frontend interaction revision;
+API and numerical behavior are unchanged. Methods: TDD and sequential same-agent code-review.
+
+Header-selection revision validation: 56 affected frontend tests passed (25 preview, 31 page),
+followed by the TypeScript/Vite production build. Isolated browser checks passed Ctrl multi-select,
+balanced TC2 exclusion (4→3), Shift restoration (3→4), Shift+F10 block movement and Undo; console
+warnings/errors were zero. A label locator failed during automation; the observed combobox-role
+locator completed the move without a product change. No operations were performed in the User tab.
+Standards and Spec passes each found zero outstanding issues; both were sequential same-agent passes.
+Revision paths: `frontend/src/features/temperature/DataPreview.tsx`, `useDataGridEditing.ts`,
+`temperature.css`, `DataPreview.test.tsx`; `frontend/src/pages/TemperatureRisePage.test.tsx`;
+this document. Board changes are lifecycle-only. Source files and numerical/API contracts are untouched.
+
 The preview orders A/B, active thermocouples, ambient, selected main current, other retained currents,
 unused source columns, then excluded columns. This is logical presentation, not a source-file rewrite.
 The extra Sample header band is removed; alternating restrained header tones, a group boundary and
@@ -26,7 +48,8 @@ retention and Zero Intercept defaults are unchanged. Regression acceptance cover
 exclusion, unequal-but-divisible rejection, restore/Undo, spare/block moves, role changes and actual
 analysis/Excel download. No authoritative workbook, project record or database schema is mutated.
 
-Validation: 59 affected frontend tests and 88 preparation/calculation/workbook/API tests passed;
+Grouping implementation validation (before the header-selection revision): 59 affected frontend tests
+and 88 preparation/calculation/workbook/API tests passed;
 TypeScript/Vite production build passed. The initial frontend matrix had one test-only A/B text-node
 assertion failure; that assertion was corrected and its complete 21-test preview file passed again.
 The other passing files were unchanged. Isolated browser QA confirmed the three-sample 4→3 case,

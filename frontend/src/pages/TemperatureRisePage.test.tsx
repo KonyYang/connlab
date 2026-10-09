@@ -37,6 +37,7 @@ async function upload() {
   fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['x'], 'scanner.xlsx')] } });
   await screen.findByRole('button', { name: 'Confirm Data' });
 }
+function columnHeader(letter: string) { return screen.getByRole('columnheader', { name: new RegExp(`^${letter} — `) }); }
 
 describe('temperature preparation and calculation workflow', () => {
   beforeEach(() => {
@@ -61,13 +62,13 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(source);
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
-    for (const letter of ['C', 'D']) fireEvent.click(screen.getByLabelText(`Select Column ${letter}`));
+    for (const letter of ['C', 'D']) fireEvent.click(columnHeader(letter), { ctrlKey: true });
     fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByRole('alert').textContent).toContain('Incomplete sample group');
     expect(api.prepareTemperatureData).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
-    for (const letter of ['D', 'H']) fireEvent.click(screen.getByLabelText(`Select Column ${letter}`));
+    for (const letter of ['D', 'H']) fireEvent.click(columnHeader(letter), { ctrlKey: true });
     fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     expect((screen.getByLabelText('Thermocouples/Sample') as HTMLInputElement).value).toBe('1');
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Data' }));
@@ -356,12 +357,12 @@ describe('temperature preparation and calculation workflow', () => {
     } });
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
-    await user.click(screen.getByLabelText('Select Column D'));
+    await user.click(columnHeader('D'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(false);
     expect((screen.getByLabelText('Thermocouples/Sample') as HTMLInputElement).value).toBe('1');
     expect(api.prepareTemperatureData).not.toHaveBeenCalled();
-    fireEvent.contextMenu(screen.getByLabelText('Select Column G').closest('th')!);
+    fireEvent.contextMenu(columnHeader('G'));
     await user.selectOptions(screen.getByLabelText('Move Before'), '4');
     await user.click(screen.getByRole('button', { name: 'Move' }));
     expect((screen.getByLabelText('Thermocouples/Sample') as HTMLInputElement).value).toBe('2');
@@ -493,9 +494,9 @@ describe('temperature preparation and calculation workflow', () => {
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
-    await user.click(screen.getByLabelText('Select Column D'));
+    await user.click(columnHeader('D'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
-    fireEvent.contextMenu(screen.getByLabelText('Select Column G').closest('th')!);
+    fireEvent.contextMenu(columnHeader('G'));
     await user.selectOptions(screen.getByLabelText('Move Before'), '4');
     await user.click(screen.getByRole('button', { name: 'Move' }));
     await user.click(screen.getByLabelText('Select Scan 1'));
@@ -644,12 +645,12 @@ describe('temperature preparation and calculation workflow', () => {
     const user = userEvent.setup();
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
-    fireEvent.contextMenu(screen.getByLabelText('Select Column D').closest('th')!);
+    fireEvent.contextMenu(columnHeader('D'));
     await user.selectOptions(screen.getByLabelText('Move Before'), '3');
     await user.click(screen.getByRole('button', { name: 'Move' }));
-    await user.click(screen.getByLabelText('Select Column D'));
+    await user.click(columnHeader('D'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
-    await user.click(screen.getByLabelText('Select Column D'));
+    await user.click(columnHeader('D'));
     await user.click(screen.getByRole('button', { name: 'Restore' }));
     vi.mocked(api.prepareTemperatureData).mockResolvedValueOnce({ ready: false, measurements: [],
       issues: [{ code: 'invalid_reading', severity: 'error', source_row: 2, message: 'Row 2: missing reading.' }] });

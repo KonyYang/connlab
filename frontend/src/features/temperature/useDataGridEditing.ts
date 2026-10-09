@@ -22,7 +22,7 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
   const [history, setHistory] = useState<Snapshot[]>([]);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [selectedColumns, setSelectedColumns] = useState<number[]>([]);
-  const rowAnchor = useRef<number | null>(null);
+  const rangeAnchor = useRef<{ kind: 'row' | 'column'; id: number } | null>(null);
   const committedParameters = useRef([selection.ambient_column, selection.current_column, selection.thermocouples_per_sample]);
   // Undo never rolls back a later role/count decision from the parameter row.
   useEffect(() => {
@@ -32,7 +32,7 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
     setHistory([]); setSelectedRows([]); setSelectedColumns([]);
     setSlots(previous => retainExcludedSlots(sampleGroups(selection, layout), previous,
       removedTemperatures.filter(column => column !== selection.ambient_column && column !== selection.current_column)));
-    rowAnchor.current = null;
+    rangeAnchor.current = null;
     setExcludedColumns(old => old.filter(column => column !== selection.ambient_column && column !== selection.current_column));
     setRemovedTemperatures(old => old.filter(column => column !== selection.ambient_column && column !== selection.current_column));
   }, [selection.ambient_column, selection.current_column, selection.thermocouples_per_sample]);
@@ -52,14 +52,33 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
     onChange({ temperature_columns: columnsChanged ? groups.flat() : next.temperatureColumns, excluded_rows: next.excludedRows,
       ...(columnsChanged ? { sample_groups: groups, thermocouples_per_sample: count } : {}) });
     setSelectedRows([]); setSelectedColumns([]);
-    rowAnchor.current = null;
+    rangeAnchor.current = null;
   }
-  function selectRows(rows: number[]) { setSelectedRows(rows); setSelectedColumns([]); rowAnchor.current = null; }
+  function selectRows(rows: number[]) { setSelectedRows(rows); setSelectedColumns([]); rangeAnchor.current = null; }
   function selectColumns(columns: number[]) {
-    setSelectedColumns(columns.filter(column => !protectedColumn(column))); setSelectedRows([]); rowAnchor.current = null;
+    const selectable = columns.filter(column => !protectedColumn(column));
+    setSelectedColumns(selectable); setSelectedRows([]);
+    rangeAnchor.current = selectable.length ? { kind: 'column', id: selectable[0] } : null;
+  }
+  function selectColumn(column: number, modifiers: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) {
+    if (protectedColumn(column)) return;
+    const additive = modifiers.ctrlKey || modifiers.metaKey;
+    const anchor = modifiers.shiftKey && rangeAnchor.current?.kind === 'column' ? rangeAnchor.current.id : column;
+    const first = displayOrder.indexOf(anchor), last = displayOrder.indexOf(column);
+    const range = displayOrder.slice(Math.min(first, last), Math.max(first, last) + 1)
+      .filter(item => !protectedColumn(item));
+    if (modifiers.shiftKey) {
+      setSelectedColumns(additive ? [...new Set([...selectedColumns, ...range])] : range);
+    } else {
+      setSelectedColumns(additive ? selectedColumns.includes(column)
+        ? selectedColumns.filter(item => item !== column) : [...selectedColumns, column] : [column]);
+    }
+    setSelectedRows([]);
+    // Repeated Shift endpoints use the same anchor, in current presentation order.
+    rangeAnchor.current = { kind: 'column', id: anchor };
   }
   function toggleRow(row: number, checked: boolean, extend: boolean) {
-    const anchor = extend && rowAnchor.current !== null ? rowAnchor.current : row;
+    const anchor = extend && rangeAnchor.current?.kind === 'row' ? rangeAnchor.current.id : row;
     const first = Math.max(selection.start_row, Math.min(anchor, row));
     const last = Math.min(selection.end_row, Math.max(anchor, row));
     setSelectedRows(old => {
@@ -71,7 +90,7 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
     });
     setSelectedColumns([]);
     // Further Shift clicks extend from the same first endpoint; a plain click starts a new range.
-    rowAnchor.current = anchor;
+    rangeAnchor.current = { kind: 'row', id: anchor };
   }
   function exclude() {
     if (selectedRows.length) {
@@ -117,7 +136,7 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
     setHistory(old => old.slice(0, -1)); setOrder(previous.order); setExcludedColumns(previous.excludedColumns);
     setRemovedTemperatures(previous.removedTemperatures); setSelectedColumns([]); setSelectedRows([]);
     setSlots(previous.slots);
-    rowAnchor.current = null;
+    rangeAnchor.current = null;
     committedParameters.current = [selection.ambient_column, selection.current_column, previous.count];
     onChange({ temperature_columns: previous.temperatureColumns, excluded_rows: previous.excludedRows,
       sample_groups: previous.sampleGroups, thermocouples_per_sample: previous.count });
@@ -136,7 +155,7 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
   const remaining = order.filter(column => !fixed.has(column));
   const displayOrder = [1, 2, ...active, ...roles, ...remaining.filter(column => !excludedColumns.includes(column)),
     ...remaining.filter(column => excludedColumns.includes(column))];
-  return { order: displayOrder, excludedColumns, selectedRows, selectedColumns, selectRows, selectColumns, toggleRow,
+  return { order: displayOrder, excludedColumns, selectedRows, selectedColumns, selectRows, selectColumns, selectColumn, toggleRow,
     exclude, restore, moveBefore, undo, protectedColumn, movable, canExclude, canRestore, canUndo: Boolean(history.length),
     restoreAllRows: () => commit({ ...snapshot(), excludedRows: [] }) };
 }

@@ -91,19 +91,25 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
           onChange={event => { closeMenu(); grid.selectRows(event.target.checked ? Array.from({ length: total }, (_, index) => selection.start_row + index) : []); }} /></th>
           {grid.order.map(column => <th key={column} className={[headerClass(column), groupClass(column)].filter(Boolean).join(' ')}
             ref={element => { if (element) columnHeaders.current.set(column, element); else columnHeaders.current.delete(column); }}
-            tabIndex={grid.movable(column) && !disabled ? 0 : undefined}
+            tabIndex={!grid.protectedColumn(column) && !disabled ? 0 : undefined}
             aria-label={column > 2 ? columnsById.get(column)!.label : undefined}
+            aria-selected={!grid.protectedColumn(column) ? grid.selectedColumns.includes(column) : undefined}
             aria-description={groupLabel(column) || undefined}
             title={groupLabel(column) || undefined}
             aria-haspopup={grid.movable(column) ? 'dialog' : undefined}
             aria-expanded={grid.movable(column) ? menu?.column === column : undefined}
-            onClick={event => { if (!disabled && !grid.protectedColumn(column) && !(event.target as HTMLElement).closest('input')) grid.selectColumns([column]); }}
+            onClick={event => { if (!disabled && !grid.protectedColumn(column)) {
+              closeMenu(); event.currentTarget.focus(); grid.selectColumn(column, event);
+            } }}
             onContextMenu={event => openContextMenu(column, event)}
-            onKeyDown={event => { if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) { event.preventDefault(); openMenu(column, event.currentTarget); } }}>
-            <div className="temperature-source-column">{!grid.protectedColumn(column) && <input type="checkbox" aria-label={`Select Column ${columnLetter(column)}`}
-              disabled={disabled} checked={grid.selectedColumns.includes(column)}
-              onChange={event => { closeMenu(); grid.selectColumns(event.target.checked ? [...grid.selectedColumns, column] : grid.selectedColumns.filter(item => item !== column)); }} />}
-              <span>{columnLetter(column)}</span></div>
+            onKeyDown={event => {
+              if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
+                event.preventDefault(); openMenu(column, event.currentTarget);
+              } else if (!disabled && !grid.protectedColumn(column) && (event.key === ' ' || event.key === 'Enter')) {
+                event.preventDefault(); closeMenu(); grid.selectColumn(column, event);
+              }
+            }}>
+            <div className="temperature-source-column"><span>{columnLetter(column)}</span></div>
             <span className="temperature-source-title" title={columnsById.get(column)!.original}>
               {columnsById.get(column)!.heading.map((line, index) => <span key={index}>{line}</span>)}</span>
             {role(column) && <span className="temperature-source-role" title={role(column)}>{role(column)}</span>}</th>)}</tr></thead>

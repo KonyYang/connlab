@@ -69,7 +69,7 @@
 .temperature-source-table thead th.temperature-sample-alternate { background: var(--color-surface-muted); }
 .temperature-source-table thead th.temperature-sample-start { border-left: 2px solid var(--color-border); }
 .temperature-source-column { display: flex; align-items: center; gap: 4px; min-height: 28px; }
-.temperature-source-table th[tabindex] { cursor: pointer; }
+.temperature-source-table th[tabindex] { cursor: pointer; user-select: none; }
 .temperature-source-table th[tabindex]:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 .temperature-source-title, .temperature-source-role { display: block; margin-top: 4px; }
 .temperature-source-title { max-width: 200px; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
