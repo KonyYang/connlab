@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
     "summary": "Normalize temperature editor columns and preserve sample groups through balanced exclusions",
@@ -32,9 +32,85 @@
     "risk_reasons": [],
     "activation_head": "ab95f5e485be65a6626bc67e8f493b66b0fbc42b",
     "started_at": "2026-10-09T00:07:00.551432Z",
-    "updated_at": "2026-10-09T00:07:00.551432Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-09T00:21:05.359845Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "summary": "Normalized source-grid ordering and single-header sample colors; balanced exclusions preserve sample identity and automatically adjust counts with restore/undo; unequal groups block frontend and API confirmation.",
+      "scope_ok": true,
+      "integration": {
+        "context": "local master",
+        "status": "passed",
+        "details": "Exact in-scope reviewed implementation committed at clean HEAD; no push or closure."
+      },
+      "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
+      "roles": {
+        "qa": {
+          "context": "same-agent final QA pass",
+          "status": "passed",
+          "details": "Risk-proportionate complete affected matrix, build and isolated browser; only failed test-assertion file rerun after correction."
+        },
+        "reviewer": {
+          "context": "same-agent separate sequential Standards and Spec passes",
+          "status": "passed",
+          "details": "Zero outstanding findings on either axis; request-compatible validation, group metadata/slot recovery and source-file protection reviewed."
+        },
+        "developer": {
+          "context": "same agent",
+          "status": "passed",
+          "details": "TDD failure-before-fix and focused checks at grid, page and API seams."
+        }
+      },
+      "changed_paths": [
+        "backend/api/temperature_schemas.py",
+        "backend/application/temperature_data_preparation.py",
+        "backend/domain/temperature_data.py",
+        "docs/temperature_rise_tool.md",
+        "frontend/src/api/temperature.ts",
+        "frontend/src/features/temperature/DataPreview.test.tsx",
+        "frontend/src/features/temperature/DataPreview.tsx",
+        "frontend/src/features/temperature/sampleGroups.ts",
+        "frontend/src/features/temperature/sourceColumns.ts",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useDataGridEditing.ts",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "tests/integration/test_tools_temperature_api.py",
+        "tests/unit/test_temperature_data_preparation.py"
+      ],
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "validation": [
+        {
+          "details": "59 tests: final preview rerun 21 passed after test-only A/B assertion correction; unchanged Page31/API2/TopBar5 passed.",
+          "status": "passed",
+          "name": "Frontend affected tests"
+        },
+        {
+          "details": "88 preparation, numerical calculation, workbook gateway and real API tests passed; one pre-existing Starlette/httpx deprecation warning.",
+          "status": "passed",
+          "name": "Backend affected matrix"
+        },
+        {
+          "details": "npm run build passed, sequentially after Vitest.",
+          "status": "passed",
+          "name": "TypeScript/Vite"
+        },
+        {
+          "details": "4-to-3 TC2 exclusion, alternate header colors, protected role order, actual chart, unequal blocking and right-click restore verified. Console warnings/errors zero. Local API restarted through official script; user tab not manually operated, React HMR rebuilt the session and source needs reimport.",
+          "status": "passed",
+          "name": "Isolated browser"
+        }
+      ],
+      "subject": "66c0e23f3d02eb62319950d47616d34fa5dee2e7"
+    }
   },
   "last_closed": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
