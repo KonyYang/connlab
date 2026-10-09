@@ -101,7 +101,7 @@ describe('column header selection', () => {
     fireEvent.keyDown(columnHeader('F'), { key: 'Enter', shiftKey: true });
     fireEvent.keyDown(columnHeader('E'), { key: 'F10', shiftKey: true });
     const menu = screen.getByRole('dialog', { name: 'Column E Actions' });
-    expect(within(menu).getByText('2 Columns Selected')).toBeTruthy();
+    expect(screen.getByText('2 Selected')).toBeTruthy();
     await user.selectOptions(within(menu).getByLabelText('Move Before'), '3');
     await user.click(within(menu).getByRole('button', { name: 'Move' }));
     expect(selected().temperature_columns).toEqual([5, 6, 3, 4]);
@@ -251,6 +251,28 @@ describe('continuous source row selection', () => {
 });
 
 describe('unified scanner data editing', () => {
+  it('dismisses the compact column menu by outside click or Escape and keeps keyboard focus within its actions', async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    openColumn('C');
+    const menu = screen.getByRole('dialog', { name: 'Column C Actions' });
+    expect(within(menu).queryByText('C — 101 1_A', { exact: true })).toBeNull();
+    expect(within(menu).queryByRole('button', { name: 'Close Column Actions' })).toBeNull();
+    const exclude = within(menu).getByRole('button', { name: 'Exclude Column', exact: true });
+    expect(document.activeElement).toBe(exclude);
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(within(menu).getByRole('button', { name: 'Move', exact: true }));
+    await user.tab();
+    expect(document.activeElement).toBe(exclude);
+    await user.click(screen.getByRole('heading', { name: 'Data Preview' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    openColumn('C');
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(columnHeader('C'));
+    expect(selected()).toEqual(initial);
+  });
+
   it('places protected-column units immediately after the scanner channel number', () => {
     const source = structuredClone(table);
     source.rows[0][6] = '318 <Ambient T> (C)';
@@ -323,7 +345,7 @@ describe('unified scanner data editing', () => {
     fireEvent.click(columnHeader('D'), { ctrlKey: true });
     fireEvent.contextMenu(header, { clientX: 200, clientY: 120 });
     const menu = screen.getByRole('dialog', { name: 'Column C Actions' });
-    expect(within(menu).getByText('2 Columns Selected')).toBeTruthy();
+    expect(screen.getByText('2 Selected')).toBeTruthy();
     await user.click(within(menu).getByRole('button', { name: 'Exclude Columns' }));
     expect(selected().temperature_columns).toEqual([5, 6]);
     header.focus();
@@ -428,7 +450,7 @@ describe('unified scanner data editing', () => {
     fireEvent.click(columnHeader('F'), { ctrlKey: true });
     openColumn('E');
     const menu = screen.getByRole('dialog', { name: 'Column E Actions' });
-    expect(within(menu).getByText('2 Columns Selected')).toBeTruthy();
+    expect(screen.getByText('2 Selected')).toBeTruthy();
     await user.selectOptions(within(menu).getByLabelText('Move Before'), '3');
     await user.click(within(menu).getByRole('button', { name: 'Move' }));
     expect(selected().temperature_columns).toEqual([5, 6, 3, 4]);

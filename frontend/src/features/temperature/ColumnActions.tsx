@@ -4,8 +4,7 @@ import { columnLetter } from './sourceColumns';
 
 export type ColumnMenuAnchor = { column: number; left: number; top: number; trigger: HTMLElement };
 
-export function ColumnActions({ anchor, columnLabel, columns, selectedCount, disabled, canExclude, canRestore, onExclude, onRestore, onMove, onClose }: {
-  columnLabel: string;
+export function ColumnActions({ anchor, columns, selectedCount, disabled, canExclude, canRestore, onExclude, onRestore, onMove, onClose }: {
   anchor: ColumnMenuAnchor; columns: { id: number; label: string }[]; selectedCount: number; disabled: boolean;
   canExclude: boolean; canRestore: boolean; onExclude: () => void; onRestore: () => void;
   onMove: (column: number | null) => void; onClose: () => void;
@@ -37,8 +36,6 @@ export function ColumnActions({ anchor, columnLabel, columns, selectedCount, dis
   }, [anchor, onClose]);
   return createPortal(<div ref={root} role="dialog" aria-label={`Column ${columnLetter(anchor.column)} Actions`}
     className="temperature-column-menu" style={{ left: anchor.left, top: anchor.top }}>
-    <div className="temperature-column-menu-heading"><span title={columnLabel}>{selectedCount === 1 ? columnLabel : `${selectedCount} Columns Selected`}</span>
-      <button type="button" onClick={() => { onClose(); anchor.trigger.focus(); }} aria-label="Close Column Actions">Close</button></div>
     <button type="button" disabled={disabled || !canExclude} onClick={onExclude}>Exclude Column{selectedCount > 1 ? 's' : ''}</button>
     {canRestore && <button type="button" disabled={disabled} onClick={onRestore}>Restore Column{selectedCount > 1 ? 's' : ''}</button>}
     <label>Move Before<select value={destination} disabled={disabled} onChange={event => setDestination(event.target.value)}>

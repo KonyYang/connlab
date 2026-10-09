@@ -81,8 +81,6 @@
 .temperature-source-table .is-flagged-row > * { background: #fff9eb; }
 .temperature-warning { margin: 0; padding: 10px; border: 1px solid #e3cf9f; border-radius: 8px; color: var(--color-warning); font-size: 13px; }
 .temperature-column-menu { position: fixed; z-index: 100; width: min(244px,calc(100vw - 40px)); padding: 12px; display: grid; gap: 10px; border: 1px solid var(--color-action-secondary-border); border-radius: 10px; background: var(--color-surface); color: var(--color-ink); box-shadow: 0 8px 28px #14284226; font: 12px 'Segoe UI',sans-serif; }
-.temperature-column-menu-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.temperature-column-menu-heading span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .temperature-column-menu button, .temperature-column-menu select { border: 1px solid var(--color-action-secondary-border); border-radius: 7px; padding: 7px 9px; background: var(--color-action-secondary-bg); color: var(--color-action-secondary-text); font: inherit; cursor: pointer; }
 .temperature-column-menu select { width: 100%; min-width: 0; background: var(--color-surface); color: var(--color-ink); }
 .temperature-column-menu label { display: grid; gap: 6px; }

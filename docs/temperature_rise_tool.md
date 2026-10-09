@@ -18,6 +18,18 @@ Acceptance covers click/toggle, forward/reverse/reordered ranges, protected/disa
 block movement, balanced exclusion/restoration and Undo. This is only a frontend interaction revision;
 API and numerical behavior are unchanged. Methods: TDD and sequential same-agent code-review.
 
+The column popup is action-only: its redundant Close button and visible column/selection heading
+are removed. The highlighted column(s) and toolbar selection count remain the visible context;
+the dialog keeps its accessible column name. Outside click, Escape, scrolling and resize dismiss it.
+Keyboard focus starts on the first enabled action, Tab wraps within the popup, and Escape returns
+focus to the source header. No selection, preparation or numerical behavior is changed.
+Popup refinement validation: 26 preview tests and the production build passed. An isolated browser
+confirmed the action-only popup, outside-click dismissal and Escape focus restoration with no console
+warnings/errors. The exact local diff received sequential same-agent Standards/Spec passes with zero
+outstanding findings. Refinement paths: `frontend/src/features/temperature/ColumnActions.tsx`,
+`DataPreview.tsx`, `DataPreview.test.tsx`, `temperature.css`, and this document; the task board is
+lifecycle-only. Source data, API and calculations are unchanged; no User-tab operations were performed.
+
 Header-selection revision validation: 56 affected frontend tests passed (25 preview, 31 page),
 followed by the TypeScript/Vite production build. Isolated browser checks passed Ctrl multi-select,
 balanced TC2 exclusion (4→3), Shift restoration (3→4), Shift+F10 block movement and Undo; console

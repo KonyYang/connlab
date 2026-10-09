@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
     "summary": "Normalize temperature editor columns and preserve sample groups through balanced exclusions",
@@ -32,85 +32,17 @@
     "risk_reasons": [],
     "activation_head": "ab95f5e485be65a6626bc67e8f493b66b0fbc42b",
     "started_at": "2026-10-09T00:07:00.551432Z",
-    "updated_at": "2026-10-09T15:20:12.996623Z",
+    "updated_at": "2026-10-09T22:46:39.377465Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requests removing redundant Close button from column context menu; preserve outside-click and Escape dismissal",
       "requires_user": false
     },
-    "report": {
-      "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
-      "summary": "Contiguous sample-preserving source columns with balanced exclusions; revised headers replace checkboxes with click/Ctrl/Shift selection and right-click batch actions, keyboard parity, protected roles and Undo.",
-      "scope_ok": true,
-      "roles": {
-        "reviewer": {
-          "status": "passed",
-          "details": "Zero outstanding findings per axis on revision diff; preceding grouping review retained.",
-          "context": "same-agent separate sequential Standards and Spec passes"
-        },
-        "qa": {
-          "status": "passed",
-          "details": "Complete affected revision frontend matrix, build and isolated browser on reviewed state.",
-          "context": "same-agent final QA pass"
-        },
-        "developer": {
-          "status": "passed",
-          "details": "RED three interaction tests failed before change; four new behavioral tests GREEN; old public grid/page tests migrated to header controls.",
-          "context": "same agent"
-        }
-      },
-      "validation": [
-        {
-          "status": "passed",
-          "name": "Revision frontend matrix",
-          "details": "56 tests: DataPreview25 and TemperatureRisePage31 passed on final code/test state."
-        },
-        {
-          "status": "passed",
-          "name": "Production build",
-          "details": "TypeScript/Vite passed sequentially after tests."
-        },
-        {
-          "status": "passed",
-          "name": "Isolated browser",
-          "details": "Ctrl TC2 selection/exclusion 4-to-3, Shift restore 3-to-4, Shift+F10 block move and Undo passed; zero warning/error logs. Automation label locator corrected to observed combobox role. User tab not operated."
-        },
-        {
-          "status": "passed",
-          "name": "Unchanged backend baseline",
-          "details": "88 preparation/calculation/workbook/API tests passed in preceding implementation; backend and API byte state unchanged in this revision. Earlier grouping review/evidence retained in docs/temperature_rise_tool.md."
-        }
-      ],
-      "subject": "a32f7e19d1eb3b9241a74e4d02370e4cb21c47aa",
-      "integration": {
-        "status": "passed",
-        "details": "Exact in-scope revision committed at clean HEAD a32f7e19; prior grouping retained. No push or closure.",
-        "context": "local master"
-      },
-      "changed_paths": [
-        "backend/api/temperature_schemas.py",
-        "backend/application/temperature_data_preparation.py",
-        "backend/domain/temperature_data.py",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/api/temperature.ts",
-        "frontend/src/features/temperature/DataPreview.test.tsx",
-        "frontend/src/features/temperature/DataPreview.tsx",
-        "frontend/src/features/temperature/sampleGroups.ts",
-        "frontend/src/features/temperature/sourceColumns.ts",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useDataGridEditing.ts",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_data_preparation.py"
-      ],
-      "schema": "connlab.sol-task-report",
-      "version": 1
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
