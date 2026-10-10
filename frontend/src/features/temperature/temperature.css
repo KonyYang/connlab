@@ -80,14 +80,15 @@
 .temperature-source-table .is-excluded-row td:not(:first-child), .temperature-source-table td.is-excluded-column { text-decoration: line-through; }
 .temperature-source-table .is-flagged-row > * { background: #fff9eb; }
 .temperature-warning { margin: 0; padding: 10px; border: 1px solid #e3cf9f; border-radius: 8px; color: var(--color-warning); font-size: 13px; }
-.temperature-column-menu { position: fixed; z-index: 100; width: min(244px,calc(100vw - 40px)); padding: 12px; display: grid; gap: 10px; border: 1px solid var(--color-action-secondary-border); border-radius: 10px; background: var(--color-surface); color: var(--color-ink); box-shadow: 0 8px 28px #14284226; font: 12px 'Segoe UI',sans-serif; }
-.temperature-column-menu button, .temperature-column-menu select { border: 1px solid var(--color-action-secondary-border); border-radius: 7px; padding: 7px 9px; background: var(--color-action-secondary-bg); color: var(--color-action-secondary-text); font: inherit; cursor: pointer; }
-.temperature-column-menu select { width: 100%; min-width: 0; background: var(--color-surface); color: var(--color-ink); }
-.temperature-column-destination { position: relative; }
-.temperature-column-destination::after { content: ''; position: absolute; right: 9px; top: 50%; transform: translateY(-50%); border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid #000; pointer-events: none; }
-.temperature-column-destination select { appearance: none; padding-right: 26px; border-color: transparent; background: transparent; }
+.temperature-column-menu { position: fixed; z-index: 100; box-sizing: border-box; width: min(268px,calc(100vw - 16px)); padding: 12px; display: grid; gap: 10px; border: 1px solid var(--color-action-secondary-border); border-radius: 10px; background: var(--color-surface); color: var(--color-ink); box-shadow: 0 8px 28px #14284226; font: 12px 'Segoe UI',sans-serif; }
+.temperature-column-menu button { border: 1px solid var(--color-action-secondary-border); border-radius: 7px; padding: 7px 9px; background: var(--color-action-secondary-bg); color: var(--color-action-secondary-text); font: inherit; cursor: pointer; }
+.temperature-column-menu .temperature-column-destination { display: flex; align-items: center; justify-content: space-between; text-align: left; border-color: transparent; background: transparent; color: var(--color-ink); }
+.temperature-column-destination > span { border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 5px solid #000; }
+.temperature-column-submenu { position: fixed; box-sizing: border-box; max-height: calc(100vh - 16px); overflow-y: auto; overscroll-behavior: contain; padding: 6px; display: grid; gap: 2px; border: 1px solid var(--color-action-secondary-border); border-radius: 8px; background: var(--color-surface); box-shadow: 0 8px 28px #14284226; }
+.temperature-column-submenu button { text-align: left; overflow-wrap: anywhere; border-color: transparent; background: transparent; color: var(--color-ink); }
+.temperature-column-submenu button:hover, .temperature-column-destination:hover { background: var(--color-action-secondary-hover); }
 .temperature-column-menu button:disabled { opacity: .5; cursor: not-allowed; }
-.temperature-column-menu button:focus-visible, .temperature-column-menu select:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.temperature-column-menu button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .temperature-review { border: 1px solid #e3cf9f; border-radius: 10px; padding: 12px; color: var(--color-warning); }
 .temperature-review h4 { margin: 0 0 8px; font-size: 14px; }
 .temperature-issue-list { max-height: 180px; overflow: auto; }

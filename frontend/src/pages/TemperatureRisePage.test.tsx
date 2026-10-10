@@ -363,7 +363,8 @@ describe('temperature preparation and calculation workflow', () => {
     expect((screen.getByLabelText('Thermocouples/Sample') as HTMLInputElement).value).toBe('1');
     expect(api.prepareTemperatureData).not.toHaveBeenCalled();
     fireEvent.contextMenu(columnHeader('G'));
-    await user.selectOptions(screen.getByLabelText('Move Before'), '4');
+    await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
+    await user.click(screen.getByRole('menuitem', { name: /^D — / }));
     expect((screen.getByLabelText('Thermocouples/Sample') as HTMLInputElement).value).toBe('2');
     expect(screen.getByText('Confirm the current column used for this curve.')).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
@@ -496,7 +497,8 @@ describe('temperature preparation and calculation workflow', () => {
     await user.click(columnHeader('D'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     fireEvent.contextMenu(columnHeader('G'));
-    await user.selectOptions(screen.getByLabelText('Move Before'), '4');
+    await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
+    await user.click(screen.getByRole('menuitem', { name: /^D — / }));
     await user.click(screen.getByLabelText('Select Scan 1'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
@@ -644,7 +646,8 @@ describe('temperature preparation and calculation workflow', () => {
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     fireEvent.contextMenu(columnHeader('D'));
-    await user.selectOptions(screen.getByLabelText('Move Before'), '3');
+    await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
+    await user.click(screen.getByRole('menuitem', { name: /^C — / }));
     await user.click(columnHeader('D'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     await user.click(columnHeader('D'));

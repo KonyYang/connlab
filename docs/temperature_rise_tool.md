@@ -23,11 +23,11 @@ are removed. The highlighted column(s) and toolbar selection count remain the vi
 the dialog keeps its accessible column name. Outside click, Escape, scrolling and resize dismiss it.
 Keyboard focus starts on the first enabled action, Tab wraps within the popup, and Escape returns
 focus to the source header. No selection, preparation or numerical behavior is changed.
-The Move confirmation button is also removed. Move Before is a single borderless native dropdown
-row with a black triangle on its right; its empty destination displays Move Before instead of a
-separate label and Choose Column field. Clicking the row/triangle expands the candidate columns,
-with native keyboard and accessible combobox behavior retained. Opening the menu does not move
-anything. Choosing a destination immediately moves
+The Move confirmation button is also removed. Move Before is a borderless action row with a black
+right-pointing triangle. Clicking it opens a separate destination submenu to its right; the parent
+shifts left near the viewport edge to reserve room. The destination list uses the available viewport
+height and scrolls independently without dismissing the popup. There is no Choose Column field.
+Opening the submenu does not move anything. Choosing a destination immediately moves
 the selected column/block and closes the menu, returning focus to the source header. End Of
 Temperature Columns uses the existing placement rule; Undo restores the previous data selection.
 Immediate-move validation: the new grid interaction test failed before the change and passed after
@@ -43,6 +43,18 @@ the final code/test state. An isolated browser confirmed a black triangle, nativ
 immediate move and Undo with no console warnings/errors; the User tab was not operated. Sequential
 same-agent Standards/Spec review found zero outstanding findings. Refinement paths: `ColumnActions.tsx`,
 `DataPreview.test.tsx`, `temperature.css` and this document; board changes are lifecycle-only.
+Right-side submenu refinement (2026-10-10): the new public grid interaction test failed on the old
+native dropdown and passed after implementation. All 60 affected tests (29 preview, 31 page) and the
+production build passed on final source/test bytes. Coverage includes opening without mutation,
+right/left arrow entry/return, Escape collapsing only the submenu, Home/End and arrow navigation,
+internal scrolling, immediate movement, Undo, and right-side placement within a narrow viewport.
+Sequential same-agent Standards/Spec review found no outstanding code findings. Actual browser
+visual validation is blocked: the required browser runtime import returns EPERM during realpath,
+including a retry with the same module's file URL. No browser session was acquired and the User's
+tab was not operated; popup rendering/viewport-height behavior remains a visual verification risk.
+This refinement changes `ColumnActions.tsx`, `DataPreview.test.tsx`, `temperature.css`,
+`frontend/src/pages/TemperatureRisePage.test.tsx` and this document only; API, source values and
+column-ordering rules are unchanged. Methods: TDD and sequential same-agent code-review.
 Popup refinement validation: 26 preview tests and the production build passed. An isolated browser
 confirmed the action-only popup, outside-click dismissal and Escape focus restoration with no console
 warnings/errors. The exact local diff received sequential same-agent Standards/Spec passes with zero
