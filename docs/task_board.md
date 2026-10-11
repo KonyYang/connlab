@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_TEST_INFO_20261011",
     "summary": "Add editable temperature report metadata and optional project association",
@@ -36,17 +36,79 @@
     "risk_reasons": [],
     "activation_head": "86d450a73d025a234bcdd51249084de00273d471",
     "started_at": "2026-10-11T13:28:37.916192Z",
-    "updated_at": "2026-10-11T23:39:48.990183Z",
+    "updated_at": "2026-10-11T23:43:13.015584Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_TEST_INFO_20261011",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User feedback: always display Test Equipment ID, put Setup first, open T-riseChart by default",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "roles": {
+        "developer": {
+          "summary": "Five public workbook/HTTP regressions failed before changes and passed after; no domain calculation changes",
+          "status": "passed"
+        },
+        "reviewer": {
+          "summary": "Sequential same-agent Standards/Spec review: 0 findings; final tab order established before cache mapping; no independent agent claimed",
+          "status": "passed"
+        },
+        "qa": {
+          "summary": "Final 111-test matrix and native Excel opening/numerical checks passed; Initial Data unchanged",
+          "status": "passed"
+        }
+      },
+      "scope_ok": true,
+      "validation": [
+        {
+          "summary": "111 tests passed on final code/test state, one existing deprecation warning",
+          "name": "temperature Python matrix",
+          "status": "passed"
+        },
+        {
+          "summary": "Excel opened on T-riseChart, Setup index 1, empty equipment row retained; no formula errors; target/source changes recalculate correctly",
+          "name": "native Excel opening and recalculation",
+          "status": "passed"
+        },
+        {
+          "summary": "Prior 103 frontend tests and TypeScript/Vite build retained; export-only revision has no frontend changes",
+          "name": "unchanged frontend evidence",
+          "status": "passed"
+        }
+      ],
+      "subject": "fa8d387c0b3e79ec03279f8f483a9d629517b331",
+      "schema": "connlab.sol-task-report",
+      "changed_paths": [
+        "backend/api/routes_tools_temperature.py",
+        "backend/api/temperature_schemas.py",
+        "backend/application/temperature_report_metadata.py",
+        "backend/application/tools_temperature_service.py",
+        "backend/infrastructure/office/temperature_rise_report_sheet.py",
+        "backend/infrastructure/office/temperature_workbook_gateway.py",
+        "docs/temperature_rise_tool.md",
+        "frontend/src/api/temperature.ts",
+        "frontend/src/features/temperature/TestInfo.tsx",
+        "frontend/src/features/temperature/reportInfo.test.ts",
+        "frontend/src/features/temperature/reportInfo.ts",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useTemperatureReportInfo.ts",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx",
+        "tests/integration/test_tools_temperature_api.py",
+        "tests/unit/test_temperature_workbook_gateway.py"
+      ],
+      "version": 1,
+      "integration": {
+        "summary": "Clean local master at exact subject, no remote publication",
+        "status": "passed"
+      },
+      "summary": "Editable project-linked Test Info and A1 report metadata; always retain equipment row, Setup first and T-riseChart active on opening, no CR",
+      "task_id": "TASK_TEMPERATURE_TEST_INFO_20261011"
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_EXPORT_PRESENTATION_20261011",
