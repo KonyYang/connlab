@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
     "summary": "Normalize temperature editor columns and preserve sample groups through balanced exclusions",
@@ -32,17 +32,94 @@
     "risk_reasons": [],
     "activation_head": "ab95f5e485be65a6626bc67e8f493b66b0fbc42b",
     "started_at": "2026-10-09T00:07:00.551432Z",
-    "updated_at": "2026-10-11T00:40:27.137154Z",
+    "updated_at": "2026-10-11T00:57:50.637599Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User approved editable names in Excel output, hidden letters, reversible ambient roles and consecutive regrouping after moves",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
+      "subject": "230a3d08f387298e463df772ea743b29a0b298fc",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/routes_tools_temperature.py",
+        "backend/api/temperature_schemas.py",
+        "backend/application/temperature_data_preparation.py",
+        "backend/domain/temperature_data.py",
+        "backend/infrastructure/office/temperature_rise_report_sheet.py",
+        "docs/temperature_rise_tool.md",
+        "frontend/src/api/temperature.ts",
+        "frontend/src/features/temperature/ColumnActions.tsx",
+        "frontend/src/features/temperature/DataPreview.test.tsx",
+        "frontend/src/features/temperature/DataPreview.tsx",
+        "frontend/src/features/temperature/sampleGroups.ts",
+        "frontend/src/features/temperature/sourceColumns.ts",
+        "frontend/src/features/temperature/sourcePresentation.ts",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useDataGridEditing.ts",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx",
+        "tests/integration/test_tools_temperature_api.py",
+        "tests/unit/test_temperature_data_preparation.py",
+        "tests/unit/test_temperature_workbook_gateway.py"
+      ],
+      "summary": "Editable source-indexed measurement names exported as literal T-riseChart labels; hidden Excel letters; reversible ambient roles; exclusion-preserving samples and explicit movement by displayed effective order. Source files/readings unchanged. Browser visual QA unavailable (runtime EPERM), native Excel not inspected.",
+      "validation": [
+        {
+          "name": "frontend affected matrix",
+          "status": "passed",
+          "tests": 68,
+          "command": "npm test -- src/features/temperature/DataPreview.test.tsx src/pages/TemperatureRisePage.test.tsx src/api/temperature.test.ts"
+        },
+        {
+          "warnings": "Existing Starlette/httpx deprecation warning",
+          "name": "backend temperature matrix",
+          "status": "passed",
+          "tests": 97,
+          "command": "python -m pytest tests/unit/test_temperature_data_preparation.py tests/unit/test_temperature_rise_calculations.py tests/unit/test_temperature_workbook_gateway.py tests/integration/test_tools_temperature_api.py -q"
+        },
+        {
+          "name": "production build",
+          "status": "passed",
+          "command": "npm run build"
+        },
+        {
+          "name": "exact diff whitespace",
+          "status": "passed",
+          "command": "git diff --cached --check"
+        }
+      ],
+      "integration": {
+        "status": "passed",
+        "method": "Local verified master commit, clean exact subject; no remote publication"
+      },
+      "roles": {
+        "reviewer": {
+          "independent": false,
+          "standards_outstanding": 0,
+          "status": "passed",
+          "method": "Sequential same-agent Standards and Spec reviews",
+          "spec_outstanding": 0
+        },
+        "developer": {
+          "status": "passed",
+          "method": "Same-agent TDD: reproduced ambient loss, incomplete movement, last-channel suspension and displayed-destination bugs before fixes; API roundtrip serialization mismatch found and fixed by complete matrix"
+        },
+        "qa": {
+          "limitations": "Browser runtime import EPERM; no browser session or User-tab actions; Excel bytes checked with openpyxl, not native Office",
+          "status": "passed",
+          "method": "Same-agent final affected frontend/backend matrix and build"
+        }
+      },
+      "schema": "connlab.sol-task-report"
+    }
   },
   "last_closed": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
