@@ -1,14 +1,14 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 
 export type ColumnMenuAnchor = { column: number; left: number; top: number; trigger: HTMLElement };
 
-export function ColumnActions({ anchor, columns, selectedCount, disabled, canExclude, canRestore, onExclude, onRestore, onMove, onClose }: {
+export function ColumnActions({ anchor, root, columns, selectedCount, disabled, canExclude, canRestore, onExclude, onRestore, onMove, onClose }: {
+  root: RefObject<HTMLDivElement | null>;
   anchor: ColumnMenuAnchor; columns: { id: number; label: string }[]; selectedCount: number; disabled: boolean;
   canExclude: boolean; canRestore: boolean; onExclude: () => void; onRestore: () => void;
   onMove: (column: number | null) => void; onClose: () => void;
 }) {
-  const root = useRef<HTMLDivElement>(null);
   const moveTrigger = useRef<HTMLButtonElement>(null);
   const destinations = useRef<HTMLDivElement>(null);
   const destinationsId = useId();
@@ -61,7 +61,7 @@ export function ColumnActions({ anchor, columns, selectedCount, disabled, canExc
       document.removeEventListener('keydown', key); document.removeEventListener('pointerdown', outside);
       window.removeEventListener('resize', close); window.removeEventListener('scroll', scroll, true);
     };
-  }, [anchor, onClose]);
+  }, [anchor, root, onClose]);
   return createPortal(<div ref={root} role="dialog" aria-label={`Column ${anchor.column} Actions`}
     className="temperature-column-menu" onKeyDown={submenuKey}
     style={{ left: menuLeft, top: anchor.top, ...(expanded ? { width: menuWidth } : {}) }}>

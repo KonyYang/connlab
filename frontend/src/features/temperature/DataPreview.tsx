@@ -18,8 +18,21 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   const grid = useDataGridEditing(table, selection, layout, onChange);
   const [menu, setMenu] = useState<ColumnMenuAnchor | null>(null);
   const [activeRow, setActiveRow] = useState<number | null>(null);
+  const editor = useRef<HTMLElement>(null);
+  const menuRoot = useRef<HTMLDivElement>(null);
   const columnHeaders = useRef(new Map<number, HTMLTableCellElement>());
   const closeMenu = useCallback(() => setMenu(null), []);
+  useEffect(() => {
+    const outside = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node) || editor.current?.contains(target) || menuRoot.current?.contains(target)) return;
+      setActiveRow(null);
+      grid.clearColumnSelection();
+    };
+    // The portalled menu belongs to the editor even though it lives under document.body.
+    document.addEventListener('pointerdown', outside, true);
+    return () => document.removeEventListener('pointerdown', outside, true);
+  }, [grid.clearColumnSelection]);
   const columns = useMemo(() => sourcePresentation(table, selection, layout),
     [table, selection.header_row, selection.start_row, selection.end_row, selection.ambient_column,
       selection.current_column, selection.temperature_columns, selection.channel_names, layout]);
@@ -70,7 +83,7 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
     openMenu(column, header, { left: event.clientX, top: event.clientY });
   }
   function runAction(action: () => void) { action(); menu?.trigger.focus(); closeMenu(); }
-  return <section className="temperature-data-editor" aria-label="Data Preview">
+  return <section ref={editor} className="temperature-data-editor" aria-label="Data Preview">
     <div className="temperature-data-toolbar"><div><h3>Data Preview</h3>
       <span>{sampleCount} {sampleCount === 1 ? 'Sample' : 'Samples'} · {count} TC/Sample · {selection.temperature_columns.length} Channels</span></div>
       <div className="temperature-data-actions"><span>{selectedCount ? `${selectedCount} Selected` : ''}</span>
@@ -145,7 +158,7 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
         onClick={() => grid.selectRows([...new Set(issues.filter(issue => issue.code === 'zero_current').map(issue => issue.source_row))])}>Select Unpowered Rows</button>}
         {selection.excluded_rows.length > 0 && <button type="button" disabled={disabled} onClick={grid.restoreAllRows}>Restore All Rows</button>}
         </div></div>
-    {menu && <ColumnActions key={menu.column} anchor={menu}
+    {menu && <ColumnActions key={menu.column} anchor={menu} root={menuRoot}
       columns={grid.order.filter(column => grid.movable(column) && !grid.selectedColumns.includes(column)).map(column => columns.find(item => item.id === column)!)}
       selectedCount={grid.selectedColumns.length} disabled={disabled} canExclude={grid.canExclude} canRestore={grid.canRestore}
       onExclude={() => runAction(grid.exclude)} onRestore={() => runAction(grid.restore)} onMove={destination => runAction(() => grid.moveBefore(destination))} onClose={closeMenu} />}

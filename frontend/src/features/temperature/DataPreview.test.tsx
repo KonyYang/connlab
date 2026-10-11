@@ -546,6 +546,66 @@ describe('unified scanner data editing', () => {
     expect(selected().temperature_columns).toEqual([3, 4, 5, 6]);
   });
 
+  it('clears temporary row and column highlights outside the editor while retaining checked rows and their Shift anchor', async () => {
+    const user = userEvent.setup();
+    render(<><Editor /><button type="button">Outside Editor</button></>);
+    await user.click(columnHeader('C'));
+    await user.click(screen.getByRole('cell', { name: '24.1', exact: true }));
+    const firstRow = screen.getByLabelText('Select Scan 1').closest('tr')!;
+    expect(firstRow.getAttribute('aria-current')).toBe('true');
+    await user.click(screen.getByRole('button', { name: 'Outside Editor' }));
+    expect(firstRow.getAttribute('aria-current')).toBeNull();
+    expect(columnHeader('C').getAttribute('aria-selected')).toBe('false');
+    fireEvent.click(columnHeader('E'), { shiftKey: true });
+    expect(columnHeader('E').getAttribute('aria-selected')).toBe('true');
+    expect(columnHeader('C').getAttribute('aria-selected')).toBe('false');
+    expect(columnHeader('D').getAttribute('aria-selected')).toBe('false');
+    await user.click(screen.getByLabelText('Select Scan 1'));
+    await user.click(screen.getByRole('button', { name: 'Outside Editor' }));
+    expect(firstRow.getAttribute('aria-current')).toBeNull();
+    expect((screen.getByLabelText('Select Scan 1') as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByLabelText('Select Scan 2'), { shiftKey: true });
+    expect((screen.getByLabelText('Select Scan 1') as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText('Select Scan 2') as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByText('2 Selected')).toBeTruthy();
+    expect(selected()).toEqual(initial);
+  });
+
+  it('retains temporary highlights for name edits, editor controls and the portalled column menu and submenu', async () => {
+    const user = userEvent.setup();
+    render(<><Editor /><button type="button">Outside Editor</button></>);
+    await user.click(columnHeader('C'));
+    await user.click(screen.getByRole('cell', { name: '24.1', exact: true }));
+    const firstRow = screen.getByLabelText('Select Scan 1').closest('tr')!;
+    await user.click(screen.getByLabelText('Measurement Name, Channel 101'));
+    await user.type(screen.getByLabelText('Measurement Name, Channel 101'), '-edited');
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(firstRow.getAttribute('aria-current')).toBe('true');
+    expect(columnHeader('C').getAttribute('aria-selected')).toBe('true');
+    openColumn('C');
+    await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
+    await user.click(screen.getByRole('menu', { name: 'Move Before Destinations' }));
+    expect(firstRow.getAttribute('aria-current')).toBe('true');
+    expect(columnHeader('C').getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByText('1 Selected')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Outside Editor' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(firstRow.getAttribute('aria-current')).toBeNull();
+    expect(columnHeader('C').getAttribute('aria-selected')).toBe('false');
+    expect(selected().temperature_columns).toEqual(initial.temperature_columns);
+    expect(selected().channel_names).toEqual({ 3: '1_A-edited' });
+    await user.click(columnHeader('C'));
+    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    expect(selected().temperature_columns).toEqual([4, 5, 6]);
+    openColumn('C');
+    await user.click(screen.getByRole('button', { name: 'Restore Column', exact: true }));
+    expect(selected().temperature_columns).toEqual(initial.temperature_columns);
+    openColumn('C');
+    await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
+    await user.click(screen.getByRole('menuitem', { name: 'End Of Temperature Columns' }));
+    expect(selected().temperature_columns).toEqual([4, 5, 6, 3]);
+  });
+
   it('highlights the whole clicked row without changing batch selection or prepared data', () => {
     render(<Editor />);
     fireEvent.click(columnHeader('C'));

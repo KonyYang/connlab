@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChannelLayout, DataSelection, WorkbookTable } from '../../api/temperature';
 import { isTemperatureColumn, sourceColumnKind, sourceColumns } from './sourceColumns';
 import { equalSampleSize, includedSamples, partitionSamples, retainInactiveSlots, sampleGroups } from './sampleGroups';
@@ -24,6 +24,10 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [selectedColumns, setSelectedColumns] = useState<number[]>([]);
   const rangeAnchor = useRef<{ kind: 'row' | 'column'; id: number } | null>(null);
+  const clearColumnSelection = useCallback(() => {
+    setSelectedColumns([]);
+    if (rangeAnchor.current?.kind === 'column') rangeAnchor.current = null;
+  }, []);
   const committedParameters = useRef([selection.ambient_column, selection.current_column, selection.thermocouples_per_sample]);
   // Undo never rolls back a later role/count decision from the parameter row.
   useEffect(() => {
@@ -171,7 +175,7 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
   const remaining = order.filter(column => !fixed.has(column));
   const displayOrder = [1, 2, ...active, ...roles, ...remaining.filter(column => !excludedColumns.includes(column)),
     ...remaining.filter(column => excludedColumns.includes(column))];
-  return { order: displayOrder, excludedColumns, selectedRows, selectedColumns, selectRows, selectColumns, selectColumn, toggleRow,
+  return { order: displayOrder, excludedColumns, selectedRows, selectedColumns, selectRows, selectColumns, clearColumnSelection, selectColumn, toggleRow,
     exclude, restore, moveBefore, undo, protectedColumn, movable, canExclude, canRestore, canUndo: Boolean(history.length),
     restoreAllRows: () => commit({ ...snapshot(), excludedRows: [] }) };
 }

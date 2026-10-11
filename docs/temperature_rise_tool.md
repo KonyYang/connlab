@@ -1179,3 +1179,33 @@ Changed paths: `frontend/src/pages/TemperatureRisePage.tsx`,
 `frontend/src/features/temperature/useTemperatureTool.ts`,
 `frontend/src/features/temperature/temperature.css` and `docs/temperature_rise_tool.md`; task state
 recorded through the sole board writer. No new residual risk identified beyond the existing tool limits.
+
+## Outside-editor highlight dismissal (2026-10-11)
+
+Pointer clicks outside Data Preview clear only the active-row highlight and temporary column
+selection/column Shift anchor. Checked rows and the row Shift anchor remain. The editor section,
+measurement-name inputs, toolbar controls and the portalled context menu (including its right-side
+destination submenu) share the same interaction boundary. Normal exclude/restore/move actions still
+consume their selection after executing. No source data, grouping, role or export contracts change.
+
+Two interaction regressions failed before implementation and passed afterward. The final affected
+frontend matrix covers outside dismissal, retained row ranges, name editing and actual toolbar/menu
+actions. Validation: 70 frontend tests and the sequential TypeScript/Vite build passed. Browser visual
+verification is not claimed; the browser runtime previously failed with EPERM. No backend rerun is
+needed for this UI-only refinement.
+
+### Standards
+
+Sequential same-agent exact-diff review: state remains in the existing feature hook, listeners clean
+up on unmount, and a shared DOM ref recognizes the menu without global selectors or new dependencies.
+Zero outstanding findings.
+
+### Spec
+
+Separate same-agent review: outside clicks dismiss temporary highlights without removing checked
+rows or their range anchor; internal and portalled interactions do not preempt actions. Zero
+outstanding findings. Methods: tdd and code-review; not independent-agent review.
+
+Changed paths: `DataPreview.tsx`, `useDataGridEditing.ts`, `ColumnActions.tsx` and
+`DataPreview.test.tsx` under `frontend/src/features/temperature/`, plus this document and the
+sole-writer task-board lifecycle record.
