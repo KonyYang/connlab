@@ -1209,3 +1209,39 @@ outstanding findings. Methods: tdd and code-review; not independent-agent review
 Changed paths: `DataPreview.tsx`, `useDataGridEditing.ts`, `ColumnActions.tsx` and
 `DataPreview.test.tsx` under `frontend/src/features/temperature/`, plus this document and the
 sole-writer task-board lifecycle record.
+
+## Ambient and unused-temperature column presentation (2026-10-11)
+
+The current Ambient Column uses a pale amber header and data-cell background and remains protected
+from selection/exclusion/movement. Other non-excluded temperature columns outside the current
+sample calculation use a pale cyan tint. This follows the selected role and effective temperature
+list, not scanner channel 318 or the editable measurement name. Header tooltips/accessibility
+descriptions distinguish protected ambient, unused temperature, excluded and sample states without
+adding another visible caption row.
+
+Unused columns retain the existing normal select/exclude/restore/move controls. Restoring an unused
+column does not silently include it in samples; explicit movement into the effective block activates
+it and partitions samples by the current order. Excluded columns retain their exclusion styling;
+selection, active-row and review styling take precedence over passive role tinting.
+
+TDD: the role/interaction regression failed before implementation, then passed. The regression
+switches ambient roles, protects the new ambient, selects/excludes/restores the former ambient,
+moves it into a complete two-sample layout, and verifies the outgoing channel/group selection.
+Final affected validation: 71 frontend tests and sequential TypeScript/Vite build passed. Browser
+connection was attempted but its bundled runtime import failed with EPERM; visual QA remains
+unverified. No backend/source/export changes or native Excel rerun in this refinement.
+
+### Standards
+
+Same-agent exact-diff review: derived display state reuses existing role/type/selection authority;
+no new state channel, dependency or numerical logic. CSS keeps transient/excluded/review states
+above passive role colors. Zero outstanding findings.
+
+### Spec
+
+Separate sequential same-agent review: current ambient stays protected, unused temperatures receive
+distinct colors and retain normal operations, and role changes update presentation. Zero outstanding
+findings. Methods: tdd and code-review; no independent-agent review claimed.
+
+Changed paths: `frontend/src/features/temperature/DataPreview.tsx`, `DataPreview.test.tsx` and
+`temperature.css` in that feature, this document and the sole-writer task-board record.

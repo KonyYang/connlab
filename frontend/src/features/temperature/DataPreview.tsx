@@ -66,7 +66,16 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
     if (activeIndex(column) >= 0) return incomplete ? 'Pending Grouping' : '';
     return '';
   };
+  const temperatureRole = (column: number) => {
+    if (column === selection.ambient_column) return 'ambient';
+    if (!grid.protectedColumn(column) && !grid.excludedColumns.includes(column)
+      && columnsById.get(column)?.kind === 'temperature' && activeIndex(column) < 0) return 'unused';
+    return '';
+  };
+  const columnDescription = (column: number) => temperatureRole(column) === 'ambient' ? 'Ambient Temperature (Protected)'
+    : temperatureRole(column) === 'unused' ? 'Unused Temperature' : role(column) || groupLabel(column);
   const headerClass = (column: number) => [column === 1 ? 'temperature-index-scan' : column === 2 ? 'temperature-index-time' : '',
+    temperatureRole(column) === 'ambient' ? 'is-ambient-column' : temperatureRole(column) === 'unused' ? 'is-unused-temperature-column' : '',
     grid.selectedColumns.includes(column) ? 'is-selected-column' : '',
     grid.excludedColumns.includes(column) && !grid.protectedColumn(column) ? 'is-excluded-column' : ''].filter(Boolean).join(' ');
   function openMenu(column: number, trigger: HTMLElement, point?: { left: number; top: number }) {
@@ -107,8 +116,8 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
             tabIndex={!grid.protectedColumn(column) && !disabled ? 0 : undefined}
             aria-label={`Source Column ${column}: ${columnsById.get(column)!.label}`}
             aria-selected={!grid.protectedColumn(column) ? grid.selectedColumns.includes(column) : undefined}
-            aria-description={groupLabel(column) || undefined}
-            title={groupLabel(column) || undefined}
+            aria-description={columnDescription(column) || undefined}
+            title={columnDescription(column) || undefined}
             aria-haspopup={grid.movable(column) ? 'dialog' : undefined}
             aria-expanded={grid.movable(column) ? menu?.column === column : undefined}
             onClick={event => { if (!disabled && !grid.protectedColumn(column)) {

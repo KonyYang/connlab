@@ -56,6 +56,8 @@
 .temperature-source-table thead th { position: static; }
 .temperature-source-table tbody td, .temperature-source-table tbody th { height: 36px; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; }
 .temperature-source-table tbody td { background: var(--color-surface); }
+.temperature-source-table thead th.is-ambient-column, .temperature-source-table tbody td:where(.is-ambient-column) { background: #fff9eb; }
+.temperature-source-table thead th.is-unused-temperature-column, .temperature-source-table tbody td:where(.is-unused-temperature-column) { background: color-mix(in srgb, var(--color-ready) 12%, var(--color-surface)); }
 .temperature-source-table .temperature-row-selector, .temperature-source-table .temperature-index-scan, .temperature-source-table .temperature-index-time { position: sticky; z-index: 1; }
 .temperature-source-table .temperature-row-selector { left: 0; }
 .temperature-source-table .temperature-index-scan { left: var(--temperature-selector-width); }

@@ -33,6 +33,38 @@ function columnHeader(letter: string) { return screen.getByRole('columnheader', 
 function openColumn(letter: string) { fireEvent.contextMenu(columnHeader(letter)); }
 
 describe('column header selection', () => {
+  it('distinguishes current ambient from unused temperatures and permits normal operations after a role switch', async () => {
+    const user = userEvent.setup();
+    render(<Editor withParameters />);
+    expect(columnHeader('G').getAttribute('aria-description')).toBe('Ambient Temperature (Protected)');
+    expect(columnHeader('I').getAttribute('aria-description')).toBe('Unused Temperature');
+    await user.click(columnHeader('G'));
+    openColumn('G');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect((screen.getByRole('button', { name: 'Exclude Selected' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.selectOptions(screen.getByLabelText('Ambient Role'), '3');
+    expect(columnHeader('C').getAttribute('aria-description')).toBe('Ambient Temperature (Protected)');
+    expect(columnHeader('G').getAttribute('aria-description')).toBe('Unused Temperature');
+    await user.click(columnHeader('G'));
+    expect(columnHeader('G').getAttribute('aria-selected')).toBe('true');
+    openColumn('G');
+    await user.click(screen.getByRole('button', { name: 'Exclude Column', exact: true }));
+    expect(columnHeader('G').getAttribute('aria-description')).toBe('Excluded');
+    expect(selected().temperature_columns).toEqual([4, 5, 6]);
+    openColumn('G');
+    await user.click(screen.getByRole('button', { name: 'Restore Column', exact: true }));
+    expect(columnHeader('G').getAttribute('aria-description')).toBe('Unused Temperature');
+    expect(selected().temperature_columns).toEqual([4, 5, 6]);
+    openColumn('G');
+    await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
+    await user.click(screen.getByRole('menuitem', { name: '102 1_B', exact: true }));
+    expect(selected().temperature_columns).toEqual([7, 4, 5, 6]);
+    expect(selected().sample_groups).toEqual([[7, 4], [5, 6]]);
+    expect(columnHeader('G').getAttribute('aria-description')).toBe('Sample 1');
+    expect(screen.queryByText(/Incomplete sample group/)).toBeNull();
+    expect(selected().ambient_column).toBe(3);
+  });
+
   it('selects with click, toggles nonadjacent columns with Ctrl and keeps the batch for right-click exclusion and undo', () => {
     render(<Editor />);
     expect(within(columnHeader('C')).queryByRole('checkbox')).toBeNull();
