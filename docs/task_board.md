@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_COMPACT_UNPOWERED_REVIEW_20261011",
     "summary": "Compact unpowered review warnings into consecutive scan ranges",
@@ -28,9 +28,71 @@
     "risk_reasons": [],
     "activation_head": "a123f58ec33d3b57459df079e61ca07d7e672558",
     "started_at": "2026-10-11T02:06:25.288323Z",
-    "updated_at": "2026-10-11T02:06:25.288323Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-11T02:09:05.779058Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_COMPACT_UNPOWERED_REVIEW_20261011",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "changed_paths": [
+        "docs/temperature_rise_tool.md",
+        "frontend/src/features/temperature/sourceScan.test.ts",
+        "frontend/src/features/temperature/sourceScan.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx"
+      ],
+      "scope_ok": true,
+      "task_id": "TASK_TEMPERATURE_COMPACT_UNPOWERED_REVIEW_20261011",
+      "version": 1,
+      "subject": "1b303c56f9bcdcf91d1c7d8186ba1af0e5f9c854",
+      "summary": "Shortened unpowered warnings and compacted ascending consecutive A-column scan IDs into ranges such as Scan 51~53. Preserves raw issues, severity, selection/exclusion and acknowledgement; gaps/duplicate/non-numeric/reset IDs and intervening issues stay separate.",
+      "validation": [
+        {
+          "status": "passed",
+          "name": "affected frontend matrix",
+          "tests": 81,
+          "command": "npm test -- src/features/temperature/sourceScan.test.ts src/pages/TemperatureRisePage.test.tsx src/features/temperature/DataPreview.test.tsx src/api/temperature.test.ts"
+        },
+        {
+          "status": "passed",
+          "name": "production build",
+          "command": "npm run build"
+        },
+        {
+          "status": "passed",
+          "name": "diff whitespace",
+          "command": "git diff --cached --check"
+        }
+      ],
+      "schema": "connlab.sol-task-report",
+      "integration": {
+        "method": "Scoped local clean master commit; no remote publication",
+        "status": "passed"
+      },
+      "roles": {
+        "qa": {
+          "status": "passed",
+          "method": "Same-agent targeted affected frontend matrix and sequential build",
+          "limitations": "Text-only presentation mapping proven at rendered-page seam; no browser run, backend/source/threshold/numerical code unchanged."
+        },
+        "reviewer": {
+          "status": "passed",
+          "standards_outstanding": 0,
+          "method": "Sequential same-agent Standards and Spec self-review",
+          "independent": false,
+          "spec_outstanding": 0
+        },
+        "developer": {
+          "method": "Micro task same-agent TDD: page-level range regression failed before implementation, passed afterward; nine formatter boundary cases and rendered confirmation/selection regression.",
+          "status": "passed"
+        }
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
