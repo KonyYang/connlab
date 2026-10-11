@@ -24,9 +24,13 @@ def scanner_bytes():
 
 
 @pytest.mark.parametrize(('names', 'labels'), [
-    ({'3': 'Tail-R', '4': '=1+1'}, ['1#- =1+1', '1#- Tail-R']),
-    ({'3': 'Tail-R'}, ['1#- 1_Crimp', '1#- Tail-R']),
-    ({'3': '', '4': ' Crimp '}, ['1#- Crimp', '1#- T2']),
+    ({'3': 'Tail-R', '4': '=1+1'}, ['=1+1', 'Tail-R']),
+    ({'3': 'Tail-R'}, ['Crimp', 'Tail-R']),
+    ({'3': '', '4': ' Crimp '}, ['Crimp', 'T2']),
+    ({'3': '1021_R1A', '4': ' 1_Header Solder '}, ['Header Solder', 'R1A']),
+    ({'3': '1021_2_R1A', '4': '1_2_Header Solder'}, ['Header Solder', 'R1A']),
+    ({'3': '未命名测点', '4': 'LPH'}, ['LPH', '未命名测点']),
+    ({'3': '123', '4': '-Tail R'}, ['-Tail R', 'T2']),
 ])
 def test_edited_channel_names_follow_source_ids_into_reordered_summary_without_changing_readings(names, labels):
     rows = [['Scan', 'Time', '101 <1_HS> (C)', '102 <1_Crimp> (C)', 'Ambient (C)', 'Current (VDC)']]
@@ -88,8 +92,9 @@ def test_balanced_thermocouple_exclusion_preserves_sample_maxima_in_analysis_and
     downloaded = client.post('/api/tools/temperature-rise/download', json=request)
     assert downloaded.status_code == 200, downloaded.text[:300]
     book = load_workbook(BytesIO(downloaded.content), data_only=True)
-    assert book['Initial Data'].cell(6, 2).value == 21
-    assert book['Initial Data'].cell(6, 3).value == 23
+    assert book['Initial Data'].cell(2, 3).value == 21
+    assert book['Initial Data'].cell(2, 4).value == 99  # Excluded channel still preserved in raw source.
+    assert book['Initial Data'].cell(2, 5).value == 23
     book.close()
     # A divisible total is insufficient: the first original sample cannot disappear.
     uneven = {**request, 'selection': {**request['selection'], 'temperature_columns': list(range(7, 15)),
@@ -126,10 +131,10 @@ def test_grouped_csv_import_reports_auxiliary_currents_and_nonzero_intercept_def
     assert download.status_code == 200, download.text[:300]
     book = load_workbook(BytesIO(download.content), data_only=True)
     initial = book['Initial Data']
-    assert initial.max_column == 36
-    assert 'Retained Current [AH:' in initial.cell(5, 34).value
-    assert [float(initial.cell(6, column).value) for column in (34, 35, 36)] == [125.001, 3.001, 1.02]
-    assert initial.cell(6, 33).value == 0  # Only the selected AI current is normalized.
+    assert initial.max_column == 37
+    assert initial.cell(1, 34).value == source_table.rows[0][33]
+    assert [float(initial.cell(2, column).value) for column in (34, 36, 37)] == [125.001, 3.001, 1.02]
+    assert float(initial.cell(2, 35).value) == .009999  # Normalization belongs only in analysis.
     book.close()
 
 
@@ -231,8 +236,9 @@ def test_utf16_scanner_csv_uses_the_same_confirmation_calculation_and_excel_down
     assert 'scanner_T-rise_Derating.xlsx' in download.headers['content-disposition']
     book = load_workbook(BytesIO(download.content), data_only=False)
     assert len(book['T-riseChart']._charts) == 1
-    assert book['Initial Data']['B6'].value == baseline_rows()[0].temperatures[0]
-    assert book['Initial Data']['A2'].value == 'Source: scanner.csv / Initial Data'
+    assert book['Initial Data']['B3'].value == '2024/10/28 17:10:16:391'
+    assert float(book['Initial Data']['C3'].value) == baseline_rows()[0].temperatures[0]
+    assert book['Initial Data']['A1'].value == '名称:'
     book.close()
     assert sha256(source).hexdigest() == digest
 

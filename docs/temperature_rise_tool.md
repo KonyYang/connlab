@@ -4,6 +4,46 @@ Status: implemented. Current refinement (2026-10-11): editable measurement names
 identity, reversible ambient-role suspension and consecutive regrouping after explicit moves.
 Compact charts, automatic generation after confirmation and scan-based feedback remain in place.
 
+## Compact XLSX export (2026-10-11)
+
+`Initial Data` now contains the complete imported value table at its original one-based row/column
+positions, including scanner metadata, excluded rows, excluded/spare channels and auxiliary currents.
+It no longer adds confirmation banners, an Original Row column or a reordered prepared-data table.
+Only genuine selected stage endpoints are highlighted across the source row in yellow; a synthetic
+origin is never highlighted. Source values are not scaled, normalized or renamed. The import is
+values-only: original workbook formulas, styles, macros and unrelated source sheets are not copied.
+Literal scanner strings remain text, including strings beginning with an equals sign.
+
+The `T-riseChart` report retains its endpoint readings, temperature-rise build and formula-backed
+summary. Summary measurement labels omit numeric scanner/sample prefixes. The reference's HS, H, C
+and RS abbreviations expand to Header Solder, Housing, Contact and Receptacle Solder; unknown labels
+are not guessed, and blank/all-numeric labels use the existing T-number fallback. Edited names follow
+the same export-only formatting. Sample totals use `n# Single Max`; overall MAX/AVG remain intact.
+A is narrower, numeric columns have equal compact widths, long summary labels wrap with fitted row
+height, sample subtotals use tan and overall totals use light blue, matching the supplied reference.
+
+Only the MAX y/a/b/c/x calculator remains visible below the summary. The AVG coefficient block and
+both live chart-fit rows are collapsed, not deleted: coefficient overrides, recalculation, linked chart
+equations and Derating inputs retain their existing behavior. The native scatter chart has rounded
+corners and a larger plot area using the Derating layout proportions; printing includes the calculator.
+Empty `Setup` and `CR` sheets are added after the existing three sheets. No contact-resistance
+calculation or setup content is imported. The source attachment and project/report authorities remain
+untouched; the change applies only to newly generated downloads.
+
+Regression protection uses the public workbook writer/render and HTTP download boundaries, covering
+raw coordinates, exclusion preservation, exact stage highlighting, literal-string safety, names and
+numeric fallbacks, blank sheets, native chart XML, hidden formula dependencies and original numerical
+baselines. Review is sequential same-agent Standards/Spec. Visual checks use the bundled spreadsheet
+preview for tables and a separate hidden Excel instance for the generated chart and native formula
+recalculation; the attachment and any already-open Excel instance are never opened for writing.
+Final affected matrix: 103 tests passed. Native Excel recalculated the MAX calculator without errors
+(30 °C -> 66.5444574215 A; changing only the target to 35 °C -> 72.8608073355 A), and the exported
+rounded chart was inspected. The source attachment hash was unchanged. The preview engine cannot
+evaluate the existing LINEST array formulas, so its calculator error display was checked against
+native Excel rather than treated as an export failure. The first complete matrix caught one old
+test-coordinate assertion (B time versus C temperature); it was corrected, and the final complete
+matrix passed. The existing Starlette/httpx deprecation warning is non-blocking.
+
 ## Source identity, names and edit state
 
 The source preview no longer displays Excel column letters. Scan/time titles and scanner channel

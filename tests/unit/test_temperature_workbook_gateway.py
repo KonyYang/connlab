@@ -104,7 +104,7 @@ def test_export_contains_native_xy_charts_formulas_cached_values_and_source_mapp
         analysis=analysis, maximum_coefficients=analysis.maximum_fit.coefficients,
         average_coefficients=analysis.average_fit.coefficients, target_rise=30, derating=derating)
     book = load_workbook(output, data_only=False)
-    assert book.sheetnames == ['Initial Data', 'T-riseChart', 'Derating']
+    assert book.sheetnames == ['Initial Data', 'T-riseChart', 'Derating', 'Setup', 'CR']
     assert len(book['T-riseChart']._charts) == 1
     assert len(book['Derating']._charts) == 1
     assert book['T-riseChart']._charts[0].__class__.__name__ == 'ScatterChart'
@@ -112,7 +112,7 @@ def test_export_contains_native_xy_charts_formulas_cached_values_and_source_mapp
     assert all(series.trendline.intercept == 0 for series in book['T-riseChart']._charts[0].series)
     assert 'SQRT' in book['Derating']['B6'].value
     assert book['Derating'].freeze_panes is None
-    assert book['Initial Data']['B5'].value.startswith('Sample 1 / TC 1')
+    assert book['Initial Data']['B1'].value == 'TC1'
     book.close()
     cached = load_workbook(output, data_only=True)
     assert cached['Derating']['B36'].value == pytest.approx(68.38881593205294)
@@ -144,6 +144,34 @@ def test_export_refuses_existing_file(tmp_path):
     assert source.read_bytes() == b'keep'
 
 
+def test_export_keeps_original_data_positions_and_marks_only_real_stage_endpoints(tmp_path):
+    headers = ('Scan', 'Time', '101 <1_HS> (C)', 'Ambient (C)', 'Current (VDC)', 'Unused')
+    readings = tuple((i, '18:00', 25 + .01 * current ** 2, 25, current, '=literal')
+                     for i, current in enumerate((10, 10, 10, 20, 20, 30, 30), 1))
+    table = WorkbookTable('original.csv', ('Data',), 'Data', (
+        ('Instrument', 'Scanner'), (), headers, *readings, ('Footer',)))
+    selection = DataSelection(3, 4, 10, 4, 5, (3,), 1, excluded_rows=(4,))
+    prepared = prepare_data(table, selection)
+    analysis = analyze_temperature_rise(prepared.measurements, thermocouples_per_sample=1, zero_intercept=True)
+    content = TemperatureWorkbookGateway().render('output.xlsx', table=table, selection=selection,
+        prepared=prepared, analysis=analysis, maximum_coefficients=analysis.maximum_fit.coefficients,
+        average_coefficients=analysis.average_fit.coefficients, target_rise=30, derating=None)
+    book = load_workbook(BytesIO(content))
+    initial = book['Initial Data']
+    assert initial.max_row == 11
+    assert initial.max_column == 6
+    for row, values in enumerate(table.rows, 1):
+        assert tuple(initial.cell(row, col).value for col in range(1, len(values) + 1)) == values
+    assert initial['F4'].data_type == 's'
+    yellow = {cell.row for row in initial for cell in row if cell.fill.fgColor.rgb == '00FFFF00'}
+    assert yellow == {6, 8, 10}
+    assert all(initial.cell(row, col).fill.fgColor.rgb == '00FFFF00'
+               for row in yellow for col in range(1, 7))
+    assert book.sheetnames == ['Initial Data', 'T-riseChart', 'Derating', 'Setup', 'CR']
+    assert all(cell.value is None for name in ('Setup', 'CR') for row in book[name] for cell in row)
+    book.close()
+
+
 def _report_export(tmp_path, maximum=None, average=None, *, include_derating=False):
     rows = baseline_rows()
     table = WorkbookTable('scanner.xlsx', ('Initial Data',), 'Initial Data', (
@@ -159,6 +187,43 @@ def _report_export(tmp_path, maximum=None, average=None, *, include_derating=Fal
         derating=generate_derating(average or analysis.average_fit.coefficients,
             max_temperature=105, step=2.5, ambient_point=75) if include_derating else None)
     return output, analysis
+
+
+def test_export_formats_measurement_labels_and_keeps_only_max_calculator_visible(tmp_path):
+    headers = ('Scan', 'Time', '101 <1_HS> (C)', '102 <1_H> (C)', '103 <1_C> (C)',
+               '104 <1_RS> (C)', 'Ambient (C)', 'Current (VDC)')
+    table = WorkbookTable('names.csv', ('Data',), 'Data', (headers, *(
+        (i, '18:00', 25 + current ** 2 / 100, 26, 27, 28, 25, current)
+        for i, current in enumerate((10, 10, 20, 20, 30, 30), 1))))
+    selection = DataSelection(1, 2, 7, 7, 8, (3, 4, 5, 6), 4)
+    prepared = prepare_data(table, selection)
+    analysis = analyze_temperature_rise(prepared.measurements, thermocouples_per_sample=4, zero_intercept=True)
+    content = TemperatureWorkbookGateway().render('names.xlsx', table=table, selection=selection,
+        prepared=prepared, analysis=analysis, maximum_coefficients=analysis.maximum_fit.coefficients,
+        average_coefficients=analysis.average_fit.coefficients, target_rise=30, derating=None)
+    book = load_workbook(BytesIO(content))
+    sheet = book['T-riseChart']
+    summary = sheet[next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
+    assert [row[0].value for row in summary] == [
+        'Current(A)', 'Header Solder', 'Housing', 'Contact', 'Receptacle Solder',
+        '1# Single Max', 'Max T-Rise', 'Avg of max T-Rise on each sample']
+    assert sheet.column_dimensions['A'].width < 30
+    assert sheet.column_dimensions['B'].width == sheet.column_dimensions['C'].width
+    calculator = sheet[next(book.defined_names['CurrentCalculator'].destinations)[1].replace('$', '')]
+    assert not sheet.row_dimensions[calculator[1][0].row].hidden
+    average = sheet[next(book.defined_names['AverageCoefficients'].destinations)[1].replace('$', '')]
+    assert all(sheet.row_dimensions[row[0].row].hidden for row in average)
+    for series in sheet._charts[0].series:
+        equation_row = sheet[series.trendline.trendlineLbl.tx.strRef.f.split('!')[1].replace('$', '')].row
+        assert sheet.row_dimensions[equation_row].hidden
+    chart = sheet._charts[0]
+    assert chart.layout.manualLayout.w >= .85
+    assert chart.layout.manualLayout.h >= .75
+    book.close()
+    with ZipFile(BytesIO(content)) as archive:
+        ns = {'c': 'http://schemas.openxmlformats.org/drawingml/2006/chart'}
+        root = ET.fromstring(archive.read('xl/charts/chart1.xml'))
+        assert root.find('c:roundedCorners', ns).get('val') == '1'
 
 
 def test_derating_chart_matches_reference_and_guide_follows_editable_ambient_point(tmp_path):
@@ -216,9 +281,9 @@ def test_report_export_has_traceable_key_readings_and_copyable_formula_summary(t
     sheet = book['T-riseChart']
     summary = next(book.defined_names['TemperatureRiseSummary'].destinations)[1]
     block = sheet[summary.replace('$', '')]
-    assert block[0][0].value == 'Applied Current (A)'
+    assert block[0][0].value == 'Current(A)'
     labels = [row[0].value for row in block]
-    assert labels[1:6] == ['1#- TC1', '1#- TC2', '1#- TC3', '1#- TC4', '1# Max T-Rise']
+    assert labels[1:6] == ['TC1', 'TC2', 'TC3', 'TC4', '1# Single Max']
     assert labels[-2:] == ['Max T-Rise', 'Avg of max T-Rise on each sample']
     assert block[1][2].data_type == 'f'
     assert block[5][2].value.startswith('=MAX(')
@@ -274,7 +339,7 @@ def test_endpoint_tables_share_scan_time_columns_without_changing_readings(tmp_p
     assert rises[1][0].value is False if boolean_identifier else rises[1][0].value == '=A2'
     assert rises[1][1].value == '=B2'
     assert rises[1][2].value == '=D2-$E2'  # Confirmed spare replaces the first channel.
-    assert book['Initial Data']['A6'].value == 2  # Original row tracking remains intact.
+    assert book['Initial Data']['A2'].value == rows[0][0]  # Original scan stays at its source position.
     book.close()
     cached = load_workbook(output, data_only=True)
     sheet = cached['T-riseChart']
@@ -323,7 +388,7 @@ def test_report_chart_names_follow_summary_cells_and_labels_stack_at_upper_left(
     book = load_workbook(output)
     sheet = book['T-riseChart']
     assert sheet.freeze_panes is None
-    assert book['Initial Data'].freeze_panes == 'B6'
+    assert book['Initial Data'].freeze_panes == 'C2'
     assert book['Derating'].freeze_panes is None  # No Derating was requested for this export.
     summary = sheet[next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
     labels = [row[0] for row in summary[-2:]]

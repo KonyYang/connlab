@@ -1,6 +1,7 @@
 """Report-ready temperature-rise tables and editable native Excel chart labels."""
 
 import re
+from math import ceil
 
 from openpyxl.chart import Reference, Series
 from openpyxl.chart.data_source import NumData, NumVal, StrRef, StrData, StrVal
@@ -34,6 +35,8 @@ def build_rise_report(sheet, *, table, selection, analysis, maximum, average, ta
     _average_inputs(sheet, average, analysis.average_fit, calculator_header + 3, calculator_header + 8, caches)
     label_rows = _fit_equations(sheet, analysis, summary_header, maximum_row, average_row,
                                calculator_header + 6, caches)
+    # Keep live fit/AVG dependencies inspectable without duplicating the visible MAX calculator.
+    sheet.row_dimensions.group(calculator_header + 3, calculator_header + 8, hidden=True)
     _rise_chart(sheet, analysis, chart, summary_header, maximum_row, average_row, label_rows, caches)
     _name(sheet, 'TemperatureRiseSummary', summary_header, average_row, len(analysis.points) + 1)
     sheet.freeze_panes = None
@@ -43,11 +46,13 @@ def build_rise_report(sheet, *, table, selection, analysis, maximum, average, ta
     sheet.page_setup.paperSize = sheet.PAPERSIZE_A4
     sheet.page_setup.fitToWidth, sheet.page_setup.fitToHeight = 1, 1
     chart_column = max(len(analysis.points) + 3, 11)
-    sheet.print_area = f'A{summary_header}:{get_column_letter(chart_column + 12)}{max(average_row, summary_header + 27)}'
+    sheet.print_area = f'A{summary_header}:{get_column_letter(chart_column + 12)}{max(calculator_header + 1, summary_header + 36)}'
     for column in range(1, max(table.width + 2, chart_column + 13)):
         sheet.column_dimensions[get_column_letter(column)].width = 10
-    sheet.column_dimensions['A'].width = 30
-    sheet.column_dimensions['B'].width = 24
+    sheet.column_dimensions['A'].width = 22
+    for row in range(summary_header + 1, average_row + 1):
+        label = str(sheet.cell(row, 1).value or '')
+        sheet.row_dimensions[row].height = max(15, ceil(len(label) / 20) * 15)
 
 
 def _literal(sheet, row, column, value):
@@ -165,17 +170,17 @@ def _stage_rises(sheet, selection, stages, raw_rows, raw_columns, header, caches
 def _summary(sheet, table, selection, analysis, rise_rows, header, caches):
     channels = len(selection.temperature_columns)
     samples, count = len(analysis.points[0].sample_maxima), selection.thermocouples_per_sample
-    _literal(sheet, header, 1, 'Applied Current (A)')
+    _literal(sheet, header, 1, 'Current(A)')
     for slot, column in enumerate(selection.temperature_columns):
         row = header + 1 + slot + slot // count
-        name = measurement_name(table, selection, column) or f'T{slot % count + 1}'
-        _literal(sheet, row, 1, f'{slot // count + 1}#- {name}')
+        name = _report_measurement_name(measurement_name(table, selection, column)) or f'T{slot % count + 1}'
+        _literal(sheet, row, 1, name)
         sheet.cell(row, 1).comment = Comment(
             f'Confirmed Sample {slot // count + 1}, thermocouple {slot % count + 1}; source column {get_column_letter(column)}. '
             'See Initial Data for the complete original channel label.', 'ConnLab')
     max_rows = [header + (sample + 1) * (count + 1) for sample in range(samples)]
     for sample, row in enumerate(max_rows, 1):
-        _literal(sheet, row, 1, f'{sample}# Max T-Rise')
+        _literal(sheet, row, 1, f'{sample}# Single Max')
     maximum_row, average_row = header + channels + samples + 1, header + channels + samples + 2
     _literal(sheet, maximum_row, 1, 'Max T-Rise')
     _literal(sheet, average_row, 1, 'Avg of max T-Rise on each sample')
@@ -202,11 +207,23 @@ def _summary(sheet, table, selection, analysis, rise_rows, header, caches):
     sheet.row_dimensions[header].height = 22
     for row in (*max_rows, maximum_row, average_row):
         for cell in sheet[row][:len(analysis.points) + 1]:
-            cell.fill = PatternFill('solid', fgColor='BDD7EE' if row in max_rows else 'F8CBAD')
+            cell.fill = PatternFill('solid', fgColor='D2B48C' if row in max_rows else 'ADD8E6')
             if cell.column == 1:
                 cell.font = Font(name='Arial', size=10, bold=True, color='000000')
     sheet.row_dimensions[average_row].height = 32
     return maximum_row, average_row
+
+
+def _report_measurement_name(name):
+    """Only remove numeric instrument/sample prefixes; don't infer unknown abbreviations."""
+    clean = name.strip()
+    if clean and clean[0].isdigit():
+        first_letter = re.search(r'[^\W\d_]', clean)
+        clean = clean[first_letter.start():] if first_letter else ''
+    if not clean:
+        return ''
+    return {'HS': 'Header Solder', 'H': 'Housing', 'C': 'Contact',
+            'RS': 'Receptacle Solder'}.get(clean.upper(), clean)
 
 
 def _calculator(sheet, maximum, fit, target, header, caches):
@@ -331,8 +348,10 @@ def _rise_chart(sheet, analysis, chart, current_row, maximum_row, average_row, l
         series.trendline.spPr = GraphicalProperties()
         series.trendline.spPr.line.solidFill = color
         chart.series.append(series)
-    chart.width, chart.height = 23.5, 12.2
-    chart.roundedCorners = False
+    chart.width, chart.height = 23.5, 14
+    chart.roundedCorners = True
+    chart.layout = Layout(manualLayout=ManualLayout(layoutTarget='inner', xMode='edge', yMode='edge',
+        x=.1, y=.09, w=.87, h=.76))
     chart.graphical_properties = GraphicalProperties(solidFill='FFFFE0')
     chart.plot_area.spPr = GraphicalProperties(solidFill='FFFFFF')
     sheet.add_chart(chart, f'{get_column_letter(max(end + 2, 11))}{current_row}')

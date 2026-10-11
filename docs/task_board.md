@@ -11,97 +11,35 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
-    "task_id": "TASK_TEMPERATURE_COMPACT_UNPOWERED_REVIEW_20261011",
-    "summary": "Compact unpowered review warnings into consecutive scan ranges",
-    "tier": "micro",
-    "route": "sol_direct",
-    "scope": "Presentation-only zero-current warning copy and consecutive A-column scan ranges; retain original issue rows, selections and confirmation semantics",
+    "task_id": "TASK_TEMPERATURE_EXPORT_PRESENTATION_20261011",
+    "summary": "Simplify temperature-rise XLSX source and report presentation",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Preserve original imported Initial Data with yellow stage-source rows; compact formatted measurement labels, MAX-only calculator and rounded space-efficient T-riseChart; add blank Setup and CR worksheets. Preserve analysis, native formulas and Derating behavior; never modify reference workbook.",
     "scope_paths": [
-      "frontend/src/features/temperature/sourceScan.ts",
-      "frontend/src/pages/TemperatureRisePage.tsx",
-      "frontend/src/pages/TemperatureRisePage.test.tsx",
-      "frontend/src/features/temperature/sourceScan.test.ts",
+      "backend/infrastructure/office/temperature_workbook_gateway.py",
+      "backend/infrastructure/office/temperature_rise_report_sheet.py",
+      "tests/unit/test_temperature_workbook_gateway.py",
+      "tests/integration/test_tools_temperature_api.py",
       "docs/temperature_rise_tool.md"
     ],
     "risk_reasons": [],
-    "activation_head": "a123f58ec33d3b57459df079e61ca07d7e672558",
-    "started_at": "2026-10-11T02:06:25.288323Z",
-    "updated_at": "2026-10-11T02:09:05.779058Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_COMPACT_UNPOWERED_REVIEW_20261011",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "changed_paths": [
-        "docs/temperature_rise_tool.md",
-        "frontend/src/features/temperature/sourceScan.test.ts",
-        "frontend/src/features/temperature/sourceScan.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx"
-      ],
-      "scope_ok": true,
-      "task_id": "TASK_TEMPERATURE_COMPACT_UNPOWERED_REVIEW_20261011",
-      "version": 1,
-      "subject": "1b303c56f9bcdcf91d1c7d8186ba1af0e5f9c854",
-      "summary": "Shortened unpowered warnings and compacted ascending consecutive A-column scan IDs into ranges such as Scan 51~53. Preserves raw issues, severity, selection/exclusion and acknowledgement; gaps/duplicate/non-numeric/reset IDs and intervening issues stay separate.",
-      "validation": [
-        {
-          "status": "passed",
-          "name": "affected frontend matrix",
-          "tests": 81,
-          "command": "npm test -- src/features/temperature/sourceScan.test.ts src/pages/TemperatureRisePage.test.tsx src/features/temperature/DataPreview.test.tsx src/api/temperature.test.ts"
-        },
-        {
-          "status": "passed",
-          "name": "production build",
-          "command": "npm run build"
-        },
-        {
-          "status": "passed",
-          "name": "diff whitespace",
-          "command": "git diff --cached --check"
-        }
-      ],
-      "schema": "connlab.sol-task-report",
-      "integration": {
-        "method": "Scoped local clean master commit; no remote publication",
-        "status": "passed"
-      },
-      "roles": {
-        "qa": {
-          "status": "passed",
-          "method": "Same-agent targeted affected frontend matrix and sequential build",
-          "limitations": "Text-only presentation mapping proven at rendered-page seam; no browser run, backend/source/threshold/numerical code unchanged."
-        },
-        "reviewer": {
-          "status": "passed",
-          "standards_outstanding": 0,
-          "method": "Sequential same-agent Standards and Spec self-review",
-          "independent": false,
-          "spec_outstanding": 0
-        },
-        "developer": {
-          "method": "Micro task same-agent TDD: page-level range regression failed before implementation, passed afterward; nine formatter boundary cases and rendered confirmation/selection regression.",
-          "status": "passed"
-        }
-      }
-    }
+    "activation_head": "b8e5ffbd0c8e3b0aea5edebeae12d29e87cea589",
+    "started_at": "2026-10-11T03:11:15.207928Z",
+    "updated_at": "2026-10-11T03:11:15.207928Z",
+    "checkpoint": null,
+    "report": null
   },
   "last_closed": {
-    "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
-    "tier": "standard",
-    "subject": "c4d33bb9814d3569454e31f51944949055707365",
-    "summary": "Normalize temperature editor columns and preserve sample groups through balanced exclusions",
+    "task_id": "TASK_TEMPERATURE_COMPACT_UNPOWERED_REVIEW_20261011",
+    "tier": "micro",
+    "subject": "1b303c56f9bcdcf91d1c7d8186ba1af0e5f9c854",
+    "summary": "Compact unpowered review warnings into consecutive scan ranges",
     "disposition": "completed",
-    "decision_ref": "User final authorization: 关闭任务",
-    "closed_at": "2026-10-11T01:53:26.982199Z"
+    "decision_ref": "User authorization: 关闭上一任务，继续导出优化",
+    "closed_at": "2026-10-11T03:11:15.207928Z"
   },
   "retained_history": [
     {

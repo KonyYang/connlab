@@ -28,7 +28,7 @@ from openpyxl.utils import get_column_letter
 import xlrd
 
 from backend.application.temperature_data_preparation import PreparedData
-from backend.domain.temperature_data import DataSelection, WorkbookTable, column_letter
+from backend.domain.temperature_data import DataSelection, WorkbookTable
 from backend.domain.temperature_rise import Coefficients, TemperatureRiseAnalysis, DeratingAnalysis
 from backend.infrastructure.office.temperature_rise_report_sheet import build_rise_report
 
@@ -116,14 +116,15 @@ class TemperatureWorkbookGateway:
         initial.title = 'Initial Data'
         rise = book.create_sheet('T-riseChart')
         derated = book.create_sheet('Derating')
+        book.create_sheet('Setup')
+        book.create_sheet('CR')
         caches: dict[str, dict[str, float | str]] = {name: {} for name in book.sheetnames}
-        _initial_sheet(initial, table, selection, prepared)
+        _initial_sheet(initial, table, selection, analysis)
         build_rise_report(rise, table=table, selection=selection, analysis=analysis,
             maximum=maximum_coefficients, average=average_coefficients, target=target_rise,
             caches=caches[rise.title], chart=_chart('Temperature Rise vs Applied Current', 'Applied Current (A)', 'T-rise (°C)'))
         _derating_sheet(derated, derating, caches[derated.title])
-        for sheet in (initial, derated):
-            _style_sheet(sheet)
+        _style_sheet(derated)
         book.calculation = CalcProperties(calcId=191029, fullCalcOnLoad=True)
         memory = BytesIO()
         book.save(memory)
@@ -221,38 +222,26 @@ def _text(sheet, coordinate, value):
     cell.data_type = 's'
 
 
-def _initial_sheet(sheet, table, selection, prepared):
-    _text(sheet, 'A1', 'Confirmed Initial Data')
-    _text(sheet, 'A2', f'Source: {table.file_name} / {table.sheet_name}')
-    _text(sheet, 'A3', f'Source rows {selection.start_row}–{selection.end_row}; excluded: '
-          + (', '.join(map(str, selection.excluded_rows)) or 'none')
-          + f'; current scale: {selection.current_multiplier:g} A per source unit')
-    _text(sheet, 'A4', 'Warnings acknowledged: ' + ('; '.join(issue.message for issue in prepared.issues) or 'none'))
-    headers = ['Original Row']
-    original_header = table.rows[selection.header_row - 1]
-    for slot, column in enumerate(selection.temperature_columns):
-        label = original_header[column - 1] if column <= len(original_header) else ''
-        headers.append(f'Sample {slot // selection.thermocouples_per_sample + 1} / TC {slot % selection.thermocouples_per_sample + 1} [{column_letter(column)}: {label}] (°C)')
-    headers += [f'Ambient [{column_letter(selection.ambient_column)}] (°C)',
-                f'Current [{column_letter(selection.current_column)}] (A)']
-    headers += [f'Retained Current [{column_letter(column)}: {original_header[column - 1]}]'
-                for column in prepared.retained_current_columns]
-    for col, header in enumerate(headers, 1):
-        _text(sheet, f'{get_column_letter(col)}5', header)
-    for row in prepared.measurements:
-        sheet.append([row.source_row, *row.temperatures, row.ambient, row.current])
-        source = table.rows[row.source_row - 1]
-        first_retained = len(selection.temperature_columns) + 4
-        for offset, column in enumerate(prepared.retained_current_columns):
-            value = source[column - 1] if column <= len(source) else None
-            coordinate = f'{get_column_letter(first_retained + offset)}{sheet.max_row}'
+def _initial_sheet(sheet, table, selection, analysis):
+    # Source coordinates stay unchanged, including metadata, excluded rows and spare columns.
+    endpoints = {point.source_row for point in analysis.points if point.source_row is not None}
+    yellow = PatternFill('solid', fgColor='FFFF00')
+    width = table.width
+    for row, values in enumerate(table.rows, 1):
+        for column in range(1, width + 1):
+            value = values[column - 1] if column <= len(values) else None
+            cell = sheet.cell(row, column)
             if isinstance(value, str):
-                _text(sheet, coordinate, value)
+                _text(sheet, cell.coordinate, value)
             else:
-                sheet[coordinate] = value
-    sheet.auto_filter.ref = f'A5:{get_column_letter(len(headers))}{sheet.max_row}'
-    sheet.freeze_panes = 'B6'
-    sheet.row_dimensions[5].height = 48
+                cell.value = value
+            if row in endpoints:
+                cell.fill = yellow
+    sheet.freeze_panes = f'C{selection.header_row + 1}'
+    sheet.column_dimensions['A'].width = 12
+    sheet.column_dimensions['B'].width = 28
+    for column in range(3, width + 1):
+        sheet.column_dimensions[get_column_letter(column)].width = 15
 
 
 def _derating_sheet(sheet, result, caches):
