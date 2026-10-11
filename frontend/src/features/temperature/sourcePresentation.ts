@@ -1,5 +1,5 @@
 import type { ChannelLayout, DataSelection, WorkbookTable } from '../../api/temperature';
-import { columnLetter, SCANNER_UNIT_SUFFIX, sourceColumnKind, sourceColumns, type SourceColumnKind } from './sourceColumns';
+import { SCANNER_UNIT_SUFFIX, sourceColumnKind, sourceColumns, type SourceColumnKind } from './sourceColumns';
 
 type SourceValue = WorkbookTable['rows'][number][number];
 
@@ -17,9 +17,11 @@ export function sourceColumnOptions(table: WorkbookTable, selection: DataSelecti
     const original = String(table.rows[selection.header_row - 1]?.[column.id - 1] ?? '');
     const clean = original.replace(SCANNER_UNIT_SUFFIX, '').trim();
     const parts = clean.match(/^(\d+)\s*<([^>]+)>\s*(.*)$/);
-    const heading = parts ? [parts[1], `${parts[2]} ${parts[3]}`.trim()] : [clean];
-    return { id: column.id, original, heading,
-      label: `${columnLetter(column.id)} — ${heading.join(' ') || '(No Header)'}`,
+    const channel = parts?.[1] ?? null;
+    const name = selection.channel_names?.[column.id] ?? (parts ? `${parts[2]} ${parts[3]}`.trim() : clean);
+    const heading = channel ? [channel, name] : [name];
+    return { id: column.id, original, heading, channel, name,
+      label: heading.join(' ').trim() || `(Source ${column.id})`,
       kind: sourceColumnKind(table, selection, column.id, layout) };
   });
 }
@@ -40,6 +42,6 @@ export function sourcePresentation(table: WorkbookTable, selection: DataSelectio
     for (let row = selection.start_row; row <= selection.end_row; row++) {
       width = Math.max(width, textWidth(formatSourceReading(table.rows[row - 1]?.[column.id - 1] ?? null, column.kind)) + 16);
     }
-    return { ...column, heading, label: `${columnLetter(column.id)} — ${heading.join(' ') || '(No Header)'}`, width };
+    return { ...column, heading, label: heading.join(' ').trim() || `(Source ${column.id})`, width };
   });
 }

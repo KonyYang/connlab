@@ -23,6 +23,49 @@ def scanner_bytes():
     return stream.getvalue()
 
 
+@pytest.mark.parametrize(('names', 'labels'), [
+    ({'3': 'Tail-R', '4': '=1+1'}, ['1#- =1+1', '1#- Tail-R']),
+    ({'3': 'Tail-R'}, ['1#- 1_Crimp', '1#- Tail-R']),
+    ({'3': '', '4': ' Crimp '}, ['1#- Crimp', '1#- T2']),
+])
+def test_edited_channel_names_follow_source_ids_into_reordered_summary_without_changing_readings(names, labels):
+    rows = [['Scan', 'Time', '101 <1_HS> (C)', '102 <1_Crimp> (C)', 'Ambient (C)', 'Current (VDC)']]
+    for current, temperature in ((10, 25), (20, 35), (30, 45)):
+        rows.extend([[len(rows), '18:00', temperature, temperature + 1, 20, current],
+                     [len(rows) + 1, '18:01', temperature, temperature + 1, 20, current]])
+    request = {'table': {'file_name': 'names.csv', 'sheet_names': ['Data'], 'sheet_name': 'Data', 'rows': rows},
+               'selection': {'header_row': 1, 'start_row': 2, 'end_row': 7, 'ambient_column': 5,
+                             'current_column': 6, 'temperature_columns': [4, 3], 'thermocouples_per_sample': 2,
+                             'sample_groups': [[4, 3]], 'channel_names': names}}
+    client = TestClient(app)
+    analysis = client.post('/api/tools/temperature-rise/analyze', json=request)
+    assert analysis.status_code == 200, analysis.text
+    assert analysis.json()['points'][1]['rises'] == [6, 5]
+    download = client.post('/api/tools/temperature-rise/download', json=request)
+    assert download.status_code == 200, download.text[:300]
+    book = load_workbook(BytesIO(download.content), data_only=False)
+    try:
+        sheet = book['T-riseChart']
+        summary = sheet[next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
+        assert [row[0].value for row in summary[1:3]] == labels
+        assert all(row[0].data_type == 's' for row in summary[1:3])
+        raw = sheet[next(book.defined_names['KeyStageReadings'].destinations)[1].replace('$', '')]
+        assert raw[0][2].value == '101 <1_HS> (C)'
+        assert request['table']['rows'][0][2] == '101 <1_HS> (C)'
+    finally:
+        book.close()
+
+
+@pytest.mark.parametrize('names', [
+    {'1': 'Index'}, {'25': 'Outside table'}, {'999': 'Missing'}, {'3': 'a' * 201}, {'3': 'Line\nBreak'}, {'3': 'Null\x00Byte'},
+])
+def test_measurement_name_overrides_reject_nonmeasurement_sources_and_invalid_text(names):
+    client = TestClient(app)
+    data = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', scanner_bytes())}).json()
+    request = {'table': data['table'], 'selection': {**data['selection'], 'channel_names': names}}
+    assert client.post('/api/tools/temperature-rise/prepare', json=request).status_code == 422
+
+
 def test_balanced_thermocouple_exclusion_preserves_sample_maxima_in_analysis_and_download():
     headers = ['Scan', 'Time', *(f'{101 + i} <{i // 4 + 1}_T{i % 4 + 1}> (C)' for i in range(12)),
                'Ambient (C)', 'Current (VDC)']
@@ -99,6 +142,7 @@ def test_import_prepare_analyze_and_download_round_trip_without_project_authorit
     data = imported.json()
     assert data['region_issue'] is None
     assert data['selection']['header_row'] == 1
+    assert data['selection']['channel_names'] == {}
     assert data['selection']['start_row'] == 2
     assert data['selection']['end_row'] == 301
     request = {'table': data['table'], 'selection': data['selection'], 'acknowledge_warnings': False, 'zero_intercept': True}

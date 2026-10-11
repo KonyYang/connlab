@@ -1,6 +1,7 @@
 """Workbook values without a dependency on their Office file representation."""
 
 from dataclasses import dataclass
+import re
 
 CellValue = str | float | int | bool | None
 UNPOWERED_CURRENT_THRESHOLD = .1
@@ -32,6 +33,18 @@ class DataSelection:
     excluded_rows: tuple[int, ...] = ()
     current_multiplier: float = 1.
     sample_groups: tuple[tuple[int, ...], ...] | None = None
+    channel_names: tuple[tuple[int, str], ...] = ()
+
+
+def measurement_name(table: WorkbookTable, selection: DataSelection, column: int) -> str:
+    """Display/export metadata never replaces the source-position identity or grouping."""
+    names = dict(selection.channel_names)
+    if column in names:
+        return names[column].strip()
+    header = str(table.rows[selection.header_row - 1][column - 1] or '')
+    clean = re.sub(r'\s*[（(]\s*(?:°?C|℃|VDC|V|m?A)\s*[）)]\s*$', '', header, flags=re.I).strip()
+    match = re.fullmatch(r'\d+\s*<([^>]+)>\s*(.*)', clean)
+    return f'{match[1]} {match[2]}'.strip() if match else clean
 
 
 def column_letter(index: int) -> str:

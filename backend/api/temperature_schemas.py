@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 from backend.domain.temperature_data import DataSelection, WorkbookTable
 from backend.domain.temperature_rise import Coefficients
 
@@ -40,11 +40,14 @@ class DataSelectionRequest(TemperatureModel):
     excluded_rows: list[int] = Field(default_factory=list, max_length=20000)
     current_multiplier: float = Field(default=1, gt=0, le=1000000000)
     sample_groups: list[Annotated[list[int], Field(max_length=254)]] | None = Field(default=None, max_length=254)
+    channel_names: dict[Annotated[int, Field(ge=3, le=256)],
+                        Annotated[str, StringConstraints(max_length=200, pattern=r'^[^\x00-\x1f]*$')]] = Field(default_factory=dict, max_length=254)
 
     def domain(self):
         return DataSelection(**(self.model_dump() | {
             'temperature_columns': tuple(self.temperature_columns), 'excluded_rows': tuple(self.excluded_rows),
-            'sample_groups': tuple(tuple(group) for group in self.sample_groups) if self.sample_groups is not None else None}))
+            'sample_groups': tuple(tuple(group) for group in self.sample_groups) if self.sample_groups is not None else None,
+            'channel_names': tuple(self.channel_names.items())}))
 
 
 class PreparationRequest(TemperatureModel):

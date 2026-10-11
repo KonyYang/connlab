@@ -68,12 +68,14 @@
 .temperature-source-table thead th.temperature-sample-primary { background: var(--color-action-secondary-bg); }
 .temperature-source-table thead th.temperature-sample-alternate { background: var(--color-surface-muted); }
 .temperature-source-table thead th.temperature-sample-start { border-left: 2px solid var(--color-border); }
-.temperature-source-column { display: flex; align-items: center; gap: 4px; min-height: 28px; }
 .temperature-source-table th[tabindex] { cursor: pointer; user-select: none; }
 .temperature-source-table th[tabindex]:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 .temperature-source-title, .temperature-source-role { display: block; margin-top: 4px; }
 .temperature-source-title { max-width: 200px; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
 .temperature-source-title > span { display: block; }
+.temperature-page .temperature-source-table .temperature-measurement-name { padding: 2px 0; margin-top: 2px; border: 1px solid transparent; border-radius: 3px; background: transparent; font: inherit; }
+.temperature-page .temperature-source-table .temperature-measurement-name:hover { border-color: var(--color-border); }
+.temperature-page .temperature-source-table .temperature-measurement-name:focus { background: var(--color-surface); border-color: var(--color-primary); }
 .temperature-source-role { font-size: 11px; color: var(--color-ink-muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; }
 .temperature-source-table thead th.is-selected-column, .temperature-source-table td.is-selected-column { background: var(--color-action-secondary-hover); }
 .temperature-source-table .is-excluded-column, .temperature-source-table .is-excluded-row > * { background: var(--color-surface-muted); color: var(--color-ink-muted); }

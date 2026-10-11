@@ -3,6 +3,7 @@
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Response
+from fastapi.encoders import jsonable_encoder
 
 from backend.api.dependencies import get_tools_temperature_service
 from backend.api.temperature_schemas import (
@@ -36,7 +37,12 @@ def import_temperature_workbook(file: UploadFile = File(...), sheet_name: str | 
     if any(row is not None for row in rows) and any(row is None for row in rows):
         raise HTTPException(status_code=422, detail='Set all three rows to correct the data region.')
     region = rows if all(row is not None for row in rows) else None
-    return _call(lambda: service.import_workbook(content, file.filename or 'Scanner.xlsx', sheet_name, region=region))
+    result = _call(lambda: service.import_workbook(content, file.filename or 'Scanner.xlsx', sheet_name, region=region))
+    response = jsonable_encoder(result)
+    if result.selection is not None:
+        # Domain metadata is immutable pairs; the HTTP contract is a source-indexed object.
+        response['selection']['channel_names'] = dict(result.selection.channel_names)
+    return response
 
 
 @router.post('/prepare')

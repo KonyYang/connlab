@@ -18,7 +18,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
   const s = tool.state;
   const busy = Boolean(s.busy);
   const columns = useMemo(() => s.table && s.selection ? sourceColumnOptions(s.table, s.selection, s.channel_layout) : [],
-    [s.table, s.selection?.header_row, s.selection?.ambient_column, s.selection?.current_column, s.selection?.temperature_columns, s.channel_layout]);
+    [s.table, s.selection?.header_row, s.selection?.ambient_column, s.selection?.current_column, s.selection?.temperature_columns, s.selection?.channel_names, s.channel_layout]);
   const ambientValid = columns.some(column => column.id === s.selection?.ambient_column && column.kind === 'temperature');
   const currentValid = columns.some(column => column.id === s.selection?.current_column && column.kind === 'current');
   const roleIssue = s.selection && (!ambientValid || !currentValid)

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChannelLayout, DataSelection, WorkbookTable } from '../../api/temperature';
 import { isTemperatureColumn, sourceColumnKind, sourceColumns } from './sourceColumns';
-import { equalSampleSize, includedSamples, moveSampleSlots, retainExcludedSlots, sampleGroups } from './sampleGroups';
+import { equalSampleSize, includedSamples, partitionSamples, retainInactiveSlots, sampleGroups } from './sampleGroups';
 
 type Snapshot = { order: number[]; excludedColumns: number[]; removedTemperatures: number[];
   temperatureColumns: number[]; excludedRows: number[]; slots: number[][];
-  sampleGroups: number[][] | null | undefined; count: number };
+  sampleGroups: number[][] | null | undefined; count: number; consecutive: boolean };
 
 export function useDataGridEditing(table: WorkbookTable, selection: DataSelection,
   layout: ChannelLayout | null | undefined, onChange: (patch: Partial<DataSelection>) => void) {
@@ -19,6 +19,7 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
   const [removedTemperatures, setRemovedTemperatures] = useState<number[]>([]);
   // Keep excluded slots for restoration; only included groups go into the request.
   const [slots, setSlots] = useState(() => sampleGroups(selection, layout));
+  const [consecutive, setConsecutive] = useState(false);
   const [history, setHistory] = useState<Snapshot[]>([]);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [selectedColumns, setSelectedColumns] = useState<number[]>([]);
@@ -28,26 +29,37 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
   useEffect(() => {
     const parameters = [selection.ambient_column, selection.current_column, selection.thermocouples_per_sample];
     if (parameters.every((value, index) => value === committedParameters.current[index])) return;
+    const countChanged = parameters[2] !== committedParameters.current[2];
     committedParameters.current = parameters;
     setHistory([]); setSelectedRows([]); setSelectedColumns([]);
-    setSlots(previous => retainExcludedSlots(sampleGroups(selection, layout), previous,
-      removedTemperatures.filter(column => column !== selection.ambient_column && column !== selection.current_column)));
+    // Roles temporarily suspend a channel; they never erase its slot or exclusion status.
+    const nextSlots = countChanged ? retainInactiveSlots(sampleGroups(selection, layout), slots,
+      slots.flat().filter(column => !selection.temperature_columns.includes(column))) : slots;
+    const active = nextSlots.flat().filter(column => !removedTemperatures.includes(column)
+      && column !== selection.ambient_column && column !== selection.current_column
+      && sourceColumnKind(table, selection, column, layout) !== 'current');
+    const regroup = consecutive || countChanged;
+    const ordered = regroup ? order.filter(column => active.includes(column)) : active;
+    const groups = regroup ? partitionSamples(ordered, selection.thermocouples_per_sample) : includedSamples(nextSlots, ordered);
+    setSlots(regroup ? retainInactiveSlots(groups, nextSlots, nextSlots.flat().filter(column => !ordered.includes(column))) : nextSlots);
+    setConsecutive(regroup);
+    onChange({ temperature_columns: groups.flat(), sample_groups: groups });
     rangeAnchor.current = null;
-    setExcludedColumns(old => old.filter(column => column !== selection.ambient_column && column !== selection.current_column));
-    setRemovedTemperatures(old => old.filter(column => column !== selection.ambient_column && column !== selection.current_column));
   }, [selection.ambient_column, selection.current_column, selection.thermocouples_per_sample]);
   const protectedColumn = (column: number) => column <= 2 || column === selection.ambient_column || column === selection.current_column
     || sourceColumnKind(table, selection, column, layout) === 'current';
   const movable = (column: number) => isTemperatureColumn(table, selection, column, layout);
   const snapshot = (): Snapshot => ({ order, excludedColumns, removedTemperatures,
     temperatureColumns: selection.temperature_columns, excludedRows: selection.excluded_rows,
-    slots, sampleGroups: selection.sample_groups, count: selection.thermocouples_per_sample });
+    slots, sampleGroups: selection.sample_groups, count: selection.thermocouples_per_sample, consecutive });
   function commit(next: Snapshot, columnsChanged = false) {
     setHistory(old => [...old, snapshot()]);
     setOrder(next.order); setExcludedColumns(next.excludedColumns); setRemovedTemperatures(next.removedTemperatures);
-    setSlots(next.slots);
-    const groups = includedSamples(next.slots, next.temperatureColumns);
-    const count = columnsChanged ? equalSampleSize(groups) ?? next.count : next.count;
+    const groups = next.consecutive ? partitionSamples(next.temperatureColumns, next.count) : includedSamples(next.slots, next.temperatureColumns);
+    const count = columnsChanged && !next.consecutive ? equalSampleSize(groups) ?? next.count : next.count;
+    setSlots(next.consecutive ? retainInactiveSlots(groups, next.slots,
+      next.slots.flat().filter(column => !next.temperatureColumns.includes(column))) : next.slots);
+    setConsecutive(next.consecutive);
     committedParameters.current = [selection.ambient_column, selection.current_column, count];
     onChange({ temperature_columns: columnsChanged ? groups.flat() : next.temperatureColumns, excluded_rows: next.excludedRows,
       ...(columnsChanged ? { sample_groups: groups, thermocouples_per_sample: count } : {}) });
@@ -99,7 +111,9 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
       const columns = selectedColumns.filter(column => !protectedColumn(column));
       commit({ ...snapshot(), excludedColumns: [...new Set([...excludedColumns, ...columns])],
         removedTemperatures: [...new Set([...removedTemperatures, ...columns.filter(column => selection.temperature_columns.includes(column))])],
-        temperatureColumns: selection.temperature_columns.filter(column => !columns.includes(column)) }, true);
+        temperatureColumns: selection.temperature_columns.filter(column => !columns.includes(column)),
+        // A new exclusion starts from the current complete samples, not stale import groups.
+        consecutive: consecutive && equalSampleSize(includedSamples(slots, selection.temperature_columns)) !== selection.thermocouples_per_sample }, true);
     }
   }
   function restore() {
@@ -111,14 +125,16 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
       const active = new Set([...selection.temperature_columns, ...restored]);
       commit({ ...snapshot(), excludedColumns: excludedColumns.filter(column => !selectedColumns.includes(column)),
         removedTemperatures: removedTemperatures.filter(column => !selectedColumns.includes(column)),
-        temperatureColumns: slots.flat().filter(column => active.has(column) && movable(column)) }, true);
+        temperatureColumns: (consecutive ? order : slots.flat()).filter(column => active.has(column) && movable(column)) }, true);
     }
   }
   function moveBefore(destination: number | null) {
-    const moving = order.filter(column => selectedColumns.includes(column) && movable(column));
+    const moving = displayOrder.filter(column => selectedColumns.includes(column) && movable(column));
     if (!moving.length || (destination !== null && (moving.includes(destination) || !movable(destination)))) return;
-    const next = order.filter(column => !moving.includes(column));
-    const lastTemperature = next.reduce((last, column, index) => movable(column) ? index : last, -1);
+    // Destinations refer to what the operator sees, including excluded columns at the tail.
+    const next = displayOrder.filter(column => !moving.includes(column));
+    const lastTemperature = next.reduce((last, column, index) => selection.temperature_columns.includes(column)
+      && movable(column) ? index : last, 1);
     const index = destination === null ? lastTemperature + 1 : next.indexOf(destination);
     if (index < 0) return;
     next.splice(index, 0, ...moving);
@@ -127,8 +143,7 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
     const temperatureColumns = next.filter(column => active.has(column) && movable(column));
     commit({ ...snapshot(), order: next, excludedColumns: excludedColumns.filter(column => !moving.includes(column)),
       removedTemperatures: removedTemperatures.filter(column => !moving.includes(column)),
-      slots: moveSampleSlots(slots, moving, destination, selection.temperature_columns, temperatureColumns, selection.thermocouples_per_sample),
-      temperatureColumns }, true);
+      consecutive: true, temperatureColumns }, true);
   }
   function undo() {
     const previous = history.at(-1);
@@ -136,6 +151,7 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
     setHistory(old => old.slice(0, -1)); setOrder(previous.order); setExcludedColumns(previous.excludedColumns);
     setRemovedTemperatures(previous.removedTemperatures); setSelectedColumns([]); setSelectedRows([]);
     setSlots(previous.slots);
+    setConsecutive(previous.consecutive);
     rangeAnchor.current = null;
     committedParameters.current = [selection.ambient_column, selection.current_column, previous.count];
     onChange({ temperature_columns: previous.temperatureColumns, excluded_rows: previous.excludedRows,

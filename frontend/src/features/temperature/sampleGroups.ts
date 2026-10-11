@@ -25,34 +25,20 @@ export function equalSampleSize(groups: number[][]): number | null {
   return count && groups.every(group => group.length === count) ? count : null;
 }
 
-export function retainExcludedSlots(groups: number[][], previous: number[][], excluded: number[]): number[][] {
+export function retainInactiveSlots(groups: number[][], previous: number[][], inactive: number[]): number[][] {
+  // With all channels temporarily suspended there is no new group to own their slots.
+  // Retain the last layout so returning a role cannot permanently lose the last channel.
+  if (!groups.length) return previous.map(group => [...group]);
   const next = groups.map(group => [...group]);
   previous.forEach((group, index) => {
     const owner = next.findIndex(candidate => candidate.some(column => group.includes(column)));
     const target = next[owner < 0 ? Math.min(index, next.length - 1) : owner];
     if (!target) return;
     group.forEach((column, position) => {
-      if (!excluded.includes(column)) return;
+      if (!inactive.includes(column)) return;
       const following = group.slice(position + 1).find(item => target.includes(item));
       target.splice(following === undefined ? target.length : target.indexOf(following), 0, column);
     });
   });
-  return next;
-}
-
-// Explicit moves may regroup complete blocks. While repairing an incomplete block,
-// the destination's retained slot identifies its sample (even for an excluded column).
-export function moveSampleSlots(slots: number[][], moving: number[], destination: number | null,
-  active: number[], orderedActive: number[], count: number): number[][] {
-  if (equalSampleSize(includedSamples(slots, active)) === count && moving.every(column => active.includes(column))) {
-    const regrouped = partitionSamples(orderedActive, count);
-    return retainExcludedSlots(regrouped, slots, slots.flat().filter(column => !active.includes(column)));
-  }
-  const owner = destination === null ? slots.length - 1 : slots.findIndex(group => group.includes(destination));
-  const target = owner < 0 ? slots.length - 1 : owner;
-  const next = slots.map(group => group.filter(column => !moving.includes(column)));
-  if (target < 0) return [moving];
-  const position = destination === null ? -1 : next[target].indexOf(destination);
-  next[target].splice(position < 0 ? next[target].length : position, 0, ...moving);
   return next;
 }

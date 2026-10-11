@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, MouseEvent } from 'react';
 import type { ChannelLayout, DataIssue, DataSelection, WorkbookTable } from '../../api/temperature';
 import { ColumnActions, type ColumnMenuAnchor } from './ColumnActions';
-import { columnLetter, incompleteSampleGroups } from './sourceColumns';
+import { incompleteSampleGroups } from './sourceColumns';
 import { formatSourceReading, sourcePresentation } from './sourcePresentation';
 import { scanLabel } from './sourceScan';
 import { sampleGroups } from './sampleGroups';
@@ -22,7 +22,7 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   const closeMenu = useCallback(() => setMenu(null), []);
   const columns = useMemo(() => sourcePresentation(table, selection, layout),
     [table, selection.header_row, selection.start_row, selection.end_row, selection.ambient_column,
-      selection.current_column, selection.temperature_columns, layout]);
+      selection.current_column, selection.temperature_columns, selection.channel_names, layout]);
   const columnsById = useMemo(() => new Map(columns.map(column => [column.id, column])), [columns]);
   const columnWidth = (column: number) => columnsById.get(column)!.width;
   const incomplete = incompleteSampleGroups(selection, layout);
@@ -55,7 +55,7 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   };
   const headerClass = (column: number) => [column === 1 ? 'temperature-index-scan' : column === 2 ? 'temperature-index-time' : '',
     grid.selectedColumns.includes(column) ? 'is-selected-column' : '',
-    grid.excludedColumns.includes(column) ? 'is-excluded-column' : ''].filter(Boolean).join(' ');
+    grid.excludedColumns.includes(column) && !grid.protectedColumn(column) ? 'is-excluded-column' : ''].filter(Boolean).join(' ');
   function openMenu(column: number, trigger: HTMLElement, point?: { left: number; top: number }) {
     if (disabled || !grid.movable(column)) return;
     if (!grid.selectedColumns.includes(column) || grid.selectedColumns.some(selected => !grid.movable(selected))) grid.selectColumns([column]);
@@ -92,7 +92,7 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
           {grid.order.map(column => <th key={column} className={[headerClass(column), groupClass(column)].filter(Boolean).join(' ')}
             ref={element => { if (element) columnHeaders.current.set(column, element); else columnHeaders.current.delete(column); }}
             tabIndex={!grid.protectedColumn(column) && !disabled ? 0 : undefined}
-            aria-label={column > 2 ? columnsById.get(column)!.label : undefined}
+            aria-label={`Source Column ${column}: ${columnsById.get(column)!.label}`}
             aria-selected={!grid.protectedColumn(column) ? grid.selectedColumns.includes(column) : undefined}
             aria-description={groupLabel(column) || undefined}
             title={groupLabel(column) || undefined}
@@ -109,9 +109,17 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
                 event.preventDefault(); closeMenu(); grid.selectColumn(column, event);
               }
             }}>
-            <div className="temperature-source-column"><span>{columnLetter(column)}</span></div>
             <span className="temperature-source-title" title={columnsById.get(column)!.original}>
-              {columnsById.get(column)!.heading.map((line, index) => <span key={index}>{line}</span>)}</span>
+              {columnsById.get(column)!.kind === 'temperature' && column > 2 ? <>
+                {columnsById.get(column)!.channel && <span>{columnsById.get(column)!.heading[0]}</span>}
+                <input type="text" className="temperature-measurement-name" maxLength={200} disabled={disabled}
+                  aria-label={`Measurement Name, ${columnsById.get(column)!.channel ? `Channel ${columnsById.get(column)!.channel}` : `Source ${column}`}`}
+                  value={columnsById.get(column)!.name} placeholder="Measurement name"
+                  onClick={event => event.stopPropagation()} onContextMenu={event => event.stopPropagation()}
+                  onKeyDown={event => { event.stopPropagation(); if (event.key === 'Enter') event.currentTarget.blur(); }}
+                  onChange={event => onChange({ channel_names: { ...selection.channel_names, [column]: event.target.value } })} />
+                {!columnsById.get(column)!.channel && column === selection.ambient_column && <span>(°C)</span>}
+              </> : columnsById.get(column)!.heading.map((line, index) => <span key={index}>{line}</span>)}</span>
             {role(column) && <span className="temperature-source-role" title={role(column)}>{role(column)}</span>}</th>)}</tr></thead>
         <tbody>
           {rowWindow.topPadding > 0 && <tr aria-hidden="true" className="temperature-row-spacer"><td colSpan={grid.order.length + 1} style={{ height: rowWindow.topPadding }} /></tr>}

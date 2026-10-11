@@ -1,8 +1,63 @@
 # Temperature Rise and Derating Tool
 
-Status: implemented. Current refinement: contiguous effective temperature columns and reversible,
-sample-preserving exclusion. Compact charts, automatic generation after confirmation and scan-based
-operator feedback remain in place.
+Status: implemented. Current refinement (2026-10-11): editable measurement names, stable source
+identity, reversible ambient-role suspension and consecutive regrouping after explicit moves.
+Compact charts, automatic generation after confirmation and scan-based feedback remain in place.
+
+## Source identity, names and edit state
+
+The source preview no longer displays Excel column letters. Scan/time titles and scanner channel
+numbers remain visible. A temperature header's measurement name is a text field; clicking it edits
+the name without selecting/moving the column. Original source indices remain the immutable internal
+keys even after moves, exclusion, restoration or renaming. Channel numbers and names are metadata,
+not identifiers; duplicate names therefore cannot exchange readings or change sample membership.
+
+`selection.channel_names` is an optional source-indexed JSON object. The domain stores immutable
+pairs, and the import endpoint projects an object (including `{}`), not a tuple/list. Names are bounded
+to 200 characters and existing non-index source columns, with control characters rejected. Renaming
+invalidates confirmed/generated results through the existing data-change path; confirm again before
+download. The T-riseChart summary uses the edited name, or the original unit-free instrument name
+when not edited; an explicitly blank name falls back to the sample's T-number. Names are written as
+literal Excel strings. Source headers, full-precision readings and numerical calculations stay intact.
+
+Roles, exclusion and grouping are separate state. Choosing an effective thermocouple as ambient
+temporarily suspends it; returning to the previous ambient restores its retained slot. A previously
+excluded channel remains excluded through that roundtrip. This includes the last effective channel.
+Exclusion alone retains established sample membership (the imported groups until an explicit move);
+balanced exclusions update TC/Sample, whereas uneven/empty samples block confirmation.
+
+Every explicit move uses the displayed destination position, including excluded destinations at
+the tail, and partitions the current effective column order using the current TC/Sample,
+including moves from incomplete groups. It does not silently increase TC/Sample when a spare is
+added. Restoring a column after a move follows this new order rather than resurrecting old groups;
+the next exclusion from complete groups preserves those newly established groups. Undo restores
+the prior grouping mode, slots, order and exclusions. Later role/count choices clear obsolete Undo
+history but do not discard excluded channels or measurement names.
+
+Regression evidence: name editing/request propagation; reordered Excel labels/default/blank names
+and formula-like literal names; rejected invalid names; balanced exclusions with repeated ambient
+changes; last-channel suspension; incomplete cross-sample move/restore/Undo; complete import,
+prepare, analysis and download roundtrips. Final results: 68 frontend tests, 97 backend tests and
+TypeScript/Vite build passed. The first full backend run caught an import-response array/object
+mismatch; it was fixed at the HTTP boundary and all 97 tests rerun successfully. The existing
+Starlette/httpx deprecation warning is non-blocking. Focused review also caught movement using an
+excluded destination's original rather than displayed position; a failing grid test reproduced it,
+the move was aligned with display order, and the final frontend matrix/build were rerun.
+
+Review: sequential same-agent Standards and Spec passes, zero outstanding findings on each axis.
+Methods: TDD and code-review. Browser visual QA is unavailable because the required runtime import
+returns EPERM at realpath; no browser session/actions were acquired. Actual Excel bytes were tested
+with openpyxl, not native Office. Native visual rendering remains unverified. Original files and the
+User's browser tab were not operated; development hot refresh may require reimporting the data.
+
+Revision paths: backend `api/routes_tools_temperature.py`, `api/temperature_schemas.py`,
+`application/temperature_data_preparation.py`, `domain/temperature_data.py`,
+`infrastructure/office/temperature_rise_report_sheet.py`; frontend `api/temperature.ts`,
+`pages/TemperatureRisePage.tsx`, `pages/TemperatureRisePage.test.tsx`, feature files `ColumnActions.tsx`,
+`DataPreview.tsx`, `DataPreview.test.tsx`, `sampleGroups.ts`, `sourceColumns.ts`, `sourcePresentation.ts`,
+`temperature.css`, `useDataGridEditing.ts` under `src/features/temperature/`; tests
+`integration/test_tools_temperature_api.py`, `unit/test_temperature_workbook_gateway.py`; this document.
+The board is lifecycle-only. No original workbook, project record or database schema is mutated.
 
 ## Effective-column grouping
 
@@ -78,11 +133,11 @@ The extra Sample header band is removed; alternating restrained header tones, a 
 accessible/hover sample descriptions identify consecutive groups. Electrical columns are protected
 and never counted as thermocouples.
 
-Exclusion retains the original sample slots. Removing TC2 from every four-TC sample automatically
+Exclusion retains the established sample slots. Removing TC2 from every four-TC sample automatically
 changes the count to three and preserves per-sample maxima/average-of-maxima. Restore and Undo retain
 membership and count. Uneven/empty groups block confirmation even when the total is divisible.
-Spare moves into an incomplete group's retained slot repair that sample; explicit moves of complete
-blocks or a manual count edit can establish new consecutive groups. Later role/count decisions clear
+Explicit moves, including spare moves from incomplete groups, or a manual count edit establish
+new consecutive groups by current effective order and TC/Sample. Later role/count decisions clear
 older Undo history, but unrelated excluded channels remain restorable.
 
 The optional `selection.sample_groups` carries active source-column groups through preparation,

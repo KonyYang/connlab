@@ -218,7 +218,7 @@ def test_report_export_has_traceable_key_readings_and_copyable_formula_summary(t
     block = sheet[summary.replace('$', '')]
     assert block[0][0].value == 'Applied Current (A)'
     labels = [row[0].value for row in block]
-    assert labels[1:6] == ['1#- T1', '1#- T2', '1#- T3', '1#- T4', '1# Max T-Rise']
+    assert labels[1:6] == ['1#- TC1', '1#- TC2', '1#- TC3', '1#- TC4', '1# Max T-Rise']
     assert labels[-2:] == ['Max T-Rise', 'Avg of max T-Rise on each sample']
     assert block[1][2].data_type == 'f'
     assert block[5][2].value.startswith('=MAX(')

@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
     "summary": "Normalize temperature editor columns and preserve sample groups through balanced exclusions",
@@ -32,86 +32,17 @@
     "risk_reasons": [],
     "activation_head": "ab95f5e485be65a6626bc67e8f493b66b0fbc42b",
     "started_at": "2026-10-09T00:07:00.551432Z",
-    "updated_at": "2026-10-10T13:35:43.261987Z",
+    "updated_at": "2026-10-11T00:40:27.137154Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User approved editable names in Excel output, hidden letters, reversible ambient roles and consecutive regrouping after moves",
       "requires_user": false
     },
-    "report": {
-      "subject": "12d77ebd055d8127debae18c775b1ecdf0fe7102",
-      "schema": "connlab.sol-task-report",
-      "validation": [
-        {
-          "name": "TDD submenu regression",
-          "status": "passed",
-          "details": "New public grid/menu test failed against the native dropdown, then passed after implementation; no mutation on opening, keyboard entry/return, immediate movement and Undo covered."
-        },
-        {
-          "name": "Affected frontend matrix",
-          "status": "passed",
-          "details": "60 tests passed on final code/test bytes: 29 DataPreview and 31 TemperatureRisePage. Protected roles, spare/block moves, focus and narrow-viewport right-side positioning covered."
-        },
-        {
-          "name": "Production build",
-          "status": "passed",
-          "details": "TypeScript and Vite production build passed sequentially after affected tests."
-        },
-        {
-          "name": "Exact diff checks",
-          "status": "passed",
-          "details": "git diff --check passed. Same-agent sequential Standards and Spec reviews found zero outstanding code findings; visual verification remains a disclosed limitation, not a passing browser check."
-        }
-      ],
-      "integration": {
-        "context": "local master",
-        "status": "passed",
-        "details": "Clean local commit 12d77ebd055d8127debae18c775b1ecdf0fe7102; cumulative task changes retained, no Close or publication."
-      },
-      "summary": "Move Before now uses a black right-pointing triangle and right-side independently scrollable submenu; immediate movement and undo retained. Actual browser visual verification remains unavailable due to browser-runtime EPERM.",
-      "roles": {
-        "reviewer": {
-          "context": "same-agent sequential Standards and Spec passes",
-          "status": "passed",
-          "details": "Exact diff reviewed against user right-side submenu request and repository standards. Zero outstanding findings per axis. Fixed ArrowRight re-entry focus during review."
-        },
-        "developer": {
-          "context": "same agent",
-          "status": "passed",
-          "details": "TDD RED/GREEN; existing menu boundary and movement handlers retained without new dependency or numerical/source mutation."
-        },
-        "qa": {
-          "context": "same-agent bounded automated QA",
-          "status": "passed",
-          "details": "60 affected tests and production build passed. No actual browser verification: required runtime import failed EPERM during realpath on exact path and file URL retry. No session acquired or user-tab operation; popup rendering remains a visual risk."
-        }
-      },
-      "version": 1,
-      "changed_paths": [
-        "backend/api/temperature_schemas.py",
-        "backend/application/temperature_data_preparation.py",
-        "backend/domain/temperature_data.py",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/api/temperature.ts",
-        "frontend/src/features/temperature/ColumnActions.tsx",
-        "frontend/src/features/temperature/DataPreview.test.tsx",
-        "frontend/src/features/temperature/DataPreview.tsx",
-        "frontend/src/features/temperature/sampleGroups.ts",
-        "frontend/src/features/temperature/sourceColumns.ts",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useDataGridEditing.ts",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_data_preparation.py"
-      ],
-      "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
-      "scope_ok": true
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",

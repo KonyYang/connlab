@@ -16,7 +16,7 @@ from openpyxl.utils import get_column_letter, quote_sheetname
 from openpyxl.workbook.defined_name import DefinedName
 
 from backend.domain.temperature_rise import calculate_current
-from backend.domain.temperature_data import UNPOWERED_CURRENT_THRESHOLD
+from backend.domain.temperature_data import UNPOWERED_CURRENT_THRESHOLD, measurement_name
 
 MAX_COLOR = 'FFA500'
 AVG_COLOR = '00008B'
@@ -28,7 +28,7 @@ def build_rise_report(sheet, *, table, selection, analysis, maximum, average, ta
     rise_header = len(stages) + 6
     rise_rows = _stage_rises(sheet, selection, stages, raw_rows, raw_columns, rise_header, caches)
     summary_header = rise_header + len(stages) + 6
-    maximum_row, average_row = _summary(sheet, selection, analysis, rise_rows, summary_header, caches)
+    maximum_row, average_row = _summary(sheet, table, selection, analysis, rise_rows, summary_header, caches)
     calculator_header = average_row + 2
     _calculator(sheet, maximum, analysis.maximum_fit, target, calculator_header, caches)
     _average_inputs(sheet, average, analysis.average_fit, calculator_header + 3, calculator_header + 8, caches)
@@ -162,13 +162,14 @@ def _stage_rises(sheet, selection, stages, raw_rows, raw_columns, header, caches
     return locations
 
 
-def _summary(sheet, selection, analysis, rise_rows, header, caches):
+def _summary(sheet, table, selection, analysis, rise_rows, header, caches):
     channels = len(selection.temperature_columns)
     samples, count = len(analysis.points[0].sample_maxima), selection.thermocouples_per_sample
     _literal(sheet, header, 1, 'Applied Current (A)')
     for slot, column in enumerate(selection.temperature_columns):
         row = header + 1 + slot + slot // count
-        _literal(sheet, row, 1, f'{slot // count + 1}#- T{slot % count + 1}')
+        name = measurement_name(table, selection, column) or f'T{slot % count + 1}'
+        _literal(sheet, row, 1, f'{slot // count + 1}#- {name}')
         sheet.cell(row, 1).comment = Comment(
             f'Confirmed Sample {slot // count + 1}, thermocouple {slot % count + 1}; source column {get_column_letter(column)}. '
             'See Initial Data for the complete original channel label.', 'ConnLab')

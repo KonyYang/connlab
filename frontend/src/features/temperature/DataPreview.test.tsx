@@ -23,13 +23,13 @@ function Editor({ withParameters = false, source = table, starting = initial, im
   return <>{withParameters && <label>Ambient Role<select value={selection.ambient_column} onChange={event => {
     const ambient_column = Number(event.target.value);
     setSelection(old => ({ ...old, ambient_column, temperature_columns: old.temperature_columns.filter(column => column !== ambient_column) }));
-  }}>{table.rows[0].map((_, index) => <option key={index} value={index + 1}>{index + 1}</option>)}</select></label>}
+  }}>{source.rows[0].map((_, index) => <option key={index} value={index + 1}>{index + 1}</option>)}</select></label>}
     <DataPreview table={source} selection={selection} layout={importedLayout} issues={[]} disabled={false}
     onChange={patch => setSelection(old => ({ ...old, ...patch }))} />
     <output aria-label="Prepared Selection">{JSON.stringify(selection)}</output></>;
 }
 function selected() { return JSON.parse(screen.getByLabelText('Prepared Selection').textContent!) as DataSelection; }
-function columnHeader(letter: string) { return screen.getByRole('columnheader', { name: new RegExp(`^${letter} — `) }); }
+function columnHeader(letter: string) { return screen.getByRole('columnheader', { name: new RegExp(`^Source Column ${letter.charCodeAt(0) - 64}: `) }); }
 function openColumn(letter: string) { fireEvent.contextMenu(columnHeader(letter)); }
 
 describe('column header selection', () => {
@@ -100,10 +100,10 @@ describe('column header selection', () => {
     fireEvent.keyDown(columnHeader('E'), { key: ' ' });
     fireEvent.keyDown(columnHeader('F'), { key: 'Enter', shiftKey: true });
     fireEvent.keyDown(columnHeader('E'), { key: 'F10', shiftKey: true });
-    const menu = screen.getByRole('dialog', { name: 'Column E Actions' });
+    const menu = screen.getByRole('dialog', { name: 'Column 5 Actions' });
     expect(screen.getByText('2 Selected')).toBeTruthy();
     await user.click(within(menu).getByRole('button', { name: 'Move Before', exact: true }));
-    await user.click(screen.getByRole('menuitem', { name: 'C — 101 1_A' }));
+    await user.click(screen.getByRole('menuitem', { name: '101 1_A' }));
     expect(selected().temperature_columns).toEqual([5, 6, 3, 4]);
     fireEvent.click(columnHeader('F'));
     fireEvent.click(columnHeader('C'), { shiftKey: true });
@@ -113,7 +113,7 @@ describe('column header selection', () => {
   });
 });
 
-function FourThermocoupleEditor() {
+function FourThermocoupleEditor({ withParameters = false }: { withParameters?: boolean }) {
   const source: WorkbookTable = { ...table, rows: [
     ['Scan', 'Time', ...Array.from({ length: 12 }, (_, index) =>
       `${101 + index} <${Math.floor(index / 4) + 1}_T${index % 4 + 1}> (C)`), 'Ambient (C)', 'Current (VDC)'],
@@ -121,7 +121,7 @@ function FourThermocoupleEditor() {
   ] };
   const starting = { ...initial, end_row: 2, temperature_columns: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
     thermocouples_per_sample: 4, ambient_column: 15, current_column: 16 };
-  return <Editor source={source} starting={starting} importedLayout={{ ...layout, ...starting,
+  return <Editor withParameters={withParameters} source={source} starting={starting} importedLayout={{ ...layout, ...starting,
     current_columns: [16], stable_current_columns: [],
     sample_groups: [{ sample_id: '1', columns: [3, 4, 5, 6] }, { sample_id: '2', columns: [7, 8, 9, 10] },
       { sample_id: '3', columns: [11, 12, 13, 14] }] }} />;
@@ -137,6 +137,24 @@ function LongEditor({ end = 900 }: { end?: number }) {
 }
 
 describe('continuous source row selection', () => {
+  it('preserves balanced exclusions and original sample ownership through repeated ambient-role changes', async () => {
+    const user = userEvent.setup();
+    render(<FourThermocoupleEditor withParameters />);
+    for (const letter of ['D', 'H', 'L']) fireEvent.click(columnHeader(letter), { ctrlKey: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    for (let cycle = 0; cycle < 3; cycle++) {
+      await user.selectOptions(screen.getByLabelText('Ambient Role'), '3');
+      expect(selected().sample_groups).toEqual([[5, 6], [7, 9, 10], [11, 13, 14]]);
+      await user.selectOptions(screen.getByLabelText('Ambient Role'), '15');
+      expect(selected().sample_groups).toEqual([[3, 5, 6], [7, 9, 10], [11, 13, 14]]);
+      expect(selected().thermocouples_per_sample).toBe(3);
+      expect(screen.queryByRole('alert')).toBeNull();
+    }
+    for (const letter of ['D', 'H', 'L']) fireEvent.click(columnHeader(letter), { ctrlKey: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    expect(selected().sample_groups).toEqual([[3, 4, 5, 6], [7, 8, 9, 10], [11, 12, 13, 14]]);
+    expect(selected().thermocouples_per_sample).toBe(4);
+  });
   it('preserves three original samples when their second thermocouples are excluded, restores them and undoes both count changes', () => {
     render(<FourThermocoupleEditor />);
     for (const letter of ['D', 'H', 'L']) fireEvent.click(columnHeader(letter), { ctrlKey: true });
@@ -147,7 +165,7 @@ describe('continuous source row selection', () => {
     expect(screen.getByText('3 Samples · 3 TC/Sample · 9 Channels')).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
     const headers = screen.getAllByRole('columnheader');
-    expect(headers.slice(-3).map(header => header.getAttribute('aria-label')?.split(' ')[0])).toEqual(['D', 'H', 'L']);
+    expect(headers.slice(-3)).toEqual(['D', 'H', 'L'].map(columnHeader));
     for (const letter of ['D', 'H', 'L']) fireEvent.click(columnHeader(letter), { ctrlKey: true });
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
     expect(selected().thermocouples_per_sample).toBe(4);
@@ -168,10 +186,9 @@ describe('continuous source row selection', () => {
       current_columns: [6, 9], stable_current_columns: [9],
       sample_groups: [{ sample_id: '1', columns: [3, 4] }, { sample_id: '2', columns: [7, 8] }] }} />);
     const headers = within(screen.getByRole('region', { name: 'Scanner Data Preview' })).getAllByRole('columnheader');
-    expect(within(headers[1]).getByText('A', { exact: true })).toBeTruthy();
-    expect(within(headers[2]).getByText('B', { exact: true })).toBeTruthy();
-    expect(headers.slice(3).map(header => header.getAttribute('aria-label')?.split(' ')[0]))
-      .toEqual(['C', 'D', 'G', 'H', 'E', 'F', 'I', 'J']);
+    expect(within(headers[1]).queryByText('A', { exact: true })).toBeNull();
+    expect(within(headers[2]).queryByText('B', { exact: true })).toBeNull();
+    expect(headers.slice(3)).toEqual(['C', 'D', 'G', 'H', 'E', 'F', 'I', 'J'].map(columnHeader));
     expect(screen.queryByText('Sample 1', { exact: true })).toBeNull();
     expect(headers[3].getAttribute('aria-description')).toBe('Sample 1');
     expect(headers[5].getAttribute('aria-description')).toBe('Sample 2');
@@ -251,6 +268,59 @@ describe('continuous source row selection', () => {
 });
 
 describe('unified scanner data editing', () => {
+  it('moves before an excluded destination at its displayed tail position rather than its original slot', async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    await user.click(columnHeader('D'));
+    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    openColumn('C');
+    await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
+    await user.click(screen.getByRole('menuitem', { name: '102 1_B' }));
+    expect(selected().temperature_columns).toEqual([5, 6, 3]);
+    expect(selected().sample_groups).toEqual([[5, 6], [3]]);
+    await user.click(columnHeader('D'));
+    await user.click(screen.getByRole('button', { name: 'Restore' }));
+    expect(selected().temperature_columns).toEqual([5, 6, 3, 4]);
+    expect(selected().sample_groups).toEqual([[5, 6], [3, 4]]);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+  it('restores the last effective channel after a move and repeated ambient suspension without losing its name', async () => {
+    const user = userEvent.setup();
+    render(<Editor withParameters starting={{ ...initial, temperature_columns: [3], sample_groups: [[3]], thermocouples_per_sample: 1 }} />);
+    fireEvent.change(screen.getByLabelText('Measurement Name, Channel 101'), { target: { value: 'Renamed (VDC)' } });
+    openColumn('C');
+    await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
+    await user.click(screen.getByRole('menuitem', { name: 'End Of Temperature Columns' }));
+    for (let cycle = 0; cycle < 3; cycle++) {
+      await user.selectOptions(screen.getByLabelText('Ambient Role'), '3');
+      expect(selected().temperature_columns).toEqual([]);
+      await user.selectOptions(screen.getByLabelText('Ambient Role'), '7');
+      expect(selected().temperature_columns).toEqual([3]);
+      expect(selected().sample_groups).toEqual([[3]]);
+      expect(screen.getByLabelText('Measurement Name, Channel 101').getAttribute('value')).toBe('Renamed (VDC)');
+    }
+    expect(table.rows[0][2]).toBe('101 <1_A> (C)');
+  });
+  it('uses consecutive effective columns after an incomplete cross-sample move and restoration, with undo', async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    await user.click(columnHeader('D'));
+    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    openColumn('C');
+    await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
+    await user.click(screen.getByRole('menuitem', { name: '104 2_B' }));
+    await user.click(columnHeader('D'));
+    await user.click(screen.getByRole('button', { name: 'Restore', exact: true }));
+    expect(selected().temperature_columns).toEqual([5, 3, 6, 4]);
+    expect(selected().sample_groups).toEqual([[5, 3], [6, 4]]);
+    expect(selected().thermocouples_per_sample).toBe(2);
+    expect(screen.queryByRole('alert')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(selected().temperature_columns).toEqual([5, 3, 6]);
+    expect(screen.getByRole('alert').textContent).toContain('Incomplete sample group');
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(selected().temperature_columns).toEqual([3, 5, 6]);
+  });
   it('opens move destinations as a submenu without changing data and supports keyboard return and selection', async () => {
     const user = userEvent.setup();
     render(<Editor />);
@@ -263,13 +333,13 @@ describe('unified scanner data editing', () => {
     const destinations = screen.getByRole('menu', { name: 'Move Before Destinations' });
     expect(move.getAttribute('aria-expanded')).toBe('true');
     expect(selected()).toEqual(initial);
-    expect(document.activeElement).toBe(within(destinations).getByRole('menuitem', { name: 'C — 101 1_A' }));
+    expect(document.activeElement).toBe(within(destinations).getByRole('menuitem', { name: '101 1_A' }));
     await user.tab({ shift: true });
     expect(document.activeElement).toBe(move);
     await user.keyboard('{ArrowRight}');
-    expect(document.activeElement).toBe(within(destinations).getByRole('menuitem', { name: 'C — 101 1_A' }));
+    expect(document.activeElement).toBe(within(destinations).getByRole('menuitem', { name: '101 1_A' }));
     await user.keyboard('{ArrowDown}');
-    expect(document.activeElement).toBe(within(destinations).getByRole('menuitem', { name: 'D — 102 1_B' }));
+    expect(document.activeElement).toBe(within(destinations).getByRole('menuitem', { name: '102 1_B' }));
     await user.keyboard('{ArrowLeft}');
     expect(screen.queryByRole('menu')).toBeNull();
     expect(document.activeElement).toBe(move);
@@ -277,7 +347,7 @@ describe('unified scanner data editing', () => {
     await user.keyboard('{End}');
     expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'End Of Temperature Columns' }));
     await user.keyboard('{Home}');
-    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'C — 101 1_A' }));
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: '101 1_A' }));
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('menu')).toBeNull();
     expect(screen.getByRole('dialog')).toBeTruthy();
@@ -285,7 +355,7 @@ describe('unified scanner data editing', () => {
     await user.click(move);
     fireEvent.scroll(screen.getByRole('menu'), { target: { scrollTop: 100 } });
     expect(screen.getByRole('menu')).toBeTruthy();
-    await user.click(screen.getByRole('menuitem', { name: 'C — 101 1_A' }));
+    await user.click(screen.getByRole('menuitem', { name: '101 1_A' }));
     expect(selected().temperature_columns).toEqual([5, 3, 4, 6]);
     expect(screen.queryByRole('dialog')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Undo' }));
@@ -319,14 +389,14 @@ describe('unified scanner data editing', () => {
     const user = userEvent.setup();
     render(<Editor />);
     openColumn('E');
-    const menu = screen.getByRole('dialog', { name: 'Column E Actions' });
+    const menu = screen.getByRole('dialog', { name: 'Column 5 Actions' });
     const destination = within(menu).getByRole('button', { name: 'Move Before', exact: true });
     expect(destination.getAttribute('aria-expanded')).toBe('false');
     expect(within(menu).queryByText('Choose Column', { exact: true })).toBeNull();
     expect(selected()).toEqual(initial);
     expect(within(menu).queryByRole('button', { name: 'Move', exact: true })).toBeNull();
     await user.click(destination);
-    await user.click(screen.getByRole('menuitem', { name: 'C — 101 1_A' }));
+    await user.click(screen.getByRole('menuitem', { name: '101 1_A' }));
     expect(selected().temperature_columns).toEqual([5, 3, 4, 6]);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(columnHeader('E'));
@@ -347,8 +417,8 @@ describe('unified scanner data editing', () => {
     const user = userEvent.setup();
     render(<Editor />);
     openColumn('C');
-    const menu = screen.getByRole('dialog', { name: 'Column C Actions' });
-    expect(within(menu).queryByText('C — 101 1_A', { exact: true })).toBeNull();
+    const menu = screen.getByRole('dialog', { name: 'Column 3 Actions' });
+    expect(within(menu).queryByText('101 1_A', { exact: true })).toBeNull();
     expect(within(menu).queryByRole('button', { name: 'Close Column Actions' })).toBeNull();
     const exclude = within(menu).getByRole('button', { name: 'Exclude Column', exact: true });
     expect(document.activeElement).toBe(exclude);
@@ -371,11 +441,11 @@ describe('unified scanner data editing', () => {
     source.rows[0][7] = '320 <Current> (VDC)';
     source.rows[0][9] = '315 <High Power> (VDC)';
     render(<DataPreview table={source} selection={initial} layout={layout} issues={[]} disabled={false} onChange={() => undefined} />);
-    const ambient = screen.getByRole('columnheader', { name: 'G — 318 (°C) Ambient T' });
-    const current = screen.getByRole('columnheader', { name: 'H — 320 (A) Current' });
-    const auxiliary = screen.getByRole('columnheader', { name: 'J — 315 (A) High Power' });
+    const ambient = screen.getByRole('columnheader', { name: 'Source Column 7: 318 (°C) Ambient T' });
+    const current = screen.getByRole('columnheader', { name: 'Source Column 8: 320 (A) Current' });
+    const auxiliary = screen.getByRole('columnheader', { name: 'Source Column 10: 315 (A) High Power' });
     expect(within(ambient).getByText('318 (°C)')).toBeTruthy();
-    expect(within(ambient).getByText('Ambient T')).toBeTruthy();
+    expect(within(ambient).getByDisplayValue('Ambient T')).toBeTruthy();
     expect(within(current).getByText('320 (A)')).toBeTruthy();
     expect(within(auxiliary).getByText('315 (A)')).toBeTruthy();
     expect(source.rows[0][6]).toBe('318 <Ambient T> (C)');
@@ -383,9 +453,9 @@ describe('unified scanner data editing', () => {
 
   it('shows Celsius for ambient and amperes for every current column without inactive controls or repeated role captions', () => {
     render(<Editor />);
-    const ambient = screen.getByRole('columnheader', { name: 'G — Ambient (°C)', exact: true });
-    const current = screen.getByRole('columnheader', { name: 'H — Current (A)', exact: true });
-    const auxiliary = screen.getByRole('columnheader', { name: 'J — Aux (A)', exact: true });
+    const ambient = screen.getByRole('columnheader', { name: 'Source Column 7: Ambient (°C)', exact: true });
+    const current = screen.getByRole('columnheader', { name: 'Source Column 8: Current (A)', exact: true });
+    const auxiliary = screen.getByRole('columnheader', { name: 'Source Column 10: Aux (A)', exact: true });
     for (const header of [ambient, current, auxiliary]) {
       expect(within(header).queryByRole('checkbox')).toBeNull();
       expect(header.getAttribute('tabindex')).toBeNull();
@@ -393,7 +463,8 @@ describe('unified scanner data editing', () => {
       fireEvent.contextMenu(header);
       expect(screen.queryByRole('dialog')).toBeNull();
     }
-    expect(within(ambient).getByText('Ambient (°C)')).toBeTruthy();
+    expect(within(ambient).getByDisplayValue('Ambient')).toBeTruthy();
+    expect(within(ambient).getByText('(°C)')).toBeTruthy();
     expect(within(ambient).queryByText('Ambient', { exact: true })).toBeNull();
     expect(within(current).getByText('Current (A)')).toBeTruthy();
     expect(within(current).queryByText('Current', { exact: true })).toBeNull();
@@ -419,7 +490,7 @@ describe('unified scanner data editing', () => {
     const header = columnHeader('C');
     expect(header.textContent).not.toContain('(C)');
     expect(header.textContent).not.toContain('Sample 1 / TC 1');
-    const currentHeader = screen.getByRole('columnheader', { name: 'H — High Power (A)' });
+    const currentHeader = screen.getByRole('columnheader', { name: 'Source Column 8: High Power (A)' });
     expect(currentHeader.textContent).toContain('High Power (A)');
     expect(currentHeader.textContent).not.toContain('VDC');
     expect(source.rows[1][2]).toBe(24.987654);
@@ -430,24 +501,24 @@ describe('unified scanner data editing', () => {
   it('opens column operations by right-click without dropdown buttons and preserves a selected block', async () => {
     const user = userEvent.setup();
     render(<Editor />);
-    expect(screen.queryByRole('button', { name: 'Column C Actions' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Column 3 Actions' })).toBeNull();
     const header = columnHeader('C');
     fireEvent.click(header);
     expect(header.getAttribute('aria-selected')).toBe('true');
     fireEvent.click(columnHeader('D'), { ctrlKey: true });
     fireEvent.contextMenu(header, { clientX: 200, clientY: 120 });
-    const menu = screen.getByRole('dialog', { name: 'Column C Actions' });
+    const menu = screen.getByRole('dialog', { name: 'Column 3 Actions' });
     expect(screen.getByText('2 Selected')).toBeTruthy();
     await user.click(within(menu).getByRole('button', { name: 'Exclude Columns' }));
     expect(selected().temperature_columns).toEqual([5, 6]);
     header.focus();
     fireEvent.keyDown(header, { key: 'F10', shiftKey: true });
-    expect(screen.getByRole('dialog', { name: 'Column C Actions' })).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'Column 3 Actions' })).toBeTruthy();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(header);
     fireEvent.contextMenu(screen.getByRole('cell', { name: '24.1', exact: true }), { clientX: 180, clientY: 220 });
-    expect(screen.getByRole('dialog', { name: 'Column C Actions' })).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'Column 3 Actions' })).toBeTruthy();
   });
 
   it('keeps A/B as index-only columns without selection or move controls and omits Original Row', async () => {
@@ -456,11 +527,11 @@ describe('unified scanner data editing', () => {
     expect(screen.queryByRole('columnheader', { name: 'Original Row' })).toBeNull();
     expect(screen.queryByLabelText('Select Column A')).toBeNull();
     expect(screen.queryByLabelText('Select Column B')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Column A Actions' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Column B Actions' })).toBeNull();
-    expect(screen.getByRole('columnheader', { name: 'A Scan' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'B Time' })).toBeTruthy();
-    for (const name of ['A Scan', 'B Time']) {
+    expect(screen.queryByRole('button', { name: 'Column 1 Actions' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Column 2 Actions' })).toBeNull();
+    expect(screen.getByRole('columnheader', { name: 'Source Column 1: Scan' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'Source Column 2: Time' })).toBeTruthy();
+    for (const name of ['Source Column 1: Scan', 'Source Column 2: Time']) {
       const header = screen.getByRole('columnheader', { name });
       fireEvent.click(header, { ctrlKey: true });
       expect(header.getAttribute('aria-selected')).toBeNull();
@@ -469,8 +540,8 @@ describe('unified scanner data editing', () => {
     openColumn('I');
     await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
     const destination = screen.getByRole('menu', { name: 'Move Before Destinations' });
-    for (const letter of ['A', 'B', 'G', 'H', 'I', 'J']) {
-      expect(within(destination).queryByRole('menuitem', { name: new RegExp(`^${letter} — `) })).toBeNull();
+    for (const name of ['Scan', 'Time', 'Ambient (°C)', 'Current (A)', 'Spare', 'Aux (A)']) {
+      expect(within(destination).queryByRole('menuitem', { name, exact: true })).toBeNull();
     }
     expect(selected().temperature_columns).toEqual([3, 4, 5, 6]);
   });
@@ -521,9 +592,9 @@ describe('unified scanner data editing', () => {
     expect(screen.getByRole('alert').textContent).toContain('Incomplete sample group');
     expect(screen.queryByText('Sample 2 / TC 1')).toBeNull();
     openColumn('I');
-    const menu = screen.getByRole('dialog', { name: 'Column I Actions' });
+    const menu = screen.getByRole('dialog', { name: 'Column 9 Actions' });
     await user.click(within(menu).getByRole('button', { name: 'Move Before', exact: true }));
-    await user.click(screen.getByRole('menuitem', { name: 'D — 102 1_B' }));
+    await user.click(screen.getByRole('menuitem', { name: '103 2_A' }));
     expect(selected().temperature_columns).toEqual([3, 9, 5, 6]);
     expect(screen.queryByRole('alert')).toBeNull();
     const cells = within(screen.getByRole('region', { name: 'Scanner Data Preview' })).getAllByRole('row')[1].querySelectorAll('td');
@@ -543,10 +614,10 @@ describe('unified scanner data editing', () => {
     await user.click(columnHeader('E'));
     fireEvent.click(columnHeader('F'), { ctrlKey: true });
     openColumn('E');
-    const menu = screen.getByRole('dialog', { name: 'Column E Actions' });
+    const menu = screen.getByRole('dialog', { name: 'Column 5 Actions' });
     expect(screen.getByText('2 Selected')).toBeTruthy();
     await user.click(within(menu).getByRole('button', { name: 'Move Before', exact: true }));
-    await user.click(screen.getByRole('menuitem', { name: 'C — 101 1_A' }));
+    await user.click(screen.getByRole('menuitem', { name: '101 1_A' }));
     expect(selected().temperature_columns).toEqual([5, 6, 3, 4]);
     expect(selected().ambient_column).toBe(7);
     expect(selected().current_column).toBe(8);
@@ -598,8 +669,8 @@ describe('unified scanner data editing', () => {
     await user.selectOptions(screen.getByLabelText('Ambient Role'), '4');
     expect(screen.queryByLabelText('Select Column D')).toBeNull();
     expect((screen.getByRole('button', { name: 'Undo' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByRole('columnheader', { name: 'D — 102 (°C) 1_B' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'D — 102 (°C) 1_B' }).getAttribute('aria-selected')).toBeNull();
+    expect(screen.getByRole('columnheader', { name: 'Source Column 4: 102 (°C) 1_B' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'Source Column 4: 102 (°C) 1_B' }).getAttribute('aria-selected')).toBeNull();
     expect(screen.queryByText('Excluded')).toBeNull();
     expect(selected().ambient_column).toBe(4);
   });

@@ -37,7 +37,7 @@ async function upload() {
   fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['x'], 'scanner.xlsx')] } });
   await screen.findByRole('button', { name: 'Confirm Data' });
 }
-function columnHeader(letter: string) { return screen.getByRole('columnheader', { name: new RegExp(`^${letter} — `) }); }
+function columnHeader(letter: string) { return screen.getByRole('columnheader', { name: new RegExp(`^Source Column ${letter.charCodeAt(0) - 64}: `) }); }
 
 describe('temperature preparation and calculation workflow', () => {
   beforeEach(() => {
@@ -47,6 +47,49 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(api.analyzeTemperatureData).mockResolvedValue(analysis);
     vi.mocked(api.calculateTemperatureCurrent).mockResolvedValue({ current: 30 });
     vi.mocked(api.generateTemperatureDerating).mockResolvedValue(derating);
+  });
+
+  it('restores a temperature after an ambient roundtrip without reviving an explicitly excluded channel', async () => {
+    const user = userEvent.setup();
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await user.selectOptions(screen.getByLabelText('Ambient Column'), '3');
+    await user.selectOptions(screen.getByLabelText('Ambient Column'), '5');
+    expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(false);
+    await user.click(columnHeader('D'));
+    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    await user.selectOptions(screen.getByLabelText('Ambient Column'), '4');
+    await user.selectOptions(screen.getByLabelText('Ambient Column'), '5');
+    await user.click(columnHeader('D'));
+    expect((screen.getByRole('button', { name: 'Restore', exact: true }) as HTMLButtonElement).disabled).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Restore', exact: true }));
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
+    expect(api.prepareTemperatureData).toHaveBeenCalledWith(expect.objectContaining({ selection: expect.objectContaining({
+      temperature_columns: [3, 4], thermocouples_per_sample: 2, sample_groups: [[3, 4]],
+    }) }));
+  });
+
+  it('edits measurement names independently of source readings and sends them with the download', async () => {
+    const user = userEvent.setup();
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    const header = columnHeader('C');
+    expect(within(header).queryByText('C', { exact: true })).toBeNull();
+    const name = within(header).getByRole('textbox', { name: 'Measurement Name, Source 3' });
+    await user.clear(name);
+    await user.type(name, 'Tail-R');
+    expect(header.getAttribute('aria-selected')).toBe('false');
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
+    vi.mocked(api.downloadTemperatureWorkbook).mockRejectedValueOnce(new Error('Download name check'));
+    await user.click(screen.getByRole('button', { name: 'Download Excel' }));
+    await screen.findByText('Download name check');
+    expect(api.downloadTemperatureWorkbook).toHaveBeenCalledWith(expect.objectContaining({
+      table: imported.table,
+      selection: expect.objectContaining({ channel_names: { 3: 'Tail-R' }, temperature_columns: [3, 4] }),
+    }));
+    expect(imported.table.rows[0][2]).toBe('TC1');
   });
 
   it('blocks uneven exclusions even when the remaining total is divisible and sends balanced groups through confirmation and download', async () => {
@@ -275,10 +318,10 @@ describe('temperature preparation and calculation workflow', () => {
     const current = screen.getByLabelText('Current Column');
     expect(within(ambient).getAllByRole('option').map(option => (option as HTMLOptionElement).value)).toEqual(['3', '4', '5', '7']);
     expect(within(current).getAllByRole('option').map(option => (option as HTMLOptionElement).value)).toEqual(['6', '8']);
-    expect(within(ambient).getByRole('option', { name: 'E — Ambient' })).toBeTruthy();
-    expect(within(current).getByRole('option', { name: 'F — High Power' })).toBeTruthy();
+    expect(within(ambient).getByRole('option', { name: 'Ambient' })).toBeTruthy();
+    expect(within(current).getByRole('option', { name: 'High Power' })).toBeTruthy();
     expect(screen.queryByLabelText('Select Column H')).toBeNull();
-    expect(screen.getByRole('columnheader', { name: 'H — Aux (A)' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'Source Column 8: Aux (A)' })).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(api.prepareTemperatureData).toHaveBeenCalledWith(expect.objectContaining({ table: expect.objectContaining({ rows: source.table.rows }) }));
     await user.selectOptions(current, '8');
@@ -364,8 +407,8 @@ describe('temperature preparation and calculation workflow', () => {
     expect(api.prepareTemperatureData).not.toHaveBeenCalled();
     fireEvent.contextMenu(columnHeader('G'));
     await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
-    await user.click(screen.getByRole('menuitem', { name: /^D — / }));
-    expect((screen.getByLabelText('Thermocouples/Sample') as HTMLInputElement).value).toBe('2');
+    await user.click(screen.getByRole('menuitem', { name: 'TC2' }));
+    expect((screen.getByLabelText('Thermocouples/Sample') as HTMLInputElement).value).toBe('1');
     expect(screen.getByText('Confirm the current column used for this curve.')).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.temperature_columns).toEqual([3, 7]);
@@ -498,7 +541,7 @@ describe('temperature preparation and calculation workflow', () => {
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     fireEvent.contextMenu(columnHeader('G'));
     await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
-    await user.click(screen.getByRole('menuitem', { name: /^D — / }));
+    await user.click(screen.getByRole('menuitem', { name: 'TC2' }));
     await user.click(screen.getByLabelText('Select Scan 1'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
@@ -539,7 +582,7 @@ describe('temperature preparation and calculation workflow', () => {
     fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['new'], 'next.xlsx')] } });
     await screen.findByRole('button', { name: 'Confirm Data' });
     await act(async () => resolve(imported));
-    expect(screen.getByRole('region', { name: 'Scanner Data Preview' }).textContent).toContain('New TC');
+    expect(within(screen.getByRole('region', { name: 'Scanner Data Preview' })).getByDisplayValue('New TC')).toBeTruthy();
     expect(screen.queryByText('View Channels')).toBeNull();
     expect(screen.queryByLabelText('Header Row')).toBeNull();
     expect(api.prepareTemperatureData).not.toHaveBeenCalled();
@@ -647,7 +690,7 @@ describe('temperature preparation and calculation workflow', () => {
     await upload();
     fireEvent.contextMenu(columnHeader('D'));
     await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
-    await user.click(screen.getByRole('menuitem', { name: /^C — / }));
+    await user.click(screen.getByRole('menuitem', { name: 'TC1' }));
     await user.click(columnHeader('D'));
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     await user.click(columnHeader('D'));

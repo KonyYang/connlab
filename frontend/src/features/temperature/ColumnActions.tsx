@@ -1,6 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { columnLetter } from './sourceColumns';
 
 export type ColumnMenuAnchor = { column: number; left: number; top: number; trigger: HTMLElement };
 
@@ -63,7 +62,7 @@ export function ColumnActions({ anchor, columns, selectedCount, disabled, canExc
       window.removeEventListener('resize', close); window.removeEventListener('scroll', scroll, true);
     };
   }, [anchor, onClose]);
-  return createPortal(<div ref={root} role="dialog" aria-label={`Column ${columnLetter(anchor.column)} Actions`}
+  return createPortal(<div ref={root} role="dialog" aria-label={`Column ${anchor.column} Actions`}
     className="temperature-column-menu" onKeyDown={submenuKey}
     style={{ left: menuLeft, top: anchor.top, ...(expanded ? { width: menuWidth } : {}) }}>
     <button type="button" disabled={disabled || !canExclude} onClick={onExclude}>Exclude Column{selectedCount > 1 ? 's' : ''}</button>

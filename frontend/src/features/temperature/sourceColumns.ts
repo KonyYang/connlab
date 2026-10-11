@@ -21,6 +21,7 @@ export function sourceColumnKind(table: WorkbookTable, selection: DataSelection,
   const header = String(table.rows[selection.header_row - 1]?.[column - 1] ?? '');
   if (/[（(]\s*(?:°?C|℃)\s*[）)]\s*$/i.test(header)) return 'temperature';
   if (/[（(]\s*(?:VDC|V|m?A)\s*[）)]\s*$/i.test(header)) return 'current';
+  if (/ambient|环境|\bTC\d*\b|thermocouple|temperature|温度/i.test(header)) return 'temperature';
   // Keep older, untagged workbooks usable with their confirmed/imported role suggestions.
   if (column === selection.current_column || layout?.current_columns.includes(column)) return 'current';
   if (column === selection.ambient_column || selection.temperature_columns.includes(column)

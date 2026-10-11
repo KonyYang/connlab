@@ -97,6 +97,11 @@ def _validate_selection(table: WorkbookTable, selection: DataSelection) -> Chann
     columns = (selection.ambient_column, selection.current_column, *selection.temperature_columns)
     if len(set(columns)) != len(columns) or any(not 1 <= col <= table.width for col in columns):
         raise ValueError("Assign each source column once: ambient, current and thermocouples must be distinct.")
+    name_columns = [column for column, _ in selection.channel_names]
+    if (len(name_columns) != len(set(name_columns)) or any(not 3 <= column <= table.width for column in name_columns)
+            or any(not isinstance(name, str) or len(name) > 200 or any(ord(char) < 32 for char in name)
+                   for _, name in selection.channel_names)):
+        raise ValueError('Measurement names must refer to existing measurement columns and contain at most 200 printable characters.')
     if not isfinite(selection.current_multiplier) or selection.current_multiplier <= 0:
         raise ValueError("Current scale must be a finite positive number.")
     if any(not selection.start_row <= row <= selection.end_row for row in selection.excluded_rows):
