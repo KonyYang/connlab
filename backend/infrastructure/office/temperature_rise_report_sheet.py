@@ -215,15 +215,12 @@ def _summary(sheet, table, selection, analysis, rise_rows, header, caches):
 
 
 def _report_measurement_name(name):
-    """Only remove numeric instrument/sample prefixes; don't infer unknown abbreviations."""
+    """Remove numeric instrument/sample prefixes without expanding measurement names."""
     clean = name.strip()
     if clean and clean[0].isdigit():
         first_letter = re.search(r'[^\W\d_]', clean)
         clean = clean[first_letter.start():] if first_letter else ''
-    if not clean:
-        return ''
-    return {'HS': 'Header Solder', 'H': 'Housing', 'C': 'Contact',
-            'RS': 'Receptacle Solder'}.get(clean.upper(), clean)
+    return clean
 
 
 def _calculator(sheet, maximum, fit, target, header, caches):
@@ -245,6 +242,7 @@ def _calculator(sheet, maximum, fit, target, header, caches):
         cell.fill = PatternFill('solid', fgColor='E2F0D9')
         cell.number_format = '0.000000' if column != 1 else '0.0'
     sheet.cell(row, 5).number_format = '0.0'
+    sheet.cell(row, 5).font = Font(name='Arial', size=10, bold=True, color=MAX_COLOR)
     _name(sheet, 'CurrentCalculator', header, row, 5)
     sheet.cell(header, 1).comment = Comment(
         'y = a·x² + b·x + c. Edit y/a/b/c to recalculate the positive-branch current x. '

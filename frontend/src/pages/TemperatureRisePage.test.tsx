@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '../api/temperature';
@@ -47,6 +47,63 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(api.analyzeTemperatureData).mockResolvedValue(analysis);
     vi.mocked(api.calculateTemperatureCurrent).mockResolvedValue({ current: 30 });
     vi.mocked(api.generateTemperatureDerating).mockResolvedValue(derating);
+  });
+
+  it('automatically calculates the default target from MAX and exports it without an extra click', async () => {
+    const user = userEvent.setup();
+    const maximum = { a: .012345, b: .234567, c: 0 };
+    vi.mocked(api.analyzeTemperatureData).mockResolvedValueOnce({ ...analysis,
+      maximum_fit: { ...analysis.maximum_fit, coefficients: maximum } });
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    expect(api.calculateTemperatureCurrent).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    expect((await screen.findByLabelText('Calculated Current')).textContent).toContain('30.00 A');
+    await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
+    expect(api.calculateTemperatureCurrent).toHaveBeenCalledExactlyOnceWith(maximum, 30);
+    expect(api.generateTemperatureDerating).toHaveBeenCalledWith(coefficients, expect.anything());
+    vi.mocked(api.downloadTemperatureWorkbook).mockRejectedValueOnce(new Error('Export payload checked'));
+    await user.click(screen.getByRole('button', { name: 'Download Excel' }));
+    await screen.findByText('Export payload checked');
+    expect(api.downloadTemperatureWorkbook).toHaveBeenCalledWith(expect.objectContaining({
+      target_rise: 30, maximum_coefficients: maximum,
+    }));
+    fireEvent.change(screen.getByLabelText('Target Rise (°C)'), { target: { value: '40' } });
+    expect(screen.queryByLabelText('Calculated Current')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
+    await screen.findByLabelText('Calculated Current');
+    expect(api.calculateTemperatureCurrent).toHaveBeenLastCalledWith(coefficients, 40);
+  });
+
+  it('retains the chart on automatic current failure and allows a focused calculation retry', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.calculateTemperatureCurrent).mockRejectedValueOnce(new Error('No positive current for this target.'));
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByText('No positive current for this target.');
+    expect(screen.getByRole('img', { name: 'Temperature Rise vs Current' })).toBeTruthy();
+    expect(screen.queryByLabelText('Calculated Current')).toBeNull();
+    expect(api.generateTemperatureDerating).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Calculate Current' }));
+    await screen.findByLabelText('Calculated Current');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it.each(['upload', 'leave'] as const)('ignores a late automatic current after %s without continuing Derating', async action => {
+    const user = userEvent.setup();
+    let finishCurrent!: (value: { current: number }) => void;
+    vi.mocked(api.calculateTemperatureCurrent).mockReturnValueOnce(new Promise(done => { finishCurrent = done; }));
+    const view = render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await waitFor(() => expect(api.calculateTemperatureCurrent).toHaveBeenCalledOnce());
+    expect((screen.getByRole('button', { name: 'Download Excel' }) as HTMLButtonElement).disabled).toBe(true);
+    if (action === 'upload') await upload();
+    else view.unmount();
+    await act(async () => finishCurrent({ current: 84.3 }));
+    expect(screen.queryByLabelText('Calculated Current')).toBeNull();
+    expect(api.generateTemperatureDerating).not.toHaveBeenCalled();
   });
 
   it('restores a temperature after an ambient roundtrip without reviving an explicitly excluded channel', async () => {
@@ -153,7 +210,7 @@ describe('temperature preparation and calculation workflow', () => {
     expect(api.analyzeTemperatureData).toHaveBeenCalledOnce();
     expect(api.generateTemperatureDerating).toHaveBeenCalledExactlyOnceWith(
       { a: .009876, b: .123456, c: 0 }, { max_temperature: 125, step: 5, ambient_point: 80 });
-    expect(api.calculateTemperatureCurrent).not.toHaveBeenCalled();
+    expect(api.calculateTemperatureCurrent).toHaveBeenCalledExactlyOnceWith(coefficients, 30);
     expect(api.downloadTemperatureWorkbook).not.toHaveBeenCalled();
   });
 

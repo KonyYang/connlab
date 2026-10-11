@@ -103,10 +103,16 @@ export function useTemperatureTool() {
     // Use this analysis, not state from the render before confirmation. A stale/failed run returns nothing.
     if (analysis && state.zeroIntercept) await generateDerating(fields(analysis.average_fit.coefficients));
   }
-  const analyze = () => run('Generating T-riseChart...', () => api.analyzeTemperatureData(request()), analysis => ({
-    ...clearResults, analysis, maximum: fields(analysis.maximum_fit.coefficients),
-    average: fields(analysis.average_fit.coefficients),
-  }));
+  async function analyze() {
+    const analysis = await run('Generating T-riseChart...', () => api.analyzeTemperatureData(request()), analysis => ({
+      ...clearResults, analysis, maximum: fields(analysis.maximum_fit.coefficients),
+      average: fields(analysis.average_fit.coefficients),
+    }));
+    if (!analysis) return;
+    // The render still has the old fit. Calculate from this response, and stop the chain on failure/staleness.
+    const calculated = await calculateCurrent(fields(analysis.maximum_fit.coefficients));
+    return calculated ? analysis : undefined;
+  }
   function acknowledge(acknowledged: boolean) {
     generation.current += 1;
     setState(old => ({ ...old, ...clearResults, confirmed: false, acknowledged, busy: null }));
@@ -124,10 +130,11 @@ export function useTemperatureTool() {
     return { max_temperature: parameter(state.maxTemperature, 'maximum working temperature'),
       step: parameter(state.step, 'step'), ambient_point: parameter(state.ambientPoint, 'ambient point') };
   }
-  const current = () => run('Calculating Current...', () => {
-    if (!state.maximum) throw new Error('Generate T-riseChart first.');
-    return api.calculateTemperatureCurrent(numeric(state.maximum), parameter(state.targetRise, 'target rise'));
+  const calculateCurrent = (maximum: CoefficientFields | null) => run('Calculating Current...', () => {
+    if (!maximum) throw new Error('Generate T-riseChart first.');
+    return api.calculateTemperatureCurrent(numeric(maximum), parameter(state.targetRise, 'target rise'));
   }, result => ({ current: result.current }));
+  const current = () => calculateCurrent(state.maximum);
   const generateDerating = (average: CoefficientFields | null) => run('Generating Derating...', () => {
     if (!average) throw new Error('Generate T-riseChart first.');
     return api.generateTemperatureDerating(numeric(average), deratingSettings());

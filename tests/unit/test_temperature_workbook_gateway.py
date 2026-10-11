@@ -205,7 +205,7 @@ def test_export_formats_measurement_labels_and_keeps_only_max_calculator_visible
     sheet = book['T-riseChart']
     summary = sheet[next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
     assert [row[0].value for row in summary] == [
-        'Current(A)', 'Header Solder', 'Housing', 'Contact', 'Receptacle Solder',
+        'Current(A)', 'HS', 'H', 'C', 'RS',
         '1# Single Max', 'Max T-Rise', 'Avg of max T-Rise on each sample']
     assert sheet.column_dimensions['A'].width < 30
     assert sheet.column_dimensions['B'].width == sheet.column_dimensions['C'].width
@@ -362,6 +362,9 @@ def test_report_export_has_editable_y_calculator_and_named_bold_colored_equation
     assert all(cell.data_type == 'f' and 'ROUND(' in cell.value for cell in calculator[1][1:4])
     assert calculator[1][-1].data_type == 'f'
     assert 'SQRT' in calculator[1][-1].value
+    assert calculator[1][-1].font.bold
+    assert calculator[1][-1].font.color.rgb == '00FFA500'
+    assert calculator[1][-1].number_format == '0.0'
     book.close()
     with ZipFile(output) as archive:
         ns = {'c': 'http://schemas.openxmlformats.org/drawingml/2006/chart',

@@ -29,6 +29,8 @@ def scanner_bytes():
     ({'3': '', '4': ' Crimp '}, ['Crimp', 'T2']),
     ({'3': '1021_R1A', '4': ' 1_Header Solder '}, ['Header Solder', 'R1A']),
     ({'3': '1021_2_R1A', '4': '1_2_Header Solder'}, ['Header Solder', 'R1A']),
+    ({'3': '1_HS', '4': 'Contact'}, ['Contact', 'HS']),
+    ({'3': '1_hS', '4': 'R2_Contact'}, ['R2_Contact', 'hS']),
     ({'3': '未命名测点', '4': 'LPH'}, ['LPH', '未命名测点']),
     ({'3': '123', '4': '-Tail R'}, ['-Tail R', 'T2']),
 ])

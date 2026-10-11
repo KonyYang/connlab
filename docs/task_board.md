@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_EXPORT_PRESENTATION_20261011",
     "summary": "Simplify temperature-rise XLSX source and report presentation",
@@ -28,76 +28,17 @@
     "risk_reasons": [],
     "activation_head": "b8e5ffbd0c8e3b0aea5edebeae12d29e87cea589",
     "started_at": "2026-10-11T03:11:15.207928Z",
-    "updated_at": "2026-10-11T03:22:51.624646Z",
+    "updated_at": "2026-10-11T03:51:16.174684Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_EXPORT_PRESENTATION_20261011",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User export feedback: extract labels without expanding abbreviations; auto-calculate Target Rise and bold orange XLSX current",
       "requires_user": false
     },
-    "report": {
-      "subject": "0c95316b7392ef6c7fb22b781deab4c3ca7b272c",
-      "task_id": "TASK_TEMPERATURE_EXPORT_PRESENTATION_20261011",
-      "changed_paths": [
-        "backend/infrastructure/office/temperature_rise_report_sheet.py",
-        "backend/infrastructure/office/temperature_workbook_gateway.py",
-        "docs/temperature_rise_tool.md",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_workbook_gateway.py"
-      ],
-      "summary": "Preserved raw Initial Data coordinates/values with genuine stage endpoints in yellow; compact formatted measurement summary, MAX-only visible calculator, rounded larger-plot native chart, and blank Setup/CR sheets. Original attachment untouched; formulas and Derating preserved.",
-      "scope_ok": true,
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "method": "Same-agent TDD at public writer/render and HTTP download seams: raw preservation, formatted layout and compound-prefix tests failed before implementation and passed after"
-        },
-        "qa": {
-          "limitations": "Existing Starlette/httpx deprecation warning. Preview engine does not evaluate LINEST arrays; native Excel confirms valid formulas. No frontend change/build required.",
-          "status": "passed",
-          "method": "103 affected backend tests on final source/test bytes and native Excel/visual validation"
-        },
-        "reviewer": {
-          "standards_outstanding": 0,
-          "status": "passed",
-          "method": "Sequential same-agent Standards then Spec review of exact scoped diff",
-          "spec_outstanding": 0,
-          "independent": false
-        }
-      },
-      "schema": "connlab.sol-task-report",
-      "validation": [
-        {
-          "command": "pytest tests/unit/test_temperature_workbook_gateway.py tests/unit/test_temperature_rise_calculations.py tests/unit/test_temperature_data_preparation.py tests/integration/test_tools_temperature_api.py -q",
-          "status": "passed",
-          "name": "complete affected backend matrix",
-          "tests": 103
-        },
-        {
-          "status": "passed",
-          "name": "native Excel final-byte recalculation and editable target",
-          "result": "No formula errors; 30C -> 66.5444574215A; 35C -> 72.8608073355A; independent hidden read-only instance closed without saving"
-        },
-        {
-          "status": "passed",
-          "name": "visual and source preservation",
-          "result": "Bundled table previews and native Excel rounded chart inspection; unchanged attachment hash"
-        },
-        {
-          "command": "git diff --cached --check",
-          "status": "passed",
-          "name": "diff whitespace"
-        }
-      ],
-      "integration": {
-        "status": "passed",
-        "method": "Clean scoped local master commit; no remote publication"
-      },
-      "version": 1
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_COMPACT_UNPOWERED_REVIEW_20261011",

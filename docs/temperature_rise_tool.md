@@ -15,12 +15,26 @@ values-only: original workbook formulas, styles, macros and unrelated source she
 Literal scanner strings remain text, including strings beginning with an equals sign.
 
 The `T-riseChart` report retains its endpoint readings, temperature-rise build and formula-backed
-summary. Summary measurement labels omit numeric scanner/sample prefixes. The reference's HS, H, C
-and RS abbreviations expand to Header Solder, Housing, Contact and Receptacle Solder; unknown labels
-are not guessed, and blank/all-numeric labels use the existing T-number fallback. Edited names follow
-the same export-only formatting. Sample totals use `n# Single Max`; overall MAX/AVG remain intact.
+summary. Summary measurement labels omit numeric scanner/sample prefixes by keeping the substring
+starting at the first letter when a label starts with a digit: `1_HS` becomes `HS`, not `Header Solder`.
+Other names such as `Contact` stay unchanged; blank/all-numeric labels use the T-number fallback.
+Edited names follow the same export-only formatting. Sample totals use `n# Single Max`; overall MAX/AVG remain intact.
 A is narrower, numeric columns have equal compact widths, long summary labels wrap with fitted row
 height, sample subtotals use tan and overall totals use light blue, matching the supplied reference.
+
+Every successful T-riseChart generation calculates the current for the entered Target Rise (30 °C
+by default) using the newly generated MAX fit. The result is retained for display and download without
+a separate Calculate Current click. Manual retries remain available; a failed or obsolete calculation
+does not continue the automatic Derating chain. Editing Target Rise clears the old result until the
+operator calculates or regenerates the chart. Exported x(A) is a bold orange, one-decimal formula
+result matching the MAX curve; the displayed number is calculated, never copied from a screenshot.
+
+Revision validation: 85 temperature frontend tests, 105 backend preparation/calculation/export/API
+tests and the Vite production build passed. Native Excel read-only QA confirmed HS/H/C/RS labels,
+the bold orange one-decimal current and recalculation after changing the target. The original
+attachment hash stayed unchanged. The artifact preview's existing LINEST limitation shows formula
+errors in its calculator view only; native Excel recalculation found no errors. Sequential same-agent
+Standards and Spec reviews found no outstanding issues.
 
 Only the MAX y/a/b/c/x calculator remains visible below the summary. The AVG coefficient block and
 both live chart-fit rows are collapsed, not deleted: coefficient overrides, recalculation, linked chart
