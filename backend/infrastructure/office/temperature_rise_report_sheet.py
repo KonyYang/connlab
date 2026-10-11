@@ -27,15 +27,19 @@ AVG_COLOR = '00008B'
 def build_rise_report(sheet, *, table, selection, analysis, maximum, average, target, caches, chart,
                       report_metadata=TemperatureReportMetadata()):
     stages = [point for point in analysis.points if point.source_row is not None]
-    raw_rows, raw_columns = _key_readings(sheet, table, selection, stages)
-    rise_header = len(stages) + 6
-    rise_rows = _stage_rises(sheet, selection, stages, raw_rows, raw_columns, rise_header, caches)
-    info_header = rise_header + len(stages) + 3
     chart_column = max(len(analysis.points) + 3, 11)
-    info_end = _test_info(sheet, report_metadata, info_header, chart_column + 12)
+    info_end = _test_info(sheet, report_metadata)
     summary_header = info_end + 2
+    samples = len(analysis.points[0].sample_maxima)
+    calculator_header = summary_header + len(selection.temperature_columns) + samples + 4
+    print_end = max(calculator_header + 1, summary_header + 36)
+    # Write supporting data at its final location; inserting rows later would leave
+    # formula/chart references stale. Keep the printable report ahead of the detail.
+    raw_header = max(print_end, calculator_header + 8) + 3
+    raw_rows, raw_columns = _key_readings(sheet, table, selection, stages, raw_header)
+    rise_header = raw_header + len(stages) + 5
+    rise_rows = _stage_rises(sheet, selection, stages, raw_rows, raw_columns, rise_header, caches)
     maximum_row, average_row = _summary(sheet, table, selection, analysis, rise_rows, summary_header, caches)
-    calculator_header = average_row + 2
     _calculator(sheet, maximum, analysis.maximum_fit, target, calculator_header, caches)
     _average_inputs(sheet, average, analysis.average_fit, calculator_header + 3, calculator_header + 8, caches)
     label_rows = _fit_equations(sheet, analysis, summary_header, maximum_row, average_row,
@@ -50,7 +54,7 @@ def build_rise_report(sheet, *, table, selection, analysis, maximum, average, ta
     sheet.page_setup.orientation = 'landscape'
     sheet.page_setup.paperSize = sheet.PAPERSIZE_A4
     sheet.page_setup.fitToWidth, sheet.page_setup.fitToHeight = 1, 1
-    sheet.print_area = f'A{info_header}:{get_column_letter(chart_column + 12)}{max(calculator_header + 1, summary_header + 36)}'
+    sheet.print_area = f'A1:{get_column_letter(chart_column + 12)}{print_end}'
     for column in range(1, max(table.width + 2, chart_column + 13)):
         sheet.column_dimensions[get_column_letter(column)].width = 10
     sheet.column_dimensions['A'].width = 22
@@ -59,36 +63,33 @@ def build_rise_report(sheet, *, table, selection, analysis, maximum, average, ta
         sheet.row_dimensions[row].height = max(15, ceil(len(label) / 20) * 15)
 
 
-def _test_info(sheet, info, header, width):
-    thirds = (1, width // 3 + 1, 2 * width // 3 + 1, width + 1)
-    rows = [[f'LTR: {info.ltr_number}', f'Test Date: {info.test_date}', f'Tested By: {info.tested_by}']]
+def _test_info(sheet, info):
+    rows = [('LTR', info.ltr_number), ('Test Date', info.test_date), ('Tested By', info.tested_by)]
     environment = []
     if info.ambient_temperature.strip():
         environment.append(f'{info.ambient_temperature.strip()} °C')
     if info.relative_humidity is not None:
         environment.append(f'{info.relative_humidity:g} %RH')
-    rows.append(['Amb Temp. and Rel. Hum.: ' + ' / '.join(environment)])
-    if info.equipment_id.strip() or info.test_condition.strip():
-        rows.append([f'Test Equipment ID: {info.equipment_id}', f'Test Condition: {info.test_condition}'])
-    if info.remark.strip():
-        rows.append([f'Remark: {info.remark}'])
-    for offset, values in enumerate(rows):
-        row = header + offset
-        bounds = thirds if len(values) == 3 else (1, width // 2 + 1, width + 1) if len(values) == 2 else (1, width + 1)
-        height = 20
-        for slot, value in enumerate(values):
-            start, end = bounds[slot], bounds[slot + 1] - 1
+    rows.append(('Amb Temp. and Rel. Hum.', ' / '.join(environment)))
+    for label, value in (('Test Equipment ID', info.equipment_id),
+                         ('Test Condition', info.test_condition), ('Remark', info.remark)):
+        if value.strip():
+            rows.append((label, value))
+    edge = Side(style='thin', color='D8D8B0')
+    for row, (label, value) in enumerate(rows, 1):
+        for start, end, text in ((1, 2, label), (3, 9, value)):
+            for column in range(start, end + 1):
+                cell = sheet.cell(row, column)
+                cell.fill = PatternFill('solid', fgColor='FFFFCC')
+                cell.border = Border(left=edge, right=edge, top=edge, bottom=edge)
             sheet.merge_cells(start_row=row, start_column=start, end_row=row, end_column=end)
-            _literal(sheet, row, start, value)
+            _literal(sheet, row, start, text)
             cell = sheet.cell(row, start)
-            cell.font = Font(name='Arial', size=10, color='172033')
+            cell.font = Font(name='Arial', size=10, bold=start == 1, color='172033')
             cell.alignment = Alignment(vertical='center', wrap_text=True)
-            cell.fill = PatternFill('solid', fgColor='F4F7FB')
-            cell.border = Border(bottom=Side(style='thin', color='D8E0EA'))
-            height = max(height, ceil(len(value) / ((end - start + 1) * 9)) * 15 + 5)
-        sheet.row_dimensions[row].height = height
-    end = header + len(rows) - 1
-    _name(sheet, 'TemperatureTestInfo', header, end, width)
+        sheet.row_dimensions[row].height = max(22, ceil(len(value) / 60) * 15 + 6)
+    end = len(rows)
+    _name(sheet, 'TemperatureTestInfo', 1, end, 9)
     return end
 
 
@@ -138,26 +139,26 @@ def _reading_column_order(table, selection):
     return (*identifiers, *(column for column in range(1, table.width + 1) if column not in identifiers))
 
 
-def _key_readings(sheet, table, selection, stages):
+def _key_readings(sheet, table, selection, stages, header):
     order = _reading_column_order(table, selection)
     source_columns = {source: column for column, source in enumerate(order, 1) if source is not None}
     headers = table.rows[selection.header_row - 1]
     for column, source in enumerate(order, 1):
         label = ('扫描', '时间')[column - 1] if column <= 2 else (headers[source - 1] if source <= len(headers) else None)
-        _literal(sheet, 1, column, label)
+        _literal(sheet, header, column, label)
     locations = {}
-    for row, point in enumerate(stages, 2):
+    for row, point in enumerate(stages, header + 1):
         locations[point.source_row] = row
         values = table.rows[point.source_row - 1]
         for source, column in source_columns.items():
             _literal(sheet, row, column, values[source - 1] if source <= len(values) else None)
-    _table_style(sheet, 1, len(stages) + 1, len(order))
+    _table_style(sheet, header, header + len(stages), len(order))
     measured_columns = {*selection.temperature_columns, selection.ambient_column, selection.current_column}
-    for row in range(2, len(stages) + 2):
+    for row in range(header + 1, header + len(stages) + 1):
         for column, source in enumerate(order, 1):
             sheet.cell(row, column).number_format = '0.000' if source in measured_columns else 'General'
-    _name(sheet, 'KeyStageReadings', 1, len(stages) + 1, len(order))
-    sheet['A1'].comment = Comment(
+    _name(sheet, 'KeyStageReadings', header, header + len(stages), len(order))
+    sheet.cell(header, 1).comment = Comment(
         'Last retained reading of each stable current stage. Source values are preserved; scan/time are shown first. '
         'Only the analysis block applies the confirmed current scale and channel mapping. No synthetic raw origin. '
         'These exported data rows correspond, in order, to original worksheet rows: '

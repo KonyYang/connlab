@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_TEST_INFO_20261011",
     "summary": "Add editable temperature report metadata and optional project association",
@@ -36,83 +36,17 @@
     "risk_reasons": [],
     "activation_head": "86d450a73d025a234bcdd51249084de00273d471",
     "started_at": "2026-10-11T13:28:37.916192Z",
-    "updated_at": "2026-10-11T13:46:58.390296Z",
+    "updated_at": "2026-10-11T14:23:40.639869Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_TEST_INFO_20261011",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User feedback: move XLSX test metadata to A1 in compact vertical label/value layout",
       "requires_user": false
     },
-    "report": {
-      "integration": {
-        "status": "passed",
-        "summary": "Exact local master commit; clean worktree; no remote publication"
-      },
-      "validation": [
-        {
-          "name": "temperature Python matrix",
-          "status": "passed",
-          "summary": "109 tests passed"
-        },
-        {
-          "name": "temperature frontend matrix",
-          "status": "passed",
-          "summary": "103 tests passed"
-        },
-        {
-          "status": "passed",
-          "name": "TypeScript and Vite build"
-        },
-        {
-          "name": "native Excel visual and numerical QA",
-          "status": "passed",
-          "summary": "Printed header does not overlap; no formula errors; baseline current 66.5 A"
-        }
-      ],
-      "schema": "connlab.sol-task-report",
-      "task_id": "TASK_TEMPERATURE_TEST_INFO_20261011",
-      "changed_paths": [
-        "backend/api/routes_tools_temperature.py",
-        "backend/api/temperature_schemas.py",
-        "backend/application/temperature_report_metadata.py",
-        "backend/application/tools_temperature_service.py",
-        "backend/infrastructure/office/temperature_rise_report_sheet.py",
-        "backend/infrastructure/office/temperature_workbook_gateway.py",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/api/temperature.ts",
-        "frontend/src/features/temperature/TestInfo.tsx",
-        "frontend/src/features/temperature/reportInfo.test.ts",
-        "frontend/src/features/temperature/reportInfo.ts",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useTemperatureReportInfo.ts",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_workbook_gateway.py"
-      ],
-      "version": 1,
-      "scope_ok": true,
-      "subject": "28dcb4525ee099f8bdb59d79e358bee0b6fca77f",
-      "roles": {
-        "reviewer": {
-          "status": "passed",
-          "summary": "Separate sequential same-agent Standards/Spec review; zero outstanding findings, live browser limitation disclosed; not independent agent review"
-        },
-        "developer": {
-          "status": "passed",
-          "summary": "Local implementation and focused tests; new project override page test RED then GREEN"
-        },
-        "qa": {
-          "status": "passed",
-          "summary": "Final affected full matrix and native Excel printing once on reviewed product state; live browser not verified"
-        }
-      },
-      "summary": "Editable Test Info and optional confirmed project defaults, compact printable header, no CR sheet; live browser QA blocked by runtime EPERM, page behavior tests and native Excel preview passed"
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_EXPORT_PRESENTATION_20261011",

@@ -42,14 +42,16 @@ def test_report_metadata_exports_literal_compact_header_without_cr_or_calculatio
         assert book.sheetnames == ['Initial Data', 'T-riseChart', 'Derating', 'Setup']
         sheet = book['T-riseChart']
         header_range = next(book.defined_names['TemperatureTestInfo'].destinations)[1].replace('$', '')
-        values = [cell.value for row in sheet[header_range] for cell in row if cell.value is not None]
-        assert 'LTR: DL-2026-09-002A' in values
-        assert 'Tested By: =1+1' in values
-        assert 'Test Date: 2026-09-10 ~ 2026-09-11' in values
-        assert 'Amb Temp. and Rel. Hum.: 22.0–23.5 °C / 60.9 %RH' in values
-        assert 'Test Equipment ID: DG-Q-0801/0269' in values
-        assert 'Test Condition: 10 / 20 / 30 A' in values
-        assert 'Remark: Manual test record' in values
+        assert sheet[header_range][0][0].coordinate == 'A1'
+        assert [[cell.value for cell in row if cell.value is not None] for row in sheet[header_range]] == [
+            ['LTR', 'DL-2026-09-002A'],
+            ['Test Date', '2026-09-10 ~ 2026-09-11'],
+            ['Tested By', '=1+1'],
+            ['Amb Temp. and Rel. Hum.', '22.0–23.5 °C / 60.9 %RH'],
+            ['Test Equipment ID', 'DG-Q-0801/0269'],
+            ['Test Condition', '10 / 20 / 30 A'],
+            ['Remark', 'Manual test record'],
+        ]
         assert all(cell.data_type != 'f' for row in sheet[header_range] for cell in row)
         summary_range = next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')
         plain_range = next(plain.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')
@@ -57,11 +59,36 @@ def test_report_metadata_exports_literal_compact_header_without_cr_or_calculatio
             [cell.value for cell in row] for row in plain['T-riseChart'][plain_range]]
         assert list(cached['Initial Data'].values) == list(plain['Initial Data'].values)
         assert sheet._charts[0].anchor._from.row >= sheet[header_range][-1][0].row
-        assert str(sheet.print_area).find(str(sheet[header_range][0][0].row)) >= 0
+        assert '$A$1:' in str(sheet.print_area)
+        raw_range = next(book.defined_names['KeyStageReadings'].destinations)[1].replace('$', '')
+        assert sheet[raw_range][0][0].row > sheet[summary_range][-1][0].row
+        baseline_raw = next(plain.defined_names['KeyStageReadings'].destinations)[1].replace('$', '')
+        assert [[cell.value for cell in row] for row in cached['T-riseChart'][raw_range]] == [
+            [cell.value for cell in row] for row in plain['T-riseChart'][baseline_raw]]
     finally:
         plain.close()
         book.close()
         cached.close()
+
+
+@pytest.mark.parametrize(('metadata', 'environment'), [({}, None), ({'relative_humidity': 0}, '0 %RH')])
+def test_empty_report_fields_remain_blank_at_top_left_and_zero_humidity_is_preserved(metadata, environment):
+    client = TestClient(app)
+    data = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', scanner_bytes())}).json()
+    response = client.post('/api/tools/temperature-rise/download', json={
+        'table': data['table'], 'selection': data['selection'], 'report_metadata': metadata,
+    })
+    assert response.status_code == 200
+    book = load_workbook(BytesIO(response.content), data_only=True)
+    try:
+        sheet = book['T-riseChart']
+        info = sheet[next(book.defined_names['TemperatureTestInfo'].destinations)[1].replace('$', '')]
+        assert info[0][0].coordinate == 'A1'
+        assert len(info) == 4
+        assert [row[0].value for row in info] == ['LTR', 'Test Date', 'Tested By', 'Amb Temp. and Rel. Hum.']
+        assert [row[2].value for row in info] == [None, None, None, environment]
+    finally:
+        book.close()
 
 
 @pytest.mark.parametrize('humidity', [-1, 101, 'nan'])

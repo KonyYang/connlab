@@ -73,12 +73,16 @@ results. The record temperature never replaces the row-specific ambient used in 
 There is no project Basic Information, Matrix, database or external source write-back.
 
 The download request carries a separate report_metadata object, with empty defaults for older clients.
-T-riseChart places a two-row basic header above the summary/chart, plus optional equipment/condition
-and remark rows when entered. It uses ordinary merged presentation cells, restrained fills, wrapping
-and dynamic row heights. TemperatureTestInfo names the header; the print area includes it. Summary,
-calculator, chart anchors, caches and formula ranges derive from the resulting layout, not old fixed
-coordinates. Initial Data and numerical behavior are unchanged. Output tabs are Initial Data,
-T-riseChart, Derating and Setup.
+T-riseChart starts the report information at A1 (Excel has no A0). It uses a vertical, pale-yellow
+label/value table: LTR, Test Date, Tested By and Amb Temp. and Rel. Hum., followed by equipment,
+condition and remark rows only when entered. Labels occupy A:B, values C:I; ordinary merged
+presentation cells wrap with fitted row heights. TemperatureTestInfo names this top-left region.
+The summary/chart and MAX calculator follow it; endpoint readings and the temperature-rise build
+remain inspectable below the printable report, rather than preceding its information. All blocks
+are written at their final locations instead of inserting rows after formulas have been created.
+Named ranges, chart anchors, caches and formula references derive from that layout. Printing starts
+at A1 and excludes the supporting detail, preserving the readable single-page report. Initial Data,
+numerical behavior and output tabs (Initial Data, T-riseChart, Derating, Setup) are unchanged.
 
 Validation: the new project/manual-override page regression failed before implementation and passed
 afterward. Final affected matrix: 103 frontend tests and 109 Python preparation/calculation/workbook/API
@@ -88,11 +92,26 @@ print preview was visually inspected for overlaps and clipped text. No source at
 Live browser QA was attempted but blocked by the Browser runtime's EPERM; the offline Playwright CLI
 was not cached. Narrow-window CSS and interactions have code/page-test coverage, not a live screenshot.
 
+Top-left layout revision: the HTTP download regression reproduced A21 instead of A1 before the fix,
+then passed. It verifies vertical metadata, literal-string safety, blank/zero humidity, preserved raw
+readings/Initial Data and equal summary values with/without optional information. Revision touches
+only the report-layout adapter, workbook/download tests and this document; frontend behavior is unchanged.
+Existing formula regressions now locate readings through the supported KeyStageReadings name rather
+than requiring its former physical row 2. The first matrix caught six obsolete fixed-row assertions;
+their scan/time, spare-channel, scale and cached numerical checks remain in place.
+Final revision matrix: 111 Python tests passed (one existing Starlette/httpx deprecation warning).
+Native Excel QA found no formula errors, confirmed the information at A1:I6, and visually verified
+the single-page A1:W44 print. Changing Target Rise to 35 recalculated 72.8608073355 A; increasing a
+relocated endpoint's thermocouple value by 1 increased its linked summary rise by 1. Temporary edits
+were restored before rendering and never saved back. No frontend code changed in this revision.
+
 ### Standards
 
 Separate same-agent exact-diff pass: API remains typed and centralized; metadata state belongs to its
 feature hook, source suggestions are pure, workbook formatting stays in infrastructure and numerical
 domain code is untouched. No new dependency or authority mutation. Zero outstanding findings.
+The top-left revision keeps layout ownership in the same Office adapter and its public download
+seam; each moved source/reference is regenerated, not patched by inserting worksheet rows.
 
 ### Spec
 
@@ -100,6 +119,8 @@ Separate same-agent requirements pass: optional project association, confirmed-o
 manual/blank override preservation, stale-response guards, collapsible entry, compact printable header
 and CR removal are implemented. Missing physical facts remain editable/blank. Zero outstanding findings;
 live-browser visual verification remains a stated limitation, not an independently passed check.
+Top-left revision: information begins at A1, follows the supplied vertical label/value reference,
+and retains calculations, supporting detail and the no-CR tab set. Standards 0 / Spec 0 findings.
 
 Changed paths: frontend/src/api/temperature.ts; frontend/src/pages/TemperatureRisePage.tsx and its tests;
 frontend/src/features/temperature/TestInfo.tsx, reportInfo.ts, reportInfo.test.ts,

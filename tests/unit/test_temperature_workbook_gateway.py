@@ -336,9 +336,10 @@ def test_endpoint_tables_share_scan_time_columns_without_changing_readings(tmp_p
         assert [cell.value for cell in block[0][:2]] == ['扫描', '时间']
         assert all(cell.value != 'Original Row' for cell in block[0])
     assert [tuple(cell.value for cell in row[:2]) for row in raw[1:]] == [rows[i][:2] for i in (1, 3, 5)]
-    assert rises[1][0].value is False if boolean_identifier else rises[1][0].value == '=A2'
-    assert rises[1][1].value == '=B2'
-    assert rises[1][2].value == '=D2-$E2'  # Confirmed spare replaces the first channel.
+    raw_row = raw[1][0].row
+    assert rises[1][0].value is False if boolean_identifier else rises[1][0].value == f'=A{raw_row}'
+    assert rises[1][1].value == f'=B{raw_row}'
+    assert rises[1][2].value == f'=D{raw_row}-$E{raw_row}'  # Confirmed spare replaces the first channel.
     assert book['Initial Data']['A2'].value == rows[0][0]  # Original scan stays at its source position.
     book.close()
     cached = load_workbook(output, data_only=True)
@@ -438,9 +439,10 @@ def test_report_formulas_honor_spare_channel_order_current_scale_and_unconstrain
     assert raw[1][3].value == '=1+1'
     assert raw[1][3].data_type == 's'
     rises = sheet[next(book.defined_names['StageTemperatureRise'].destinations)[1].replace('$', '')]
-    assert rises[1][2].value == '=G2-$F2'  # TC1 first, replacement Spare second
-    assert rises[1][3].value == '=E2-$F2'
-    assert rises[1][-1].value == '=IF(ABS(C2*0.001)<0.1,0,C2*0.001)'
+    raw_row = raw[1][0].row
+    assert rises[1][2].value == f'=G{raw_row}-$F{raw_row}'  # TC1 first, replacement Spare second
+    assert rises[1][3].value == f'=E{raw_row}-$F{raw_row}'
+    assert rises[1][-1].value == f'=IF(ABS(C{raw_row}*0.001)<0.1,0,C{raw_row}*0.001)'
     summary = next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')
     assert sheet._charts[0].series[0].trendline.intercept is None
     assert any('LINEST(' in cell.value and 'TRUE' in cell.value
