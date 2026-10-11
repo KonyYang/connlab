@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_EXPORT_PRESENTATION_20261011",
     "summary": "Simplify temperature-rise XLSX source and report presentation",
@@ -28,17 +28,77 @@
     "risk_reasons": [],
     "activation_head": "b8e5ffbd0c8e3b0aea5edebeae12d29e87cea589",
     "started_at": "2026-10-11T03:11:15.207928Z",
-    "updated_at": "2026-10-11T03:51:16.174684Z",
+    "updated_at": "2026-10-11T03:56:17.809408Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_EXPORT_PRESENTATION_20261011",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User export feedback: extract labels without expanding abbreviations; auto-calculate Target Rise and bold orange XLSX current",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "task_id": "TASK_TEMPERATURE_EXPORT_PRESENTATION_20261011",
+      "changed_paths": [
+        "backend/infrastructure/office/temperature_rise_report_sheet.py",
+        "backend/infrastructure/office/temperature_workbook_gateway.py",
+        "docs/temperature_rise_tool.md",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "tests/integration/test_tools_temperature_api.py",
+        "tests/unit/test_temperature_workbook_gateway.py"
+      ],
+      "validation": [
+        {
+          "method": "85 temperature frontend tests",
+          "status": "passed"
+        },
+        {
+          "method": "105 backend preparation/calculation/export/API tests",
+          "status": "passed"
+        },
+        {
+          "method": "Vite production build",
+          "status": "passed"
+        },
+        {
+          "method": "Native Excel read-only recalculation, extracted labels and bold orange current; source hash unchanged",
+          "status": "passed"
+        },
+        {
+          "method": "Artifact summary rendered and visually inspected; git diff --check",
+          "status": "passed"
+        }
+      ],
+      "integration": {
+        "method": "Scoped local master commit; no remote publication",
+        "status": "passed"
+      },
+      "version": 1,
+      "roles": {
+        "developer": {
+          "method": "Coherent RED/GREEN public-seam tests then localized implementation",
+          "status": "passed"
+        },
+        "reviewer": {
+          "status": "passed",
+          "independent": false,
+          "method": "Sequential same-agent Standards and Spec reviews of exact diff",
+          "spec_outstanding": 0,
+          "standards_outstanding": 0
+        },
+        "qa": {
+          "status": "passed",
+          "method": "Final affected matrices and native Excel QA",
+          "limitations": "Artifact preview does not evaluate existing LINEST array helper, so native Excel verified calculator values; no browser OS download exercised in this revision"
+        }
+      },
+      "scope_ok": true,
+      "summary": "Original-data export simplification plus literal label extraction, automatic MAX target current and bold orange XLSX result",
+      "schema": "connlab.sol-task-report",
+      "subject": "d4fdb00215f6cc73ebcc7c598df1418072998b7a"
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_COMPACT_UNPOWERED_REVIEW_20261011",
