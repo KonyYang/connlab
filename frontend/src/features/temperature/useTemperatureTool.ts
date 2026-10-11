@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as api from '../../api/temperature';
+import { reportMetadata, type ReportInfoFields } from './reportInfo';
+import { useTemperatureReportInfo } from './useTemperatureReportInfo';
 
 export type CoefficientFields = Record<keyof api.Coefficients, string>;
 type State = {
@@ -32,6 +34,7 @@ function parameter(value: string, label: string) {
 
 export function useTemperatureTool() {
   const [state, setState] = useState<State>(initial);
+  const reportInfo = useTemperatureReportInfo(state.table, state.selection);
   const generation = useRef(0);
   useEffect(() => () => { generation.current += 1; }, []);
 
@@ -147,6 +150,7 @@ export function useTemperatureTool() {
       average_coefficients: state.average ? numeric(state.average) : null,
       target_rise: state.current !== null ? parameter(state.targetRise, 'target rise') : null,
       derating: state.derating ? deratingSettings() : null,
+      report_metadata: reportMetadata(reportInfo.values),
     }).then(result => {
       if (generation.current !== token) return null;
       const fileName = result.fileName ?? 'T-rise_Derating.xlsx';
@@ -158,5 +162,14 @@ export function useTemperatureTool() {
     }), downloaded => ({ downloaded }));
   }
   return { state, load, changeData, correctRegion, confirm, analyze, acknowledge, zeroIntercept,
-    editParameter, current, derating, download };
+    editParameter, current, derating, download, reportInfo,
+    editReportInfo: (key: keyof ReportInfoFields, value: string) => {
+      reportInfo.edit(key, value);
+      setState(old => ({ ...old, downloaded: null }));
+    },
+    selectReportProject: (id: string) => {
+      reportInfo.selectProject(id);
+      setState(old => ({ ...old, downloaded: null }));
+    },
+  };
 }

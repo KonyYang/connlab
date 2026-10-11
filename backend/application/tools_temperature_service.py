@@ -9,6 +9,7 @@ from backend.application.temperature_data_preparation import (
     DataRegionError, PreparedData, prepare_data, selection_for_region, suggest_selection,
 )
 from backend.application.temperature_channel_layout import ChannelLayout, inspect_channel_layout
+from backend.application.temperature_report_metadata import TemperatureReportMetadata
 from backend.domain.temperature_data import DataSelection, WorkbookTable
 from backend.domain.temperature_rise import (
     Coefficients, DeratingAnalysis, TemperatureRiseAnalysis, analyze_temperature_rise,
@@ -21,7 +22,8 @@ class TemperatureWorkbookPort(Protocol):
     def render(self, file_name: str, *, table: WorkbookTable, selection: DataSelection,
               prepared: PreparedData, analysis: TemperatureRiseAnalysis,
               maximum_coefficients: Coefficients, average_coefficients: Coefficients,
-              target_rise: float | None, derating: DeratingAnalysis | None) -> bytes: ...
+              target_rise: float | None, derating: DeratingAnalysis | None,
+              report_metadata: TemperatureReportMetadata = TemperatureReportMetadata()) -> bytes: ...
 
 
 @dataclass(frozen=True)
@@ -69,7 +71,8 @@ class ToolsTemperatureService:
     def download(self, table: WorkbookTable, selection: DataSelection, *, zero_intercept: bool,
                  acknowledge_warnings: bool, maximum_coefficients: Coefficients | None,
                  average_coefficients: Coefficients | None, target_rise: float | None,
-                 derating_parameters: DeratingParameters | None) -> tuple[str, bytes]:
+                 derating_parameters: DeratingParameters | None,
+                 report_metadata: TemperatureReportMetadata = TemperatureReportMetadata()) -> tuple[str, bytes]:
         prepared = self._confirmed_data(table, selection, acknowledge_warnings)
         analysis = analyze_temperature_rise(prepared.measurements,
             thermocouples_per_sample=selection.thermocouples_per_sample, zero_intercept=zero_intercept)
@@ -85,7 +88,8 @@ class ToolsTemperatureService:
                 step=derating_parameters.step, ambient_point=derating_parameters.ambient_point)
         name = f'{Path(safe_workbook_name(table.file_name)).stem}_T-rise_Derating.xlsx'
         content = self.workbook.render(name, table=table, selection=selection, prepared=prepared, analysis=analysis,
-            maximum_coefficients=maximum, average_coefficients=average, target_rise=target_rise, derating=derating)
+            maximum_coefficients=maximum, average_coefficients=average, target_rise=target_rise, derating=derating,
+            report_metadata=report_metadata)
         return name, content
 
     @staticmethod

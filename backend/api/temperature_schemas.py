@@ -81,8 +81,24 @@ class DeratingRequest(DeratingSettings):
     coefficients: CoefficientsRequest
 
 
+class TemperatureReportMetadataRequest(TemperatureModel):
+    ltr_number: Annotated[str, StringConstraints(max_length=200, pattern=r'^[^\x00-\x1f]*$')] = ''
+    tested_by: Annotated[str, StringConstraints(max_length=200, pattern=r'^[^\x00-\x1f]*$')] = ''
+    test_date: Annotated[str, StringConstraints(max_length=80, pattern=r'^[^\x00-\x1f]*$')] = ''
+    ambient_temperature: Annotated[str, StringConstraints(max_length=80, pattern=r'^[^\x00-\x1f]*$')] = ''
+    relative_humidity: float | None = Field(default=None, ge=0, le=100)
+    equipment_id: Annotated[str, StringConstraints(max_length=500, pattern=r'^[^\x00-\x1f]*$')] = ''
+    test_condition: Annotated[str, StringConstraints(max_length=500, pattern=r'^[^\x00-\x1f]*$')] = ''
+    remark: Annotated[str, StringConstraints(max_length=500, pattern=r'^[^\x00-\x1f]*$')] = ''
+
+    def application(self):
+        from backend.application.temperature_report_metadata import TemperatureReportMetadata
+        return TemperatureReportMetadata(**self.model_dump())
+
+
 class DownloadTemperatureRequest(PreparationRequest):
     maximum_coefficients: CoefficientsRequest | None = None
     average_coefficients: CoefficientsRequest | None = None
     target_rise: float | None = Field(default=None, ge=0)
     derating: DeratingSettings | None = None
+    report_metadata: TemperatureReportMetadataRequest = Field(default_factory=TemperatureReportMetadataRequest)

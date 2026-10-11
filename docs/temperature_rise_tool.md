@@ -1,7 +1,8 @@
 # Temperature Rise and Derating Tool
 
-Status: implemented. Current refinement (2026-10-11): editable measurement names, stable source
-identity, reversible ambient-role suspension and consecutive regrouping after explicit moves.
+Status: implemented. Current refinement (2026-10-11): editable Test Info, optional project defaults
+and a compact XLSX metadata header. Editable measurement names, stable source identity,
+reversible ambient-role suspension and consecutive regrouping after explicit moves remain supported.
 Compact charts, automatic generation after confirmation and scan-based feedback remain in place.
 
 ## Compact XLSX export (2026-10-11)
@@ -40,9 +41,75 @@ Only the MAX y/a/b/c/x calculator remains visible below the summary. The AVG coe
 both live chart-fit rows are collapsed, not deleted: coefficient overrides, recalculation, linked chart
 equations and Derating inputs retain their existing behavior. The native scatter chart has rounded
 corners and a larger plot area using the Derating layout proportions; printing includes the calculator.
-Empty `Setup` and `CR` sheets are added after the existing three sheets. No contact-resistance
+An empty `Setup` sheet follows the existing three sheets; the unused `CR` sheet is no longer created. No contact-resistance
 calculation or setup content is imported. The source attachment and project/report authorities remain
 untouched; the change applies only to newly generated downloads.
+
+## Test Info and project association (2026-10-11)
+
+Below the imported filename, Test Info opens as a compact collapsible editor. It holds LTR,
+Tested By, Test Date, Amb Temp. and relative humidity. More Information holds equipment IDs,
+test condition and remarks. Collapsing shows the basic summary and any humidity error. Humidity
+is optional; entered values must be finite and within 0–100 %RH. Other metadata is bounded literal
+text, including labels starting with `=`. Invalid humidity disables download with an explanation.
+
+Project selection is optional and uses immutable project IDs from the normal active registry.
+Confirmed Basic Information supplies DL and Project Leader as default LTR/tester. Registered LTR
+can supply the identifier before Basic Information confirmation; draft/suggested personnel never
+populate Tested By. Temporary project numbers are not guessed to be registered LTRs. A failed
+lookup allows manual entry and retry. Cancelled/outdated/unmounted lookups cannot revive old defaults.
+
+Date and temperature suggestions use included source rows, respecting source region and exclusions.
+Unambiguous ISO or year-first slash dates provide a single date or range; time-only, ambiguous,
+invalid or partly missing dates stay blank. Ambient temperature shows the retained reading range
+to one decimal. Relative humidity, equipment IDs and conditions stay blank without a verified
+test-specific source. No default laboratory humidity, download date, planned project date or
+generic project-wide equipment list is substituted for actual test facts.
+
+Manual overrides, including intentional empty values, take precedence over all later suggestions
+and project changes. Values are session-local and retained through source/role/sheet changes until
+leaving the tool. Report edits clear only old download feedback, not confirmed data or curve/current
+results. The record temperature never replaces the row-specific ambient used in calculations.
+There is no project Basic Information, Matrix, database or external source write-back.
+
+The download request carries a separate report_metadata object, with empty defaults for older clients.
+T-riseChart places a two-row basic header above the summary/chart, plus optional equipment/condition
+and remark rows when entered. It uses ordinary merged presentation cells, restrained fills, wrapping
+and dynamic row heights. TemperatureTestInfo names the header; the print area includes it. Summary,
+calculator, chart anchors, caches and formula ranges derive from the resulting layout, not old fixed
+coordinates. Initial Data and numerical behavior are unchanged. Output tabs are Initial Data,
+T-riseChart, Derating and Setup.
+
+Validation: the new project/manual-override page regression failed before implementation and passed
+afterward. Final affected matrix: 103 frontend tests and 109 Python preparation/calculation/workbook/API
+tests passed, plus TypeScript/Vite build. Native Excel read-only QA verified header placement, complete
+single-page printing, no formula errors and 66.5 A for the established 30 °C target baseline. The rendered
+print preview was visually inspected for overlaps and clipped text. No source attachment was modified.
+Live browser QA was attempted but blocked by the Browser runtime's EPERM; the offline Playwright CLI
+was not cached. Narrow-window CSS and interactions have code/page-test coverage, not a live screenshot.
+
+### Standards
+
+Separate same-agent exact-diff pass: API remains typed and centralized; metadata state belongs to its
+feature hook, source suggestions are pure, workbook formatting stays in infrastructure and numerical
+domain code is untouched. No new dependency or authority mutation. Zero outstanding findings.
+
+### Spec
+
+Separate same-agent requirements pass: optional project association, confirmed-only tester defaults,
+manual/blank override preservation, stale-response guards, collapsible entry, compact printable header
+and CR removal are implemented. Missing physical facts remain editable/blank. Zero outstanding findings;
+live-browser visual verification remains a stated limitation, not an independently passed check.
+
+Changed paths: frontend/src/api/temperature.ts; frontend/src/pages/TemperatureRisePage.tsx and its tests;
+frontend/src/features/temperature/TestInfo.tsx, reportInfo.ts, reportInfo.test.ts,
+useTemperatureReportInfo.ts, useTemperatureTool.ts and temperature.css;
+backend/api/temperature_schemas.py and routes_tools_temperature.py;
+backend/application/temperature_report_metadata.py and tools_temperature_service.py;
+backend/infrastructure/office/temperature_rise_report_sheet.py and temperature_workbook_gateway.py;
+tests/integration/test_tools_temperature_api.py; tests/unit/test_temperature_workbook_gateway.py;
+this document and the sole-writer task board. Methods: tdd, code-review, spreadsheets and PDF visual QA.
+Review passes were sequential in one agent; no independent-agent review is claimed.
 
 Regression protection uses the public workbook writer/render and HTTP download boundaries, covering
 raw coordinates, exclusion preservation, exact stage highlighting, literal-string safety, names and

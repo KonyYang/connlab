@@ -24,9 +24,14 @@ export type TemperatureAnalysis = { points: RisePoint[]; maximum_fit: Polynomial
 export type DeratingSettings = { max_temperature: number; step: number; ambient_point: number };
 export type DeratingPoint = { ambient: number; basic: number; derated: number };
 export type DeratingAnalysis = { points: DeratingPoint[]; annotation: DeratingPoint; coefficients: Coefficients; max_temperature: number; step: number };
+export type TemperatureReportMetadata = {
+  ltr_number: string; tested_by: string; test_date: string; ambient_temperature: string;
+  relative_humidity: number | null; equipment_id: string; test_condition: string; remark: string;
+};
 export type TemperatureDownloadRequest = PreparationRequest & {
   maximum_coefficients: Coefficients | null; average_coefficients: Coefficients | null;
   target_rise: number | null; derating: DeratingSettings | null;
+  report_metadata?: TemperatureReportMetadata;
 };
 const base = '/api/tools/temperature-rise';
 const post = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });

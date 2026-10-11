@@ -28,6 +28,7 @@ from openpyxl.utils import get_column_letter
 import xlrd
 
 from backend.application.temperature_data_preparation import PreparedData
+from backend.application.temperature_report_metadata import TemperatureReportMetadata
 from backend.domain.temperature_data import DataSelection, WorkbookTable
 from backend.domain.temperature_rise import Coefficients, TemperatureRiseAnalysis, DeratingAnalysis
 from backend.infrastructure.office.temperature_rise_report_sheet import build_rise_report
@@ -50,12 +51,13 @@ class TemperatureWorkbookGateway:
     def render(self, file_name: str, *, table: WorkbookTable, selection: DataSelection,
                prepared: PreparedData, analysis: TemperatureRiseAnalysis,
                maximum_coefficients: Coefficients, average_coefficients: Coefficients,
-               target_rise: float | None, derating: DeratingAnalysis | None) -> bytes:
+               target_rise: float | None, derating: DeratingAnalysis | None,
+               report_metadata: TemperatureReportMetadata = TemperatureReportMetadata()) -> bytes:
         with TemporaryDirectory(prefix='connlab-temperature-export-') as directory:
             output = Path(directory) / Path(file_name).name
             self.write(output, table=table, selection=selection, prepared=prepared, analysis=analysis,
                 maximum_coefficients=maximum_coefficients, average_coefficients=average_coefficients,
-                target_rise=target_rise, derating=derating)
+                target_rise=target_rise, derating=derating, report_metadata=report_metadata)
             return output.read_bytes()
 
     def read(self, source_path: Path, *, sheet_name: str | None = None) -> WorkbookTable:
@@ -107,7 +109,8 @@ class TemperatureWorkbookGateway:
     def write(self, output_path: Path, *, table: WorkbookTable, selection: DataSelection,
               prepared: PreparedData, analysis: TemperatureRiseAnalysis,
               maximum_coefficients: Coefficients, average_coefficients: Coefficients,
-              target_rise: float | None, derating: DeratingAnalysis | None) -> None:
+              target_rise: float | None, derating: DeratingAnalysis | None,
+              report_metadata: TemperatureReportMetadata = TemperatureReportMetadata()) -> None:
         output = Path(output_path)
         if output.exists() or output.suffix.lower() != '.xlsx':
             raise ValueError('Choose a new .xlsx output file; existing files are preserved.')
@@ -117,12 +120,12 @@ class TemperatureWorkbookGateway:
         rise = book.create_sheet('T-riseChart')
         derated = book.create_sheet('Derating')
         book.create_sheet('Setup')
-        book.create_sheet('CR')
         caches: dict[str, dict[str, float | str]] = {name: {} for name in book.sheetnames}
         _initial_sheet(initial, table, selection, analysis)
         build_rise_report(rise, table=table, selection=selection, analysis=analysis,
             maximum=maximum_coefficients, average=average_coefficients, target=target_rise,
-            caches=caches[rise.title], chart=_chart('Temperature Rise vs Applied Current', 'Applied Current (A)', 'T-rise (°C)'))
+            caches=caches[rise.title], chart=_chart('Temperature Rise vs Applied Current', 'Applied Current (A)', 'T-rise (°C)'),
+            report_metadata=report_metadata)
         _derating_sheet(derated, derating, caches[derated.title])
         _style_sheet(derated)
         book.calculation = CalcProperties(calcId=191029, fullCalcOnLoad=True)

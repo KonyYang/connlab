@@ -2,12 +2,17 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '../api/temperature';
+import * as projectApi from '../api/client';
 import { TemperatureRisePage } from './TemperatureRisePage';
 import { AppShell } from '../components/layout/AppShell';
 
 vi.mock('../api/temperature', () => ({
   importTemperatureWorkbook: vi.fn(), prepareTemperatureData: vi.fn(), analyzeTemperatureData: vi.fn(),
   calculateTemperatureCurrent: vi.fn(), generateTemperatureDerating: vi.fn(), downloadTemperatureWorkbook: vi.fn(),
+}));
+vi.mock('../api/client', async original => ({
+  ...await original<typeof import('../api/client')>(),
+  listProjectRegistryRows: vi.fn(), getProjectBasicInformation: vi.fn(),
 }));
 const imported = {
   region_issue: null,
@@ -47,6 +52,106 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(api.analyzeTemperatureData).mockResolvedValue(analysis);
     vi.mocked(api.calculateTemperatureCurrent).mockResolvedValue({ current: 30 });
     vi.mocked(api.generateTemperatureDerating).mockResolvedValue(derating);
+    vi.mocked(projectApi.listProjectRegistryRows).mockResolvedValue([]);
+  });
+
+  it('uses confirmed project defaults and exports manual overrides without resetting the chart', async () => {
+    const user = userEvent.setup();
+    vi.mocked(projectApi.listProjectRegistryRows).mockResolvedValue([
+      { project_id: 'project-a', display_project_id: 'DL-A', display_project_id_kind: 'registered',
+        registered_ltr_number: 'DL-A', has_registered_ltr: true, requestor: '', status: 'registered', progress: 0 },
+      { project_id: 'project-b', display_project_id: 'DL-B', display_project_id_kind: 'registered',
+        registered_ltr_number: 'DL-B', has_registered_ltr: true, requestor: '', status: 'registered', progress: 0 },
+    ]);
+    vi.mocked(projectApi.getProjectBasicInformation).mockImplementation(async id => ({
+      project_id: id, status: 'confirmed', draft: { values: { project_leader: 'Unconfirmed draft' } },
+      latest_confirmed: { project_id: id, record_id: 'confirmed', status: 'confirmed', version: 1,
+        source_signature: '', created_at: '', updated_at: '', values: {
+          dl_number: id === 'project-a' ? 'DL-A' : 'DL-B', project_leader: id === 'project-a' ? 'Min' : 'Yang',
+        } }, field_suggestions: {}, changed_source_fields: [], missing_required_fields: [],
+      missing_required_labels: [], blockers: [], warnings: [],
+    }));
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await screen.findByRole('option', { name: 'DL-A' });
+    await user.selectOptions(screen.getByLabelText('Project (optional)'), 'project-a');
+    await waitFor(() => expect((screen.getByLabelText('Tested By') as HTMLInputElement).value).toBe('Min'));
+    expect((screen.getByLabelText('LTR') as HTMLInputElement).value).toBe('DL-A');
+    expect((screen.getByLabelText('Rel. Hum. (%RH)') as HTMLInputElement).value).toBe('');
+    fireEvent.change(screen.getByLabelText('Tested By'), { target: { value: 'Actual tester' } });
+    await user.selectOptions(screen.getByLabelText('Project (optional)'), 'project-b');
+    await waitFor(() => expect((screen.getByLabelText('LTR') as HTMLInputElement).value).toBe('DL-B'));
+    expect((screen.getByLabelText('Tested By') as HTMLInputElement).value).toBe('Actual tester');
+    fireEvent.change(screen.getByLabelText('Test Date'), { target: { value: '2026-09-10' } });
+    fireEvent.change(screen.getByLabelText('Rel. Hum. (%RH)'), { target: { value: '60.9' } });
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
+    fireEvent.change(screen.getByLabelText('Amb Temp. (°C)'), { target: { value: '22.0–23.5' } });
+    expect(screen.getByRole('img', { name: 'Temperature Rise vs Current' })).toBeTruthy();
+    vi.mocked(api.downloadTemperatureWorkbook).mockRejectedValueOnce(new Error('Metadata payload checked'));
+    await user.click(screen.getByRole('button', { name: 'Download Excel' }));
+    await screen.findByText('Metadata payload checked');
+    expect(api.downloadTemperatureWorkbook).toHaveBeenCalledWith(expect.objectContaining({
+      report_metadata: expect.objectContaining({ ltr_number: 'DL-B', tested_by: 'Actual tester',
+        test_date: '2026-09-10', ambient_temperature: '22.0–23.5', relative_humidity: 60.9 }),
+    }));
+  });
+
+  it('ignores late project responses and never prefills an unconfirmed tester', async () => {
+    const user = userEvent.setup();
+    vi.mocked(projectApi.listProjectRegistryRows).mockResolvedValue([
+      { project_id: 'old', display_project_id: 'Old', display_project_id_kind: 'temporary', has_registered_ltr: false, requestor: '', status: '', progress: 0 },
+      { project_id: 'new', display_project_id: 'New', display_project_id_kind: 'temporary', has_registered_ltr: false, requestor: '', status: '', progress: 0 },
+    ]);
+    let finishOld!: (value: projectApi.ProjectBasicInformationResponse) => void;
+    const unconfirmed: projectApi.ProjectBasicInformationResponse = {
+      project_id: 'new', status: 'unconfirmed', latest_confirmed: null,
+      draft: { values: { dl_number: 'Draft LTR', project_leader: 'Draft tester' } }, field_suggestions: {},
+      changed_source_fields: [], missing_required_fields: [], missing_required_labels: [], blockers: [], warnings: [],
+    };
+    vi.mocked(projectApi.getProjectBasicInformation).mockImplementation(id => id === 'old'
+      ? new Promise(done => { finishOld = done; }) : Promise.resolve(unconfirmed));
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await screen.findByRole('option', { name: 'Old' });
+    await user.selectOptions(screen.getByLabelText('Project (optional)'), 'old');
+    await user.selectOptions(screen.getByLabelText('Project (optional)'), 'new');
+    await screen.findByText(/Basic Information is not confirmed/);
+    await act(async () => finishOld({ ...unconfirmed, project_id: 'old', latest_confirmed: {
+      record_id: 'old-confirmed', project_id: 'old', status: 'confirmed', version: 1,
+      values: { dl_number: 'Wrong LTR', project_leader: 'Wrong tester' }, source_signature: '', created_at: '', updated_at: '',
+    } }));
+    expect((screen.getByLabelText('Tested By') as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('LTR') as HTMLInputElement).value).toBe('');
+    fireEvent.change(screen.getByLabelText('Tested By'), { target: { value: 'Explicit tester' } });
+    fireEvent.change(screen.getByLabelText('Tested By'), { target: { value: '' } });
+    await user.selectOptions(screen.getByLabelText('Project (optional)'), 'old');
+    await act(async () => finishOld({ ...unconfirmed, latest_confirmed: {
+      record_id: 'confirmed', project_id: 'old', status: 'confirmed', version: 1,
+      values: { dl_number: 'DL-A', project_leader: 'Min' }, source_signature: '', created_at: '', updated_at: '',
+    } }));
+    await waitFor(() => expect((screen.getByLabelText('LTR') as HTMLInputElement).value).toBe('DL-A'));
+    expect((screen.getByLabelText('Tested By') as HTMLInputElement).value).toBe('');
+  });
+
+  it('allows manual report entry when project lookup fails and explains invalid humidity', async () => {
+    const user = userEvent.setup();
+    vi.mocked(projectApi.listProjectRegistryRows).mockRejectedValueOnce(new Error('offline'));
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await screen.findByText(/Projects could not be loaded/);
+    fireEvent.change(screen.getByLabelText('LTR'), { target: { value: 'Manual LTR' } });
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
+    fireEvent.change(screen.getByLabelText('Rel. Hum. (%RH)'), { target: { value: '101' } });
+    expect((screen.getByRole('button', { name: 'Download Excel' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText(/Enter relative humidity/)).toBeTruthy();
+    await user.click(screen.getByText('Test Info', { exact: true }));
+    await screen.findByText('Check relative humidity');
+    await user.click(screen.getByText('Check relative humidity'));
+    fireEvent.change(screen.getByLabelText('Rel. Hum. (%RH)'), { target: { value: '' } });
+    expect((screen.getByRole('button', { name: 'Download Excel' }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByLabelText('LTR') as HTMLInputElement).value).toBe('Manual LTR');
   });
 
   it('automatically calculates the default target from MAX and exports it without an extra click', async () => {

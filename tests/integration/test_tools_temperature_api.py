@@ -23,6 +23,58 @@ def scanner_bytes():
     return stream.getvalue()
 
 
+def test_report_metadata_exports_literal_compact_header_without_cr_or_calculation_changes():
+    client = TestClient(app)
+    data = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', scanner_bytes())}).json()
+    request = {'table': data['table'], 'selection': data['selection'], 'zero_intercept': True,
+               'target_rise': 30}
+    baseline = client.post('/api/tools/temperature-rise/download', json=request)
+    metadata = {'ltr_number': 'DL-2026-09-002A', 'tested_by': '=1+1',
+                'test_date': '2026-09-10 ~ 2026-09-11', 'ambient_temperature': '22.0–23.5',
+                'relative_humidity': 60.9, 'equipment_id': 'DG-Q-0801/0269',
+                'test_condition': '10 / 20 / 30 A', 'remark': 'Manual test record'}
+    response = client.post('/api/tools/temperature-rise/download', json={**request, 'report_metadata': metadata})
+    assert response.status_code == 200, response.text[:300]
+    plain = load_workbook(BytesIO(baseline.content), data_only=True)
+    book = load_workbook(BytesIO(response.content), data_only=False)
+    cached = load_workbook(BytesIO(response.content), data_only=True)
+    try:
+        assert book.sheetnames == ['Initial Data', 'T-riseChart', 'Derating', 'Setup']
+        sheet = book['T-riseChart']
+        header_range = next(book.defined_names['TemperatureTestInfo'].destinations)[1].replace('$', '')
+        values = [cell.value for row in sheet[header_range] for cell in row if cell.value is not None]
+        assert 'LTR: DL-2026-09-002A' in values
+        assert 'Tested By: =1+1' in values
+        assert 'Test Date: 2026-09-10 ~ 2026-09-11' in values
+        assert 'Amb Temp. and Rel. Hum.: 22.0–23.5 °C / 60.9 %RH' in values
+        assert 'Test Equipment ID: DG-Q-0801/0269' in values
+        assert 'Test Condition: 10 / 20 / 30 A' in values
+        assert 'Remark: Manual test record' in values
+        assert all(cell.data_type != 'f' for row in sheet[header_range] for cell in row)
+        summary_range = next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')
+        plain_range = next(plain.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')
+        assert [[cell.value for cell in row] for row in cached['T-riseChart'][summary_range]] == [
+            [cell.value for cell in row] for row in plain['T-riseChart'][plain_range]]
+        assert list(cached['Initial Data'].values) == list(plain['Initial Data'].values)
+        assert sheet._charts[0].anchor._from.row >= sheet[header_range][-1][0].row
+        assert str(sheet.print_area).find(str(sheet[header_range][0][0].row)) >= 0
+    finally:
+        plain.close()
+        book.close()
+        cached.close()
+
+
+@pytest.mark.parametrize('humidity', [-1, 101, 'nan'])
+def test_download_rejects_invalid_report_humidity(humidity):
+    client = TestClient(app)
+    data = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', scanner_bytes())}).json()
+    response = client.post('/api/tools/temperature-rise/download', json={
+        'table': data['table'], 'selection': data['selection'],
+        'report_metadata': {'relative_humidity': humidity},
+    })
+    assert response.status_code == 422
+
+
 @pytest.mark.parametrize(('names', 'labels'), [
     ({'3': 'Tail-R', '4': '=1+1'}, ['=1+1', 'Tail-R']),
     ({'3': 'Tail-R'}, ['Crimp', 'Tail-R']),

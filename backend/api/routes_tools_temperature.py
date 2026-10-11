@@ -77,6 +77,7 @@ def download_temperature_workbook(request: DownloadTemperatureRequest,
         maximum_coefficients=request.maximum_coefficients.domain() if request.maximum_coefficients else None,
         average_coefficients=request.average_coefficients.domain() if request.average_coefficients else None,
         target_rise=request.target_rise,
-        derating_parameters=DeratingParameters(**request.derating.model_dump()) if request.derating else None))
+        derating_parameters=DeratingParameters(**request.derating.model_dump()) if request.derating else None,
+        report_metadata=request.report_metadata.application()))
     return Response(content, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                     headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(name)}"})

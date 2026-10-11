@@ -18,17 +18,22 @@ from openpyxl.workbook.defined_name import DefinedName
 
 from backend.domain.temperature_rise import calculate_current
 from backend.domain.temperature_data import UNPOWERED_CURRENT_THRESHOLD, measurement_name
+from backend.application.temperature_report_metadata import TemperatureReportMetadata
 
 MAX_COLOR = 'FFA500'
 AVG_COLOR = '00008B'
 
 
-def build_rise_report(sheet, *, table, selection, analysis, maximum, average, target, caches, chart):
+def build_rise_report(sheet, *, table, selection, analysis, maximum, average, target, caches, chart,
+                      report_metadata=TemperatureReportMetadata()):
     stages = [point for point in analysis.points if point.source_row is not None]
     raw_rows, raw_columns = _key_readings(sheet, table, selection, stages)
     rise_header = len(stages) + 6
     rise_rows = _stage_rises(sheet, selection, stages, raw_rows, raw_columns, rise_header, caches)
-    summary_header = rise_header + len(stages) + 6
+    info_header = rise_header + len(stages) + 3
+    chart_column = max(len(analysis.points) + 3, 11)
+    info_end = _test_info(sheet, report_metadata, info_header, chart_column + 12)
+    summary_header = info_end + 2
     maximum_row, average_row = _summary(sheet, table, selection, analysis, rise_rows, summary_header, caches)
     calculator_header = average_row + 2
     _calculator(sheet, maximum, analysis.maximum_fit, target, calculator_header, caches)
@@ -45,14 +50,46 @@ def build_rise_report(sheet, *, table, selection, analysis, maximum, average, ta
     sheet.page_setup.orientation = 'landscape'
     sheet.page_setup.paperSize = sheet.PAPERSIZE_A4
     sheet.page_setup.fitToWidth, sheet.page_setup.fitToHeight = 1, 1
-    chart_column = max(len(analysis.points) + 3, 11)
-    sheet.print_area = f'A{summary_header}:{get_column_letter(chart_column + 12)}{max(calculator_header + 1, summary_header + 36)}'
+    sheet.print_area = f'A{info_header}:{get_column_letter(chart_column + 12)}{max(calculator_header + 1, summary_header + 36)}'
     for column in range(1, max(table.width + 2, chart_column + 13)):
         sheet.column_dimensions[get_column_letter(column)].width = 10
     sheet.column_dimensions['A'].width = 22
     for row in range(summary_header + 1, average_row + 1):
         label = str(sheet.cell(row, 1).value or '')
         sheet.row_dimensions[row].height = max(15, ceil(len(label) / 20) * 15)
+
+
+def _test_info(sheet, info, header, width):
+    thirds = (1, width // 3 + 1, 2 * width // 3 + 1, width + 1)
+    rows = [[f'LTR: {info.ltr_number}', f'Test Date: {info.test_date}', f'Tested By: {info.tested_by}']]
+    environment = []
+    if info.ambient_temperature.strip():
+        environment.append(f'{info.ambient_temperature.strip()} °C')
+    if info.relative_humidity is not None:
+        environment.append(f'{info.relative_humidity:g} %RH')
+    rows.append(['Amb Temp. and Rel. Hum.: ' + ' / '.join(environment)])
+    if info.equipment_id.strip() or info.test_condition.strip():
+        rows.append([f'Test Equipment ID: {info.equipment_id}', f'Test Condition: {info.test_condition}'])
+    if info.remark.strip():
+        rows.append([f'Remark: {info.remark}'])
+    for offset, values in enumerate(rows):
+        row = header + offset
+        bounds = thirds if len(values) == 3 else (1, width // 2 + 1, width + 1) if len(values) == 2 else (1, width + 1)
+        height = 20
+        for slot, value in enumerate(values):
+            start, end = bounds[slot], bounds[slot + 1] - 1
+            sheet.merge_cells(start_row=row, start_column=start, end_row=row, end_column=end)
+            _literal(sheet, row, start, value)
+            cell = sheet.cell(row, start)
+            cell.font = Font(name='Arial', size=10, color='172033')
+            cell.alignment = Alignment(vertical='center', wrap_text=True)
+            cell.fill = PatternFill('solid', fgColor='F4F7FB')
+            cell.border = Border(bottom=Side(style='thin', color='D8E0EA'))
+            height = max(height, ceil(len(value) / ((end - start + 1) * 9)) * 15 + 5)
+        sheet.row_dimensions[row].height = height
+    end = header + len(rows) - 1
+    _name(sheet, 'TemperatureTestInfo', header, end, width)
+    return end
 
 
 def _literal(sheet, row, column, value):

@@ -104,7 +104,7 @@ def test_export_contains_native_xy_charts_formulas_cached_values_and_source_mapp
         analysis=analysis, maximum_coefficients=analysis.maximum_fit.coefficients,
         average_coefficients=analysis.average_fit.coefficients, target_rise=30, derating=derating)
     book = load_workbook(output, data_only=False)
-    assert book.sheetnames == ['Initial Data', 'T-riseChart', 'Derating', 'Setup', 'CR']
+    assert book.sheetnames == ['Initial Data', 'T-riseChart', 'Derating', 'Setup']
     assert len(book['T-riseChart']._charts) == 1
     assert len(book['Derating']._charts) == 1
     assert book['T-riseChart']._charts[0].__class__.__name__ == 'ScatterChart'
@@ -167,8 +167,8 @@ def test_export_keeps_original_data_positions_and_marks_only_real_stage_endpoint
     assert yellow == {6, 8, 10}
     assert all(initial.cell(row, col).fill.fgColor.rgb == '00FFFF00'
                for row in yellow for col in range(1, 7))
-    assert book.sheetnames == ['Initial Data', 'T-riseChart', 'Derating', 'Setup', 'CR']
-    assert all(cell.value is None for name in ('Setup', 'CR') for row in book[name] for cell in row)
+    assert book.sheetnames == ['Initial Data', 'T-riseChart', 'Derating', 'Setup']
+    assert all(cell.value is None for row in book['Setup'] for cell in row)
     book.close()
 
 
