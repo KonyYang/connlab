@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
     "summary": "Normalize temperature editor columns and preserve sample groups through balanced exclusions",
@@ -32,17 +32,87 @@
     "risk_reasons": [],
     "activation_head": "ab95f5e485be65a6626bc67e8f493b66b0fbc42b",
     "started_at": "2026-10-09T00:07:00.551432Z",
-    "updated_at": "2026-10-11T01:21:44.127470Z",
+    "updated_at": "2026-10-11T01:26:24.801070Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User approved outside-editor clearing of temporary row/column highlights, retaining checked rows and editor/menu interactions",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "version": 1,
+      "subject": "07bb8aa753b194823448d736fcbfbb8708a7a6c2",
+      "changed_paths": [
+        "backend/api/routes_tools_temperature.py",
+        "backend/api/temperature_schemas.py",
+        "backend/application/temperature_data_preparation.py",
+        "backend/domain/temperature_data.py",
+        "backend/infrastructure/office/temperature_rise_report_sheet.py",
+        "docs/temperature_rise_tool.md",
+        "frontend/src/api/temperature.ts",
+        "frontend/src/features/temperature/ColumnActions.tsx",
+        "frontend/src/features/temperature/DataPreview.test.tsx",
+        "frontend/src/features/temperature/DataPreview.tsx",
+        "frontend/src/features/temperature/sampleGroups.ts",
+        "frontend/src/features/temperature/sourceColumns.ts",
+        "frontend/src/features/temperature/sourcePresentation.ts",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useDataGridEditing.ts",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx",
+        "tests/integration/test_tools_temperature_api.py",
+        "tests/unit/test_temperature_data_preparation.py",
+        "tests/unit/test_temperature_workbook_gateway.py"
+      ],
+      "roles": {
+        "developer": {
+          "method": "Same-agent TDD: two interaction tests failed before implementation, passed afterward; expanded coverage of actual toolbar/menu actions.",
+          "status": "passed"
+        },
+        "reviewer": {
+          "standards_outstanding": 0,
+          "status": "passed",
+          "spec_outstanding": 0,
+          "independent": false,
+          "method": "Separate sequential same-agent Standards and Spec exact-diff reviews"
+        },
+        "qa": {
+          "status": "passed",
+          "limitations": "No new browser visual verification: prior browser runtime EPERM. Backend unchanged in this refinement, not rerun; previous backend evidence remains historical, not claimed as this run.",
+          "method": "Final affected frontend matrix and sequential TypeScript/Vite production build"
+        }
+      },
+      "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
+      "validation": [
+        {
+          "tests": 70,
+          "name": "frontend affected matrix",
+          "status": "passed",
+          "command": "npm test -- src/features/temperature/DataPreview.test.tsx src/pages/TemperatureRisePage.test.tsx src/api/temperature.test.ts"
+        },
+        {
+          "name": "production build",
+          "status": "passed",
+          "command": "npm run build"
+        },
+        {
+          "name": "exact diff whitespace",
+          "status": "passed",
+          "command": "git diff --cached --check"
+        }
+      ],
+      "integration": {
+        "method": "Local clean master subject with explicit scoped commit; no remote publication",
+        "status": "passed"
+      },
+      "schema": "connlab.sol-task-report",
+      "scope_ok": true,
+      "summary": "Effective column grouping and role restoration delivery retained; outside-editor pointer clicks now clear temporary row/column highlights without clearing checked rows or their Shift anchor. Internal name, toolbar and portal/menu interactions remain functional. UI-only refinement; backend/source/export algorithms unchanged."
+    }
   },
   "last_closed": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
