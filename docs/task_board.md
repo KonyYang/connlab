@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
     "summary": "Normalize temperature editor columns and preserve sample groups through balanced exclusions",
@@ -32,17 +32,87 @@
     "risk_reasons": [],
     "activation_head": "ab95f5e485be65a6626bc67e8f493b66b0fbc42b",
     "started_at": "2026-10-09T00:07:00.551432Z",
-    "updated_at": "2026-10-11T01:47:53.096780Z",
+    "updated_at": "2026-10-11T01:50:22.917815Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User approved role-based backgrounds: protect current ambient, allow unused temperature columns normal selection/exclusion/restoration/movement",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
+      "schema": "connlab.sol-task-report",
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "method": "Same-agent TDD: role/operation regression failed before implementation and passed after; protected ambient, released former ambient, exclusion/restoration and explicit regrouping covered."
+        },
+        "reviewer": {
+          "spec_outstanding": 0,
+          "standards_outstanding": 0,
+          "status": "passed",
+          "independent": false,
+          "method": "Separate sequential same-agent Standards and Spec exact-diff review"
+        },
+        "qa": {
+          "limitations": "Browser connection attempted: bundled runtime import failed with EPERM, visual QA unverified. UI-only refinement, backend/source/export unchanged and not rerun.",
+          "status": "passed",
+          "method": "Final affected frontend matrix and sequential TypeScript/Vite production build"
+        }
+      },
+      "validation": [
+        {
+          "tests": 71,
+          "name": "frontend affected matrix",
+          "status": "passed",
+          "command": "npm test -- src/features/temperature/DataPreview.test.tsx src/pages/TemperatureRisePage.test.tsx src/api/temperature.test.ts"
+        },
+        {
+          "command": "npm run build",
+          "name": "production build",
+          "status": "passed"
+        },
+        {
+          "command": "git diff --cached --check",
+          "name": "exact diff whitespace",
+          "status": "passed"
+        }
+      ],
+      "integration": {
+        "status": "passed",
+        "method": "Local clean master subject, scoped commit; no remote publication"
+      },
+      "version": 1,
+      "summary": "Retains effective-column grouping, editable measurement names/export and outside-editor highlight dismissal. Current ambient now has pale amber role background and remains protected; unused non-excluded temperature columns have pale cyan background and retain normal selection/exclusion/restoration/movement. Role presentation is derived, not tied to channel 318.",
+      "subject": "c4d33bb9814d3569454e31f51944949055707365",
+      "changed_paths": [
+        "backend/api/routes_tools_temperature.py",
+        "backend/api/temperature_schemas.py",
+        "backend/application/temperature_data_preparation.py",
+        "backend/domain/temperature_data.py",
+        "backend/infrastructure/office/temperature_rise_report_sheet.py",
+        "docs/temperature_rise_tool.md",
+        "frontend/src/api/temperature.ts",
+        "frontend/src/features/temperature/ColumnActions.tsx",
+        "frontend/src/features/temperature/DataPreview.test.tsx",
+        "frontend/src/features/temperature/DataPreview.tsx",
+        "frontend/src/features/temperature/sampleGroups.ts",
+        "frontend/src/features/temperature/sourceColumns.ts",
+        "frontend/src/features/temperature/sourcePresentation.ts",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useDataGridEditing.ts",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx",
+        "tests/integration/test_tools_temperature_api.py",
+        "tests/unit/test_temperature_data_preparation.py",
+        "tests/unit/test_temperature_workbook_gateway.py"
+      ],
+      "scope_ok": true
+    }
   },
   "last_closed": {
     "task_id": "TASK_TOOLS_CUSTOMER_REPORT_SINGLE_ACTION_20261008",
