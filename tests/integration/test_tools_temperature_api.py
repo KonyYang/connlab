@@ -39,7 +39,8 @@ def test_report_metadata_exports_literal_compact_header_without_cr_or_calculatio
     book = load_workbook(BytesIO(response.content), data_only=False)
     cached = load_workbook(BytesIO(response.content), data_only=True)
     try:
-        assert book.sheetnames == ['Initial Data', 'T-riseChart', 'Derating', 'Setup']
+        assert book.sheetnames == ['Setup', 'Initial Data', 'T-riseChart', 'Derating']
+        assert book.active.title == 'T-riseChart'
         sheet = book['T-riseChart']
         header_range = next(book.defined_names['TemperatureTestInfo'].destinations)[1].replace('$', '')
         assert sheet[header_range][0][0].coordinate == 'A1'
@@ -84,9 +85,11 @@ def test_empty_report_fields_remain_blank_at_top_left_and_zero_humidity_is_prese
         sheet = book['T-riseChart']
         info = sheet[next(book.defined_names['TemperatureTestInfo'].destinations)[1].replace('$', '')]
         assert info[0][0].coordinate == 'A1'
-        assert len(info) == 4
-        assert [row[0].value for row in info] == ['LTR', 'Test Date', 'Tested By', 'Amb Temp. and Rel. Hum.']
-        assert [row[2].value for row in info] == [None, None, None, environment]
+        assert len(info) == 5
+        assert [row[0].value for row in info] == [
+            'LTR', 'Test Date', 'Tested By', 'Amb Temp. and Rel. Hum.', 'Test Equipment ID',
+        ]
+        assert [row[2].value for row in info] == [None, None, None, environment, None]
     finally:
         book.close()
 

@@ -71,8 +71,8 @@ def _test_info(sheet, info):
     if info.relative_humidity is not None:
         environment.append(f'{info.relative_humidity:g} %RH')
     rows.append(('Amb Temp. and Rel. Hum.', ' / '.join(environment)))
-    for label, value in (('Test Equipment ID', info.equipment_id),
-                         ('Test Condition', info.test_condition), ('Remark', info.remark)):
+    rows.append(('Test Equipment ID', info.equipment_id))
+    for label, value in (('Test Condition', info.test_condition), ('Remark', info.remark)):
         if value.strip():
             rows.append((label, value))
     edge = Side(style='thin', color='D8D8B0')

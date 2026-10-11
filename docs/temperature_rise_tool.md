@@ -41,7 +41,8 @@ Only the MAX y/a/b/c/x calculator remains visible below the summary. The AVG coe
 both live chart-fit rows are collapsed, not deleted: coefficient overrides, recalculation, linked chart
 equations and Derating inputs retain their existing behavior. The native scatter chart has rounded
 corners and a larger plot area using the Derating layout proportions; printing includes the calculator.
-An empty `Setup` sheet follows the existing three sheets; the unused `CR` sheet is no longer created. No contact-resistance
+An empty `Setup` sheet precedes the existing three sheets; `T-riseChart` is selected on opening,
+independently of tab order. The unused `CR` sheet is no longer created. No contact-resistance
 calculation or setup content is imported. The source attachment and project/report authorities remain
 untouched; the change applies only to newly generated downloads.
 
@@ -74,15 +75,17 @@ There is no project Basic Information, Matrix, database or external source write
 
 The download request carries a separate report_metadata object, with empty defaults for older clients.
 T-riseChart starts the report information at A1 (Excel has no A0). It uses a vertical, pale-yellow
-label/value table: LTR, Test Date, Tested By and Amb Temp. and Rel. Hum., followed by equipment,
-condition and remark rows only when entered. Labels occupy A:B, values C:I; ordinary merged
+label/value table: LTR, Test Date, Tested By, Amb Temp. and Rel. Hum. and Test Equipment ID.
+Equipment always retains a row, with a blank value when not entered; condition and remark rows
+appear only when entered. Labels occupy A:B, values C:I; ordinary merged
 presentation cells wrap with fitted row heights. TemperatureTestInfo names this top-left region.
 The summary/chart and MAX calculator follow it; endpoint readings and the temperature-rise build
 remain inspectable below the printable report, rather than preceding its information. All blocks
 are written at their final locations instead of inserting rows after formulas have been created.
 Named ranges, chart anchors, caches and formula references derive from that layout. Printing starts
 at A1 and excludes the supporting detail, preserving the readable single-page report. Initial Data,
-numerical behavior and output tabs (Initial Data, T-riseChart, Derating, Setup) are unchanged.
+numerical behavior are unchanged. Output tabs are Setup, Initial Data, T-riseChart and Derating;
+only T-riseChart is selected and is the default opening view. Setup remains blank.
 
 Validation: the new project/manual-override page regression failed before implementation and passed
 afterward. Final affected matrix: 103 frontend tests and 109 Python preparation/calculation/workbook/API
@@ -105,6 +108,14 @@ the single-page A1:W44 print. Changing Target Rise to 35 recalculated 72.8608073
 relocated endpoint's thermocouple value by 1 increased its linked summary rise by 1. Temporary edits
 were restored before rendering and never saved back. No frontend code changed in this revision.
 
+Opening-view revision (2026-10-12): workbook/HTTP regressions first failed for the previous tab order
+and absent blank equipment row, then passed after the localized adapter changes. Formula caches
+are assembled after the final tab order is established, preserving each worksheet's cached values.
+Final opening-view validation: 111 Python tests passed (the same existing deprecation warning).
+A separate hidden Excel instance opened the file directly on T-riseChart, confirmed Setup at index 1
+and the blank equipment row, found no formula errors and retained the target/source-edit recalculation
+baseline. No frontend changes or project/source writes; the workbook was closed without saving edits.
+
 ### Standards
 
 Separate same-agent exact-diff pass: API remains typed and centralized; metadata state belongs to its
@@ -112,6 +123,8 @@ feature hook, source suggestions are pure, workbook formatting stays in infrastr
 domain code is untouched. No new dependency or authority mutation. Zero outstanding findings.
 The top-left revision keeps layout ownership in the same Office adapter and its public download
 seam; each moved source/reference is regenerated, not patched by inserting worksheet rows.
+Opening-view pass: existing workbook APIs set tab order/active selection before caches are mapped;
+no private worksheet-list manipulation, added dependency or authority write. Zero findings.
 
 ### Spec
 
@@ -121,6 +134,8 @@ and CR removal are implemented. Missing physical facts remain editable/blank. Ze
 live-browser visual verification remains a stated limitation, not an independently passed check.
 Top-left revision: information begins at A1, follows the supplied vertical label/value reference,
 and retains calculations, supporting detail and the no-CR tab set. Standards 0 / Spec 0 findings.
+Opening-view pass: equipment row is always present, Setup is first yet T-riseChart opens by default;
+original data/charts/formulas remain intact. Zero findings. Both passes remain sequential same-agent.
 
 Changed paths: frontend/src/api/temperature.ts; frontend/src/pages/TemperatureRisePage.tsx and its tests;
 frontend/src/features/temperature/TestInfo.tsx, reportInfo.ts, reportInfo.test.ts,

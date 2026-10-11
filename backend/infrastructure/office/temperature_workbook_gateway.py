@@ -119,7 +119,10 @@ class TemperatureWorkbookGateway:
         initial.title = 'Initial Data'
         rise = book.create_sheet('T-riseChart')
         derated = book.create_sheet('Derating')
-        book.create_sheet('Setup')
+        book.create_sheet('Setup', index=0)
+        book.active = rise
+        for sheet in book:
+            sheet.sheet_view.tabSelected = sheet is rise
         caches: dict[str, dict[str, float | str]] = {name: {} for name in book.sheetnames}
         _initial_sheet(initial, table, selection, analysis)
         build_rise_report(rise, table=table, selection=selection, analysis=analysis,
