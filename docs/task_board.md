@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_TEST_INFO_20261011",
     "summary": "Add editable temperature report metadata and optional project association",
@@ -36,17 +36,79 @@
     "risk_reasons": [],
     "activation_head": "86d450a73d025a234bcdd51249084de00273d471",
     "started_at": "2026-10-11T13:28:37.916192Z",
-    "updated_at": "2026-10-11T14:23:40.639869Z",
+    "updated_at": "2026-10-11T14:29:52.090204Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_TEST_INFO_20261011",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User feedback: move XLSX test metadata to A1 in compact vertical label/value layout",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "summary": "Editable Test Info with optional confirmed project defaults; XLSX metadata starts at A1 in a vertical pale-yellow label/value table, main report precedes supporting detail and CR is removed",
+      "scope_ok": true,
+      "roles": {
+        "reviewer": {
+          "summary": "Separate sequential same-agent Standards and Spec passes; 0 outstanding findings, no independent-agent review claimed",
+          "status": "passed"
+        },
+        "developer": {
+          "summary": "HTTP regression RED at A21 then GREEN at A1; blank/zero humidity and dynamic source reference tests passed",
+          "status": "passed"
+        },
+        "qa": {
+          "summary": "Final 111-test affected Python matrix and native Excel numeric/visual QA passed; Initial Data preserved",
+          "status": "passed"
+        }
+      },
+      "version": 1,
+      "subject": "650c3a655a8c24f0db9f7341ee51fa49f02633a7",
+      "integration": {
+        "summary": "Exact local master commit, clean worktree; no remote publication",
+        "status": "passed"
+      },
+      "changed_paths": [
+        "backend/api/routes_tools_temperature.py",
+        "backend/api/temperature_schemas.py",
+        "backend/application/temperature_report_metadata.py",
+        "backend/application/tools_temperature_service.py",
+        "backend/infrastructure/office/temperature_rise_report_sheet.py",
+        "backend/infrastructure/office/temperature_workbook_gateway.py",
+        "docs/temperature_rise_tool.md",
+        "frontend/src/api/temperature.ts",
+        "frontend/src/features/temperature/TestInfo.tsx",
+        "frontend/src/features/temperature/reportInfo.test.ts",
+        "frontend/src/features/temperature/reportInfo.ts",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useTemperatureReportInfo.ts",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx",
+        "tests/integration/test_tools_temperature_api.py",
+        "tests/unit/test_temperature_workbook_gateway.py"
+      ],
+      "validation": [
+        {
+          "summary": "111 tests passed on final revision state",
+          "name": "temperature Python matrix",
+          "status": "passed"
+        },
+        {
+          "summary": "A1:I6 metadata and single-page A1:W44 visually checked, no formula errors, 30 C -> 66.5 A, 35 C -> 72.860807 A; relocated endpoint edit updates linked summary",
+          "name": "native Excel layout and recalculation",
+          "status": "passed"
+        },
+        {
+          "summary": "Prior feature validation: 103 frontend tests and TypeScript/Vite build; revision contains no frontend changes",
+          "name": "unchanged frontend validation retained",
+          "status": "passed"
+        }
+      ],
+      "task_id": "TASK_TEMPERATURE_TEST_INFO_20261011",
+      "schema": "connlab.sol-task-report"
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_EXPORT_PRESENTATION_20261011",
