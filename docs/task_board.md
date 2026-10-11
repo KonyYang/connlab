@@ -11,103 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_TEMPERATURE_EXPORT_PRESENTATION_20261011",
-    "summary": "Simplify temperature-rise XLSX source and report presentation",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Preserve original imported Initial Data with yellow stage-source rows; compact formatted measurement labels, MAX-only calculator and rounded space-efficient T-riseChart; add blank Setup and CR worksheets. Preserve analysis, native formulas and Derating behavior; never modify reference workbook.",
-    "scope_paths": [
-      "backend/infrastructure/office/temperature_workbook_gateway.py",
-      "backend/infrastructure/office/temperature_rise_report_sheet.py",
-      "tests/unit/test_temperature_workbook_gateway.py",
-      "tests/integration/test_tools_temperature_api.py",
-      "docs/temperature_rise_tool.md"
-    ],
-    "risk_reasons": [],
-    "activation_head": "b8e5ffbd0c8e3b0aea5edebeae12d29e87cea589",
-    "started_at": "2026-10-11T03:11:15.207928Z",
-    "updated_at": "2026-10-11T03:56:17.809408Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_EXPORT_PRESENTATION_20261011",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "task_id": "TASK_TEMPERATURE_EXPORT_PRESENTATION_20261011",
-      "changed_paths": [
-        "backend/infrastructure/office/temperature_rise_report_sheet.py",
-        "backend/infrastructure/office/temperature_workbook_gateway.py",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_workbook_gateway.py"
-      ],
-      "validation": [
-        {
-          "method": "85 temperature frontend tests",
-          "status": "passed"
-        },
-        {
-          "method": "105 backend preparation/calculation/export/API tests",
-          "status": "passed"
-        },
-        {
-          "method": "Vite production build",
-          "status": "passed"
-        },
-        {
-          "method": "Native Excel read-only recalculation, extracted labels and bold orange current; source hash unchanged",
-          "status": "passed"
-        },
-        {
-          "method": "Artifact summary rendered and visually inspected; git diff --check",
-          "status": "passed"
-        }
-      ],
-      "integration": {
-        "method": "Scoped local master commit; no remote publication",
-        "status": "passed"
-      },
-      "version": 1,
-      "roles": {
-        "developer": {
-          "method": "Coherent RED/GREEN public-seam tests then localized implementation",
-          "status": "passed"
-        },
-        "reviewer": {
-          "status": "passed",
-          "independent": false,
-          "method": "Sequential same-agent Standards and Spec reviews of exact diff",
-          "spec_outstanding": 0,
-          "standards_outstanding": 0
-        },
-        "qa": {
-          "status": "passed",
-          "method": "Final affected matrices and native Excel QA",
-          "limitations": "Artifact preview does not evaluate existing LINEST array helper, so native Excel verified calculator values; no browser OS download exercised in this revision"
-        }
-      },
-      "scope_ok": true,
-      "summary": "Original-data export simplification plus literal label extraction, automatic MAX target current and bold orange XLSX result",
-      "schema": "connlab.sol-task-report",
-      "subject": "d4fdb00215f6cc73ebcc7c598df1418072998b7a"
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_TEMPERATURE_COMPACT_UNPOWERED_REVIEW_20261011",
-    "tier": "micro",
-    "subject": "1b303c56f9bcdcf91d1c7d8186ba1af0e5f9c854",
-    "summary": "Compact unpowered review warnings into consecutive scan ranges",
+    "task_id": "TASK_TEMPERATURE_EXPORT_PRESENTATION_20261011",
+    "tier": "standard",
+    "subject": "d4fdb00215f6cc73ebcc7c598df1418072998b7a",
+    "summary": "Simplify temperature-rise XLSX source and report presentation",
     "disposition": "completed",
-    "decision_ref": "User authorization: 关闭上一任务，继续导出优化",
-    "closed_at": "2026-10-11T03:11:15.207928Z"
+    "decision_ref": "User final authorization: 关闭; local close only because remote publication was blocked by security review",
+    "closed_at": "2026-10-11T04:04:55.372856Z"
   },
   "retained_history": [
     {
