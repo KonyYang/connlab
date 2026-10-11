@@ -11,8 +11,27 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_TEMPERATURE_COMPACT_UNPOWERED_REVIEW_20261011",
+    "summary": "Compact unpowered review warnings into consecutive scan ranges",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Presentation-only zero-current warning copy and consecutive A-column scan ranges; retain original issue rows, selections and confirmation semantics",
+    "scope_paths": [
+      "frontend/src/features/temperature/sourceScan.ts",
+      "frontend/src/pages/TemperatureRisePage.tsx",
+      "frontend/src/pages/TemperatureRisePage.test.tsx",
+      "frontend/src/features/temperature/sourceScan.test.ts",
+      "docs/temperature_rise_tool.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "a123f58ec33d3b57459df079e61ca07d7e672558",
+    "started_at": "2026-10-11T02:06:25.288323Z",
+    "updated_at": "2026-10-11T02:06:25.288323Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_EFFECTIVE_COLUMN_GROUPING_20261009",
     "tier": "standard",

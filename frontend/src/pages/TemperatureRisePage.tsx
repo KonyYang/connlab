@@ -4,7 +4,7 @@ import { UiIcon } from '../components/common/UiIcon';
 import { useTopBarActionsRoot } from '../components/layout/TopBarActionsContext';
 import { incompleteSampleGroups } from '../features/temperature/sourceColumns';
 import { sourceColumnOptions } from '../features/temperature/sourcePresentation';
-import { scanMessage } from '../features/temperature/sourceScan';
+import { reviewMessages, scanMessage } from '../features/temperature/sourceScan';
 import { DataPreview } from '../features/temperature/DataPreview';
 import { DataRegionCorrection } from '../features/temperature/DataRegionCorrection';
 import { RiseChart, DeratingChart, MAX_COLOR } from '../features/temperature/TemperatureCharts';
@@ -17,6 +17,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
   const tool = useTemperatureTool();
   const s = tool.state;
   const busy = Boolean(s.busy);
+  const review = useMemo(() => reviewMessages(s.table, s.review?.issues ?? []), [s.table, s.review]);
   const columns = useMemo(() => s.table && s.selection ? sourceColumnOptions(s.table, s.selection, s.channel_layout) : [],
     [s.table, s.selection?.header_row, s.selection?.ambient_column, s.selection?.current_column, s.selection?.temperature_columns, s.selection?.channel_names, s.channel_layout]);
   const ambientValid = columns.some(column => column.id === s.selection?.ambient_column && column.kind === 'temperature');
@@ -59,7 +60,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         <DataPreview key={`preview-${s.table.sheet_name}-${s.table.file_name}-${s.selection.header_row}-${s.selection.start_row}-${s.selection.end_row}`}
           table={s.table} selection={s.selection} layout={s.channel_layout} issues={s.review?.issues ?? []} onChange={tool.changeData} disabled={busy} />
         {Boolean(s.review?.issues.length) && <section className="temperature-review" aria-label="Data Needs Review">
-          <h4>Data Needs Review</h4><div className="temperature-issue-list">{s.review?.issues.map((issue, index) => <p key={index} className={issue.severity === 'error' ? 'temperature-error' : undefined}>{scanMessage(s.table, issue.message, issue.source_row)}</p>)}</div>
+          <h4>Data Needs Review</h4><div className="temperature-issue-list">{review.map((issue, index) => <p key={index} className={issue.severity === 'error' ? 'temperature-error' : undefined}>{issue.message}</p>)}</div>
           {!s.review?.issues.some(issue => issue.severity === 'error') && <label className="temperature-check"><input type="checkbox" checked={s.acknowledged} disabled={busy} onChange={event => tool.acknowledge(event.target.checked)} />Keep Flagged Rows</label>}
         </section>}
         <div className="temperature-confirm"><span className={s.confirmed ? 'temperature-success' : 'temperature-hint'} role="status">{s.confirmed ? 'Data Confirmed' : ''}</span>

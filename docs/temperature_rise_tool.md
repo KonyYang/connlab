@@ -1245,3 +1245,23 @@ findings. Methods: tdd and code-review; no independent-agent review claimed.
 
 Changed paths: `frontend/src/features/temperature/DataPreview.tsx`, `DataPreview.test.tsx` and
 `temperature.css` in that feature, this document and the sole-writer task-board record.
+
+## Compact unpowered review messages (2026-10-11)
+
+The review display abbreviates zero-current warnings to
+`Scan 51~53: |current| < 0.1 A is treated as unpowered.` Consecutive warning entries merge only
+when their source rows are adjacent and their actual A-column scan IDs are ascending consecutive
+safe integers. Gaps, duplicate/reset IDs, missing/non-numeric IDs and intervening other issues
+remain separate. Leading zeros in scan labels are retained. Other warnings/errors keep their text.
+This display projection never alters raw issues, row highlighting, selection, exclusion, acknowledgement
+or calculation. The original data/API and threshold are unchanged.
+
+TDD: the page-level range display regression failed before implementation and passed afterward.
+Final affected validation: 81 frontend tests (including nine formatter boundary cases) and the
+TypeScript/Vite production build passed. Separate sequential same-agent Standards/Spec reviews found
+zero outstanding issues. No browser run for this text-only presentation mapping, proven at the
+rendered-page seam; no backend or native Excel changes. Methods: tdd and code-review.
+
+Changed paths: `frontend/src/features/temperature/sourceScan.ts`, `sourceScan.test.ts` in that feature,
+`frontend/src/pages/TemperatureRisePage.tsx`, `TemperatureRisePage.test.tsx` in that folder, this document
+and the sole-writer task-board record.

@@ -596,7 +596,7 @@ describe('temperature preparation and calculation workflow', () => {
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
-    await screen.findByText('Scan 1: current is zero.');
+    await screen.findByText('Scan 1: |current| < 0.1 A is treated as unpowered.');
     expect(api.analyzeTemperatureData).not.toHaveBeenCalled();
     expect(api.generateTemperatureDerating).not.toHaveBeenCalled();
     expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
@@ -624,7 +624,7 @@ describe('temperature preparation and calculation workflow', () => {
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
-    await screen.findByText('Scan 00774: current is zero.');
+    await screen.findByText('Scan 00774: |current| < 0.1 A is treated as unpowered.');
     expect(screen.getByText('Scan 800, column C: missing reading.')).toBeTruthy();
     expect(screen.getByText('No usable rows remain.')).toBeTruthy();
     const review = screen.getByRole('region', { name: 'Data Needs Review' });
@@ -635,6 +635,34 @@ describe('temperature preparation and calculation workflow', () => {
     await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.excluded_rows).toEqual([2]);
+  });
+
+  it('compacts consecutive unpowered scans without losing row selection or other warnings', async () => {
+    const user = userEvent.setup();
+    const source = structuredClone(imported);
+    [51, 52, 53, 55].forEach((scan, index) => { source.table.rows[index + 1][0] = scan; });
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(source);
+    vi.mocked(api.prepareTemperatureData).mockResolvedValueOnce({ ready: false, measurements: [], issues: [
+      ...[2, 3, 4].map(source_row => ({ code: 'zero_current', severity: 'warning', source_row,
+        message: `Row ${source_row}: |current| < 0.1 A is treated as unpowered. Review this row; other current columns may still be powered.` })),
+      { code: 'current_drop', severity: 'warning', source_row: 4, message: 'Row 4: current decreased by more than 1%.' },
+      { code: 'zero_current', severity: 'warning', source_row: 5, message: 'Row 5: current is zero.' },
+    ] });
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByText('Scan 51~53: |current| < 0.1 A is treated as unpowered.');
+    expect(screen.getByText('Scan 55: |current| < 0.1 A is treated as unpowered.')).toBeTruthy();
+    expect(screen.getByText('Scan 53: current decreased by more than 1%.')).toBeTruthy();
+    const review = screen.getByRole('region', { name: 'Data Needs Review' });
+    expect(within(review).getAllByRole('paragraph')).toHaveLength(3);
+    expect(review.textContent).not.toMatch(/Review this row|other current columns/);
+    expect(api.analyzeTemperatureData).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Select Unpowered Rows' }));
+    for (const scan of [51, 52, 53, 55]) expect((screen.getByLabelText(`Select Scan ${scan}`) as HTMLInputElement).checked).toBe(true);
+    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.excluded_rows).toEqual([2, 3, 4, 5]);
   });
 
   it('shows scan IDs in analysis errors and stage results while preserving the synthetic origin', async () => {
