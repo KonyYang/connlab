@@ -49,19 +49,20 @@ untouched; the change applies only to newly generated downloads.
 ## Compact manual Test Info (2026-10-13)
 
 Below the imported filename, report information appears in a compact, always-visible editor without
-a Test Info heading or collapse control. All five editable fields
-are shown together: LTR, Tested By, Test Date, equipment IDs,
+a Test Info heading or collapse control. All four editable fields
+are shown together: LTR, Tested By, equipment IDs,
 and test condition. There is no separate More Information fold or project selector; Remark is
 also hidden and is reserved for direct completion in the exported workbook.
-Labels and inputs share a line; an editor at least 720 px wide uses four fields per row, and
-at least 1500 px uses five. Inputs are capped at 180 px; narrow editors wrap to two or one field
+Labels and inputs share a line; an editor at least 720 px wide uses four fields per row.
+Inputs are capped at 180 px; narrow editors wrap to two or one field
 per row without clipped labels.
 Metadata is bounded literal text, including labels starting with `=`. The request boundary retains
 its optional humidity validation (finite 0–100 %RH) for compatibility; this tool always supplies 50.
 
 Report information is entered manually. Opening or editing this tool does not query the project
-registry or Basic Information, nor infer an LTR or tester from a project. Date retains
-the source suggestions below. No heading or permanent explanatory row occupies additional space.
+registry or Basic Information, nor infer an LTR or tester from a project. Test Date is hidden
+and automatically follows the latest retained source date below. No heading or permanent
+explanatory row occupies additional space.
 
 The report environment defaults to 23 °C and 50% RH as explicitly requested by the operator. There
 are no visible/editable ambient or humidity report fields; the download metadata carries
@@ -69,13 +70,16 @@ are no visible/editable ambient or humidity report fields; the download metadata
 not measured values inferred from the file. The selected Ambient
 Column, original readings and row-specific temperature-rise calculations remain unchanged.
 
-Date suggestions use included source rows, respecting source region and exclusions.
-Unambiguous ISO or year-first slash dates provide a single date or range; time-only, ambiguous,
-invalid or partly missing dates stay blank. Equipment IDs and conditions stay blank without a verified
+Test Date uses the greatest valid calendar date in the time column of included source rows,
+respecting source region and exclusions even when rows are not sorted by date. ISO or year-first
+slash dates are recognized; time-only, ambiguous, blank and invalid timestamps are ignored.
+If no valid date or time column remains, the exported date stays blank rather than using today.
+Exclusions and reimports refresh it automatically; a previous manual date cannot override it.
+Equipment IDs and conditions stay blank without a verified
 test-specific source. No download date, planned project date or
 generic project-wide equipment list is substituted for actual test facts.
 
-Manual overrides, including intentional empty values, take precedence over all later suggestions
+Visible manual fields, including intentional empty values, take precedence over all later suggestions
 and source changes. Values are session-local and retained through source/role/sheet changes until
 leaving the tool. Report edits clear only old download feedback, not confirmed data or curve/current
 results. The record temperature never replaces the row-specific ambient used in calculations.

@@ -21,23 +21,21 @@ export function sourceReportDefaults(table: WorkbookTable | null, selection: Dat
   const timeColumn = headers.findIndex(value => /^(time|date|date\s*time|timestamp|时间|日期|日期时间)$/i.test(String(value ?? '').trim()));
   const excluded = new Set(selection.excluded_rows);
   const dates = new Set<string>();
-  let allDatesKnown = timeColumn >= 0;
   let minimum = Infinity, maximum = -Infinity;
   for (let row = selection.start_row; row <= selection.end_row; row++) {
     if (excluded.has(row)) continue;
     const values = table.rows[row - 1] ?? [];
     const date = recordedDate(values[timeColumn]);
     if (date) dates.add(date);
-    else allDatesKnown = false;
     const raw = values[selection.ambient_column - 1];
     const reading = typeof raw === 'number' || typeof raw === 'string' && raw.trim() ? Number(raw) : NaN;
     if (Number.isFinite(reading)) { minimum = Math.min(minimum, reading); maximum = Math.max(maximum, reading); }
   }
   const orderedDates = [...dates].sort();
-  const start = orderedDates[0], end = orderedDates.at(-1);
+  const latest = orderedDates.at(-1);
   const low = minimum.toFixed(1), high = maximum.toFixed(1);
   return {
-    test_date: allDatesKnown && start ? start === end ? start : `${start} ~ ${end}` : '',
+    test_date: latest ?? '',
     ambient_temperature: Number.isFinite(minimum) ? low === high ? low : `${low}–${high}` : '',
   };
 }

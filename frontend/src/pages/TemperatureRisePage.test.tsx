@@ -62,7 +62,7 @@ describe('temperature preparation and calculation workflow', () => {
     expect(screen.queryByLabelText('Project (optional)')).toBeNull();
     expect(screen.queryByText('More Information')).toBeNull();
     expect(screen.queryByText('Test Info', { exact: true })).toBeNull();
-    const fields = { LTR: 'DL-2026-09-002A', 'Tested By': 'Actual tester', 'Test Date': '2026-09-10',
+    const fields = { LTR: 'DL-2026-09-002A', 'Tested By': 'Actual tester',
       'Test Equipment ID': 'DG-Q-0801/0269', 'Test Condition': '40 A' };
     const reportFields = within(screen.getByRole('group', { name: 'Report information' }));
     for (const [label, value] of Object.entries(fields)) {
@@ -72,6 +72,7 @@ describe('temperature preparation and calculation workflow', () => {
     }
     expect(screen.queryByLabelText('Rel. Hum. (%RH)')).toBeNull();
     expect(screen.queryByLabelText('Remark')).toBeNull();
+    expect(screen.queryByLabelText('Test Date')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
     expect(screen.queryByLabelText('Amb Temp. (°C)')).toBeNull();
@@ -81,7 +82,7 @@ describe('temperature preparation and calculation workflow', () => {
     await screen.findByText('Metadata payload checked');
     expect(api.downloadTemperatureWorkbook).toHaveBeenCalledWith(expect.objectContaining({
       report_metadata: { ltr_number: 'DL-2026-09-002A', tested_by: 'Actual tester',
-        test_date: '2026-09-10', ambient_temperature: '23', relative_humidity: 50,
+        test_date: '', ambient_temperature: '23', relative_humidity: 50,
         equipment_id: 'DG-Q-0801/0269', test_condition: '40 A', remark: '' },
     }));
     expect(projectApi.listProjectRegistryRows).not.toHaveBeenCalled();
@@ -92,20 +93,36 @@ describe('temperature preparation and calculation workflow', () => {
     }));
   });
 
-  it('keeps the source date suggestion editable and preserves intentional empty overrides through source changes', async () => {
+  it('exports the latest included date automatically and updates it after row exclusion while retaining manual entries', async () => {
+    const user = userEvent.setup();
     const dated = structuredClone(imported);
-    dated.table.rows.slice(1).forEach(row => { row[1] = '2026/10/12 18:00'; });
+    ['2026/10/12 18:00', '2026/10/11 18:01', '2026/10/14 18:02', '2026/10/13 18:03']
+      .forEach((value, index) => { dated.table.rows[index + 1][1] = value; });
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(dated);
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
-    expect((screen.getByLabelText('Test Date') as HTMLInputElement).value).toBe('2026-10-12');
+    expect(screen.queryByLabelText('Test Date')).toBeNull();
     expect(screen.queryByLabelText('Amb Temp. (°C)')).toBeNull();
     expect((screen.getByLabelText('LTR') as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('Tested By') as HTMLInputElement).value).toBe('');
     fireEvent.change(screen.getByLabelText('Tested By'), { target: { value: 'Explicit tester' } });
-    fireEvent.change(screen.getByLabelText('Test Date'), { target: { value: '' } });
-    await upload();
-    expect((screen.getByLabelText('Test Date') as HTMLInputElement).value).toBe('');
+    vi.mocked(api.downloadTemperatureWorkbook).mockRejectedValue(new Error('Automatic date payload checked'));
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
+    await user.click(screen.getByRole('button', { name: 'Download Excel' }));
+    await screen.findByText('Automatic date payload checked');
+    expect(api.downloadTemperatureWorkbook).toHaveBeenLastCalledWith(expect.objectContaining({
+      report_metadata: expect.objectContaining({ test_date: '2026-10-14', tested_by: 'Explicit tester' }),
+    }));
+    await user.click(screen.getByLabelText('Select Scan 3'));
+    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
+    await user.click(screen.getByRole('button', { name: 'Download Excel' }));
+    await screen.findByText('Automatic date payload checked');
+    expect(api.downloadTemperatureWorkbook).toHaveBeenLastCalledWith(expect.objectContaining({
+      report_metadata: expect.objectContaining({ test_date: '2026-10-13', tested_by: 'Explicit tester' }),
+    }));
     expect(screen.queryByLabelText('Amb Temp. (°C)')).toBeNull();
     expect((screen.getByLabelText('Tested By') as HTMLInputElement).value).toBe('Explicit tester');
   });

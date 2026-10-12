@@ -12,7 +12,6 @@ export function TestInfo({ info, disabled, onEdit }: Props) {
     <div className="temperature-test-info-fields">
       {field('ltr_number', 'LTR', 200)}
       {field('tested_by', 'Tested By', 200)}
-      {field('test_date', 'Test Date', 80, 'YYYY-MM-DD')}
       {field('equipment_id', 'Test Equipment ID', 500)}
       {field('test_condition', 'Test Condition', 500)}
     </div>
