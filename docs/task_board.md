@@ -11,113 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_DRAFT_DOWNLOAD_AVAILABLE_INFO_20261012",
-    "summary": "Populate available project information in draft downloads without authority writeback",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Download-only Fee Form, Test Record and LLCR/CR available metadata; draft-first read policy, no fabricated actual facts, preserve formal confirmation and publication gates",
-    "scope_paths": [
-      "backend/application",
-      "backend/api/dependencies.py",
-      "backend/api/project_folder_generation_composition.py",
-      "backend/infrastructure/office/llcr_cr_record_workbook_layout.py",
-      "backend/infrastructure/office/llcr_cr_specialized_record_workbook_gateway.py",
-      "tests/unit",
-      "tests/integration",
-      "docs/draft_download_information.md"
-    ],
-    "risk_reasons": [],
-    "activation_head": "4d576f921c1e96c2ee425f3da5c37edbfe451b01",
-    "started_at": "2026-10-12T15:11:07.002360Z",
-    "updated_at": "2026-10-12T15:47:41.024860Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_DRAFT_DOWNLOAD_AVAILABLE_INFO_20261012",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "roles": {
-        "reviewer": {
-          "summary": "Separate sequential same-agent Standards and Spec passes: 0 outstanding findings; no independent-agent claim; formal default remains strict and metadata is fingerprinted",
-          "status": "passed"
-        },
-        "qa": {
-          "summary": "Full affected matrix and native Excel QA passed; official publication/folder recovery gates and no download authority writes covered",
-          "status": "passed"
-        },
-        "developer": {
-          "summary": "RED/GREEN at public reader, Fee download validation and actual DOCX/XLSX HTTP seams; current Matrix text and registered-description/specification compatibility retained",
-          "status": "passed"
-        }
-      },
-      "summary": "Draft-first available information fills Fee Form, both Word Test Record routes, LLCR/CR and IR/DWV downloads; formal contact forms fill registered/confirmed metadata while preserving authority gates",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/api/dependencies.py",
-        "backend/api/routes_confirmed_matrix_test_record_generation.py",
-        "backend/application/confirmed_matrix_llcr_cr_record_preview_service.py",
-        "backend/application/confirmed_matrix_llcr_cr_record_projection.py",
-        "backend/application/confirmed_matrix_test_record_document_generation_service.py",
-        "backend/application/fee_form_publication_service.py",
-        "backend/application/matrix_editor_ir_dwv_record_generation_service.py",
-        "backend/application/matrix_editor_llcr_cr_record_generation_service.py",
-        "backend/application/matrix_editor_test_record_document_generation_service.py",
-        "backend/application/project_basic_information_output.py",
-        "backend/application/project_basic_information_output_identity.py",
-        "backend/application/project_identity.py",
-        "backend/infrastructure/office/llcr_cr_record_workbook_layout.py",
-        "backend/infrastructure/office/llcr_cr_specialized_record_workbook_gateway.py",
-        "docs/draft_download_information.md",
-        "tests/integration/test_confirmed_matrix_test_record_generation_api.py",
-        "tests/integration/test_matrix_editor_ir_dwv_record_generation_api.py",
-        "tests/integration/test_matrix_editor_llcr_cr_record_generation_api.py",
-        "tests/integration/test_matrix_editor_test_record_generation_api.py",
-        "tests/unit/test_confirmed_matrix_llcr_cr_record_generation_service.py",
-        "tests/unit/test_draft_download_basic_information.py",
-        "tests/unit/test_fee_form_publication_service.py",
-        "tests/unit/test_ir_dwv_record_projection.py"
-      ],
-      "subject": "94286484b58dbd880af04fcf4b6fcc76ebf7be99",
-      "version": 1,
-      "integration": {
-        "summary": "Clean local master at exact subject; no remote publication or task closure",
-        "status": "passed"
-      },
-      "validation": [
-        {
-          "status": "passed",
-          "name": "affected backend matrix",
-          "summary": "357 tests passed across 22 unit/integration modules on final code/test bytes; existing Starlette/httpx warning only"
-        },
-        {
-          "status": "passed",
-          "name": "native Excel read-only QA",
-          "summary": "Isolated LLCR draft opened with LTR, tester Min and current condition; unknown checker/equipment blank, literal tester and no recalculation errors"
-        },
-        {
-          "status": "passed",
-          "name": "exact diff",
-          "summary": "git diff --check clean; same-agent standards/spec review; no UI changes or frontend-build claim"
-        }
-      ],
-      "schema": "connlab.sol-task-report",
-      "task_id": "TASK_DRAFT_DOWNLOAD_AVAILABLE_INFO_20261012"
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_TEMPERATURE_TEST_INFO_20261011",
+    "task_id": "TASK_DRAFT_DOWNLOAD_AVAILABLE_INFO_20261012",
     "tier": "standard",
-    "subject": "fa8d387c0b3e79ec03279f8f483a9d629517b331",
-    "summary": "Add editable temperature report metadata and optional project association",
+    "subject": "94286484b58dbd880af04fcf4b6fcc76ebf7be99",
+    "summary": "Populate available project information in draft downloads without authority writeback",
     "disposition": "completed",
-    "decision_ref": "User accepted completed temperature export changes and requested close on 2026-10-12",
-    "closed_at": "2026-10-12T00:15:25.069817Z"
+    "decision_ref": "User accepted completed draft download information changes and requested close on 2026-10-13",
+    "closed_at": "2026-10-12T22:24:54.882393Z"
   },
   "retained_history": [
     {
