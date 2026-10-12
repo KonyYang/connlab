@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
     "summary": "Simplify temperature Test Info to compact manual entry without project association",
@@ -30,64 +30,17 @@
     "risk_reasons": [],
     "activation_head": "287bb7a2bd92400ce7510f6fbc28fe47fa748e24",
     "started_at": "2026-10-12T22:34:10.482463Z",
-    "updated_at": "2026-10-12T23:13:38.858459Z",
+    "updated_at": "2026-10-12T23:14:47.102893Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requests hidden noneditable report humidity defaulting to 50 percent RH, alongside existing fixed report ambient 23 C",
       "requires_user": false
     },
-    "report": {
-      "summary": "Compact manual report fields with no project selector or heading/collapse; seven visible inputs, hidden report ambient fixed to 23 C without changing source ambient calculations.",
-      "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
-      "schema": "connlab.sol-task-report",
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "detail": "Micro implementation and self-review by current agent, no independent role claim"
-        }
-      },
-      "subject": "e5fab95bad88b27cac1aca2cc33cf5d904241956",
-      "validation": [
-        {
-          "detail": "58 tests across page, report metadata and API on revised final code; RED/GREEN hidden input and exported ambient 23 verified, calculation request retains original ambient column and readings",
-          "status": "passed",
-          "name": "Final affected frontend regression"
-        },
-        {
-          "status": "passed",
-          "name": "Final TypeScript and Vite build"
-        },
-        {
-          "detail": "Seven visible editable fields, no ambient report input, no heading/collapse, 7 viewport widths including 721px, no overflow/page errors; date and humidity behavior retained",
-          "status": "passed",
-          "name": "Independent Edge browser smoke"
-        },
-        {
-          "detail": "Sequential same-agent Standards 0 findings, Spec 0 findings; fixed value limited to report metadata, no calculation/source/authority mutation; git diff --check passed",
-          "status": "passed",
-          "name": "Exact revised diff review"
-        }
-      ],
-      "scope_ok": true,
-      "changed_paths": [
-        "docs/temperature_rise_tool.md",
-        "frontend/src/features/temperature/TestInfo.tsx",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useTemperatureReportInfo.ts",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx"
-      ],
-      "integration": {
-        "status": "passed",
-        "detail": "Clean local master exact subject; no remote publication"
-      },
-      "version": 1
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_DRAFT_DOWNLOAD_AVAILABLE_INFO_20261012",

@@ -70,8 +70,7 @@ describe('temperature preparation and calculation workflow', () => {
       expect(input.disabled).toBe(false);
       fireEvent.change(input, { target: { value } });
     }
-    expect((screen.getByLabelText('Rel. Hum. (%RH)') as HTMLInputElement).value).toBe('');
-    fireEvent.change(screen.getByLabelText('Rel. Hum. (%RH)'), { target: { value: '60.9' } });
+    expect(screen.queryByLabelText('Rel. Hum. (%RH)')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
     expect(screen.queryByLabelText('Amb Temp. (°C)')).toBeNull();
@@ -81,7 +80,7 @@ describe('temperature preparation and calculation workflow', () => {
     await screen.findByText('Metadata payload checked');
     expect(api.downloadTemperatureWorkbook).toHaveBeenCalledWith(expect.objectContaining({
       report_metadata: { ltr_number: 'DL-2026-09-002A', tested_by: 'Actual tester',
-        test_date: '2026-09-10', ambient_temperature: '23', relative_humidity: 60.9,
+        test_date: '2026-09-10', ambient_temperature: '23', relative_humidity: 50,
         equipment_id: 'DG-Q-0801/0269', test_condition: '40 A', remark: 'Manual remark' },
     }));
     expect(projectApi.listProjectRegistryRows).not.toHaveBeenCalled();
@@ -110,20 +109,28 @@ describe('temperature preparation and calculation workflow', () => {
     expect((screen.getByLabelText('Tested By') as HTMLInputElement).value).toBe('Explicit tester');
   });
 
-  it('explains invalid humidity while retaining manual report entries', async () => {
+  it('keeps hidden report environment defaults through source changes without blocking manual report downloads', async () => {
     const user = userEvent.setup();
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     fireEvent.change(screen.getByLabelText('LTR'), { target: { value: 'Manual LTR' } });
+    const replacement = structuredClone(imported);
+    replacement.table.rows.slice(1).forEach(row => { row[4] = 18; });
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(replacement);
+    await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
-    fireEvent.change(screen.getByLabelText('Rel. Hum. (%RH)'), { target: { value: '101' } });
-    expect((screen.getByRole('button', { name: 'Download Excel' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText(/Enter relative humidity/)).toBeTruthy();
-    expect(screen.getByLabelText('Rel. Hum. (%RH)').getAttribute('aria-invalid')).toBe('true');
-    fireEvent.change(screen.getByLabelText('Rel. Hum. (%RH)'), { target: { value: '' } });
+    expect(screen.queryByLabelText('Rel. Hum. (%RH)')).toBeNull();
+    expect(screen.queryByLabelText('Amb Temp. (°C)')).toBeNull();
     expect((screen.getByRole('button', { name: 'Download Excel' }) as HTMLButtonElement).disabled).toBe(false);
     expect((screen.getByLabelText('LTR') as HTMLInputElement).value).toBe('Manual LTR');
+    vi.mocked(api.downloadTemperatureWorkbook).mockRejectedValueOnce(new Error('Fixed environment payload checked'));
+    await user.click(screen.getByRole('button', { name: 'Download Excel' }));
+    await screen.findByText('Fixed environment payload checked');
+    expect(api.downloadTemperatureWorkbook).toHaveBeenCalledWith(expect.objectContaining({
+      table: expect.objectContaining({ rows: replacement.table.rows }),
+      report_metadata: expect.objectContaining({ ltr_number: 'Manual LTR', ambient_temperature: '23', relative_humidity: 50 }),
+    }));
   });
 
   it('automatically calculates the default target from MAX and exports it without an extra click', async () => {
