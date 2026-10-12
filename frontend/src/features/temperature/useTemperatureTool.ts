@@ -167,9 +167,5 @@ export function useTemperatureTool() {
       reportInfo.edit(key, value);
       setState(old => ({ ...old, downloaded: null }));
     },
-    selectReportProject: (id: string) => {
-      reportInfo.selectProject(id);
-      setState(old => ({ ...old, downloaded: null }));
-    },
   };
 }

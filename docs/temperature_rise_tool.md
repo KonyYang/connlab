@@ -1,6 +1,6 @@
 # Temperature Rise and Derating Tool
 
-Status: implemented. Current refinement (2026-10-11): editable Test Info, optional project defaults
+Status: implemented. Current refinement (2026-10-13): compact manual Test Info without project lookup
 and a compact XLSX metadata header. Editable measurement names, stable source identity,
 reversible ambient-role suspension and consecutive regrouping after explicit moves remain supported.
 Compact charts, automatic generation after confirmation and scan-based feedback remain in place.
@@ -46,19 +46,22 @@ independently of tab order. The unused `CR` sheet is no longer created. No conta
 calculation or setup content is imported. The source attachment and project/report authorities remain
 untouched; the change applies only to newly generated downloads.
 
-## Test Info and project association (2026-10-11)
+## Compact manual Test Info (2026-10-13)
 
-Below the imported filename, Test Info opens as a compact collapsible editor. It holds LTR,
-Tested By, Test Date, Amb Temp. and relative humidity. More Information holds equipment IDs,
-test condition and remarks. Collapsing shows the basic summary and any humidity error. Humidity
+Below the imported filename, Test Info opens as a compact collapsible editor. All eight fields
+are shown together: LTR, Tested By, Test Date, Amb Temp., relative humidity, equipment IDs,
+test condition and remarks. There is no separate More Information fold or project selector.
+Labels and inputs share a line; an editor at least 720 px wide uses four fields per row, and
+at least 1500 px uses eight. Inputs are capped at 180 px; narrow editors wrap to two or one field
+per row without clipped labels.
+Collapsing Test Info shows the basic summary and any humidity error. Humidity
 is optional; entered values must be finite and within 0–100 %RH. Other metadata is bounded literal
 text, including labels starting with `=`. Invalid humidity disables download with an explanation.
 
-Project selection is optional and uses immutable project IDs from the normal active registry.
-Confirmed Basic Information supplies DL and Project Leader as default LTR/tester. Registered LTR
-can supply the identifier before Basic Information confirmation; draft/suggested personnel never
-populate Tested By. Temporary project numbers are not guessed to be registered LTRs. A failed
-lookup allows manual entry and retry. Cancelled/outdated/unmounted lookups cannot revive old defaults.
+Report information is entered manually. Opening or editing this tool does not query the project
+registry or Basic Information, nor infer an LTR or tester from a project. Date and temperature retain
+the source suggestions below. The explanatory note is available on the Test Info heading rather
+than taking up a permanent row.
 
 Date and temperature suggestions use included source rows, respecting source region and exclusions.
 Unambiguous ISO or year-first slash dates provide a single date or range; time-only, ambiguous,
@@ -68,7 +71,7 @@ test-specific source. No default laboratory humidity, download date, planned pro
 generic project-wide equipment list is substituted for actual test facts.
 
 Manual overrides, including intentional empty values, take precedence over all later suggestions
-and project changes. Values are session-local and retained through source/role/sheet changes until
+and source changes. Values are session-local and retained through source/role/sheet changes until
 leaving the tool. Report edits clear only old download feedback, not confirmed data or curve/current
 results. The record temperature never replaces the row-specific ambient used in calculations.
 There is no project Basic Information, Matrix, database or external source write-back.

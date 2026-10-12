@@ -11,8 +11,29 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
+    "summary": "Simplify temperature Test Info to compact manual entry without project association",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Remove temperature tool project selection and lookups, preserve manual export metadata and source suggestions, compact inline responsive Test Info fields",
+    "scope_paths": [
+      "frontend/src/features/temperature/TestInfo.tsx",
+      "frontend/src/features/temperature/useTemperatureReportInfo.ts",
+      "frontend/src/features/temperature/useTemperatureTool.ts",
+      "frontend/src/features/temperature/temperature.css",
+      "frontend/src/pages/TemperatureRisePage.tsx",
+      "frontend/src/pages/TemperatureRisePage.test.tsx",
+      "docs/temperature_rise_tool.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "287bb7a2bd92400ce7510f6fbc28fe47fa748e24",
+    "started_at": "2026-10-12T22:34:10.482463Z",
+    "updated_at": "2026-10-12T22:34:10.482463Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_DRAFT_DOWNLOAD_AVAILABLE_INFO_20261012",
     "tier": "standard",

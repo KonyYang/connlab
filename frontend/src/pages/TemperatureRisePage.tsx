@@ -46,7 +46,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
       <div className="temperature-file">
         <span className="temperature-file-name">{s.file.name}</span>
       </div>
-      {s.table && <TestInfo info={tool.reportInfo} disabled={busy} onEdit={tool.editReportInfo} onProject={tool.selectReportProject} />}
+      {s.table && <TestInfo info={tool.reportInfo} disabled={busy} onEdit={tool.editReportInfo} />}
       {s.table && <div className="temperature-import-fields">
           <label>Sheet Name<select value={s.table.sheet_name} disabled={busy} onChange={event => tool.load(s.file, event.target.value)}>{s.table.sheet_names.map(name => <option key={name}>{name}</option>)}</select></label>
           {s.selection && <>
@@ -100,6 +100,6 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
       {s.busy && <p role="status">{s.busy}</p>}
       {s.error && <p role="alert" className="temperature-error">{scanMessage(s.table, s.error)}</p>}
       {s.downloaded && <p role="status" className="temperature-success">{s.downloaded}</p>}
-    </div><button type="button" className="primary-action" disabled={busy || !s.analysis || tool.reportInfo.projectLoading || Boolean(reportHumidityIssue(tool.reportInfo.values.relative_humidity))} onClick={() => void tool.download()}>Download Excel</button></footer>
+    </div><button type="button" className="primary-action" disabled={busy || !s.analysis || Boolean(reportHumidityIssue(tool.reportInfo.values.relative_humidity))} onClick={() => void tool.download()}>Download Excel</button></footer>
   </section>;
 }
