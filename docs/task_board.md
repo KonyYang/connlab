@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
     "summary": "Simplify temperature Test Info to compact manual entry without project association",
@@ -30,17 +30,76 @@
     "risk_reasons": [],
     "activation_head": "287bb7a2bd92400ce7510f6fbc28fe47fa748e24",
     "started_at": "2026-10-12T22:34:10.482463Z",
-    "updated_at": "2026-10-12T23:25:35.927248Z",
+    "updated_at": "2026-10-12T23:34:45.374904Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requests hiding Remark input and retaining Remark as the final report-information row in exported Excel, blank for manual completion there",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "changed_paths": [
+        "backend/infrastructure/office/temperature_rise_report_sheet.py",
+        "docs/temperature_rise_tool.md",
+        "frontend/src/features/temperature/TestInfo.tsx",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useTemperatureReportInfo.ts",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx",
+        "tests/integration/test_tools_temperature_api.py"
+      ],
+      "schema": "connlab.sol-task-report",
+      "integration": {
+        "status": "passed",
+        "detail": "Clean local master exact subject; no remote publication"
+      },
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "detail": "Micro implementation, TDD and self-review by current agent; no independent role claim"
+        }
+      },
+      "validation": [
+        {
+          "detail": "58 tests across page, report metadata and API; RED/GREEN hidden Remark and empty remark export payload verified, environment defaults and source readings retained",
+          "status": "passed",
+          "name": "Final affected frontend regression"
+        },
+        {
+          "detail": "64 Python tests; RED/GREEN blank final Remark, with/without condition, compatible nonempty text, merged yellow row, editable sheet, statistical caches, formulas and native chart anchors; existing Starlette/httpx deprecation warning",
+          "status": "passed",
+          "name": "Final workbook and API regression"
+        },
+        {
+          "status": "passed",
+          "name": "Final TypeScript and Vite build"
+        },
+        {
+          "detail": "Five visible editable fields, hidden Remark/ambient/humidity, seven viewport widths including 721px, no overflow or page errors; synthetic CSV confirmed and actual local-app XLSX downloaded",
+          "status": "passed",
+          "name": "Independent Edge browser and actual download"
+        },
+        {
+          "detail": "Own hidden Excel instance opened actual browser download read-only; Remark final info row 7 blank, sheet unprotected, one native chart, CalculateFullRebuild no formula errors; closed without saving; no real project/source/template mutated",
+          "status": "passed",
+          "name": "Native Excel read-only QA"
+        },
+        {
+          "detail": "Sequential same-agent Standards 0 findings, Spec 0 findings; exporter derives all downstream coordinates from final info_end, no inserted-row stale references; original numerical behavior and file-authority boundaries unchanged; git diff --check passed",
+          "status": "passed",
+          "name": "Exact revised diff review"
+        }
+      ],
+      "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
+      "subject": "3519f980ccf00236c4d5d7f7c1b57fa253745c28",
+      "scope_ok": true,
+      "summary": "Five compact manual report fields; no project selector, heading/collapse, ambient/humidity/Remark inputs. Exports default report environment 23 C/50 percent RH and always end the information block with an editable Remark row, blank unless supplied by compatible clients.",
+      "version": 1
+    }
   },
   "last_closed": {
     "task_id": "TASK_DRAFT_DOWNLOAD_AVAILABLE_INFO_20261012",
