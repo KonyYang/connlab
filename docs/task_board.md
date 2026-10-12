@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
     "summary": "Simplify temperature Test Info to compact manual entry without project association",
@@ -30,64 +30,17 @@
     "risk_reasons": [],
     "activation_head": "287bb7a2bd92400ce7510f6fbc28fe47fa748e24",
     "started_at": "2026-10-12T22:34:10.482463Z",
-    "updated_at": "2026-10-12T22:45:56.268159Z",
+    "updated_at": "2026-10-12T22:58:00.609588Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requests removal of redundant Test Info heading and collapse control, keeping all manual report fields visible",
       "requires_user": false
     },
-    "report": {
-      "integration": {
-        "detail": "Clean local master exact subject; no remote publication",
-        "status": "passed"
-      },
-      "roles": {
-        "developer": {
-          "detail": "Micro implementation, TDD, self-review and targeted validation by current agent, not independent roles",
-          "status": "passed"
-        }
-      },
-      "validation": [
-        {
-          "status": "passed",
-          "name": "Temperature frontend regression",
-          "detail": "103 tests across five files on final code; meaningful RED/GREEN manual entry, exported metadata and source override regression"
-        },
-        {
-          "name": "TypeScript and Vite build",
-          "status": "passed"
-        },
-        {
-          "status": "passed",
-          "name": "Independent Edge UI smoke",
-          "detail": "Synthetic CSV import, all eight fields visible/editable; 2560,2048,1116,918,793,540,390 viewports, one/two/wrapped rows without overflow; inputs capped at 180px; humidity validation; no page errors"
-        },
-        {
-          "status": "passed",
-          "name": "Exact diff review",
-          "detail": "Sequential same-agent Standards: 0 findings; Spec: 0 findings. No backend, project authority or original workbook writes; git diff --check passed"
-        }
-      ],
-      "summary": "Removed project association and lookups; all eight manual report fields shown together with compact inline responsive layout, source suggestions and export metadata retained.",
-      "scope_ok": true,
-      "schema": "connlab.sol-task-report",
-      "subject": "3f7b40fcef2e744ad54c567a15d5b9b8168612d4",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
-      "changed_paths": [
-        "docs/temperature_rise_tool.md",
-        "frontend/src/features/temperature/TestInfo.tsx",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useTemperatureReportInfo.ts",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx"
-      ]
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_DRAFT_DOWNLOAD_AVAILABLE_INFO_20261012",

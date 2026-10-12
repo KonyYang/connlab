@@ -61,12 +61,12 @@ describe('temperature preparation and calculation workflow', () => {
     await upload();
     expect(screen.queryByLabelText('Project (optional)')).toBeNull();
     expect(screen.queryByText('More Information')).toBeNull();
+    expect(screen.queryByText('Test Info', { exact: true })).toBeNull();
     const fields = { LTR: 'DL-2026-09-002A', 'Tested By': 'Actual tester', 'Test Date': '2026-09-10',
       'Test Equipment ID': 'DG-Q-0801/0269', 'Test Condition': '40 A', Remark: 'Manual remark' };
-    const testInfo = screen.getByText('Test Info', { exact: true }).closest('details');
+    const reportFields = within(screen.getByRole('group', { name: 'Report information' }));
     for (const [label, value] of Object.entries(fields)) {
-      const input = screen.getByLabelText(label) as HTMLInputElement;
-      expect(input.closest('details')).toBe(testInfo);
+      const input = reportFields.getByLabelText(label) as HTMLInputElement;
       expect(input.disabled).toBe(false);
       fireEvent.change(input, { target: { value } });
     }
@@ -117,9 +117,7 @@ describe('temperature preparation and calculation workflow', () => {
     fireEvent.change(screen.getByLabelText('Rel. Hum. (%RH)'), { target: { value: '101' } });
     expect((screen.getByRole('button', { name: 'Download Excel' }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText(/Enter relative humidity/)).toBeTruthy();
-    await user.click(screen.getByText('Test Info', { exact: true }));
-    await screen.findByText('Check relative humidity');
-    await user.click(screen.getByText('Check relative humidity'));
+    expect(screen.getByLabelText('Rel. Hum. (%RH)').getAttribute('aria-invalid')).toBe('true');
     fireEvent.change(screen.getByLabelText('Rel. Hum. (%RH)'), { target: { value: '' } });
     expect((screen.getByRole('button', { name: 'Download Excel' }) as HTMLButtonElement).disabled).toBe(false);
     expect((screen.getByLabelText('LTR') as HTMLInputElement).value).toBe('Manual LTR');

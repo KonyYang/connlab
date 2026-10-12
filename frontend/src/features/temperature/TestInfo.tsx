@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { reportHumidityIssue, type ReportInfoFields } from './reportInfo';
 import type { useTemperatureReportInfo } from './useTemperatureReportInfo';
 
@@ -6,14 +5,11 @@ type Props = { info: ReturnType<typeof useTemperatureReportInfo>; disabled: bool
   onEdit: (key: keyof ReportInfoFields, value: string) => void };
 
 export function TestInfo({ info, disabled, onEdit }: Props) {
-  const [open, setOpen] = useState(true);
   const field = (key: keyof ReportInfoFields, label: string, maxLength: number, placeholder?: string) =>
     <label>{label}<input value={info.values[key]} disabled={disabled} maxLength={maxLength}
       placeholder={placeholder} onChange={event => onEdit(key, event.target.value)} /></label>;
   const humidityIssue = reportHumidityIssue(info.values.relative_humidity);
-  const summary = [info.values.ltr_number, info.values.test_date, info.values.tested_by].filter(Boolean).join(' · ');
-  return <details className="temperature-test-info" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
-    <summary title="Date and temperature are suggested from included readings. Report edits do not change calculations.">Test Info{!open && summary && <span>{summary}</span>}{!open && humidityIssue && <span className="temperature-error">Check relative humidity</span>}</summary>
+  return <div className="temperature-test-info" role="group" aria-label="Report information">
     <div className="temperature-test-info-fields">
       {field('ltr_number', 'LTR', 200)}
       {field('tested_by', 'Tested By', 200)}
@@ -27,5 +23,5 @@ export function TestInfo({ info, disabled, onEdit }: Props) {
       {field('remark', 'Remark', 500)}
     </div>
     {humidityIssue && <p className="temperature-error" role="alert">{humidityIssue}</p>}
-  </details>;
+  </div>;
 }

@@ -48,20 +48,20 @@ untouched; the change applies only to newly generated downloads.
 
 ## Compact manual Test Info (2026-10-13)
 
-Below the imported filename, Test Info opens as a compact collapsible editor. All eight fields
+Below the imported filename, report information appears in a compact, always-visible editor without
+a Test Info heading or collapse control. All eight fields
 are shown together: LTR, Tested By, Test Date, Amb Temp., relative humidity, equipment IDs,
 test condition and remarks. There is no separate More Information fold or project selector.
 Labels and inputs share a line; an editor at least 720 px wide uses four fields per row, and
 at least 1500 px uses eight. Inputs are capped at 180 px; narrow editors wrap to two or one field
 per row without clipped labels.
-Collapsing Test Info shows the basic summary and any humidity error. Humidity
-is optional; entered values must be finite and within 0–100 %RH. Other metadata is bounded literal
+Humidity errors remain visible below the inputs. Humidity is optional; entered values must be finite
+and within 0–100 %RH. Other metadata is bounded literal
 text, including labels starting with `=`. Invalid humidity disables download with an explanation.
 
 Report information is entered manually. Opening or editing this tool does not query the project
 registry or Basic Information, nor infer an LTR or tester from a project. Date and temperature retain
-the source suggestions below. The explanatory note is available on the Test Info heading rather
-than taking up a permanent row.
+the source suggestions below. No heading or permanent explanatory row occupies additional space.
 
 Date and temperature suggestions use included source rows, respecting source region and exclusions.
 Unambiguous ISO or year-first slash dates provide a single date or range; time-only, ambiguous,
