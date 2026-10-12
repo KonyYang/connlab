@@ -111,6 +111,7 @@ class LlcrCrRecordProjection:
     delta_r_enabled: bool = True
     matrix_source: str = "confirmed"
     ltr_number: str | None = None
+    tested_by: str = ""
     summary_parameter_labels: tuple[str, ...] = ()
 
     @property

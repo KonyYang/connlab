@@ -45,6 +45,34 @@ from backend.infrastructure.files.generation_journal import GenerationJournal
 import backend.infrastructure.files.project_folder_required_forms_gateway as contact_file_gateway
 
 
+def test_formal_contact_preview_fills_registered_ltr_and_confirmed_tester_not_basic_draft():
+    from backend.application.project_basic_information_output import ProjectBasicInformationSnapshotReader
+    from backend.domain import LtrRecord, LtrStatus
+    from datetime import date
+    from types import SimpleNamespace
+    from tests.unit.test_draft_download_basic_information import Repository, record
+
+    repository = Repository(
+        project_id='project-1',
+        confirmed=record({'project_leader': 'Confirmed tester'}, status='confirmed', project_id='project-1'),
+        draft=record({'project_leader': 'Unconfirmed tester'}, project_id='project-1'),
+    )
+    service = LlcrCrRecordWorkbookPreviewService(
+        confirmed_store=_ConfirmedStore(_snapshot()),
+        basic_information_reader=ProjectBasicInformationSnapshotReader(repository),
+        ltr_store=SimpleNamespace(list_by_project=lambda project_id: [
+            LtrRecord('ltr-1', project_id, 'DL-2026-09-002A', LtrStatus.REGISTERED, date(2026, 9, 1)),
+        ]),
+    )
+    preview = service.preview('project-1')
+    assert preview.ltr_number == 'DL-2026-09-002A'
+    assert preview.tested_by == 'Confirmed tester'
+    repository.draft.values['project_leader'] = 'Changed draft tester'
+    assert service.preview('project-1').preview_fingerprint == preview.preview_fingerprint
+    repository.confirmed.values['project_leader'] = 'Changed confirmed tester'
+    assert service.preview('project-1').preview_fingerprint != preview.preview_fingerprint
+
+
 def test_generation_writes_managed_xlsx_only_after_matching_preview_fingerprint(tmp_path: Path) -> None:
     service = _service(tmp_path)
     preview = service._preview_service.preview("project-1")

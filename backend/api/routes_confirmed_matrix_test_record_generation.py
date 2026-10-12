@@ -55,6 +55,7 @@ def generate_confirmed_matrix_test_record_draft(
                 project_id=project_id,
                 output_dir=settings.data_dir / "generated_test_records",
                 template_path=template_path,
+                draft_download=True,
             )
         )
     except ConfirmedMatrixTestRecordDocumentGenerationNotFoundError as exc:

@@ -38,6 +38,28 @@ def test_preview_downloads_draft_when_no_official_workspace_exists(tmp_path: Pat
     )
 
 
+def test_download_fills_current_basic_draft_but_official_preview_keeps_confirmed_values(tmp_path):
+    from backend.application.project_basic_information_output import ProjectBasicInformationSnapshotReader
+    from tests.unit.test_draft_download_basic_information import Repository, record
+
+    repository = Repository(
+        draft=record({'product_description': 'Draft connector', 'requested_by': 'Draft customer'}),
+        confirmed=record({'dl_number': 'DL-001', 'product_description': 'Connector'}, status='confirmed'),
+    )
+    service = _service(tmp_path, workspace=_workspace(tmp_path),
+                       basic_reader=ProjectBasicInformationSnapshotReader(repository))
+    values = _values(external_cost='99')
+    preview = service.preview(PreviewFeeFormPublicationCommand('P1', values))
+    assert preview.mode == 'download'
+    assert preview.basic_information_values['product_description'] == 'Draft connector'
+    assert preview.basic_information_values['requested_by'] == 'Draft customer'
+    assert service.preview(PreviewFeeFormPublicationCommand('P1', _values())).basic_information_values[
+        'product_description'] == 'Connector'
+    repository.draft.values['product_description'] = 'Changed after preview'
+    with pytest.raises(FeeFormPublicationConflictError, match='changed'):
+        service.validate_download(ExecuteFeeFormDownloadCommand('P1', values, preview.preview_token))
+
+
 def test_preview_downloads_draft_when_recorded_official_folder_is_missing(
     tmp_path: Path,
 ) -> None:
@@ -226,7 +248,7 @@ def _workspace(tmp_path: Path):
 
 
 def _service(
-    tmp_path: Path, *, workspace, values: FeeEvaluationEditedExportValues | None = None
+    tmp_path: Path, *, workspace, values: FeeEvaluationEditedExportValues | None = None, basic_reader=None
 ) -> FeeFormPublicationService:
     fee = SimpleNamespace(
         confirmed_fee_id="fee-1",
@@ -238,7 +260,7 @@ def _service(
     service = FeeFormPublicationService(
         workspace_store=_WorkspaceStore(workspace),
         confirmed_fee_reader=_FeeReader(fee),
-        basic_information_reader=_BasicInformationReader(),
+        basic_information_reader=basic_reader or _BasicInformationReader(),
         generator=_Generator(),
         file_gateway=PublicationGateway(resource_label="Fee Form"),
         output_service=outputs,
@@ -264,6 +286,9 @@ class _FeeReader:
 
 
 class _BasicInformationReader:
+    def get_download_snapshot(self, project_id):
+        return self.get_latest_confirmed(project_id)
+
     def get_latest_confirmed(self, project_id: str):
         return SimpleNamespace(
             version=3,

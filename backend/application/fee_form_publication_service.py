@@ -181,7 +181,7 @@ class FeeFormPublicationService:
                 command,
                 mode="download",
                 authority_status=authority_status,
-                basic_information=basic,
+                basic_information=self._basic_information.get_download_snapshot(command.project_id),
                 official_folder_unavailable_reason=folder_reason,
             )
 
@@ -190,7 +190,7 @@ class FeeFormPublicationService:
                 command,
                 mode="download",
                 authority_status=authority_status,
-                basic_information=basic,
+                basic_information=self._basic_information.get_download_snapshot(command.project_id),
                 official_folder_unavailable_reason=folder_reason,
             )
         official = Path(official_value)
@@ -369,6 +369,7 @@ class FeeFormPublicationService:
             "target_fingerprint": target_fingerprint,
             "blockers": blockers,
             "basic_version": getattr(basic_information, "version", None),
+            "download_basic_values": basic_information.values if mode == "download" and basic_information else None,
             "fee_id": getattr(confirmed_fee, "confirmed_fee_id", None),
             "fee_revision": getattr(confirmed_fee, "confirmed_fee_revision", None),
         }

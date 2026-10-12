@@ -11,8 +11,30 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_DRAFT_DOWNLOAD_AVAILABLE_INFO_20261012",
+    "summary": "Populate available project information in draft downloads without authority writeback",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Download-only Fee Form, Test Record and LLCR/CR available metadata; draft-first read policy, no fabricated actual facts, preserve formal confirmation and publication gates",
+    "scope_paths": [
+      "backend/application",
+      "backend/api/dependencies.py",
+      "backend/api/project_folder_generation_composition.py",
+      "backend/infrastructure/office/llcr_cr_record_workbook_layout.py",
+      "backend/infrastructure/office/llcr_cr_specialized_record_workbook_gateway.py",
+      "tests/unit",
+      "tests/integration",
+      "docs/draft_download_information.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "4d576f921c1e96c2ee425f3da5c37edbfe451b01",
+    "started_at": "2026-10-12T15:11:07.002360Z",
+    "updated_at": "2026-10-12T15:11:07.002360Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_TEST_INFO_20261011",
     "tier": "standard",

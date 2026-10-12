@@ -188,6 +188,7 @@ def write_macro_style_contact_resistance_category_sheet(
     record_type: str,
     delta_r_enabled: bool,
     ltr_number: str | None,
+    tested_by: str = "",
 ) -> dict[tuple[str, int], tuple[int, int]]:
     """Write the LLCR/CR record shape used by the approved VBA workbook."""
     sections = tuple(sections)
@@ -220,6 +221,7 @@ def write_macro_style_contact_resistance_category_sheet(
     _write_macro_test_information(
         sheet,
         ltr_number=ltr_number,
+        tested_by=tested_by,
         test_condition=_first_test_condition(sections),
     )
     _write_macro_record_header(
@@ -477,14 +479,16 @@ def _write_macro_test_information(
     *,
     ltr_number: str | None,
     test_condition: str,
+    tested_by: str = "",
 ) -> None:
     labels = ("LTR", "Tested By", "Checked by/Date", "Test Equipment ID", "Test Condition")
-    values = (ltr_number or "", "", "", "", test_condition)
+    values = (ltr_number or "", tested_by, "", "", test_condition)
     for row, (label, value) in enumerate(zip(labels, values, strict=True), start=1):
         sheet.merge_cells(start_row=row, start_column=4, end_row=row, end_column=5)
         sheet.merge_cells(start_row=row, start_column=6, end_row=row, end_column=9)
         sheet.cell(row, 4, label)
         sheet.cell(row, 6, value)
+        sheet.cell(row, 6).data_type = "s"
         for column in range(4, 10):
             cell = sheet.cell(row, column)
             cell.border = _MACRO_BORDER

@@ -70,6 +70,7 @@ class LlcrCrSpecializedRecordWorkbookGateway:
                 record_type=projection.record_type,
                 delta_r_enabled=projection.delta_r_enabled,
                 ltr_number=projection.ltr_number,
+                tested_by=projection.tested_by,
             )
             category_outputs.append((
                 sheet_name,

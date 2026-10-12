@@ -527,6 +527,33 @@ def get_project_lifecycle_write_guard(
     return ProjectLifecycleWriteGuard(ProjectRepository(session))
 
 
+def get_download_basic_information_reader(session: Session) -> ProjectBasicInformationSnapshotReader:
+    """Compose read-only source fallback; formal reads still return confirmed snapshots only."""
+    from backend.application.project_basic_information_source import ProjectBasicInformationSourceAssembler
+    from backend.application.project_identity import select_registered_ltr, registered_sample_description
+
+    projects = ProjectRepository(session)
+    sources = ProjectBasicInformationSourceAssembler(
+        ltr_store=LtrRecordRepository(session), application_form_store=ApplicationFormRepository(session),
+        sample_store=SampleInfoRepository(session),
+    )
+
+    def values(project_id: str) -> dict[str, str]:
+        project = projects.get(project_id)
+        if project is None:
+            return {}
+        available = {key: field.source_value for key, field in sources.assemble(project).items()
+                     if field.source_value.strip()}
+        ltr = select_registered_ltr(LtrRecordRepository(session).list_by_project(project_id))
+        if ltr is not None:
+            description = registered_sample_description(ltr)
+            if description:
+                available["product_description"] = description
+        return available
+
+    return ProjectBasicInformationSnapshotReader(ProjectBasicInformationRepository(session), download_sources=values)
+
+
 def get_project_lifecycle_management_service(
     session: Session = Depends(get_session),
 ) -> ProjectLifecycleManagementService:
@@ -792,9 +819,7 @@ def get_confirmed_matrix_test_record_document_generation_service(
         intake_case_store=IntakeCaseRepository(session),
         intake_draft_store=IntakeDraftRepository(session),
         application_form_store=ApplicationFormRepository(session),
-        basic_information_reader=ProjectBasicInformationSnapshotReader(
-            ProjectBasicInformationRepository(session)
-        ),
+        basic_information_reader=get_download_basic_information_reader(session),
     )
 
 
@@ -995,9 +1020,7 @@ def get_matrix_editor_test_record_document_generation_service(
         intake_case_store=IntakeCaseRepository(session),
         intake_draft_store=IntakeDraftRepository(session),
         application_form_store=ApplicationFormRepository(session),
-        basic_information_reader=ProjectBasicInformationSnapshotReader(
-            ProjectBasicInformationRepository(session)
-        ),
+        basic_information_reader=get_download_basic_information_reader(session),
     )
 
 
@@ -1075,9 +1098,7 @@ def get_fee_form_publication_service(
     return FeeFormPublicationService(
         workspace_store=ProjectOfficialWorkspaceRepository(session),
         confirmed_fee_reader=get_confirmed_fee_version_service(session),
-        basic_information_reader=ProjectBasicInformationSnapshotReader(
-            ProjectBasicInformationRepository(session)
-        ),
+        basic_information_reader=get_download_basic_information_reader(session),
         generator=_ConfirmedFeeFormPublicationGenerator(
             get_confirmed_matrix_fee_evaluation_export_service(session, settings),
             ExternalResourceRepository(session),
@@ -1559,6 +1580,8 @@ def get_llcr_cr_record_workbook_preview_service(
     return LlcrCrRecordWorkbookPreviewService(
         confirmed_store=ConfirmedMatrixAuthorityRepository(session),
         consumer_adapter=_confirmed_contact_point_profile_consumer_adapter(session),
+        basic_information_reader=get_download_basic_information_reader(session),
+        ltr_store=LtrRecordRepository(session),
     )
 
 
@@ -1568,10 +1591,7 @@ def get_llcr_cr_record_workbook_generation_service(
 ) -> LlcrCrRecordWorkbookGenerationService:
     """Build preview-fingerprint-protected specialized workbook generation."""
     return LlcrCrRecordWorkbookGenerationService(
-        preview_service=LlcrCrRecordWorkbookPreviewService(
-            confirmed_store=ConfirmedMatrixAuthorityRepository(session),
-            consumer_adapter=_confirmed_contact_point_profile_consumer_adapter(session),
-        ),
+        preview_service=get_llcr_cr_record_workbook_preview_service(session),
         workbook_gateway=LlcrCrSpecializedRecordWorkbookGateway(),
         artifact_store=LlcrCrSpecializedRecordArtifactStore(
             settings.data_dir / "generated_llcr_cr_record_files"
@@ -1601,6 +1621,7 @@ def get_matrix_editor_llcr_cr_record_generation_service(
             settings.data_dir / "generated_llcr_cr_record_drafts"
         ),
         ltr_store=LtrRecordRepository(session),
+        basic_information_reader=get_download_basic_information_reader(session),
     )
 
 
@@ -1667,7 +1688,7 @@ def get_matrix_editor_ir_dwv_record_generation_service(
         template = Path(directory) / "IR&DWV Template.xlsx" if directory else None
     return MatrixEditorIrDwvRecordGenerationService(
         confirmed_store=ConfirmedMatrixAuthorityRepository(session),
-        basic_information_store=ProjectBasicInformationRepository(session), ltr_store=LtrRecordRepository(session),
+        basic_information_store=get_download_basic_information_reader(session), ltr_store=LtrRecordRepository(session),
         workbook_gateway=IrDwvRecordWorkbookGateway(template),
         artifact_store=IrDwvRecordArtifactStore(settings.data_dir / "generated_ir_dwv_record_drafts"),
     )

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from backend.application.project_basic_information_output import (
+    BasicInformationPreviewSnapshot,
     ConfirmedBasicInformationSnapshot,
 )
 
@@ -82,9 +83,9 @@ class TestRecordHeaderIdentity:
 
 
 def fee_form_identity(
-    snapshot: ConfirmedBasicInformationSnapshot,
+    snapshot: ConfirmedBasicInformationSnapshot | BasicInformationPreviewSnapshot,
 ) -> FeeFormIdentity:
-    """Return Fee Form identity from confirmed Basic Information only."""
+    """Map identity; callers select download or confirmed publication sources."""
     values = snapshot.values
     return FeeFormIdentity(
         dl_number=_text(values, "dl_number"),
@@ -156,9 +157,9 @@ def application_form_identity(
 
 
 def test_record_header_identity(
-    snapshot: ConfirmedBasicInformationSnapshot,
+    snapshot: ConfirmedBasicInformationSnapshot | BasicInformationPreviewSnapshot,
 ) -> TestRecordHeaderIdentity:
-    """Return Test Record header identity from confirmed Basic Information only."""
+    """Map header; callers select download or confirmed publication sources."""
     values = snapshot.values
     return TestRecordHeaderIdentity(
         lab_test_request_number=_text(values, "dl_number"),

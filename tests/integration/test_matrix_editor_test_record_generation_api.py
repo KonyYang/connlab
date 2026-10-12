@@ -98,6 +98,50 @@ def test_matrix_editor_test_record_generation_uses_current_ui_payload(
         engine.dispose()
 
 
+def test_test_record_download_fills_saved_basic_draft_without_confirmation_or_output_registration(tmp_path):
+    from io import BytesIO
+    from backend.infrastructure.storage.repositories.project_basic_information import ProjectBasicInformationRepository
+
+    client, engine, sessions = _client(tmp_path)
+    try:
+        template = _build_template(tmp_path / 'template.docx')
+        app.dependency_overrides[get_settings] = lambda: Settings(
+            data_dir=tmp_path / 'data', projects_dir=tmp_path / 'projects',
+            templates_dir=tmp_path / 'templates', database_path=tmp_path / 'connlab.sqlite3',
+            test_record=TestRecordSettings(template_path=template),
+        )
+        _seed_project('P1', tmp_path)
+        _seed_header_metadata_sources('P1', tmp_path)
+        saved = client.put('/api/projects/P1/basic-information/draft', json={'values': {
+            'product_description': 'Draft connector description',
+            'applicable_specifications': 'GS-12-DRAFT',
+        }})
+        assert saved.status_code == 200, saved.text
+        with sessions() as session:
+            before = ProjectBasicInformationRepository(session).get_latest_draft('P1')
+        response = _download_after_preview(client, {
+            'source': 'matrix_editor_current_ui_state',
+            'groups': [{'group_key': 'g1', 'group_label': '1', 'sample_quantity_expression': '2'}],
+            'rows': [{'test_item': 'Visual check', 'condition': 'Current draft condition',
+                      'group_values': {'g1': '1'}}],
+        })
+        assert response.status_code == 200, response.text
+        document = Document(BytesIO(response.content))
+        header = '\n'.join(cell.text for table in document.sections[0].header.tables
+                           for row in table.rows for cell in row.cells)
+        assert 'Draft connector description' in header
+        assert 'GS-12-DRAFT' in header
+        assert 'DL-2026-05-003' in header
+        with sessions() as session:
+            repository = ProjectBasicInformationRepository(session)
+            assert repository.get_latest_confirmed('P1') is None
+            assert repository.get_latest_draft('P1') == before
+            assert ProjectOutputRecordRepository(session).list_by_project('P1') == []
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_matrix_editor_step_text_draft_docx_and_invalid_identity_are_scoped(tmp_path: Path):
     from io import BytesIO
 

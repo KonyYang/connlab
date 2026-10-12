@@ -15,6 +15,7 @@ from backend.application.confirmed_matrix_test_record_preview_service import (
     ConfirmedMatrixTestRecordPreviewService,
 )
 from backend.application.project_basic_information_output import (
+    BasicInformationPreviewSnapshot,
     ConfirmedBasicInformationReader,
     ConfirmedBasicInformationSnapshot,
 )
@@ -103,6 +104,7 @@ class GenerateConfirmedMatrixTestRecordDocumentCommand:
     project_id: str
     output_dir: Path
     template_path: Path
+    draft_download: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,11 +181,14 @@ class ConfirmedMatrixTestRecordDocumentGenerationService:
 
         project = self._project_store.get(command.project_id)
         project_no = str(getattr(project, "project_no", "") or "")
-        basic_information = self._confirmed_basic_information(command.project_id)
+        basic_information = (self._basic_information.get_download_snapshot(command.project_id)
+                             if command.draft_download and self._basic_information is not None else
+                             self._confirmed_basic_information(command.project_id))
         header_metadata = self._resolve_header_metadata(
             project_id=command.project_id,
             project=project,
             basic_information=basic_information,
+            require_confirmed_header=not command.draft_download,
         )
         product_description = header_metadata.product_description
         file_name = _output_file_name(command.project_id, project_no)
@@ -255,10 +260,19 @@ class ConfirmedMatrixTestRecordDocumentGenerationService:
         *,
         project_id: str,
         project: object,
-        basic_information: ConfirmedBasicInformationSnapshot | None = None,
+        basic_information: ConfirmedBasicInformationSnapshot | BasicInformationPreviewSnapshot | None = None,
+        require_confirmed_header: bool = True,
     ) -> TestRecordHeaderMetadata:
         if basic_information is not None:
             identity = test_record_header_identity(basic_information)
+            if not require_confirmed_header:
+                return TestRecordHeaderMetadata(
+                    lab_test_request_number=identity.lab_test_request_number,
+                    product_description=identity.product_description,
+                    applicable_specification=(identity.applicable_specification
+                        if "applicable_specifications" in basic_information.values else
+                        self._resolve_applicable_specification(project_id)),
+                )
             lab_test_request_number = _required_identity_text(
                 identity.lab_test_request_number,
                 "DL/LTR Number",

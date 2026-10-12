@@ -72,6 +72,46 @@ def test_matrix_editor_llcr_download_accepts_footnoted_sample_quantity(
     assert sheet["I9"].value == "unit:mΩ"
 
 
+@pytest.mark.parametrize('record_type', ['llcr', 'cr'])
+def test_contact_record_draft_autofills_available_tester_and_leaves_unknown_actual_facts_blank(tmp_path, record_type):
+    from backend.application.project_basic_information_output import ProjectBasicInformationSnapshotReader
+    from tests.unit.test_draft_download_basic_information import Repository, record
+
+    reader = ProjectBasicInformationSnapshotReader(Repository(draft=record({'project_leader': '=Draft tester'})))
+    response = _post_current_ui_draft(tmp_path, '2', None, record_type=record_type,
+                                     test_item='LLCR' if record_type == 'llcr' else 'CR at Specified Current',
+                                     basic_reader=reader)
+    assert response.status_code == 200, response.text
+    from io import BytesIO
+    book = load_workbook(BytesIO(response.content))
+    try:
+        sheet = book['SIG']
+        assert sheet['F1'].value == 'DL-2026-05-999'
+        assert sheet['F2'].value == '=Draft tester'
+        assert sheet['F2'].data_type == 's'
+        assert sheet['F3'].value is None
+        assert sheet['F4'].value is None
+        assert sheet['F5'].value == '20 mV, 100 mA'
+    finally:
+        book.close()
+
+
+def test_contact_draft_fills_available_basic_ltr_when_no_registered_ltr_exists(tmp_path):
+    from io import BytesIO
+    from backend.application.project_basic_information_output import ProjectBasicInformationSnapshotReader
+    from tests.unit.test_draft_download_basic_information import Repository, record
+
+    reader = ProjectBasicInformationSnapshotReader(Repository(draft=record({'dl_number': 'DL-2026-09-002A'})))
+    response = _post_current_ui_draft(tmp_path, '2', None, basic_reader=reader,
+                                     ltr_store=SimpleNamespace(list_by_project=lambda project_id: []))
+    assert response.status_code == 200, response.text
+    book = load_workbook(BytesIO(response.content))
+    try:
+        assert book['SIG']['F1'].value == 'DL-2026-09-002A'
+    finally:
+        book.close()
+
+
 def test_matrix_editor_llcr_download_preserves_explicit_point_ids_and_order(
     tmp_path: Path,
 ) -> None:
@@ -334,12 +374,15 @@ def _post_current_ui_draft(
     point_overrides: list[dict] | None = None,
     record_type: str = "llcr",
     test_item: str = "Contact Resistance (Low Level)",
+    basic_reader=None,
+    ltr_store=None,
 ):
     generation = MatrixEditorLlcrCrRecordGenerationService(
         point_profile_adapter=_PointProfileAdapter(),
         workbook_gateway=LlcrCrSpecializedRecordWorkbookGateway(),
         artifact_store=LlcrCrSpecializedRecordArtifactStore(tmp_path / "generated"),
-        ltr_store=_LtrStore(),
+        ltr_store=ltr_store or _LtrStore(),
+        basic_information_reader=basic_reader,
     )
     app.dependency_overrides[
         get_matrix_editor_llcr_cr_record_generation_service

@@ -140,6 +140,42 @@ def test_download_name_uses_registered_ltr_and_verified_matrix_authority(
         assert not seeded.target.exists()
 
 
+@pytest.mark.parametrize('real_project', [{'official': False}], indirect=True)
+def test_ir_dwv_download_uses_basic_draft_but_formal_context_keeps_confirmed_values(real_project):
+    client, seeded, _settings = real_project
+    saved = client.put(f'/api/projects/{seeded.project_id}/basic-information/draft', json={'values': {
+        'product_description': 'Draft electrical connector', 'requested_by': 'Draft requester',
+        'project_leader': 'Draft tester',
+    }})
+    assert saved.status_code == 200, saved.text
+    base = f'/api/projects/{seeded.project_id}/matrix-editor'
+    request = {**seeded.request, 'matrix_has_pending_changes': True}
+    preview = client.post(base + '/ir-dwv-record-publication/preview', json=request)
+    assert preview.status_code == 200, preview.text
+    downloaded = client.post(base + '/ir-dwv-record-draft/generate',
+                             json={**request, 'preview_token': preview.json()['preview_token']})
+    assert downloaded.status_code == 200, downloaded.text
+    book = load_workbook(BytesIO(downloaded.content))
+    try:
+        texts = [cell.value for sheet in book for row in sheet for cell in row if isinstance(cell.value, str)]
+        assert 'Product Name: Draft electrical connector' in texts
+        assert any('Tested By: Draft tester' in value for value in texts)
+    finally:
+        book.close()
+    from sqlalchemy import create_engine
+    from backend.infrastructure.storage.database import create_session_factory
+    from backend.api.dependencies import get_matrix_editor_ir_dwv_record_generation_service
+
+    engine = create_engine(f"sqlite:///{_settings.database_path.as_posix()}")
+    try:
+        with create_session_factory(engine)() as session:
+            formal = get_matrix_editor_ir_dwv_record_generation_service(session, _settings).preview(seeded.project_id)
+            assert formal.workbook.product_name == 'Isolated authoritative connector'
+            assert formal.workbook.tested_by == ''
+    finally:
+        engine.dispose()
+
+
 def test_real_di_creates_and_archives_official_ir_dwv_forms(real_project):
     client, seeded, _settings = real_project
     base = f"/api/projects/{seeded.project_id}/matrix-editor/ir-dwv-record-publication"
@@ -282,7 +318,10 @@ def test_ir_dwv_download_uses_current_ui_rounds_pairs_and_only_authoritative_hea
     from backend.infrastructure.office.ir_dwv_record_workbook_gateway import IrDwvRecordWorkbookGateway
     service = MatrixEditorIrDwvRecordGenerationService(
         confirmed_store=SimpleNamespace(get_active_by_project=lambda _: None),
-        basic_information_store=SimpleNamespace(get_latest_confirmed=lambda _: SimpleNamespace(version=1, values={"product_description": "Actual connector", "requested_by": "Requestor"})),
+        basic_information_store=SimpleNamespace(
+            get_latest_confirmed=lambda _: SimpleNamespace(version=1, values={"product_description": "Actual connector", "requested_by": "Requestor"}),
+            get_download_snapshot=lambda _: SimpleNamespace(version=1, values={"product_description": "Actual connector", "requested_by": "Requestor"}),
+        ),
         ltr_store=SimpleNamespace(list_by_project=lambda _: [SimpleNamespace(status="registered", registered_on="2026-10-01", ltr_number="DL-001")]),
         workbook_gateway=IrDwvRecordWorkbookGateway(Path(__file__).parents[1] / "fixtures" / "ir_dwv" / "IR_DWV_Template.xlsx"),
         artifact_store=IrDwvRecordArtifactStore(tmp_path / "drafts"),

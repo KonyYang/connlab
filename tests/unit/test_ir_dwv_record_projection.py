@@ -117,11 +117,11 @@ def test_generation_context_uses_authority_and_changes_fingerprint(tmp_path):
     from types import SimpleNamespace
     from backend.application.matrix_editor_ir_dwv_record_generation_service import MatrixEditorIrDwvRecordGenerationService
     from backend.application.matrix_editor_llcr_cr_record_generation_service import GenerateMatrixEditorLlcrCrRecordCommand
-    basic = SimpleNamespace(version=1, values={"product_description": "Connector", "requested_by": "Requestor", "project_leader": "Not the tester"})
+    basic = SimpleNamespace(version=1, values={"product_description": "Connector", "requested_by": "Requestor", "project_leader": "Project leader default"})
     template = SimpleNamespace(template_fingerprint=lambda: "template-one", validate_projection=lambda _: None)
     service = MatrixEditorIrDwvRecordGenerationService(
         confirmed_store=SimpleNamespace(get_active_by_project=lambda _: None),
-        basic_information_store=SimpleNamespace(get_latest_confirmed=lambda _: basic),
+        basic_information_store=SimpleNamespace(get_latest_confirmed=lambda _: basic, get_download_snapshot=lambda _: basic),
         ltr_store=SimpleNamespace(list_by_project=lambda _: [SimpleNamespace(status="registered", ltr_number="DL-001", registered_on="2026-10-01")]),
         workbook_gateway=template, artifact_store=None,
     )
@@ -129,7 +129,7 @@ def test_generation_context_uses_authority_and_changes_fingerprint(tmp_path):
     first = service.build_draft_projection(**{key: getattr(draft, key) for key in draft.__dataclass_fields__})
     assert first.workbook.product_name == "Connector"
     assert first.workbook.requestor == "Requestor"
-    assert first.workbook.tested_by == ""
+    assert first.workbook.tested_by == "Project leader default"
     assert first.workbook.equipment == ()
     assert any(item.code == "equipment_template_defaults" and "Instrument" in item.message and "Gage ID" in item.message for item in first.diagnostics)
     basic.values["product_description"] = "Updated connector"
@@ -146,7 +146,7 @@ def test_generation_context_reports_template_failure_as_blocker():
         raise ValueError("Template is locked by Excel")
     service = MatrixEditorIrDwvRecordGenerationService(
         confirmed_store=SimpleNamespace(get_active_by_project=lambda _: None),
-        basic_information_store=SimpleNamespace(get_latest_confirmed=lambda _: None),
+        basic_information_store=SimpleNamespace(get_latest_confirmed=lambda _: None, get_download_snapshot=lambda _: None),
         ltr_store=SimpleNamespace(list_by_project=lambda _: []),
         workbook_gateway=SimpleNamespace(template_fingerprint=unavailable), artifact_store=None,
     )

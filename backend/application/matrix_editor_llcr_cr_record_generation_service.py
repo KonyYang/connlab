@@ -18,6 +18,7 @@ from backend.application.matrix_editor_llcr_cr_record_projection import (
     MatrixEditorLlcrCrRecordRowInput,
     build_matrix_editor_llcr_cr_record_projection,
 )
+from backend.application.project_basic_information_output import ConfirmedBasicInformationReader
 
 
 class MatrixEditorLlcrCrRecordGenerationError(ValueError):
@@ -83,11 +84,13 @@ class MatrixEditorLlcrCrRecordGenerationService:
         workbook_gateway: MatrixEditorLlcrCrWorkbookWriter,
         artifact_store: MatrixEditorLlcrCrDraftArtifactStore,
         ltr_store: MatrixEditorLtrRecordLookup | None = None,
+        basic_information_reader: ConfirmedBasicInformationReader | None = None,
     ) -> None:
         self._point_profile_adapter = point_profile_adapter
         self._workbook_gateway = workbook_gateway
         self._artifact_store = artifact_store
         self._ltr_store = ltr_store
+        self._basic_information = basic_information_reader
 
     def generate(
         self,
@@ -103,9 +106,14 @@ class MatrixEditorLlcrCrRecordGenerationService:
             point_overrides=overrides,
             step_text_overrides=command.step_text_overrides,
         )
+        basic = (self._basic_information.get_download_snapshot(command.project_id)
+                 if self._basic_information is not None else None)
+        registered_ltr = self._latest_registered_ltr_number(command.project_id)
+        draft_ltr = basic.values.get("dl_number", "").strip() if basic else ""
         projection = replace(
             projection,
-            ltr_number=self._latest_registered_ltr_number(command.project_id),
+            ltr_number=registered_ltr or (draft_ltr if draft_ltr.upper().startswith("DL-") else None),
+            tested_by=basic.values.get("project_leader", "").strip() if basic else "",
         )
         if projection.status != "ready" or not projection.sections:
             messages = " ".join(item.message for item in projection.diagnostics).strip()

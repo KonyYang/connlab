@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import Protocol
+from typing import Callable, Protocol
 
 from backend.application.project_basic_information_service import (
     ProjectBasicInformationRecord,
@@ -58,13 +58,19 @@ class ConfirmedBasicInformationReader(Protocol):
     ) -> BasicInformationPreviewSnapshot | None:
         """Return confirmed or draft Basic Information values for previews."""
 
+    def get_download_snapshot(
+        self, project_id: str
+    ) -> BasicInformationPreviewSnapshot | None:
+        """Read available draft-first values for downloads, never for publication."""
+
 
 class ProjectBasicInformationSnapshotReader:
     """Adapt the Basic Information repository to output snapshot reads."""
 
-    def __init__(self, repository: object) -> None:
+    def __init__(self, repository: object, *, download_sources: Callable[[str], dict[str, str]] | None = None) -> None:
         """Create the reader from a repository with get_latest_confirmed."""
         self._repository = repository
+        self._download_sources = download_sources
 
     def get_latest_confirmed(
         self, project_id: str
@@ -72,6 +78,26 @@ class ProjectBasicInformationSnapshotReader:
         """Return the latest confirmed Basic Information snapshot."""
         record = self._repository.get_latest_confirmed(project_id)
         return snapshot_from_record(record) if record is not None else None
+
+    def get_download_snapshot(self, project_id: str) -> BasicInformationPreviewSnapshot | None:
+        """Overlay explicitly present draft fields, including blank overrides, without writes."""
+        confirmed = self.get_latest_confirmed(project_id)
+        draft = (self._repository.get_latest_draft(project_id)
+                 if hasattr(self._repository, 'get_latest_draft') else None)
+        values = dict(self._download_sources(project_id)) if self._download_sources is not None else {}
+        if confirmed is not None:
+            values.update(confirmed.values)
+        if draft is not None:
+            values.update(draft.values)
+        if draft is None and confirmed is None and not values:
+            return None
+        confirmed_only = draft is None and confirmed is not None and values == confirmed.values
+        return BasicInformationPreviewSnapshot(
+            project_id=project_id,
+            version=confirmed.version if confirmed_only else None,
+            values=values,
+            source_signature_hash=confirmed.source_signature_hash if confirmed_only else None,
+        )
 
     def get_preview_snapshot(
         self, project_id: str

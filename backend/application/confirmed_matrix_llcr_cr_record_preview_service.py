@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from hashlib import sha256
+import json
 from typing import Protocol
 
 from backend.application.confirmed_matrix_llcr_cr_record_projection import (
@@ -13,6 +14,8 @@ from backend.application.confirmed_matrix_llcr_cr_record_projection import (
 )
 from backend.domain import ConfirmedMatrixSnapshot
 from backend.application.matrix_test_points_authority import effective_matrix_point_profile
+from backend.application.project_basic_information_output import ConfirmedBasicInformationReader
+from backend.application.project_identity import select_registered_ltr
 
 
 class LlcrCrRecordWorkbookPreviewNotFoundError(LookupError):
@@ -29,9 +32,12 @@ class ConfirmedMatrixAuthorityStore(Protocol):
 class LlcrCrRecordWorkbookPreviewService:
     """Build no-write specialized record preview from confirmed contact authority."""
 
-    def __init__(self, *, confirmed_store: ConfirmedMatrixAuthorityStore, consumer_adapter=None) -> None:
+    def __init__(self, *, confirmed_store: ConfirmedMatrixAuthorityStore, consumer_adapter=None,
+                 basic_information_reader: ConfirmedBasicInformationReader | None = None, ltr_store=None) -> None:
         self._confirmed_store = confirmed_store
         self._consumer_adapter = consumer_adapter
+        self._basic_information = basic_information_reader
+        self._ltrs = ltr_store
 
     def preview(self, project_id: str, record_type: str = "llcr") -> LlcrCrRecordProjection:
         """Return a deterministic no-write projection for one project."""
@@ -42,13 +48,23 @@ class LlcrCrRecordWorkbookPreviewService:
             )
         matrix_profile = effective_matrix_point_profile(snapshot)
         if matrix_profile is not None:
-            return build_point_profile_llcr_cr_record_projection(snapshot, matrix_profile, record_type)
-        if self._consumer_adapter is None:
-            return _legacy_type_projection(build_llcr_cr_record_projection(snapshot), record_type)
-        effective = self._consumer_adapter.get_effective(project_id)
-        if effective is None:
-            return _legacy_type_projection(build_llcr_cr_record_projection(snapshot), record_type)
-        return build_point_profile_llcr_cr_record_projection(snapshot, effective, record_type)
+            projection = build_point_profile_llcr_cr_record_projection(snapshot, matrix_profile, record_type)
+        else:
+            effective = self._consumer_adapter.get_effective(project_id) if self._consumer_adapter else None
+            projection = (build_point_profile_llcr_cr_record_projection(snapshot, effective, record_type)
+                          if effective is not None else
+                          _legacy_type_projection(build_llcr_cr_record_projection(snapshot), record_type))
+        if self._basic_information is None and self._ltrs is None:
+            return projection
+        basic = self._basic_information.get_latest_confirmed(project_id) if self._basic_information else None
+        ltr = select_registered_ltr(self._ltrs.list_by_project(project_id)) if self._ltrs else None
+        metadata = {
+            'ltr_number': ltr.ltr_number if ltr else projection.ltr_number,
+            'tested_by': basic.values.get('project_leader', '').strip() if basic else '',
+        }
+        fingerprint = (sha256((projection.preview_fingerprint + json.dumps(metadata, sort_keys=True)).encode()).hexdigest()
+                       if projection.preview_fingerprint else None)
+        return replace(projection, **metadata, preview_fingerprint=fingerprint)
 
 
 def _legacy_type_projection(

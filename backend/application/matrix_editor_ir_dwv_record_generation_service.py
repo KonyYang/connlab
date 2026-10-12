@@ -26,7 +26,7 @@ class MatrixEditorIrDwvRecordGenerationService:
         self._artifacts = artifact_store
 
     def build_draft_projection(self, *, project_id, **draft):
-        header, context, diagnostics = self._context(project_id)
+        header, context, diagnostics = self._context(project_id, draft_download=True)
         projection = build_matrix_editor_ir_dwv_record_projection(
             project_id=project_id, **draft, header=header, source_fingerprint=context,
         )
@@ -76,9 +76,10 @@ class MatrixEditorIrDwvRecordGenerationService:
                 diagnostics += (IrDwvRecordDiagnostic("layout_unavailable", str(exc), "error"),)
         return self._with_diagnostics(projection, diagnostics)
 
-    def _context(self, project_id, snapshot=None):
+    def _context(self, project_id, snapshot=None, *, draft_download=False):
         snapshot = snapshot or self._confirmed.get_active_by_project(project_id)
-        basic = self._basic.get_latest_confirmed(project_id)
+        basic = (self._basic.get_download_snapshot(project_id) if draft_download else
+                 self._basic.get_latest_confirmed(project_id))
         values = basic.values if basic is not None else {}
         registered = [record for record in self._ltrs.list_by_project(project_id)
                       if getattr(record.status, "value", record.status) == "registered"]
@@ -87,15 +88,16 @@ class MatrixEditorIrDwvRecordGenerationService:
             request_number=ltr.ltr_number if ltr else "",
             product_name=values.get("product_description", ""),
             requestor=values.get("requested_by", ""),
+            tested_by=values.get("project_leader", ""),
             start_date=getattr(snapshot.version, "planned_test_start_date", None) if snapshot else None,
             finish_date=getattr(snapshot.version, "planned_test_complete_date", None) if snapshot else None,
         )
         diagnostics = [
-            IrDwvRecordDiagnostic("personnel_environment_unset", "Tester, checker, approver, temperature and humidity have no confirmed source and are left blank."),
+            IrDwvRecordDiagnostic("personnel_environment_unset", "Checker, approver and measured temperature/humidity have no actual test source and are left blank."),
             IrDwvRecordDiagnostic("equipment_template_defaults", "Instrument and Gage ID retain the configured template defaults; no project-specific equipment is selected and calibration fields are left blank."),
         ]
         if basic is None:
-            diagnostics.append(IrDwvRecordDiagnostic("basic_information_unset", "Confirmed Basic Information is unavailable; product and requestor are left blank."))
+            diagnostics.append(IrDwvRecordDiagnostic("basic_information_unset", "Basic Information is unavailable; product and requestor are left blank."))
         if ltr is None:
             diagnostics.append(IrDwvRecordDiagnostic("ltr_unset", "No registered LTR is available; Request No. is left blank."))
         try:

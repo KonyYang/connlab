@@ -113,7 +113,7 @@ def test_confirmed_matrix_test_record_generation_api_returns_404_without_active_
         engine.dispose()
 
 
-def test_confirmed_matrix_test_record_generation_api_blocks_without_basic_information(
+def test_confirmed_matrix_download_uses_unconfirmed_basic_draft_without_requiring_confirmation(
     tmp_path: Path,
 ) -> None:
     client, engine, _ = _client(tmp_path)
@@ -127,6 +127,10 @@ def test_confirmed_matrix_test_record_generation_api_blocks_without_basic_inform
             test_record=TestRecordSettings(template_path=template_path),
         )
         _seed_project("P1", tmp_path)
+        saved = client.put('/api/projects/P1/basic-information/draft', json={'values': {
+            'product_description': 'Unconfirmed draft connector', 'applicable_specifications': 'GS-DRAFT',
+        }})
+        assert saved.status_code == 200
         source_import_id = _seed_source_import("P1", tmp_path)
         draft = client.post(
             "/api/projects/P1/matrix-drafts",
@@ -142,10 +146,14 @@ def test_confirmed_matrix_test_record_generation_api_blocks_without_basic_inform
 
         response = client.post("/api/projects/P1/confirmed-matrix/test-record-draft/generate")
 
-        assert response.status_code == 422
-        assert response.json()["detail"] == (
-            "Confirm Basic Information before generating Test Record."
-        )
+        assert response.status_code == 200, response.text
+        from io import BytesIO
+        document = Document(BytesIO(response.content))
+        header = '\n'.join(cell.text for table in document.sections[0].header.tables
+                           for row in table.rows for cell in row.cells)
+        assert 'Unconfirmed draft connector' in header
+        assert 'GS-DRAFT' in header
+        assert 'X-ConnLab-Basic-Information-Version' not in response.headers
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

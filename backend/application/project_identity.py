@@ -105,6 +105,13 @@ def setup_payload_from_ltr_notes(notes: str | None) -> dict[str, Any]:
     return operator_note
 
 
+def registered_sample_description(record: LtrRecord) -> str | None:
+    """Read controlled setup or legacy registered sample descriptions without guessing."""
+    setup = setup_payload_from_ltr_notes(record.notes)
+    legacy = _json_object(record.notes) or {}
+    return _text(setup.get("sample_description")) or _text(legacy.get("sample_description"))
+
+
 def operator_note_from_ltr_notes(notes: str | None) -> str | None:
     """Return plain operator note text without leaking structured audit JSON."""
     outer = _json_object(notes)
