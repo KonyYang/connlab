@@ -72,9 +72,9 @@ def _test_info(sheet, info):
         environment.append(f'{info.relative_humidity:g} %RH')
     rows.append(('Amb Temp. and Rel. Hum.', ' / '.join(environment)))
     rows.append(('Test Equipment ID', info.equipment_id))
-    for label, value in (('Test Condition', info.test_condition), ('Remark', info.remark)):
-        if value.strip():
-            rows.append((label, value))
+    if info.test_condition.strip():
+        rows.append(('Test Condition', info.test_condition))
+    rows.append(('Remark', info.remark))
     edge = Side(style='thin', color='D8D8B0')
     for row, (label, value) in enumerate(rows, 1):
         for start, end, text in ((1, 2, label), (3, 9, value)):

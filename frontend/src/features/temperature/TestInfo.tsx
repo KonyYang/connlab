@@ -15,7 +15,6 @@ export function TestInfo({ info, disabled, onEdit }: Props) {
       {field('test_date', 'Test Date', 80, 'YYYY-MM-DD')}
       {field('equipment_id', 'Test Equipment ID', 500)}
       {field('test_condition', 'Test Condition', 500)}
-      {field('remark', 'Remark', 500)}
     </div>
   </div>;
 }

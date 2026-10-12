@@ -63,7 +63,7 @@ describe('temperature preparation and calculation workflow', () => {
     expect(screen.queryByText('More Information')).toBeNull();
     expect(screen.queryByText('Test Info', { exact: true })).toBeNull();
     const fields = { LTR: 'DL-2026-09-002A', 'Tested By': 'Actual tester', 'Test Date': '2026-09-10',
-      'Test Equipment ID': 'DG-Q-0801/0269', 'Test Condition': '40 A', Remark: 'Manual remark' };
+      'Test Equipment ID': 'DG-Q-0801/0269', 'Test Condition': '40 A' };
     const reportFields = within(screen.getByRole('group', { name: 'Report information' }));
     for (const [label, value] of Object.entries(fields)) {
       const input = reportFields.getByLabelText(label) as HTMLInputElement;
@@ -71,6 +71,7 @@ describe('temperature preparation and calculation workflow', () => {
       fireEvent.change(input, { target: { value } });
     }
     expect(screen.queryByLabelText('Rel. Hum. (%RH)')).toBeNull();
+    expect(screen.queryByLabelText('Remark')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
     expect(screen.queryByLabelText('Amb Temp. (°C)')).toBeNull();
@@ -81,7 +82,7 @@ describe('temperature preparation and calculation workflow', () => {
     expect(api.downloadTemperatureWorkbook).toHaveBeenCalledWith(expect.objectContaining({
       report_metadata: { ltr_number: 'DL-2026-09-002A', tested_by: 'Actual tester',
         test_date: '2026-09-10', ambient_temperature: '23', relative_humidity: 50,
-        equipment_id: 'DG-Q-0801/0269', test_condition: '40 A', remark: 'Manual remark' },
+        equipment_id: 'DG-Q-0801/0269', test_condition: '40 A', remark: '' },
     }));
     expect(projectApi.listProjectRegistryRows).not.toHaveBeenCalled();
     expect(projectApi.getProjectBasicInformation).not.toHaveBeenCalled();

@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
     "summary": "Simplify temperature Test Info to compact manual entry without project association",
@@ -30,64 +30,17 @@
     "risk_reasons": [],
     "activation_head": "287bb7a2bd92400ce7510f6fbc28fe47fa748e24",
     "started_at": "2026-10-12T22:34:10.482463Z",
-    "updated_at": "2026-10-12T23:19:14.761404Z",
+    "updated_at": "2026-10-12T23:25:35.927248Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requests hiding Remark input and retaining Remark as the final report-information row in exported Excel, blank for manual completion there",
       "requires_user": false
     },
-    "report": {
-      "subject": "386280e9129aef94f306b5747cf45da860b732ed",
-      "changed_paths": [
-        "docs/temperature_rise_tool.md",
-        "frontend/src/features/temperature/TestInfo.tsx",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useTemperatureReportInfo.ts",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx"
-      ],
-      "validation": [
-        {
-          "name": "Final affected frontend regression",
-          "status": "passed",
-          "detail": "58 tests across page, report metadata and API on final code; RED/GREEN hidden humidity, numeric 50 export, retained original ambient selection/readings and defaults across reimport verified"
-        },
-        {
-          "name": "Final TypeScript and Vite build",
-          "status": "passed"
-        },
-        {
-          "name": "Independent Edge browser smoke",
-          "status": "passed",
-          "detail": "Six editable fields, no ambient/humidity inputs or heading/collapse; 7 viewport widths including 721px, no overflow/page errors; narrow editor reduced to three rows"
-        },
-        {
-          "name": "Exact revised diff review",
-          "status": "passed",
-          "detail": "Sequential same-agent Standards 0 findings, Spec 0 findings; fixed values limited to report metadata, no source/calculation/authority mutation; git diff --check passed"
-        }
-      ],
-      "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
-      "roles": {
-        "developer": {
-          "detail": "Micro implementation and self-review by current agent, no independent role claim",
-          "status": "passed"
-        }
-      },
-      "summary": "Six compact manual report fields, no project selector or heading/collapse; ambient and humidity inputs hidden, exported report defaults 23 C and numeric 50 percent RH without altering calculation data.",
-      "integration": {
-        "detail": "Clean local master exact subject; no remote publication",
-        "status": "passed"
-      },
-      "scope_ok": true,
-      "version": 1,
-      "schema": "connlab.sol-task-report"
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_DRAFT_DOWNLOAD_AVAILABLE_INFO_20261012",

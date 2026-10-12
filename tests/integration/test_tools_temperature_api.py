@@ -85,11 +85,35 @@ def test_empty_report_fields_remain_blank_at_top_left_and_zero_humidity_is_prese
         sheet = book['T-riseChart']
         info = sheet[next(book.defined_names['TemperatureTestInfo'].destinations)[1].replace('$', '')]
         assert info[0][0].coordinate == 'A1'
-        assert len(info) == 5
+        assert len(info) == 6
         assert [row[0].value for row in info] == [
-            'LTR', 'Test Date', 'Tested By', 'Amb Temp. and Rel. Hum.', 'Test Equipment ID',
+            'LTR', 'Test Date', 'Tested By', 'Amb Temp. and Rel. Hum.', 'Test Equipment ID', 'Remark',
         ]
-        assert [row[2].value for row in info] == [None, None, None, environment, None]
+        assert [row[2].value for row in info] == [None, None, None, environment, None, None]
+        assert info[-1][0].font.bold
+        assert info[-1][0].fill.fgColor.rgb == '00FFFFCC'
+        assert f'C{info[-1][0].row}:I{info[-1][0].row}' in {str(area) for area in sheet.merged_cells.ranges}
+    finally:
+        book.close()
+
+
+def test_blank_remark_follows_optional_condition_and_remains_editable_in_export():
+    client = TestClient(app)
+    data = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', scanner_bytes())}).json()
+    response = client.post('/api/tools/temperature-rise/download', json={
+        'table': data['table'], 'selection': data['selection'],
+        'report_metadata': {'ambient_temperature': '23', 'relative_humidity': 50, 'test_condition': '40 A'},
+    })
+    assert response.status_code == 200
+    book = load_workbook(BytesIO(response.content), data_only=True)
+    try:
+        sheet = book['T-riseChart']
+        info = sheet[next(book.defined_names['TemperatureTestInfo'].destinations)[1].replace('$', '')]
+        assert info[3][2].value == '23 °C / 50 %RH'
+        assert (info[-2][0].value, info[-2][2].value) == ('Test Condition', '40 A')
+        assert (info[-1][0].value, info[-1][2].value) == ('Remark', None)
+        assert not sheet.protection.sheet
+        assert sheet._charts[0].anchor._from.row >= info[-1][0].row
     finally:
         book.close()
 

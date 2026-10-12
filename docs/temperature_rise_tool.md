@@ -49,11 +49,12 @@ untouched; the change applies only to newly generated downloads.
 ## Compact manual Test Info (2026-10-13)
 
 Below the imported filename, report information appears in a compact, always-visible editor without
-a Test Info heading or collapse control. All six editable fields
+a Test Info heading or collapse control. All five editable fields
 are shown together: LTR, Tested By, Test Date, equipment IDs,
-test condition and remarks. There is no separate More Information fold or project selector.
+and test condition. There is no separate More Information fold or project selector; Remark is
+also hidden and is reserved for direct completion in the exported workbook.
 Labels and inputs share a line; an editor at least 720 px wide uses four fields per row, and
-at least 1500 px uses six. Inputs are capped at 180 px; narrow editors wrap to two or one field
+at least 1500 px uses five. Inputs are capped at 180 px; narrow editors wrap to two or one field
 per row without clipped labels.
 Metadata is bounded literal text, including labels starting with `=`. The request boundary retains
 its optional humidity validation (finite 0–100 %RH) for compatibility; this tool always supplies 50.
@@ -83,8 +84,9 @@ There is no project Basic Information, Matrix, database or external source write
 The download request carries a separate report_metadata object, with empty defaults for older clients.
 T-riseChart starts the report information at A1 (Excel has no A0). It uses a vertical, pale-yellow
 label/value table: LTR, Test Date, Tested By, Amb Temp. and Rel. Hum. and Test Equipment ID.
-Equipment always retains a row, with a blank value when not entered; condition and remark rows
-appear only when entered. Labels occupy A:B, values C:I; ordinary merged
+Equipment always retains a row, with a blank value when not entered; the condition row
+appears only when entered. Remark always occupies the final information row, blank for manual
+completion unless an existing API client supplied text. Labels occupy A:B, values C:I; ordinary merged
 presentation cells wrap with fitted row heights. TemperatureTestInfo names this top-left region.
 The summary/chart and MAX calculator follow it; endpoint readings and the temperature-rise build
 remain inspectable below the printable report, rather than preceding its information. All blocks
