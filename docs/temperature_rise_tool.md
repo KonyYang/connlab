@@ -49,24 +49,28 @@ untouched; the change applies only to newly generated downloads.
 ## Compact manual Test Info (2026-10-13)
 
 Below the imported filename, report information appears in a compact, always-visible editor without
-a Test Info heading or collapse control. All eight fields
-are shown together: LTR, Tested By, Test Date, Amb Temp., relative humidity, equipment IDs,
+a Test Info heading or collapse control. All seven editable fields
+are shown together: LTR, Tested By, Test Date, relative humidity, equipment IDs,
 test condition and remarks. There is no separate More Information fold or project selector.
 Labels and inputs share a line; an editor at least 720 px wide uses four fields per row, and
-at least 1500 px uses eight. Inputs are capped at 180 px; narrow editors wrap to two or one field
+at least 1500 px uses seven. Inputs are capped at 180 px; narrow editors wrap to two or one field
 per row without clipped labels.
 Humidity errors remain visible below the inputs. Humidity is optional; entered values must be finite
 and within 0–100 %RH. Other metadata is bounded literal
 text, including labels starting with `=`. Invalid humidity disables download with an explanation.
 
 Report information is entered manually. Opening or editing this tool does not query the project
-registry or Basic Information, nor infer an LTR or tester from a project. Date and temperature retain
+registry or Basic Information, nor infer an LTR or tester from a project. Date retains
 the source suggestions below. No heading or permanent explanatory row occupies additional space.
 
-Date and temperature suggestions use included source rows, respecting source region and exclusions.
+The report ambient temperature defaults to 23 °C as explicitly requested by the operator. There is
+no visible/editable ambient report field; the download metadata carries `ambient_temperature: "23"`.
+This is a report-only default, not a measured value inferred from the file. The selected Ambient
+Column, original readings and row-specific temperature-rise calculations remain unchanged.
+
+Date suggestions use included source rows, respecting source region and exclusions.
 Unambiguous ISO or year-first slash dates provide a single date or range; time-only, ambiguous,
-invalid or partly missing dates stay blank. Ambient temperature shows the retained reading range
-to one decimal. Relative humidity, equipment IDs and conditions stay blank without a verified
+invalid or partly missing dates stay blank. Relative humidity, equipment IDs and conditions stay blank without a verified
 test-specific source. No default laboratory humidity, download date, planned project date or
 generic project-wide equipment list is substituted for actual test facts.
 

@@ -74,36 +74,39 @@ describe('temperature preparation and calculation workflow', () => {
     fireEvent.change(screen.getByLabelText('Rel. Hum. (%RH)'), { target: { value: '60.9' } });
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
-    fireEvent.change(screen.getByLabelText('Amb Temp. (°C)'), { target: { value: '22.0–23.5' } });
+    expect(screen.queryByLabelText('Amb Temp. (°C)')).toBeNull();
     expect(screen.getByRole('img', { name: 'Temperature Rise vs Current' })).toBeTruthy();
     vi.mocked(api.downloadTemperatureWorkbook).mockRejectedValueOnce(new Error('Metadata payload checked'));
     await user.click(screen.getByRole('button', { name: 'Download Excel' }));
     await screen.findByText('Metadata payload checked');
     expect(api.downloadTemperatureWorkbook).toHaveBeenCalledWith(expect.objectContaining({
       report_metadata: { ltr_number: 'DL-2026-09-002A', tested_by: 'Actual tester',
-        test_date: '2026-09-10', ambient_temperature: '22.0–23.5', relative_humidity: 60.9,
+        test_date: '2026-09-10', ambient_temperature: '23', relative_humidity: 60.9,
         equipment_id: 'DG-Q-0801/0269', test_condition: '40 A', remark: 'Manual remark' },
     }));
     expect(projectApi.listProjectRegistryRows).not.toHaveBeenCalled();
     expect(projectApi.getProjectBasicInformation).not.toHaveBeenCalled();
+    expect(api.prepareTemperatureData).toHaveBeenCalledWith(expect.objectContaining({
+      selection: expect.objectContaining({ ambient_column: 5 }),
+      table: expect.objectContaining({ rows: imported.table.rows }),
+    }));
   });
 
-  it('keeps source suggestions editable and preserves intentional empty overrides through source changes', async () => {
+  it('keeps the source date suggestion editable and preserves intentional empty overrides through source changes', async () => {
     const dated = structuredClone(imported);
     dated.table.rows.slice(1).forEach(row => { row[1] = '2026/10/12 18:00'; });
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(dated);
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     expect((screen.getByLabelText('Test Date') as HTMLInputElement).value).toBe('2026-10-12');
-    expect((screen.getByLabelText('Amb Temp. (°C)') as HTMLInputElement).value).toBe('20.0');
+    expect(screen.queryByLabelText('Amb Temp. (°C)')).toBeNull();
     expect((screen.getByLabelText('LTR') as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('Tested By') as HTMLInputElement).value).toBe('');
     fireEvent.change(screen.getByLabelText('Tested By'), { target: { value: 'Explicit tester' } });
     fireEvent.change(screen.getByLabelText('Test Date'), { target: { value: '' } });
-    fireEvent.change(screen.getByLabelText('Amb Temp. (°C)'), { target: { value: '22.5' } });
     await upload();
     expect((screen.getByLabelText('Test Date') as HTMLInputElement).value).toBe('');
-    expect((screen.getByLabelText('Amb Temp. (°C)') as HTMLInputElement).value).toBe('22.5');
+    expect(screen.queryByLabelText('Amb Temp. (°C)')).toBeNull();
     expect((screen.getByLabelText('Tested By') as HTMLInputElement).value).toBe('Explicit tester');
   });
 

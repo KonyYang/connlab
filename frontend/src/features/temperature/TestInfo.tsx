@@ -14,7 +14,6 @@ export function TestInfo({ info, disabled, onEdit }: Props) {
       {field('ltr_number', 'LTR', 200)}
       {field('tested_by', 'Tested By', 200)}
       {field('test_date', 'Test Date', 80, 'YYYY-MM-DD')}
-      {field('ambient_temperature', 'Amb Temp. (°C)', 80)}
       <label>Rel. Hum. (%RH)<input type="number" min="0" max="100" step="any"
         value={info.values.relative_humidity} disabled={disabled} aria-invalid={Boolean(humidityIssue)}
         onChange={event => onEdit('relative_humidity', event.target.value)} /></label>
