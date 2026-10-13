@@ -11,87 +11,37 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
-    "task_id": "TASK_TEMPERATURE_REVIEW_SIMPLIFICATION_20261014",
-    "summary": "Simplify temperature warning review and remove redundant row controls",
-    "tier": "micro",
-    "route": "sol_direct",
-    "scope": "Remove Keep Flagged Rows, Select Unpowered Rows and Restore All Rows; explicit Confirm Data accepts nonblocking warnings, preserving highlights, warning text, error blocking, top row edit actions and stale-response guards",
+    "task_id": "TASK_TEMPERATURE_MULTI_CURRENT_EXPORT_20261014",
+    "summary": "Export stable auxiliary current rows above the selected main current in T-riseChart",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Use existing stable-current classification, stage endpoint source readings and actual current names; add gray bold centered integer-display current rows, preserve numeric precision, leave synthetic-origin auxiliary cells blank, and keep summary/chart/fit/calculator references correct without source mutation",
     "scope_paths": [
-      "frontend/src/pages/TemperatureRisePage.tsx",
-      "frontend/src/pages/TemperatureRisePage.test.tsx",
-      "frontend/src/features/temperature/DataPreview.tsx",
-      "frontend/src/features/temperature/useDataGridEditing.ts",
-      "frontend/src/features/temperature/useTemperatureTool.ts",
+      "backend/application/temperature_data_preparation.py",
+      "backend/infrastructure/office/temperature_workbook_gateway.py",
+      "backend/infrastructure/office/temperature_rise_report_sheet.py",
+      "tests/unit/test_temperature_data_preparation.py",
+      "tests/unit/test_temperature_workbook_gateway.py",
+      "tests/integration/test_tools_temperature_api.py",
       "docs/temperature_rise_tool.md"
     ],
     "risk_reasons": [],
-    "activation_head": "adaa8440a6105ac92028757e1f7e283b4d3dc7d6",
-    "started_at": "2026-10-13T23:14:27.942753Z",
-    "updated_at": "2026-10-13T23:19:29.211813Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_REVIEW_SIMPLIFICATION_20261014",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "changed_paths": [
-        "docs/temperature_rise_tool.md",
-        "frontend/src/features/temperature/DataPreview.tsx",
-        "frontend/src/features/temperature/useDataGridEditing.ts",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx"
-      ],
-      "integration": {
-        "status": "passed",
-        "detail": "Clean local master exact subject, no remote publication; awaiting explicit user Close"
-      },
-      "subject": "ac6da92dbc79c1b357dd029b5208bf3913d14a31",
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "detail": "Sequential same-agent Standards and Spec exact-diff reviews found zero outstanding issues. Existing request/check/error lifecycle retained, obsolete acknowledgement and footer-only restore-all state removed, no new dependency or authority mutation. No independent agent review claimed."
-        }
-      },
-      "version": 1,
-      "validation": [
-        {
-          "status": "passed",
-          "detail": "RED: two targeted page regressions failed for existing checkbox and acknowledge_warnings=false. Final GREEN: 91 frontend page/grid/scan formatter/API tests passed; top selection, exclude/restore, reconfirm/export, invalid-data blockers and stale operations covered."
-        },
-        {
-          "status": "passed",
-          "detail": "65 backend preparation/API tests passed on final state (one existing Starlette/httpx deprecation warning); existing acknowledge_warnings contract retains errors and original source/numerical semantics. No backend implementation changes."
-        },
-        {
-          "status": "passed",
-          "detail": "Sequential npm run build (TypeScript/Vite) and git diff --check passed."
-        },
-        {
-          "status": "passed",
-          "detail": "Real localhost UI smoke via isolated headless Edge and synthetic zero-current CSV: three controls absent, warning text/highlight retained, top exclusion/restoration invalidates results, reconfirmation generates both charts, real XLSX download succeeds, no page errors. In-app Browser import restricted by EPERM; bundled Playwright fallback used without touching user session or business files."
-        }
-      ],
-      "scope_ok": true,
-      "task_id": "TASK_TEMPERATURE_REVIEW_SIMPLIFICATION_20261014",
-      "schema": "connlab.sol-task-report",
-      "summary": "Removed redundant warning acknowledgement and footer row actions; explicit Confirm Data accepts warnings via existing API, retains row highlight/review text and top editing controls, while backend errors remain blocking"
-    }
+    "activation_head": "b06621ad13a66848af3ac604b029a82ef3ba53c5",
+    "started_at": "2026-10-13T23:44:54.493353Z",
+    "updated_at": "2026-10-13T23:44:54.493353Z",
+    "checkpoint": null,
+    "report": null
   },
   "last_closed": {
-    "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
+    "task_id": "TASK_TEMPERATURE_REVIEW_SIMPLIFICATION_20261014",
     "tier": "micro",
-    "subject": "81ee97b33b8398e4cadfd3d0973038df2cbdee17",
-    "summary": "Simplify temperature Test Info to compact manual entry without project association",
+    "subject": "ac6da92dbc79c1b357dd029b5208bf3913d14a31",
+    "summary": "Simplify temperature warning review and remove redundant row controls",
     "disposition": "completed",
-    "decision_ref": "User accepted the completed temperature report and export refinements and requested close on 2026-10-14",
-    "closed_at": "2026-10-13T22:55:52.331395Z"
+    "decision_ref": "User closes the completed warning-review task and requests multi-current export implementation on 2026-10-14",
+    "closed_at": "2026-10-13T23:44:54.493353Z"
   },
   "retained_history": [
     {
