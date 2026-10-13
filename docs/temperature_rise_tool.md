@@ -5,6 +5,12 @@ and a compact XLSX metadata header. Editable measurement names, stable source id
 reversible ambient-role suspension and consecutive regrouping after explicit moves remain supported.
 Compact charts, automatic generation after confirmation and scan-based feedback remain in place.
 
+`Tested By` defaults to the same offline user display name as the sidebar (`Lab User` currently),
+via `frontend/src/currentUser.ts`. The app has no authenticated user profile yet; this does not
+infer a personal name from the Windows account or reintroduce project lookup. Manual replacement
+or deliberate clearing overrides the default, survives reimport, and is sent to the XLSX report.
+The existing Basic Information confirmation-name helper retains its API and default value.
+
 ## Compact XLSX export (2026-10-11)
 
 `Initial Data` now contains the complete imported value table at its original one-based row/column

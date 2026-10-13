@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
     "summary": "Simplify temperature Test Info to compact manual entry without project association",
@@ -30,78 +30,17 @@
     "risk_reasons": [],
     "activation_head": "287bb7a2bd92400ce7510f6fbc28fe47fa748e24",
     "started_at": "2026-10-12T22:34:10.482463Z",
-    "updated_at": "2026-10-12T23:54:17.345106Z",
+    "updated_at": "2026-10-13T00:06:08.076754Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requests Tested By default from current platform user name, preserving manual correction",
       "requires_user": false
     },
-    "report": {
-      "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
-      "schema": "connlab.sol-task-report",
-      "integration": {
-        "detail": "Clean local master exact subject; no remote publication",
-        "status": "passed"
-      },
-      "validation": [
-        {
-          "status": "passed",
-          "name": "Final affected frontend regression",
-          "detail": "60 tests on final code; RED/GREEN latest date rather than range or last row, invalid/time-only/missing dates, absent time column, selected region/exclusions, hidden input and exported date refresh with manual entries retained"
-        },
-        {
-          "name": "Final TypeScript and Vite build",
-          "status": "passed"
-        },
-        {
-          "status": "passed",
-          "name": "Workbook/API regression retained",
-          "detail": "64 tests passed in preceding Remark revision; backend and workbook tests unchanged in date revision, so unchanged results reused without duplicate matrix"
-        },
-        {
-          "status": "passed",
-          "name": "Independent Edge browser and actual download",
-          "detail": "Four visible fields, no date/ambient/humidity/Remark inputs or heading/collapse; seven viewport widths, wide one-row/narrow two-row layout; unordered-date synthetic CSV confirmed and actual XLSX downloaded"
-        },
-        {
-          "status": "passed",
-          "name": "Native Excel read-only date QA",
-          "detail": "Own hidden Excel opened actual browser download read-only; C2 is 2026-10-14, the greatest input date rather than last row 2026-10-13; fixed environment retained, final Remark blank, native chart present, full rebuild no formula errors; closed without saving"
-        },
-        {
-          "status": "passed",
-          "name": "Exact revised diff review",
-          "detail": "Sequential same-agent Standards 0 findings, Spec 0 findings; no use of today or filename guesses, source region and exclusions respected, previous manual date cannot override derived date; no calculation/source/authority mutation; git diff --check passed"
-        }
-      ],
-      "roles": {
-        "developer": {
-          "detail": "Micro implementation, TDD and self-review by current agent; no independent role claim",
-          "status": "passed"
-        }
-      },
-      "version": 1,
-      "scope_ok": true,
-      "summary": "Four compact manual report fields without project selector, heading or collapse. Hidden Test Date derives the latest valid included source date; hidden report ambient/humidity remain 23 C/50 percent RH. Export information ends with an editable Remark row.",
-      "changed_paths": [
-        "backend/infrastructure/office/temperature_rise_report_sheet.py",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/features/temperature/TestInfo.tsx",
-        "frontend/src/features/temperature/reportInfo.test.ts",
-        "frontend/src/features/temperature/reportInfo.ts",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useTemperatureReportInfo.ts",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx",
-        "tests/integration/test_tools_temperature_api.py"
-      ],
-      "subject": "4eac233d53ca6c183192cd8792ec746d19438611"
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_DRAFT_DOWNLOAD_AVAILABLE_INFO_20261012",

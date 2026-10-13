@@ -1,5 +1,6 @@
 import { useState, type ReactElement } from "react";
 import { UiIcon, type UiIconName } from "../common/UiIcon";
+import { CURRENT_USER_DISPLAY_NAME } from "../../currentUser";
 
 type SidebarProps = {
   activeRoute: string;
@@ -89,7 +90,7 @@ export function Sidebar({
         {userMenuOpen ? (
           <div className="sidebar-account-menu" aria-label="User menu" role="menu">
             <div className="sidebar-account-menu-header">
-              <strong>Lab User</strong>
+              <strong>{CURRENT_USER_DISPLAY_NAME}</strong>
               <span>Offline local</span>
             </div>
             <button
@@ -109,10 +110,10 @@ export function Sidebar({
         <button
           aria-expanded={userMenuOpen}
           aria-haspopup="menu"
-          aria-label="Lab User"
+          aria-label={CURRENT_USER_DISPLAY_NAME}
           className="sidebar-account-trigger"
           disabled={interactionLocked}
-          title={interactionLocked ? interactionLockedReason : "Lab User"}
+          title={interactionLocked ? interactionLockedReason : CURRENT_USER_DISPLAY_NAME}
           type="button"
           onClick={() => {
             if (!interactionLocked) {
@@ -122,7 +123,7 @@ export function Sidebar({
         >
           <span className="sidebar-account-avatar"><UiIcon name="user" /></span>
           <span className="sidebar-account-copy">
-            <strong>Lab User</strong>
+            <strong>{CURRENT_USER_DISPLAY_NAME}</strong>
             <small>Offline local</small>
           </span>
           <span className="sidebar-account-chevron"><UiIcon name="chevron-down" /></span>

@@ -55,6 +55,40 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(projectApi.listProjectRegistryRows).mockResolvedValue([]);
   });
 
+  it('defaults Tested By to the displayed offline user and includes it in the export', async () => {
+    const user = userEvent.setup();
+    render(<AppShell activeRoute="tools"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
+    await upload();
+    expect(screen.getByRole('button', { name: 'Lab User' })).toBeTruthy();
+    expect((screen.getByLabelText('Tested By') as HTMLInputElement).value).toBe('Lab User');
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
+    vi.mocked(api.downloadTemperatureWorkbook).mockRejectedValueOnce(new Error('Default tester payload checked'));
+    await user.click(screen.getByRole('button', { name: 'Download Excel' }));
+    await screen.findByText('Default tester payload checked');
+    expect(api.downloadTemperatureWorkbook).toHaveBeenCalledWith(expect.objectContaining({
+      report_metadata: expect.objectContaining({ tested_by: 'Lab User' }),
+    }));
+  });
+
+  it.each(['Min', ''])('retains a manually changed Tested By value %j through reimport and export', async value => {
+    const user = userEvent.setup();
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    expect((screen.getByLabelText('Tested By') as HTMLInputElement).value).toBe('Lab User');
+    fireEvent.change(screen.getByLabelText('Tested By'), { target: { value } });
+    await upload();
+    expect((screen.getByLabelText('Tested By') as HTMLInputElement).value).toBe(value);
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
+    vi.mocked(api.downloadTemperatureWorkbook).mockRejectedValueOnce(new Error('Manual tester payload checked'));
+    await user.click(screen.getByRole('button', { name: 'Download Excel' }));
+    await screen.findByText('Manual tester payload checked');
+    expect(api.downloadTemperatureWorkbook).toHaveBeenCalledWith(expect.objectContaining({
+      report_metadata: expect.objectContaining({ tested_by: value }),
+    }));
+  });
+
   it('shows all report fields for manual entry and exports them without project lookup or resetting the chart', async () => {
     const user = userEvent.setup();
     render(<TemperatureRisePage onBack={() => undefined} />);
@@ -104,7 +138,7 @@ describe('temperature preparation and calculation workflow', () => {
     expect(screen.queryByLabelText('Test Date')).toBeNull();
     expect(screen.queryByLabelText('Amb Temp. (°C)')).toBeNull();
     expect((screen.getByLabelText('LTR') as HTMLInputElement).value).toBe('');
-    expect((screen.getByLabelText('Tested By') as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('Tested By') as HTMLInputElement).value).toBe('Lab User');
     fireEvent.change(screen.getByLabelText('Tested By'), { target: { value: 'Explicit tester' } });
     vi.mocked(api.downloadTemperatureWorkbook).mockRejectedValue(new Error('Automatic date payload checked'));
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
