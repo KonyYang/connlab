@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_REVIEW_SIMPLIFICATION_20261014",
     "summary": "Simplify temperature warning review and remove redundant row controls",
@@ -29,9 +29,60 @@
     "risk_reasons": [],
     "activation_head": "adaa8440a6105ac92028757e1f7e283b4d3dc7d6",
     "started_at": "2026-10-13T23:14:27.942753Z",
-    "updated_at": "2026-10-13T23:14:27.942753Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-13T23:19:29.211813Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_REVIEW_SIMPLIFICATION_20261014",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "changed_paths": [
+        "docs/temperature_rise_tool.md",
+        "frontend/src/features/temperature/DataPreview.tsx",
+        "frontend/src/features/temperature/useDataGridEditing.ts",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx"
+      ],
+      "integration": {
+        "status": "passed",
+        "detail": "Clean local master exact subject, no remote publication; awaiting explicit user Close"
+      },
+      "subject": "ac6da92dbc79c1b357dd029b5208bf3913d14a31",
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "detail": "Sequential same-agent Standards and Spec exact-diff reviews found zero outstanding issues. Existing request/check/error lifecycle retained, obsolete acknowledgement and footer-only restore-all state removed, no new dependency or authority mutation. No independent agent review claimed."
+        }
+      },
+      "version": 1,
+      "validation": [
+        {
+          "status": "passed",
+          "detail": "RED: two targeted page regressions failed for existing checkbox and acknowledge_warnings=false. Final GREEN: 91 frontend page/grid/scan formatter/API tests passed; top selection, exclude/restore, reconfirm/export, invalid-data blockers and stale operations covered."
+        },
+        {
+          "status": "passed",
+          "detail": "65 backend preparation/API tests passed on final state (one existing Starlette/httpx deprecation warning); existing acknowledge_warnings contract retains errors and original source/numerical semantics. No backend implementation changes."
+        },
+        {
+          "status": "passed",
+          "detail": "Sequential npm run build (TypeScript/Vite) and git diff --check passed."
+        },
+        {
+          "status": "passed",
+          "detail": "Real localhost UI smoke via isolated headless Edge and synthetic zero-current CSV: three controls absent, warning text/highlight retained, top exclusion/restoration invalidates results, reconfirmation generates both charts, real XLSX download succeeds, no page errors. In-app Browser import restricted by EPERM; bundled Playwright fallback used without touching user session or business files."
+        }
+      ],
+      "scope_ok": true,
+      "task_id": "TASK_TEMPERATURE_REVIEW_SIMPLIFICATION_20261014",
+      "schema": "connlab.sol-task-report",
+      "summary": "Removed redundant warning acknowledgement and footer row actions; explicit Confirm Data accepts warnings via existing API, retains row highlight/review text and top editing controls, while backend errors remain blocking"
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
