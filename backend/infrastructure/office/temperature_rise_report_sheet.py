@@ -10,7 +10,6 @@ from openpyxl.chart.text import Text, RichText
 from openpyxl.chart.trendline import Trendline, TrendlineLabel
 from openpyxl.chart.layout import Layout, ManualLayout
 from openpyxl.chart.shapes import GraphicalProperties
-from openpyxl.comments import Comment
 from openpyxl.drawing.text import CharacterProperties, Paragraph, ParagraphProperties
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter, quote_sheetname
@@ -114,7 +113,7 @@ def _table_style(sheet, start, end, width):
     for row in sheet.iter_rows(min_row=start, max_row=end, max_col=width):
         for cell in row:
             cell.font = Font(name='Arial', size=10, color='000000')
-            cell.alignment = Alignment(horizontal='left' if cell.column == 1 else 'center',
+            cell.alignment = Alignment(horizontal='center',
                                        vertical='center', wrap_text=cell.row == start or cell.column == 1)
             cell.border = Border(left=edge, right=edge, top=edge, bottom=edge)
             cell.number_format = '0.0' if cell.column != 1 else '0'
@@ -158,11 +157,6 @@ def _key_readings(sheet, table, selection, stages, header):
         for column, source in enumerate(order, 1):
             sheet.cell(row, column).number_format = '0.000' if source in measured_columns else 'General'
     _name(sheet, 'KeyStageReadings', header, header + len(stages), len(order))
-    sheet.cell(header, 1).comment = Comment(
-        'Last retained reading of each stable current stage. Source values are preserved; scan/time are shown first. '
-        'Only the analysis block applies the confirmed current scale and channel mapping. No synthetic raw origin. '
-        'These exported data rows correspond, in order, to original worksheet rows: '
-        + ', '.join(str(point.source_row) for point in stages) + '. See Initial Data for complete original rows.', 'ConnLab')
     return locations, source_columns
 
 
@@ -201,7 +195,6 @@ def _stage_rises(sheet, selection, stages, raw_rows, raw_columns, header, caches
         for column in (1, 2):
             sheet.cell(row, column).number_format = 'General'
     _name(sheet, 'StageTemperatureRise', header, header + len(stages), channels + 4)
-    sheet.cell(header, 1).comment = Comment('Temperature rise = selected channel temperature − same-row ambient.', 'ConnLab')
     return locations
 
 
@@ -213,9 +206,6 @@ def _summary(sheet, table, selection, analysis, rise_rows, header, caches):
         row = header + 1 + slot + slot // count
         name = _report_measurement_name(measurement_name(table, selection, column)) or f'T{slot % count + 1}'
         _literal(sheet, row, 1, name)
-        sheet.cell(row, 1).comment = Comment(
-            f'Confirmed Sample {slot // count + 1}, thermocouple {slot % count + 1}; source column {get_column_letter(column)}. '
-            'See Initial Data for the complete original channel label.', 'ConnLab')
     max_rows = [header + (sample + 1) * (count + 1) for sample in range(samples)]
     for sample, row in enumerate(max_rows, 1):
         _literal(sheet, row, 1, f'{sample}# Single Max')
@@ -226,7 +216,6 @@ def _summary(sheet, table, selection, analysis, rise_rows, header, caches):
         letter = get_column_letter(column)
         if point.source_row is None:
             _literal(sheet, header, column, 0)
-            sheet.cell(header, column).comment = Comment('Inserted origin, not a recorded scanner stage.', 'ConnLab')
         else:
             source = rise_rows[point.source_row]
             _formula(sheet, header, column, f'={get_column_letter(channels + 4)}{source}', point.current, caches)
@@ -242,6 +231,8 @@ def _summary(sheet, table, selection, analysis, rise_rows, header, caches):
         _formula(sheet, maximum_row, column, f'=MAX({references})', point.maximum, caches)
         _formula(sheet, average_row, column, f'=AVERAGE({references})', point.average, caches)
     _table_style(sheet, header, average_row, len(analysis.points) + 1)
+    for cell in sheet[header][1:len(analysis.points) + 1]:
+        cell.number_format = '0'  # Display whole amperes without rounding chart/fit inputs.
     sheet.row_dimensions[header].height = 22
     for row in (*max_rows, maximum_row, average_row):
         for cell in sheet[row][:len(analysis.points) + 1]:
@@ -282,10 +273,6 @@ def _calculator(sheet, maximum, fit, target, header, caches):
     sheet.cell(row, 5).number_format = '0.0'
     sheet.cell(row, 5).font = Font(name='Arial', size=10, bold=True, color=MAX_COLOR)
     _name(sheet, 'CurrentCalculator', header, row, 5)
-    sheet.cell(header, 1).comment = Comment(
-        'y = a·x² + b·x + c. Edit y/a/b/c to recalculate the positive-branch current x. '
-        'Default coefficients follow the chart fit (six decimals); explicit overrides from ConnLab remain literal values. '
-        'Editing these calculator cells does not change the chart fit or the separate Derating inputs.', 'ConnLab')
 
 
 def _equation_text(name, fit):
@@ -309,9 +296,6 @@ def _average_inputs(sheet, coefficients, fit, header, fit_row, caches):
     sheet.row_dimensions[header].height = 18
     for cell in sheet[header + 1][1:4]:
         cell.number_format = '0.000000'
-    sheet.cell(header, 1).comment = Comment(
-        'Preserves the effective AVG coefficients, including explicit ConnLab edits. '
-        'Derating retains its own editable inputs on the Derating worksheet.', 'ConnLab')
     _name(sheet, 'AverageCoefficients', header, header + 1, 4)
 
 

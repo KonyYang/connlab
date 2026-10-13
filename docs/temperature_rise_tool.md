@@ -11,6 +11,12 @@ infer a personal name from the Windows account or reintroduce project lookup. Ma
 or deliberate clearing overrides the default, survives reimport, and is sent to the XLSX report.
 The existing Basic Information confirmation-name helper retains its API and default value.
 
+Export presentation refinement (2026-10-14): `Initial Data` has no frozen panes. The summary's
+`Current(A)` row uses Excel integer display format (`0`) while retaining unrounded values/formulas
+for chart fits and calculations. T-riseChart's summary, calculator and stage-detail tables use
+horizontal center alignment, including column A. No cell comments are generated. The top report
+information block retains its readable label/value layout, and other numeric precision is unchanged.
+
 ## Compact XLSX export (2026-10-11)
 
 `Initial Data` now contains the complete imported value table at its original one-based row/column
@@ -539,7 +545,8 @@ Both references are read-only design evidence, not calculation authority or repo
   chart fit. Derating retains its separate editable coefficient/temperature inputs and baseline.
 - Excel's Name Box can select `KeyStageReadings`, `StageTemperatureRise`, `TemperatureRiseSummary`,
   `CurrentCalculator` and `AverageCoefficients`. Copy `TemperatureRiseSummary` and the chart
-  separately into the report. The synthetic zero-current column is identified by a cell comment.
+  separately into the report. A synthetic zero-current origin remains part of the summary but has
+  no corresponding scanner row in the key-stage readings. Cell comments are not added to the export.
   Report pagination depends on sample/stage counts; a five-sample table may occupy a separate page.
 
 Implementation stays in the workbook infrastructure: the gateway owns file lifecycle and caches,
@@ -566,7 +573,7 @@ validated tests/build remain applicable; they were not rerun for this export-onl
 ## Chart labels and navigation refinement (2026-10-05)
 
 The Desktop reference workbook and screenshot establish the presentation for this narrow revision.
-T-riseChart no longer freezes column A or its top row; Initial Data keeps its existing navigation.
+T-riseChart no longer freezes column A or its top row; Initial Data also has no frozen panes.
 Derating's subsequent presentation refinement below also removes frozen panes. The two chart series
 reference the summary's column-A names, `Max T-Rise` and
 `Avg of max T-Rise on each sample`. Equation helper names also reference those cells, so editing a

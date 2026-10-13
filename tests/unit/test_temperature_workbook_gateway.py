@@ -193,6 +193,36 @@ def _report_export(tmp_path, maximum=None, average=None, *, include_derating=Fal
     return output, analysis
 
 
+@pytest.mark.parametrize('include_derating', [False, True])
+def test_export_uses_unfrozen_source_centered_tables_and_integer_current_display_without_comments(tmp_path, include_derating):
+    output, _ = _report_export(tmp_path, include_derating=include_derating)
+    with ZipFile(output) as archive:
+        assert not any('comments' in name.lower() for name in archive.namelist())
+    book = load_workbook(output)
+    try:
+        assert book['Initial Data'].freeze_panes is None
+        assert all(cell.comment is None for sheet in book for row in sheet for cell in row)
+        sheet = book['T-riseChart']
+        for name in ('TemperatureRiseSummary', 'CurrentCalculator', 'KeyStageReadings',
+                     'StageTemperatureRise', 'AverageCoefficients'):
+            block = sheet[next(book.defined_names[name].destinations)[1].replace('$', '')]
+            assert all(cell.alignment.horizontal == 'center' for row in block for cell in row), name
+        summary = sheet[next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
+        assert all(cell.number_format == '0' for cell in summary[0][1:])
+        assert summary[0][2].data_type == 'f'
+        assert summary[1][2].number_format == '0.0'
+    finally:
+        book.close()
+    cached = load_workbook(output, data_only=True)
+    try:
+        summary = cached['T-riseChart'][next(cached.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
+        assert [cell.value for cell in summary[0][1:]] == pytest.approx(
+            [0, 17.596362, 30.850749, 39.665046, 43.987415, 66.039286, 75.089058])
+        assert summary[-2][-1].value == pytest.approx(36.545)
+    finally:
+        cached.close()
+
+
 def test_export_formats_measurement_labels_and_keeps_only_max_calculator_visible(tmp_path):
     headers = ('Scan', 'Time', '101 <1_HS> (C)', '102 <1_H> (C)', '103 <1_C> (C)',
                '104 <1_RS> (C)', 'Ambient (C)', 'Current (VDC)')
@@ -302,7 +332,7 @@ def test_report_export_has_traceable_key_readings_and_copyable_formula_summary(t
     assert [cell.value for cell in raw[0][:2]] == ['扫描', '时间']
     assert raw[1][0].value == 81  # original scanner scan, distinct from source row 51
     assert raw[1][1].value is None  # This fixture has no scanner time; never invent one.
-    assert '51' in raw[0][0].comment.text  # Original worksheet row is still traceable.
+    assert raw[0][0].comment is None  # Details stay in the data, not cell annotations.
     assert not sheet.protection.sheet
     book.close()
     cached = load_workbook(output, data_only=True)
@@ -396,7 +426,7 @@ def test_report_chart_names_follow_summary_cells_and_labels_stack_at_upper_left(
     book = load_workbook(output)
     sheet = book['T-riseChart']
     assert sheet.freeze_panes is None
-    assert book['Initial Data'].freeze_panes == 'C2'
+    assert book['Initial Data'].freeze_panes is None
     assert book['Derating'].freeze_panes is None  # No Derating was requested for this export.
     summary = sheet[next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
     labels = [row[0] for row in summary[-2:]]

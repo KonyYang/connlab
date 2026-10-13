@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
     "summary": "Simplify temperature Test Info to compact manual entry without project association",
@@ -30,64 +30,17 @@
     "risk_reasons": [],
     "activation_head": "287bb7a2bd92400ce7510f6fbc28fe47fa748e24",
     "started_at": "2026-10-12T22:34:10.482463Z",
-    "updated_at": "2026-10-13T00:09:15.568202Z",
+    "updated_at": "2026-10-13T22:48:02.185533Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requests unfrozen Initial Data, integer display for summary currents, no T-riseChart cell comments, and horizontally centered report tables",
       "requires_user": false
     },
-    "report": {
-      "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
-      "subject": "22b4249410287335433e789cfb0d103cad35c551",
-      "integration": {
-        "status": "passed",
-        "detail": "Clean local master exact subject; no remote publication"
-      },
-      "validation": [
-        {
-          "status": "passed",
-          "detail": "Latest exact implementation: 98 frontend tests in TemperatureRisePage, reportInfo, temperature API, Sidebar and Basic Information workspace; RED proved blank default before implementation, GREEN verifies default and manual/cleared overrides through reimport/export"
-        },
-        {
-          "status": "passed",
-          "detail": "Latest exact implementation: sequential npm run build (TypeScript and Vite) and git diff --check passed"
-        },
-        {
-          "status": "passed",
-          "detail": "Prior task slices: 64 backend workbook/API tests and actual synthetic browser-download/native Excel verification for latest date and final blank Remark row; backend/export code unchanged by current-user adjustment, not rerun in this slice"
-        }
-      ],
-      "schema": "connlab.sol-task-report",
-      "changed_paths": [
-        "backend/infrastructure/office/temperature_rise_report_sheet.py",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/components/layout/Sidebar.tsx",
-        "frontend/src/currentUser.ts",
-        "frontend/src/features/project-basic-information/currentUserDisplay.ts",
-        "frontend/src/features/temperature/TestInfo.tsx",
-        "frontend/src/features/temperature/reportInfo.test.ts",
-        "frontend/src/features/temperature/reportInfo.ts",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useTemperatureReportInfo.ts",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx",
-        "tests/integration/test_tools_temperature_api.py"
-      ],
-      "summary": "Compact manual temperature metadata, fixed hidden report defaults, latest included source date, final Excel Remark row, and Tested By default shared with offline sidebar name; manual edits and clearing survive reimport and export",
-      "scope_ok": true,
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "detail": "Same-agent sequential Standards and Spec exact-diff reviews: zero outstanding findings. Shared static offline name remains Lab User; no authenticated profile or OS-user inference introduced. No independent review claimed."
-        }
-      },
-      "version": 1
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_DRAFT_DOWNLOAD_AVAILABLE_INFO_20261012",

@@ -243,7 +243,7 @@ def _initial_sheet(sheet, table, selection, analysis):
                 cell.value = value
             if row in endpoints:
                 cell.fill = yellow
-    sheet.freeze_panes = f'C{selection.header_row + 1}'
+    sheet.freeze_panes = None
     sheet.column_dimensions['A'].width = 12
     sheet.column_dimensions['B'].width = 28
     for column in range(3, width + 1):
