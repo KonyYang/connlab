@@ -243,6 +243,16 @@ def test_grouped_csv_import_reports_auxiliary_currents_and_nonzero_intercept_def
     assert initial.cell(1, 34).value == source_table.rows[0][33]
     assert [float(initial.cell(2, column).value) for column in (34, 36, 37)] == [125.001, 3.001, 1.02]
     assert float(initial.cell(2, 35).value) == .009999  # Normalization belongs only in analysis.
+    sheet = book['T-riseChart']
+    summary = sheet[next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
+    assert [row[0].value for row in summary[:4]] == [
+        'High Power(A)', 'A4_B4 Signal(A)', 'Others Signal(A)', 'Low Power(A)']
+    assert [cell.value for cell in summary[0][1:]] == [125.002, 125.004, 125.006]
+    assert [cell.value for cell in summary[1][1:]] == [3.001, 3.001, 3.001]
+    assert [cell.value for cell in summary[2][1:]] == [1.02, 1.02, 1.02]
+    assert [cell.value for cell in summary[3][1:]] == [0, 10.01, 20.01]
+    assert all(cell.number_format == '0' for row in summary[:4] for cell in row[1:])
+    assert sheet._charts[0].series[0].xVal.numRef.f.endswith(f'$B${summary[3][0].row}:$D${summary[3][0].row}')
     book.close()
 
 

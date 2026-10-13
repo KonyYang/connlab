@@ -193,6 +193,88 @@ def _report_export(tmp_path, maximum=None, average=None, *, include_derating=Fal
     return output, analysis
 
 
+def multi_current_source(*, measured_zero=True):
+    currents = ([0, 0, 10, 10, 10] if measured_zero else [10, 10]) + [20, 20, 30, 30]
+    headers = ('Scan', 'Time', '101 <1_HS> (C)', '102 <1_C> (C)', '313 <Ambient T> (C)',
+               '316 <Low Power> (A)', '315 <High Power> (A)', '317 <A4_B4 Signal> (A)',
+               '318 <Others Signal> (A)', '319 <Varying> (A)', '320 <Off> (A)')
+    # CSV numeric strings must stay literal in Initial Data, but remain numeric in report formulas.
+    rows = tuple((index, '2026-10-14 18:00', str(22 + .01 * current ** 2 + .2 * current),
+                  str(21 + .005 * current ** 2 + .1 * current), '20', str(current),
+                  str(125 + index * .001), '3.001', '1.02', str(5 + index), '0')
+                 for index, current in enumerate(currents, 1))
+    return WorkbookTable('multi.csv', ('Data',), 'Data', (headers, *rows))
+
+
+@pytest.mark.parametrize('measured_zero', [False, True])
+def test_multi_current_report_has_named_auxiliary_stage_rows_without_changing_curve_inputs(tmp_path, measured_zero):
+    table = multi_current_source(measured_zero=measured_zero)
+    choice = DataSelection(1, 2, len(table.rows), 5, 6, (3, 4), 2,
+                           excluded_rows=(6,) if measured_zero else ())
+    prepared = prepare_data(table, choice, acknowledge_warnings=True)
+    analysis = analyze_temperature_rise(prepared.measurements, thermocouples_per_sample=2,
+                                        zero_intercept=not measured_zero)
+    output = tmp_path / 'multi.xlsx'
+    TemperatureWorkbookGateway().write(output, table=table, selection=choice, prepared=prepared,
+        analysis=analysis, maximum_coefficients=analysis.maximum_fit.coefficients,
+        average_coefficients=analysis.average_fit.coefficients, target_rise=30, derating=None)
+    book = load_workbook(output)
+    try:
+        sheet = book['T-riseChart']
+        summary = sheet[next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
+        assert [row[0].value for row in summary[:6]] == [
+            'High Power(A)', 'A4_B4 Signal(A)', 'Others Signal(A)', 'Low Power(A)', 'HS', 'C']
+        assert all(cell.font.bold and cell.fill.fgColor.rgb == '00D9D9D9'
+                   and cell.alignment.horizontal == 'center' for row in summary[:4] for cell in row)
+        assert all(cell.number_format == '0' for row in summary[:4] for cell in row[1:])
+        assert summary[0][2].data_type == 'f'
+        assert summary[4][2].number_format == '0.0'
+        main_row = summary[3][0].row
+        for series in sheet._charts[0].series:
+            assert series.xVal.numRef.f.endswith(f'$B${main_row}:$E${main_row}')
+        raw = sheet[next(book.defined_names['KeyStageReadings'].destinations)[1].replace('$', '')]
+        if measured_zero:
+            assert summary[0][1].value == f'=G{raw[1][0].row}*1'
+        else:
+            assert all(row[1].value is None for row in summary[:3])
+        assert not any(cell.comment for row in sheet for cell in row)
+        assert list(book['Initial Data'].values) == list(table.rows)
+    finally:
+        book.close()
+    cached = load_workbook(output, data_only=True)
+    try:
+        sheet = cached['T-riseChart']
+        summary = sheet[next(cached.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
+        assert [cell.value for cell in summary[0][1:]] == (
+            [125.002, 125.004, 125.007, 125.009] if measured_zero else [None, 125.002, 125.004, 125.006])
+        assert [cell.value for cell in summary[1][1:]] == ([3.001] * 4 if measured_zero else [None, 3.001, 3.001, 3.001])
+        assert [cell.value for cell in summary[2][1:]] == ([1.02] * 4 if measured_zero else [None, 1.02, 1.02, 1.02])
+        assert [cell.value for cell in summary[3][1:]] == [0, 10, 20, 30]
+        assert [cell.value for cell in summary[-2][1:]] == ([2, 5, 10, 17] if measured_zero else [0, 5, 10, 17])
+    finally:
+        cached.close()
+
+
+def test_multi_current_export_uses_literal_edited_current_names_with_safe_blank_fallback(tmp_path):
+    table = multi_current_source()
+    choice = DataSelection(1, 2, len(table.rows), 5, 6, (3, 4), 2,
+                           channel_names=((6, '01 Custom Main'), (7, ''), (8, '=1+1')))
+    prepared = prepare_data(table, choice, acknowledge_warnings=True)
+    analysis = analyze_temperature_rise(prepared.measurements, thermocouples_per_sample=2, zero_intercept=False)
+    content = TemperatureWorkbookGateway().render('edited-currents.xlsx', table=table, selection=choice,
+        prepared=prepared, analysis=analysis, maximum_coefficients=analysis.maximum_fit.coefficients,
+        average_coefficients=analysis.average_fit.coefficients, target_rise=30, derating=None)
+    book = load_workbook(BytesIO(content))
+    try:
+        sheet = book['T-riseChart']
+        summary = sheet[next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
+        assert [row[0].value for row in summary[:4]] == [
+            'Current 7(A)', '=1+1(A)', 'Others Signal(A)', 'Custom Main(A)']
+        assert all(row[0].data_type == 's' for row in summary[:4])
+    finally:
+        book.close()
+
+
 @pytest.mark.parametrize('include_derating', [False, True])
 def test_export_uses_unfrozen_source_centered_tables_and_integer_current_display_without_comments(tmp_path, include_derating):
     output, _ = _report_export(tmp_path, include_derating=include_derating)

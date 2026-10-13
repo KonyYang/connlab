@@ -29,6 +29,29 @@ preparation/API tests, and sequential TypeScript/Vite build passed. An isolated 
 real warning highlight, top-row exclusion/restoration, reconfirmation and successful download without
 page errors. In-app browser connection was restricted; the user's browser session was untouched.
 
+Multi-current export (2026-10-14): stable auxiliary current rows precede the selected main current
+in `TemperatureRiseSummary`. Preparation reuses the existing source-region classification (at least
+two powered readings, all >=0.1 A, spread <=1%) and carries a source-indexed
+`stable_auxiliary_current_columns` tuple to the workbook adapter; the prepare HTTP response gains
+the equivalent additive array. Selected ambient/main/thermocouple roles are excluded from that list.
+Other varying/unpowered electrical columns remain in original/detail data, not the current header.
+Current labels use the actual unit-free instrument/edited name followed by `(A)`; numeric prefixes
+are stripped without expanding abbreviations. Generic `Current(A)` remains the fallback for the main.
+All current rows are gray, bold, centered and integer-formatted without rounding stored values.
+Each auxiliary value links to that main-current stage's genuine retained endpoint, including actual
+zero-current background readings. Synthetic-origin auxiliary cells stay blank. Numeric CSV text is
+coerced in the report formula only; `Initial Data` preserves the original strings/coordinates.
+The chart, fits and calculator still reference only the main-current row. Final row locations are
+computed before formulas/chart references are built; no row insertion or auxiliary-current fitting
+is introduced. Single-current exports retain their existing summary layout and numerical behavior.
+Validation: two export regressions failed before implementation. Final review/QA passed 119 backend
+preparation/numerical/workbook/HTTP tests. Three isolated read-only Excel cases (recorded origin,
+synthetic origin and three 10-probe samples) recalculated without errors; changing an auxiliary raw
+cell updated its header value without changing the main-current fit/calculator. Printed previews
+confirmed aligned current rows and intact tables/charts. A real localhost CSV import/download also
+returned the new rows and unrounded values. Frontend code was unchanged; no frontend build rerun.
+Standards and Spec reviews were separate sequential passes by the same agent, with zero findings.
+
 ## Compact XLSX export (2026-10-11)
 
 `Initial Data` now contains the complete imported value table at its original one-based row/column

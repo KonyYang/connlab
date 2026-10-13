@@ -148,6 +148,16 @@ def test_sample_names_group_three_samples_and_choose_only_the_variable_current()
     assert len(source.rows[0]) == 37  # Other currents remain in the source.
 
 
+@pytest.mark.parametrize('main, expected', [(35, (34, 36, 37)), (34, (36, 37))])
+def test_preparation_exposes_stable_auxiliaries_without_including_the_selected_main(main, expected):
+    source = grouped_scanner()
+    choice = DataSelection(1, 2, 7, 33, main, tuple(range(3, 33)), 10)
+    result = prepare_data(source, choice, acknowledge_warnings=True)
+    assert result.stable_auxiliary_current_columns == expected
+    assert main not in result.retained_current_columns
+    assert len(result.measurements) == 6
+
+
 def test_near_zero_current_is_reviewed_as_unpowered_without_deleting_or_rounding_source():
     source = grouped_scanner()
     original = deepcopy(source)

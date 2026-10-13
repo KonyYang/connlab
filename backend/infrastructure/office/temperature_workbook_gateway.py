@@ -128,7 +128,7 @@ class TemperatureWorkbookGateway:
         build_rise_report(rise, table=table, selection=selection, analysis=analysis,
             maximum=maximum_coefficients, average=average_coefficients, target=target_rise,
             caches=caches[rise.title], chart=_chart('Temperature Rise vs Applied Current', 'Applied Current (A)', 'T-rise (°C)'),
-            report_metadata=report_metadata)
+            report_metadata=report_metadata, auxiliary_current_columns=prepared.stable_auxiliary_current_columns)
         _derating_sheet(derated, derating, caches[derated.title])
         _style_sheet(derated)
         book.calculation = CalcProperties(calcId=191029, fullCalcOnLoad=True)

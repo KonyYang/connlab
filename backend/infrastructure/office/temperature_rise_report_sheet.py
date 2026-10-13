@@ -24,28 +24,31 @@ AVG_COLOR = '00008B'
 
 
 def build_rise_report(sheet, *, table, selection, analysis, maximum, average, target, caches, chart,
-                      report_metadata=TemperatureReportMetadata()):
+                      report_metadata=TemperatureReportMetadata(), auxiliary_current_columns=()):
     stages = [point for point in analysis.points if point.source_row is not None]
     chart_column = max(len(analysis.points) + 3, 11)
     info_end = _test_info(sheet, report_metadata)
     summary_header = info_end + 2
+    current_row = summary_header + len(auxiliary_current_columns)
     samples = len(analysis.points[0].sample_maxima)
-    calculator_header = summary_header + len(selection.temperature_columns) + samples + 4
-    print_end = max(calculator_header + 1, summary_header + 36)
+    calculator_header = current_row + len(selection.temperature_columns) + samples + 4
+    print_end = max(calculator_header + 1, current_row + 36)
     # Write supporting data at its final location; inserting rows later would leave
     # formula/chart references stale. Keep the printable report ahead of the detail.
     raw_header = max(print_end, calculator_header + 8) + 3
     raw_rows, raw_columns = _key_readings(sheet, table, selection, stages, raw_header)
     rise_header = raw_header + len(stages) + 5
     rise_rows = _stage_rises(sheet, selection, stages, raw_rows, raw_columns, rise_header, caches)
-    maximum_row, average_row = _summary(sheet, table, selection, analysis, rise_rows, summary_header, caches)
+    maximum_row, average_row = _summary(sheet, table, selection, analysis, rise_rows, current_row, caches)
+    _auxiliary_currents(sheet, table, selection, analysis, auxiliary_current_columns,
+                       raw_rows, raw_columns, summary_header, caches)
     _calculator(sheet, maximum, analysis.maximum_fit, target, calculator_header, caches)
     _average_inputs(sheet, average, analysis.average_fit, calculator_header + 3, calculator_header + 8, caches)
-    label_rows = _fit_equations(sheet, analysis, summary_header, maximum_row, average_row,
+    label_rows = _fit_equations(sheet, analysis, current_row, maximum_row, average_row,
                                calculator_header + 6, caches)
     # Keep live fit/AVG dependencies inspectable without duplicating the visible MAX calculator.
     sheet.row_dimensions.group(calculator_header + 3, calculator_header + 8, hidden=True)
-    _rise_chart(sheet, analysis, chart, summary_header, maximum_row, average_row, label_rows, caches)
+    _rise_chart(sheet, analysis, chart, current_row, maximum_row, average_row, label_rows, caches)
     _name(sheet, 'TemperatureRiseSummary', summary_header, average_row, len(analysis.points) + 1)
     sheet.freeze_panes = None
     sheet.sheet_view.showGridLines = False
@@ -57,9 +60,9 @@ def build_rise_report(sheet, *, table, selection, analysis, maximum, average, ta
     for column in range(1, max(table.width + 2, chart_column + 13)):
         sheet.column_dimensions[get_column_letter(column)].width = 10
     sheet.column_dimensions['A'].width = 22
-    for row in range(summary_header + 1, average_row + 1):
+    for row in range(summary_header, average_row + 1):
         label = str(sheet.cell(row, 1).value or '')
-        sheet.row_dimensions[row].height = max(15, ceil(len(label) / 20) * 15)
+        sheet.row_dimensions[row].height = max(sheet.row_dimensions[row].height or 15, ceil(len(label) / 20) * 15)
 
 
 def _test_info(sheet, info):
@@ -201,7 +204,7 @@ def _stage_rises(sheet, selection, stages, raw_rows, raw_columns, header, caches
 def _summary(sheet, table, selection, analysis, rise_rows, header, caches):
     channels = len(selection.temperature_columns)
     samples, count = len(analysis.points[0].sample_maxima), selection.thermocouples_per_sample
-    _literal(sheet, header, 1, 'Current(A)')
+    _literal(sheet, header, 1, _current_name(table, selection, selection.current_column))
     for slot, column in enumerate(selection.temperature_columns):
         row = header + 1 + slot + slot // count
         name = _report_measurement_name(measurement_name(table, selection, column)) or f'T{slot % count + 1}'
@@ -241,6 +244,34 @@ def _summary(sheet, table, selection, analysis, rise_rows, header, caches):
                 cell.font = Font(name='Arial', size=10, bold=True, color='000000')
     sheet.row_dimensions[average_row].height = 32
     return maximum_row, average_row
+
+
+def _current_name(table, selection, column):
+    name = _report_measurement_name(measurement_name(table, selection, column))
+    if not name:
+        name = 'Current' if column == selection.current_column else f'Current {column}'
+    return f'{name}(A)'
+
+
+def _auxiliary_currents(sheet, table, selection, analysis, columns, raw_rows, raw_columns, header, caches):
+    if not columns:
+        return
+    width = len(analysis.points) + 1
+    for row, source_column in enumerate(columns, header):
+        _literal(sheet, row, 1, _current_name(table, selection, source_column))
+        for column, point in enumerate(analysis.points, 2):
+            if point.source_row is None:
+                continue  # An inserted origin has no auxiliary reading to report.
+            source = sheet.cell(raw_rows[point.source_row], raw_columns[source_column])
+            # CSV values stay literal in the raw table; coerce numeric text only in the report.
+            _formula(sheet, row, column, f'={source.coordinate}*1', float(source.value), caches)
+    _table_style(sheet, header, header + len(columns) - 1, width)
+    for row in range(header, header + len(columns)):
+        sheet.row_dimensions[row].height = 22
+        for cell in sheet[row][:width]:
+            cell.fill = PatternFill('solid', fgColor='D9D9D9')
+            cell.font = Font(name='Arial', size=10, bold=True, color='000000')
+            cell.number_format = '0'
 
 
 def _report_measurement_name(name):

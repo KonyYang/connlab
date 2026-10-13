@@ -22,6 +22,7 @@ class PreparedData:
     issues: tuple[DataIssue, ...]
     ready: bool
     retained_current_columns: tuple[int, ...] = ()
+    stable_auxiliary_current_columns: tuple[int, ...] = ()
 
 
 def prepare_data(table: WorkbookTable, selection: DataSelection, *, acknowledge_warnings: bool = False) -> PreparedData:
@@ -68,7 +69,8 @@ def prepare_data(table: WorkbookTable, selection: DataSelection, *, acknowledge_
     ready = not any(issue.severity == 'error' for issue in issues) and (not issues or acknowledge_warnings)
     retained = tuple(column for column in layout.current_columns
                      if column not in (selection.current_column, selection.ambient_column, *selection.temperature_columns))
-    return PreparedData(tuple(measurements), tuple(issues), ready, retained)
+    stable_auxiliaries = tuple(column for column in retained if column in layout.stable_current_columns)
+    return PreparedData(tuple(measurements), tuple(issues), ready, retained, stable_auxiliaries)
 
 
 def _number(value: object) -> float:
