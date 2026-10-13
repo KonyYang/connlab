@@ -64,7 +64,6 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
           table={s.table} selection={s.selection} layout={s.channel_layout} issues={s.review?.issues ?? []} onChange={tool.changeData} disabled={busy} />
         {Boolean(s.review?.issues.length) && <section className="temperature-review" aria-label="Data Needs Review">
           <h4>Data Needs Review</h4><div className="temperature-issue-list">{review.map((issue, index) => <p key={index} className={issue.severity === 'error' ? 'temperature-error' : undefined}>{issue.message}</p>)}</div>
-          {!s.review?.issues.some(issue => issue.severity === 'error') && <label className="temperature-check"><input type="checkbox" checked={s.acknowledged} disabled={busy} onChange={event => tool.acknowledge(event.target.checked)} />Keep Flagged Rows</label>}
         </section>}
         <div className="temperature-confirm"><span className={s.confirmed ? 'temperature-success' : 'temperature-hint'} role="status">{s.confirmed ? 'Data Confirmed' : ''}</span>
           <button type="button" className="primary-action" disabled={busy || s.confirmed || Boolean(roleIssue) || incompleteSampleGroups(s.selection, s.channel_layout)} onClick={() => void tool.confirm()}>Confirm Data</button></div>

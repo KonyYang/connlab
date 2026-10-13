@@ -176,6 +176,5 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
   const displayOrder = [1, 2, ...active, ...roles, ...remaining.filter(column => !excludedColumns.includes(column)),
     ...remaining.filter(column => excludedColumns.includes(column))];
   return { order: displayOrder, excludedColumns, selectedRows, selectedColumns, selectRows, selectColumns, clearColumnSelection, selectColumn, toggleRow,
-    exclude, restore, moveBefore, undo, protectedColumn, movable, canExclude, canRestore, canUndo: Boolean(history.length),
-    restoreAllRows: () => commit({ ...snapshot(), excludedRows: [] }) };
+    exclude, restore, moveBefore, undo, protectedColumn, movable, canExclude, canRestore, canUndo: Boolean(history.length) };
 }

@@ -162,11 +162,7 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
           {rowWindow.bottomPadding > 0 && <tr aria-hidden="true" className="temperature-row-spacer"><td colSpan={grid.order.length + 1} style={{ height: rowWindow.bottomPadding }} /></tr>}
         </tbody>
       </table></div>
-    <div className="temperature-data-footer"><span>{total - selection.excluded_rows.length} Included / {selection.excluded_rows.length} Excluded Rows</span>
-      <div>{issues.some(issue => issue.code === 'zero_current') && <button type="button" disabled={disabled}
-        onClick={() => grid.selectRows([...new Set(issues.filter(issue => issue.code === 'zero_current').map(issue => issue.source_row))])}>Select Unpowered Rows</button>}
-        {selection.excluded_rows.length > 0 && <button type="button" disabled={disabled} onClick={grid.restoreAllRows}>Restore All Rows</button>}
-        </div></div>
+    <div className="temperature-data-footer"><span>{total - selection.excluded_rows.length} Included / {selection.excluded_rows.length} Excluded Rows</span></div>
     {menu && <ColumnActions key={menu.column} anchor={menu} root={menuRoot}
       columns={grid.order.filter(column => grid.movable(column) && !grid.selectedColumns.includes(column)).map(column => columns.find(item => item.id === column)!)}
       selectedCount={grid.selectedColumns.length} disabled={disabled} canExclude={grid.canExclude} canRestore={grid.canRestore}

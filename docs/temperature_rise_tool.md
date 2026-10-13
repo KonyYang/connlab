@@ -17,6 +17,18 @@ for chart fits and calculations. T-riseChart's summary, calculator and stage-det
 horizontal center alignment, including column A. No cell comments are generated. The top report
 information block retains its readable label/value layout, and other numeric precision is unchanged.
 
+Warning-review refinement (2026-10-14): `Keep Flagged Rows`, `Select Unpowered Rows` and
+`Restore All Rows` are removed. Explicit `Confirm Data` retains warning-only readings without a
+second acknowledgement control. The frontend uses the existing API `acknowledge_warnings=true`
+contract; backend errors still block confirmation, analysis and export. Warning text and source-row
+highlight/accessibility labels remain visible. Row checkboxes (including Select All Rows) and the
+top Exclude Selected / Restore / Undo controls are the single editing path. Row/data edits invalidate
+confirmation and dependent results as before. Backend thresholds and calculation logic are unchanged.
+Validation: two targeted regressions failed before implementation; 91 frontend tests, 65 backend
+preparation/API tests, and sequential TypeScript/Vite build passed. An isolated Edge smoke verified
+real warning highlight, top-row exclusion/restoration, reconfirmation and successful download without
+page errors. In-app browser connection was restricted; the user's browser session was untouched.
+
 ## Compact XLSX export (2026-10-11)
 
 `Initial Data` now contains the complete imported value table at its original one-based row/column
@@ -910,9 +922,9 @@ require Confirm Data; stale requests cannot reintroduce prior mappings/results.
   default Zero Intercept off. This is a default, not a lock: manual changes survive row/mapping edits.
   A newly imported file/sheet receives its own inferred default.
 - For the selected current, `|I| < 0.1 A` is normalized to zero for calculation and flagged as unpowered.
-  The original source value is unchanged. Select Unpowered Rows only selects flagged rows; the operator
-  must separately exclude or explicitly keep them. Entire records are not automatically discarded,
-  because auxiliary currents may remain powered.
+  The original source value is unchanged. Warning rows remain highlighted; operators can select them
+  and use the top Exclude Selected control, or leave them included when confirming. Entire records
+  are not automatically discarded, because auxiliary currents may remain powered.
 
 The supplied `3A new.csv` is a specific acceptance fixture: 3 samples x 10 channels, ambient AG,
 main current AI, stable auxiliary AH/AJ/AK. These positions/counts are not hard-coded. Derating's

@@ -8,13 +8,13 @@ type State = {
   file: File | null; table: api.WorkbookTable | null; selection: api.DataSelection | null;
   region_issue: string | null;
   channel_layout: api.ChannelLayout | null; manualZeroIntercept: boolean;
-  review: api.PreparedData | null; acknowledged: boolean; confirmed: boolean; zeroIntercept: boolean;
+  review: api.PreparedData | null; confirmed: boolean; zeroIntercept: boolean;
   analysis: api.TemperatureAnalysis | null; maximum: CoefficientFields | null; average: CoefficientFields | null;
   targetRise: string; current: number | null; maxTemperature: string; step: string; ambientPoint: string;
   derating: api.DeratingAnalysis | null; busy: string | null; error: string | null; downloaded: string | null;
 };
 const initial: State = {
-  file: null, table: null, selection: null, region_issue: null, channel_layout: null, manualZeroIntercept: false, review: null, acknowledged: false, confirmed: false, zeroIntercept: true,
+  file: null, table: null, selection: null, region_issue: null, channel_layout: null, manualZeroIntercept: false, review: null, confirmed: false, zeroIntercept: true,
   analysis: null, maximum: null, average: null, targetRise: '30', current: null,
   maxTemperature: '105', step: '2.5', ambientPoint: '75', derating: null, busy: null, error: null, downloaded: null,
 };
@@ -79,7 +79,7 @@ export function useTemperatureTool() {
       const zeroIntercept = !old.manualZeroIntercept && (patch.current_column !== undefined || patch.ambient_column !== undefined)
         ? !old.channel_layout?.stable_current_columns.some(column => column !== selection.current_column && column !== selection.ambient_column)
         : old.zeroIntercept;
-      return { ...old, ...clearResults, selection, zeroIntercept, review: null, acknowledged: false, confirmed: false, busy: null, error: null };
+      return { ...old, ...clearResults, selection, zeroIntercept, review: null, confirmed: false, busy: null, error: null };
     });
   }
 
@@ -89,14 +89,15 @@ export function useTemperatureTool() {
     return run('Checking Data Rows...', () => api.importTemperatureWorkbook(file, table.sheet_name, region),
       result => ({ ...result, channel_layout: result.channel_layout ?? null, ...clearResults,
         zeroIntercept: state.manualZeroIntercept ? state.zeroIntercept : result.channel_layout?.zero_intercept_default ?? true,
-        review: null, acknowledged: false, confirmed: false }));
+        review: null, confirmed: false }));
   }
 
   function request(): api.PreparationRequest {
     if (!state.table || !state.selection) throw new Error('Import a workbook first.');
     // Match the macro: use measured current directly, including any decimal places.
     return { table: state.table, selection: { ...state.selection, current_multiplier: 1 },
-      acknowledge_warnings: state.acknowledged, zero_intercept: state.zeroIntercept };
+      // Confirm Data retains warning-only rows; backend validation still blocks invalid readings.
+      acknowledge_warnings: true, zero_intercept: state.zeroIntercept };
   }
   async function confirm() {
     const review = await run('Checking Data...', () => api.prepareTemperatureData(request()),
@@ -115,10 +116,6 @@ export function useTemperatureTool() {
     // The render still has the old fit. Calculate from this response, and stop the chain on failure/staleness.
     const calculated = await calculateCurrent(fields(analysis.maximum_fit.coefficients));
     return calculated ? analysis : undefined;
-  }
-  function acknowledge(acknowledged: boolean) {
-    generation.current += 1;
-    setState(old => ({ ...old, ...clearResults, confirmed: false, acknowledged, busy: null }));
   }
   function zeroIntercept(zeroIntercept: boolean) {
     generation.current += 1;
@@ -161,7 +158,7 @@ export function useTemperatureTool() {
       return fileName;
     }), downloaded => ({ downloaded }));
   }
-  return { state, load, changeData, correctRegion, confirm, analyze, acknowledge, zeroIntercept,
+  return { state, load, changeData, correctRegion, confirm, analyze, zeroIntercept,
     editParameter, current, derating, download, reportInfo,
     editReportInfo: (key: keyof ReportInfoFields, value: string) => {
       reportInfo.edit(key, value);

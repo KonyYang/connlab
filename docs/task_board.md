@@ -11,8 +11,28 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_TEMPERATURE_REVIEW_SIMPLIFICATION_20261014",
+    "summary": "Simplify temperature warning review and remove redundant row controls",
+    "tier": "micro",
+    "route": "sol_direct",
+    "scope": "Remove Keep Flagged Rows, Select Unpowered Rows and Restore All Rows; explicit Confirm Data accepts nonblocking warnings, preserving highlights, warning text, error blocking, top row edit actions and stale-response guards",
+    "scope_paths": [
+      "frontend/src/pages/TemperatureRisePage.tsx",
+      "frontend/src/pages/TemperatureRisePage.test.tsx",
+      "frontend/src/features/temperature/DataPreview.tsx",
+      "frontend/src/features/temperature/useDataGridEditing.ts",
+      "frontend/src/features/temperature/useTemperatureTool.ts",
+      "docs/temperature_rise_tool.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "adaa8440a6105ac92028757e1f7e283b4d3dc7d6",
+    "started_at": "2026-10-13T23:14:27.942753Z",
+    "updated_at": "2026-10-13T23:14:27.942753Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
     "tier": "micro",
