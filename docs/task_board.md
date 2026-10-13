@@ -11,94 +11,16 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
-  "active": {
-    "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
-    "summary": "Simplify temperature Test Info to compact manual entry without project association",
-    "tier": "micro",
-    "route": "sol_direct",
-    "scope": "Remove temperature tool project selection and lookups, preserve manual export metadata and source suggestions, compact inline responsive Test Info fields",
-    "scope_paths": [
-      "frontend/src/features/temperature/TestInfo.tsx",
-      "frontend/src/features/temperature/useTemperatureReportInfo.ts",
-      "frontend/src/features/temperature/useTemperatureTool.ts",
-      "frontend/src/features/temperature/temperature.css",
-      "frontend/src/pages/TemperatureRisePage.tsx",
-      "frontend/src/pages/TemperatureRisePage.test.tsx",
-      "docs/temperature_rise_tool.md"
-    ],
-    "risk_reasons": [],
-    "activation_head": "287bb7a2bd92400ce7510f6fbc28fe47fa748e24",
-    "started_at": "2026-10-12T22:34:10.482463Z",
-    "updated_at": "2026-10-13T22:52:32.968227Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "detail": "Same-agent sequential Standards and Spec exact-diff reviews: zero outstanding findings. Workbook presentation remains in existing infrastructure adapter, formulas/domain and source data untouched; no new dependencies or authenticated user functionality. No independent reviewer claimed."
-        }
-      },
-      "summary": "Compact report metadata with source-date/user defaults and manual overrides; simplified Excel export: unfrozen Initial Data, centered T-riseChart data tables, integer Current(A) display retaining precision, and no cell comments",
-      "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
-      "validation": [
-        {
-          "status": "passed",
-          "detail": "Latest backend state: 66 workbook gateway and HTTP temperature API tests passed; RED observed unwanted comment parts before implementation; GREEN covers with/without Derating, no comments/freeze, all named data table alignments, unrounded current caches/formulas and retained rise precision. First sandbox run interrupted at API TestClient stage after no progress; full permitted-boundary rerun passed (one existing deprecation warning)."
-        },
-        {
-          "status": "passed",
-          "detail": "Latest exact implementation native Excel smoke: isolated hidden instance, generated test workbook read-only, actual current Text 0/18/31/40/44/66/75, stored 17.596362 retained, no frozen Initial Data, zero Comments, centered named tables, both native charts and full rebuild without formula errors; current 66.54445742154181 baseline retained. User workbooks untouched."
-        },
-        {
-          "status": "passed",
-          "detail": "git diff --check passed. Prior unchanged frontend slice: 98 targeted frontend tests and sequential TypeScript/Vite build passed; no frontend byte changes or rerun for export-only revision."
-        }
-      ],
-      "version": 1,
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/infrastructure/office/temperature_rise_report_sheet.py",
-        "backend/infrastructure/office/temperature_workbook_gateway.py",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/components/layout/Sidebar.tsx",
-        "frontend/src/currentUser.ts",
-        "frontend/src/features/project-basic-information/currentUserDisplay.ts",
-        "frontend/src/features/temperature/TestInfo.tsx",
-        "frontend/src/features/temperature/reportInfo.test.ts",
-        "frontend/src/features/temperature/reportInfo.ts",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useTemperatureReportInfo.ts",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_workbook_gateway.py"
-      ],
-      "schema": "connlab.sol-task-report",
-      "integration": {
-        "status": "passed",
-        "detail": "Clean local master exact subject; no remote publication"
-      },
-      "subject": "81ee97b33b8398e4cadfd3d0973038df2cbdee17"
-    }
-  },
+  "state": "idle",
+  "active": null,
   "last_closed": {
-    "task_id": "TASK_DRAFT_DOWNLOAD_AVAILABLE_INFO_20261012",
-    "tier": "standard",
-    "subject": "94286484b58dbd880af04fcf4b6fcc76ebf7be99",
-    "summary": "Populate available project information in draft downloads without authority writeback",
+    "task_id": "TASK_TEMPERATURE_COMPACT_MANUAL_INFO_20261013",
+    "tier": "micro",
+    "subject": "81ee97b33b8398e4cadfd3d0973038df2cbdee17",
+    "summary": "Simplify temperature Test Info to compact manual entry without project association",
     "disposition": "completed",
-    "decision_ref": "User accepted completed draft download information changes and requested close on 2026-10-13",
-    "closed_at": "2026-10-12T22:24:54.882393Z"
+    "decision_ref": "User accepted the completed temperature report and export refinements and requested close on 2026-10-14",
+    "closed_at": "2026-10-13T22:55:52.331395Z"
   },
   "retained_history": [
     {
