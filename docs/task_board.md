@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_MULTI_CURRENT_EXPORT_20261014",
     "summary": "Export stable auxiliary current rows above the selected main current in T-riseChart",
@@ -30,17 +30,65 @@
     "risk_reasons": [],
     "activation_head": "b06621ad13a66848af3ac604b029a82ef3ba53c5",
     "started_at": "2026-10-13T23:44:54.493353Z",
-    "updated_at": "2026-10-14T00:02:49.957171Z",
+    "updated_at": "2026-10-14T00:06:37.136238Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_MULTI_CURRENT_EXPORT_20261014",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requests integer tick labels on both axes of exported T-riseChart and Derating charts, retaining numerical precision",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "version": 1,
+      "summary": "Multi-current export with stable auxiliary headers above the named main current, precise stage values and blank synthetic origins; both axes of T-riseChart and Derating now default to integer tick labels without altering source coordinates or calculations",
+      "schema": "connlab.sol-task-report",
+      "scope_ok": true,
+      "validation": [
+        {
+          "detail": "Latest axis-format slice: RED reproduced 0.0 instead of 0; final 70 workbook gateway/HTTP API tests passed, covering four serialized axis formats with sourceLinked=false, unrounded series caches, retained point annotation precision, multi-current and single-current export. One existing deprecation warning.",
+          "status": "passed"
+        },
+        {
+          "detail": "Latest native Excel check on isolated read-only workbook: all four TickLabels.NumberFormat=0 and NumberFormatLinked=false, original 17.596362/36.545 series values retained, current calculator 66.54445742154181 unchanged. Native chart PNGs inspected for both charts; three generated temporary QA files cleaned, user files untouched.",
+          "status": "passed"
+        },
+        {
+          "detail": "Previous unchanged multi-current slice: 119 preparation/numerical/workbook/API tests and three native Excel/PDF plus actual localhost download checks passed. Current 70 tests reran affected workbook/API paths; unchanged preparation/numerical/layout portions retained prior evidence. git diff --check passed; no frontend changes/build rerun.",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "detail": "TDD public exported workbook boundary, failure-before-fix and focused GREEN for integer tick formats; existing shared chart constructor sets both axes and redundant Derating-only override removed. Earlier multi-current developer checks retained.",
+          "status": "passed"
+        },
+        "qa": {
+          "detail": "Same-agent separate final affected QA: 70 tests and native Excel four-axis/PNG verification after final implementation bytes. Unchanged preparation/numerical native multi-current evidence reused; no independent QA agent claimed.",
+          "status": "passed"
+        },
+        "reviewer": {
+          "detail": "Separate sequential same-agent Standards/Spec review of latest exact diff: zero outstanding findings, no numerical/API semantics changed, scopes and source precision retained. Earlier multi-current review remains applicable to unchanged paths; no independent reviewer claimed.",
+          "status": "passed"
+        }
+      },
+      "integration": {
+        "detail": "Clean local master exact subject; full task product/test/doc paths in approved scope; no remote publication, awaiting explicit Close",
+        "status": "passed"
+      },
+      "task_id": "TASK_TEMPERATURE_MULTI_CURRENT_EXPORT_20261014",
+      "changed_paths": [
+        "backend/application/temperature_data_preparation.py",
+        "backend/infrastructure/office/temperature_rise_report_sheet.py",
+        "backend/infrastructure/office/temperature_workbook_gateway.py",
+        "docs/temperature_rise_tool.md",
+        "tests/integration/test_tools_temperature_api.py",
+        "tests/unit/test_temperature_data_preparation.py",
+        "tests/unit/test_temperature_workbook_gateway.py"
+      ],
+      "subject": "ca8c56d437cd43a2b825fc00bb659c66b2f2eaae"
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_REVIEW_SIMPLIFICATION_20261014",
