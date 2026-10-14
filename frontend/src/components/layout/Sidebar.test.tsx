@@ -1,9 +1,19 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./Sidebar";
+import { ApiRequestError } from '../../api/client';
+import * as profileApi from '../../api/localIdentity';
+import { refreshCurrentProfile } from '../../currentUser';
+vi.mock('../../api/localIdentity', async original => ({ ...await original<typeof import('../../api/localIdentity')>(),
+  getLocalProfile: vi.fn(), saveLocalProfile: vi.fn() }));
 
 describe("Sidebar interaction lock", () => {
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    vi.mocked(profileApi.getLocalProfile).mockResolvedValue({ profile: null });
+    await refreshCurrentProfile();
+  });
   it('opens the name editor directly and returns focus to the avatar after native Escape', async () => {
     HTMLDialogElement.prototype.showModal = function () {
       this.setAttribute('open', ''); this.querySelector<HTMLInputElement>('input')?.focus();
@@ -13,8 +23,8 @@ describe("Sidebar interaction lock", () => {
     render(<Sidebar activeRoute="tools" />);
     const trigger = screen.getByRole('button', { name: 'Lab User' });
     await user.click(trigger);
-    const dialog = screen.getByRole('dialog', { name: 'Project Leader Name' });
-    expect(screen.getByLabelText('Display Project Leader Name')).toBeTruthy();
+    const dialog = screen.getByRole('dialog', { name: '负责人姓名' });
+    expect(screen.getByRole('textbox', { name: '负责人姓名' })).toBeTruthy();
     expect(screen.queryByRole('menu')).toBeNull();
     expect(screen.queryByText(/Sign in|Register|Password|Remember login/i)).toBeNull();
     expect(dialog.contains(document.activeElement)).toBe(true);
@@ -72,5 +82,45 @@ describe("Sidebar interaction lock", () => {
     expect(toolsButton.getAttribute("aria-current")).toBe("page");
     await user.click(toolsButton);
     expect(onNavigate).toHaveBeenCalledWith("/tools");
+  });
+  it('keeps the old name without stale save alerts after cancel/reopen, and permits a successful retry', async () => {
+    HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
+    HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
+    vi.mocked(profileApi.getLocalProfile).mockResolvedValue({ profile: { display_name: '原姓名' } });
+    await refreshCurrentProfile();
+    vi.mocked(profileApi.saveLocalProfile).mockRejectedValue(new ApiRequestError('Raw origin /api/local-identity/profile trace', 403, null));
+    const user = userEvent.setup();
+    render(<Sidebar activeRoute="tools" />);
+    await user.click(screen.getByRole('button', { name: '原姓名' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '负责人姓名' }), { target: { value: '新姓名' } });
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('保存失败，请刷新页面重试。');
+    await user.click(screen.getByRole('button', { name: '取消' }));
+    await user.click(screen.getByRole('button', { name: '原姓名' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect((screen.getByRole('textbox', { name: '负责人姓名' }) as HTMLInputElement).value).toBe('原姓名');
+    expect(screen.queryByText(/Raw origin|\/api\/local-identity/)).toBeNull();
+    vi.mocked(profileApi.saveLocalProfile).mockResolvedValue({ profile: { display_name: '新姓名' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '负责人姓名' }), { target: { value: '新姓名' } });
+    expect(screen.queryByRole('alert')).toBeNull();
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('button', { name: '新姓名' })).toBeTruthy();
+  });
+  it('shows a recognized backend field reason once and focuses the editable name after save finishes', async () => {
+    HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
+    HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
+    vi.mocked(profileApi.saveLocalProfile).mockRejectedValue(new ApiRequestError('raw', 400,
+      { field: 'display_name', message: '姓名不能包含控制字符或无效字符。' }));
+    const user = userEvent.setup();
+    render(<Sidebar activeRoute="tools" />);
+    await user.click(screen.getByRole('button', { name: 'Lab User' }));
+    const input = screen.getByRole('textbox', { name: '负责人姓名' });
+    fireEvent.change(input, { target: { value: '姓名' } });
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('姓名不能包含控制字符或无效字符。');
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(input);
   });
 });

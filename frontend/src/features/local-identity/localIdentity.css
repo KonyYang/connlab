@@ -4,11 +4,11 @@
 .local-identity-dialog h2 { margin: 0; font-size: 1.2rem; }
 .local-identity-dialog p { font-size: .875rem; }
 .local-identity-dialog label { display: flex; flex-direction: column; gap: 5px; margin: 12px 0; }
-.local-identity-dialog input:not([type=checkbox]) { width: 100%; min-width: 0; box-sizing: border-box; }
+.local-identity-dialog input:not([type=checkbox]) { width: 100%; min-width: 0; margin-top: 12px; box-sizing: border-box; }
 .local-identity-dialog input[aria-invalid=true] { border-color: var(--color-danger); }
 .local-identity-dialog button:not(.primary-action) { border: 1px solid var(--color-action-secondary-border); border-radius: 10px; background: var(--color-action-secondary-bg); color: var(--color-action-secondary-text); padding: 8px 12px; font: inherit; cursor: pointer; }
 .local-identity-dialog button:not(.primary-action):hover:not(:disabled) { background: var(--color-action-secondary-hover); }
 .local-identity-dialog button:disabled { cursor: default; opacity: .6; }
 .local-identity-dialog button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-.local-identity-dialog button[aria-label="Close account dialog"] { width: 32px; height: 32px; min-width: 32px; flex: 0 0 32px; padding: 0; display: grid; place-items: center; }
+.local-identity-dialog button[aria-label="关闭姓名设置"] { width: 32px; height: 32px; min-width: 32px; flex: 0 0 32px; padding: 0; display: grid; place-items: center; }
 .local-identity-dialog [role=alert], .sidebar-account-error { color: #a33b2b; }

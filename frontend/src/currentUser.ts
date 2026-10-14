@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { getLocalProfile, saveLocalProfile, type LocalProfile } from './api/localIdentity';
+import { getLocalProfile, saveLocalProfile, profileSaveError, type LocalProfile } from './api/localIdentity';
 
 // A display/default setting, not authentication or proof of who performed a test.
 export const CURRENT_USER_DISPLAY_NAME = "Lab User";
@@ -33,7 +33,7 @@ export async function saveCurrentProfile(displayName: string) {
     const result = await saveLocalProfile(displayName);
     if (version === generation) publish({ profile: result.profile, loaded: true });
   } catch (error) {
-    publish({ error: error instanceof Error ? error.message : '姓名保存失败，请重试。' });
-    throw error;
+    // Save feedback belongs to the active form; reopening must not replay a completed attempt.
+    throw profileSaveError(error);
   } finally { if (version === generation) publish({ busy: false }); }
 }

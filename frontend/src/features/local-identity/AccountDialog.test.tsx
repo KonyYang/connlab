@@ -1,8 +1,23 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
 import { AccountDialog } from './AccountDialog';
-vi.mock('../../currentUser', () => ({ useCurrentProfile: () => ({ profile: null, busy: false }), saveCurrentProfile: vi.fn() }));
+let profile = { profile: null as { display_name: string } | null, busy: false, error: null as string | null };
+vi.mock('../../currentUser', () => ({ useCurrentProfile: () => profile, saveCurrentProfile: vi.fn() }));
 import { saveCurrentProfile } from '../../currentUser';
+beforeEach(() => { profile = { profile: null, busy: false, error: null }; vi.resetAllMocks(); });
+it('has one concise heading and shows only the field error when the profile could not load', async () => {
+  HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
+  HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
+  profile.error = '无法读取本机姓名设置，请重试。';
+  render(<AccountDialog onClose={vi.fn()} />);
+  expect(screen.getByRole('dialog', { name: '负责人姓名' })).toBeTruthy();
+  expect(screen.getAllByText('负责人姓名')).toHaveLength(1);
+  expect(screen.getByRole('textbox', { name: '负责人姓名' })).toBeTruthy();
+  expect(screen.getByText('用于新项目和报告的默认姓名。')).toBeTruthy();
+  fireEvent.submit(screen.getByRole('button', { name: '保存' }).closest('form')!);
+  expect(screen.getAllByRole('alert')).toHaveLength(1);
+  expect(screen.getByRole('alert').textContent).toBe('请填写负责人姓名。');
+});
 it('shows one name field, explains validation inline, and saves without login', async () => {
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
   HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
@@ -10,16 +25,16 @@ it('shows one name field, explains validation inline, and saves without login', 
   render(<AccountDialog onClose={onClose} />);
   expect(screen.getAllByRole('textbox')).toHaveLength(1);
   expect(screen.queryByText(/Register|Password|Remember login|Username/i)).toBeNull();
-  const input = screen.getByLabelText('Display Project Leader Name');
-  fireEvent.submit(screen.getByRole('button', { name: 'Save' }).closest('form')!);
-  expect(screen.getByRole('alert').textContent).toBe('请填写项目负责人姓名。');
+  const input = screen.getByRole('textbox', { name: '负责人姓名' });
+  fireEvent.submit(screen.getByRole('button', { name: '保存' }).closest('form')!);
+  expect(screen.getByRole('alert').textContent).toBe('请填写负责人姓名。');
   expect(input.getAttribute('aria-invalid')).toBe('true');
   expect(document.activeElement).toBe(input);
   expect(saveCurrentProfile).not.toHaveBeenCalled();
   fireEvent.change(input, { target: { value: 'x'.repeat(81) } });
   expect(screen.getByRole('alert').textContent).toBe('姓名最多为 80 个字符。');
   fireEvent.change(input, { target: { value: ' 张 三 ' } });
-  fireEvent.submit(screen.getByRole('button', { name: 'Save' }).closest('form')!);
+  fireEvent.submit(screen.getByRole('button', { name: '保存' }).closest('form')!);
   await waitFor(() => expect(onClose).toHaveBeenCalled());
   expect(saveCurrentProfile).toHaveBeenCalledWith('张 三');
 });

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { saveCurrentProfile, useCurrentProfile } from '../../currentUser';
+import { profileSaveError } from '../../api/localIdentity';
 import './localIdentity.css';
 
 function nameIssue(value: string): string | null {
-  if (!value.trim()) return '请填写项目负责人姓名。';
+  if (!value.trim()) return '请填写负责人姓名。';
   if (/[\u0000-\u001f\u007f\ud800-\udfff]/u.test(value)) return '姓名不能包含控制字符或无效字符。';
   if (Array.from(value.trim()).length > 80) return '姓名最多为 80 个字符。';
   return null;
@@ -19,7 +20,9 @@ export function AccountDialog({ onClose, locked = false, returnFocus }: {
   const [name, setName] = useState(profile.profile?.display_name ?? '');
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [dismissedProfileError, setDismissedProfileError] = useState<string | null>(null);
   const busy = profile.busy || locked;
+  const errorMessage = fieldError || saveError || (profile.error !== dismissedProfileError ? profile.error : null);
   useEffect(() => {
     if (!touched.current) setName(profile.profile?.display_name ?? '');
   }, [profile.profile]);
@@ -36,24 +39,27 @@ export function AccountDialog({ onClose, locked = false, returnFocus }: {
     setFieldError(issue); setSaveError(null);
     if (issue) { input.current?.focus(); return; }
     try { await saveCurrentProfile(name.trim()); onClose(); }
-    catch { setSaveError('无法确认保存结果，请重试。'); }
+    catch (error) {
+      const failure = profileSaveError(error);
+      if (failure.nameField) { setFieldError(failure.message); input.current?.focus(); }
+      else setSaveError(failure.message);
+    }
   }
   return <dialog ref={dialog} className="local-identity-dialog" aria-labelledby="local-profile-title"
     onCancel={event => { event.preventDefault(); if (!busy) onClose(); }}>
     <form noValidate onSubmit={event => void submit(event)}>
-      <header><h2 id="local-profile-title">Project Leader Name</h2>
-        <button type="button" aria-label="Close account dialog" disabled={busy} onClick={onClose}>×</button></header>
-      <label>Display Project Leader Name<input ref={input} autoFocus autoComplete="name" value={name} disabled={busy}
+      <header><h2 id="local-profile-title">负责人姓名</h2>
+        <button type="button" aria-label="关闭姓名设置" disabled={busy} onClick={onClose}>×</button></header>
+      <input ref={input} autoFocus autoComplete="name" value={name} disabled={busy} aria-labelledby="local-profile-title"
         aria-invalid={Boolean(fieldError)} aria-describedby={fieldError ? 'local-profile-name-error local-profile-help' : 'local-profile-help'}
         onChange={event => {
-          touched.current = true; setName(event.target.value); setSaveError(null);
+          touched.current = true; setName(event.target.value); setSaveError(null); setDismissedProfileError(profile.error);
           if (fieldError) setFieldError(nameIssue(event.target.value));
-        }} /></label>
-      {fieldError && <p id="local-profile-name-error" role="alert">{fieldError}</p>}
-      <p id="local-profile-help">自动用于新项目和新报告，已有内容不会被覆盖。保存在本机，无需登录。</p>
-      {(saveError || profile.error) && <p role="alert">{saveError || profile.error}</p>}
-      <footer><button type="button" disabled={busy} onClick={onClose}>Cancel</button>
-        <button type="submit" className="primary-action" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button></footer>
+        }} />
+      {errorMessage && <p id="local-profile-name-error" role="alert">{errorMessage}</p>}
+      <p id="local-profile-help">用于新项目和报告的默认姓名。</p>
+      <footer><button type="button" disabled={busy} onClick={onClose}>取消</button>
+        <button type="submit" className="primary-action" disabled={busy}>{busy ? '保存中…' : '保存'}</button></footer>
     </form>
   </dialog>;
 }

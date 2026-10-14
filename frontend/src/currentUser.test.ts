@@ -1,9 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-vi.mock('./api/localIdentity', () => ({ getLocalProfile: vi.fn(), saveLocalProfile: vi.fn() }));
+vi.mock('./api/localIdentity', async original => ({ ...await original<typeof import('./api/localIdentity')>(),
+  getLocalProfile: vi.fn(), saveLocalProfile: vi.fn() }));
 import * as api from './api/localIdentity';
+import { ApiRequestError } from './api/client';
+import { act, renderHook } from '@testing-library/react';
 
 describe('local current profile', () => {
   beforeEach(() => { vi.resetModules(); vi.resetAllMocks(); });
+  it('returns concise safe save guidance without persisting a completed form error in shared state', async () => {
+    const store = await import('./currentUser');
+    vi.mocked(api.saveLocalProfile).mockRejectedValue(new ApiRequestError('Raw origin header /api/local-identity/profile D:/private traceback', 403, null));
+    const view = renderHook(() => store.useCurrentProfile());
+    await act(async () => {
+      await expect(store.saveCurrentProfile('Alice')).rejects.toThrow('保存失败，请刷新页面重试。');
+    });
+    expect(view.result.current.error).toBeNull();
+  });
   it('keeps fallback available when the profile adapter fails synchronously and can recover', async () => {
     const store = await import('./currentUser');
     vi.mocked(api.getLocalProfile).mockImplementation(() => { throw new Error('Unavailable'); });
@@ -28,7 +40,7 @@ describe('local current profile', () => {
     vi.mocked(api.saveLocalProfile).mockResolvedValue({ profile: { display_name: 'Alice' } });
     await store.saveCurrentProfile('Alice');
     vi.mocked(api.saveLocalProfile).mockRejectedValue(new Error('Storage unavailable'));
-    await expect(store.saveCurrentProfile('Bob')).rejects.toThrow('Storage unavailable');
+    await expect(store.saveCurrentProfile('Bob')).rejects.toThrow('服务连接异常，请重试。');
     expect(store.getCurrentUserDisplayName()).toBe('Alice');
     vi.mocked(api.saveLocalProfile).mockResolvedValue({ profile: { display_name: 'Bob' } });
     await store.saveCurrentProfile('Bob');

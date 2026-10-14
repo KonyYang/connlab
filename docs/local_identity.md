@@ -1,6 +1,6 @@
 # Local project leader display name
 
-The sidebar avatar directly opens a compact, single-field **Display Project Leader Name** editor.
+The sidebar avatar directly opens a compact, single-field **负责人姓名** editor.
 Registration, usernames, passwords, remembered-login expiry and sign-out are no longer part of the
 UI. This is a local default/name setting, not authentication, permissions or proof of the operator.
 The existing Settings navigation item remains in the normal sidebar navigation.
@@ -8,9 +8,13 @@ The existing Settings navigation item remains in the normal sidebar navigation.
 The trimmed name accepts Chinese characters and spaces, is nonblank, and is at most 80 Unicode
 characters. Control/invalid Unicode characters are rejected. Empty and overlong values receive clear
 inline Chinese explanations, accessible invalid/described-by states and focus on the name field;
-native generic validation bubbles are disabled. The modal preserves interaction locks and returns
+native generic validation bubbles are disabled. One short helper explains its default-setting purpose;
+field/read/save errors have a single visible alert with field-error priority. The modal preserves interaction locks and returns
 focus to the stable avatar after Escape or close. Failed saves keep the previous displayed profile;
-ambiguous network failures are reported as an unconfirmed save, with an idempotent retry available.
+403 suggests refreshing, server failures suggest retrying later, and network guidance says
+“服务连接异常，请重试。” without claiming the server was unchanged. Only recognized name-field reasons
+are shown inline; raw transport details are never user guidance. Save feedback belongs to the current
+form attempt and does not reappear after cancelling/reopening; shared errors describe profile reads only.
 
 ## Persistent setting, not a login
 
@@ -22,6 +26,10 @@ ambiguous network failures are reported as an unconfirmed save, with an idempote
   reads the same saved name. Only a public profile is held in frontend memory.
 - Requests retain loopback host/peer checks, no-store responses, bounded 4 KiB JSON bodies and exact
   same-origin/custom-header protection for PUT. This does not gate existing project APIs.
+- The Vite development proxy preserves the original Host header while forwarding `/api` to the
+  local backend, so browser Origin and Host still match. The backend checks are not weakened.
+  Runtime regression coverage starts a real Vite proxy and owned ephemeral upstream, proving
+  same-origin save/read and rejection of foreign or absent Origin; no live user profile is changed.
 - The profile flow never opens, reads, migrates or deletes `local_identity.sqlite3`. Previously
   registered account/password/session records and legacy authentication endpoints remain as dormant
   compatibility; the application UI neither calls them nor implies authentication.
