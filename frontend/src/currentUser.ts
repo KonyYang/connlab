@@ -18,7 +18,7 @@ export function refreshCurrentIdentity(): Promise<void> {
   if (state.busy) return Promise.resolve();
   if (refreshing) return refreshing;
   const version = generation;
-  refreshing = getIdentitySession().then(result => {
+  refreshing = Promise.resolve().then(getIdentitySession).then(result => {
     if (version === generation) publish({ user: result.user, loaded: true, error: null });
   }).catch(() => {
     if (version === generation) publish({ loaded: true, error: 'Could not check the local login. Try again.' });
