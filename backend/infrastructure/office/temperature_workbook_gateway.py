@@ -331,7 +331,6 @@ def _style_derating_chart(chart):
         axis.majorGridlines.spPr.line.solidFill = '808080'
         axis.majorGridlines.spPr.line.prstDash = 'dash'
     chart.x_axis.majorUnit = 5
-    chart.x_axis.numFmt = NumFmt(formatCode='0', sourceLinked=False)
     chart.layout = Layout(manualLayout=ManualLayout(layoutTarget='inner', xMode='edge', yMode='edge',
         x=.1, y=.09, w=.87, h=.76))
     chart.legend.txPr = _chart_text_properties()
@@ -349,7 +348,7 @@ def _chart(title, x_title, y_title):
     for axis in (chart.x_axis, chart.y_axis):
         axis.delete = False
         axis.tickLblPos = 'nextTo'
-        axis.numFmt = NumFmt(formatCode='0.0', sourceLinked=False)
+        axis.numFmt = NumFmt(formatCode='0', sourceLinked=False)
         axis.majorTickMark = 'out'
         axis.crosses = 'autoZero'
         grid = GraphicalProperties()

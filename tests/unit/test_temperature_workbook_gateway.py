@@ -193,6 +193,31 @@ def _report_export(tmp_path, maximum=None, average=None, *, include_derating=Fal
     return output, analysis
 
 
+def test_exported_chart_axes_display_integers_without_rounding_plot_data(tmp_path):
+    output, _ = _report_export(tmp_path, include_derating=True)
+    book = load_workbook(output)
+    try:
+        for name in ('T-riseChart', 'Derating'):
+            chart = book[name]._charts[0]
+            for axis in (chart.x_axis, chart.y_axis):
+                assert axis.numFmt.formatCode == '0'
+                assert axis.numFmt.sourceLinked is False
+        rise = book['T-riseChart']._charts[0]
+        assert float(rise.series[0].xVal.numRef.numCache.pt[1].v) == pytest.approx(17.596362)
+        assert float(rise.series[0].yVal.numRef.numCache.pt[-1].v) == pytest.approx(36.545)
+        derating = book['Derating']._charts[0]
+        assert derating.series[2].dLbls.numFmt == '0.0'  # Point annotations keep their existing precision.
+    finally:
+        book.close()
+    with ZipFile(output) as archive:
+        ns = {'c': 'http://schemas.openxmlformats.org/drawingml/2006/chart'}
+        for name in ('xl/charts/chart1.xml', 'xl/charts/chart2.xml'):
+            root = ET.fromstring(archive.read(name))
+            formats = root.findall('.//c:valAx/c:numFmt', ns)
+            assert len(formats) == 2
+            assert all(item.get('formatCode') == '0' and item.get('sourceLinked') == '0' for item in formats)
+
+
 def multi_current_source(*, measured_zero=True):
     currents = ([0, 0, 10, 10, 10] if measured_zero else [10, 10]) + [20, 20, 30, 30]
     headers = ('Scan', 'Time', '101 <1_HS> (C)', '102 <1_C> (C)', '313 <Ambient T> (C)',

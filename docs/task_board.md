@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_MULTI_CURRENT_EXPORT_20261014",
     "summary": "Export stable auxiliary current rows above the selected main current in T-riseChart",
@@ -30,65 +30,17 @@
     "risk_reasons": [],
     "activation_head": "b06621ad13a66848af3ac604b029a82ef3ba53c5",
     "started_at": "2026-10-13T23:44:54.493353Z",
-    "updated_at": "2026-10-13T23:59:47.445709Z",
+    "updated_at": "2026-10-14T00:02:49.957171Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_MULTI_CURRENT_EXPORT_20261014",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requests integer tick labels on both axes of exported T-riseChart and Derating charts, retaining numerical precision",
       "requires_user": false
     },
-    "report": {
-      "integration": {
-        "status": "passed",
-        "detail": "Clean local master exact subject, seven product/test/doc paths match user-approved scope; previous task closed by CloseAndSubmit checkpoint, no remote publication, awaiting this task explicit Close"
-      },
-      "changed_paths": [
-        "backend/application/temperature_data_preparation.py",
-        "backend/infrastructure/office/temperature_rise_report_sheet.py",
-        "backend/infrastructure/office/temperature_workbook_gateway.py",
-        "docs/temperature_rise_tool.md",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_data_preparation.py",
-        "tests/unit/test_temperature_workbook_gateway.py"
-      ],
-      "version": 1,
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "detail": "TDD exported XLSX regressions failed before implementation and passed afterward; five targeted unit cases and one HTTP regression provided developer feedback before final matrix. Stable auxiliary metadata comes from existing application classification, workbook adapter owns layout."
-        },
-        "reviewer": {
-          "status": "passed",
-          "detail": "Focused sequential same-agent Standards and Spec passes on exact diff found zero outstanding issues; dependencies, source identity, literal safety, cache/fit/chart references, default compatibility and scope checked. No independent reviewer claimed."
-        },
-        "qa": {
-          "status": "passed",
-          "detail": "Same-agent separate final QA pass: complete affected 119-test matrix once after implementation/review, plus three native Excel cases, PDF visual verification and actual localhost download. No independent QA agent claimed."
-        }
-      },
-      "validation": [
-        {
-          "status": "passed",
-          "detail": "119 final backend tests across preparation, numerical calculations, workbook export and HTTP API passed; one existing Starlette/httpx deprecation warning. Single-current compatibility, stage exclusion, CSV text coercion, real/synthetic origin, current names/literal safety, stable-only classification and shifted chart references covered."
-        },
-        {
-          "status": "passed",
-          "detail": "Three isolated read-only native Excel cases recalculated with no formula errors; displayed auxiliary values are integers while stored values remain precise, both zero-origin cases correct, chart XValues are main-current values, target edits recalculate correctly, auxiliary source edits update header values without changing fit/calculator. Excel print previews rendered and visually reviewed for recorded-zero and three-sample layouts; eight temporary outputs cleaned."
-        },
-        {
-          "status": "passed",
-          "detail": "Actual running localhost import/download with synthetic CSV returned correct three auxiliary headers, main values and retained 125.002 precision; direct loopback HTTP used after an environment-proxy 502. User files/session/project authority untouched. git diff --check passed; frontend code unchanged so no frontend build rerun."
-        }
-      ],
-      "subject": "7f0f8f29af6c329e8afca979044e9e0813473a4e",
-      "schema": "connlab.sol-task-report",
-      "scope_ok": true,
-      "task_id": "TASK_TEMPERATURE_MULTI_CURRENT_EXPORT_20261014",
-      "summary": "Stable auxiliary current headers precede the named main current in T-riseChart; stage-endpoint values retain full precision and integer display, synthetic auxiliary origins remain blank, and all fits/charts/calculator references follow only the selected main current"
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_REVIEW_SIMPLIFICATION_20261014",

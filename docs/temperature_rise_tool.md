@@ -37,6 +37,14 @@ the equivalent additive array. Selected ambient/main/thermocouple roles are excl
 Other varying/unpowered electrical columns remain in original/detail data, not the current header.
 Current labels use the actual unit-free instrument/edited name followed by `(A)`; numeric prefixes
 are stripped without expanding abbreviations. Generic `Current(A)` remains the fallback for the main.
+Both axes of exported T-riseChart and Derating charts use integer tick-label format (`0`), independent
+of source-cell formats. Axis ranges/spacing, underlying coordinates, fits and point-annotation
+precision are unchanged. This is display formatting, not rounding the analysis data.
+Axis-only refinement validation: the new exported-chart regression failed for `0.0` before the fix,
+then passed. Final affected QA passed 70 workbook/HTTP tests; a read-only native Excel instance
+confirmed all four tick-label formats are `0` with source linking disabled. Exported chart PNGs
+were visually checked, while non-integer series values and the 66.5444574215 A calculator baseline
+remained unchanged. Prior unchanged preparation/numerical checks were not repeated.
 All current rows are gray, bold, centered and integer-formatted without rounding stored values.
 Each auxiliary value links to that main-current stage's genuine retained endpoint, including actual
 zero-current background readings. Synthetic-origin auxiliary cells stay blank. Numeric CSV text is
