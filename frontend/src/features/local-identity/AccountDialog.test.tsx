@@ -1,0 +1,23 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { expect, it, vi } from 'vitest';
+import { AccountDialog } from './AccountDialog';
+vi.mock('../../currentUser', () => ({ useCurrentIdentity: () => ({ busy: false }), registerCurrentIdentity: vi.fn(), loginCurrentIdentity: vi.fn() }));
+import { registerCurrentIdentity } from '../../currentUser';
+it('registers with default remembered login, validates confirmation and closes on success', async () => {
+  HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
+  HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
+  const onClose = vi.fn();
+  render(<AccountDialog onClose={onClose} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Create an account' }));
+  fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'alice' } });
+  fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Alice' } });
+  fireEvent.change(screen.getByLabelText('Password', { exact: true }), { target: { value: 'long password 123' } });
+  fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'different password' } });
+  fireEvent.submit(screen.getByRole('button', { name: 'Register and sign in' }).closest('form')!);
+  expect(screen.getByRole('alert').textContent).toBe('Passwords do not match.');
+  expect(registerCurrentIdentity).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'long password 123' } });
+  fireEvent.submit(screen.getByRole('button', { name: 'Register and sign in' }).closest('form')!);
+  await waitFor(() => expect(onClose).toHaveBeenCalled());
+  expect(registerCurrentIdentity).toHaveBeenCalledWith({ username: 'alice', display_name: 'Alice', password: 'long password 123', remember: true });
+});

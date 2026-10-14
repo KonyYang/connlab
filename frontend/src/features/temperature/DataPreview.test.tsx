@@ -24,6 +24,8 @@ function Editor({ withParameters = false, source = table, starting = initial, im
     const ambient_column = Number(event.target.value);
     setSelection(old => ({ ...old, ambient_column, temperature_columns: old.temperature_columns.filter(column => column !== ambient_column) }));
   }}>{source.rows[0].map((_, index) => <option key={index} value={index + 1}>{index + 1}</option>)}</select></label>}
+    {withParameters && starting.sample_count != null && <label>Samples<input type="number" value={selection.sample_count ?? 1}
+      onChange={event => setSelection(old => ({ ...old, sample_count: Number(event.target.value), sample_groups: undefined }))} /></label>}
     <DataPreview table={source} selection={selection} layout={importedLayout} issues={[]} disabled={false}
     onChange={patch => setSelection(old => ({ ...old, ...patch }))} />
     <output aria-label="Prepared Selection">{JSON.stringify(selection)}</output></>;
@@ -33,6 +35,43 @@ function columnHeader(letter: string) { return screen.getByRole('columnheader', 
 function openColumn(letter: string) { fireEvent.contextMenu(columnHeader(letter)); }
 
 describe('column header selection', () => {
+  it('preserves desired samples through balanced exclusions, restoration, explicit regrouping and undo', async () => {
+    const user = userEvent.setup();
+    render(<Editor starting={{ ...initial, sample_count: 2 }} />);
+    fireEvent.click(columnHeader('C'));
+    fireEvent.click(columnHeader('E'), { ctrlKey: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    expect(selected().sample_count).toBe(2);
+    expect(selected().sample_groups).toEqual([[4], [6]]);
+    expect(selected().thermocouples_per_sample).toBe(1);
+    fireEvent.click(columnHeader('C'));
+    fireEvent.click(columnHeader('E'), { ctrlKey: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    expect(selected().sample_groups).toEqual([[3, 4], [5, 6]]);
+    openColumn('C');
+    await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
+    await user.click(screen.getByRole('menuitem', { name: '104 2_B', exact: true }));
+    expect(selected().sample_groups).toEqual([[4, 5], [3, 6]]);
+    expect(selected().sample_count).toBe(2);
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(selected().sample_groups).toEqual([[3, 4], [5, 6]]);
+    expect(selected().sample_count).toBe(2);
+  });
+  it('keeps checked rows during sample adjustment and restores numbered ownership after ambient changes', async () => {
+    const user = userEvent.setup();
+    render(<Editor withParameters starting={{ ...initial, sample_count: 2 }} />);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Scan 1' }));
+    fireEvent.change(screen.getByLabelText('Samples'), { target: { value: '1' } });
+    expect(selected().sample_groups).toEqual([[3, 4, 5, 6]]);
+    expect(selected().thermocouples_per_sample).toBe(4);
+    expect((screen.getByRole('checkbox', { name: 'Select Scan 1' }) as HTMLInputElement).checked).toBe(true);
+    await user.selectOptions(screen.getByLabelText('Ambient Role'), '3');
+    expect(selected().temperature_columns).toEqual([4, 5, 6]);
+    await user.selectOptions(screen.getByLabelText('Ambient Role'), '7');
+    expect(selected().temperature_columns).toEqual([3, 4, 5, 6]);
+    expect(selected().sample_groups).toEqual([[3, 4, 5, 6]]);
+    expect(selected().sample_count).toBe(1);
+  });
   it('distinguishes current ambient from unused temperatures and permits normal operations after a role switch', async () => {
     const user = userEvent.setup();
     render(<Editor withParameters />);

@@ -5,11 +5,22 @@ and a compact XLSX metadata header. Editable measurement names, stable source id
 reversible ambient-role suspension and consecutive regrouping after explicit moves remain supported.
 Compact charts, automatic generation after confirmation and scan-based feedback remain in place.
 
-`Tested By` defaults to the same offline user display name as the sidebar (`Lab User` currently),
-via `frontend/src/currentUser.ts`. The app has no authenticated user profile yet; this does not
-infer a personal name from the Windows account or reintroduce project lookup. Manual replacement
+`Tested By` snapshots the local logged-in display name for each new import via
+`frontend/src/currentUser.ts`, falling back to anonymous `Lab User`. Late session bootstrap may fill
+an unassigned default, but account switching never overwrites an existing report. Manual replacement
 or deliberate clearing overrides the default, survives reimport, and is sent to the XLSX report.
-The existing Basic Information confirmation-name helper retains its API and default value.
+See `docs/local_identity.md` for registration, remembered login and the bounded security boundary.
+
+Sample count refinement (2026-10-14): instrument measurement-name prefixes `1_`, `2_`, `3_` etc.
+take priority; their actual group count can be 1, 3, 5 or more. Unnumbered imports default to 3 Samples.
+The compact editable Samples control derives TC/Sample, without a competing editable probe-count
+control. Unequal groups/nondivisible totals retain all source IDs and block confirmation, analysis
+and download until explicit adjustment. No channel is rounded away or silently omitted. Unnumbered
+spares beside numbered groups remain available, not silently activated. Exclusion retains original
+sample ownership; balanced exclusions update derived probe count. Explicit Samples edits or moves
+regroup current effective column order. Role suspension/restoration and undo retain desired Samples.
+Optional API `sample_count` is authoritative when supplied; omitted/null retains legacy TC/Sample
+requests. Renaming display labels never changes source IDs or group ownership.
 
 Export presentation refinement (2026-10-14): `Initial Data` has no frozen panes. The summary's
 `Current(A)` row uses Excel integer display format (`0`) while retaining unrounded values/formulas

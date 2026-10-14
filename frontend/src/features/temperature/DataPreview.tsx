@@ -40,7 +40,7 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   const columnWidth = (column: number) => columnsById.get(column)!.width;
   const incomplete = incompleteSampleGroups(selection, layout);
   const count = Math.max(1, selection.thermocouples_per_sample || 1);
-  const sampleCount = sampleGroups(selection, layout).length;
+  const sampleCount = selection.sample_count ?? sampleGroups(selection, layout).length;
   const total = Math.max(0, selection.end_row - selection.start_row + 1);
   const rowWindow = useSourceRowWindow(selection.start_row, total);
   const { rows } = rowWindow;
@@ -94,12 +94,14 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   function runAction(action: () => void) { action(); menu?.trigger.focus(); closeMenu(); }
   return <section ref={editor} className="temperature-data-editor" aria-label="Data Preview">
     <div className="temperature-data-toolbar"><div><h3>Data Preview</h3>
-      <span>{sampleCount} {sampleCount === 1 ? 'Sample' : 'Samples'} · {count} TC/Sample · {selection.temperature_columns.length} Channels</span></div>
+      <span>{sampleCount} {sampleCount === 1 ? 'Sample' : 'Samples'} · {incomplete ? 'Pending' : count} TC/Sample · {selection.temperature_columns.length} Channels</span></div>
       <div className="temperature-data-actions"><span>{selectedCount ? `${selectedCount} Selected` : ''}</span>
         <button type="button" disabled={disabled || !grid.canExclude} onClick={grid.exclude}>Exclude Selected</button>
         <button type="button" disabled={disabled || !grid.canRestore} onClick={grid.restore}>Restore</button>
         <button type="button" disabled={disabled || !grid.canUndo} onClick={grid.undo}>Undo</button></div></div>
-    {incomplete && <p className="temperature-warning" role="alert">Incomplete sample group. Restore columns or move a spare into position; each sample needs {count} thermocouples.</p>}
+    {incomplete && <p className="temperature-warning" role="alert">{selection.sample_count != null
+      ? `Incomplete sample group. Adjust Samples or restore/move channels so all ${selection.sample_count} samples have the same number of thermocouples.`
+      : `Incomplete sample group. Restore columns or move a spare into position; each sample needs ${count} thermocouples.`}</p>}
     <div ref={rowWindow.viewport} className="temperature-table-scroll" role="region" aria-label="Scanner Data Preview" tabIndex={0}
       onScroll={event => { closeMenu(); rowWindow.setScrollTop(event.currentTarget.scrollTop); }}>
       <table className="temperature-source-table" aria-rowcount={total + 1}

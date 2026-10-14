@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as api from '../../api/temperature';
 import { reportMetadata, type ReportInfoFields } from './reportInfo';
 import { useTemperatureReportInfo } from './useTemperatureReportInfo';
+import { equalSampleSize, regroupSamples } from './sampleGroups';
 
 export type CoefficientFields = Record<keyof api.Coefficients, string>;
 type State = {
@@ -69,9 +70,13 @@ export function useTemperatureTool() {
       const selection = { ...old.selection, ...patch };
       selection.temperature_columns = selection.temperature_columns.filter(column =>
         column !== selection.current_column && column !== selection.ambient_column);
-      if (patch.thermocouples_per_sample !== undefined && !('sample_groups' in patch)) {
+      if (patch.sample_count !== undefined && !('sample_groups' in patch)) {
+        selection.sample_groups = regroupSamples(selection.temperature_columns, selection);
+        selection.thermocouples_per_sample = equalSampleSize(selection.sample_groups) ?? selection.thermocouples_per_sample;
+      } else if (patch.thermocouples_per_sample !== undefined && !('sample_groups' in patch)) {
         // A manual count edit explicitly establishes new consecutive blocks.
         delete selection.sample_groups;
+        selection.sample_count = null;
       } else if (selection.sample_groups) {
         selection.sample_groups = selection.sample_groups.map(group => group.filter(column => selection.temperature_columns.includes(column)));
       }

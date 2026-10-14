@@ -26,6 +26,7 @@ class ChannelLayout:
     issues: tuple[str, ...]
     zero_intercept_default: bool
     current_issue: str | None = None
+    sample_count: int = 3
 
 
 def inspect_channel_layout(table: WorkbookTable, header_row: int, start_row: int, end_row: int) -> ChannelLayout:
@@ -65,12 +66,15 @@ def inspect_channel_layout(table: WorkbookTable, header_row: int, start_row: int
         if unassigned:
             issues.append('Additional temperature channels have no sample number. Use them as replacements or add them explicitly if needed.')
     else:
-        count = 4 if temperatures and len(temperatures) % 4 == 0 else 1
+        count = len(temperatures) // 3 if temperatures and len(temperatures) % 3 == 0 else 1
+        if len(temperatures) % 3:
+            issues.append('Temperature channels do not divide into 3 complete samples. Adjust Samples before confirming.')
     current_issue = ('Multiple varying electrical columns were found. Confirm the current column used for this curve.'
                      if len(variable) > 1 else None)
     return ChannelLayout(temperatures, currents, stable,
                          tuple(SampleChannels(sample, tuple(columns)) for sample, columns in groups.items()),
-                         count, ambient, current, tuple(issues), not any(column != current for column in stable), current_issue)
+                         count, ambient, current, tuple(issues), not any(column != current for column in stable), current_issue,
+                         len(groups) if groups else 3)
 
 
 def _stable_energized_column(table: WorkbookTable, column: int, start: int, end: int) -> bool:

@@ -23,9 +23,45 @@ def scanner_bytes():
     return stream.getvalue()
 
 
-def test_report_metadata_exports_literal_compact_header_without_cr_or_calculation_changes():
+def import_baseline(client):
+    data = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', scanner_bytes())}).json()
+    # This independent reference fixture represents five samples with four probes each.
+    data['selection'].update(sample_count=5, thermocouples_per_sample=4)
+    return data
+
+
+def test_unnumbered_twenty_channels_require_explicit_sample_adjustment_at_every_processing_endpoint():
     client = TestClient(app)
     data = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', scanner_bytes())}).json()
+    assert data['selection']['sample_count'] == 3
+    assert data['selection']['temperature_columns'] == list(range(3, 23))
+    request = {'table': data['table'], 'selection': data['selection'], 'acknowledge_warnings': True}
+    for endpoint in ('prepare', 'analyze', 'download'):
+        response = client.post('/api/tools/temperature-rise/' + endpoint, json=request)
+        assert response.status_code == 422
+    request['selection'].update(sample_count=5, thermocouples_per_sample=4)
+    assert client.post('/api/tools/temperature-rise/prepare', json=request).json()['ready']
+    assert client.post('/api/tools/temperature-rise/analyze', json=request).status_code == 200
+    assert client.post('/api/tools/temperature-rise/download', json=request).status_code == 200
+
+
+@pytest.mark.parametrize('samples', [1, 3, 5])
+def test_numbered_sample_groups_take_priority_over_three_sample_default(samples):
+    stream = StringIO(newline='')
+    writer = csv.writer(stream)
+    writer.writerow(['Scan', 'Time', *(f'{sample}_HS (C)' for sample in range(1, samples + 1)), 'Ambient', 'Current'])
+    writer.writerow([1, '10:00', *([25] * samples), 20, 10])
+    writer.writerow([2, '10:01', *([26] * samples), 20, 10])
+    client = TestClient(app)
+    data = client.post('/api/tools/temperature-rise/import', files={'file': ('numbered.csv', stream.getvalue().encode())}).json()
+    assert data['selection']['sample_count'] == samples
+    assert data['selection']['thermocouples_per_sample'] == 1
+    assert client.post('/api/tools/temperature-rise/prepare', json={'table': data['table'], 'selection': data['selection']}).json()['ready']
+
+
+def test_report_metadata_exports_literal_compact_header_without_cr_or_calculation_changes():
+    client = TestClient(app)
+    data = import_baseline(client)
     request = {'table': data['table'], 'selection': data['selection'], 'zero_intercept': True,
                'target_rise': 30}
     baseline = client.post('/api/tools/temperature-rise/download', json=request)
@@ -75,7 +111,7 @@ def test_report_metadata_exports_literal_compact_header_without_cr_or_calculatio
 @pytest.mark.parametrize(('metadata', 'environment'), [({}, None), ({'relative_humidity': 0}, '0 %RH')])
 def test_empty_report_fields_remain_blank_at_top_left_and_zero_humidity_is_preserved(metadata, environment):
     client = TestClient(app)
-    data = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', scanner_bytes())}).json()
+    data = import_baseline(client)
     response = client.post('/api/tools/temperature-rise/download', json={
         'table': data['table'], 'selection': data['selection'], 'report_metadata': metadata,
     })
@@ -99,7 +135,7 @@ def test_empty_report_fields_remain_blank_at_top_left_and_zero_humidity_is_prese
 
 def test_blank_remark_follows_optional_condition_and_remains_editable_in_export():
     client = TestClient(app)
-    data = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', scanner_bytes())}).json()
+    data = import_baseline(client)
     response = client.post('/api/tools/temperature-rise/download', json={
         'table': data['table'], 'selection': data['selection'],
         'report_metadata': {'ambient_temperature': '23', 'relative_humidity': 50, 'test_condition': '40 A'},
@@ -121,7 +157,7 @@ def test_blank_remark_follows_optional_condition_and_remains_editable_in_export(
 @pytest.mark.parametrize('humidity', [-1, 101, 'nan'])
 def test_download_rejects_invalid_report_humidity(humidity):
     client = TestClient(app)
-    data = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', scanner_bytes())}).json()
+    data = import_baseline(client)
     response = client.post('/api/tools/temperature-rise/download', json={
         'table': data['table'], 'selection': data['selection'],
         'report_metadata': {'relative_humidity': humidity},
@@ -173,7 +209,7 @@ def test_edited_channel_names_follow_source_ids_into_reordered_summary_without_c
 ])
 def test_measurement_name_overrides_reject_nonmeasurement_sources_and_invalid_text(names):
     client = TestClient(app)
-    data = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', scanner_bytes())}).json()
+    data = import_baseline(client)
     request = {'table': data['table'], 'selection': {**data['selection'], 'channel_names': names}}
     assert client.post('/api/tools/temperature-rise/prepare', json=request).status_code == 422
 
@@ -268,6 +304,8 @@ def test_import_prepare_analyze_and_download_round_trip_without_project_authorit
     assert data['selection']['channel_names'] == {}
     assert data['selection']['start_row'] == 2
     assert data['selection']['end_row'] == 301
+    assert data['selection']['sample_count'] == 3
+    data['selection'].update(sample_count=5, thermocouples_per_sample=4)
     request = {'table': data['table'], 'selection': data['selection'], 'acknowledge_warnings': False, 'zero_intercept': True}
     confirmed = client.post('/api/tools/temperature-rise/prepare', json=request)
     assert confirmed.status_code == 200
@@ -309,7 +347,7 @@ def test_unchecked_intercept_round_trip_retains_confirmed_background_baseline():
     result = imported.json()
     request = {'table': result['table'], 'selection': {
         **result['selection'], 'temperature_columns': [3, 4], 'thermocouples_per_sample': 1,
-        'ambient_column': 5, 'current_column': 6,
+        'ambient_column': 5, 'current_column': 6, 'sample_count': 2,
     }, 'zero_intercept': False, 'acknowledge_warnings': True}
     analyzed = client.post('/api/tools/temperature-rise/analyze', json=request)
     assert analyzed.status_code == 200, analyzed.text
@@ -344,6 +382,7 @@ def test_utf16_scanner_csv_uses_the_same_confirmation_calculation_and_excel_down
     assert data['table']['rows'][0] == ['名称:', '扫描仪数据']
     assert data['region_issue'] is None
     assert data['selection']['header_row'] == 2
+    data['selection'].update(sample_count=5, thermocouples_per_sample=4)
     request = {'table': data['table'], 'selection': data['selection'], 'zero_intercept': True}
     assert client.post('/api/tools/temperature-rise/prepare', json=request).json()['ready']
     analyzed = client.post('/api/tools/temperature-rise/analyze', json=request)
@@ -363,7 +402,7 @@ def test_utf16_scanner_csv_uses_the_same_confirmation_calculation_and_excel_down
 
 def test_analyze_requires_warning_confirmation_and_invalid_cells_remain_blockers():
     client = TestClient(app)
-    data = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', scanner_bytes())}).json()
+    data = import_baseline(client)
     request = {'table': data['table'], 'selection': data['selection'], 'zero_intercept': True}
     request['table']['rows'][-1][-1] = 0
     review = client.post('/api/tools/temperature-rise/prepare', json=request).json()
@@ -412,6 +451,7 @@ def test_unidentified_region_retains_source_for_manual_recovery_and_still_requir
     assert data['region_issue'] is None
     assert data['selection']['start_row'] == 2
     assert data['selection']['excluded_rows'] == []
+    data['selection'].update(sample_count=1, thermocouples_per_sample=1)
     review = client.post('/api/tools/temperature-rise/prepare', json={
         'table': data['table'], 'selection': data['selection'],
     }).json()

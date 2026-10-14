@@ -6,12 +6,14 @@ export type DataSelection = {
   temperature_columns: number[]; thermocouples_per_sample: number; excluded_rows: number[]; current_multiplier: number;
   sample_groups?: number[][] | null;
   channel_names?: Record<number, string>;
+  sample_count?: number | null;
 };
 export type DataRegion = Pick<DataSelection, 'header_row' | 'start_row' | 'end_row'>;
 export type ChannelLayout = {
   temperature_columns: number[]; current_columns: number[]; stable_current_columns: number[];
   sample_groups: { sample_id: string; columns: number[] }[]; thermocouples_per_sample: number;
   ambient_column: number; current_column: number; issues: string[]; zero_intercept_default: boolean; current_issue?: string | null;
+  sample_count?: number;
 };
 export type WorkbookImportResult = { table: WorkbookTable; selection: DataSelection | null; region_issue: string | null; channel_layout?: ChannelLayout | null };
 export type PreparationRequest = { table: WorkbookTable; selection: DataSelection; acknowledge_warnings: boolean; zero_intercept: boolean };

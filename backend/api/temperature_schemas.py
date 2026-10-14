@@ -37,6 +37,7 @@ class DataSelectionRequest(TemperatureModel):
     current_column: int = Field(ge=1, le=256)
     temperature_columns: list[int] = Field(min_length=1, max_length=254)
     thermocouples_per_sample: int = Field(ge=1, le=254)
+    sample_count: int | None = Field(default=None, ge=1, le=254, strict=True)
     excluded_rows: list[int] = Field(default_factory=list, max_length=20000)
     current_multiplier: float = Field(default=1, gt=0, le=1000000000)
     sample_groups: list[Annotated[list[int], Field(max_length=254)]] | None = Field(default=None, max_length=254)

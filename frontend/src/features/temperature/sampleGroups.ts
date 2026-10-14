@@ -12,7 +12,23 @@ export function sampleGroups(selection: DataSelection, layout?: ChannelLayout | 
     && layout.sample_groups.flatMap(group => group.columns).join(',') === selection.temperature_columns.join(',')) {
     return layout.sample_groups.map(group => group.columns);
   }
-  return partitionSamples(selection.temperature_columns, selection.thermocouples_per_sample);
+  return regroupSamples(selection.temperature_columns, selection);
+}
+
+export function partitionBySampleCount(columns: number[], samples: number): number[][] {
+  if (!Number.isInteger(samples) || samples < 1 || samples > 254) return [columns];
+  // Keep every source ID when incomplete, with visibly unequal groups; never round/drop a remainder.
+  const size = Math.floor(columns.length / samples), remainder = columns.length % samples;
+  let offset = 0;
+  return Array.from({ length: samples }, (_, index) => {
+    const length = size + (index < remainder ? 1 : 0);
+    const group = columns.slice(offset, offset + length); offset += length; return group;
+  });
+}
+
+export function regroupSamples(columns: number[], selection: Pick<DataSelection, 'sample_count' | 'thermocouples_per_sample'>) {
+  return selection.sample_count == null ? partitionSamples(columns, selection.thermocouples_per_sample)
+    : partitionBySampleCount(columns, selection.sample_count);
 }
 
 export function includedSamples(slots: number[][], active: number[]) {

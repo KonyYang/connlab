@@ -89,6 +89,14 @@ def _validate_selection(table: WorkbookTable, selection: DataSelection) -> Chann
     if not 1 <= selection.header_row < selection.start_row <= selection.end_row <= len(table.rows):
         raise ValueError("Choose a header row before the data, and a data range inside the selected sheet.")
     count = selection.thermocouples_per_sample
+    if selection.sample_count is not None:
+        samples = selection.sample_count
+        if (not isinstance(samples, int) or isinstance(samples, bool) or not 1 <= samples <= 254
+                or not selection.temperature_columns or len(selection.temperature_columns) % samples
+                or len(selection.temperature_columns) // samples != count):
+            raise ValueError('Select complete samples: adjust Samples so every sample has the same number of thermocouples.')
+        if selection.sample_groups is not None and len(selection.sample_groups) != samples:
+            raise ValueError('Sample groups do not match the selected Samples count.')
     if count < 1 or not selection.temperature_columns or len(selection.temperature_columns) % count:
         raise ValueError("Select complete samples with the same number of thermocouples per sample.")
     if selection.sample_groups is not None:
@@ -110,6 +118,7 @@ def _validate_selection(table: WorkbookTable, selection: DataSelection) -> Chann
         raise ValueError("Excluded rows must be inside the selected data range.")
     layout = inspect_channel_layout(table, selection.header_row, selection.start_row, selection.end_row)
     if (selection.sample_groups is None and selection.temperature_columns == layout.temperature_columns
+            and (selection.sample_count is None or selection.sample_count == layout.sample_count)
             and count == layout.thermocouples_per_sample
             and any(len(group.columns) != count for group in layout.sample_groups)):
         raise ValueError('Sample channel counts differ. Explicitly adjust the channel assignments before confirming.')
@@ -182,4 +191,5 @@ def selection_for_region(table: WorkbookTable, header_row: int, start_row: int, 
         raise ValueError('The header needs at least three columns for temperature, ambient and current.')
     layout = inspect_channel_layout(table, header_row, start_row, end_row)
     return DataSelection(header_row, start_row, end_row, layout.ambient_column,
-                         layout.current_column, layout.temperature_columns, layout.thermocouples_per_sample)
+                         layout.current_column, layout.temperature_columns, layout.thermocouples_per_sample,
+                         sample_count=layout.sample_count)

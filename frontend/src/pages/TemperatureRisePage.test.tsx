@@ -55,6 +55,23 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(projectApi.listProjectRegistryRows).mockResolvedValue([]);
   });
 
+  it('shows editable sample count, preserves all channels and only confirms complete groups', async () => {
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValue({ ...structuredClone(imported), selection: {
+      ...imported.selection, sample_count: 3, thermocouples_per_sample: 1,
+    } });
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText('3 Samples · Pending TC/Sample · 2 Channels')).toBeTruthy();
+    expect(screen.queryByLabelText('Thermocouples/Sample')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Samples'), { target: { value: '1' } });
+    expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await waitFor(() => expect(api.prepareTemperatureData).toHaveBeenCalledWith(expect.objectContaining({
+      selection: expect.objectContaining({ sample_count: 1, thermocouples_per_sample: 2, temperature_columns: [3, 4], sample_groups: [[3, 4]] }),
+    })));
+  });
+
   it('defaults Tested By to the displayed offline user and includes it in the export', async () => {
     const user = userEvent.setup();
     render(<AppShell activeRoute="tools"><TemperatureRisePage onBack={() => undefined} /></AppShell>);

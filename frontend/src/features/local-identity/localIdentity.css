@@ -1,0 +1,9 @@
+.local-identity-dialog { width: min(25rem, calc(100vw - 2rem)); border: 1px solid var(--color-border, #d3dfef); border-radius: 16px; padding: 20px; color: var(--color-text, #172238); background: var(--color-surface, #fff); }
+.local-identity-dialog::backdrop { background: rgb(20 40 70 / 30%); }
+.local-identity-dialog header, .local-identity-dialog footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.local-identity-dialog h2 { margin: 0; font-size: 1.2rem; }
+.local-identity-dialog p { font-size: .875rem; }
+.local-identity-dialog label { display: flex; flex-direction: column; gap: 5px; margin: 12px 0; }
+.local-identity-dialog input:not([type=checkbox]) { width: 100%; min-width: 0; box-sizing: border-box; }
+.local-identity-dialog .local-identity-remember { flex-direction: row; align-items: center; font-size: .875rem; }
+.local-identity-dialog [role=alert], .sidebar-account-error { color: #a33b2b; }

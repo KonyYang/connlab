@@ -6,6 +6,46 @@ from backend.application.temperature_data_preparation import DataSelection, prep
 from backend.domain.temperature_data import WorkbookTable
 
 
+def test_unnumbered_channels_default_to_three_samples_without_dropping_remainder():
+    source = WorkbookTable('data.csv', ('Data',), 'Data', (
+        ('Scan', 'Time', 'TC1', 'TC2', 'TC3', 'TC4', 'Ambient', 'Current'),
+        (1, '2026/10/14', 24, 25, 26, 27, 20, 10),
+        (2, '2026/10/14', 24, 25, 26, 27, 20, 10),
+    ))
+    suggested = suggest_selection(source)
+    assert suggested.sample_count == 3
+    assert suggested.temperature_columns == (3, 4, 5, 6)
+    with pytest.raises(ValueError, match='samples|Sample'):
+        prepare_data(source, suggested, acknowledge_warnings=True)
+    from dataclasses import replace
+    adjusted = replace(suggested, sample_count=1, thermocouples_per_sample=4)
+    assert prepare_data(source, adjusted, acknowledge_warnings=True).ready
+
+
+def test_sample_count_is_authoritative_but_legacy_selection_still_works():
+    from dataclasses import replace
+    legacy = selection(thermocouples_per_sample=1)
+    assert prepare_data(table(), legacy, acknowledge_warnings=True).ready
+    with pytest.raises(ValueError):
+        prepare_data(table(), replace(legacy, sample_count=3), acknowledge_warnings=True)
+    with pytest.raises(ValueError):
+        prepare_data(table(), replace(legacy, sample_count=1, sample_groups=((5,), (6,))), acknowledge_warnings=True)
+
+
+def test_explicit_sample_count_can_regroup_unequal_named_groups_without_optional_group_lists():
+    from dataclasses import replace
+    source = WorkbookTable('data.csv', ('Data',), 'Data', (
+        ('Scan', 'Time', '1_A (C)', '1_B (C)', '2_A (C)', '2_B (C)', '3_A (C)', '3_B (C)', '3_C (C)', '3_D (C)', 'Ambient', 'Current'),
+        (1, '10:00', 25, 25, 25, 25, 25, 25, 25, 25, 20, 10),
+        (2, '10:01', 25, 25, 25, 25, 25, 25, 25, 25, 20, 10),
+    ))
+    inferred = suggest_selection(source)
+    with pytest.raises(ValueError):
+        prepare_data(source, inferred)
+    adjusted = replace(inferred, sample_count=4, thermocouples_per_sample=2, sample_groups=None)
+    assert prepare_data(source, adjusted).ready
+
+
 def table():
     return WorkbookTable('scanner.xlsx', ('Data',), 'Data', (
         ('Current', 'Broken', 'Ambient', 'Other', 'TC1', 'Spare'),
@@ -83,7 +123,8 @@ def test_suggested_mapping_excludes_chinese_scanner_metadata():
     ))
     selection = suggest_selection(table)
     assert selection.temperature_columns == (3, 4, 5, 6)
-    assert selection.thermocouples_per_sample == 4
+    assert selection.thermocouples_per_sample == 1
+    assert selection.sample_count == 3
     assert selection.current_multiplier == 1
 
 
@@ -100,7 +141,8 @@ def test_automatic_region_ignores_preamble_and_footer_but_keeps_suspicious_rows(
     choice = suggest_selection(source)
     assert (choice.header_row, choice.start_row, choice.end_row) == (4, 5, 9)
     assert choice.excluded_rows == ()
-    review = prepare_data(source, choice)
+    from dataclasses import replace
+    review = prepare_data(source, replace(choice, sample_count=1))
     assert any(issue.source_row == 5 and issue.code == 'invalid_reading' for issue in review.issues)
     assert any(issue.source_row == 8 and issue.code == 'zero_current' for issue in review.issues)
     assert not review.ready

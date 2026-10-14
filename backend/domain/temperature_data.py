@@ -34,6 +34,7 @@ class DataSelection:
     current_multiplier: float = 1.
     sample_groups: tuple[tuple[int, ...], ...] | None = None
     channel_names: tuple[tuple[int, str], ...] = ()
+    sample_count: int | None = None
 
 
 def measurement_name(table: WorkbookTable, selection: DataSelection, column: int) -> str:

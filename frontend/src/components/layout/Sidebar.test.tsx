@@ -1,9 +1,22 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./Sidebar";
 
 describe("Sidebar interaction lock", () => {
+  it('exposes anonymous sign-in and dismisses the menu with Escape without navigation', async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    render(<Sidebar activeRoute="tools" onNavigate={onNavigate} />);
+    const trigger = screen.getByRole('button', { name: 'Lab User' });
+    await user.click(trigger);
+    expect(screen.getByRole('menuitem', { name: 'Sign in / Register' })).toBeTruthy();
+    expect(screen.queryByRole('menuitem', { name: 'Sign out' })).toBeNull();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
   it("opens the bottom user menu with the existing Settings destination", async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();

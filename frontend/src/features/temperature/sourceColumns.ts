@@ -41,6 +41,8 @@ export function incompleteSampleGroups(selection: DataSelection, layout?: Channe
   if (!Number.isInteger(count) || count < 1 || !selection.temperature_columns.length
     || selection.temperature_columns.length % count !== 0) return true;
   const groups = sampleGroups(selection, layout);
+  if (selection.sample_count != null && (!Number.isInteger(selection.sample_count) || selection.sample_count < 1
+    || selection.sample_count > 254 || groups.length !== selection.sample_count)) return true;
   return groups.some(group => group.length !== count)
     || groups.flat().join(',') !== selection.temperature_columns.join(',');
 }

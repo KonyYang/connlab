@@ -88,6 +88,7 @@ from backend.api.routes_test_report_draft import router as test_report_draft_rou
 from backend.api.routes_report_workspace import router as report_workspace_router
 from backend.api.routes_tools import router as tools_router
 from backend.api.routes_tools_temperature import router as tools_temperature_router
+from backend.api.routes_local_identity import router as local_identity_router
 from backend.api.routes_confirmed_matrix_authority_history import (
     router as confirmed_matrix_authority_history_router,
 )
@@ -166,6 +167,7 @@ from backend.api.routes_contact_measurement_plan_draft_workbook import (
 
 
 app = FastAPI(title="ConnLab API")
+app.include_router(local_identity_router)
 _request_logger = logging.getLogger("connlab.api.requests")
 
 
