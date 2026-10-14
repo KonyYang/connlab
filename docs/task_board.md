@@ -11,93 +11,74 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
-    "task_id": "TASK_TEMPERATURE_MULTI_CURRENT_EXPORT_20261014",
-    "summary": "Export stable auxiliary current rows above the selected main current in T-riseChart",
-    "tier": "standard",
-    "route": "sol_build_review_qa",
-    "scope": "Use existing stable-current classification, stage endpoint source readings and actual current names; add gray bold centered integer-display current rows, preserve numeric precision, leave synthetic-origin auxiliary cells blank, and keep summary/chart/fit/calculator references correct without source mutation",
+    "task_id": "TASK_LOCAL_REGISTRATION_TEMPERATURE_SAMPLES_20261014",
+    "summary": "Local offline account registration remembered login and adjustable temperature sample grouping",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Local username display-name password registration with automatic remembered login, opaque revocable expiring sessions and logout, dynamic identity defaults preserving manual/historical data; numbered temperature groups first otherwise default3 editable sample count with nondivisible confirmation blocked; preserve existing column identities exclusion restoration movement and exports; no cloud RBAC or global business API authorization cutover",
     "scope_paths": [
+      "backend/domain/local_identity.py",
+      "backend/application/local_identity_service.py",
+      "backend/infrastructure/storage/local_identity_store.py",
+      "backend/api/routes_local_identity.py",
+      "backend/api/main.py",
+      "frontend/src/api/localIdentity.ts",
+      "frontend/src/currentUser.ts",
+      "frontend/src/components/layout/Sidebar.tsx",
+      "frontend/src/features/local-identity/AccountDialog.tsx",
+      "frontend/src/features/local-identity/localIdentity.css",
+      "frontend/src/features/temperature/useTemperatureReportInfo.ts",
+      "frontend/src/features/project-basic-information/currentUserDisplay.ts",
+      "backend/domain/temperature_data.py",
+      "backend/application/temperature_channel_layout.py",
       "backend/application/temperature_data_preparation.py",
-      "backend/infrastructure/office/temperature_workbook_gateway.py",
-      "backend/infrastructure/office/temperature_rise_report_sheet.py",
+      "backend/api/temperature_schemas.py",
+      "frontend/src/api/temperature.ts",
+      "frontend/src/pages/TemperatureRisePage.tsx",
+      "frontend/src/features/temperature/useTemperatureTool.ts",
+      "frontend/src/features/temperature/sampleGroups.ts",
+      "frontend/src/features/temperature/sourceColumns.ts",
+      "frontend/src/features/temperature/useDataGridEditing.ts",
+      "frontend/src/features/temperature/DataPreview.tsx",
+      "frontend/src/features/temperature/temperature.css",
+      "tests/unit/test_local_identity_service.py",
+      "tests/unit/test_local_identity_store.py",
+      "tests/integration/test_local_identity_api.py",
       "tests/unit/test_temperature_data_preparation.py",
-      "tests/unit/test_temperature_workbook_gateway.py",
       "tests/integration/test_tools_temperature_api.py",
-      "docs/temperature_rise_tool.md"
+      "frontend/src/currentUser.test.ts",
+      "frontend/src/api/localIdentity.test.ts",
+      "frontend/src/features/local-identity/AccountDialog.test.tsx",
+      "frontend/src/components/layout/Sidebar.test.tsx",
+      "frontend/src/features/temperature/sampleGroups.test.ts",
+      "frontend/src/features/temperature/useTemperatureReportInfo.test.tsx",
+      "frontend/src/features/temperature/DataPreview.test.tsx",
+      "frontend/src/pages/TemperatureRisePage.test.tsx",
+      "frontend/src/features/project-basic-information/currentUserDisplay.test.ts",
+      "docs/local_identity.md",
+      "docs/temperature_rise_tool.md",
+      "frontend/src/App.tsx"
     ],
-    "risk_reasons": [],
-    "activation_head": "b06621ad13a66848af3ac604b029a82ef3ba53c5",
-    "started_at": "2026-10-13T23:44:54.493353Z",
-    "updated_at": "2026-10-14T00:06:37.136238Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_MULTI_CURRENT_EXPORT_20261014",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "version": 1,
-      "summary": "Multi-current export with stable auxiliary headers above the named main current, precise stage values and blank synthetic origins; both axes of T-riseChart and Derating now default to integer tick labels without altering source coordinates or calculations",
-      "schema": "connlab.sol-task-report",
-      "scope_ok": true,
-      "validation": [
-        {
-          "detail": "Latest axis-format slice: RED reproduced 0.0 instead of 0; final 70 workbook gateway/HTTP API tests passed, covering four serialized axis formats with sourceLinked=false, unrounded series caches, retained point annotation precision, multi-current and single-current export. One existing deprecation warning.",
-          "status": "passed"
-        },
-        {
-          "detail": "Latest native Excel check on isolated read-only workbook: all four TickLabels.NumberFormat=0 and NumberFormatLinked=false, original 17.596362/36.545 series values retained, current calculator 66.54445742154181 unchanged. Native chart PNGs inspected for both charts; three generated temporary QA files cleaned, user files untouched.",
-          "status": "passed"
-        },
-        {
-          "detail": "Previous unchanged multi-current slice: 119 preparation/numerical/workbook/API tests and three native Excel/PDF plus actual localhost download checks passed. Current 70 tests reran affected workbook/API paths; unchanged preparation/numerical/layout portions retained prior evidence. git diff --check passed; no frontend changes/build rerun.",
-          "status": "passed"
-        }
-      ],
-      "roles": {
-        "developer": {
-          "detail": "TDD public exported workbook boundary, failure-before-fix and focused GREEN for integer tick formats; existing shared chart constructor sets both axes and redundant Derating-only override removed. Earlier multi-current developer checks retained.",
-          "status": "passed"
-        },
-        "qa": {
-          "detail": "Same-agent separate final affected QA: 70 tests and native Excel four-axis/PNG verification after final implementation bytes. Unchanged preparation/numerical native multi-current evidence reused; no independent QA agent claimed.",
-          "status": "passed"
-        },
-        "reviewer": {
-          "detail": "Separate sequential same-agent Standards/Spec review of latest exact diff: zero outstanding findings, no numerical/API semantics changed, scopes and source precision retained. Earlier multi-current review remains applicable to unchanged paths; no independent reviewer claimed.",
-          "status": "passed"
-        }
-      },
-      "integration": {
-        "detail": "Clean local master exact subject; full task product/test/doc paths in approved scope; no remote publication, awaiting explicit Close",
-        "status": "passed"
-      },
-      "task_id": "TASK_TEMPERATURE_MULTI_CURRENT_EXPORT_20261014",
-      "changed_paths": [
-        "backend/application/temperature_data_preparation.py",
-        "backend/infrastructure/office/temperature_rise_report_sheet.py",
-        "backend/infrastructure/office/temperature_workbook_gateway.py",
-        "docs/temperature_rise_tool.md",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_data_preparation.py",
-        "tests/unit/test_temperature_workbook_gateway.py"
-      ],
-      "subject": "ca8c56d437cd43a2b825fc00bb659c66b2f2eaae"
-    }
+    "risk_reasons": [
+      "Password authentication and persistent session security",
+      "New additive local identity database schema independent of project authority"
+    ],
+    "activation_head": "a1357cbcc7dd8013e9a80f79f087959ccdd86121",
+    "started_at": "2026-10-14T10:12:27.939232Z",
+    "updated_at": "2026-10-14T10:12:27.939232Z",
+    "checkpoint": null,
+    "report": null
   },
   "last_closed": {
-    "task_id": "TASK_TEMPERATURE_REVIEW_SIMPLIFICATION_20261014",
-    "tier": "micro",
-    "subject": "ac6da92dbc79c1b357dd029b5208bf3913d14a31",
-    "summary": "Simplify temperature warning review and remove redundant row controls",
+    "task_id": "TASK_TEMPERATURE_MULTI_CURRENT_EXPORT_20261014",
+    "tier": "standard",
+    "subject": "ca8c56d437cd43a2b825fc00bb659c66b2f2eaae",
+    "summary": "Export stable auxiliary current rows above the selected main current in T-riseChart",
     "disposition": "completed",
-    "decision_ref": "User closes the completed warning-review task and requests multi-current export implementation on 2026-10-14",
-    "closed_at": "2026-10-13T23:44:54.493353Z"
+    "decision_ref": "User explicitly closes preceding export task and starts local registration login and sample grouping on 2026-10-14",
+    "closed_at": "2026-10-14T10:12:27.939232Z"
   },
   "retained_history": [
     {
