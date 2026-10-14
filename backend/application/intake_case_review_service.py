@@ -360,6 +360,10 @@ class IntakeCaseReviewService:
         }
         normalized: dict[str, str] = {}
         for key in allowed_keys:
+            if key == 'project_leader' and key in values:
+                # An explicit clear is different from a new draft with no assigned leader yet.
+                normalized[key] = self._normalized_override(values[key]) or ''
+                continue
             if key == "lab_performing_tests":
                 lab = normalize_lab_performing_tests(values.get(key), required=False)
                 if lab is not None:

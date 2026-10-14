@@ -1,10 +1,10 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./Sidebar";
 
 describe("Sidebar interaction lock", () => {
-  it('returns focus to the stable account button after native Escape closes sign-in', async () => {
+  it('opens the name editor directly and returns focus to the avatar after native Escape', async () => {
     HTMLDialogElement.prototype.showModal = function () {
       this.setAttribute('open', ''); this.querySelector<HTMLInputElement>('input')?.focus();
     };
@@ -13,41 +13,16 @@ describe("Sidebar interaction lock", () => {
     render(<Sidebar activeRoute="tools" />);
     const trigger = screen.getByRole('button', { name: 'Lab User' });
     await user.click(trigger);
-    await user.click(screen.getByRole('menuitem', { name: 'Sign in / Register' }));
-    const dialog = screen.getByRole('dialog', { name: 'Sign in' });
+    const dialog = screen.getByRole('dialog', { name: 'Project Leader Name' });
+    expect(screen.getByLabelText('Display Project Leader Name')).toBeTruthy();
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(screen.queryByText(/Sign in|Register|Password|Remember login/i)).toBeNull();
     expect(dialog.contains(document.activeElement)).toBe(true);
     // Native dialogs emit cancel for Escape; jsdom does not implement that browser default.
     await user.keyboard('{Escape}');
     fireEvent(dialog, new Event('cancel', { cancelable: true }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(trigger);
-  });
-  it('exposes anonymous sign-in and dismisses the menu with Escape without navigation', async () => {
-    const user = userEvent.setup();
-    const onNavigate = vi.fn();
-    render(<Sidebar activeRoute="tools" onNavigate={onNavigate} />);
-    const trigger = screen.getByRole('button', { name: 'Lab User' });
-    await user.click(trigger);
-    expect(screen.getByRole('menuitem', { name: 'Sign in / Register' })).toBeTruthy();
-    expect(screen.queryByRole('menuitem', { name: 'Sign out' })).toBeNull();
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.queryByRole('menu')).toBeNull();
-    expect(document.activeElement).toBe(trigger);
-    expect(onNavigate).not.toHaveBeenCalled();
-  });
-  it("opens the bottom user menu with the existing Settings destination", async () => {
-    const user = userEvent.setup();
-    const onNavigate = vi.fn();
-    render(<Sidebar activeRoute="projects" onNavigate={onNavigate} />);
-
-    await user.click(screen.getByRole("button", { name: "Lab User" }));
-
-    const menu = screen.getByRole("menu", { name: "User menu" });
-    expect(within(menu).getByText("Offline local")).toBeTruthy();
-    await user.click(within(menu).getByRole("menuitem", { name: "Settings" }));
-
-    expect(onNavigate).toHaveBeenCalledWith("/settings");
-    expect(screen.queryByRole("menu", { name: "User menu" })).toBeNull();
   });
 
   it("shows the reserved search placeholder instead of the dashboard item", () => {

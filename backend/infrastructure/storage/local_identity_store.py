@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from pathlib import Path
 import sqlite3
 
-from backend.domain.local_identity import Credential, LocalUser
+from backend.domain.local_identity import Credential, LocalUser, LocalProfile
 
 
 class LocalIdentityStore:
@@ -110,3 +110,44 @@ class LocalIdentityStore:
     def revoke_session(self, digest: str) -> None:
         with self._connection() as connection:
             connection.execute('DELETE FROM sessions WHERE digest=?', (digest,))
+
+
+class LocalProfileStore:
+    """An independent singleton profile; never opens or migrates registered accounts."""
+    def __init__(self, path: Path):
+        self.path = path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with self._connection() as connection:
+            connection.execute('BEGIN IMMEDIATE')
+            objects = connection.execute("SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").fetchall()
+            version = connection.execute('PRAGMA user_version').fetchone()[0]
+            if objects:
+                columns = connection.execute('PRAGMA table_info(profile)').fetchall()
+                sql = ''.join(objects[0][2].lower().split()) if len(objects) == 1 and objects[0][2] else ''
+                if (version != 1 or len(objects) != 1 or objects[0][:2] != ('table', 'profile')
+                        or [(row[1], row[2], row[3], row[5]) for row in columns] != [('id', 'INTEGER', 0, 1), ('display_name', 'TEXT', 1, 0)]
+                        or 'check(id=1)' not in sql or 'check(length(trim(display_name))between1and80)' not in sql):
+                    raise RuntimeError('本机姓名设置数据库格式不兼容，请保留原文件并联系支持人员。')
+            elif version != 0:
+                raise RuntimeError('本机姓名设置数据库版本不兼容，请保留原文件并联系支持人员。')
+            else:
+                connection.execute('CREATE TABLE profile (id INTEGER PRIMARY KEY CHECK(id=1), display_name TEXT NOT NULL CHECK(length(trim(display_name)) BETWEEN 1 AND 80))')
+                connection.execute('PRAGMA user_version=1')
+
+    @contextmanager
+    def _connection(self):
+        connection = sqlite3.connect(self.path, timeout=10)
+        try:
+            with connection:
+                yield connection
+        finally:
+            connection.close()
+
+    def profile(self) -> LocalProfile | None:
+        with self._connection() as connection:
+            row = connection.execute('SELECT display_name FROM profile WHERE id=1').fetchone()
+        return LocalProfile(row[0]) if row else None
+
+    def save_profile(self, profile: LocalProfile) -> None:
+        with self._connection() as connection:
+            connection.execute('INSERT INTO profile VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET display_name=excluded.display_name', (profile.display_name,))

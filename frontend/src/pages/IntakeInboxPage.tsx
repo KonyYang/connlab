@@ -71,6 +71,7 @@ import {
 } from "../features/precheck/precheckReviewSelectors";
 import "../intake-case-review.css";
 import "../intake-inbox.css";
+import { bootstrapCurrentProfile, useCurrentProfile } from '../currentUser';
 
 type IntakeInboxPageProps = {
   session: IntakeSessionState;
@@ -100,6 +101,8 @@ type LocalDuplicateCancelSnapshot = {
   sampleRows: PrecheckSampleRow[];
   requestedTestingRows: PrecheckRequestedTestingRow[];
   setupValues: NewProjectSetupConfirmationValues;
+  leaderDefaultAssigned: boolean;
+  leaderTouched: boolean;
   importMessage: string | null;
 };
 
@@ -109,6 +112,7 @@ export function IntakeInboxPage({
   onSessionChange,
   onProjectCreated
 }: IntakeInboxPageProps): ReactElement {
+  const localProfile = useCurrentProfile();
   const msgInputRef = useRef<HTMLInputElement | null>(null);
   const wordInputRef = useRef<HTMLInputElement | null>(null);
   const [importing, setImporting] = useState(false);
@@ -149,6 +153,11 @@ export function IntakeInboxPage({
   const sampleRowsRef = useRef<PrecheckSampleRow[]>([]);
   const requestedTestingRowsRef = useRef<PrecheckRequestedTestingRow[]>([]);
   const setupValuesRef = useRef<NewProjectSetupConfirmationValues>(setupValues);
+  const leaderDefaultAssigned = useRef(false);
+  const leaderTouched = useRef(false);
+  const defaultProjectLeader = localProfile.profile?.display_name
+    ?? (localProfile.loaded ? setupOptions?.default_project_leader ?? '' : '');
+  useEffect(() => { void bootstrapCurrentProfile(); }, []);
   const localDuplicateCancelSnapshotRef = useRef<LocalDuplicateCancelSnapshot | null>(null);
   const { packageImport, selectedAssetId, sourceMode, directWordName } = session;
   const visibleAttachmentAssets = useMemo(
@@ -169,6 +178,8 @@ export function IntakeInboxPage({
     }
     return review.cases.find((item) => item.case_id === selectedCaseId) ?? review.cases[0] ?? null;
   }, [review, selectedCaseId]);
+  const preserveBlankLeader = leaderTouched.current
+    || Object.prototype.hasOwnProperty.call(activeCase?.project_setup ?? {}, 'project_leader');
   const projectFields = useMemo(
     () => fieldsWithLookupOptions(PRECHECK_PROJECT_FIELDS, lookupOptions),
     [lookupOptions]
@@ -263,6 +274,8 @@ export function IntakeInboxPage({
       sampleRows: cloneRows(sampleRows),
       requestedTestingRows: cloneRows(requestedTestingRows),
       setupValues: { ...setupValues },
+      leaderDefaultAssigned: leaderDefaultAssigned.current,
+      leaderTouched: leaderTouched.current,
       importMessage
     };
   }, [
@@ -294,6 +307,8 @@ export function IntakeInboxPage({
     sampleRowsRef.current = snapshot.sampleRows;
     requestedTestingRowsRef.current = snapshot.requestedTestingRows;
     setupValuesRef.current = snapshot.setupValues;
+    leaderDefaultAssigned.current = snapshot.leaderDefaultAssigned;
+    leaderTouched.current = snapshot.leaderTouched;
     setCompletionSetupError(null);
     onSessionChange(snapshot.session);
     localDuplicateCancelSnapshotRef.current = null;
@@ -330,7 +345,7 @@ export function IntakeInboxPage({
     return selectedFormAsset?.original_name ?? null;
   }, [importMessage, packageImport, session.selectedWordAssetId]);
   const setupChanged = activeCase
-    ? stableSetupJson(projectSetupPayload(setupValues))
+    ? stableSetupJson(projectSetupPayload(setupValues, preserveBlankLeader))
       !== stableSetupJson(activeCase.project_setup ?? {})
     : false;
   const draftChanged = activeCase
@@ -370,14 +385,6 @@ export function IntakeInboxPage({
           return;
         }
         setSetupOptions(options);
-        setSetupValues((current) => {
-          const next = {
-            ...current,
-            projectLeader: current.projectLeader || options.default_project_leader
-          };
-          setupValuesRef.current = next;
-          return next;
-        });
       } catch (error) {
         if (active) {
           setCompletionSetupError(
@@ -582,7 +589,9 @@ export function IntakeInboxPage({
       fieldValuesRef.current = {};
       sampleRowsRef.current = [];
       requestedTestingRowsRef.current = [];
-      const nextSetupValues = emptySetupValues(setupOptions?.default_project_leader ?? "");
+      const nextSetupValues = emptySetupValues(defaultProjectLeader);
+      leaderDefaultAssigned.current = Boolean(nextSetupValues.projectLeader);
+      leaderTouched.current = false;
       setSetupValues(nextSetupValues);
       setupValuesRef.current = nextSetupValues;
       return;
@@ -597,8 +606,11 @@ export function IntakeInboxPage({
     setRequestedTestingRows(nextRequestedTestingRows);
     const nextSetupValues = setupValuesFromProjectSetup(
       activeCase.project_setup,
-      setupOptions?.default_project_leader ?? ""
+      activeCase.confirmed_project_id || activeCase.base_editing_frozen ? '' : defaultProjectLeader
     );
+    leaderDefaultAssigned.current = Object.prototype.hasOwnProperty.call(activeCase.project_setup ?? {}, 'project_leader')
+      || Boolean(activeCase.confirmed_project_id || activeCase.base_editing_frozen || nextSetupValues.projectLeader);
+    leaderTouched.current = false;
     fieldValuesRef.current = nextFieldValues;
     sampleRowsRef.current = nextSampleRows;
     requestedTestingRowsRef.current = nextRequestedTestingRows;
@@ -606,6 +618,16 @@ export function IntakeInboxPage({
     setSetupValues(nextSetupValues);
     setAutoSaveError(null);
   }, [activeCase?.case_id, importVersion]);
+
+  useEffect(() => {
+    // Only finish assigning a new draft's initial default. Profile/options refreshes never reset the form.
+    if (leaderDefaultAssigned.current || leaderTouched.current || !defaultProjectLeader
+      || activeCase?.confirmed_project_id || activeCase?.base_editing_frozen) return;
+    leaderDefaultAssigned.current = true;
+    const next = { ...setupValuesRef.current, projectLeader: defaultProjectLeader };
+    setupValuesRef.current = next;
+    setSetupValues(next);
+  }, [defaultProjectLeader, activeCase?.case_id, importVersion]);
 
   useEffect(() => {
     if (!activeCase || activeCase.base_editing_frozen || !draftChanged) {
@@ -620,7 +642,7 @@ export function IntakeInboxPage({
         },
         sample_rows: sampleRowsRef.current,
         requested_testing_rows: requestedTestingRowsRef.current,
-        project_setup: projectSetupPayload(setupValuesRef.current)
+        project_setup: projectSetupPayload(setupValuesRef.current, preserveBlankLeader)
       })
         .then((updatedCase) => {
           setReview((current) =>
@@ -957,6 +979,7 @@ export function IntakeInboxPage({
             testTypeInSheetOptions={setupOptions?.test_type_in_sheet_options ?? []}
             values={setupValues}
               onChange={(values) => {
+      if (values.projectLeader !== setupValuesRef.current.projectLeader) leaderTouched.current = true;
       setSetupValues(values);
       setupValuesRef.current = values;
       setHasDraftEditsSinceDecision(true);
@@ -1057,6 +1080,7 @@ export function IntakeInboxPage({
           temporaryCreating={temporaryCreating}
           values={setupValues}
           onChange={(values) => {
+            if (values.projectLeader !== setupValuesRef.current.projectLeader) leaderTouched.current = true;
             setSetupValues(values);
             setupValuesRef.current = values;
             setHasDraftEditsSinceDecision(true);
@@ -1162,13 +1186,15 @@ function setupValuesFromProjectSetup(
     testItem: stringValue(projectSetup?.test_item),
     sampleDescription: stringValue(projectSetup?.sample_description),
     testTypeInSheet: stringValue(projectSetup?.test_type_in_sheet),
-    projectLeader: stringValue(projectSetup?.project_leader) || defaultProjectLeader,
+    projectLeader: Object.prototype.hasOwnProperty.call(projectSetup ?? {}, 'project_leader')
+      ? stringValue(projectSetup?.project_leader) : defaultProjectLeader,
     labPerformingTests: stringValue(projectSetup?.lab_performing_tests) || "Dongguan"
   };
 }
 
 function projectSetupPayload(
-  values: NewProjectSetupConfirmationValues
+  values: NewProjectSetupConfirmationValues,
+  preserveBlankLeader = false
 ): Record<string, string> {
   const payload: Record<string, string> = {
     ltr_mode: values.ltrMode
@@ -1180,6 +1206,7 @@ function projectSetupPayload(
   assignText(payload, "sample_description", values.sampleDescription);
   assignText(payload, "test_type_in_sheet", values.testTypeInSheet);
   assignText(payload, "project_leader", values.projectLeader);
+  if (preserveBlankLeader && !values.projectLeader.trim()) payload.project_leader = '';
   assignText(payload, "lab_performing_tests", values.labPerformingTests);
   return payload;
 }

@@ -286,6 +286,19 @@ def test_review_service_persists_project_setup_per_draft(tmp_path: Path) -> None
     }
 
 
+def test_review_service_preserves_explicitly_cleared_project_leader_when_reloaded(tmp_path: Path) -> None:
+    service = _service(_package(tmp_path), _asset(tmp_path), _case(), _draft(_complete_section1_fields()))
+    service.update_case_fields('case-1', {}, project_setup={'project_leader': 'White', 'test_item': '  Manual test  '})
+    service.update_case_fields('case-1', {}, project_setup={'project_leader': '   ', 'test_item': '  Manual test  ', 'unknown': 'ignored'})
+    reloaded = service.get_package_review('pkg-1').cases[0]
+    assert 'project_leader' in reloaded.project_setup
+    assert reloaded.project_setup['project_leader'] == ''
+    assert reloaded.project_setup['test_item'] == 'Manual test'
+    assert 'unknown' not in reloaded.project_setup
+    service.update_case_fields('case-1', {}, project_setup={'test_item': 'Other test'})
+    assert 'project_leader' not in service.get_package_review('pkg-1').cases[0].project_setup
+
+
 def test_review_service_defaults_project_setup_sample_description_from_sample_table(
     tmp_path: Path,
 ) -> None:

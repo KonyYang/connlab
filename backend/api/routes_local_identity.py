@@ -8,8 +8,8 @@ from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from backend.api.dependencies import get_settings
-from backend.application.local_identity_service import IdentityError, LocalIdentityService
-from backend.infrastructure.storage.local_identity_store import LocalIdentityStore
+from backend.application.local_identity_service import IdentityError, LocalIdentityService, LocalProfileService
+from backend.infrastructure.storage.local_identity_store import LocalIdentityStore, LocalProfileStore
 from backend.shared.config import Settings
 
 router = APIRouter(prefix='/api/local-identity', tags=['local identity'])
@@ -19,6 +19,28 @@ COOKIE_PATH = '/api/local-identity'
 
 def get_identity_service(settings: Settings = Depends(get_settings)) -> LocalIdentityService:
     return LocalIdentityService(LocalIdentityStore(settings.data_dir / 'local_identity.sqlite3'))
+
+
+def get_profile_service(settings: Settings = Depends(get_settings)) -> LocalProfileService:
+    return LocalProfileService(LocalProfileStore(settings.data_dir / 'local_profile.sqlite3'))
+
+
+@router.get('/profile')
+def profile(request: Request, service: LocalProfileService = Depends(get_profile_service)):
+    _local_request(request)
+    value = service.profile()
+    return JSONResponse({'profile': asdict(value) if value else None}, headers={'Cache-Control': 'no-store'})
+
+
+@router.put('/profile')
+async def update_profile(request: Request, service: LocalProfileService = Depends(get_profile_service)):
+    body = await _mutation_body(request, {'display_name'})
+    try:
+        value = await run_in_threadpool(service.save, body.get('display_name'))
+    except IdentityError as error:
+        return JSONResponse({'detail': {'field': 'display_name', 'message': str(error)}}, status_code=error.status,
+                            headers={'Cache-Control': 'no-store'})
+    return JSONResponse({'profile': asdict(value)}, headers={'Cache-Control': 'no-store'})
 
 
 def _local_request(request: Request) -> None:

@@ -7,11 +7,32 @@ import secrets
 import time
 from typing import Callable
 
-from backend.domain.local_identity import Credential, IdentityStore, LocalUser
+from backend.domain.local_identity import Credential, IdentityStore, LocalUser, LocalProfile, ProfileStore
 
 ITERATIONS = 600_000
 REMEMBER_SECONDS = 30 * 24 * 60 * 60
 SESSION_SECONDS = 8 * 60 * 60
+
+
+class LocalProfileService:
+    """Persistent report/project defaults, not authentication or an audit identity."""
+    def __init__(self, store: ProfileStore):
+        self.store = store
+
+    def profile(self) -> LocalProfile | None:
+        return self.store.profile()
+
+    def save(self, display_name: str) -> LocalProfile:
+        if not isinstance(display_name, str) or not display_name.strip():
+            raise IdentityError('请填写项目负责人姓名。')
+        if re.search(r'[\x00-\x1f\x7f\ud800-\udfff]', display_name):
+            raise IdentityError('姓名不能包含控制字符或无效字符。')
+        name = display_name.strip()
+        if len(name) > 80:
+            raise IdentityError('姓名最多为 80 个字符。')
+        profile = LocalProfile(name)
+        self.store.save_profile(profile)
+        return profile
 
 
 class IdentityError(Exception):

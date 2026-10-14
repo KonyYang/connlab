@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import { UiIcon, type UiIconName } from "../common/UiIcon";
-import { CURRENT_USER_DISPLAY_NAME, bootstrapCurrentIdentity, refreshCurrentIdentity, logoutCurrentIdentity, useCurrentIdentity } from "../../currentUser";
+import { CURRENT_USER_DISPLAY_NAME, bootstrapCurrentProfile, refreshCurrentProfile, useCurrentProfile } from "../../currentUser";
 import { AccountDialog } from '../../features/local-identity/AccountDialog';
 
 type SidebarProps = {
@@ -39,35 +39,17 @@ export function Sidebar({
   onNavigate,
   onToggleCollapsed
 }: SidebarProps): ReactElement {
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
-  const identity = useCurrentIdentity();
-  const accountRoot = useRef<HTMLDivElement>(null);
+  const profile = useCurrentProfile();
   const accountTrigger = useRef<HTMLButtonElement>(null);
-  const displayName = identity.user?.display_name ?? CURRENT_USER_DISPLAY_NAME;
-  const accountLocked = interactionLocked || identity.busy;
+  const displayName = profile.profile?.display_name ?? CURRENT_USER_DISPLAY_NAME;
+  const accountLocked = interactionLocked || profile.busy;
   useEffect(() => {
-    void bootstrapCurrentIdentity();
-    const refresh = () => { void refreshCurrentIdentity(); };
+    void bootstrapCurrentProfile();
+    const refresh = () => { void refreshCurrentProfile(); };
     window.addEventListener('focus', refresh);
     return () => window.removeEventListener('focus', refresh);
   }, []);
-  useEffect(() => {
-    if (!userMenuOpen) return;
-    const outside = (event: PointerEvent) => {
-      if (event.target instanceof Node && !accountRoot.current?.contains(event.target)) setUserMenuOpen(false);
-    };
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { setUserMenuOpen(false); accountTrigger.current?.focus(); }
-    };
-    document.addEventListener('pointerdown', outside);
-    document.addEventListener('keydown', escape);
-    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); };
-  }, [userMenuOpen]);
-  async function signOut(switchAccount = false) {
-    try { await logoutCurrentIdentity(); setUserMenuOpen(false); if (switchAccount) setAccountDialogOpen(true); }
-    catch { /* Keep the current identity and show the store's error if revocation failed. */ }
-  }
 
   return (
     <aside className={`sidebar${collapsed ? " sidebar-collapsed" : ""}`} aria-label="Primary navigation">
@@ -115,38 +97,11 @@ export function Sidebar({
           );
         })}
       </nav>
-      <div ref={accountRoot} className="sidebar-account">
-        {userMenuOpen ? (
-          <div className="sidebar-account-menu" aria-label="User menu" role="menu">
-            <div className="sidebar-account-menu-header">
-              <strong>{displayName}</strong>
-              <span>Offline local</span>
-            </div>
-            {identity.user ? <>
-              <button type="button" className="sidebar-account-menu-item" role="menuitem" disabled={accountLocked} onClick={() => void signOut(true)}>Switch account</button>
-              <button type="button" className="sidebar-account-menu-item" role="menuitem" disabled={accountLocked} onClick={() => void signOut()}>Sign out</button>
-            </> : <button type="button" className="sidebar-account-menu-item" role="menuitem" disabled={accountLocked}
-              onClick={() => { setUserMenuOpen(false); setAccountDialogOpen(true); }}>Sign in / Register</button>}
-            {identity.error && <p className="sidebar-account-error" role="alert">{identity.error}</p>}
-            <button
-              className="sidebar-account-menu-item"
-              role="menuitem"
-              type="button"
-              disabled={accountLocked}
-              onClick={() => {
-                setUserMenuOpen(false);
-                onNavigate?.("/settings");
-              }}
-            >
-              <UiIcon name="settings" />
-              <span>Settings</span>
-            </button>
-          </div>
-        ) : null}
+      <div className="sidebar-account">
         <button
           ref={accountTrigger}
-          aria-expanded={userMenuOpen}
-          aria-haspopup="menu"
+          aria-expanded={accountDialogOpen}
+          aria-haspopup="dialog"
           aria-label={displayName}
           className="sidebar-account-trigger"
           disabled={accountLocked}
@@ -154,7 +109,7 @@ export function Sidebar({
           type="button"
           onClick={() => {
             if (!interactionLocked) {
-              setUserMenuOpen((current) => !current);
+              setAccountDialogOpen(true);
             }
           }}
         >

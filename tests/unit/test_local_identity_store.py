@@ -2,7 +2,7 @@ import sqlite3
 import pytest
 from concurrent.futures import ThreadPoolExecutor
 from backend.application.local_identity_service import LocalIdentityService
-from backend.infrastructure.storage.local_identity_store import LocalIdentityStore
+from backend.infrastructure.storage.local_identity_store import LocalIdentityStore, LocalProfileStore
 
 
 def test_persisted_credentials_and_sessions_do_not_store_plain_secrets(tmp_path):
@@ -52,4 +52,16 @@ def test_owned_version_with_missing_unique_constraint_is_rejected_unchanged(tmp_
     original = path.read_bytes()
     with pytest.raises(RuntimeError, match='unsupported schema'):
         LocalIdentityStore(path)
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize('sql', ['CREATE TABLE unrelated (value TEXT)', 'CREATE TABLE profile (id INTEGER PRIMARY KEY, display_name TEXT NOT NULL)'])
+def test_profile_store_rejects_incompatible_owned_or_foreign_schema_without_mutation(tmp_path, sql):
+    path = tmp_path / 'profile.sqlite3'
+    with sqlite3.connect(path) as connection:
+        connection.execute(sql)
+        connection.execute('PRAGMA user_version=1')
+    original = path.read_bytes()
+    with pytest.raises(RuntimeError):
+        LocalProfileStore(path)
     assert path.read_bytes() == original

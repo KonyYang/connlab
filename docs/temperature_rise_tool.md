@@ -5,11 +5,13 @@ and a compact XLSX metadata header. Editable measurement names, stable source id
 reversible ambient-role suspension and consecutive regrouping after explicit moves remain supported.
 Compact charts, automatic generation after confirmation and scan-based feedback remain in place.
 
-`Tested By` snapshots the local logged-in display name for each new import via
+`Tested By` snapshots the persistent local project-leader display name for each new import via
 `frontend/src/currentUser.ts`, falling back to anonymous `Lab User`. Late session bootstrap may fill
-an unassigned default, but account switching never overwrites an existing report. Manual replacement
+an unassigned default, but editing the local name never overwrites an existing report. Manual replacement
 or deliberate clearing overrides the default, survives reimport, and is sent to the XLSX report.
-See `docs/local_identity.md` for registration, remembered login and the bounded security boundary.
+See `docs/local_identity.md` for the login-free single-field name setting, New Project defaults and
+the preservation boundary. Existing registered account data is retained independently, never read
+or migrated by the profile flow.
 
 Sample count refinement (2026-10-14): instrument measurement-name prefixes `1_`, `2_`, `3_` etc.
 take priority; their actual group count can be 1, 3, 5 or more. Unnumbered imports default to 3 Samples.

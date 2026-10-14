@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,6 +9,7 @@ import {
   getIntakeCaseReview,
   getIntakePrecheckLookupOptions,
   getNewProjectCompletionOptions,
+  updateIntakeCaseReviewFields,
   previewSpecifiedLtrWorkbookAuthority,
   type IntakeCaseReview,
   type IntakeCaseReviewItem,
@@ -20,6 +21,8 @@ import {
   type IntakeSessionState
 } from "../features/intake/intakeSession";
 import { IntakeInboxPage } from "./IntakeInboxPage";
+let currentProfile = { profile: null as { display_name: string } | null, loaded: true, busy: false, error: null as string | null };
+vi.mock('../currentUser', () => ({ useCurrentProfile: () => currentProfile, bootstrapCurrentProfile: () => Promise.resolve() }));
 
 vi.mock("../api/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api/client")>();
@@ -38,6 +41,7 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
   const locationAssign = vi.fn();
 
   beforeEach(() => {
+    currentProfile = { profile: null, loaded: true, busy: false, error: null };
     vi.clearAllMocks();
     locationAssign.mockReset();
     vi.stubGlobal("location", {
@@ -59,10 +63,96 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
       default_project_leader: "Lab User"
     });
     vi.mocked(getIntakeCaseReview).mockResolvedValue(reviewWithCase);
+    vi.mocked(updateIntakeCaseReviewFields).mockImplementation(async (_caseId, request) => ({ ...activeCase, project_setup: request.project_setup }));
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('uses the local profile for a new unassigned project and sends that leader to completion', async () => {
+    currentProfile = { ...currentProfile, profile: { display_name: '张三' } };
+    const project_setup = { ...activeCase.project_setup };
+    delete project_setup.project_leader;
+    vi.mocked(getIntakeCaseReview).mockResolvedValue({ ...reviewWithCase, cases: [{ ...activeCase, project_setup }] });
+    vi.mocked(completeNewProject).mockRejectedValue(new Error('Captured completion request'));
+    const user = userEvent.setup();
+    render(<Harness />);
+    const leader = await screen.findByLabelText(/Project Leader/);
+    await waitFor(() => expect((leader as HTMLInputElement).value).toBe('张三'));
+    await user.click(screen.getByRole('button', { name: /Apply LTR Number/ }));
+    await waitFor(() => expect(completeNewProject).toHaveBeenCalledWith('case-1', expect.objectContaining({ project_leader: '张三' })));
+  });
+
+  it.each(['MPcao', ''])('preserves the stored leader %j including explicit blank across profile and options changes', async name => {
+    currentProfile = { ...currentProfile, profile: { display_name: '张三' } };
+    vi.mocked(getIntakeCaseReview).mockResolvedValue({ ...reviewWithCase,
+      cases: [{ ...activeCase, project_setup: { ...activeCase.project_setup, project_leader: name } }] });
+    const view = render(<Harness />);
+    const leader = await screen.findByLabelText(/Project Leader/);
+    await waitFor(() => expect((leader as HTMLInputElement).value).toBe(name));
+    currentProfile = { ...currentProfile, profile: { display_name: '李四' } }; view.rerender(<Harness />);
+    expect((leader as HTMLInputElement).value).toBe(name);
+  });
+
+  it('does not overwrite a manually cleared new leader when profile and options arrive late', async () => {
+    currentProfile = { ...currentProfile, loaded: false };
+    const project_setup = { ...activeCase.project_setup }; delete project_setup.project_leader;
+    vi.mocked(getIntakeCaseReview).mockResolvedValue({ ...reviewWithCase, cases: [{ ...activeCase, project_setup }] });
+    let finishOptions!: (value: Awaited<ReturnType<typeof getNewProjectCompletionOptions>>) => void;
+    vi.mocked(getNewProjectCompletionOptions).mockReturnValue(new Promise(resolve => { finishOptions = resolve; }));
+    const view = render(<Harness />);
+    const user = userEvent.setup();
+    const leader = await screen.findByLabelText(/Project Leader/);
+    await user.type(leader, 'Manual'); await user.clear(leader);
+    currentProfile = { ...currentProfile, loaded: true, profile: { display_name: 'Late profile' } };
+    view.rerender(<Harness />);
+    await act(async () => finishOptions({ location_options: [], test_type_in_sheet_options: [], default_project_leader: 'Late options' }));
+    expect((leader as HTMLInputElement).value).toBe('');
+    expect((screen.getByRole('button', { name: /Apply LTR Number/ }) as HTMLButtonElement).disabled).toBe(true);
+    await waitFor(() => expect(updateIntakeCaseReviewFields).toHaveBeenCalledWith('case-1', expect.objectContaining({
+      project_setup: expect.objectContaining({ project_leader: '' }),
+    })));
+  });
+
+  it('fills only an unassigned new leader from late profile without resetting other inputs', async () => {
+    currentProfile = { ...currentProfile, loaded: false };
+    const project_setup = { ...activeCase.project_setup }; delete project_setup.project_leader;
+    vi.mocked(getIntakeCaseReview).mockResolvedValue({ ...reviewWithCase, cases: [{ ...activeCase, project_setup }] });
+    const view = render(<Harness />);
+    const leader = await screen.findByLabelText(/Project Leader/);
+    const testItem = screen.getByLabelText(/Sample Description/);
+    await waitFor(() => expect((testItem as HTMLInputElement).disabled).toBe(false));
+    const user = userEvent.setup(); await user.clear(testItem); await user.type(testItem, 'Manual sample');
+    currentProfile = { ...currentProfile, loaded: true, profile: { display_name: 'Late profile' } }; view.rerender(<Harness />);
+    await waitFor(() => expect((leader as HTMLInputElement).value).toBe('Late profile'));
+    expect((testItem as HTMLInputElement).value).toBe('Manual sample');
+    currentProfile = { ...currentProfile, profile: { display_name: 'Changed profile' } }; view.rerender(<Harness />);
+    expect((leader as HTMLInputElement).value).toBe('Late profile');
+  });
+
+  it('does not fill a missing leader on an already confirmed or frozen project', async () => {
+    currentProfile = { ...currentProfile, profile: { display_name: '张三' } };
+    const project_setup = { ...activeCase.project_setup }; delete project_setup.project_leader;
+    vi.mocked(getIntakeCaseReview).mockResolvedValue({ ...reviewWithCase,
+      cases: [{ ...activeCase, project_setup, base_editing_frozen: true }] });
+    render(<Harness />);
+    const leader = await screen.findByLabelText(/Project Leader/);
+    await waitFor(() => expect((leader as HTMLInputElement).value).toBe(''));
+  });
+
+  it('snapshots a changed profile only for the next imported case, not the existing draft', async () => {
+    currentProfile = { ...currentProfile, profile: { display_name: 'First leader' } };
+    const project_setup = { ...activeCase.project_setup }; delete project_setup.project_leader;
+    vi.mocked(getIntakeCaseReview).mockResolvedValue({ ...reviewWithCase, cases: [{ ...activeCase, project_setup }] });
+    const view = render(<Harness />);
+    const user = userEvent.setup();
+    await waitFor(() => expect((screen.getByLabelText(/Project Leader/) as HTMLInputElement).value).toBe('First leader'));
+    currentProfile = { ...currentProfile, profile: { display_name: 'Next leader' } }; view.rerender(<Harness />);
+    expect((screen.getByLabelText(/Project Leader/) as HTMLInputElement).value).toBe('First leader');
+    vi.mocked(getIntakeCaseReview).mockResolvedValue({ ...reviewWithCase, cases: [{ ...activeCase, case_id: 'case-2', project_setup }] });
+    await user.click(screen.getByRole('button', { name: 'Simulate review refresh without cases' }));
+    await waitFor(() => expect((screen.getByLabelText(/Project Leader/) as HTMLInputElement).value).toBe('Next leader'));
   });
 
   it("shows the backend completion blocker beside Apply LTR and prevents repeat submission", async () => {

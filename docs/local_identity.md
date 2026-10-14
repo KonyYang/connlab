@@ -1,47 +1,58 @@
-# Offline local identity
+# Local project leader display name
 
-The sidebar supports local registration, sign-in, switching and sign-out. Registration signs in
-immediately. Remember login is checked by default: it expires after 30 days; unchecked login uses
-a browser-session cookie and expires on the server after 8 hours. Reopening retains remembered
-login until expiry or explicit sign-out. Switching revokes the session before opening sign-in;
-it does not navigate or reload project/data pages.
+The sidebar avatar directly opens a compact, single-field **Display Project Leader Name** editor.
+Registration, usernames, passwords, remembered-login expiry and sign-out are no longer part of the
+UI. This is a local default/name setting, not authentication, permissions or proof of the operator.
+The existing Settings navigation item remains in the normal sidebar navigation.
 
-Usernames are case-insensitive, 3–64 ASCII letters/digits/dot/underscore/hyphen. Display names are
-1–80 printable characters; passwords are 10–128 characters and are not trimmed. Password confirmation
-is client-side. No cloud, email verification, password recovery, RBAC or global business API gating
-is introduced. Anonymous `Lab User` remains available, distinctly not authenticated. Existing project
-actor literals outside the shared helper are not migrated. Editable report names are not audit proofs.
+The trimmed name accepts Chinese characters and spaces, is nonblank, and is at most 80 Unicode
+characters. Control/invalid Unicode characters are rejected. Empty and overlong values receive clear
+inline Chinese explanations, accessible invalid/described-by states and focus on the name field;
+native generic validation bubbles are disabled. The modal preserves interaction locks and returns
+focus to the stable avatar after Escape or close. Failed saves keep the previous displayed profile;
+ambiguous network failures are reported as an unconfirmed save, with an idempotent retry available.
 
-## Security and recovery boundary
+## Persistent setting, not a login
 
-- `Settings.data_dir/local_identity.sqlite3` is separate from the project database. Initialization
-  verifies owned schema version, tables, columns and core constraints before writing. Incompatible
-  data is rejected, never migrated/deleted. Preserve the database and contact support.
-- PBKDF2-HMAC-SHA256 uses 600,000 iterations with independent random 16-byte salts. Passwords are not
-  persisted plaintext; comparisons are constant-time with a dummy hash for unknown users.
-- Random 256-bit opaque sessions persist only SHA-256 digests and server expiries. Register/login
-  revokes the presented session; sign-out revokes it. No secrets are placed in browser storage,
-  response JSON or request logs. Public profile state is in-memory only.
-- Cookie is host-only, HttpOnly, SameSite=Strict, path `/api/local-identity`, Secure under HTTPS.
-  GET session is no-store and never changes cookies: a stale read cannot erase a newer login.
-- Mutations require loopback host and peer, exact same Origin, JSON and `X-ConnLab-Identity: 1`.
-  Bodies over 4 KiB and invalid fields fail without echoing passwords.
-- Persistent atomic reservations precede hashing: 5 attempts/username/15 minutes, 40 globally/minute.
-  Success clears the user's window, not the global budget. Expired attempt windows are cleaned;
-  expired sessions are cleaned during new authentication.
+- GET/PUT `/api/local-identity/profile` return only `{profile: {display_name} | null}`.
+- `Settings.data_dir/local_profile.sqlite3` is a separate singleton store. Transactions are atomic;
+  owned schema version/table/columns/constraints are validated before mutation. Unsupported data is
+  preserved and rejected, never migrated or silently reset.
+- The profile has no cookie, token, password, session lifetime or expiry. Restarting the application
+  reads the same saved name. Only a public profile is held in frontend memory.
+- Requests retain loopback host/peer checks, no-store responses, bounded 4 KiB JSON bodies and exact
+  same-origin/custom-header protection for PUT. This does not gate existing project APIs.
+- The profile flow never opens, reads, migrates or deletes `local_identity.sqlite3`. Previously
+  registered account/password/session records and legacy authentication endpoints remain as dormant
+  compatibility; the application UI neither calls them nor implies authentication.
 
-This is not protection against an OS user or malicious process with access to the same local data.
-Keep the app loopback-only; do not expose its business API on LAN. No destructive account reset
-shortcut exists. Back up the identity database independently of public-drive project authority.
+Back up the independent local profile file alongside local data. Preserve incompatible files and
+contact support rather than deleting them. A local OS process/user with access to these files is
+outside this display-setting boundary; keep the workbench loopback-only.
 
-## Defaults and acceptance
+## Defaults and existing information
 
-Session bootstraps from the sidebar and refreshes on window focus. Generation guards prevent old
-reads restoring a signed-out profile; failed sign-out retains the identity and displays the error.
-New temperature imports snapshot the current display name. Late initial loading may fill an unassigned
-default; switching accounts never rewrites existing testers, confirmed reports, historical records,
-or manual overrides (including intentional blanks). Basic-information future confirmations use the
-dynamic shared helper.
+The shared profile store bootstraps once and refreshes on window focus. Generation guards prevent
+late reads from overwriting newer saved names; synchronous adapter errors cannot crash page mounting.
 
-Acceptance: register → auto sign-in → refresh/reopen remembered login → switch/logout. Invalid/foreign
-requests, revoked/replayed/expired sessions and throttling fail safely; existing report values remain.
+New temperature imports snapshot the name for `Tested By`; late initial profile loading may fill
+an unassigned default. Editing the profile never rewrites an already populated report or historical
+record. Manual report overrides, including intentional blank values, remain intact through reimport.
+
+For New Project, a new unassigned draft prefers the local profile; only after initial profile loading
+does the previous completion-options/Windows default apply as fallback. Once assigned, refreshed
+profile/options do not overwrite that draft. User edits and intentional clears win. An existing
+`project_leader` key, including a blank value, takes precedence; frozen/confirmed records receive no
+new default. Switching/importing a new case snapshots the then-current profile without resetting
+other fields when a profile merely loads or changes. The existing completion request carries this
+selected leader onward to existing LTR/form generation; no external authoritative files are mutated
+by changing the profile.
+
+Explicit leader clears are retained as a blank JSON override by the existing intake review service,
+while absent keys remain absent and eligible for new defaults. Other normalization, frozen-field
+rules and required-leader completion blocking are unchanged. Old records whose blank keys were
+already discarded cannot reveal the prior intention and are not backfilled or migrated.
+
+Acceptance: edit avatar name → save → restart retains it → new project/report adopts it. Existing
+source/manual/blank/frozen values survive profile/options races; changing profile only affects future
+defaults. Prior registered credentials remain byte-for-byte unchanged by profile operations.

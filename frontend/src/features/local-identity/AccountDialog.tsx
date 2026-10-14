@@ -1,20 +1,28 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { loginCurrentIdentity, registerCurrentIdentity, useCurrentIdentity } from '../../currentUser';
+import { saveCurrentProfile, useCurrentProfile } from '../../currentUser';
 import './localIdentity.css';
+
+function nameIssue(value: string): string | null {
+  if (!value.trim()) return '请填写项目负责人姓名。';
+  if (/[\u0000-\u001f\u007f\ud800-\udfff]/u.test(value)) return '姓名不能包含控制字符或无效字符。';
+  if (Array.from(value.trim()).length > 80) return '姓名最多为 80 个字符。';
+  return null;
+}
 
 export function AccountDialog({ onClose, locked = false, returnFocus }: {
   onClose: () => void; locked?: boolean; returnFocus?: HTMLElement | null;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const identity = useCurrentIdentity();
-  const [registering, setRegistering] = useState(false);
-  const [username, setUsername] = useState('');
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmation, setConfirmation] = useState('');
-  const [remember, setRemember] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const busy = identity.busy || locked;
+  const input = useRef<HTMLInputElement>(null);
+  const profile = useCurrentProfile();
+  const touched = useRef(false);
+  const [name, setName] = useState(profile.profile?.display_name ?? '');
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const busy = profile.busy || locked;
+  useEffect(() => {
+    if (!touched.current) setName(profile.profile?.display_name ?? '');
+  }, [profile.profile]);
   useEffect(() => {
     const node = dialog.current;
     const previous = document.activeElement as HTMLElement | null;
@@ -24,37 +32,28 @@ export function AccountDialog({ onClose, locked = false, returnFocus }: {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
-    if (registering && password !== confirmation) { setError('Passwords do not match.'); return; }
-    setError(null);
-    try {
-      const input = { username, password, remember };
-      if (registering) await registerCurrentIdentity({ ...input, display_name: name });
-      else await loginCurrentIdentity(input);
-      setPassword(''); setConfirmation(''); onClose();
-    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not sign in.'); }
+    const issue = nameIssue(name);
+    setFieldError(issue); setSaveError(null);
+    if (issue) { input.current?.focus(); return; }
+    try { await saveCurrentProfile(name.trim()); onClose(); }
+    catch { setSaveError('无法确认保存结果，请重试。'); }
   }
-  return <dialog ref={dialog} className="local-identity-dialog" aria-labelledby="local-identity-title"
+  return <dialog ref={dialog} className="local-identity-dialog" aria-labelledby="local-profile-title"
     onCancel={event => { event.preventDefault(); if (!busy) onClose(); }}>
-    <form onSubmit={event => void submit(event)}>
-      <header><h2 id="local-identity-title">{registering ? 'Create local account' : 'Sign in'}</h2>
+    <form noValidate onSubmit={event => void submit(event)}>
+      <header><h2 id="local-profile-title">Project Leader Name</h2>
         <button type="button" aria-label="Close account dialog" disabled={busy} onClick={onClose}>×</button></header>
-      <p>Accounts are stored on this computer. No cloud account is required.</p>
-      <label>Username<input autoFocus required minLength={3} maxLength={64} pattern="[A-Za-z0-9_.\-]+"
-        autoComplete="username" value={username} disabled={busy} onChange={event => setUsername(event.target.value)} /></label>
-      {registering && <label>Display name<input required maxLength={80} autoComplete="name" value={name}
-        disabled={busy} onChange={event => setName(event.target.value)} /></label>}
-      <label>Password<input type="password" required minLength={10} maxLength={128}
-        autoComplete={registering ? 'new-password' : 'current-password'} value={password} disabled={busy}
-        onChange={event => setPassword(event.target.value)} /></label>
-      {registering && <label>Confirm password<input type="password" required minLength={10} maxLength={128}
-        autoComplete="new-password" value={confirmation} disabled={busy} onChange={event => setConfirmation(event.target.value)} /></label>}
-      <label className="local-identity-remember"><input type="checkbox" checked={remember} disabled={busy}
-        onChange={event => setRemember(event.target.checked)} />Remember login on this computer (30 days)</label>
-      {error && <p role="alert">{error}</p>}
-      <footer><button type="button" disabled={busy} onClick={() => {
-        setRegistering(value => !value); setError(null); setPassword(''); setConfirmation('');
-      }}>{registering ? 'Already registered? Sign in' : 'Create an account'}</button>
-        <button type="submit" className="primary-action" disabled={busy}>{busy ? 'Please wait…' : registering ? 'Register and sign in' : 'Sign in'}</button></footer>
+      <label>Display Project Leader Name<input ref={input} autoFocus autoComplete="name" value={name} disabled={busy}
+        aria-invalid={Boolean(fieldError)} aria-describedby={fieldError ? 'local-profile-name-error local-profile-help' : 'local-profile-help'}
+        onChange={event => {
+          touched.current = true; setName(event.target.value); setSaveError(null);
+          if (fieldError) setFieldError(nameIssue(event.target.value));
+        }} /></label>
+      {fieldError && <p id="local-profile-name-error" role="alert">{fieldError}</p>}
+      <p id="local-profile-help">自动用于新项目和新报告，已有内容不会被覆盖。保存在本机，无需登录。</p>
+      {(saveError || profile.error) && <p role="alert">{saveError || profile.error}</p>}
+      <footer><button type="button" disabled={busy} onClick={onClose}>Cancel</button>
+        <button type="submit" className="primary-action" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button></footer>
     </form>
   </dialog>;
 }
