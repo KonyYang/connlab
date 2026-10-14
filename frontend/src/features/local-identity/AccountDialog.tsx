@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { loginCurrentIdentity, registerCurrentIdentity, useCurrentIdentity } from '../../currentUser';
 import './localIdentity.css';
 
-export function AccountDialog({ onClose, locked = false }: { onClose: () => void; locked?: boolean }) {
+export function AccountDialog({ onClose, locked = false, returnFocus }: {
+  onClose: () => void; locked?: boolean; returnFocus?: HTMLElement | null;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
   const identity = useCurrentIdentity();
   const [registering, setRegistering] = useState(false);
@@ -17,8 +19,8 @@ export function AccountDialog({ onClose, locked = false }: { onClose: () => void
     const node = dialog.current;
     const previous = document.activeElement as HTMLElement | null;
     node?.showModal();
-    return () => { node?.close(); previous?.focus(); };
-  }, []);
+    return () => { node?.close(); (returnFocus?.isConnected ? returnFocus : previous)?.focus(); };
+  }, [returnFocus]);
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy) return;

@@ -166,7 +166,8 @@ export function Sidebar({
           <span className="sidebar-account-chevron"><UiIcon name="chevron-down" /></span>
         </button>
       </div>
-      {accountDialogOpen && <AccountDialog locked={interactionLocked} onClose={() => setAccountDialogOpen(false)} />}
+      {accountDialogOpen && <AccountDialog locked={interactionLocked} returnFocus={accountTrigger.current}
+        onClose={() => setAccountDialogOpen(false)} />}
     </aside>
   );
 }

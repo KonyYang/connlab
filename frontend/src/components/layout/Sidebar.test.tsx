@@ -4,6 +4,24 @@ import { describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./Sidebar";
 
 describe("Sidebar interaction lock", () => {
+  it('returns focus to the stable account button after native Escape closes sign-in', async () => {
+    HTMLDialogElement.prototype.showModal = function () {
+      this.setAttribute('open', ''); this.querySelector<HTMLInputElement>('input')?.focus();
+    };
+    HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
+    const user = userEvent.setup();
+    render(<Sidebar activeRoute="tools" />);
+    const trigger = screen.getByRole('button', { name: 'Lab User' });
+    await user.click(trigger);
+    await user.click(screen.getByRole('menuitem', { name: 'Sign in / Register' }));
+    const dialog = screen.getByRole('dialog', { name: 'Sign in' });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    // Native dialogs emit cancel for Escape; jsdom does not implement that browser default.
+    await user.keyboard('{Escape}');
+    fireEvent(dialog, new Event('cancel', { cancelable: true }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
   it('exposes anonymous sign-in and dismisses the menu with Escape without navigation', async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();

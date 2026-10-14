@@ -6,4 +6,10 @@
 .local-identity-dialog label { display: flex; flex-direction: column; gap: 5px; margin: 12px 0; }
 .local-identity-dialog input:not([type=checkbox]) { width: 100%; min-width: 0; box-sizing: border-box; }
 .local-identity-dialog .local-identity-remember { flex-direction: row; align-items: center; font-size: .875rem; }
+.local-identity-dialog .local-identity-remember input[type=checkbox] { width: 16px; height: 16px; min-width: 16px; max-width: 16px; min-height: 16px; max-height: 16px; flex: 0 0 16px; margin: 0; padding: 0; accent-color: var(--color-primary); }
+.local-identity-dialog button:not(.primary-action) { border: 1px solid var(--color-action-secondary-border); border-radius: 10px; background: var(--color-action-secondary-bg); color: var(--color-action-secondary-text); padding: 8px 12px; font: inherit; cursor: pointer; }
+.local-identity-dialog button:not(.primary-action):hover:not(:disabled) { background: var(--color-action-secondary-hover); }
+.local-identity-dialog button:disabled { cursor: default; opacity: .6; }
+.local-identity-dialog button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.local-identity-dialog button[aria-label="Close account dialog"] { width: 32px; height: 32px; min-width: 32px; flex: 0 0 32px; padding: 0; display: grid; place-items: center; }
 .local-identity-dialog [role=alert], .sidebar-account-error { color: #a33b2b; }
