@@ -67,14 +67,14 @@
     ],
     "activation_head": "a1357cbcc7dd8013e9a80f79f087959ccdd86121",
     "started_at": "2026-10-14T10:12:27.939232Z",
-    "updated_at": "2026-10-14T12:00:20.146588Z",
+    "updated_at": "2026-10-14T12:13:12.954952Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_LOCAL_REGISTRATION_TEMPERATURE_SAMPLES_20261014",
-      "stage": "revision",
+      "stage": "login_free_profile_revision",
       "status": "running",
-      "summary": "User requests visible username/password rules, precise field validation replacing native generic bubbles, and Display Project Leader Name label on 2026-10-14",
+      "summary": "User explicitly approved login-free permanent computer Project Leader Name, direct avatar editing, defaults for new projects and reports only, no overwrite of existing/manual data and no mutation or deletion of original registered credentials; bounded IntakeInboxPage and its public tests additionally required by this approved default-fill behavior.",
       "requires_user": false
     },
     "report": null
