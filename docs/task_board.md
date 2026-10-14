@@ -33,6 +33,7 @@
       "docs/temperature_rise_tool.md",
       "frontend/src/api/localIdentity.test.ts",
       "frontend/src/api/localIdentity.ts",
+      "frontend/src/api/localIdentityProxy.test.ts",
       "frontend/src/api/temperature.ts",
       "frontend/src/components/layout/Sidebar.test.tsx",
       "frontend/src/components/layout/Sidebar.tsx",
@@ -56,6 +57,7 @@
       "frontend/src/pages/IntakeInboxPage.tsx",
       "frontend/src/pages/TemperatureRisePage.test.tsx",
       "frontend/src/pages/TemperatureRisePage.tsx",
+      "frontend/vite.config.ts",
       "tests/integration/test_local_identity_api.py",
       "tests/integration/test_tools_temperature_api.py",
       "tests/unit/test_intake_case_review_service.py",
@@ -69,14 +71,14 @@
     ],
     "activation_head": "a1357cbcc7dd8013e9a80f79f087959ccdd86121",
     "started_at": "2026-10-14T10:12:27.939232Z",
-    "updated_at": "2026-10-14T16:05:54.182439Z",
+    "updated_at": "2026-10-14T16:20:37.978964Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_LOCAL_REGISTRATION_TEMPERATURE_SAMPLES_20261014",
-      "stage": "revision",
+      "stage": "scope_manifest_correction",
       "status": "running",
-      "summary": "User reports profile save failure and requests concise nonduplicated dialog on 2026-10-15; reproduced live dev proxy 403 for matching browser origin, invalid body reaches400 only with upstream origin. Resume same in-scope task.",
+      "summary": "User explicitly requests fixing profile save error and simplifying duplicated unclear feedback on 2026-10-15; preserving real dev proxy Host and its public runtime regression are necessary to the requested save fix, without changing backend security or user data.",
       "requires_user": false
     },
     "report": null
