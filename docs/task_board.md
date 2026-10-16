@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_FRONTEND_DEFAULT_CONCURRENCY_FLAKES_20261017",
     "summary": "Diagnose and minimally fix default-concurrency frontend test instability in point setup and Fee preview cancellation",
@@ -26,9 +26,75 @@
     "risk_reasons": [],
     "activation_head": "d1aec4a4585e5ca923b1452823145099686d4bc2",
     "started_at": "2026-10-16T22:42:31.735548Z",
-    "updated_at": "2026-10-16T22:42:31.735548Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-16T23:00:23.852085Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_FRONTEND_DEFAULT_CONCURRENCY_FLAKES_20261017",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_FRONTEND_DEFAULT_CONCURRENCY_FLAKES_20261017",
+      "subject": "fe2706b606633bb524e71426acfd8a72de1208bb",
+      "summary": "Minimally repaired frontend test query cost and asynchronous Fee interaction/adjacent autosave readiness. Only two test files plus diagnosis evidence changed. Complete normal default-worker gate, typecheck and build passed; all original guards retained. No product/data/configuration change, Close, push or publication.",
+      "scope_ok": true,
+      "changed_paths": [
+        "docs/plans/FRONTEND_DEFAULT_CONCURRENCY_FLAKES_20261017.md",
+        "frontend/src/features/contact-measurement-plan/ContactMeasurementSetupWorkspace.test.tsx",
+        "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx"
+      ],
+      "validation": [
+        {
+          "name": "mechanism_feedback",
+          "status": "passed",
+          "result": "Large-DOM query A/B measured lower semantic-scope query cost; Fee ownership diagnostic original RED / awaited GREEN, 1.65s. Historical exact act-warning interleaving was not recaptured; limitations retained."
+        },
+        {
+          "name": "targeted_final",
+          "status": "passed",
+          "result": "Both complete affected files: 52 passed in 11.32s; new same-file autosave failure reproduced before controlled-clock correction. No test skip or assertion removal."
+        },
+        {
+          "name": "complete_default_frontend",
+          "status": "passed",
+          "result": "974 passed, 1 existing opt-in profiling skip; 106 files passed, 1 skipped; 42.95s; default worker settings, four known pool override variables explicitly unset, original timeouts. Exact inputs at 2aedce4a unchanged through subject."
+        },
+        {
+          "name": "typecheck_build",
+          "status": "passed",
+          "result": "Same supported runner sequentially executed tsc -b and Vite build after tests; 189 modules, 1.24s; exit 0, All requested checks passed."
+        },
+        {
+          "name": "scope_and_input_integrity",
+          "status": "passed",
+          "result": "Clean local master; activation ancestor correct; exact three non-board paths. Both final test hashes and complete log hash verified; no executable input changes after QA. Diagnostic internals absent from repository tests."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "evidence": "Primary agent diagnosis and minimal fixes: two test files, original behavior/assertions/guard/timeouts/default workers preserved; RED/GREEN and targeted evidence in plan."
+        },
+        "reviewer": {
+          "status": "passed",
+          "evidence": "Same agent separate focused Standards and Spec passes, 0 findings on each; no independent Reviewer claimed."
+        },
+        "qa": {
+          "status": "passed",
+          "evidence": "Same agent staged final QA on clean reviewed 2aedce4a; complete default-worker frontend tests, sequential typecheck/build; no independent QA claimed."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "subject": "fe2706b606633bb524e71426acfd8a72de1208bb",
+        "evidence": "Same-agent local integration check verified clean linear subject, activation ancestry, exact scope, logs and executable hashes; no remote operation."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_EXISTING_PROJECT_INTAKE_20261015",
