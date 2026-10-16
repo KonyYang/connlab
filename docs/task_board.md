@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_EXISTING_PROJECT_INTAKE_20261015",
     "summary": "Existing project in-place intake, workspace visibility and recoverable bulk registry management",
@@ -65,17 +65,120 @@
     ],
     "activation_head": "0d9b62a4a98fa999332d3ca19d49f8f8e8a8e8c9",
     "started_at": "2026-10-15T23:37:52.148882Z",
-    "updated_at": "2026-10-16T22:30:20.616089Z",
+    "updated_at": "2026-10-16T22:39:09.984124Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_EXISTING_PROJECT_INTAKE_20261015",
-      "stage": "scope_manifest_correction",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User directly approved on 2026-10-17 adding only frontend/src/pages/IntakeInboxPage.test.tsx for the reproduced test readiness race: wait for initial Connector sample before clearing/typing, retaining every assertion. Targeted 16 passed; independent Reviewer Standards 0 / Spec 0. No product behavior change; continue complete final frontend acceptance; no push/publication.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_EXISTING_PROJECT_INTAKE_20261015",
+      "subject": "7c9c1b22fcc6f00eae4b741b8987f3317e838aab",
+      "summary": "Existing-project intake final acceptance complete. Approved inbox test readiness corrected with all assertions retained. Full non-Office Python, complete frontend with maximum two workers, sequential typecheck/build, isolated UI and final independent integration passed. No business data changes, Close, push or publication.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/main.py",
+        "backend/api/routes_existing_projects.py",
+        "backend/api/routes_project_registry_management.py",
+        "backend/api/routes_workspace.py",
+        "backend/application/existing_project_service.py",
+        "backend/application/project_registry_management_service.py",
+        "backend/application/workspace_info_service.py",
+        "backend/infrastructure/files/existing_project_gateway.py",
+        "backend/infrastructure/storage/database.py",
+        "backend/infrastructure/storage/models_existing_project.py",
+        "backend/infrastructure/storage/repositories/existing_project.py",
+        "backend/infrastructure/storage/repositories/project_registry.py",
+        "backend/infrastructure/workspace_info.py",
+        "docs/plans/EXISTING_PROJECT_INTAKE_20261015.md",
+        "frontend/src/api/existingProjects.ts",
+        "frontend/src/api/projectRegistryManagement.ts",
+        "frontend/src/features/projects-registry/ExistingProjectFilesPanel.test.tsx",
+        "frontend/src/features/projects-registry/ExistingProjectFilesPanel.tsx",
+        "frontend/src/features/projects-registry/ExistingProjectsPanel.test.tsx",
+        "frontend/src/features/projects-registry/ExistingProjectsPanel.tsx",
+        "frontend/src/features/projects-registry/ProjectRegistryBatchPanel.test.tsx",
+        "frontend/src/features/projects-registry/ProjectRegistryBatchPanel.tsx",
+        "frontend/src/features/projects-registry/ProjectRegistryManagementPanel.tsx",
+        "frontend/src/features/settings/WorkspaceInfoPanel.test.tsx",
+        "frontend/src/features/settings/WorkspaceInfoPanel.tsx",
+        "frontend/src/pages/IntakeInboxPage.test.tsx",
+        "frontend/src/pages/ProjectListPage.tsx",
+        "frontend/src/pages/ProjectWorkbenchPage.tsx",
+        "frontend/src/pages/SettingsPage.tsx",
+        "frontend/src/project-dashboard.css",
+        "frontend/src/settings.css",
+        "tests/integration/test_existing_projects_api.py",
+        "tests/integration/test_project_registry_management_api.py",
+        "tests/integration/test_workspace_info_api.py",
+        "tests/unit/test_database.py",
+        "tests/unit/test_existing_project_gateway.py",
+        "tests/unit/test_existing_project_service.py",
+        "tests/unit/test_project_registry_management_service.py",
+        "tests/unit/test_workspace_info_service.py"
+      ],
+      "validation": [
+        {
+          "name": "complete_non_office_python",
+          "status": "passed",
+          "result": "3604 passed, 9 skipped, 19 Office deselected, 2 warnings; exit 0; 728.42s. Retained Temp export, all 1036 inputs unchanged; Python Git inputs unchanged through subject."
+        },
+        {
+          "name": "approved_inbox_test",
+          "status": "passed",
+          "result": "16 passed in 5.53s; every original assertion retained; independent focused review Standards 0 / Spec 0."
+        },
+        {
+          "name": "complete_frontend",
+          "status": "passed",
+          "result": "974 passed, 1 existing profiling skip; 106 files passed, 1 skipped; 127.60s; exact executable inputs at 986d6933 unchanged through subject. VITEST_MAX_FORKS/MAX_THREADS=2, MIN_FORKS/MIN_THREADS=1; definitions, timeouts and assertions unchanged. Default-worker failures and focused 52 passing tests retained in plan."
+        },
+        {
+          "name": "typecheck_build",
+          "status": "passed",
+          "result": "Same complete frontend runner executed tsc -b then Vite build: 189 modules, 1.32s; exit 0."
+        },
+        {
+          "name": "isolated_ui_and_source_protection",
+          "status": "passed",
+          "result": "Real final UI synchronization, failure/retry and stale response acceptance passed. Current 36 dist files identical to actual accepted build; all product inputs unchanged. Eight fixture inventory/hash checks unchanged; owned browser/backend stopped, 18765 no listener."
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed",
+          "evidence": "Retained independent Planner completion recorded in existing plan implementation checkpoint at 67be4caf; no repeated planning."
+        },
+        "developer": {
+          "status": "passed",
+          "evidence": "Retained implementation at 67be4caf and reviewed correction 0f92c00c; root applied only explicitly approved test readiness correction 9c30a6fb with existing RED and 16 passing targeted tests."
+        },
+        "reviewer": {
+          "status": "passed",
+          "evidence": "Retained original independent review Standards 0 / Spec 0; incremental independent /root/review_test_readiness reports Standards 0 / Spec 0 on the approved test."
+        },
+        "qa": {
+          "status": "passed",
+          "evidence": "Independent /root/qa_python full non-Office gate and /root/qa_frontend_ui full frontend with max two workers, sequential build, real isolated UI and postbuild integrity checks. Default-concurrency reliability is not claimed."
+        },
+        "integrator": {
+          "status": "passed",
+          "evidence": "Independent /root/integrator verified exact 7c9c1b22 subject, parent/tree/clean master, exact 39-path scope, logs and hashes, input-equivalent Python/UI acceptance and data protection. No integration blocker."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "subject": "7c9c1b22fcc6f00eae4b741b8987f3317e838aab",
+        "method": "Existing legacy local-master linear integration; independently verified; no remote action.",
+        "publication": "Forbidden by this task; no Close, push, release or deployment."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_LOCAL_REGISTRATION_TEMPERATURE_SAMPLES_20261014",
