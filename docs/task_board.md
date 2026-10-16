@@ -11,8 +11,25 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_FRONTEND_DEFAULT_CONCURRENCY_FLAKES_20261017",
+    "summary": "Diagnose and minimally fix default-concurrency frontend test instability in point setup and Fee preview cancellation",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "First reproduce and confirm causes of the two retained default-concurrency failures, then make the smallest evidence-backed changes preserving behavioral assertions, default concurrency and test timeouts. Run focused feedback, review and complete default frontend gate/build. Only isolated test data; no real business data changes, push or publication.",
+    "scope_paths": [
+      "frontend/src/features/contact-measurement-plan/ContactMeasurementSetupWorkspace.test.tsx",
+      "frontend/src/features/fee-evaluation/FeeEvaluationReviewExportPage.test.tsx",
+      "docs/plans/FRONTEND_DEFAULT_CONCURRENCY_FLAKES_20261017.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "d1aec4a4585e5ca923b1452823145099686d4bc2",
+    "started_at": "2026-10-16T22:42:31.735548Z",
+    "updated_at": "2026-10-16T22:42:31.735548Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_EXISTING_PROJECT_INTAKE_20261015",
     "tier": "high_risk",
