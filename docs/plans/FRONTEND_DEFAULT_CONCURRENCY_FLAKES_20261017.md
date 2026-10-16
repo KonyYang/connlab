@@ -3,6 +3,10 @@
 Task: `TASK_FRONTEND_DEFAULT_CONCURRENCY_FLAKES_20261017`. Tier: standard.
 Baseline: `d1aec4a4585e5ca923b1452823145099686d4bc2`.
 
+Disposition: local corrections are complete in two test files. The final complete default-worker
+frontend gate passed 974 tests / 1 existing skip, then TypeScript and Vite passed sequentially.
+No worker cap, timeout increase, assertion removal or product change. User Close remains pending.
+
 ## Scope and acceptance
 
 Diagnose and minimally repair the two default-worker failures retained by the previous task.
@@ -107,8 +111,8 @@ internal remains in repository tests. Fake timers have the existing unconditiona
 Focused same-agent review: **0 findings**. The two requested sites receive local test corrections;
 the additional same-file autosave correction addresses a failure actually repeated during this task.
 Source scope is still two tests plus evidence/board. Default worker configuration and default test
-timeouts are unchanged. The final complete QA pass remains to be executed on the clean reviewed
-commit; diagnostic passes are not substituted for that gate. Review is not claimed independent.
+timeouts are unchanged. The final complete QA pass below ran on the clean reviewed commit;
+diagnostic passes are not substituted for that gate. Review is not claimed independent.
 
 ## Diagnostic artifacts
 
@@ -128,3 +132,46 @@ The final review must confirm no warning suppression, timeout extension, concurr
 behavioral assertion. Complete default-worker frontend tests plus TypeScript/Vite must pass on the
 final reviewed source. Python and real business UI/data are outside this test-focused change unless
 the eventual exact diff establishes a dependency requiring them.
+
+## Final QA and local integration evidence
+
+The same agent performed the separate Developer, focused Reviewer and QA passes; no independent
+agents are claimed for this standard task. Exact reviewed implementation subject:
+`2aedce4a51e3883d4538ed7d6f135397d3d0c95e`. The worktree was clean at QA start and after completion.
+
+Command: `scripts/run_tests.ps1 -Suite Frontend`, on the original repository with dedicated Temp
+CONNLAB data/database/projects/templates/logs/local/admin/release paths, LTR path empty, local-only
+mode and writes disabled. `VITEST_MAX_FORKS`, `VITEST_MIN_FORKS`, `VITEST_MAX_THREADS` and
+`VITEST_MIN_THREADS` were explicitly unset. The original package, runner and Vite configuration were
+unchanged, and no timeout option or profiling flag was supplied.
+
+| Final affected validation | Result |
+| --- | --- |
+| Targeted final two files | 52 passed, 11.32s |
+| Complete default-worker Vitest | 974 passed / 1 skipped; 106 files passed / 1 skipped; 42.95s |
+| Corrected 256-category case under that full load | Passed, 1910ms (original pre-fix replay reached 4180ms; the historical run exceeded 5000ms) |
+| Complete Fee file under that full load | 50 passed; cancellation guard and controlled autosave error assertion passed |
+| TypeScript | `tsc -b` passed after Vitest |
+| Production build | Vite passed after TypeScript, 189 modules, 1.24s |
+| Complete runner | Exit 0, `All requested checks passed.` |
+
+The sole frontend skip is the existing opt-in Matrix profiling case, unchanged by this task.
+No Python or browser rerun is required by this exact diff: there is no backend, product source,
+configuration or integration-contract change. The full source diff from activation is exactly the
+two test files, this plan and the task board. All existing assertions remain, including role/name,
+256-category disablement, no file download/publication and an empty Fee act-warning collector.
+
+The final complete log is
+`C:\Users\White\AppData\Local\Temp\connlab-frontend-flakes-20261017\final-default-frontend-2aedce4a.log`,
+SHA256 `9A03534E256D8D787510F270E330BA6967593903149B3FE218A549051BD212CA`.
+`final-validation.json` in that same directory records the exact subject, changed paths, final test
+file hashes and results. The final executable inputs were verified unchanged before recording these
+facts; subsequent evidence/board-only commits do not alter the tested state. The temporary debug
+tag and diagnostic React-internal probes are absent from repository tests.
+
+The historical cancellation warning's precise interleaving remains unobserved in this run; the
+confirmed repair is the demonstrated asynchronous act-ownership defect, not a claim of reproducing
+that exact old warning. A single complete pass also cannot establish reliability on every possible
+host load. The default-worker gate now passes with mechanism-specific fixes and the original
+failure guards retained, without reducing concurrency or extending timeouts. No real business data,
+project material, push, release or publication was involved.
