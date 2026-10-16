@@ -2,11 +2,11 @@
 
 Task: `TASK_EXISTING_PROJECT_INTAKE_20261015`. Baseline: `0d9b62a4`.
 
-Latest disposition: direct authorization in this task allowed final QA to execute on `5f168b70`.
-Complete non-Office Python, typecheck/build and final isolated UI passed. Complete frontend tests
-failed on one unchanged baseline test with a reproduced initial-data timing race. Its one-file test
-correction awaits explicit high-risk scope authorization. See the final current-task QA section below;
-older approval-blocker checkpoints are historical. Not ready for Close. No push or publication.
+Latest disposition: the user approved the one-file test-readiness correction on 2026-10-17.
+Complete non-Office Python, complete frontend tests (maximum two workers), sequential typecheck/build
+and final isolated UI passed on equivalent final product inputs. The exact approved scope is now
+39 non-board paths. See the final approved acceptance section below; older blocked checkpoints are
+historical. User Close remains pending. No push or publication is authorized by this task.
 
 ## Outcome and boundaries
 
@@ -586,3 +586,79 @@ do not claim complete QA success, finish, or Close.
 - Cache-only diagnosis: `frontend/node_modules/.cache/connlab-intake-acceptance-probe/probe.log`;
   `original.test.tsx` and `ready.test.tsx` are clearly marked temporary diagnostic copies, not
   repository tests or replacements for the failed complete frontend result.
+
+## Final approved acceptance — 2026-10-17
+
+The user directly answered the scope question with approval to correct only
+`frontend/src/pages/IntakeInboxPage.test.tsx` and continue complete acceptance. Commit `9c30a6fb`
+extends the existing `waitFor` to require both an enabled input and its initial `Connector sample`
+value before clearing/typing. Every original assertion, mock, test and timeout remains intact; no
+product code changed. Developer feedback passed all 16 inbox tests in 5.53s. Independent focused
+Reviewer `/root/review_test_readiness` reported Standards 0 / Spec 0. The sole board writer accepted
+the exact committed 39-path scope; board checkpoint commit is `986d6933`.
+
+### Complete final gates and execution conditions
+
+| Gate | Actual result | Exact scope / condition |
+| --- | --- | --- |
+| Complete non-Office Python | 3604 passed / 9 skipped / 19 Office deselected; exit 0; 728.42s | Independent QA's retained Temp-source gate above. All 1036 backend/test/script/pyproject inputs still match. This test-only frontend correction does not change Python inputs. |
+| Complete frontend | 974 passed / 1 skipped; 106 files passed / 1 skipped; exit 0; 127.60s | Independent QA ran `scripts/run_tests.ps1 -Suite Frontend` on clean `986d69339fc21dd84093a7e586f8601b9eed7bd0`, with maximum two workers and minimum one. All 975 test definitions, default timeouts and assertions unchanged. |
+| TypeScript and production build | `tsc -b` and Vite build passed; 189 modules; 1.32s build | Executed sequentially by that same successful full frontend runner after Vitest. |
+| Final isolated browser acceptance | Passed | Prior final synchronization/failure/retry/stale-response UI evidence is retained. No product input changed; all 36 rebuilt dist files have identical SHA256 to the actually tested UI build. No browser or backend was restarted for a pure test change. |
+| Data and source protection | Passed | All eight disposable fixture files, manifests and their complete inventory remain unchanged. Of 328 frontend acceptance inputs, the approved test is the only changed input; every product input is identical. Port 18765 has no listener. |
+
+The successful frontend invocation used the same isolated CONNLAB data/database/projects/templates/
+logs/local/admin/release paths and disabled external LTR configuration documented above. Its only
+additional runtime settings were:
+
+```powershell
+$env:VITEST_MAX_FORKS = '2'
+$env:VITEST_MIN_FORKS = '1'
+$env:VITEST_MAX_THREADS = '2'
+$env:VITEST_MIN_THREADS = '1'
+.\scripts\run_tests.ps1 -Suite Frontend
+```
+
+These are supported environment controls in the installed Vitest 3.2.4 runtime; no package, script or
+configuration file was modified. The already-existing skipped frontend case requires explicit Matrix
+profiling. The nine Python skips and two warnings retain their previously documented explanations.
+
+### Failed run retained, not converted into a default-concurrency pass
+
+The first post-correction default-worker gate actually failed: **972 passed / 2 failed / 1 skipped**,
+47.52s. The corrected inbox file passed all 16 tests. Two unchanged baseline files failed instead:
+`ContactMeasurementSetupWorkspace.test.tsx` exceeded the default 5000ms timeout rendering 256
+categories, and `FeeEvaluationReviewExportPage.test.tsx` captured a React act warning in `afterEach`
+for preview cancellation. The latter's file-generation/cancellation business assertions did not fail.
+That runner stopped before typecheck/build, and its failure is retained in full.
+
+Independent QA then reran both complete affected files without changing tests or timeouts:
+**52 passed / 2 files**, 20.03s; the 256-category case completed in 698ms. The measured timing
+difference justified one complete run with bounded workers to limit host contention. That complete
+run passed as recorded above. This supports final acceptance under the documented worker limit;
+it does not prove default-concurrency reliability or claim a complete diagnosis/fix of unrelated
+timing-sensitive tests. No further source corrections or blanket timeout increases were made.
+
+### Exact final evidence and local handoff
+
+- Full frontend logs are in
+  `C:\Users\White\AppData\Local\Temp\connlab-intake-qa-frontend-40b02c31`:
+  `approved-final-frontend-986d6933.log` (failed default-worker gate),
+  `focused-new-failures-986d6933.log` (52 passing targeted tests), and
+  `bounded-workers-final-986d6933.log` (successful complete gate and build). The passing log SHA256 is
+  `AB0206398817F20823AA705E1BBDDFCDE99366B7492A96A401A54CFC83D974E3`.
+- Developer single-file GREEN is
+  `frontend/node_modules/.cache/connlab-intake-acceptance-probe/approved-targeted-green.log`.
+- Final post-build integrity evidence is
+  `C:\Users\White\AppData\Local\Temp\connlab-intake-qa-ui-40b02c31-20261016\output\playwright\source-integrity-bounded-final-986d6933.json`.
+  The earlier actual browser trace, screenshots and eight-file source baseline remain valid.
+- Independent Integrator preflight verified the approved single-file change, linear parents,
+  clean subject, exact 39-path scope, original and incremental review evidence, and unchanged Python
+  and product/UI inputs. Final exact-subject integration is checked before `finish`; the task-board
+  report records that checked subject. This is local legacy-master integration, with no remote action.
+
+The original acceptance remains file/provenance management without reconstructing Matrix, fee, LTR
+or report authority. The earlier optional no-Matrix fee lookup limitation and original eight EOF
+formatting warnings are unchanged; neither is hidden as a corrected behavior or a passed base-wide
+whitespace check. No real business database, operator project material, source manifest or external
+LTR was modified. User Close remains a separate pending decision, and this task prohibits publication.
