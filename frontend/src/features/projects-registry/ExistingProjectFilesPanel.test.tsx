@@ -53,4 +53,19 @@ describe("existing source file management",()=>{
     expect(screen.getByRole("heading",{name:"Files for NEW-2"})).toBeTruthy();
     expect(changed).not.toHaveBeenCalled();
   });
+  it("keeps file browsing and the typed path when folder status becomes stale, but disables relocation",async()=>{
+    vi.mocked(api.listExistingFiles).mockResolvedValue({relative_path:"",entries:[],diagnostics:[]});
+    const user=userEvent.setup();
+    const view=render(<ExistingProjectFilesPanel location={location} onClose={vi.fn()} onChanged={vi.fn()}/>);
+    await user.click(screen.getByText("Moved or replaced folder? Review its location"));
+    await user.type(screen.getByRole("textbox",{name:"New folder location"}),"C:/retain-this-input");
+    view.rerender(<ExistingProjectFilesPanel location={location} locationCurrent={false} onClose={vi.fn()} onChanged={vi.fn()}/>);
+    expect(screen.getByRole("button",{name:"Review relocation"})).toHaveProperty("disabled",true);
+    expect(screen.getByRole("textbox",{name:"New folder location"})).toHaveProperty("value","C:/retain-this-input");
+    expect(screen.getByRole("button",{name:"Close files"})).toHaveProperty("disabled",false);
+    expect(await screen.findByText("No visible files in this folder.")).toBeTruthy();
+    view.rerender(<ExistingProjectFilesPanel location={location} locationCurrent={true} onClose={vi.fn()} onChanged={vi.fn()}/>);
+    expect(screen.getByRole("button",{name:"Review relocation"})).toHaveProperty("disabled",false);
+    expect(screen.getByRole("textbox",{name:"New folder location"})).toHaveProperty("value","C:/retain-this-input");
+  });
 });

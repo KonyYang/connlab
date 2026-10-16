@@ -317,3 +317,66 @@ Earlier targeted affected-Python and FilesPanel commands were separately refused
 exactly once by root after renewed trusted human implementation/isolated-test evidence; those retries
 did execute successfully and are in the targeted ledger. They do not authorize bypassing the later
 independent full-QA refusals. No further rejected action will be retried in this turn.
+
+## Final QA resumed after specific user permission — 2026-10-16
+
+The user specifically approved complete Python/frontend tests, typecheck/build and a loopback-only
+acceptance service, including their temporary database/cache/log/build writes. Resumption started
+from clean `40b02c31213873d2bddc28c75dd7d1306c83a8fa`; the earlier refusal record above is historical.
+The new Python gate, frontend gate, browser and rebuilt isolated service were all approved and ran.
+No rejected action was rerouted to evade approval. No business database or external project was used.
+
+- Independent QA first full Python run: **3601 passed, 3 failed, 9 skipped, 19 deselected** in
+  642.51s. The three default-configuration tests were affected by outer CONNLAB environment overrides:
+  local-TOML LTR selection, default database path, and packaged fallback path defaults. The original
+  failure log is retained in `logs/pytest_last.log`. A controlled subprocess cleared the conflicting
+  environment, first asserted safe Temp defaults and disabled external LTR, then reran exactly those
+  three tests: **3 passed** in 0.35s. No assertions, tests or product code were changed for this issue;
+  the original full wrapper exit remains 1. QA is preparing an exact Git-tracked Temp source export
+  with naturally isolated defaults for a clean complete Python gate, rather than weakening tests.
+- Independent QA first frontend gate: **106 test files passed / 1 skipped; 968 tests passed /
+  1 skipped**. `tsc -b` and Vite production build passed (189 modules). The skipped 80-row / 8-group
+  profiling test requires `VITE_MATRIX_PROFILE`; it is not normal acceptance. This pass precedes the
+  UI synchronization correction below and is not final evidence for its changed frontend bytes.
+- Root real browser acceptance used only
+  `C:\Users\White\AppData\Local\Temp\connlab-intake-qa-ui-40b02c31-20261016`, served by its newly
+  verified `serve_qa.py` at `127.0.0.1:18765`. Every data/database/projects/templates/logs/local/admin/
+  release path is inside that root, with external LTR path empty, mode local_only and writes false.
+  The workspace API independently confirmed that actual SQLite connection before business actions.
+- Browser scenarios exercised: preview/cancel without intake; duplicate directory; double click
+  submits one request during a simulated 503; retained decision and refresh/retry; foreign ID/DL
+  conflict with explicit independent import; canonical conflict/link identities; download and nested
+  file browsing; invalid-location failure/retry, relocation cancel and confirm; batch preview/cancel,
+  trash, restore to history and history to active; no-Matrix workbench file browsing; workspace-info
+  failure/retry, real Temp path and unversioned schema; 514px layout without horizontal overflow.
+  Eight source files and their complete file inventory remain byte-identical; downloaded content
+  matches its source. Screenshots, download, integrity JSON and trace are under that Temp root.
+- Real UI found a state synchronization defect: after a successful registry move the expanded
+  existing-folder list and open file panel could retain the prior active state. Developer added two
+  regression tests with observed RED, implemented a shared registry notification and derived selected
+  file state, then obtained 25 targeted passing tests and typecheck. Independent incremental review
+  then found two P2 late-response cases (preview invalidation and relocation canceling a newer list
+  refresh). These are being corrected within the same approved frontend paths before final review,
+  final affected frontend gate and actual browser verification. No final acceptance is claimed yet.
+- The no-Matrix workbench also logs an existing optional `confirmed-fee/latest` 500 due to missing
+  confirmed Matrix; the fee route/service/automatic-build code is unchanged from `0d9b62a4`.
+  The workbench and linked files remain usable. This existing fee behavior is outside this increment,
+  not hidden as a successful HTTP response or fixed by expanding the approved backend scope.
+
+### Reviewed UI acceptance correction
+
+The final correction touches six already-authorized frontend files: `ProjectListPage.tsx`,
+`ExistingProjectsPanel.tsx` and its test, `ProjectRegistryManagementPanel.tsx`, and
+`ExistingProjectFilesPanel.tsx` and its test. Single and batch registry actions share a parent
+notification. The expanded folder list refreshes from the backend, selected files derive from their
+current location ID, and scan/input state remains mounted. Revision changes invalidate pending intake
+previews; a late relocation response schedules a new authoritative list read. Until fresh status is
+known, relocation and old approval are disabled while file browsing/closing and typed inputs remain
+available, with an explicit retry after read failure.
+
+Developer evidence: two initial UI regression tests failed before the first correction; three further
+deferred-response/freshness regressions failed before the final correction. Final affected feedback:
+**29 passed** in 10.46s, `tsc -b` exit 0 and working-tree `git diff --check` passed. Independent Reviewer
+rechecked the exact six-file increment and closed both P2 findings: Standards 0 / Spec 0 remaining.
+Complete frontend QA and real browser verification now run on these final bytes. Python code and
+tests remain identical to `40b02c31`, so the isolated source-copy Python gate retains that exact base.

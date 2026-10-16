@@ -85,10 +85,11 @@ export function ProjectListPage({
   const [managedRevision, setManagedRevision] = useState(0);
   const topBarActionsRoot = useTopBarActionsRoot();
   const refreshEpoch = useRef(0);
-  const management = useProjectRegistryManagement(area, () => {
+  function notifyRegistryChanged(): void {
     setManagedRevision((value) => value + 1);
     void refreshProjects();
-  });
+  }
+  const management = useProjectRegistryManagement(area, notifyRegistryChanged);
   const deferredSearch = useDeferredValue(search);
   const pageSize = 20;
 
@@ -232,7 +233,7 @@ export function ProjectListPage({
 
   return (
     <section className="project-dashboard">
-      <ExistingProjectsPanel onOpenProject={onOpenProject} onChanged={() => {setManagedRevision(value => value+1);void refreshProjects();}} />
+      <ExistingProjectsPanel revision={managedRevision} onOpenProject={onOpenProject} onChanged={notifyRegistryChanged} />
       <div className="project-register-panel">
         {topBarActionsRoot ? createPortal(registryControls, topBarActionsRoot) : registryControls}
         {management.lastChange && <div className="registry-result-banner" role="status">
@@ -241,7 +242,7 @@ export function ProjectListPage({
           <button className="row-action" type="button" onClick={management.clearLastChange}>Dismiss</button>
         </div>}
         {area === "active" && <ProjectRegistryBatchPanel location="active" rows={rows.map(row => ({project_id:row.project_id,
-          label:row.display_project_id,temporary:!row.has_registered_ltr}))} onChanged={() => {setManagedRevision(value => value+1);void refreshProjects();}} />}
+          label:row.display_project_id,temporary:!row.has_registered_ltr}))} onChanged={notifyRegistryChanged} />}
         {lastLtrApplyResult ? (
           <div className="registry-result-banner" role="status" aria-live="polite">
             <div className="registry-result-banner-text">
@@ -260,7 +261,7 @@ export function ProjectListPage({
           </div>
         ) : null}
         {area !== "active" ? <ProjectRegistryManagementPanel location={area} search={deferredSearch} revision={managedRevision}
-          onManage={(id, action) => void management.open(id, action)} onOpenProject={onOpenProject} /> : <>
+          onManage={(id, action) => void management.open(id, action)} onOpenProject={onOpenProject} onChanged={notifyRegistryChanged} /> : <>
         {loading && <LoadingState label="Loading project registry..." />}
         {error && <ErrorMessage message={error} />}
         {!loading && !error && lifecycleOverlayErrorCount > 0 ? (

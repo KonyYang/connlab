@@ -4,7 +4,7 @@ import { scanExistingProjects, previewExistingProject, registerExistingProject, 
 import { ExistingProjectFilesPanel } from "./ExistingProjectFilesPanel";
 import { ProjectManagementDialog } from "./ProjectRegistryManagementDialog";
 
-export function ExistingProjectsPanel({onOpenProject,onChanged}: {onOpenProject:(id:string)=>void;onChanged:()=>void}) {
+export function ExistingProjectsPanel({onOpenProject,onChanged,revision=0}: {onOpenProject:(id:string)=>void;onChanged:()=>void;revision?:number}) {
   const [open,setOpen]=useState(false);
   const [roots,setRoots]=useState(""); const [depth,setDepth]=useState(1);
   const [candidates,setCandidates]=useState<ExistingSource[]>([]); const [diagnostics,setDiagnostics]=useState<string[]>([]);
@@ -13,10 +13,24 @@ export function ExistingProjectsPanel({onOpenProject,onChanged}: {onOpenProject:
   const [action,setAction]=useState<ExistingDecision["action"]|"">("");const [number,setNumber]=useState("");
   const [target,setTarget]=useState("");const [ignore,setIgnore]=useState(false);
   const [busy,setBusy]=useState(false); const [error,setError]=useState<string|null>(null); const [stale,setStale]=useState(false);
-  const [message,setMessage]=useState("");const [files,setFiles]=useState<ExistingLocation|null>(null);
+  const [message,setMessage]=useState("");const [files,setFiles]=useState<string|null>(null);
+  const [locationsRefresh,setLocationsRefresh]=useState(0);
+  const [locationsSnapshot,setLocationsSnapshot]=useState<{revision:number;refresh:number}|null>(null);
+  const [locationsError,setLocationsError]=useState(false);
   const busyRef=useRef(false);const epoch=useRef(0);const locationsEpoch=useRef(0); const mounted=useRef(true);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;epoch.current+=1;};},[]);
-  useEffect(()=>{if(!open)return;let live=true;const request=++locationsEpoch.current;void listExistingLocations().then(x=>{if(live&&request===locationsEpoch.current)setLocations(x);}).catch(()=>{if(live&&request===locationsEpoch.current)setError("Could not load registered folders. Reopen this panel to retry.");});return()=>{live=false;};},[open]);
+  useEffect(()=>{
+    if(!open)return;
+    let live=true;const request=++locationsEpoch.current;
+    setLocationsSnapshot(null);setLocationsError(false);
+    void listExistingLocations().then(result=>{
+      if(live&&request===locationsEpoch.current){
+        setLocations(result);setLocationsSnapshot({revision,refresh:locationsRefresh});
+      }
+    }).catch(()=>{if(live&&request===locationsEpoch.current)setLocationsError(true);});
+    return()=>{live=false;};
+  },[open,revision,locationsRefresh]);
+  useEffect(()=>{epoch.current+=1;setStale(true);},[revision]);
 
   async function run(task:()=>Promise<void>) {
     if(busyRef.current)return;busyRef.current=true;setBusy(true);setError(null);
@@ -40,8 +54,10 @@ export function ExistingProjectsPanel({onOpenProject,onChanged}: {onOpenProject:
     }catch(e){if(mounted.current)setStale(true);throw e;}});
   }
   const visible=locations.filter(x=>[x.management_number,x.source_number,x.product_name,x.path].some(v=>v?.toLocaleLowerCase().includes(search.toLocaleLowerCase())));
+  const selectedFiles=locations.find(location=>location.location_id===files)??null;
+  const locationsCurrent=locationsSnapshot?.revision===revision&&locationsSnapshot.refresh===locationsRefresh;
   return <section className="existing-projects-panel" aria-label="Existing projects and folders">
-    <button type="button" className="ui-secondary-action" disabled={busy} aria-expanded={open} onClick={()=>{setOpen(x=>!x);setError(null);}}>Manage existing folders</button>
+    <button type="button" className="ui-secondary-action" disabled={busy} aria-expanded={open} onClick={()=>{setOpen(x=>!x);setLocationsSnapshot(null);setError(null);}}>Manage existing folders</button>
     {open&&<>
       <h2>Existing projects and folders</h2><p>Associate folders in place. No files are moved or rewritten, and no LTR or confirmed Matrix is created. Full database merging is not included.</p>
       <label>Scan roots<textarea aria-label="Scan roots" value={roots} disabled={busy} onChange={e=>setRoots(e.target.value)} placeholder="One absolute folder path per line" rows={3}/></label>
@@ -74,9 +90,10 @@ export function ExistingProjectsPanel({onOpenProject,onChanged}: {onOpenProject:
       </ProjectManagementDialog>}
       <h3>Registered folders</h3><label>Search managed folders<input aria-label="Search managed folders" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Management number, source DL, folder or sample"/></label>
       <p>Missing confirmation data does not prevent browsing these files.</p>
+      {!locationsCurrent&&(locationsError?<p role="alert">Could not refresh registered folder status. Existing files remain readable; relocation is unavailable. <button type="button" onClick={()=>setLocationsRefresh(value=>value+1)}>Retry folder status</button></p>:<p role="status">Checking registered folder status. Files remain readable; relocation is unavailable until status is current.</p>)}
       {!visible.length?<p>No registered folders match.</p>:<ul className="existing-location-list">{visible.map(item=><li key={item.location_id}><strong>{item.management_number}</strong> · {item.product_name} · {item.registry_state}<small>Source DL: {item.source_number||"Not recorded"} · {item.path}</small>
-        <button type="button" onClick={()=>onOpenProject(item.project_id)}>Open project</button><button type="button" onClick={()=>setFiles(item)}>Browse files / review location</button></li>)}</ul>}
-      {files&&<ExistingProjectFilesPanel location={files} onClose={()=>setFiles(null)} onChanged={updated=>{locationsEpoch.current+=1;setFiles(updated);setLocations(xs=>xs.map(x=>x.location_id===updated.location_id?updated:x));}}/>}
+        <button type="button" onClick={()=>onOpenProject(item.project_id)}>Open project</button><button type="button" onClick={()=>setFiles(item.location_id)}>Browse files / review location</button></li>)}</ul>}
+      {selectedFiles&&<ExistingProjectFilesPanel location={selectedFiles} locationCurrent={locationsCurrent} onClose={()=>setFiles(null)} onChanged={updated=>{locationsEpoch.current+=1;setLocationsSnapshot(null);setLocations(xs=>xs.map(x=>x.location_id===updated.location_id?{...updated,registry_state:x.registry_state}:x));setLocationsRefresh(value=>value+1);}}/>}
     </>}
   </section>;
 }
