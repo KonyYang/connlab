@@ -64,14 +64,14 @@
     ],
     "activation_head": "0d9b62a4a98fa999332d3ca19d49f8f8e8a8e8c9",
     "started_at": "2026-10-15T23:37:52.148882Z",
-    "updated_at": "2026-10-16T04:58:14.944629Z",
+    "updated_at": "2026-10-16T14:41:30.571073Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_EXISTING_PROJECT_INTAKE_20261015",
       "stage": "qa",
       "status": "blocked",
-      "summary": "Reviewed UI correction committed at 0f92c00c; 29 targeted tests and tsc passed, independent Reviewer Standards 0/Spec 0. Original full Python: 3601 passed/3 environment-conflict failures/9 skipped/19 deselected, exact 3 clean-environment rechecks passed; original frontend 968 passed/1 skipped plus build precedes correction. Final Temp-source Python gate and final original-repo Frontend gate were each denied before any process; both stopped with zero retries. Full successful Python and final frontend/build/UI acceptance remain incomplete. Real first-build UI evidence and 8 unchanged source files retained, owned browser/service stopped. Exact commands/reasons/isolation are in plan. No finish/Close/push/release or business-data writes.",
+      "summary": "2026-10-16 14:36 UTC: original human approval and explicit forward-to-this-task request received. Clean b97886ae and same task verified; no other work changed. Existing Temp archive SHA and 1036 Python acceptance input hashes match, zero source differences. QA resubmitted each previously unexecuted final Python and Frontend command once; automatic review again rejected both before process creation as untrusted forwarded approval. Both stopped, no alternate tool/path/command; zero new tests/builds, final UI not started. Earlier 29 targeted/tsc/review pass, Python 3601 pass/3 env failures then 3 recheck pass/9 skip/19 Office deselect, and pre-correction frontend 968 pass/1 skip remain unchanged. Exact commands and latest refusal reasons in plan. No finish/Close/push or business-data mutation.",
       "requires_user": true
     },
     "report": null

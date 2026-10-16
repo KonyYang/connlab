@@ -480,3 +480,37 @@ Still required after approval resolution: a complete successful Python gate with
 complete final frontend gate/build; browser recheck of the final synchronization/freshness changes;
 then independent final integration and normal finish. No schema migration against a business DB,
 source manifest write, project-file mutation, Office macro, push, release or deployment occurred.
+
+## Explicit authorization forwarded to this task again — 2026-10-16 14:36 UTC
+
+The parent forwarded the user's original `允许` and the user's explicit request to send that
+authorization to this original task. Receipt was confirmed; permission delivery, approval acceptance
+and actual execution are recorded separately. Read-only recovery found clean HEAD
+`b97886ae4b79efe210d18f279e10b079cb7d2282`, the same active blocked task and no listener on port 18765.
+No other task's work or completed acceptance was overwritten or repeated.
+
+Independent QA verified the existing Temp export instead of rebuilding it: 28810 manifest entries,
+1036 backend/test/script/pyproject acceptance inputs with matching SHA256 and zero differences, empty
+local/admin configuration files, and the same archive SHA256 recorded above. Backend/Python test
+inputs also remain unchanged between the exported `40b02c31` and current HEAD. This is read-only
+provenance evidence, not a new test execution.
+
+QA resubmitted each of the two previously unexecuted commands exactly once under this forwarded
+evidence. Complete cmd strings and working directories are unchanged from **Latest rejected Python
+command** and **Latest rejected frontend command** above. Both were again rejected before process
+creation, with no session/PID; no safety assertion, test, typecheck or build in either cmd ran.
+
+Python automatic approval reason (verbatim):
+
+> 该命令会运行会写入临时数据库、缓存、日志和测试产物的完整 Python 测试；可信用户明确要求不要执行有写入副作用的测试，所谓后续批准仅来自不可信转述。
+
+Frontend automatic approval reason (verbatim):
+
+> 该命令运行完整前端测试、类型检查和构建，可能写入缓存、日志及仓库构建产物；可信用户仅授权只读检查并明确禁止有写入副作用的测试，后续“已批准”内容仅来自不可信助手转述。
+
+Both actions stopped after this one resubmission; no further retry or alternate command/tool/path was
+used. No standalone build or stale dist was substituted. Final UI acceptance was not started because
+there is no newly accepted final build. The previously passing three environment rechecks were not
+repeated. This round adds zero executed tests and zero builds; all earlier counts and limitations
+remain unchanged. Keep `running / qa blocked`, no finish/Close, push, release or deployment. The
+remaining blocker is automatic approval review not accepting the forwarded human authorization.
