@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ContactMeasurementSetupWorkspace } from "./ContactMeasurementSetupWorkspace";
 
@@ -34,7 +34,8 @@ describe("ContactMeasurementSetupWorkspace", () => {
 
     render(<ContactMeasurementSetupWorkspace projectId="P1" onBackToMatrix={() => {}} />);
 
-    expect(screen.getByRole("button", { name: "Add row" }).hasAttribute("disabled")).toBe(true);
+    const addRowHeader = screen.getByRole("columnheader", { name: "Add row" });
+    expect(within(addRowHeader).getByRole("button", { name: "Add row" }).hasAttribute("disabled")).toBe(true);
   });
 });
 

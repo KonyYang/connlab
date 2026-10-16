@@ -1001,7 +1001,10 @@ describe("FeeEvaluationReviewExportPage", () => {
     apiMocks.fetchConfirmedMatrixFeeDraft.mockResolvedValue(createDraftWithEditableSingleLine());
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    fireEvent.click(await screen.findByRole("button", { name: FEE_FORM_ACTION_NAME }));
+    const feeFormButton = await screen.findByRole("button", { name: FEE_FORM_ACTION_NAME });
+    await act(async () => {
+      fireEvent.click(feeFormButton);
+    });
     const dialog = await screen.findByRole("alertdialog", {
       name: "Download Fee Form draft preview?",
     });
@@ -1582,12 +1585,17 @@ describe("FeeEvaluationReviewExportPage", () => {
 
     render(<FeeEvaluationReviewExportPage projectId="P1" onBackToWorkbench={vi.fn()} />);
 
-    fireEvent.change(await screen.findByLabelText("Unit Price for Visual Examination"), {
+    await waitForFeeEvaluationPageReady();
+    vi.useFakeTimers();
+    fireEvent.change(screen.getByLabelText("Unit Price for Visual Examination"), {
       target: { value: "12" },
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800);
     });
 
     expect(
-      await screen.findAllByText(
+      screen.getAllByText(
         "Save returned no pricing draft id. Retry before updating."
       )
     ).toHaveLength(1);
