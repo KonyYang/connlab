@@ -2,6 +2,9 @@
 
 Task: `TASK_EXISTING_PROJECT_INTAKE_20261015`. Baseline: `0d9b62a4`.
 
+Latest disposition: implementation and reviewed UI correction are local at `0f92c00c`; final complete
+QA remains blocked by automatic approval review. See the final disposition below. Not ready for Close.
+
 ## Outcome and boundaries
 
 Existing manual and foreign-computer project folders can enter ConnLab without rebuilding them.
@@ -380,3 +383,100 @@ deferred-response/freshness regressions failed before the final correction. Fina
 rechecked the exact six-file increment and closed both P2 findings: Standards 0 / Spec 0 remaining.
 Complete frontend QA and real browser verification now run on these final bytes. Python code and
 tests remain identical to `40b02c31`, so the isolated source-copy Python gate retains that exact base.
+
+## Final disposition after resumed QA — blocked, do not finish or close
+
+Local correction commit: `0f92c00c538f5fe2328584d6a7e86e98d78f67e2`, parent `40b02c31`.
+Independent Reviewer reports Standards 0 / Spec 0 on the final six-file correction. Developer's
+final 29 targeted tests, typecheck and diff check passed. No backend/Python bytes changed in this
+correction. The first full Python result remains 3601 passed / 3 environment-conflict failures /
+9 skipped / 19 Office deselected; the three precise environment rechecks passed. The first frontend
+968 passed / 1 skipped plus build result predates the correction. These overlapping results do not
+establish a final complete passing gate.
+
+The complete tracked-source Temp export finished: 28810 files from exact commit
+`40b02c31213873d2bddc28c75dd7d1306c83a8fa`. Root:
+`C:\Users\White\AppData\Local\Temp\connlab-intake-qa-source-40b02c31`; source subdirectory `source`;
+per-file inventory `source-hashes.json`; archive SHA256
+`BC9C74DC92D0C5ADA4A2415B48B8AB7CBB87ADFA7A72BAB33B2E5C122E63DF82`.
+No actual business database or operator local/admin TOML is tracked or copied. This allows default
+path tests to use natural Temp defaults instead of conflicting environment overrides. However, its
+complete Python command below was rejected before any process, including its safety assertions,
+started. Do not claim those assertions or that gate executed.
+
+The subsequent final frontend gate on the original repository was also rejected before execution.
+Both new refused actions were stopped with zero retries after refusal. No alternative agent, tool,
+command or path was used to bypass either refusal. Specific approval had permitted the earlier
+original-repository gates/service, but automatic review again judged later authorization to be an
+untrusted assistant relay of the original read-only instruction. This is a platform approval blocker,
+not a new product-test failure. The parent receives the exact actions/reasons for resolution.
+
+### Latest rejected Python command (complete original cmd)
+
+Working directory:
+`C:\Users\White\AppData\Local\Temp\connlab-intake-qa-source-40b02c31\source`.
+
+```powershell
+Get-ChildItem Env:CONNLAB_* | ForEach-Object { Remove-Item -LiteralPath ('Env:' + $_.Name) }
+& 'C:\PythonEnvs\connlab\.venv\Scripts\python.exe' -c 'from pathlib import Path; import backend; from backend.shared.config import Settings; root=Path.cwd().resolve(); assert str(root).startswith("C:\\Users\\White\\AppData\\Local\\Temp\\connlab-intake-qa-source-40b02c31"); assert Path(backend.__file__).resolve().is_relative_to(root); s=Settings.load(); assert all(p.resolve().is_relative_to(root) for p in (s.database_path,s.data_dir,s.projects_dir,s.templates_dir)); assert s.ltr_workbook.path is None and s.ltr_workbook.mode == "local_only" and not s.ltr_workbook.write_enabled; print("QA source:",root); print("Backend:",backend.__file__); print("Database:",s.database_path); print("Defaults: no LTR source or writer; all mutable roots inside isolated source")'
+if ($LASTEXITCODE -ne 0) { throw 'Isolated snapshot provenance or safety assertion failed' }
+.\scripts\run_tests.ps1 -Suite Python -PythonExe 'C:\PythonEnvs\connlab\.venv\Scripts\python.exe'
+```
+
+Approval reason (verbatim):
+
+> 该命令会运行可能写入数据库、配置和测试产物的完整测试，虽限定在临时源码副本且不触及业务库，但可信用户明确要求不要执行有写入副作用的测试；后续授权仅来自不可信助手转述。
+
+### Latest rejected frontend command (complete original cmd)
+
+Working directory: `D:\PythonProject\connlab`. No part of this command executed, including its Git reads.
+
+```powershell
+git rev-parse HEAD
+git status --short
+$qaTestRoot = 'C:\Users\White\AppData\Local\Temp\connlab-intake-qa-frontend-40b02c31'
+$env:CONNLAB_DATA_DIR = Join-Path $qaTestRoot 'data'
+$env:CONNLAB_DATABASE_PATH = Join-Path $qaTestRoot 'data\qa.sqlite3'
+$env:CONNLAB_PROJECTS_DIR = Join-Path $qaTestRoot 'projects'
+$env:CONNLAB_TEMPLATES_DIR = Join-Path $qaTestRoot 'templates'
+$env:CONNLAB_LOGS_DIR = Join-Path $qaTestRoot 'logs'
+$env:CONNLAB_LOCAL_CONFIG_PATH = Join-Path $qaTestRoot 'local.toml'
+$env:CONNLAB_ADMIN_CONFIG_PATH = Join-Path $qaTestRoot 'admin.toml'
+$env:CONNLAB_RELEASE_MANIFEST_PATH = Join-Path $qaTestRoot 'release_manifest.json'
+$env:CONNLAB_LTR_WORKBOOK_PATH = ''
+$env:CONNLAB_LTR_WORKBOOK_WRITE_ENABLED = 'false'
+$env:CONNLAB_LTR_WORKBOOK_MODE = 'local_only'
+.\scripts\run_tests.ps1 -Suite Frontend
+```
+
+Approval reason (verbatim):
+
+> 该命令会运行可能写入缓存、构建产物和日志的完整前端测试门禁；可信用户明确要求不要执行有写入副作用的测试，所谓用户批准仅出现在不可信助手说明中，未见用户原文授权。
+
+### Browser evidence and remaining acceptance
+
+The real browser used the first passing build from `40b02c31`. Its successful scenarios listed above
+are valid for that build; the final registry-state correction at `0f92c00c` has targeted regression
+evidence but no final browser/build acceptance. Do not serve the old dist as proof of the correction.
+Root stopped trace recording, closed its named browser and stopped its owned backend session. Port
+18765 is no longer listening. No test/acceptance server is left running by this task.
+
+Evidence root:
+`C:\Users\White\AppData\Local\Temp\connlab-intake-qa-ui-40b02c31-20261016`.
+
+- `output/playwright/01-failed-intake-retained.png`: failure/double-click/retained decision.
+- `output/playwright/02-source-conflict.png`: real source ID/DL conflict and separate local identity.
+- `output/playwright/03-batch-retention-review.png`: retained-data batch preview.
+- `output/playwright/04-no-matrix-files.png`: workbench file browsing without confirmed Matrix.
+- `output/playwright/05-workspace-details.png` and `06-workspace-narrow.png`: actual Temp connection
+  and 514px layout; both visually inspected, with no document horizontal overflow.
+- `output/playwright/download-result.txt` and `source-integrity.json`: byte-identical download,
+  complete eight-file source inventory unchanged; before hashes in `source-hashes-before.json`.
+- `.playwright-cli/traces/trace-1792125518909.trace`, matching `.network` and `resources`: stopped
+  trace for the real operations. Mocked 503s and deliberately invalid relocation produce expected
+  error responses. The earlier documented existing optional fee lookup 500 is also visible.
+
+Still required after approval resolution: a complete successful Python gate with correct isolation;
+complete final frontend gate/build; browser recheck of the final synchronization/freshness changes;
+then independent final integration and normal finish. No schema migration against a business DB,
+source manifest write, project-file mutation, Office macro, push, release or deployment occurred.

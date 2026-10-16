@@ -64,15 +64,15 @@
     ],
     "activation_head": "0d9b62a4a98fa999332d3ca19d49f8f8e8a8e8c9",
     "started_at": "2026-10-15T23:37:52.148882Z",
-    "updated_at": "2026-10-16T04:54:59.718483Z",
+    "updated_at": "2026-10-16T04:58:14.944629Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_EXISTING_PROJECT_INTAKE_20261015",
       "stage": "qa",
-      "status": "running",
-      "summary": "Specific user permission resolved all approval blockers. First frontend gate 968 passed/1 skipped plus tsc/Vite passed; first Python gate 3601 passed/3 environment-default conflicts/9 skipped/19 deselected, all 3 precise rechecks passed; identical tracked Temp source full gate being prepared. Real UI covered intake, source conflicts, files/download, relocation, batch trash/history/restore, no-Matrix files and workspace details; 8 source files unchanged. Same-scope six-file UI state correction frozen: 29 targeted tests/tsc passed; independent Reviewer Standards 0/Spec 0 after closing both P2 races. Final frontend gate and browser recheck pending. No approval or hung-process blocker, completion/Close/push or business-data mutation.",
-      "requires_user": false
+      "status": "blocked",
+      "summary": "Reviewed UI correction committed at 0f92c00c; 29 targeted tests and tsc passed, independent Reviewer Standards 0/Spec 0. Original full Python: 3601 passed/3 environment-conflict failures/9 skipped/19 deselected, exact 3 clean-environment rechecks passed; original frontend 968 passed/1 skipped plus build precedes correction. Final Temp-source Python gate and final original-repo Frontend gate were each denied before any process; both stopped with zero retries. Full successful Python and final frontend/build/UI acceptance remain incomplete. Real first-build UI evidence and 8 unchanged source files retained, owned browser/service stopped. Exact commands/reasons/isolation are in plan. No finish/Close/push/release or business-data writes.",
+      "requires_user": true
     },
     "report": null
   },
