@@ -96,3 +96,224 @@ unknown older executables. Directory intake does not reconstruct lost confirmed 
   Product and test bytes are frozen. Root reran the final identity service (10 passed, 1.68s) and
   intake panel (5 passed, 3.36s). Independent final review and complete QA/browser checks remain
   pending; these targeted checks are not substitutes for the complete final-state validation.
+
+## Final QA checkpoint — blocked, not accepted
+
+Implementation commit: `67be4caf173f17bca8d3cffee8c8be32d14b5c9d` (local master only).
+Independent Planner and Developer completed. Independent Reviewer reports zero remaining Standards
+and Spec findings. Independent Integrator verified the activation parent, tree and exact 38-path
+scope plus the task board. No push, release, deployment or user business-data mutation occurred.
+
+Independent QA could not execute the final matrix. The full non-Office Python gate was rejected
+before execution; the one retry after current implementation authorization and full temporary-storage
+isolation was also rejected. That action is stopped. The frontend gate had an interrupted attempt
+with no confirmed execution; after verifying no remaining processes, the next attempt was explicitly
+rejected and not retried. The isolated UI backend start was also rejected before execution and not
+retried. No UI confirmation/cancellation/double-click/failure-retry/restore acceptance was performed.
+Existing frontend/dist predates this implementation and must not be used as evidence for the new UI.
+QA confirmed no node/python process and no listener on its selected 18765 port. Its earlier sandbox
+Temp artifacts became inaccessible after interruption; no final source-hash verification is claimed.
+
+The automatic approval reviewer cited superseded read-only constraints and did not recognize the
+later delegated implementation/testing authorization as direct human authority. Further execution
+requires resolving that approval boundary. Do not change tools, people or commands to bypass it;
+do not mark the task ready_for_close or close it as completed.
+
+### Remaining validation actions (not executed)
+
+All data/database/projects/templates/logs/local/admin/release paths must point to dedicated Temp
+locations. External LTR writing stays disabled. No real Project Model folder or business database is
+an execution target. The retained test runners are:
+
+```powershell
+.\scripts\run_tests.ps1 -Suite Python -PythonExe 'C:\PythonEnvs\connlab\.venv\Scripts\python.exe'
+.\scripts\run_tests.ps1 -Suite Frontend
+```
+
+For the frontend action the QA process set CONNLAB_DATA_DIR, CONNLAB_DATABASE_PATH,
+CONNLAB_PROJECTS_DIR, CONNLAB_TEMPLATES_DIR, CONNLAB_LOGS_DIR, CONNLAB_LOCAL_CONFIG_PATH,
+CONNLAB_ADMIN_CONFIG_PATH and CONNLAB_RELEASE_MANIFEST_PATH under
+`C:\Users\White\AppData\Local\Temp\connlab-intake-qa-frontend-67be4caf`, with database
+`data\qa.sqlite3`; CONNLAB_LTR_WORKBOOK_PATH was empty, WRITE_ENABLED false and MODE local_only.
+The rejected Python retry used equivalent isolation under `connlab-intake-qa-tests-67be4caf`.
+The rejected UI action was fixed Python running a QA-owned temporary `serve_qa.py`, intended to
+serve only isolated storage at localhost:18765 and the newly built frontend. That temporary launcher
+must be reconstructed/verified if its sandbox location is unavailable; no running service is assumed.
+
+After permission is resolved, run each complete gate once on the unchanged code, then actual isolated
+UI acceptance and source-file hash comparison. The already-passing targeted results above are not
+independent full QA. One actual symlink-creation test was skipped for host privilege; simulated
+Windows reparse-point rejection was checked. No schema migration against a real business database
+has been executed.
+
+### Exact implementation paths
+
+The implementation commit changes these 38 authorized paths, plus `docs/task_board.md`:
+
+- `docs/plans/EXISTING_PROJECT_INTAKE_20261015.md`
+- `backend/application/existing_project_service.py`
+- `backend/application/workspace_info_service.py`
+- `backend/application/project_registry_management_service.py`
+- `backend/infrastructure/files/existing_project_gateway.py`
+- `backend/infrastructure/storage/models_existing_project.py`
+- `backend/infrastructure/storage/repositories/existing_project.py`
+- `backend/infrastructure/storage/repositories/project_registry.py`
+- `backend/infrastructure/storage/database.py`
+- `backend/infrastructure/workspace_info.py`
+- `backend/api/routes_existing_projects.py`
+- `backend/api/routes_workspace.py`
+- `backend/api/routes_project_registry_management.py`
+- `backend/api/main.py`
+- `frontend/src/api/existingProjects.ts`
+- `frontend/src/api/projectRegistryManagement.ts`
+- `frontend/src/features/projects-registry/ExistingProjectsPanel.tsx`
+- `frontend/src/features/projects-registry/ExistingProjectsPanel.test.tsx`
+- `frontend/src/features/projects-registry/ExistingProjectFilesPanel.tsx`
+- `frontend/src/features/projects-registry/ExistingProjectFilesPanel.test.tsx`
+- `frontend/src/features/projects-registry/ProjectRegistryBatchPanel.tsx`
+- `frontend/src/features/projects-registry/ProjectRegistryBatchPanel.test.tsx`
+- `frontend/src/features/projects-registry/ProjectRegistryManagementPanel.tsx`
+- `frontend/src/features/settings/WorkspaceInfoPanel.tsx`
+- `frontend/src/features/settings/WorkspaceInfoPanel.test.tsx`
+- `frontend/src/pages/ProjectListPage.tsx`
+- `frontend/src/pages/SettingsPage.tsx`
+- `frontend/src/pages/ProjectWorkbenchPage.tsx`
+- `frontend/src/project-dashboard.css`
+- `frontend/src/settings.css`
+- `tests/unit/test_existing_project_service.py`
+- `tests/unit/test_existing_project_gateway.py`
+- `tests/unit/test_workspace_info_service.py`
+- `tests/unit/test_project_registry_management_service.py`
+- `tests/integration/test_existing_projects_api.py`
+- `tests/integration/test_project_registry_management_api.py`
+- `tests/integration/test_workspace_info_api.py`
+- `tests/unit/test_database.py`
+
+## Operator handoff — current implemented entry points
+
+These are source-code entry points; final production build and real UI acceptance are still blocked.
+
+1. Projects (`/projects`) → **Manage existing folders**. Enter one absolute scan root per line,
+   select depth 0–3, then **Scan folders**. Each candidate has **Review** / **Skip**. Review requires
+   an explicit register, independent import or link decision, then **Confirm association**. A local
+   management number is separate from the source DL and does not register an LTR. Cancel writes no
+   association. Registered folders can be searched by management number, source DL, folder or sample.
+2. Registered folder → **Open project** or **Browse files / review location**. The workbench also
+   shows **Linked existing folders** without requiring Matrix. Folder rows navigate; file links
+   download a copy. **Moved or replaced folder? Review its location** → **Review relocation** →
+   **Confirm relocation** only changes the reviewed local association, never moves source files.
+3. Projects / retained History / Recycle Bin → **Batch record management**. Select at most 100
+   records; active records offer **Show records without a registered LTR only**. Supply a removal
+   reason or choose a restore destination, **Preview selected records**, then **Confirm batch move**.
+   Source files, confirmed data, outputs, LTR and folder associations are retained. This is reversible
+   registry management, not physical deletion; conflicts or in-progress generation block the batch.
+4. Settings (`/settings`) → **Current data workspace** → **Show workspace details**. The read is
+   on demand and shows the actual connected database, data/config paths, runtime and version.
+   SQLite user_version 0 is explicitly unversioned; this does not switch or merge databases.
+
+### Accurate targeted validation ledger
+
+Runs overlap; their counts must not be added into a purported single passing matrix. The last two
+canonical-identity runs below supersede earlier source-identity/intake results for those files.
+
+| Execution | Observed result | Scope / limit |
+| --- | --- | --- |
+| Root affected Python, eight files | 45 passed, 1 skipped (5.61s) | Source-alias correction overlapped collection; affected service/API were rerun below. Real symlink creation skipped for host privilege. |
+| Root source-alias service + HTTP | 12 passed (3.18s) | Corrected hidden/source alias conflict behavior. |
+| Root final download HTTP/ASGI file | 4 passed (2.21s) | Includes response-start disconnect and deterministic file-handle release. |
+| Root final canonical-identity service | 10 passed (1.68s) | Final service bytes at implementation commit. |
+| Root final ExistingProjectsPanel | 5 passed (3.36s) | Final panel bytes, identity display and stale-response behavior. |
+| Root FilesPanel | 4 passed (2.05s) | Location/session isolation and retry behavior. |
+| Root other affected frontend, seven files | 103 passed (8.11s) | Targeted entry/workflow regression run; overlaps panel runs. |
+| Developer TypeScript tsc -b | Passed before final UI edits | Not a final-state typecheck/build result. |
+| Independent Reviewer | Standards 0, Spec 0 remaining | Exact implementation review, not a test execution. |
+| Independent Integrator | Parent/tree/scope passed | Local integration only; complete QA remains blocked. |
+
+The full Python gate, full frontend gate, final typecheck/build and actual UI acceptance have no
+passing result for this implementation. No test process or QA server is left running. Historical
+progress paragraphs above record intermediate states; this final checkpoint governs the handoff.
+
+### Rejected command record — stop, no more retries in this turn
+
+All refusals below happened before confirmed process creation: no session/PID or test result.
+The automatic reviewer continued to treat the original read-only instruction as current, and treated
+later delegated implementation/test authority as assistant paraphrase rather than direct trusted user
+approval. This is an approval-boundary blocker, not a reported product/test failure. The parent will
+obtain specific confirmation; changing agents/tools/commands to bypass these refusals is prohibited.
+
+**1. Full Python gate.** First command (rejected):
+
+```powershell
+.\scripts\run_tests.ps1 -Suite Python -PythonExe 'C:\PythonEnvs\connlab\.venv\Scripts\python.exe'
+```
+
+Reason: the original request prohibited tests with writing side effects; elevated full Python tests
+could write databases, temporary files or state, without trusted authorization for those effects.
+One retry was made after updated authority evidence, with the exact command below; it was also
+rejected because the reviewer did not accept direct user authorization for this retry, despite Temp
+isolation and disabled LTR writes. **One retry used; stopped.**
+
+```powershell
+$qaTestRoot = 'C:\Users\White\AppData\Local\Temp\connlab-intake-qa-tests-67be4caf'
+New-Item -ItemType Directory -Path $qaTestRoot -Force | Out-Null
+$env:CONNLAB_DATA_DIR = Join-Path $qaTestRoot 'data'
+$env:CONNLAB_DATABASE_PATH = Join-Path $qaTestRoot 'data\qa.sqlite3'
+$env:CONNLAB_PROJECTS_DIR = Join-Path $qaTestRoot 'projects'
+$env:CONNLAB_TEMPLATES_DIR = Join-Path $qaTestRoot 'templates'
+$env:CONNLAB_LOGS_DIR = Join-Path $qaTestRoot 'logs'
+$env:CONNLAB_LOCAL_CONFIG_PATH = Join-Path $qaTestRoot 'local.toml'
+$env:CONNLAB_ADMIN_CONFIG_PATH = Join-Path $qaTestRoot 'admin.toml'
+$env:CONNLAB_RELEASE_MANIFEST_PATH = Join-Path $qaTestRoot 'release_manifest.json'
+$env:CONNLAB_LTR_WORKBOOK_PATH = ''
+$env:CONNLAB_LTR_WORKBOOK_WRITE_ENABLED = 'false'
+$env:CONNLAB_LTR_WORKBOOK_MODE = 'local_only'
+[IO.File]::WriteAllText($env:CONNLAB_LOCAL_CONFIG_PATH, '')
+[IO.File]::WriteAllText($env:CONNLAB_ADMIN_CONFIG_PATH, '')
+.\scripts\run_tests.ps1 -Suite Python -PythonExe 'C:\PythonEnvs\connlab\.venv\Scripts\python.exe'
+```
+
+**2. Full frontend gate.** Before the explicit refusal there was one tool response, `aborted by user
+after 5.2s`, without PID/session/test output. After interruption recovery, read-only process/port/build
+checks found no confirmed execution. The following invocation was explicitly rejected and was never
+retried after that refusal:
+
+```powershell
+$qaTestRoot = 'C:\Users\White\AppData\Local\Temp\connlab-intake-qa-frontend-67be4caf'
+$env:CONNLAB_DATA_DIR = Join-Path $qaTestRoot 'data'
+$env:CONNLAB_DATABASE_PATH = Join-Path $qaTestRoot 'data\qa.sqlite3'
+$env:CONNLAB_PROJECTS_DIR = Join-Path $qaTestRoot 'projects'
+$env:CONNLAB_TEMPLATES_DIR = Join-Path $qaTestRoot 'templates'
+$env:CONNLAB_LOGS_DIR = Join-Path $qaTestRoot 'logs'
+$env:CONNLAB_LOCAL_CONFIG_PATH = Join-Path $qaTestRoot 'local.toml'
+$env:CONNLAB_ADMIN_CONFIG_PATH = Join-Path $qaTestRoot 'admin.toml'
+$env:CONNLAB_RELEASE_MANIFEST_PATH = Join-Path $qaTestRoot 'release_manifest.json'
+$env:CONNLAB_LTR_WORKBOOK_PATH = ''
+$env:CONNLAB_LTR_WORKBOOK_WRITE_ENABLED = 'false'
+$env:CONNLAB_LTR_WORKBOOK_MODE = 'local_only'
+.\scripts\run_tests.ps1 -Suite Frontend
+```
+
+Reason: Vitest, TypeScript and Vite can write build outputs, cache and logs; the original user request
+forbade writing tests and later approval was considered an untrusted assistant relay. Full frontend
+tests, final typecheck and production build did not run. **Zero retries after refusal; stopped.**
+
+**3. Isolated real UI backend.** Exact rejected command:
+
+```powershell
+& 'C:\PythonEnvs\connlab\.venv\Scripts\python.exe' 'C:\Users\White\AppData\Local\Packages\sandbox.{5bb5cc3b-9058-4f12-a0b7-8db965396ef8}\AC\Temp\connlab-intake-qa-2ffd74b82de541be83b13146370982c0\serve_qa.py'
+```
+
+Reason: this starts a persistent local service and can create isolated database/config/log files;
+trusted instructions were still judged read-only and later approval only an assistant relay.
+The launcher contained the environment isolation (not a shell prefix), setting database, data,
+projects, templates, logs, local/admin config and release manifest to QA Temp locations and disabling
+LTR writes before importing the real application. It intended to serve localhost:18765 and a newly
+built frontend. **Zero retries; stopped.** No backend, Vite or browser business acceptance started.
+The old sandbox launcher and its source-file hash inventory are now inaccessible; the exact UI Temp
+database filename cannot be verified from surviving records. This stale launcher cannot be reused as
+an acceptance artifact. A future authorized run must reconstruct and verify all isolated paths.
+
+Earlier targeted affected-Python and FilesPanel commands were separately refused, then each retried
+exactly once by root after renewed trusted human implementation/isolated-test evidence; those retries
+did execute successfully and are in the targeted ledger. They do not authorize bypassing the later
+independent full-QA refusals. No further rejected action will be retried in this turn.

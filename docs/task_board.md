@@ -64,15 +64,15 @@
     ],
     "activation_head": "0d9b62a4a98fa999332d3ca19d49f8f8e8a8e8c9",
     "started_at": "2026-10-15T23:37:52.148882Z",
-    "updated_at": "2026-10-15T23:54:46.427161Z",
+    "updated_at": "2026-10-16T00:24:03.125008Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_EXISTING_PROJECT_INTAKE_20261015",
-      "stage": "developer_validation",
-      "status": "running",
-      "summary": "Implemented reviewed folder discovery/intake, dedicated location persistence, browsing/relocation, current workspace information and atomic batch registry moves. Developer feedback: 13 isolated HTTP tests and 101 existing frontend-entry regressions passed; TypeScript passed. Additional source-identity and UI retry tests being finalized before independent exact-diff review and full QA/browser verification. No business storage/source mutations.",
-      "requires_user": false
+      "stage": "qa",
+      "status": "blocked",
+      "summary": "Implementation is local commit 67be4caf; independent Reviewer has zero Standards/Spec findings and Integrator verified parent/tree/scope. Final full Python QA was denied twice (one retry); full Frontend gate and isolated UI backend were denied and not retried after refusal. All rejected actions are stopped. Exact commands, reasons, Temp isolation, targeted counts and operator entry points are preserved in the plan. Full matrix/final build/real UI not executed; awaiting specific user confirmation via parent. No ready_for_close, Close, push, release, business database/source/manifest mutation.",
+      "requires_user": true
     },
     "report": null
   },
