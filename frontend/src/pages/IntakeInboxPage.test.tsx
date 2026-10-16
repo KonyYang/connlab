@@ -122,7 +122,10 @@ describe("IntakeInboxPage local LTR duplicate cancel recovery", () => {
     const view = render(<Harness />);
     const leader = await screen.findByLabelText(/Project Leader/);
     const testItem = screen.getByLabelText(/Sample Description/);
-    await waitFor(() => expect((testItem as HTMLInputElement).disabled).toBe(false));
+    await waitFor(() => {
+      expect((testItem as HTMLInputElement).disabled).toBe(false);
+      expect((testItem as HTMLInputElement).value).toBe('Connector sample');
+    });
     const user = userEvent.setup(); await user.clear(testItem); await user.type(testItem, 'Manual sample');
     currentProfile = { ...currentProfile, loaded: true, profile: { display_name: 'Late profile' } }; view.rerender(<Harness />);
     await waitFor(() => expect((leader as HTMLInputElement).value).toBe('Late profile'));
