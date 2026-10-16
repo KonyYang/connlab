@@ -2,8 +2,11 @@
 
 Task: `TASK_EXISTING_PROJECT_INTAKE_20261015`. Baseline: `0d9b62a4`.
 
-Latest disposition: implementation and reviewed UI correction are local at `0f92c00c`; final complete
-QA remains blocked by automatic approval review. See the final disposition below. Not ready for Close.
+Latest disposition: direct authorization in this task allowed final QA to execute on `5f168b70`.
+Complete non-Office Python, typecheck/build and final isolated UI passed. Complete frontend tests
+failed on one unchanged baseline test with a reproduced initial-data timing race. Its one-file test
+correction awaits explicit high-risk scope authorization. See the final current-task QA section below;
+older approval-blocker checkpoints are historical. Not ready for Close. No push or publication.
 
 ## Outcome and boundaries
 
@@ -514,3 +517,72 @@ there is no newly accepted final build. The previously passing three environment
 repeated. This round adds zero executed tests and zero builds; all earlier counts and limitations
 remain unchanged. Keep `running / qa blocked`, no finish/Close, push, release or deployment. The
 remaining blocker is automatic approval review not accepting the forwarded human authorization.
+
+## Final current-task QA — direct authorization, frontend test scope pending
+
+The user's current `/goal` explicitly authorized complete Python/frontend tests, typecheck/build,
+isolated UI and temporary database/cache/log/build writes, while prohibiting real business-data
+changes, push and publication. Both independent QA contexts received that original instruction;
+their commands were approved and actually executed. The former approval blocker is resolved.
+Starting HEAD was clean `5f168b70784bcecb2fdc46b663963c3b21e09760`. Product and tracked test bytes
+remain unchanged. Independent Integrator preflight confirmed the linear parent chain, the exact
+38-path non-board scope and unchanged backend/tests/scripts/pyproject inputs since `40b02c31`.
+
+- **Complete Python: passed**, exit 0, **3604 passed / 9 skipped / 19 Office deselected**, 728.42s.
+  The retained Temp source export was reused after verifying all 1036 acceptance-input hashes.
+  Actual safety assertions confirmed Temp-contained default data/database/projects/templates paths,
+  backend import provenance, no LTR source, local-only mode and disabled external writes. The
+  earlier three environment-override failures did not recur. Two warnings concern the existing
+  Starlette/httpx deprecation and a duplicate report-route OpenAPI operation ID.
+  The nine skips are one manual Excel COM smoke, one unavailable optimized template, three Python
+  3.11 Windows CopyFile2 cases, three host symlink-privilege cases and one absent historical seed
+  inventory. All 1036 acceptance-input hashes still match after execution.
+- **Complete frontend: failed twice**, each **973 passed / 1 failed / 1 skipped**, 34.87s and
+  34.26s. Both fail `IntakeInboxPage.test.tsx:129`, expecting `Manual sample` but receiving
+  `Connector sampleManual sample`. The page and test are unchanged from the task activation base.
+  The runner stops on this failure, so neither full-gate invocation executed its build step.
+  A separate single-file run passed all 16 tests. The skipped profiling case is not normal acceptance.
+- **Separate final typecheck/build: passed** (`tsc -b && vite build`, 189 modules). This was
+  sequential with Vitest. It does not convert the failed complete frontend gate into a pass.
+- **Final isolated UI: passed on the new dist**, including single trash/Undo, batch trash/restore,
+  current expanded folder list and open file-panel state, preserved roots/depth/search inputs,
+  failed folder-status read and retry, disabled relocation while stale, pending intake-preview
+  invalidation, and a late relocation response followed by a newer registry refresh. No new product
+  defect was observed. A first race harness encountered an already-handled browser route protocol
+  error; its retained second version tolerated that protocol error and completed the final real UI
+  assertions. Both traces/scripts are retained rather than claiming the first harness passed.
+- **Source protection: passed**. All eight isolated fixture files and their complete inventory are
+  byte-identical to their original baseline. The final report records 328 frontend input hashes and
+  36 built-file hashes. The named browser, trace and owned loopback backend were stopped; no listener
+  remained on 18765. No business database, real project material or source manifest was modified.
+
+### Remaining concrete correction
+
+A cache-only diagnostic copied the unchanged inbox test and logged its actual timing. One original
+variant cleared an empty enabled input; initial `Connector sample` then arrived before typing, which
+appended `Manual sample`. This already occurred before the late profile was supplied. Four later
+original variants passed, confirming timing sensitivity. Five control variants explicitly waited for
+the initial `Connector sample` value before clearing; all five passed with every original assertion
+retained. This identifies a test-readiness race, not evidence that a late profile overwrote user input.
+
+The proposed tracked change is only to extend the existing readiness `waitFor` in
+`frontend/src/pages/IntakeInboxPage.test.tsx` to also check the initial sample description. That file
+is outside the high-risk task's exact 38-path allowlist. Explicit authorization for this single-file
+scope expansion has been requested in the current chat and is pending; no tracked test or product
+fix has been made. After approval: apply that one test change, verify it, obtain focused independent
+review, update exact scope through the sole board writer, then rerun the complete frontend gate.
+Python and UI product-input bytes need not be rerun merely for this test-only change. Until then,
+do not claim complete QA success, finish, or Close.
+
+### Evidence locations
+
+- Python: `C:\Users\White\AppData\Local\Temp\connlab-intake-qa-source-40b02c31\source\logs\pytest_last.log`.
+- Frontend: `C:\Users\White\AppData\Local\Temp\connlab-intake-qa-frontend-40b02c31` contains
+  `frontend-final-5f168b70.log`, `frontend-complete-recheck-5f168b70.log`,
+  `intake-isolated-recheck.log` and `frontend-final-build-5f168b70.log`.
+- UI: `C:\Users\White\AppData\Local\Temp\connlab-intake-qa-ui-40b02c31-20261016`, with
+  `output/playwright/12-final-current-files-panel.png`, `13-final-current-folder-list.png`,
+  `source-integrity-final-5f168b70.json` and `.playwright-cli/traces/trace-1792162900576.trace`.
+- Cache-only diagnosis: `frontend/node_modules/.cache/connlab-intake-acceptance-probe/probe.log`;
+  `original.test.tsx` and `ready.test.tsx` are clearly marked temporary diagnostic copies, not
+  repository tests or replacements for the failed complete frontend result.
