@@ -44,3 +44,13 @@ export function moveProjectToTrash(projectId: string, request: {token: string; r
 export function restoreManagedProject(projectId: string, request: ProjectRegistryRestoreRequest): Promise<ProjectRegistryEntry> {
   return requestJson(`/api/project-registry/${encodeURIComponent(projectId)}/restore`, {method: "POST", body: JSON.stringify(request)});
 }
+
+export type RegistryBatchPreview = {action: ProjectRegistryAction; destination: "active"|"history"; token: string;
+  items: ProjectRegistryPreview[]; blockers: string[]};
+export type RegistryBatchRequest = {project_ids:string[];action:ProjectRegistryAction;destination:"active"|"history"};
+export async function previewRegistryBatch(request: RegistryBatchRequest): Promise<RegistryBatchPreview> {
+  return requestJson("/api/project-registry/batch/preview", {method:"POST",body:JSON.stringify(request)});
+}
+export async function moveRegistryBatch(request:RegistryBatchRequest&{token:string;reason:string}):Promise<ProjectRegistryEntry[]> {
+  return requestJson("/api/project-registry/batch/move",{method:"POST",body:JSON.stringify(request)});
+}

@@ -175,3 +175,6 @@
     flex-direction: column;
   }
 }
+.workspace-info dl {display:grid;grid-template-columns:minmax(140px, 190px) minmax(0, 1fr);gap:8px 16px;}
+.workspace-info dt {font-weight:600;}
+.workspace-info dd {margin:0;overflow-wrap:anywhere;}

@@ -13,6 +13,28 @@ from backend.application.project_registry_models import (
 router = APIRouter(prefix="/api/project-registry", tags=["project-registry"])
 
 
+class BatchPreviewRequest(BaseModel):
+    project_ids: list[str] = Field(min_length=1, max_length=100)
+    action: Literal["trash", "restore"]
+    destination: Literal["active", "history"] = "active"
+
+
+class BatchMoveRequest(BatchPreviewRequest):
+    token: str = Field(min_length=1)
+    reason: str = Field(default="", max_length=2000)
+    actor: str | None = Field(default=None, max_length=255)
+
+
+@router.post("/batch/preview")
+def batch_preview(request: BatchPreviewRequest, service=Depends(get_project_registry_management_service)):
+    return _call(lambda: service.preview_batch(**request.model_dump()))
+
+
+@router.post("/batch/move", response_model=list[ProjectRegistryEntry])
+def batch_move(request: BatchMoveRequest, service=Depends(get_project_registry_management_service)):
+    return _call(lambda: service.move_batch(**request.model_dump()))
+
+
 class TrashRequest(BaseModel):
     token: str = Field(min_length=1)
     reason: str = Field(min_length=1, max_length=2000)

@@ -25,6 +25,50 @@ class NoGeneration:
         return None
 
 
+def test_batch_preview_and_move_are_atomic_and_restore_selected_conflicts_blocks(context):
+    session, projects, ltrs, service = context
+    projects.create(project("one")); projects.create(project("two"))
+    registered_ltr(ltrs, "one"); registered_ltr(ltrs, "two")
+    session.commit()
+    preview = service.preview_batch(["one", "two"], "trash")
+    assert len(preview["items"]) == 2
+    moved = service.move_batch(["one", "two"], "trash", token=preview["token"], reason="Old temporary experiments")
+    assert all(item.registry_state == "trash" for item in moved)
+    restore = service.preview_batch(["one", "two"], "restore")
+    assert restore["blockers"]
+    with pytest.raises(ProjectRegistryConflict):
+        service.move_batch(["one", "two"], "restore", token=restore["token"])
+    assert len(service.list_entries("trash")) == 2
+    selected = service.preview_batch(["one"], "restore")
+    service.move_batch(["one"], "restore", token=selected["token"])
+    assert projects.get("one").registry_state == "active"
+    assert projects.get("two").registry_state == "trash"
+
+
+def test_stale_batch_moves_nothing(context):
+    session, projects, ltrs, service = context
+    projects.create(project("one")); projects.create(project("two")); session.commit()
+    before = service.preview_batch(["one", "two"], "trash")
+    service.trash("two", token=service.preview("two", "trash").token, reason="Already moved")
+    with pytest.raises(ProjectRegistryConflict):
+        service.move_batch(["one", "two"], "trash", token=before["token"], reason="Bulk")
+    assert projects.get("one").registry_state == "active"
+
+
+def test_batch_failure_rolls_back_every_selected_move(context,monkeypatch):
+    session,projects,ltrs,service=context
+    projects.create(project("one"));projects.create(project("two"));session.commit()
+    preview=service.preview_batch(["one","two"],"trash")
+    original=service._registry.move
+    def fail_second(project_id,*args,**kwargs):
+        if project_id=="two":raise OSError("Simulated storage failure")
+        return original(project_id,*args,**kwargs)
+    monkeypatch.setattr(service._registry,"move",fail_second)
+    with pytest.raises(OSError):service.move_batch(["one","two"],"trash",token=preview["token"],reason="Test")
+    assert projects.get("one").registry_state == "active"
+    assert projects.get("two").registry_state == "active"
+
+
 @pytest.fixture
 def context():
     engine = create_engine("sqlite:///:memory:")

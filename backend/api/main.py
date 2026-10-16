@@ -5,6 +5,8 @@ import time
 import uuid
 
 from fastapi import FastAPI, Request
+from backend.api.routes_existing_projects import router as existing_projects_router
+from backend.api.routes_workspace import router as workspace_router
 from backend.api.project_registry_access_guard import protect_project_mutations
 from backend.api.routes_project_registry_management import router as project_registry_management_router
 from backend.api.routes_project_folder_generation import router as project_folder_generation_router
@@ -210,6 +212,8 @@ def _include_project_router(router):
     app.include_router(protect_project_mutations(router))
 
 
+app.include_router(existing_projects_router)  # Intake owns its complete registry transaction and locks.
+app.include_router(workspace_router)
 _include_project_router(project_registry_management_router)
 _include_project_router(cleanup_router)
 _include_project_router(approval_package_router)

@@ -12,6 +12,15 @@ from backend.infrastructure.storage.database import Base
 
 
 class ProjectRegistryRepository(ProjectRepository):
+    def ltr_records(self, project_id):
+        from backend.infrastructure.storage.repositories.records import LtrRecordRepository
+        return LtrRecordRepository(self._session).list_by_project(project_id)
+
+    def identity_numbers(self, project_id):
+        from backend.infrastructure.storage.models import LtrRecordModel
+        return {(value or "").strip().casefold() for value in self._session.scalars(
+            select(LtrRecordModel.ltr_number).where(LtrRecordModel.project_id == project_id))}
+
     def retained_inventory(self, project_id):
         """Count known associations without touching their files or authority."""
         tables = {
@@ -22,9 +31,15 @@ class ProjectRegistryRepository(ProjectRepository):
             "Project folders": "project_folder_records",
             "Official workspaces": "project_official_workspace_records",
             "Source file records": "file_assets",
+            "Existing folder links": "existing_project_locations",
         }
-        return {label: self._session.scalar(select(func.count()).select_from(Base.metadata.tables[name]).where(
+        inventory = {label: self._session.scalar(select(func.count()).select_from(Base.metadata.tables[name]).where(
             Base.metadata.tables[name].c.project_id == project_id)) for label, name in tables.items()}
+        files = Base.metadata.tables["file_assets"]
+        own_paths = select(files.c.path).where(files.c.project_id == project_id)
+        inventory["Other projects' file references to the same paths"] = self._session.scalar(
+            select(func.count()).select_from(files).where(files.c.project_id != project_id, files.c.path.in_(own_paths)))
+        return inventory
 
     @contextmanager
     def atomic(self):

@@ -50,6 +50,26 @@ def create(client, name="Sample"):
     return response.json()["project_id"]
 
 
+def test_batch_removal_preview_cancel_atomic_stale_and_restore(client,storage):
+    first=create(client,"First temporary");second=create(client,"Second temporary")
+    request={"project_ids":[first,second],"action":"trash"}
+    preview=client.post("/api/project-registry/batch/preview",json=request)
+    assert preview.status_code == 200,preview.text
+    assert len(client.get("/api/projects").json()) == 2
+    token=preview.json()["token"]
+    moved=client.post("/api/project-registry/batch/move",json={**request,"token":token,"reason":"History experiments"})
+    assert moved.status_code == 200,moved.text
+    assert client.get("/api/projects").json() == []
+    repeated=client.post("/api/project-registry/batch/move",json={**request,"token":token,"reason":"History experiments"})
+    assert repeated.status_code == 409
+    restore={"project_ids":[first,second],"action":"restore"}
+    preview=client.post("/api/project-registry/batch/preview",json=restore)
+    assert preview.status_code == 200,preview.text
+    result=client.post("/api/project-registry/batch/move",json={**restore,"token":preview.json()["token"]})
+    assert result.status_code == 200,result.text
+    assert len(client.get("/api/projects").json()) == 2
+
+
 def preview(client, project_id, action):
     result = client.get(f"/api/project-registry/{project_id}/preview", params={"action": action})
     assert result.status_code == 200, result.text

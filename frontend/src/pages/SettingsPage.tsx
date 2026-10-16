@@ -14,6 +14,7 @@ import {
   pickExternalResourcePathFromDesktop
 } from "../desktop/pathPickerBridge";
 import { SettingsExternalResourcesPanel } from "../features/settings/SettingsExternalResourcesPanel";
+import { WorkspaceInfoPanel } from "../features/settings/WorkspaceInfoPanel";
 import "../settings.css";
 
 function settingsPathValidationMessage(reason: string | null): string {
@@ -145,6 +146,7 @@ export function SettingsPage(): ReactElement {
 
   return (
     <section className="settings-page">
+      <WorkspaceInfoPanel />
       <div className="settings-header">
         <div>
           <h1>File Locations</h1>

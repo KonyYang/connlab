@@ -1,0 +1,56 @@
+import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
+import * as api from "../../api/existingProjects";
+import { ExistingProjectFilesPanel } from "./ExistingProjectFilesPanel";
+vi.mock("../../api/existingProjects",()=>({listExistingFiles:vi.fn(),listExistingLocations:vi.fn(),previewExistingRelocation:vi.fn(),relocateExistingLocation:vi.fn(),existingFileDownloadUrl:vi.fn(()=>"/download")}));
+const location: api.ExistingLocation={location_id:"l1",project_id:"p1",path:"C:/old",management_number:"OLD-1",source_number:null,source_project_id:null,source_kind:"manual",registry_state:"active",revision:0,product_name:"sample",registered_at:"today"};
+describe("existing source file management",()=>{
+  beforeEach(()=>vi.resetAllMocks());
+  afterEach(()=>vi.unstubAllEnvs());
+  it("downloads use the configured API origin and encoded registered location identity",async()=>{
+    vi.stubEnv("VITE_API_BASE_URL","http://127.0.0.1:8000");
+    const actual=await vi.importActual<typeof import("../../api/existingProjects")>("../../api/existingProjects");
+    expect(actual.existingFileDownloadUrl("location 1","results/a b.txt")).toBe("http://127.0.0.1:8000/api/existing-projects/locations/location%201/download?relative=results%2Fa%20b.txt");
+  });
+  it("keeps failed source available for reviewed relocation and cancel never relocates",async()=>{
+    vi.mocked(api.listExistingFiles).mockRejectedValue(new Error("Folder unavailable"));
+    vi.mocked(api.previewExistingRelocation).mockResolvedValue({location,source:{path:"C:/new"} as api.ExistingSource,blockers:[],token:"move"});
+    render(<ExistingProjectFilesPanel location={location} onClose={vi.fn()} onChanged={vi.fn()}/>);
+    expect(await screen.findByText("Folder unavailable")).toBeTruthy();
+    const user=userEvent.setup();await user.type(screen.getByRole("textbox",{name:"New folder location"}),"C:/new");
+    await user.click(screen.getByRole("button",{name:"Review relocation"}));
+    expect(await screen.findByText(/Only this local folder association changes/)).toBeTruthy();
+    await user.click(screen.getByRole("button",{name:"Cancel relocation"}));expect(api.relocateExistingLocation).not.toHaveBeenCalled();
+    expect(screen.getByRole("textbox",{name:"New folder location"})).toHaveProperty("value","C:/new");
+  });
+  it("switching location clears the previous decision and ignores its late review response",async()=>{
+    vi.mocked(api.listExistingFiles).mockResolvedValue({relative_path:"",entries:[],diagnostics:[]});
+    let finish!:(value:api.RelocationPreview)=>void;
+    vi.mocked(api.previewExistingRelocation).mockReturnValue(new Promise(resolve=>{finish=resolve;}));
+    const user=userEvent.setup();const changed=vi.fn();
+    const view=render(<ExistingProjectFilesPanel location={location} onClose={vi.fn()} onChanged={changed}/>);
+    await user.type(screen.getByRole("textbox",{name:"New folder location"}),"C:/move-A");
+    await user.click(screen.getByRole("button",{name:"Review relocation"}));
+    view.rerender(<ExistingProjectFilesPanel location={{...location,location_id:"l2",project_id:"p2",management_number:"NEW-2"}} onClose={vi.fn()} onChanged={changed}/>);
+    expect(screen.getByRole("textbox",{name:"New folder location"})).toHaveProperty("value","");
+    await act(async()=>{finish({location,source:{path:"C:/move-A"} as api.ExistingSource,blockers:[],token:"old"});});
+    await screen.findByRole("heading",{name:"Files for NEW-2"});
+    expect(screen.queryByRole("button",{name:"Confirm relocation"})).toBeNull();expect(changed).not.toHaveBeenCalled();
+  });
+  it("a late confirmed relocation cannot reopen the previous location after navigation",async()=>{
+    vi.mocked(api.listExistingFiles).mockResolvedValue({relative_path:"",entries:[],diagnostics:[]});
+    vi.mocked(api.previewExistingRelocation).mockResolvedValue({location,source:{path:"C:/move-A"} as api.ExistingSource,blockers:[],token:"old"});
+    let finish!:(value:api.ExistingLocation)=>void;
+    vi.mocked(api.relocateExistingLocation).mockReturnValue(new Promise(resolve=>{finish=resolve;}));
+    const user=userEvent.setup();const changed=vi.fn();
+    const view=render(<ExistingProjectFilesPanel location={location} onClose={vi.fn()} onChanged={changed}/>);
+    await user.type(screen.getByRole("textbox",{name:"New folder location"}),"C:/move-A");
+    await user.click(screen.getByRole("button",{name:"Review relocation"}));
+    await user.click(await screen.findByRole("button",{name:"Confirm relocation"}));
+    view.rerender(<ExistingProjectFilesPanel location={{...location,location_id:"l2",project_id:"p2",management_number:"NEW-2"}} onClose={vi.fn()} onChanged={changed}/>);
+    await act(async()=>{finish({...location,path:"C:/move-A",revision:1});});
+    expect(screen.getByRole("heading",{name:"Files for NEW-2"})).toBeTruthy();
+    expect(changed).not.toHaveBeenCalled();
+  });
+});

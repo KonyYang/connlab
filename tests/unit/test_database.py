@@ -20,6 +20,51 @@ def test_build_sqlite_url_uses_configured_path() -> None:
     assert build_sqlite_url(database_path) == "sqlite:///tmp/connlab-test.sqlite3"
 
 
+def test_existing_location_table_is_additive_and_restart_preserves_legacy_project(tmp_path):
+    from sqlalchemy import create_engine
+    from backend.domain import Project
+    from backend.infrastructure.storage.repositories.project import ProjectRepository
+    from backend.infrastructure.storage.models_existing_project import ExistingProjectLocationModel
+    engine=create_engine(f"sqlite:///{(tmp_path/'isolated.sqlite3').as_posix()}")
+    init_db(engine)
+    with create_session_factory(engine)() as session:
+        ProjectRepository(session).create(Project(project_id="old",project_no="DL-old",product_name="Original",requestor="User"))
+        session.commit()
+    ExistingProjectLocationModel.__table__.drop(engine)
+    init_db(engine);init_db(engine)
+    with create_session_factory(engine)() as session:
+        assert ProjectRepository(session).get("old").product_name == "Original"
+        assert session.execute(text("select count(*) from existing_project_locations")).scalar() == 0
+        assert session.connection().exec_driver_sql("PRAGMA user_version").scalar() == 0
+    engine.dispose()
+
+
+def test_restart_preserves_approved_existing_folder_link(tmp_path):
+    from sqlalchemy import create_engine
+    from contextlib import nullcontext
+    from backend.application.existing_project_service import ExistingProjectService
+    from backend.infrastructure.files.existing_project_gateway import ExistingProjectGateway
+    from backend.infrastructure.storage.repositories.existing_project import ExistingProjectRepository
+    from backend.infrastructure.storage.repositories.project_registry import ProjectRegistryRepository
+    class Idle:
+        def lock(self,_):return nullcontext()
+        def read(self,_):return None
+    engine=create_engine(f"sqlite:///{(tmp_path/'restart.sqlite3').as_posix()}")
+    init_db(engine)
+    folder=tmp_path/'original';folder.mkdir();(folder/'report.txt').write_bytes(b'unchanged')
+    def service(session):return ExistingProjectService(ExistingProjectRepository(session),ProjectRegistryRepository(session),ExistingProjectGateway(),Idle())
+    with create_session_factory(engine)() as session:
+        svc=service(session)
+        result=svc.register(path=str(folder),token=svc.preview(str(folder))["token"],action="register",management_number="RESTORED")
+    init_db(engine)
+    with create_session_factory(engine)() as session:
+        svc=service(session)
+        assert svc.list_locations()[0]["project_id"] == result["project_id"]
+        assert svc.files(result["location_id"])["entries"][0]["name"] == 'report.txt'
+    assert (folder/'report.txt').read_bytes() == b'unchanged'
+    engine.dispose()
+
+
 def test_create_engine_session_and_init_db_with_temp_file() -> None:
     workspace_tmp = _make_workspace_temp_dir()
     database_path = workspace_tmp / "storage" / "connlab.sqlite3"
