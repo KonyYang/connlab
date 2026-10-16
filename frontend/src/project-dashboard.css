@@ -543,24 +543,3 @@
 .project-registry-icon-action:hover:not(:disabled) { border-color: var(--color-primary, #1f66d1); background: #e8f0fc; color: var(--color-primary-strong, #164aa3); }
 .project-registry-icon-action:focus-visible { outline: 3px solid rgba(31, 102, 209, 0.26); outline-offset: 2px; }
 @media (max-width: 760px) { .project-management-retained-row { grid-template-columns: 1fr; gap: 10px; } .project-registry-areas { gap: 5px; } }
-/* Existing folder intake and recoverable record management use the registry surface. */
-.existing-projects-panel, .project-registry-batch, .existing-project-files {
-  padding: 16px; margin: 12px 0; border: 1px solid var(--border, #d8e0ea);
-  border-radius: 10px; background: var(--surface, #fbfdff); overflow-wrap: anywhere;
-}
-.existing-projects-panel h2, .existing-project-files h2 {font-size: 18px; margin: 12px 0;}
-.existing-projects-panel label, .existing-project-files label, .project-registry-batch label {display: block; margin: 10px 0;}
-.existing-projects-panel textarea, .existing-projects-panel input:not([type="checkbox"]), .existing-projects-panel select,
-.existing-project-files input, .project-registry-batch input:not([type="checkbox"]), .project-registry-batch select {
-  display: block; width: min(100%, 680px); padding: 8px; margin-top: 4px; border: 1px solid #d8e0ea; border-radius: 6px;
-}
-.existing-projects-panel button, .existing-project-files button, .project-registry-batch button {margin: 4px 8px 4px 0;}
-.existing-project-table {overflow-x:auto;}
-.existing-project-table table {width:100%;border-collapse:collapse;text-align:left;}
-.existing-project-table td,.existing-project-table th {padding:10px;border-bottom:1px solid #d8e0ea;vertical-align:top;}
-.existing-projects-panel small {display:block;color:#647084;}
-.existing-location-list {list-style:none;padding:0;}
-.existing-location-list > li {padding:12px 0;border-bottom:1px solid #d8e0ea;}
-.registry-batch-selection {max-height:260px;overflow:auto;border:1px solid #d8e0ea;padding:8px;}
-.registry-batch-selection small {margin-left:8px;color:#647084;}
-.registry-batch-review,.existing-relocation-review {padding:12px;border:1px solid #bfd7f2;margin:12px 0;}

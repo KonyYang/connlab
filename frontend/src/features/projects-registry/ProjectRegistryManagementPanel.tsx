@@ -1,13 +1,11 @@
 import { useEffect, useState, type ReactElement } from "react";
 import { listManagedProjects, type ProjectRegistryAction, type ProjectRegistryEntry } from "../../api/projectRegistryManagement";
 import { ProjectRecordIdentity } from "./ProjectRegistryManagementDialog";
-import { ProjectRegistryBatchPanel } from "./ProjectRegistryBatchPanel";
 
-export function ProjectRegistryManagementPanel({location, search, revision, onManage, onOpenProject, onChanged}: {
+export function ProjectRegistryManagementPanel({location, search, revision, onManage, onOpenProject}: {
   location: "trash" | "history"; search: string; revision: number;
   onManage: (projectId: string, action: ProjectRegistryAction) => void;
   onOpenProject: (projectId: string) => void;
-  onChanged?: () => void;
 }): ReactElement {
   const [entries, setEntries] = useState<ProjectRegistryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +23,6 @@ export function ProjectRegistryManagementPanel({location, search, revision, onMa
   const visible = entries.filter((entry) => [entry.display_project_id, entry.sample_description, entry.test_item,
     entry.requestor, entry.project_id].some((value) => value?.toLocaleLowerCase().includes(query)));
   return <section aria-label={location === "trash" ? "Recycle bin projects" : "Retained history projects"}>
-    {!loading && !error && <ProjectRegistryBatchPanel location={location} rows={visible.map(entry => ({project_id:entry.project_id,label:entry.display_project_id}))} onChanged={() => {if(onChanged)onChanged();else setRetry(value => value+1);}} />}
     <p className="project-management-area-help">{location === "trash"
       ? "Deleted project records stay here until restored. Their files and business history are retained."
       : "Independent project records retained during conflict resolution. Restore them to normal management when needed."}</p>

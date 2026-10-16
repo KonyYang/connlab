@@ -38,50 +38,6 @@ class ProjectRegistryManagementService:
             raise ValueError("Management lists require trash or history.")
         return [self._entry(project) for project in self._registry.list(registry_state=location)]
 
-    def preview_batch(self, project_ids, action, destination="active"):
-        if not project_ids or len(project_ids) > 100 or len(set(project_ids)) != len(project_ids):
-            raise ValueError("Select 1–100 different project records.")
-        if destination not in {"active", "history"}:
-            raise ValueError("Restore destination must be active or history.")
-        items = [self.preview(project_id, action) for project_id in sorted(project_ids)]
-        blockers = [f"{item.project.display_project_id}: {message}" for item in items for message in item.blockers]
-        if action == "restore" and destination == "active":
-            if any(item.conflicts for item in items):
-                blockers.append("An active identifier conflicts. Restore individually after reviewing the conflict, or restore this batch to history.")
-            keys = [self._identity_key(self._registry.get(item.project.project_id)) for item in items]
-            if len(set(keys)) != len(keys):
-                blockers.append("Selected projects conflict with each other. Restore them individually or to history.")
-        payload = {"action": action, "destination": destination, "items": [asdict(item) for item in items]}
-        return {**payload, "blockers": blockers,
-                "token": sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()).hexdigest()}
-
-    def move_batch(self, project_ids, action, *, token, reason="", destination="active", actor=None):
-        if action == "trash" and not reason.strip():
-            raise ValueError("A removal reason is required.")
-        with self._registry.atomic():
-            preview = self.preview_batch(project_ids, action, destination)
-            if token != preview["token"]:
-                raise ProjectRegistryConflict("Selected projects changed. Refresh the batch preview.", "project_registry_preview_stale")
-            if preview["blockers"]:
-                raise ProjectRegistryConflict(preview["blockers"][0], "project_registry_move_blocked")
-            with ExitStack() as locks:
-                for project_id in sorted(project_ids):
-                    try:
-                        locks.enter_context(self._generation.lock(project_id))
-                        state = self._generation.read(project_id)
-                        if state and state["status"] in {"queued", "running"}:
-                            raise ValueError("Project folder generation is queued or running.")
-                    except (ValueError, OSError) as exc:
-                        raise ProjectRegistryConflict(str(exc), "project_registry_move_blocked") from exc
-                now, operation_id = self._clock(), uuid4().hex
-                for item in preview["items"]:
-                    entry = item["project"]
-                    self._registry.move(entry["project_id"], "trash" if action == "trash" else destination,
-                        expected_revision=entry["registry_revision"], reason=reason.strip() if action == "trash" else "Batch restored by operator.",
-                        actor=actor, changed_at=now, operation_id=operation_id)
-                self._registry.commit()
-                return [self._entry(self._registry.get(project_id)) for project_id in sorted(project_ids)]
-
     def preview(self, project_id, action):
         if action not in {"trash", "restore"}:
             raise ValueError("Unknown management action.")

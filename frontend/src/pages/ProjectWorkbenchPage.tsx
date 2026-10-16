@@ -1,5 +1,4 @@
 import type { ReactElement } from "react";
-import { ProjectExistingFiles } from "../features/projects-registry/ExistingProjectFilesPanel";
 import { ErrorMessage } from "../components/common/ErrorMessage";
 import { ProjectWorkbenchLayout } from "../features/project-workbench/ProjectWorkbenchLayout";
 import { useProjectWorkbenchModel } from "../features/project-workbench/useProjectWorkbenchModel";
@@ -34,7 +33,6 @@ export function ProjectWorkbenchPage({
 
   return (
     <section className="workbench-page">
-      <ProjectExistingFiles projectId={projectId} />
       {model.error && <ErrorMessage message={model.error} />}
       {model.project && (
         <ProjectWorkbenchLayout

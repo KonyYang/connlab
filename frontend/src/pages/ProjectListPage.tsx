@@ -8,8 +8,6 @@ import {
   type ProjectRegistryRow,
 } from "../api/client";
 import { ProjectRegistryManagementPanel } from "../features/projects-registry/ProjectRegistryManagementPanel";
-import { ExistingProjectsPanel } from "../features/projects-registry/ExistingProjectsPanel";
-import { ProjectRegistryBatchPanel } from "../features/projects-registry/ProjectRegistryBatchPanel";
 import { ProjectRegistryManagementDialog } from "../features/projects-registry/ProjectRegistryManagementDialog";
 import { useProjectRegistryManagement } from "../features/projects-registry/useProjectRegistryManagement";
 import { EmptyState } from "../components/common/EmptyState";
@@ -85,11 +83,10 @@ export function ProjectListPage({
   const [managedRevision, setManagedRevision] = useState(0);
   const topBarActionsRoot = useTopBarActionsRoot();
   const refreshEpoch = useRef(0);
-  function notifyRegistryChanged(): void {
+  const management = useProjectRegistryManagement(area, () => {
     setManagedRevision((value) => value + 1);
     void refreshProjects();
-  }
-  const management = useProjectRegistryManagement(area, notifyRegistryChanged);
+  });
   const deferredSearch = useDeferredValue(search);
   const pageSize = 20;
 
@@ -233,7 +230,6 @@ export function ProjectListPage({
 
   return (
     <section className="project-dashboard">
-      <ExistingProjectsPanel revision={managedRevision} onOpenProject={onOpenProject} onChanged={notifyRegistryChanged} />
       <div className="project-register-panel">
         {topBarActionsRoot ? createPortal(registryControls, topBarActionsRoot) : registryControls}
         {management.lastChange && <div className="registry-result-banner" role="status">
@@ -241,8 +237,6 @@ export function ProjectListPage({
           {management.lastChange.registry_state === "trash" && <button className="row-action" type="button" onClick={() => void management.open(management.lastChange!.project_id, "restore")}>Undo</button>}
           <button className="row-action" type="button" onClick={management.clearLastChange}>Dismiss</button>
         </div>}
-        {area === "active" && <ProjectRegistryBatchPanel location="active" rows={rows.map(row => ({project_id:row.project_id,
-          label:row.display_project_id,temporary:!row.has_registered_ltr}))} onChanged={notifyRegistryChanged} />}
         {lastLtrApplyResult ? (
           <div className="registry-result-banner" role="status" aria-live="polite">
             <div className="registry-result-banner-text">
@@ -261,7 +255,7 @@ export function ProjectListPage({
           </div>
         ) : null}
         {area !== "active" ? <ProjectRegistryManagementPanel location={area} search={deferredSearch} revision={managedRevision}
-          onManage={(id, action) => void management.open(id, action)} onOpenProject={onOpenProject} onChanged={notifyRegistryChanged} /> : <>
+          onManage={(id, action) => void management.open(id, action)} onOpenProject={onOpenProject} /> : <>
         {loading && <LoadingState label="Loading project registry..." />}
         {error && <ErrorMessage message={error} />}
         {!loading && !error && lifecycleOverlayErrorCount > 0 ? (
