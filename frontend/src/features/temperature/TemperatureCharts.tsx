@@ -1,5 +1,6 @@
 import type { Coefficients, DeratingAnalysis, TemperatureAnalysis, WorkbookTable } from '../../api/temperature';
 import { sourceScan } from './sourceScan';
+import { formatCurrent } from './currentPrecision';
 
 type Point = { x: number; y: number };
 type Trace = { name: string; color: string; points: Point[]; markers?: boolean; line?: boolean };
@@ -9,8 +10,9 @@ const polynomial = (coef: Coefficients, x: number) => (coef.a * x + coef.b) * x 
 const equation = (coef: Coefficients) => `${coef.a.toFixed(6)} I² ${coef.b < 0 ? '−' : '+'} ${Math.abs(coef.b).toFixed(6)} I ${coef.c < 0 ? '−' : '+'} ${Math.abs(coef.c).toFixed(6)}`;
 
 /** The SVG is a numeric XY plot of the current calculation, not decorative artwork. */
-function XYChart({ title, xTitle, yTitle, traces, guide, xLimit }: {
+function XYChart({ title, xTitle, yTitle, traces, guide, xLimit, currentAxis, currentDecimals = 0 }: {
   title: string; xTitle: string; yTitle: string; traces: Trace[]; xLimit?: number;
+  currentAxis: 'x' | 'y'; currentDecimals?: number;
   guide?: { x: number; labels: { y: number; text: string; color: string }[] };
 }) {
   const all = traces.flatMap(trace => trace.points);
@@ -28,15 +30,15 @@ function XYChart({ title, xTitle, yTitle, traces, guide, xLimit }: {
         return <g key={i}>
           <line x1={x(tickX)} x2={x(tickX)} y1="40" y2="280" className="chart-grid" />
           <line x1="66" x2="520" y1={y(tickY)} y2={y(tickY)} className="chart-grid" />
-          <text x={x(tickX)} y="299" textAnchor="middle">{tickX.toFixed(0)}</text>
-          <text x="56" y={y(tickY) + 4} textAnchor="end">{tickY.toFixed(0)}</text>
+          <text x={x(tickX)} y="299" textAnchor="middle">{currentAxis === 'x' ? formatCurrent(tickX, currentDecimals) : tickX.toFixed(0)}</text>
+          <text x="56" y={y(tickY) + 4} textAnchor="end">{currentAxis === 'y' ? formatCurrent(tickY, currentDecimals) : tickY.toFixed(0)}</text>
         </g>;
       })}
       <line x1="66" y1="40" x2="66" y2="280" className="chart-axis" />
       <line x1="66" y1="280" x2="520" y2="280" className="chart-axis" />
       {traces.map(trace => <g key={trace.name}>
         {trace.line && <polyline fill="none" stroke={trace.color} strokeWidth="2" points={trace.points.map(point => `${x(point.x)},${y(point.y)}`).join(' ')} />}
-        {trace.markers && trace.points.map((point, i) => <circle key={i} cx={x(point.x)} cy={y(point.y)} r="4" fill={trace.color}><title>{`${trace.name}: ${point.x.toFixed(3)}, ${point.y.toFixed(3)}`}</title></circle>)}
+        {trace.markers && trace.points.map((point, i) => <circle key={i} cx={x(point.x)} cy={y(point.y)} r="4" fill={trace.color}><title>{`${trace.name}: ${currentAxis === 'x' ? formatCurrent(point.x, currentDecimals) : point.x.toFixed(3)}, ${currentAxis === 'y' ? formatCurrent(point.y, currentDecimals) : point.y.toFixed(3)}`}</title></circle>)}
       </g>)}
       {guide && <g><line x1={x(guide.x)} x2={x(guide.x)} y1="40" y2="280" stroke="#647084" strokeDasharray="6 4" />
         {guide.labels.map((label, index) => <g key={`${label.color}-${index}`}><circle cx={x(guide.x)} cy={y(label.y)} r="5" fill={label.color} />
@@ -48,7 +50,7 @@ function XYChart({ title, xTitle, yTitle, traces, guide, xLimit }: {
   </div>;
 }
 
-export function RiseChart({ analysis, table }: { analysis: TemperatureAnalysis; table: WorkbookTable | null }) {
+export function RiseChart({ analysis, table, currentDecimals = 0 }: { analysis: TemperatureAnalysis; table: WorkbookTable | null; currentDecimals?: number }) {
   const max = Math.max(...analysis.points.map(point => point.current));
   const fitPoints = (coef: Coefficients) => Array.from({ length: 101 }, (_, i) => ({ x: max * i / 100, y: polynomial(coef, max * i / 100) }));
   const traces: Trace[] = [
@@ -57,21 +59,21 @@ export function RiseChart({ analysis, table }: { analysis: TemperatureAnalysis; 
     { name: 'Max Fit', color: MAX_COLOR, line: true, points: fitPoints(analysis.maximum_fit.fitted_coefficients) },
     { name: 'Avg Fit', color: AVG_COLOR, line: true, points: fitPoints(analysis.average_fit.fitted_coefficients) },
   ];
-  return <><XYChart title="Temperature Rise vs Current" xTitle="Current (A)" yTitle="Temperature Rise (°C)" traces={traces} />
+  return <><XYChart title="Temperature Rise vs Current" xTitle="Current (A)" yTitle="Temperature Rise (°C)" traces={traces} currentAxis="x" currentDecimals={currentDecimals} />
     <div className="temperature-equations"><p style={{ color: MAX_COLOR }}>Max ΔT = {equation(analysis.maximum_fit.coefficients)}<br />R² = {analysis.maximum_fit.r_squared.toFixed(6)}</p>
       <p style={{ color: AVG_COLOR }}>Avg Of Max ΔT = {equation(analysis.average_fit.coefficients)}<br />R² = {analysis.average_fit.r_squared.toFixed(6)}</p></div>
     <details className="temperature-detail"><summary>Stage Results</summary><div className="temperature-table-scroll"><table><thead><tr><th>Scan</th><th>Current (A)</th><th>Max ΔT (°C)</th><th>Avg Of Max ΔT (°C)</th></tr></thead>
-      <tbody>{analysis.points.map((point, i) => <tr key={i}><td>{point.source_row === null ? 'Origin' : sourceScan(table, point.source_row) ?? 'Unavailable'}</td><td>{point.current.toFixed(3)}</td><td>{point.maximum.toFixed(3)}</td><td>{point.average.toFixed(3)}</td></tr>)}</tbody></table></div></details>
+      <tbody>{analysis.points.map((point, i) => <tr key={i}><td>{point.source_row === null ? 'Origin' : sourceScan(table, point.source_row) ?? 'Unavailable'}</td><td>{formatCurrent(point.current, currentDecimals)}</td><td>{point.maximum.toFixed(3)}</td><td>{point.average.toFixed(3)}</td></tr>)}</tbody></table></div></details>
   </>;
 }
 
-export function DeratingChart({ result }: { result: DeratingAnalysis }) {
-  return <><XYChart title="Current vs Ambient Temperature" xTitle="Ambient Temperature (°C)" yTitle="Current (A)" xLimit={result.max_temperature}
+export function DeratingChart({ result, currentDecimals = 0 }: { result: DeratingAnalysis; currentDecimals?: number }) {
+  return <><XYChart title="Current vs Ambient Temperature" xTitle="Ambient Temperature (°C)" yTitle="Current (A)" xLimit={result.max_temperature} currentAxis="y" currentDecimals={currentDecimals}
     traces={[{ name: 'Basic (100%)', color: '#be3030', line: true, points: result.points.map(point => ({ x: point.ambient, y: point.basic })) },
       { name: '80% Derating', color: MAX_COLOR, line: true, points: result.points.map(point => ({ x: point.ambient, y: point.derated })) }]}
-    guide={{ x: result.annotation.ambient, labels: [{ y: result.annotation.basic, text: `${result.annotation.basic.toFixed(2)} A`, color: '#be3030' },
-      { y: result.annotation.derated, text: `${result.annotation.derated.toFixed(2)} A`, color: MAX_COLOR }] }} />
+    guide={{ x: result.annotation.ambient, labels: [{ y: result.annotation.basic, text: `${formatCurrent(result.annotation.basic, currentDecimals)} A`, color: '#be3030' },
+      { y: result.annotation.derated, text: `${formatCurrent(result.annotation.derated, currentDecimals)} A`, color: MAX_COLOR }] }} />
     <div className="temperature-equations"><p style={{ color: '#be3030' }}>Basic (100%)</p><p style={{ color: MAX_COLOR }}>80% Derating</p></div>
-    <p className="temperature-result">At {result.annotation.ambient}°C: Basic {result.annotation.basic.toFixed(2)} A / Derated {result.annotation.derated.toFixed(2)} A</p>
+    <p className="temperature-result">At {result.annotation.ambient}°C: Basic {formatCurrent(result.annotation.basic, currentDecimals)} A / Derated {formatCurrent(result.annotation.derated, currentDecimals)} A</p>
   </>;
 }

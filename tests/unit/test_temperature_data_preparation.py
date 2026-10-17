@@ -6,6 +6,53 @@ from backend.application.temperature_data_preparation import DataSelection, prep
 from backend.domain.temperature_data import WorkbookTable
 
 
+@pytest.mark.parametrize('decimals,currents,expected', [
+    (0, [0.0087, 0.4123, 0.5, 0.6], [0, 0, 1, 1]),
+    (1, [0.0087, 0.04, 0.05, 0.08, 0.15], [0, 0, 0.1, 0.1, 0.2]),
+    (2, [0.0087, 0.0049, 0.005, 0.0145, 0.015], [0.01, 0, 0.01, 0.01, 0.02]),
+    (4, [0.0087, 0.00004, 0.00005], [0.0087, 0, 0.0001]),
+])
+def test_current_precision_uses_half_up_without_changing_sources_or_excluding_zero_rows(decimals, currents, expected):
+    source = WorkbookTable('precision.csv', ('Data',), 'Data', (
+        ('Scan', 'Time', '101 <1_TC> (C)', 'Ambient', 'Current'),
+        *((index, '10:00', 25, 23, current) for index, current in enumerate(currents, 1)),
+    ))
+    original = deepcopy(source)
+    choice = DataSelection(1, 2, len(source.rows), 4, 5, (3,), 1, current_decimals=decimals)
+    result = prepare_data(source, choice, acknowledge_warnings=True)
+    assert result.ready
+    assert [row.current for row in result.measurements] == expected
+    assert len(result.measurements) == len(currents)
+    assert {issue.source_row for issue in result.issues if issue.code == 'zero_current'} == {
+        index + 2 for index, current in enumerate(expected) if current == 0
+    }
+    assert source == original
+    assert choice.excluded_rows == ()
+
+
+def test_auxiliary_current_power_detection_uses_the_selected_precision():
+    source = WorkbookTable('aux.csv', ('Data',), 'Data', (
+        ('Scan', 'Time', '1_TC (C)', 'Ambient', 'Current', 'Aux (A)'),
+        (1, '10:00', 25, 23, 1, 0.05), (2, '10:01', 26, 23, 2, 0.05),
+    ))
+    assert prepare_data(source, DataSelection(1, 2, 3, 4, 5, (3,), 1, current_decimals=0)).stable_auxiliary_current_columns == ()
+    assert prepare_data(source, DataSelection(1, 2, 3, 4, 5, (3,), 1, current_decimals=1)).stable_auxiliary_current_columns == (6,)
+
+
+def test_rounded_zero_constant_auxiliary_does_not_steal_the_varying_current_role():
+    source = WorkbookTable('roles.csv', ('Data',), 'Data', (
+        ('Scan', 'Time', '1_TC (C)', 'Ambient', 'Low Power (A)', 'Aux (A)'),
+        (1, '10:00', 25, 23, 1, 0.4), (2, '10:01', 26, 23, 2, 0.4),
+    ))
+    assert suggest_selection(source).current_column == 5
+
+
+def test_current_scale_is_applied_before_decimal_rounding_without_float_tie_drift():
+    source = WorkbookTable('scale.csv', ('Data',), 'Data', (('TC', 'Ambient', 'Current'), (25, 23, 0.15)))
+    choice = DataSelection(1, 2, 2, 2, 3, (1,), 1, current_multiplier=3, current_decimals=1)
+    assert prepare_data(source, choice).measurements[0].current == 0.5
+
+
 def test_unnumbered_channels_default_to_three_samples_without_dropping_remainder():
     source = WorkbookTable('data.csv', ('Data',), 'Data', (
         ('Scan', 'Time', 'TC1', 'TC2', 'TC3', 'TC4', 'Ambient', 'Current'),
@@ -212,8 +259,8 @@ def test_near_zero_current_is_reviewed_as_unpowered_without_deleting_or_rounding
     assert source == original
 
 
-@pytest.mark.parametrize('current, expected', [(-.099, 0), (.099, 0), (.1, .1), (.100001, .100001)])
-def test_unpowered_threshold_uses_absolute_current_and_keeps_boundary_values(current, expected):
+@pytest.mark.parametrize('current, expected', [(-.099, 0), (.099, 0), (.1, 0), (.49999, 0), (.5, 1)])
+def test_default_integer_precision_rounds_zero_noise_and_half_up_boundary(current, expected):
     source = WorkbookTable('data.xlsx', ('Data',), 'Data', (('TC1', 'Ambient', 'Current'), (25, 20, current)))
     review = prepare_data(source, DataSelection(1, 2, 2, 2, 3, (1,), 1))
     assert review.measurements[0].current == expected

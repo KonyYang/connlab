@@ -1,9 +1,32 @@
 # Temperature Rise and Derating Tool
 
-Status: implemented. Current refinement (2026-10-13): compact manual Test Info without project lookup
+Status: implemented. Current refinement (2026-10-17): unified current decimal precision, compact manual Test Info without project lookup
 and a compact XLSX metadata header. Editable measurement names, stable source identity,
 reversible ambient-role suspension and consecutive regrouping after explicit moves remain supported.
 Compact charts, automatic generation after confirmation and scan-based feedback remain in place.
+
+## Current precision contract (2026-10-17)
+
+`Current Decimals` is a native number spinner immediately after Samples (0–4, step 1, default 0).
+It is a calculation setting, not just an Excel display format. Preparation applies decimal half-up
+rounding after the selected current scale, then treats a rounded zero as unpowered for that column.
+Examples: at 0 places, 0.4123→0 and 0.5→1; at 1 place, 0.04→0.0 and 0.05→0.1; at 2 places,
+0.0087→0.01. It replaces the former fixed 0.1 A cutoff. Auxiliary power detection uses the same
+precision without treating a zero main current as proof that other current columns are off.
+
+Stage detection and fits consume these prepared values. Original import/Initial Data values remain
+unchanged, including excluded rows and full-precision CSV strings. Zero readings are flagged for
+review, never automatically excluded. Changing precision invalidates confirmation, fits, calculated
+current, Derating and downloads; it preserves row exclusions, names, source IDs and sample groups.
+Automatic intercept defaults are rechecked from the precision-aware prepared auxiliary currents;
+explicit manual intercept choices remain authoritative.
+
+Web stage/current results, current axes and annotations, Excel summary/stage current values,
+auxiliary rows, calculator and Derating current formats all follow the selected precision. Excel
+uses ROUND for measured currents and matching formula caches. Temperature precision and six-decimal
+fit coefficients do not change; calculated-current/Derating curves retain underlying precision for
+smooth calculations and use the selected current display format. Earlier dated acceptance numbers
+and display-only precision notes below are historical, superseded by this contract.
 
 `Tested By` snapshots the persistent local project-leader display name for each new import via
 `frontend/src/currentUser.ts`, falling back to anonymous `Lab User`. Late session bootstrap may fill
@@ -25,8 +48,8 @@ Optional API `sample_count` is authoritative when supplied; omitted/null retains
 requests. Renaming display labels never changes source IDs or group ownership.
 
 Export presentation refinement (2026-10-14): `Initial Data` has no frozen panes. The summary's
-`Current(A)` row uses Excel integer display format (`0`) while retaining unrounded values/formulas
-for chart fits and calculations. T-riseChart's summary, calculator and stage-detail tables use
+`Current(A)` row uses the selected current precision (integer `0` by default), with rounded measured
+values/formulas shared by chart fits and calculations. T-riseChart's summary, calculator and stage-detail tables use
 horizontal center alignment, including column A. No cell comments are generated. The top report
 information block retains its readable label/value layout, and other numeric precision is unchanged.
 
@@ -44,21 +67,21 @@ page errors. In-app browser connection was restricted; the user's browser sessio
 
 Multi-current export (2026-10-14): stable auxiliary current rows precede the selected main current
 in `TemperatureRiseSummary`. Preparation reuses the existing source-region classification (at least
-two powered readings, all >=0.1 A, spread <=1%) and carries a source-indexed
+two powered readings, all rounding above zero at the selected precision, raw spread <=1%) and carries a source-indexed
 `stable_auxiliary_current_columns` tuple to the workbook adapter; the prepare HTTP response gains
 the equivalent additive array. Selected ambient/main/thermocouple roles are excluded from that list.
 Other varying/unpowered electrical columns remain in original/detail data, not the current header.
 Current labels use the actual unit-free instrument/edited name followed by `(A)`; numeric prefixes
 are stripped without expanding abbreviations. Generic `Current(A)` remains the fallback for the main.
-Both axes of exported T-riseChart and Derating charts use integer tick-label format (`0`), independent
-of source-cell formats. Axis ranges/spacing, underlying coordinates, fits and point-annotation
-precision are unchanged. This is display formatting, not rounding the analysis data.
+Current axes of exported T-riseChart and Derating charts follow Current Decimals with source linking
+disabled; temperature axes retain integer labels. Measured current coordinates and fits use prepared
+rounded values, while computed curves remain smooth and annotation formats follow Current Decimals.
 Axis-only refinement validation: the new exported-chart regression failed for `0.0` before the fix,
 then passed. Final affected QA passed 70 workbook/HTTP tests; a read-only native Excel instance
 confirmed all four tick-label formats are `0` with source linking disabled. Exported chart PNGs
 were visually checked, while non-integer series values and the 66.5444574215 A calculator baseline
 remained unchanged. Prior unchanged preparation/numerical checks were not repeated.
-All current rows are gray, bold, centered and integer-formatted without rounding stored values.
+All current rows are gray, bold, centered and formatted at the selected current precision.
 Each auxiliary value links to that main-current stage's genuine retained endpoint, including actual
 zero-current background readings. Synthetic-origin auxiliary cells stay blank. Numeric CSV text is
 coerced in the report formula only; `Initial Data` preserves the original strings/coordinates.
@@ -95,7 +118,7 @@ Every successful T-riseChart generation calculates the current for the entered T
 by default) using the newly generated MAX fit. The result is retained for display and download without
 a separate Calculate Current click. Manual retries remain available; a failed or obsolete calculation
 does not continue the automatic Derating chain. Editing Target Rise clears the old result until the
-operator calculates or regenerates the chart. Exported x(A) is a bold orange, one-decimal formula
+operator calculates or regenerates the chart. Exported x(A) is a bold orange formula using Current Decimals
 result matching the MAX curve; the displayed number is calculated, never copied from a screenshot.
 
 Revision validation: 85 temperature frontend tests, 105 backend preparation/calculation/export/API

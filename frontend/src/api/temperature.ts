@@ -7,6 +7,7 @@ export type DataSelection = {
   sample_groups?: number[][] | null;
   channel_names?: Record<number, string>;
   sample_count?: number | null;
+  current_decimals?: number;
 };
 export type DataRegion = Pick<DataSelection, 'header_row' | 'start_row' | 'end_row'>;
 export type ChannelLayout = {
@@ -18,7 +19,7 @@ export type ChannelLayout = {
 export type WorkbookImportResult = { table: WorkbookTable; selection: DataSelection | null; region_issue: string | null; channel_layout?: ChannelLayout | null };
 export type PreparationRequest = { table: WorkbookTable; selection: DataSelection; acknowledge_warnings: boolean; zero_intercept: boolean };
 export type DataIssue = { code: string; severity: string; source_row: number; message: string };
-export type PreparedData = { ready: boolean; issues: DataIssue[]; measurements: { source_row: number; current: number; ambient: number; temperatures: number[] }[] };
+export type PreparedData = { ready: boolean; issues: DataIssue[]; measurements: { source_row: number; current: number; ambient: number; temperatures: number[] }[]; stable_auxiliary_current_columns?: number[] };
 export type Coefficients = { a: number; b: number; c: number };
 export type PolynomialFit = { coefficients: Coefficients; fitted_coefficients: Coefficients; r_squared: number };
 export type RisePoint = { source_row: number | null; current: number; maximum: number; average: number; rises: number[]; sample_maxima: number[] };

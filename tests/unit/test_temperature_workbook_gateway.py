@@ -9,9 +9,54 @@ import pytest
 
 from backend.application.temperature_data_preparation import prepare_data, suggest_selection
 from backend.domain.temperature_data import DataSelection, WorkbookTable
-from backend.domain.temperature_rise import Coefficients, analyze_temperature_rise, generate_derating
+from backend.domain.temperature_rise import Coefficients, analyze_temperature_rise, generate_derating, calculate_current
 from backend.infrastructure.office.temperature_workbook_gateway import TemperatureWorkbookGateway
 from tests.unit.test_temperature_rise_calculations import baseline_rows
+
+
+@pytest.mark.parametrize('decimals,expected,number_format', [(0, [0, 10, 20], '0'), (1, [0, 10.1, 20.1], '0.0')])
+def test_export_quantizes_current_formulas_caches_and_axes_but_keeps_original_values(tmp_path, decimals, expected, number_format):
+    table = WorkbookTable('precision.csv', ('Data',), 'Data', (
+        ('Scan', 'Time', '101 <1_TC> (C)', 'Ambient', 'Current', 'Aux (A)'),
+        *((index + 1, '2026/10/17 10:00', temperature, 23, current, 125.07)
+          for index, (current, temperature) in enumerate([(0.0087, 23)] * 2 + [(10.05, 25)] * 2 + [(20.05, 30)] * 2)),
+    ))
+    selection = DataSelection(1, 2, 7, 4, 5, (3,), 1, current_decimals=decimals)
+    prepared = prepare_data(table, selection, acknowledge_warnings=True)
+    analysis = analyze_temperature_rise(prepared.measurements, thermocouples_per_sample=1, zero_intercept=True)
+    output = tmp_path / 'precision.xlsx'
+    TemperatureWorkbookGateway().write(output, table=table, selection=selection, prepared=prepared, analysis=analysis,
+        maximum_coefficients=analysis.maximum_fit.coefficients, average_coefficients=analysis.average_fit.coefficients,
+        target_rise=30, derating=generate_derating(analysis.average_fit.coefficients, max_temperature=105, step=2.5, ambient_point=75))
+    with BytesIO(output.read_bytes()) as stream:
+        book = load_workbook(stream, data_only=True)
+        try:
+            assert book['Initial Data']['E2'].value == 0.0087
+            assert book['Initial Data']['E4'].value == 10.05
+            assert book['Initial Data']['F4'].value == 125.07
+            target, area = next(book.defined_names['TemperatureRiseSummary'].destinations)
+            summary = list(book[target][area])
+            assert [cell.value for cell in summary[1][1:]] == expected
+            assert [cell.value for cell in summary[0][1:]] == ([125] * 3 if decimals == 0 else [125.1] * 3)
+        finally:
+            book.close()
+    book = load_workbook(output)
+    try:
+        rise, derating = book['T-riseChart'], book['Derating']
+        assert rise._charts[0].x_axis.numFmt.formatCode == number_format
+        assert rise._charts[0].y_axis.numFmt.formatCode == '0'
+        assert derating._charts[0].x_axis.numFmt.formatCode == '0'
+        assert derating._charts[0].y_axis.numFmt.formatCode == number_format
+        assert derating['G10'].number_format == number_format
+        assert derating._charts[0].series[2].dLbls.numFmt == number_format
+        target, area = next(book.defined_names['CurrentCalculator'].destinations)
+        assert list(book[target][area])[-1][-1].number_format == number_format
+        target, area = next(book.defined_names['StageTemperatureRise'].destinations)
+        for row in list(book[target][area])[1:]:
+            assert row[-1].value.startswith('=ROUND(') and row[-1].value.endswith(f',{decimals})')
+            assert row[-1].number_format == number_format
+    finally:
+        book.close()
 
 
 def test_reader_preserves_bytes_and_accepts_explicit_sheet(tmp_path):
@@ -66,7 +111,7 @@ def test_csv_reader_preserves_scanner_metadata_quotes_decimal_values_and_row_pos
     assert choice.excluded_rows == ()
     review = prepare_data(table, choice)
     assert not review.ready
-    assert review.measurements[0].current == 3.0010263
+    assert review.measurements[0].current == 3
     assert review.measurements[0].ambient == 25.465
     with pytest.raises(ValueError, match='sheet'):
         TemperatureWorkbookGateway().read(source, sheet_name='Absent')
@@ -118,8 +163,8 @@ def test_export_contains_native_xy_charts_formulas_cached_values_and_source_mapp
     assert book['Initial Data']['B1'].value == 'TC1'
     book.close()
     cached = load_workbook(output, data_only=True)
-    assert cached['Derating']['B36'].value == pytest.approx(68.38881593205294)
-    assert cached['Derating']['C36'].value == pytest.approx(54.71105274564235)
+    assert cached['Derating']['B36'].value == pytest.approx(derating.annotation.basic)
+    assert cached['Derating']['C36'].value == pytest.approx(derating.annotation.derated)
     assert cached['Derating']['B48'].value == 0
     cached.close()
     with ZipFile(output) as archive:
@@ -193,7 +238,7 @@ def _report_export(tmp_path, maximum=None, average=None, *, include_derating=Fal
     return output, analysis
 
 
-def test_exported_chart_axes_display_integers_without_rounding_plot_data(tmp_path):
+def test_exported_current_axes_and_plot_data_use_default_integer_precision(tmp_path):
     output, _ = _report_export(tmp_path, include_derating=True)
     book = load_workbook(output)
     try:
@@ -203,10 +248,10 @@ def test_exported_chart_axes_display_integers_without_rounding_plot_data(tmp_pat
                 assert axis.numFmt.formatCode == '0'
                 assert axis.numFmt.sourceLinked is False
         rise = book['T-riseChart']._charts[0]
-        assert float(rise.series[0].xVal.numRef.numCache.pt[1].v) == pytest.approx(17.596362)
+        assert float(rise.series[0].xVal.numRef.numCache.pt[1].v) == 18
         assert float(rise.series[0].yVal.numRef.numCache.pt[-1].v) == pytest.approx(36.545)
         derating = book['Derating']._charts[0]
-        assert derating.series[2].dLbls.numFmt == '0.0'  # Point annotations keep their existing precision.
+        assert derating.series[2].dLbls.numFmt == '0'
     finally:
         book.close()
     with ZipFile(output) as archive:
@@ -259,7 +304,7 @@ def test_multi_current_report_has_named_auxiliary_stage_rows_without_changing_cu
             assert series.xVal.numRef.f.endswith(f'$B${main_row}:$E${main_row}')
         raw = sheet[next(book.defined_names['KeyStageReadings'].destinations)[1].replace('$', '')]
         if measured_zero:
-            assert summary[0][1].value == f'=G{raw[1][0].row}*1'
+            assert summary[0][1].value == f'=ROUND(G{raw[1][0].row}*1,0)'
         else:
             assert all(row[1].value is None for row in summary[:3])
         assert not any(cell.comment for row in sheet for cell in row)
@@ -271,9 +316,9 @@ def test_multi_current_report_has_named_auxiliary_stage_rows_without_changing_cu
         sheet = cached['T-riseChart']
         summary = sheet[next(cached.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
         assert [cell.value for cell in summary[0][1:]] == (
-            [125.002, 125.004, 125.007, 125.009] if measured_zero else [None, 125.002, 125.004, 125.006])
-        assert [cell.value for cell in summary[1][1:]] == ([3.001] * 4 if measured_zero else [None, 3.001, 3.001, 3.001])
-        assert [cell.value for cell in summary[2][1:]] == ([1.02] * 4 if measured_zero else [None, 1.02, 1.02, 1.02])
+            [125] * 4 if measured_zero else [None, 125, 125, 125])
+        assert [cell.value for cell in summary[1][1:]] == ([3] * 4 if measured_zero else [None, 3, 3, 3])
+        assert [cell.value for cell in summary[2][1:]] == ([1] * 4 if measured_zero else [None, 1, 1, 1])
         assert [cell.value for cell in summary[3][1:]] == [0, 10, 20, 30]
         assert [cell.value for cell in summary[-2][1:]] == ([2, 5, 10, 17] if measured_zero else [0, 5, 10, 17])
     finally:
@@ -324,7 +369,7 @@ def test_export_uses_unfrozen_source_centered_tables_and_integer_current_display
     try:
         summary = cached['T-riseChart'][next(cached.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
         assert [cell.value for cell in summary[0][1:]] == pytest.approx(
-            [0, 17.596362, 30.850749, 39.665046, 43.987415, 66.039286, 75.089058])
+            [0, 18, 31, 40, 44, 66, 75])
         assert summary[-2][-1].value == pytest.approx(36.545)
     finally:
         cached.close()
@@ -368,7 +413,7 @@ def test_export_formats_measurement_labels_and_keeps_only_max_calculator_visible
 
 
 def test_derating_chart_matches_reference_and_guide_follows_editable_ambient_point(tmp_path):
-    output, _ = _report_export(tmp_path, include_derating=True)
+    output, analysis = _report_export(tmp_path, include_derating=True)
     book = load_workbook(output)
     sheet = book['Derating']
     chart = sheet._charts[0]
@@ -380,7 +425,7 @@ def test_derating_chart_matches_reference_and_guide_follows_editable_ambient_poi
     for series, color in zip(chart.series[2:4], colors):
         assert series.marker.symbol == 'circle'
         assert series.marker.graphicalProperties.line.solidFill.srgbClr == color
-        assert series.dLbls.numFmt == '0.0'
+        assert series.dLbls.numFmt == '0'
         assert series.dLbls.dLblPos == 'r'
         font = series.dLbls.txPr.p[0].pPr.defRPr
         assert font.b and font.solidFill.srgbClr == color
@@ -393,15 +438,15 @@ def test_derating_chart_matches_reference_and_guide_follows_editable_ambient_poi
     assert sheet['F13'].value == '=$F$10'
     assert sheet['F14'].value == '=$F$10'
     assert sheet['G14'].value == '=$G$10'
-    assert sheet['G10'].number_format == sheet['H10'].number_format == '0.0'
+    assert sheet['G10'].number_format == sheet['H10'].number_format == '0'
     guide = chart.series[4]
     assert guide.graphicalProperties.line.solidFill.srgbClr == '0000FF'
     assert guide.graphicalProperties.line.prstDash == 'dash'
     assert [float(point.v) for point in guide.xVal.numRef.numCache.pt] == [75, 75]
-    assert [float(point.v) for point in guide.yVal.numRef.numCache.pt] == pytest.approx([0, 68.38881593205294])
+    assert [float(point.v) for point in guide.yVal.numRef.numCache.pt] == pytest.approx([0, calculate_current(analysis.average_fit.coefficients, 30)])
     book.close()
     cached = load_workbook(output, data_only=True)
-    assert cached['Derating']['G14'].value == pytest.approx(68.38881593205294)
+    assert cached['Derating']['G14'].value == pytest.approx(calculate_current(analysis.average_fit.coefficients, 30))
     assert cached['Derating']['F13'].value == cached['Derating']['F14'].value == 75
     cached.close()
     with ZipFile(output) as archive:
@@ -494,7 +539,7 @@ def test_endpoint_tables_share_scan_time_columns_without_changing_readings(tmp_p
 
 
 def test_report_export_has_editable_y_calculator_and_named_bold_colored_equations(tmp_path):
-    output, _ = _report_export(tmp_path)
+    output, analysis = _report_export(tmp_path)
     book = load_workbook(output)
     sheet = book['T-riseChart']
     area = next(book.defined_names['CurrentCalculator'].destinations)[1]
@@ -506,7 +551,7 @@ def test_report_export_has_editable_y_calculator_and_named_bold_colored_equation
     assert 'SQRT' in calculator[1][-1].value
     assert calculator[1][-1].font.bold
     assert calculator[1][-1].font.color.rgb == '00FFA500'
-    assert calculator[1][-1].number_format == '0.0'
+    assert calculator[1][-1].number_format == '0'
     book.close()
     with ZipFile(output) as archive:
         ns = {'c': 'http://schemas.openxmlformats.org/drawingml/2006/chart',
@@ -524,7 +569,7 @@ def test_report_export_has_editable_y_calculator_and_named_bold_colored_equation
             assert label.find('c:tx/c:strRef/c:f', ns) is not None, 'Equation label stays linked when data is edited in Excel.'
         assert colors[0] != colors[1]
     cached = load_workbook(output, data_only=True)
-    assert cached['T-riseChart'][calculator[1][-1].coordinate].value == pytest.approx(66.54445742154181)
+    assert cached['T-riseChart'][calculator[1][-1].coordinate].value == pytest.approx(calculate_current(analysis.maximum_fit.coefficients, 30))
     cached.close()
 
 
@@ -583,7 +628,7 @@ def test_report_formulas_honor_spare_channel_order_current_scale_and_unconstrain
     raw_row = raw[1][0].row
     assert rises[1][2].value == f'=G{raw_row}-$F{raw_row}'  # TC1 first, replacement Spare second
     assert rises[1][3].value == f'=E{raw_row}-$F{raw_row}'
-    assert rises[1][-1].value == f'=IF(ABS(C{raw_row}*0.001)<0.1,0,C{raw_row}*0.001)'
+    assert rises[1][-1].value == f'=ROUND(C{raw_row}*0.001,0)'
     summary = next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')
     assert sheet._charts[0].series[0].trendline.intercept is None
     assert any('LINEST(' in cell.value and 'TRUE' in cell.value
@@ -632,7 +677,7 @@ def test_unconstrained_export_keeps_measured_zero_baseline_and_normalizes_formul
     assert sheet[raw_area][1][0].value == 2
     assert sheet[raw_area][1][-1].value == .011427  # The scanner reading stays intact.
     formula = sheet[rise_area][1][-1].value
-    assert 'IF(ABS(' in formula and '<0.1,0,' in formula
+    assert formula.startswith('=ROUND(') and formula.endswith(',0)')
     for series in sheet._charts[0].series:
         assert series.trendline.intercept is None
         assert series.xVal.numRef.numCache.pt[0].v == 0

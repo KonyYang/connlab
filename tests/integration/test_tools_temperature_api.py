@@ -30,6 +30,43 @@ def import_baseline(client):
     return data
 
 
+@pytest.mark.parametrize('decimals,expected', [(0, [0, 10, 20]), (1, [0, 10.1, 20.1]), (4, [0.0087, 10.05, 20.05])])
+def test_current_precision_is_shared_by_prepare_analyze_and_download(decimals, expected):
+    client = TestClient(app)
+    rows = [['Scan', 'Time', '1_TC (C)', 'Ambient', 'Current']]
+    rows += [[i + 1, '2026/10/17 10:00', temperature, 23, current] for i, (current, temperature) in enumerate(
+        [(0.0087, 23)] * 2 + [(10.05, 25)] * 2 + [(20.05, 30)] * 2)]
+    request = {'table': {'file_name': 'precision.xlsx', 'sheet_names': ['Data'], 'sheet_name': 'Data', 'rows': rows},
+               'selection': {'header_row': 1, 'start_row': 2, 'end_row': 7, 'ambient_column': 4, 'current_column': 5,
+                             'temperature_columns': [3], 'thermocouples_per_sample': 1, 'current_decimals': decimals},
+               'acknowledge_warnings': True, 'zero_intercept': True}
+    prepared = client.post('/api/tools/temperature-rise/prepare', json=request)
+    assert prepared.status_code == 200
+    assert [row['current'] for row in prepared.json()['measurements']] == [v for v in expected for _ in range(2)]
+    analyzed = client.post('/api/tools/temperature-rise/analyze', json=request)
+    assert analyzed.status_code == 200
+    currents = ([0] if decimals == 4 else []) + expected
+    assert [point['current'] for point in analyzed.json()['points']] == currents
+    exported = client.post('/api/tools/temperature-rise/download', json=request)
+    assert exported.status_code == 200
+    book = load_workbook(BytesIO(exported.content), data_only=True)
+    try:
+        sheet, area = next(book.defined_names['TemperatureRiseSummary'].destinations)
+        assert [cell.value for cell in list(book[sheet][area])[0][1:]] == currents
+        assert book['Initial Data']['E2'].value == 0.0087
+    finally:
+        book.close()
+
+
+@pytest.mark.parametrize('decimals', [-1, 5, 0.5, True, '1'])
+def test_current_precision_rejects_out_of_range_or_non_integer_values(decimals):
+    from backend.api.temperature_schemas import DataSelectionRequest
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        DataSelectionRequest(header_row=1, start_row=2, end_row=3, ambient_column=4, current_column=5,
+                             temperature_columns=[3], thermocouples_per_sample=1, current_decimals=decimals)
+
+
 def test_unnumbered_twenty_channels_require_explicit_sample_adjustment_at_every_processing_endpoint():
     client = TestClient(app)
     data = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', scanner_bytes())}).json()

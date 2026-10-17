@@ -55,6 +55,37 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(projectApi.listProjectRegistryRows).mockResolvedValue([]);
   });
 
+  it('offers a bounded current decimal spinner and invalidates results without excluding rows or changing samples', async () => {
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    const input = screen.getByRole('spinbutton', { name: 'Current Decimals' }) as HTMLInputElement;
+    expect(input.value).toBe('0');
+    expect([input.min, input.max, input.step]).toEqual(['0', '4', '1']);
+    fireEvent.change(input, { target: { value: '1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
+    expect(api.analyzeTemperatureData).toHaveBeenCalledWith(expect.objectContaining({
+      selection: expect.objectContaining({ current_decimals: 1, excluded_rows: [], temperature_columns: [3, 4] }),
+    }));
+    expect(screen.getByLabelText('Calculated Current').textContent).toBe('30.0 A');
+    fireEvent.change(input, { target: { value: '2' } });
+    expect(screen.queryByRole('img', { name: 'Temperature Rise vs Current' })).toBeNull();
+    expect((screen.getByRole('button', { name: 'Download Excel' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText('4 Included / 0 Excluded Rows')).toBeTruthy();
+  });
+
+  it('uses precision-aware auxiliary power detection when choosing the automatic fit mode', async () => {
+    vi.mocked(api.prepareTemperatureData).mockResolvedValue({ ready: true, issues: [], measurements: [], stable_auxiliary_current_columns: [7] });
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    fireEvent.change(screen.getByLabelText('Current Decimals'), { target: { value: '1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
+    expect(api.analyzeTemperatureData).toHaveBeenCalledWith(expect.objectContaining({ zero_intercept: false }));
+    expect((screen.getByLabelText('Zero Intercept') as HTMLInputElement).checked).toBe(false);
+    expect(api.generateTemperatureDerating).not.toHaveBeenCalled();
+  });
+
   it('shows editable sample count, preserves all channels and only confirms complete groups', async () => {
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValue({ ...structuredClone(imported), selection: {
       ...imported.selection, sample_count: 3, thermocouples_per_sample: 1,
@@ -211,7 +242,7 @@ describe('temperature preparation and calculation workflow', () => {
     await upload();
     expect(api.calculateTemperatureCurrent).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
-    expect((await screen.findByLabelText('Calculated Current')).textContent).toContain('30.00 A');
+    expect((await screen.findByLabelText('Calculated Current')).textContent).toContain('30 A');
     await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
     expect(api.calculateTemperatureCurrent).toHaveBeenCalledExactlyOnceWith(maximum, 30);
     expect(api.generateTemperatureDerating).toHaveBeenCalledWith(coefficients, expect.anything());
@@ -760,7 +791,7 @@ describe('temperature preparation and calculation workflow', () => {
     });
     await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
     await user.click(screen.getByRole('button', { name: 'Calculate Current' }));
-    expect((await screen.findByLabelText('Calculated Current')).textContent).toContain('30.00 A');
+    expect((await screen.findByLabelText('Calculated Current')).textContent).toContain('30 A');
     await user.click(screen.getByLabelText('Select Scan 1'));
     await user.click(screen.getByRole('button', { name: 'Restore', exact: true }));
     expect(screen.queryByRole('img', { name: 'Temperature Rise vs Current' })).toBeNull();
@@ -808,7 +839,7 @@ describe('temperature preparation and calculation workflow', () => {
     await upload();
     expect(api.prepareTemperatureData).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
-    await screen.findByText('Scan 1: |current| < 0.1 A is treated as unpowered.');
+    await screen.findByText('Scan 1: current rounds to 0 at 0 decimal places (this current column).');
     expect(screen.queryByLabelText('Keep Flagged Rows')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Select Unpowered Rows' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Restore All Rows' })).toBeNull();
@@ -855,7 +886,7 @@ describe('temperature preparation and calculation workflow', () => {
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
-    await screen.findByText('Scan 00774: |current| < 0.1 A is treated as unpowered.');
+    await screen.findByText('Scan 00774: current rounds to 0 at 0 decimal places (this current column).');
     expect(screen.getByText('Scan 800, column C: missing reading.')).toBeTruthy();
     expect(screen.getByText('No usable rows remain.')).toBeTruthy();
     const review = screen.getByRole('region', { name: 'Data Needs Review' });
@@ -882,8 +913,8 @@ describe('temperature preparation and calculation workflow', () => {
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
-    await screen.findByText('Scan 51~53: |current| < 0.1 A is treated as unpowered.');
-    expect(screen.getByText('Scan 55: |current| < 0.1 A is treated as unpowered.')).toBeTruthy();
+    await screen.findByText('Scan 51~53: current rounds to 0 at 0 decimal places (this current column).');
+    expect(screen.getByText('Scan 55: current rounds to 0 at 0 decimal places (this current column).')).toBeTruthy();
     expect(screen.getByText('Scan 53: current decreased by more than 1%.')).toBeTruthy();
     const review = screen.getByRole('region', { name: 'Data Needs Review' });
     expect(within(review).getAllByRole('paragraph')).toHaveLength(3);
@@ -982,7 +1013,7 @@ describe('temperature preparation and calculation workflow', () => {
       await user.click(screen.getByRole('button', { name: 'Calculate Current' }));
       fireEvent.change(screen.getByLabelText('Max work Temp (°C)'), { target: { value: '125' } });
       expect(screen.queryByRole('img', { name: 'Current vs Ambient Temperature' })).toBeNull();
-      expect(screen.getByLabelText('Calculated Current').textContent).toContain('30.00');
+      expect(screen.getByLabelText('Calculated Current').textContent).toContain('30');
       await user.click(screen.getByRole('button', { name: 'Derating' }));
       expect(api.generateTemperatureDerating).toHaveBeenLastCalledWith(coefficients, {
         max_temperature: 125, step: 2.5, ambient_point: 75,

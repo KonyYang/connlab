@@ -20,7 +20,7 @@ export function scanMessage(table: WorkbookTable | null, message: string, source
 }
 
 /** Compact display only: callers retain every original issue and worksheet-row editing key. */
-export function reviewMessages(table: WorkbookTable | null, issues: DataIssue[]) {
+export function reviewMessages(table: WorkbookTable | null, issues: DataIssue[], currentDecimals = 0) {
   const messages: { severity: string; message: string }[] = [];
   const unpowered = (issue: DataIssue) => issue.code === 'zero_current' && issue.severity === 'warning';
   const scanNumber = (row: number) => {
@@ -44,7 +44,7 @@ export function reviewMessages(table: WorkbookTable | null, issues: DataIssue[])
     }
     const label = last === issue ? scanLabel(table, issue.source_row)
       : `${scanLabel(table, issue.source_row)}~${sourceScan(table, last.source_row)}`;
-    messages.push({ severity: issue.severity, message: `${label}: |current| < 0.1 A is treated as unpowered.` });
+    messages.push({ severity: issue.severity, message: `${label}: current rounds to 0 at ${currentDecimals} decimal places (this current column).` });
   }
   return messages;
 }

@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from math import isfinite
 
-from backend.domain.temperature_data import DataSelection, WorkbookTable, column_letter, UNPOWERED_CURRENT_THRESHOLD
+from backend.domain.temperature_data import DataSelection, WorkbookTable, column_letter, round_current
 from backend.domain.temperature_rise import Measurement
 from backend.application.temperature_channel_layout import ChannelLayout, inspect_channel_layout
 
@@ -45,9 +45,12 @@ def prepare_data(table: WorkbookTable, selection: DataSelection, *, acknowledge_
         if len(values) != len(columns):
             continue
         current = values[0] * selection.current_multiplier
-        if abs(current) < UNPOWERED_CURRENT_THRESHOLD:
-            current = 0.
-        if not isfinite(current) or current < 0:
+        if not isfinite(current):
+            issues.append(DataIssue('invalid_current', 'error', number,
+                f"Row {number}: current must be finite and nonnegative. Check the selected column and current scale."))
+            continue
+        current = round_current(values[0], selection.current_decimals, multiplier=selection.current_multiplier)
+        if current < 0:
             issues.append(DataIssue('invalid_current', 'error', number,
                 f"Row {number}: current must be finite and nonnegative. Check the selected column and current scale."))
             continue
@@ -55,7 +58,7 @@ def prepare_data(table: WorkbookTable, selection: DataSelection, *, acknowledge_
         measurements.append(measurement)
         if current == 0:
             issues.append(DataIssue('zero_current', 'warning', number,
-                f"Row {number}: |current| < 0.1 A is treated as unpowered. Review this row; other current columns may still be powered."))
+                f"Row {number}: current rounds to zero at {selection.current_decimals} decimal places; treated as unpowered for this current column."))
         if len(measurements) > 1:
             previous = measurements[-2]
             if 0 < current < previous.current * .99:
@@ -86,6 +89,7 @@ def _number(value: object) -> float:
 
 
 def _validate_selection(table: WorkbookTable, selection: DataSelection) -> ChannelLayout:
+    round_current(0, selection.current_decimals)
     if not 1 <= selection.header_row < selection.start_row <= selection.end_row <= len(table.rows):
         raise ValueError("Choose a header row before the data, and a data range inside the selected sheet.")
     count = selection.thermocouples_per_sample
@@ -116,7 +120,8 @@ def _validate_selection(table: WorkbookTable, selection: DataSelection) -> Chann
         raise ValueError("Current scale must be a finite positive number.")
     if any(not selection.start_row <= row <= selection.end_row for row in selection.excluded_rows):
         raise ValueError("Excluded rows must be inside the selected data range.")
-    layout = inspect_channel_layout(table, selection.header_row, selection.start_row, selection.end_row)
+    layout = inspect_channel_layout(table, selection.header_row, selection.start_row, selection.end_row,
+                                    current_decimals=selection.current_decimals)
     if (selection.sample_groups is None and selection.temperature_columns == layout.temperature_columns
             and (selection.sample_count is None or selection.sample_count == layout.sample_count)
             and count == layout.thermocouples_per_sample

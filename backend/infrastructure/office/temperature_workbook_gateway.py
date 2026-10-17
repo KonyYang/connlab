@@ -29,7 +29,7 @@ import xlrd
 
 from backend.application.temperature_data_preparation import PreparedData
 from backend.application.temperature_report_metadata import TemperatureReportMetadata
-from backend.domain.temperature_data import DataSelection, WorkbookTable
+from backend.domain.temperature_data import DataSelection, WorkbookTable, current_number_format
 from backend.domain.temperature_rise import Coefficients, TemperatureRiseAnalysis, DeratingAnalysis
 from backend.infrastructure.office.temperature_rise_report_sheet import build_rise_report
 
@@ -129,7 +129,7 @@ class TemperatureWorkbookGateway:
             maximum=maximum_coefficients, average=average_coefficients, target=target_rise,
             caches=caches[rise.title], chart=_chart('Temperature Rise vs Applied Current', 'Applied Current (A)', 'T-rise (°C)'),
             report_metadata=report_metadata, auxiliary_current_columns=prepared.stable_auxiliary_current_columns)
-        _derating_sheet(derated, derating, caches[derated.title])
+        _derating_sheet(derated, derating, caches[derated.title], selection.current_decimals)
         _style_sheet(derated)
         book.calculation = CalcProperties(calcId=191029, fullCalcOnLoad=True)
         memory = BytesIO()
@@ -250,7 +250,7 @@ def _initial_sheet(sheet, table, selection, analysis):
         sheet.column_dimensions[get_column_letter(column)].width = 15
 
 
-def _derating_sheet(sheet, result, caches):
+def _derating_sheet(sheet, result, caches, current_decimals=0):
     _text(sheet, 'A1', 'Current vs Ambient Temperature')
     if result is None:
         _text(sheet, 'A3', 'Generate Derating in ConnLab and download again to include this chart.')
@@ -270,14 +270,17 @@ def _derating_sheet(sheet, result, caches):
         sheet.cell(row, 1, point.ambient)
         sheet.cell(row, 2, f'=(-$G$6+SQRT($G$6^2+4*$F$6*($I$6-A{row})))/(2*$F$6)')
         sheet.cell(row, 3, f'=B{row}*0.8')
+        sheet.cell(row, 2).number_format = current_number_format(current_decimals)
+        sheet.cell(row, 3).number_format = current_number_format(current_decimals)
         caches[f'B{row}'], caches[f'C{row}'] = point.basic, point.derated
     sheet['G10'] = '=(-$G$6+SQRT($G$6^2+4*$F$6*($I$6-F10)))/(2*$F$6)'
     sheet['H10'] = '=G10*0.8'
     # Excel can inherit label formatting from these source cells despite chart numFmt.
     for coordinate in ('G10', 'H10'):
-        sheet[coordinate].number_format = '0.0'
+        sheet[coordinate].number_format = current_number_format(current_decimals)
     caches['G10'], caches['H10'] = result.annotation.basic, result.annotation.derated
     chart = _chart('Current Carrying Capacity De-rating Curve', 'Ambient Temperature [°C]', 'Current [Amp]')
+    chart.y_axis.numFmt = NumFmt(formatCode=current_number_format(current_decimals), sourceLinked=False)
     _style_derating_chart(chart)
     end = 5 + len(result.points)
     for col, title, color in ((2, 'Basic', '8B0000'), (3, '80% Derating', 'FFA500')):
@@ -294,12 +297,13 @@ def _derating_sheet(sheet, result, caches):
         series.graphicalProperties.line.solidFill = None
         series.graphicalProperties.line.noFill = True
         series.dLbls = DataLabelList(showVal=True, showLegendKey=False, showCatName=False,
-            showSerName=False, showPercent=False, numFmt='0.0', dLblPos='r',
+            showSerName=False, showPercent=False, numFmt=current_number_format(current_decimals), dLblPos='r',
             txPr=_chart_text_properties(color=color, bold=True))
         chart.series.append(series)
     # The guide ends at the selected Basic point and follows edits to the ambient input.
     for coordinate, value in {'F13': '=$F$10', 'F14': '=$F$10', 'G13': 0, 'G14': '=$G$10'}.items():
         sheet[coordinate] = value
+    sheet['G13'].number_format = sheet['G14'].number_format = current_number_format(current_decimals)
     caches.update(F13=result.annotation.ambient, F14=result.annotation.ambient, G14=result.annotation.basic)
     guide = _series(sheet, 6, 7, 13, 14, 'Ambient Point', '0000FF', caches)
     guide.graphicalProperties.line.prstDash = 'dash'
@@ -372,7 +376,7 @@ def _series(sheet, x_col, y_col, start, end, title, color, caches=None):
     series.graphicalProperties.line.width = 22000
     for column, reference in ((x_col, series.xVal.numRef), (y_col, series.yVal.numRef)):
         values = [(caches or {}).get(sheet.cell(r, column).coordinate, sheet.cell(r, column).value) for r in range(start, end + 1)]
-        reference.numCache = NumData(formatCode='0.000000', ptCount=len(values),
+        reference.numCache = NumData(formatCode=sheet.cell(start, column).number_format, ptCount=len(values),
                                     pt=[NumVal(idx=i, v=value) for i, value in enumerate(values)])
     return series
 

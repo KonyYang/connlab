@@ -4,7 +4,7 @@ import re
 from math import ceil
 
 from openpyxl.chart import Reference, Series
-from openpyxl.chart.data_source import NumData, NumVal, StrRef, StrData, StrVal
+from openpyxl.chart.data_source import NumData, NumVal, NumFmt, StrRef, StrData, StrVal
 from openpyxl.chart.series import SeriesLabel
 from openpyxl.chart.text import Text, RichText
 from openpyxl.chart.trendline import Trendline, TrendlineLabel
@@ -16,7 +16,7 @@ from openpyxl.utils import get_column_letter, quote_sheetname
 from openpyxl.workbook.defined_name import DefinedName
 
 from backend.domain.temperature_rise import calculate_current
-from backend.domain.temperature_data import UNPOWERED_CURRENT_THRESHOLD, measurement_name
+from backend.domain.temperature_data import measurement_name, round_current, current_number_format
 from backend.application.temperature_report_metadata import TemperatureReportMetadata
 
 MAX_COLOR = 'FFA500'
@@ -42,12 +42,13 @@ def build_rise_report(sheet, *, table, selection, analysis, maximum, average, ta
     maximum_row, average_row = _summary(sheet, table, selection, analysis, rise_rows, current_row, caches)
     _auxiliary_currents(sheet, table, selection, analysis, auxiliary_current_columns,
                        raw_rows, raw_columns, summary_header, caches)
-    _calculator(sheet, maximum, analysis.maximum_fit, target, calculator_header, caches)
+    _calculator(sheet, maximum, analysis.maximum_fit, target, calculator_header, caches, selection.current_decimals)
     _average_inputs(sheet, average, analysis.average_fit, calculator_header + 3, calculator_header + 8, caches)
     label_rows = _fit_equations(sheet, analysis, current_row, maximum_row, average_row,
                                calculator_header + 6, caches)
     # Keep live fit/AVG dependencies inspectable without duplicating the visible MAX calculator.
     sheet.row_dimensions.group(calculator_header + 3, calculator_header + 8, hidden=True)
+    chart.x_axis.numFmt = NumFmt(formatCode=current_number_format(selection.current_decimals), sourceLinked=False)
     _rise_chart(sheet, analysis, chart, current_row, maximum_row, average_row, label_rows, caches)
     _name(sheet, 'TemperatureRiseSummary', summary_header, average_row, len(analysis.points) + 1)
     sheet.freeze_panes = None
@@ -191,10 +192,11 @@ def _stage_rises(sheet, selection, stages, raw_rows, raw_columns, header, caches
         _formula(sheet, row, channels + 3, f'={ambient_column}{source}', ambient, caches)
         current = f'{get_column_letter(raw_columns[selection.current_column])}{source}*{selection.current_multiplier!r}'
         _formula(sheet, row, channels + 4,
-                 f'=IF(ABS({current})<{UNPOWERED_CURRENT_THRESHOLD},0,{current})',
+                 f'=ROUND({current},{selection.current_decimals})',
                  point.current, caches)
     _table_style(sheet, header, header + len(stages), channels + 4)
     for row in range(header + 1, header + len(stages) + 1):
+        sheet.cell(row, channels + 4).number_format = current_number_format(selection.current_decimals)
         for column in (1, 2):
             sheet.cell(row, column).number_format = 'General'
     _name(sheet, 'StageTemperatureRise', header, header + len(stages), channels + 4)
@@ -235,7 +237,7 @@ def _summary(sheet, table, selection, analysis, rise_rows, header, caches):
         _formula(sheet, average_row, column, f'=AVERAGE({references})', point.average, caches)
     _table_style(sheet, header, average_row, len(analysis.points) + 1)
     for cell in sheet[header][1:len(analysis.points) + 1]:
-        cell.number_format = '0'  # Display whole amperes without rounding chart/fit inputs.
+        cell.number_format = current_number_format(selection.current_decimals)
     sheet.row_dimensions[header].height = 22
     for row in (*max_rows, maximum_row, average_row):
         for cell in sheet[row][:len(analysis.points) + 1]:
@@ -264,14 +266,15 @@ def _auxiliary_currents(sheet, table, selection, analysis, columns, raw_rows, ra
                 continue  # An inserted origin has no auxiliary reading to report.
             source = sheet.cell(raw_rows[point.source_row], raw_columns[source_column])
             # CSV values stay literal in the raw table; coerce numeric text only in the report.
-            _formula(sheet, row, column, f'={source.coordinate}*1', float(source.value), caches)
+            _formula(sheet, row, column, f'=ROUND({source.coordinate}*1,{selection.current_decimals})',
+                     round_current(float(source.value), selection.current_decimals), caches)
     _table_style(sheet, header, header + len(columns) - 1, width)
     for row in range(header, header + len(columns)):
         sheet.row_dimensions[row].height = 22
         for cell in sheet[row][:width]:
             cell.fill = PatternFill('solid', fgColor='D9D9D9')
             cell.font = Font(name='Arial', size=10, bold=True, color='000000')
-            cell.number_format = '0'
+            cell.number_format = current_number_format(selection.current_decimals)
 
 
 def _report_measurement_name(name):
@@ -283,7 +286,7 @@ def _report_measurement_name(name):
     return clean
 
 
-def _calculator(sheet, maximum, fit, target, header, caches):
+def _calculator(sheet, maximum, fit, target, header, caches, current_decimals):
     for column, label in enumerate(('y (°C)', 'a', 'b', 'c', 'x (A)'), 1):
         _literal(sheet, header, column, label)
     row = header + 1
@@ -301,7 +304,7 @@ def _calculator(sheet, maximum, fit, target, header, caches):
         cell.font = Font(name='Arial', size=10, color='000000' if cell.data_type == 'f' else '0000FF')
         cell.fill = PatternFill('solid', fgColor='E2F0D9')
         cell.number_format = '0.000000' if column != 1 else '0.0'
-    sheet.cell(row, 5).number_format = '0.0'
+    sheet.cell(row, 5).number_format = current_number_format(current_decimals)
     sheet.cell(row, 5).font = Font(name='Arial', size=10, bold=True, color=MAX_COLOR)
     _name(sheet, 'CurrentCalculator', header, row, 5)
 
@@ -380,7 +383,7 @@ def _rise_chart(sheet, analysis, chart, current_row, maximum_row, average_row, l
             strCache=StrData(ptCount=1, pt=[StrVal(idx=0, v=sheet.cell(row, 1).value)])))
         for source, reference in ((current_row, series.xVal.numRef), (row, series.yVal.numRef)):
             values = [caches.get(sheet.cell(source, col).coordinate, sheet.cell(source, col).value) for col in range(2, end + 1)]
-            reference.numCache = NumData(formatCode='0.0', ptCount=len(values), pt=[NumVal(idx=i, v=v) for i, v in enumerate(values)])
+            reference.numCache = NumData(formatCode=sheet.cell(source, 2).number_format, ptCount=len(values), pt=[NumVal(idx=i, v=v) for i, v in enumerate(values)])
         series.graphicalProperties.line.solidFill = None
         series.graphicalProperties.line.noFill = True
         series.marker.symbol, series.marker.size = marker, 6

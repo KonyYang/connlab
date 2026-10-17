@@ -11,6 +11,7 @@ import { RiseChart, DeratingChart, MAX_COLOR } from '../features/temperature/Tem
 import { useTemperatureTool } from '../features/temperature/useTemperatureTool';
 import { TestInfo } from '../features/temperature/TestInfo';
 import { reportHumidityIssue } from '../features/temperature/reportInfo';
+import { formatCurrent } from '../features/temperature/currentPrecision';
 import '../features/temperature/temperature.css';
 
 export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactElement {
@@ -19,7 +20,11 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
   const tool = useTemperatureTool();
   const s = tool.state;
   const busy = Boolean(s.busy);
-  const review = useMemo(() => reviewMessages(s.table, s.review?.issues ?? []), [s.table, s.review]);
+  const currentDecimals = s.selection?.current_decimals ?? 0;
+  const extraStableCurrent = s.review?.stable_auxiliary_current_columns !== undefined
+    ? s.review.stable_auxiliary_current_columns.length > 0
+    : Boolean(s.channel_layout?.stable_current_columns.some(column => column !== s.selection?.current_column && column !== s.selection?.ambient_column));
+  const review = useMemo(() => reviewMessages(s.table, s.review?.issues ?? [], currentDecimals), [s.table, s.review, currentDecimals]);
   const columns = useMemo(() => s.table && s.selection ? sourceColumnOptions(s.table, s.selection, s.channel_layout) : [],
     [s.table, s.selection?.header_row, s.selection?.ambient_column, s.selection?.current_column, s.selection?.temperature_columns, s.selection?.channel_names, s.channel_layout]);
   const ambientValid = columns.some(column => column.id === s.selection?.ambient_column && column.kind === 'temperature');
@@ -55,8 +60,13 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
             {s.selection.sample_count != null ? <>
               <label className="temperature-sample-count">Samples<input type="number" min="1" max="254" value={s.selection.sample_count} disabled={busy}
                 onChange={event => tool.changeData({ sample_count: Number(event.target.value) })} /></label>
-              <span className="temperature-derived-count">{incompleteSampleGroups(s.selection, s.channel_layout) ? 'TC/Sample: pending' : `${s.selection.thermocouples_per_sample} TC/Sample`}</span>
             </> : <label className="temperature-sample-count">Thermocouples/Sample<input type="number" min="1" max="254" value={s.selection.thermocouples_per_sample} disabled={busy} onChange={event => tool.changeData({ thermocouples_per_sample: Number(event.target.value) })} /></label>}
+            <label className="temperature-sample-count">Current Decimals<input type="number" min="0" max="4" step="1" value={currentDecimals} disabled={busy}
+              onChange={event => {
+                const decimals = Number(event.target.value);
+                if (Number.isInteger(decimals) && decimals >= 0 && decimals <= 4) tool.changeData({ current_decimals: decimals });
+              }} /></label>
+            {s.selection.sample_count != null && <span className="temperature-derived-count">{incompleteSampleGroups(s.selection, s.channel_layout) ? 'TC/Sample: pending' : `${s.selection.thermocouples_per_sample} TC/Sample`}</span>}
           </>}
       </div>}
       {roleIssue && <p role="alert" className="temperature-error">{roleIssue}</p>}
@@ -78,13 +88,13 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         <h3>Temperature Rise (T-riseChart)</h3>
         <div className="temperature-actions"><label className="temperature-check"><input type="checkbox" checked={s.zeroIntercept} disabled={busy} onChange={event => tool.zeroIntercept(event.target.checked)} />Zero Intercept</label>
           <button type="button" disabled={busy || !s.confirmed} onClick={() => void tool.analyze()}>Generate T-riseChart</button></div>
-        {Boolean(s.channel_layout?.stable_current_columns.some(column => column !== s.selection?.current_column && column !== s.selection?.ambient_column)) && !s.manualZeroIntercept &&
+        {extraStableCurrent && !s.manualZeroIntercept &&
           <p className="temperature-hint">Extra stable current detected; Zero Intercept defaults off.</p>}
         {!s.confirmed && <p className="temperature-hint">Confirm Initial Data to generate the chart.</p>}
-        {s.analysis ? <RiseChart analysis={s.analysis} table={s.table} /> : <p className="temperature-chart-empty">The temperature-rise chart will appear here.</p>}
+        {s.analysis ? <RiseChart analysis={s.analysis} table={s.table} currentDecimals={currentDecimals} /> : <p className="temperature-chart-empty">The temperature-rise chart will appear here.</p>}
         <div className="temperature-actions"><label>Target Rise (°C)<input type="number" min="0" step="any" value={s.targetRise} disabled={busy} onChange={event => tool.editParameter('targetRise', event.target.value)} /></label>
           <button type="button" disabled={busy || !s.maximum} onClick={() => void tool.current()}>Calculate Current</button>
-          {s.current !== null && <output aria-label="Calculated Current" className="temperature-result temperature-current-result" style={{ color: MAX_COLOR }}>{s.current.toFixed(2)} A</output>}</div>
+          {s.current !== null && <output aria-label="Calculated Current" className="temperature-result temperature-current-result" style={{ color: MAX_COLOR }}>{formatCurrent(s.current, currentDecimals)} A</output>}</div>
       </section>
       <section className="temperature-panel">
         <h3>Derating</h3>
@@ -96,7 +106,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         </div>
         {!s.zeroIntercept ? <p className="temperature-hint">Enable Zero Intercept and regenerate T-riseChart to use Derating.</p>
           : !s.average && <p className="temperature-hint">Generate T-riseChart first.</p>}
-        {s.derating ? <DeratingChart result={s.derating} /> : <p className="temperature-chart-empty">The Basic and 80% Derating curves will appear here.</p>}
+        {s.derating ? <DeratingChart result={s.derating} currentDecimals={currentDecimals} /> : <p className="temperature-chart-empty">The Basic and 80% Derating curves will appear here.</p>}
       </section>
     </div>
     <footer className="temperature-footer"><div aria-live="polite">

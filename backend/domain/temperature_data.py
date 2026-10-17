@@ -1,10 +1,29 @@
 """Workbook values without a dependency on their Office file representation."""
 
 from dataclasses import dataclass
+from decimal import Decimal, ROUND_HALF_UP, localcontext
+from math import isfinite
 import re
 
 CellValue = str | float | int | bool | None
-UNPOWERED_CURRENT_THRESHOLD = .1
+
+
+def round_current(value: float, decimals: int = 0, *, multiplier: float = 1.) -> float:
+    """Quantize amperes like Excel ROUND, not Python's ties-to-even round."""
+    if not isinstance(decimals, int) or isinstance(decimals, bool) or not 0 <= decimals <= 4:
+        raise ValueError('Current decimals must be an integer from 0 to 4.')
+    if not isfinite(value) or not isfinite(multiplier):
+        raise ValueError('Current must be finite.')
+    number = Decimal(str(value))
+    scale = Decimal(str(multiplier))
+    with localcontext() as context:
+        context.prec = max(50, number.adjusted() + scale.adjusted() + decimals + 4)
+        rounded = (number * scale).quantize(Decimal(1).scaleb(-decimals), rounding=ROUND_HALF_UP)
+    return float(rounded) if rounded else 0.
+
+
+def current_number_format(decimals: int) -> str:
+    return '0' + ('.' + '0' * decimals if decimals else '')
 
 
 @dataclass(frozen=True)
@@ -35,6 +54,7 @@ class DataSelection:
     sample_groups: tuple[tuple[int, ...], ...] | None = None
     channel_names: tuple[tuple[int, str], ...] = ()
     sample_count: int | None = None
+    current_decimals: int = 0
 
 
 def measurement_name(table: WorkbookTable, selection: DataSelection, column: int) -> str:

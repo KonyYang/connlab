@@ -3,7 +3,7 @@ import type { DataIssue, WorkbookTable } from '../../api/temperature';
 import { reviewMessages } from './sourceScan';
 
 describe('compact scan review messages', () => {
-  const suffix = ': |current| < 0.1 A is treated as unpowered.';
+  const suffix = ': current rounds to 0 at 0 decimal places (this current column).';
   it.each([
     { scans: [51, 52, 53], labels: ['Scan 51~53'] },
     { scans: [51, 53], labels: ['Scan 51', 'Scan 53'] },

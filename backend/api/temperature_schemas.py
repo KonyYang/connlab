@@ -40,6 +40,7 @@ class DataSelectionRequest(TemperatureModel):
     sample_count: int | None = Field(default=None, ge=1, le=254, strict=True)
     excluded_rows: list[int] = Field(default_factory=list, max_length=20000)
     current_multiplier: float = Field(default=1, gt=0, le=1000000000)
+    current_decimals: int = Field(default=0, ge=0, le=4, strict=True)
     sample_groups: list[Annotated[list[int], Field(max_length=254)]] | None = Field(default=None, max_length=254)
     channel_names: dict[Annotated[int, Field(ge=3, le=256)],
                         Annotated[str, StringConstraints(max_length=200, pattern=r'^[^\x00-\x1f]*$')]] = Field(default_factory=dict, max_length=254)

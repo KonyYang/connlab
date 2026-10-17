@@ -97,24 +97,27 @@ export function useTemperatureTool() {
         review: null, confirmed: false }));
   }
 
-  function request(): api.PreparationRequest {
+  function request(zeroIntercept = state.zeroIntercept): api.PreparationRequest {
     if (!state.table || !state.selection) throw new Error('Import a workbook first.');
-    // Match the macro: use measured current directly, including any decimal places.
-    return { table: state.table, selection: { ...state.selection, current_multiplier: 1 },
+    // The backend quantizes the selected current once; source readings remain untouched.
+    return { table: state.table, selection: { ...state.selection, current_multiplier: 1,
+      current_decimals: state.selection.current_decimals ?? 0 },
       // Confirm Data retains warning-only rows; backend validation still blocks invalid readings.
-      acknowledge_warnings: true, zero_intercept: state.zeroIntercept };
+      acknowledge_warnings: true, zero_intercept: zeroIntercept };
   }
   async function confirm() {
     const review = await run('Checking Data...', () => api.prepareTemperatureData(request()),
       review => ({ review, confirmed: review.ready }));
     if (!review?.ready) return;
-    const analysis = await analyze();
+    const zeroIntercept = !state.manualZeroIntercept && review.stable_auxiliary_current_columns !== undefined
+      ? review.stable_auxiliary_current_columns.length === 0 : state.zeroIntercept;
+    const analysis = await analyze(zeroIntercept);
     // Use this analysis, not state from the render before confirmation. A stale/failed run returns nothing.
-    if (analysis && state.zeroIntercept) await generateDerating(fields(analysis.average_fit.coefficients));
+    if (analysis && zeroIntercept) await generateDerating(fields(analysis.average_fit.coefficients));
   }
-  async function analyze() {
-    const analysis = await run('Generating T-riseChart...', () => api.analyzeTemperatureData(request()), analysis => ({
-      ...clearResults, analysis, maximum: fields(analysis.maximum_fit.coefficients),
+  async function analyze(zeroIntercept = state.zeroIntercept) {
+    const analysis = await run('Generating T-riseChart...', () => api.analyzeTemperatureData(request(zeroIntercept)), analysis => ({
+      ...clearResults, analysis, zeroIntercept, maximum: fields(analysis.maximum_fit.coefficients),
       average: fields(analysis.average_fit.coefficients),
     }));
     if (!analysis) return;

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from math import isfinite
 import re
 
-from backend.domain.temperature_data import WorkbookTable
+from backend.domain.temperature_data import WorkbookTable, round_current
 
 
 @dataclass(frozen=True)
@@ -29,7 +29,7 @@ class ChannelLayout:
     sample_count: int = 3
 
 
-def inspect_channel_layout(table: WorkbookTable, header_row: int, start_row: int, end_row: int) -> ChannelLayout:
+def inspect_channel_layout(table: WorkbookTable, header_row: int, start_row: int, end_row: int, *, current_decimals: int = 0) -> ChannelLayout:
     header = table.rows[header_row - 1]
     labels = {index: str(value or '').strip() for index, value in enumerate(header, 1)}
     labelled = {index: label for index, label in labels.items() if label}
@@ -38,8 +38,12 @@ def inspect_channel_layout(table: WorkbookTable, header_row: int, start_row: int
                     if re.search(r'ambient|环境', label, re.I)), max(1, width - 1))
     currents = tuple(index for index, label in labelled.items() if index != ambient
                      and re.search(r'current|电流|\bamps?\b|\bVDC\b|\((?:m?A)\)', label, re.I))
-    stable = tuple(column for column in currents if _stable_energized_column(table, column, start_row, end_row))
-    variable = [column for column in currents if column not in stable]
+    series = {column: _current_readings(table, column, start_row, end_row) for column in currents}
+    constant = tuple(column for column, readings in series.items() if len(readings) >= 2
+                     and min(readings) >= 0 and max(readings) - min(readings) <= min(readings) * .01)
+    stable = tuple(column for column in constant if all(round_current(value, current_decimals) > 0 for value in series[column]))
+    # An unpowered constant channel is still not the varying current that drives the curve.
+    variable = [column for column in currents if column not in constant]
     named_current = next((index for index in currents if re.search(r'current|电流|\bamps?\b', labels[index], re.I)), None)
     current = variable[0] if len(variable) == 1 else named_current or (currents[-1] if currents else width)
     candidates = tuple(index for index, label in labelled.items()
@@ -77,18 +81,17 @@ def inspect_channel_layout(table: WorkbookTable, header_row: int, start_row: int
                          len(groups) if groups else 3)
 
 
-def _stable_energized_column(table: WorkbookTable, column: int, start: int, end: int) -> bool:
+def _current_readings(table: WorkbookTable, column: int, start: int, end: int) -> tuple[float, ...]:
     readings = []
     for row in table.rows[start - 1:end]:
         value = row[column - 1] if column <= len(row) else None
         if isinstance(value, bool) or value is None:
-            return False
+            return ()
         try:
             number = float(value)
         except (ValueError, TypeError):
-            return False
-        if not isfinite(number) or number < .1:
-            return False
+            return ()
+        if not isfinite(number):
+            return ()
         readings.append(number)
-    # Require sustained powered readings within the existing 1% current-stability rule.
-    return len(readings) >= 2 and (max(readings) - min(readings)) / min(readings) <= .01
+    return tuple(readings)
