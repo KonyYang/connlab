@@ -98,3 +98,51 @@ checkboxes without desktop document overflow. Visual inspection then found nativ
 styling and a duplicated page title. These two presentation issues were corrected locally, followed
 by 25 affected frontend tests passing again. The complete frontend gate and browser checks must
 therefore be repeated on the final UI bytes; the unchanged Python inputs retain their passing gate.
+
+## Final acceptance — 2026-10-17
+
+Frozen executable subject: `ba07214bdb3cee7fcc8269e45f5e0afa69468d9d`. Worktree clean.
+
+- Complete default-worker frontend: **961 passed / 1 existing profiling skip**, 103 files passed /
+  1 skipped, **41.39s**. `tsc -b` and sequential Vite build passed, **187 modules / 1.18s**.
+- Affected Python: **25 passed**, 20.28s during the first frozen gate; all backend/test inputs remain
+  byte-identical at the final subject. No unrelated complete backend or Office gate was repeated.
+- Final isolated UI used a byte-verified 38-file copy of the final build at `127.0.0.1:18766`, with
+  every mutable setting under the task's Temp root and external LTR disabled. No live 5173/8000
+  service was accessed. Tools navigation, 36 real rows / 30 selected / 6 review, overlapping-root
+  collapse, clear/reselect/manual selection, mocked-503 failure + real retry, stop, and return passed.
+- Desktop 1440x1000 and narrow 514x900 have no document horizontal overflow; narrow table scroll is
+  local. Checkboxes measure 18px. The final screenshot has one page heading and consistent actions.
+- Native picker cancel/selected responses were simulated at its HTTP boundary; the operating-system
+  dialog itself was not clicked by automation. Manual directory entry was exercised end to end.
+- First separated slow-request harness expired before its Stop click; this harness failure is
+  retained. The replacement atomic controlled-delay sequence passed with three roots retained,
+  no result table after stopping, and no late result. No product code changed for the harness.
+- Console contains exactly one expected resource error from the deliberate mocked 503, with no
+  application exceptions or warnings. It is not represented as a zero-error run.
+- All **2,747** source inventory entries and read metadata hashes still match their pre-final-UI
+  baseline. Browser and owned backend process tree stopped; port 18766 closed.
+
+Final machine evidence: `qa-final-result.json` in the Temp evidence directory above. Final logs are
+`qa-frontend-final.log`, `qa-python-ab9983b3.log`; screenshots and DOM evidence are in
+`output/playwright/`. Sequential Developer/Reviewer/QA/Integrator passes are all by the same agent.
+No formal import, business-data/source mutation, push or publication occurred.
+
+## Exact changed paths (excluding task board)
+
+- `backend/api/main.py`
+- `backend/api/routes_tools_legacy_projects.py`
+- `backend/application/legacy_project_preview_service.py`
+- `backend/infrastructure/files/legacy_project_preview_gateway.py`
+- `backend/infrastructure/files/windows_path_picker.py`
+- `frontend/src/App.tsx`
+- `frontend/src/App.test.tsx`
+- `frontend/src/api/legacyProjects.ts`
+- `frontend/src/features/legacy-projects/LegacyProjectPreview.tsx`
+- `frontend/src/features/legacy-projects/LegacyProjectPreview.test.tsx`
+- `frontend/src/features/legacy-projects/legacy-project-preview.css`
+- `frontend/src/pages/ToolsPage.tsx`
+- `frontend/src/pages/ToolsPage.test.tsx`
+- `tests/unit/test_legacy_project_preview.py`
+- `tests/integration/test_tools_legacy_projects_api.py`
+- `docs/plans/LEGACY_PROJECT_PREVIEW_20261017.md`
