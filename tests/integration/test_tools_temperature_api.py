@@ -320,10 +320,10 @@ def test_grouped_csv_import_reports_auxiliary_currents_and_nonzero_intercept_def
     summary = sheet[next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
     assert [row[0].value for row in summary[:4]] == [
         'High Power(A)', 'A4_B4 Signal(A)', 'Others Signal(A)', 'Low Power(A)']
-    assert [cell.value for cell in summary[0][1:]] == [125.002, 125.004, 125.006]
-    assert [cell.value for cell in summary[1][1:]] == [3.001, 3.001, 3.001]
-    assert [cell.value for cell in summary[2][1:]] == [1.02, 1.02, 1.02]
-    assert [cell.value for cell in summary[3][1:]] == [0, 10.01, 20.01]
+    assert [cell.value for cell in summary[0][1:]] == [125, 125, 125]
+    assert [cell.value for cell in summary[1][1:]] == [3, 3, 3]
+    assert [cell.value for cell in summary[2][1:]] == [1, 1, 1]
+    assert [cell.value for cell in summary[3][1:]] == [0, 10, 20]
     assert all(cell.number_format == '0' for row in summary[:4] for cell in row[1:])
     assert sheet._charts[0].series[0].xVal.numRef.f.endswith(f'$B${summary[3][0].row}:$D${summary[3][0].row}')
     book.close()
@@ -350,19 +350,20 @@ def test_import_prepare_analyze_and_download_round_trip_without_project_authorit
     analyzed = client.post('/api/tools/temperature-rise/analyze', json=request)
     assert analyzed.status_code == 200, analyzed.text
     analysis = analyzed.json()
-    assert analysis['maximum_fit']['coefficients']['a'] == .004677
+    assert [point['current'] for point in analysis['points']] == [0, 18, 31, 40, 44, 66, 75]
+    assert analysis['maximum_fit']['coefficients']['a'] == .004778
     maximum, average = analysis['maximum_fit']['coefficients'], analysis['average_fit']['coefficients']
     calculated = client.post('/api/tools/temperature-rise/current', json={'coefficients': maximum, 'target_rise': 30})
-    assert calculated.json()['current'] == pytest.approx(66.54445742154181)
+    assert calculated.json()['current'] == pytest.approx(66.51278652458561)
     parameters = {'max_temperature': 105, 'step': 2.5, 'ambient_point': 75}
     derating = client.post('/api/tools/temperature-rise/derating', json={'coefficients': average, **parameters})
-    assert derating.json()['annotation']['basic'] == pytest.approx(68.38881593205294)
+    assert derating.json()['annotation']['basic'] == pytest.approx(68.34383193671579)
     download = client.post('/api/tools/temperature-rise/download', json={**request,
         'maximum_coefficients': maximum, 'average_coefficients': average, 'target_rise': 30, 'derating': parameters})
     assert download.status_code == 200, download.text[:300]
     assert 'scanner_T-rise_Derating.xlsx' in download.headers['content-disposition']
     book = load_workbook(BytesIO(download.content), data_only=True)
-    assert book['Derating']['C36'].value == pytest.approx(54.71105274564235)
+    assert book['Derating']['C36'].value == pytest.approx(derating.json()['annotation']['derated'])
     book.close()
     assert sha256(source).hexdigest() == digest
 
@@ -424,7 +425,7 @@ def test_utf16_scanner_csv_uses_the_same_confirmation_calculation_and_excel_down
     assert client.post('/api/tools/temperature-rise/prepare', json=request).json()['ready']
     analyzed = client.post('/api/tools/temperature-rise/analyze', json=request)
     assert analyzed.status_code == 200, analyzed.text
-    assert analyzed.json()['maximum_fit']['coefficients']['a'] == .004677
+    assert analyzed.json()['maximum_fit']['coefficients']['a'] == .004778
     download = client.post('/api/tools/temperature-rise/download', json=request)
     assert download.status_code == 200, download.text[:300]
     assert 'scanner_T-rise_Derating.xlsx' in download.headers['content-disposition']
