@@ -12,6 +12,13 @@ from backend.domain import ExternalResourceType
 class WindowsPathPicker:
     """Open local Windows file and folder pickers."""
 
+    def pick_legacy_project_directory(self) -> Path | None:
+        """Choose an existing project or parent directory without changing it."""
+        selection = self._run_dialog(lambda: filedialog.askdirectory(
+            title="选择旧项目目录或包含多个项目的父目录", mustexist=True,
+        ))
+        return Path(selection) if selection else None
+
     def pick_file(self, resource_type: ExternalResourceType) -> Path | None:
         """Return one selected file path, or None when cancelled."""
         file_types = _file_types(resource_type)

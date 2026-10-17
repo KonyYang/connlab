@@ -28,7 +28,10 @@ const INITIAL_STATE: Record<ToolKey, ToolState> = {
 
 const CUSTOMER_REPORT_POLL_DELAY_MS = 750;
 
-export function ToolsPage({ onOpenTemperatureRise = () => { window.location.assign('/tools/temperature-rise'); } }: { onOpenTemperatureRise?: () => void } = {}): ReactElement {
+export function ToolsPage({
+  onOpenTemperatureRise = () => { window.location.assign('/tools/temperature-rise'); },
+  onOpenLegacyProjects = () => { window.location.assign('/tools/legacy-projects'); },
+}: { onOpenTemperatureRise?: () => void; onOpenLegacyProjects?: () => void } = {}): ReactElement {
   const [state, setState] = useState(INITIAL_STATE);
   const runningTools = useRef(new Set<ToolKey>());
   const runTokens = useRef<Record<ToolKey, number>>({
@@ -105,6 +108,11 @@ export function ToolsPage({ onOpenTemperatureRise = () => { window.location.assi
   return (
     <section className="tools-page" aria-label="Tools">
       <div className="tools-grid">
+        <article className="tools-card">
+          <div className="tools-card-heading"><h3>旧项目资料</h3></div>
+          <p>批量预览已有项目文件夹，原文件和目录结构保持不变。</p>
+          <button type="button" className="primary-action tools-picker-action" onClick={onOpenLegacyProjects}>导入旧项目</button>
+        </article>
         <ToolCard
           title="Internal Report → Customer Report"
           accept=".docx"

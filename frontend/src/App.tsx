@@ -59,6 +59,9 @@ const ToolsPage = lazy(() =>
 const TemperatureRisePage = lazy(() =>
   import("./pages/TemperatureRisePage").then((module) => ({ default: module.TemperatureRisePage }))
 );
+const LegacyProjectPreview = lazy(() =>
+  import("./features/legacy-projects/LegacyProjectPreview").then(module => ({ default: module.LegacyProjectPreview }))
+);
 
 type Route =
   | { name: "projects" }
@@ -77,6 +80,7 @@ type Route =
   | { name: "settings" }
   | { name: "tools" }
   | { name: "temperatureRise" }
+  | { name: "legacyProjectPreview" }
   | { name: "notFound" };
 
 function parseRoute(pathname: string): Route {
@@ -97,6 +101,9 @@ function parseRoute(pathname: string): Route {
   }
   if (pathname === "/tools/temperature-rise") {
     return { name: "temperatureRise" };
+  }
+  if (pathname === "/tools/legacy-projects") {
+    return { name: "legacyProjectPreview" };
   }
 
   const intakePackageMatch = pathname.match(/^\/intake\/([^/]+)$/);
@@ -218,7 +225,7 @@ export default function App(): ReactElement {
   }
 
   const activeRoute =
-    route.name === "temperatureRise" ? "tools" : route.name === "projectDetail"
+    route.name === "temperatureRise" || route.name === "legacyProjectPreview" ? "tools" : route.name === "projectDetail"
       ? "workbench"
       : route.name === "projectMatrixEditor"
         ? "workbench"
@@ -242,6 +249,8 @@ export default function App(): ReactElement {
         ? "Report"
       : route.name === "temperatureRise"
         ? "Temperature Rise"
+      : route.name === "legacyProjectPreview"
+        ? "导入旧项目"
         : undefined;
 
   return (
@@ -362,7 +371,8 @@ export default function App(): ReactElement {
         />
       )}
       {route.name === "settings" && <SettingsPage />}
-      {route.name === "tools" && <ToolsPage onOpenTemperatureRise={() => navigate('/tools/temperature-rise')} />}
+      {route.name === "tools" && <ToolsPage onOpenTemperatureRise={() => navigate('/tools/temperature-rise')} onOpenLegacyProjects={() => navigate('/tools/legacy-projects')} />}
+      {route.name === "legacyProjectPreview" && <LegacyProjectPreview onBack={() => navigate('/tools')} />}
       {route.name === "temperatureRise" && <TemperatureRisePage onBack={() => navigate('/tools')} />}
       {route.name === "notFound" && (
         <section className="panel">

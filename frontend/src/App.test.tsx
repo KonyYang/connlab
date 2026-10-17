@@ -4,6 +4,15 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 
+it("opens the read-only legacy preview deep link and returns to Tools", async () => {
+  window.history.replaceState({}, "", "/tools/legacy-projects");
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "导入旧项目" })).toBeTruthy();
+  await userEvent.setup().click(screen.getByRole("button", { name: "返回 Tools" }));
+  expect(await screen.findByRole("button", { name: "导入旧项目" })).toBeTruthy();
+  expect(window.location.pathname).toBe("/tools");
+});
+
 vi.mock("./components/layout/AppShell", () => ({
   AppShell: ({ children, onNavigate }: { children: ReactNode; onNavigate: (path: string) => void }) => (
     <>

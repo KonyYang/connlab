@@ -24,6 +24,14 @@ const downloadCustomerReportMock = vi.mocked(downloadStandaloneCustomerReport);
 const encryptCopyMock = vi.mocked(encryptStandaloneCopy);
 
 describe("ToolsPage", () => {
+  it("opens a dedicated legacy project preview without starting another tool", async () => {
+    const onOpenLegacyProjects = vi.fn();
+    render(<ToolsPage onOpenLegacyProjects={onOpenLegacyProjects} />);
+    await userEvent.setup().click(screen.getByRole("button", { name: "导入旧项目" }));
+    expect(onOpenLegacyProjects).toHaveBeenCalledOnce();
+    expect(startCustomerReportMock).not.toHaveBeenCalled();
+    expect(encryptCopyMock).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     // jsdom does not implement the browser's native dialog lifecycle.
     HTMLDialogElement.prototype.showModal ??= function () { this.setAttribute("open", ""); };
