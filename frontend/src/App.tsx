@@ -250,7 +250,7 @@ export default function App(): ReactElement {
       : route.name === "temperatureRise"
         ? "Temperature Rise"
       : route.name === "legacyProjectPreview"
-        ? "导入旧项目"
+        ? "Import Legacy Projects"
         : undefined;
 
   return (

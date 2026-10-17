@@ -33,20 +33,20 @@ class LegacyProjectPreviewGateway:
             for index, entry in enumerate(entries):
                 if index >= self.MAX_ENTRIES:
                     truncated = True
-                    notes.append("目录条目过多，本次只显示部分结果。")
+                    notes.append("This folder contains too many entries; only partial results are shown.")
                     break
                 if entry.name.casefold() in self.SKIP or entry.name.startswith(("~$", "~WRL")) or ".connlab-backup-" in entry.name:
                     continue
                 try:
                     data = entry.stat(follow_symlinks=False)
                     if entry.is_symlink() or getattr(data, "st_file_attributes", 0) & 0x400:
-                        notes.append(f"已跳过重定向条目：{entry.name}")
+                        notes.append(f"Redirected entry skipped: {entry.name}")
                     elif entry.is_dir(follow_symlinks=False):
                         children.append(entry.name)
                     elif entry.is_file(follow_symlinks=False):
                         files.append(entry.name)
                 except OSError:
-                    notes.append(f"无法读取条目：{entry.name}")
+                    notes.append(f"Cannot read entry: {entry.name}")
         manifest = self._metadata(path / ".connlab" / "manifest.json", notes)
         application = self._metadata(path / "application_data.json", notes)
         return LegacyFolder(str(path), (info.st_dev, info.st_ino), tuple(sorted(files)),
@@ -74,5 +74,5 @@ class LegacyProjectPreviewGateway:
                     if key in {"DL", "dl_number", "project_id", "local_workspace_path"}
                     and isinstance(value, str) and len(value) <= 4096}
         except (OSError, ValueError, UnicodeError, RecursionError):
-            notes.append(f"无法使用旧资料 {path.name}；仍可按目录预览。")
+            notes.append(f"Cannot use legacy metadata {path.name}; folder-based preview is still available.")
             return {}

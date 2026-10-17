@@ -41,7 +41,7 @@ def test_batch_groups_workspace_and_inner_folder_and_deduplicates_overlapping_ro
     moved = next(item for item in result["projects"] if item["number"] == "DL-2026-07-013")
     assert moved["status"] == "ready"
     assert moved["name"] == "Qualification Testing"
-    assert any("旧位置" in message for message in moved["notes"])
+    assert any("previous location" in message for message in moved["notes"])
     assert inventory(tmp_path) == before
 
 

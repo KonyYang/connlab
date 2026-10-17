@@ -48,7 +48,7 @@ class LegacyProjectPreviewService:
             try:
                 folder = folder or self.gateway.folder(path)
             except (OSError, ValueError):
-                diagnostics.append(f"无法读取或跳过重定向目录：{path}")
+                diagnostics.append(f"Cannot read folder or redirected folder skipped: {path}")
                 continue
             if folder.identity in seen:
                 continue
@@ -76,7 +76,7 @@ class LegacyProjectPreviewService:
             try:
                 folders.append(self.gateway.folder(path))
             except (OSError, ValueError):
-                diagnostics.append(f"目录不可用或属于重定向路径：{path}")
+                diagnostics.append(f"Folder unavailable or redirected: {path}")
         selected = []
         for folder in sorted(folders, key=lambda item: (len(Path(item.path).parts), item.path.casefold())):
             if any(folder.identity == other.identity or Path(folder.path).is_relative_to(Path(other.path))
@@ -112,16 +112,16 @@ class LegacyProjectPreviewService:
         number = folder_number or (next(iter(evidence)) if len(evidence) == 1 else None)
         notes = list(folder.notes)
         if len(evidence) > 1:
-            notes.append("目录或旧资料中的编号不一致：" + "、".join(sorted(evidence)))
+            notes.append("Conflicting numbers in the folder or legacy files: " + ", ".join(sorted(evidence)))
         old_path = folder.manifest.get("local_workspace_path")
         if isinstance(old_path, str) and old_path.replace("\\", "/").casefold() != folder.path.replace("\\", "/").casefold():
-            notes.append("旧标记记录了旧位置；本次以实际选择的目录为准。")
+            notes.append("Legacy metadata refers to a previous location; this preview uses the selected folder.")
         title = NUMBER.sub("", name, count=1).strip(" _-") if folder_number else name
         if not title and number:
             title = next((NUMBER.sub("", child, count=1).strip(" _-") for child in folder.children
                           if (found := NUMBER.search(child)) and found.group(0).upper() == number), "")
         if re.fullmatch(r"[a-f0-9]{32}", title, re.I):
-            title = "名称待补充"
+            title = "Name needed"
         source_id = folder.manifest.get("project_id")
         return {"folder": folder.path, "number": number, "name": title or name,
                 "status": "review" if len(evidence) > 1 else "ready", "notes": notes,
@@ -144,7 +144,7 @@ class LegacyProjectPreviewService:
             project["duplicate_count"] = max(0, total - 1)
             if project["duplicate_count"]:
                 project["status"] = "review"
-                project["notes"].append("本次选择中有相同编号或旧标记的其他目录，请核对；不会自动合并。")
+                project["notes"].append("Other selected folders share this number or legacy identifier. Review them; no automatic merge will occur.")
                 # A batch may contain hundreds of copies. Keep explanations bounded too.
                 for other in chain(numbered, identified):
                     if other is not project and other["folder"] not in project["duplicate_folders"]:

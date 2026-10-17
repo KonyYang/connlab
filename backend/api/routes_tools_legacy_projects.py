@@ -27,11 +27,11 @@ def pick_directory(picker=Depends(get_directory_picker)):
         path = picker()
         return {"path": str(path) if path else None}
     except (OSError, RuntimeError) as exc:
-        raise HTTPException(422, "无法打开目录选择窗口，请使用手动填写目录。") from exc
+        raise HTTPException(422, "Cannot open the folder picker. Enter the folder path manually.") from exc
 
 
 @router.post("/preview")
 def preview(request: PreviewRequest):
     if any(not path.strip() or len(path) > 4096 for path in request.roots):
-        raise HTTPException(422, "请选择有效的项目目录。")
+        raise HTTPException(422, "Choose a valid project folder.")
     return LegacyProjectPreviewService(LegacyProjectPreviewGateway()).preview(request.roots)

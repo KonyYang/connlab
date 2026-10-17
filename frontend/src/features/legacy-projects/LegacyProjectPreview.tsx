@@ -53,51 +53,48 @@ export function LegacyProjectPreview({ onBack }: { onBack: () => void }) {
   }
   function stop() {
     request.current?.abort(); request.current = null; setBusy(false);
-    setMessage("已停止预览，所选目录保留，可重新开始。");
+    setMessage("Preview stopped. Selected folders are kept; you can start again.");
   }
-  const backButton = <button type="button" className="ui-secondary-action" disabled={picking} onClick={onBack}>返回 Tools</button>;
-  return <section className="legacy-preview" aria-label="旧项目只读批量预览">
+  const backButton = <button type="button" className="ui-secondary-action" disabled={picking} onClick={onBack}>Back to Tools</button>;
+  return <section className="legacy-preview" aria-label="Legacy project batch preview">
     {topBarRoot && createPortal(backButton, topBarRoot)}
-    <header className="legacy-preview-heading">
-      <div>{!topBarRoot && <h1>导入旧项目</h1>}<p>只读预览 · 原文件和目录结构保持不变</p></div>
-      {!topBarRoot && backButton}
-    </header>
-    <section className="legacy-preview-panel" aria-label="选择旧项目目录">
-      <h2>1. 选择目录</h2>
-      <p>选择一个旧项目，或包含多个项目的父目录。可继续添加其他位置。</p>
+    {!topBarRoot && <header className="legacy-preview-heading">
+      <h1>Import Legacy Projects</h1>
+      {backButton}
+    </header>}
+    <section className="legacy-preview-panel" aria-label="Choose legacy project folders">
+      <h2>1. Choose Folders</h2>
       <div className="legacy-preview-actions">
-        <button type="button" className="primary-action" disabled={busy || picking || roots.length >= 20} onClick={() => void choose()}>{picking ? "等待选择目录…" : "选择目录"}</button>
-        <span>最多添加 20 个位置；每个位置可包含多个项目。</span>
+        <button type="button" className="primary-action" title="Choose a project folder or a parent folder containing multiple projects. Add up to 20 locations, one at a time." disabled={busy || picking || roots.length >= 20} onClick={() => void choose()}>{picking ? "Waiting for folder selection…" : "Choose Folder"}</button>
       </div>
-      <details><summary>手动填写目录</summary>
-        <div className="legacy-preview-manual"><label>目录位置<input value={manual} maxLength={4096} disabled={busy || picking} onChange={event => setManual(event.target.value)} placeholder="粘贴本机可访问的文件夹位置" /></label>
-          <button type="button" disabled={busy || picking || !manual.trim() || roots.length >= 20} onClick={() => { addRoot(manual); setManual(""); }}>添加目录</button></div>
+      <details><summary title="Enter a folder path if you cannot use the folder picker.">Enter Folder Path Manually</summary>
+        <div className="legacy-preview-manual"><label>Folder Path<input value={manual} maxLength={4096} disabled={busy || picking} onChange={event => setManual(event.target.value)} placeholder="Paste a folder path accessible on this computer" /></label>
+          <button type="button" title="Add this folder to the preview list. You can add up to 20 locations." disabled={busy || picking || !manual.trim() || roots.length >= 20} onClick={() => { addRoot(manual); setManual(""); }}>Add Folder</button></div>
       </details>
-      {roots.length > 0 && <ul className="legacy-preview-roots">{roots.map(path => <li key={path}><span>{path}</span><button type="button" disabled={busy || picking} aria-label={`移除 ${path}`} onClick={() => changeRoots(roots.filter(item => item !== path))}>移除</button></li>)}</ul>}
+      {roots.length > 0 && <ul className="legacy-preview-roots">{roots.map(path => <li key={path}><span>{path}</span><button type="button" disabled={busy || picking} aria-label={`Remove ${path}`} title="Remove this location from the preview list. Files remain unchanged." onClick={() => changeRoots(roots.filter(item => item !== path))}>Remove</button></li>)}</ul>}
       <div className="legacy-preview-actions">
-        <button type="button" className="primary-action" disabled={!roots.length || busy || picking} onClick={() => void preview()}>开始预览</button>
-        {busy && <><span role="status">正在检查所选目录和项目边界…</span><button type="button" onClick={stop}>停止预览</button></>}
+        <button type="button" className="primary-action" title="Read-only preview. Original files and folder structure remain unchanged. No projects will be registered." disabled={!roots.length || busy || picking} onClick={() => void preview()}>Start Preview</button>
+        {busy && <><span role="status">Checking selected folders and project boundaries…</span><button type="button" onClick={stop}>Stop Preview</button></>}
       </div>
       {error && <p role="alert">{error}</p>}{message && <p role="status">{message}</p>}
     </section>
-    {result && <section className="legacy-preview-panel" aria-label="预览检查结果">
-      <h2>2. 核对项目</h2>
-      <p>发现 {result.projects.length} 个项目，已选 {selected.length} 个。当前仅供核对，不会登记项目。</p>
-      <p className="legacy-preview-help">重复与冲突提示仅比较本次所选目录；未查询业务库中的既有项目。旧标记只作参考。</p>
-      {result.duplicate_roots > 0 && <p>已合并 {result.duplicate_roots} 个重复或重叠的目录选择。</p>}
-      {result.truncated && <p role="alert">结果不完整：已达到本次读取限制。请选择更具体的目录后重新预览。</p>}
-      {result.diagnostics.length > 0 && <details><summary>查看无法读取或跳过的目录（{result.diagnostics.length}）</summary><ul>{result.diagnostics.map((text, i) => <li key={i}>{text}</li>)}</ul></details>}
-      {!result.projects.length ? <p>没有发现项目资料。可以直接选择具体项目目录后重试。</p> : <>
+    {result && <section className="legacy-preview-panel" aria-label="Preview results">
+      <h2>2. Review Projects</h2>
+      <p>{result.projects.length} projects found; {selected.length} selected.</p>
+      {result.duplicate_roots > 0 && <p>{result.duplicate_roots} duplicate or overlapping folder selections combined.</p>}
+      {result.truncated && <p role="alert">Incomplete results: the preview limit was reached. Choose a more specific folder and try again.</p>}
+      {result.diagnostics.length > 0 && <details><summary>Unreadable or skipped folders ({result.diagnostics.length})</summary><ul>{result.diagnostics.map((text, i) => <li key={i}>{text}</li>)}</ul></details>}
+      {!result.projects.length ? <p>No project files found. Choose a specific project folder and try again.</p> : <>
         <div className="legacy-preview-actions">
-          <button type="button" onClick={() => setSelected(result.projects.filter(item => item.status === "ready").map(item => item.folder))}>选择无冲突项目</button>
-          <button type="button" onClick={() => setSelected([])}>清空选择</button>
+          <button type="button" title="Select projects with no detected conflicts in this batch. Existing registered projects are not checked; legacy identifiers are for reference only." onClick={() => setSelected(result.projects.filter(item => item.status === "ready").map(item => item.folder))}>Select Clear Projects</button>
+          <button type="button" onClick={() => setSelected([])}>Clear Selection</button>
         </div>
-        <div className="legacy-preview-table"><table aria-label="旧项目预览"><thead><tr><th>选择</th><th>建议编号 / 项目名称</th><th>所在文件夹</th><th>检查结果</th></tr></thead><tbody>{result.projects.map(item => <tr key={item.folder}>
-          <td><input type="checkbox" aria-label={`选择 ${item.name}`} checked={selected.includes(item.folder)} onChange={event => setSelected(values => event.target.checked ? [...values, item.folder] : values.filter(value => value !== item.folder))} /></td>
-          <td><strong>{item.number || "编号待补充"}</strong><span>{item.name}</span></td><td className="legacy-preview-folder">{item.folder}</td>
-          <td><strong className={item.status === "review" ? "legacy-preview-review" : "legacy-preview-ready"}>{item.status === "review" ? "需要核对" : "可预览"}</strong>
+        <div className="legacy-preview-table"><table aria-label="Legacy project preview"><thead><tr><th>Select</th><th>Suggested Number / Project Name</th><th>Folder</th><th>Check Result</th></tr></thead><tbody>{result.projects.map(item => <tr key={item.folder}>
+          <td><input type="checkbox" aria-label={`Select ${item.name}`} checked={selected.includes(item.folder)} onChange={event => setSelected(values => event.target.checked ? [...values, item.folder] : values.filter(value => value !== item.folder))} /></td>
+          <td><strong>{item.number || "Number needed"}</strong><span>{item.name}</span></td><td className="legacy-preview-folder">{item.folder}</td>
+          <td><strong className={item.status === "review" ? "legacy-preview-review" : "legacy-preview-ready"}>{item.status === "review" ? "Needs Review" : "Ready for Preview"}</strong>
             {item.notes.length > 0 && <ul>{item.notes.map((note, i) => <li key={i}>{note}</li>)}</ul>}
-            {item.duplicate_folders.length > 0 && <details><summary>其他相同编号或旧标记目录：{item.duplicate_count} 个（最多展示 5 个）</summary><ul>{item.duplicate_folders.map(path => <li key={path}>{path}</li>)}</ul></details>}</td>
+            {item.duplicate_folders.length > 0 && <details><summary>Other folders with matching numbers or legacy identifiers: {item.duplicate_count} (up to 5 shown)</summary><ul>{item.duplicate_folders.map(path => <li key={path}>{path}</li>)}</ul></details>}</td>
         </tr>)}</tbody></table></div>
       </>}
     </section>}

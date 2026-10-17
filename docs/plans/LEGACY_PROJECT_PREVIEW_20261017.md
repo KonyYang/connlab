@@ -142,6 +142,32 @@ performed for this copy-only follow-up. Earlier full frontend, Python, and isola
 describe the prior executable subject; no full matrix was repeated for this bounded copy change.
 No business data, original project directory, push, or publication is involved.
 
+## Preview page copy follow-up (2026-10-17)
+
+User requested the same English and hover-help treatment for `/tools/legacy-projects`.
+The page title, controls, table labels, states, generated diagnostics and native picker title now use
+English. Folder-selection guidance and limits are on the related controls' native `title` tooltips;
+read-only guidance is on Start Preview and batch-only comparison scope is on Select Clear Projects.
+Counts, conflicts, errors and incomplete-result alerts remain directly visible. Source folder names
+and project names remain as supplied; detection, selection and cancellation behavior is unchanged.
+
+- Final targeted frontend: **25 passed / 3 files**. First attempt had three failures because a literal
+  replacement stopped before updating the preview test; corrected test labels and rerun passed.
+- Final affected Python: **14 passed**. Initial sandbox run failed at fixture setup because pytest
+  could not create temporary directories; the identical command passed with the required boundary.
+- TypeScript and sequential Vite production build passed, **187 modules / 1.74s**.
+- Same-agent Standards review: **0 findings**. Spec review: **0 findings**. Scope contains only this
+  feature's display strings, helper placement, matching tests and this record; no data logic changed.
+- Existing browser at 598x804 shows the English shared heading, Back to Tools, Choose Folder,
+  collapsed manual-path entry and Start Preview, with no persistent gray paragraphs. Manual entry
+  expanded and collapsed successfully; accessibility Help exposes the English tooltips. Screenshot:
+  `legacy-preview-english.png` in the Temp evidence directory above. No folder was submitted or API
+  preview started.
+- Browser check covers the initial/manual-entry layout; result/error behavior is covered by targeted
+  tests. No complete frontend matrix or real-sample scan repeated for this bounded copy follow-up.
+
+No business database, original directory, push or publication was modified.
+
 ## Exact changed paths (excluding task board)
 
 - `backend/api/main.py`

@@ -15,7 +15,7 @@ class WindowsPathPicker:
     def pick_legacy_project_directory(self) -> Path | None:
         """Choose an existing project or parent directory without changing it."""
         selection = self._run_dialog(lambda: filedialog.askdirectory(
-            title="选择旧项目目录或包含多个项目的父目录", mustexist=True,
+            title="Choose a legacy project folder or a parent folder containing projects", mustexist=True,
         ))
         return Path(selection) if selection else None
 
