@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
 import { pickLegacyProjectDirectory, previewLegacyProjects, type LegacyProjectPreviewResult } from "../../api/legacyProjects";
 import "./legacy-project-preview.css";
 
 export function LegacyProjectPreview({ onBack }: { onBack: () => void }) {
+  const topBarRoot = useTopBarActionsRoot();
   const [roots, setRoots] = useState<string[]>([]);
   const [manual, setManual] = useState("");
   const [result, setResult] = useState<LegacyProjectPreviewResult | null>(null);
@@ -52,10 +55,12 @@ export function LegacyProjectPreview({ onBack }: { onBack: () => void }) {
     request.current?.abort(); request.current = null; setBusy(false);
     setMessage("已停止预览，所选目录保留，可重新开始。");
   }
+  const backButton = <button type="button" className="ui-secondary-action" disabled={picking} onClick={onBack}>返回 Tools</button>;
   return <section className="legacy-preview" aria-label="旧项目只读批量预览">
+    {topBarRoot && createPortal(backButton, topBarRoot)}
     <header className="legacy-preview-heading">
-      <div><h1>导入旧项目</h1><p>只读预览 · 原文件和目录结构保持不变</p></div>
-      <button type="button" className="ui-secondary-action" disabled={picking} onClick={onBack}>返回 Tools</button>
+      <div>{!topBarRoot && <h1>导入旧项目</h1>}<p>只读预览 · 原文件和目录结构保持不变</p></div>
+      {!topBarRoot && backButton}
     </header>
     <section className="legacy-preview-panel" aria-label="选择旧项目目录">
       <h2>1. 选择目录</h2>

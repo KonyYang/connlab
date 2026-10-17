@@ -1,4 +1,6 @@
-.legacy-preview { display: grid; gap: 16px; padding-bottom: 24px; min-width: 0; }
+.legacy-preview { display: grid; gap: 16px; padding-bottom: 24px; min-width: 0; font-family: Aptos, "Segoe UI", "Microsoft YaHei", sans-serif; }
+.legacy-preview button:not(.primary-action):not(.ui-secondary-action) { min-height: 36px; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-ink); font: inherit; cursor: pointer; }
+.legacy-preview button:disabled { cursor: default; }
 .legacy-preview-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
 .legacy-preview-heading h1 { margin: 0; font-size: 24px; }
 .legacy-preview p { margin: 0; line-height: 1.55; }
@@ -15,7 +17,7 @@
 .legacy-preview-table { overflow-x: auto; }
 .legacy-preview table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .legacy-preview th, .legacy-preview td { text-align: left; vertical-align: top; padding: 12px; border-bottom: 1px solid var(--color-border); }
-.legacy-preview th:first-child { width: 52px; }
+.legacy-preview th:first-child { width: 56px; white-space: nowrap; }
 .legacy-preview th:nth-child(2) { width: 24%; }
 .legacy-preview td span { display: block; margin-top: 6px; }
 .legacy-preview input[type="checkbox"] { appearance: auto; width: 18px; height: 18px; min-height: 0; padding: 0; margin: 2px 0; accent-color: var(--color-primary); }

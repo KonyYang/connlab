@@ -90,3 +90,11 @@ inner formal folder when an outer workspace is named only by DL; its regression 
 
 The implementing agent performed these two focused passes separately; they are not independent
 agent reviews. Final Developer feedback is 25 Python tests and 25 frontend tests in three files.
+
+Initial frozen subject `ab9983b3` passed the affected Python gate (25) and the complete default-worker
+frontend gate (961 passed / 1 existing skip, 29.30s), plus sequential typecheck/build (187 modules,
+1.60s). Actual browser preview showed the expected 36 rows / 30 selected / 6 review and 18px aligned
+checkboxes without desktop document overflow. Visual inspection then found native secondary-button
+styling and a duplicated page title. These two presentation issues were corrected locally, followed
+by 25 affected frontend tests passing again. The complete frontend gate and browser checks must
+therefore be repeated on the final UI bytes; the unchanged Python inputs retain their passing gate.
