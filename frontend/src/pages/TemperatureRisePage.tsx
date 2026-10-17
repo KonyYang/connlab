@@ -36,7 +36,13 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
     aria-label="Back To Tools" title="Back To Tools"><UiIcon name="tools" /></button>;
   const headerActions = <div className="temperature-header-actions">
     {backButton}
-    <button type="button" className="temperature-load-initial-data" onClick={() => fileInput.current?.click()}>Load Initial Data</button>
+    <div className="temperature-import-actions">
+      {s.file && s.table && <select className="temperature-sheet-select" aria-label="Sheet Name" title={s.file.name}
+        value={s.table.sheet_name} disabled={busy} onChange={event => tool.load(s.file, event.target.value)}>
+        {s.table.sheet_names.map(name => <option key={name}>{name}</option>)}
+      </select>}
+      <button type="button" className="temperature-load-initial-data" onClick={() => fileInput.current?.click()}>Load Initial Data</button>
+    </div>
   </div>;
   return <section className="temperature-page" aria-label="Temperature Rise & Derating">
     {topBarRoot && createPortal(headerActions, topBarRoot)}
@@ -49,9 +55,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
       }} />
     {s.file && <section className="temperature-panel temperature-initial">
       {s.table && <TestInfo info={tool.reportInfo} disabled={busy} onEdit={tool.editReportInfo} />}
-      {s.table && <div className="temperature-import-fields">
-          <label title={s.file.name}>Sheet Name<select value={s.table.sheet_name} disabled={busy} onChange={event => tool.load(s.file, event.target.value)}>{s.table.sheet_names.map(name => <option key={name}>{name}</option>)}</select></label>
-          {s.selection && <>
+      {s.table && s.selection && <div className="temperature-import-fields">
             <label>Ambient Column<select value={ambientValid ? s.selection.ambient_column : ''} disabled={busy} onChange={event => tool.changeData({ ambient_column: Number(event.target.value) })}>{!ambientValid && <option value="" disabled>Choose Ambient Column</option>}{columns.filter(col => col.kind === 'temperature').map(col => <option key={col.id} value={col.id} title={col.original}>{col.label}</option>)}</select></label>
             <label>Current Column<select value={currentValid ? s.selection.current_column : ''} disabled={busy} onChange={event => tool.changeData({ current_column: Number(event.target.value) })}>{!currentValid && <option value="" disabled>Choose Current Column</option>}{columns.filter(col => col.kind === 'current').map(col => <option key={col.id} value={col.id} title={col.original}>{col.label}</option>)}</select></label>
             {s.selection.sample_count != null ? <>
@@ -64,7 +68,6 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
                 if (Number.isInteger(decimals) && decimals >= 0 && decimals <= 4) tool.changeData({ current_decimals: decimals });
               }} /></label>
             {s.selection.sample_count != null && <span className="temperature-derived-count">{incompleteSampleGroups(s.selection, s.channel_layout) ? 'TC/Sample: pending' : `${s.selection.thermocouples_per_sample} TC/Sample`}</span>}
-          </>}
       </div>}
       {roleIssue && <p role="alert" className="temperature-error">{roleIssue}</p>}
       {s.table && s.region_issue && <DataRegionCorrection table={s.table} message={s.region_issue}

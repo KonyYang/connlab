@@ -59,7 +59,7 @@ describe('temperature preparation and calculation workflow', () => {
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     const sheet = screen.getByLabelText('Sheet Name');
-    expect(sheet.closest('label')?.title).toBe('scanner.xlsx');
+    expect(sheet.title).toBe('scanner.xlsx');
     expect(screen.queryByText('scanner.xlsx', { exact: true })).toBeNull();
     const confirm = screen.getByRole('button', { name: 'Confirm Data' });
     const download = screen.getByRole('button', { name: 'Download Excel' });
@@ -77,6 +77,32 @@ describe('temperature preparation and calculation workflow', () => {
     expect((confirm as HTMLButtonElement).disabled).toBe(false);
     expect((download as HTMLButtonElement).disabled).toBe(true);
     expect(within(footer!).queryByText('Data Confirmed')).toBeNull();
+  });
+
+  it('switches worksheets from an unlabelled header selector immediately before Load Initial Data', async () => {
+    const user = userEvent.setup();
+    const first = structuredClone(imported);
+    first.table.sheet_names = ['Data', 'Other'];
+    const second = structuredClone(first);
+    second.table.sheet_name = 'Other';
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+    render(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
+    const header = within(screen.getByRole('banner'));
+    expect(header.queryByRole('combobox', { name: 'Sheet Name' })).toBeNull();
+    await upload();
+    const sheet = header.getByRole('combobox', { name: 'Sheet Name' });
+    const load = header.getByRole('button', { name: 'Load Initial Data' });
+    expect(sheet.compareDocumentPosition(load) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText('Sheet Name', { exact: true })).toBeNull();
+    expect(sheet.title).toBe('scanner.xlsx');
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
+    await user.selectOptions(sheet, 'Other');
+    await waitFor(() => expect((header.getByRole('combobox', { name: 'Sheet Name' }) as HTMLSelectElement).value).toBe('Other'));
+    expect(api.importTemperatureWorkbook).toHaveBeenLastCalledWith(expect.objectContaining({ name: 'scanner.xlsx' }), 'Other');
+    expect(screen.queryByRole('img', { name: 'Temperature Rise vs Current' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Confirm Data' }).hasAttribute('disabled')).toBe(false);
+    expect(screen.getByRole('button', { name: 'Download Excel' }).hasAttribute('disabled')).toBe(true);
   });
 
   it('offers a bounded current decimal spinner and invalidates results without excluding rows or changing samples', async () => {
