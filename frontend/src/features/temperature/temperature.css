@@ -61,11 +61,11 @@
 .temperature-table-scroll thead th { position: sticky; top: 0; background: var(--color-surface-muted); z-index: 1; }
 .temperature-table-scroll tbody th { font-weight: 400; }
 .temperature-data-editor { min-width: 0; display: grid; gap: 10px; }
-.temperature-data-toolbar, .temperature-data-actions, .temperature-data-footer, .temperature-data-footer > div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.temperature-data-toolbar, .temperature-data-footer { justify-content: space-between; }
+.temperature-data-toolbar, .temperature-data-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.temperature-data-toolbar { justify-content: space-between; }
 .temperature-data-toolbar > div:first-child { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; }
-.temperature-data-toolbar span, .temperature-data-footer { color: var(--color-ink-muted); font-size: 12px; }
-.temperature-data-actions button, .temperature-data-footer button { padding: 6px 10px; font-size: 12px; }
+.temperature-data-toolbar span { color: var(--color-ink-muted); font-size: 12px; }
+.temperature-data-actions button { padding: 6px 10px; font-size: 12px; }
 .temperature-data-editor .temperature-table-scroll { max-height: 450px; }
 .temperature-page .temperature-source-table { border-collapse: separate; border-spacing: 0; font-size: 13px; table-layout: fixed; }
 .temperature-source-table thead { position: sticky; top: 0; z-index: 2; }

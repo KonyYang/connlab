@@ -22,6 +22,11 @@ Download Excel, with Data Confirmed and operation feedback alongside it. Existin
 validation, busy states and precision-change invalidation are unchanged. Narrow layouts keep the
 two actions together while allowing feedback text to wrap.
 
+Data Preview shows Included / Excluded Rows beside its title instead of the sample/channel summary.
+The duplicate row-count footer below the table is removed. Counts still derive from the selected
+data range and explicit row exclusions, updating on exclude, restore and undo. Sample grouping
+controls, warnings and calculations are unchanged.
+
 ## Current precision contract (2026-10-17)
 
 `Current Decimals` is a native number spinner immediately after Samples (0–4, step 1, default 0).

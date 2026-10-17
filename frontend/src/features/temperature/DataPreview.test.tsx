@@ -35,6 +35,23 @@ function columnHeader(letter: string) { return screen.getByRole('columnheader', 
 function openColumn(letter: string) { fireEvent.contextMenu(columnHeader(letter)); }
 
 describe('column header selection', () => {
+  it('shows live included and excluded row counts once beside the preview title', () => {
+    render(<Editor />);
+    const titleRow = screen.getByRole('heading', { name: 'Data Preview' }).parentElement!;
+    expect(within(titleRow).getByText('2 Included / 0 Excluded Rows')).toBeTruthy();
+    expect(screen.getAllByText('2 Included / 0 Excluded Rows')).toHaveLength(1);
+    expect(screen.queryByText(/Samples? · .*TC\/Sample · .*Channels/)).toBeNull();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Scan 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    expect(within(titleRow).getByText('1 Included / 1 Excluded Rows')).toBeTruthy();
+    expect(screen.getAllByText('1 Included / 1 Excluded Rows')).toHaveLength(1);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Scan 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    expect(within(titleRow).getByText('2 Included / 0 Excluded Rows')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(within(titleRow).getByText('1 Included / 1 Excluded Rows')).toBeTruthy();
+  });
+
   it('preserves desired samples through balanced exclusions, restoration, explicit regrouping and undo', async () => {
     const user = userEvent.setup();
     render(<Editor starting={{ ...initial, sample_count: 2 }} />);
@@ -233,7 +250,7 @@ describe('continuous source row selection', () => {
     expect(selected().thermocouples_per_sample).toBe(3);
     expect(selected().temperature_columns).toEqual([3, 5, 6, 7, 9, 10, 11, 13, 14]);
     expect(selected().sample_groups).toEqual([[3, 5, 6], [7, 9, 10], [11, 13, 14]]);
-    expect(screen.getByText('3 Samples · 3 TC/Sample · 9 Channels')).toBeTruthy();
+    expect(columnHeader('M').getAttribute('aria-description')).toBe('Sample 3');
     expect(screen.queryByRole('alert')).toBeNull();
     const headers = screen.getAllByRole('columnheader');
     expect(headers.slice(-3)).toEqual(['D', 'H', 'L'].map(columnHeader));

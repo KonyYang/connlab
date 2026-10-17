@@ -170,7 +170,7 @@ describe('temperature preparation and calculation workflow', () => {
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText('3 Samples · Pending TC/Sample · 2 Channels')).toBeTruthy();
+    expect(screen.getByText('TC/Sample: pending')).toBeTruthy();
     expect(screen.queryByLabelText('Thermocouples/Sample')).toBeNull();
     fireEvent.change(screen.getByLabelText('Samples'), { target: { value: '1' } });
     expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(false);
@@ -697,7 +697,7 @@ describe('temperature preparation and calculation workflow', () => {
     });
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
-    expect(screen.getByText('1 Sample · 2 TC/Sample · 2 Channels')).toBeTruthy();
+    expect((screen.getByLabelText('Thermocouples/Sample') as HTMLInputElement).value).toBe('2');
     expect(screen.queryByLabelText('Sample 1 / TC 1')).toBeNull();
     expect(screen.queryByRole('button', { name: /Earlier|Later/ })).toBeNull();
     expect((screen.getByLabelText('Zero Intercept') as HTMLInputElement).checked).toBe(false);

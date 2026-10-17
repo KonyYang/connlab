@@ -5,7 +5,6 @@ import { ColumnActions, type ColumnMenuAnchor } from './ColumnActions';
 import { incompleteSampleGroups } from './sourceColumns';
 import { formatSourceReading, sourcePresentation } from './sourcePresentation';
 import { scanLabel } from './sourceScan';
-import { sampleGroups } from './sampleGroups';
 import { useDataGridEditing } from './useDataGridEditing';
 import { SOURCE_ROW_HEIGHT, useSourceRowWindow } from './useSourceRowWindow';
 
@@ -40,7 +39,6 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   const columnWidth = (column: number) => columnsById.get(column)!.width;
   const incomplete = incompleteSampleGroups(selection, layout);
   const count = Math.max(1, selection.thermocouples_per_sample || 1);
-  const sampleCount = selection.sample_count ?? sampleGroups(selection, layout).length;
   const total = Math.max(0, selection.end_row - selection.start_row + 1);
   const rowWindow = useSourceRowWindow(selection.start_row, total);
   const { rows } = rowWindow;
@@ -94,7 +92,7 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   function runAction(action: () => void) { action(); menu?.trigger.focus(); closeMenu(); }
   return <section ref={editor} className="temperature-data-editor" aria-label="Data Preview">
     <div className="temperature-data-toolbar"><div><h3>Data Preview</h3>
-      <span>{sampleCount} {sampleCount === 1 ? 'Sample' : 'Samples'} · {incomplete ? 'Pending' : count} TC/Sample · {selection.temperature_columns.length} Channels</span></div>
+      <span>{total - selection.excluded_rows.length} Included / {selection.excluded_rows.length} Excluded Rows</span></div>
       <div className="temperature-data-actions"><span>{selectedCount ? `${selectedCount} Selected` : ''}</span>
         <button type="button" disabled={disabled || !grid.canExclude} onClick={grid.exclude}>Exclude Selected</button>
         <button type="button" disabled={disabled || !grid.canRestore} onClick={grid.restore}>Restore</button>
@@ -164,7 +162,6 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
           {rowWindow.bottomPadding > 0 && <tr aria-hidden="true" className="temperature-row-spacer"><td colSpan={grid.order.length + 1} style={{ height: rowWindow.bottomPadding }} /></tr>}
         </tbody>
       </table></div>
-    <div className="temperature-data-footer"><span>{total - selection.excluded_rows.length} Included / {selection.excluded_rows.length} Excluded Rows</span></div>
     {menu && <ColumnActions key={menu.column} anchor={menu} root={menuRoot}
       columns={grid.order.filter(column => grid.movable(column) && !grid.selectedColumns.includes(column)).map(column => columns.find(item => item.id === column)!)}
       selectedCount={grid.selectedColumns.length} disabled={disabled} canExclude={grid.canExclude} canRestore={grid.canRestore}
