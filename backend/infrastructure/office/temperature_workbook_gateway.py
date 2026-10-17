@@ -355,7 +355,7 @@ def _style_derating_chart(chart):
         axis.majorGridlines.spPr.line.prstDash = 'dash'
     chart.x_axis.majorUnit = 5
     chart.layout = Layout(manualLayout=ManualLayout(layoutTarget='inner', xMode='edge', yMode='edge',
-        x=.1, y=.09, w=.87, h=.76))
+        x=.1, y=.09, w=.87, h=.72))
     chart.legend.txPr = _chart_text_properties()
     chart.legend.layout = Layout(manualLayout=ManualLayout(x=.07, y=.94, w=.45, h=.04,
         xMode='edge', yMode='edge'))
@@ -382,7 +382,7 @@ def _chart(title, x_title, y_title):
         x=.14, y=.12, w=.80, h=.66))
     chart.legend.overlay = False
     chart.legend.layout = Layout(manualLayout=ManualLayout(x=.2, y=.94, w=.65, h=.04, xMode='edge', yMode='edge'))
-    chart.width, chart.height = 24, 14
+    chart.width, chart.height = 19.2, 11.2
     chart.style = 2
     return chart
 

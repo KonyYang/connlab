@@ -404,12 +404,23 @@ def test_export_formats_measurement_labels_and_keeps_only_max_calculator_visible
         assert sheet.row_dimensions[equation_row].hidden
     chart = sheet._charts[0]
     assert chart.layout.manualLayout.w >= .85
-    assert chart.layout.manualLayout.h >= .75
     book.close()
     with ZipFile(BytesIO(content)) as archive:
         ns = {'c': 'http://schemas.openxmlformats.org/drawingml/2006/chart'}
         root = ET.fromstring(archive.read('xl/charts/chart1.xml'))
         assert root.find('c:roundedCorners', ns).get('val') == '1'
+
+
+@pytest.mark.parametrize('sheet_name,width_emu', [('T-riseChart', 6768000), ('Derating', 6912000)])
+def test_exported_charts_use_eighty_percent_of_the_previous_dimensions(tmp_path, sheet_name, width_emu):
+    output, _ = _report_export(tmp_path, include_derating=True)
+    book = load_workbook(output)
+    try:
+        extent = book[sheet_name]._charts[0].anchor.ext
+        assert extent.cx == width_emu
+        assert extent.cy == pytest.approx(4032000, abs=1, rel=0)
+    finally:
+        book.close()
 
 
 def test_derating_layout_has_horizontal_bordered_inputs_and_chart_beside_data(tmp_path):

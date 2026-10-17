@@ -405,10 +405,10 @@ def _rise_chart(sheet, analysis, chart, current_row, maximum_row, average_row, l
         series.trendline.spPr = GraphicalProperties()
         series.trendline.spPr.line.solidFill = color
         chart.series.append(series)
-    chart.width, chart.height = 23.5, 14
+    chart.width, chart.height = 18.8, 11.2
     chart.roundedCorners = True
     chart.layout = Layout(manualLayout=ManualLayout(layoutTarget='inner', xMode='edge', yMode='edge',
-        x=.1, y=.09, w=.87, h=.76))
+        x=.1, y=.09, w=.87, h=.72))
     chart.graphical_properties = GraphicalProperties(solidFill='FFFFE0')
     chart.plot_area.spPr = GraphicalProperties(solidFill='FFFFFF')
     sheet.add_chart(chart, f'{get_column_letter(max(end + 2, 11))}{current_row}')
