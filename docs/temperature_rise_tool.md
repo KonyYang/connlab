@@ -746,7 +746,8 @@ The native chart starts at E5 beside the main data table, rather than below stac
 All formulas, caches and chart source references use the relocated inputs; changing F2 updates both
 point results and guide endpoints. Source data and other worksheets are unchanged.
 
-Verification: the old frozen-pane behavior failed two RED export checks before implementation.
+Earlier chart-style verification (before the compact-layout follow-up): the old frozen-pane
+behavior failed two RED export checks before implementation.
 The final affected backend matrix passed 62 tests (one existing Starlette/httpx deprecation warning).
 An isolated, read-only desktop Excel instance rendered the final chart with labels 68.4 / 54.7 A at
 75°C; changing F10 to 80°C updated the labels to 61.5 / 49.2 A and moved the guide to its Basic point.
