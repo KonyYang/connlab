@@ -34,6 +34,21 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
     : null;
   const backButton = <button type="button" className="temperature-tools-return" onClick={onBack}
     aria-label="Back To Tools" title="Back To Tools"><UiIcon name="tools" /></button>;
+  const dataParameters = s.table && s.selection && <div className="temperature-import-fields" role="group" aria-label="Data parameters">
+    <label>Ambient Column<select value={ambientValid ? s.selection.ambient_column : ''} title={columns.find(column => column.id === s.selection?.ambient_column)?.original}
+      disabled={busy} onChange={event => tool.changeData({ ambient_column: Number(event.target.value) })}>{!ambientValid && <option value="" disabled>Choose Ambient Column</option>}{columns.filter(col => col.kind === 'temperature').map(col => <option key={col.id} value={col.id} title={col.original}>{col.label}</option>)}</select></label>
+    <label>Current Column<select value={currentValid ? s.selection.current_column : ''} title={columns.find(column => column.id === s.selection?.current_column)?.original}
+      disabled={busy} onChange={event => tool.changeData({ current_column: Number(event.target.value) })}>{!currentValid && <option value="" disabled>Choose Current Column</option>}{columns.filter(col => col.kind === 'current').map(col => <option key={col.id} value={col.id} title={col.original}>{col.label}</option>)}</select></label>
+    {s.selection.sample_count != null ? <label className="temperature-sample-count">Samples<input type="number" min="1" max="254" value={s.selection.sample_count} disabled={busy}
+      onChange={event => tool.changeData({ sample_count: Number(event.target.value) })} /></label>
+      : <label className="temperature-sample-count">Thermocouples/Sample<input type="number" min="1" max="254" value={s.selection.thermocouples_per_sample} disabled={busy} onChange={event => tool.changeData({ thermocouples_per_sample: Number(event.target.value) })} /></label>}
+    <label className="temperature-sample-count">Current Decimals<input type="number" min="0" max="4" step="1" value={currentDecimals} disabled={busy}
+      onChange={event => {
+        const decimals = Number(event.target.value);
+        if (Number.isInteger(decimals) && decimals >= 0 && decimals <= 4) tool.changeData({ current_decimals: decimals });
+      }} /></label>
+    {s.selection.sample_count != null && <span className="temperature-derived-count">{incompleteSampleGroups(s.selection, s.channel_layout) ? 'TC/Sample: pending' : `${s.selection.thermocouples_per_sample} TC/Sample`}</span>}
+  </div>;
   const headerActions = <div className="temperature-header-actions">
     {backButton}
     <div className="temperature-import-actions">
@@ -43,6 +58,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
       </select>}
       <button type="button" className="temperature-load-initial-data" onClick={() => fileInput.current?.click()}>Load Initial Data</button>
     </div>
+    {dataParameters}
   </div>;
   return <section className="temperature-page" aria-label="Temperature Rise & Derating">
     {topBarRoot && createPortal(headerActions, topBarRoot)}
@@ -55,20 +71,6 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
       }} />
     {s.file && <section className="temperature-panel temperature-initial">
       {s.table && <TestInfo info={tool.reportInfo} disabled={busy} onEdit={tool.editReportInfo} />}
-      {s.table && s.selection && <div className="temperature-import-fields">
-            <label>Ambient Column<select value={ambientValid ? s.selection.ambient_column : ''} disabled={busy} onChange={event => tool.changeData({ ambient_column: Number(event.target.value) })}>{!ambientValid && <option value="" disabled>Choose Ambient Column</option>}{columns.filter(col => col.kind === 'temperature').map(col => <option key={col.id} value={col.id} title={col.original}>{col.label}</option>)}</select></label>
-            <label>Current Column<select value={currentValid ? s.selection.current_column : ''} disabled={busy} onChange={event => tool.changeData({ current_column: Number(event.target.value) })}>{!currentValid && <option value="" disabled>Choose Current Column</option>}{columns.filter(col => col.kind === 'current').map(col => <option key={col.id} value={col.id} title={col.original}>{col.label}</option>)}</select></label>
-            {s.selection.sample_count != null ? <>
-              <label className="temperature-sample-count">Samples<input type="number" min="1" max="254" value={s.selection.sample_count} disabled={busy}
-                onChange={event => tool.changeData({ sample_count: Number(event.target.value) })} /></label>
-            </> : <label className="temperature-sample-count">Thermocouples/Sample<input type="number" min="1" max="254" value={s.selection.thermocouples_per_sample} disabled={busy} onChange={event => tool.changeData({ thermocouples_per_sample: Number(event.target.value) })} /></label>}
-            <label className="temperature-sample-count">Current Decimals<input type="number" min="0" max="4" step="1" value={currentDecimals} disabled={busy}
-              onChange={event => {
-                const decimals = Number(event.target.value);
-                if (Number.isInteger(decimals) && decimals >= 0 && decimals <= 4) tool.changeData({ current_decimals: decimals });
-              }} /></label>
-            {s.selection.sample_count != null && <span className="temperature-derived-count">{incompleteSampleGroups(s.selection, s.channel_layout) ? 'TC/Sample: pending' : `${s.selection.thermocouples_per_sample} TC/Sample`}</span>}
-      </div>}
       {roleIssue && <p role="alert" className="temperature-error">{roleIssue}</p>}
       {s.table && s.region_issue && <DataRegionCorrection table={s.table} message={s.region_issue}
         disabled={busy} onApply={tool.correctRegion} />}

@@ -124,6 +124,30 @@ describe('temperature preparation and calculation workflow', () => {
     expect(screen.getByText('4 Included / 0 Excluded Rows')).toBeTruthy();
   });
 
+  it('edits all data parameters to the right of the header import action without duplicating them in the page', async () => {
+    const data = structuredClone(imported);
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValue({ ...data, selection: { ...data.selection, sample_count: 1 } });
+    render(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
+    await upload();
+    const header = within(screen.getByRole('banner'));
+    const parameters = header.getByRole('group', { name: 'Data parameters' });
+    const load = header.getByRole('button', { name: 'Load Initial Data' });
+    expect(load.compareDocumentPosition(parameters) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    for (const name of ['Ambient Column', 'Current Column', 'Samples', 'Current Decimals']) {
+      expect(within(parameters).getByLabelText(name)).toBeTruthy();
+      expect(within(screen.getByRole('main')).queryByLabelText(name)).toBeNull();
+    }
+    expect((within(parameters).getByLabelText('Ambient Column') as HTMLSelectElement).title).toBe('Ambient');
+    expect((within(parameters).getByLabelText('Current Column') as HTMLSelectElement).title).toBe('Current');
+    fireEvent.change(within(parameters).getByLabelText('Samples'), { target: { value: '2' } });
+    fireEvent.change(within(parameters).getByLabelText('Current Decimals'), { target: { value: '1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
+    expect(api.analyzeTemperatureData).toHaveBeenCalledWith(expect.objectContaining({ selection: expect.objectContaining({
+      sample_count: 2, current_decimals: 1, ambient_column: 5, current_column: 6, excluded_rows: [],
+    }) }));
+  });
+
   it('uses precision-aware auxiliary power detection when choosing the automatic fit mode', async () => {
     vi.mocked(api.prepareTemperatureData).mockResolvedValue({ ready: true, issues: [], measurements: [], stable_auxiliary_current_columns: [7] });
     render(<TemperatureRisePage onBack={() => undefined} />);
