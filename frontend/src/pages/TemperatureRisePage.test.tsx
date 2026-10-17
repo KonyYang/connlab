@@ -55,28 +55,28 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(projectApi.listProjectRegistryRows).mockResolvedValue([]);
   });
 
-  it('keeps the source in the Sheet Name tooltip and groups confirmation before download in the footer', async () => {
-    render(<TemperatureRisePage onBack={() => undefined} />);
+  it('keeps the source tooltip and groups confirmation before download after the header parameters', async () => {
+    render(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
     await upload();
     const sheet = screen.getByLabelText('Sheet Name');
     expect(sheet.title).toBe('scanner.xlsx');
     expect(screen.queryByText('scanner.xlsx', { exact: true })).toBeNull();
     const confirm = screen.getByRole('button', { name: 'Confirm Data' });
     const download = screen.getByRole('button', { name: 'Download Excel' });
-    const footer = download.closest('footer');
-    expect(footer).not.toBeNull();
-    expect(footer?.contains(confirm)).toBe(true);
-    expect(within(footer!).getAllByRole('button')).toEqual([confirm, download]);
+    const actions = within(screen.getByRole('banner')).getByRole('group', { name: 'Data actions' });
+    expect(within(actions).getAllByRole('button')).toEqual([confirm, download]);
+    expect(screen.getByLabelText('Current Decimals').compareDocumentPosition(confirm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(download.closest('footer')).toBeNull();
     expect((download as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(confirm);
     await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
     expect((confirm as HTMLButtonElement).disabled).toBe(true);
     expect((download as HTMLButtonElement).disabled).toBe(false);
-    expect(within(footer!).getByText('Data Confirmed')).toBeTruthy();
+    expect(screen.getByText('Data Confirmed').closest('footer')).not.toBeNull();
     fireEvent.change(screen.getByLabelText('Current Decimals'), { target: { value: '1' } });
     expect((confirm as HTMLButtonElement).disabled).toBe(false);
     expect((download as HTMLButtonElement).disabled).toBe(true);
-    expect(within(footer!).queryByText('Data Confirmed')).toBeNull();
+    expect(screen.queryByText('Data Confirmed')).toBeNull();
   });
 
   it('switches worksheets from an unlabelled header selector immediately before Load Initial Data', async () => {
@@ -906,6 +906,27 @@ describe('temperature preparation and calculation workflow', () => {
     expect(screen.queryByLabelText('Header Row')).toBeNull();
     expect(api.prepareTemperatureData).not.toHaveBeenCalled();
     expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('shows all review details in a compact footer hover without weakening validation or row highlighting', async () => {
+    vi.mocked(api.prepareTemperatureData).mockResolvedValueOnce({ ready: false, measurements: [], issues: [
+      { code: 'zero_current', severity: 'warning', source_row: 2, message: 'Row 2: current is zero.' },
+      { code: 'invalid_reading', severity: 'error', source_row: 3, message: 'Row 3: missing reading.' },
+    ] });
+    render(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
+    await upload();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    const review = await screen.findByRole('region', { name: 'Data Needs Review' });
+    expect(review.closest('footer')).not.toBeNull();
+    expect(review.title).toBe('Scan 1: current rounds to 0 at 0 decimal places (this current column).\nScan 2: missing reading.');
+    expect(screen.queryByRole('heading', { name: 'Data Needs Review' })).toBeNull();
+    expect(within(review.closest('footer')!).queryByRole('button')).toBeNull();
+    expect(screen.getByLabelText('Select Scan 1').closest('tr')?.getAttribute('aria-label')).toBe('Scan 1 · Needs Review');
+    expect(api.analyzeTemperatureData).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Download Excel' }).hasAttribute('disabled')).toBe(true);
+    expect(api.prepareTemperatureData).toHaveBeenCalledWith(expect.objectContaining({ selection: expect.objectContaining({ excluded_rows: [] }) }));
+    fireEvent.change(screen.getByLabelText('Current Decimals'), { target: { value: '1' } });
+    expect(screen.queryByRole('region', { name: 'Data Needs Review' })).toBeNull();
   });
 
   it('keeps warnings highlighted without extra acknowledgement or footer actions and uses the top row controls', async () => {

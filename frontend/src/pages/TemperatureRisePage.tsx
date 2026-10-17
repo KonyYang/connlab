@@ -51,14 +51,20 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
   </div>;
   const headerActions = <div className="temperature-header-actions">
     {backButton}
-    <div className="temperature-import-actions">
-      {s.file && s.table && <select className="temperature-sheet-select" aria-label="Sheet Name" title={s.file.name}
-        value={s.table.sheet_name} disabled={busy} onChange={event => tool.load(s.file, event.target.value)}>
-        {s.table.sheet_names.map(name => <option key={name}>{name}</option>)}
-      </select>}
-      <button type="button" className="temperature-load-initial-data" onClick={() => fileInput.current?.click()}>Load Initial Data</button>
+    <div className="temperature-header-inputs">
+      <div className="temperature-import-actions">
+        {s.file && s.table && <select className="temperature-sheet-select" aria-label="Sheet Name" title={s.file.name}
+          value={s.table.sheet_name} disabled={busy} onChange={event => tool.load(s.file, event.target.value)}>
+          {s.table.sheet_names.map(name => <option key={name}>{name}</option>)}
+        </select>}
+        <button type="button" className="temperature-load-initial-data" onClick={() => fileInput.current?.click()}>Load Initial Data</button>
+      </div>
+      {dataParameters}
     </div>
-    {dataParameters}
+    <div className="temperature-primary-actions" role="group" aria-label="Data actions">
+      {s.table && s.selection && <button type="button" className="primary-action" disabled={busy || s.confirmed || Boolean(roleIssue) || incompleteSampleGroups(s.selection, s.channel_layout)} onClick={() => void tool.confirm()}>Confirm Data</button>}
+      <button type="button" className="primary-action" disabled={busy || !s.analysis || Boolean(reportHumidityIssue(tool.reportInfo.values.relative_humidity))} onClick={() => void tool.download()}>Download Excel</button>
+    </div>
   </div>;
   return <section className="temperature-page" aria-label="Temperature Rise & Derating">
     {topBarRoot && createPortal(headerActions, topBarRoot)}
@@ -78,9 +84,6 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         {s.channel_layout?.current_issue && !s.confirmed && <p className="temperature-hint">{s.channel_layout.current_issue}</p>}
         <DataPreview key={`preview-${s.table.sheet_name}-${s.table.file_name}-${s.selection.header_row}-${s.selection.start_row}-${s.selection.end_row}`}
           table={s.table} selection={s.selection} layout={s.channel_layout} issues={s.review?.issues ?? []} onChange={tool.changeData} disabled={busy} />
-        {Boolean(s.review?.issues.length) && <section className="temperature-review" aria-label="Data Needs Review">
-          <h4>Data Needs Review</h4><div className="temperature-issue-list">{review.map((issue, index) => <p key={index} className={issue.severity === 'error' ? 'temperature-error' : undefined}>{issue.message}</p>)}</div>
-        </section>}
       </>}
     </section>}
     <div className="temperature-analysis-grid">
@@ -109,14 +112,15 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         {s.derating ? <DeratingChart result={s.derating} currentDecimals={currentDecimals} /> : <p className="temperature-chart-empty">The Basic and 80% Derating curves will appear here.</p>}
       </section>
     </div>
-    <footer className="temperature-footer"><div className="temperature-footer-status" aria-live="polite">
-      {s.busy && <p role="status">{s.busy}</p>}
-      {s.error && <p role="alert" className="temperature-error">{scanMessage(s.table, s.error)}</p>}
+    {Boolean(s.busy || s.error || s.confirmed || s.downloaded || review.length) && <footer className="temperature-footer"><div className="temperature-footer-status" aria-live="polite">
+      {s.busy && <p role="status" title={s.busy}>{s.busy}</p>}
+      {s.error && <p role="alert" className="temperature-error" title={scanMessage(s.table, s.error)}>{scanMessage(s.table, s.error)}</p>}
+      {review.length > 0 && <section className={`temperature-review-summary${review.some(issue => issue.severity === 'error') ? ' has-errors' : ''}`}
+        aria-label="Data Needs Review" tabIndex={0} title={review.map(issue => issue.message).join('\n')}>
+        <span>Data Needs Review: </span>{review.map((issue, index) => <p key={index} className={issue.severity === 'error' ? 'temperature-error' : undefined}>{issue.message}</p>)}
+      </section>}
       {s.confirmed && <p role="status" className="temperature-success">Data Confirmed</p>}
-      {s.downloaded && <p role="status" className="temperature-success">{s.downloaded}</p>}
-    </div><div className="temperature-footer-actions">
-      {s.table && s.selection && <button type="button" className="primary-action" disabled={busy || s.confirmed || Boolean(roleIssue) || incompleteSampleGroups(s.selection, s.channel_layout)} onClick={() => void tool.confirm()}>Confirm Data</button>}
-      <button type="button" className="primary-action" disabled={busy || !s.analysis || Boolean(reportHumidityIssue(tool.reportInfo.values.relative_humidity))} onClick={() => void tool.download()}>Download Excel</button>
-    </div></footer>
+      {s.downloaded && <p role="status" className="temperature-success" title={s.downloaded}>{s.downloaded}</p>}
+    </div></footer>}
   </section>;
 }

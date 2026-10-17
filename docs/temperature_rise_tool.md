@@ -13,14 +13,16 @@ Ambient Column, Current Column, Samples and Current Decimals follow Load Initial
 header line. The worksheet selector is 144px and both column selectors are 128px (twice their
 initial compact widths); full selected source headers remain available on hover. TC/Sample sits
 between Samples and Current Decimals; numeric spinner widths and calculation behavior are unchanged.
-The parameter group alone scrolls horizontally when space is insufficient; worksheet selection and
-file import remain fixed and usable. There is no duplicate parameter row in the data panel.
+The import/parameter strip scrolls horizontally when space is insufficient. Compact Confirm Data
+and Download Excel actions follow Current Decimals and stay fixed at the far right of the header,
+with complete labels and unchanged eligibility rules. There is no duplicate parameter row in the data panel.
 Hovering the dropdown shows the complete source filename. Changing the sheet still reloads that
 sheet and requires confirmation again. The browser upload contract supplies no disk absolute path; the UI does not fabricate
-one or add filesystem access. Confirm Data is in the sticky bottom action bar immediately before
-Download Excel, with Data Confirmed and operation feedback alongside it. Existing role/group
-validation, busy states and precision-change invalidation are unchanged. Narrow layouts keep the
-two actions together while allowing feedback text to wrap.
+one or add filesystem access. The sticky bottom bar now holds feedback only, in a single line.
+Data Needs Review uses ellipsis when needed and a hover title containing all messages on separate
+lines; the full text remains in the accessible region. The former large review panel is removed,
+but flagged-row highlighting, error blocking, confirmation, busy states and invalidation are unchanged.
+The feedback bar is omitted when empty.
 
 Data Preview shows Included / Excluded Rows beside its title instead of the sample/channel summary.
 The duplicate row-count footer below the table is removed. Counts still derive from the selected
