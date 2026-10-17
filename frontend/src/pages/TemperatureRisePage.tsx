@@ -119,7 +119,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         aria-label="Data Needs Review" tabIndex={0} title={review.map(issue => issue.message).join('\n')}>
         <span>Data Needs Review: </span>{review.map((issue, index) => <p key={index} className={issue.severity === 'error' ? 'temperature-error' : undefined}>{issue.message}</p>)}
       </section>}
-      {s.confirmed && <p role="status" className="temperature-success">Data Confirmed</p>}
+      {s.confirmed && <p role="status" className="temperature-success" title="Data Confirmed">Data Confirmed</p>}
       {s.downloaded && <p role="status" className="temperature-success" title={s.downloaded}>{s.downloaded}</p>}
     </div></footer>}
   </section>;

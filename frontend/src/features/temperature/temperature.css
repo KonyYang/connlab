@@ -1,5 +1,5 @@
-.temperature-page { display: grid; gap: 16px; padding-bottom: 24px; min-width: 0; }
-.temperature-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.temperature-page { display: grid; grid-template-columns: minmax(0,1fr); gap: 16px; padding-bottom: 24px; min-width: 0; }
+.temperature-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
 .top-bar-tools:has(.temperature-tools-return) { grid-template-columns: max-content minmax(0,1fr); }
 .top-bar-tools:has(.temperature-tools-return) .top-bar-actions { justify-content: flex-start; }
 .temperature-header-actions { display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; }
