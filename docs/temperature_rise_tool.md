@@ -732,9 +732,19 @@ row or column, while Initial Data retains its existing panes.
 
 The blue dashed guide now ends at the selected Basic current instead of the initial maximum current.
 Its endpoints reference the editable ambient/current cells, with cached values for immediate viewing.
-Changing F10 in Excel moves the guide, markers and labels together. Existing coefficient and maximum
+Changing F2 in Excel moves the guide, markers and labels together. Existing coefficient and maximum
 temperature inputs, domain calculations and T-riseChart presentation remain unchanged. The supplied
 macro workbook is read-only style evidence; no macros are run and no source file is overwritten.
+
+### Follow-up: compact Derating tables (2026-10-18)
+
+Generated Derating sheets omit the former title/subtitle rows. Editable AVG coefficients and maximum
+temperature occupy A1:D2; the ambient-point input/results sit at F1:H2 and the two live guide endpoints
+at J1:K2. All three blocks and the main A5:C data table have thin borders and centered content.
+Headers retain their fill; coefficient precision and selected current precision are unchanged.
+The native chart starts at E5 beside the main data table, rather than below stacked parameter blocks.
+All formulas, caches and chart source references use the relocated inputs; changing F2 updates both
+point results and guide endpoints. Source data and other worksheets are unchanged.
 
 Verification: the old frozen-pane behavior failed two RED export checks before implementation.
 The final affected backend matrix passed 62 tests (one existing Starlette/httpx deprecation warning).

@@ -22,7 +22,7 @@ from openpyxl.chart.axis import ChartLines
 from openpyxl.chart.legend import LegendEntry
 from openpyxl.chart.text import RichText
 from openpyxl.drawing.text import CharacterProperties, Paragraph, ParagraphProperties
-from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.workbook.properties import CalcProperties
 from openpyxl.utils import get_column_letter
 import xlrd
@@ -130,7 +130,6 @@ class TemperatureWorkbookGateway:
             caches=caches[rise.title], chart=_chart('Temperature Rise vs Applied Current', 'Applied Current (A)', 'T-rise (°C)'),
             report_metadata=report_metadata, auxiliary_current_columns=prepared.stable_auxiliary_current_columns)
         _derating_sheet(derated, derating, caches[derated.title], selection.current_decimals)
-        _style_sheet(derated)
         book.calculation = CalcProperties(calcId=191029, fullCalcOnLoad=True)
         memory = BytesIO()
         book.save(memory)
@@ -251,34 +250,34 @@ def _initial_sheet(sheet, table, selection, analysis):
 
 
 def _derating_sheet(sheet, result, caches, current_decimals=0):
-    _text(sheet, 'A1', 'Current vs Ambient Temperature')
     if result is None:
+        _text(sheet, 'A1', 'Current vs Ambient Temperature')
         _text(sheet, 'A3', 'Generate Derating in ConnLab and download again to include this chart.')
+        _style_sheet(sheet)
         return
-    _text(sheet, 'A2', f'Max working temperature: {result.max_temperature:g} °C; step: {result.step:g} °C; current factor: 80%')
-    for coordinate, value in {'F5': 'AVG a', 'G5': 'AVG b', 'H5': 'AVG c', 'I5': 'Max Temp (°C)',
-                              'F9': 'Ambient Point (°C)', 'G9': 'Basic (A)', 'H9': '80% Derating (A)'}.items():
+    for coordinate, value in {'A1': 'AVG a', 'B1': 'AVG b', 'C1': 'AVG c', 'D1': 'Max Temp (°C)',
+                              'F1': 'Ambient Point (°C)', 'G1': 'Basic (A)', 'H1': '80% Derating (A)'}.items():
         _text(sheet, coordinate, value)
-    for coordinate, value in {'F6': result.coefficients.a, 'G6': result.coefficients.b, 'H6': result.coefficients.c,
-                              'I6': result.max_temperature, 'F10': result.annotation.ambient}.items():
+    for coordinate, value in {'A2': result.coefficients.a, 'B2': result.coefficients.b, 'C2': result.coefficients.c,
+                              'D2': result.max_temperature, 'F2': result.annotation.ambient}.items():
         sheet[coordinate] = value
-    for coordinate in ('F6', 'G6', 'H6'):
+    for coordinate in ('A2', 'B2', 'C2'):
         sheet[coordinate].number_format = '0.000000'
     for col, value in enumerate(('Ambient (°C)', 'Basic (A)', '80% Derating (A)'), 1):
         _text(sheet, f'{get_column_letter(col)}5', value)
     for row, point in enumerate(result.points, 6):
         sheet.cell(row, 1, point.ambient)
-        sheet.cell(row, 2, f'=(-$G$6+SQRT($G$6^2+4*$F$6*($I$6-A{row})))/(2*$F$6)')
+        sheet.cell(row, 2, f'=(-$B$2+SQRT($B$2^2+4*$A$2*($D$2-A{row})))/(2*$A$2)')
         sheet.cell(row, 3, f'=B{row}*0.8')
         sheet.cell(row, 2).number_format = current_number_format(current_decimals)
         sheet.cell(row, 3).number_format = current_number_format(current_decimals)
         caches[f'B{row}'], caches[f'C{row}'] = point.basic, point.derated
-    sheet['G10'] = '=(-$G$6+SQRT($G$6^2+4*$F$6*($I$6-F10)))/(2*$F$6)'
-    sheet['H10'] = '=G10*0.8'
+    sheet['G2'] = '=(-$B$2+SQRT($B$2^2+4*$A$2*($D$2-F2)))/(2*$A$2)'
+    sheet['H2'] = '=G2*0.8'
     # Excel can inherit label formatting from these source cells despite chart numFmt.
-    for coordinate in ('G10', 'H10'):
+    for coordinate in ('G2', 'H2'):
         sheet[coordinate].number_format = current_number_format(current_decimals)
-    caches['G10'], caches['H10'] = result.annotation.basic, result.annotation.derated
+    caches['G2'], caches['H2'] = result.annotation.basic, result.annotation.derated
     chart = _chart('Current Carrying Capacity De-rating Curve', 'Ambient Temperature [°C]', 'Current [Amp]')
     chart.y_axis.numFmt = NumFmt(formatCode=current_number_format(current_decimals), sourceLinked=False)
     _style_derating_chart(chart)
@@ -289,7 +288,7 @@ def _derating_sheet(sheet, result, caches, current_decimals=0):
         series.marker.symbol = 'none'
         chart.series.append(series)
     for col, color, title in ((7, '8B0000', 'Basic At Ambient Point'), (8, 'FFA500', 'Derated At Ambient Point')):
-        series = _series(sheet, 6, col, 10, 10, title, color, caches)
+        series = _series(sheet, 6, col, 2, 2, title, color, caches)
         series.marker.symbol = 'circle'
         series.marker.size = 7
         series.marker.graphicalProperties.solidFill = color
@@ -301,19 +300,36 @@ def _derating_sheet(sheet, result, caches, current_decimals=0):
             txPr=_chart_text_properties(color=color, bold=True))
         chart.series.append(series)
     # The guide ends at the selected Basic point and follows edits to the ambient input.
-    for coordinate, value in {'F13': '=$F$10', 'F14': '=$F$10', 'G13': 0, 'G14': '=$G$10'}.items():
+    for coordinate, value in {'J1': '=$F$2', 'J2': '=$F$2', 'K1': 0, 'K2': '=$G$2'}.items():
         sheet[coordinate] = value
-    sheet['G13'].number_format = sheet['G14'].number_format = current_number_format(current_decimals)
-    caches.update(F13=result.annotation.ambient, F14=result.annotation.ambient, G14=result.annotation.basic)
-    guide = _series(sheet, 6, 7, 13, 14, 'Ambient Point', '0000FF', caches)
+    sheet['K1'].number_format = sheet['K2'].number_format = current_number_format(current_decimals)
+    caches.update(J1=result.annotation.ambient, J2=result.annotation.ambient, K2=result.annotation.basic)
+    guide = _series(sheet, 10, 11, 1, 2, 'Ambient Point', '0000FF', caches)
     guide.graphicalProperties.line.prstDash = 'dash'
     guide.marker.symbol = 'none'
     chart.series.append(guide)
     chart.x_axis.scaling.max = result.max_temperature
     chart.legend.position = 'b'
     chart.legend.legendEntry = [LegendEntry(idx=index, delete=True) for index in (2, 3, 4)]
-    sheet.add_chart(chart, 'E17')
+    sheet.add_chart(chart, 'E5')
     sheet.freeze_panes = None
+    _style_derating_tables(sheet, end)
+
+
+def _style_derating_tables(sheet, end):
+    _style_sheet(sheet)
+    edge = Side(style='thin', color='A6A6A6')
+    for area, header in (('A1:D2', 1), ('F1:H2', 1), ('J1:K2', None), (f'A5:C{end}', 5)):
+        for row in sheet[area]:
+            for cell in row:
+                cell.font = Font(name='Aptos', size=11, bold=cell.row == header, color='172033')
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=cell.row == header)
+                cell.border = Border(left=edge, right=edge, top=edge, bottom=edge)
+                if cell.row == header:
+                    cell.fill = PatternFill('solid', fgColor='E8EEF6')
+    sheet.row_dimensions[1].height = 30
+    sheet.row_dimensions[2].height = 20
+    sheet.row_dimensions[5].height = 24
 
 
 def _chart_text_properties(*, color='000000', bold=False, size=1100):

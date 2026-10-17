@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_CURRENT_DECIMALS_20261017",
     "summary": "Unified current decimal precision for temperature zero detection calculations charts and Excel export",
@@ -36,92 +36,17 @@
     "risk_reasons": [],
     "activation_head": "4219ddb74e8bb009d370757e415daed45b0f1e85",
     "started_at": "2026-10-17T03:04:29.050372Z",
-    "updated_at": "2026-10-17T23:36:08.720471Z",
+    "updated_at": "2026-10-17T23:44:13.431289Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_CURRENT_DECIMALS_20261017",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requests compact Derating export: remove title/subtitle, coefficients A1:D2 then ambient point F1:H2 then guide J1:K2, bordered centered data and parameter blocks, chart E5, preserving live formulas and precision.",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_CURRENT_DECIMALS_20261017",
-      "subject": "68effc6a1ae6f873d7edb9e525ade03d00512485",
-      "summary": "Prior current precision and compact header refinements retained. Latest export feedback adds solidFFFF00yellow only to copied KeyStageReadings data cells in T-riseChart, matching Initial Data selected endpoint rows. Grey header, lower calculated table, spacer rows, values, formulas, formats and native objects unchanged. Source attachment read-only and SHA256 preserved. Local only.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/api/temperature_schemas.py",
-        "backend/application/temperature_channel_layout.py",
-        "backend/application/temperature_data_preparation.py",
-        "backend/domain/temperature_data.py",
-        "backend/infrastructure/office/temperature_rise_report_sheet.py",
-        "backend/infrastructure/office/temperature_workbook_gateway.py",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/api/temperature.ts",
-        "frontend/src/features/temperature/DataPreview.test.tsx",
-        "frontend/src/features/temperature/DataPreview.tsx",
-        "frontend/src/features/temperature/TemperatureCharts.tsx",
-        "frontend/src/features/temperature/currentPrecision.test.ts",
-        "frontend/src/features/temperature/currentPrecision.ts",
-        "frontend/src/features/temperature/sourceScan.test.ts",
-        "frontend/src/features/temperature/sourceScan.ts",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_data_preparation.py",
-        "tests/unit/test_temperature_workbook_gateway.py"
-      ],
-      "validation": [
-        {
-          "detail": "Final clean68effc6a:85tests passed across Excel gateway unit tests and temperature Tools API integration tests in13.86s. One pre-existing Starlette/httpx deprecation warning. Initial sandbox run completed42gateway tests then stalled entering API tests and was interrupted; complete identical suite passed in escalated environment. No implementation/test changes afterward.",
-          "status": "passed"
-        },
-        {
-          "detail": "Public export seam TDD: new test failed before fill change then passed. It asserts every copied data cell solidFFFF00, grey header retained, lower calculation data/spacer not recolored. Existing suite verifies source preservation, raw literals, formulas/caches, axes/precision, charts, export roundtrip and API downloads.",
-          "status": "passed"
-        },
-        {
-          "detail": "Generated owned baseline workbook via existing production gateway, imported read-only into bundled Artifact Tool and rendered T-riseChart A48:H65. Preview inspected: grey headers, all raw data rows yellow, blank gap and lower calculations unfilled; displayed values/format preserved. No direct attachment overwrite. Before/after attachmentSHA256 bb564c924b1f46850c249623efdb73f6a694075533eee0f3e3b0d9d9c8cc4705 identical. Native Excel recalculation not repeated for fill-only code; no formula changes.",
-          "status": "passed"
-        },
-        {
-          "detail": "Same-agent separate exact-diff Standards0findings and Spec0findings. Latest changes only existing infrastructure fill loop, public export regression and tool docs, plus sole-writer board.22cumulative paths. git diff --check clean. Prior56frontend tests/build/browser evidence retained for unchanged frontend; not rerun.",
-          "status": "passed"
-        }
-      ],
-      "roles": {
-        "planner": {
-          "status": "passed",
-          "detail": "Automatically revised same standard task for bounded export formatting feedback. Plan: fill only copied raw reading data rows with sameyellow as Initial Data; preserve grey headers, calculation table, values/formulas/source. No new design or authority."
-        },
-        "developer": {
-          "status": "passed",
-          "detail": "Main context public gateway export TDD RED then GREEN. Existing key-readings cell-format loop now reuses one solidFFFF00fill; no domain/API/UI/caching changes. Added scoped regression and documentation."
-        },
-        "reviewer": {
-          "status": "passed",
-          "detail": "Separate same-agent Standards and Spec exact-diff passes, not independent contexts. Standards0 and Spec0findings. Correct bounded row/column limits, all copied columns including identifiers and blanks filled; shared table styling unchanged so grey headers/calculation blocks unaffected. No new dependencies or abstractions."
-        },
-        "qa": {
-          "status": "passed",
-          "detail": "Final clean68effc6a passed85gateway/API tests. Sandbox API stall separately recorded; complete escalated rerun passed, one existing deprecation warning. Actual production-generated output rendered through bundled Artifact Tool; changed range visually inspected. Supplied file SHA preserved. No nativeExcel recalculation rerun for style-only change."
-        },
-        "integrator": {
-          "status": "passed",
-          "detail": "Clean local master68effc6a1ae6f873d7edb9e525ade03d00512485 verified; exact22cumulative product/test/docpaths, latest3paths plus board checkpoint. No remote publication or external authoritative mutation."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "detail": "Integrated locally at clean68effc6a1ae6f873d7edb9e525ade03d00512485. Latest3product/test/docpaths only;22cumulative. Sole-writer acceptance record follows; no remote refs changed."
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_LEGACY_PROJECT_READONLY_PREVIEW_20261017",

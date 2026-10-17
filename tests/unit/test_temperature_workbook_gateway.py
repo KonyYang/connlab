@@ -47,7 +47,7 @@ def test_export_quantizes_current_formulas_caches_and_axes_but_keeps_original_va
         assert rise._charts[0].y_axis.numFmt.formatCode == '0'
         assert derating._charts[0].x_axis.numFmt.formatCode == '0'
         assert derating._charts[0].y_axis.numFmt.formatCode == number_format
-        assert derating['G10'].number_format == number_format
+        assert derating['G2'].number_format == number_format
         assert derating._charts[0].series[2].dLbls.numFmt == number_format
         target, area = next(book.defined_names['CurrentCalculator'].destinations)
         assert list(book[target][area])[-1][-1].number_format == number_format
@@ -412,6 +412,33 @@ def test_export_formats_measurement_labels_and_keeps_only_max_calculator_visible
         assert root.find('c:roundedCorners', ns).get('val') == '1'
 
 
+def test_derating_layout_has_horizontal_bordered_inputs_and_chart_beside_data(tmp_path):
+    output, _ = _report_export(tmp_path, include_derating=True)
+    book = load_workbook(output)
+    try:
+        sheet = book['Derating']
+        assert [cell.value for cell in sheet[1][:4]] == ['AVG a', 'AVG b', 'AVG c', 'Max Temp (°C)']
+        assert [sheet.cell(1, col).value for col in (6, 7, 8)] == [
+            'Ambient Point (°C)', 'Basic (A)', '80% Derating (A)']
+        assert not any(isinstance(cell.value, str) and
+                       (cell.value == 'Current vs Ambient Temperature' or cell.value.startswith('Max working temperature:'))
+                       for row in sheet for cell in row)
+        for area in ('A1:D2', 'F1:H2', 'J1:K2', f'A5:C{sheet.max_row}'):
+            for row in sheet[area]:
+                for cell in row:
+                    assert cell.alignment.horizontal == 'center', cell.coordinate
+                    assert all(getattr(cell.border, side).style == 'thin'
+                               for side in ('left', 'right', 'top', 'bottom')), cell.coordinate
+        assert sheet['A2'].number_format == '0.000000'
+        assert sheet['B6'].value == '=(-$B$2+SQRT($B$2^2+4*$A$2*($D$2-A6)))/(2*$A$2)'
+        assert sheet['G2'].value == '=(-$B$2+SQRT($B$2^2+4*$A$2*($D$2-F2)))/(2*$A$2)'
+        assert sheet['H2'].value == '=G2*0.8'
+        assert sheet._charts[0].anchor._from.col == 4
+        assert sheet._charts[0].anchor._from.row == 4
+    finally:
+        book.close()
+
+
 def test_derating_chart_matches_reference_and_guide_follows_editable_ambient_point(tmp_path):
     output, analysis = _report_export(tmp_path, include_derating=True)
     book = load_workbook(output)
@@ -435,10 +462,10 @@ def test_derating_chart_matches_reference_and_guide_follows_editable_ambient_poi
     assert chart.x_axis.scaling.max == 105
     assert [entry.idx for entry in chart.legend.legendEntry if entry.delete] == [2, 3, 4]
     assert chart.legend.layout.manualLayout.x < .15
-    assert sheet['F13'].value == '=$F$10'
-    assert sheet['F14'].value == '=$F$10'
-    assert sheet['G14'].value == '=$G$10'
-    assert sheet['G10'].number_format == sheet['H10'].number_format == '0'
+    assert sheet['J1'].value == '=$F$2'
+    assert sheet['J2'].value == '=$F$2'
+    assert sheet['K2'].value == '=$G$2'
+    assert sheet['G2'].number_format == sheet['H2'].number_format == '0'
     guide = chart.series[4]
     assert guide.graphicalProperties.line.solidFill.srgbClr == '0000FF'
     assert guide.graphicalProperties.line.prstDash == 'dash'
@@ -446,8 +473,8 @@ def test_derating_chart_matches_reference_and_guide_follows_editable_ambient_poi
     assert [float(point.v) for point in guide.yVal.numRef.numCache.pt] == pytest.approx([0, calculate_current(analysis.average_fit.coefficients, 30)])
     book.close()
     cached = load_workbook(output, data_only=True)
-    assert cached['Derating']['G14'].value == pytest.approx(calculate_current(analysis.average_fit.coefficients, 30))
-    assert cached['Derating']['F13'].value == cached['Derating']['F14'].value == 75
+    assert cached['Derating']['K2'].value == pytest.approx(calculate_current(analysis.average_fit.coefficients, 30))
+    assert cached['Derating']['J1'].value == cached['Derating']['J2'].value == 75
     cached.close()
     with ZipFile(output) as archive:
         ns = {'c': 'http://schemas.openxmlformats.org/drawingml/2006/chart',
