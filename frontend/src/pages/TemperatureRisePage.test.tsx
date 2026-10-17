@@ -79,7 +79,7 @@ describe('temperature preparation and calculation workflow', () => {
     expect(screen.queryByText('Data Confirmed')).toBeNull();
   });
 
-  it('switches worksheets from an unlabelled header selector immediately before Load Initial Data', async () => {
+  it('switches worksheets from an unlabelled header selector immediately after Load Initial Data', async () => {
     const user = userEvent.setup();
     const first = structuredClone(imported);
     first.table.sheet_names = ['Data', 'Other'];
@@ -92,7 +92,7 @@ describe('temperature preparation and calculation workflow', () => {
     await upload();
     const sheet = header.getByRole('combobox', { name: 'Sheet Name' });
     const load = header.getByRole('button', { name: 'Load Initial Data' });
-    expect(sheet.compareDocumentPosition(load) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(load.nextElementSibling).toBe(sheet);
     expect(screen.queryByText('Sheet Name', { exact: true })).toBeNull();
     expect(sheet.title).toBe('scanner.xlsx');
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));

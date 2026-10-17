@@ -7,9 +7,9 @@ Compact charts, automatic generation after confirmation and scan-based feedback 
 
 ## Compact source and confirmation controls (2026-10-17)
 
-The standalone imported filename row is removed. The worksheet dropdown sits immediately before
+The standalone imported filename row is removed. The worksheet dropdown sits immediately after
 Load Initial Data in the header with no visible Sheet Name label; its accessible name is retained.
-Ambient Column, Current Column, Samples and Current Decimals follow Load Initial Data on the same
+Ambient Column, Current Column, Samples and Current Decimals follow the worksheet dropdown on the same
 header line. The worksheet selector is 144px and both column selectors are 128px (twice their
 initial compact widths); full selected source headers remain available on hover. TC/Sample sits
 between Samples and Current Decimals; numeric spinner widths and calculation behavior are unchanged.

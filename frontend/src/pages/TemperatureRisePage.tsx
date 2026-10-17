@@ -53,11 +53,11 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
     {backButton}
     <div className="temperature-header-inputs">
       <div className="temperature-import-actions">
+        <button type="button" className="temperature-load-initial-data" onClick={() => fileInput.current?.click()}>Load Initial Data</button>
         {s.file && s.table && <select className="temperature-sheet-select" aria-label="Sheet Name" title={s.file.name}
           value={s.table.sheet_name} disabled={busy} onChange={event => tool.load(s.file, event.target.value)}>
           {s.table.sheet_names.map(name => <option key={name}>{name}</option>)}
         </select>}
-        <button type="button" className="temperature-load-initial-data" onClick={() => fileInput.current?.click()}>Load Initial Data</button>
       </div>
       {dataParameters}
     </div>
