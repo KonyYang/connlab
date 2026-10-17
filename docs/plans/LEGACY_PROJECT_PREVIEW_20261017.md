@@ -128,6 +128,20 @@ Final machine evidence: `qa-final-result.json` in the Temp evidence directory ab
 `output/playwright/`. Sequential Developer/Reviewer/QA/Integrator passes are all by the same agent.
 No formal import, business-data/source mutation, push or publication occurred.
 
+## Tools card copy follow-up (2026-10-17)
+
+User feedback changes only the Tools entry card: heading `Legacy Project Files`, action
+`Import Legacy Projects`. Its former gray paragraph is now an English native button hover tooltip:
+`Preview existing project folders in batches. Original files and folder structure remain unchanged.`
+The preview page and read-only behavior are unchanged.
+
+After the final code/test edits, targeted Vitest validation passed: **22 tests / 2 files**
+(`ToolsPage.test.tsx`, `App.test.tsx`). Same-agent focused diff review found no scope or behavior
+regression. The native tooltip uses the browser's `title` behavior; no separate visual UI run was
+performed for this copy-only follow-up. Earlier full frontend, Python, and isolated UI results above
+describe the prior executable subject; no full matrix was repeated for this bounded copy change.
+No business data, original project directory, push, or publication is involved.
+
 ## Exact changed paths (excluding task board)
 
 - `backend/api/main.py`

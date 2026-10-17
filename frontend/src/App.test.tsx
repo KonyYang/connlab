@@ -9,7 +9,7 @@ it("opens the read-only legacy preview deep link and returns to Tools", async ()
   render(<App />);
   expect(await screen.findByRole("heading", { name: "导入旧项目" })).toBeTruthy();
   await userEvent.setup().click(screen.getByRole("button", { name: "返回 Tools" }));
-  expect(await screen.findByRole("button", { name: "导入旧项目" })).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "Import Legacy Projects" })).toBeTruthy();
   expect(window.location.pathname).toBe("/tools");
 });
 

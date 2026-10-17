@@ -27,7 +27,13 @@ describe("ToolsPage", () => {
   it("opens a dedicated legacy project preview without starting another tool", async () => {
     const onOpenLegacyProjects = vi.fn();
     render(<ToolsPage onOpenLegacyProjects={onOpenLegacyProjects} />);
-    await userEvent.setup().click(screen.getByRole("button", { name: "导入旧项目" }));
+    const importButton = screen.getByRole("button", { name: "Import Legacy Projects" });
+    expect(screen.getByRole("heading", { name: "Legacy Project Files" })).toBeTruthy();
+    expect(importButton.title).toBe(
+      "Preview existing project folders in batches. Original files and folder structure remain unchanged."
+    );
+    expect(screen.queryByText(importButton.title)).toBeNull();
+    await userEvent.setup().click(importButton);
     expect(onOpenLegacyProjects).toHaveBeenCalledOnce();
     expect(startCustomerReportMock).not.toHaveBeenCalled();
     expect(encryptCopyMock).not.toHaveBeenCalled();

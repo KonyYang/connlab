@@ -109,9 +109,13 @@ export function ToolsPage({
     <section className="tools-page" aria-label="Tools">
       <div className="tools-grid">
         <article className="tools-card">
-          <div className="tools-card-heading"><h3>旧项目资料</h3></div>
-          <p>批量预览已有项目文件夹，原文件和目录结构保持不变。</p>
-          <button type="button" className="primary-action tools-picker-action" onClick={onOpenLegacyProjects}>导入旧项目</button>
+          <div className="tools-card-heading"><h3>Legacy Project Files</h3></div>
+          <button
+            type="button"
+            className="primary-action tools-picker-action"
+            title="Preview existing project folders in batches. Original files and folder structure remain unchanged."
+            onClick={onOpenLegacyProjects}
+          >Import Legacy Projects</button>
         </article>
         <ToolCard
           title="Internal Report → Customer Report"
