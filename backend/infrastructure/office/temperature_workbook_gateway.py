@@ -318,6 +318,9 @@ def _derating_sheet(sheet, result, caches, current_decimals=0):
 
 def _style_derating_tables(sheet, end):
     _style_sheet(sheet)
+    for column, width in {'A': 14, 'B': 12, 'C': 18, 'D': 17, 'E': 3, 'F': 21,
+                          'G': 12, 'H': 18, 'I': 3, 'J': 11, 'K': 11}.items():
+        sheet.column_dimensions[column].width = width
     edge = Side(style='thin', color='A6A6A6')
     for area, header in (('A1:D2', 1), ('F1:H2', 1), ('J1:K2', None), (f'A5:C{end}', 5)):
         for row in sheet[area]:

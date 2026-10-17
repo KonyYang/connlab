@@ -742,6 +742,7 @@ Generated Derating sheets omit the former title/subtitle rows. Editable AVG coef
 temperature occupy A1:D2; the ambient-point input/results sit at F1:H2 and the two live guide endpoints
 at J1:K2. All three blocks and the main A5:C data table have thin borders and centered content.
 Headers retain their fill; coefficient precision and selected current precision are unchanged.
+Column widths are compact and sized for their headers/numbers; E and I are narrow group spacers.
 The native chart starts at E5 beside the main data table, rather than below stacked parameter blocks.
 All formulas, caches and chart source references use the relocated inputs; changing F2 updates both
 point results and guide endpoints. Source data and other worksheets are unchanged.

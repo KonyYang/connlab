@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
     "task_id": "TASK_TEMPERATURE_CURRENT_DECIMALS_20261017",
     "summary": "Unified current decimal precision for temperature zero detection calculations charts and Excel export",
@@ -36,96 +36,17 @@
     "risk_reasons": [],
     "activation_head": "4219ddb74e8bb009d370757e415daed45b0f1e85",
     "started_at": "2026-10-17T03:04:29.050372Z",
-    "updated_at": "2026-10-17T23:47:47.389736Z",
+    "updated_at": "2026-10-17T23:50:49.419215Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_CURRENT_DECIMALS_20261017",
-      "stage": "delivery",
+      "stage": "revision",
       "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
+      "summary": "User requests more compact content-fitted column widths for Derating. Narrow numeric columns and spacer columns while retaining readable headers, centered bordered tables and existing E5 chart/formula layout.",
       "requires_user": false
     },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_TEMPERATURE_CURRENT_DECIMALS_20261017",
-      "subject": "f7c113737cf75fff9427370b9ea76c72beb2138f",
-      "summary": "Prior precision, compact UI and yellow copied-readings export retained. Latest Derating export removes generated title/subtitle; coefficients/max temperature A1:D2, ambient point/results F1:H2 and guide J1:K2 are horizontal; blocks and A5:C main table bordered/centered. Native chart moved fromE17 toE5. All affected formulas, caches, point and guide chart references relocated coherently. Source/other sheet content untouched. Local only.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/api/temperature_schemas.py",
-        "backend/application/temperature_channel_layout.py",
-        "backend/application/temperature_data_preparation.py",
-        "backend/domain/temperature_data.py",
-        "backend/infrastructure/office/temperature_rise_report_sheet.py",
-        "backend/infrastructure/office/temperature_workbook_gateway.py",
-        "docs/temperature_rise_tool.md",
-        "frontend/src/api/temperature.ts",
-        "frontend/src/features/temperature/DataPreview.test.tsx",
-        "frontend/src/features/temperature/DataPreview.tsx",
-        "frontend/src/features/temperature/TemperatureCharts.tsx",
-        "frontend/src/features/temperature/currentPrecision.test.ts",
-        "frontend/src/features/temperature/currentPrecision.ts",
-        "frontend/src/features/temperature/sourceScan.test.ts",
-        "frontend/src/features/temperature/sourceScan.ts",
-        "frontend/src/features/temperature/temperature.css",
-        "frontend/src/features/temperature/useTemperatureTool.ts",
-        "frontend/src/pages/TemperatureRisePage.test.tsx",
-        "frontend/src/pages/TemperatureRisePage.tsx",
-        "tests/integration/test_tools_temperature_api.py",
-        "tests/unit/test_temperature_data_preparation.py",
-        "tests/unit/test_temperature_workbook_gateway.py"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "detail": "Final implementation0ef9c0cc passed86tests across43gateway unit and43Tools API integration tests,36.71s. One existing Starlette/httpx deprecation warning. Laterf7c11373 changes only historical documentation wording; backend/frontend/tests identical to QA implementation. git diff --check clean."
-        },
-        {
-          "status": "passed",
-          "detail": "Coherent public-export TDD slice: new layout test and relocated existing guide/precision checks4failed before implementation,4passed after. Final suite verifies bordered/centered blocks, removed old prose, chartE5 anchor, updated live formulas and caches,0/1decimal source-label precision, original data, native charts and downloads. No private function mocks."
-        },
-        {
-          "status": "passed",
-          "detail": "Isolated native Excel read-only open of owned production-generated workbook, CalculateFullRebuild and in-memory edits. Initial75C Basic68.3438319367/Derated54.6750655494 preserved. F2=80C yields61.4903910777/49.1923128622; guide endpoints and actual point/guide series follow. Then a multiplied1.1 and max110 yields65.6267043285/52.5013634628. First/middle/last main table formulas reconcile against independent domain calculations for each edit.0native formula errors; centered/bordered ranges and E5 chart actual geometry asserted. All edits closed without saving; owned Excel quit in finally."
-        },
-        {
-          "status": "passed",
-          "detail": "Owned native Excel exported one-page PDF after restoring initial inputs; bundled PDFium rasterized and visual image inspected. Coefficients, ambient summary, guide across top; left complete data table, right chart aligned atE5; no overlap, clipped headers or old title/subtitle. Existing curve colors/labels/legend preserved. No attached/source file overwritten. Intermediate preview remains ignored QA evidence, not a user deliverable."
-        },
-        {
-          "status": "passed",
-          "detail": "Separate same-agent exact-diff Standards0 and Spec0findings, not independent agents. Formatting remains workbook infrastructure; bounded style helper prevents generic title styling from overwriting parameter headers. All affected formula/caches/chart references moved, placeholder when no Derating remains usable, current formats retained. Exact22cumulative paths. Frontend unchanged: prior56tests/build/browser evidence retained, not rerun."
-        }
-      ],
-      "roles": {
-        "planner": {
-          "status": "passed",
-          "detail": "Same standard task revised automatically for current Derating presentation feedback. Chosen literal layout replaces title rows with A1:D2coefficients, F1:H2ambient results and J1:K2guide, keeps main tableA5 and moves chartE5. Preserve source data/calculations/precision; native recalculation required for moved dependencies."
-        },
-        "developer": {
-          "status": "passed",
-          "detail": "Main context public-export TDD coherent layout/reference slice4RED then4GREEN. Existing formula expressions and numerical model preserved; only references/caches/series source positions updated. Dedicated bounded formatting helper owns borders/centering/header styling; no new dependencies or UI changes."
-        },
-        "reviewer": {
-          "status": "passed",
-          "detail": "Separate same-agent Standards and Spec exact-diff review. Standards0findings; Spec0findings. Scoped table fill/font/alignment bounds and fallback styling checked. Legacy G10/F13 references removed from live implementation and tests, all dependent point/guide references follow relocated inputs. No authority/source mutation or numerical redesign."
-        },
-        "qa": {
-          "status": "passed",
-          "detail": "Final implementation86gateway/API tests passed; native isolated Excel recalculation, ambient/coefficient/max-temp edit propagation through table/point/guide, formatting and chart geometry assertions passed;0formulaerrors. Native PDF preview inspected. Subsequent documentation-only clarification checked with unchanged implementation tree; no unnecessary frontend matrix repeated."
-        },
-        "integrator": {
-          "status": "passed",
-          "detail": "Verified clean local masterf7c113737cf75fff9427370b9ea76c72beb2138f and unchanged tested implementation tree from0ef9c0cc; exact22cumulative paths, latest3product/test/docpaths plus sole-writer checkpoint. No remote publication."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "detail": "Integrated locally at cleanf7c113737cf75fff9427370b9ea76c72beb2138f; code/test validation from identical0ef9c0cc implementation tree, laterdocclarification only. Exact22cumulative paths. Acceptance record through sole writer follows; no remote refs changed."
-      }
-    }
+    "report": null
   },
   "last_closed": {
     "task_id": "TASK_LEGACY_PROJECT_READONLY_PREVIEW_20261017",
