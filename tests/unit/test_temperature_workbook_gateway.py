@@ -461,6 +461,22 @@ def test_derating_chart_matches_reference_and_guide_follows_editable_ambient_poi
         assert all(t.find('.//a:defRPr', ns).get('b') == '1' for t in titles)
 
 
+def test_report_export_highlights_copied_readings_without_recoloring_calculations(tmp_path):
+    output, _ = _report_export(tmp_path)
+    book = load_workbook(output)
+    try:
+        sheet = book['T-riseChart']
+        raw = sheet[next(book.defined_names['KeyStageReadings'].destinations)[1].replace('$', '')]
+        rises = sheet[next(book.defined_names['StageTemperatureRise'].destinations)[1].replace('$', '')]
+        assert all(cell.fill.patternType == 'solid' and cell.fill.fgColor.rgb == '00FFFF00'
+                   for row in raw[1:] for cell in row)
+        assert all(cell.fill.fgColor.rgb == '00D9D9D9' for cell in raw[0])
+        assert all(cell.fill.patternType is None for row in rises[1:] for cell in row)
+        assert all(cell.fill.patternType is None for cell in sheet[raw[-1][0].row + 1])
+    finally:
+        book.close()
+
+
 def test_report_export_has_traceable_key_readings_and_copyable_formula_summary(tmp_path):
     output, analysis = _report_export(tmp_path)
     book = load_workbook(output)

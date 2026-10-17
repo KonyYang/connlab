@@ -157,9 +157,12 @@ def _key_readings(sheet, table, selection, stages, header):
             _literal(sheet, row, column, values[source - 1] if source <= len(values) else None)
     _table_style(sheet, header, header + len(stages), len(order))
     measured_columns = {*selection.temperature_columns, selection.ambient_column, selection.current_column}
+    yellow = PatternFill('solid', fgColor='FFFF00')
     for row in range(header + 1, header + len(stages) + 1):
         for column, source in enumerate(order, 1):
-            sheet.cell(row, column).number_format = '0.000' if source in measured_columns else 'General'
+            cell = sheet.cell(row, column)
+            cell.fill = yellow
+            cell.number_format = '0.000' if source in measured_columns else 'General'
     _name(sheet, 'KeyStageReadings', header, header + len(stages), len(order))
     return locations, source_columns
 

@@ -651,6 +651,9 @@ Both references are read-only design evidence, not calculation authority or repo
   separately into the report. A synthetic zero-current origin remains part of the summary but has
   no corresponding scanner row in the key-stage readings. Cell comments are not added to the export.
   Report pagination depends on sample/stage counts; a five-sample table may occupy a separate page.
+- The copied `KeyStageReadings` data rows use the same yellow fill as the selected source endpoints
+  in Initial Data. Their grey header, raw values and number formats are retained; the lower
+  `StageTemperatureRise` calculation table and blank separator rows are not recolored.
 
 Implementation stays in the workbook infrastructure: the gateway owns file lifecycle and caches,
 and `temperature_rise_report_sheet.py` owns report sheet layout. No UI, API, domain calculation,
