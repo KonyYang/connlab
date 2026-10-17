@@ -139,6 +139,9 @@ describe('temperature preparation and calculation workflow', () => {
     }
     expect((within(parameters).getByLabelText('Ambient Column') as HTMLSelectElement).title).toBe('Ambient');
     expect((within(parameters).getByLabelText('Current Column') as HTMLSelectElement).title).toBe('Current');
+    const thermocouples = within(parameters).getByText('2 TC/Sample');
+    const decimals = within(parameters).getByLabelText('Current Decimals').closest('label')!;
+    expect(thermocouples.nextElementSibling).toBe(decimals);
     fireEvent.change(within(parameters).getByLabelText('Samples'), { target: { value: '2' } });
     fireEvent.change(within(parameters).getByLabelText('Current Decimals'), { target: { value: '1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Data' }));

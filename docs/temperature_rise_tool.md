@@ -10,7 +10,9 @@ Compact charts, automatic generation after confirmation and scan-based feedback 
 The standalone imported filename row is removed. The worksheet dropdown sits immediately before
 Load Initial Data in the header with no visible Sheet Name label; its accessible name is retained.
 Ambient Column, Current Column, Samples and Current Decimals follow Load Initial Data on the same
-header line. Column selectors are compact and expose the full selected source header on hover.
+header line. The worksheet selector is 144px and both column selectors are 128px (twice their
+initial compact widths); full selected source headers remain available on hover. TC/Sample sits
+between Samples and Current Decimals; numeric spinner widths and calculation behavior are unchanged.
 The parameter group alone scrolls horizontally when space is insufficient; worksheet selection and
 file import remain fixed and usable. There is no duplicate parameter row in the data panel.
 Hovering the dropdown shows the complete source filename. Changing the sheet still reloads that

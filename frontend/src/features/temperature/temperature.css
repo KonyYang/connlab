@@ -6,7 +6,7 @@
 .temperature-import-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; min-width: 0; }
 .temperature-header-actions:has(.temperature-import-fields) { gap: 8px; }
 .temperature-header-actions:has(.temperature-import-fields) .temperature-import-actions { margin-left: 0; flex-shrink: 0; gap: 6px; }
-.temperature-header-actions:has(.temperature-import-fields) .temperature-sheet-select { width: 72px; min-height: 32px; padding: 5px 6px; font-size: 12px; }
+.temperature-header-actions:has(.temperature-import-fields) .temperature-sheet-select { width: 144px; min-height: 32px; padding: 5px 6px; font-size: 12px; }
 .temperature-header-actions:has(.temperature-import-fields) .temperature-load-initial-data { padding: 7px 9px; font-size: 12px; white-space: nowrap; }
 .temperature-header-actions:has(.temperature-import-fields) .temperature-tools-return { width: 36px; height: 36px; }
 .temperature-sheet-select, .temperature-page .temperature-sheet-select { width: clamp(76px,16vw,160px); min-width: 0; min-height: 40px; padding: 8px; border: 1px solid var(--color-action-secondary-border); border-radius: 10px; background: var(--color-surface); color: var(--color-ink); font: inherit; font-size: 13px; font-weight: 400; }
@@ -37,6 +37,7 @@
 .temperature-import-fields { display: flex; flex: 1 1 auto; gap: 8px; align-items: center; min-width: 0; overflow-x: auto; padding: 4px 2px; scrollbar-width: thin; }
 .temperature-import-fields label, .temperature-page .temperature-import-fields label { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; font-size: 11px; font-weight: 400; white-space: nowrap; }
 .temperature-import-fields select, .temperature-import-fields input, .temperature-page .temperature-import-fields select, .temperature-page .temperature-import-fields input { box-sizing: border-box; width: 64px; min-width: 0; padding: 4px 5px; min-height: 30px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-ink); font: inherit; font-weight: 400; }
+.temperature-import-fields select, .temperature-page .temperature-import-fields select { width: 128px; }
 .temperature-import-fields .temperature-sample-count input { width: 40px; }
 .temperature-import-fields .temperature-derived-count { flex-shrink: 0; font-size: 11px; }
 .temperature-import-fields input:focus-visible, .temperature-import-fields select:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }

@@ -42,12 +42,12 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
     {s.selection.sample_count != null ? <label className="temperature-sample-count">Samples<input type="number" min="1" max="254" value={s.selection.sample_count} disabled={busy}
       onChange={event => tool.changeData({ sample_count: Number(event.target.value) })} /></label>
       : <label className="temperature-sample-count">Thermocouples/Sample<input type="number" min="1" max="254" value={s.selection.thermocouples_per_sample} disabled={busy} onChange={event => tool.changeData({ thermocouples_per_sample: Number(event.target.value) })} /></label>}
+    {s.selection.sample_count != null && <span className="temperature-derived-count">{incompleteSampleGroups(s.selection, s.channel_layout) ? 'TC/Sample: pending' : `${s.selection.thermocouples_per_sample} TC/Sample`}</span>}
     <label className="temperature-sample-count">Current Decimals<input type="number" min="0" max="4" step="1" value={currentDecimals} disabled={busy}
       onChange={event => {
         const decimals = Number(event.target.value);
         if (Number.isInteger(decimals) && decimals >= 0 && decimals <= 4) tool.changeData({ current_decimals: decimals });
       }} /></label>
-    {s.selection.sample_count != null && <span className="temperature-derived-count">{incompleteSampleGroups(s.selection, s.channel_layout) ? 'TC/Sample: pending' : `${s.selection.thermocouples_per_sample} TC/Sample`}</span>}
   </div>;
   const headerActions = <div className="temperature-header-actions">
     {backButton}
