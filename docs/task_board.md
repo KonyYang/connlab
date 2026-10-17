@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_CURRENT_DECIMALS_20261017",
     "summary": "Unified current decimal precision for temperature zero detection calculations charts and Excel export",
@@ -36,17 +36,92 @@
     "risk_reasons": [],
     "activation_head": "4219ddb74e8bb009d370757e415daed45b0f1e85",
     "started_at": "2026-10-17T03:04:29.050372Z",
-    "updated_at": "2026-10-17T23:02:46.405355Z",
+    "updated_at": "2026-10-17T23:06:17.078334Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_CURRENT_DECIMALS_20261017",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "User requests placing worksheet selector immediately after Load Initial Data, preserving width, tooltip and sheet reload/reconfirmation behavior.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_CURRENT_DECIMALS_20261017",
+      "subject": "7904e7659476bccd082606d11fd9ab000094fe2d",
+      "summary": "Previous current precision, compact header actions and single-line review feedback retained. Latest acceptance adjustment places worksheet selector immediately after Load Initial Data and before existing parameters; unchanged144px width, source filename hover, accessible label, load handler and reload/reconfirmation contract. Local only; no publication.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/temperature_schemas.py",
+        "backend/application/temperature_channel_layout.py",
+        "backend/application/temperature_data_preparation.py",
+        "backend/domain/temperature_data.py",
+        "backend/infrastructure/office/temperature_rise_report_sheet.py",
+        "backend/infrastructure/office/temperature_workbook_gateway.py",
+        "docs/temperature_rise_tool.md",
+        "frontend/src/api/temperature.ts",
+        "frontend/src/features/temperature/DataPreview.test.tsx",
+        "frontend/src/features/temperature/DataPreview.tsx",
+        "frontend/src/features/temperature/TemperatureCharts.tsx",
+        "frontend/src/features/temperature/currentPrecision.test.ts",
+        "frontend/src/features/temperature/currentPrecision.ts",
+        "frontend/src/features/temperature/sourceScan.test.ts",
+        "frontend/src/features/temperature/sourceScan.ts",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx",
+        "tests/integration/test_tools_temperature_api.py",
+        "tests/unit/test_temperature_data_preparation.py",
+        "tests/unit/test_temperature_workbook_gateway.py"
+      ],
+      "validation": [
+        {
+          "detail": "Latest7904e765 final51page+5TopBar tests56passed, followed sequentially by TypeScript/Vite production build. No implementation or test changes afterward. git diff --check clean.",
+          "status": "passed"
+        },
+        {
+          "detail": "TDD existing worksheet switching public page test: new immediate Load-button-to-select adjacency assertion failed before the source move and passed afterward. Existing filename title, sheet reload, result invalidation and re-confirmation checks retained.",
+          "status": "passed"
+        },
+        {
+          "detail": "Real isolated Edge1920x804 and706x804 screenshots inspected. DOM order BUTTON then SELECT, button text Load Initial Data, selector144px and source filename title confirmed. Actual Confirm then Sheet2 switch reloaded6included0excluded and reset results/Download eligibility. Confirm and Download remain fixed top right. Console0errors0warnings. Own browser and verified server34204 closed; snapshots retained in ignored QA directory.",
+          "status": "passed"
+        },
+        {
+          "detail": "Same-agent separate Standards and Spec review of exact latest3product/test/docpaths: Standards0findings, Spec0findings. Source edit only moves existing button with handler unchanged; no CSS, API, business, data or Excel changes.22cumulative paths verified. Earlier matrix140frontend and145backend/nativeExcel evidence retained only for unchanged code, not rerun for this ordering change.",
+          "status": "passed"
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed",
+          "detail": "Latest in-scope feedback automatically revised same standard task. Minimal plan: swap import button and worksheet selector, update existing observable order regression test and tool documentation, preserve all other behavior."
+        },
+        "developer": {
+          "status": "passed",
+          "detail": "Main context moved existing button before conditional sheet selector without changing props, handlers or CSS. Existing worksheet-switch test updated to immediate adjacency; meaningful RED then GREEN recorded."
+        },
+        "reviewer": {
+          "status": "passed",
+          "detail": "Main context separate sequential Standards and Spec exact-diff passes, not independent agents. Standards0findings; Spec0findings. No new state/dependency/abstraction, unrelated changes or numerical/file authority mutation."
+        },
+        "qa": {
+          "status": "passed",
+          "detail": "Final reviewed clean7904e765:56page/TopBar tests passed and sequential production build passed. Actual isolated Edge wide/narrow screenshots,144px width, filename title and sheet reload/reconfirmation inspected;0consoleerrors/warnings. Other numerical/Office validation retained unchanged, not rerun."
+        },
+        "integrator": {
+          "status": "passed",
+          "detail": "Verified clean local master7904e7659476bccd082606d11fd9ab000094fe2d, exact22cumulative paths and latest3product/test/docpaths plus sole-writer board checkpoint. No remote publication."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "detail": "Integrated locally at clean7904e7659476bccd082606d11fd9ab000094fe2d. Latest source/test/docs order refinement only;22cumulative paths. Board acceptance record follows through sole writer, no remote refs changed."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_LEGACY_PROJECT_READONLY_PREVIEW_20261017",
