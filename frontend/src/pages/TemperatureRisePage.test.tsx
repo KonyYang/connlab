@@ -55,6 +55,30 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(projectApi.listProjectRegistryRows).mockResolvedValue([]);
   });
 
+  it('keeps the source in the Sheet Name tooltip and groups confirmation before download in the footer', async () => {
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    const sheet = screen.getByLabelText('Sheet Name');
+    expect(sheet.closest('label')?.title).toBe('scanner.xlsx');
+    expect(screen.queryByText('scanner.xlsx', { exact: true })).toBeNull();
+    const confirm = screen.getByRole('button', { name: 'Confirm Data' });
+    const download = screen.getByRole('button', { name: 'Download Excel' });
+    const footer = download.closest('footer');
+    expect(footer).not.toBeNull();
+    expect(footer?.contains(confirm)).toBe(true);
+    expect(within(footer!).getAllByRole('button')).toEqual([confirm, download]);
+    expect((download as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(confirm);
+    await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
+    expect((confirm as HTMLButtonElement).disabled).toBe(true);
+    expect((download as HTMLButtonElement).disabled).toBe(false);
+    expect(within(footer!).getByText('Data Confirmed')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Current Decimals'), { target: { value: '1' } });
+    expect((confirm as HTMLButtonElement).disabled).toBe(false);
+    expect((download as HTMLButtonElement).disabled).toBe(true);
+    expect(within(footer!).queryByText('Data Confirmed')).toBeNull();
+  });
+
   it('offers a bounded current decimal spinner and invalidates results without excluding rows or changing samples', async () => {
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
@@ -600,10 +624,10 @@ describe('temperature preparation and calculation workflow', () => {
     const file = new File(['x'], 'scanner.xlsx');
     await user.upload(input, file);
     await screen.findByRole('button', { name: 'Confirm Data' });
-    expect(screen.getByText('scanner.xlsx')).toBeTruthy();
+    expect(screen.getByTitle('scanner.xlsx')).toBeTruthy();
     expect(api.importTemperatureWorkbook).toHaveBeenCalledWith(file, undefined);
     fireEvent.change(input, { target: { files: [] } });
-    expect(screen.getByText('scanner.xlsx')).toBeTruthy();
+    expect(screen.getByTitle('scanner.xlsx')).toBeTruthy();
     expect(api.importTemperatureWorkbook).toHaveBeenCalledOnce();
     await user.upload(input, file);
     expect(api.importTemperatureWorkbook).toHaveBeenCalledTimes(2);
@@ -695,7 +719,7 @@ describe('temperature preparation and calculation workflow', () => {
     await user.upload(input, file);
     await screen.findByRole('button', { name: 'Confirm Data' });
     expect(api.importTemperatureWorkbook).toHaveBeenCalledWith(file, undefined);
-    expect(screen.getByText('scanner.csv')).toBeTruthy();
+    expect(screen.getByTitle('scanner.csv')).toBeTruthy();
     expect(screen.getByLabelText('Ambient Column')).toBeTruthy();
     expect(screen.getByLabelText('Current Column')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Generate T-riseChart' }).hasAttribute('disabled')).toBe(true);

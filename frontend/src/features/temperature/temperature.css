@@ -1,5 +1,5 @@
 .temperature-page { display: grid; gap: 16px; padding-bottom: 24px; min-width: 0; }
-.temperature-confirm, .temperature-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.temperature-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .top-bar-tools:has(.temperature-tools-return) { grid-template-columns: max-content minmax(0,1fr); }
 .top-bar-tools:has(.temperature-tools-return) .top-bar-actions { justify-content: flex-start; }
 .temperature-header-actions { display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; }
@@ -29,8 +29,6 @@
 .temperature-page .temperature-import-fields label { grid-template-columns: max-content minmax(0,1fr); align-items: center; gap: 6px; font-size: 12px; font-weight: 400; white-space: nowrap; }
 .temperature-page .temperature-import-fields .temperature-sample-count { grid-template-columns: max-content 56px; }
 .temperature-page .temperature-import-fields select, .temperature-page .temperature-import-fields input { padding: 5px 8px; min-height: 32px; font-size: 12px; }
-.temperature-file { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; min-width: 0; }
-.temperature-file-name { color: var(--color-ink-muted); font-size: 13px; overflow-wrap: anywhere; min-width: 0; }
 .temperature-region-correction { display: grid; gap: 12px; min-width: 0; }
 .temperature-region-correction > p { margin: 0; font-size: 13px; }
 .temperature-region-correction form { display: grid; gap: 12px; justify-items: start; color: var(--color-ink); }
@@ -125,5 +123,9 @@
 .temperature-chart-empty { display: grid; place-items: center; min-height: 240px; color: var(--color-ink-muted); font-size: 13px; border: 1px solid var(--color-border); border-radius: 10px; margin: 0; text-align: center; padding: 16px; }
 .temperature-footer { position: sticky; bottom: 0; padding: 12px 0; background: var(--color-canvas); z-index: 2; }
 .temperature-footer p { margin: 0; }
+.temperature-footer-status { min-width: 0; overflow-wrap: anywhere; }
+.temperature-footer-status:empty { display: none; }
+.temperature-footer-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; max-width: 100%; }
+.temperature-footer-actions > button { min-width: 0; }
 @media (max-width: 850px) { .temperature-analysis-grid { grid-template-columns: 1fr; } }
-@media (max-width: 560px) { .temperature-panel { padding: 14px; } .temperature-region-fields { grid-template-columns: 1fr; } .temperature-confirm, .temperature-footer { flex-wrap: wrap; } }
+@media (max-width: 560px) { .temperature-panel { padding: 14px; } .temperature-region-fields { grid-template-columns: 1fr; } .temperature-footer { flex-wrap: wrap; } }

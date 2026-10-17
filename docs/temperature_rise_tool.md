@@ -5,6 +5,15 @@ and a compact XLSX metadata header. Editable measurement names, stable source id
 reversible ambient-role suspension and consecutive regrouping after explicit moves remain supported.
 Compact charts, automatic generation after confirmation and scan-based feedback remain in place.
 
+## Compact source and confirmation controls (2026-10-17)
+
+The standalone imported filename row is removed. Hovering Sheet Name shows the complete source
+filename. The browser upload contract supplies no disk absolute path; the UI does not fabricate
+one or add filesystem access. Confirm Data is in the sticky bottom action bar immediately before
+Download Excel, with Data Confirmed and operation feedback alongside it. Existing role/group
+validation, busy states and precision-change invalidation are unchanged. Narrow layouts keep the
+two actions together while allowing feedback text to wrap.
+
 ## Current precision contract (2026-10-17)
 
 `Current Decimals` is a native number spinner immediately after Samples (0–4, step 1, default 0).

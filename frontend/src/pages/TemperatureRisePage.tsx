@@ -48,12 +48,9 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         event.target.value = '';
       }} />
     {s.file && <section className="temperature-panel temperature-initial">
-      <div className="temperature-file">
-        <span className="temperature-file-name">{s.file.name}</span>
-      </div>
       {s.table && <TestInfo info={tool.reportInfo} disabled={busy} onEdit={tool.editReportInfo} />}
       {s.table && <div className="temperature-import-fields">
-          <label>Sheet Name<select value={s.table.sheet_name} disabled={busy} onChange={event => tool.load(s.file, event.target.value)}>{s.table.sheet_names.map(name => <option key={name}>{name}</option>)}</select></label>
+          <label title={s.file.name}>Sheet Name<select value={s.table.sheet_name} disabled={busy} onChange={event => tool.load(s.file, event.target.value)}>{s.table.sheet_names.map(name => <option key={name}>{name}</option>)}</select></label>
           {s.selection && <>
             <label>Ambient Column<select value={ambientValid ? s.selection.ambient_column : ''} disabled={busy} onChange={event => tool.changeData({ ambient_column: Number(event.target.value) })}>{!ambientValid && <option value="" disabled>Choose Ambient Column</option>}{columns.filter(col => col.kind === 'temperature').map(col => <option key={col.id} value={col.id} title={col.original}>{col.label}</option>)}</select></label>
             <label>Current Column<select value={currentValid ? s.selection.current_column : ''} disabled={busy} onChange={event => tool.changeData({ current_column: Number(event.target.value) })}>{!currentValid && <option value="" disabled>Choose Current Column</option>}{columns.filter(col => col.kind === 'current').map(col => <option key={col.id} value={col.id} title={col.original}>{col.label}</option>)}</select></label>
@@ -79,8 +76,6 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         {Boolean(s.review?.issues.length) && <section className="temperature-review" aria-label="Data Needs Review">
           <h4>Data Needs Review</h4><div className="temperature-issue-list">{review.map((issue, index) => <p key={index} className={issue.severity === 'error' ? 'temperature-error' : undefined}>{issue.message}</p>)}</div>
         </section>}
-        <div className="temperature-confirm"><span className={s.confirmed ? 'temperature-success' : 'temperature-hint'} role="status">{s.confirmed ? 'Data Confirmed' : ''}</span>
-          <button type="button" className="primary-action" disabled={busy || s.confirmed || Boolean(roleIssue) || incompleteSampleGroups(s.selection, s.channel_layout)} onClick={() => void tool.confirm()}>Confirm Data</button></div>
       </>}
     </section>}
     <div className="temperature-analysis-grid">
@@ -109,10 +104,14 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         {s.derating ? <DeratingChart result={s.derating} currentDecimals={currentDecimals} /> : <p className="temperature-chart-empty">The Basic and 80% Derating curves will appear here.</p>}
       </section>
     </div>
-    <footer className="temperature-footer"><div aria-live="polite">
+    <footer className="temperature-footer"><div className="temperature-footer-status" aria-live="polite">
       {s.busy && <p role="status">{s.busy}</p>}
       {s.error && <p role="alert" className="temperature-error">{scanMessage(s.table, s.error)}</p>}
+      {s.confirmed && <p role="status" className="temperature-success">Data Confirmed</p>}
       {s.downloaded && <p role="status" className="temperature-success">{s.downloaded}</p>}
-    </div><button type="button" className="primary-action" disabled={busy || !s.analysis || Boolean(reportHumidityIssue(tool.reportInfo.values.relative_humidity))} onClick={() => void tool.download()}>Download Excel</button></footer>
+    </div><div className="temperature-footer-actions">
+      {s.table && s.selection && <button type="button" className="primary-action" disabled={busy || s.confirmed || Boolean(roleIssue) || incompleteSampleGroups(s.selection, s.channel_layout)} onClick={() => void tool.confirm()}>Confirm Data</button>}
+      <button type="button" className="primary-action" disabled={busy || !s.analysis || Boolean(reportHumidityIssue(tool.reportInfo.values.relative_humidity))} onClick={() => void tool.download()}>Download Excel</button>
+    </div></footer>
   </section>;
 }
