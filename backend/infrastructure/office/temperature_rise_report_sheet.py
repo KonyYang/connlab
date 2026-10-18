@@ -68,7 +68,7 @@ def build_rise_report(sheet, *, table, selection, analysis, maximum, average, ta
     sheet.print_area = f'A1:{get_column_letter(chart_column + 12)}{print_end}'
     for column in range(1, max(table.width + 2, chart_column + 13)):
         sheet.column_dimensions[get_column_letter(column)].width = 10
-    sheet.column_dimensions['A'].width = 22
+    sheet.column_dimensions['A'].width = 18
     for row in range(summary_header, average_row + 1):
         label = str(sheet.cell(row, 1).value or '')
         sheet.row_dimensions[row].height = max(sheet.row_dimensions[row].height or 15, ceil(len(label) / 20) * 15)
@@ -120,12 +120,13 @@ def _name(sheet, name, start, end, width):
     sheet.parent.defined_names.add(DefinedName(name, attr_text=reference))
 
 
-def _table_style(sheet, start, end, width):
+def _table_style(sheet, start, end, width, *, left_aligned_columns=()):
     edge = Side(style='thin', color='A6A6A6')
     for row in sheet.iter_rows(min_row=start, max_row=end, max_col=width):
         for cell in row:
             cell.font = Font(name='Arial', size=10, color='000000')
-            cell.alignment = Alignment(horizontal='center',
+            horizontal = 'left' if cell.row > start and cell.column in left_aligned_columns else 'center'
+            cell.alignment = Alignment(horizontal=horizontal,
                                        vertical='center', wrap_text=cell.row == start or cell.column == 1)
             cell.border = Border(left=edge, right=edge, top=edge, bottom=edge)
             cell.number_format = '0.0' if cell.column != 1 else '0'
@@ -163,7 +164,7 @@ def _key_readings(sheet, table, selection, stages, header):
         values = table.rows[point.source_row - 1]
         for source, column in source_columns.items():
             _literal(sheet, row, column, values[source - 1] if source <= len(values) else None)
-    _table_style(sheet, header, header + len(stages), len(order))
+    _table_style(sheet, header, header + len(stages), len(order), left_aligned_columns=(2,))
     measured_columns = {*selection.temperature_columns, selection.ambient_column, selection.current_column}
     yellow = PatternFill('solid', fgColor='FFFF00')
     for row in range(header + 1, header + len(stages) + 1):
@@ -205,7 +206,7 @@ def _stage_rises(sheet, selection, stages, raw_rows, raw_columns, header, caches
         _formula(sheet, row, channels + 4,
                  f'=ROUND({current},{selection.current_decimals})',
                  point.current, caches)
-    _table_style(sheet, header, header + len(stages), channels + 4)
+    _table_style(sheet, header, header + len(stages), channels + 4, left_aligned_columns=(2,))
     for row in range(header + 1, header + len(stages) + 1):
         sheet.cell(row, channels + 4).number_format = current_number_format(selection.current_decimals)
         for column in (1, 2):

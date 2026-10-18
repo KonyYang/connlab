@@ -168,8 +168,10 @@ summary. Summary measurement labels omit numeric scanner/sample prefixes by keep
 starting at the first letter when a label starts with a digit: `1_HS` becomes `HS`, not `Header Solder`.
 Other names such as `Contact` stay unchanged; blank/all-numeric labels use the T-number fallback.
 Edited names follow the same export-only formatting. Sample totals use `n# Single Max`; overall MAX/AVG remain intact.
-A is narrower, numeric columns have equal compact widths, long summary labels wrap with fitted row
-height, sample subtotals use tan and overall totals use light blue, matching the supplied reference.
+A has a fixed width of 18; time data in both endpoint-reading and temperature-rise tables aligns left,
+while their headers and other cells retain centered alignment. Numeric columns have equal compact
+widths, long summary labels wrap with fitted row height, sample subtotals use tan and overall totals
+use light blue, matching the supplied reference.
 
 Every successful T-riseChart generation calculates the current for the entered Target Rise (30 °C
 by default) using the newly generated MAX fit. The result is retained for display and download without

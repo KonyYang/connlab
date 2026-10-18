@@ -386,7 +386,7 @@ def test_export_dual_mode_points_warnings_and_raw_preservation(tmp_path, zero_in
 
 
 @pytest.mark.parametrize('include_derating', [False, True])
-def test_export_uses_unfrozen_source_centered_tables_and_integer_current_display_without_comments(tmp_path, include_derating):
+def test_export_uses_unfrozen_source_table_alignment_and_integer_current_display_without_comments(tmp_path, include_derating):
     output, _ = _report_export(tmp_path, include_derating=include_derating)
     with ZipFile(output) as archive:
         assert not any('comments' in name.lower() for name in archive.namelist())
@@ -398,7 +398,11 @@ def test_export_uses_unfrozen_source_centered_tables_and_integer_current_display
         for name in ('TemperatureRiseSummary', 'CurrentCalculator', 'KeyStageReadings',
                      'StageTemperatureRise', 'AverageCoefficients'):
             block = sheet[next(book.defined_names[name].destinations)[1].replace('$', '')]
-            assert all(cell.alignment.horizontal == 'center' for row in block for cell in row), name
+            for row_index, row in enumerate(block):
+                for column_index, cell in enumerate(row):
+                    is_time_data = (name in ('KeyStageReadings', 'StageTemperatureRise')
+                                    and row_index > 0 and column_index == 1)
+                    assert cell.alignment.horizontal == ('left' if is_time_data else 'center'), (name, cell.coordinate)
         summary = sheet[next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
         assert all(cell.number_format == '0' for cell in summary[0][1:])
         assert summary[0][2].data_type == 'f'
@@ -433,7 +437,7 @@ def test_export_formats_measurement_labels_and_keeps_only_max_calculator_visible
     assert [row[0].value for row in summary] == [
         'Current(A)', 'HS', 'H', 'C', 'RS',
         '1# Single Max', 'Max T-Rise', 'Avg of max T-Rise on each sample']
-    assert sheet.column_dimensions['A'].width < 30
+    assert sheet.column_dimensions['A'].width == 18
     assert sheet.column_dimensions['B'].width == sheet.column_dimensions['C'].width
     calculator = sheet[next(book.defined_names['CurrentCalculator'].destinations)[1].replace('$', '')]
     assert not sheet.row_dimensions[calculator[1][0].row].hidden
@@ -615,6 +619,10 @@ def test_endpoint_tables_share_scan_time_columns_without_changing_readings(tmp_p
     for block in (raw, rises):
         assert [cell.value for cell in block[0][:2]] == ['扫描', '时间']
         assert all(cell.value != 'Original Row' for cell in block[0])
+        assert block[0][1].alignment.horizontal == 'center'
+        assert all(row[1].alignment.horizontal == 'left' for row in block[1:])
+        assert all(row[1].alignment.vertical == 'center' for row in block[1:])
+        assert all(row[0].alignment.horizontal == 'center' for row in block[1:])
     assert [tuple(cell.value for cell in row[:2]) for row in raw[1:]] == [rows[i][:2] for i in (1, 3, 5)]
     raw_row = raw[1][0].row
     assert rises[1][0].value is False if boolean_identifier else rises[1][0].value == f'=A{raw_row}'
