@@ -29,6 +29,11 @@ The duplicate row-count footer below the table is removed. Counts still derive f
 data range and explicit row exclusions, updating on exclude, restore and undo. Sample grouping
 controls, warnings and calculations are unchanged.
 
+Source preview density is compact: 28px data rows, 12px text, 13px checkboxes and vertically centered
+cells, with a 320px viewport height limit. The row window and CSS share the same row-height value
+so long-table scrolling, row identity and Shift selection stay aligned. Header spacing is also
+tighter; raw values, editing/history, calculations and Excel formatting are unchanged.
+
 Both analysis cards use compact inline title bars: Zero Intercept and Generate T-riseChart sit
 beside the temperature-rise title; Derating parameters and its action sit beside the Derating title.
 Controls wrap within the available card width, with a stacked fallback below 300px of card content.

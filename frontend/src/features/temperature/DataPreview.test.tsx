@@ -33,6 +33,10 @@ function Editor({ withParameters = false, source = table, starting = initial, im
 function selected() { return JSON.parse(screen.getByLabelText('Prepared Selection').textContent!) as DataSelection; }
 function columnHeader(letter: string) { return screen.getByRole('columnheader', { name: new RegExp(`^Source Column ${letter.charCodeAt(0) - 64}: `) }); }
 function openColumn(letter: string) { fireEvent.contextMenu(columnHeader(letter)); }
+function scrollToRowOffset(viewport: HTMLElement, index: number) {
+  const row = viewport.querySelector<HTMLTableRowElement>('tbody tr[aria-rowindex]')!;
+  fireEvent.scroll(viewport, { target: { scrollTop: index * Number.parseFloat(row.style.height) } });
+}
 
 describe('column header selection', () => {
   it('shows live included and excluded row counts once beside the preview title', () => {
@@ -286,7 +290,7 @@ describe('continuous source row selection', () => {
     render(<LongEditor />);
     fireEvent.click(screen.getByLabelText('Select Scan 773'));
     const viewport = screen.getByRole('region', { name: 'Scanner Data Preview' });
-    fireEvent.scroll(viewport, { target: { scrollTop: 1000 } });
+    scrollToRowOffset(viewport, 26);
     fireEvent.click(screen.getByLabelText('Select Scan 799'), { shiftKey: true });
     expect(screen.getByText('27 Selected')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
@@ -303,13 +307,13 @@ describe('continuous source row selection', () => {
   it('supports reverse Shift checkbox selection and Shift deselection', () => {
     render(<LongEditor />);
     const viewport = screen.getByRole('region', { name: 'Scanner Data Preview' });
-    fireEvent.scroll(viewport, { target: { scrollTop: 1000 } });
+    scrollToRowOffset(viewport, 26);
     fireEvent.click(screen.getByLabelText('Select Scan 799'));
     fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
     fireEvent.click(screen.getByLabelText('Select Scan 773'), { shiftKey: true });
     expect(screen.getByText('27 Selected')).toBeTruthy();
     fireEvent.click(screen.getByLabelText('Select Scan 773'));
-    fireEvent.scroll(viewport, { target: { scrollTop: 1000 } });
+    scrollToRowOffset(viewport, 26);
     fireEvent.click(screen.getByLabelText('Select Scan 799'), { shiftKey: true });
     expect((screen.getByRole('button', { name: 'Exclude Selected' }) as HTMLButtonElement).disabled).toBe(true);
   });

@@ -1,17 +1,17 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 
 // Fixed, single-line data rows keep the native scrollbar aligned with original row IDs.
-export const SOURCE_ROW_HEIGHT = 36;
+export const SOURCE_ROW_HEIGHT = 28;
 const OVERSCAN = 8;
 
 export function useSourceRowWindow(startRow: number, total: number) {
   const viewport = useRef<HTMLDivElement>(null);
   const header = useRef<HTMLTableSectionElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
-  const [bodyHeight, setBodyHeight] = useState(320);
+  const [bodyHeight, setBodyHeight] = useState(260);
   useLayoutEffect(() => {
     const measure = () => {
-      const available = (viewport.current?.clientHeight || 450) - (header.current?.offsetHeight || 130);
+      const available = (viewport.current?.clientHeight || 320) - (header.current?.offsetHeight || 60);
       setBodyHeight(Math.max(SOURCE_ROW_HEIGHT, available));
     };
     measure();

@@ -104,7 +104,8 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
       onScroll={event => { closeMenu(); rowWindow.setScrollTop(event.currentTarget.scrollTop); }}>
       <table className="temperature-source-table" aria-rowcount={total + 1}
         style={{ width: SELECTOR_WIDTH + grid.order.reduce((width, column) => width + columnWidth(column), 0),
-          '--temperature-selector-width': `${SELECTOR_WIDTH}px`, '--temperature-scan-width': `${columnWidth(1)}px` } as CSSProperties}>
+          '--temperature-selector-width': `${SELECTOR_WIDTH}px`, '--temperature-scan-width': `${columnWidth(1)}px`,
+          '--temperature-row-height': `${SOURCE_ROW_HEIGHT}px` } as CSSProperties}>
         <colgroup><col style={{ width: SELECTOR_WIDTH }} />
           {grid.order.map(column => <col key={column} style={{ width: columnWidth(column) }} />)}</colgroup>
         <thead ref={rowWindow.header}>
