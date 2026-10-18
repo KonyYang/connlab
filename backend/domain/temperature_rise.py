@@ -50,6 +50,7 @@ class TemperatureRiseAnalysis:
     average_fit: PolynomialFit
     zero_intercept: bool
     thermocouples_per_sample: int
+    warnings: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -72,18 +73,31 @@ def analyze_temperature_rise(
     rows: Sequence[Measurement], *, thermocouples_per_sample: int, zero_intercept: bool,
 ) -> TemperatureRiseAnalysis:
     _validate_measurements(rows, thermocouples_per_sample)
-    endpoints = stable_stage_endpoints(rows)
+    endpoints = [row for row in stable_stage_endpoints(rows) if row.current != 0]
     points = [_rise_point(row, thermocouples_per_sample) for row in endpoints]
     if not points:
         raise ValueError("No stable current stages. Each stage needs at least two successive readings within 1%.")
-    if points[0].current != 0:
+    warnings = ()
+    if zero_intercept:
         count = len(rows[0].temperatures)
         points.insert(0, RisePoint(None, 0, (0.,) * count, (0.,) * (count // thermocouples_per_sample), 0, 0))
+    else:
+        # Only the leading zero block predates energization. Restart/cooling zeros
+        # later in the run must not stand in for an unmeasured initial baseline.
+        first_powered = next(index for index, row in enumerate(rows) if row.current != 0)
+        if first_powered > 0:
+            points.insert(0, _rise_point(rows[first_powered - 1], thermocouples_per_sample))
+        else:
+            warnings = ('No pre-energization zero-current reading. No artificial origin added; '
+                        'the intercept is extrapolated from measured stages.',)
     currents = [point.current for point in points]
+    if warnings and len(set(currents)) < 3:
+        raise ValueError(f'{warnings[0]} At least three distinct measured current stages are required '
+                         'for a free-intercept fit.')
     return TemperatureRiseAnalysis(
         tuple(points), fit_quadratic(currents, [p.maximum for p in points], zero_intercept=zero_intercept),
         fit_quadratic(currents, [p.average for p in points], zero_intercept=zero_intercept),
-        zero_intercept, thermocouples_per_sample,
+        zero_intercept, thermocouples_per_sample, warnings,
     )
 
 

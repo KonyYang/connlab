@@ -28,6 +28,14 @@ def build_rise_report(sheet, *, table, selection, analysis, maximum, average, ta
     stages = [point for point in analysis.points if point.source_row is not None]
     chart_column = max(len(analysis.points) + 3, 11)
     info_end = _test_info(sheet, report_metadata)
+    if analysis.warnings:
+        warning_row = info_end + 1
+        sheet.merge_cells(start_row=warning_row, start_column=1, end_row=warning_row, end_column=9)
+        _literal(sheet, warning_row, 1, ' '.join(analysis.warnings))
+        cell = sheet.cell(warning_row, 1)
+        cell.font = Font(name='Arial', size=10, color='9A641C')
+        cell.alignment = Alignment(vertical='center', wrap_text=True)
+        sheet.row_dimensions[warning_row].height = 32
     summary_header = info_end + 2
     current_row = summary_header + len(auxiliary_current_columns)
     samples = len(analysis.points[0].sample_maxima)

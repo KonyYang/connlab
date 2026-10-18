@@ -51,8 +51,12 @@ function XYChart({ title, xTitle, yTitle, traces, guide, xLimit, currentAxis, cu
 }
 
 export function RiseChart({ analysis, table, currentDecimals = 0 }: { analysis: TemperatureAnalysis; table: WorkbookTable | null; currentDecimals?: number }) {
+  const min = Math.min(...analysis.points.map(point => point.current));
   const max = Math.max(...analysis.points.map(point => point.current));
-  const fitPoints = (coef: Coefficients) => Array.from({ length: 101 }, (_, i) => ({ x: max * i / 100, y: polynomial(coef, max * i / 100) }));
+  const fitPoints = (coef: Coefficients) => Array.from({ length: 101 }, (_, i) => {
+    const current = min + (max - min) * i / 100;
+    return { x: current, y: polynomial(coef, current) };
+  });
   const traces: Trace[] = [
     { name: 'Max ΔT', color: MAX_COLOR, markers: true, points: analysis.points.map(point => ({ x: point.current, y: point.maximum })) },
     { name: 'Avg Of Max ΔT', color: AVG_COLOR, markers: true, points: analysis.points.map(point => ({ x: point.current, y: point.average })) },

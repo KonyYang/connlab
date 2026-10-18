@@ -489,6 +489,34 @@ describe('temperature preparation and calculation workflow', () => {
     expect((screen.getByRole('button', { name: 'Derating' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('shows the missing-baseline warning and measured-only stages until the mode changes', async () => {
+    const warning = 'No pre-energization zero-current reading. No artificial origin added; the intercept is extrapolated from measured stages.';
+    const user = userEvent.setup();
+    vi.mocked(api.analyzeTemperatureData).mockResolvedValueOnce({ ...analysis,
+      zero_intercept: false, points: analysis.points.slice(1), warnings: [warning] });
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    await user.click(screen.getByLabelText('Zero Intercept'));
+    await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    const message = await screen.findByText(warning);
+    expect(message.title).toBe(warning);
+    const plot = screen.getByRole('img', { name: 'Temperature Rise vs Current' });
+    const firstMeasuredX = Number(plot.querySelector('circle')!.getAttribute('cx'));
+    for (const line of plot.querySelectorAll('polyline')) {
+      expect(Number(line.getAttribute('points')!.split(',')[0])).toBe(firstMeasuredX);
+    }
+    await user.click(screen.getByText('Stage Results'));
+    expect(screen.queryByRole('cell', { name: 'Origin', exact: true })).toBeNull();
+    expect(api.generateTemperatureDerating).not.toHaveBeenCalled();
+    expect((screen.getByRole('button', { name: 'Derating' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.click(screen.getByLabelText('Zero Intercept'));
+    expect(screen.queryByText(warning)).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Generate T-riseChart' }));
+    await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
+    await user.click(screen.getByText('Stage Results'));
+    expect(screen.getByRole('cell', { name: 'Origin', exact: true })).toBeTruthy();
+  });
+
   it.each(['prepare', 'rise', 'derating'] as const)('stops automatic generation on a %s failure and allows a focused retry', async stage => {
     const user = userEvent.setup();
     if (stage === 'prepare') vi.mocked(api.prepareTemperatureData).mockRejectedValueOnce(new Error('Check the data.'));

@@ -150,7 +150,7 @@
 .temperature-footer-status { display: flex; align-items: center; flex: 1; gap: 12px; min-width: 0; overflow: hidden; }
 .temperature-footer-status > p { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .temperature-footer-status:empty { display: none; }
-.temperature-review-summary { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--color-warning); font-size: 13px; }
+.temperature-review-summary { flex: 1 1 auto; min-width: 0; margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--color-warning); font-size: 13px; }
 .temperature-review-summary.has-errors { color: var(--color-danger); }
 .temperature-review-summary p { display: inline; font: inherit; }
 .temperature-review-summary p + p::before { content: ' · '; }

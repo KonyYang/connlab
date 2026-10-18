@@ -60,11 +60,11 @@ def test_measured_zero_current_endpoint_preserves_background_rise(zero_intercept
     # A shutdown tail is not the pre-energization background reading.
     rows.extend([Measurement(9, 0, 25, (50, 49)), Measurement(10, 0, 25, (49, 48))])
     result = analyze_temperature_rise(rows, thermocouples_per_sample=1, zero_intercept=zero_intercept)
-    assert [point.source_row for point in result.points] == [2, 4, 6, 8]
+    assert [point.source_row for point in result.points] == ([None, 4, 6, 8] if zero_intercept else [2, 4, 6, 8])
     assert result.points[0].current == 0
-    assert result.points[0].rises == (2, 1)
-    assert result.points[0].maximum == 2
-    assert result.points[0].average == 1.5
+    assert result.points[0].rises == ((0, 0) if zero_intercept else (2, 1))
+    assert result.points[0].maximum == (0 if zero_intercept else 2)
+    assert result.points[0].average == (0 if zero_intercept else 1.5)
     if not zero_intercept:
         assert result.maximum_fit.coefficients == Coefficients(.01, .2, 2)
         assert result.average_fit.coefficients == Coefficients(.0075, .15, 1.5)
@@ -73,6 +73,40 @@ def test_measured_zero_current_endpoint_preserves_background_rise(zero_intercept
     else:
         assert result.maximum_fit.coefficients.c == 0
         assert result.average_fit.coefficients.c == 0
+
+
+def test_free_intercept_without_initial_zero_uses_only_measurements_and_warns():
+    rows = [Measurement(i + 1, current, 23, (23 + rise,))
+            for i, (current, rise) in enumerate(((10, 3.8), (10, 3.8), (20, 8.8),
+                                                (20, 8.8), (30, 15.8), (30, 15.8)))]
+    result = analyze_temperature_rise(rows, thermocouples_per_sample=1, zero_intercept=False)
+    assert [point.source_row for point in result.points] == [2, 4, 6]
+    assert [point.current for point in result.points] == [10, 20, 30]
+    assert result.maximum_fit.coefficients == Coefficients(.01, .2, .8)
+    assert len(result.warnings) == 1
+    assert 'zero-current' in result.warnings[0] and 'extrapolated' in result.warnings[0]
+    forced = analyze_temperature_rise(rows, thermocouples_per_sample=1, zero_intercept=True)
+    assert [point.source_row for point in forced.points] == [None, 2, 4, 6]
+    assert forced.points[0].maximum == 0
+    assert forced.warnings == ()
+
+
+@pytest.mark.parametrize('initial_zero', [False, True])
+def test_restart_zero_is_not_reused_as_pre_energization_baseline(initial_zero):
+    currents = ([0] if initial_zero else []) + [10, 10, 0, 0, 20, 20, 30, 30, 0]
+    rows = [Measurement(i + 1, current, 20, (21 + .01 * current ** 2,))
+            for i, current in enumerate(currents)]
+    result = analyze_temperature_rise(rows, thermocouples_per_sample=1, zero_intercept=False)
+    assert [point.current for point in result.points] == ([0] if initial_zero else []) + [10, 20, 30]
+    assert bool(result.warnings) is not initial_zero
+    assert all(point.source_row is not None for point in result.points)
+
+
+def test_missing_baseline_with_too_few_stages_explains_both_problems():
+    rows = [Measurement(i + 1, current, 20, (20 + current,))
+            for i, current in enumerate((10, 10, 20, 20))]
+    with pytest.raises(ValueError, match='zero-current.*three distinct'):
+        analyze_temperature_rise(rows, thermocouples_per_sample=1, zero_intercept=False)
 
 
 def test_single_zero_reading_before_energization_is_a_real_endpoint():

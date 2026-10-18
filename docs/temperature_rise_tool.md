@@ -36,6 +36,24 @@ Complete labels, keyboard access, eligibility and calculations are retained; the
 Both web plots omit their duplicate internal visible titles; their accessible chart names,
 card headings, axes and data remain. Both Excel chart titles are unchanged.
 
+## Dual zero-intercept modes (2026-10-18)
+
+Zero Intercept now controls the selected points as well as the polynomial constraint. Checked mode
+uses only nonzero stable-stage endpoints plus one artificial (0 A, 0 °C) point, with c fixed to zero.
+Unchecked mode uses those nonzero endpoints plus the final included reading in the leading zero-current
+block before the first energized reading. It never adds an artificial origin. Restart/interruption
+zeros and the final shutdown tail are not initial baselines. Zero is determined by Current Decimals.
+
+If unchecked mode has no initial measured zero, fitting uses only measured stages and reports that
+the intercept is extrapolated. The same warning appears compactly above the web plot (full hover text)
+and between the XLSX metadata and summary. At least three distinct measured stages are then required;
+insufficient stages explain both the missing baseline and the minimum count. All consumers use the
+same domain points: web plot/results, fits/R², Excel summary/supporting tables/chart and formulas.
+Fitted curve segments span the selected point range in both web and Excel; missing zero data does
+not create a displayed extrapolated segment down to 0 A.
+Original readings and explicit exclusions remain untouched. A synthetic origin has no copied raw row.
+Thermal stability is not newly inferred. Derating remains restricted to zero-intercept AVG fits.
+
 ## Current precision contract (2026-10-17)
 
 `Current Decimals` is a native number spinner immediately after Samples (0–4, step 1, default 0).
@@ -493,16 +511,17 @@ Its Initial Data is already manually cleaned; it is not evidence that every scan
 column order or that zero-current rows should automatically be removed.
 
 Within each current stage, adjacent relative change is at most 1% of the previous nonzero current.
-Use the last row of each energized stable stage (at least two successive readings). Also retain the
-last confirmed zero-current row immediately before energization, including a single zero reading.
+Use the last row of each energized stable stage (at least two successive readings). In unchecked
+mode also retain the last confirmed zero-current row in the leading block before first energization,
+including a single zero reading.
 Its measured temperature rise may be nonzero because other currents remain powered. A trailing
 shutdown zero run has no following energized stage and is not selected. This is current stability,
 not a thermal-equilibrium assertion. Subtract that row's ambient from each thermocouple. For each
 sample take its highest rise, then plot the highest sample maximum and the mean of sample maxima.
-Insert an origin point only when the first selected stage current is nonzero; never replace a real
-zero-current reading's rise with zero. This origin-insertion rule applies in both intercept modes,
-as in the VBA. Fit second-degree polynomials,
-optionally constrained to zero intercept. Show six coefficient decimals; calculations use the
+Checked mode omits measured zero stages from analysis and inserts an artificial origin. Unchecked
+mode never inserts an origin, warning when a measured initial baseline is absent. Original readings
+are never replaced. This approved dual-mode rule supersedes the VBA origin fallback. Fit second-degree
+polynomials, constrained to zero intercept only in checked mode. Show six coefficient decimals; calculations use the
 effective editable six-decimal values. Display R² as squared correlation of observed and fitted
 values, matching desktop Excel's native polynomial trendline labels, including forced-zero fits.
 

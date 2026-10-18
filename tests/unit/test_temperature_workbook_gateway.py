@@ -37,7 +37,7 @@ def test_export_quantizes_current_formulas_caches_and_axes_but_keeps_original_va
             target, area = next(book.defined_names['TemperatureRiseSummary'].destinations)
             summary = list(book[target][area])
             assert [cell.value for cell in summary[1][1:]] == expected
-            assert [cell.value for cell in summary[0][1:]] == ([125] * 3 if decimals == 0 else [125.1] * 3)
+            assert [cell.value for cell in summary[0][1:]] == [None, *([125] * 2 if decimals == 0 else [125.1] * 2)]
         finally:
             book.close()
     book = load_workbook(output)
@@ -341,6 +341,46 @@ def test_multi_current_export_uses_literal_edited_current_names_with_safe_blank_
         assert [row[0].value for row in summary[:4]] == [
             'Current 7(A)', '=1+1(A)', 'Others Signal(A)', 'Custom Main(A)']
         assert all(row[0].data_type == 's' for row in summary[:4])
+    finally:
+        book.close()
+
+
+@pytest.mark.parametrize('zero_intercept', [False, True])
+@pytest.mark.parametrize('measured_zero', [False, True])
+def test_export_dual_mode_points_warnings_and_raw_preservation(tmp_path, zero_intercept, measured_zero):
+    table = multi_current_source(measured_zero=measured_zero)
+    selection = DataSelection(1, 2, len(table.rows), 5, 6, (3, 4), 2)
+    prepared = prepare_data(table, selection, acknowledge_warnings=True)
+    analysis = analyze_temperature_rise(prepared.measurements, thermocouples_per_sample=2,
+                                        zero_intercept=zero_intercept)
+    content = TemperatureWorkbookGateway().render('dual.xlsx', table=table, selection=selection,
+        prepared=prepared, analysis=analysis, maximum_coefficients=analysis.maximum_fit.coefficients,
+        average_coefficients=analysis.average_fit.coefficients, target_rise=30, derating=None)
+    book = load_workbook(BytesIO(content), data_only=True)
+    try:
+        sheet = book['T-riseChart']
+        area = next(book.defined_names['TemperatureRiseSummary'].destinations)[1]
+        summary = sheet[area]
+        expected_currents = ([0] if zero_intercept or measured_zero else []) + [10, 20, 30]
+        expected_maxima = ([0 if zero_intercept else 2] if zero_intercept or measured_zero else []) + [5, 10, 17]
+        assert [cell.value for cell in summary[3][1:]] == expected_currents
+        assert [cell.value for cell in summary[-2][1:]] == expected_maxima
+        assert [point.current for point in analysis.points] == expected_currents
+        assert list(book['Initial Data'].values) == list(table.rows)
+        warnings = [cell.value for row in sheet for cell in row
+                    if isinstance(cell.value, str) and 'extrapolated' in cell.value]
+        assert warnings == list(analysis.warnings)
+        assert bool(warnings) is (not zero_intercept and not measured_zero)
+        raw_area = next(book.defined_names['KeyStageReadings'].destinations)[1]
+        assert sheet[raw_area][1][0].value == (2 if measured_zero and not zero_intercept else 5 if measured_zero else 2)
+    finally:
+        book.close()
+    book = load_workbook(BytesIO(content))
+    try:
+        chart = book['T-riseChart']._charts[0]
+        assert chart.series[0].trendline.intercept == (0 if zero_intercept else None)
+        assert [point.v for point in chart.series[0].xVal.numRef.numCache.pt] == expected_currents
+        assert [point.v for point in chart.series[0].yVal.numRef.numCache.pt] == expected_maxima
     finally:
         book.close()
 
@@ -693,7 +733,7 @@ def test_report_formulas_honor_spare_channel_order_current_scale_and_unconstrain
     book.close()
     cached = load_workbook(output, data_only=True)
     block = cached['T-riseChart'][summary]
-    assert [cell.value for cell in block[0][1:]] == [0, 10, 20, 30]
+    assert [cell.value for cell in block[0][1:]] == [10, 20, 30]
     assert [cell.value for cell in block[-2][1:]] == pytest.approx([p.maximum for p in analysis.points])
     assert [cell.value for cell in block[-1][1:]] == pytest.approx([p.average for p in analysis.points])
     cached.close()

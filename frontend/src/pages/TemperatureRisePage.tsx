@@ -96,6 +96,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         {extraStableCurrent && !s.manualZeroIntercept &&
           <p className="temperature-hint">Extra stable current detected; Zero Intercept defaults off.</p>}
         {!s.confirmed && <p className="temperature-hint">Confirm Initial Data to generate the chart.</p>}
+        {s.analysis?.warnings?.map(warning => <p key={warning} role="status" className="temperature-review-summary" tabIndex={0} title={warning}>{warning}</p>)}
         {s.analysis ? <RiseChart analysis={s.analysis} table={s.table} currentDecimals={currentDecimals} /> : <p className="temperature-chart-empty">The temperature-rise chart will appear here.</p>}
         <div className="temperature-actions"><label>Target Rise (°C)<input type="number" min="0" step="any" value={s.targetRise} disabled={busy} onChange={event => tool.editParameter('targetRise', event.target.value)} /></label>
           <button type="button" disabled={busy || !s.maximum} onClick={() => void tool.current()}>Calculate Current</button>

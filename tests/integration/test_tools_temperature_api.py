@@ -67,6 +67,54 @@ def test_current_precision_rejects_out_of_range_or_non_integer_values(decimals):
                              temperature_columns=[3], thermocouples_per_sample=1, current_decimals=decimals)
 
 
+@pytest.mark.parametrize('zero_intercept', [False, True])
+@pytest.mark.parametrize('baseline', ['measured', 'missing', 'excluded'])
+def test_dual_mode_analysis_and_download_share_points_and_missing_baseline_warning(zero_intercept, baseline):
+    currents = ([.04, .0345] if baseline != 'missing' else []) + [10, 10, 20, 20, 30, 30]
+    rows = [['Scan', 'Time', 'TC1', 'Ambient', 'Current']]
+    for index, current in enumerate(currents, 1):
+        normalized = 0 if current < .5 else current
+        rows.append([index, '10:00', 23 + .01 * normalized ** 2 + .2 * normalized + .8, 23, current])
+    request = {'table': {'file_name': 'dual.csv', 'sheet_names': ['Data'], 'sheet_name': 'Data', 'rows': rows},
+               'selection': {'header_row': 1, 'start_row': 2, 'end_row': len(rows), 'ambient_column': 4,
+                             'current_column': 5, 'temperature_columns': [3], 'thermocouples_per_sample': 1,
+                             'sample_count': 1, 'current_decimals': 0,
+                             'excluded_rows': [2, 3] if baseline == 'excluded' else []},
+               'zero_intercept': zero_intercept, 'acknowledge_warnings': True}
+    client = TestClient(app)
+    response = client.post('/api/tools/temperature-rise/analyze', json=request)
+    assert response.status_code == 200, response.text
+    analysis = response.json()
+    has_zero = zero_intercept or baseline == 'measured'
+    expected_currents = ([0] if has_zero else []) + [10, 20, 30]
+    expected_rises = ([0 if zero_intercept else .8] if has_zero else []) + [3.8, 8.8, 15.8]
+    assert [point['current'] for point in analysis['points']] == expected_currents
+    assert [point['maximum'] for point in analysis['points']] == pytest.approx(expected_rises)
+    assert analysis['maximum_fit']['coefficients']['c'] == (0 if zero_intercept else .8)
+    assert bool(analysis['warnings']) is (not zero_intercept and baseline != 'measured')
+    assert all(point['source_row'] is not None for point in analysis['points'][int(zero_intercept):])
+    if zero_intercept:
+        assert analysis['points'][0]['source_row'] is None
+    downloaded = client.post('/api/tools/temperature-rise/download', json=request)
+    assert downloaded.status_code == 200, downloaded.text[:300]
+    book = load_workbook(BytesIO(downloaded.content), data_only=True)
+    try:
+        sheet = book['T-riseChart']
+        area = next(book.defined_names['TemperatureRiseSummary'].destinations)[1]
+        assert [cell.value for cell in sheet[area][0][1:]] == expected_currents
+        assert [cell.value for cell in sheet[area][-2][1:]] == pytest.approx(expected_rises)
+        assert list(book['Initial Data'].values) == [tuple(row) for row in rows]
+        assert [cell.value for row in sheet for cell in row
+                if isinstance(cell.value, str) and 'extrapolated' in cell.value] == analysis['warnings']
+    finally:
+        book.close()
+    if not zero_intercept:
+        blocked = client.post('/api/tools/temperature-rise/download', json={**request,
+            'derating': {'max_temperature': 105, 'step': 2.5, 'ambient_point': 75}})
+        assert blocked.status_code == 422
+        assert 'Zero Intercept' in blocked.json()['detail']
+
+
 def test_unnumbered_twenty_channels_require_explicit_sample_adjustment_at_every_processing_endpoint():
     client = TestClient(app)
     data = client.post('/api/tools/temperature-rise/import', files={'file': ('scanner.xlsx', scanner_bytes())}).json()
