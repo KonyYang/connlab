@@ -746,6 +746,8 @@ Column widths are compact and sized for their headers/numbers; E and I are narro
 Both native chart areas are 20% smaller in each dimension: T-riseChart is 18.8 × 11.2 cm and Derating
 is 19.2 × 11.2 cm. Anchors, axis precision, native editability and source bindings are preserved.
 Bottom clearance separates axis titles from legends at the reduced chart size without shrinking fonts.
+The two linked T-rise equations and their R² lines are left-aligned and stacked close to the white
+plot's upper-left corner, keeping the longer AVG equation out of the former mid-plot position.
 For Word transfer, keep the chart's aspect ratio and fit it within the destination section's text
 width, rather than stretching it or copying a worksheet screenshot. Current configured report
 templates have 18.034 cm and 19.05 cm text widths; other templates must use their own page/margin

@@ -221,14 +221,14 @@ def test_export_keeps_original_data_positions_and_marks_only_real_stage_endpoint
     book.close()
 
 
-def _report_export(tmp_path, maximum=None, average=None, *, include_derating=False):
+def _report_export(tmp_path, maximum=None, average=None, *, include_derating=False, zero_intercept=True):
     rows = baseline_rows()
     table = WorkbookTable('scanner.xlsx', ('Initial Data',), 'Initial Data', (
         ('Scan', *(f'TC{i}' for i in range(1, 21)), 'Ambient', 'Current'),
         *((row.source_row, *row.temperatures, row.ambient, row.current) for row in rows)))
     selection = DataSelection(1, 2, 301, 22, 23, tuple(range(2, 22)), 4)
     prepared = prepare_data(table, selection)
-    analysis = analyze_temperature_rise(prepared.measurements, thermocouples_per_sample=4, zero_intercept=True)
+    analysis = analyze_temperature_rise(prepared.measurements, thermocouples_per_sample=4, zero_intercept=zero_intercept)
     output = tmp_path / 'report-ready.xlsx'
     TemperatureWorkbookGateway().write(output, table=table, selection=selection, prepared=prepared,
         analysis=analysis, maximum_coefficients=maximum or analysis.maximum_fit.coefficients,
@@ -627,8 +627,9 @@ def test_report_export_has_editable_y_calculator_and_named_bold_colored_equation
     cached.close()
 
 
-def test_report_chart_names_follow_summary_cells_and_labels_stack_at_upper_left(tmp_path):
-    output, _ = _report_export(tmp_path)
+@pytest.mark.parametrize('zero_intercept', [True, False])
+def test_report_chart_names_follow_summary_cells_and_labels_stack_at_upper_left(tmp_path, zero_intercept):
+    output, _ = _report_export(tmp_path, zero_intercept=zero_intercept)
     book = load_workbook(output)
     sheet = book['T-riseChart']
     assert sheet.freeze_panes is None
@@ -637,6 +638,7 @@ def test_report_chart_names_follow_summary_cells_and_labels_stack_at_upper_left(
     summary = sheet[next(book.defined_names['TemperatureRiseSummary'].destinations)[1].replace('$', '')]
     labels = [row[0] for row in summary[-2:]]
     chart = sheet._charts[0]
+    plot = chart.layout.manualLayout
     positions = []
     for series, cell in zip(chart.series, labels):
         title = series.tx.strRef
@@ -648,8 +650,9 @@ def test_report_chart_names_follow_summary_cells_and_labels_stack_at_upper_left(
         assert name_cell.value == f'=A{cell.row}'
         assert label.tx.strRef.strCache.pt[0].v.startswith(cell.value + ': y = ')
         position = label.layout.manualLayout
-        assert .1 <= position.x <= .2  # Inside the left of the plot, not the axes or right edge.
-        assert .1 <= position.y <= .4
+        assert plot.x <= position.x <= plot.x + .02
+        assert plot.y <= position.y <= plot.y + .11
+        assert all(paragraph.pPr.algn == 'l' for paragraph in label.txPr.p)
         positions.append(position)
     assert positions[0].x == positions[1].x
     assert positions[1].y > positions[0].y

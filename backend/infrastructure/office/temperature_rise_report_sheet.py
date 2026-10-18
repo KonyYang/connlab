@@ -397,9 +397,9 @@ def _rise_chart(sheet, analysis, chart, current_row, maximum_row, average_row, l
         label = TrendlineLabel(tx=Text(strRef=StrRef(
             f=f'{quote_sheetname(sheet.title)}!${label_coordinate[0]}${label_rows[index]}',
             strCache=StrData(ptCount=1, pt=[StrVal(idx=0, v=caches[label_coordinate])]))),
-            txPr=RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=properties), endParaRPr=properties)]),
-            layout=Layout(manualLayout=ManualLayout(x=.15,
-                y=.14 if index == 0 else .27, xMode='edge', yMode='edge')))
+            txPr=RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=properties, algn='l'), endParaRPr=properties)]),
+            layout=Layout(manualLayout=ManualLayout(x=.11,
+                y=.10 if index == 0 else .20, xMode='edge', yMode='edge')))
         series.trendline = Trendline(trendlineType='poly', order=2, name=f'Fit ({name})',
             intercept=0 if analysis.zero_intercept else None, dispEq=True, dispRSqr=True, trendlineLbl=label)
         series.trendline.spPr = GraphicalProperties()
