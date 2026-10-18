@@ -162,3 +162,30 @@ def test_relocation_cannot_take_another_project_folder_or_a_redirected_path(engi
             return  # Windows hosts may disallow creating test symlinks.
         with pytest.raises(ValueError, match="Redirected"):
             api.change_location(first["record_id"], str(alias), 1)
+
+
+@pytest.mark.parametrize("path_field", ["local_official_folder_path", "public_open_path", "public_closed_path", "target_path"])
+@pytest.mark.parametrize("action", ["plan", "import", "relocate"])
+def test_public_workflow_project_locations_cannot_be_registered_or_taken(engine, tmp_path, path_field, action):
+    from backend.infrastructure.storage.models import ProjectModel, ProjectPublicFolderWorkflowOperationModel
+    occupied = folder(tmp_path, "Public project files")
+    original = folder(tmp_path, "Historical original")
+    with Session(engine) as session:
+        api = service(session)
+        initial = api.plan([original])
+        api.register([original], selection(initial))
+        record = api.search()[0]
+        session.add(ProjectModel(project_id="formal-public", project_no="DL-2020-01-099", product_name="Formal", requestor="User", status="DRAFT"))
+        session.add(ProjectPublicFolderWorkflowOperationModel(operation_id="submit", project_id="formal-public", operation_type="submit", status="completed", preview_hash="hash", requested_at="2026-01-01", started_at="2026-01-01", completed_at="2026-01-01", counts_json="{}", snapshot_json="{}", **{path_field: occupied}))
+        session.commit()
+        if action == "plan":
+            assert api.plan([occupied])["projects"][0]["status"] == "already_added"
+        elif action == "import":
+            plan = api.plan([occupied])
+            result = api.register([occupied], selection(plan, True))
+            assert result["counts"]["already_added"] == 1
+            assert result["counts"]["added"] == 0
+        else:
+            with pytest.raises(ValueError, match="belongs to another"):
+                api.change_location(record["record_id"], occupied, record["revision"])
+            assert api.get(record["record_id"])["folder_path"] == original

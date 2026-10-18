@@ -47,7 +47,8 @@ class LegacyProjectRepository:
         for model, columns in (
             (ProjectFolderRecordModel, ("folder_path",)),
             (ProjectOfficialWorkspaceRecordModel, ("local_workspace_path", "official_folder_path")),
-            (ProjectPublicFolderWorkflowOperationModel, ("local_official_folder_path",)),
+            (ProjectPublicFolderWorkflowOperationModel, (
+                "local_official_folder_path", "public_open_path", "public_closed_path", "target_path")),
         ):
             for row in self.session.scalars(select(model)):
                 if row.project_id in refs:
