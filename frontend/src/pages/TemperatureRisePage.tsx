@@ -12,14 +12,20 @@ import { useTemperatureTool } from '../features/temperature/useTemperatureTool';
 import { TestInfo } from '../features/temperature/TestInfo';
 import { reportHumidityIssue } from '../features/temperature/reportInfo';
 import { formatCurrent } from '../features/temperature/currentPrecision';
+import { TemperatureWorkspace, useTemperatureWorkspace } from '../features/temperature/temperatureWorkspace';
 import '../features/temperature/temperature.css';
 
 export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactElement {
+  return <TemperatureWorkspace onBack={onBack}><TemperatureRiseWorkspace /></TemperatureWorkspace>;
+}
+
+function TemperatureRiseWorkspace(): ReactElement {
+  const workspace = useTemperatureWorkspace()!;
   const topBarRoot = useTopBarActionsRoot();
   const fileInput = useRef<HTMLInputElement>(null);
   const tool = useTemperatureTool();
   const s = tool.state;
-  const busy = Boolean(s.busy);
+  const busy = Boolean(s.busy) || workspace.clearing;
   const currentDecimals = s.selection?.current_decimals ?? 0;
   const extraStableCurrent = s.review?.stable_auxiliary_current_columns !== undefined
     ? s.review.stable_auxiliary_current_columns.length > 0
@@ -32,8 +38,8 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
   const roleIssue = s.selection && (!ambientValid || !currentValid)
     ? `Choose ${[!ambientValid && 'Ambient Column (temperature)', !currentValid && 'Current Column (current)'].filter(Boolean).join(' and ')} to match the source units.`
     : null;
-  const backButton = <button type="button" className="temperature-tools-return" onClick={onBack}
-    aria-label="Back To Tools" title="Back To Tools"><UiIcon name="tools" /></button>;
+  const backButton = <button type="button" className="temperature-tools-return" disabled={workspace.clearing} onClick={() => workspace.requestExit(tool.cancelPending)}
+    aria-label="Back To Tools" title="Back to Tools and clear workspace"><UiIcon name="tools" /></button>;
   const dataParameters = s.table && s.selection && <div className="temperature-import-fields" role="group" aria-label="Data parameters">
     <label>Ambient Column<select value={ambientValid ? s.selection.ambient_column : ''} title={columns.find(column => column.id === s.selection?.ambient_column)?.original}
       disabled={busy} onChange={event => tool.changeData({ ambient_column: Number(event.target.value) })}>{!ambientValid && <option value="" disabled>Choose Ambient Column</option>}{columns.filter(col => col.kind === 'temperature').map(col => <option key={col.id} value={col.id} title={col.original}>{col.label}</option>)}</select></label>
@@ -53,7 +59,7 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
     {backButton}
     <div className="temperature-header-inputs">
       <div className="temperature-import-actions">
-        <button type="button" className="temperature-load-initial-data" onClick={() => fileInput.current?.click()}>Load Initial Data</button>
+        <button type="button" className="temperature-load-initial-data" disabled={workspace.clearing} onClick={() => fileInput.current?.click()}>Load Initial Data</button>
         {s.file && s.table && <select className="temperature-sheet-select" aria-label="Sheet Name" title={s.file.name}
           value={s.table.sheet_name} disabled={busy} onChange={event => tool.load(s.file, event.target.value)}>
           {s.table.sheet_names.map(name => <option key={name}>{name}</option>)}
@@ -76,13 +82,14 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         event.target.value = '';
       }} />
     {s.file && <section className="temperature-panel temperature-initial">
+      {!s.table && <button type="button" disabled={busy} onClick={() => tool.load(s.file)}>Retry Import</button>}
       {s.table && !s.selection && <TestInfo info={tool.reportInfo} disabled={busy} onEdit={tool.editReportInfo} />}
       {roleIssue && <p role="alert" className="temperature-error">{roleIssue}</p>}
-      {s.table && s.region_issue && <DataRegionCorrection table={s.table} message={s.region_issue}
+      {s.table && s.region_issue && <DataRegionCorrection key={s.previewId} workspaceKey={s.previewId} table={s.table} message={s.region_issue}
         disabled={busy} onApply={tool.correctRegion} />}
       {s.table && s.selection && <>
         {s.channel_layout?.current_issue && !s.confirmed && <p className="temperature-hint">{s.channel_layout.current_issue}</p>}
-        <DataPreview key={`preview-${s.table.sheet_name}-${s.table.file_name}-${s.selection.header_row}-${s.selection.start_row}-${s.selection.end_row}`}
+        <DataPreview key={s.previewId} workspaceKey={s.previewId}
           table={s.table} selection={s.selection} layout={s.channel_layout} issues={s.review?.issues ?? []} onChange={tool.changeData} disabled={busy}
           reportInformation={<TestInfo info={tool.reportInfo} disabled={busy} onEdit={tool.editReportInfo} />} />
       </>}

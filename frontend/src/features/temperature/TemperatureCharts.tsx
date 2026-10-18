@@ -1,6 +1,7 @@
 import type { Coefficients, DeratingAnalysis, TemperatureAnalysis, WorkbookTable } from '../../api/temperature';
 import { sourceScan } from './sourceScan';
 import { formatCurrent } from './currentPrecision';
+import { useTemperatureWorkspace } from './temperatureWorkspace';
 
 type Point = { x: number; y: number };
 type Trace = { name: string; color: string; points: Point[]; markers?: boolean; line?: boolean };
@@ -51,6 +52,7 @@ function XYChart({ title, xTitle, yTitle, traces, guide, xLimit, currentAxis, cu
 }
 
 export function RiseChart({ analysis, table, currentDecimals = 0 }: { analysis: TemperatureAnalysis; table: WorkbookTable | null; currentDecimals?: number }) {
+  const workspace = useTemperatureWorkspace();
   const min = Math.min(...analysis.points.map(point => point.current));
   const max = Math.max(...analysis.points.map(point => point.current));
   const fitPoints = (coef: Coefficients) => Array.from({ length: 101 }, (_, i) => {
@@ -66,7 +68,8 @@ export function RiseChart({ analysis, table, currentDecimals = 0 }: { analysis: 
   return <><XYChart title="Temperature Rise vs Current" showTitle={false} xTitle="Current (A)" yTitle="Temperature Rise (°C)" traces={traces} currentAxis="x" currentDecimals={currentDecimals} />
     <div className="temperature-equations"><p style={{ color: MAX_COLOR }}>Max ΔT = {equation(analysis.maximum_fit.coefficients)}<br />R² = {analysis.maximum_fit.r_squared.toFixed(6)}</p>
       <p style={{ color: AVG_COLOR }}>Avg Of Max ΔT = {equation(analysis.average_fit.coefficients)}<br />R² = {analysis.average_fit.r_squared.toFixed(6)}</p></div>
-    <details className="temperature-detail"><summary>Stage Results</summary><div className="temperature-table-scroll"><table><thead><tr><th>Scan</th><th>Current (A)</th><th>Max ΔT (°C)</th><th>Avg Of Max ΔT (°C)</th></tr></thead>
+    <details className="temperature-detail" open={workspace?.initial?.stageResultsOpen}
+      onToggle={event => workspace?.update({ stageResultsOpen: event.currentTarget.open })}><summary>Stage Results</summary><div className="temperature-table-scroll"><table><thead><tr><th>Scan</th><th>Current (A)</th><th>Max ΔT (°C)</th><th>Avg Of Max ΔT (°C)</th></tr></thead>
       <tbody>{analysis.points.map((point, i) => <tr key={i}><td>{point.source_row === null ? 'Origin' : sourceScan(table, point.source_row) ?? 'Unavailable'}</td><td>{formatCurrent(point.current, currentDecimals)}</td><td>{point.maximum.toFixed(3)}</td><td>{point.average.toFixed(3)}</td></tr>)}</tbody></table></div></details>
   </>;
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, MouseEvent, ReactNode } from 'react';
 import type { ChannelLayout, DataIssue, DataSelection, WorkbookTable } from '../../api/temperature';
 import { ColumnActions, type ColumnMenuAnchor } from './ColumnActions';
@@ -8,18 +8,22 @@ import { formatSourceReading, sourcePresentation } from './sourcePresentation';
 import { scanLabel } from './sourceScan';
 import { useDataGridEditing } from './useDataGridEditing';
 import { SOURCE_ROW_HEIGHT, useSourceRowWindow } from './useSourceRowWindow';
+import { useTemperatureWorkspace } from './temperatureWorkspace';
 
 const SELECTOR_WIDTH = 32;
 type ContextMenu = ({ kind: 'column' } & ColumnMenuAnchor) | ({ kind: 'row' } & RowMenuAnchor);
 
-export function DataPreview({ table, selection, layout, issues, disabled, onChange, reportInformation }: {
+export function DataPreview({ table, selection, layout, issues, disabled, onChange, reportInformation, workspaceKey }: {
   table: WorkbookTable; selection: DataSelection; layout?: ChannelLayout | null; issues: DataIssue[];
   disabled: boolean; onChange: (patch: Partial<DataSelection>) => void;
   reportInformation?: ReactNode;
+  workspaceKey?: string;
 }) {
-  const grid = useDataGridEditing(table, selection, layout, onChange);
+  const grid = useDataGridEditing(table, selection, layout, onChange, workspaceKey);
+  const workspace = useTemperatureWorkspace();
+  const restored = workspace?.initial?.preview?.key === workspaceKey ? workspace?.initial?.preview : undefined;
   const [menu, setMenu] = useState<ContextMenu | null>(null);
-  const [activeRow, setActiveRow] = useState<number | null>(null);
+  const [activeRow, setActiveRow] = useState<number | null>(restored?.activeRow ?? null);
   const editor = useRef<HTMLElement>(null);
   const menuRoot = useRef<HTMLDivElement>(null);
   const columnHeaders = useRef(new Map<number, HTMLTableCellElement>());
@@ -44,7 +48,12 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   const incomplete = incompleteSampleGroups(selection, layout);
   const count = Math.max(1, selection.thermocouples_per_sample || 1);
   const total = Math.max(0, selection.end_row - selection.start_row + 1);
-  const rowWindow = useSourceRowWindow(selection.start_row, total);
+  const rowWindow = useSourceRowWindow(selection.start_row, total, restored?.scrollTop, restored?.scrollLeft);
+  function savePreview() {
+    if (workspaceKey) workspace?.update({ preview: { key: workspaceKey, activeRow,
+      scrollTop: rowWindow.viewport.current?.scrollTop ?? 0, scrollLeft: rowWindow.viewport.current?.scrollLeft ?? 0 } });
+  }
+  useLayoutEffect(savePreview, [activeRow, workspaceKey, workspace?.update]);
   const { rows } = rowWindow;
   const selectedRows = useMemo(() => new Set(grid.selectedRows), [grid.selectedRows]);
   const excludedRows = useMemo(() => new Set(selection.excluded_rows), [selection.excluded_rows]);
@@ -117,7 +126,7 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
       ? `Incomplete sample group. Adjust Samples or restore/move channels so all ${selection.sample_count} samples have the same number of thermocouples.`
       : `Incomplete sample group. Restore columns or move a spare into position; each sample needs ${count} thermocouples.`}</p>}
     <div ref={rowWindow.viewport} className="temperature-table-scroll" role="region" aria-label="Scanner Data Preview" tabIndex={0}
-      onScroll={event => { closeMenu(); rowWindow.setScrollTop(event.currentTarget.scrollTop); }}>
+      onScroll={event => { closeMenu(); rowWindow.setScrollTop(event.currentTarget.scrollTop); savePreview(); }}>
       <table className="temperature-source-table" aria-rowcount={total + 1}
         style={{ width: SELECTOR_WIDTH + grid.order.reduce((width, column) => width + columnWidth(column), 0),
           '--temperature-selector-width': `${SELECTOR_WIDTH}px`, '--temperature-scan-width': `${columnWidth(1)}px`,

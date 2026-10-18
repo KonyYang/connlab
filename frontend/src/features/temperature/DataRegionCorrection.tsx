@@ -1,13 +1,20 @@
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import type { DataRegion, WorkbookTable } from '../../api/temperature';
 import { columnLetter } from './sourceColumns';
+import { useTemperatureWorkspace } from './temperatureWorkspace';
 
-export function DataRegionCorrection({ table, message, disabled, onApply }: {
+export function DataRegionCorrection({ table, message, disabled, onApply, workspaceKey }: {
   table: WorkbookTable; message: string; disabled: boolean;
   onApply: (region: DataRegion) => void;
+  workspaceKey?: string;
 }) {
-  const [rows, setRows] = useState({ header_row: '', start_row: '', end_row: '' });
-  const [page, setPage] = useState(0);
+  const workspace = useTemperatureWorkspace();
+  const restored = workspace?.initial?.correction?.key === workspaceKey ? workspace?.initial?.correction : undefined;
+  const [rows, setRows] = useState(restored?.rows ?? { header_row: '', start_row: '', end_row: '' });
+  const [page, setPage] = useState(restored?.page ?? 0);
+  useLayoutEffect(() => {
+    if (workspaceKey) workspace?.update({ correction: { key: workspaceKey, rows, page } });
+  }, [rows, page, workspaceKey, workspace?.update]);
   const region = { header_row: Number(rows.header_row), start_row: Number(rows.start_row), end_row: Number(rows.end_row) };
   const valid = Object.values(rows).every(value => value.trim()) && Object.values(region).every(Number.isInteger)
     && region.header_row >= 1 && region.header_row < region.start_row

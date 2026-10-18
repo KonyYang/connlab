@@ -7,6 +7,13 @@ import { TemperatureRisePage } from './TemperatureRisePage';
 import { AppShell } from '../components/layout/AppShell';
 import * as profileApi from '../api/localIdentity';
 import { refreshCurrentProfile } from '../currentUser';
+import * as workspaceStorage from '../features/temperature/temperatureWorkspaceStorage';
+import type { TemperatureWorkspaceDraft } from '../features/temperature/temperatureWorkspace';
+
+vi.mock('../features/temperature/temperatureWorkspaceStorage', () => ({
+  readTemperatureWorkspace: vi.fn(), writeTemperatureWorkspace: vi.fn(), clearTemperatureWorkspace: vi.fn(),
+}));
+let savedWorkspace: TemperatureWorkspaceDraft | null = null;
 
 vi.mock('../api/temperature', () => ({
   importTemperatureWorkbook: vi.fn(), prepareTemperatureData: vi.fn(), analyzeTemperatureData: vi.fn(),
@@ -42,6 +49,12 @@ const derating: api.DeratingAnalysis = {
   annotation: { ambient: 75, basic: 60, derated: 48 }, coefficients, max_temperature: 105, step: 2.5,
 };
 
+async function renderPage(...args: Parameters<typeof render>) {
+  const view = render(...args);
+  await screen.findByRole('button', { name: 'Load Initial Data', exact: true });
+  return view;
+}
+
 async function upload() {
   fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['x'], 'scanner.xlsx')] } });
   await screen.findByRole('button', { name: 'Confirm Data' });
@@ -63,6 +76,12 @@ function excludeSelected() {
 describe('temperature preparation and calculation workflow', () => {
   beforeEach(async () => {
     vi.resetAllMocks();
+    HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
+    HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
+    savedWorkspace = null;
+    vi.mocked(workspaceStorage.readTemperatureWorkspace).mockImplementation(async () => savedWorkspace);
+    vi.mocked(workspaceStorage.writeTemperatureWorkspace).mockImplementation(async value => { savedWorkspace = value; });
+    vi.mocked(workspaceStorage.clearTemperatureWorkspace).mockImplementation(async () => { savedWorkspace = null; });
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValue(structuredClone(imported));
     vi.mocked(api.prepareTemperatureData).mockResolvedValue({ ready: true, issues: [], measurements: [] });
     vi.mocked(api.analyzeTemperatureData).mockResolvedValue(analysis);
@@ -73,8 +92,207 @@ describe('temperature preparation and calculation workflow', () => {
     await refreshCurrentProfile();
   });
 
+  it('restores parameters, exclusions, analysis and editing Undo after leaving and mounting a fresh page', async () => {
+    let view = await renderPage(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    fireEvent.change(screen.getByLabelText('Current Decimals'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('LTR'), { target: { value: 'DL-2026-115' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Scan 1' }));
+    excludeSelected();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
+    view.unmount();
+    view = await renderPage(<TemperatureRisePage onBack={() => undefined} />);
+    await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
+    expect(screen.getByLabelText('Current Decimals')).toHaveProperty('value', '1');
+    expect(screen.getByLabelText('LTR')).toHaveProperty('value', 'DL-2026-115');
+    expect(screen.getByText('3 Included / 1 Excluded Rows')).toBeTruthy();
+    expect(screen.getByRole('img', { name: 'Current vs Ambient Temperature' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Download Excel' }).hasAttribute('disabled')).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByText('4 Included / 0 Excluded Rows')).toBeTruthy();
+    expect(screen.queryByRole('img', { name: 'Temperature Rise vs Current' })).toBeNull();
+    expect(api.importTemperatureWorkbook).toHaveBeenCalledOnce();
+    view.unmount();
+  });
+
+  it('restores excluded channels, custom names, moves and the complete multi-step Undo history', async () => {
+    let view = await renderPage(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Measurement Name, Source 3' }), { target: { value: 'Hot Spot' } });
+    fireEvent.click(columnHeader('D'));
+    excludeSelected();
+    fireEvent.contextMenu(columnHeader('G'));
+    fireEvent.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Hot Spot' }));
+    view.unmount();
+    view = await renderPage(<TemperatureRisePage onBack={() => undefined} />);
+    expect(screen.getByRole('textbox', { name: 'Measurement Name, Source 3' })).toHaveProperty('value', 'Hot Spot');
+    expect(columnHeader('D').getAttribute('aria-description')).toBe('Excluded');
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
+    expect(api.prepareTemperatureData).toHaveBeenLastCalledWith(expect.objectContaining({
+      selection: expect.objectContaining({ temperature_columns: [3, 4], channel_names: { 3: 'Hot Spot' } }),
+    }));
+    view.unmount();
+  });
+
+  it('cancels Back To Tools without clearing and clears only after confirmation and durable completion', async () => {
+    const onBack = vi.fn();
+    const view = await renderPage(<TemperatureRisePage onBack={onBack} />);
+    await upload();
+    fireEvent.click(screen.getByRole('button', { name: 'Back To Tools' }));
+    const cancel = within(screen.getByRole('dialog', { name: 'Clear workspace?' })).getByRole('button', { name: 'Cancel' });
+    expect(document.activeElement).toBe(cancel);
+    fireEvent.click(cancel);
+    expect(onBack).not.toHaveBeenCalled();
+    expect(workspaceStorage.clearTemperatureWorkspace).not.toHaveBeenCalled();
+    expect(screen.getByRole('region', { name: 'Scanner Data Preview' })).toBeTruthy();
+    let finish!: () => void;
+    vi.mocked(workspaceStorage.clearTemperatureWorkspace).mockImplementationOnce(() => new Promise<void>(resolve => { finish = () => { savedWorkspace = null; resolve(); }; }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back To Tools' }));
+    expect(screen.getByRole('dialog', { name: 'Clear workspace?' }).textContent).toContain('Original files and downloaded Excel files will not be deleted.');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear and Return' }));
+    await waitFor(() => expect(workspaceStorage.clearTemperatureWorkspace).toHaveBeenCalledOnce());
+    expect(onBack).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Confirm Data' }).hasAttribute('disabled')).toBe(true);
+    await act(async () => finish());
+    expect(onBack).toHaveBeenCalledOnce();
+    view.unmount();
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
+    expect(screen.queryByRole('region', { name: 'Scanner Data Preview' })).toBeNull();
+  });
+
+  it('retains the current workspace when clearing fails and allows retry without navigating', async () => {
+    const onBack = vi.fn();
+    await renderPage(<TemperatureRisePage onBack={onBack} />);
+    await upload();
+    vi.mocked(workspaceStorage.clearTemperatureWorkspace).mockRejectedValueOnce(new Error('disk unavailable'));
+    fireEvent.click(screen.getByRole('button', { name: 'Back To Tools' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear and Return' }));
+    await screen.findByText(/Could not clear the workspace/);
+    expect(onBack).not.toHaveBeenCalled();
+    expect(screen.getByText('4 Included / 0 Excluded Rows')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Back To Tools' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear and Return' }));
+    await waitFor(() => expect(onBack).toHaveBeenCalledOnce());
+  });
+
+  it('treats Escape as Cancel and returns focus to Back To Tools without clearing', async () => {
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+    await renderPage(<TemperatureRisePage onBack={onBack} />);
+    const back = screen.getByRole('button', { name: 'Back To Tools' });
+    await user.click(back);
+    const dialog = screen.getByRole('dialog', { name: 'Clear workspace?' });
+    expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Cancel' }));
+    fireEvent(dialog, new Event('cancel', { bubbles: false, cancelable: true }));
+    expect(screen.queryByRole('dialog', { name: 'Clear workspace?' })).toBeNull();
+    expect(document.activeElement).toBe(back);
+    expect(onBack).not.toHaveBeenCalled();
+    expect(workspaceStorage.clearTemperatureWorkspace).not.toHaveBeenCalled();
+  });
+
+  it('does not overwrite an unreadable saved draft and recovers on Retry', async () => {
+    vi.mocked(workspaceStorage.readTemperatureWorkspace).mockRejectedValueOnce(new Error('unavailable'));
+    render(<TemperatureRisePage onBack={() => undefined} />);
+    await screen.findByText(/Could not restore the workspace/);
+    expect(workspaceStorage.writeTemperatureWorkspace).not.toHaveBeenCalled();
+    expect(workspaceStorage.clearTemperatureWorkspace).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await screen.findByRole('button', { name: 'Load Initial Data', exact: true });
+  });
+
+  it('shows a save failure and retries the latest parameters rather than an older snapshot', async () => {
+    vi.mocked(workspaceStorage.writeTemperatureWorkspace).mockRejectedValueOnce(new Error('quota'));
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    fireEvent.change(screen.getByLabelText('Current Decimals'), { target: { value: '2' } });
+    fireEvent(window, new Event('pagehide'));
+    await screen.findByText(/Could not save the workspace/);
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(screen.queryByText(/Could not save the workspace/)).toBeNull());
+    expect(savedWorkspace?.tool.selection?.current_decimals).toBe(2);
+  });
+
+  it('does not resurrect or download a late operation after confirmed workspace clearing', async () => {
+    let resolve!: (value: api.TemperatureAnalysis) => void;
+    vi.mocked(api.analyzeTemperatureData).mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    const view = await renderPage(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await waitFor(() => expect(api.analyzeTemperatureData).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole('button', { name: 'Back To Tools' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear and Return' }));
+    await waitFor(() => expect(workspaceStorage.clearTemperatureWorkspace).toHaveBeenCalledOnce());
+    await act(async () => resolve(analysis));
+    expect(api.calculateTemperatureCurrent).not.toHaveBeenCalled();
+    expect(api.generateTemperatureDerating).not.toHaveBeenCalled();
+    view.unmount();
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
+    expect(screen.queryByRole('region', { name: 'Scanner Data Preview' })).toBeNull();
+  });
+
+  it('retains the previous analysis and Undo when a replacement import fails', async () => {
+    let view = await renderPage(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    fireEvent.click(screen.getByLabelText('Select Scan 1'));
+    excludeSelected();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
+    vi.mocked(api.importTemperatureWorkbook).mockRejectedValueOnce(new Error('Invalid replacement workbook.'));
+    fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['broken'], 'broken.xlsx')] } });
+    await screen.findByText('Invalid replacement workbook.');
+    view.unmount();
+    view = await renderPage(<TemperatureRisePage onBack={() => undefined} />);
+    expect(screen.getByLabelText('Sheet Name').title).toBe('scanner.xlsx');
+    expect(screen.getByRole('img', { name: 'Temperature Rise vs Current' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByText('4 Included / 0 Excluded Rows')).toBeTruthy();
+    view.unmount();
+  });
+
+  it('restores interrupted work as idle without repeating downloads or late analysis', async () => {
+    let finish!: (result: api.TemperatureAnalysis) => void;
+    vi.mocked(api.analyzeTemperatureData).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    const view = await renderPage(<TemperatureRisePage onBack={() => undefined} />);
+    await upload();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Data' }));
+    await waitFor(() => expect(api.analyzeTemperatureData).toHaveBeenCalledOnce());
+    view.unmount();
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
+    await screen.findByText('The previous operation was interrupted. Retry it to continue.');
+    expect(screen.getByRole('button', { name: 'Generate T-riseChart' }).hasAttribute('disabled')).toBe(false);
+    await act(async () => finish(analysis));
+    expect(screen.queryByRole('img', { name: 'Temperature Rise vs Current' })).toBeNull();
+    expect(api.calculateTemperatureCurrent).not.toHaveBeenCalled();
+    expect(api.downloadTemperatureWorkbook).not.toHaveBeenCalled();
+  });
+
+  it('restores pending row correction entries and can still import another sheet from the saved file', async () => {
+    vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce({
+      ...structuredClone(imported), selection: null, region_issue: 'Choose the source rows.',
+    });
+    const view = await renderPage(<TemperatureRisePage onBack={() => undefined} />);
+    fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['original bytes'], 'scanner.xlsx')] } });
+    await screen.findByLabelText('Header Row');
+    for (const [name, value] of [['Header Row', '1'], ['First Data Row', '2'], ['Last Data Row', '5']]) {
+      fireEvent.change(screen.getByLabelText(name), { target: { value } });
+    }
+    view.unmount();
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
+    expect(screen.getByLabelText('Header Row')).toHaveProperty('value', '1');
+    expect(screen.getByLabelText('First Data Row')).toHaveProperty('value', '2');
+    expect(screen.getByLabelText('Last Data Row')).toHaveProperty('value', '5');
+    fireEvent.click(screen.getByRole('button', { name: 'Apply Data Rows' }));
+    await screen.findByRole('button', { name: 'Confirm Data' });
+    expect(api.importTemperatureWorkbook).toHaveBeenLastCalledWith(expect.objectContaining({ name: 'scanner.xlsx' }), 'Data', { header_row: 1, start_row: 2, end_row: 5 });
+  });
+
   it('keeps the source tooltip and groups confirmation before download after the header parameters', async () => {
-    render(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
+    await renderPage(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
     await upload();
     const sheet = screen.getByLabelText('Sheet Name');
     expect(sheet.title).toBe('scanner.xlsx');
@@ -104,7 +322,7 @@ describe('temperature preparation and calculation workflow', () => {
     const second = structuredClone(first);
     second.table.sheet_name = 'Other';
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(first).mockResolvedValueOnce(second);
-    render(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
+    await renderPage(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
     const header = within(screen.getByRole('banner'));
     expect(header.queryByRole('combobox', { name: 'Sheet Name' })).toBeNull();
     await upload();
@@ -124,7 +342,7 @@ describe('temperature preparation and calculation workflow', () => {
   });
 
   it('offers a bounded current decimal spinner and invalidates results without excluding rows or changing samples', async () => {
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     const input = screen.getByRole('spinbutton', { name: 'Current Decimals' }) as HTMLInputElement;
     expect(input.value).toBe('0');
@@ -145,7 +363,7 @@ describe('temperature preparation and calculation workflow', () => {
   it('edits all data parameters to the right of the header import action without duplicating them in the page', async () => {
     const data = structuredClone(imported);
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValue({ ...data, selection: { ...data.selection, sample_count: 1 } });
-    render(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
+    await renderPage(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
     await upload();
     const header = within(screen.getByRole('banner'));
     const parameters = header.getByRole('group', { name: 'Data parameters' });
@@ -171,7 +389,7 @@ describe('temperature preparation and calculation workflow', () => {
 
   it('uses precision-aware auxiliary power detection when choosing the automatic fit mode', async () => {
     vi.mocked(api.prepareTemperatureData).mockResolvedValue({ ready: true, issues: [], measurements: [], stable_auxiliary_current_columns: [7] });
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     fireEvent.change(screen.getByLabelText('Current Decimals'), { target: { value: '1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Data' }));
@@ -185,7 +403,7 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValue({ ...structuredClone(imported), selection: {
       ...imported.selection, sample_count: 3, thermocouples_per_sample: 1,
     } });
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText('TC/Sample: pending')).toBeTruthy();
@@ -200,7 +418,7 @@ describe('temperature preparation and calculation workflow', () => {
 
   it('hides Tested By and exports the local project leader fallback', async () => {
     const user = userEvent.setup();
-    render(<AppShell activeRoute="tools"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
+    await renderPage(<AppShell activeRoute="tools"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
     await upload();
     expect(screen.getByRole('button', { name: 'Project Leader' }).title).toBe('Project Leader: Lab User');
     expect(screen.queryByLabelText('Tested By')).toBeNull();
@@ -220,7 +438,7 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(profileApi.getLocalProfile).mockResolvedValue({ profile: { display_name: 'Alice' } });
     await refreshCurrentProfile();
     const user = userEvent.setup();
-    render(<AppShell activeRoute="tools"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
+    await renderPage(<AppShell activeRoute="tools"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
     await upload();
     expect(screen.queryByLabelText('Tested By')).toBeNull();
     fireEvent.change(screen.getByLabelText('LTR'), { target: { value: 'Manual LTR' } });
@@ -247,7 +465,7 @@ describe('temperature preparation and calculation workflow', () => {
 
   it('shows all report fields for manual entry and exports them without project lookup or resetting the chart', async () => {
     const user = userEvent.setup();
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     expect(screen.queryByLabelText('Project (optional)')).toBeNull();
     expect(screen.queryByText('More Information')).toBeNull();
@@ -289,7 +507,7 @@ describe('temperature preparation and calculation workflow', () => {
     ['2026/10/12 18:00', '2026/10/11 18:01', '2026/10/14 18:02', '2026/10/13 18:03']
       .forEach((value, index) => { dated.table.rows[index + 1][1] = value; });
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(dated);
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     expect(screen.queryByLabelText('Test Date')).toBeNull();
     expect(screen.queryByLabelText('Amb Temp. (°C)')).toBeNull();
@@ -319,7 +537,7 @@ describe('temperature preparation and calculation workflow', () => {
 
   it('keeps hidden report environment defaults through source changes without blocking manual report downloads', async () => {
     const user = userEvent.setup();
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     fireEvent.change(screen.getByLabelText('LTR'), { target: { value: 'Manual LTR' } });
     const replacement = structuredClone(imported);
@@ -346,7 +564,7 @@ describe('temperature preparation and calculation workflow', () => {
     const maximum = { a: .012345, b: .234567, c: 0 };
     vi.mocked(api.analyzeTemperatureData).mockResolvedValueOnce({ ...analysis,
       maximum_fit: { ...analysis.maximum_fit, coefficients: maximum } });
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     expect(api.calculateTemperatureCurrent).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
@@ -370,7 +588,7 @@ describe('temperature preparation and calculation workflow', () => {
   it('retains the chart on automatic current failure and allows a focused calculation retry', async () => {
     const user = userEvent.setup();
     vi.mocked(api.calculateTemperatureCurrent).mockRejectedValueOnce(new Error('No positive current for this target.'));
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await screen.findByText('No positive current for this target.');
@@ -386,7 +604,7 @@ describe('temperature preparation and calculation workflow', () => {
     const user = userEvent.setup();
     let finishCurrent!: (value: { current: number }) => void;
     vi.mocked(api.calculateTemperatureCurrent).mockReturnValueOnce(new Promise(done => { finishCurrent = done; }));
-    const view = render(<TemperatureRisePage onBack={() => undefined} />);
+    const view = await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await waitFor(() => expect(api.calculateTemperatureCurrent).toHaveBeenCalledOnce());
@@ -400,7 +618,7 @@ describe('temperature preparation and calculation workflow', () => {
 
   it('restores a temperature after an ambient roundtrip without reviving an explicitly excluded channel', async () => {
     const user = userEvent.setup();
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.selectOptions(screen.getByLabelText('Ambient Column'), '3');
     await user.selectOptions(screen.getByLabelText('Ambient Column'), '5');
@@ -421,7 +639,7 @@ describe('temperature preparation and calculation workflow', () => {
 
   it('edits measurement names independently of source readings and sends them with the download', async () => {
     const user = userEvent.setup();
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     const header = columnHeader('C');
     expect(within(header).queryByText('C', { exact: true })).toBeNull();
@@ -452,7 +670,7 @@ describe('temperature preparation and calculation workflow', () => {
       thermocouples_per_sample: 2, ambient_column: 5, current_column: 6, issues: [], zero_intercept_default: true,
     } };
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(source);
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     for (const letter of ['C', 'D']) fireEvent.click(columnHeader(letter), { ctrlKey: true });
     excludeSelected();
@@ -483,7 +701,7 @@ describe('temperature preparation and calculation workflow', () => {
     let finishRise!: (value: api.TemperatureAnalysis) => void;
     vi.mocked(api.prepareTemperatureData).mockReturnValueOnce(new Promise(done => { finishReview = done; }));
     vi.mocked(api.analyzeTemperatureData).mockReturnValueOnce(new Promise(done => { finishRise = done; }));
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     fireEvent.change(screen.getByLabelText('Max work Temp (°C)'), { target: { value: '125' } });
     fireEvent.change(screen.getByLabelText('Step (°C)'), { target: { value: '5' } });
@@ -508,7 +726,7 @@ describe('temperature preparation and calculation workflow', () => {
 
   it('automatically generates only temperature rise when Zero Intercept is off', async () => {
     const user = userEvent.setup();
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByLabelText('Zero Intercept'));
     vi.mocked(api.analyzeTemperatureData).mockResolvedValueOnce({ ...analysis, zero_intercept: false,
@@ -525,7 +743,7 @@ describe('temperature preparation and calculation workflow', () => {
     const user = userEvent.setup();
     vi.mocked(api.analyzeTemperatureData).mockResolvedValueOnce({ ...analysis,
       zero_intercept: false, points: analysis.points.slice(1), warnings: [warning] });
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByLabelText('Zero Intercept'));
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
@@ -553,7 +771,7 @@ describe('temperature preparation and calculation workflow', () => {
     if (stage === 'prepare') vi.mocked(api.prepareTemperatureData).mockRejectedValueOnce(new Error('Check the data.'));
     if (stage === 'rise') vi.mocked(api.analyzeTemperatureData).mockRejectedValueOnce(new Error('Check the fit.'));
     if (stage === 'derating') vi.mocked(api.generateTemperatureDerating).mockRejectedValueOnce(new Error('Check the derating settings.'));
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect((await screen.findByRole('alert')).textContent).toContain(stage === 'prepare' ? 'Check the data.' : stage === 'rise' ? 'Check the fit.' : 'Check the derating settings.');
@@ -572,7 +790,7 @@ describe('temperature preparation and calculation workflow', () => {
     let finishDerating!: (value: api.DeratingAnalysis) => void;
     if (stage === 'prepare') vi.mocked(api.prepareTemperatureData).mockReturnValueOnce(new Promise(done => { finishReview = done; }));
     else vi.mocked(api.generateTemperatureDerating).mockReturnValueOnce(new Promise(done => { finishDerating = done; }));
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await screen.findByText(stage === 'prepare' ? 'Checking Data...' : 'Generating Derating...');
@@ -593,7 +811,7 @@ describe('temperature preparation and calculation workflow', () => {
     const user = userEvent.setup();
     let finishReview!: (value: api.PreparedData) => void;
     vi.mocked(api.prepareTemperatureData).mockReturnValueOnce(new Promise(done => { finishReview = done; }));
-    const view = render(<TemperatureRisePage onBack={() => undefined} />);
+    const view = await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     view.unmount();
@@ -611,7 +829,7 @@ describe('temperature preparation and calculation workflow', () => {
     vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:test'), revokeObjectURL: vi.fn() });
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
     try {
-      render(<TemperatureRisePage onBack={() => undefined} />);
+      await renderPage(<TemperatureRisePage onBack={() => undefined} />);
       expect(screen.queryByText(/Polynomial Coefficients/)).toBeNull();
       expect(screen.queryByLabelText(/Coefficient [abc]/)).toBeNull();
       await upload();
@@ -645,7 +863,7 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(api.analyzeTemperatureData).mockResolvedValue({ ...analysis, zero_intercept: false,
       maximum_fit: { ...analysis.maximum_fit, coefficients: maximum },
       average_fit: { ...analysis.average_fit, coefficients: average } });
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByLabelText('Zero Intercept'));
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
@@ -671,7 +889,7 @@ describe('temperature preparation and calculation workflow', () => {
     const user = userEvent.setup();
     let resolve!: (value: api.TemperatureAnalysis) => void;
     vi.mocked(api.analyzeTemperatureData).mockReturnValueOnce(new Promise(done => { resolve = done; }));
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await screen.findByText('Generating T-riseChart...');
@@ -689,7 +907,7 @@ describe('temperature preparation and calculation workflow', () => {
     source.table.rows[0] = ['Scan', 'Time', 'TC1 (C)', 'TC2 (C)', 'Ambient (C)', 'High Power (VDC)', 'Spare (C)', 'Aux (VDC)', 'Status'];
     source.table.rows[1] = [1, '18:00', 24.987654, 25.123456, 20.625, 17.596362, 26, 3, 'OK'];
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(source);
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     const ambient = screen.getByLabelText('Ambient Column');
     const current = screen.getByLabelText('Current Column');
@@ -712,7 +930,7 @@ describe('temperature preparation and calculation workflow', () => {
     source.table.rows[0] = ['Scan', 'Time', 'TC1 (C)', 'TC2 (C)', 'Ambient (C)', 'Current (VDC)', 'Spare (C)'];
     source.selection.current_column = 4;
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(source);
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByLabelText('Current Column') as HTMLSelectElement).value).toBe('');
@@ -725,7 +943,7 @@ describe('temperature preparation and calculation workflow', () => {
 
   it('loads initial data through a keyboard-accessible button and keeps it when selection is cancelled', async () => {
     const user = userEvent.setup();
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     expect(screen.queryByText('Excel File')).toBeNull();
     const button = screen.getByRole('button', { name: 'Load Initial Data' });
     const input = screen.getByLabelText('Load Initial Data');
@@ -754,7 +972,7 @@ describe('temperature preparation and calculation workflow', () => {
         ambient_column: 5, current_column: 6, issues: [], zero_intercept_default: false,
       },
     });
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     expect((screen.getByLabelText('Thermocouples/Sample') as HTMLInputElement).value).toBe('2');
     expect(screen.queryByLabelText('Sample 1 / TC 1')).toBeNull();
@@ -775,7 +993,7 @@ describe('temperature preparation and calculation workflow', () => {
       thermocouples_per_sample: 2, ambient_column: 5, current_column: 6, issues: [], zero_intercept_default: true,
       current_issue: 'Confirm the current column used for this curve.',
     } });
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(columnHeader('D'));
     excludeSelected();
@@ -798,7 +1016,7 @@ describe('temperature preparation and calculation workflow', () => {
   it('returns through an accessible icon in the Tools header, without a duplicate content button', async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
-    const view = render(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={onBack} /></AppShell>);
+    const view = await renderPage(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={onBack} /></AppShell>);
     const banner = screen.getByRole('banner');
     expect(within(banner).getByRole('heading', { name: 'Temperature Rise' })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Temperature Rise & Derating' })).toBeNull();
@@ -807,10 +1025,12 @@ describe('temperature preparation and calculation workflow', () => {
     expect(within(screen.getByRole('main')).queryByRole('button', { name: 'Load Initial Data' })).toBeNull();
     const back = within(banner).getByRole('button', { name: 'Back To Tools' });
     expect(back.textContent).toBe('');
-    expect(back.getAttribute('title')).toBe('Back To Tools');
+    expect(back.getAttribute('title')).toBe('Back to Tools and clear workspace');
     expect(within(screen.getByRole('main')).queryByRole('button', { name: 'Back To Tools' })).toBeNull();
     back.focus();
     await user.keyboard('{Enter}');
+    expect(onBack).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Clear and Return' }));
     expect(onBack).toHaveBeenCalledOnce();
     view.unmount();
     expect(screen.queryByRole('button', { name: 'Back To Tools' })).toBeNull();
@@ -821,7 +1041,7 @@ describe('temperature preparation and calculation workflow', () => {
     const data = structuredClone(imported);
     data.table.file_name = 'scanner.csv';
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(data);
-    render(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
+    await renderPage(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
     const button = within(screen.getByRole('banner')).getByRole('button', { name: 'Load Initial Data' });
     const input = screen.getByLabelText('Load Initial Data');
     const picker = vi.spyOn(input as HTMLInputElement, 'click');
@@ -840,7 +1060,7 @@ describe('temperature preparation and calculation workflow', () => {
 
   it('uses the detected region without showing row settings or success notices', async () => {
     const user = userEvent.setup();
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     for (const label of ['Header Row', 'First Data Row', 'Last Data Row']) {
       expect(screen.queryByLabelText(label)).toBeNull();
@@ -860,7 +1080,7 @@ describe('temperature preparation and calculation workflow', () => {
       table: structuredClone(imported.table), selection: null,
       region_issue: 'No data region could be identified. Check the sheet or set the header and data rows manually.',
     });
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['x'], 'scanner.xlsx')] } });
     await screen.findByRole('alert');
     expect(screen.getByLabelText('Sheet Name')).toBeTruthy();
@@ -890,7 +1110,7 @@ describe('temperature preparation and calculation workflow', () => {
     decimal.table.rows[1] = [1, '18:00', 24.987654, 25.123456, 20.625, 17.596362, 26];
     decimal.selection.current_multiplier = .001; // A legacy suggestion must not apply a hidden conversion.
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(decimal);
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     expect(screen.queryByLabelText('Scale To Amperes')).toBeNull();
     expect(screen.queryByText(/Use 1 for readings already in A/)).toBeNull();
@@ -911,7 +1131,7 @@ describe('temperature preparation and calculation workflow', () => {
 
   it('requires confirmation, supports whole-column moves and row restoration, and invalidates downstream results', async () => {
     const user = userEvent.setup();
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
     await user.click(columnHeader('D'));
@@ -940,7 +1160,7 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce({
       table: structuredClone(imported.table), selection: null, region_issue: 'Multiple possible data regions were found.',
     }).mockRejectedValueOnce(new Error('The header needs at least three columns.'));
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['x'], 'ambiguous.xlsx')] } });
     await screen.findByLabelText('Header Row');
     await user.type(screen.getByLabelText('Header Row'), '1');
@@ -972,7 +1192,7 @@ describe('temperature preparation and calculation workflow', () => {
       { code: 'zero_current', severity: 'warning', source_row: 2, message: 'Row 2: current is zero.' },
       { code: 'invalid_reading', severity: 'error', source_row: 3, message: 'Row 3: missing reading.' },
     ] });
-    render(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
+    await renderPage(<AppShell activeRoute="tools" topBarTitle="Temperature Rise"><TemperatureRisePage onBack={() => undefined} /></AppShell>);
     await upload();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Data' }));
     const review = await screen.findByRole('region', { name: 'Data Needs Review' });
@@ -992,7 +1212,7 @@ describe('temperature preparation and calculation workflow', () => {
     const user = userEvent.setup();
     vi.mocked(api.prepareTemperatureData).mockResolvedValueOnce({ ready: true, measurements: [],
       issues: [{ code: 'zero_current', severity: 'warning', source_row: 2, message: 'Row 2: current is zero.' }] });
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     expect(api.prepareTemperatureData).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
@@ -1040,7 +1260,7 @@ describe('temperature preparation and calculation workflow', () => {
       { code: 'invalid_reading', severity: 'error', source_row: 3, message: 'Row 3, column C: missing reading.' },
       { code: 'no_data', severity: 'error', source_row: 2, message: 'No usable rows remain.' },
     ] });
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await screen.findByText('Scan 00774: current rounds to 0 at 0 decimal places (this current column).');
@@ -1067,7 +1287,7 @@ describe('temperature preparation and calculation workflow', () => {
       { code: 'current_drop', severity: 'warning', source_row: 4, message: 'Row 4: current decreased by more than 1%.' },
       { code: 'zero_current', severity: 'warning', source_row: 5, message: 'Row 5: current is zero.' },
     ] });
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await screen.findByText('Scan 51~53: current rounds to 0 at 0 decimal places (this current column).');
@@ -1091,7 +1311,7 @@ describe('temperature preparation and calculation workflow', () => {
     source.table.rows[4][0] = '00850';
     vi.mocked(api.importTemperatureWorkbook).mockResolvedValueOnce(source);
     vi.mocked(api.analyzeTemperatureData).mockRejectedValueOnce(new Error('Row 3: replace missing readings.'));
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await screen.findByText('Scan 800: replace missing readings.');
@@ -1113,7 +1333,7 @@ describe('temperature preparation and calculation workflow', () => {
     vi.mocked(api.prepareTemperatureData).mockResolvedValueOnce({ ready: false, measurements: [], issues: [
       { code: 'invalid_reading', severity: 'error', source_row: 2, message: 'Row 2: missing reading.' },
     ] });
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await screen.findByText('Scan unavailable: missing reading.');
@@ -1123,7 +1343,7 @@ describe('temperature preparation and calculation workflow', () => {
   it('ignores a completed import after leaving the page', async () => {
     let resolve!: (value: typeof imported) => void;
     vi.mocked(api.importTemperatureWorkbook).mockReturnValue(new Promise(done => { resolve = done; }));
-    const view = render(<TemperatureRisePage onBack={() => undefined} />);
+    const view = await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     fireEvent.change(screen.getByLabelText('Load Initial Data'), { target: { files: [new File(['x'], 'scanner.xlsx')] } });
     view.unmount();
     await act(async () => resolve(imported));
@@ -1133,7 +1353,7 @@ describe('temperature preparation and calculation workflow', () => {
 
   it('reorders and restores channels but still blocks invalid readings when warnings are accepted', async () => {
     const user = userEvent.setup();
-    render(<TemperatureRisePage onBack={() => undefined} />);
+    await renderPage(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     fireEvent.contextMenu(columnHeader('D'));
     await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
@@ -1163,7 +1383,7 @@ describe('temperature preparation and calculation workflow', () => {
     vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:test'), revokeObjectURL: vi.fn() });
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
     try {
-      render(<TemperatureRisePage onBack={() => undefined} />);
+      await renderPage(<TemperatureRisePage onBack={() => undefined} />);
       await upload();
       await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
       await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });

@@ -5,6 +5,76 @@ and a compact XLSX metadata header. Editable measurement names, stable source id
 reversible ambient-role suspension and consecutive regrouping after explicit moves remain supported.
 Compact charts, automatic generation after confirmation and scan-based feedback remain in place.
 
+## Recoverable local workspace (2026-10-18)
+
+The temperature tool restores its latest local draft on route return, page refresh and software
+restart using the same application/browser profile and origin. Sidebar navigation and browser
+Back/Forward do not discard it. Only the explicit Back To Tools action, followed by confirmation,
+clears this workspace and returns to Tools. An in-page modal defaults focus to Cancel; Escape cancels
+and returns focus to Back To Tools. It avoids blocking native browser confirmation dialogs. Clear must commit successfully before navigating; a
+failure retains current data and offers retry. The confirmation also applies to an empty workspace.
+Source files, downloaded Excel workbooks, project records and the saved Project Leader are never
+deleted or rewritten. A successful new import intentionally replaces the working dataset; a failed
+replacement leaves the previous successful dataset, analysis and Undo intact.
+
+`temperatureWorkspace.tsx` coordinates one feature-local snapshot and serialized autosaves; the
+browser persistence adapter `temperatureWorkspaceStorage.ts` owns a dedicated IndexedDB database,
+not project SQLite or filesystem access. File bytes/name and imported source values are stored
+separately from small editable snapshots and changed atomically when the dataset changes. Updates
+are coalesced for 200 ms, flushed on route unmount/pagehide/hidden visibility, and a rapid remount
+waits for prior writes. Source values are not rounded or replaced by displayed values.
+
+The draft includes column roles, groups, current decimals, names, report overrides, all analysis
+parameters/results, row/column exclusions, presentation order, inactive slots and the complete Undo
+stack. Checked selections/range anchors, source viewport position, correction entries and Stage
+Results expansion are also retained. An import/region revision keys editing state so history from
+another dataset cannot be revived. Project Leader remains the live local profile authority.
+Transient menus/focus and in-flight requests are not restored; interrupted operations become idle
+with an actionable retry notice. Existing generation guards suppress late analysis and downloads,
+including after confirmed clearing. Downloads are never automatically replayed.
+
+Storage load/write errors are visible, not silently treated as an empty draft. Unsupported draft
+versions fail closed without overwriting saved content; Retry or confirmed Back To Tools remains
+available. Retention depends on keeping the same profile/origin and its browser data: manually
+clearing site data, changing profiles/origins or losing the local disk is outside this guarantee.
+This is a single-user latest workspace, not concurrent multi-tab editing or a backup archive.
+
+Regression acceptance: remount restores charts/settings/report fields/exclusions and multi-step Undo;
+cancelled exit changes nothing; confirmed exit stays cleared after return; failed clear/load/save
+does not silently destroy data; late responses cannot resurrect cleared work; a failed replacement
+import preserves the previous draft. Native-browser QA must additionally exercise reload and a fresh
+tab to verify actual IndexedDB/File cloning rather than only a mocked storage boundary.
+
+Validation: the first real recovery regression exposed a rapid-remount/write race (RED), then passed
+after reads waited for the departing page's writes. Eleven new page regressions cover recovery,
+multi-step column/row Undo, failures, interruption, cancellation, focus and confirmed clearing.
+The nine-file affected matrix passed 152 tests. Browser QA exposed the native confirm dialog
+blocking the in-app browser; after replacing it with the in-page dialog and adding Escape coverage,
+the final affected page suite passed all 62 tests, followed by the production TypeScript/Vite build.
+The remaining 91 matrix cases were unchanged by that bounded confirmation fix.
+
+Isolated browser QA at `127.0.0.1:5174` used only synthetic CSV data: sidebar leave/back, reload and
+closing/reopening a fresh page restored both charts, LTR, decimal/Derating settings and exclusions.
+Undo restored the excluded row in a fresh page, and reselecting the sheet successfully reimported
+from the persisted File bytes. Cancel retained the draft with Cancel focused by default; confirmed
+exit returned to Tools and neither browser Back nor reload revived the cleared data. Native Excel
+and numerical backend code were not changed or rerun. The user's running desktop application was
+not restarted; a fresh JavaScript page context verified disk restoration without interrupting it.
+
+### Standards
+
+Separate sequential same-agent exact-diff review: feature-owned state coordination and a bounded
+browser storage adapter, no new dependency, project database migration, source write or global state
+framework. Existing editing and stale-response rules remain authoritative. Zero outstanding findings.
+
+### Spec
+
+Separate sequential same-agent review: complete settings/results/editing history are retained;
+only explicit confirmed exit clears; failure paths preserve data and report actionable errors.
+No deletion of originals/exports or automatic replay of requests/downloads. Zero outstanding findings.
+Remaining limits are the same local profile/origin/site-data boundary stated above; concurrent
+multi-tab editing and crash-proof backup are not claimed. Methods: tdd and code-review.
+
 ## Compact source and confirmation controls (2026-10-17)
 
 The standalone imported filename row is removed. The worksheet dropdown sits immediately after

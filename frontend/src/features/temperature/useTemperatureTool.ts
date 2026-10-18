@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import * as api from '../../api/temperature';
 import { reportMetadata, type ReportInfoFields } from './reportInfo';
 import { useTemperatureReportInfo } from './useTemperatureReportInfo';
 import { equalSampleSize, regroupSamples } from './sampleGroups';
+import { useTemperatureWorkspace } from './temperatureWorkspace';
 
 export type CoefficientFields = Record<keyof api.Coefficients, string>;
-type State = {
+export type TemperatureToolState = {
+  previewId: string;
   file: File | null; table: api.WorkbookTable | null; selection: api.DataSelection | null;
   region_issue: string | null;
   channel_layout: api.ChannelLayout | null; manualZeroIntercept: boolean;
@@ -14,7 +16,9 @@ type State = {
   targetRise: string; current: number | null; maxTemperature: string; step: string; ambientPoint: string;
   derating: api.DeratingAnalysis | null; busy: string | null; error: string | null; downloaded: string | null;
 };
+type State = TemperatureToolState;
 const initial: State = {
+  previewId: '',
   file: null, table: null, selection: null, region_issue: null, channel_layout: null, manualZeroIntercept: false, review: null, confirmed: false, zeroIntercept: true,
   analysis: null, maximum: null, average: null, targetRise: '30', current: null,
   maxTemperature: '105', step: '2.5', ambientPoint: '75', derating: null, busy: null, error: null, downloaded: null,
@@ -34,7 +38,9 @@ function parameter(value: string, label: string) {
 }
 
 export function useTemperatureTool() {
-  const [state, setState] = useState<State>(initial);
+  const workspace = useTemperatureWorkspace();
+  const [state, setState] = useState<State>(() => workspace?.initial?.tool ?? initial);
+  useLayoutEffect(() => { workspace?.update({ tool: state }); }, [state, workspace?.update]);
   const reportInfo = useTemperatureReportInfo(state.table, state.selection);
   const generation = useRef(0);
   useEffect(() => () => { generation.current += 1; }, []);
@@ -55,10 +61,11 @@ export function useTemperatureTool() {
 
   function load(file: File | null, sheetName?: string) {
     generation.current += 1;
-    setState({ ...initial, file });
     if (!file) return;
+    // Keep the previous successful workspace until its replacement has actually imported.
+    setState(old => old.file ? old : { ...old, file });
     void run('Reading Workbook...', () => api.importTemperatureWorkbook(file, sheetName), result => ({
-      ...result, channel_layout: result.channel_layout ?? null, file,
+      ...initial, ...result, channel_layout: result.channel_layout ?? null, file, previewId: crypto.randomUUID(),
       zeroIntercept: result.channel_layout?.zero_intercept_default ?? true,
     }));
   }
@@ -93,6 +100,7 @@ export function useTemperatureTool() {
     if (!file || !table) return;
     return run('Checking Data Rows...', () => api.importTemperatureWorkbook(file, table.sheet_name, region),
       result => ({ ...result, channel_layout: result.channel_layout ?? null, ...clearResults,
+        previewId: crypto.randomUUID(),
         zeroIntercept: state.manualZeroIntercept ? state.zeroIntercept : result.channel_layout?.zero_intercept_default ?? true,
         review: null, confirmed: false }));
   }
@@ -167,6 +175,7 @@ export function useTemperatureTool() {
     }), downloaded => ({ downloaded }));
   }
   return { state, load, changeData, correctRegion, confirm, analyze, zeroIntercept,
+    cancelPending: () => { generation.current += 1; setState(old => ({ ...old, busy: null })); },
     editParameter, current, derating, download, reportInfo,
     editReportInfo: (key: keyof ReportInfoFields, value: string) => {
       reportInfo.edit(key, value);

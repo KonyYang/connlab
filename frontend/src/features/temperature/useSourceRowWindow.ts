@@ -4,12 +4,16 @@ import { useLayoutEffect, useRef, useState } from 'react';
 export const SOURCE_ROW_HEIGHT = 28;
 const OVERSCAN = 8;
 
-export function useSourceRowWindow(startRow: number, total: number) {
+export function useSourceRowWindow(startRow: number, total: number, initialScrollTop = 0, initialScrollLeft = 0) {
   const viewport = useRef<HTMLDivElement>(null);
   const header = useRef<HTMLTableSectionElement>(null);
-  const [scrollTop, setScrollTop] = useState(0);
+  const [scrollTop, setScrollTop] = useState(initialScrollTop);
   const [bodyHeight, setBodyHeight] = useState(260);
   useLayoutEffect(() => {
+    if (viewport.current) {
+      viewport.current.scrollTop = initialScrollTop;
+      viewport.current.scrollLeft = initialScrollLeft;
+    }
     const measure = () => {
       const available = (viewport.current?.clientHeight || 320) - (header.current?.offsetHeight || 60);
       setBodyHeight(Math.max(SOURCE_ROW_HEIGHT, available));

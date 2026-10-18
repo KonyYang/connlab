@@ -1,29 +1,43 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ChannelLayout, DataSelection, WorkbookTable } from '../../api/temperature';
 import { isTemperatureColumn, sourceColumnKind, sourceColumns } from './sourceColumns';
 import { equalSampleSize, includedSamples, regroupSamples, retainInactiveSlots, sampleGroups } from './sampleGroups';
+import { useTemperatureWorkspace } from './temperatureWorkspace';
 
 type Snapshot = { order: number[]; excludedColumns: number[]; removedTemperatures: number[];
   temperatureColumns: number[]; excludedRows: number[]; slots: number[][];
   sampleGroups: number[][] | null | undefined; count: number; desiredSamples: number | null | undefined; consecutive: boolean };
+export type GridEditingState = Pick<Snapshot, 'order' | 'excludedColumns' | 'removedTemperatures' | 'slots' | 'consecutive'> & {
+  history: Snapshot[]; selectedRows: number[]; selectedColumns: number[];
+  rangeAnchor: { kind: 'row' | 'column'; id: number } | null;
+};
 
 export function useDataGridEditing(table: WorkbookTable, selection: DataSelection,
-  layout: ChannelLayout | null | undefined, onChange: (patch: Partial<DataSelection>) => void) {
+  layout: ChannelLayout | null | undefined, onChange: (patch: Partial<DataSelection>) => void, workspaceKey?: string) {
+  const workspace = useTemperatureWorkspace();
+  const savedGrid = workspace?.initial?.grid;
+  const restored = workspaceKey && savedGrid?.key === workspaceKey ? savedGrid.state : null;
   const [order, setOrder] = useState(() => {
+    if (restored) return restored.order;
     let position = 0;
     // The imported logical order already includes any explicit sample-name grouping.
     return sourceColumns(table, selection.header_row).map(column => selection.temperature_columns.includes(column.id)
       ? selection.temperature_columns[position++] : column.id);
   });
-  const [excludedColumns, setExcludedColumns] = useState<number[]>([]);
-  const [removedTemperatures, setRemovedTemperatures] = useState<number[]>([]);
+  const [excludedColumns, setExcludedColumns] = useState<number[]>(restored?.excludedColumns ?? []);
+  const [removedTemperatures, setRemovedTemperatures] = useState<number[]>(restored?.removedTemperatures ?? []);
   // Keep excluded slots for restoration; only included groups go into the request.
-  const [slots, setSlots] = useState(() => sampleGroups(selection, layout));
-  const [consecutive, setConsecutive] = useState(false);
-  const [history, setHistory] = useState<Snapshot[]>([]);
-  const [selectedRows, setSelectedRows] = useState<number[]>([]);
-  const [selectedColumns, setSelectedColumns] = useState<number[]>([]);
-  const rangeAnchor = useRef<{ kind: 'row' | 'column'; id: number } | null>(null);
+  const [slots, setSlots] = useState(() => restored?.slots ?? sampleGroups(selection, layout));
+  const [consecutive, setConsecutive] = useState(restored?.consecutive ?? false);
+  const [history, setHistory] = useState<Snapshot[]>(restored?.history ?? []);
+  const [selectedRows, setSelectedRows] = useState<number[]>(restored?.selectedRows ?? []);
+  const [selectedColumns, setSelectedColumns] = useState<number[]>(restored?.selectedColumns ?? []);
+  const rangeAnchor = useRef<GridEditingState['rangeAnchor']>(restored?.rangeAnchor ?? null);
+  useLayoutEffect(() => {
+    if (workspaceKey) workspace?.update({ grid: { key: workspaceKey, state: {
+      order, excludedColumns, removedTemperatures, slots, consecutive, history, selectedRows, selectedColumns, rangeAnchor: rangeAnchor.current,
+    } } });
+  }, [order, excludedColumns, removedTemperatures, slots, consecutive, history, selectedRows, selectedColumns, workspaceKey, workspace?.update]);
   const clearColumnSelection = useCallback(() => {
     setSelectedColumns([]);
     if (rangeAnchor.current?.kind === 'column') rangeAnchor.current = null;

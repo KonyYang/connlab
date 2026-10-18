@@ -164,3 +164,10 @@
 .temperature-review-summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 @media (max-width: 850px) { .temperature-analysis-grid { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .temperature-panel { padding: 14px; } .temperature-region-fields { grid-template-columns: 1fr; } }
+.temperature-exit-dialog { width: min(440px, calc(100vw - 32px)); box-sizing: border-box; padding: 24px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface); color: var(--color-ink); }
+.temperature-exit-dialog::backdrop { background: rgb(23 32 51 / 35%); }
+.temperature-exit-dialog h2 { margin: 0 0 12px; font-size: 18px; }
+.temperature-exit-dialog p { margin: 0 0 20px; }
+.temperature-exit-dialog > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.temperature-exit-dialog button:not(.primary-action) { border: 1px solid var(--color-action-secondary-border); border-radius: 10px; padding: 8px 12px; background: var(--color-action-secondary-bg); color: var(--color-action-secondary-text); font: inherit; cursor: pointer; }
+.temperature-exit-dialog button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
