@@ -10,9 +10,9 @@ const polynomial = (coef: Coefficients, x: number) => (coef.a * x + coef.b) * x 
 const equation = (coef: Coefficients) => `${coef.a.toFixed(6)} I² ${coef.b < 0 ? '−' : '+'} ${Math.abs(coef.b).toFixed(6)} I ${coef.c < 0 ? '−' : '+'} ${Math.abs(coef.c).toFixed(6)}`;
 
 /** The SVG is a numeric XY plot of the current calculation, not decorative artwork. */
-function XYChart({ title, xTitle, yTitle, traces, guide, xLimit, currentAxis, currentDecimals = 0 }: {
+function XYChart({ title, xTitle, yTitle, traces, guide, xLimit, currentAxis, currentDecimals = 0, showTitle = true }: {
   title: string; xTitle: string; yTitle: string; traces: Trace[]; xLimit?: number;
-  currentAxis: 'x' | 'y'; currentDecimals?: number;
+  currentAxis: 'x' | 'y'; currentDecimals?: number; showTitle?: boolean;
   guide?: { x: number; labels: { y: number; text: string; color: string }[] };
 }) {
   const all = traces.flatMap(trace => trace.points);
@@ -24,7 +24,7 @@ function XYChart({ title, xTitle, yTitle, traces, guide, xLimit, currentAxis, cu
   return <div className="temperature-chart">
     <svg viewBox="0 0 560 335" role="img" aria-label={title}>
       <title>{title}</title><desc>{traces.map(trace => trace.name).join(', ')}. See the results table for exact values.</desc>
-      <text x="280" y="19" textAnchor="middle" className="chart-title">{title}</text>
+      {showTitle && <text x="280" y="19" textAnchor="middle" className="chart-title">{title}</text>}
       {Array.from({ length: 6 }, (_, i) => {
         const tickX = maxX * i / 5, tickY = minY + (maxY - minY) * i / 5;
         return <g key={i}>
@@ -59,7 +59,7 @@ export function RiseChart({ analysis, table, currentDecimals = 0 }: { analysis: 
     { name: 'Max Fit', color: MAX_COLOR, line: true, points: fitPoints(analysis.maximum_fit.fitted_coefficients) },
     { name: 'Avg Fit', color: AVG_COLOR, line: true, points: fitPoints(analysis.average_fit.fitted_coefficients) },
   ];
-  return <><XYChart title="Temperature Rise vs Current" xTitle="Current (A)" yTitle="Temperature Rise (°C)" traces={traces} currentAxis="x" currentDecimals={currentDecimals} />
+  return <><XYChart title="Temperature Rise vs Current" showTitle={false} xTitle="Current (A)" yTitle="Temperature Rise (°C)" traces={traces} currentAxis="x" currentDecimals={currentDecimals} />
     <div className="temperature-equations"><p style={{ color: MAX_COLOR }}>Max ΔT = {equation(analysis.maximum_fit.coefficients)}<br />R² = {analysis.maximum_fit.r_squared.toFixed(6)}</p>
       <p style={{ color: AVG_COLOR }}>Avg Of Max ΔT = {equation(analysis.average_fit.coefficients)}<br />R² = {analysis.average_fit.r_squared.toFixed(6)}</p></div>
     <details className="temperature-detail"><summary>Stage Results</summary><div className="temperature-table-scroll"><table><thead><tr><th>Scan</th><th>Current (A)</th><th>Max ΔT (°C)</th><th>Avg Of Max ΔT (°C)</th></tr></thead>
