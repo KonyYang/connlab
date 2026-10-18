@@ -1,18 +1,18 @@
 # Local project leader display name
 
-The sidebar avatar directly opens a compact, single-field **负责人姓名** editor.
+The sidebar avatar is labelled **Project Leader** and directly opens a compact, single-field editor.
 Registration, usernames, passwords, remembered-login expiry and sign-out are no longer part of the
 UI. This is a local default/name setting, not authentication, permissions or proof of the operator.
 The existing Settings navigation item remains in the normal sidebar navigation.
 
 The trimmed name accepts Chinese characters and spaces, is nonblank, and is at most 80 Unicode
 characters. Control/invalid Unicode characters are rejected. Empty and overlong values receive clear
-inline Chinese explanations, accessible invalid/described-by states and focus on the name field;
+inline English explanations, accessible invalid/described-by states and focus on the name field;
 native generic validation bubbles are disabled. One short helper explains its default-setting purpose;
 field/read/save errors have a single visible alert with field-error priority. The modal preserves interaction locks and returns
 focus to the stable avatar after Escape or close. Failed saves keep the previous displayed profile;
 403 suggests refreshing, server failures suggest retrying later, and network guidance says
-“服务连接异常，请重试。” without claiming the server was unchanged. Only recognized name-field reasons
+“Could not connect. Please retry.” without claiming the server was unchanged. Only recognized name-field reasons
 are shown inline; raw transport details are never user guidance. Save feedback belongs to the current
 form attempt and does not reappear after cancelling/reopening; shared errors describe profile reads only.
 
@@ -43,9 +43,9 @@ outside this display-setting boundary; keep the workbench loopback-only.
 The shared profile store bootstraps once and refreshes on window focus. Generation guards prevent
 late reads from overwriting newer saved names; synchronous adapter errors cannot crash page mounting.
 
-New temperature imports snapshot the name for `Tested By`; late initial profile loading may fill
-an unassigned default. Editing the profile never rewrites an already populated report or historical
-record. Manual report overrides, including intentional blank values, remain intact through reimport.
+Temperature exports use the current saved name for `Tested By`, with no duplicate input on that page.
+Saving a new name updates the next download without reimporting data or recalculating charts; other
+manual report fields remain intact. Already generated files and historical records are not rewritten.
 
 For New Project, a new unassigned draft prefers the local profile; only after initial profile loading
 does the previous completion-options/Windows default apply as fallback. Once assigned, refreshed

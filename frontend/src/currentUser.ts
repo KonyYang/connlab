@@ -20,13 +20,13 @@ export function refreshCurrentProfile(): Promise<void> {
   refreshing = Promise.resolve().then(getLocalProfile).then(result => {
     if (version === generation) publish({ profile: result.profile, loaded: true, error: null });
   }).catch(() => {
-    if (version === generation) publish({ loaded: true, error: '无法读取本机姓名设置，请重试。' });
+    if (version === generation) publish({ loaded: true, error: 'Could not load the project leader name. Please retry.' });
   }).finally(() => { refreshing = null; });
   return refreshing;
 }
 export function bootstrapCurrentProfile() { return state.loaded ? Promise.resolve() : refreshCurrentProfile(); }
 export async function saveCurrentProfile(displayName: string) {
-  if (state.busy) throw new Error('正在保存姓名，请稍候。');
+  if (state.busy) throw new Error('Saving the name. Please wait.');
   const version = ++generation;
   publish({ busy: true, error: null });
   try {

@@ -102,10 +102,10 @@ export function Sidebar({
           ref={accountTrigger}
           aria-expanded={accountDialogOpen}
           aria-haspopup="dialog"
-          aria-label={displayName}
+          aria-label="Project Leader"
           className="sidebar-account-trigger"
           disabled={accountLocked}
-          title={interactionLocked ? interactionLockedReason : displayName}
+          title={interactionLocked ? interactionLockedReason : `Project Leader: ${displayName}`}
           type="button"
           onClick={() => {
             if (!interactionLocked) {
@@ -116,7 +116,7 @@ export function Sidebar({
           <span className="sidebar-account-avatar"><UiIcon name="user" /></span>
           <span className="sidebar-account-copy">
             <strong>{displayName}</strong>
-            <small>Offline local</small>
+            <small>Project Leader</small>
           </span>
           <span className="sidebar-account-chevron"><UiIcon name="chevron-down" /></span>
         </button>

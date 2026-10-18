@@ -8,15 +8,15 @@ beforeEach(() => { profile = { profile: null, busy: false, error: null }; vi.res
 it('has one concise heading and shows only the field error when the profile could not load', async () => {
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
   HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
-  profile.error = '无法读取本机姓名设置，请重试。';
+  profile.error = 'Could not load the project leader name. Please retry.';
   render(<AccountDialog onClose={vi.fn()} />);
-  expect(screen.getByRole('dialog', { name: '负责人姓名' })).toBeTruthy();
-  expect(screen.getAllByText('负责人姓名')).toHaveLength(1);
-  expect(screen.getByRole('textbox', { name: '负责人姓名' })).toBeTruthy();
-  expect(screen.getByText('用于新项目和报告的默认姓名。')).toBeTruthy();
-  fireEvent.submit(screen.getByRole('button', { name: '保存' }).closest('form')!);
+  expect(screen.getByRole('dialog', { name: 'Project Leader' })).toBeTruthy();
+  expect(screen.getAllByText('Project Leader')).toHaveLength(1);
+  expect(screen.getByRole('textbox', { name: 'Project Leader' })).toBeTruthy();
+  expect(screen.getByText('Default name for new projects and reports.')).toBeTruthy();
+  fireEvent.submit(screen.getByRole('button', { name: 'Save' }).closest('form')!);
   expect(screen.getAllByRole('alert')).toHaveLength(1);
-  expect(screen.getByRole('alert').textContent).toBe('请填写负责人姓名。');
+  expect(screen.getByRole('alert').textContent).toBe('Enter the project leader name.');
 });
 it('shows one name field, explains validation inline, and saves without login', async () => {
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
@@ -25,16 +25,16 @@ it('shows one name field, explains validation inline, and saves without login', 
   render(<AccountDialog onClose={onClose} />);
   expect(screen.getAllByRole('textbox')).toHaveLength(1);
   expect(screen.queryByText(/Register|Password|Remember login|Username/i)).toBeNull();
-  const input = screen.getByRole('textbox', { name: '负责人姓名' });
-  fireEvent.submit(screen.getByRole('button', { name: '保存' }).closest('form')!);
-  expect(screen.getByRole('alert').textContent).toBe('请填写负责人姓名。');
+  const input = screen.getByRole('textbox', { name: 'Project Leader' });
+  fireEvent.submit(screen.getByRole('button', { name: 'Save' }).closest('form')!);
+  expect(screen.getByRole('alert').textContent).toBe('Enter the project leader name.');
   expect(input.getAttribute('aria-invalid')).toBe('true');
   expect(document.activeElement).toBe(input);
   expect(saveCurrentProfile).not.toHaveBeenCalled();
   fireEvent.change(input, { target: { value: 'x'.repeat(81) } });
-  expect(screen.getByRole('alert').textContent).toBe('姓名最多为 80 个字符。');
+  expect(screen.getByRole('alert').textContent).toBe('Use 80 characters or fewer.');
   fireEvent.change(input, { target: { value: ' 张 三 ' } });
-  fireEvent.submit(screen.getByRole('button', { name: '保存' }).closest('form')!);
+  fireEvent.submit(screen.getByRole('button', { name: 'Save' }).closest('form')!);
   await waitFor(() => expect(onClose).toHaveBeenCalled());
   expect(saveCurrentProfile).toHaveBeenCalledWith('张 三');
 });

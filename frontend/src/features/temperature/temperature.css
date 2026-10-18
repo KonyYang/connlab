@@ -26,7 +26,6 @@
 .temperature-test-info-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; }
 .temperature-page .temperature-test-info-fields label { grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 6px; font-size: 12px; font-weight: 400; }
 .temperature-page .temperature-test-info-fields input:not([type="checkbox"]) { max-width: 180px; padding: 4px 6px; min-height: 28px; font-size: 12px; line-height: 1.2; }
-.temperature-page .temperature-test-info-fields input.temperature-tested-by { width: 60%; max-width: 108px; }
 @container (min-width: 720px) { .temperature-test-info-fields { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @container (max-width: 359px) { .temperature-test-info-fields { grid-template-columns: minmax(0, 1fr); } }
 .temperature-panel { display: grid; align-content: start; gap: 14px; min-width: 0; padding: 20px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface); }
@@ -74,7 +73,6 @@
 .temperature-data-toolbar .temperature-test-info-fields { display: flex; flex-wrap: wrap; justify-content: flex-end; }
 .temperature-page .temperature-data-toolbar .temperature-test-info-fields label { display: flex; flex: 0 1 auto; justify-content: flex-end; max-width: 100%; }
 .temperature-page .temperature-data-toolbar .temperature-test-info-fields input { width: 100px; flex: 0 1 100px; }
-.temperature-page .temperature-data-toolbar .temperature-test-info-fields input.temperature-tested-by { width: 108px; flex-basis: 108px; }
 @container (max-width: 600px) { .temperature-data-toolbar { flex-wrap: wrap; } .temperature-preview-controls { flex-basis: 100%; } }
 .temperature-data-actions button { padding: 5px 6px; font-size: 11px; white-space: nowrap; }
 .temperature-data-editor .temperature-table-scroll { max-height: 320px; }

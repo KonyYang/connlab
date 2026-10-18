@@ -5,15 +5,18 @@ import type { WorkbookTable } from '../../api/temperature';
 let identity = { profile: null as { display_name: string } | null, loaded: false };
 vi.mock('../../currentUser', () => ({ CURRENT_USER_DISPLAY_NAME: 'Lab User', useCurrentProfile: () => identity }));
 const table: WorkbookTable = { file_name: 'data.csv', sheet_names: ['Data'], sheet_name: 'Data', rows: [] };
-it('snapshots the imported tester, permits late bootstrap, and retains manual blank overrides', () => {
+it('uses the latest saved project leader without reimporting and preserves other manual fields', () => {
   const { result, rerender } = renderHook(({ source }) => useTemperatureReportInfo(source, null), { initialProps: { source: table } });
+  expect(result.current.values.tested_by).toBe('Lab User');
   identity = { profile: { display_name: 'Alice' }, loaded: true }; rerender({ source: table });
   expect(result.current.values.tested_by).toBe('Alice');
+  act(() => result.current.edit('ltr_number', 'Manual LTR'));
   identity = { profile: { display_name: 'Bob' }, loaded: true }; rerender({ source: table });
-  expect(result.current.values.tested_by).toBe('Alice');
+  expect(result.current.values.tested_by).toBe('Bob');
+  expect(result.current.values.ltr_number).toBe('Manual LTR');
   rerender({ source: { ...table, file_name: 'new.csv' } });
   expect(result.current.values.tested_by).toBe('Bob');
-  act(() => result.current.edit('tested_by', ''));
   identity = { profile: { display_name: 'Carol' }, loaded: true }; rerender({ source: { ...table } });
-  expect(result.current.values.tested_by).toBe('');
+  expect(result.current.values.tested_by).toBe('Carol');
+  expect(result.current.values.ltr_number).toBe('Manual LTR');
 });

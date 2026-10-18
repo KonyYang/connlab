@@ -10,5 +10,5 @@
 .local-identity-dialog button:not(.primary-action):hover:not(:disabled) { background: var(--color-action-secondary-hover); }
 .local-identity-dialog button:disabled { cursor: default; opacity: .6; }
 .local-identity-dialog button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-.local-identity-dialog button[aria-label="关闭姓名设置"] { width: 32px; height: 32px; min-width: 32px; flex: 0 0 32px; padding: 0; display: grid; place-items: center; }
+.local-identity-dialog .local-identity-close { width: 32px; height: 32px; min-width: 32px; flex: 0 0 32px; padding: 0; display: grid; place-items: center; }
 .local-identity-dialog [role=alert], .sidebar-account-error { color: #a33b2b; }

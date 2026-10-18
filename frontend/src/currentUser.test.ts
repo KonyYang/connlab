@@ -12,7 +12,7 @@ describe('local current profile', () => {
     vi.mocked(api.saveLocalProfile).mockRejectedValue(new ApiRequestError('Raw origin header /api/local-identity/profile D:/private traceback', 403, null));
     const view = renderHook(() => store.useCurrentProfile());
     await act(async () => {
-      await expect(store.saveCurrentProfile('Alice')).rejects.toThrow('保存失败，请刷新页面重试。');
+      await expect(store.saveCurrentProfile('Alice')).rejects.toThrow('Could not save. Refresh the page and retry.');
     });
     expect(view.result.current.error).toBeNull();
   });
@@ -40,7 +40,7 @@ describe('local current profile', () => {
     vi.mocked(api.saveLocalProfile).mockResolvedValue({ profile: { display_name: 'Alice' } });
     await store.saveCurrentProfile('Alice');
     vi.mocked(api.saveLocalProfile).mockRejectedValue(new Error('Storage unavailable'));
-    await expect(store.saveCurrentProfile('Bob')).rejects.toThrow('服务连接异常，请重试。');
+    await expect(store.saveCurrentProfile('Bob')).rejects.toThrow('Could not connect. Please retry.');
     expect(store.getCurrentUserDisplayName()).toBe('Alice');
     vi.mocked(api.saveLocalProfile).mockResolvedValue({ profile: { display_name: 'Bob' } });
     await store.saveCurrentProfile('Bob');

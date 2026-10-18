@@ -25,8 +25,9 @@ but flagged-row highlighting, error blocking, confirmation, busy states and inva
 The feedback bar is omitted when empty.
 
 Data Preview, its row actions and report information share one compact toolbar. Preview controls
-stay on the left; LTR, Tested By, equipment IDs and test condition align to the right. The fields
-remain visible and wrap when space is insufficient. Tested By retains its 40% narrower input.
+stay on the left; LTR, equipment IDs and test condition align to the right. The fields
+remain visible and wrap when space is insufficient. Tested By has no separate input: exports use
+the current saved local Project Leader name from the bottom-left avatar.
 Included / Excluded Rows follows Undo instead of the sample/channel summary beside the title.
 The duplicate row-count footer below the table is removed. Counts still derive from the selected
 data range and explicit row exclusions, updating on exclude, restore and undo. Sample grouping
@@ -85,10 +86,10 @@ fit coefficients do not change; calculated-current/Derating curves retain underl
 smooth calculations and use the selected current display format. Earlier dated acceptance numbers
 and display-only precision notes below are historical, superseded by this contract.
 
-`Tested By` snapshots the persistent local project-leader display name for each new import via
-`frontend/src/currentUser.ts`, falling back to anonymous `Lab User`. Late session bootstrap may fill
-an unassigned default, but editing the local name never overwrites an existing report. Manual replacement
-or deliberate clearing overrides the default, survives reimport, and is sent to the XLSX report.
+`Tested By` is no longer an editable field in this tool. Each download uses the current persistent
+local Project Leader name via `frontend/src/currentUser.ts`, falling back to `Lab User` when unset.
+Saving a new name from the bottom-left avatar updates the next export without reimporting data or
+recalculating charts. Already generated files and existing project information are not overwritten.
 See `docs/local_identity.md` for the login-free single-field name setting, New Project defaults and
 the preservation boundary. Existing registered account data is retained independently, never read
 or migrated by the profile flow.
@@ -199,12 +200,12 @@ untouched; the change applies only to newly generated downloads.
 ## Compact manual Test Info (2026-10-13)
 
 At the right of the Data Preview toolbar, report information appears in a compact, always-visible editor without
-a Test Info heading or collapse control. All four editable fields
-are shown together: LTR, Tested By, equipment IDs,
+a Test Info heading or collapse control. All three editable fields
+are shown together: LTR, equipment IDs,
 and test condition. There is no separate More Information fold or project selector; Remark is
 also hidden and is reserved for direct completion in the exported workbook.
-Labels and inputs share a line. In the shared toolbar, inputs are compact (100 px; Tested By
-retains 108 px), and fields wrap from the right without clipped labels. If source-region correction
+Labels and inputs share a line. In the shared toolbar, inputs are compact (100 px), and fields
+wrap from the right without clipped labels. If source-region correction
 prevents a preview, the standalone editor remains available with its original responsive sizing.
 Metadata is bounded literal text, including labels starting with `=`. The request boundary retains
 its optional humidity validation (finite 0–100 %RH) for compatibility; this tool always supplies 50.
