@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties, MouseEvent } from 'react';
+import type { CSSProperties, MouseEvent, ReactNode } from 'react';
 import type { ChannelLayout, DataIssue, DataSelection, WorkbookTable } from '../../api/temperature';
 import { ColumnActions, type ColumnMenuAnchor } from './ColumnActions';
 import { incompleteSampleGroups } from './sourceColumns';
@@ -10,9 +10,10 @@ import { SOURCE_ROW_HEIGHT, useSourceRowWindow } from './useSourceRowWindow';
 
 const SELECTOR_WIDTH = 32;
 
-export function DataPreview({ table, selection, layout, issues, disabled, onChange }: {
+export function DataPreview({ table, selection, layout, issues, disabled, onChange, reportInformation }: {
   table: WorkbookTable; selection: DataSelection; layout?: ChannelLayout | null; issues: DataIssue[];
   disabled: boolean; onChange: (patch: Partial<DataSelection>) => void;
+  reportInformation?: ReactNode;
 }) {
   const grid = useDataGridEditing(table, selection, layout, onChange);
   const [menu, setMenu] = useState<ColumnMenuAnchor | null>(null);
@@ -91,12 +92,15 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   }
   function runAction(action: () => void) { action(); menu?.trigger.focus(); closeMenu(); }
   return <section ref={editor} className="temperature-data-editor" aria-label="Data Preview">
-    <div className="temperature-data-toolbar"><div><h3>Data Preview</h3>
-      <span>{total - selection.excluded_rows.length} Included / {selection.excluded_rows.length} Excluded Rows</span></div>
-      <div className="temperature-data-actions"><span>{selectedCount ? `${selectedCount} Selected` : ''}</span>
+    <div className="temperature-data-toolbar">
+      <div className="temperature-preview-controls"><h3>Data Preview</h3>
+      <div className="temperature-data-actions">{selectedCount > 0 && <span>{selectedCount} Selected</span>}
         <button type="button" disabled={disabled || !grid.canExclude} onClick={grid.exclude}>Exclude Selected</button>
         <button type="button" disabled={disabled || !grid.canRestore} onClick={grid.restore}>Restore</button>
-        <button type="button" disabled={disabled || !grid.canUndo} onClick={grid.undo}>Undo</button></div></div>
+        <button type="button" disabled={disabled || !grid.canUndo} onClick={grid.undo}>Undo</button>
+        <span>{total - selection.excluded_rows.length} Included / {selection.excluded_rows.length} Excluded Rows</span></div></div>
+      {reportInformation}
+    </div>
     {incomplete && <p className="temperature-warning" role="alert">{selection.sample_count != null
       ? `Incomplete sample group. Adjust Samples or restore/move channels so all ${selection.sample_count} samples have the same number of thermocouples.`
       : `Incomplete sample group. Restore columns or move a spare into position; each sample needs ${count} thermocouples.`}</p>}

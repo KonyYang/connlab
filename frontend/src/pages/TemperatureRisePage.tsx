@@ -76,14 +76,15 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
         event.target.value = '';
       }} />
     {s.file && <section className="temperature-panel temperature-initial">
-      {s.table && <TestInfo info={tool.reportInfo} disabled={busy} onEdit={tool.editReportInfo} />}
+      {s.table && !s.selection && <TestInfo info={tool.reportInfo} disabled={busy} onEdit={tool.editReportInfo} />}
       {roleIssue && <p role="alert" className="temperature-error">{roleIssue}</p>}
       {s.table && s.region_issue && <DataRegionCorrection table={s.table} message={s.region_issue}
         disabled={busy} onApply={tool.correctRegion} />}
       {s.table && s.selection && <>
         {s.channel_layout?.current_issue && !s.confirmed && <p className="temperature-hint">{s.channel_layout.current_issue}</p>}
         <DataPreview key={`preview-${s.table.sheet_name}-${s.table.file_name}-${s.selection.header_row}-${s.selection.start_row}-${s.selection.end_row}`}
-          table={s.table} selection={s.selection} layout={s.channel_layout} issues={s.review?.issues ?? []} onChange={tool.changeData} disabled={busy} />
+          table={s.table} selection={s.selection} layout={s.channel_layout} issues={s.review?.issues ?? []} onChange={tool.changeData} disabled={busy}
+          reportInformation={<TestInfo info={tool.reportInfo} disabled={busy} onEdit={tool.editReportInfo} />} />
       </>}
     </section>}
     <div className="temperature-analysis-grid">

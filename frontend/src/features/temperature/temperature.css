@@ -64,12 +64,19 @@
 .temperature-page th, .temperature-page td { padding: 8px; border-bottom: 1px solid var(--color-border); text-align: left; white-space: nowrap; }
 .temperature-table-scroll thead th { position: sticky; top: 0; background: var(--color-surface-muted); z-index: 1; }
 .temperature-table-scroll tbody th { font-weight: 400; }
-.temperature-data-editor { min-width: 0; display: grid; gap: 10px; }
+.temperature-data-editor { min-width: 0; display: grid; gap: 10px; container-type: inline-size; }
 .temperature-data-toolbar, .temperature-data-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.temperature-data-toolbar { justify-content: space-between; }
-.temperature-data-toolbar > div:first-child { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; }
-.temperature-data-toolbar span { color: var(--color-ink-muted); font-size: 12px; }
-.temperature-data-actions button { padding: 6px 10px; font-size: 12px; }
+.temperature-data-toolbar { flex-wrap: nowrap; gap: 8px 16px; }
+.temperature-preview-controls { display: flex; flex: 1 1 360px; align-items: center; flex-wrap: wrap; gap: 6px 10px; min-width: 0; }
+.temperature-preview-controls h3 { white-space: nowrap; }
+.temperature-preview-controls span { color: var(--color-ink-muted); font-size: 12px; }
+.temperature-data-toolbar > .temperature-test-info { flex: 0 1 720px; margin-left: auto; max-width: 100%; border: 0; padding: 0; }
+.temperature-data-toolbar .temperature-test-info-fields { display: flex; flex-wrap: wrap; justify-content: flex-end; }
+.temperature-page .temperature-data-toolbar .temperature-test-info-fields label { display: flex; flex: 0 1 auto; justify-content: flex-end; max-width: 100%; }
+.temperature-page .temperature-data-toolbar .temperature-test-info-fields input { width: 100px; flex: 0 1 100px; }
+.temperature-page .temperature-data-toolbar .temperature-test-info-fields input.temperature-tested-by { width: 108px; flex-basis: 108px; }
+@container (max-width: 600px) { .temperature-data-toolbar { flex-wrap: wrap; } .temperature-preview-controls { flex-basis: 100%; } }
+.temperature-data-actions button { padding: 5px 6px; font-size: 11px; white-space: nowrap; }
 .temperature-data-editor .temperature-table-scroll { max-height: 320px; }
 .temperature-page .temperature-source-table { border-collapse: separate; border-spacing: 0; font-size: 12px; line-height: 1.35; table-layout: fixed; }
 .temperature-source-table thead { position: sticky; top: 0; z-index: 2; }

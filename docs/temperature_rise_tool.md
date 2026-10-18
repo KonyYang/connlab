@@ -24,7 +24,10 @@ lines; the full text remains in the accessible region. The former large review p
 but flagged-row highlighting, error blocking, confirmation, busy states and invalidation are unchanged.
 The feedback bar is omitted when empty.
 
-Data Preview shows Included / Excluded Rows beside its title instead of the sample/channel summary.
+Data Preview, its row actions and report information share one compact toolbar. Preview controls
+stay on the left; LTR, Tested By, equipment IDs and test condition align to the right. The fields
+remain visible and wrap when space is insufficient. Tested By retains its 40% narrower input.
+Included / Excluded Rows follows Undo instead of the sample/channel summary beside the title.
 The duplicate row-count footer below the table is removed. Counts still derive from the selected
 data range and explicit row exclusions, updating on exclude, restore and undo. Sample grouping
 controls, warnings and calculations are unchanged.
@@ -193,14 +196,14 @@ untouched; the change applies only to newly generated downloads.
 
 ## Compact manual Test Info (2026-10-13)
 
-Below the imported filename, report information appears in a compact, always-visible editor without
+At the right of the Data Preview toolbar, report information appears in a compact, always-visible editor without
 a Test Info heading or collapse control. All four editable fields
 are shown together: LTR, Tested By, equipment IDs,
 and test condition. There is no separate More Information fold or project selector; Remark is
 also hidden and is reserved for direct completion in the exported workbook.
-Labels and inputs share a line; an editor at least 720 px wide uses four fields per row.
-Inputs are capped at 180 px; narrow editors wrap to two or one field
-per row without clipped labels.
+Labels and inputs share a line. In the shared toolbar, inputs are compact (100 px; Tested By
+retains 108 px), and fields wrap from the right without clipped labels. If source-region correction
+prevents a preview, the standalone editor remains available with its original responsive sizing.
 Metadata is bounded literal text, including labels starting with `=`. The request boundary retains
 its optional humidity validation (finite 0–100 %RH) for compatibility; this tool always supplies 50.
 

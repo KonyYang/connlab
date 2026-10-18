@@ -39,10 +39,12 @@ function scrollToRowOffset(viewport: HTMLElement, index: number) {
 }
 
 describe('column header selection', () => {
-  it('shows live included and excluded row counts once beside the preview title', () => {
+  it('shows live included and excluded row counts once after Undo in the preview controls', () => {
     render(<Editor />);
     const titleRow = screen.getByRole('heading', { name: 'Data Preview' }).parentElement!;
     expect(within(titleRow).getByText('2 Included / 0 Excluded Rows')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Undo' }).compareDocumentPosition(
+      within(titleRow).getByText('2 Included / 0 Excluded Rows')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getAllByText('2 Included / 0 Excluded Rows')).toHaveLength(1);
     expect(screen.queryByText(/Samples? · .*TC\/Sample · .*Channels/)).toBeNull();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select Scan 1' }));
