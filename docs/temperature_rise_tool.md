@@ -7,6 +7,16 @@ Compact charts, automatic generation after confirmation and scan-based feedback 
 
 ## Recoverable local workspace (2026-10-18)
 
+Sidebar Tools resumes the recent temperature workspace rather than always opening the tool directory.
+While the app is running, the shell remembers entry into the workspace; a fresh app checks only the
+saved draft key, without reading the large source File/table. The explicit confirmed Back To Tools
+callback disables resumption only after durable deletion succeeds. Cancel or deletion failure leaves
+resumption enabled. With no recent workspace, Tools still opens the directory. Other direct tool
+entry/back callbacks retain their existing behavior; this is not a global redirect of `/tools` URLs.
+Late presence lookups are ignored after another navigation, browser history change or app unmount.
+If the presence lookup fails, the workspace recovery/error screen is opened rather than pretending
+the saved data is absent. No clearing or reimport is performed by sidebar navigation.
+
 The temperature tool restores its latest local draft on route return, page refresh and software
 restart using the same application/browser profile and origin. Sidebar navigation and browser
 Back/Forward do not discard it. Only the explicit Back To Tools action, followed by confirmation,
@@ -61,11 +71,26 @@ exit returned to Tools and neither browser Back nor reload revived the cleared d
 and numerical backend code were not changed or rerun. The user's running desktop application was
 not restarted; a fresh JavaScript page context verified disk restoration without interrupting it.
 
+Sidebar follow-up: the prior browser check used browser Back, not the sidebar Tools entry. The new
+App-level regression failed at `Settings -> sidebar Tools`, then passed after shell navigation used
+the recent workspace. Eight regressions use the real App, Sidebar, Tools and temperature UI, mocking
+only backend/browser-storage boundaries. They cover full chart/settings/exclusion/Undo recovery,
+Cancel versus successful/failed clearing, fresh-app discovery, empty-directory behavior, selected
+sidebar clicks without remount, stale navigation completion and unreadable storage.
+Final affected 12-file matrix: 183 tests passed in 16.79 s; TypeScript/Vite build passed afterward.
+Isolated synthetic browser smoke verifies Settings -> sidebar Tools, refresh while in Settings,
+Cancel -> Settings -> Tools, recovered Undo, and confirmed clear -> Settings -> Tools -> refresh
+remaining in the directory. The user's live 403-row/3-sample draft was also observed through the
+real sidebar return without input edits, clearing or reimport. No frontend/backend restart required.
+
 ### Standards
 
 Separate sequential same-agent exact-diff review: feature-owned state coordination and a bounded
 browser storage adapter, no new dependency, project database migration, source write or global state
 framework. Existing editing and stale-response rules remain authoritative. Zero outstanding findings.
+Sidebar follow-up review: navigation remains owned by App, and IndexedDB presence uses a key count,
+not a second persisted navigation flag or a source-file read. Existing project navigation and other
+direct tool callbacks are unchanged. Zero outstanding Standards findings.
 
 ### Spec
 
@@ -74,6 +99,9 @@ only explicit confirmed exit clears; failure paths preserve data and report acti
 No deletion of originals/exports or automatic replay of requests/downloads. Zero outstanding findings.
 Remaining limits are the same local profile/origin/site-data boundary stated above; concurrent
 multi-tab editing and crash-proof backup are not claimed. Methods: tdd and code-review.
+Sidebar follow-up Spec review: only successful confirmed clearing disables return; cancellation or
+clear failure keeps the workspace resumable. Lookup errors surface workspace recovery, and obsolete
+async results cannot override later navigation or an unmounted app. Zero outstanding Spec findings.
 
 ## Compact source and confirmation controls (2026-10-17)
 

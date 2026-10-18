@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, type ReactElement } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactElement } from "react";
 import { AppShell } from "./components/layout/AppShell";
 import { RouteLoadBoundary } from "./components/layout/RouteLoadBoundary";
 import { FrontendDiagnosticsReporter } from "./components/support/FrontendDiagnosticsReporter";
@@ -10,6 +10,7 @@ import {
   type IntakeSessionState
 } from "./features/intake/intakeSession";
 import { ProjectListPage } from "./pages/ProjectListPage";
+import { hasTemperatureWorkspace } from "./features/temperature/temperatureWorkspaceStorage";
 import "./styles.css";
 
 const IntakeInboxPage = lazy(() =>
@@ -179,6 +180,8 @@ function parseCurrentRoute(): Route {
 
 export default function App(): ReactElement {
   const [route, setRoute] = useState<Route>(parseCurrentRoute);
+  const resumeTemperatureWorkspace = useRef<boolean | null>(route.name === "temperatureRise" ? true : null);
+  const navigationGeneration = useRef(0);
   const [intakeSession, setIntakeSession] =
     useState<IntakeSessionState>(loadIntakeSession);
   const [lastProjectRoute, setLastProjectRoute] = useState<string | null>(() => {
@@ -188,9 +191,17 @@ export default function App(): ReactElement {
   const [intakeInteractionLockReason, setIntakeInteractionLockReason] = useState<string | null>(null);
 
   useEffect(() => {
-    const onPopState = () => setRoute(parseCurrentRoute());
+    const onPopState = () => {
+      navigationGeneration.current += 1;
+      const next = parseCurrentRoute();
+      if (next.name === "temperatureRise") resumeTemperatureWorkspace.current = true;
+      setRoute(next);
+    };
     window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
+    return () => {
+      navigationGeneration.current += 1;
+      window.removeEventListener("popstate", onPopState);
+    };
   }, []);
 
   useEffect(() => {
@@ -210,11 +221,23 @@ export default function App(): ReactElement {
   }, [intakeInteractionLockReason, route.name]);
 
   function handleShellNavigate(path: string): void {
+    const generation = ++navigationGeneration.current;
     if (intakeInteractionLockReason && route.name === "intake") {
       return;
     }
     if (path === "/projects" && route.name !== "projects" && lastProjectRoute) {
       navigate(lastProjectRoute);
+      return;
+    }
+    if (path === "/tools") {
+      const openTools = (resume: boolean) => {
+        if (generation !== navigationGeneration.current) return;
+        resumeTemperatureWorkspace.current = resume;
+        navigate(resume ? "/tools/temperature-rise" : "/tools");
+      };
+      if (resumeTemperatureWorkspace.current !== null) openTools(resumeTemperatureWorkspace.current);
+      // A fresh app can find the saved draft without loading its source file or table here.
+      else void hasTemperatureWorkspace().then(openTools, () => openTools(true));
       return;
     }
     navigate(path);
@@ -373,7 +396,11 @@ export default function App(): ReactElement {
       {route.name === "settings" && <SettingsPage />}
       {route.name === "tools" && <ToolsPage onOpenTemperatureRise={() => navigate('/tools/temperature-rise')} onOpenLegacyProjects={() => navigate('/tools/legacy-projects')} />}
       {route.name === "legacyProjectPreview" && <LegacyProjectPreview onBack={() => navigate('/tools')} />}
-      {route.name === "temperatureRise" && <TemperatureRisePage onBack={() => navigate('/tools')} />}
+      {route.name === "temperatureRise" && <TemperatureRisePage onBack={() => {
+        // Called only after the confirmed workspace deletion has committed successfully.
+        resumeTemperatureWorkspace.current = false;
+        navigate('/tools');
+      }} />}
       {route.name === "notFound" && (
         <section className="panel">
           <h2>Page not found</h2>

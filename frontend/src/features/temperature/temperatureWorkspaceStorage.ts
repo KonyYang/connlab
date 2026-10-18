@@ -30,6 +30,15 @@ function completed(transaction: IDBTransaction): Promise<void> {
   });
 }
 
+export async function hasTemperatureWorkspace(): Promise<boolean> {
+  const database = await openDatabase();
+  const transaction = database.transaction('workspace', 'readonly');
+  const done = completed(transaction);
+  const count = transaction.objectStore('workspace').count('draft');
+  await done;
+  return count.result > 0;
+}
+
 export async function readTemperatureWorkspace(): Promise<TemperatureWorkspaceDraft | null> {
   const database = await openDatabase();
   const transaction = database.transaction('workspace', 'readonly');
