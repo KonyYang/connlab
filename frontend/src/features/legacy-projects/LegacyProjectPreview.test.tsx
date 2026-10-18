@@ -2,10 +2,11 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LegacyProjectPreview } from "./LegacyProjectPreview";
-import { pickLegacyProjectDirectory, previewLegacyProjects, type LegacyProjectPreviewResult } from "../../api/legacyProjects";
+import { pickLegacyProjectDirectory, previewLegacyProjects, planLegacyRegistration, importLegacyProjects, type LegacyProjectPreviewResult } from "../../api/legacyProjects";
 
 vi.mock("../../api/legacyProjects", () => ({
   pickLegacyProjectDirectory: vi.fn(), previewLegacyProjects: vi.fn(),
+  planLegacyRegistration: vi.fn(), importLegacyProjects: vi.fn(),
 }));
 
 const result: LegacyProjectPreviewResult = {
@@ -19,11 +20,14 @@ const result: LegacyProjectPreviewResult = {
 describe("LegacyProjectPreview", () => {
   beforeEach(() => { vi.resetAllMocks(); });
 
-  it("picks a directory, previews a batch, selects only clear projects and offers no import action", async () => {
+  it("previews without writing and requires a registration check and explicit confirmation before import", async () => {
     const user = userEvent.setup();
     vi.mocked(pickLegacyProjectDirectory).mockResolvedValue("D:/old");
     vi.mocked(previewLegacyProjects).mockResolvedValue(result);
-    render(<LegacyProjectPreview onBack={vi.fn()} />);
+    vi.mocked(planLegacyRegistration).mockResolvedValue({ projects: result.projects.map(item => ({ ...item, fingerprint: "checked", can_keep_separate: item.status === "review" })) });
+    vi.mocked(importLegacyProjects).mockResolvedValue({ counts: { added: 1, already_added: 0, review: 0, failed: 0 }, items: [] });
+    const viewImported = vi.fn();
+    render(<LegacyProjectPreview onBack={vi.fn()} onViewImported={viewImported} />);
     const chooseButton = screen.getByRole("button", { name: "Choose Folder" });
     expect(chooseButton.title).toContain("up to 20 locations");
     expect(screen.queryByText(chooseButton.title)).toBeNull();
@@ -37,8 +41,16 @@ describe("LegacyProjectPreview", () => {
     expect((screen.getByLabelText("Select Cable test") as HTMLInputElement).checked).toBe(false);
     expect(screen.getByText("Conflicting numbers in the folder or legacy files")).toBeTruthy();
     expect(screen.getByText(/1 selected/)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Confirm Import|Import Selected|Register Projects/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Import Selected" })).toBeNull();
     expect(previewLegacyProjects).toHaveBeenCalledWith(["D:/old"], expect.any(AbortSignal));
+    await user.click(screen.getByRole("button", { name: "Check Registration" }));
+    await user.click(await screen.findByRole("button", { name: "Import Selected" }));
+    expect(importLegacyProjects).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Confirm Import" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Confirm Import" }));
+    expect(await screen.findByText(/1 added/)).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "View Imported Projects" }));
+    expect(viewImported).toHaveBeenCalledOnce();
   });
 
   it("preserves chosen directories after failure and ignores a late response after stop", async () => {
@@ -57,6 +69,25 @@ describe("LegacyProjectPreview", () => {
     await act(async () => { resolve(result); });
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.getByText(/Preview stopped/)).toBeTruthy();
+  });
+
+  it("keeps registered folders unselectable and requires Keep Separate for conflicting folders", async () => {
+    const user = userEvent.setup();
+    vi.mocked(pickLegacyProjectDirectory).mockResolvedValue("D:/old");
+    vi.mocked(previewLegacyProjects).mockResolvedValue(result);
+    vi.mocked(planLegacyRegistration).mockResolvedValue({ projects: result.projects.map((item, index) => ({ ...item, status: index === 0 ? "already_added" : "review", fingerprint: "checked", can_keep_separate: index === 1 })) });
+    render(<LegacyProjectPreview onBack={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Choose Folder" }));
+    await user.click(screen.getByRole("button", { name: "Start Preview" }));
+    await user.click(await screen.findByRole("button", { name: "Check Registration" }));
+    expect(await screen.findByText("Already Added")).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: "Select Force test" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("checkbox", { name: "Select Cable test" })).toHaveProperty("disabled", true);
+    await user.click(screen.getByRole("checkbox", { name: "Keep Separate" }));
+    expect(screen.getByRole("checkbox", { name: "Select Cable test" })).toHaveProperty("checked", true);
+    expect(screen.getByRole("button", { name: "Import Selected" })).toHaveProperty("disabled", false);
+    await user.click(screen.getByRole("checkbox", { name: "Keep Separate" }));
+    expect(screen.getByRole("checkbox", { name: "Select Cable test" })).toHaveProperty("checked", false);
   });
 
   it("picker cancellation is idle, manual paths work, and a changed root invalidates results", async () => {

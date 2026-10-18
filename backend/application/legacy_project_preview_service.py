@@ -37,6 +37,15 @@ class LegacyProjectPreviewService:
     def __init__(self, gateway: LegacyPreviewGateway):
         self.gateway = gateway
 
+    def inspect_project(self, path: str) -> dict:
+        """Re-read one candidate for registration; identity hints remain untrusted."""
+        folder = self.gateway.folder(path)
+        if not self._is_project(folder):
+            raise ValueError("No project files found in this folder. Start Preview again.")
+        result = self._project(folder)
+        result["identity"] = folder.identity
+        return result
+
     def preview(self, roots: list[str]) -> dict:
         selected, diagnostics, duplicate_roots = self._roots(roots)
         projects, seen = [], set()
@@ -124,6 +133,7 @@ class LegacyProjectPreviewService:
             title = "Name needed"
         source_id = folder.manifest.get("project_id")
         return {"folder": folder.path, "number": number, "name": title or name,
+                "number_evidence": sorted(evidence),
                 "status": "review" if len(evidence) > 1 else "ready", "notes": notes,
                 "source_id": source_id if isinstance(source_id, str) else None,
                 "duplicate_folders": []}

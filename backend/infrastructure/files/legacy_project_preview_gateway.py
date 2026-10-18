@@ -12,6 +12,32 @@ class LegacyProjectPreviewGateway:
     MAX_METADATA_BYTES = 65536
     SKIP = {".git", ".connlab", "history", "node_modules", "__pycache__", ".venv", "$recycle.bin"}
 
+    def reset_identity_cache(self):
+        self._identity_cache = {}
+
+    @staticmethod
+    def normalized_path(path: str) -> str:
+        return str(path).replace("\\", "/").rstrip("/").casefold()
+
+    def overlaps(self, left: str, right: str) -> bool:
+        a, b = self.normalized_path(left), self.normalized_path(right)
+        if a == b or a.startswith(b + "/") or b.startswith(a + "/"):
+            return True
+        # A bounded plan compares hundreds of pairs. Read each current identity
+        # once for that plan, never persist inode values as durable ownership.
+        if not hasattr(self, "_identity_cache"):
+            self.reset_identity_cache()
+        def identity(path):
+            if path not in self._identity_cache:
+                try:
+                    info = os.stat(path)
+                    self._identity_cache[path] = (info.st_dev, info.st_ino)
+                except OSError:
+                    self._identity_cache[path] = None
+            return self._identity_cache[path]
+        first, second = identity(left), identity(right)
+        return first is not None and first == second
+
     def _path(self, raw):
         path = Path(raw).expanduser()
         if not path.is_absolute():

@@ -34,6 +34,14 @@ describe("ProjectListPage lifecycle registry views", () => {
     vi.mocked(managementApi.listManagedProjects).mockResolvedValue([]);
   });
 
+  it("offers a dedicated Legacy view without changing business row navigation", async () => {
+    mockRows([]);
+    const showLegacy = vi.fn();
+    render(<ProjectListPage onOpenProject={vi.fn()} onShowLegacy={showLegacy} />);
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Legacy" }));
+    expect(showLegacy).toHaveBeenCalledOnce();
+  });
+
   it("labels the normal registry area by its actual function", async () => {
     mockRows([]);
     render(<ProjectListPage onOpenProject={vi.fn()} />);

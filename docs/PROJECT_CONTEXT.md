@@ -41,6 +41,11 @@ Do not use a dated snapshot as a substitute for the code.
 
 ### Project closure and registry location
 
+- Historical folders registered through Tools are separate `legacy_project_records`, browsed through
+  Projects > Legacy. They retain original paths/structures and do not create business Projects, LTR or
+  Matrix authority. Numbers and legacy IDs are identity hints only; explicit Keep Separate never
+  merges or overwrites business data. Reconnecting a moved folder updates only the registration link.
+
 - Business lifecycle and registry location are independent. A closed project is still a normal
   record; a project in the recycle bin (`trash`) or retained history (`history`) keeps its lifecycle.
 - The immutable internal `project_id` identifies the retained aggregate. A displayed DL number does

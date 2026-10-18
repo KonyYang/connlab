@@ -1,0 +1,25 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, expect, it, vi } from "vitest";
+import { LegacyProjectBrowser } from "./LegacyProjectBrowser";
+import { getLegacyProject, openLegacyProjectFolder, changeLegacyProjectLocation } from "../../api/legacyProjects";
+vi.mock("../../api/legacyProjects", () => ({ getLegacyProject: vi.fn(), openLegacyProjectFolder: vi.fn(), changeLegacyProjectLocation: vi.fn(), pickLegacyProjectDirectory: vi.fn() }));
+beforeEach(() => vi.resetAllMocks());
+it("keeps historical details available when folder is offline and reconnects only the record", async () => {
+  const record = { record_id: "old", name: "Original folder", number: null, number_evidence: [], folder_path: "D:/offline", notes: [], revision: 1, imported_at: "2026-01-01", updated_at: "2026-01-01" };
+  vi.mocked(getLegacyProject).mockResolvedValue(record);
+  vi.mocked(openLegacyProjectFolder).mockResolvedValue({ status: "blocked", message: "Folder is unavailable. Use Change Location to reconnect it." });
+  vi.mocked(changeLegacyProjectLocation).mockResolvedValue({ ...record, folder_path: "D:/new", revision: 2 });
+  const user = userEvent.setup();
+  render(<LegacyProjectBrowser recordId="old" onBack={vi.fn()} />);
+  expect(await screen.findByText("Original folder")).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: "Open Folder" }));
+  expect(await screen.findByText(/Folder is unavailable/)).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: "Change Location" }));
+  await user.clear(screen.getByRole("textbox", { name: "Folder Path" }));
+  await user.type(screen.getByRole("textbox", { name: "Folder Path" }), "D:/new");
+  await user.click(screen.getByRole("button", { name: "Save Location" }));
+  expect(changeLegacyProjectLocation).toHaveBeenCalledWith("old", "D:/new", 1);
+  expect(await screen.findByText("D:/new")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /Workbench|Generate|Matrix/ })).toBeNull();
+});

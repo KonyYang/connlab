@@ -63,6 +63,9 @@ const TemperatureRisePage = lazy(() =>
 const LegacyProjectPreview = lazy(() =>
   import("./features/legacy-projects/LegacyProjectPreview").then(module => ({ default: module.LegacyProjectPreview }))
 );
+const LegacyProjectBrowser = lazy(() =>
+  import("./features/legacy-projects/LegacyProjectBrowser").then(module => ({ default: module.LegacyProjectBrowser }))
+);
 
 type Route =
   | { name: "projects" }
@@ -82,6 +85,7 @@ type Route =
   | { name: "tools" }
   | { name: "temperatureRise" }
   | { name: "legacyProjectPreview" }
+  | { name: "legacyProjectDetail"; recordId: string }
   | { name: "notFound" };
 
 function parseRoute(pathname: string): Route {
@@ -106,6 +110,8 @@ function parseRoute(pathname: string): Route {
   if (pathname === "/tools/legacy-projects") {
     return { name: "legacyProjectPreview" };
   }
+  const legacyMatch = pathname.match(/^\/legacy-projects\/([^/]+)$/);
+  if (legacyMatch) return { name: "legacyProjectDetail", recordId: decodeURIComponent(legacyMatch[1]) };
 
   const intakePackageMatch = pathname.match(/^\/intake\/([^/]+)$/);
   if (intakePackageMatch) {
@@ -248,7 +254,7 @@ export default function App(): ReactElement {
   }
 
   const activeRoute =
-    route.name === "temperatureRise" || route.name === "legacyProjectPreview" ? "tools" : route.name === "projectDetail"
+    route.name === "legacyProjectDetail" ? "projects" : route.name === "temperatureRise" || route.name === "legacyProjectPreview" ? "tools" : route.name === "projectDetail"
       ? "workbench"
       : route.name === "projectMatrixEditor"
         ? "workbench"
@@ -274,6 +280,8 @@ export default function App(): ReactElement {
         ? "Temperature Rise"
       : route.name === "legacyProjectPreview"
         ? "Import Legacy Projects"
+      : route.name === "legacyProjectDetail"
+        ? "Legacy Project"
         : undefined;
 
   return (
@@ -291,6 +299,10 @@ export default function App(): ReactElement {
       {route.name === "projects" && (
         <ProjectListPage
           onOpenProject={(id) => navigate(`/projects/${encodeURIComponent(id)}`)}
+          legacy={new URLSearchParams(window.location.search).get("view") === "legacy"}
+          onShowLegacy={() => navigate('/projects?view=legacy')}
+          onShowActive={() => navigate('/projects')}
+          onOpenLegacyRecord={id => navigate(`/legacy-projects/${encodeURIComponent(id)}`)}
         />
       )}
       {route.name === "intake" && (
@@ -395,7 +407,8 @@ export default function App(): ReactElement {
       )}
       {route.name === "settings" && <SettingsPage />}
       {route.name === "tools" && <ToolsPage onOpenTemperatureRise={() => navigate('/tools/temperature-rise')} onOpenLegacyProjects={() => navigate('/tools/legacy-projects')} />}
-      {route.name === "legacyProjectPreview" && <LegacyProjectPreview onBack={() => navigate('/tools')} />}
+      {route.name === "legacyProjectPreview" && <LegacyProjectPreview onBack={() => navigate('/tools')} onViewImported={() => navigate('/projects?view=legacy')} />}
+      {route.name === "legacyProjectDetail" && <LegacyProjectBrowser recordId={route.recordId} onBack={() => navigate('/projects?view=legacy')} />}
       {route.name === "temperatureRise" && <TemperatureRisePage onBack={() => {
         // Called only after the confirmed workspace deletion has committed successfully.
         resumeTemperatureWorkspace.current = false;

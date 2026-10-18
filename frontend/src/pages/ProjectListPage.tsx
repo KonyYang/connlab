@@ -25,9 +25,14 @@ import {
   type ProjectRegistryView,
 } from "../features/projects-registry/projectRegistryLifecycleViews";
 import "../project-dashboard.css";
+import { LegacyProjectList } from "../features/legacy-projects/LegacyProjectList";
 
 type ProjectListPageProps = {
   onOpenProject: (projectId: string) => void;
+  legacy?: boolean;
+  onShowLegacy?: () => void;
+  onShowActive?: () => void;
+  onOpenLegacyRecord?: (recordId: string) => void;
 };
 
 type RegistryRow = ProjectRegistryRow;
@@ -65,8 +70,13 @@ const VIEW_ORDER: RegistryView[] = [
 ];
 const PROJECT_REGISTRY_STATE_STORAGE_KEY = "connlab.projectRegistry.viewState";
 
-export function ProjectListPage({
-  onOpenProject
+export function ProjectListPage(props: ProjectListPageProps): ReactElement {
+  if (props.legacy) return <LegacyProjectList onOpen={props.onOpenLegacyRecord ?? (() => {})} onBack={props.onShowActive ?? (() => {})} />;
+  return <BusinessProjectListPage {...props} />;
+}
+
+function BusinessProjectListPage({
+  onOpenProject, onShowLegacy
 }: ProjectListPageProps): ReactElement {
   const initialViewState = useMemo(loadProjectRegistryViewState, []);
   const didHydrateViewState = useRef(false);
@@ -224,6 +234,7 @@ export function ProjectListPage({
         {(["active", "trash", "history"] as const).map((location) => <button key={location} className="registry-area-button ui-secondary-action" type="button"
           aria-pressed={area === location} disabled={management.busy}
           onClick={() => setArea(location)}>{REGISTRY_AREA_LABELS[location]}</button>)}
+        {onShowLegacy && <button className="registry-area-button ui-secondary-action" type="button" disabled={management.busy} onClick={onShowLegacy}>Legacy</button>}
       </nav>
     </div>
   );

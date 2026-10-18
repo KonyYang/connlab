@@ -1,0 +1,21 @@
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, expect, it, vi } from "vitest";
+import { LegacyProjectList } from "./LegacyProjectList";
+import { listLegacyProjects } from "../../api/legacyProjects";
+vi.mock("../../api/legacyProjects", () => ({ listLegacyProjects: vi.fn() }));
+beforeEach(() => { vi.resetAllMocks(); sessionStorage.clear(); });
+it("searches historical records and preserves the query after browsing a record", async () => {
+  vi.mocked(listLegacyProjects).mockResolvedValue([{ record_id: "old", name: "Manual folder", number: null, number_evidence: [], folder_path: "D:/old/Manual folder", notes: [], revision: 1, imported_at: "2026-01-01", updated_at: "2026-01-01" }]);
+  const onOpen = vi.fn();
+  const user = userEvent.setup();
+  const view = render(<LegacyProjectList onOpen={onOpen} onBack={vi.fn()} />);
+  await user.type(screen.getByRole("searchbox", { name: "Search legacy projects" }), "Manual");
+  await waitFor(() => expect(listLegacyProjects).toHaveBeenLastCalledWith("Manual", expect.any(AbortSignal)));
+  await user.click(await screen.findByRole("button", { name: "Browse Manual folder" }));
+  expect(onOpen).toHaveBeenCalledWith("old");
+  view.unmount();
+  render(<LegacyProjectList onOpen={onOpen} onBack={vi.fn()} />);
+  expect(screen.getByRole("searchbox", { name: "Search legacy projects" })).toHaveProperty("value", "Manual");
+  await screen.findByRole("button", { name: "Browse Manual folder" });
+});

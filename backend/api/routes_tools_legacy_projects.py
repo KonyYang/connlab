@@ -1,4 +1,4 @@
-"""Read-only legacy folder previews; intentionally no database dependencies."""
+"""Read-only previews stay database-free; registration is an explicit separate action."""
 from collections.abc import Callable
 from pathlib import Path
 
@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from backend.application.legacy_project_preview_service import LegacyProjectPreviewService
 from backend.infrastructure.files.legacy_project_preview_gateway import LegacyProjectPreviewGateway
 from backend.infrastructure.files.windows_path_picker import WindowsPathPicker
+from backend.api.routes_legacy_projects import get_legacy_registration_service
 
 
 router = APIRouter(prefix="/api/tools/legacy-projects", tags=["tools"])
@@ -35,3 +36,38 @@ def preview(request: PreviewRequest):
     if any(not path.strip() or len(path) > 4096 for path in request.roots):
         raise HTTPException(422, "Choose a valid project folder.")
     return LegacyProjectPreviewService(LegacyProjectPreviewGateway()).preview(request.roots)
+
+
+class RegistrationPlanRequest(BaseModel):
+    folders: list[str] = Field(min_length=1, max_length=1000)
+
+
+class RegistrationChoice(BaseModel):
+    folder: str = Field(min_length=1, max_length=4096)
+    fingerprint: str = Field(pattern=r"^[a-f0-9]{64}$")
+    keep_separate: bool = False
+
+
+class RegistrationRequest(RegistrationPlanRequest):
+    selected: list[RegistrationChoice] = Field(min_length=1, max_length=1000)
+
+
+def validate_folders(folders):
+    if any(not path.strip() or len(path) > 4096 for path in folders):
+        raise HTTPException(422, "Choose valid project folders.")
+
+
+@router.post("/registration-plan")
+def registration_plan(request: RegistrationPlanRequest, service=Depends(get_legacy_registration_service)):
+    validate_folders(request.folders)
+    plan = service.plan(request.folders)
+    return {"projects": [{key: value for key, value in row.items() if key not in {"source_id", "identity"}}
+                         for row in plan["projects"]]}
+
+
+@router.post("/import")
+def import_projects(request: RegistrationRequest, service=Depends(get_legacy_registration_service)):
+    validate_folders(request.folders)
+    if any(choice.folder not in request.folders for choice in request.selected):
+        raise HTTPException(422, "Selected projects must belong to the registration plan.")
+    return service.register(request.folders, [choice.model_dump() for choice in request.selected])

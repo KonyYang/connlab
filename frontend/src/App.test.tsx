@@ -3,6 +3,27 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import { listLegacyProjects, getLegacyProject } from "./api/legacyProjects";
+
+vi.mock("./api/legacyProjects", async () => ({
+  ...await vi.importActual<typeof import("./api/legacyProjects")>("./api/legacyProjects"),
+  listLegacyProjects: vi.fn(), getLegacyProject: vi.fn(),
+}));
+
+it("browses legacy records on their own route and returns to the Legacy list", async () => {
+  const record = { record_id: "historical", name: "Manual legacy", number: null, number_evidence: [], folder_path: "D:/old", notes: [], revision: 1, imported_at: "2026-01-01", updated_at: "2026-01-01" };
+  vi.mocked(listLegacyProjects).mockResolvedValue([record]);
+  vi.mocked(getLegacyProject).mockResolvedValue(record);
+  window.history.replaceState({}, "", "/projects?view=legacy");
+  const user = userEvent.setup();
+  render(<App />);
+  await user.click(await screen.findByRole("button", { name: "Browse Manual legacy" }));
+  expect(window.location.pathname).toBe("/legacy-projects/historical");
+  await user.click(await screen.findByRole("button", { name: "Back to Legacy Projects" }));
+  expect(await screen.findByRole("button", { name: "Browse Manual legacy" })).toBeTruthy();
+  expect(window.location.search).toBe("?view=legacy");
+  expect(screen.queryByRole("region", { name: "Project Workbench" })).toBeNull();
+});
 
 it("opens the read-only legacy preview deep link and returns to Tools", async () => {
   window.history.replaceState({}, "", "/tools/legacy-projects");

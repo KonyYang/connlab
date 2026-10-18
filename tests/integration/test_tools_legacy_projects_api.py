@@ -22,7 +22,6 @@ def test_preview_reads_a_selected_folder_without_registration_or_writes(tmp_path
     assert response.json()["projects"][0]["number"] == "DL-2021-01-030UC"
     assert source.read_bytes() == b"original"
     assert sorted(p.name for p in folder.iterdir()) == ["report.docx"]
-    assert api.post("/api/tools/legacy-projects/import", json={}).status_code == 404
 
 
 def test_invalid_batches_and_picker_cancel_are_non_writing(tmp_path):
