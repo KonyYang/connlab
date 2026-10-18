@@ -33,6 +33,17 @@ The duplicate row-count footer below the table is removed. Counts still derive f
 data range and explicit row exclusions, updating on exclude, restore and undo. Sample grouping
 controls, warnings and calculations are unchanged.
 
+The top preview controls retain Restore and Undo, but no Exclude Selected button. Right-clicking a
+data row opens Row Actions with `Exclude Selected Rows (N)`: a checked target retains the entire
+checked set and its Shift anchor; an unchecked target selects only that row and starts a new anchor.
+Opening a menu alone does not exclude data or invalidate calculations. A clicked-row highlight alone
+is not a batch selection. Column actions are opened from column headers, never from body cells.
+The row checkbox tooltip explains right-click and Shift+F10; Context Menu key is also supported.
+Escape returns focus to the row checkbox. Outside clicks and source scrolling dismiss the menu
+without losing checked rows. Already-excluded-only selections cannot be excluded again; Restore and
+Undo remain available through the existing toolbar rules. Exclusion still preserves original source
+readings and invalidates confirmation/calculations so refreshed results and Excel use the same rows.
+
 Source preview density is compact: 28px data rows, 12px text, 13px checkboxes and vertically centered
 cells, with a 320px viewport height limit. The row window and CSS share the same row-height value
 so long-table scrolling, row identity and Shift selection stay aligned. Header spacing is also

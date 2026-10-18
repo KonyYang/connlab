@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, MouseEvent, ReactNode } from 'react';
 import type { ChannelLayout, DataIssue, DataSelection, WorkbookTable } from '../../api/temperature';
 import { ColumnActions, type ColumnMenuAnchor } from './ColumnActions';
+import { RowActions, type RowMenuAnchor } from './RowActions';
 import { incompleteSampleGroups } from './sourceColumns';
 import { formatSourceReading, sourcePresentation } from './sourcePresentation';
 import { scanLabel } from './sourceScan';
@@ -9,6 +10,7 @@ import { useDataGridEditing } from './useDataGridEditing';
 import { SOURCE_ROW_HEIGHT, useSourceRowWindow } from './useSourceRowWindow';
 
 const SELECTOR_WIDTH = 32;
+type ContextMenu = ({ kind: 'column' } & ColumnMenuAnchor) | ({ kind: 'row' } & RowMenuAnchor);
 
 export function DataPreview({ table, selection, layout, issues, disabled, onChange, reportInformation }: {
   table: WorkbookTable; selection: DataSelection; layout?: ChannelLayout | null; issues: DataIssue[];
@@ -16,11 +18,12 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
   reportInformation?: ReactNode;
 }) {
   const grid = useDataGridEditing(table, selection, layout, onChange);
-  const [menu, setMenu] = useState<ColumnMenuAnchor | null>(null);
+  const [menu, setMenu] = useState<ContextMenu | null>(null);
   const [activeRow, setActiveRow] = useState<number | null>(null);
   const editor = useRef<HTMLElement>(null);
   const menuRoot = useRef<HTMLDivElement>(null);
   const columnHeaders = useRef(new Map<number, HTMLTableCellElement>());
+  const rowSelectors = useRef(new Map<number, HTMLInputElement>());
   const closeMenu = useCallback(() => setMenu(null), []);
   useEffect(() => {
     const outside = (event: PointerEvent) => {
@@ -81,8 +84,18 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
     if (disabled || !grid.movable(column)) return;
     if (!grid.selectedColumns.includes(column) || grid.selectedColumns.some(selected => !grid.movable(selected))) grid.selectColumns([column]);
     const bounds = trigger.getBoundingClientRect();
-    setMenu({ column, trigger, left: Math.max(8, Math.min(point?.left ?? bounds.left, window.innerWidth - 276)),
+    setMenu({ kind: 'column', column, trigger, left: Math.max(8, Math.min(point?.left ?? bounds.left, window.innerWidth - 276)),
       top: Math.max(8, Math.min(point?.top ?? bounds.bottom + 6, window.innerHeight - 300)) });
+  }
+  function openRowMenu(row: number, point?: { left: number; top: number }) {
+    const trigger = rowSelectors.current.get(row);
+    if (disabled || !trigger) return;
+    grid.selectContextRow(row);
+    setActiveRow(row);
+    const bounds = trigger.getBoundingClientRect();
+    setMenu({ kind: 'row', row, trigger,
+      left: Math.max(8, Math.min(point?.left ?? bounds.left, window.innerWidth - 276)),
+      top: Math.max(8, Math.min(point?.top ?? bounds.bottom + 6, window.innerHeight - 72)) });
   }
   function openContextMenu(column: number, event: MouseEvent<HTMLElement>) {
     const header = columnHeaders.current.get(column);
@@ -95,7 +108,6 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
     <div className="temperature-data-toolbar">
       <div className="temperature-preview-controls"><h3>Data Preview</h3>
       <div className="temperature-data-actions">{selectedCount > 0 && <span>{selectedCount} Selected</span>}
-        <button type="button" disabled={disabled || !grid.canExclude} onClick={grid.exclude}>Exclude Selected</button>
         <button type="button" disabled={disabled || !grid.canRestore} onClick={grid.restore}>Restore</button>
         <button type="button" disabled={disabled || !grid.canUndo} onClick={grid.undo}>Undo</button>
         <span>{total - selection.excluded_rows.length} Included / {selection.excluded_rows.length} Excluded Rows</span></div></div>
@@ -124,7 +136,7 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
             aria-description={columnDescription(column) || undefined}
             title={columnDescription(column) || undefined}
             aria-haspopup={grid.movable(column) ? 'dialog' : undefined}
-            aria-expanded={grid.movable(column) ? menu?.column === column : undefined}
+            aria-expanded={grid.movable(column) ? menu?.kind === 'column' && menu.column === column : undefined}
             onClick={event => { if (!disabled && !grid.protectedColumn(column)) {
               closeMenu(); event.currentTarget.focus(); grid.selectColumn(column, event);
             } }}
@@ -155,19 +167,26 @@ export function DataPreview({ table, selection, layout, issues, disabled, onChan
             aria-current={activeRow === row ? 'true' : undefined}
             aria-label={excludedRows.has(row) ? `${scanLabel(table, row)} · Excluded` : flaggedRows.has(row) ? `${scanLabel(table, row)} · Needs Review` : undefined}
             onClick={() => setActiveRow(row)} onFocus={() => setActiveRow(row)}
+            onContextMenu={event => { if (!disabled) { event.preventDefault(); openRowMenu(row, { left: event.clientX, top: event.clientY }); } }}
             className={excludedRows.has(row) ? 'is-excluded-row' : flaggedRows.has(row) ? 'is-flagged-row' : ''}>
           <td className="temperature-row-selector"><input type="checkbox" aria-label={`Select ${scanLabel(table, row)}`} disabled={disabled} checked={selectedRows.has(row)}
-            title={`${scanLabel(table, row)}${excludedRows.has(row) ? ' · Excluded' : flaggedRows.has(row) ? ' · Needs Review' : ''}`}
+            ref={element => { if (element) rowSelectors.current.set(row, element); else rowSelectors.current.delete(row); }}
+            aria-haspopup="dialog" aria-expanded={menu?.kind === 'row' && menu.row === row}
+            title={`${scanLabel(table, row)}${excludedRows.has(row) ? ' · Excluded' : flaggedRows.has(row) ? ' · Needs Review' : ''} · Right-click for row actions (Shift+F10)`}
             onChange={event => { closeMenu(); grid.toggleRow(row, event.target.checked,
               'shiftKey' in event.nativeEvent && event.nativeEvent.shiftKey === true); }}
-            onKeyDown={event => { if (event.key === ' ' && event.shiftKey) { event.preventDefault(); closeMenu(); grid.toggleRow(row, !selectedRows.has(row), true); } }} /></td>
-          {grid.order.map(column => <td key={column} className={headerClass(column)} title={String(table.rows[row - 1]?.[column - 1] ?? '')}
-            onContextMenu={event => { setActiveRow(row); openContextMenu(column, event); }}>
+            onKeyDown={event => {
+              if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) { event.preventDefault(); openRowMenu(row); }
+              else if (event.key === ' ' && event.shiftKey) { event.preventDefault(); closeMenu(); grid.toggleRow(row, !selectedRows.has(row), true); }
+            }} /></td>
+          {grid.order.map(column => <td key={column} className={headerClass(column)} title={String(table.rows[row - 1]?.[column - 1] ?? '')}>
             {formatSourceReading(table.rows[row - 1]?.[column - 1] ?? null, columnsById.get(column)!.kind)}</td>)}</tr>)}
           {rowWindow.bottomPadding > 0 && <tr aria-hidden="true" className="temperature-row-spacer"><td colSpan={grid.order.length + 1} style={{ height: rowWindow.bottomPadding }} /></tr>}
         </tbody>
       </table></div>
-    {menu && <ColumnActions key={menu.column} anchor={menu} root={menuRoot}
+    {menu?.kind === 'row' && <RowActions anchor={menu} root={menuRoot} selectedCount={grid.selectedRows.length}
+      disabled={disabled} canExclude={grid.canExclude} onExclude={() => runAction(grid.exclude)} onClose={closeMenu} />}
+    {menu?.kind === 'column' && <ColumnActions key={menu.column} anchor={menu} root={menuRoot}
       columns={grid.order.filter(column => grid.movable(column) && !grid.selectedColumns.includes(column)).map(column => columns.find(item => item.id === column)!)}
       selectedCount={grid.selectedColumns.length} disabled={disabled} canExclude={grid.canExclude} canRestore={grid.canRestore}
       onExclude={() => runAction(grid.exclude)} onRestore={() => runAction(grid.restore)} onMove={destination => runAction(() => grid.moveBefore(destination))} onClose={closeMenu} />}

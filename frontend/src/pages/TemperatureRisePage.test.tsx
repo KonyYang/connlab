@@ -47,6 +47,18 @@ async function upload() {
   await screen.findByRole('button', { name: 'Confirm Data' });
 }
 function columnHeader(letter: string) { return screen.getByRole('columnheader', { name: new RegExp(`^Source Column ${letter.charCodeAt(0) - 64}: `) }); }
+function excludeSelected() {
+  const row = screen.getAllByRole('checkbox', { name: /^Select Scan / }).find(input => (input as HTMLInputElement).checked);
+  if (row) {
+    fireEvent.contextMenu(row);
+    fireEvent.click(screen.getByRole('button', { name: /^Exclude Selected Rows \(/ }));
+  } else {
+    const column = screen.getAllByRole('columnheader').find(header => header.getAttribute('aria-selected') === 'true');
+    expect(column).toBeTruthy();
+    fireEvent.contextMenu(column!);
+    fireEvent.click(screen.getByRole('button', { name: /^Exclude Columns?$/ }));
+  }
+}
 
 describe('temperature preparation and calculation workflow', () => {
   beforeEach(async () => {
@@ -293,7 +305,7 @@ describe('temperature preparation and calculation workflow', () => {
       report_metadata: expect.objectContaining({ test_date: '2026-10-14', tested_by: 'Lab User', ltr_number: 'Explicit LTR' }),
     }));
     await user.click(screen.getByLabelText('Select Scan 3'));
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
     await user.click(screen.getByRole('button', { name: 'Download Excel' }));
@@ -394,7 +406,7 @@ describe('temperature preparation and calculation workflow', () => {
     await user.selectOptions(screen.getByLabelText('Ambient Column'), '5');
     expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(false);
     await user.click(columnHeader('D'));
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     await user.selectOptions(screen.getByLabelText('Ambient Column'), '4');
     await user.selectOptions(screen.getByLabelText('Ambient Column'), '5');
     await user.click(columnHeader('D'));
@@ -443,13 +455,13 @@ describe('temperature preparation and calculation workflow', () => {
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     for (const letter of ['C', 'D']) fireEvent.click(columnHeader(letter), { ctrlKey: true });
-    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByRole('alert').textContent).toContain('Incomplete sample group');
     expect(api.prepareTemperatureData).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     for (const letter of ['D', 'H']) fireEvent.click(columnHeader(letter), { ctrlKey: true });
-    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect((screen.getByLabelText('Thermocouples/Sample') as HTMLInputElement).value).toBe('1');
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Data' }));
     await screen.findByRole('img', { name: 'Temperature Rise vs Current' });
@@ -750,7 +762,7 @@ describe('temperature preparation and calculation workflow', () => {
     expect((screen.getByLabelText('Zero Intercept') as HTMLInputElement).checked).toBe(false);
     await user.click(screen.getByLabelText('Zero Intercept'));
     await user.click(screen.getByLabelText('Select Scan 1'));
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect((screen.getByLabelText('Zero Intercept') as HTMLInputElement).checked).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(api.prepareTemperatureData).toHaveBeenCalledWith(expect.objectContaining({ zero_intercept: true }));
@@ -766,7 +778,7 @@ describe('temperature preparation and calculation workflow', () => {
     render(<TemperatureRisePage onBack={() => undefined} />);
     await upload();
     await user.click(columnHeader('D'));
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect((screen.getByRole('button', { name: 'Confirm Data' }) as HTMLButtonElement).disabled).toBe(false);
     expect((screen.getByLabelText('Thermocouples/Sample') as HTMLInputElement).value).toBe('1');
     expect(api.prepareTemperatureData).not.toHaveBeenCalled();
@@ -903,12 +915,12 @@ describe('temperature preparation and calculation workflow', () => {
     await upload();
     expect((screen.getByRole('button', { name: 'Generate T-riseChart' }) as HTMLButtonElement).disabled).toBe(true);
     await user.click(columnHeader('D'));
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     fireEvent.contextMenu(columnHeader('G'));
     await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
     await user.click(screen.getByRole('menuitem', { name: 'TC2' }));
     await user.click(screen.getByLabelText('Select Scan 1'));
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection).toMatchObject({
       temperature_columns: [3, 7], excluded_rows: [2],
@@ -976,7 +988,7 @@ describe('temperature preparation and calculation workflow', () => {
     expect(screen.queryByRole('region', { name: 'Data Needs Review' })).toBeNull();
   });
 
-  it('keeps warnings highlighted without extra acknowledgement or footer actions and uses the top row controls', async () => {
+  it('keeps warnings highlighted without extra acknowledgement or footer actions and uses contextual row exclusion', async () => {
     const user = userEvent.setup();
     vi.mocked(api.prepareTemperatureData).mockResolvedValueOnce({ ready: true, measurements: [],
       issues: [{ code: 'zero_current', severity: 'warning', source_row: 2, message: 'Row 2: current is zero.' }] });
@@ -997,7 +1009,7 @@ describe('temperature preparation and calculation workflow', () => {
     await user.click(screen.getByLabelText('Select Scan 1'));
     expect((screen.getByLabelText('Select Scan 1') as HTMLInputElement).checked).toBe(true);
     expect((screen.getByLabelText('Select Scan 2') as HTMLInputElement).checked).toBe(false);
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect(screen.queryByRole('button', { name: 'Restore All Rows' })).toBeNull();
     expect(screen.queryByRole('img', { name: 'Temperature Rise vs Current' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
@@ -1039,7 +1051,7 @@ describe('temperature preparation and calculation workflow', () => {
     await user.click(screen.getByLabelText('Select Scan 00774'));
     expect((screen.getByLabelText('Select Scan 00774') as HTMLInputElement).checked).toBe(true);
     expect((screen.getByLabelText('Select Scan 800') as HTMLInputElement).checked).toBe(false);
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.excluded_rows).toEqual([2]);
   });
@@ -1067,7 +1079,7 @@ describe('temperature preparation and calculation workflow', () => {
     await screen.findByRole('img', { name: 'Current vs Ambient Temperature' });
     for (const scan of [51, 52, 53, 55]) await user.click(screen.getByLabelText(`Select Scan ${scan}`));
     for (const scan of [51, 52, 53, 55]) expect((screen.getByLabelText(`Select Scan ${scan}`) as HTMLInputElement).checked).toBe(true);
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     await user.click(screen.getByRole('button', { name: 'Confirm Data' }));
     expect(vi.mocked(api.prepareTemperatureData).mock.calls.at(-1)?.[0].selection.excluded_rows).toEqual([2, 3, 4, 5]);
   });
@@ -1127,7 +1139,7 @@ describe('temperature preparation and calculation workflow', () => {
     await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
     await user.click(screen.getByRole('menuitem', { name: 'TC1' }));
     await user.click(columnHeader('D'));
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     await user.click(columnHeader('D'));
     await user.click(screen.getByRole('button', { name: 'Restore' }));
     vi.mocked(api.prepareTemperatureData).mockResolvedValueOnce({ ready: false, measurements: [],

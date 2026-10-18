@@ -75,6 +75,11 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
     rangeAnchor.current = null;
   }
   function selectRows(rows: number[]) { setSelectedRows(rows); setSelectedColumns([]); rangeAnchor.current = null; }
+  function selectContextRow(row: number) {
+    if (selectedRows.includes(row)) return;
+    setSelectedRows([row]); setSelectedColumns([]);
+    rangeAnchor.current = { kind: 'row', id: row };
+  }
   function selectColumns(columns: number[]) {
     const selectable = columns.filter(column => !protectedColumn(column));
     setSelectedColumns(selectable); setSelectedRows([]);
@@ -179,6 +184,6 @@ export function useDataGridEditing(table: WorkbookTable, selection: DataSelectio
   const remaining = order.filter(column => !fixed.has(column));
   const displayOrder = [1, 2, ...active, ...roles, ...remaining.filter(column => !excludedColumns.includes(column)),
     ...remaining.filter(column => excludedColumns.includes(column))];
-  return { order: displayOrder, excludedColumns, selectedRows, selectedColumns, selectRows, selectColumns, clearColumnSelection, selectColumn, toggleRow,
+  return { order: displayOrder, excludedColumns, selectedRows, selectedColumns, selectRows, selectContextRow, selectColumns, clearColumnSelection, selectColumn, toggleRow,
     exclude, restore, moveBefore, undo, protectedColumn, movable, canExclude, canRestore, canUndo: Boolean(history.length) };
 }

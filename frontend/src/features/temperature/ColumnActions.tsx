@@ -1,5 +1,6 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
+import { useContextMenuFocus } from './useContextMenuFocus';
 
 export type ColumnMenuAnchor = { column: number; left: number; top: number; trigger: HTMLElement };
 
@@ -38,32 +39,9 @@ export function ColumnActions({ anchor, root, columns, selectedCount, disabled, 
       items[next].focus();
     }
   }
-  useEffect(() => {
-    const close = () => { onClose(); anchor.trigger.focus(); };
-    const key = (event: KeyboardEvent) => {
-      if (event.defaultPrevented) return;
-      if (event.key === 'Escape') { event.preventDefault(); close(); }
-      if (event.key === 'Tab') {
-        const controls = Array.from(root.current?.querySelectorAll<HTMLElement>('button:not(:disabled)') ?? []);
-        const first = controls[0], last = controls.at(-1);
-        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
-      }
-    };
-    const outside = (event: PointerEvent) => {
-      if (!root.current?.contains(event.target as Node) && !anchor.trigger.contains(event.target as Node)) onClose();
-    };
-    const scroll = (event: Event) => { if (!root.current?.contains(event.target as Node)) onClose(); };
-    root.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus();
-    document.addEventListener('keydown', key); document.addEventListener('pointerdown', outside);
-    window.addEventListener('resize', close); window.addEventListener('scroll', scroll, true);
-    return () => {
-      document.removeEventListener('keydown', key); document.removeEventListener('pointerdown', outside);
-      window.removeEventListener('resize', close); window.removeEventListener('scroll', scroll, true);
-    };
-  }, [anchor, root, onClose]);
+  useContextMenuFocus(root, anchor, onClose);
   return createPortal(<div ref={root} role="dialog" aria-label={`Column ${anchor.column} Actions`}
-    className="temperature-column-menu" onKeyDown={submenuKey}
+    className="temperature-context-menu" onKeyDown={submenuKey}
     style={{ left: menuLeft, top: anchor.top, ...(expanded ? { width: menuWidth } : {}) }}>
     <button type="button" disabled={disabled || !canExclude} onClick={onExclude}>Exclude Column{selectedCount > 1 ? 's' : ''}</button>
     {canRestore && <button type="button" disabled={disabled} onClick={onRestore}>Restore Column{selectedCount > 1 ? 's' : ''}</button>}

@@ -16,8 +16,8 @@ const layout: ChannelLayout = { ...initial, current_columns: [8, 10], stable_cur
   sample_groups: [{ sample_id: '1', columns: [3, 4] }, { sample_id: '2', columns: [5, 6] }],
   issues: [], zero_intercept_default: false };
 
-function Editor({ withParameters = false, source = table, starting = initial, importedLayout = layout }: {
-  withParameters?: boolean; source?: WorkbookTable; starting?: DataSelection; importedLayout?: ChannelLayout;
+function Editor({ withParameters = false, source = table, starting = initial, importedLayout = layout, disabled = false }: {
+  withParameters?: boolean; source?: WorkbookTable; starting?: DataSelection; importedLayout?: ChannelLayout; disabled?: boolean;
 }) {
   const [selection, setSelection] = useState(starting);
   return <>{withParameters && <label>Ambient Role<select value={selection.ambient_column} onChange={event => {
@@ -26,19 +26,119 @@ function Editor({ withParameters = false, source = table, starting = initial, im
   }}>{source.rows[0].map((_, index) => <option key={index} value={index + 1}>{index + 1}</option>)}</select></label>}
     {withParameters && starting.sample_count != null && <label>Samples<input type="number" value={selection.sample_count ?? 1}
       onChange={event => setSelection(old => ({ ...old, sample_count: Number(event.target.value), sample_groups: undefined }))} /></label>}
-    <DataPreview table={source} selection={selection} layout={importedLayout} issues={[]} disabled={false}
+    <DataPreview table={source} selection={selection} layout={importedLayout} issues={[]} disabled={disabled}
     onChange={patch => setSelection(old => ({ ...old, ...patch }))} />
     <output aria-label="Prepared Selection">{JSON.stringify(selection)}</output></>;
 }
 function selected() { return JSON.parse(screen.getByLabelText('Prepared Selection').textContent!) as DataSelection; }
 function columnHeader(letter: string) { return screen.getByRole('columnheader', { name: new RegExp(`^Source Column ${letter.charCodeAt(0) - 64}: `) }); }
 function openColumn(letter: string) { fireEvent.contextMenu(columnHeader(letter)); }
+function excludeSelected() {
+  const row = screen.getAllByRole('checkbox', { name: /^Select Scan / }).find(input => (input as HTMLInputElement).checked);
+  if (row) {
+    fireEvent.contextMenu(row);
+    fireEvent.click(screen.getByRole('button', { name: /^Exclude Selected Rows \(/ }));
+  } else {
+    const column = screen.getAllByRole('columnheader').find(header => header.getAttribute('aria-selected') === 'true');
+    expect(column).toBeTruthy();
+    fireEvent.contextMenu(column!);
+    fireEvent.click(screen.getByRole('button', { name: /^Exclude Columns?$/ }));
+  }
+}
 function scrollToRowOffset(viewport: HTMLElement, index: number) {
   const row = viewport.querySelector<HTMLTableRowElement>('tbody tr[aria-rowindex]')!;
   fireEvent.scroll(viewport, { target: { scrollTop: index * Number.parseFloat(row.style.height) } });
 }
 
 describe('column header selection', () => {
+  it('excludes selected rows through a distinct row context menu and retains restore and undo', async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    expect(screen.queryByRole('button', { name: 'Exclude Selected', exact: true })).toBeNull();
+    await user.click(screen.getByLabelText('Select Scan 1'));
+    await user.click(screen.getByLabelText('Select Scan 2'));
+    fireEvent.contextMenu(screen.getByRole('cell', { name: '24.1', exact: true }));
+    const menu = screen.getByRole('dialog', { name: 'Row Actions' });
+    expect(screen.getByText('2 Selected')).toBeTruthy();
+    expect(within(menu).queryByRole('button', { name: /Column|Move Before/ })).toBeNull();
+    await user.click(within(menu).getByRole('button', { name: 'Exclude Selected Rows (2)' }));
+    expect(selected().excluded_rows).toEqual([2, 3]);
+    expect(selected().temperature_columns).toEqual(initial.temperature_columns);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByLabelText('Select Scan 1'));
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(selected().excluded_rows).toEqual([]);
+    fireEvent.contextMenu(screen.getByLabelText('Select Scan 2'));
+    await user.click(screen.getByRole('button', { name: 'Exclude Selected Rows (1)' }));
+    await user.click(screen.getByLabelText('Select Scan 2'));
+    await user.click(screen.getByRole('button', { name: 'Restore', exact: true }));
+    expect(selected().excluded_rows).toEqual([]);
+    expect(table.rows[1][2]).toBe(24.1);
+  });
+
+  it('targets only an unselected right-clicked row and returns focus on Escape', async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    await user.click(screen.getByLabelText('Select Scan 1'));
+    fireEvent.contextMenu(screen.getByRole('cell', { name: '18:01', exact: true }));
+    const menu = screen.getByRole('dialog', { name: 'Row Actions' });
+    expect((screen.getByLabelText('Select Scan 1') as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByLabelText('Select Scan 2') as HTMLInputElement).checked).toBe(true);
+    expect(selected()).toEqual(initial);
+    expect(document.activeElement).toBe(within(menu).getByRole('button', { name: 'Exclude Selected Rows (1)' }));
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByLabelText('Select Scan 2'));
+    fireEvent.keyDown(screen.getByLabelText('Select Scan 2'), { key: 'F10', shiftKey: true });
+    await user.click(screen.getByRole('button', { name: 'Exclude Selected Rows (1)' }));
+    expect(selected().excluded_rows).toEqual([3]);
+  });
+
+  it('keeps row and column context targets separate, without committing changes when a menu opens', () => {
+    render(<Editor />);
+    openColumn('C');
+    expect(screen.getByRole('dialog', { name: 'Column 3 Actions' })).toBeTruthy();
+    fireEvent.contextMenu(screen.getByRole('cell', { name: '24.1', exact: true }));
+    expect(screen.getByRole('dialog', { name: 'Row Actions' })).toBeTruthy();
+    expect(screen.queryByRole('dialog', { name: 'Column 3 Actions' })).toBeNull();
+    expect(columnHeader('C').getAttribute('aria-selected')).toBe('false');
+    expect((screen.getByLabelText('Select Scan 1') as HTMLInputElement).checked).toBe(true);
+    expect(selected()).toEqual(initial);
+    expect((screen.getByRole('button', { name: 'Undo' }) as HTMLButtonElement).disabled).toBe(true);
+    openColumn('D');
+    expect(screen.queryByRole('dialog', { name: 'Row Actions' })).toBeNull();
+    expect((screen.getByLabelText('Select Scan 1') as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByRole('button', { name: 'Exclude Column', exact: true })).toBeTruthy();
+  });
+
+  it('handles mixed exclusions once and keeps an all-excluded row menu dismissible', async () => {
+    const user = userEvent.setup();
+    render(<Editor starting={{ ...initial, excluded_rows: [2] }} />);
+    fireEvent.click(screen.getByLabelText('Select All Rows'));
+    fireEvent.contextMenu(screen.getByLabelText('Select Scan 1'));
+    await user.click(screen.getByRole('button', { name: 'Exclude Selected Rows (2)' }));
+    expect(selected().excluded_rows).toEqual([2, 3]);
+    fireEvent.contextMenu(screen.getByLabelText('Select Scan 1'));
+    const menu = screen.getByRole('dialog', { name: 'Row Actions' });
+    expect((within(menu).getByRole('button', { name: 'Exclude Selected Rows (1)' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(document.activeElement).toBe(menu);
+    await user.tab();
+    expect(document.activeElement).toBe(menu);
+    await user.keyboard('{Escape}');
+    expect(document.activeElement).toBe(screen.getByLabelText('Select Scan 1'));
+    await user.click(screen.getByRole('button', { name: 'Restore', exact: true }));
+    expect(selected().excluded_rows).toEqual([3]);
+  });
+
+  it('does not open row or column actions while editing is disabled', () => {
+    render(<Editor disabled />);
+    fireEvent.contextMenu(screen.getByRole('cell', { name: '24.1', exact: true }));
+    fireEvent.keyDown(screen.getByLabelText('Select Scan 1'), { key: 'F10', shiftKey: true });
+    openColumn('C');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(selected()).toEqual(initial);
+  });
+
   it('shows live included and excluded row counts once after Undo in the preview controls', () => {
     render(<Editor />);
     const titleRow = screen.getByRole('heading', { name: 'Data Preview' }).parentElement!;
@@ -48,7 +148,7 @@ describe('column header selection', () => {
     expect(screen.getAllByText('2 Included / 0 Excluded Rows')).toHaveLength(1);
     expect(screen.queryByText(/Samples? · .*TC\/Sample · .*Channels/)).toBeNull();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select Scan 1' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect(within(titleRow).getByText('1 Included / 1 Excluded Rows')).toBeTruthy();
     expect(screen.getAllByText('1 Included / 1 Excluded Rows')).toHaveLength(1);
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select Scan 1' }));
@@ -63,7 +163,7 @@ describe('column header selection', () => {
     render(<Editor starting={{ ...initial, sample_count: 2 }} />);
     fireEvent.click(columnHeader('C'));
     fireEvent.click(columnHeader('E'), { ctrlKey: true });
-    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect(selected().sample_count).toBe(2);
     expect(selected().sample_groups).toEqual([[4], [6]]);
     expect(selected().thermocouples_per_sample).toBe(1);
@@ -103,7 +203,7 @@ describe('column header selection', () => {
     await user.click(columnHeader('G'));
     openColumn('G');
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect((screen.getByRole('button', { name: 'Exclude Selected' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByText(/^\d+ Selected$/)).toBeNull();
     await user.selectOptions(screen.getByLabelText('Ambient Role'), '3');
     expect(columnHeader('C').getAttribute('aria-description')).toBe('Ambient Temperature (Protected)');
     expect(columnHeader('G').getAttribute('aria-description')).toBe('Unused Temperature');
@@ -166,7 +266,7 @@ describe('column header selection', () => {
     fireEvent.click(columnHeader('D'), { shiftKey: true });
     expect(screen.getByText('1 Selected')).toBeTruthy();
     expect((screen.getByLabelText('Select Scan 1') as HTMLInputElement).checked).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect(selected().temperature_columns).toEqual([3, 5, 6]);
   });
 
@@ -235,7 +335,7 @@ describe('continuous source row selection', () => {
     const user = userEvent.setup();
     render(<FourThermocoupleEditor withParameters />);
     for (const letter of ['D', 'H', 'L']) fireEvent.click(columnHeader(letter), { ctrlKey: true });
-    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     for (let cycle = 0; cycle < 3; cycle++) {
       await user.selectOptions(screen.getByLabelText('Ambient Role'), '3');
       expect(selected().sample_groups).toEqual([[5, 6], [7, 9, 10], [11, 13, 14]]);
@@ -252,7 +352,7 @@ describe('continuous source row selection', () => {
   it('preserves three original samples when their second thermocouples are excluded, restores them and undoes both count changes', () => {
     render(<FourThermocoupleEditor />);
     for (const letter of ['D', 'H', 'L']) fireEvent.click(columnHeader(letter), { ctrlKey: true });
-    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect(selected().thermocouples_per_sample).toBe(3);
     expect(selected().temperature_columns).toEqual([3, 5, 6, 7, 9, 10, 11, 13, 14]);
     expect(selected().sample_groups).toEqual([[3, 5, 6], [7, 9, 10], [11, 13, 14]]);
@@ -295,7 +395,7 @@ describe('continuous source row selection', () => {
     scrollToRowOffset(viewport, 26);
     fireEvent.click(screen.getByLabelText('Select Scan 799'), { shiftKey: true });
     expect(screen.getByText('27 Selected')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect(selected().excluded_rows).toHaveLength(27);
     expect(selected().excluded_rows[0]).toBe(774);
     expect(selected().excluded_rows.at(-1)).toBe(800);
@@ -317,7 +417,7 @@ describe('continuous source row selection', () => {
     fireEvent.click(screen.getByLabelText('Select Scan 773'));
     scrollToRowOffset(viewport, 26);
     fireEvent.click(screen.getByLabelText('Select Scan 799'), { shiftKey: true });
-    expect((screen.getByRole('button', { name: 'Exclude Selected' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByText(/^\d+ Selected$/)).toBeNull();
   });
 
   it('reaches the final source row by scrolling without mounting the whole large workbook', () => {
@@ -339,7 +439,7 @@ describe('continuous source row selection', () => {
     expect(all.indeterminate).toBe(true);
     fireEvent.click(all);
     expect(screen.getByText('127 Selected')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect(selected().excluded_rows).toHaveLength(127);
     expect(selected().excluded_rows.at(-1)).toBe(900);
     fireEvent.click(all);
@@ -356,17 +456,53 @@ describe('continuous source row selection', () => {
     fireEvent.keyDown(screen.getByLabelText('Select Scan 781'), { key: ' ', shiftKey: true });
     expect(screen.getByText('1 Selected')).toBeTruthy();
     expect(columnHeader('C').getAttribute('aria-selected')).toBe('false');
-    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect(selected().excluded_rows).toEqual([782]);
   });
 });
 
 describe('unified scanner data editing', () => {
+  it('preserves the Shift anchor on selected-row context menus, and anchors an unselected target', () => {
+    render(<LongEditor />);
+    fireEvent.click(screen.getByLabelText('Select Scan 773'));
+    fireEvent.click(screen.getByLabelText('Select Scan 779'), { shiftKey: true });
+    fireEvent.contextMenu(screen.getByLabelText('Select Scan 779'));
+    expect(screen.getByRole('button', { name: 'Exclude Selected Rows (7)' })).toBeTruthy();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.click(screen.getByLabelText('Select Scan 781'), { shiftKey: true });
+    expect(screen.getByText('9 Selected')).toBeTruthy();
+    fireEvent.contextMenu(screen.getByLabelText('Select Scan 783'));
+    expect(screen.getByRole('button', { name: 'Exclude Selected Rows (1)' })).toBeTruthy();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.keyDown(screen.getByLabelText('Select Scan 785'), { key: ' ', shiftKey: true });
+    expect(screen.getByText('3 Selected')).toBeTruthy();
+    expect(selected().excluded_rows).toEqual([]);
+  });
+
+  it('dismisses a row menu on outside click or source scrolling without losing checked rows', async () => {
+    const user = userEvent.setup();
+    render(<><LongEditor /><button>Outside Editor</button></>);
+    const row = screen.getByLabelText('Select Scan 773');
+    fireEvent.keyDown(row, { key: 'ContextMenu' });
+    const action = screen.getByRole('button', { name: 'Exclude Selected Rows (1)' });
+    await user.tab();
+    expect(document.activeElement).toBe(action);
+    await user.click(screen.getByRole('button', { name: 'Outside Editor' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect((row as HTMLInputElement).checked).toBe(true);
+    fireEvent.contextMenu(row);
+    scrollToRowOffset(screen.getByRole('region', { name: 'Scanner Data Preview' }), 26);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.scroll(screen.getByRole('region', { name: 'Scanner Data Preview' }), { target: { scrollTop: 0 } });
+    expect((screen.getByLabelText('Select Scan 773') as HTMLInputElement).checked).toBe(true);
+    expect(selected().excluded_rows).toEqual([]);
+  });
+
   it('moves before an excluded destination at its displayed tail position rather than its original slot', async () => {
     const user = userEvent.setup();
     render(<Editor />);
     await user.click(columnHeader('D'));
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     openColumn('C');
     await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
     await user.click(screen.getByRole('menuitem', { name: '102 1_B' }));
@@ -399,7 +535,7 @@ describe('unified scanner data editing', () => {
     const user = userEvent.setup();
     render(<Editor />);
     await user.click(columnHeader('D'));
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     openColumn('C');
     await user.click(screen.getByRole('button', { name: 'Move Before', exact: true }));
     await user.click(screen.getByRole('menuitem', { name: '104 2_B' }));
@@ -612,7 +748,8 @@ describe('unified scanner data editing', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(header);
     fireEvent.contextMenu(screen.getByRole('cell', { name: '24.1', exact: true }), { clientX: 180, clientY: 220 });
-    expect(screen.getByRole('dialog', { name: 'Column 3 Actions' })).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'Row Actions' })).toBeTruthy();
+    expect(screen.queryByRole('dialog', { name: 'Column 3 Actions' })).toBeNull();
   });
 
   it('keeps A/B as index-only columns without selection or move controls and omits Original Row', async () => {
@@ -689,7 +826,7 @@ describe('unified scanner data editing', () => {
     expect(selected().temperature_columns).toEqual(initial.temperature_columns);
     expect(selected().channel_names).toEqual({ 3: '1_A-edited' });
     await user.click(columnHeader('C'));
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect(selected().temperature_columns).toEqual([4, 5, 6]);
     openColumn('C');
     await user.click(screen.getByRole('button', { name: 'Restore Column', exact: true }));
@@ -741,7 +878,7 @@ describe('unified scanner data editing', () => {
     const user = userEvent.setup();
     render(<Editor />);
     await user.click(columnHeader('D'));
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect(selected().temperature_columns).toEqual([3, 5, 6]);
     expect(screen.getByRole('alert').textContent).toContain('Incomplete sample group');
     expect(screen.queryByText('Sample 2 / TC 1')).toBeNull();
@@ -781,14 +918,14 @@ describe('unified scanner data editing', () => {
     const user = userEvent.setup();
     render(<Editor />);
     await user.click(columnHeader('D'));
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     await user.click(columnHeader('D'));
     await user.click(screen.getByRole('button', { name: 'Restore' }));
     expect(selected().temperature_columns).toEqual([3, 4, 5, 6]);
     await user.click(columnHeader('C'));
     await user.click(screen.getByLabelText('Select Scan 1'));
     expect(columnHeader('C').getAttribute('aria-selected')).toBe('false');
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect(selected().excluded_rows).toEqual([2]);
     await user.click(screen.getByLabelText('Select Scan 1'));
     await user.click(screen.getByRole('button', { name: 'Restore' }));
@@ -805,11 +942,12 @@ describe('unified scanner data editing', () => {
     expect(screen.queryByLabelText('Rows To Select')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Select Rows', exact: true })).toBeNull();
     const first = screen.getByLabelText('Select Scan 1');
-    expect(first.getAttribute('title')).toBe('Scan 1');
+    expect(first.getAttribute('title')).toContain('Scan 1');
+    expect(first.getAttribute('title')).toContain('Shift+F10');
     fireEvent.click(first);
     fireEvent.click(screen.getByLabelText('Select Scan 2'), { shiftKey: true });
     expect(selected().excluded_rows).toEqual([]);
-    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     expect(selected().excluded_rows).toEqual([2, 3]);
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     expect(selected().excluded_rows).toEqual([]);
@@ -819,7 +957,7 @@ describe('unified scanner data editing', () => {
     const user = userEvent.setup();
     render(<Editor withParameters />);
     await user.click(columnHeader('D'));
-    await user.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     await user.selectOptions(screen.getByLabelText('Ambient Role'), '4');
     expect(screen.queryByLabelText('Select Column D')).toBeNull();
     expect((screen.getByRole('button', { name: 'Undo' }) as HTMLButtonElement).disabled).toBe(true);
@@ -833,7 +971,7 @@ describe('unified scanner data editing', () => {
     const user = userEvent.setup();
     render(<Editor withParameters />);
     for (const letter of ['D', 'F']) fireEvent.click(columnHeader(letter), { ctrlKey: true });
-    fireEvent.click(screen.getByRole('button', { name: 'Exclude Selected' }));
+    excludeSelected();
     await user.selectOptions(screen.getByLabelText('Ambient Role'), '4');
     fireEvent.click(columnHeader('F'));
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
