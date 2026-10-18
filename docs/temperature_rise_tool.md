@@ -33,8 +33,8 @@ Both analysis cards use compact inline title bars: Zero Intercept and Generate T
 beside the temperature-rise title; Derating parameters and its action sit beside the Derating title.
 Controls wrap within the available card width, with a stacked fallback below 300px of card content.
 Complete labels, keyboard access, eligibility and calculations are retained; the charts start higher.
-The web temperature-rise plot omits its duplicate internal visible title; its accessible chart name,
-card heading, axes and data remain. The Excel chart title and web Derating title are unchanged.
+Both web plots omit their duplicate internal visible titles; their accessible chart names,
+card headings, axes and data remain. Both Excel chart titles are unchanged.
 
 ## Current precision contract (2026-10-17)
 

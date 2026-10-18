@@ -68,7 +68,7 @@ export function RiseChart({ analysis, table, currentDecimals = 0 }: { analysis: 
 }
 
 export function DeratingChart({ result, currentDecimals = 0 }: { result: DeratingAnalysis; currentDecimals?: number }) {
-  return <><XYChart title="Current vs Ambient Temperature" xTitle="Ambient Temperature (°C)" yTitle="Current (A)" xLimit={result.max_temperature} currentAxis="y" currentDecimals={currentDecimals}
+  return <><XYChart title="Current vs Ambient Temperature" showTitle={false} xTitle="Ambient Temperature (°C)" yTitle="Current (A)" xLimit={result.max_temperature} currentAxis="y" currentDecimals={currentDecimals}
     traces={[{ name: 'Basic (100%)', color: '#be3030', line: true, points: result.points.map(point => ({ x: point.ambient, y: point.basic })) },
       { name: '80% Derating', color: MAX_COLOR, line: true, points: result.points.map(point => ({ x: point.ambient, y: point.derated })) }]}
     guide={{ x: result.annotation.ambient, labels: [{ y: result.annotation.basic, text: `${formatCurrent(result.annotation.basic, currentDecimals)} A`, color: '#be3030' },
