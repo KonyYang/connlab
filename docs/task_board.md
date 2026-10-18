@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_TEMPERATURE_CURRENT_DECIMALS_20261017",
     "summary": "Unified current decimal precision for temperature zero detection calculations charts and Excel export",
@@ -36,17 +36,111 @@
     "risk_reasons": [],
     "activation_head": "4219ddb74e8bb009d370757e415daed45b0f1e85",
     "started_at": "2026-10-17T03:04:29.050372Z",
-    "updated_at": "2026-10-18T03:17:00.920190Z",
+    "updated_at": "2026-10-18T03:21:52.468477Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_TEMPERATURE_CURRENT_DECIMALS_20261017",
-      "stage": "revision",
+      "stage": "delivery",
       "status": "running",
-      "summary": "Compact source preview rows/font/checkboxes, vertically center data, reduce preview height, keep virtualization and row selection aligned; curves become visible sooner.",
+      "summary": "Implementation, review, validation, and integration are complete.",
       "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_TEMPERATURE_CURRENT_DECIMALS_20261017",
+      "subject": "06cebc8d690593d3f0ce824238a0e054f096d166",
+      "summary": "Prior dual-mode calculations/export and compact analysis cards retained. Latest source-preview density refinement:28px rows,12px font,13px checkboxes, vertically centered cells,320px viewport, compact24px header name inputs. Virtualization and CSS share row height; fallback dimensions follow density. Raw data/selection/editing/history, calculation and Excel unchanged.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/temperature_schemas.py",
+        "backend/application/temperature_channel_layout.py",
+        "backend/application/temperature_data_preparation.py",
+        "backend/domain/temperature_data.py",
+        "backend/domain/temperature_rise.py",
+        "backend/infrastructure/office/temperature_rise_report_sheet.py",
+        "backend/infrastructure/office/temperature_workbook_gateway.py",
+        "docs/temperature_rise_tool.md",
+        "frontend/src/api/temperature.ts",
+        "frontend/src/features/temperature/DataPreview.test.tsx",
+        "frontend/src/features/temperature/DataPreview.tsx",
+        "frontend/src/features/temperature/TemperatureCharts.tsx",
+        "frontend/src/features/temperature/currentPrecision.test.ts",
+        "frontend/src/features/temperature/currentPrecision.ts",
+        "frontend/src/features/temperature/sourceScan.test.ts",
+        "frontend/src/features/temperature/sourceScan.ts",
+        "frontend/src/features/temperature/temperature.css",
+        "frontend/src/features/temperature/useSourceRowWindow.ts",
+        "frontend/src/features/temperature/useTemperatureTool.ts",
+        "frontend/src/pages/TemperatureRisePage.test.tsx",
+        "frontend/src/pages/TemperatureRisePage.tsx",
+        "tests/integration/test_tools_temperature_api.py",
+        "tests/unit/test_temperature_data_preparation.py",
+        "tests/unit/test_temperature_rise_calculations.py",
+        "tests/unit/test_temperature_workbook_gateway.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "detail": "Latest exact state135temperature/frontendAPI/topbar tests across9files passed then TypeScript/Vite production build passed sequentially. Existing cross-screen Shift tests initially failed because hardcoded1000px now points to different source rows; tests now scroll by rendered row height, preserving all27-row interval/exclude/undo assertions.7focusedShiftchecks GREEN, then full135GREEN. No implementation-mirroring literal tests added for reversible density change."
+        },
+        {
+          "status": "passed",
+          "detail": "Browser real source before:450px viewport,36px rows,13px text,16px checkbox,80.5px header. Final:320px viewport,28px real rows,12px text,13px checkbox,middle alignment,49.195px header. Shared variable prevents CSS/virtual height drift. Original user source only observed; no selection/input mutation. Independent synthetic60-row tab End reaches row60 with scrollTop1411/scrollHeight1729/clientHeight318,18mountedrows of28px; Shift selected60,exclude0included/60excluded,Undo60included/0excluded.671px narrow view checked; viewport reset and temporary tab closed."
+        },
+        {
+          "status": "passed",
+          "detail": "Same-agent separate Standards0/Spec0 exact-diff findings. Only latest5product/test/docfiles plus sole-writer board. Backend/nativeExcel tests not repeated because code paths unchanged; prior dual-mode/native4case evidence retained. Diff check clean."
+        },
+        {
+          "status": "passed",
+          "detail": "Backend affected matrix: initial164cases had162passes and2obsolete auxiliary-origin expectations. Updated only those test expectations to blank auxiliary cells for synthetic origin; final50Excel gateway tests passed in8.37s. Other114passed domain/preparation/API cases unchanged afterward. Includes18numerical,6newAPI combinations and4newworkbook mode/baseline combinations. Existing Starlette TestClient deprecation warning remains."
+        },
+        {
+          "status": "passed",
+          "detail": "Final135frontend tests across9files passed, then TypeScript/Vite build passed sequentially. After new fit-range behavior targeted RED/GREEN and full affected frontend rerun on exact code. Test covers warning/full hover, no artificial-origin row unchecked, toggle clears stale warning, checked origin retained, Derating disabled unchecked, fit line begins at first selected point."
+        },
+        {
+          "status": "passed",
+          "detail": "Native isolated hidden Excel4combinations measured-zero present/absent x forced/free. CalculateFullRebuild confirms summary and actual series [0,10,20,30] with forcedzero first0, measuredfree first2C, or missingfree [10,20,30]; freefit c2 versus forcedc0; equations/R2 update and no formula errors. Raw source cells unchanged, warning present only missingfree. Actual chart PNGs and PDF warning/table rendering inspected, complete and readable. Owned Excel closed without saving or clipboard use."
+        },
+        {
+          "status": "passed",
+          "detail": "Isolated live browser uploads only syntheticCSV: missing baseline freefit shows 3measured rows, c.8 and full warninghover; measuredfree first0A/.8C; toggling checked replaces with artificial0A/0C while raw8rows included and Derating stays restricted. Final browser checks fit starts at same x208.7673 as first10A marker, not0A; compactwarning17.5px with0margin. Test tabs closed, original user tab/state untouched."
+        },
+        {
+          "status": "passed",
+          "detail": "TDD:4initialdomainRED thenGREEN; missingbaseline insufficient-stages RED/GREEN; XLSX missingwarning RED then4GREEN; frontend warningRED/GREEN and fit-rangeRED/GREEN. Sequential same-agent Standards0 and Spec0 findings. git diff --check clean. No automatic thermal-equilibrium inference added; existing1percent current stability rule retained."
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed",
+          "detail": "In-scope same-task layout revision: reduce source preview density and viewport, preserve virtualization row identity and all editing/calculation contracts."
+        },
+        "developer": {
+          "status": "passed",
+          "detail": "Main agent adjusted shared row-height constant and CSS variable, compact typography/checkbox/cell padding/header input minheight, fallback viewport measurement. Updated existing tests to locate rows by actual rendered height rather than old pixel position."
+        },
+        "reviewer": {
+          "status": "passed",
+          "detail": "Separate sequential same-agent Standards and Spec exact-diff passes:0remaining findings. No duplicate hardcoded CSSrowheight, checkbox selector scoped to source table, CSS lineheight/padding fit28px and cells middle aligned. Original readings/actions untouched. No independent-agent review claimed."
+        },
+        "qa": {
+          "status": "passed",
+          "detail": "Final135affectedfrontendtests and sequential productionbuild passed. Real browser sizing before/after,physical60row end/range/exclude/undo and671px checked. Previous affected backend164/native4cases unchanged; not rerun."
+        },
+        "integrator": {
+          "status": "passed",
+          "detail": "Clean local exact subject06cebc8d verified,25cumulativeproduct/test/docpaths dynamically resolved, latest5plus sole-writerboard. No remotepublication."
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "detail": "Local reviewed compact-preview change integrated at06cebc8d; final frontend test/build/browser evidence matches code. No remote refs changed."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_LEGACY_PROJECT_READONLY_PREVIEW_20261017",
