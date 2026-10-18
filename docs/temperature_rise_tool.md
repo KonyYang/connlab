@@ -29,6 +29,11 @@ The duplicate row-count footer below the table is removed. Counts still derive f
 data range and explicit row exclusions, updating on exclude, restore and undo. Sample grouping
 controls, warnings and calculations are unchanged.
 
+Both analysis cards use compact inline title bars: Zero Intercept and Generate T-riseChart sit
+beside the temperature-rise title; Derating parameters and its action sit beside the Derating title.
+Controls wrap within the available card width, with a stacked fallback below 300px of card content.
+Complete labels, keyboard access, eligibility and calculations are retained; the charts start higher.
+
 ## Current precision contract (2026-10-17)
 
 `Current Decimals` is a native number spinner immediately after Samples (0–4, step 1, default 0).

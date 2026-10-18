@@ -88,9 +88,11 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
     </section>}
     <div className="temperature-analysis-grid">
       <section className="temperature-panel">
-        <h3>Temperature Rise (T-riseChart)</h3>
-        <div className="temperature-actions"><label className="temperature-check"><input type="checkbox" checked={s.zeroIntercept} disabled={busy} onChange={event => tool.zeroIntercept(event.target.checked)} />Zero Intercept</label>
-          <button type="button" disabled={busy || !s.confirmed} onClick={() => void tool.analyze()}>Generate T-riseChart</button></div>
+        <div className="temperature-analysis-header">
+          <h3>Temperature Rise (T-riseChart)</h3>
+          <div className="temperature-actions"><label className="temperature-check"><input type="checkbox" checked={s.zeroIntercept} disabled={busy} onChange={event => tool.zeroIntercept(event.target.checked)} />Zero Intercept</label>
+            <button type="button" disabled={busy || !s.confirmed} onClick={() => void tool.analyze()}>Generate T-riseChart</button></div>
+        </div>
         {extraStableCurrent && !s.manualZeroIntercept &&
           <p className="temperature-hint">Extra stable current detected; Zero Intercept defaults off.</p>}
         {!s.confirmed && <p className="temperature-hint">Confirm Initial Data to generate the chart.</p>}
@@ -100,11 +102,13 @@ export function TemperatureRisePage({ onBack }: { onBack: () => void }): ReactEl
           {s.current !== null && <output aria-label="Calculated Current" className="temperature-result temperature-current-result" style={{ color: MAX_COLOR }}>{formatCurrent(s.current, currentDecimals)} A</output>}</div>
       </section>
       <section className="temperature-panel">
-        <h3>Derating</h3>
-        <div className="temperature-derating-fields">
-          <label>Max work Temp (°C)<input type="number" min="0" step="any" value={s.maxTemperature} disabled={busy} onChange={event => tool.editParameter('maxTemperature', event.target.value)} /></label>
-          <label>Step (°C)<input type="number" min="0" step="any" value={s.step} disabled={busy} onChange={event => tool.editParameter('step', event.target.value)} /></label>
-          <label>Ambient Point (°C)<input type="number" min="0" step="any" value={s.ambientPoint} disabled={busy} onChange={event => tool.editParameter('ambientPoint', event.target.value)} /></label>
+        <div className="temperature-analysis-header">
+          <h3>Derating</h3>
+          <div className="temperature-derating-fields">
+            <label>Max work Temp (°C)<input type="number" min="0" step="any" value={s.maxTemperature} disabled={busy} onChange={event => tool.editParameter('maxTemperature', event.target.value)} /></label>
+            <label>Step (°C)<input type="number" min="0" step="any" value={s.step} disabled={busy} onChange={event => tool.editParameter('step', event.target.value)} /></label>
+            <label>Ambient Point (°C)<input type="number" min="0" step="any" value={s.ambientPoint} disabled={busy} onChange={event => tool.editParameter('ambientPoint', event.target.value)} /></label>
+          </div>
           <button type="button" disabled={busy || !s.average || !s.zeroIntercept} onClick={() => void tool.derating()}>Derating</button>
         </div>
         {!s.zeroIntercept ? <p className="temperature-hint">Enable Zero Intercept and regenerate T-riseChart to use Derating.</p>
