@@ -373,7 +373,8 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }
 
   async function handleGenerateCustomerReport(trigger: HTMLButtonElement): Promise<void> {
-    if (!busyAction && !customerReportRecovery && currentReport?.status === "missing" && !customerReport?.can_generate) {
+    if (!busyAction && !customerReportRecovery && currentReport?.status === "missing" &&
+        !(customerReport?.mode === "managed_download" && customerReport.can_generate)) {
       setError(null);
       setSourcePickerOpen(true);
       return;
