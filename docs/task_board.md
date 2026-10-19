@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_INTERNAL_REPORT_DRAFT_FALLBACK_20261019",
     "summary": "Download a non-overwriting Internal Report draft when the official project folder is unavailable",
@@ -32,9 +32,70 @@
     "risk_reasons": [],
     "activation_head": "8c284a85a5fbe9aefc835d6825e60ff96ed0e7f3",
     "started_at": "2026-10-19T10:29:12.104235Z",
-    "updated_at": "2026-10-19T10:29:12.104235Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-19T10:45:13.443067Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_INTERNAL_REPORT_DRAFT_FALLBACK_20261019",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_INTERNAL_REPORT_DRAFT_FALLBACK_20261019",
+      "subject": "72e10deb8ffbd2b68e3b492da3259830bbf60b15",
+      "summary": "Internal Report uses validated official publication when available; absent folder/manifest downloads a preview-bound _Draft copy in isolated staging without publishing, archiving, overwriting, or registering a new current report. Existing managed APIs remain compatible. No real project reports were modified.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/dependencies.py",
+        "backend/api/routes_report_workspace.py",
+        "backend/application/internal_report_generation_service.py",
+        "docs/report_generation_architecture.md",
+        "frontend/src/api/client.ts",
+        "frontend/src/api/internalReportGeneration.test.ts",
+        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+        "tests/integration/test_internal_report_generation_api.py"
+      ],
+      "validation": [
+        {
+          "name": "Related isolated backend matrix, 7 files",
+          "status": "passed",
+          "result": "86 passed; 1 existing Starlette deprecation warning"
+        },
+        {
+          "name": "Report workspace and download client Vitest matrix, 5 files",
+          "status": "passed",
+          "result": "94 passed"
+        },
+        {
+          "name": "TypeScript and Vite production build",
+          "status": "passed",
+          "result": "195 modules; passed"
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "method": "same agent, isolated red-green API and component tests; regressions for absent folders, repeated downloads, same-name and controlled drafts, stale folder/template, failed generation cleanup and late responses"
+        },
+        "reviewer": {
+          "status": "passed",
+          "method": "same agent, sequential Standards and Spec passes of exact 2a729a71..72e10deb diff; 0 unresolved findings on each axis"
+        },
+        "qa": {
+          "status": "passed",
+          "method": "same agent, complete affected matrix once on clean exact commit; mocked Word boundary with real temporary filesystem/database/API, no real Office generation or real project writes"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "method": "local master commit with clean tree; no push or publication"
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_REPORT_READ_ERRORS_20261019",
