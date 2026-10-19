@@ -4,14 +4,21 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import logging
 import re
 from typing import Callable, Protocol
 
 from backend.application.current_report_update_service import CurrentReportArtifact
 
+_LOGGER = logging.getLogger(__name__)
+
 
 class CustomerReportProjectionError(ValueError):
     """Raised when a customer report cannot be projected or published safely."""
+
+
+class CustomerReportReadError(CustomerReportProjectionError):
+    """Existing customer report could not be inspected; never treat it as absent."""
 
 
 class CustomerReportMissingAfterPreviewError(CustomerReportProjectionError):
@@ -198,8 +205,24 @@ class CustomerReportProjectionService:
                 warnings=tuple(),
             )
         customer = candidates[0]
-        customer_sha256 = self._files.fingerprint(customer)
-        generated_from = self._writer.read_source_report_sha256(customer)
+        try:
+            customer_sha256 = self._files.fingerprint(customer)
+            generated_from = self._writer.read_source_report_sha256(customer)
+        except (CustomerReportReadError, OSError) as exc:
+            _LOGGER.warning("Customer report inspection failed: project=%s file=%s", project_id, customer.name, exc_info=True)
+            reason = str(exc) if isinstance(exc, CustomerReportReadError) else (
+                "The existing customer report cannot be accessed. Close applications using it "
+                "and check file access permissions, then reload."
+            )
+            return CustomerReportProjectionState(
+                project_id=project_id, status="blocked", mode="official",
+                file_name=customer.name, file_path=customer, file_sha256=None,
+                internal_report_sha256=current.file_sha256,
+                generated_from_internal_sha256=None, can_generate=False,
+                download_url_available=False,
+                blockers=(reason + " The existing report has not been changed.",),
+                warnings=tuple(),
+            )
         if generated_from is None:
             status = "untracked"
             warnings = (

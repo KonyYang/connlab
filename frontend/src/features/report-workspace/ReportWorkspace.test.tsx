@@ -215,6 +215,28 @@ describe("ReportWorkspace", () => {
     });
   });
 
+  it("keeps internal report visible when customer status fails and retries without generation", async () => {
+    vi.mocked(api.fetchCurrentCustomerReport).mockRejectedValueOnce(new Error("Internal Server Error"));
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    expect(await screen.findByRole("region", { name: "Internal Report" })).toBeTruthy();
+    expect(await screen.findByText(/Unable to check the customer report/)).toBeTruthy();
+    expect(screen.queryByText("Internal Server Error")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Retry report status" }));
+    await waitFor(() => expect(screen.queryByText(/Unable to check the customer report/)).toBeNull());
+    expect(api.startProjectCustomerReportJob).not.toHaveBeenCalled();
+    expect(api.generateInternalReport).not.toHaveBeenCalled();
+  });
+
+  it("shows a customer read blocker without hiding the internal report", async () => {
+    vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue({ ...customerReport,
+      status: "blocked", can_generate: false, download_url: null,
+      blockers: ["The protected customer report could not be read. Check its password protection."],
+    });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    expect(await screen.findByRole("region", { name: "Internal Report" })).toBeTruthy();
+    expect(await screen.findByText(/protected customer report could not be read/)).toBeTruthy();
+  });
+
   it("places an accessible icon-only Workspace return before the project identity", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();

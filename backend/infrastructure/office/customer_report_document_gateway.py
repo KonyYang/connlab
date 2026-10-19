@@ -14,12 +14,14 @@ import time
 from typing import Callable, Iterable, TypeVar
 from uuid import uuid4
 from xml.etree import ElementTree as ET
-from zipfile import ZIP_DEFLATED, ZipFile
+from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile
 
 from docx import Document
+from backend.application.customer_report_projection_service import CustomerReportReadError
 
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
 from backend.infrastructure.office.office_protected_document_gateway import (
+    OfficeProtectedDocumentError,
     ProtectedWordPackageGateway,
 )
 from backend.shared.office_document_password import OFFICE_DOCUMENT_PASSWORD
@@ -265,17 +267,35 @@ class CustomerReportDocumentGateway:
     def read_source_report_sha256(self, path: Path) -> str | None:
         """Read the invisible lineage fingerprint embedded in a customer DOCX."""
         report = Path(path)
-        if not report.is_file() or report.suffix.casefold() != ".docx":
-            return None
         try:
-            with ZipFile(report) as package:
-                content = package.read("docProps/custom.xml")
-        except (KeyError, OSError):
-            return None
+            with self._protected_package_gateway.readable_copy(report) as readable:
+                with ZipFile(readable) as package:
+                    try:
+                        content = package.read("docProps/custom.xml")
+                    except KeyError:
+                        return None
+        except OfficeProtectedDocumentError as exc:
+            raise CustomerReportReadError(
+                "The protected customer report could not be read. Check its password protection "
+                "and that the file opens in Word, then reload."
+            ) from exc
+        except BadZipFile as exc:
+            raise CustomerReportReadError(
+                "The existing customer report is not a valid .docx package. "
+                "Check that the file opens in Word and has the correct format, then reload."
+            ) from exc
+        except OSError as exc:
+            raise CustomerReportReadError(
+                "The existing customer report cannot be accessed. Close applications using it "
+                "and check file access permissions, then reload."
+            ) from exc
         try:
             root = ET.fromstring(content)
-        except ET.ParseError:
-            return None
+        except ET.ParseError as exc:
+            raise CustomerReportReadError(
+                "The customer report source information could not be read. "
+                "Check that the file opens correctly in Word, then reload."
+            ) from exc
         for prop in root.findall(f"{{{_CUSTOM_PROPERTY_NS}}}property"):
             if prop.attrib.get("name") != _SOURCE_SHA256_PROPERTY or len(prop) != 1:
                 continue

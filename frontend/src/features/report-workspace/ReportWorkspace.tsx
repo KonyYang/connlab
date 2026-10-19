@@ -77,6 +77,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const [state, setState] = useState<ReportWorkspaceState | null>(null);
   const [currentReport, setCurrentReport] = useState<CurrentReport | null>(null);
   const [customerReport, setCustomerReport] = useState<CustomerReportState | null>(null);
+  const [customerReadFailed, setCustomerReadFailed] = useState(false);
   const [customerReportRecovery, setCustomerReportRecovery] = useState<CustomerReportState | null>(null);
   const [customerRegenerationApproval, setCustomerRegenerationApproval] = useState<CustomerRegenerationApproval | null>(null);
   const customerRequest = useRef(false);
@@ -159,15 +160,12 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }, [message]);
 
   const refresh = useCallback(async () => {
-    const [nextState, nextReport, nextCustomerReport] = await Promise.all([
-      fetchReportWorkspace(projectId),
-      fetchCurrentReport(projectId),
-      fetchCurrentCustomerReport(projectId),
-    ]);
+    const [nextState, nextReport, nextCustomerReport] = await loadReportState(projectId);
     if (mounted.current && activeProject.current === projectId) {
       setState(nextState);
       setCurrentReport(nextReport);
       setCustomerReport(nextCustomerReport);
+      setCustomerReadFailed(nextCustomerReport === null);
     }
     return { state: nextState, customerReport: nextCustomerReport };
   }, [projectId]);
@@ -180,7 +178,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     void refresh().then(({ customerReport: next }) => {
       if (!active) return;
       if (job.status === "failed") {
-        if (job.can_regenerate && next.status === "missing" && next.mode === "official" && next.can_generate && next.internal_report_sha256) {
+        if (job.can_regenerate && next?.status === "missing" && next.mode === "official" && next.can_generate && next.internal_report_sha256) {
           setCustomerReportRecovery(next);
         } else {
           setError("The customer report state changed again. Review the current state before continuing.");
@@ -211,16 +209,17 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     setBusyAction("load");
     setError(null);
     setCustomerReportRecovery(null);
-    Promise.all([
-      fetchReportWorkspace(projectId),
-      fetchCurrentReport(projectId),
-      fetchCurrentCustomerReport(projectId),
-    ])
+    setState(null);
+    setCurrentReport(null);
+    setCustomerReport(null);
+    setCustomerReadFailed(false);
+    loadReportState(projectId)
       .then(([nextState, nextReport, nextCustomerReport]) => {
         if (active) {
           setState(nextState);
           setCurrentReport(nextReport);
           setCustomerReport(nextCustomerReport);
+          setCustomerReadFailed(nextCustomerReport === null);
         }
       })
       .catch((reason: unknown) => {
@@ -422,7 +421,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
           const refreshed = await refresh();
           if (!isCurrent()) return;
           if (
-            refreshed.customerReport.status === "missing" &&
+            refreshed.customerReport?.status === "missing" &&
             refreshed.customerReport.mode === "official" &&
             refreshed.customerReport.can_generate &&
             refreshed.customerReport.internal_report_sha256
@@ -686,6 +685,17 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                 {uploadedCustomerJob.fileName || customerReport?.file_name || customerJob.job?.result?.file_name}
               </span> : null}
               {uploadedCustomerJob.fileName ? <small className="report-workspace-note">Downloaded copy · selected Internal Report</small> : null}
+              {customerReadFailed ? <p role="alert" className="report-workspace-blocker">
+                Unable to check the customer report. Check the connection and retry report status. Existing report files have not been changed.
+              </p> : null}
+              {customerReadFailed || customerReport?.status === "blocked" ? <button type="button"
+                disabled={busyAction !== null}
+                onClick={async () => {
+                  setBusyAction("load");
+                  try { await refresh(); }
+                  catch { if (mounted.current && activeProject.current === projectId) setError("Unable to refresh report status. Check the connection and reload."); }
+                  finally { if (mounted.current && activeProject.current === projectId) setBusyAction(null); }
+                }}>Retry report status</button> : null}
               {customerReport?.warnings.map((warning) => (
                 <p className="report-workspace-warning" key={warning}>{warning}</p>
               ))}
@@ -914,6 +924,15 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
 function formatDateTime(value: string): string {
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+}
+
+async function loadReportState(projectId: string) {
+  // A customer-report read failure must not discard the usable Internal Report.
+  return Promise.all([
+    fetchReportWorkspace(projectId),
+    fetchCurrentReport(projectId),
+    fetchCurrentCustomerReport(projectId).catch(() => null),
+  ] as const);
 }
 
 function errorMessage(reason: unknown, fallback: string): string {

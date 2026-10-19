@@ -17,6 +17,7 @@ from backend.api.dependencies import (
     get_test_report_template_resource_store,
 )
 from backend.application.customer_report_projection_service import (
+    CustomerReportProjectionService,
     CustomerReportGenerationResult,
     CustomerReportMissingAfterPreviewError,
     CustomerReportProjectionState,
@@ -38,6 +39,37 @@ from backend.domain import ExternalResource, ExternalResourceType, ExternalResou
 from backend.domain.result_dataset_models import LlcrImportPreview, ReportDraftRevision
 from backend.shared.config import Settings
 from tests.unit.test_result_dataset_repository import _dataset
+from backend.infrastructure.files.report_publication_gateway import ReportPublicationGateway
+from backend.infrastructure.office.customer_report_document_gateway import CustomerReportDocumentGateway
+
+
+def test_unreadable_customer_report_returns_blocker_without_modifying_files(tmp_path):
+    internal = tmp_path / "DL-2026-04-015 Qualification Test Report.docx"
+    customer = tmp_path / "DL-2026-04-015-CR Qualification Test Report.docx"
+    internal.write_bytes(b"isolated internal")
+    customer.write_bytes(b"invalid customer package")
+    artifact = CurrentReportArtifact(
+        status="ready", mode="official", file_name=internal.name, file_path=internal,
+        file_sha256="a" * 64, history_root=tmp_path / "History", folder_path=tmp_path,
+        official_folder_path=tmp_path,
+    )
+    service = CustomerReportProjectionService(
+        current_reports=SimpleNamespace(get_current_report=lambda _: artifact),
+        files=ReportPublicationGateway(), writer=CustomerReportDocumentGateway(),
+        generated_root=tmp_path / "generated",
+    )
+    app.dependency_overrides[get_customer_report_projection_service] = lambda: service
+    before = {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in (internal, customer)}
+    client = TestClient(app)
+    response = client.get("/api/projects/P1/report-workspace/current-customer-report")
+    assert response.status_code == 200
+    assert response.json()["status"] == "blocked"
+    assert response.json()["can_generate"] is False
+    assert response.json()["download_url"] is None
+    assert "valid .docx" in " ".join(response.json()["blockers"])
+    assert client.get("/api/projects/P1/report-workspace/current-customer-report/download").status_code == 409
+    assert {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in (internal, customer)} == before
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted(before)
 
 
 @pytest.fixture(autouse=True)

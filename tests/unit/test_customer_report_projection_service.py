@@ -3,6 +3,7 @@ from pathlib import Path
 import shutil
 
 import pytest
+from backend.infrastructure.office.customer_report_document_gateway import CustomerReportDocumentGateway
 
 from backend.application.current_report_update_service import CurrentReportArtifact
 from backend.application.customer_report_projection_service import (
@@ -13,6 +14,33 @@ from backend.application.customer_report_projection_service import (
 from backend.infrastructure.files.report_publication_gateway import (
     ReportPublicationGateway,
 )
+
+
+def test_unreadable_customer_is_blocked_not_untracked_and_original_is_preserved(tmp_path):
+    internal = _write(tmp_path / "DL-2026-04-015 Test Report.docx", b"internal")
+    customer = _write(tmp_path / "DL-2026-04-015-CR Test Report.docx", b"not a docx")
+    before = customer.read_bytes(), customer.stat().st_mtime_ns
+    service = _service(tmp_path, internal, customer=customer, writer=CustomerReportDocumentGateway())
+    state = service.get_state("project-1")
+    assert state.status == "blocked"
+    assert not state.can_generate
+    assert not state.download_url_available
+    assert "valid .docx" in " ".join(state.blockers)
+    assert state.file_name == customer.name
+    assert (customer.read_bytes(), customer.stat().st_mtime_ns) == before
+
+
+def test_customer_fingerprint_access_failure_returns_safe_blocker(tmp_path):
+    internal = _write(tmp_path / "DL-2026-04-015 Test Report.docx", b"internal")
+    customer = _write(tmp_path / "DL-2026-04-015-CR Test Report.docx", b"customer")
+    class LockedFiles(_Files):
+        def fingerprint(self, path):
+            raise PermissionError("private-path-must-not-reach-UI")
+    state = _service(tmp_path, internal, customer=customer, files=LockedFiles()).get_state("project-1")
+    assert state.status == "blocked"
+    assert not state.can_generate
+    assert "permissions" in " ".join(state.blockers)
+    assert "private-path" not in " ".join(state.blockers)
 
 
 def test_official_customer_state_is_stale_when_internal_report_changed(tmp_path: Path) -> None:

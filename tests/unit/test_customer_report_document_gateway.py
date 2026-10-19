@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from hashlib import sha256
 import shutil
+import msoffcrypto
+from zipfile import ZipFile
 
 import pytest
 from docx import Document
@@ -14,6 +16,47 @@ from backend.infrastructure.office.customer_report_document_gateway import (
 from backend.infrastructure.office.office_protected_document_gateway import (
     WordPackageProtectionState,
 )
+from backend.shared.office_document_password import OFFICE_DOCUMENT_PASSWORD
+from backend.application.customer_report_projection_service import CustomerReportReadError
+
+
+def test_reads_lineage_from_encrypted_report_without_changing_original(tmp_path):
+    plain = tmp_path / "plain.docx"
+    Document().save(plain)
+    with ZipFile(plain, "a") as package:
+        package.writestr("docProps/custom.xml", (
+            '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" '
+            'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">'
+            '<property name="ConnLabSourceReportSHA256"><vt:lpwstr>'
+            + "a" * 64 + '</vt:lpwstr></property></Properties>'
+        ))
+    protected = tmp_path / "protected.docx"
+    with plain.open("rb") as source, protected.open("wb") as output:
+        msoffcrypto.OfficeFile(source).encrypt(OFFICE_DOCUMENT_PASSWORD, output)
+    before = protected.read_bytes(), protected.stat().st_mtime_ns
+    assert CustomerReportDocumentGateway().read_source_report_sha256(protected) == "a" * 64
+    assert (protected.read_bytes(), protected.stat().st_mtime_ns) == before
+
+
+def test_invalid_lineage_xml_is_not_reported_as_missing_fingerprint(tmp_path):
+    report = tmp_path / "report.docx"
+    Document().save(report)
+    with ZipFile(report, "a") as package:
+        package.writestr("docProps/custom.xml", b"<broken")
+    with pytest.raises(CustomerReportReadError, match="source information"):
+        CustomerReportDocumentGateway().read_source_report_sha256(report)
+
+
+def test_protected_report_with_unknown_password_is_preserved(tmp_path):
+    plain = tmp_path / "plain.docx"
+    Document().save(plain)
+    report = tmp_path / "protected.docx"
+    with plain.open("rb") as source, report.open("wb") as output:
+        msoffcrypto.OfficeFile(source).encrypt("isolated-test-password", output)
+    before = report.read_bytes(), report.stat().st_mtime_ns
+    with pytest.raises(CustomerReportReadError, match="password protection"):
+        CustomerReportDocumentGateway().read_source_report_sha256(report)
+    assert (report.read_bytes(), report.stat().st_mtime_ns) == before
 
 
 def test_customer_report_gateway_rejects_missing_internal_source(tmp_path: Path) -> None:
