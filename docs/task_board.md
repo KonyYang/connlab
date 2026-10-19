@@ -11,8 +11,28 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_REPORT_READ_ERRORS_20261019",
+    "summary": "Read protected customer reports safely and isolate page load errors",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Fix read-only report lineage inspection and actionable page errors using isolated tests; no real report writes or unrelated fixes",
+    "scope_paths": [
+      "backend/infrastructure/office/customer_report_document_gateway.py",
+      "backend/application/customer_report_projection_service.py",
+      "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+      "tests/unit/test_customer_report_document_gateway.py",
+      "tests/unit/test_customer_report_projection_service.py",
+      "frontend/src/features/report-workspace/ReportWorkspace.test.tsx"
+    ],
+    "risk_reasons": [],
+    "activation_head": "eefbd0a4554a2af204a22c1ebd664749acc75310",
+    "started_at": "2026-10-19T00:13:54.221852Z",
+    "updated_at": "2026-10-19T00:13:54.221852Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_LEGACY_PROJECT_REGISTRATION_20261019",
     "tier": "high_risk",
