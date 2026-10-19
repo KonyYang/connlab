@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_LEGACY_PROJECT_REGISTRATION_20261019",
     "summary": "Register selected legacy project folders for search and browse in place",
@@ -54,9 +54,121 @@
     ],
     "activation_head": "54b7f21d41b638809a69309e1b9ce79511d1550c",
     "started_at": "2026-10-18T23:42:11.482255Z",
-    "updated_at": "2026-10-18T23:42:11.482255Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-19T00:10:41.769542Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_LEGACY_PROJECT_REGISTRATION_20261019",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_LEGACY_PROJECT_REGISTRATION_20261019",
+      "subject": "683ce90fe6b7dfa0e14f638f7b2ba3522d2b214a",
+      "summary": "Formal legacy registration implemented; scoped functional acceptance passed with documented exceptions. Full frontend not green: existing temperature timeout reproduced on activation. Real DB hash/schema changed while existing reload service ran; legacy table empty, real business-row preservation unproven. No source change, real import, push or publication.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/api/main.py",
+        "backend/api/routes_legacy_projects.py",
+        "backend/api/routes_tools_legacy_projects.py",
+        "backend/application/legacy_project_preview_service.py",
+        "backend/application/legacy_project_registration_service.py",
+        "backend/infrastructure/files/legacy_project_preview_gateway.py",
+        "backend/infrastructure/storage/database.py",
+        "backend/infrastructure/storage/models_legacy_projects.py",
+        "backend/infrastructure/storage/repositories/legacy_projects.py",
+        "docs/PROJECT_CONTEXT.md",
+        "docs/plans/LEGACY_PROJECT_REGISTRATION_20261019.md",
+        "frontend/src/App.test.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/api/legacyProjects.ts",
+        "frontend/src/features/legacy-projects/LegacyProjectBrowser.test.tsx",
+        "frontend/src/features/legacy-projects/LegacyProjectBrowser.tsx",
+        "frontend/src/features/legacy-projects/LegacyProjectList.test.tsx",
+        "frontend/src/features/legacy-projects/LegacyProjectList.tsx",
+        "frontend/src/features/legacy-projects/LegacyProjectPreview.test.tsx",
+        "frontend/src/features/legacy-projects/LegacyProjectPreview.tsx",
+        "frontend/src/features/legacy-projects/legacy-project-preview.css",
+        "frontend/src/pages/ProjectListPage.test.tsx",
+        "frontend/src/pages/ProjectListPage.tsx",
+        "tests/integration/test_legacy_project_registration_api.py",
+        "tests/integration/test_tools_legacy_projects_api.py",
+        "tests/unit/test_legacy_project_registration_repository.py",
+        "tests/unit/test_legacy_project_registration_schema.py",
+        "tests/unit/test_legacy_project_registration_service.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "name": "Scoped Python behaviors",
+          "result": "87 selected behaviors: original isolated matrix86 passed and1 QA-env default-path failure; same default-path test then passed alone without conflicting QA path env. Developer final38 passed after public-path fix."
+        },
+        {
+          "status": "passed",
+          "name": "Scoped frontend and build",
+          "result": "All43 task-related cases passed in both full executions; corrected TypeScript project check passed; Vite195 modules passed. Full gate explicitly NOT PASSED:1006pass1fail1skip then1005pass2fail1skip; unchanged temperature test alone8pass and same first timeout reproduced on activation. Baseline export also omitted unrelated fee fixture; restored only in Temp and10 related tests passed."
+        },
+        {
+          "status": "passed",
+          "name": "Isolated real samples and browser acceptance",
+          "result": "36 real candidates:29ready registered,29retry AlreadyAdded,7review wrote0 until explicit KeepSeparate then7added. All36details/search/fakeopen, offline/relocation/revision/ownership checks passed;67 isolated nonlegacy business tables unchanged. RootUI3 disposable records,2KeepSeparate,confirmcancel/confirm,duplicate禁选,list/search/detail/fakeopen/change location and retained query;1440/514 no document overflow; independent QA inspected captures/records. Owned18769 and root tab stopped."
+        },
+        {
+          "status": "passed",
+          "name": "Source inventory preservation",
+          "result": "3442 source inventory entries and28 metadata hashes unchanged;5 other protected files unchanged. This excludes real connlab.sqlite3, whose hash/schema changed with zero legacy rows; no claim of real DB preservation."
+        },
+        {
+          "status": "passed",
+          "name": "Independent review and integration",
+          "result": "Planner/Developer/Reviewer/QA/Integrator separate contexts. OneP2 public workflow path-ownership omission fixed and independently rechecked;0unresolved code review findings.28exact paths;clean linear local history;product bytes unchanged after tested3aa51f62;no push/publication."
+        }
+      ],
+      "roles": {
+        "planner": {
+          "status": "passed",
+          "agent": "/root/legacy_import_planner",
+          "independent": true,
+          "scope": "Assigned independent role"
+        },
+        "developer": {
+          "status": "passed",
+          "agent": "/root/legacy_import_developer",
+          "independent": true,
+          "scope": "Assigned independent role"
+        },
+        "reviewer": {
+          "status": "passed",
+          "agent": "/root/legacy_import_reviewer",
+          "independent": true,
+          "scope": "Assigned independent role"
+        },
+        "qa": {
+          "status": "passed",
+          "agent": "/root/legacy_import_qa",
+          "independent": true,
+          "scope": "Task functional acceptance with disclosed full-suite/environment exceptions"
+        },
+        "integrator": {
+          "status": "passed",
+          "agent": "/root/legacy_import_integrator",
+          "independent": true,
+          "scope": "Assigned independent role"
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "subject": "683ce90fe6b7dfa0e14f638f7b2ba3522d2b214a",
+        "tested_subject": "3aa51f62a439647851a182c217a02388a5256164",
+        "overall_full_frontend": "not_passed",
+        "real_database_preservation": "not_verified; real hash/schema changed; zero legacy rows",
+        "result": "Integrator verified Git/scope/evidence consistency only; complete acceptance is not all-green. No real schema rollback, push, or publication."
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_TEMPERATURE_CURRENT_DECIMALS_20261017",
