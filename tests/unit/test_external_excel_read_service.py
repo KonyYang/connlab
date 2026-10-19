@@ -4,6 +4,8 @@ from pathlib import Path
 from zipfile import ZipFile
 
 import pytest
+from openpyxl import Workbook
+from openpyxl.utils.datetime import MAC_EPOCH, WINDOWS_EPOCH
 
 from backend.application.external_excel_read_service import (
     ExternalExcelReadError,
@@ -85,6 +87,48 @@ def test_read_equipment_rows_returns_structured_rows(tmp_path: Path) -> None:
     assert result.rows[0].manufacturer == "Instron"
     assert result.rows[0].last_calibration_date == "2025-08-10"
     assert result.rows[0].calibration_due_date == "2026-08-10"
+
+
+@pytest.mark.parametrize("legacy_layout", [False, True])
+@pytest.mark.parametrize("use_1904", [False, True])
+def test_read_equipment_rows_decodes_styled_dates_through_real_xlsx_gateway(
+    tmp_path: Path, legacy_layout: bool, use_1904: bool,
+) -> None:
+    workbook = tmp_path / "equipment.xlsx"
+    book = Workbook()
+    book.epoch = MAC_EPOCH if use_1904 else WINDOWS_EPOCH
+    sheet = book.active
+    sheet.title = "All Equip." if legacy_layout else "Equipment Calibration"
+    if legacy_layout:
+        sheet.append(["Catalog"])
+        sheet.append([])
+        sheet.append([])
+        sheet.append(["Item (Equipment Name)", "", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due"])
+        sheet.append(["Load Frame", "", "Instron", "DG-Q-0134", 44558 if use_1904 else 46020,
+                      44922 if use_1904 else 46384])
+        date_columns = ("E5", "F5")
+    else:
+        sheet.append(["Equipment ID", "Equipment Name", "Manufacturer",
+                      "Last Calibration Date", "Calibration Due Date"])
+        sheet.append(["DG-Q-0134", "Load Frame", "Instron", 44558 if use_1904 else 46020,
+                      44922 if use_1904 else 46384])
+        date_columns = ("D2", "E2")
+    for reference in date_columns:
+        sheet[reference].number_format = "dd-mmm-yyyy"
+    book.save(workbook)
+    book.close()
+    original = workbook.read_bytes()
+    service = ExternalExcelReadService(
+        _Store([_resource(ExternalResourceType.EQUIPMENT_CALIBRATION_EXCEL, workbook)])
+    )
+
+    result = service.read_equipment_calibrations()
+
+    assert len(result.rows) == 1
+    assert result.rows[0].equipment_id == "DG-Q-0134"
+    assert result.rows[0].last_calibration_date == "2025-12-29"
+    assert result.rows[0].calibration_due_date == "2026-12-28"
+    assert workbook.read_bytes() == original
 
 
 def test_read_equipment_rows_supports_legacy_all_equip_layout(tmp_path: Path) -> None:

@@ -110,6 +110,13 @@ Do not use a dated snapshot as a substitute for the code.
   incomplete-field, L-series calibration marker, and expired-date rules. It writes a new
   `_EquipmentUpdated.docx` download using the existing protected Word adapter; the original report,
   equipment selection, project registry, current-report authority and History are not changed.
+- The read-only XLSX tabular adapter decodes numeric calendar cells from built-in/custom number
+  formats and the workbook's 1900/1904 date system into ISO dates, retaining fractional times.
+  Text dates, `N/A`, `Not calibrated`, ordinary numbers, pure times and elapsed durations retain
+  their original values; column names and number magnitude never imply dates. Formula cells use
+  cached values only. Missing styles and unresolved locale-dependent implied formats retain raw
+  values; unambiguous implied calendar IDs are supported, and explicit format codes take precedence.
+  The LTR-number snapshot scan is unchanged.
 - Success is shown beside the tool as concise green download feedback. Only actual unmatched,
   incomplete or expired references need review. Feedback is transported with the download in a bounded
   header; unusually large issue lists show retained IDs and an explicit remaining count, not silent

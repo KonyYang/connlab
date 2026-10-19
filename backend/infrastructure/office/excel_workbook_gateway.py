@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import re
 import zipfile
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import datetime, time
 from pathlib import Path
 from xml.etree import ElementTree
+
+from openpyxl.styles.numbers import BUILTIN_FORMATS, is_date_format, is_timedelta_format
+from openpyxl.utils.datetime import MAC_EPOCH, WINDOWS_EPOCH, from_excel
 
 from backend.infrastructure.office.models import (
     ExcelTabularReadResult,
@@ -28,6 +32,11 @@ from backend.infrastructure.office.excel_tabular_layout import (
     sheet_strategy,
 )
 from backend.modules.ltr import LtrNumberError, parse_ltr_number
+
+
+# OOXML implied formats that are calendars across zh-CN/zh-TW/ja-JP/ko-KR.
+# Other locale-dependent IDs can denote time, so do not infer a whole ID range.
+_IMPLIED_CALENDAR_FORMAT_IDS = frozenset((27, 28, 29, 30, 31, 36, 50, 51, 54, 57, 58))
 
 
 class LtrWorkbookGatewayError(ValueError):
@@ -194,6 +203,7 @@ class ExcelWorkbookGateway:
                 "No worksheet matched the expected sheet rules."
             )
         shared_strings = _read_xlsx_shared_strings(path)
+        date_context = _read_xlsx_date_context(path)
         if layout:
             if layout.require_unique_sheet_match and len(matched_pairs) != 1:
                 raise UnsupportedLtrWorkbookError(
@@ -205,7 +215,8 @@ class ExcelWorkbookGateway:
             try:
                 for sheet_name, sheet_xml_path in matched_pairs:
                     rows = _read_xlsx_sheet_rows(
-                        path, sheet_xml_path, shared_strings, preserve_positions=True
+                        path, sheet_xml_path, shared_strings, preserve_positions=True,
+                        date_context=date_context,
                     )
                     headers, mapped = map_explicit_layout_rows(
                         rows, sheet_name=sheet_name, layout=layout
@@ -229,7 +240,9 @@ class ExcelWorkbookGateway:
         collected_rows: list[dict[str, str]] = []
         matched_sheet_names: list[str] = []
         for sheet_name, sheet_xml_path in matched_pairs:
-            rows = _read_xlsx_sheet_rows(path, sheet_xml_path, shared_strings)
+            rows = _read_xlsx_sheet_rows(
+                path, sheet_xml_path, shared_strings, date_context=date_context
+            )
             header_row = first_non_empty_row(rows)
             if not header_row:
                 continue
@@ -360,6 +373,8 @@ def _read_xlsx_sheet_rows(
     sheet_xml_path: str,
     shared_strings: list[str],
     preserve_positions: bool = False,
+    *,
+    date_context: _XlsxDateContext | None = None,
 ) -> list[list[str]]:
     """Read plain worksheet rows from one XLSX sheet."""
     try:
@@ -372,7 +387,10 @@ def _read_xlsx_sheet_rows(
     rows: list[list[str]] = []
     for row in root.findall(".//{*}row"):
         if not preserve_positions:
-            rows.append([_cell_text(cell, shared_strings) for cell in row.findall("{*}c")])
+            rows.append([
+                _cell_text(cell, shared_strings, date_context)
+                for cell in row.findall("{*}c")
+            ])
             continue
         row_number = int(row.attrib.get("r", len(rows) + 1))
         while len(rows) < row_number - 1:
@@ -382,7 +400,7 @@ def _read_xlsx_sheet_rows(
             column = _xlsx_column_number(cell.attrib.get("r", "A1"))
             while len(values) < column:
                 values.append("")
-            values[column - 1] = _cell_text(cell, shared_strings)
+            values[column - 1] = _cell_text(cell, shared_strings, date_context)
         rows.append(values)
     return rows
 
@@ -397,7 +415,67 @@ def _xlsx_column_number(reference: str) -> int:
     return result
 
 
-def _cell_text(cell: ElementTree.Element, shared_strings: list[str]) -> str:
+@dataclass(frozen=True)
+class _XlsxDateContext:
+    epoch: datetime
+    calendar_styles: tuple[bool, ...]
+
+
+def _read_xlsx_date_context(path: Path) -> _XlsxDateContext:
+    """Read calendar formats once, without requiring a complete Office package."""
+    try:
+        with zipfile.ZipFile(path) as archive:
+            workbook = ElementTree.fromstring(archive.read("xl/workbook.xml"))
+            properties = workbook.find("{*}workbookPr")
+            use_1904 = properties is not None and properties.get("date1904") in (
+                "1", "true", "True",
+            )
+            if "xl/styles.xml" not in archive.namelist():
+                return _XlsxDateContext(MAC_EPOCH if use_1904 else WINDOWS_EPOCH, ())
+            styles = ElementTree.fromstring(archive.read("xl/styles.xml"))
+        formats = dict(BUILTIN_FORMATS)
+        formats.update({
+            int(node.attrib["numFmtId"]): node.attrib["formatCode"]
+            for node in styles.findall("{*}numFmts/{*}numFmt")
+        })
+        calendar_styles = tuple(
+            _is_calendar_format(formats[format_id])
+            if format_id in formats else format_id in _IMPLIED_CALENDAR_FORMAT_IDS
+            for format_id in (
+                int(node.get("numFmtId", "0"))
+                for node in styles.findall("{*}cellXfs/{*}xf")
+            )
+        )
+    except (KeyError, ValueError, OSError, zipfile.BadZipFile, ElementTree.ParseError) as exc:
+        raise UnreadableLtrWorkbookError(
+            f"Unable to read XLSX date metadata: {path}"
+        ) from exc
+    return _XlsxDateContext(MAC_EPOCH if use_1904 else WINDOWS_EPOCH, calendar_styles)
+
+
+def _is_calendar_format(number_format: str) -> bool:
+    if not is_date_format(number_format) or is_timedelta_format(number_format):
+        return False
+    # Ignore literals, locale/color annotations and escaped/padding characters.
+    effective = re.sub(r'"[^"]*"|\[[^\]]*\]|\\.|_.|\*.', "", number_format.split(";")[0])
+    effective = re.sub(r"AM/PM|A/P", "", effective, flags=re.IGNORECASE)
+    tokens = re.findall(r"y+|m+|d+|h+|s+", effective.lower())
+    for index, token in enumerate(tokens):
+        if token[0] in "yd":
+            return True
+        if token[0] == "m":
+            previous = tokens[index - 1][0] if index else ""
+            following = tokens[index + 1][0] if index + 1 < len(tokens) else ""
+            if len(token) >= 3 or (previous != "h" and following != "s"):
+                return True
+    return False
+
+
+def _cell_text(
+    cell: ElementTree.Element,
+    shared_strings: list[str],
+    date_context: _XlsxDateContext | None = None,
+) -> str:
     """Return a string value from one XLSX cell node."""
     inline_node = cell.find("{*}is/{*}t")
     if inline_node is not None and inline_node.text:
@@ -410,7 +488,27 @@ def _cell_text(cell: ElementTree.Element, shared_strings: list[str]) -> str:
         if 0 <= index < len(shared_strings):
             return shared_strings[index].strip()
         return ""
-    return value_node.text.strip()
+    value = value_node.text.strip()
+    if date_context is not None and cell.get("t", "n") == "n":
+        try:
+            style = int(cell.get("s", "0"))
+            is_calendar = (
+                0 <= style < len(date_context.calendar_styles)
+                and date_context.calendar_styles[style]
+            )
+            if is_calendar:
+                converted = from_excel(float(value), epoch=date_context.epoch)
+                # openpyxl treats serials below one as time, even for calendar formats.
+                if isinstance(converted, time):
+                    converted = datetime.combine(date_context.epoch.date(), converted)
+                if converted.time() == time():
+                    return converted.date().isoformat()
+                return converted.isoformat()
+        except (ValueError, OverflowError) as exc:
+            raise UnreadableLtrWorkbookError(
+                f"Unable to decode XLSX date at cell {cell.get('r', '<unknown>')}: {value}"
+            ) from exc
+    return value
 
 
 def _extract_ltr_numbers(values: list[str]) -> list[str]:

@@ -3,12 +3,18 @@ from pathlib import Path
 
 from docx import Document
 import pytest
+from openpyxl import Workbook
 
 from backend.application.external_excel_read_service import (
     EquipmentCalibrationReadResult, EquipmentCalibrationRow,
+    ExternalExcelReadService,
 )
 from backend.application.tools_equipment_report_service import ToolsEquipmentReportService
 from backend.infrastructure.office.equipment_id_document_reader import EquipmentIdDocumentReader
+from backend.domain import ExternalResource, ExternalResourceType
+from backend.infrastructure.office.test_report_document_gateway import (
+    TestReportDocumentGateway as ReportDocumentGateway,
+)
 
 
 class Catalog:
@@ -73,6 +79,71 @@ def test_pasted_ids_are_normalized_and_do_not_replace_original_report(tmp_path):
     assert result.statistics["filled"] == 1
     assert writer.rows[0].id_number == "DG-Q-0033"
     assert report.read_bytes() == b"source"
+
+
+def test_real_xlsx_calibration_dates_reach_new_word_report_copy(tmp_path: Path):
+    workbook = tmp_path / "catalog.xlsx"
+    book = Workbook()
+    sheet = book.active
+    sheet.title = "All Equip."
+    sheet.append(["Catalog"])
+    sheet.append([])
+    sheet.append([])
+    sheet.append(["Item (Equipment Name)", "", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due"])
+    sheet.append(["Load Frame", "", "Instron", "DG-Q-0134", 46020, 46384])
+    sheet.append(["Meter", "", "Keysight", "DG-Q-0002", "29 Dec 2025", "19 Oct 2026"])
+    sheet.append(["Fixture", "", "Lab", "DG-L-0001", "Not calibrated", "N/A"])
+    sheet.append(["Ordinary numbers", "", "Lab", "DG-Q-0003", 46020, 46384])
+    sheet.append(["Expired meter", "", "Lab", "DG-Q-0004", "2025-10-18", "2026-10-18"])
+    sheet["E5"].number_format = "mm-dd-yy"
+    sheet["F5"].number_format = "dd-mmm-yyyy"
+    book.save(workbook)
+    book.close()
+    report = tmp_path / "Internal Report.docx"
+    document = Document()
+    document.add_paragraph("Keep reviewed test results")
+    table = document.add_table(rows=2, cols=5)
+    for cell, heading in zip(table.rows[0].cells,
+                             ("Item", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due")):
+        cell.text = heading
+    document.save(report)
+    selection = tmp_path / "selection.docx"
+    document = Document()
+    document.add_paragraph("Q-0134, Q-0002, L-0001, Q-0003, Q-0004")
+    document.save(selection)
+    originals = {path: path.read_bytes() for path in (workbook, report, selection)}
+    resource = ExternalResource(
+        resource_id="equipment", resource_type=ExternalResourceType.EQUIPMENT_CALIBRATION_EXCEL,
+        path=workbook, active=True,
+    )
+
+    class ResourceStore:
+        def get_by_type(self, resource_type):
+            return resource
+
+    instance = ToolsEquipmentReportService(
+        source_reader=EquipmentIdDocumentReader(),
+        catalog_reader=ExternalExcelReadService(ResourceStore()),
+        report_writer=ReportDocumentGateway(), today=lambda: date(2026, 10, 19),
+    )
+
+    result = instance.update(source_path=report, output_path=tmp_path / "updated-copy.docx",
+                             equipment_path=selection)
+
+    updated = Document(result.output_path)
+    assert [tuple(cell.text for cell in row.cells[2:]) for row in updated.tables[0].rows[1:]] == [
+        ("DG-Q-0134", "29-Dec-2025", "28-Dec-2026"),
+        ("DG-Q-0002", "29-Dec-2025", "19-Oct-2026"),
+        ("DG-L-0001", "Not calibrated", "N/A"),
+        ("DG-Q-0003", "", ""),
+        ("DG-Q-0004", "18-Oct-2025", "18-Oct-2026"),
+    ]
+    assert result.statistics == {"filled": 5, "unmatched": [],
+                                 "incomplete": ["Q-0003"], "expired": ["Q-0004"]}
+    assert updated.paragraphs[0].text == "Keep reviewed test results"
+    due = updated.tables[0].rows[5].cells[4]
+    assert all(str(run.font.color.rgb) == "FF0000" for p in due.paragraphs for run in p.runs if run.text)
+    assert all(path.read_bytes() == original for path, original in originals.items())
 
 
 @pytest.mark.parametrize("selection", [{}, {"references_text": " "},
