@@ -67,3 +67,56 @@ review, complete QA, isolated UI and real sample inventory verification follow t
 No real service on ports 5173/8000 or real business database was used during development. All writes
 in developer tests use disposable SQLite stores and disposable directories; Explorer is replaced by
 a fake launcher.
+
+## Independent review and final acceptance
+
+Executable subject: `3aa51f62a439647851a182c217a02388a5256164`.
+Independent Planner, Developer, Reviewer, QA and Integrator contexts were used; browser operation
+was performed by `/root` and its screenshots, DOM, isolated records and fake-opener log were
+independently checked by QA. Review found one P2: public open/closed/target locations were missing
+from ownership checks. The focused fix added all three paths; parameterized RED was 9 failures /
+3 passes, then the affected Developer Python gate passed 38 tests. Final independent Standards and
+Spec review has no unresolved findings.
+
+- Final selected Python: 86 passed in the combined isolated run, plus the default-Settings test
+  passed separately after removing conflicting QA path environment overrides: 87 selected behaviors.
+- All 43 task-related frontend cases passed within both complete default-worker executions. Complete
+  results were **1006 passed / 1 failed / 1 skipped** and **1005 passed / 2 failed / 1 skipped**.
+  The existing temperature-navigation first test exceeded its 5-second timeout; the second run also
+  had a following spy-count failure after that timeout. Its unchanged file passed all 8 tests alone.
+  The activation `54b7f21d` frontend reproduced the same first-test timeout. That exported baseline
+  additionally lacked a fee fixture; the retained fixture was added only to the Temp copy and its
+  10 related tests passed separately. These findings do not make the complete frontend gate green.
+- Corrected TypeScript project check passed (`qa-types-corrected.log`). The initial attempt combined
+  incompatible build/tsBuildInfoFile flags and failed; it is retained, not cited as passing evidence.
+  Vite production build passed with 195 modules, with its final distribution under Temp.
+- Real samples: 36 projects; registration check classified 29 ready / 7 review. The 29 ready records
+  registered, retries returned 29 Already Added, the 7 review records wrote nothing without Keep
+  Separate, then registered independently after explicit confirmation. Search and all 36 details,
+  fake opening, disconnected-folder browsing, reconnection and revision/ownership rejection passed.
+  All 67 non-legacy tables in the isolated acceptance database retained their complete row hashes.
+- UI at isolated `127.0.0.1:18769`: 3 disposable projects, 2 explicit Keep Separate choices, cancel
+  then confirm, 3 Added, repeat check 3 Already Added / import disabled, Active empty and Legacy 3,
+  search, details, fake Open Folder, same-ID Change Location and retained return search passed.
+  At 1440x1000 and 514x900 there was no document horizontal overflow; table scrolling is local.
+  Console warnings/errors were empty. The temporary browser and owned server were stopped.
+- All 3,442 source inventory entries and 28 small metadata hashes match the pre-task baseline.
+  Five other protected business/configuration files match their hashes, sizes and modification times.
+
+### Ambient real-database exception
+
+The real `data/connlab.sqlite3` hash and schema changed during development, before final QA.
+Its `legacy_project_records` table exists with **zero rows**. Its modification time was 07:57:59 CST;
+the preexisting port-8000 auto-reload worker restarted at 07:57:33, before QA began at 07:59:25.
+This is consistent with reload followed by an existing request initializing the additive schema,
+but timing is not an audit proof of the exact request. No test connection to the real service was
+found; all registration test writes were isolated. There is no real-table row-hash baseline from
+which to prove that all preexisting business rows are unchanged. **Do not claim that the real database
+was untouched.** No real schema rollback or user-service shutdown was attempted. This exception and
+the complete-frontend failures were disclosed to the User; functional acceptance has these limits.
+
+Machine evidence and screenshots are in
+`C:/Users/White/AppData/Local/Temp/connlab-legacy-registration-20261019`, especially
+`qa-final-result.json`, `qa-api-acceptance-result.json`, `ui-root-result.json`,
+`ui-legacy-list-desktop.png`, and the original/repeated/baseline test logs.
+No push or publication occurred.
