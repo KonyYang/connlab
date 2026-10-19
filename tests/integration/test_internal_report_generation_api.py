@@ -323,7 +323,7 @@ def test_no_report_preview_cannot_publish_over_an_operator_report_created_during
     assert not (foreign.parent / "History").exists()
 
 
-@pytest.mark.parametrize("state", ["missing_template", "ambiguous_template", "missing_basic", "missing_matrix", "missing_folder", "ambiguous_reports"])
+@pytest.mark.parametrize("state", ["missing_template", "ambiguous_template", "missing_basic", "missing_matrix", "ambiguous_reports"])
 def test_generation_preview_has_actionable_blockers_without_writing(lab, state):
     if state == "missing_template":
         lab["template"].unlink()
@@ -338,10 +338,7 @@ def test_generation_preview_has_actionable_blockers_without_writing(lab, state):
             session.commit()
     else:
         current, _ = official_report(lab)
-        if state == "missing_folder":
-            current.parent.rename(current.parent.with_name("operator renamed folder"))
-        else:
-            current.with_name("DL-2026-05-001 Other Report_Rev_A.docx").write_bytes(b"other manual report")
+        current.with_name("DL-2026-05-001 Other Report_Rev_A.docx").write_bytes(b"other manual report")
     response = lab["client"].get(BASE + "/generation-preview")
     assert response.status_code == 200
     payload = response.json()
@@ -350,3 +347,103 @@ def test_generation_preview_has_actionable_blockers_without_writing(lab, state):
     assert payload["blockers"]
     assert not lab["writer"].reports
     assert not (lab["settings"].data_dir / "internal_report_staging").exists()
+
+
+@pytest.mark.parametrize("location", ["unregistered", "missing_folder", "missing_manifest"])
+def test_unavailable_project_folder_downloads_new_draft_without_mutating_reports(lab, location):
+    original = None
+    if location != "unregistered":
+        original, local = official_report(lab)
+        if location == "missing_folder":
+            moved = original.parent.with_name("operator renamed folder")
+            original.parent.rename(moved)
+            original = moved / original.name
+        else:
+            (local / ".connlab" / "manifest.json").unlink()
+    before = original.read_bytes() if original else None
+    reviewed = preview(lab)
+    assert reviewed["mode"] in {"managed_draft", "download_draft"}
+    if reviewed["mode"] == "download_draft":
+        assert generate(lab, reviewed).status_code == 409
+    for _ in range(2):
+        response = lab["client"].post(BASE + "/download-draft", json={"preview_token": reviewed["preview_token"]})
+        assert response.status_code == 200, response.text
+        assert "draft.docx" in response.headers["content-disposition"].lower()
+        assert response.content == b"fresh approved template report"
+        if original:
+            assert original.read_bytes() == before
+    workspace = lab["client"].get("/api/projects/P1/report-workspace").json()
+    assert workspace["report_revisions"] == []
+    assert not list((lab["settings"].data_dir / "internal_report_staging").iterdir())
+    if original:
+        assert list(original.parent.glob("*.docx")) == [original]
+        assert not (local / "History").exists()
+
+
+def test_draft_download_rejects_a_folder_that_becomes_official_after_preview(lab):
+    reviewed = preview(lab)
+    original, local = official_report(lab)
+    response = lab["client"].post(BASE + "/download-draft", json={"preview_token": reviewed["preview_token"]})
+    assert response.status_code == 409
+    assert original.read_bytes().startswith(b"operator manual")
+    assert not (local / "History").exists()
+    assert not lab["writer"].reports
+
+
+def test_same_name_managed_file_does_not_block_or_get_overwritten_by_draft_download(lab):
+    first = preview(lab)
+    existing = Path(first["target_path"])
+    existing.parent.mkdir(parents=True)
+    existing.write_bytes(b"operator retained draft")
+    reviewed = preview(lab)
+    response = lab["client"].post(BASE + "/download-draft", json={"preview_token": reviewed["preview_token"]})
+    assert response.status_code == 200, response.text
+    assert existing.read_bytes() == b"operator retained draft"
+    assert list(existing.parent.glob("*.docx")) == [existing]
+
+
+def test_download_preserves_existing_controlled_draft_and_its_revision(lab):
+    created = generate(lab, preview(lab))
+    assert created.status_code == 200
+    existing = Path(created.json()["file_path"])
+    existing.write_bytes(b"manually updated controlled report")
+    reviewed = preview(lab)
+    response = lab["client"].post(BASE + "/download-draft", json={"preview_token": reviewed["preview_token"]})
+    assert response.status_code == 200, response.text
+    assert existing.read_bytes() == b"manually updated controlled report"
+    state = lab["client"].get("/api/projects/P1/report-workspace").json()
+    assert len(state["report_revisions"]) == 1
+    assert not (existing.parent / "History").exists()
+
+
+@pytest.mark.parametrize("change", ["folder", "template", "writer_failure"])
+def test_draft_download_failure_cleans_only_owned_staging(lab, change):
+    reviewed = preview(lab)
+    if change == "writer_failure":
+        lab["writer"].failure = RuntimeError("Word unavailable")
+    elif change == "folder":
+        lab["writer"].after_write = lambda: official_report(lab)
+    else:
+        lab["writer"].after_write = lambda: lab["template"].write_bytes(b"changed template")
+    response = lab["client"].post(BASE + "/download-draft", json={"preview_token": reviewed["preview_token"]})
+    assert response.status_code == 409, response.text
+    if change == "writer_failure":
+        assert "approved template" in response.json()["detail"]
+        assert "Word unavailable" not in response.json()["detail"]
+    assert not list((lab["settings"].data_dir / "internal_report_staging").iterdir())
+    assert lab["client"].get("/api/projects/P1/report-workspace").json()["report_revisions"] == []
+
+
+def test_available_project_folder_saves_initial_report_in_prescribed_location(lab):
+    original, local = official_report(lab)
+    original.unlink()
+    reviewed = preview(lab)
+    assert reviewed["mode"] == "official"
+    assert not reviewed["requires_confirmation"]
+    response = generate(lab, reviewed)
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["file_name"] == "DL-2026-05-001 Latest Connector Qualification Testing Report_Rev_A.docx"
+    assert Path(result["file_path"]).parent == original.parent
+    assert Path(result["file_path"]).read_bytes() == b"fresh approved template report"
+    assert not (local / "History").exists()

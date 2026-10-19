@@ -908,6 +908,7 @@ def _read_internal_report_generation_snapshot(session, settings, project_id):
     get_project_lifecycle_write_guard(session).require_write_allowed(project_id, LifecycleWriteOperation.REQUIRED_FORMS_GENERATE)
     files = ReportPublicationGateway()
     resources = ExternalResourceRepository(session)
+    configured_root = _active_resource_path(resources, ExternalResourceType.PROJECT_OUTPUT_ROOT)
     try:
         template = resolve_test_report_template_path(resources)
     except ValueError as exc:
@@ -915,7 +916,19 @@ def _read_internal_report_generation_snapshot(session, settings, project_id):
     basic = ProjectBasicInformationRepository(session).get_latest_confirmed(project_id)
     matrix = ConfirmedMatrixAuthorityRepository(session).get_active_by_project(project_id)
     workspace = ProjectOfficialWorkspaceRepository(session).get_by_project(project_id)
-    current = get_current_report_update_service(session).get_current_report(project_id)
+    registered_workspace = workspace
+    unavailable_workspace = workspace is not None and (
+        not Path(workspace.local_workspace_path).is_dir()
+        or not Path(workspace.official_folder_path).is_dir()
+        or not Path(workspace.manifest_path).is_file()
+    )
+    if unavailable_workspace:
+        # An unavailable destination is not authority to recreate it or retire a report.
+        from backend.application.current_report_update_service import CurrentReportArtifact
+        workspace = None
+        current = CurrentReportArtifact("missing", None, None, None, None, None)
+    else:
+        current = get_current_report_update_service(session).get_current_report(project_id)
     if current.status == "ambiguous":
         raise InternalReportGenerationError("Multiple current Internal Reports were found. Keep exactly one in the project folder and preview again.")
     managed_root = settings.data_dir / "generated_test_reports"
@@ -924,7 +937,6 @@ def _read_internal_report_generation_snapshot(session, settings, project_id):
         local, official, manifest_path = Path(workspace.local_workspace_path), Path(workspace.official_folder_path), Path(workspace.manifest_path)
         if not local.is_dir() or not official.is_dir() or not manifest_path.is_file():
             raise InternalReportGenerationError("The registered project folder or its identity file is unavailable. Restore or link the project folder before generating the Internal Report.")
-        configured_root = _active_resource_path(resources, ExternalResourceType.PROJECT_OUTPUT_ROOT)
         if (configured_root is None or local == Path(configured_root)
                 or not local.is_relative_to(Path(configured_root))
                 or official.parent != local
@@ -947,14 +959,15 @@ def _read_internal_report_generation_snapshot(session, settings, project_id):
         workspace_identity = (str(configured_root), stable_folder_identity(Path(configured_root)),
                               stable_folder_identity(local), stable_folder_identity(official), manifest)
     else:
-        target_dir, mode = managed_root, "managed_draft"
+        target_dir = managed_root
+        mode = "download_draft" if unavailable_workspace else "managed_draft"
         history = current.history_root or managed_root / "History" / "Report"
     if current.mode == "managed_draft" and current.file_path is not None:
         history = current.history_root
     prepared = get_test_report_draft_service(session).prepare(GenerateTestReportDraftCommand(
         project_id, template, target_dir, "official_current" if workspace is not None else "managed_draft",
     ))
-    if template.is_relative_to(managed_root) or (workspace is not None and template.is_relative_to(Path(configured_root))):
+    if template.is_relative_to(managed_root) or (configured_root is not None and template.is_relative_to(Path(configured_root))):
         raise InternalReportGenerationError("The approved report template cannot be inside project output storage. Select the original template folder in Settings and preview again.")
     if workspace is None:
         target_dir = prepared.target_dir
@@ -969,7 +982,7 @@ def _read_internal_report_generation_snapshot(session, settings, project_id):
     if OfficialWorkspaceManifestGateway.first_redirected_path(*(parent for path in paths for parent in (path, *path.parents))) is not None:
         raise InternalReportGenerationError("A report, template or project folder redirects through a link or junction. Restore the original location before generating.")
     latest = ResultDatasetRepository(session).latest_report_revision(project_id)
-    signature = sha256(json.dumps(json_value({"basic": basic, "matrix": matrix, "workspace": workspace,
+    signature = sha256(json.dumps(json_value({"basic": basic, "matrix": matrix, "workspace": registered_workspace,
         "workspace_identity": workspace_identity, "template_path": template,
         "template_sha256": files.fingerprint(template),
         "current_file_identity": stable_folder_identity(current.file_path) if current.file_path else None,

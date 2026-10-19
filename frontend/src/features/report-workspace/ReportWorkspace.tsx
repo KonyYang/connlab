@@ -16,6 +16,7 @@ import {
   fetchCurrentReport,
   fetchReportWorkspace,
   generateInternalReport,
+  downloadInternalReportDraft,
   previewInternalReportGeneration,
   openLocalProjectFolder,
   getPublicFolderWorkflowContext,
@@ -282,6 +283,12 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
       if (!isCurrent()) return;
       if (preview.status !== "ready" || !preview.preview_token) {
         setError(preview.blockers.join(" ") || "Resolve the report prerequisites and preview again.");
+      } else if (preview.mode === "managed_draft" || preview.mode === "download_draft") {
+        const response = await downloadInternalReportDraft(projectId, preview.preview_token);
+        if (!isCurrent()) return;
+        const name = response.fileName || "Internal Report draft.docx";
+        downloadBlob(response.blob, name);
+        setMessage(`Downloaded draft: ${name}`);
       } else if (preview.requires_confirmation) {
         setInternalGenerationPreview(preview);
       } else {

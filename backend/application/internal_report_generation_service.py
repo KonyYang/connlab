@@ -5,12 +5,13 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 import json
+import shutil
 from pathlib import Path
 import tempfile
 from typing import Callable, Protocol
 
 from backend.application.current_report_update_service import CurrentReportArtifact, CurrentReportFileUpdateResult
-from backend.application.test_report_draft_service import PreparedTestReportDraft, TestReportDraftService, TestReportDraftGenerationError
+from backend.application.test_report_draft_service import PreparedTestReportDraft, TestReportDraftService, TestReportDraftGenerationError, TestReportDraftGenerationResult
 
 
 class InternalReportGenerationError(ValueError):
@@ -83,7 +84,8 @@ class InternalReportGenerationService:
     def preview(self, project_id: str) -> InternalReportGenerationPreview:
         try:
             snapshot = self._read(project_id)
-            self._require_snapshot(snapshot)
+            if snapshot.mode == "official" or snapshot.current_report.status == "ambiguous":
+                self._require_snapshot(snapshot)
         except (ValueError, LookupError, OSError) as exc:
             return InternalReportGenerationPreview(project_id, "blocked", None, False, None, None, None, (str(exc),))
         return InternalReportGenerationPreview(
@@ -95,6 +97,8 @@ class InternalReportGenerationService:
 
     def generate(self, command: GenerateInternalReportCommand) -> InternalReportGenerationResult:
         snapshot = self._read(command.project_id)
+        if snapshot.mode == "download_draft":
+            raise InternalReportGenerationError("The project folder is unavailable. Download a draft instead; existing reports have not been changed.")
         self._require_snapshot(snapshot)
         self._require_token(snapshot, command.preview_token)
         current = snapshot.current_report
@@ -140,6 +144,25 @@ class InternalReportGenerationService:
             )
         return InternalReportGenerationResult(command.project_id, snapshot.mode, published.current_path.name,
                                               published.current_path, published.current_sha256, published.archive_path)
+
+    def download_draft(self, command: GenerateInternalReportCommand) -> TestReportDraftGenerationResult:
+        """Create an independent download; the transport owns cleanup after streaming."""
+        snapshot = self._read(command.project_id)
+        if snapshot.mode not in {"managed_draft", "download_draft"}:
+            raise InternalReportGenerationError("The project folder changed. Preview generation again before saving the report.")
+        self._require_token(snapshot, command.preview_token)
+        self._staging_root.mkdir(parents=True, exist_ok=True)
+        temporary = Path(tempfile.mkdtemp(prefix="internal-draft-", dir=self._staging_root))
+        try:
+            result = self._drafts.generate_staged(snapshot.prepared, output_path=temporary / "draft.docx")
+            latest = self._read(command.project_id)
+            self._require_token(latest, command.preview_token)
+            return result
+        except Exception as exc:
+            shutil.rmtree(temporary)
+            if isinstance(exc, TestReportDraftGenerationError):
+                raise InternalReportGenerationError("Could not generate the report draft. Check the approved template, close Word and try again.") from exc
+            raise
 
     @staticmethod
     def _require_snapshot(snapshot: InternalReportGenerationSnapshot) -> None:

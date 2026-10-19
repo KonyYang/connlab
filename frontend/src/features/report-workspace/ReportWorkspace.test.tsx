@@ -24,6 +24,7 @@ vi.mock("../../api/client", async () => {
     generateInitialReportRevision: vi.fn(),
     previewInternalReportGeneration: vi.fn(),
     generateInternalReport: vi.fn(),
+    downloadInternalReportDraft: vi.fn(),
     openLocalProjectFolder: vi.fn(),
     getPublicFolderWorkflowContext: vi.fn(),
     previewCurrentReportLlcrUpdate: vi.fn(),
@@ -306,6 +307,57 @@ describe("ReportWorkspace", () => {
     await act(async () => resolvePreview({ project_id: "project-1", status: "ready", preview_token: "c".repeat(64),
       requires_confirmation: true, mode: "official", current_path: currentReport.file_path!, target_path: currentReport.file_path!, blockers: [] }));
     expect(screen.queryByRole("dialog", { name: "Archive and regenerate Internal Report" })).toBeNull();
+    expect(api.generateInternalReport).not.toHaveBeenCalled();
+  });
+
+  it.each(["managed_draft", "download_draft"] as const)("downloads a %s copy without publishing or archiving the current report", async (mode) => {
+    const user = userEvent.setup();
+    vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({
+      project_id: "project-1", status: "ready", preview_token: "c".repeat(64),
+      requires_confirmation: true, mode, current_path: currentReport.file_path!,
+      target_path: null, blockers: [],
+    });
+    vi.mocked(api.downloadInternalReportDraft).mockResolvedValue({blob: new Blob(["draft"]), fileName: "Internal Report draft.docx"});
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", {name: "Generate Internal Report"}));
+    expect(await screen.findByText("Downloaded draft: Internal Report draft.docx")).toBeTruthy();
+    expect(api.generateInternalReport).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog", {name: "Archive and regenerate Internal Report"})).toBeNull();
+    expect(URL.createObjectURL).toHaveBeenCalled();
+    expect(screen.getByText(currentReport.file_name!)).toBeTruthy();
+  });
+
+  it("does not download a late draft after switching projects", async () => {
+    const user = userEvent.setup();
+    let finish!: (value: api.BlobDownloadResponse) => void;
+    vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({
+      project_id: "project-1", status: "ready", preview_token: "c".repeat(64), requires_confirmation: false,
+      mode: "download_draft", current_path: null, target_path: null, blockers: [],
+    });
+    vi.mocked(api.downloadInternalReportDraft).mockReturnValue(new Promise(resolve => { finish = resolve; }));
+    const view = render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", {name: "Generate Internal Report"}));
+    await waitFor(() => expect(api.downloadInternalReportDraft).toHaveBeenCalled());
+    view.rerender(<ReportWorkspace projectId="project-2" onBack={vi.fn()} />);
+    await act(async () => finish({blob: new Blob(["draft"]), fileName: "Old project draft.docx"}));
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Downloaded draft:/)).toBeNull();
+  });
+
+  it("shows draft download failure without publishing and allows retry", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({
+      project_id: "project-1", status: "ready", preview_token: "c".repeat(64), requires_confirmation: false,
+      mode: "download_draft", current_path: null, target_path: null, blockers: [],
+    });
+    vi.mocked(api.downloadInternalReportDraft).mockRejectedValueOnce(new Error("Check the approved template and retry."))
+      .mockResolvedValueOnce({blob: new Blob(["draft"]), fileName: "Report draft.docx"});
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", {name: "Generate Internal Report"}));
+    expect((await screen.findByRole("alert")).textContent).toContain("Check the approved template and retry.");
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", {name: "Generate Internal Report"}));
+    expect(await screen.findByText("Downloaded draft: Report draft.docx")).toBeTruthy();
     expect(api.generateInternalReport).not.toHaveBeenCalled();
   });
 

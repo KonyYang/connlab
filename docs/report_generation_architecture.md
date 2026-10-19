@@ -12,6 +12,21 @@ The E-4515_F customer report is now a deterministic projection of the current In
 Temperature-rise and other result adapters, photographs, appendices, and final narrative automation
 remain deferred.
 
+### Internal Report destination and draft download
+
+`Generate Internal Report` previews the destination first. With an available, identity-validated
+official project folder, existing publication and explicit Archive and regenerate confirmation remain
+unchanged. Without a registered folder, or when the registered folder or identity file is missing,
+the page downloads an independent `_Draft.docx` copy instead of recreating the folder or blocking on
+its absence. Existing reports and same-name drafts are never overwritten by this download.
+
+The preview-bound draft endpoint uses request-owned staging and removes it after the response; it does
+not publish, archive, register a current report, or change report authority. Confirmed Basic Information,
+Matrix plan dates and steps, and the approved template remain prerequisites. Authority/template/folder
+changes during generation reject the stale download and clean only its staging. An existing folder
+with conflicting or redirected identity still fails closed rather than being treated as an official
+destination. Legacy managed-report APIs remain compatible; the page's new fallback is download-only.
+
 ## Protected Office document access
 
 `REPORT-003D` centralizes the fixed laboratory Word/PowerPoint open-password policy. App-owned Word

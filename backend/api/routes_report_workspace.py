@@ -144,6 +144,23 @@ def generate_internal_report(project_id: str, request: GenerateInternalReportReq
             "archive_path": str(result.archive_path) if result.archive_path else None}
 
 
+@router.post("/api/projects/{project_id}/report-workspace/internal-report/download-draft", dependencies=[Depends(require_project_folder_write_slot)])
+def download_internal_report_draft(project_id: str, request: GenerateInternalReportRequest,
+                                  service: InternalReportGenerationService = Depends(get_internal_report_generation_service)) -> FileResponse:
+    try:
+        result = service.download_draft(GenerateInternalReportCommand(project_id, request.preview_token))
+    except (ValueError, LookupError) as exc:
+        raise HTTPException(409, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Internal Report draft download failed for project %s", project_id)
+        raise HTTPException(500, detail="Could not generate the report draft. Check the approved template and try again.") from exc
+    return FileResponse(
+        path=result.output_path, filename=result.file_name,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        background=BackgroundTask(shutil.rmtree, result.output_path.parent),
+    )
+
+
 class GenerateLlcrReportRequest(BaseModel):
     dataset_id: str
     created_by: str = "Lab User"

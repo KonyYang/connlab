@@ -5637,7 +5637,7 @@ export type InternalReportGenerationPreview = {
   status: "ready" | "blocked";
   preview_token: string | null;
   requires_confirmation: boolean;
-  mode: "official" | "managed_draft" | null;
+  mode: "official" | "managed_draft" | "download_draft" | null;
   current_path: string | null;
   target_path: string | null;
   blockers: string[];
@@ -5662,6 +5662,13 @@ export function generateInternalReport(projectId: string, previewToken: string, 
   return requestJson<InternalReportGenerationResult>(
     `/api/projects/${encodeURIComponent(projectId)}/report-workspace/internal-report/generate`,
     { method: "POST", body: JSON.stringify({ preview_token: previewToken, archive_and_regenerate: archiveAndRegenerate }) }
+  );
+}
+
+export function downloadInternalReportDraft(projectId: string, previewToken: string): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(
+    `/api/projects/${encodeURIComponent(projectId)}/report-workspace/internal-report/download-draft`,
+    {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({preview_token: previewToken})}
   );
 }
 
