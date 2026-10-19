@@ -213,6 +213,43 @@ Test Record authority.
 
 ## Deferred phases
 
+### Section updates without a project folder
+
+`Update Internal Report` resolves its source separately from registered report authority:
+
+1. A unique ready official Internal Report retains the existing archive-and-update workflow.
+   Ambiguous official reports block updates rather than falling back silently.
+2. Otherwise, the latest successful project-specific working draft takes priority, followed by the
+   validated latest current-project Internal Report in Downloads and the retained managed source.
+   An unsafe latest draft is not silently replaced by an older candidate. The user can explicitly
+   select another E-3707 `.docx`; report headers must match the project's DL and Customer Reports
+   are rejected.
+3. LLCR and Equipment List updates create immutable `_Draft.docx` copies in
+   `data_dir/report_working_drafts/{project-hash}/{revision}`. The atomic current pointer advances
+   only after generation and source revalidation succeed. No official folder, history entry, report
+   registration, or original-file replacement is created in this mode.
+
+The new API boundary is `/api/projects/{project_id}/report-workspace/update-source`: source status,
+explicit source selection, LLCR/equipment updates, and revision-scoped downloads. Existing registry
+and project-folder write guards still apply. Requests compare the reviewed source mode and SHA-256;
+changed sources, stale LLCR datasets, or a newly available official report stop draft publication.
+
+Missing equipment selection accepts an uploaded document or pasted IDs. A validated existing LTR
+selection is read only. Draft-owned selections travel with later LLCR/equipment copies, so consecutive
+updates preserve previous work. Calibration matching and section writers reuse the existing adapters;
+other content and manual edits retain their established preservation contract.
+
+Successful working drafts also feed Customer Report generation, including after a failed browser
+download. Retry downloads fetch the same immutable revision rather than rerunning updates. Cached
+revisions expire after 24 hours; expired state no longer shadows Downloads, and subsequent updates
+prune only expired, owned cache directories. Downloaded files are not cleaned or overwritten; browser
+duplicate-name handling remains unchanged. Reopening the page restores an unexpired download link.
+
+Regression coverage includes draft chaining, source/hash/matrix conflicts, selection validation,
+formal-report archive compatibility, pending-folder guards, project isolation, cache retention,
+duplicate submissions, late responses after navigation, and download retry. Native smoke tests use
+temporary databases and copied templates/reports; user projects are never test fixtures.
+
 Future report work should build on the semantic report model rather than adding result-specific logic
 to the Word adapter:
 

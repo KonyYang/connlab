@@ -37,6 +37,7 @@ import { ErrorMessage } from "../../components/common/ErrorMessage";
 import testWorkbenchIcon from "./test-workbench.png";
 import { CustomerReportProgress } from "../../components/common/CustomerReportProgress";
 import { useCustomerReportJob } from "./useCustomerReportJob";
+import { useReportDraftUpdates } from "./useReportDraftUpdates";
 import { useUploadedCustomerReportJob } from "./useUploadedCustomerReportJob";
 import { CustomerReportSourceDialog } from "./CustomerReportSourceDialog";
 import { CustomerReportRegenerationDialog } from "./CustomerReportRegenerationDialog";
@@ -90,6 +91,21 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const [equipmentIds, setEquipmentIds] = useState("");
   const [equipmentResult, setEquipmentResult] = useState<Extract<EquipmentListOneClickResult, { status: "completed" }> | null>(null);
   const [equipmentStatus, setEquipmentStatus] = useState<string | null>(null);
+  const [reportSourceFile, setReportSourceFile] = useState<File | null>(null);
+  const draftUpdates = useReportDraftUpdates(projectId, {
+    save: (response) => downloadBlob(response.blob, response.fileName || "Internal Report_Draft.docx"),
+    onUpdated: () => refresh(),
+    onEquipmentRequired: () => setEquipmentSourceOpen(true),
+    onEquipmentCompleted: (result) => {
+      setEquipmentSourceOpen(false); setEquipmentFile(null); setEquipmentIds("");
+      const { unmatched, incomplete, expired } = result.statistics;
+      setEquipmentResult(unmatched.length || incomplete.length || expired.length ? result : null);
+      setEquipmentStatus(result.changed ? "Equipment List Updated." : "Equipment List Is Up To Date.");
+    },
+  });
+  const draftMode = currentReport?.status !== "ambiguous" && (draftUpdates.source?.mode === "download_draft"
+    || currentReport?.mode === "managed_draft" || currentReport?.status === "missing");
+  useEffect(() => { if (draftUpdates.selectOpen) setReportSourceFile(null); }, [draftUpdates.selectOpen]);
   const equipmentRequest = useRef(false);
   const equipmentSequence = useRef(0);
   const equipmentTrigger = useRef<HTMLButtonElement>(null);
@@ -109,7 +125,8 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const uploadedCustomerJob = useUploadedCustomerReportJob(projectId, (response) => {
     downloadBlob(response.blob, response.fileName || "Customer Report.docx");
   });
-  const busyAction = pageBusyAction ?? (customerJob.busy || uploadedCustomerJob.busy ? "customer" : sourcePickerOpen || customerRegenerationApproval || equipmentSourceOpen || equipmentResult ? "customer-source" : null);
+  const busyAction = pageBusyAction ?? (draftUpdates.busy ? (draftUpdates.action === "equipment" ? "equipment-update" : "llcr")
+    : customerJob.busy || uploadedCustomerJob.busy ? "customer" : sourcePickerOpen || customerRegenerationApproval || equipmentSourceOpen || equipmentResult || draftUpdates.selectOpen ? "customer-source" : null);
   const customerRun = useRef<{ regenerating: boolean; hadFile: boolean } | null>(null);
   const activeProject = useRef(projectId);
   activeProject.current = projectId;
@@ -136,6 +153,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     setEquipmentStatus(null);
     setEquipmentFile(null);
     setEquipmentIds("");
+    setReportSourceFile(null);
   }, [projectId]);
 
   useEffect(() => {
@@ -506,6 +524,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     if (!latestDataset) {
       return;
     }
+    if (draftMode) { await draftUpdates.updateLlcr(latestDataset.dataset_id); return; }
     await runAction("llcr", async () => {
       const updatePreview = await previewCurrentReportLlcrUpdate(
         projectId,
@@ -530,6 +549,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }
 
   async function handleEquipmentUpdate(input?: { file?: File; referencesText?: string }): Promise<void> {
+    if (draftMode) { await draftUpdates.updateEquipment(input); return; }
     if (equipmentRequest.current || pageBusyAction || customerJob.busy || uploadedCustomerJob.busy) return;
     equipmentRequest.current = true;
     const sequence = ++equipmentSequence.current;
@@ -808,7 +828,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
               </div>
               <button
                 className="primary-action"
-                disabled={!readiness.canUpdateLlcr || Boolean(busyAction) || !latestDataset || currentReport?.status !== "ready"}
+                disabled={!readiness.canUpdateLlcr || Boolean(busyAction) || !latestDataset || (currentReport?.status !== "ready" && !draftMode)}
                 onClick={() => void handleUpdateLlcr()}
                 type="button"
               >
@@ -818,7 +838,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
             <div className="report-workspace-update-row report-workspace-equipment-action">
               <button
                 className="primary-action"
-                disabled={Boolean(busyAction) || currentReport?.status !== "ready"}
+                disabled={Boolean(busyAction) || (currentReport?.status !== "ready" && !draftMode)}
                 ref={equipmentTrigger}
                 onClick={() => void handleEquipmentUpdate()}
                 type="button"
@@ -831,7 +851,22 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
                 </span>
               ) : null}
             </div>
-            {currentReport?.status !== "ready" ? (
+            {draftMode ? <div className="report-workspace-note">
+              {draftUpdates.source?.file_name ? <p title={draftUpdates.source.file_name}>Draft source: {draftUpdates.source.file_name} · Updates download a copy.</p>
+                : <p>Select an Internal Report draft to update its sections. Original files are preserved.</p>}
+              <div className="report-workspace-action-row">
+                <button type="button" disabled={Boolean(busyAction)} onClick={() => { setReportSourceFile(null); draftUpdates.choose(); }}>
+                  {draftUpdates.source?.status === "ready" ? "Choose Another Draft" : "Select Internal Report"}
+                </button>
+                {draftUpdates.lastResult ? <button type="button" disabled={Boolean(busyAction)} onClick={() => void draftUpdates.download()}>
+                  {draftUpdates.downloadError ? "Retry Draft Download" : "Download Updated Draft"}
+                </button> : null}
+                <button type="button" disabled={Boolean(busyAction)} onClick={() => void draftUpdates.refresh().catch(() => undefined)}>Reload Draft Source</button>
+              </div>
+              {draftUpdates.error ? <p role="alert" className="report-workspace-blocker">{draftUpdates.error}</p> : null}
+              {draftUpdates.downloadError ? <p role="alert" className="report-workspace-blocker">{draftUpdates.downloadError}</p> : null}
+            </div> : null}
+            {currentReport?.status !== "ready" && !draftMode ? (
               <p className="report-workspace-blocker">
                 {currentReport?.status === "ambiguous"
                   ? "Keep exactly one current Internal Report before updating its sections."
@@ -891,27 +926,41 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
           </section>
         </div>
       ) : null}
+      {draftUpdates.selectOpen ? <EquipmentDialog title="Select Internal Report for Updates" busy={draftUpdates.busy}
+        returnFocusTarget={equipmentTrigger.current} onClose={draftUpdates.close}>
+        <p>Choose this project's E-3707 Internal Report. Updates use a new draft copy.</p>
+        <label>Internal Report draft<input type="file" accept=".docx" disabled={draftUpdates.busy}
+          onChange={(event) => setReportSourceFile(event.target.files?.[0] ?? null)} /></label>
+        {draftUpdates.error ? <p role="alert" className="report-workspace-blocker">{draftUpdates.error}</p> : null}
+        <div className="report-workspace-action-row">
+          <button type="button" disabled={draftUpdates.busy} onClick={draftUpdates.close}>Cancel</button>
+          <button type="button" disabled={draftUpdates.busy || !reportSourceFile}
+            onClick={() => { if (reportSourceFile) void draftUpdates.select(reportSourceFile); }}>Use Draft</button>
+        </div>
+      </EquipmentDialog> : null}
       {equipmentSourceOpen ? (
-        <EquipmentDialog title="Provide equipment IDs" busy={pageBusyAction === "equipment-update"}
+        <EquipmentDialog title="Provide equipment IDs" busy={pageBusyAction === "equipment-update" || draftUpdates.busy}
           returnFocusTarget={equipmentTrigger.current} onClose={() => { setEquipmentSourceOpen(false); setEquipmentFile(null); setEquipmentIds(""); }}>
-          <p>EquipmentID.docx was not found in the LTR folder. Choose a document or paste equipment IDs. The selection is saved there before updating the report.</p>
+          <p>{draftMode ? "Choose an equipment document or paste equipment IDs. Only the draft copy will be updated."
+            : "EquipmentID.docx was not found in the LTR folder. Choose a document or paste equipment IDs. The selection is saved there before updating the report."}</p>
           <label className="report-workspace-file-field">EquipmentID document
-            <input accept=".docx" type="file" disabled={pageBusyAction === "equipment-update"}
+            <input accept=".docx" type="file" disabled={pageBusyAction === "equipment-update" || draftUpdates.busy}
               onChange={(event) => { setEquipmentFile(event.target.files?.[0] ?? null); setEquipmentIds(""); }} />
           </label>
           <label className="report-workspace-file-field">Equipment IDs
-            <textarea value={equipmentIds} disabled={pageBusyAction === "equipment-update"}
+            <textarea value={equipmentIds} disabled={pageBusyAction === "equipment-update" || draftUpdates.busy}
               placeholder="One equipment ID per line, or separated by commas"
               onChange={(event) => { setEquipmentIds(event.target.value); setEquipmentFile(null); }} />
           </label>
           {error ? <ErrorMessage message={error} /> : null}
+          {draftMode && draftUpdates.error ? <ErrorMessage message={draftUpdates.error} /> : null}
           <div className="report-workspace-action-row">
-            <button type="button" disabled={pageBusyAction === "equipment-update"}
+            <button type="button" disabled={pageBusyAction === "equipment-update" || draftUpdates.busy}
               onClick={() => { setEquipmentSourceOpen(false); setEquipmentFile(null); setEquipmentIds(""); }}>Cancel</button>
             <button type="button" className="primary-action"
-              disabled={pageBusyAction === "equipment-update" || (!equipmentFile && !equipmentIds.trim())}
+              disabled={pageBusyAction === "equipment-update" || draftUpdates.busy || (!equipmentFile && !equipmentIds.trim())}
               onClick={handleEquipmentSelection}>
-              {pageBusyAction === "equipment-update" ? "Updating..." : "Save And Update"}
+              {pageBusyAction === "equipment-update" || draftUpdates.busy ? "Updating..." : draftMode ? "Update And Download" : "Save And Update"}
             </button>
           </div>
         </EquipmentDialog>

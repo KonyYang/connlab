@@ -5087,7 +5087,7 @@ export type ReportWorkspaceState = {
 
 export type CurrentReport = {
   status: "ready" | "missing" | "ambiguous";
-  mode: "official" | "managed_draft" | null;
+  mode: "official" | "managed_draft" | "download_draft" | null;
   file_name: string | null;
   file_sha256: string | null;
   report_revision_id: string | null;
@@ -5096,7 +5096,54 @@ export type CurrentReport = {
   official_folder_path: string | null;
   can_publish_to_official: boolean;
   download_url: string | null;
+  draft_revision_id?: string | null;
 };
+
+export type ReportSectionUpdateResult = {
+  project_id: string; mode: "official" | "managed_draft" | "download_draft";
+  file_name: string; changed: boolean; current_sha256: string; archive_path: string | null;
+  draft_revision_id?: string; download_url?: string;
+};
+
+export type ReportDraftEquipmentResult =
+  | { status: "source_required"; project_id: string }
+  | (ReportSectionUpdateResult & { status: "completed";
+      statistics: { filled: number; unmatched: string[]; incomplete: string[]; expired: string[] } });
+
+function reportUpdatePath(projectId: string): string {
+  return `/api/projects/${encodeURIComponent(projectId)}/report-workspace/update-source`;
+}
+
+export function fetchReportUpdateSource(projectId: string): Promise<CurrentReport> {
+  return requestJson<CurrentReport>(reportUpdatePath(projectId));
+}
+
+export function updateReportDraftLlcr(projectId: string, datasetId: string, sourceSha: string): Promise<ReportSectionUpdateResult> {
+  return requestJson<ReportSectionUpdateResult>(reportUpdatePath(projectId) + "/llcr", {
+    method: "POST", body: JSON.stringify({ dataset_id: datasetId, expected_report_sha256: sourceSha, expected_mode: "download_draft" }),
+  });
+}
+
+export function updateReportDraftEquipment(projectId: string, sourceSha: string,
+  input?: { file?: File; referencesText?: string }): Promise<ReportDraftEquipmentResult> {
+  const body = new FormData();
+  body.append("expected_report_sha256", sourceSha);
+  body.append("expected_mode", "download_draft");
+  if (input?.file) body.append("file", input.file);
+  if (input?.referencesText !== undefined) body.append("references_text", input.referencesText);
+  return requestJson<ReportDraftEquipmentResult>(reportUpdatePath(projectId) + "/equipment", { method: "POST", body });
+}
+
+export function selectReportUpdateSource(projectId: string, file: File, sourceSha?: string): Promise<ReportSectionUpdateResult> {
+  const body = new FormData();
+  body.append("file", file);
+  if (sourceSha) body.append("expected_report_sha256", sourceSha);
+  return requestJson<ReportSectionUpdateResult>(reportUpdatePath(projectId) + "/select", { method: "POST", body });
+}
+
+export function downloadReportWorkingDraft(projectId: string, revisionId: string): Promise<BlobDownloadResponse> {
+  return requestBlobResponse(reportUpdatePath(projectId) + `/download/${encodeURIComponent(revisionId)}`);
+}
 
 export type CustomerReportState = {
   project_id: string;

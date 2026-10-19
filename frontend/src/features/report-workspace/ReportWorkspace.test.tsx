@@ -15,6 +15,8 @@ vi.mock("../../api/client", async () => {
     getProjectBasicInformation: vi.fn(),
     fetchReportWorkspace: vi.fn(),
     fetchCurrentReport: vi.fn(),
+    fetchReportUpdateSource: vi.fn(), updateReportDraftLlcr: vi.fn(), updateReportDraftEquipment: vi.fn(),
+    selectReportUpdateSource: vi.fn(), downloadReportWorkingDraft: vi.fn(),
     fetchCurrentCustomerReport: vi.fn(),
     startStandaloneCustomerReport: vi.fn(),
     readStandaloneCustomerReportJob: vi.fn(),
@@ -174,6 +176,7 @@ describe("ReportWorkspace", () => {
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     vi.mocked(api.fetchReportWorkspace).mockResolvedValue(state);
     vi.mocked(api.fetchCurrentReport).mockResolvedValue(currentReport);
+    vi.mocked(api.fetchReportUpdateSource).mockResolvedValue(currentReport);
     vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue(customerReport);
     vi.mocked(api.getPublicFolderWorkflowContext).mockResolvedValue(folderContext);
     vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({
@@ -359,6 +362,24 @@ describe("ReportWorkspace", () => {
     expect(screen.queryByRole("dialog", {name: /Internal Report/})).toBeNull();
   });
 
+  it("updates and downloads equipment from an available draft even when there is no current official report", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue({ ...currentReport, status: "missing", mode: null,
+      file_name: null, file_path: null, file_sha256: null });
+    vi.mocked(api.fetchReportUpdateSource).mockResolvedValue({ ...currentReport, mode: "download_draft",
+      file_name: "DL-001 Report_Draft.docx", folder_path: null });
+    vi.mocked(api.updateReportDraftEquipment).mockResolvedValue({ status: "completed", project_id: "project-1", mode: "download_draft",
+      file_name: "DL-001 Report_Draft.docx", current_sha256: "e".repeat(64), changed: true, archive_path: null,
+      draft_revision_id: "1".repeat(32), statistics: { filled: 1, unmatched: [], incomplete: [], expired: [] } });
+    vi.mocked(api.downloadReportWorkingDraft).mockResolvedValue({ blob: new Blob(["updated"]), fileName: "DL-001 Report_Draft.docx" });
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Update Equipment List" })).toHaveProperty("disabled", false));
+    await user.click(screen.getByRole("button", { name: "Update Equipment List" }));
+    await waitFor(() => expect(api.downloadReportWorkingDraft).toHaveBeenCalledWith("project-1", "1".repeat(32)));
+    expect(api.updateEquipmentListOneClick).not.toHaveBeenCalled();
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled();
+  });
+
   it("shows draft download failure without publishing and allows retry", async () => {
     const user = userEvent.setup();
     vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({
@@ -482,6 +503,7 @@ describe("ReportWorkspace", () => {
   it("shows an explicit loading state while workspace authority is loading", () => {
     vi.mocked(api.fetchReportWorkspace).mockReturnValue(new Promise(() => undefined));
     vi.mocked(api.fetchLatestProjectCustomerReportJob).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(api.fetchReportUpdateSource).mockReturnValue(new Promise(() => undefined));
     vi.mocked(api.getPublicFolderWorkflowContext).mockReturnValueOnce(new Promise(() => undefined));
 
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);

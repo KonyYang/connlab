@@ -78,6 +78,7 @@ from backend.domain.result_dataset_models import (
 )
 from backend.shared.config import Settings
 from backend.api.project_folder_write_guard import require_project_folder_write_slot
+from backend.api.routes_report_section_updates import router as section_updates_router
 from backend.application.internal_report_generation_service import GenerateInternalReportCommand, InternalReportGenerationService
 
 
@@ -91,6 +92,7 @@ async def _report_jobs_lifespan(_app):
 
 
 router = APIRouter(tags=["report-workspace"], lifespan=_report_jobs_lifespan)
+router.include_router(section_updates_router)
 logger = logging.getLogger(__name__)
 
 

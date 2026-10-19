@@ -188,7 +188,7 @@ class CurrentReportUpdateService:
         project_id: str,
         dataset_id: str,
     ) -> CurrentReportUpdatePreview:
-        dataset = self._require_current_llcr_dataset(project_id, dataset_id)
+        dataset = self.require_current_llcr_dataset(project_id, dataset_id)
         report, blockers, warnings = self._resolve_current_report(project_id)
         if (
             report.mode == "managed_draft"
@@ -230,7 +230,7 @@ class CurrentReportUpdateService:
             raise CurrentReportFileConflictError(
                 "The current report changed after preview. Preview the update again."
             )
-        dataset = self._require_current_llcr_dataset(
+        dataset = self.require_current_llcr_dataset(
             command.project_id,
             command.dataset_id,
         )
@@ -354,7 +354,7 @@ class CurrentReportUpdateService:
             official_folder_path=published.current_path.parent,
         )
 
-    def _require_current_llcr_dataset(
+    def require_current_llcr_dataset(
         self,
         project_id: str,
         dataset_id: str,

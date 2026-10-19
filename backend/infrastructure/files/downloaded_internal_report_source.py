@@ -40,6 +40,29 @@ def _redirected(path: Path) -> bool:
                for item in (path, *path.parents))
 
 
+def inspect_internal_report(path: Path, dl_number: str) -> CurrentReportArtifact:
+    """Validate an explicitly selected or discovered report without trusting its name."""
+    try:
+        if _redirected(path):
+            raise DownloadedInternalReportUnavailable("The Internal Report redirects to another file. Select a local copy.")
+        fingerprint = sha256(path.read_bytes()).hexdigest()
+        snapshot = WordDocumentGateway().read_word_document(path)
+        header_ids = {value.casefold() for value in re.findall(
+            r"\bDL-[A-Za-z0-9-]+", "\n".join(snapshot.headers), flags=re.IGNORECASE)}
+        if header_ids != {dl_number.casefold()} or not any(
+            re.search(r"(?<![A-Z0-9])E-3707(?![A-Z0-9])", footer, re.IGNORECASE)
+            for footer in snapshot.footers
+        ):
+            raise DownloadedInternalReportUnavailable("Select this project's E-3707 Internal Report, not a Customer Report.")
+        if _redirected(path) or sha256(path.read_bytes()).hexdigest() != fingerprint:
+            raise DownloadedInternalReportUnavailable("The report changed while checking it. Try again.")
+        return CurrentReportArtifact("ready", "managed_draft", path.name, path, fingerprint, None, folder_path=path.parent)
+    except DownloadedInternalReportUnavailable:
+        raise
+    except (OSError, ValueError, RuntimeError, BadZipFile, PackageNotFoundError, XMLSyntaxError, KeyError) as exc:
+        raise DownloadedInternalReportUnavailable("The Internal Report cannot be read. Select a valid .docx file.") from exc
+
+
 class DownloadedInternalReportDrafts:
     def __init__(self, root: Path | None = None):
         self._root = root
@@ -68,16 +91,10 @@ class DownloadedInternalReportDrafts:
                     break
                 if sha256(other.read_bytes()).hexdigest() != fingerprint:
                     raise DownloadedInternalReportUnavailable("Several latest drafts match this project. Select an Internal Report file.")
-            snapshot = WordDocumentGateway().read_word_document(path)
-            header_ids = {value.casefold() for value in re.findall(r"\bDL-[A-Za-z0-9-]+", "\n".join(snapshot.headers))}
-            if header_ids != {dl_number.casefold()} or not any(
-                re.search(r"(?<![A-Z0-9])E-3707(?![A-Z0-9])", footer, re.IGNORECASE)
-                for footer in snapshot.footers
-            ):
-                raise DownloadedInternalReportUnavailable("The latest draft is not this project's Internal Report. Select the correct file.")
-            if _redirected(path) or sha256(path.read_bytes()).hexdigest() != fingerprint:
+            result = inspect_internal_report(path, dl_number)
+            if result.file_sha256 != fingerprint:
                 raise DownloadedInternalReportUnavailable("The downloaded draft changed while checking it. Try again.")
-            return CurrentReportArtifact("ready", "managed_draft", path.name, path, fingerprint, None, folder_path=root)
+            return result
         except DownloadedInternalReportUnavailable:
             raise
         except (OSError, ValueError, RuntimeError, BadZipFile, PackageNotFoundError, XMLSyntaxError, KeyError) as exc:

@@ -1392,7 +1392,12 @@ def get_internal_report_generation_service(
     )
 
 
-def get_customer_report_source_reader(session):
+def get_report_draft_workspace(settings):
+    from backend.infrastructure.files.report_draft_workspace import ReportDraftWorkspace
+    return ReportDraftWorkspace(settings.data_dir / "report_working_drafts")
+
+
+def get_customer_report_source_reader(session, settings=None):
     from backend.application.customer_report_source_resolver import CustomerReportSourceResolver
     from backend.infrastructure.files.downloaded_internal_report_source import DownloadedInternalReportDrafts
     return CustomerReportSourceResolver(
@@ -1400,6 +1405,7 @@ def get_customer_report_source_reader(session):
         basic_information=ProjectBasicInformationRepository(session),
         workspaces=ProjectOfficialWorkspaceRepository(session),
         downloaded_drafts=DownloadedInternalReportDrafts(),
+        working_drafts=get_report_draft_workspace(settings or get_settings()),
     )
 
 
@@ -1409,10 +1415,24 @@ def get_customer_report_projection_service(
 ) -> CustomerReportProjectionService:
     """Build current-Internal-Report customer projection and publication."""
     return CustomerReportProjectionService(
-        current_reports=get_customer_report_source_reader(session),
+        current_reports=get_customer_report_source_reader(session, settings),
         files=ReportPublicationGateway(),
         writer=CustomerReportDocumentGateway(),
         generated_root=settings.data_dir / "customer_report_downloads",
+    )
+
+
+def get_report_section_update_service(session: Session = Depends(get_session), settings: Settings = Depends(get_settings)):
+    from backend.application.report_section_update_service import ReportSectionUpdateService
+    from backend.infrastructure.files.downloaded_internal_report_source import inspect_internal_report
+    return ReportSectionUpdateService(
+        current_reports=get_current_report_update_service(session),
+        sources=get_customer_report_source_reader(session, settings),
+        drafts=get_report_draft_workspace(settings), writer=TestReportDocumentGateway(),
+        official_equipment=get_equipment_report_update_service(session),
+        equipment_copies=get_tools_equipment_report_service(session),
+        workspaces=ProjectOfficialWorkspaceRepository(session), equipment_reader=EquipmentIdDocumentReader(),
+        inspect_source=inspect_internal_report,
     )
 
 

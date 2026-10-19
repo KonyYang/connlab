@@ -43,7 +43,7 @@ class ProjectCustomerReportRunner:
                     raise ValueError("Project is unavailable or read-only. Restore it before generating a report.")
                 template = resolve_customer_report_template_path(get_test_report_template_resource_store(session))
                 service = CustomerReportProjectionService(
-                    current_reports=get_customer_report_source_reader(session),
+                    current_reports=get_customer_report_source_reader(session, self._settings),
                     files=ReportPublicationGateway(), writer=self._writer_factory(operation_root),
                     generated_root=Path(operation_root))
                 return service.generate(CustomerReportGenerationCommand(project_id, template, source_hash, customer_hash), progress=progress)
