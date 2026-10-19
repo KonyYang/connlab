@@ -11,95 +11,39 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
-    "task_id": "TASK_REPORT_READ_ERRORS_20261019",
-    "summary": "Read protected customer reports safely and isolate page load errors",
+    "task_id": "TASK_INTERNAL_REPORT_DRAFT_FALLBACK_20261019",
+    "summary": "Download a non-overwriting Internal Report draft when the official project folder is unavailable",
     "tier": "standard",
     "route": "sol_build_review_qa",
-    "scope": "Fix read-only report lineage inspection and actionable page errors using isolated tests; no real report writes or unrelated fixes",
+    "scope": "Preserve existing validated official report publication and explicit conflict protection; add isolated draft download for absent official folders without changing original reports or real project data; validate with isolated regression tests",
     "scope_paths": [
-      "backend/infrastructure/office/customer_report_document_gateway.py",
-      "backend/application/customer_report_projection_service.py",
+      "backend/api/dependencies.py",
+      "backend/api/routes_report_workspace.py",
+      "backend/application/internal_report_generation_service.py",
+      "frontend/src/api/client.ts",
       "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-      "tests/unit/test_customer_report_document_gateway.py",
-      "tests/unit/test_customer_report_projection_service.py",
-      "frontend/src/features/report-workspace/ReportWorkspace.test.tsx"
+      "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+      "tests/unit/test_internal_report_generation_service.py",
+      "tests/integration/test_internal_report_generation_api.py",
+      "docs/report_generation_architecture.md"
     ],
     "risk_reasons": [],
-    "activation_head": "eefbd0a4554a2af204a22c1ebd664749acc75310",
-    "started_at": "2026-10-19T00:13:54.221852Z",
-    "updated_at": "2026-10-19T00:19:00.432499Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_REPORT_READ_ERRORS_20261019",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "summary": "Protected customer lineage uses read-only decrypted copy; unreadable reports return actionable blocked state; customer query failures preserve Internal Report UI with read-only retry. Originals untouched.",
-      "changed_paths": [
-        "backend/application/customer_report_projection_service.py",
-        "backend/infrastructure/office/customer_report_document_gateway.py",
-        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-        "tests/integration/test_report_workspace_api.py",
-        "tests/unit/test_customer_report_document_gateway.py",
-        "tests/unit/test_customer_report_projection_service.py"
-      ],
-      "version": 1,
-      "scope_ok": true,
-      "integration": {
-        "status": "passed",
-        "method": "local master commit, clean tree; no push"
-      },
-      "schema": "connlab.sol-task-report",
-      "subject": "9774e0be539ae516563cdc91a1bd54cf56badfb3",
-      "validation": [
-        {
-          "result": "60 passed; one Starlette deprecation warning",
-          "name": "Relevant isolated backend suite",
-          "status": "passed"
-        },
-        {
-          "result": "88 passed",
-          "name": "Report workspace Vitest suite",
-          "status": "passed"
-        },
-        {
-          "result": "passed",
-          "name": "TypeScript and Vite production build",
-          "status": "passed"
-        }
-      ],
-      "task_id": "TASK_REPORT_READ_ERRORS_20261019",
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "method": "isolated red-green regression tests"
-        },
-        "qa": {
-          "status": "passed",
-          "method": "same agent; final affected matrix on clean exact subject"
-        },
-        "reviewer": {
-          "status": "passed",
-          "method": "same-agent separate standards and request-fit passes; no outstanding findings"
-        }
-      }
-    }
+    "activation_head": "8c284a85a5fbe9aefc835d6825e60ff96ed0e7f3",
+    "started_at": "2026-10-19T10:29:12.104235Z",
+    "updated_at": "2026-10-19T10:29:12.104235Z",
+    "checkpoint": null,
+    "report": null
   },
   "last_closed": {
-    "task_id": "TASK_LEGACY_PROJECT_REGISTRATION_20261019",
-    "tier": "high_risk",
-    "subject": "683ce90fe6b7dfa0e14f638f7b2ba3522d2b214a",
-    "summary": "Register selected legacy project folders for search and browse in place",
+    "task_id": "TASK_REPORT_READ_ERRORS_20261019",
+    "tier": "standard",
+    "subject": "9774e0be539ae516563cdc91a1bd54cf56badfb3",
+    "summary": "Read protected customer reports safely and isolate page load errors",
     "disposition": "completed",
-    "decision_ref": "User explicitly closes this task locally, retains all local commits and documented acceptance exceptions, and forbids push or publication.",
-    "closed_at": "2026-10-19T00:11:36.348190Z"
+    "decision_ref": "User closes the prior task and requests Internal Report draft-download fallback; no publication requested.",
+    "closed_at": "2026-10-19T10:29:12.104235Z"
   },
   "retained_history": [
     {
