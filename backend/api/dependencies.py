@@ -1392,13 +1392,24 @@ def get_internal_report_generation_service(
     )
 
 
+def get_customer_report_source_reader(session):
+    from backend.application.customer_report_source_resolver import CustomerReportSourceResolver
+    from backend.infrastructure.files.downloaded_internal_report_source import DownloadedInternalReportDrafts
+    return CustomerReportSourceResolver(
+        current_reports=get_current_report_update_service(session),
+        basic_information=ProjectBasicInformationRepository(session),
+        workspaces=ProjectOfficialWorkspaceRepository(session),
+        downloaded_drafts=DownloadedInternalReportDrafts(),
+    )
+
+
 def get_customer_report_projection_service(
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
 ) -> CustomerReportProjectionService:
     """Build current-Internal-Report customer projection and publication."""
     return CustomerReportProjectionService(
-        current_reports=get_current_report_update_service(session),
+        current_reports=get_customer_report_source_reader(session),
         files=ReportPublicationGateway(),
         writer=CustomerReportDocumentGateway(),
         generated_root=settings.data_dir / "customer_report_downloads",

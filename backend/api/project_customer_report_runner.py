@@ -20,7 +20,7 @@ class ProjectCustomerReportRunner:
         self._lock_timeout = lock_timeout_seconds
 
     def __call__(self, project_id, source_hash, customer_hash, operation_root, progress):
-        from backend.api.dependencies import get_current_report_update_service, get_test_report_template_resource_store
+        from backend.api.dependencies import get_customer_report_source_reader, get_test_report_template_resource_store
         journal = GenerationJournal(self._settings.data_dir / "project_folder_generation")
         with ExitStack() as stack:
             # The POST's registry guard owns this same non-reentrant lock until
@@ -43,7 +43,7 @@ class ProjectCustomerReportRunner:
                     raise ValueError("Project is unavailable or read-only. Restore it before generating a report.")
                 template = resolve_customer_report_template_path(get_test_report_template_resource_store(session))
                 service = CustomerReportProjectionService(
-                    current_reports=get_current_report_update_service(session),
+                    current_reports=get_customer_report_source_reader(session),
                     files=ReportPublicationGateway(), writer=self._writer_factory(operation_root),
                     generated_root=Path(operation_root))
                 return service.generate(CustomerReportGenerationCommand(project_id, template, source_hash, customer_hash), progress=progress)

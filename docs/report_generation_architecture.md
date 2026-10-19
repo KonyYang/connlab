@@ -73,6 +73,23 @@ file replaces it atomically. Without an official project folder, the generated f
 browser download and is not promoted into project authority. The approved E-4515_F template and both
 source reports remain read-only.
 
+When no ready official Internal Report exists, Customer Report source resolution also checks the
+current user's OS Downloads folder (including Windows Known Folder relocation). It only scans the
+top level for this project's exact DL-prefixed `_Draft.docx` files and ordinary browser `(n)` copies.
+The newest modification time wins, with browser copy number as the equal-time tie breaker. The
+selected document must repeat that DL in its header and carry the E-3707 internal form identity in
+its footer; customer reports, other projects, partial downloads, and redirected files are not sources.
+Conflicting latest candidates or an unreadable/invalid latest draft require manual file selection,
+not silent fallback to an older report. Other browser-configured download directories use the manual
+picker. A valid official source remains preferred and existing official ambiguity is never bypassed.
+
+This downloaded source is used only for the Customer Report projection. It is not registered as the
+current Internal Report, and neither the source nor existing downloaded reports are changed. The
+customer result keeps its `Draft` marker and uses the existing asynchronous job/download flow and
+ordinary browser duplicate-name handling. Preview hashes and post-generation source re-resolution
+reject edits or a newer download appearing during generation. Legacy managed drafts remain compatible
+when no matching downloaded draft exists.
+
 Before Microsoft Word starts, ConnLab copies the Internal Report, the customer template, and the
 working output into a short task-owned directory. Word therefore never receives the potentially long
 official project path or creates its temporary files beside the project report. The completed working

@@ -344,6 +344,21 @@ describe("ReportWorkspace", () => {
     expect(screen.queryByText(/Downloaded draft:/)).toBeNull();
   });
 
+  it("uses the downloaded internal draft for a customer job instead of opening the file picker", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.fetchCurrentReport).mockResolvedValue({...currentReport, status: "missing", mode: null,
+      file_name: null, file_path: null, file_sha256: null});
+    vi.mocked(api.fetchCurrentCustomerReport).mockResolvedValue({...customerReport, status: "missing", mode: "managed_download",
+      file_name: null, file_sha256: null, internal_report_sha256: "e".repeat(64), blockers: [], warnings: [], can_generate: true});
+    vi.mocked(api.startProjectCustomerReportJob).mockResolvedValue({...completedJob, status: "queued"});
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await user.click(await screen.findByRole("button", {name: "Generate Customer Report"}));
+    await waitFor(() => expect(api.startProjectCustomerReportJob).toHaveBeenCalledWith("project-1", {
+      expected_internal_report_sha256: "e".repeat(64), expected_customer_report_sha256: null,
+    }));
+    expect(screen.queryByRole("dialog", {name: /Internal Report/})).toBeNull();
+  });
+
   it("shows draft download failure without publishing and allows retry", async () => {
     const user = userEvent.setup();
     vi.mocked(api.previewInternalReportGeneration).mockResolvedValue({

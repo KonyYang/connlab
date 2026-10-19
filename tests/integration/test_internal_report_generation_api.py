@@ -48,6 +48,9 @@ class ReportWriter:
 
 @pytest.fixture
 def lab(tmp_path, monkeypatch):
+    # Customer-source discovery must never inspect the operator's real Downloads.
+    monkeypatch.setattr("backend.infrastructure.files.downloaded_internal_report_source.user_downloads_directory",
+                        lambda: tmp_path / "downloads")
     settings = Settings(data_dir=tmp_path / "data", projects_dir=tmp_path / "projects",
                         templates_dir=tmp_path / "templates", database_path=tmp_path / "connlab.sqlite3")
     settings.data_dir.mkdir()
