@@ -11,8 +11,30 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_REPORT_DUAL_MODE_UPDATES_20261019",
+    "summary": "Update Internal Report sections through official archive updates or chained draft downloads",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Preserve existing official report archive updates. Without a ready official report, resolve a validated current-project draft, update a new owned copy and offer retryable Draft download. Chain LLCR, Equipment List and Customer Report against the latest successful draft; preserve source files and manual content, guard changed authorities, retain required input validation and manual selection. Isolated regressions and actual Word generation/download smoke; no real project writes.",
+    "scope_paths": [
+      "backend/application",
+      "backend/api",
+      "backend/infrastructure/files",
+      "frontend/src/features/report-workspace",
+      "frontend/src/api",
+      "tests/unit",
+      "tests/integration",
+      "docs/report_generation_architecture.md"
+    ],
+    "risk_reasons": [],
+    "activation_head": "61a289a98a270784bebd1b65dde280f5693e7755",
+    "started_at": "2026-10-19T15:08:32.753322Z",
+    "updated_at": "2026-10-19T15:08:32.753322Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_XLSX_DATE_READING_CALIBRATION_20261019",
     "tier": "high_risk",
