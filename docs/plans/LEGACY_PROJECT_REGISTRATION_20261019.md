@@ -64,9 +64,9 @@ Final developer backend check: 26 passed, one existing Starlette TestClient depr
 8.08s. TypeScript `tsc -b` passed. Final exact-state narrow checks are recorded in the handoff; independent
 review, complete QA, isolated UI and real sample inventory verification follow the developer commit.
 
-No real service on ports 5173/8000 or real business database was used during development. All writes
-in developer tests use disposable SQLite stores and disposable directories; Explorer is replaced by
-a fake launcher.
+Developer tests did not request the real service on ports 5173/8000 or connect to the real business
+database. Their writes use disposable SQLite stores and disposable directories; Explorer is replaced
+by a fake launcher. The separate ambient auto-reload exception discovered during final QA is below.
 
 ## Independent review and final acceptance
 
