@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_REPORT_READ_ERRORS_20261019",
     "summary": "Read protected customer reports safely and isolate page load errors",
@@ -29,9 +29,68 @@
     "risk_reasons": [],
     "activation_head": "eefbd0a4554a2af204a22c1ebd664749acc75310",
     "started_at": "2026-10-19T00:13:54.221852Z",
-    "updated_at": "2026-10-19T00:13:54.221852Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-19T00:19:00.432499Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_REPORT_READ_ERRORS_20261019",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "summary": "Protected customer lineage uses read-only decrypted copy; unreadable reports return actionable blocked state; customer query failures preserve Internal Report UI with read-only retry. Originals untouched.",
+      "changed_paths": [
+        "backend/application/customer_report_projection_service.py",
+        "backend/infrastructure/office/customer_report_document_gateway.py",
+        "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
+        "frontend/src/features/report-workspace/ReportWorkspace.tsx",
+        "tests/integration/test_report_workspace_api.py",
+        "tests/unit/test_customer_report_document_gateway.py",
+        "tests/unit/test_customer_report_projection_service.py"
+      ],
+      "version": 1,
+      "scope_ok": true,
+      "integration": {
+        "status": "passed",
+        "method": "local master commit, clean tree; no push"
+      },
+      "schema": "connlab.sol-task-report",
+      "subject": "9774e0be539ae516563cdc91a1bd54cf56badfb3",
+      "validation": [
+        {
+          "result": "60 passed; one Starlette deprecation warning",
+          "name": "Relevant isolated backend suite",
+          "status": "passed"
+        },
+        {
+          "result": "88 passed",
+          "name": "Report workspace Vitest suite",
+          "status": "passed"
+        },
+        {
+          "result": "passed",
+          "name": "TypeScript and Vite production build",
+          "status": "passed"
+        }
+      ],
+      "task_id": "TASK_REPORT_READ_ERRORS_20261019",
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "method": "isolated red-green regression tests"
+        },
+        "qa": {
+          "status": "passed",
+          "method": "same agent; final affected matrix on clean exact subject"
+        },
+        "reviewer": {
+          "status": "passed",
+          "method": "same-agent separate standards and request-fit passes; no outstanding findings"
+        }
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_LEGACY_PROJECT_REGISTRATION_20261019",
