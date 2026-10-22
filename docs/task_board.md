@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_REPORT_LOCAL_UPDATE_FIDELITY_20261022",
     "summary": "Preserve approved report formatting during local LLCR and equipment updates",
@@ -27,9 +27,88 @@
     "risk_reasons": [],
     "activation_head": "04158c78bf89de26d166ff77ed1df65fa1ed5fef",
     "started_at": "2026-10-22T15:38:25.782158Z",
-    "updated_at": "2026-10-22T15:38:25.782158Z",
-    "checkpoint": null,
-    "report": null
+    "updated_at": "2026-10-22T15:57:51.960351Z",
+    "checkpoint": {
+      "schema": "connlab.sol-task-checkpoint",
+      "version": 1,
+      "task_id": "TASK_REPORT_LOCAL_UPDATE_FIDELITY_20261022",
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
+    },
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_REPORT_LOCAL_UPDATE_FIDELITY_20261022",
+      "subject": "b5dcb41b6d75fdd65036088549e582c6f3faa043",
+      "summary": "Local LLCR/equipment updates preserve approved report formatting and untouched OOXML parts. Reference equipment/protection copies passed; Word visual acceptance remains unverified.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/infrastructure/office/test_report_document_gateway.py",
+        "docs/report_generation_architecture.md",
+        "tests/unit/test_test_report_document_gateway.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "name": "Affected report gateway/application/API and protection tests",
+          "result": "214 passed, one existing dependency deprecation warning",
+          "seconds": 129.33
+        },
+        {
+          "status": "passed",
+          "name": "Regression RED/GREEN",
+          "result": "Reproduced global formatting, table rebuilding, unrelated ZIP reserialization and incompatible merged-statistics failures; corrected on final tested implementation."
+        },
+        {
+          "status": "passed",
+          "name": "Two authoritative reference copies",
+          "result": "17/22 equipment rows; unrelated body XML and all other ZIP parts preserved; repeat unencrypted output byte-identical; protected roundtrip identical decrypted package; all 204 original files SHA256 and mtime unchanged."
+        },
+        {
+          "status": "passed",
+          "name": "Exact diff review and whitespace",
+          "result": "Standards and spec passes by the same agent; no remaining blocking code findings. Visual limitation explicitly retained."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "context": "same agent",
+          "summary": "Implemented and regression-tested scoped adapter change; no real report/template/project writes; LLCR semantics unchanged."
+        },
+        "reviewer": {
+          "status": "passed",
+          "context": "sequential focused pass by same agent, not independent",
+          "standards_findings": 0,
+          "spec_findings": 0,
+          "limitations": [
+            "Word visual export stalled opening both updated and untouched isolated copies; no pixel/page-count acceptance claimed. Only owned test Word processes were terminated.",
+            "Real reference Final LLCR stages and different appendix headers remain next-batch semantic/mapping work.",
+            "Changed cell values inherit paragraph/run properties; mixed formatting inside replaced text and unchanged page counts after content growth are not guaranteed."
+          ]
+        },
+        "qa": {
+          "status": "passed",
+          "context": "same agent final affected-matrix pass",
+          "automated": "214 passed",
+          "limitations": [
+            "Word visual export stalled opening both updated and untouched isolated copies; no pixel/page-count acceptance claimed. Only owned test Word processes were terminated.",
+            "Real reference Final LLCR stages and different appendix headers remain next-batch semantic/mapping work.",
+            "Changed cell values inherit paragraph/run properties; mixed formatting inside replaced text and unchanged page counts after content growth are not guaranteed."
+          ]
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "branch": "master",
+        "subject": "b5dcb41b6d75fdd65036088549e582c6f3faa043",
+        "tree": "e9db412371f54322507d01f7d97787efbc53b0c9",
+        "clean": true,
+        "pushed": false
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_CUSTOMER_SAMPLE_MATERIAL_REDACTION_20261022",
