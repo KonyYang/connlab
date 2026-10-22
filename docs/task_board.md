@@ -11,132 +11,34 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
-    "task_id": "TASK_CUSTOMER_SAMPLE_MATERIAL_REDACTION_20261022",
-    "summary": "Generate a customer report with fixed sample material redaction rules",
-    "tier": "high_risk",
-    "route": "full_chain",
-    "scope": "Enforce Copper Alloy and High Temperature Resin for sensitive sample-description material fields in customer reports; preserve internal sources and unrelated content; independently verify and regenerate the official customer report after the explicitly approved History/Report archive.",
+    "task_id": "TASK_REPORT_LOCAL_UPDATE_FIDELITY_20261022",
+    "summary": "Preserve approved report formatting during local LLCR and equipment updates",
+    "tier": "standard",
+    "route": "sol_build_review_qa",
+    "scope": "Restrict existing section updates to owned content and preserve unrelated typography, pagination, drawings, headers and manual content. Validate isolated copies only; no real report/template/project writes and no LLCR semantic changes.",
     "scope_paths": [
-      "backend/infrastructure/office/customer_report_document_gateway.py",
-      "tests/unit/test_customer_report_document_gateway.py",
-      "docs/PROJECT_CONTEXT.md"
+      "backend/infrastructure/office/test_report_document_gateway.py",
+      "tests/unit/test_test_report_document_gateway.py",
+      "tests/unit/test_report_update_fidelity.py",
+      "docs/report_generation_architecture.md"
     ],
-    "risk_reasons": [
-      "Customer-facing confidential-material redaction and explicitly authorized official report archive/regeneration require independent review and source preservation."
-    ],
-    "activation_head": "46462ca31a619b7189697b65c37ef5af9082d45e",
-    "started_at": "2026-10-22T00:07:15.164224Z",
-    "updated_at": "2026-10-22T05:00:21.847945Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_CUSTOMER_SAMPLE_MATERIAL_REDACTION_20261022",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_CUSTOMER_SAMPLE_MATERIAL_REDACTION_20261022",
-      "subject": "0ef4bbfb032350d68894fa9b4157e0e128c5e02a",
-      "summary": "Enforce exact customer sample material redaction and safely archive/regenerate the authorized official customer report.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/infrastructure/office/customer_report_document_gateway.py",
-        "docs/PROJECT_CONTEXT.md",
-        "tests/unit/test_customer_report_document_gateway.py"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "name": "Developer RED/GREEN",
-          "summary": "Public gateway behavior reproduced old copper casing/detail and unredacted Housing, missing fail-closed audit and whitespace normalization; all repaired. Visual RED showed generic Housing split within Temperature; bounded column transfer repaired. Final gateway 42 passed in 7.72s, diff check passed."
-        },
-        {
-          "status": "passed",
-          "name": "Independent final review",
-          "summary": "Full material-rule review plus bounded layout re-review: Standards 0 / Spec 0. Real COM column behavior reserved for actual Word QA; no new dependencies, UI/API or source Internal changes."
-        },
-        {
-          "status": "passed",
-          "name": "Final risk matrix",
-          "summary": "13 affected Python unit/integration modules on final bytes: 110 passed in 14.72s; one existing httpx deprecation warning. Earlier 106 results preceded layout repair and are not treated as final evidence."
-        },
-        {
-          "status": "passed",
-          "name": "Actual Word and disclosure QA",
-          "summary": "Final isolated conversion then actual official output: three product Base cells exactly Copper Alloy and Housing exactly High Temperature Resin. Other five sample columns, body paragraphs and other tables preserved; PCB filtering retained. Full XML and concatenated XML text scan found no known proprietary material residues. Total table width and other five column widths unchanged; Description -621 and Housing +621 twips, centered alignment retained."
-        },
-        {
-          "status": "passed",
-          "name": "Authorized official archive/regeneration",
-          "summary": "User explicitly authorized History/Report archival and formal regeneration. Root used actual browser Generate Customer Report -> Archive And Regenerate. Job d69abc484a8441baaa8694cbb24ee049 completed in 14.5s, official changed=true; current customer API is ready and matches result.",
-          "output": "D:/ConnLabProjects/DL-2026-09-002A/DL-2026-09-002A Customized PBU RAR Connectors Current Rating and CR Testing/DL-2026-09-002A-CR Customized PBU RAR Connectors Current Rating and CR Testing Report_Rev_A.docx",
-          "sha256": "d2aa45e86dcdd3baf04b17bf31887579283a91a5eb2ab814cb39f135f61cb236",
-          "archive": "D:/ConnLabProjects/DL-2026-09-002A/History/Report/DL-2026-09-002A-CR Customized PBU RAR Connectors Current Rating and CR Testing Report_Rev_A 20261022-082659.docx",
-          "archive_sha256": "83f759f2326597b12dfb00730c561a11f8f198e78f9f4dc11037543ae995048e"
-        },
-        {
-          "status": "passed",
-          "name": "Originals and rendered official document",
-          "summary": "Internal SHA 6edd8d2d5cb05cb5103f0ad5846618da14f1863d3584f6a1d3c0ad3802cac9fd and configured template SHA df64f372daafd52268c1ed159fe3c26aaaf18dc4c50ce38ad352b4e668ceb3be unchanged; archive exactly preserves old customer hash. Canonical renderer was attempted but bundled soffice absent; owned hidden read-only Word plus bundled Poppler rendered four official pages, QA and root inspected all pages. All four PNG hashes equal final isolated version; official file hash unchanged by export, no owned Word process retained. Task artifact marker run exactly once."
-        },
-        {
-          "status": "passed",
-          "name": "Integration and delivery boundaries",
-          "summary": "Independent final clean master subject/parent/tree and exact three-path scope verified. Two pre-existing workflow-document changes were separately committed locally under explicit user authorization in 46462ca3 before activation; no push or release rebuild. Source DRAFT conclusion and Initial draft-not released revision content remain unchanged, and user has been warned this is not external issuance approval. Unrecognized material table headers remain the documented supported-layout boundary.",
-          "evidence": "D:/PythonProject/connlab/tmp/customer_material_qa_20261022_01/official_render_01/verified_official.json"
-        }
-      ],
-      "roles": {
-        "planner": {
-          "status": "passed",
-          "context": "/root/customer_material_planner",
-          "summary": "Independent read-only actual data-flow and seven-column sample-table plan; scope fixed to three paths."
-        },
-        "developer": {
-          "status": "passed",
-          "context": "/root/customer_material_developer",
-          "summary": "Independent TDD material-rule/audit implementation and bounded layout repair, final affected gateway 42 passed."
-        },
-        "reviewer": {
-          "status": "passed",
-          "context": "/root/customer_material_reviewer",
-          "summary": "Independent exact diff review and bounded layout re-review, Standards 0 / Spec 0, actual COM risk checked by QA."
-        },
-        "qa": {
-          "status": "passed",
-          "context": "/root/customer_material_qa",
-          "summary": "Independent final 110-test matrix, actual Word isolation and official-output read-only content/hash/disclosure/geometry/render QA."
-        },
-        "integrator": {
-          "status": "passed",
-          "context": "/root/customer_material_integrator",
-          "summary": "Independent clean exact Git subject/parent/tree/scope, physical new/archive/source/template hashes and final QA evidence verification; no repeated matrix."
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "branch": "master",
-        "subject": "0ef4bbfb032350d68894fa9b4157e0e128c5e02a",
-        "parent": "b86ca1a89d134b303188f7c87377a71e23873fb9",
-        "tree": "9cd622b630943626a98827ad4c4e16a10d9e03f2",
-        "summary": "Local integration only. Exact three approved paths, clean worktree, authorized official report safely regenerated with old bytes archived. No remote publication."
-      }
-    }
+    "risk_reasons": [],
+    "activation_head": "04158c78bf89de26d166ff77ed1df65fa1ed5fef",
+    "started_at": "2026-10-22T15:38:25.782158Z",
+    "updated_at": "2026-10-22T15:38:25.782158Z",
+    "checkpoint": null,
+    "report": null
   },
   "last_closed": {
-    "task_id": "TASK_REPORT_DUAL_MODE_UPDATES_20261019",
-    "tier": "standard",
-    "subject": "1aab9baadb65c0179e35a3d707bc149d17c1049d",
-    "summary": "Update Internal Report sections through official archive updates or chained draft downloads",
+    "task_id": "TASK_CUSTOMER_SAMPLE_MATERIAL_REDACTION_20261022",
+    "tier": "high_risk",
+    "subject": "0ef4bbfb032350d68894fa9b4157e0e128c5e02a",
+    "summary": "Generate a customer report with fixed sample material redaction rules",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested closing the completed task on 2026-10-21.",
-    "closed_at": "2026-10-20T23:41:22.417569Z"
+    "decision_ref": "User 2026-10-22 explicitly confirmed close and next scoped fidelity implementation",
+    "closed_at": "2026-10-22T15:38:25.782158Z"
   },
   "retained_history": [
     {
