@@ -11,8 +11,27 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "state": "running",
+  "active": {
+    "task_id": "TASK_CUSTOMER_SAMPLE_MATERIAL_REDACTION_20261022",
+    "summary": "Generate a customer report with fixed sample material redaction rules",
+    "tier": "high_risk",
+    "route": "full_chain",
+    "scope": "Enforce Copper Alloy and High Temperature Resin for sensitive sample-description material fields in customer reports; preserve internal sources and unrelated content; independently verify and regenerate the official customer report after the explicitly approved History/Report archive.",
+    "scope_paths": [
+      "backend/infrastructure/office/customer_report_document_gateway.py",
+      "tests/unit/test_customer_report_document_gateway.py",
+      "docs/PROJECT_CONTEXT.md"
+    ],
+    "risk_reasons": [
+      "Customer-facing confidential-material redaction and explicitly authorized official report archive/regeneration require independent review and source preservation."
+    ],
+    "activation_head": "46462ca31a619b7189697b65c37ef5af9082d45e",
+    "started_at": "2026-10-22T00:07:15.164224Z",
+    "updated_at": "2026-10-22T00:07:15.164224Z",
+    "checkpoint": null,
+    "report": null
+  },
   "last_closed": {
     "task_id": "TASK_REPORT_DUAL_MODE_UPDATES_20261019",
     "tier": "standard",
