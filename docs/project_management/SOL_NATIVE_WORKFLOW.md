@@ -24,6 +24,12 @@ through safe in-scope local work. Stop earlier only for:
 - a repeated failure whose cause cannot be established safely.
 
 Do not ask for routine Plan, role, test-command, bounded-fix, or clean-local-integration approval.
+Within an authorized task, continue implementation, testing, in-scope failure fixes, review, and
+delivery without asking "continue?" between stages. Report progress without turning it into a gate.
+Retain explicit confirmation for destructive operations on real business files, material unresolved
+business choices, and final Close; the stop conditions above and tool permission requirements remain
+unchanged. If a decision is necessary, explain the concrete missing choice and consequence rather
+than requesting generic next-step approval. This is execution guidance, not a new workflow or state.
 WIP is at most one main task plus one independent micro task; only explicit Close or Cancel releases
 that task's slot. A legacy version-1 board stays single-task until idle upgrade. When a task is `ready_for_close`, interpret the
 next User message as follows:

@@ -43,9 +43,14 @@ the board/writer are compatibility names, not instructions to select GPT-5.6 Sol
 
 - For explanation, diagnosis, review, or planning, inspect and report; do not implement unless asked.
 - For change, build, fix, or refactor requests, make the in-scope local changes and run relevant
-  non-destructive validation without routine approval pauses.
+  non-destructive validation without routine approval pauses. Continue through implementation,
+  tests, in-scope fixes, review, and delivery; do not stop after each step to ask whether to proceed.
+  Progress updates are informational, not approval requests. Keep final Close explicitly user-confirmed.
 - Ask only for material scope expansion, an unresolved product choice with meaningfully different
   outcomes, new external/destructive authority, or an action that cannot be made safely reversible.
+  In particular, obtain explicit authorization before deleting, rebuilding, or overwriting real
+  business files. When asking, name the missing decision and its concrete consequence; do not ask
+  the User to choose routine technical steps. Required tool permissions remain separate and mandatory.
 - Make ordinary technical decisions—implementation, naming, module placement, tests, and tools—using
   the current code and the smallest coherent change.
 - Treat mid-task corrections as updates to the active request and preserve completed useful work.
