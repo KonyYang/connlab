@@ -799,9 +799,9 @@ def _result_tables_by_group(document) -> dict[str, tuple[Table, ...]]:
         if not table.rows:
             continue
         headers = tuple(_normalized(cell.text) for cell in table.rows[0].cells)
-        if headers[: len(_RESULT_HEADERS)] == tuple(
-            _normalized(value) for value in _RESULT_HEADERS
-        ):
+        if (len(headers) == len(_RESULT_HEADERS)
+                and headers[0] in {_normalized("Step"), _normalized("No.")}
+                and headers[1:] == tuple(_normalized(value) for value in _RESULT_HEADERS[1:])):
             collected.setdefault(current_group, []).append(table)
             current_group = None
     return {key: tuple(value) for key, value in collected.items()}
@@ -813,7 +813,12 @@ def _report_group_key(value: str) -> str:
 
 def _llcr_report_result(entry) -> str:
     value = f"{entry.summary_max:.3f}"
-    return f"Initial ≤{value}mΩ" if entry.stage == "initial" else f"∆R ≤{value}mΩ"
+    if entry.stage == "delta":
+        return f"∆R ≤{value}mΩ"
+    # The legacy 'initial' tag identifies corrected absolute measurements in
+    # the first imported stage, which may be a final-only Matrix measurement.
+    label = re.sub(r"\s+LLCR$", "", entry.stage_label.strip(), flags=re.IGNORECASE)
+    return f"{label} ≤{value}mΩ"
 
 
 def _audit_llcr_sync(path: Path, dataset: ResultDatasetRevision) -> None:
@@ -843,6 +848,27 @@ def _audit_llcr_sync(path: Path, dataset: ResultDatasetRevision) -> None:
 
 def _llcr_summary_rows(dataset: ResultDatasetRevision) -> tuple[LlcrSummaryRow, ...]:
     if dataset.payload.summary_rows:
+        if dataset.parser_profile_version == "connlab-llcr-macro-v1":
+            # v1 did not retain whether non-delta-labelled statistics came from
+            # Summary caches or a delta fallback. Never reinterpret that history.
+            def legacy_identity(group: str, stage: str) -> tuple[str, str]:
+                # v1 matched 'Final' and 'Final LLCR' to the same stage.
+                label = re.sub(r"\bLLCR\b", "", stage, flags=re.IGNORECASE)
+                return _report_group_key(group), _normalized(label).casefold()
+
+            delta_stages = {
+                legacy_identity(entry.group_label, entry.stage_label)
+                for entry in dataset.payload.entries if entry.stage == "delta"
+            }
+            if any(
+                legacy_identity(row.group_label, row.stage_label) in delta_stages
+                and not re.search(r"[Δ∆]\s*R|delta\s*r", row.stage_label, re.IGNORECASE)
+                for row in dataset.payload.summary_rows
+            ):
+                raise ValueError(
+                    "Reimport and confirm the LLCR workbook before updating this report: "
+                    "the legacy dataset cannot distinguish absolute Summary values from a ΔR fallback."
+                )
         return dataset.payload.summary_rows
     group_order: list[str] = []
     rows: list[LlcrSummaryRow] = []
@@ -851,10 +877,14 @@ def _llcr_summary_rows(dataset: ResultDatasetRevision) -> tuple[LlcrSummaryRow, 
         if group_key not in group_order:
             group_order.append(group_key)
         values = [measurement.value for measurement in entry.measurements]
+        stage_label = entry.stage_label
+        if entry.stage == "delta" and not re.search(r"[Δ∆]\s*R|delta\s*r", stage_label, re.IGNORECASE):
+            stage_label = ("Final ∆R" if re.fullmatch(r"Final(?:\s+LLCR)?", stage_label, re.IGNORECASE)
+                           else f"∆R {stage_label}")
         rows.append(
             LlcrSummaryRow(
                 group_label=entry.group_label,
-                stage_label=entry.stage_label,
+                stage_label=stage_label,
                 summary_min=entry.summary_min,
                 summary_max=entry.summary_max,
                 summary_average=entry.summary_average,
@@ -877,9 +907,42 @@ def _appendix_a_is_current(
     heading, table = _appendix_a_region(document)
     if heading is None or table is None:
         return False
-    expected = _appendix_a_values(rows)
-    actual = tuple(tuple(cell.text for cell in row.cells) for row in table.rows)
-    return actual == expected
+    mapped = _map_appendix_rows(table, rows)
+    return mapped is not None and all(
+        tuple(cell.text for cell in row.cells[2:]) == values[2:]
+        for row, values in mapped
+    )
+
+
+def _map_appendix_rows(table: Table, summaries: tuple[LlcrSummaryRow, ...]):
+    """Match supported approved layouts without treating row position as identity."""
+    table_rows = list(table.rows)
+    if not table_rows or any(len(row.cells) != 6 for row in table_rows):
+        return None
+    expected = _appendix_a_values(summaries)
+    headers = tuple(tuple(cell.text for cell in row.cells) for row in table_rows[:2])
+    if headers == expected[:2]:
+        data_rows = table_rows[2:]
+    elif headers[0] == ("", "", "Min", "Max", "Avg", "Stdev"):
+        data_rows = table_rows[1:]
+    else:
+        return None
+    if len(data_rows) != len(summaries):
+        return None
+    if len({cell._tc for row in data_rows for cell in row.cells[2:]}) != 4 * len(data_rows):
+        return None
+    def identity(group: str, stage: str):
+        return _report_group_key(group), _normalized(_appendix_stage_label(stage))
+    pending = {identity(values[0], values[1]): values for values in expected[2:]}
+    if len(pending) != len(summaries):
+        return None
+    mapped = []
+    for row in data_rows:
+        values = pending.pop(identity(row.cells[0].text, row.cells[1].text), None)
+        if values is None:
+            return None
+        mapped.append((row, values))
+    return mapped
 
 
 def _appendix_a_region(document) -> tuple[Paragraph | None, Table | None]:
@@ -918,23 +981,13 @@ def _replace_appendix_a(
     if old_heading is not None:
         # A populated approved appendix is not an initialization template. Never
         # rebuild its heading, merged cells, pagination or manual formatting.
-        expected = _appendix_a_values(rows)
-        if (
-            old_table is None
-            or len(old_table.rows) != len(expected)
-            or any(len(row.cells) != 6 for row in old_table.rows)
-            or tuple(tuple(cell.text for cell in row.cells) for row in old_table.rows[:2]) != expected[:2]
-            or any(
-                tuple(cell.text for cell in row.cells[:2]) != values[:2]
-                for row, values in zip(old_table.rows[2:], expected[2:])
-            )
-            or len({cell._tc for row in old_table.rows[2:] for cell in row.cells[2:]}) != 4 * len(rows)
-        ):
+        mapped = _map_appendix_rows(old_table, rows) if old_table is not None else None
+        if mapped is None:
             raise ValueError(
                 "Existing Appendix A layout or Group/Stage mapping differs from the LLCR dataset. "
                 "Review the appendix before updating; the original report was not changed."
             )
-        for row, values in zip(old_table.rows[2:], expected[2:], strict=True):
+        for row, values in mapped:
             for cell, value in zip(row.cells[2:], values[2:], strict=True):
                 if cell.text != value:
                     _set_cell_text(cell, value)
@@ -1064,14 +1117,9 @@ def _appendix_a_values(
 
 
 def _appendix_stage_label(value: str) -> str:
-    label = " ".join(value.strip().split())
-    if re.search(r"[Δ∆]\s*R", label, re.IGNORECASE):
-        return label.replace("Δ", "∆")
-    if re.fullmatch(r"Final(?:\s+LLCR)?", label, re.IGNORECASE):
-        return "Final ∆R"
-    if not label.casefold().startswith("initial"):
-        return f"∆R {label}"
-    return label
+    # Summary rows carry their own quantity meaning. A later stage is not
+    # evidence that its statistics describe a change from the initial value.
+    return " ".join(value.strip().split()).replace("Δ", "∆")
 
 
 def _appendix_grid_dxa(document) -> tuple[int, ...]:

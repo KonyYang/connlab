@@ -27,7 +27,7 @@ from backend.domain.result_dataset_models import (
 )
 
 
-PARSER_PROFILE_VERSION = "connlab-llcr-macro-v1"
+PARSER_PROFILE_VERSION = "connlab-llcr-macro-v2"
 _REQUIREMENT = re.compile(
     r"(?P<comparator><=|≤|<)\s*(?P<limit>[+-]?\d+(?:\.\d+)?)\s*"
     r"(?P<unit>m(?:ohm|Ω|Ω)|(?:u|µ|μ)(?:ohm|Ω|Ω)|(?:ohm|Ω|Ω))",
@@ -479,6 +479,18 @@ def _extract_summary_rows(summary, entries: list[LlcrResultEntry], *, values_sum
             for column in range(3, 7)
         )
         if any(value is None for value in displayed_statistics):
+            summary_is_delta = bool(re.search(r"[Δ∆]\s*R|delta\s*r", stage_label, re.IGNORECASE))
+            if summary_is_delta != (entry.stage == "delta"):
+                diagnostics.append(
+                    _diagnostic(
+                        "summary_quantity_unresolved",
+                        f"Summary row {source_row} has missing statistics and its quantity differs "
+                        "from the computed result. Recalculate and verify the Summary in a copy; "
+                        "absolute resistance and ΔR cannot substitute for each other.",
+                        _normalized_group(current_group),
+                    )
+                )
+                continue
             displayed_statistics = (
                 entry.summary_min,
                 entry.summary_max,
@@ -510,8 +522,8 @@ def _extract_summary_rows(summary, entries: list[LlcrResultEntry], *, values_sum
 
 def _summary_stage_key(value: str) -> str:
     normalized = _text(value).replace("∆", "Δ").casefold()
-    normalized = re.sub(r"[Δδ]\s*r", "", normalized)
-    normalized = re.sub(r"\bllcr\b", "", normalized)
+    normalized = re.sub(r"[Δδ]\s*r|\bdelta\s*r\b", "", normalized)
+    normalized = re.sub(r"\b(?:llcr|r)\b", "", normalized)
     return " ".join(normalized.split())
 
 

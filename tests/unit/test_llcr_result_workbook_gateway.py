@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import replace
 from decimal import Decimal
 
+import pytest
+
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
 
@@ -39,6 +41,8 @@ def test_inspect_reads_original_precision_and_maps_stages_to_matrix_steps(tmp_pa
     workbook["Summary"]["E3"] = Decimal("0.1665")
     workbook["Summary"]["F3"] = Decimal("0.078489")
     workbook["Summary"]["C3"].fill = PatternFill("solid", fgColor="FFFACD")
+    for column, value in zip("CDEF", ("0.170", "0.220", "0.195", "0.035355"), strict=True):
+        workbook["Summary"][f"{column}4"] = Decimal(value)
     workbook.save(source)
 
     inspection = LlcrResultWorkbookGateway().inspect(
@@ -46,7 +50,7 @@ def test_inspect_reads_original_precision_and_maps_stages_to_matrix_steps(tmp_pa
         projection=projection,
     )
 
-    assert inspection.parser_profile_version == "connlab-llcr-macro-v1"
+    assert inspection.parser_profile_version == "connlab-llcr-macro-v2"
     assert inspection.detected_sheets == ("Summary", "SIG")
     assert inspection.diagnostics == ()
     initial, final = inspection.entries
@@ -85,6 +89,55 @@ def test_inspect_reads_original_precision_and_maps_stages_to_matrix_steps(tmp_pa
     assert inspection.summary_rows[0].summary_stdev == Decimal("0.078489")
     assert inspection.summary_rows[0].fill_color == "FFFACD"
     assert inspection.summary_rows[0].source_row == 3
+    assert inspection.summary_rows[1].summary_max == Decimal("0.220")
+
+
+@pytest.mark.parametrize("label,allowed", [("Final LLCR", False), ("Final R", False),
+                                          ("Final ∆R", True), ("Final delta R", True)])
+def test_summary_without_cache_never_substitutes_delta_for_absolute_resistance(tmp_path, label, allowed) -> None:
+    source = tmp_path / "completed.xlsx"
+    projection = _projection()
+    LlcrCrSpecializedRecordWorkbookGateway().write(output_path=source, projection=projection)
+    workbook = load_workbook(source)
+    sheet = workbook["SIG"]
+    sheet["B2"], sheet["B3"], sheet["B4"] = 0.05, 0.05, 0.05
+    sheet["D10"], sheet["D11"], sheet["D12"], sheet["D13"] = 0.219, 0.248, 0.220, 0.270
+    workbook["Summary"]["B4"] = label
+    workbook.save(source)
+    workbook.close()
+    original = source.read_bytes()
+    inspection = LlcrResultWorkbookGateway().inspect(source_path=source, projection=projection)
+    assert source.read_bytes() == original
+    if allowed:
+        assert inspection.diagnostics == ()
+        assert inspection.summary_rows[1].summary_max == Decimal("0.022")
+        assert inspection.summary_rows[1].stage_label == label
+    else:
+        assert not inspection.entries
+        assert any(d.code == "summary_quantity_unresolved" and d.severity == "blocked"
+                   for d in inspection.diagnostics)
+
+
+def test_final_only_matrix_stage_retains_absolute_quantity_and_final_label(tmp_path) -> None:
+    source = tmp_path / "final-only.xlsx"
+    projection = _projection()
+    section = projection.sections[0]
+    final = replace(section.stages[0], label="Final", requirement="≤0.25mΩ")
+    projection = replace(projection, sections=(replace(section, stages=(final,)),))
+    LlcrCrSpecializedRecordWorkbookGateway().write(output_path=source, projection=projection)
+    workbook = load_workbook(source)
+    sheet = workbook["SIG"]
+    sheet["B2"], sheet["B3"], sheet["B4"] = 0.05, 0.05, 0.05
+    sheet["D10"], sheet["D11"] = 0.219, 0.248
+    workbook.save(source)
+    workbook.close()
+    inspection = LlcrResultWorkbookGateway().inspect(source_path=source, projection=projection)
+    assert inspection.diagnostics == ()
+    assert inspection.entries[0].stage == "initial"  # Legacy absolute-value tag, not chronology.
+    assert inspection.entries[0].stage_label == "Final LLCR"
+    assert inspection.entries[0].summary_max == Decimal("0.198")
+    assert inspection.summary_rows[0].stage_label == "Final LLCR"
+    assert inspection.summary_rows[0].summary_max == Decimal("0.198")
 
 
 def test_inspect_returns_blocking_diagnostic_for_a_corrupt_xlsx(tmp_path) -> None:

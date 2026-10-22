@@ -526,7 +526,7 @@ def test_section_update_preserves_existing_owned_table_layout(tmp_path: Path, op
         assert repeated.read_bytes() == output.read_bytes()
 
 
-@pytest.mark.parametrize("mismatch", ["stage", "row_count", "merged_statistics"])
+@pytest.mark.parametrize("mismatch", ["stage", "row_count", "merged_statistics", "duplicate_stage"])
 def test_llcr_update_does_not_rebuild_an_incompatible_manual_appendix(tmp_path: Path, mismatch: str) -> None:
     gateway = TestReportDocumentGateway()
     initial = tmp_path / "initial.docx"
@@ -540,6 +540,8 @@ def test_llcr_update_does_not_rebuild_an_incompatible_manual_appendix(tmp_path: 
         appendix.cell(3, 1).text = "Final R"
     elif mismatch == "row_count":
         appendix.add_row()
+    elif mismatch == "duplicate_stage":
+        appendix.cell(3, 1).text = appendix.cell(2, 1).text
     else:
         appendix.cell(2, 2).merge(appendix.cell(2, 3))
     doc.save(source)
@@ -682,7 +684,7 @@ def test_synchronizes_only_managed_llcr_result_cells_into_a_new_draft(tmp_path: 
         "Group 1", "Initial LLCR", "0.158", "0.183", "0.168", "0.010"
     ]
     assert [cell.text for cell in appendix.rows[3].cells] == [
-        "Group 1", "Final ∆R", "0.013", "0.039", "0.028", "0.011"
+        "Group 1", "Final LLCR", "0.013", "0.039", "0.028", "0.011"
     ]
     assert _cell_fill(appendix.cell(2, 2)) in {"auto", "FFFFFF"}
     assert _cell_fill(appendix.cell(3, 2)) == "FFFFCC"
@@ -716,6 +718,120 @@ def test_synchronizes_only_managed_llcr_result_cells_into_a_new_draft(tmp_path: 
         synchronized,
         next(p._p for p in synchronized.paragraphs if p.text == "*** End of Report ***"),
     )
+
+
+@pytest.mark.parametrize("label", ["Final LLCR", "After MFG", "Final ∆R"])
+def test_llcr_appendix_preserves_source_quantity_label_and_values(tmp_path: Path, label: str) -> None:
+    gateway = TestReportDocumentGateway()
+    source = tmp_path / "source.docx"
+    gateway.generate(template_path=_build_template(tmp_path / "template.docx"),
+                     output_path=source, report=_report())
+    dataset = _llcr_dataset()
+    summary = replace(dataset.payload.summary_rows[-1], stage_label=label,
+                      summary_min=Decimal("0.410"), summary_max=Decimal("0.520"),
+                      summary_average=Decimal("0.465"), summary_stdev=Decimal("0.078"))
+    dataset = replace(dataset, payload=replace(dataset.payload, summary_rows=(summary,)))
+    output = tmp_path / "updated.docx"
+    gateway.synchronize_llcr_results(source_path=source, output_path=output, dataset=dataset)
+    assert [c.text for c in _appendix_a_table(Document(output)).rows[2].cells] == [
+        "Group 1", label, "0.410", "0.520", "0.465", "0.078"]
+
+
+def test_llcr_legacy_payload_without_summary_labels_derived_delta_explicitly(tmp_path: Path) -> None:
+    gateway = TestReportDocumentGateway()
+    source = tmp_path / "source.docx"
+    gateway.generate(template_path=_build_template(tmp_path / "template.docx"),
+                     output_path=source, report=_report())
+    dataset = _llcr_dataset()
+    entry = replace(dataset.payload.entries[0], stage="delta", stage_label="Final LLCR")
+    dataset = replace(dataset, payload=LlcrDatasetPayload((entry,)))
+    output = tmp_path / "updated.docx"
+    gateway.synchronize_llcr_results(source_path=source, output_path=output, dataset=dataset)
+    assert _appendix_a_table(Document(output)).cell(2, 1).text == "Final ∆R"
+    assert _result_tables(Document(output))[0].cell(2, 4).text == "∆R ≤0.198mΩ"
+
+
+@pytest.mark.parametrize("header_rows", [1, 2])
+def test_llcr_updates_approved_appendix_by_group_and_stage_without_rebuilding(tmp_path: Path, header_rows: int) -> None:
+    gateway = TestReportDocumentGateway()
+    source = tmp_path / "source.docx"
+    gateway.generate(template_path=_build_template(tmp_path / "template.docx"),
+                     output_path=source, report=_report())
+    dataset = _llcr_dataset()
+    doc = Document(source)
+    heading = doc.add_paragraph("Appendix A: Approved LLCR Statistics")
+    appendix = doc.add_table(rows=header_rows + 2, cols=6)
+    if header_rows == 2:
+        for cell, value in zip(appendix.rows[0].cells, ("Test Step", "Test Step", "Statistics", "Statistics", "Statistics", "Statistics")):
+            cell.text = value
+    for cell, value in zip(appendix.rows[header_rows-1].cells,
+                           (("", "") if header_rows == 1 else ("Test Step", "Test Step")) + ("Min", "Max", "Avg", "Stdev")):
+        cell.text = value
+    # Approved row order differs from imported order; identity must win over position.
+    for row, label in zip(appendix.rows[header_rows:], ("Final LLCR", "Initial LLCR")):
+        for cell, value in zip(row.cells, ("Group 1", label, "9.999", "9.999", "9.999", "9.999")):
+            cell.text = value
+            cell.paragraphs[0].runs[0].font.size = Pt(9)
+    headers = [row._tr.xml for row in appendix.rows[:header_rows]]
+    heading_xml = heading._p.xml
+    doc.save(source)
+    output = tmp_path / "updated.docx"
+    gateway.synchronize_llcr_results(source_path=source, output_path=output, dataset=dataset)
+    updated = Document(output)
+    table = updated.tables[-1]
+    assert [row._tr.xml for row in table.rows[:header_rows]] == headers
+    assert next(p for p in updated.paragraphs if p.text.startswith("Appendix A:"))._p.xml == heading_xml
+    assert [cell.text for cell in table.rows[header_rows].cells] == ["Group 1", "Final LLCR", "0.013", "0.039", "0.028", "0.011"]
+    assert table.rows[header_rows+1].cells[2].text == "0.158"
+    assert all(run.font.size == Pt(9) for row in table.rows[header_rows:] for cell in row.cells
+               for p in cell.paragraphs for run in p.runs)
+
+
+@pytest.mark.parametrize("header", ["Step", "No."])
+def test_final_only_absolute_llcr_is_not_relabelled_initial_or_delta(tmp_path: Path, header: str) -> None:
+    gateway = TestReportDocumentGateway()
+    source = tmp_path / "source.docx"
+    gateway.generate(template_path=_build_template(tmp_path / "template.docx"),
+                     output_path=source, report=_report())
+    doc = Document(source)
+    table = _result_tables(doc)[0]
+    table.cell(0, 0).text = header
+    table.cell(2, 2).text = "≤0.25mΩ"
+    header_xml = table.rows[0]._tr.xml
+    doc.save(source)
+    dataset = _llcr_dataset()
+    entry = replace(dataset.payload.entries[0], stage_label="Final LLCR", requirement="≤0.25mΩ")
+    dataset = replace(dataset, payload=LlcrDatasetPayload((entry,)))
+    output = tmp_path / "updated.docx"
+    gateway.synchronize_llcr_results(source_path=source, output_path=output, dataset=dataset)
+    updated = Document(output)
+    table = next(t for t in updated.tables if t.cell(0, 0).text == header and len(t.columns) == 6)
+    assert table.rows[0]._tr.xml == header_xml
+    assert table.cell(2, 4).text == "Final ≤0.198mΩ"
+    assert _appendix_a_table(updated).cell(2, 1).text == "Final LLCR"
+
+
+@pytest.mark.parametrize("profile", ["connlab-llcr-macro-v1", "connlab-llcr-macro-v2"])
+@pytest.mark.parametrize("summary_label", ["Final LLCR", "Final", "final"])
+def test_ambiguous_legacy_summary_requires_reimport_before_report_write(tmp_path: Path, profile: str, summary_label: str) -> None:
+    gateway = TestReportDocumentGateway()
+    source = tmp_path / "source.docx"
+    gateway.generate(template_path=_build_template(tmp_path / "template.docx"), output_path=source, report=_report())
+    original = source.read_bytes()
+    dataset = _llcr_dataset()
+    delta = replace(dataset.payload.entries[0], stage="delta", stage_label="Final LLCR")
+    summary = replace(dataset.payload.summary_rows[-1], stage_label=summary_label)
+    dataset = replace(dataset, parser_profile_version=profile,
+                      payload=LlcrDatasetPayload((delta,), (summary,)))
+    output = tmp_path / "updated.docx"
+    if profile.endswith("v1"):
+        with pytest.raises(ValueError, match="Reimport.*LLCR"):
+            gateway.synchronize_llcr_results(source_path=source, output_path=output, dataset=dataset)
+        assert not output.exists()
+    else:
+        gateway.synchronize_llcr_results(source_path=source, output_path=output, dataset=dataset)
+        assert _appendix_a_table(Document(output)).cell(2, 1).text == summary_label
+    assert source.read_bytes() == original
 
 
 def test_llcr_sync_is_byte_identical_when_managed_values_are_already_current(

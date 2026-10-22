@@ -157,12 +157,33 @@ Approved template files, source workbooks, and header/footer typography remain u
 ### Local update fidelity
 
 LLCR changes only matched Result/Comment cells and Appendix A numeric cells. For an existing
-Appendix A, the supported two-row header and Group/Stage mapping must match the dataset, including
-row count. Its heading, pagination, merged headers, column widths, colors and existing typography
+Appendix A, the supported two-row header or the approved compact single-row header
+(`blank / blank / Min / Max / Avg / Stdev`) and Group/Stage mapping must match the dataset, including
+row count. Rows are matched by unique Group/Stage identity rather than position; the existing order
+stays unchanged. Its heading, pagination, merged headers, column widths, colors and existing typography
 are preserved. A structural/mapping mismatch stops before publication with a review message instead
 of rebuilding the approved appendix. If Appendix A is absent, the existing default appendix builder
-still inserts it before later appendices or End of Report. LLCR formulas and Final R versus delta-R
-semantics have not changed; semantic correction is a separate batch.
+still inserts it before later appendices or End of Report.
+
+### LLCR quantities and stage names
+
+- A stage name does not determine its quantity: `Final LLCR`/`Final R` absolute resistance and
+  `Final ΔR` change from baseline are not interchangeable. Imported Summary names and numeric
+  statistics remain paired; the report no longer rewrites every non-initial label to delta-R.
+- Result/Comment cells continue to use the confirmed entry's calculated quantity and outcome.
+  The legacy entry tag `initial` means a first corrected absolute measurement, not necessarily an
+  initial test in chronological order. A final-only Matrix stage keeps its `Final` result label;
+  `delta` entries remain explicitly ΔR. Matrix requirements, comparison limits and override approval
+  rules are unchanged. Compatible result tables may use `Step` or `No.`; neither header is rewritten.
+- New imports use `connlab-llcr-macro-v2`. Complete Summary values remain source-authored authority.
+  Missing caches may use the existing deterministic calculation only when the Summary quantity
+  agrees with that calculation. Otherwise `summary_quantity_unresolved` blocks confirmation with
+  guidance to recalculate/verify a copy; absent absolute values are never filled with delta statistics.
+- Legacy confirmed datasets remain readable, with no migration or automatic rewriting. A v1 Summary
+  row without a delta marker matching a computed delta entry is ambiguous: v1 did not retain whether
+  it came from the workbook or an unsafe fallback. Report update requires reimport/confirmation for
+  that case. Legacy payloads without Summary rows still derive statistics from their typed entries
+  and explicitly label calculated deltas. Already-created reports are never silently corrected.
 
 Text/table-only section updates replace only `word/document.xml` in the staged DOCX ZIP; all other
 package parts keep their original bytes, including relationships, media, headers/footers, styles and
@@ -176,9 +197,11 @@ Regression validation uses isolated reports and covers unrelated body XML/packag
 typography, existing appendix layout, incompatible mappings, repeated updates, and source hashes.
 The two authoritative project reference copies (DL-2026-09-021/031) additionally exercise equipment
 updates and protected-package round-trips; no source reports, templates or project data are written.
-Their `Final LLCR` labels and the 031 appendix's different header layout are not evidence of LLCR
-semantic compatibility with the current dataset. This batch must not relabel them as delta-R or
-claim that those real appendices can already be synchronized; that mapping remains next-batch work.
+Isolated LLCR checks also cover both reference appendix layouts and `No.` result tables using a
+synthetic one-cell numeric edit, preserving the `Final LLCR` labels and unrelated content. This is
+adapter fidelity evidence, not validation or reapproval of those projects' actual measurements.
+An existing source-label/Matrix conflict still requires explicit source mapping; no project-specific
+Group Ad exception is hard-coded into the importer.
 Preserving pagination controls does not freeze page count when new text or row counts actually grow.
 
 ## Authority and dependency flow

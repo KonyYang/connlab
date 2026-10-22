@@ -36,7 +36,13 @@ class LlcrMeasurement:
 
 @dataclass(frozen=True, slots=True)
 class LlcrResultEntry:
-    """One Matrix Group/Step LLCR result ready for confirmation."""
+    """One Matrix Group/Step LLCR result ready for confirmation.
+
+    The retained ``stage`` tag describes the import calculation: ``initial``
+    is the first corrected absolute measurement, ``delta`` a change from it.
+    Chronology belongs to ``stage_label``; a final-only Matrix stage can carry
+    the legacy ``initial`` calculation tag without being an initial test.
+    """
 
     result_id: str
     confirmed_group_id: str
