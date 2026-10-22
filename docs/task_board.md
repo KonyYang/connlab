@@ -11,7 +11,7 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "running",
+  "state": "ready_for_close",
   "active": {
     "task_id": "TASK_LLCR_RESULT_SEMANTICS_20261023",
     "summary": "Correct LLCR absolute resistance versus delta semantics without changing real reports",
@@ -29,17 +29,99 @@
     "risk_reasons": [],
     "activation_head": "07e4c15bd784b404182475d22c6765c6378e5966",
     "started_at": "2026-10-22T16:06:06.821761Z",
-    "updated_at": "2026-10-22T23:13:32.899251Z",
+    "updated_at": "2026-10-22T23:21:00.160079Z",
     "checkpoint": {
       "schema": "connlab.sol-task-checkpoint",
       "version": 1,
       "task_id": "TASK_LLCR_RESULT_SEMANTICS_20261023",
-      "stage": "qa_environment",
-      "status": "blocked",
-      "requires_user": true,
-      "summary": "Implementation committed at 7062a0e4de58e0c1c9fe9d0fcd9c90edca6b6738; scoped Developer tests 56 passed. Final affected matrix: 246 passed / 15 failed; all 15 failures reproduced on pre-change 46f5f771 isolated snapshot. Current host denies os.link with WinError 5 despite tmp write permission. API socketpair restriction resolved by network permission. Need affected matrix rerun in a host context that permits hardlinks; tmp/llcr_semantics_20261023/rerun_qa.ps1 is the isolated runner. No protection bypass or test weakening. Standards/spec focused same-agent review: no remaining code findings. Two reference-copy LLCR checks passed; all 204 original files hashes/mtimes unchanged; Word visual rendering remains unverified. Evidence: tmp/llcr_semantics_20261023/{developer-final,qa-unit,qa-api,baseline-failures}.xml. Do not finish/close as fully validated or push before QA resolution."
+      "stage": "delivery",
+      "status": "running",
+      "summary": "Implementation, review, validation, and integration are complete.",
+      "requires_user": false
     },
-    "report": null
+    "report": {
+      "schema": "connlab.sol-task-report",
+      "version": 1,
+      "task_id": "TASK_LLCR_RESULT_SEMANTICS_20261023",
+      "subject": "1c5c8a07701860d827ac0b0032e1040bf6b76a16",
+      "summary": "LLCR quantity/stage semantics corrected; 261 affected tests passed in user-run ordinary PowerShell. Previous host-only hardlink failures resolved without weakening protection. Real reports/templates/project data unchanged.",
+      "scope_ok": true,
+      "changed_paths": [
+        "backend/domain/result_dataset_models.py",
+        "backend/infrastructure/office/llcr_result_workbook_gateway.py",
+        "backend/infrastructure/office/test_report_document_gateway.py",
+        "docs/report_generation_architecture.md",
+        "tests/unit/test_llcr_result_workbook_gateway.py",
+        "tests/unit/test_test_report_document_gateway.py"
+      ],
+      "validation": [
+        {
+          "status": "passed",
+          "name": "Affected final matrix",
+          "tests": 261,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 83.058,
+          "timestamp": "2026-10-23T07:15:03.069156+08:00",
+          "executor": "User ran supplied isolated PowerShell runner; assistant inspected JUnit results and exact case set",
+          "evidence_path": "tmp/llcr_semantics_20261023/qa-external.xml",
+          "raw_sha256": "c348f31d43362b0e3e8a0324e958f2e6e35922847d2eadcfd074e158adc9317c",
+          "result": "All 15 prior failed cases now pass. Product/test bytes unchanged since implementation commit; only board changed."
+        },
+        {
+          "status": "passed",
+          "name": "Developer RED/GREEN",
+          "result": "56 targeted checks passed, including absolute versus delta, final-only stage, cache mismatch, v1 shorthand ambiguity and duplicate appendix identity."
+        },
+        {
+          "status": "passed",
+          "name": "Two isolated reference copies",
+          "result": "Single/two-row appendix headers and No. result tables; protected round-trip, unrelated XML/package parts, repeat-byte identity passed; original 204 file hashes and mtimes unchanged."
+        },
+        {
+          "status": "passed",
+          "name": "Focused review",
+          "result": "Previous sequential same-agent standards/spec review retained; no product/test changes since review, no remaining code findings."
+        }
+      ],
+      "roles": {
+        "developer": {
+          "status": "passed",
+          "context": "same agent",
+          "summary": "Scoped implementation and 56 targeted checks; no authoritative file mutations."
+        },
+        "reviewer": {
+          "status": "passed",
+          "context": "sequential focused same-agent review, not independent",
+          "standards_findings": 0,
+          "spec_findings": 0,
+          "limitations": [
+            "Word visual rendering remains unverified; OOXML fidelity is not a pixel or fixed-page-count guarantee.",
+            "Ambiguous v1 Summary datasets require reimport/confirmation; no historical data is silently rewritten.",
+            "Reference-copy tests use synthetic numeric edits, not reapproval of actual business measurements."
+          ]
+        },
+        "qa": {
+          "status": "passed",
+          "context": "User executed final affected matrix outside restricted host; assistant verified results",
+          "automated": "261 passed; 0 failures/errors/skips",
+          "limitations": [
+            "Word visual rendering remains unverified; OOXML fidelity is not a pixel or fixed-page-count guarantee.",
+            "Ambiguous v1 Summary datasets require reimport/confirmation; no historical data is silently rewritten.",
+            "Reference-copy tests use synthetic numeric edits, not reapproval of actual business measurements."
+          ]
+        }
+      },
+      "integration": {
+        "status": "passed",
+        "branch": "master",
+        "subject": "1c5c8a07701860d827ac0b0032e1040bf6b76a16",
+        "tree": "d8ce8f4ba65e515f6892d667fcdbad579f5172d3",
+        "clean": true,
+        "pushed": false
+      }
+    }
   },
   "last_closed": {
     "task_id": "TASK_REPORT_LOCAL_UPDATE_FIDELITY_20261022",
