@@ -11,6 +11,7 @@ from zipfile import ZipFile
 import pytest
 from docx import Document
 from docx.oxml.ns import qn
+from docx.shared import Pt
 
 from backend.infrastructure.office import customer_report_document_gateway as gateway_module
 from backend.infrastructure.office.customer_report_document_gateway import (
@@ -521,6 +522,59 @@ def test_customer_report_filters_non_product_samples_and_keeps_other_sections(
     assert (source.read_bytes(), template.read_bytes()) == before
 
 
+@pytest.mark.parametrize("housing,description_width,housing_width,should_widen", [
+    ("PA9T", 122, 53, True),
+    ("HTN", 88, 53, False),
+    ("HTN", 122, 95, False),
+    ("N/A", 122, 53, False),
+])
+def test_customer_report_allocates_space_for_generic_housing_without_widening_table(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    housing, description_width, housing_width, should_widen,
+) -> None:
+    source = tmp_path / "internal.docx"
+    template = tmp_path / "template.docx"
+    output = tmp_path / "customer.docx"
+    _minimal_document(source, customer=False)
+    _minimal_document(template, customer=True)
+    document = Document(source)
+    sample = document.add_table(rows=2, cols=7)
+    widths = [description_width, 65, 43, 65, 65, 65, housing_width]
+    for column, (header, value, width) in enumerate(zip(
+        ["Description", "Part #", "Lot#", "Base Mat’l", "Contact Plating",
+         "Contact Lubricant", "Housing Material"],
+        ["Connector", "P-1", "L-1", "HP: C18070;", "Gold", "PE456", housing],
+        widths,
+    )):
+        sample.cell(0, column).text = header
+        sample.cell(1, column).text = value
+        sample.columns[column].width = Pt(width)
+        for row in sample.rows:
+            row.cells[column].width = Pt(width)
+    document.paragraphs[2]._p.addnext(sample._tbl)
+    unrelated = deepcopy(sample._tbl)
+    document.paragraphs[5]._p.addnext(unrelated)
+    document.save(source)
+    before = source.read_bytes(), template.read_bytes()
+    monkeypatch.setattr(gateway_module, "_generate_with_word", _generate_samples_with_fake_word)
+
+    CustomerReportDocumentGateway().generate_customer_report(
+        source_path=source, template_path=template, output_path=output,
+    )
+
+    result = Document(output)
+    after = [column.width.pt for column in result.tables[0].columns]
+    assert sum(after) == pytest.approx(sum(widths))
+    assert after[1:6] == pytest.approx(widths[1:6])
+    if should_widen:
+        assert after[6] > widths[6]
+        assert after[0] < widths[0]
+    else:
+        assert after == pytest.approx(widths)
+    assert [column.width.pt for column in result.tables[1].columns] == pytest.approx(widths)
+    assert (source.read_bytes(), template.read_bytes()) == before
+
+
 def _generate_samples_with_fake_word(source_path, target_path):
     """Copy raw source body as Word would, then use production sanitization against mutable cells."""
     source = Document(source_path)
@@ -570,6 +624,22 @@ class _WordRow:
         self.row._tr.getparent().remove(self.row._tr)
 
 
+class _WordColumn:
+    def __init__(self, table, index):
+        self.table = table
+        self.index = index
+
+    @property
+    def Width(self):
+        return self.table.columns[self.index].width.pt
+
+    def SetWidth(self, width, ruler_style):
+        assert ruler_style == 0  # Word's wdAdjustNone keeps the other column widths unchanged.
+        self.table.columns[self.index].width = Pt(width)
+        for row in self.table.rows:
+            row.cells[self.index].width = Pt(width)
+
+
 class _WordTable:
     def __init__(self, table, document):
         self.table = table
@@ -579,6 +649,12 @@ class _WordTable:
     @property
     def Rows(self):
         return _WordCollection([_WordRow(row) for row in self.table.rows])
+
+    @property
+    def Columns(self):
+        return _WordCollection([
+            _WordColumn(self.table, index) for index in range(len(self.table.columns))
+        ])
 
     @property
     def Duplicate(self):

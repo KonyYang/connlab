@@ -996,6 +996,7 @@ def _sanitize_sample_table(table) -> bool:
     )
     if not columns:
         return False
+    has_generic_housing = False
     for row_index in range(int(table.Rows.Count), 1, -1):
         row = table.Rows(row_index)
         description = _clean_text(row.Cells(columns["description"]).Range.Text)
@@ -1008,6 +1009,8 @@ def _sanitize_sample_table(table) -> bool:
             cell = row.Cells(columns[role])
             material = str(cell.Range.Text).removesuffix("\r\x07")
             customer_material = _customer_sample_material(material, role)
+            if role == "housing" and customer_material == "High Temperature Resin":
+                has_generic_housing = True
             if customer_material != material:
                 cell.Range.Text = customer_material
         if "plating" in columns:
@@ -1018,6 +1021,16 @@ def _sanitize_sample_table(table) -> bool:
             )
             if customer_plating != plating:
                 cell.Range.Text = customer_plating
+    if has_generic_housing:
+        description_column = table.Columns(columns["description"])
+        housing_column = table.Columns(columns["housing"])
+        description_width = float(description_column.Width)
+        housing_width = float(housing_column.Width)
+        # Give the longer generic label room without expanding the table or squeezing identifiers.
+        transfer = min(max(84.0 - housing_width, 0.0), max(description_width - 90.0, 0.0))
+        if transfer > 0:
+            description_column.SetWidth(description_width - transfer, 0)
+            housing_column.SetWidth(housing_width + transfer, 0)
     return True
 
 
