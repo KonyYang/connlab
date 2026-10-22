@@ -36,7 +36,7 @@ shown in the UI, written into filesystem names, or copied into exception text.
 
 `python-docx` cannot read an encrypted OOXML container. Readers therefore request a caller-scoped
 readable copy from `ProtectedWordPackageGateway`; the gateway detects encrypted DOCX containers,
-uses an owned hidden Word session to create a temporary unprotected package, and removes it
+decrypts the OOXML container to a temporary unprotected package without a Word round-trip, and removes it
 deterministically. This access seam also covers intake application-form parsing and EquipmentID or
 historical-report extraction. Report and application-form updates stage an editable copy, perform and
 audit the declared region change, then restore the source document's password-protection state before
@@ -136,22 +136,50 @@ current report; all are rechecked before publication.
 Only the data cells in the body rows of the table headed
 `Item / Manufacturer / ID Number / Last Cal. / Cal. Due` are owned by this action. The approved
 template and both source files are never changed; heading, Purpose, Conclusion, result, image,
-appendix, and revision-record content is preserved. The document-wide formatting baseline described
-below may normalize font size and direct pagination controls without replacing that content. The
-existing report publication gateway archives a changed prior report under `History/Report` and
-performs atomic replacement.
+appendix, and revision-record content and formatting are preserved. Existing table headers, column
+widths, row/cell properties and unchanged data cells are retained. Changed cells inherit the existing
+paragraph and run formatting; extra rows use the first data row's layout. Calibration due-date colors
+remain owned by this action. The existing report publication gateway archives a changed prior report
+under `History/Report` and performs atomic replacement.
 
 Equipment calibration values marked `Not applicable` are copied to both `Last Cal.` and `Cal. Due`
 without date coercion; this is the approved representation for equipment that does not require
-calibration. The Equipment table uses a fixed five-column layout with at least 1800 dxa allocated to
-`ID Number`, and that column is non-wrapping so standard IDs such as `DG-Q-0033` remain on one line.
+calibration. Initial generation gives the Equipment table a fixed five-column layout with at least
+1800 dxa allocated to `ID Number` and makes that column non-wrapping. Later section updates preserve
+the current report's layout instead of reapplying those template defaults.
 
-Generated report body text uses 11 pt, including every body table. Numbered chapter headings, Group
+Initial report generation uses 11 pt body text, including body tables. Numbered chapter headings, Group
 result headings, and Appendix headings use 12 pt while retaining the template's bold/underline
-formatting. Controlled initialization, LLCR, and Equipment updates remove direct Word `keepNext`
-paragraph controls from the output copy. Required visual page boundaries use explicit page breaks,
-so pagination remains deterministic without displaying Word's paragraph-pagination marker. Approved
-template files, source workbooks, and header/footer typography remain unchanged.
+formatting. Only initialization removes direct Word `keepNext` paragraph controls from the output
+copy and uses explicit page breaks. LLCR and Equipment updates do not normalize the whole document.
+Approved template files, source workbooks, and header/footer typography remain unchanged.
+
+### Local update fidelity
+
+LLCR changes only matched Result/Comment cells and Appendix A numeric cells. For an existing
+Appendix A, the supported two-row header and Group/Stage mapping must match the dataset, including
+row count. Its heading, pagination, merged headers, column widths, colors and existing typography
+are preserved. A structural/mapping mismatch stops before publication with a review message instead
+of rebuilding the approved appendix. If Appendix A is absent, the existing default appendix builder
+still inserts it before later appendices or End of Report. LLCR formulas and Final R versus delta-R
+semantics have not changed; semantic correction is a separate batch.
+
+Text/table-only section updates replace only `word/document.xml` in the staged DOCX ZIP; all other
+package parts keep their original bytes, including relationships, media, headers/footers, styles and
+settings. These operations must not add relationships to new external parts. Unchanged values avoid
+cell rewriting; a no-op on an unencrypted package remains byte-identical. Encrypted reports retain
+password protection, but their randomized encryption envelope is not a byte-identity promise.
+Within a changed cell, the generated value replaces its content using the existing first paragraph
+and run properties; arbitrary mixed formatting within that replaced value is not retained.
+
+Regression validation uses isolated reports and covers unrelated body XML/package bytes, manual
+typography, existing appendix layout, incompatible mappings, repeated updates, and source hashes.
+The two authoritative project reference copies (DL-2026-09-021/031) additionally exercise equipment
+updates and protected-package round-trips; no source reports, templates or project data are written.
+Their `Final LLCR` labels and the 031 appendix's different header layout are not evidence of LLCR
+semantic compatibility with the current dataset. This batch must not relabel them as delta-R or
+claim that those real appendices can already be synchronized; that mapping remains next-batch work.
+Preserving pagination controls does not freeze page count when new text or row counts actually grow.
 
 ## Authority and dependency flow
 

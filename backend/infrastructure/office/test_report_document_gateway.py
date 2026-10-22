@@ -13,7 +13,7 @@ import shutil
 from statistics import stdev
 import tempfile
 from uuid import uuid4
-from zipfile import BadZipFile
+from zipfile import BadZipFile, ZipFile
 
 from docx import Document
 from docx.enum.table import (
@@ -223,15 +223,15 @@ class TestReportDocumentGateway:
                 ):
                     updates.append((row, expected_result, expected_comment))
             for row, expected_result, expected_comment in updates:
-                _set_cell_text(row.cells[4], expected_result)
-                _set_cell_text(row.cells[5], expected_comment)
+                for cell, value in zip(row.cells[4:6], (expected_result, expected_comment), strict=True):
+                    if cell.text != value:
+                        _set_cell_text(cell, value)
             summary_rows = _llcr_summary_rows(dataset)
             appendix_changed = not _appendix_a_is_current(document, summary_rows)
             if appendix_changed:
                 _replace_appendix_a(document, summary_rows)
-            format_changed = _apply_report_body_format(document)
-            if updates or appendix_changed or format_changed:
-                document.save(temporary)
+            if updates or appendix_changed:
+                _save_updated_report_body(document, temporary)
             _audit_llcr_sync(temporary, dataset)
             self._protected_package_gateway.restore_password_protection(
                 temporary,
@@ -293,10 +293,8 @@ class TestReportDocumentGateway:
                 _replace_equipment_table_rows(equipment, expected)
             expired = tuple(bool(row.expired) for row in rows)
             _set_equipment_due_colors(equipment, expired)
-            _set_equipment_table_geometry(equipment)
-            _apply_report_body_format(document)
             if actual != expected or document.element.body.xml != body_before:
-                document.save(temporary)
+                _save_updated_report_body(document, temporary)
             _audit_equipment_sync(temporary, expected, expired)
             self._protected_package_gateway.restore_password_protection(
                 temporary,
@@ -306,6 +304,25 @@ class TestReportDocumentGateway:
         finally:
             temporary.unlink(missing_ok=True)
         return target
+
+
+def _save_updated_report_body(document, path: Path) -> None:
+    """Section updates own document.xml, never styles, relationships or other parts.
+
+    These text/table-only operations create no external relationships. Saving the
+    entire python-docx package would reserialize unrelated Word-authored parts.
+    """
+    replacement = path.with_name(f".{path.stem}.{uuid4().hex}.package.docx")
+    try:
+        with ZipFile(path) as source, ZipFile(replacement, "w") as target:
+            target.comment = source.comment
+            for entry in source.infolist():
+                payload = (document.part.blob if entry.filename == "word/document.xml"
+                           else source.read(entry.filename))
+                target.writestr(entry, payload)
+        os.replace(replacement, path)
+    finally:
+        replacement.unlink(missing_ok=True)
 
 
 class _TemplateAnchors:
@@ -391,17 +408,17 @@ def _replace_equipment_table_rows(
     rows: tuple[tuple[str, str, str, str, str], ...],
 ) -> None:
     template_row = deepcopy(table.rows[1]._tr) if len(table.rows) > 1 else None
-    for row in list(table.rows[1:]):
+    for row in list(table.rows[1 + len(rows):]):
         table._tbl.remove(row._tr)
-    for values in rows:
+    while len(table.rows) < 1 + len(rows):
         if template_row is not None:
             table._tbl.append(deepcopy(template_row))
-            target_row = table.rows[-1]
         else:
-            target_row = table.add_row()
+            table.add_row()
+    for target_row, values in zip(table.rows[1:], rows, strict=True):
         for cell, value in zip(target_row.cells[:5], values, strict=True):
-            _set_cell_text(cell, value)
-    _set_table_font(table, _TABLE_FONT_NAME)
+            if cell.text != value:
+                _set_cell_text(cell, value)
 
 
 def _set_equipment_table_geometry(table: Table) -> None:
@@ -476,13 +493,6 @@ def _audit_equipment_sync(
             for run in paragraph.runs:
                 if run.text and str(run.font.color.rgb) != ("FF0000" if is_expired else "000000"):
                     raise ValueError("Generated Equipment List calibration date color is inconsistent.")
-    id_width = int(equipment._tbl.tblGrid.gridCol_lst[2].get(qn("w:w"), "0"))
-    if id_width < _MIN_EQUIPMENT_ID_WIDTH_DXA or any(
-        row.cells[2]._tc.get_or_add_tcPr().find(qn("w:noWrap")) is None
-        for row in equipment.rows
-    ):
-        raise ValueError("Generated Equipment List ID Number column may wrap lab IDs.")
-    _audit_report_body_format(document)
 
 
 def _set_equipment_due_colors(table: Table, expired: tuple[bool, ...]) -> None:
@@ -829,7 +839,6 @@ def _audit_llcr_sync(path: Path, dataset: ResultDatasetRevision) -> None:
     summary_rows = _llcr_summary_rows(dataset)
     if not _appendix_a_is_current(document, summary_rows):
         raise ValueError("Generated report failed Appendix A synchronization audit.")
-    _audit_report_body_format(document)
 
 
 def _llcr_summary_rows(dataset: ResultDatasetRevision) -> tuple[LlcrSummaryRow, ...]:
@@ -868,56 +877,9 @@ def _appendix_a_is_current(
     heading, table = _appendix_a_region(document)
     if heading is None or table is None:
         return False
-    if heading.text != _APPENDIX_A_HEADING:
-        return False
-    previous = heading._p.getprevious()
-    if previous is None or not previous.xpath('.//w:br[@w:type="page"]'):
-        return False
-    if any(
-        run.font.name != _TABLE_FONT_NAME
-        or run.font.size != _CHAPTER_HEADING_FONT_SIZE
-        or run.bold is not True
-        or run.underline is not True
-        for run in heading.runs
-    ):
-        return False
     expected = _appendix_a_values(rows)
     actual = tuple(tuple(cell.text for cell in row.cells) for row in table.rows)
-    if actual != expected:
-        return False
-    expected_grid = _appendix_grid_dxa(document)
-    if len(table._tbl.tblGrid.gridCol_lst) != len(expected_grid):
-        return False
-    if tuple(
-        int(column.get(qn("w:w"), "0"))
-        for column in table._tbl.tblGrid.gridCol_lst
-    ) != expected_grid:
-        return False
-    if any(
-        row._tr.get_or_add_trPr().find(qn("w:tblHeader")) is None
-        for row in table.rows[:2]
-    ):
-        return False
-    if any(
-        run.font.size != _BODY_FONT_SIZE
-        for row in table.rows
-        for cell in row.cells
-        for paragraph in cell.paragraphs
-        for run in paragraph.runs
-        if run.text
-    ):
-        return False
-    for row_index, summary in enumerate(rows, start=2):
-        expected_fill = summary.fill_color or "FFFFFF"
-        if any(
-            _cell_fill_value(table.cell(row_index, column)) != expected_fill
-            for column in range(2, 6)
-        ):
-            return False
-        max_runs = table.cell(row_index, 3).paragraphs[0].runs
-        if not max_runs or any(run.bold is not True for run in max_runs):
-            return False
-    return True
+    return actual == expected
 
 
 def _appendix_a_region(document) -> tuple[Paragraph | None, Table | None]:
@@ -954,38 +916,43 @@ def _replace_appendix_a(
         raise ValueError("Appendix A requires at least one LLCR Summary row.")
     old_heading, old_table = _appendix_a_region(document)
     if old_heading is not None:
-        anchor = old_heading._p
-    else:
+        # A populated approved appendix is not an initialization template. Never
+        # rebuild its heading, merged cells, pagination or manual formatting.
+        expected = _appendix_a_values(rows)
+        if (
+            old_table is None
+            or len(old_table.rows) != len(expected)
+            or any(len(row.cells) != 6 for row in old_table.rows)
+            or tuple(tuple(cell.text for cell in row.cells) for row in old_table.rows[:2]) != expected[:2]
+            or any(
+                tuple(cell.text for cell in row.cells[:2]) != values[:2]
+                for row, values in zip(old_table.rows[2:], expected[2:])
+            )
+            or len({cell._tc for row in old_table.rows[2:] for cell in row.cells[2:]}) != 4 * len(rows)
+        ):
+            raise ValueError(
+                "Existing Appendix A layout or Group/Stage mapping differs from the LLCR dataset. "
+                "Review the appendix before updating; the original report was not changed."
+            )
+        for row, values in zip(old_table.rows[2:], expected[2:], strict=True):
+            for cell, value in zip(row.cells[2:], values[2:], strict=True):
+                if cell.text != value:
+                    _set_cell_text(cell, value)
+        return
+    anchor = next(
+        (paragraph._p for paragraph in document.paragraphs
+         if re.match(r"^Appendix\s+[B-Z]\s*:", paragraph.text.strip(), re.IGNORECASE)),
+        None,
+    )
+    if anchor is None:
         anchor = next(
-            (
-                paragraph._p
-                for paragraph in document.paragraphs
-                if re.match(
-                    r"^Appendix\s+[B-Z]\s*:",
-                    paragraph.text.strip(),
-                    re.IGNORECASE,
-                )
-            ),
+            (paragraph._p for paragraph in document.paragraphs
+             if _normalized(paragraph.text) == _normalized("*** End of Report ***")),
             None,
         )
-        if anchor is None:
-            anchor = next(
-                (
-                    paragraph._p
-                    for paragraph in document.paragraphs
-                    if _normalized(paragraph.text)
-                    == _normalized("*** End of Report ***")
-                ),
-                None,
-            )
     if anchor is None:
         raise ValueError("Internal report End of Report anchor is missing.")
 
-    preceding_page_break = (
-        old_heading is not None
-        and old_heading._p.getprevious() is not None
-        and bool(old_heading._p.getprevious().xpath('.//w:br[@w:type="page"]'))
-    )
     heading = document.add_paragraph()
     heading.paragraph_format.space_after = Pt(4)
     run = heading.add_run(_APPENDIX_A_HEADING)
@@ -995,15 +962,9 @@ def _replace_appendix_a(
     run.underline = True
     _set_run_font_family(run, _TABLE_FONT_NAME)
     table = _build_appendix_a_table(document, rows)
-    if not preceding_page_break:
-        anchor.addprevious(_page_break_paragraph())
+    anchor.addprevious(_page_break_paragraph())
     anchor.addprevious(heading._p)
     anchor.addprevious(table._tbl)
-
-    if old_table is not None:
-        old_table._tbl.getparent().remove(old_table._tbl)
-    if old_heading is not None:
-        old_heading._p.getparent().remove(old_heading._p)
 
 
 def _build_appendix_a_table(
@@ -1197,11 +1158,6 @@ def _set_run_font_family(run, font_name: str) -> None:
     fonts = run._element.get_or_add_rPr().get_or_add_rFonts()
     for attribute in ("ascii", "hAnsi", "eastAsia", "cs"):
         fonts.set(qn(f"w:{attribute}"), font_name)
-
-
-def _cell_fill_value(cell: _Cell) -> str | None:
-    shading = cell._tc.get_or_add_tcPr().find(qn("w:shd"))
-    return shading.get(qn("w:fill")) if shading is not None else None
 
 
 def _resize_rows(table: Table, target: int) -> None:

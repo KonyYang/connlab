@@ -8,6 +8,7 @@ from hashlib import sha256
 from pathlib import Path
 import shutil
 from time import sleep
+from zipfile import ZipFile
 
 from docx import Document
 from docx.enum.section import WD_SECTION
@@ -362,22 +363,16 @@ def test_synchronize_equipment_list_updates_only_the_equipment_table(
         for paragraph in updated.paragraphs
     )
     assert _result_tables(updated)[0].cell(1, 4).text == "Reviewer result"
-    assert all(
-        run.font.name == "Arial"
-        for row in equipment.rows
-        for cell in row.cells
-        for paragraph in cell.paragraphs
-        for run in paragraph.runs
-        if run.text
-    )
-    assert all(
-        run.font.size == Pt(11)
-        for row in equipment.rows
-        for cell in row.cells
-        for paragraph in cell.paragraphs
-        for run in paragraph.runs
-        if run.text
-    )
+    original_equipment = next(t for t in Document(source).tables
+        if [c.text for c in t.rows[0].cells]
+        == ["Item", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due"])
+    for row in equipment.rows[1:]:
+        for index, cell in enumerate(row.cells):
+            original_runs = original_equipment.rows[1].cells[index].paragraphs[0].runs
+            expected_size = original_runs[0].font.size if original_runs else None
+            expected_name = original_runs[0].font.name if original_runs else None
+            assert all(run.font.size == expected_size for p in cell.paragraphs for run in p.runs)
+            assert all(run.font.name == expected_name for p in cell.paragraphs for run in p.runs)
     id_width = int(equipment._tbl.tblGrid.gridCol_lst[2].get(qn("w:w"), "0"))
     assert id_width >= 1800
     assert all(
@@ -385,6 +380,176 @@ def test_synchronize_equipment_list_updates_only_the_equipment_table(
         for row in equipment.rows
     )
     assert not updated.element.body.xpath(".//w:keepNext")
+
+
+@pytest.mark.parametrize("operation", ["llcr", "equipment"])
+def test_section_update_preserves_approved_content_and_package_parts(tmp_path: Path, operation: str) -> None:
+    gateway = TestReportDocumentGateway()
+    source = tmp_path / "approved.docx"
+    gateway.generate(template_path=_build_template(tmp_path / "template.docx"),
+                     output_path=source, report=_report())
+    document = Document(source)
+    # Deliberately different from initial-generation defaults, as in an approved/manual draft.
+    for paragraph in document.paragraphs:
+        paragraph.paragraph_format.keep_with_next = True
+        paragraph.paragraph_format.space_after = Pt(9)
+        for run in paragraph.runs:
+            run.font.size = Pt(10)
+            run.font.name = "Times New Roman"
+    for table in document.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    paragraph.paragraph_format.keep_with_next = True
+                    for run in paragraph.runs:
+                        run.font.size = Pt(9)
+    document.sections[0].footer.paragraphs[0].text = "Approved fixed footer"
+    document.save(source)
+    # Word's XML declaration differs from python-docx's serialization. Untouched
+    # parts must retain their original bytes, not just equivalent parsed text.
+    with ZipFile(source) as package:
+        parts = [(entry, package.read(entry.filename)) for entry in package.infolist()]
+    with ZipFile(source, "w") as package:
+        for entry, payload in parts:
+            if entry.filename == "word/footer1.xml":
+                payload = payload.replace(b"<?xml version='1.0' encoding='UTF-8' standalone='yes'?>",
+                                          b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')
+            package.writestr(entry, payload)
+    original = source.read_bytes()
+    original_mtime = source.stat().st_mtime_ns
+    output = tmp_path / "updated.docx"
+    row = EquipmentListReportRow(source_reference="DG-Q-0033", status="matched", item="Meter",
+        manufacturer="Maker", id_number="DG-Q-0033", last_calibration="01-Jan-2025",
+        calibration_due="01-Jan-2026", source_sheet="All", expired=False)
+    if operation == "llcr":
+        gateway.synchronize_llcr_results(source_path=source, output_path=output, dataset=_llcr_dataset())
+    else:
+        gateway.synchronize_equipment_list(source_path=source, output_path=output, rows=(row,))
+
+    def outside_owned_region(path):
+        doc = Document(path)
+        if operation == "equipment":
+            table = next(t for t in doc.tables if [c.text for c in t.rows[0].cells]
+                         == ["Item", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due"])
+            table._tbl.getparent().remove(table._tbl)
+        else:
+            for cell in _result_tables(doc)[0].rows[2].cells[4:6]:
+                cell._tc.clear_content()
+            for paragraph in list(doc.paragraphs):
+                if paragraph.text.startswith("Appendix A:"):
+                    previous = paragraph._p.getprevious()
+                    if previous is not None and previous.xpath('.//w:br[@w:type="page"]'):
+                        previous.getparent().remove(previous)
+                    table_xml = paragraph._p.getnext()
+                    table_xml.getparent().remove(table_xml)
+                    paragraph._p.getparent().remove(paragraph._p)
+        return doc.element.body.xml
+
+    assert outside_owned_region(output) == outside_owned_region(source)
+    with ZipFile(source) as before, ZipFile(output) as after:
+        assert before.namelist() == after.namelist()
+        for name in before.namelist():
+            if name != "word/document.xml":
+                assert after.read(name) == before.read(name), name
+    assert source.read_bytes() == original
+    assert source.stat().st_mtime_ns == original_mtime
+    repeated = tmp_path / "repeated.docx"
+    if operation == "llcr":
+        gateway.synchronize_llcr_results(source_path=output, output_path=repeated, dataset=_llcr_dataset())
+    else:
+        gateway.synchronize_equipment_list(source_path=output, output_path=repeated, rows=(row,))
+    assert repeated.read_bytes() == output.read_bytes()
+
+
+@pytest.mark.parametrize("operation", ["llcr", "equipment"])
+def test_section_update_preserves_existing_owned_table_layout(tmp_path: Path, operation: str) -> None:
+    gateway = TestReportDocumentGateway()
+    initial = tmp_path / "initial.docx"
+    source = tmp_path / "approved.docx"
+    gateway.generate(template_path=_build_template(tmp_path / "template.docx"),
+                     output_path=initial, report=_report())
+    gateway.synchronize_llcr_results(source_path=initial, output_path=source, dataset=_llcr_dataset())
+    doc = Document(source)
+    table = (_appendix_a_table(doc) if operation == "llcr" else next(t for t in doc.tables
+             if [c.text for c in t.rows[0].cells] == ["Item", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due"]))
+    table._tbl.tblGrid.gridCol_lst[0].set(qn("w:w"), "1500")
+    for row in table.rows:
+        for cell in row.cells:
+            for p in cell.paragraphs:
+                p.paragraph_format.keep_with_next = True
+                p.paragraph_format.space_after = Pt(7)
+                if not p.runs:
+                    p.add_run("old")
+                for run in p.runs:
+                    run.font.name = "Calibri"
+                    run.font.size = Pt(9)
+    if operation == "llcr":
+        table.cell(2, 2).paragraphs[0].runs[0].text = "9.999"
+        heading = next(p for p in doc.paragraphs if p.text.startswith("Appendix A:"))
+        preceding = heading._p.getprevious()
+        preceding.getparent().remove(preceding)
+        heading.paragraph_format.keep_with_next = True
+        heading.runs[0].font.size = Pt(10)
+        heading_xml = heading._p.xml
+    header_count = 2 if operation == "llcr" else 1
+    headers = [r._tr.xml for r in table.rows[:header_count]]
+    properties, grid = table._tbl.tblPr.xml, table._tbl.tblGrid.xml
+    cell = table.cell(header_count, 2 if operation == "llcr" else 0)
+    paragraph_properties = cell.paragraphs[0]._p.pPr.xml
+    run_properties = cell.paragraphs[0].runs[0]._r.rPr.xml
+    doc.save(source)
+    output = tmp_path / "updated.docx"
+    if operation == "llcr":
+        gateway.synchronize_llcr_results(source_path=source, output_path=output, dataset=_llcr_dataset())
+    else:
+        gateway.synchronize_equipment_list(source_path=source, output_path=output, rows=(
+            EquipmentListReportRow(source_reference="DG-Q-0033", status="matched", item="Meter",
+                manufacturer="Maker", id_number="DG-Q-0033", last_calibration="01-Jan-2025",
+                calibration_due="01-Jan-2026", source_sheet="All", expired=False),))
+    updated = Document(output)
+    table = (_appendix_a_table(updated) if operation == "llcr" else next(t for t in updated.tables
+             if [c.text for c in t.rows[0].cells] == ["Item", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due"]))
+    assert [r._tr.xml for r in table.rows[:header_count]] == headers
+    assert table._tbl.tblPr.xml == properties
+    assert table._tbl.tblGrid.xml == grid
+    cell = table.cell(header_count, 2 if operation == "llcr" else 0)
+    assert cell.paragraphs[0]._p.pPr.xml == paragraph_properties
+    assert cell.paragraphs[0].runs[0]._r.rPr.xml == run_properties
+    if operation == "llcr":
+        assert cell.text == "0.158"
+        assert next(p for p in updated.paragraphs if p.text.startswith("Appendix A:"))._p.xml == heading_xml
+    else:
+        assert cell.text == "Meter"
+    repeated = tmp_path / "repeated.docx"
+    if operation == "llcr":
+        gateway.synchronize_llcr_results(source_path=output, output_path=repeated, dataset=_llcr_dataset())
+        assert repeated.read_bytes() == output.read_bytes()
+
+
+@pytest.mark.parametrize("mismatch", ["stage", "row_count", "merged_statistics"])
+def test_llcr_update_does_not_rebuild_an_incompatible_manual_appendix(tmp_path: Path, mismatch: str) -> None:
+    gateway = TestReportDocumentGateway()
+    initial = tmp_path / "initial.docx"
+    source = tmp_path / "approved.docx"
+    gateway.generate(template_path=_build_template(tmp_path / "template.docx"),
+                     output_path=initial, report=_report())
+    gateway.synchronize_llcr_results(source_path=initial, output_path=source, dataset=_llcr_dataset())
+    doc = Document(source)
+    appendix = _appendix_a_table(doc)
+    if mismatch == "stage":
+        appendix.cell(3, 1).text = "Final R"
+    elif mismatch == "row_count":
+        appendix.add_row()
+    else:
+        appendix.cell(2, 2).merge(appendix.cell(2, 3))
+    doc.save(source)
+    original = source.read_bytes()
+    output = tmp_path / "updated.docx"
+    with pytest.raises(ValueError, match="Existing Appendix A layout or Group/Stage mapping differs"):
+        gateway.synchronize_llcr_results(source_path=source, output_path=output, dataset=_llcr_dataset())
+    assert source.read_bytes() == original
+    assert not output.exists()
+    assert not list(tmp_path.glob(".*.tmp.docx"))
 
 
 def test_report_update_restores_password_protection_after_edit(
