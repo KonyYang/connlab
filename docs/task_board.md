@@ -11,113 +11,36 @@
   "version": 1,
   "mode": "sol_native",
   "wip_limit": 1,
-  "state": "ready_for_close",
+  "state": "running",
   "active": {
-    "task_id": "TASK_REPORT_LOCAL_UPDATE_FIDELITY_20261022",
-    "summary": "Preserve approved report formatting during local LLCR and equipment updates",
+    "task_id": "TASK_LLCR_RESULT_SEMANTICS_20261023",
+    "summary": "Correct LLCR absolute resistance versus delta semantics without changing real reports",
     "tier": "standard",
     "route": "sol_build_review_qa",
-    "scope": "Restrict existing section updates to owned content and preserve unrelated typography, pagination, drawings, headers and manual content. Validate isolated copies only; no real report/template/project writes and no LLCR semantic changes.",
+    "scope": "Distinguish initial/final resistance and delta values through existing import and report seams; preserve source meanings and local-update fidelity. Use isolated copies only, no authoritative file writes or database migration.",
     "scope_paths": [
+      "backend/domain/result_dataset_models.py",
+      "backend/infrastructure/office/llcr_result_workbook_gateway.py",
       "backend/infrastructure/office/test_report_document_gateway.py",
+      "tests/unit/test_llcr_result_workbook_gateway.py",
       "tests/unit/test_test_report_document_gateway.py",
-      "tests/unit/test_report_update_fidelity.py",
       "docs/report_generation_architecture.md"
     ],
     "risk_reasons": [],
-    "activation_head": "04158c78bf89de26d166ff77ed1df65fa1ed5fef",
-    "started_at": "2026-10-22T15:38:25.782158Z",
-    "updated_at": "2026-10-22T15:57:51.960351Z",
-    "checkpoint": {
-      "schema": "connlab.sol-task-checkpoint",
-      "version": 1,
-      "task_id": "TASK_REPORT_LOCAL_UPDATE_FIDELITY_20261022",
-      "stage": "delivery",
-      "status": "running",
-      "summary": "Implementation, review, validation, and integration are complete.",
-      "requires_user": false
-    },
-    "report": {
-      "schema": "connlab.sol-task-report",
-      "version": 1,
-      "task_id": "TASK_REPORT_LOCAL_UPDATE_FIDELITY_20261022",
-      "subject": "b5dcb41b6d75fdd65036088549e582c6f3faa043",
-      "summary": "Local LLCR/equipment updates preserve approved report formatting and untouched OOXML parts. Reference equipment/protection copies passed; Word visual acceptance remains unverified.",
-      "scope_ok": true,
-      "changed_paths": [
-        "backend/infrastructure/office/test_report_document_gateway.py",
-        "docs/report_generation_architecture.md",
-        "tests/unit/test_test_report_document_gateway.py"
-      ],
-      "validation": [
-        {
-          "status": "passed",
-          "name": "Affected report gateway/application/API and protection tests",
-          "result": "214 passed, one existing dependency deprecation warning",
-          "seconds": 129.33
-        },
-        {
-          "status": "passed",
-          "name": "Regression RED/GREEN",
-          "result": "Reproduced global formatting, table rebuilding, unrelated ZIP reserialization and incompatible merged-statistics failures; corrected on final tested implementation."
-        },
-        {
-          "status": "passed",
-          "name": "Two authoritative reference copies",
-          "result": "17/22 equipment rows; unrelated body XML and all other ZIP parts preserved; repeat unencrypted output byte-identical; protected roundtrip identical decrypted package; all 204 original files SHA256 and mtime unchanged."
-        },
-        {
-          "status": "passed",
-          "name": "Exact diff review and whitespace",
-          "result": "Standards and spec passes by the same agent; no remaining blocking code findings. Visual limitation explicitly retained."
-        }
-      ],
-      "roles": {
-        "developer": {
-          "status": "passed",
-          "context": "same agent",
-          "summary": "Implemented and regression-tested scoped adapter change; no real report/template/project writes; LLCR semantics unchanged."
-        },
-        "reviewer": {
-          "status": "passed",
-          "context": "sequential focused pass by same agent, not independent",
-          "standards_findings": 0,
-          "spec_findings": 0,
-          "limitations": [
-            "Word visual export stalled opening both updated and untouched isolated copies; no pixel/page-count acceptance claimed. Only owned test Word processes were terminated.",
-            "Real reference Final LLCR stages and different appendix headers remain next-batch semantic/mapping work.",
-            "Changed cell values inherit paragraph/run properties; mixed formatting inside replaced text and unchanged page counts after content growth are not guaranteed."
-          ]
-        },
-        "qa": {
-          "status": "passed",
-          "context": "same agent final affected-matrix pass",
-          "automated": "214 passed",
-          "limitations": [
-            "Word visual export stalled opening both updated and untouched isolated copies; no pixel/page-count acceptance claimed. Only owned test Word processes were terminated.",
-            "Real reference Final LLCR stages and different appendix headers remain next-batch semantic/mapping work.",
-            "Changed cell values inherit paragraph/run properties; mixed formatting inside replaced text and unchanged page counts after content growth are not guaranteed."
-          ]
-        }
-      },
-      "integration": {
-        "status": "passed",
-        "branch": "master",
-        "subject": "b5dcb41b6d75fdd65036088549e582c6f3faa043",
-        "tree": "e9db412371f54322507d01f7d97787efbc53b0c9",
-        "clean": true,
-        "pushed": false
-      }
-    }
+    "activation_head": "07e4c15bd784b404182475d22c6765c6378e5966",
+    "started_at": "2026-10-22T16:06:06.821761Z",
+    "updated_at": "2026-10-22T16:06:06.821761Z",
+    "checkpoint": null,
+    "report": null
   },
   "last_closed": {
-    "task_id": "TASK_CUSTOMER_SAMPLE_MATERIAL_REDACTION_20261022",
-    "tier": "high_risk",
-    "subject": "0ef4bbfb032350d68894fa9b4157e0e128c5e02a",
-    "summary": "Generate a customer report with fixed sample material redaction rules",
+    "task_id": "TASK_REPORT_LOCAL_UPDATE_FIDELITY_20261022",
+    "tier": "standard",
+    "subject": "b5dcb41b6d75fdd65036088549e582c6f3faa043",
+    "summary": "Preserve approved report formatting during local LLCR and equipment updates",
     "disposition": "completed",
-    "decision_ref": "User 2026-10-22 explicitly confirmed close and next scoped fidelity implementation",
-    "closed_at": "2026-10-22T15:38:25.782158Z"
+    "decision_ref": "User 2026-10-23 explicitly closes fidelity task and authorizes next LLCR semantic fix with isolated validation only",
+    "closed_at": "2026-10-22T16:06:06.821761Z"
   },
   "retained_history": [
     {
