@@ -17,6 +17,9 @@ from xml.etree import ElementTree as ET
 from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile
 
 from docx import Document
+from docx.oxml.ns import qn
+from docx.table import Table
+from docx.text.paragraph import Paragraph
 from backend.application.customer_report_projection_service import CustomerReportReadError
 
 from backend.infrastructure.office.office_lifecycle import OfficeAutomationUnavailable
@@ -84,6 +87,14 @@ _NON_PRODUCT_SAMPLE_PATTERN = re.compile(
     r"\b(?:PCB|BUS\s*BAR|BUSBAR|TEST\s+FIXTURE|FIXTURE|ADAPTER)\b",
     flags=re.IGNORECASE,
 )
+_COPPER_MATERIAL_PATTERN = re.compile(
+    r"\b(?:copper|brass|bronze)\b|\bC\d{3,}[A-Z0-9/\-]*\b"
+    r"|\bCu(?:Sn|Ni|Zn|Be|Cr|Fe|Mg|Co|Zr|Ag|Te)[A-Z0-9/\-]*\b",
+    flags=re.IGNORECASE,
+)
+_MATERIAL_PLACEHOLDERS = {
+    "", "na", "n/a", "n.a.", "none", "not applicable", "-", "--", "—", "–",
+}
 _TRANSIENT_WORD_FILE_LOCK_WINERRORS = {32, 33}
 _TRANSIENT_WORD_FILE_LOCK_DELAYS_SECONDS = (
     0.05,
@@ -797,14 +808,19 @@ def _sanitize_customer_body(document) -> None:
 
     _remove_body_footer_artifacts(document)
 
+    sample_start, _ = _find_heading_paragraph(document, 3, "SAMPLE DESCRIPTION")
+    sample_end, _ = _find_heading_paragraph(document, 4, "TEST DESCRIPTION")
+    sample_tables = document.Range(int(sample_start.End), int(sample_end.Start)).Tables
+    sanitized_ranges = []
+    for index in range(1, int(sample_tables.Count) + 1):
+        table = sample_tables(index)
+        if _sanitize_sample_table(table):
+            sanitized_ranges.append(table.Range.Duplicate)
+
     for index in range(1, int(document.Tables.Count) + 1):
         table = document.Tables(index)
         table_text = _clean_text(table.Range.Text)
-        if all(
-            label in table_text
-            for label in ("Description", "Part #", "Lot", "Base Mat", "Contact Plating")
-        ):
-            _sanitize_sample_table(table)
+        if any(int(span.Start) == int(table.Range.Start) for span in sanitized_ranges):
             continue
         if "#" not in table_text and "MFG*" not in table_text.upper():
             continue
@@ -932,37 +948,77 @@ def _normalize_customer_body_typography(
         table.Range.ParagraphFormat.LineSpacingRule = 0
 
 
-def _sanitize_sample_table(table) -> None:
+def _sample_table_columns(headers: Iterable[str]) -> dict[str, int]:
+    """Share header recognition between Word conversion and the saved-package audit."""
+    aliases = {
+        "description": "description",
+        "part": "part",
+        "partno": "part",
+        "partnumber": "part",
+        "basemat": "base",
+        "basematl": "base",
+        "basematerial": "base",
+        "housingmat": "housing",
+        "housingmaterial": "housing",
+        "contactplating": "plating",
+    }
+    columns: dict[str, int] = {}
+    for index, header in enumerate(headers, start=1):
+        key = re.sub(r"[\s.#'’]+", "", _clean_text(header)).casefold()
+        role = aliases.get(key)
+        if role is not None:
+            if role in columns:
+                raise ValueError("Sample description table has ambiguous material columns.")
+            columns[role] = index
+    if (
+        not {"description", "part"} <= columns.keys()
+        or not {"base", "housing"} & columns.keys()
+    ):
+        return {}
+    return columns
+
+
+def _customer_sample_material(value: str, role: str) -> str:
+    cleaned = _clean_text(value)
+    if cleaned.casefold() in _MATERIAL_PLACEHOLDERS:
+        return value
+    if role == "housing":
+        return "High Temperature Resin"
+    if _COPPER_MATERIAL_PATTERN.search(cleaned):
+        return "Copper Alloy"
+    return value
+
+
+def _sanitize_sample_table(table) -> bool:
+    columns = _sample_table_columns(
+        table.Rows(1).Cells(column).Range.Text
+        for column in range(1, int(table.Rows(1).Cells.Count) + 1)
+    )
+    if not columns:
+        return False
     for row_index in range(int(table.Rows.Count), 1, -1):
         row = table.Rows(row_index)
-        description = _clean_text(row.Cells(1).Range.Text)
+        description = _clean_text(row.Cells(columns["description"]).Range.Text)
         if _NON_PRODUCT_SAMPLE_PATTERN.search(description):
             row.Delete()
             continue
-        material = _clean_text(row.Cells(4).Range.Text)
-        plating = _clean_text(row.Cells(5).Range.Text)
-        customer_material = re.sub(
-            r"Copper\s+alloy\s+and\s+SUS\d*",
-            "Copper alloy/SUS",
-            material,
-            flags=re.IGNORECASE,
-        )
-        customer_material = re.sub(
-            r"\bC\d{3,}[A-Z0-9R\-/]*\b",
-            "Copper alloy",
-            customer_material,
-            flags=re.IGNORECASE,
-        )
-        customer_plating = re.sub(
-            r"\bPE\d+\b",
-            "Lubricant",
-            plating,
-            flags=re.IGNORECASE,
-        )
-        if customer_material != material:
-            row.Cells(4).Range.Text = customer_material
-        if customer_plating != plating:
-            row.Cells(5).Range.Text = customer_plating
+        for role in ("base", "housing"):
+            if role not in columns:
+                continue
+            cell = row.Cells(columns[role])
+            material = str(cell.Range.Text).removesuffix("\r\x07")
+            customer_material = _customer_sample_material(material, role)
+            if customer_material != material:
+                cell.Range.Text = customer_material
+        if "plating" in columns:
+            cell = row.Cells(columns["plating"])
+            plating = _clean_text(cell.Range.Text)
+            customer_plating = re.sub(
+                r"\bPE\d+\b", "Lubricant", plating, flags=re.IGNORECASE,
+            )
+            if customer_plating != plating:
+                cell.Range.Text = customer_plating
+    return True
 
 
 def _merge_customer_disclaimer(document) -> None:
@@ -1121,6 +1177,7 @@ def _audit_customer_report(path: Path) -> None:
         for pattern in _INTERNAL_DISCLOSURE_PATTERNS
     ):
         raise ValueError("Generated customer report retained internal-only disclosures.")
+    _audit_customer_sample_materials(document)
     if (
         not document.sections
         or not document.sections[0].different_first_page_header_footer
@@ -1149,6 +1206,34 @@ def _audit_customer_report(path: Path) -> None:
         raise ValueError("Generated customer report number is missing -CR.")
     if re.search(r"(?:WW-XXXX-YY-ZZZ|XX-YY-ZZZ)", header_text, flags=re.IGNORECASE):
         raise ValueError("Generated customer report retained a template report-number placeholder.")
+
+
+def _audit_customer_sample_materials(document) -> None:
+    in_sample_description = False
+    for element in document.element.body:
+        if element.tag == qn("w:p"):
+            text = _clean_text(Paragraph(element, document).text)
+            if re.fullmatch(r"(?:3\s*\.\s*)?SAMPLE DESCRIPTION", text, re.IGNORECASE):
+                in_sample_description = True
+            elif re.fullmatch(r"(?:4\s*\.\s*)?TEST DESCRIPTION", text, re.IGNORECASE):
+                in_sample_description = False
+            continue
+        if not in_sample_description or element.tag != qn("w:tbl"):
+            continue
+        table = Table(element, document)
+        if not table.rows:
+            continue
+        columns = _sample_table_columns(cell.text for cell in table.rows[0].cells)
+        if not columns:
+            continue
+        for row in table.rows[1:]:
+            for role in ("base", "housing"):
+                if role not in columns:
+                    continue
+                material = row.cells[columns[role] - 1].text
+                if _customer_sample_material(material, role) != material:
+                    # Do not include proprietary source values in user-visible errors or logs.
+                    raise ValueError("Generated customer report retained confidential sample material.")
 
 
 def _file_hash(path: Path) -> str:

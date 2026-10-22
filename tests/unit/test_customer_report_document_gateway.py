@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 from hashlib import sha256
+from types import SimpleNamespace
 import shutil
 import msoffcrypto
 from zipfile import ZipFile
 
 import pytest
 from docx import Document
+from docx.oxml.ns import qn
 
 from backend.infrastructure.office import customer_report_document_gateway as gateway_module
 from backend.infrastructure.office.customer_report_document_gateway import (
@@ -337,6 +340,332 @@ def test_customer_report_gateway_rejects_template_report_number_placeholder(
             template_path=template,
             output_path=tmp_path / "customer.docx",
         )
+
+
+@pytest.mark.parametrize("headers,values,expected", [
+    (
+        ["Description", "Part #", "Lot", "Base Material", "Contact Plating",
+         "Lubricant", "Housing Material"],
+        ["Connector", "P-1", "L-1", "C7025R-H", "Gold PE123", "PE456", "LCP E130i"],
+        ["Connector", "P-1", "L-1", "Copper Alloy", "Gold Lubricant", "PE456",
+         "High Temperature Resin"],
+    ),
+    (
+        ["Description", "Part #", "Base\nMaterial", "Contact\nPlating", "Lubricant",
+         "Housing\nMaterial"],
+        ["Connector", "P-1", "CuNiSi C7025", "Gold PE123", "PE456", "PA9T G1300"],
+        ["Connector", "P-1", "Copper Alloy", "Gold Lubricant", "PE456",
+         "High Temperature Resin"],
+    ),
+    (
+        ["Description", "Part #", "Housing Material", "Lot", "Contact Plating", "Base Mat."],
+        ["Connector", "P-1", "PPS 40% GF", "L-1", "Gold", "Phosphor Bronze C5191"],
+        ["Connector", "P-1", "High Temperature Resin", "L-1", "Gold", "Copper Alloy"],
+    ),
+    (
+        ["Description", "Part #", "Lot#", "Base Mat’l", "Contact\n Plating",
+         "Contact Lubricant", "Housing Material"],
+        ["Connector", "P-1", "L-1", "HP: C18070;", "Gold", "PE456", "HTN"],
+        ["Connector", "P-1", "L-1", "Copper Alloy", "Gold", "PE456", "High Temperature Resin"],
+    ),
+    (
+        ["Description", "Part #", "Base Material", "Housing Material"],
+        ["Connector", "P-1", " Copper\nAlloy ", " High Temperature Resin "],
+        ["Connector", "P-1", "Copper Alloy", "High Temperature Resin"],
+    ),
+])
+def test_customer_report_generalizes_sample_materials_without_changing_sources(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, headers, values, expected,
+) -> None:
+    source = tmp_path / "internal.docx"
+    template = tmp_path / "template.docx"
+    output = tmp_path / "customer.docx"
+    _minimal_document(source, customer=False)
+    _minimal_document(template, customer=True)
+    document = Document(source)
+    sample = document.add_table(rows=2, cols=len(headers))
+    for column, (header, value) in enumerate(zip(headers, values)):
+        sample.cell(0, column).text = header
+        sample.cell(1, column).text = value
+    document.paragraphs[2]._p.addnext(sample._tbl)
+    document.save(source)
+    before = source.read_bytes(), template.read_bytes()
+
+    monkeypatch.setattr(gateway_module, "_generate_with_word", _generate_samples_with_fake_word)
+    CustomerReportDocumentGateway().generate_customer_report(
+        source_path=source, template_path=template, output_path=output,
+    )
+
+    assert [cell.text for cell in Document(output).tables[0].rows[1].cells] == expected
+    assert (source.read_bytes(), template.read_bytes()) == before
+
+
+@pytest.mark.parametrize("base,housing", [
+    ("C7025R-H", "High Temperature Resin"),
+    ("Copper alloy", "High Temperature Resin"),
+    ("CuSn6", "High Temperature Resin"),
+    ("Copper Alloy", "LCP E130i"),
+    (" Copper Alloy ", "High Temperature Resin"),
+])
+def test_customer_report_rejects_unredacted_sample_materials_before_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, base, housing,
+) -> None:
+    source = tmp_path / "internal.docx"
+    template = tmp_path / "template.docx"
+    output = tmp_path / "customer.docx"
+    _minimal_document(source, customer=False)
+    _minimal_document(template, customer=True)
+    document = Document(template)
+    sample = document.add_table(rows=2, cols=4)
+    for column, (header, value) in enumerate(zip(
+        ["Description", "Part #", "Base Material", "Housing Material"],
+        ["Connector", "P-1", base, housing],
+    )):
+        sample.cell(0, column).text = header
+        sample.cell(1, column).text = value
+    document.paragraphs[2]._p.addnext(sample._tbl)
+    document.save(template)
+    before = source.read_bytes(), template.read_bytes()
+    # Simulate Word saving a legacy/unprocessed sample table; the real package audit must reject it.
+    monkeypatch.setattr(gateway_module, "_generate_with_word", lambda *_args: None)
+
+    with pytest.raises(ValueError, match="sample material"):
+        CustomerReportDocumentGateway().generate_customer_report(
+            source_path=source, template_path=template, output_path=output,
+        )
+
+    assert not output.exists()
+    assert (source.read_bytes(), template.read_bytes()) == before
+    assert not list(tmp_path.glob(".customer-report.*"))
+
+
+@pytest.mark.parametrize("base,housing", [
+    ("Stainless Steel SUS304", "N/A"),
+    ("Aluminum 6061", "NA"),
+    ("", ""),
+    ("N/A", "Not Applicable"),
+    ("-", "—"),
+    ("Copper Alloy", "High Temperature Resin"),
+])
+def test_customer_report_preserves_non_copper_material_and_absent_housing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, base, housing,
+) -> None:
+    source = tmp_path / "internal.docx"
+    template = tmp_path / "template.docx"
+    output = tmp_path / "customer.docx"
+    _minimal_document(source, customer=False)
+    _minimal_document(template, customer=True)
+    document = Document(source)
+    sample = document.add_table(rows=2, cols=4)
+    for column, (header, value) in enumerate(zip(
+        ["Description", "Part #", "Base Material", "Housing Material"],
+        ["Connector", "P-1", base, housing],
+    )):
+        sample.cell(0, column).text = header
+        sample.cell(1, column).text = value
+    document.paragraphs[2]._p.addnext(sample._tbl)
+    document.save(source)
+    monkeypatch.setattr(gateway_module, "_generate_with_word", _generate_samples_with_fake_word)
+
+    CustomerReportDocumentGateway().generate_customer_report(
+        source_path=source, template_path=template, output_path=output,
+    )
+
+    assert [cell.text for cell in Document(output).tables[0].rows[1].cells] == [
+        "Connector", "P-1", base, housing,
+    ]
+
+
+def test_customer_report_filters_non_product_samples_and_keeps_other_sections(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "internal.docx"
+    template = tmp_path / "template.docx"
+    output = tmp_path / "customer.docx"
+    _minimal_document(source, customer=False)
+    _minimal_document(template, customer=True)
+    document = Document(source)
+    sample = document.add_table(rows=6, cols=7)
+    for column, header in enumerate([
+        "Description", "Part #", "Lot#", "Base Mat’l", "Contact\n Plating",
+        "Contact Lubricant", "Housing Material",
+    ]):
+        sample.cell(0, column).text = header
+    rows = [
+        ["Plug", "P-1", "L-1", "HP: C18070;", "Gold PE123", "PE456", "PA9T"],
+        ["Receptacle", "P-2", "L-2", "HP: C19210", "Gold", "PE456", "HTN"],
+        ["Test PCB", "Board-1", "L-3", "2oz. Cu", "Gold", "N/A", "FR4"],
+        ["Test Fixture", "Fixture-1", "L-4", "Steel", "N/A", "N/A", "N/A"],
+        ["Adapter", "Adapter-1", "L-5", "C7025", "N/A", "N/A", "PPS"],
+    ]
+    for row_index, values in enumerate(rows, start=1):
+        for column, value in enumerate(values):
+            sample.cell(row_index, column).text = value
+    document.paragraphs[2]._p.addnext(sample._tbl)
+    unrelated = deepcopy(sample._tbl)
+    document.paragraphs[5]._p.addnext(unrelated)
+    document.save(source)
+    before = source.read_bytes(), template.read_bytes()
+    monkeypatch.setattr(gateway_module, "_generate_with_word", _generate_samples_with_fake_word)
+
+    CustomerReportDocumentGateway().generate_customer_report(
+        source_path=source, template_path=template, output_path=output,
+    )
+
+    result = Document(output)
+    assert [[cell.text for cell in row.cells] for row in result.tables[0].rows[1:]] == [
+        ["Plug", "P-1", "L-1", "Copper Alloy", "Gold Lubricant", "PE456", "High Temperature Resin"],
+        ["Receptacle", "P-2", "L-2", "Copper Alloy", "Gold", "PE456", "High Temperature Resin"],
+    ]
+    assert [[cell.text for cell in row.cells] for row in result.tables[1].rows[1:]] == rows
+    assert (source.read_bytes(), template.read_bytes()) == before
+
+
+def _generate_samples_with_fake_word(source_path, target_path):
+    """Copy raw source body as Word would, then use production sanitization against mutable cells."""
+    source = Document(source_path)
+    target = Document(target_path)
+    for element in list(target.element.body):
+        if element.tag != qn("w:sectPr"):
+            target.element.body.remove(element)
+    for element in source.element.body:
+        if element.tag != qn("w:sectPr"):
+            target.element.body.sectPr.addprevious(deepcopy(element))
+    gateway_module._sanitize_customer_body(_WordDocument(target))
+    target.save(target_path)
+
+
+class _WordCollection:
+    def __init__(self, values):
+        self.values = values
+
+    @property
+    def Count(self):
+        return len(self.values)
+
+    def __call__(self, index):
+        return self.values[index - 1]
+
+
+class _WordCell:
+    def __init__(self, cell):
+        self.cell = cell
+        self.Range = self
+
+    @property
+    def Text(self):
+        return self.cell.text + "\r\x07"
+
+    @Text.setter
+    def Text(self, value):
+        self.cell.text = value
+
+
+class _WordRow:
+    def __init__(self, row):
+        self.row = row
+        self.Cells = _WordCollection([_WordCell(cell) for cell in row.cells])
+
+    def Delete(self):
+        self.row._tr.getparent().remove(self.row._tr)
+
+
+class _WordTable:
+    def __init__(self, table, document):
+        self.table = table
+        self.document = document
+        self.Range = self
+
+    @property
+    def Rows(self):
+        return _WordCollection([_WordRow(row) for row in self.table.rows])
+
+    @property
+    def Duplicate(self):
+        return self
+
+    @property
+    def Text(self):
+        return "\r".join(cell.text for row in self.table.rows for cell in row.cells)
+
+    @property
+    def Start(self):
+        return self.document.positions()[self.table._tbl][0]
+
+    @property
+    def Cells(self):
+        return _WordCollection([
+            _WordCell(cell) for row in self.table.rows for cell in row.cells
+        ])
+
+
+class _WordRange:
+    def __init__(self, document, start=0, end=None):
+        self.document = document
+        self.Start = start
+        self.End = len(document.text()) if end is None else end
+        self.Find = SimpleNamespace(ClearFormatting=lambda: None, Execute=self.find)
+
+    def find(self):
+        found = self.document.text().find(self.Find.Text, self.Start, self.End)
+        if found == -1:
+            return False
+        self.Start, self.End = found, found + len(self.Find.Text)
+        return True
+
+    @property
+    def Text(self):
+        return self.document.text()[self.Start:self.End]
+
+    @property
+    def Duplicate(self):
+        return _WordRange(self.document, self.Start, self.End)
+
+    def Paragraphs(self, _index):
+        text = self.document.text()
+        start = text.rfind("\r", 0, self.Start) + 1
+        end = text.find("\r", self.End)
+        return SimpleNamespace(Range=_WordRange(self.document, start, end + 1))
+
+    @property
+    def Tables(self):
+        positions = self.document.positions()
+        return _WordCollection([
+            _WordTable(table, self.document) for table in self.document.document.tables
+            if self.Start <= positions[table._tbl][0] < self.End
+        ])
+
+
+class _WordDocument:
+    def __init__(self, document):
+        self.document = document
+        self.Shapes = _WordCollection([])
+
+    def positions(self):
+        result = {}
+        position = 0
+        for element in self.document.element.body:
+            text = (
+                "".join(node.text or "" for node in element.iter(qn("w:t")))
+                if element.tag == qn("w:p") else "table"
+            )
+            result[element] = position, text + "\r"
+            position += len(text) + 1
+        return result
+
+    def text(self):
+        return "".join(text for _position, text in self.positions().values())
+
+    @property
+    def Content(self):
+        return _WordRange(self)
+
+    @property
+    def Tables(self):
+        return _WordCollection([_WordTable(table, self) for table in self.document.tables])
+
+    def Range(self, start, end):
+        return _WordRange(self, start, end)
 
 
 def test_heading_index_performs_one_lookup_per_heading_and_reuses_matches() -> None:

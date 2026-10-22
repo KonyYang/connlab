@@ -199,6 +199,17 @@ Do not use a dated snapshot as a substitute for the code.
   is unchanged. Downloads use the browser's configured download location, normally system Downloads.
   Cancel never uploads; progress, status/download retries and expired-operation errors remain
   visible, and late responses after project changes or unmount cannot trigger downloads.
+- Customer reports apply fixed material disclosure rules only to recognized sample tables in
+  `SAMPLE DESCRIPTION`: copper-alloy Base Material cells become exactly `Copper Alloy`, with
+  proprietary grades, prefixes and suffixes removed; substantive Housing Material cells become
+  exactly `High Temperature Resin`. Blank/NA-style placeholders and non-copper base materials are
+  retained. Column roles come from headers (including `Base Mat’l`, wrapped labels and layouts
+  without Lot), not column numbers. Existing PCB/fixture exclusion and contact-plating cleanup are
+  retained; other sections and source Internal Report/template bytes remain untouched. A saved-package
+  audit shares those same header/material rules and blocks publication if sensitive sample material
+  remains. Acceptance covers exact labels, current/legacy layouts, placeholders, non-copper material,
+  section isolation, source preservation and failed-output cleanup; unreadable or ambiguous sample
+  layouts fail generation rather than publishing an unverified customer report.
 - Generation approval binds the operation, expected report/absence, source record identities and
   content, Matrix revision, template bytes, workspace identities and latest report revision. Fresh
   independent database reads recheck that context after writing and before publication; a changed
