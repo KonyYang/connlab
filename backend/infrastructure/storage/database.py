@@ -88,6 +88,7 @@ def init_db(engine: Engine) -> None:
     from backend.infrastructure.storage import models_contact_measurement_plan_authority  # noqa: F401
     from backend.infrastructure.storage import models_contact_point_profile  # noqa: F401
     from backend.infrastructure.storage import models_result_dataset  # noqa: F401
+    from backend.infrastructure.storage import models_report_authoring  # noqa: F401
     from backend.infrastructure.storage import models_project_schedule  # noqa: F401
     from backend.infrastructure.storage.matrix_duration_authority_schema import (
         MATRIX_DURATION_AUTHORITY_TABLES,

@@ -1422,6 +1422,50 @@ def get_customer_report_projection_service(
     )
 
 
+def get_report_authoring_service(session: Session = Depends(get_session), settings: Settings = Depends(get_settings)):
+    from backend.application.report_authoring.service import ReportAuthoringService
+    from backend.infrastructure.files.report_authoring_assets import ReportAuthoringAssets, inspect_upload
+    from backend.infrastructure.storage.repositories.report_authoring import ReportAuthoringRepository
+    from backend.infrastructure.storage.repositories.project import ProjectRepository
+    from backend.infrastructure.office.report_authoring.word_copy import ReportCopyWriter
+    from backend.infrastructure.office.report_authoring.results_document import ReportResultsDocument
+    from backend.infrastructure.office.report_authoring.temperature_chart import insert_temperature_chart
+    from backend.infrastructure.office.report_authoring.photo_editor import ReportPhotoEditor
+    from backend.infrastructure.office.report_authoring.customer_copy import CustomerReportCopy
+    from backend.application.test_report_template_resource import resolve_customer_report_template_path
+    from backend.modules.test_plan.matrix_step_sequence_validation import parse_step_tokens
+    from backend.application.report_authoring.results import ReportResultReader
+    from backend.application.tools_temperature_service import ToolsTemperatureService
+    from backend.infrastructure.office.temperature_workbook_gateway import TemperatureWorkbookGateway
+
+    def context(project_id):
+        project = ProjectRepository(session).get(project_id)
+        if project is None:
+            raise LookupError("Project not found.")
+        basic = ProjectBasicInformationRepository(session).get_latest_confirmed(project_id)
+        workspace = ProjectOfficialWorkspaceRepository(session).get_by_project(project_id)
+        matrix = ConfirmedMatrixAuthorityRepository(session).get_active_by_project(project_id)
+        dl_number = workspace.dl_number if workspace else str((basic.values if basic else {}).get("dl_number") or "")
+        groups = {item.confirmed_group_id: item.group_label for item in matrix.groups} if matrix else {}
+        rows = {item.confirmed_row_id: item.test_item for item in matrix.rows} if matrix else {}
+        return {"dl_number": dl_number, "matrix_id": matrix.version.confirmed_matrix_id if matrix else "",
+            "steps": [{"group_id": item.confirmed_group_id, "row_id": item.confirmed_row_id,
+                "group_label": groups[item.confirmed_group_id], "test_item": rows[item.confirmed_row_id],
+                "step_token": str(token.sequence) + (token.suffix_note or "")}
+                for item in matrix.cells for token in parse_step_tokens(item.cell_value)[0]] if matrix else []}
+
+    return ReportAuthoringService(repository=ReportAuthoringRepository(session),
+        assets=ReportAuthoringAssets(settings.data_dir / "report_authoring_assets"),
+        inspect_upload=inspect_upload, project_context=context,
+        drafts=get_report_draft_workspace(settings), writer=ReportCopyWriter(),
+        result_writer=ReportResultsDocument(temperature_chart=insert_temperature_chart),
+        photos=ReportPhotoEditor(),
+        customer=CustomerReportCopy(converter=CustomerReportDocumentGateway(),
+            template=lambda: resolve_customer_report_template_path(get_test_report_template_resource_store(session)),
+            temperature_chart=insert_temperature_chart),
+        results=ReportResultReader(TemperatureWorkbookGateway(), ToolsTemperatureService(TemperatureWorkbookGateway())))
+
+
 def get_report_section_update_service(session: Session = Depends(get_session), settings: Settings = Depends(get_settings)):
     from backend.application.report_section_update_service import ReportSectionUpdateService
     from backend.infrastructure.files.downloaded_internal_report_source import inspect_internal_report

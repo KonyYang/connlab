@@ -42,6 +42,7 @@ import { useUploadedCustomerReportJob } from "./useUploadedCustomerReportJob";
 import { CustomerReportSourceDialog } from "./CustomerReportSourceDialog";
 import { CustomerReportRegenerationDialog } from "./CustomerReportRegenerationDialog";
 import { LlcrImportPreviewDialog } from "./LlcrImportPreviewDialog";
+import { ReportAuthoringPanel } from "./ReportAuthoringPanel";
 import {
   buildLlcrConfirmationDecisions,
   buildEquipmentSelectionInput,
@@ -876,6 +877,8 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
           </section>
         </div>
       ) : null}
+
+      {state && <ReportAuthoringPanel projectId={projectId} disabled={Boolean(busyAction)} />}
 
       {sourcePickerOpen ? <CustomerReportSourceDialog busy={checkingSource || uploadedCustomerJob.busy} error={error || uploadedCustomerJob.error}
         onCancel={() => setSourcePickerOpen(false)} onGenerate={handleGenerateFromUploadedSource} /> : null}

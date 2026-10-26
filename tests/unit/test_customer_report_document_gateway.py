@@ -442,6 +442,10 @@ def test_customer_report_rejects_unredacted_sample_materials_before_publication(
 
 @pytest.mark.parametrize("base,housing", [
     ("Stainless Steel SUS304", "N/A"),
+    ("Stainless Steel SUS304", "Stainless Steel SUS304"),
+    ("Aluminum 6061", "Aluminum 6061"),
+    ("Copper Alloy", "Ceramic"),
+    ("Copper Alloy", "Unclassified compound"),
     ("Aluminum 6061", "NA"),
     ("", ""),
     ("N/A", "Not Applicable"),

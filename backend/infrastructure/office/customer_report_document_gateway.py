@@ -983,7 +983,15 @@ def _customer_sample_material(value: str, role: str) -> str:
     if cleaned.casefold() in _MATERIAL_PLACEHOLDERS:
         return value
     if role == "housing":
-        return "High Temperature Resin"
+        # A housing is not necessarily polymer. Retain metals, ceramics and
+        # unclassified descriptions rather than inventing a resin identity.
+        if re.search(
+            r"\b(?:LCP|PPS|HTN|PPA|PBT|PET|PEEK|PA(?:6T|9T|46|66|6|12)?|"
+            r"nylon|polyamide|liquid\s+crystal\s+polymer|high\s+temperature\s+resin)\b",
+            cleaned, re.IGNORECASE,
+        ):
+            return "High Temperature Resin"
+        return value
     if _COPPER_MATERIAL_PATTERN.search(cleaned):
         return "Copper Alloy"
     return value
