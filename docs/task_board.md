@@ -41,7 +41,75 @@
       "closed_at": "2026-10-22T23:55:52.392518Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_UNIFIED_PROJECT_LIBRARY_20261027": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library\\connlab",
+      "branch": "codex/unified-project-library-20261027",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_UNIFIED_PROJECT_LIBRARY_20261027",
+        "summary": "Unified project library: managed batch intake, mutable titles, portable project data and offline takeover",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Implement Goal A M1-M4 from the 2026-10-27 revised unified-project-library plan and verified M0 data contract. Isolated databases, output roots and source copies only. Preserve full LTR, stable identity, everyday file edits, complete project-relative files and explicitly owned relational/JSON data. Provide UI for 300-project intake, title/reconnect, prepare-to-take, inspect/restore and continuation of existing Matrix/Report workflows. No real migration, source mutation, push, publication or automatic final Close.",
+        "scope_paths": [
+          "backend/domain/project_library.py",
+          "backend/application/project_library",
+          "backend/infrastructure/project_library",
+          "backend/infrastructure/storage/models_project_library.py",
+          "backend/infrastructure/storage/repositories/project_library.py",
+          "backend/infrastructure/storage/database.py",
+          "backend/shared/config.py",
+          "backend/desktop/runtime_paths.py",
+          "backend/api/routes_project_library.py",
+          "backend/api/project_library_schemas.py",
+          "backend/api/main.py",
+          "backend/api/dependencies.py",
+          "backend/application/legacy_project_preview_service.py",
+          "backend/infrastructure/files/legacy_project_preview_gateway.py",
+          "backend/infrastructure/storage/repositories/official_workspace.py",
+          "backend/infrastructure/official_workspace_manifest.py",
+          "backend/application/official_folder_relocation_service.py",
+          "frontend/src/api/projectLibrary.ts",
+          "frontend/src/features/project-library",
+          "frontend/src/App.tsx",
+          "frontend/src/App.test.tsx",
+          "frontend/src/pages/ToolsPage.tsx",
+          "frontend/src/pages/ToolsPage.test.tsx",
+          "frontend/src/pages/ProjectListPage.tsx",
+          "frontend/src/pages/ProjectListPage.test.tsx",
+          "tests/unit/project_library",
+          "tests/integration/test_project_library_api.py",
+          "tests/integration/test_project_library_portability.py",
+          "tests/unit/test_config.py",
+          "tests/unit/test_desktop_packaged_runtime_paths.py",
+          "tests/unit/test_official_project_workspace_service.py",
+          "tests/unit/test_official_project_workspace_naming.py",
+          "tests/unit/test_legacy_project_preview.py",
+          "tests/fixtures/project_library",
+          "docs/plans/UNIFIED_PROJECT_LIBRARY_20261027.md",
+          "docs/architecture/project_library.md",
+          "docs/PROJECT_CONTEXT.md",
+          "docs/packaging_notes.md"
+        ],
+        "risk_reasons": [
+          "Additive durable library, batch and snapshot persistence with multi-table restore",
+          "Project/Matrix/result/report identity and implicit JSON relationships",
+          "Recoverable file copy and project-relative path rebinding",
+          "Runtime root binding separated from real/default databases",
+          "Copied project identity, LTR ownership and divergent snapshot conflict handling"
+        ],
+        "activation_head": "eb9f274a693290f651169631f85aa5ea3b1f4dc2",
+        "started_at": "2026-10-26T23:55:01.303717Z",
+        "updated_at": "2026-10-26T23:55:01.303717Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
