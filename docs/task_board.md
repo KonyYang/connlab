@@ -90,7 +90,7 @@
         ],
         "activation_head": "cd6250e189e5ad67f4c005a3f32c3cfc92945884",
         "started_at": "2026-10-26T00:05:01.578908Z",
-        "updated_at": "2026-10-26T01:40:09.339738Z",
+        "updated_at": "2026-10-26T02:17:11.973664Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -98,7 +98,7 @@
           "stage": "independent_qa",
           "status": "running",
           "requires_user": false,
-          "summary": "Five capabilities committed clean at 8b406404daebfe599ed719c8f8e14c351665cb1c in isolated task worktree. Independent review findings closed; final exact-subject QA and isolated browser flows running. Word inspected temperature/mechanical-CR/customer/photo copies (19/20/17/19 pages), source/template hashes unchanged. Evidence: C:/Users/White/Documents/Codex/report_goal_20261026/visual_manifest.json. No integration, real-file mutation or formal release yet."
+          "summary": "Final clean candidate 7ed1e3dd88acde5da749aa4fd071a3b9e418b8c3. Initial QA: 652 Python and 1031 frontend passed; real browser found shared-busy and valid -CR identity issues. Both fixed and independently reviewed (reviewer_qa_fix.json). Final affected QA/UI resume is running against retained isolated DBs. Word generation unchanged; visual_binding_final.json proves previous 19/20/17/19-page checks apply and real source/template hashes unchanged. No integration or formal release yet."
         },
         "report": null
       }
