@@ -35,11 +35,11 @@
   "tasks": {
     "TASK_REPORT_CAPABILITIES_3_7_20261026": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab-report-capabilities-20261026",
       "branch": "codex/report-capabilities-20261026",
       "resources": [],
-      "integrated_head": "93be4e9bda80190e4ff69d9ab09fcf659d05bb3f",
+      "integrated_head": "dc58b3d49cdbdce6f4420cf5e5f216cf1a3bd600",
       "task": {
         "task_id": "TASK_REPORT_CAPABILITIES_3_7_20261026",
         "summary": "Report Workspace: persistent provenance, temperature/CR, mechanical appendices, photo slots and checked customer copies",
@@ -90,7 +90,7 @@
         ],
         "activation_head": "cd6250e189e5ad67f4c005a3f32c3cfc92945884",
         "started_at": "2026-10-26T00:05:01.578908Z",
-        "updated_at": "2026-10-26T10:17:39.850674Z",
+        "updated_at": "2026-10-26T10:26:03.773408Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -100,7 +100,152 @@
           "summary": "User feedback: fix customer review labels, textareas and checkbox layout only; preserve business logic and verify isolated browser smoke.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_REPORT_CAPABILITIES_3_7_20261026",
+          "subject": "199b109dc563ff3cdd44fd648f4b3f373b1c4798",
+          "summary": "Five Report Workspace capabilities previously accepted and integrated; bounded customer-copy layout revision now independently reviewed and browser-verified. Existing business/API/Word behavior retained. Await final user acceptance.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/features/report-workspace/ReportCustomerCopy.tsx",
+            "frontend/src/features/report-workspace/reportCustomerCopy.css"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "subject": "7ed1e3dd88acde5da749aa4fd071a3b9e418b8c3",
+              "kind": "independent_qa_final",
+              "result": "36 affected Python; 1035 Vitest passed, 1 skip; TypeScript/build passed; real isolated UI findings closed and blank/current source positive paths verified",
+              "evidence": {
+                "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\qa\\qa_final.json",
+                "raw_sha256": "cdd262b154974b3536a80908bbcba2f87882219cafef81e320c5fbb789796eb8"
+              }
+            },
+            {
+              "status": "passed",
+              "subject": "8b406404daebfe599ed719c8f8e14c351665cb1c",
+              "kind": "retained_backend_baseline",
+              "result": "652 Python on prior subject; retained for unchanged backend with affected final checks, not a new full final-subject run"
+            },
+            {
+              "status": "passed",
+              "subject": "7ed1e3dd88acde5da749aa4fd071a3b9e418b8c3",
+              "kind": "retained_word_visual_binding",
+              "result": "Four previously reviewed Word render sets, 19/20/17/19 pages; generator code unchanged; no new rendering claimed",
+              "evidence": [
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\visual_manifest.json",
+                  "raw_sha256": "435e0c3229f5244640d2db8e7d4a0ae44ff97e4d82c804db6c9b4933d13ba296"
+                },
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\visual_binding_final.json",
+                  "raw_sha256": "d3f3714a47087c437091cbf1c726d26cbcff12b5a4ee1a6cd0c921e576f7406e"
+                }
+              ]
+            },
+            {
+              "status": "passed",
+              "subject": "199b109dc563ff3cdd44fd648f4b3f373b1c4798",
+              "kind": "bounded_customer_layout",
+              "result": "Developer 11 affected UI tests and build; independent Reviewer unchanged behavioral attributes; independent QA responsive and native control browser checks. Prior backend/Word validation retained because only JSX layout and scoped CSS changed.",
+              "evidence": [
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\developer_customer_layout.json",
+                  "raw_sha256": "56e7282b2d72024b3f5a1d34588933984c533f3105395c5487083d798e752a21"
+                },
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\customer_layout_review.json",
+                  "raw_sha256": "581161f2e8f3e958fbcffd494d2cef6552372f13bd93fea57b35972bcdbe3445"
+                },
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\customer_layout_qa.json",
+                  "raw_sha256": "1b0369299dcfe2e786b808a061bcf9bc11894928ab0c0934487ed64bf20e1523"
+                }
+              ]
+            }
+          ],
+          "roles": {
+            "planner": {
+              "status": "passed",
+              "evidence": [
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\planner_final.json",
+                  "raw_sha256": "ae53f1be595e8473e8fd17e0d39a489093fe5ed2b6ddfc10f0d6571c2b88579b"
+                }
+              ]
+            },
+            "developer": {
+              "status": "passed",
+              "evidence": [
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\developer_final.json",
+                  "raw_sha256": "5d0783346e9250d63219dde38d43dc481bd08d212c2f4692bf1b537a1c17d62c"
+                },
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\developer_qa_fix.json",
+                  "raw_sha256": "a1f9aa8b7d1e7c765f9931b4961e88fa1f02ecff56fbf175229ba0f97675ead7"
+                },
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\developer_customer_layout.json",
+                  "raw_sha256": "56e7282b2d72024b3f5a1d34588933984c533f3105395c5487083d798e752a21"
+                }
+              ]
+            },
+            "reviewer": {
+              "status": "passed",
+              "evidence": [
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\reviewer_final.json",
+                  "raw_sha256": "467bb9072484510919df1b6d3850aafb95d72085b4c3f5961f5a5e5556435914"
+                },
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\reviewer_qa_fix.json",
+                  "raw_sha256": "843e41bcc22213d66e1a5dbc1c015c14e213c47a03b81d31f2c453165312b34a"
+                },
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\customer_layout_review.json",
+                  "raw_sha256": "581161f2e8f3e958fbcffd494d2cef6552372f13bd93fea57b35972bcdbe3445"
+                }
+              ]
+            },
+            "qa": {
+              "status": "passed",
+              "evidence": [
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\qa\\qa_final.json",
+                  "raw_sha256": "cdd262b154974b3536a80908bbcba2f87882219cafef81e320c5fbb789796eb8"
+                },
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\customer_layout_qa.json",
+                  "raw_sha256": "1b0369299dcfe2e786b808a061bcf9bc11894928ab0c0934487ed64bf20e1523"
+                }
+              ]
+            },
+            "integrator": {
+              "status": "passed",
+              "scope": "Exact revision pre-integration checks",
+              "evidence": [
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\integrator_final.json",
+                  "raw_sha256": "aaac7e0dc22f48ecab3a7c17465e2a44df270e767eaa401e87c9653bbcde440a"
+                },
+                {
+                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\customer_layout_integrator_precheck.json",
+                  "raw_sha256": "4dc96e19652574459fcad93764648d2e359487c016df344df4d77ab427cf1308"
+                }
+              ]
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "199b109dc563ff3cdd44fd648f4b3f373b1c4798",
+            "primary_before": "9a4f4faaa6ad479e8cefdf63288d7f9dd4b06874",
+            "integrated_head": "dc58b3d49cdbdce6f4420cf5e5f216cf1a3bd600",
+            "recovered": false
+          }
+        }
       }
     }
   }
