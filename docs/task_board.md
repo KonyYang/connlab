@@ -8,11 +8,9 @@
 ```json
 {
   "schema": "connlab.sol-task-control",
-  "version": 1,
+  "version": 2,
   "mode": "sol_native",
-  "wip_limit": 1,
-  "state": "idle",
-  "active": null,
+  "wip_limit": 2,
   "last_closed": {
     "task_id": "TASK_LLCR_RESULT_SEMANTICS_20261023",
     "tier": "standard",
@@ -33,7 +31,71 @@
       "tier": "high_risk",
       "closed_at": "2026-09-17T11:59:24.022479Z"
     }
-  ]
+  ],
+  "tasks": {
+    "TASK_REPORT_CAPABILITIES_3_7_20261026": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab-report-capabilities-20261026",
+      "branch": "codex/report-capabilities-20261026",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_REPORT_CAPABILITIES_3_7_20261026",
+        "summary": "Report Workspace: persistent provenance, temperature/CR, mechanical appendices, photo slots and checked customer copies",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "One main task, five milestones 3-7. Preserve existing LLCR and local-update protections. Isolated databases and file copies only; real reports/templates/project files read-only; no automatic official publication or force push. Missing decisions stay pending. Include latest 032 review regressions.",
+        "scope_paths": [
+          "backend/application/report_authoring",
+          "backend/domain/report_authoring.py",
+          "backend/infrastructure/office/report_authoring",
+          "backend/infrastructure/files/report_authoring_assets.py",
+          "backend/infrastructure/storage/models_report_authoring.py",
+          "backend/infrastructure/storage/repositories/report_authoring.py",
+          "backend/infrastructure/storage/report_authoring_schema.py",
+          "backend/infrastructure/storage/database.py",
+          "backend/api/routes_report_authoring.py",
+          "backend/api/report_authoring_schemas.py",
+          "backend/api/dependencies.py",
+          "backend/api/main.py",
+          "backend/api/routes_report_workspace.py",
+          "backend/application/report_section_update_service.py",
+          "backend/infrastructure/files/report_draft_workspace.py",
+          "backend/infrastructure/office/test_report_document_gateway.py",
+          "backend/infrastructure/office/customer_report_document_gateway.py",
+          "backend/application/customer_report_projection_service.py",
+          "backend/application/project_customer_report_job_service.py",
+          "backend/api/project_customer_report_runner.py",
+          "frontend/src/features/report-workspace",
+          "frontend/src/api/reportAuthoring.ts",
+          "frontend/src/api/reportAuthoring.test.ts",
+          "frontend/src/styles.css",
+          "tests/unit/report_authoring",
+          "tests/integration/test_report_authoring_api.py",
+          "tests/unit/test_report_authoring_schema.py",
+          "tests/unit/test_report_draft_workspace.py",
+          "tests/unit/test_customer_report_document_gateway.py",
+          "tests/unit/test_test_report_document_gateway.py",
+          "tests/unit/test_customer_report_projection_service.py",
+          "tests/unit/test_project_customer_report_job_service.py",
+          "tests/integration/test_project_customer_report_runner.py",
+          "tests/integration/test_report_section_draft_api.py",
+          "tests/fixtures/report_authoring",
+          "docs/architecture/report_authoring.md"
+        ],
+        "risk_reasons": [
+          "Additive report provenance persistence schema",
+          "Report data semantics and confidential customer-copy verification"
+        ],
+        "activation_head": "cd6250e189e5ad67f4c005a3f32c3cfc92945884",
+        "started_at": "2026-10-26T00:05:01.578908Z",
+        "updated_at": "2026-10-26T00:05:01.578908Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
