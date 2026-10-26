@@ -102,7 +102,7 @@ class ReportDraftWorkspace:
             except (OSError, ValueError):
                 _LOGGER.debug("Retaining an unavailable report cache revision %s", folder.name, exc_info=True)
 
-    def update(self, project_id, dl_number, source, generate, revalidate, *, matrix_id=None):
+    def update(self, project_id, dl_number, source, generate, revalidate, *, matrix_id=None, make_current=True):
         source = Path(source)
         _safe_path(source)
         before = _fingerprint(source)
@@ -133,6 +133,8 @@ class ReportDraftWorkspace:
                         "expires_at": self._clock() + self._retention}
             (folder / "revision.json").write_text(json.dumps(metadata), encoding="utf-8")
             result = self.read_revision(project_id, revision)
+            if not make_current:
+                return result
             pointer = project / (revision + ".json")
             try:
                 pointer.write_text(json.dumps({"revision": revision}), encoding="utf-8")
