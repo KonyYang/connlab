@@ -80,7 +80,7 @@ it("opens retained evidence and saves a missing business decision as pending", a
     sample_ids: [], matrix_id: "", confirmed_by: "", confirmed_at: "",
   }] });
   render(<ReportAuthoringPanel projectId="P1" />);
-  fireEvent.click(screen.getByText("Prepare report from an approved source"));
+  fireEvent.click(screen.getByRole('button', { name: 'Choose report base' }));
   await screen.findByText("Approved.docx", { selector: "span" });
   fireEvent.change(screen.getByLabelText("Mapping label"), { target: { value: "Specification revision date" } });
   fireEvent.change(screen.getByLabelText("Source location"), { target: { value: "Revision record page 27" } });
@@ -97,7 +97,7 @@ it("starts a separate copy from a selected reference and shows unresolved facts"
     issues: ["Review project facts before delivery."], download_url: "/output", base_source_id: "source-1",
   }] });
   render(<ReportAuthoringPanel projectId="P1" />);
-  fireEvent.click(screen.getByText("Prepare report from an approved source"));
+  fireEvent.click(screen.getByRole('button', { name: 'Choose report base' }));
   await screen.findByText("Approved.docx", { selector: "span" });
   fireEvent.click(screen.getByRole("button", { name: "Use as report base" }));
   await screen.findByText("Review project facts before delivery.");
@@ -109,7 +109,7 @@ it("does not display an old project's late response after navigation", async () 
   let release!: (value: api.ReportAuthoringState) => void;
   vi.mocked(api.getReportAuthoring).mockReturnValueOnce(new Promise(resolve => { release = resolve; }));
   const view = render(<ReportAuthoringPanel projectId="P1" />);
-  fireEvent.click(screen.getByText("Prepare report from an approved source"));
+  fireEvent.click(screen.getByRole('button', { name: 'Choose report base' }));
   await waitFor(() => expect(api.getReportAuthoring).toHaveBeenCalled());
   view.rerender(<ReportAuthoringPanel projectId="P2" />);
   release(state);
@@ -136,7 +136,7 @@ async function startPendingFactUpdate(pending: ReturnType<typeof deferred<api.Re
     changes: [{ old: 'Old product', new: 'New product', occurrences: 1, parts: ['word/document.xml'] }] });
   vi.mocked(api.applyReportFacts).mockReturnValue(pending.promise);
   const view = render(<ReportAuthoringPanel projectId="P1" />);
-  fireEvent.click(screen.getByText('Prepare report from an approved source'));
+  fireEvent.click(screen.getByRole('button', { name: 'Choose report base' }));
   await screen.findByText('Approved.docx', { selector: 'span' });
   fireEvent.change(screen.getByLabelText('Source file'), { target: { files: [new File(['x'], 'next.docx')] } });
   fireEvent.click(screen.getByText('Preview confirmed text replacements'));
@@ -164,7 +164,7 @@ it('does not let an old child response overwrite or unlock a new project operati
   const next = deferred<api.ReportAuthoringState>();
   vi.mocked(api.getReportAuthoring).mockReturnValueOnce(next.promise);
   view.rerender(<ReportAuthoringPanel projectId="P2" />);
-  fireEvent.click(screen.getByText('Prepare report from an approved source'));
+  fireEvent.click(screen.getByRole('button', { name: 'Choose report base' }));
   await act(async () => { old.resolve({ ...editable, revision: 99 }); });
   expect(screen.queryByText('Approved.docx', { selector: 'span' })).toBeNull();
   expect(screen.getByText('Reload saved evidence').matches(':disabled')).toBe(true);

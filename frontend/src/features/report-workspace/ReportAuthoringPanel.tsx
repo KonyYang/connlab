@@ -140,9 +140,8 @@ export function ReportAuthoringPanel({ projectId, disabled = false, onOperationS
         <p>{step.purpose}</p><small>{step.status}</small>
       </li>)}
     </ol>
-    <button type="button" aria-controls={`${panelId}-details`} aria-expanded={open} disabled={locked} onClick={() => {
-      const next = !open; setOpen(next); if (next && !state) void run(() => getReportAuthoring(projectId));
-    }}>{open ? "Collapse report preparation" : "Prepare report from an approved source"}</button>
+    {open && <button type="button" aria-controls={`${panelId}-details`} aria-expanded={open} disabled={locked}
+      onClick={() => { setOpen(false); setFocusTarget(null); }}>Hide preparation tools</button>}
     {open && <div id={`${panelId}-details`}>
       <p className="report-workspace-note">Use a retained original or approved report as the base. Only new copies are produced; original files are not changed or formally released.</p>
       {error && <p role="alert">{error}</p>}
