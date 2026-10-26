@@ -232,7 +232,7 @@ describe("ReportWorkspace", () => {
     vi.mocked(authoring.selectReportBase).mockReturnValue(new Promise(resolve => { finishBase = resolve; }));
     render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
     await screen.findByRole('region', { name: 'Internal Report' });
-    await userEvent.click(screen.getByText('Prepare report from an approved source'));
+    await userEvent.click(screen.getByRole('button', { name: 'Choose report base' }));
     await userEvent.click(await screen.findByText('Use as report base'));
     expect(screen.getByText('Update Equipment List').matches(':disabled')).toBe(true);
     expect(screen.getByText('Generate Internal Report').matches(':disabled')).toBe(true);

@@ -1,0 +1,73 @@
+.report-preparation {
+  margin-bottom: 20px;
+  min-width: 0;
+}
+
+.report-preparation-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+
+.report-preparation-actions > li {
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.report-preparation-actions button {
+  width: 100%;
+  white-space: normal;
+  text-align: left;
+}
+
+.report-preparation-actions p {
+  margin: 10px 0;
+  line-height: 1.5;
+}
+
+.report-preparation-actions small {
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+}
+
+.report-preparation-region {
+  border-top: 1px solid var(--color-border);
+  margin-top: 24px;
+  padding-top: 16px;
+  min-width: 0;
+}
+
+.report-preparation-region h3 {
+  scroll-margin-top: 24px;
+}
+
+.report-preparation h2:focus-visible,
+.report-preparation-region h3:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 6px;
+}
+
+.report-preparation-back {
+  margin-bottom: 12px;
+}
+
+.report-preparation-guidance {
+  padding: 12px 14px;
+  border-left: 3px solid var(--color-primary);
+  background: var(--color-surface);
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .report-preparation-actions {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}

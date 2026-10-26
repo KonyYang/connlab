@@ -676,6 +676,8 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
       {error ? <ErrorMessage message={error} /> : null}
       {message ? <p className="report-workspace-message" role="status">{message}</p> : null}
 
+      {state && <ReportAuthoringPanel projectId={projectId} disabled={Boolean(legacyBusyAction)} onOperationStart={beginAuthoringOperation} />}
+
       {state && readiness ? (
         <div className="report-workspace-grid">
           <section className="report-workspace-card report-workspace-generation" aria-label="Report generation">
@@ -902,8 +904,6 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
           </section>
         </div>
       ) : null}
-
-      {state && <ReportAuthoringPanel projectId={projectId} disabled={Boolean(legacyBusyAction)} onOperationStart={beginAuthoringOperation} />}
 
       {sourcePickerOpen ? <CustomerReportSourceDialog busy={checkingSource || uploadedCustomerJob.busy} error={error || uploadedCustomerJob.error}
         onCancel={() => setSourcePickerOpen(false)} onGenerate={handleGenerateFromUploadedSource} /> : null}
