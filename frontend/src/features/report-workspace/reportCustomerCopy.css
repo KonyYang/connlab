@@ -1,0 +1,164 @@
+.report-customer-copy {
+  min-width: 0;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-ink);
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.report-customer-copy h4 {
+  margin: 0 0 8px;
+}
+
+.report-customer-copy-note {
+  margin: 0 0 16px;
+  color: var(--color-ink-muted);
+}
+
+.report-customer-copy-form {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.report-customer-copy-status,
+.report-customer-copy-checks,
+.report-customer-copy-issue-review {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.report-customer-copy-status p,
+.report-customer-copy-checks p,
+.report-customer-copy-issues p {
+  margin: 0;
+}
+
+.report-customer-copy-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px;
+}
+
+.report-customer-copy-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.report-customer-copy-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 108px;
+  padding: 10px 12px;
+  resize: vertical;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-ink);
+  background: var(--color-surface);
+  font: inherit;
+  font-weight: 400;
+}
+
+.report-customer-copy-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  min-height: 24px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.report-customer-copy-check input[type="checkbox"] {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  margin: 2px 0 0;
+  padding: 0;
+  accent-color: var(--color-primary);
+}
+
+.report-customer-copy-check span {
+  min-width: 0;
+}
+
+.report-customer-copy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.report-customer-copy-actions button {
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.report-customer-copy-issues {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-customer-copy-issues:empty {
+  display: none;
+}
+
+.report-customer-copy-issues li {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface-muted);
+}
+
+.report-customer-copy input:focus-visible,
+.report-customer-copy textarea:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 26%, transparent);
+  outline-offset: 2px;
+}
+
+.report-customer-copy-form:disabled textarea {
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+}
+
+.report-customer-copy-form:disabled .report-customer-copy-check {
+  cursor: default;
+}
+
+.report-customer-copy-error {
+  margin: 12px 0 0;
+  color: var(--color-danger);
+}
+
+@media (max-width: 760px) {
+  .report-customer-copy-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report-customer-copy-actions button {
+    width: 100%;
+  }
+
+  .report-customer-copy-issues li {
+    padding: 12px;
+  }
+}

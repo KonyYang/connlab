@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import './reportCustomerCopy.css';
 import { checkCustomerReviewCopy, generateCustomerReviewCopy, downloadCustomerPart, downloadReportArtifact,
   type ReportAuthoringState } from '../../api/reportAuthoring';
 
@@ -46,35 +47,40 @@ export function ReportCustomerCopy({ projectId, state, disabled, onChanged, begi
   }
   if (!output) return null;
   const temperatures = (state.results || []).filter(item => item.kind === 'temperature' && state.applied_result_ids?.includes(item.result_id!));
-  return <section aria-label="Customer report review copy"><h4>Customer report copy and disclosure checks</h4>
-    <p>Uses the registered E-4515 template and current Internal Report copy. Nothing is formally released or written to project folders.</p>
-    <fieldset disabled={disabled || busy}>
-      {temperatures.length > 0 && <div><p>Include the complete temperature measurement tables and editable curves already applied to this report:</p>
-        {temperatures.map(result => <label key={result.result_id}><input type="checkbox" checked={selected.includes(result.result_id!)} onChange={event => setSelected(previous => event.target.checked ? [...previous, result.result_id!] : previous.filter(id => id !== result.result_id))} />
-          Group {result.target.group_label} / Step {result.target.step_token}</label>)}
+  return <section className="report-customer-copy" aria-label="Customer report review copy"><h4>Customer report copy and disclosure checks</h4>
+    <p className="report-customer-copy-note">Uses the registered E-4515 template and current Internal Report copy. Nothing is formally released or written to project folders.</p>
+    <fieldset className="report-customer-copy-form" disabled={disabled || busy}>
+      {temperatures.length > 0 && <div className="report-customer-copy-checks"><p>Include the complete temperature measurement tables and editable curves already applied to this report:</p>
+        {temperatures.map(result => <label className="report-customer-copy-check" key={result.result_id}><input type="checkbox" checked={selected.includes(result.result_id!)} onChange={event => setSelected(previous => event.target.checked ? [...previous, result.result_id!] : previous.filter(id => id !== result.result_id))} />
+          <span>Group {result.target.group_label} / Step {result.target.step_token}</span></label>)}
       </div>}
-      <button type="button" disabled={!output.artifact} onClick={() => void run(() => generateCustomerReviewCopy(projectId, {
-        expected_revision: state.revision, output_id: output.output_id, output_sha256: output.artifact!.sha256, temperature_result_ids: selected }))}>Generate customer review copy</button>
+      <div className="report-customer-copy-actions"><button className="secondary-action" type="button" disabled={!output.artifact} onClick={() => void run(() => generateCustomerReviewCopy(projectId, {
+        expected_revision: state.revision, output_id: output.output_id, output_sha256: output.artifact!.sha256, temperature_result_ids: selected }))}>Generate customer review copy</button></div>
       {customer && <>
-        <p>{customer.file_name} — {customer.status === 'package_checked' ? 'Package disclosure checks passed; not release approval' : 'Needs review'}</p>
-        <button type="button" onClick={() => void download()}>Download customer review copy</button>
-        <label>Restricted material/disclosure terms (one per line)<textarea value={terms} onChange={event => { setTerms(event.target.value); setScope(false); }} /></label>
-        <label>Previous project identifiers to exclude (one per line)<textarea value={oldIds} onChange={event => { setOldIds(event.target.value); setScope(false); }} /></label>
-        <label><input type="checkbox" checked={scope} onChange={event => setScope(event.target.checked)} />I checked the disclosure scope and unclassified materials; metals are not treated as resin</label>
-        <label><input type="checkbox" checked={contentReviewed} onChange={event => setContentReviewed(event.target.checked)} />I reviewed this Internal Report copy's project facts, specification, conclusions, samples, photos and completeness</label>
-        <ul>{customer.audit?.issues.map((issue, index) => <li key={index}><strong>{issue.location}</strong>: {issue.message}
-          {issue.sha256 && reviewable.has(issue.code) && <>
-            <button type="button" onClick={() => void download(issue.location)}>Download exact part for review</button>
-            <label><input type="checkbox" checked={parts[issue.location] === issue.sha256} onChange={event => setParts(previous => {
+        <div className="report-customer-copy-status"><p>{customer.file_name} — {customer.status === 'package_checked' ? 'Package disclosure checks passed; not release approval' : 'Needs review'}</p>
+          <div className="report-customer-copy-actions"><button className="secondary-action" type="button" onClick={() => void download()}>Download customer review copy</button></div>
+        </div>
+        <div className="report-customer-copy-fields">
+          <label className="report-customer-copy-field"><span>Restricted material/disclosure terms (one per line)</span><textarea value={terms} onChange={event => { setTerms(event.target.value); setScope(false); }} /></label>
+          <label className="report-customer-copy-field"><span>Previous project identifiers to exclude (one per line)</span><textarea value={oldIds} onChange={event => { setOldIds(event.target.value); setScope(false); }} /></label>
+        </div>
+        <div className="report-customer-copy-checks">
+          <label className="report-customer-copy-check"><input type="checkbox" checked={scope} onChange={event => setScope(event.target.checked)} /><span>I checked the disclosure scope and unclassified materials; metals are not treated as resin</span></label>
+          <label className="report-customer-copy-check"><input type="checkbox" checked={contentReviewed} onChange={event => setContentReviewed(event.target.checked)} /><span>I reviewed this Internal Report copy's project facts, specification, conclusions, samples, photos and completeness</span></label>
+        </div>
+        <ul className="report-customer-copy-issues">{customer.audit?.issues.map((issue, index) => <li key={index}><p><strong>{issue.location}</strong>: {issue.message}</p>
+          {issue.sha256 && reviewable.has(issue.code) && <div className="report-customer-copy-issue-review">
+            <div className="report-customer-copy-actions"><button className="secondary-action" type="button" onClick={() => void download(issue.location)}>Download exact part for review</button></div>
+            <label className="report-customer-copy-check"><input type="checkbox" checked={parts[issue.location] === issue.sha256} onChange={event => setParts(previous => {
               const next = { ...previous }; if (event.target.checked) next[issue.location] = issue.sha256!; else delete next[issue.location]; return next;
-            })} />I reviewed this exact image/object and approve its disclosure</label>
-          </>}
+            })} /><span>I reviewed this exact image/object and approve its disclosure</span></label>
+          </div>}
         </li>)}</ul>
-        <button type="button" disabled={!customer.artifact} onClick={() => void run(() => checkCustomerReviewCopy(projectId, {
+        <div className="report-customer-copy-actions"><button className="secondary-action" type="button" disabled={!customer.artifact} onClick={() => void run(() => checkCustomerReviewCopy(projectId, {
           expected_revision: state.revision, output_id: customer.output_id, output_sha256: customer.artifact!.sha256,
           sensitive_terms: terms.split('\n').map(term => term.trim()).filter(Boolean), forbidden_project_ids: oldIds.split('\n').map(term => term.trim()).filter(Boolean),
-          reviewed_parts: parts, disclosure_scope_confirmed: scope, content_review_sha256: contentReviewed ? output.artifact?.sha256 : null }))}>Check saved customer package</button>
+          reviewed_parts: parts, disclosure_scope_confirmed: scope, content_review_sha256: contentReviewed ? output.artifact?.sha256 : null }))}>Check saved customer package</button></div>
       </>}
-    </fieldset>{error && <p role="alert">{error}</p>}
+    </fieldset>{error && <p className="report-customer-copy-error" role="alert">{error}</p>}
   </section>;
 }
