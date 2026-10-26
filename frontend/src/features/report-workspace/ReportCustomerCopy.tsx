@@ -3,8 +3,9 @@ import { checkCustomerReviewCopy, generateCustomerReviewCopy, downloadCustomerPa
   type ReportAuthoringState } from '../../api/reportAuthoring';
 
 const reviewable = new Set(['visual_review_required', 'unreviewed_embedding', 'unreviewed_package_part']);
-export function ReportCustomerCopy({ projectId, state, disabled, onChanged }: {
+export function ReportCustomerCopy({ projectId, state, disabled, onChanged, beginOperation }: {
   projectId: string; state: ReportAuthoringState; disabled: boolean; onChanged: (state: ReportAuthoringState) => void;
+  beginOperation?: () => (() => void) | null;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [terms, setTerms] = useState('');
@@ -24,13 +25,16 @@ export function ReportCustomerCopy({ projectId, state, disabled, onChanged }: {
   }, [projectId, customer?.output_id, state.revision]);
   useEffect(() => () => { epoch.current++; }, []);
   async function run(action: () => Promise<ReportAuthoringState>) {
+    if (disabled || busy) return;
+    const release = beginOperation ? beginOperation() : () => undefined; if (!release) return;
     const token = ++epoch.current; setBusy(true); setError('');
     try { const next = await action(); if (token === epoch.current) onChanged(next); }
     catch (cause) { if (token === epoch.current) setError(cause instanceof Error ? cause.message : 'Customer copy operation failed.'); }
-    finally { if (token === epoch.current) setBusy(false); }
+    finally { release(); if (token === epoch.current) setBusy(false); }
   }
   async function download(part?: string) {
-    if (!customer) return;
+    if (!customer || disabled || busy) return;
+    const release = beginOperation ? beginOperation() : () => undefined; if (!release) return;
     const token = ++epoch.current; setBusy(true); setError('');
     try { const file = part ? await downloadCustomerPart(projectId, customer.output_id, part) : await downloadReportArtifact(customer.download_url);
       if (token !== epoch.current) return;
@@ -38,7 +42,7 @@ export function ReportCustomerCopy({ projectId, state, disabled, onChanged }: {
       anchor.download = file.fileName || part?.split('/').at(-1) || customer.file_name; anchor.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (cause) { if (token === epoch.current) setError(cause instanceof Error ? cause.message : 'Download failed.'); }
-    finally { if (token === epoch.current) setBusy(false); }
+    finally { release(); if (token === epoch.current) setBusy(false); }
   }
   if (!output) return null;
   const temperatures = (state.results || []).filter(item => item.kind === 'temperature' && state.applied_result_ids?.includes(item.result_id!));

@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { applyReportPhotos, getReportPhotoSlots, getReportPhotoImage, downloadReportArtifact,
   type ReportAuthoringState, type ReportPhotoSlot } from '../../api/reportAuthoring';
 
-export function ReportPhotoSlots({ projectId, state, disabled, onChanged }: {
+export function ReportPhotoSlots({ projectId, state, disabled, onChanged, beginOperation }: {
   projectId: string; state: ReportAuthoringState; disabled: boolean; onChanged: (state: ReportAuthoringState) => void;
+  beginOperation?: () => (() => void) | null;
 }) {
   const [slots, setSlots] = useState<{ output_sha256: string; slots: ReportPhotoSlot[] } | null>(null);
   const [slotId, setSlotId] = useState('');
@@ -22,28 +23,31 @@ export function ReportPhotoSlots({ projectId, state, disabled, onChanged }: {
   useEffect(() => () => { epoch.current++; }, []);
   useEffect(() => () => { images.forEach(url => URL.revokeObjectURL(url)); }, [images]);
   async function inspect() {
-    if (!output) return;
+    if (!output || disabled || busy) return;
+    const release = beginOperation ? beginOperation() : () => undefined; if (!release) return;
     const token = ++epoch.current; setBusy(true); setError('');
     try { const next = await getReportPhotoSlots(projectId, output.output_id, state.revision); if (token === epoch.current) setSlots(next); }
     catch (cause) { if (token === epoch.current) setError(cause instanceof Error ? cause.message : 'Photo inspection failed.'); }
-    finally { if (token === epoch.current) setBusy(false); }
+    finally { release(); if (token === epoch.current) setBusy(false); }
   }
   async function preview() {
-    if (!output || !slot || !source) return;
+    if (!output || !slot || !source || disabled || busy) return;
+    const release = beginOperation ? beginOperation() : () => undefined; if (!release) return;
     const token = ++epoch.current; setBusy(true); setError(''); setConfirmed(false);
     try { const [old, replacement] = await Promise.all([getReportPhotoImage(projectId, output.output_id, slot.slot_id), downloadReportArtifact(source.download_url)]);
       if (token === epoch.current) setImages([URL.createObjectURL(old.blob), URL.createObjectURL(replacement.blob)]);
     } catch (cause) { if (token === epoch.current) setError(cause instanceof Error ? cause.message : 'Photo preview failed.'); }
-    finally { if (token === epoch.current) setBusy(false); }
+    finally { release(); if (token === epoch.current) setBusy(false); }
   }
   async function apply() {
-    if (!output || !slots || !slot || !source || !confirmed) return;
+    if (!output || !slots || !slot || !source || !confirmed || disabled || busy) return;
+    const release = beginOperation ? beginOperation() : () => undefined; if (!release) return;
     const token = ++epoch.current; setBusy(true); setError('');
     try { const next = await applyReportPhotos(projectId, { expected_revision: state.revision, output_id: output.output_id,
       output_sha256: slots.output_sha256, assignments: [{ slot_id: slotId, source_id: sourceId, crop_mode: crop, accept_slot_transform: transform }] });
       if (token === epoch.current) onChanged(next);
     } catch (cause) { if (token === epoch.current) setError(cause instanceof Error ? cause.message : 'Photo replacement failed.'); }
-    finally { if (token === epoch.current) setBusy(false); }
+    finally { release(); if (token === epoch.current) setBusy(false); }
   }
   if (!output) return null;
   return <section aria-label="Approved report photo slots"><h4>Replace photos in approved slots</h4>

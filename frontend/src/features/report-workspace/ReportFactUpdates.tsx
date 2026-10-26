@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { applyReportFacts, previewReportFacts, type FactPreview, type ReportAuthoringState } from "../../api/reportAuthoring";
 
-export function ReportFactUpdates({ projectId, state, disabled, onChanged }: {
+export function ReportFactUpdates({ projectId, state, disabled, onChanged, beginOperation }: {
   projectId: string; state: ReportAuthoringState; disabled: boolean; onChanged: (state: ReportAuthoringState) => void;
+  beginOperation?: () => (() => void) | null;
 }) {
   const [preview, setPreview] = useState<FactPreview | null>(null);
   const [busy, setBusy] = useState(false);
@@ -15,7 +16,8 @@ export function ReportFactUpdates({ projectId, state, disabled, onChanged }: {
   const candidates = state.mappings.filter(item => item.status === "confirmed" && item.report_text && ["identity", "specification"].includes(item.kind));
   const chosen = selected ?? candidates.map(item => item.mapping_id);
   async function perform(apply: boolean) {
-    if (!output) return;
+    if (!output || disabled || busy) return;
+    const release = beginOperation ? beginOperation() : () => undefined; if (!release) return;
     const request = ++epoch.current; setBusy(true); setError("");
     try {
       if (apply && preview) {
@@ -26,7 +28,7 @@ export function ReportFactUpdates({ projectId, state, disabled, onChanged }: {
         if (request === epoch.current) setPreview(result);
       }
     } catch (reason) { if (request === epoch.current) setError(reason instanceof Error ? reason.message : "Unable to prepare fact updates."); }
-    finally { if (request === epoch.current) setBusy(false); }
+    finally { release(); if (request === epoch.current) setBusy(false); }
   }
   return <section aria-label="Confirmed report text updates">
     {candidates.length > 0 && <fieldset disabled={disabled || busy}><legend>Text updates for this copy</legend>

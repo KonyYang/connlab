@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { getReportSourceTable, previewReportResult, confirmReportResult,
   type ReportAuthoringState, type ReportTable, type ReportResult, type ResultImportRequest } from "../../api/reportAuthoring";
 
-export function ReportResultsImport({ projectId, state, disabled, onChanged }: {
+export function ReportResultsImport({ projectId, state, disabled, onChanged, beginOperation }: {
   projectId: string; state: ReportAuthoringState; disabled: boolean; onChanged: (state: ReportAuthoringState) => void;
+  beginOperation?: () => (() => void) | null;
 }) {
   const [sourceId, setSourceId] = useState("");
   const [table, setTable] = useState<ReportTable | null>(null);
@@ -38,13 +39,14 @@ export function ReportResultsImport({ projectId, state, disabled, onChanged }: {
     forceType, forceKind, temperatureColumns, channelsPerSample, sampleCount, sampleNames, zero, warnings, outcome, reason]);
 
   async function inspect(sheet = "") {
-    if (!source) return;
+    if (!source || disabled || busy) return;
+    const release = beginOperation ? beginOperation() : () => undefined; if (!release) return;
     const token = ++sequence.current; setBusy(true); setError(""); setPreview(null); setTable(null);
     try {
       const result = await getReportSourceTable(projectId, source.source_id, sheet);
       if (token === sequence.current) { setTable(result); setHeaderRow(1); setStart(2); setEnd(result.rows.length); setColumns({}); setTemperatureColumns([]); }
     } catch (cause) { if (token === sequence.current) setError(cause instanceof Error ? cause.message : "The workbook could not be read."); }
-    finally { if (token === sequence.current) setBusy(false); }
+    finally { release(); if (token === sequence.current) setBusy(false); }
   }
 
   function request(): ResultImportRequest {
@@ -62,6 +64,8 @@ export function ReportResultsImport({ projectId, state, disabled, onChanged }: {
   }
 
   async function evaluate(confirm = false) {
+    if (disabled || busy) return;
+    const release = beginOperation ? beginOperation() : () => undefined; if (!release) return;
     const token = ++sequence.current; setBusy(true); setError("");
     try {
       if (confirm && preview) {
@@ -72,7 +76,7 @@ export function ReportResultsImport({ projectId, state, disabled, onChanged }: {
         if (token === sequence.current) { setPreview(result); setChecked(false); }
       }
     } catch (cause) { if (token === sequence.current) setError(cause instanceof Error ? cause.message : "Result import failed."); }
-    finally { if (token === sequence.current) setBusy(false); }
+    finally { release(); if (token === sequence.current) setBusy(false); }
   }
 
   const columnHeaders = table ? Array.from({ length: Math.max(0, ...table.rows.map(row => row.length)) }, (_, index) =>

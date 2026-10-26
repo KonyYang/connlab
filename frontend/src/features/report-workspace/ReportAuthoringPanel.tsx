@@ -20,7 +20,9 @@ const emptyMapping = (): Omit<ReportMappingInput, "expected_revision" | "source_
   report_text: "",
 });
 
-export function ReportAuthoringPanel({ projectId, disabled = false }: { projectId: string; disabled?: boolean }) {
+export function ReportAuthoringPanel({ projectId, disabled = false, onOperationStart }: {
+  projectId: string; disabled?: boolean; onOperationStart?: () => (() => void) | null;
+}) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<ReportAuthoringState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -30,15 +32,34 @@ export function ReportAuthoringPanel({ projectId, disabled = false }: { projectI
   const [sourceId, setSourceId] = useState("");
   const [mapping, setMapping] = useState(emptyMapping);
   const sequence = useRef(0);
+  const operation = useRef<{ releaseOutside: () => void } | null>(null);
   const currentProject = useRef(projectId);
   currentProject.current = projectId;
   useEffect(() => {
+    operation.current?.releaseOutside(); operation.current = null;
     sequence.current += 1; setState(null); setOpen(false); setBusy(false); setError("");
     setFile(null); setSourceId(""); setMapping(emptyMapping());
-    return () => { sequence.current += 1; };
+    return () => { sequence.current += 1; operation.current?.releaseOutside(); operation.current = null; };
   }, [projectId]);
 
+  function beginOperation(): (() => void) | null {
+    if (operation.current || disabled || currentProject.current !== projectId) return null;
+    const releaseOutside = onOperationStart ? onOperationStart() : () => undefined;
+    if (!releaseOutside) return null;
+    const token = { releaseOutside };
+    operation.current = token; setBusy(true);
+    return () => {
+      if (operation.current !== token) return;
+      operation.current = null; releaseOutside(); setBusy(false);
+    };
+  }
+
+  function acceptChanged(next: ReportAuthoringState) {
+    if (currentProject.current === projectId && next.project_id === projectId) setState(next);
+  }
+
   async function run(operation: () => Promise<ReportAuthoringState>) {
+    const release = beginOperation(); if (!release) return;
     const request = ++sequence.current; const owner = projectId;
     setBusy(true); setError("");
     try {
@@ -50,11 +71,12 @@ export function ReportAuthoringPanel({ projectId, disabled = false }: { projectI
       if (request === sequence.current && owner === currentProject.current)
         setError(reason instanceof Error ? reason.message : "Report preparation failed. Reload and retry.");
     } finally {
-      if (request === sequence.current && owner === currentProject.current) setBusy(false);
+      release();
     }
   }
 
   async function download(url: string) {
+    const release = beginOperation(); if (!release) return;
     const request = ++sequence.current; const owner = projectId;
     setBusy(true); setError("");
     try {
@@ -66,7 +88,7 @@ export function ReportAuthoringPanel({ projectId, disabled = false }: { projectI
     } catch (reason) {
       if (request === sequence.current && owner === currentProject.current)
         setError(reason instanceof Error ? reason.message : "Download failed. Retry the download.");
-    } finally { if (request === sequence.current && owner === currentProject.current) setBusy(false); }
+    } finally { release(); }
   }
 
   function edit(item: ReportMapping) {
@@ -78,7 +100,7 @@ export function ReportAuthoringPanel({ projectId, disabled = false }: { projectI
   const locked = busy || disabled;
   const latest = state?.outputs[state.outputs.length - 1];
   return <section className="report-workspace-card" aria-label="Report sources and mappings">
-    <button type="button" aria-expanded={open} disabled={disabled} onClick={() => {
+    <button type="button" aria-expanded={open} disabled={locked} onClick={() => {
       const next = !open; setOpen(next); if (next && !state) void run(() => getReportAuthoring(projectId));
     }}>Prepare report from an approved source</button>
     {open && <>
@@ -139,11 +161,11 @@ export function ReportAuthoringPanel({ projectId, disabled = false }: { projectI
         </fieldset>}
         <ul>{state.mappings.map(item => <li key={item.mapping_id}><strong>{item.label}</strong> — {item.status === "confirmed" ? "Confirmed" : "Pending confirmation"}: {item.value || "No decision"}
           <small> ({item.source_locator})</small> <button disabled={locked} type="button" onClick={() => edit(item)}>Edit mapping</button></li>)}</ul>
-        <ReportFactUpdates projectId={projectId} state={state} disabled={locked} onChanged={setState} />
-        <ReportResultsImport key={projectId} projectId={projectId} state={state} disabled={locked} onChanged={setState} />
-        <ReportResultUpdate projectId={projectId} state={state} disabled={locked} onChanged={setState} />
-        <ReportPhotoSlots projectId={projectId} state={state} disabled={locked} onChanged={setState} />
-        <ReportCustomerCopy projectId={projectId} state={state} disabled={locked} onChanged={setState} />
+        <ReportFactUpdates projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
+        <ReportResultsImport key={projectId} projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
+        <ReportResultUpdate projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
+        <ReportPhotoSlots projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
+        <ReportCustomerCopy projectId={projectId} state={state} disabled={locked} beginOperation={beginOperation} onChanged={acceptChanged} />
       </>}
     </>}
   </section>;

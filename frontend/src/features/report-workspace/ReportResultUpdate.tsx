@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { applyReportResult, getReportResultTargets, type ReportAuthoringState, type ResultTargets } from '../../api/reportAuthoring';
 
-export function ReportResultUpdate({ projectId, state, disabled, onChanged }: {
+export function ReportResultUpdate({ projectId, state, disabled, onChanged, beginOperation }: {
   projectId: string; state: ReportAuthoringState; disabled: boolean; onChanged: (state: ReportAuthoringState) => void;
+  beginOperation?: () => (() => void) | null;
 }) {
   const [resultId, setResultId] = useState('');
   const [targets, setTargets] = useState<ResultTargets | null>(null);
@@ -20,16 +21,18 @@ export function ReportResultUpdate({ projectId, state, disabled, onChanged }: {
   useEffect(() => { epoch.current++; setTargets(null); setConfirmed(false); setBusy(false); }, [projectId, state.revision]);
   useEffect(() => () => { epoch.current++; }, []);
   async function inspect() {
-    if (!output || !resultId) return;
+    if (!output || !resultId || disabled || busy) return;
+    const release = beginOperation ? beginOperation() : () => undefined; if (!release) return;
     const token = ++epoch.current; setBusy(true); setError(''); setConfirmed(false);
     try { const result = await getReportResultTargets(projectId, output.output_id, resultId, state.revision);
       if (token === epoch.current) { setTargets(result); setRow(result.result_rows.length === 1 ? 0 : -1); setAppendix(''); setTitle('');
         setDestination(result.unreconciled_temperature_evidence ? 'region' : 'appendix'); setRegionStart(''); setRegionEnd(''); }
     } catch (cause) { if (token === epoch.current) setError(cause instanceof Error ? cause.message : 'Unable to inspect report locations.'); }
-    finally { if (token === epoch.current) setBusy(false); }
+    finally { release(); if (token === epoch.current) setBusy(false); }
   }
   async function update() {
-    if (!output || !targets || row < 0 || !confirmed) return;
+    if (!output || !targets || row < 0 || !confirmed || disabled || busy) return;
+    const release = beginOperation ? beginOperation() : () => undefined; if (!release) return;
     const token = ++epoch.current; setBusy(true); setError('');
     try { const updated = await applyReportResult(projectId, { expected_revision: state.revision, output_id: output.output_id,
       output_sha256: targets.output_sha256, result_id: targets.result_id,
@@ -39,7 +42,7 @@ export function ReportResultUpdate({ projectId, state, disabled, onChanged }: {
       evidence_selection_confirmed: destination === 'region' && confirmed });
       if (token === epoch.current) onChanged(updated);
     } catch (cause) { if (token === epoch.current) setError(cause instanceof Error ? cause.message : 'Unable to update the report copy.'); }
-    finally { if (token === epoch.current) setBusy(false); }
+    finally { release(); if (token === epoch.current) setBusy(false); }
   }
   if (!output || !state.results?.length) return null;
   return <section aria-label="Update confirmed report results"><h4>Update results in the report copy</h4>

@@ -59,7 +59,7 @@ type ReportWorkspaceProps = {
   identityLabel?: string;
 };
 
-type BusyAction = "load" | "initial" | "open-folder" | "inspect" | "confirm" | "cancel" | "llcr" | "equipment-update" | "publish" | "download" | "customer" | "customer-source" | null;
+type BusyAction = "load" | "initial" | "open-folder" | "inspect" | "confirm" | "cancel" | "llcr" | "equipment-update" | "publish" | "download" | "customer" | "customer-source" | "authoring" | null;
 
 type ProjectFolderAvailability = {
   projectId: string;
@@ -110,7 +110,11 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const equipmentRequest = useRef(false);
   const equipmentSequence = useRef(0);
   const equipmentTrigger = useRef<HTMLButtonElement>(null);
-  const [pageBusyAction, setBusyAction] = useState<BusyAction>("load");
+  const [pageBusyAction, setPageBusyAction] = useState<BusyAction>("load");
+  const pageActionRef = useRef<BusyAction>("load");
+  function setBusyAction(action: BusyAction) { pageActionRef.current = action; setPageBusyAction(action); }
+  const authoringOperation = useRef<object | null>(null);
+  const [authoringBusy, setAuthoringBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [internalGenerationPreview, setInternalGenerationPreview] = useState<InternalReportGenerationPreview | null>(null);
@@ -126,11 +130,26 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const uploadedCustomerJob = useUploadedCustomerReportJob(projectId, (response) => {
     downloadBlob(response.blob, response.fileName || "Customer Report.docx");
   });
-  const busyAction = pageBusyAction ?? (draftUpdates.busy ? (draftUpdates.action === "equipment" ? "equipment-update" : "llcr")
+  const legacyBusyAction = pageBusyAction ?? (draftUpdates.busy ? (draftUpdates.action === "equipment" ? "equipment-update" : "llcr")
     : customerJob.busy || uploadedCustomerJob.busy ? "customer" : sourcePickerOpen || customerRegenerationApproval || equipmentSourceOpen || equipmentResult || draftUpdates.selectOpen ? "customer-source" : null);
+  const busyAction = legacyBusyAction ?? (authoringBusy ? "authoring" : null);
   const customerRun = useRef<{ regenerating: boolean; hadFile: boolean } | null>(null);
   const activeProject = useRef(projectId);
   activeProject.current = projectId;
+
+  function beginAuthoringOperation(): (() => void) | null {
+    if (!mounted.current || activeProject.current !== projectId || legacyBusyAction || pageActionRef.current || authoringOperation.current) return null;
+    const token = {}; authoringOperation.current = token; setAuthoringBusy(true);
+    return () => {
+      if (authoringOperation.current !== token) return;
+      authoringOperation.current = null;
+      if (mounted.current) setAuthoringBusy(false);
+    };
+  }
+  useEffect(() => {
+    authoringOperation.current = null; setAuthoringBusy(false);
+    return () => { authoringOperation.current = null; };
+  }, [projectId]);
 
   useEffect(() => {
     mounted.current = true;
@@ -269,7 +288,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   const reportFileName = currentReport?.status === "ready" ? currentReport.file_name : null;
 
   async function handleInternalAction(action: "initial" | "open-folder", operation: (isCurrent: () => boolean) => Promise<void>): Promise<void> {
-    if (busyAction) return;
+    if (busyAction || authoringOperation.current) return;
     const request = ++internalRequest.current;
     const isCurrent = () => mounted.current && activeProject.current === projectId && request === internalRequest.current;
     setBusyAction(action);
@@ -319,7 +338,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
     action: Exclude<BusyAction, "load" | null>,
     operation: () => Promise<string | null>
   ): Promise<void> {
-    if (busyAction) {
+    if (busyAction || authoringOperation.current) {
       return;
     }
     setBusyAction(action);
@@ -392,6 +411,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }
 
   async function handleGenerateCustomerReport(trigger: HTMLButtonElement): Promise<void> {
+    if (authoringOperation.current) return;
     if (!busyAction && !customerReportRecovery && currentReport?.status === "missing" &&
         !(customerReport?.mode === "managed_download" && customerReport.can_generate)) {
       setError(null);
@@ -426,6 +446,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }
 
   async function performCustomerGeneration(approval: CustomerRegenerationApproval): Promise<void> {
+    if (authoringOperation.current) return;
     if (customerRequest.current || customerJob.busy || approval.projectId !== activeProject.current) return;
     customerRequest.current = true;
     const token = internalRequest.current;
@@ -471,6 +492,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }
 
   async function handleGenerateFromUploadedSource(file: File): Promise<boolean> {
+    if (authoringOperation.current) return false;
     if (sourceRequest.current || uploadedCustomerJob.busy) return false;
     sourceRequest.current = true;
     setCheckingSource(true);
@@ -500,6 +522,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }
 
   async function handleConfirmCustomerReportRegeneration(): Promise<void> {
+    if (authoringOperation.current) return;
     const recovery = customerReportRecovery;
     if (busyAction || !recovery?.internal_report_sha256) {
       return;
@@ -522,6 +545,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }
 
   async function handleUpdateLlcr(): Promise<void> {
+    if (authoringOperation.current) return;
     if (!latestDataset) {
       return;
     }
@@ -550,6 +574,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
   }
 
   async function handleEquipmentUpdate(input?: { file?: File; referencesText?: string }): Promise<void> {
+    if (authoringOperation.current) return;
     if (draftMode) { await draftUpdates.updateEquipment(input); return; }
     if (equipmentRequest.current || pageBusyAction || customerJob.busy || uploadedCustomerJob.busy) return;
     equipmentRequest.current = true;
@@ -878,7 +903,7 @@ export function ReportWorkspace({ projectId, onBack, identityLabel = "Connector 
         </div>
       ) : null}
 
-      {state && <ReportAuthoringPanel projectId={projectId} disabled={Boolean(busyAction)} />}
+      {state && <ReportAuthoringPanel projectId={projectId} disabled={Boolean(legacyBusyAction)} onOperationStart={beginAuthoringOperation} />}
 
       {sourcePickerOpen ? <CustomerReportSourceDialog busy={checkingSource || uploadedCustomerJob.busy} error={error || uploadedCustomerJob.error}
         onCancel={() => setSourcePickerOpen(false)} onGenerate={handleGenerateFromUploadedSource} /> : null}

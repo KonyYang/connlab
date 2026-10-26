@@ -92,7 +92,9 @@ class CustomerReportCopy:
             audit = asdict(audit_customer_package(readable, sensitive_terms=sensitive_terms,
                 forbidden_project_ids=forbidden_project_ids, reviewed_parts=reviewed_parts))
             if expected_project_dl:
-                pattern = re.compile(r'(?<![A-Za-z0-9-])' + re.escape(expected_project_dl) + r'(?![A-Za-z0-9-])', re.I)
+                # The existing E-4515 projection appends exactly -CR (optionally followed
+                # by a separate Rev.X label); arbitrary project-number prefixes do not match.
+                pattern = re.compile(r'(?<![A-Za-z0-9-])' + re.escape(expected_project_dl) + r'(?:-CR)?(?![A-Za-z0-9-])', re.I)
                 with ZipFile(readable) as package:
                     visible = []
                     for name in package.namelist():

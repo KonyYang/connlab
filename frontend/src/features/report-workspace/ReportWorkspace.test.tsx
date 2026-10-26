@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as authoring from "../../api/reportAuthoring";
 import * as api from "../../api/client";
 import { ReportWorkspace } from "./ReportWorkspace";
 import { AppShell } from "../../components/layout/AppShell";
@@ -45,6 +46,8 @@ vi.mock("../../api/client", async () => {
     cancelLlcrResultPreview: vi.fn(),
   };
 });
+
+vi.mock("../../api/reportAuthoring", () => ({ getReportAuthoring: vi.fn(), selectReportBase: vi.fn() }));
 
 const state: api.ReportWorkspaceState = {
   project_id: "project-1",
@@ -217,6 +220,33 @@ describe("ReportWorkspace", () => {
       confirmed_by: "Lab User",
       entries: [{ ...preview.entries[0], confirmed_outcome: "pass" }],
     });
+  });
+
+  it("mutually locks authoring and legacy report operations until their real requests settle", async () => {
+    const authoringState: authoring.ReportAuthoringState = { project_id: 'project-1', revision: 1,
+      base_source_id: null, mappings: [], outputs: [], context: { dl_number: 'DL-001', matrix_id: 'matrix-1', steps: [] },
+      sources: [{ source_id: 'source', role: 'original', file_name: 'Original.docx', sha256: 'a', size_bytes: 1,
+        created_at: '', report_dl: 'DL-001', download_url: '/source' }] };
+    vi.mocked(authoring.getReportAuthoring).mockResolvedValue(authoringState);
+    let finishBase!: (value: authoring.ReportAuthoringState) => void;
+    vi.mocked(authoring.selectReportBase).mockReturnValue(new Promise(resolve => { finishBase = resolve; }));
+    render(<ReportWorkspace projectId="project-1" onBack={vi.fn()} />);
+    await screen.findByRole('region', { name: 'Internal Report' });
+    await userEvent.click(screen.getByText('Prepare report from an approved source'));
+    await userEvent.click(await screen.findByText('Use as report base'));
+    expect(screen.getByText('Update Equipment List').matches(':disabled')).toBe(true);
+    expect(screen.getByText('Generate Internal Report').matches(':disabled')).toBe(true);
+    await userEvent.click(screen.getByText('Update Equipment List'));
+    expect(api.updateEquipmentListOneClick).not.toHaveBeenCalled();
+    await act(async () => finishBase({ ...authoringState, revision: 2 }));
+    expect(screen.getByText('Update Equipment List').matches(':disabled')).toBe(false);
+    let failEquipment!: (error: Error) => void;
+    vi.mocked(api.updateEquipmentListOneClick).mockReturnValue(new Promise((_resolve, reject) => { failEquipment = reject; }));
+    await userEvent.click(screen.getByText('Update Equipment List'));
+    expect(screen.getByText('Use as report base').matches(':disabled')).toBe(true);
+    expect(screen.getByText('Reload saved evidence').matches(':disabled')).toBe(true);
+    await act(async () => failEquipment(new Error('Temporary equipment error')));
+    expect(screen.getByText('Use as report base').matches(':disabled')).toBe(false);
   });
 
   it("keeps internal report visible when customer status fails and retries without generation", async () => {

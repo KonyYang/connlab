@@ -7,6 +7,7 @@ from backend.application.tools_temperature_service import ToolsTemperatureServic
 from backend.infrastructure.office.temperature_workbook_gateway import TemperatureWorkbookGateway
 from backend.domain.temperature_data import DataSelection
 from dataclasses import asdict
+import pytest
 
 
 def test_customer_copy_keeps_complete_temperature_table_and_editable_curve(tmp_path):
@@ -92,3 +93,17 @@ def test_customer_audit_requires_actual_current_identity_not_a_review_checkbox(t
     updated = adapter.audit(source, sensitive_terms=[], forbidden_project_ids=[], reviewed_parts={},
         expected_project_dl='DL-2026-10-099')
     assert not any(item['code'] == 'missing_current_project_identity' for item in updated['issues'])
+
+
+@pytest.mark.parametrize('number,accepted', [
+    ('DL-2026-05-001-CR', True), ('DL-2026-05-001-CR Rev.A', True),
+    ('DL-2026-05-0010-CR', False), ('DL-2026-05-001-other', False),
+    ('DL-2026-05-002-CR', False), ('DL-2026-05-001-CR-other', False),
+])
+def test_customer_identity_accepts_only_exact_current_number_and_standard_customer_suffix(tmp_path, number, accepted):
+    path = tmp_path/'customer.docx'
+    document = Document(); document.sections[0].header.paragraphs[0].text = number; document.save(path)
+    audit = CustomerReportCopy(converter=None, template=None, temperature_chart=None).audit(path,
+        sensitive_terms=[], forbidden_project_ids=[], reviewed_parts={}, expected_project_dl='DL-2026-05-001')
+    missing = any(item['code'] == 'missing_current_project_identity' for item in audit['issues'])
+    assert missing is not accepted
