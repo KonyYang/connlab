@@ -90,8 +90,16 @@
         ],
         "activation_head": "cd6250e189e5ad67f4c005a3f32c3cfc92945884",
         "started_at": "2026-10-26T00:05:01.578908Z",
-        "updated_at": "2026-10-26T00:05:01.578908Z",
-        "checkpoint": null,
+        "updated_at": "2026-10-26T00:47:02.559806Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
+          "version": 1,
+          "task_id": "TASK_REPORT_CAPABILITIES_3_7_20261026",
+          "stage": "implementation_review",
+          "status": "running",
+          "summary": "Five initial Report Workspace paths implemented in isolated task worktree. Independent review found source-byte, stale-result, mapping and appendix-label issues; bounded fixes underway. Isolated Word chart and 031 draft rendering succeeded; visual formatting feedback pending. No final QA/integration yet. See docs/architecture/report_authoring.md and task-local report_goal_20261026 evidence. Real sources unchanged.",
+          "requires_user": false
+        },
         "report": null
       }
     }
