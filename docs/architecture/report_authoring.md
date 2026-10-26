@@ -1,6 +1,7 @@
 # Report Workspace: evidence-based report updates
 
-Status: implementation in progress; this document is not completion evidence.
+Status: five software paths implemented; final acceptance and integration are tracked by the active
+task board and exact-subject review/QA evidence. Historical checkpoints below are not final approval.
 Task: `TASK_REPORT_CAPABILITIES_3_7_20261026` (one main task, five milestones).
 
 ## Baseline and authority
@@ -113,8 +114,22 @@ Required evidence before completion:
   visual inspection. A file opening successfully is not sufficient evidence of layout fidelity.
 - Hash checks proving authoritative source reports/templates/project files were not modified.
 
-Completion evidence will be recorded here as work is verified. Unverified milestones remain open;
-green narrow tests must not be reported as proof of the entire five-milestone objective.
+Exact-subject completion evidence is retained in the task's review/QA records. Unverified milestones
+remain open; green narrow tests must not be reported as proof of the entire five-milestone objective.
+
+### User path and supported boundary
+
+In Report Workspace, open **Prepare report from an approved source**, retain either this project's
+original or an explicitly selected approved layout reference, then choose **Use as report base**.
+The existing fresh-report generation remains available. This path supports the existing E-3707
+report structure, not an arbitrary Word-template layout language. Blank project-number templates
+require confirmed identity replacement before customer delivery checks can pass.
+
+Retain measurement workbooks and photos, confirm their source/column/Group/Step mappings, preview
+the intended changes and produce a new working copy. Confirmed facts and source identities survive
+reloads. Customer conversion produces a review copy with explicit outstanding disclosure/content
+checks; it does not approve the engineering outcome or issue the report. Original inputs are never
+overwritten by these authoring actions.
 
 ### Implementation checkpoint (not final acceptance)
 
