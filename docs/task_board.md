@@ -35,7 +35,7 @@
   "tasks": {
     "TASK_REPORT_CAPABILITIES_3_7_20261026": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab-report-capabilities-20261026",
       "branch": "codex/report-capabilities-20261026",
       "resources": [],
@@ -90,170 +90,17 @@
         ],
         "activation_head": "cd6250e189e5ad67f4c005a3f32c3cfc92945884",
         "started_at": "2026-10-26T00:05:01.578908Z",
-        "updated_at": "2026-10-26T02:26:27.923975Z",
+        "updated_at": "2026-10-26T10:17:39.850674Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_REPORT_CAPABILITIES_3_7_20261026",
-          "stage": "independent_qa",
+          "stage": "revision",
           "status": "running",
-          "requires_user": false,
-          "summary": "Final clean candidate 7ed1e3dd88acde5da749aa4fd071a3b9e418b8c3. Initial QA: 652 Python and 1031 frontend passed; real browser found shared-busy and valid -CR identity issues. Both fixed and independently reviewed (reviewer_qa_fix.json). Final affected QA/UI resume is running against retained isolated DBs. Word generation unchanged; visual_binding_final.json proves previous 19/20/17/19-page checks apply and real source/template hashes unchanged. No integration or formal release yet."
+          "summary": "User feedback: fix customer review labels, textareas and checkbox layout only; preserve business logic and verify isolated browser smoke.",
+          "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_REPORT_CAPABILITIES_3_7_20261026",
-          "subject": "7ed1e3dd88acde5da749aa4fd071a3b9e418b8c3",
-          "summary": "Report Workspace milestones 3-7 implemented and independently accepted: durable provenance, source/template draft preparation, temperature/CR and mechanical updates, photo slots and checked customer copies. Copy-only; unresolved business/disclosure decisions remain pending. Await final user acceptance.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/api/dependencies.py",
-            "backend/api/main.py",
-            "backend/api/report_authoring_schemas.py",
-            "backend/api/routes_report_authoring.py",
-            "backend/application/report_authoring/results.py",
-            "backend/application/report_authoring/service.py",
-            "backend/domain/report_authoring.py",
-            "backend/infrastructure/files/report_authoring_assets.py",
-            "backend/infrastructure/files/report_draft_workspace.py",
-            "backend/infrastructure/office/customer_report_document_gateway.py",
-            "backend/infrastructure/office/report_authoring/customer_audit.py",
-            "backend/infrastructure/office/report_authoring/customer_copy.py",
-            "backend/infrastructure/office/report_authoring/pagination.py",
-            "backend/infrastructure/office/report_authoring/photo_editor.py",
-            "backend/infrastructure/office/report_authoring/photo_slots.py",
-            "backend/infrastructure/office/report_authoring/region_parts.py",
-            "backend/infrastructure/office/report_authoring/results_document.py",
-            "backend/infrastructure/office/report_authoring/temperature_chart.py",
-            "backend/infrastructure/office/report_authoring/word_copy.py",
-            "backend/infrastructure/storage/database.py",
-            "backend/infrastructure/storage/models_report_authoring.py",
-            "backend/infrastructure/storage/repositories/report_authoring.py",
-            "docs/architecture/report_authoring.md",
-            "frontend/src/api/reportAuthoring.ts",
-            "frontend/src/features/report-workspace/ReportAuthoringFeatures.test.tsx",
-            "frontend/src/features/report-workspace/ReportAuthoringPanel.test.tsx",
-            "frontend/src/features/report-workspace/ReportAuthoringPanel.tsx",
-            "frontend/src/features/report-workspace/ReportCustomerCopy.tsx",
-            "frontend/src/features/report-workspace/ReportFactUpdates.tsx",
-            "frontend/src/features/report-workspace/ReportPhotoSlots.tsx",
-            "frontend/src/features/report-workspace/ReportResultUpdate.tsx",
-            "frontend/src/features/report-workspace/ReportResultsImport.tsx",
-            "frontend/src/features/report-workspace/ReportWorkspace.test.tsx",
-            "frontend/src/features/report-workspace/ReportWorkspace.tsx",
-            "tests/integration/test_report_authoring_api.py",
-            "tests/unit/report_authoring/test_customer_audit.py",
-            "tests/unit/report_authoring/test_customer_copy.py",
-            "tests/unit/report_authoring/test_customer_review_validity.py",
-            "tests/unit/report_authoring/test_photo_slots.py",
-            "tests/unit/report_authoring/test_region_parts.py",
-            "tests/unit/report_authoring/test_report_state.py",
-            "tests/unit/report_authoring/test_results_document.py",
-            "tests/unit/report_authoring/test_temperature_chart.py",
-            "tests/unit/report_authoring/test_word_facts.py",
-            "tests/unit/test_customer_report_document_gateway.py",
-            "tests/unit/test_report_authoring_schema.py"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "subject": "7ed1e3dd88acde5da749aa4fd071a3b9e418b8c3",
-              "kind": "independent_qa_final",
-              "result": "36 affected Python; 1035 Vitest passed, 1 skip; TypeScript/build passed; real isolated UI findings closed and blank/current source positive paths verified",
-              "evidence": {
-                "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\qa\\qa_final.json",
-                "raw_sha256": "cdd262b154974b3536a80908bbcba2f87882219cafef81e320c5fbb789796eb8"
-              }
-            },
-            {
-              "status": "passed",
-              "subject": "8b406404daebfe599ed719c8f8e14c351665cb1c",
-              "kind": "retained_backend_baseline",
-              "result": "652 Python on prior subject; retained for unchanged backend with affected final checks, not a new full final-subject run"
-            },
-            {
-              "status": "passed",
-              "subject": "7ed1e3dd88acde5da749aa4fd071a3b9e418b8c3",
-              "kind": "retained_word_visual_binding",
-              "result": "Four previously reviewed Word render sets, 19/20/17/19 pages; generator code unchanged; no new rendering claimed",
-              "evidence": [
-                {
-                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\visual_manifest.json",
-                  "raw_sha256": "435e0c3229f5244640d2db8e7d4a0ae44ff97e4d82c804db6c9b4933d13ba296"
-                },
-                {
-                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\visual_binding_final.json",
-                  "raw_sha256": "d3f3714a47087c437091cbf1c726d26cbcff12b5a4ee1a6cd0c921e576f7406e"
-                }
-              ]
-            }
-          ],
-          "roles": {
-            "planner": {
-              "status": "passed",
-              "evidence": [
-                {
-                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\planner_final.json",
-                  "raw_sha256": "ae53f1be595e8473e8fd17e0d39a489093fe5ed2b6ddfc10f0d6571c2b88579b"
-                }
-              ]
-            },
-            "developer": {
-              "status": "passed",
-              "evidence": [
-                {
-                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\developer_final.json",
-                  "raw_sha256": "5d0783346e9250d63219dde38d43dc481bd08d212c2f4692bf1b537a1c17d62c"
-                },
-                {
-                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\developer_qa_fix.json",
-                  "raw_sha256": "a1f9aa8b7d1e7c765f9931b4961e88fa1f02ecff56fbf175229ba0f97675ead7"
-                }
-              ]
-            },
-            "reviewer": {
-              "status": "passed",
-              "evidence": [
-                {
-                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\reviewer_final.json",
-                  "raw_sha256": "467bb9072484510919df1b6d3850aafb95d72085b4c3f5961f5a5e5556435914"
-                },
-                {
-                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\reviewer_qa_fix.json",
-                  "raw_sha256": "843e41bcc22213d66e1a5dbc1c015c14e213c47a03b81d31f2c453165312b34a"
-                }
-              ]
-            },
-            "qa": {
-              "status": "passed",
-              "evidence": [
-                {
-                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\qa\\qa_final.json",
-                  "raw_sha256": "cdd262b154974b3536a80908bbcba2f87882219cafef81e320c5fbb789796eb8"
-                }
-              ]
-            },
-            "integrator": {
-              "status": "passed",
-              "scope": "pre-integration exact Git/evidence checks",
-              "evidence": [
-                {
-                  "path": "C:\\Users\\White\\Documents\\Codex\\report_goal_20261026\\integrator_precheck.json",
-                  "raw_sha256": "d7f8008d6bce2a8ef58d1ae229ed2c172b2ea933dc8ada1a397b2d7d9d6be888"
-                }
-              ]
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "7ed1e3dd88acde5da749aa4fd071a3b9e418b8c3",
-            "primary_before": "bfc866a66471f9bbd429249f88e49a71997c0001",
-            "integrated_head": "93be4e9bda80190e4ff69d9ab09fcf659d05bb3f",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
