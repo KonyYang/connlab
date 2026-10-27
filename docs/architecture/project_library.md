@@ -66,6 +66,12 @@ configured external-resource registry continues to identify public LTR workbooks
 templates and public-drive locations; portable project data does not grant the
 target computer permission to write those resources.
 
+A selected library has a version/database binding marker and an OS-owned writer
+lease. An incompatible binding or another writer process must fail before the
+database is opened for application work. Legacy configurations without a selected
+library retain their existing startup paths; selecting a new root does not move
+old data or change formal configuration automatically.
+
 ## Portable data contract
 
 The snapshot is held under the project's `.connlab/portable` area, with a format
@@ -105,6 +111,20 @@ checks format, integrity, source-file changes, missing dependencies and existing
 target identities before applying records and paths. Same-LTR/different-identity,
 divergent revisions and unrelated primary-key collisions require explicit review.
 Source-machine pending journals cannot be replayed against target-machine paths.
+
+For an existing target, a conflict requires a new reviewed plan with an explicit
+resolution. A same-identity replacement must retain a complete target recovery
+point before switching the working copy. That recovery point includes the target
+data graph and external assets as well as its ordinary files. A different identity
+using the same LTR may be retained as history without acquiring current LTR
+ownership. History remains searchable and browsable, including location recovery;
+it does not become an editable working project merely by being received.
+
+The plan binds the source signature and target revision. Changing a resolution or
+changing either side requires review again. Neither modification time nor a
+matching LTR is permission to merge fields, discard history or overwrite a copy.
+Interrupted operations must leave an explicit recoverable state rather than
+reporting a partially applied copy as complete.
 
 ## Acceptance boundaries
 
