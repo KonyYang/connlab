@@ -114,6 +114,15 @@ def prepared_manual_project(client, root):
     return member
 
 
+def reject_unselected_restore(client, review):
+    assert review["status"] == "conflict", review
+    assert review["blockers"] == [], review
+    assert review["warnings"], review
+    assert review["resolution_options"], review
+    response = client.post("/api/project-library/restore", json={"plan_id": review["plan_id"], "fingerprint": review["fingerprint"]})
+    assert response.status_code == 409, response.text
+
+
 def test_explicit_replacement_preserves_target_recovery_copy_and_binds_revision(tmp_path):
     a, _, ea = app_at(tmp_path / "A")
     b, _, eb = app_at(tmp_path / "B")
@@ -127,6 +136,10 @@ def test_explicit_replacement_preserves_target_recovery_copy_and_binds_revision(
     review = b.post("/api/project-library/restore-plan", json={"folder": member_a["folder_path"]}).json()
     assert review["status"] == "conflict"
     assert "replace_working_copy" in review["resolution_options"]
+    reject_unselected_restore(b, review)
+    assert (Path(member_b["folder_path"]) / "target-only.txt").read_text() == "retain target evidence"
+    with Session(eb) as session:
+        assert session.get(ProjectModel, member_b["project_id"]).product_name == "Target revision"
     plan = b.post("/api/project-library/restore-plan", json={"folder": member_a["folder_path"], "resolution": "replace_working_copy"}).json()
     assert plan["status"] == "ready", plan
     assert plan["backup_path"]
@@ -158,6 +171,10 @@ def test_same_ltr_different_identity_can_be_retained_as_read_only_history(tmp_pa
         session.commit()
     review = b.post("/api/project-library/restore-plan", json={"folder": member_a["folder_path"]}).json()
     assert "keep_as_history" in review["resolution_options"]
+    reject_unselected_restore(b, review)
+    with Session(eb) as session:
+        assert session.get(ProjectModel, member_a["project_id"]) is None
+        assert session.get(LtrRecordModel, "target-ltr").is_current_owner is True
     plan = b.post("/api/project-library/restore-plan", json={"folder": member_a["folder_path"], "resolution": "keep_as_history"}).json()
     assert plan["status"] == "ready", plan
     response = b.post("/api/project-library/restore", json={"plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"], "resolution": "keep_as_history"})
@@ -641,6 +658,7 @@ with Session(engine) as session:
         assert refused.status_code==409,refused.text
         fresh=b.post("/api/project-library/restore-plan",json={"folder":review_folder}).json()
         assert fresh["status"]=="unavailable",fresh
+        assert fresh["blockers"],fresh
         if change=="file":
             assert (Path(target["folder_path"])/"added-after-crash.txt").read_text()=="retain new operator note"
         assert (Path(original["folder_path"])/"target-old.txt").read_text()=="old evidence"
@@ -650,6 +668,12 @@ with Session(engine) as session:
     if fresh_review:
         fresh=b.post("/api/project-library/restore-plan",json={"folder":review_folder}).json()
         assert fresh["status"]=="conflict",fresh
+        scene_before = (Path(target["folder_path"])/"result.txt").read_bytes()
+        packet_before = (Path(original["folder_path"])/".connlab/portable/snapshot.json").read_bytes()
+        reject_unselected_restore(b, fresh)
+        assert (Path(target["folder_path"])/"result.txt").read_bytes() == scene_before
+        assert (Path(original["folder_path"])/".connlab/portable/snapshot.json").read_bytes() == packet_before
+        assert LibraryFiles(settings).pending_replacement_gate(target["project_id"])
         renewed=b.post("/api/project-library/restore-plan",json={"folder":review_folder,"resolution":"replace_working_copy"}).json()
         assert renewed["backup_path"]==plan["backup_path"]
         assert renewed["plan_id"]!=plan["plan_id"]
@@ -1333,3 +1357,48 @@ def test_source_gap_descriptions_and_unrelated_history_are_not_executed_or_deref
         assert not (settings.data_dir / "project_folder_generation").exists()
     finally:
         engine.dispose()
+
+
+def test_occupied_restore_destination_offers_explicit_history_without_overwriting(tmp_path):
+    a, _, ea = app_at(tmp_path / "A")
+    b, settings, eb = app_at(tmp_path / "B")
+    source = prepared_manual_project(a, tmp_path / "old")
+    occupied = settings.projects_dir / Path(source["folder_path"]).name
+    occupied.mkdir()
+    sentinel = occupied / "unregistered-original.txt"
+    sentinel.write_bytes(b"retain unrelated folder")
+    review = b.post("/api/project-library/restore-plan", json={"folder": source["folder_path"]}).json()
+    assert review["resolution_options"] == ["keep_as_history"], review
+    reject_unselected_restore(b, review)
+    assert sentinel.read_bytes() == b"retain unrelated folder"
+    with Session(eb) as session:
+        assert session.get(ProjectModel, source["project_id"]) is None
+    plan = b.post("/api/project-library/restore-plan", json={"folder": source["folder_path"], "resolution": "keep_as_history"}).json()
+    assert plan["status"] == "ready" and not plan["blockers"], plan
+    response = b.post("/api/project-library/restore", json={"plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"], "resolution": "keep_as_history"})
+    assert response.status_code == 200, response.text
+    assert response.json()["member"]["is_history"] is True
+    assert Path(response.json()["member"]["folder_path"]) != occupied
+    assert sentinel.read_bytes() == b"retain unrelated folder"
+    ea.dispose(); eb.dispose()
+
+
+def test_unregistered_existing_project_requires_complete_recovery_point_before_choices(tmp_path):
+    a, _, ea = app_at(tmp_path / "A")
+    b, settings, eb = app_at(tmp_path / "B")
+    source = prepared_manual_project(a, tmp_path / "old")
+    with Session(eb) as session:
+        session.add(ProjectModel(project_id=source["project_id"], product_name="Unregistered existing work", requestor="Lab", status="draft"))
+        session.commit()
+    review = b.post("/api/project-library/restore-plan", json={"folder": source["folder_path"]}).json()
+    assert review["status"] == "conflict", review
+    assert review["blockers"] and not review["resolution_options"], review
+    response = b.post("/api/project-library/restore", json={"plan_id": review["plan_id"], "fingerprint": review["fingerprint"]})
+    assert response.status_code == 409, response.text
+    for resolution in ("keep_as_history", "replace_working_copy"):
+        forced = b.post("/api/project-library/restore-plan", json={"folder": source["folder_path"], "resolution": resolution}).json()
+        assert forced["status"] == "unavailable" and forced["blockers"], forced
+    assert not list(settings.projects_dir.iterdir())
+    with Session(eb) as session:
+        assert session.get(ProjectModel, source["project_id"]).product_name == "Unregistered existing work"
+    ea.dispose(); eb.dispose()

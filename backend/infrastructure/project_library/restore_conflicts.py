@@ -201,7 +201,10 @@ class RestoreConflicts:
         if resolution not in (None, "replace_working_copy"):
             raise ProjectLibraryConflict("Finish the interrupted working-copy replacement before choosing another conflict resolution.")
         status = "ready" if resolution else "conflict"
-        blockers = [] if resolution else ["A working-copy replacement is unfinished. Review and confirm its existing recovery operation."]
+        blockers = []
+        warnings = ["This review resumes the original replacement and keeps its already verified complete recovery point."]
+        if not resolution:
+            warnings.append("A working-copy replacement is unfinished. Review and confirm its existing recovery operation.")
         extras = {"resolution_options": ["replace_working_copy"], "resolution": resolution, "target_revision": old["target_revision"],
                   "backup_path": old["backup_path"], "source_signature": old["source_signature"]}
         payload = {**old, **extras, "source_path": folder, "status": status, "blockers": blockers,
@@ -210,7 +213,7 @@ class RestoreConflicts:
         return {"plan_id": saved["plan_id"], "fingerprint": saved["fingerprint"], "project_id": body["project_id"], "ltr_number": body["ltr_number"], "title": body["title"],
                 "source_path": folder, "target_path": old["target_path"], "status": status, "created_at": body["created_at"],
                 "record_counts": {name: len(rows) for name, rows in body["rows"].items()}, "file_count": sum(not row["directory"] for row in body["files"]),
-                "warnings": ["This review resumes the original replacement and keeps its already verified complete recovery point."], "blockers": blockers, **extras}
+                "warnings": warnings, "blockers": blockers, **extras}
 
     def plan(self, folder, resolution):
         folder = str(checked_path(folder))
@@ -236,7 +239,7 @@ class RestoreConflicts:
                     status, target = "already_added", existing["folder_path"]
                 else:
                     status, target, options = "conflict", existing["folder_path"], ["replace_working_copy", "keep_as_history"]
-                    blockers.append("This project has a different working revision. Select how to retain the two copies.")
+                    warnings.append("This project has a different working revision. Select how to retain the two copies.")
             elif self.store.project_exists(body["project_id"]):
                 status = "conflict"
                 blockers.append("Register the existing project's current working folder before reviewing replacement; its recovery point must be complete.")
@@ -245,12 +248,12 @@ class RestoreConflicts:
                 numbers = [row for row in self.store.project_numbers() if row["is_current_owner"] and row["status"] == "registered" and body["ltr_number"] and row["ltr_number"].casefold() == body["ltr_number"].casefold() and row["project_id"] != body["project_id"]]
                 if numbers:
                     status, options = "conflict", ["keep_as_history"]
-                    blockers.append("Another project owns this LTR. Retain the source as history without changing the current owner.")
+                    warnings.append("Another project owns this LTR. Retain the source as history without changing the current owner.")
                 elif recovery:
                     warnings.append("A verified earlier receive was interrupted. Confirm this fresh review to finish its working-project restoration without copying or discarding it.")
                 elif self.files.exists(target):
                     status, options = "conflict", ["keep_as_history"]
-                    blockers.append("The destination is occupied. A retained history copy uses a separate destination.")
+                    warnings.append("The destination is occupied. A retained history copy uses a separate destination.")
             self.p._check_existing_keys(body["rows"])
             extra.update(resolution_options=options, source_signature=body["source_signature"], target_revision=existing["revision"] if existing else None)
             backup = None
