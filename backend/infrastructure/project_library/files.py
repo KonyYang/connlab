@@ -195,10 +195,14 @@ class LibraryFiles:
         if source.is_dir():
             for relative in (SOFTWARE_MARKER, Path(".connlab") / "manifest.json"):
                 if (source / relative).is_file():
-                    marker = read_json(source / relative)
-                    if isinstance(marker, dict) and (marker.get("project_id") or marker.get("source_project_id")):
+                    candidate = read_json(source / relative)
+                    if not isinstance(candidate, dict):
+                        continue
+                    if not marker:
+                        marker = candidate
+                    if candidate.get("project_id") or candidate.get("source_project_id"):
+                        marker = candidate
                         break
-                    marker = {}
         match = NUMBER.search(name)
         number = marker.get("ltr_number") or marker.get("dl_number") or (match.group(0).upper() if match else None)
         children = [str(path) for path in source.iterdir() if path.is_dir() and path.name != ".connlab"] if kind == "project" else []

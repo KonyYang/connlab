@@ -63,11 +63,30 @@ class ProjectLibraryService:
             "is_history": row.get("is_history", False),
             "can_continue": bool(row["project_id"] and not row.get("is_history") and available and business_ready and current == row["folder_path"] and not pending and not replacement)}
 
+    def _identity_conflict_at(self, source, target, members, workspaces):
+        """Material equality cannot override known project identity or full LTR."""
+        key = str(target).casefold()
+        identities = [self.files.describe_source(target)]
+        identities.extend(row for row in members if row["folder_path"].casefold() == key)
+        identities.extend(row for row in workspaces if any(str(row.get(field) or "").casefold() == key
+                          for field in ("local_workspace_path", "official_folder_path")))
+        source_id = source.get("project_id") or source.get("source_project_id")
+        source_ltr = str(source.get("ltr_number") or "").strip().casefold()
+        for identity in identities:
+            project_id = identity.get("project_id") or identity.get("source_project_id")
+            ltr = str(identity.get("ltr_number") or identity.get("dl_number") or "").strip().casefold()
+            if source_id and project_id and source_id != project_id:
+                return True
+            if source_ltr and ltr and source_ltr != ltr:
+                return True
+        return False
+
     def intake_plan(self, sources, assignments=()):
         self._require_configured()
         assignments = {item["source_path"]: item for item in assignments}
         members = self.store.members()
         numbers = self.store.project_numbers()
+        workspaces = self.store.workspaces()
         rows = []
         for value in dict.fromkeys(sources):
             assignment = assignments.get(value, {})
@@ -87,25 +106,48 @@ class ProjectLibraryService:
                 workspace = self.store.workspace(source.get("project_id")) if source.get("project_id") else None
                 reference_existing = bool(workspace and workspace["local_workspace_path"].casefold() == target.casefold()
                     and workspace["dl_number"] == source.get("ltr_number") and self.files.exists(target)
+                    and not self._identity_conflict_at(source, target, members, workspaces)
                     and self.files.same_content(source, target)
-                    and not any(row["project_id"] == source.get("project_id") for row in members))
+                    and not any(row["project_id"] == source.get("project_id") or row["folder_path"].casefold() == target.casefold() for row in members))
                 if source["kind"] == "file" and not (target_id or new_title):
                     status = "conflict"
                     warnings.append("Assign this file to an existing project or explicitly name a new project to organize.")
                 elif any(item["source_path"].casefold() == source["source_path"].casefold() for item in members) and not assignment:
-                    received = next(item for item in members if item["source_path"].casefold() == source["source_path"].casefold())
-                    if self.files.exists(received["folder_path"]) and self.files.same_content(source, received["folder_path"]):
+                    received = [item for item in members if item["source_path"].casefold() == source["source_path"].casefold()]
+                    matched, conflicting_identity = False, False
+                    for previous in received:
+                        if not self.files.exists(previous["folder_path"]):
+                            continue
+                        if self._identity_conflict_at(source, previous["folder_path"], members, workspaces):
+                            conflicting_identity = True
+                        elif self.files.same_content(source, previous["folder_path"]):
+                            matched = True
+                            break
+                    if matched:
                         status = "already_added"
-                        warnings.append("The same project material is already received in the library.")
+                        warnings.append("The same project identity and material are already received in the library.")
                     else:
                         status, separate = "conflict", True
-                        warnings.append("This source or its working copy has changed since intake. Review and Keep Separate to preserve both versions.")
+                        if conflicting_identity:
+                            warnings.append("This source path now carries a different project identity or full LTR. Keep Separate retains both projects.")
+                        else:
+                            warnings.append("This source or its working copy has changed since intake. Review and Keep Separate to preserve both versions.")
                 elif reference_existing:
                     warnings.append("Register the existing working folder without copying its files or changing the official project location.")
                 elif self.files.exists(target):
-                    if self.files.same_content(source, target):
-                        status = "already_added"
-                        warnings.append("The same content is already at the destination.")
+                    if self._identity_conflict_at(source, target, members, workspaces):
+                        status, separate = "conflict", True
+                        warnings.append("The destination has a different project identity or full LTR. Keep Separate retains both projects even when their template files match.")
+                    elif self.files.same_content(source, target):
+                        registered = bool(member) or any(row["folder_path"].casefold() == target.casefold()
+                            or new_title and row["folder_path"].casefold() == str(Path(target).parent).casefold() for row in members)
+                        if registered:
+                            status = "already_added"
+                            warnings.append("The same project material is already in a registered library entry.")
+                        else:
+                            status, separate = "conflict", not bool(new_title)
+                            action = "Choose a different new project title." if new_title else "Keep Separate creates a managed copy and leaves the original folder unchanged."
+                            warnings.append("The destination contains the same material but is not registered in Project Library. " + action)
                     else:
                         status, separate = "conflict", True
                         warnings.append("The destination contains different content. Keep Separate preserves another version.")

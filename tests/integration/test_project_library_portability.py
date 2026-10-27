@@ -942,3 +942,16 @@ def test_missing_project_file_is_local_warning_and_keeps_structured_results_and_
         assert session.execute(text("SELECT COUNT(*) FROM result_dataset_revisions")).scalar_one()==2
     assert restored["member"]["project_id"]=="P1"
     engine.dispose()
+
+
+def test_same_material_cannot_hide_known_workspace_identity_when_manifest_is_missing(tmp_path):
+    from tests.fixtures.project_library.full_graph import seed_full_graph
+    with seed_full_graph(tmp_path/"A") as graph:
+        root=graph["project_root"];client=graph["lab"]["client"]
+        (root/".connlab/manifest.json").unlink()
+        source=tmp_path/"foreign-source"/root.name;shutil.copytree(root,source)
+        (source/".connlab/library.json").write_text(json.dumps({"project_id":"4"*32,"ltr_number":"DL-2026-05-001"}),encoding="utf-8")
+        plan=client.post("/api/project-library/intake-plan",json={"sources":[str(source)]}).json()
+        assert plan["items"][0]["status"]=="conflict" and plan["items"][0]["can_keep_separate"],plan
+        assert any("identity" in warning.lower() for warning in plan["items"][0]["warnings"]),plan
+        assert client.get("/api/project-library/members").json()["items"]==[]

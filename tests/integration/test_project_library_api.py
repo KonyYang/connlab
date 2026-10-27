@@ -310,3 +310,81 @@ def test_keep_separate_same_name_loose_files_preserves_their_extension(library,t
     files=list(Path(member["folder_path"]).glob("*.csv"))
     assert len(files)==2
     assert {path.read_text() for path in files}=={"result,1","result,2"}
+
+
+@pytest.mark.parametrize("change",["project_id","ltr_number","both","same_source_reused","member_identity_only","ltr_only_metadata"])
+def test_equal_material_does_not_hide_a_different_stable_project_identity(library,tmp_path,change):
+    import json
+    client,_,_=library
+    first=tmp_path/"computer-1"/"Same title"
+    first.mkdir(parents=True);(first/".connlab").mkdir()
+    identity={"project_id":None if change=="ltr_only_metadata" else "3"*32,"ltr_number":"DL-2026-09-001"}
+    (first/".connlab/library.json").write_text(json.dumps(identity),encoding="utf-8")
+    (first/"template.txt").write_text("same ordinary template",encoding="utf-8")
+    plan=client.post("/api/project-library/intake-plan",json={"sources":[str(first)]}).json()
+    batch=client.post("/api/project-library/batches",json={**{key:plan[key] for key in ("plan_id","fingerprint")},"selected":[str(first)]}).json()
+    assert batch["counts"]["added"]==1,batch
+    assert client.post("/api/project-library/intake-plan",json={"sources":[str(first)]}).json()["items"][0]["status"]=="already_added"
+    if change=="member_identity_only":
+        received=client.get("/api/project-library/members/"+batch["items"][0]["member_id"]).json()
+        (Path(received["folder_path"])/".connlab/library.json").unlink()
+    second=first if change=="same_source_reused" else tmp_path/"computer-2"/"Same title"
+    if second!=first:
+        second.mkdir(parents=True);(second/".connlab").mkdir()
+    changed=dict(identity)
+    if change in {"project_id","both","same_source_reused","member_identity_only"}:
+        changed["project_id"]="4"*32
+    if change in {"ltr_number","both","same_source_reused","member_identity_only","ltr_only_metadata"}:
+        changed["ltr_number"]="DL-2026-09-002"
+    (second/".connlab/library.json").write_text(json.dumps(changed),encoding="utf-8")
+    (second/"template.txt").write_text("same ordinary template",encoding="utf-8")
+    plan=client.post("/api/project-library/intake-plan",json={"sources":[str(second)]}).json()
+    assert plan["items"][0]["status"]=="conflict" and plan["items"][0]["can_keep_separate"],plan
+    assert any("identity" in warning.lower() or "ltr" in warning.lower() for warning in plan["items"][0]["warnings"])
+    separate=client.post("/api/project-library/batches",json={**{key:plan[key] for key in ("plan_id","fingerprint")},"selected":[str(second)],"keep_separate":[str(second)]}).json()
+    assert separate["counts"]["added"]==1,separate
+    members=client.get("/api/project-library/members").json()["items"]
+    assert len(members)==2 and len({row["folder_path"] for row in members})==2
+    for member in members:
+        assert (Path(member["folder_path"])/"template.txt").read_text()=="same ordinary template"
+    if change=="same_source_reused":
+        (first/".connlab/library.json").write_text(json.dumps(identity),encoding="utf-8")
+        original_again=client.post("/api/project-library/intake-plan",json={"sources":[str(first)]}).json()
+        assert original_again["items"][0]["status"]=="already_added",original_again
+
+
+def test_same_known_identity_and_equal_material_at_another_source_remains_duplicate(library,tmp_path):
+    import json,shutil
+    client,_,_=library
+    first=tmp_path/"computer-1"/"Same title"
+    (first/".connlab").mkdir(parents=True)
+    (first/".connlab/library.json").write_text(json.dumps({"project_id":"3"*32,"ltr_number":"DL-2026-09-001"}),encoding="utf-8")
+    (first/"template.txt").write_text("same template",encoding="utf-8")
+    plan=client.post("/api/project-library/intake-plan",json={"sources":[str(first)]}).json()
+    assert client.post("/api/project-library/batches",json={**{key:plan[key] for key in ("plan_id","fingerprint")},"selected":[str(first)]}).json()["counts"]["added"]==1
+    second=tmp_path/"computer-2"/"Same title";shutil.copytree(first,second)
+    result=client.post("/api/project-library/intake-plan",json={"sources":[str(second)]}).json()
+    assert result["items"][0]["status"]=="already_added",result
+
+
+@pytest.mark.parametrize("source_is_target",[True,False])
+def test_unregistered_equal_material_has_explicit_managed_copy_action(library,tmp_path,source_is_target):
+    client,settings,_=library
+    target=settings.projects_dir/"DL-2026-09-032 Already here"
+    target.mkdir();(target/"record.txt").write_text("original evidence",encoding="utf-8")
+    source=target
+    if not source_is_target:
+        source=tmp_path/"external source"/target.name
+        source.mkdir(parents=True);(source/"record.txt").write_text("original evidence",encoding="utf-8")
+    assert client.get("/api/project-library/members").json()["items"]==[]
+    plan=client.post("/api/project-library/intake-plan",json={"sources":[str(source)]}).json()
+    assert plan["items"][0]["status"]=="conflict" and plan["items"][0]["can_keep_separate"],plan
+    assert any("not registered" in warning.lower() for warning in plan["items"][0]["warnings"])
+    batch=client.post("/api/project-library/batches",json={**{key:plan[key] for key in ("plan_id","fingerprint")},"selected":[str(source)],"keep_separate":[str(source)]}).json()
+    assert batch["counts"]["added"]==1,batch
+    members=client.get("/api/project-library/members").json()["items"]
+    assert len(members)==1 and members[0]["folder_path"]!=str(target)
+    assert (Path(members[0]["folder_path"])/"record.txt").read_text()=="original evidence"
+    assert not (target/".connlab/library.json").exists()
+    assert not (source/".connlab/library.json").exists()
+    assert (source/"record.txt").read_text()=="original evidence"
