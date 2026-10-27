@@ -70,6 +70,10 @@ class ProjectRegistryRow:
     has_confirmed_matrix: bool = False
     registry_state: str = "active"
     registry_revision: int = 0
+    completed_group_count: int | None = None
+    total_group_count: int | None = None
+    estimated_completion_date: str | None = None
+    group_completion_details: tuple[dict, ...] = ()
 
 
 class ProjectRegistryMatrixStore(Protocol):
@@ -90,6 +94,7 @@ class ProjectRegistrySummaryService:
         temporary_context_store: ProjectRegistryTemporaryContextStore | None = None,
         basic_information_store: ProjectRegistryBasicInformationStore | None = None,
         matrix_store: ProjectRegistryMatrixStore | None = None,
+        group_completion_service=None,
     ) -> None:
         """Create the service with read-only stores."""
         self._projects = project_store
@@ -97,6 +102,7 @@ class ProjectRegistrySummaryService:
         self._temporary_contexts = temporary_context_store
         self._basic_information = basic_information_store
         self._matrices = matrix_store
+        self._group_completion = group_completion_service
 
     def list_rows(self) -> list[ProjectRegistryRow]:
         """Return registry summary rows for normal projects."""
@@ -106,6 +112,7 @@ class ProjectRegistrySummaryService:
         rows: list[ProjectRegistryRow] = []
         confirmed_project_ids = self._matrices.list_active_project_ids() if self._matrices else set()
         for project in projects:
+            completion = self._group_completion.read(project.project_id) if self._group_completion and project.project_id in confirmed_project_ids else None
             basic_information = (
                 self._basic_information.get_latest_confirmed(project.project_id)
                 if self._basic_information is not None
@@ -126,6 +133,10 @@ class ProjectRegistrySummaryService:
             )
             rows.append(
                 ProjectRegistryRow(
+                    completed_group_count=completion["completed_count"] if completion else None,
+                    total_group_count=completion["total_count"] if completion else None,
+                    estimated_completion_date=completion["estimated_completion_date"] if completion else None,
+                    group_completion_details=tuple(completion["groups"]) if completion else (),
                     project_id=project.project_id,
                     registry_state=project.registry_state,
                     registry_revision=project.registry_revision,

@@ -203,10 +203,8 @@ describe("ProjectListPage lifecycle registry views", () => {
 
     expect(await screen.findByText("DL-2026-06-010")).toBeTruthy();
     expect(screen.getByText("Closed: Completed")).toBeTruthy();
-    expect(screen.getByText("View readonly completed archive")).toBeTruthy();
     expect(screen.getByText("DL-2026-06-011")).toBeTruthy();
     expect(screen.getByText("Closed: Administrative")).toBeTruthy();
-    expect(screen.getByText("View readonly administrative archive")).toBeTruthy();
     expect(screen.getAllByRole("button", { name: /Open archive/ })).toHaveLength(2);
   });
 
@@ -247,7 +245,6 @@ describe("ProjectListPage lifecycle registry views", () => {
 
     expect(await screen.findByText("DL-2026-06-012")).toBeTruthy();
     expect(screen.queryByText("TMP-AABBCCDD")).toBeNull();
-    expect(screen.getByText("Review or resume in Workbench")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Open Workbench.*DL-2026-06-012/ })).toBeTruthy();
 
     await user.selectOptions(screen.getByLabelText("Project view"), "planning");
@@ -255,7 +252,6 @@ describe("ProjectListPage lifecycle registry views", () => {
     expect(await screen.findByText("TMP-AABBCCDD")).toBeTruthy();
     expect(screen.queryByText("DL-2026-06-012")).toBeNull();
     expect(screen.getByText("Stopped")).toBeTruthy();
-    expect(screen.getByText("Resume or administratively archive from Workbench")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Open Workbench.*TMP-AABBCCDD/ })).toBeTruthy();
   });
 
@@ -311,14 +307,14 @@ describe("ProjectListPage lifecycle registry views", () => {
       "Project ID",
       "Sample Description",
       "Test Item",
-      "Status",
-      "Next Step",
+      "Group completion",
+      "Estimated completion",
       "Action",
     ]);
 
     expect(row?.querySelector(".registry-project-id-cell")?.getAttribute("data-label")).toBe("Project ID");
-    expect(row?.querySelector(".registry-status-cell")?.getAttribute("data-label")).toBe("Status");
-    expect(row?.querySelector(".registry-next-step-cell")?.getAttribute("data-label")).toBe("Next Step");
+    expect(row?.querySelector(".registry-status-cell")?.getAttribute("data-label")).toBe("Group completion");
+    expect(row?.querySelector(".registry-next-step-cell")?.getAttribute("data-label")).toBe("Estimated completion");
     expect(row?.querySelector(".registry-action-cell")?.getAttribute("data-label")).toBe("Action");
     expect(row?.querySelector(".registry-action-cell .project-registry-action-buttons")).toBeTruthy();
     expect(row?.querySelector(".registry-action-cell .project-registry-icon-action")).toBe(actionButton);
@@ -326,6 +322,27 @@ describe("ProjectListPage lifecycle registry views", () => {
 
     await userEvent.click(actionButton);
     expect(onOpenProject).toHaveBeenCalledWith("P-NARROW");
+  });
+
+  it("shows group completion and estimated completion from the registry", async () => {
+    mockRows([registryRow({project_id: "P-COUNT", display_project_id: "DL-2026-06-099", completed_group_count: 1, total_group_count: 3, estimated_completion_date: "2026-11-05"})]);
+    mockLifecycle({"P-COUNT": lifecycle({project_id: "P-COUNT"})});
+    render(<ProjectListPage onOpenProject={vi.fn()} />);
+    expect(await screen.findByText("1 / 3")).toBeTruthy();
+    expect(screen.getByText("2026-11-05")).toBeTruthy();
+  });
+
+  it("shows an elapsed planned-date hint and sorts scheduled projects first", async () => {
+    mockRows([
+      registryRow({project_id: "P-EARLY", display_project_id: "DL-2026-06-001", estimated_completion_date: "2000-01-01"}),
+      registryRow({project_id: "P-LATE", display_project_id: "DL-2026-06-002", estimated_completion_date: "2099-01-01"}),
+      registryRow({project_id: "P-NONE", display_project_id: "DL-2026-06-003", estimated_completion_date: null}),
+    ]);
+    mockLifecycle({"P-EARLY": lifecycle({project_id: "P-EARLY"}), "P-LATE": lifecycle({project_id: "P-LATE"}), "P-NONE": lifecycle({project_id: "P-NONE"})});
+    render(<ProjectListPage onOpenProject={vi.fn()} />);
+    expect(await screen.findByText("Past planned date")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", {name: "Sort estimated completion"}));
+    expect(await projectIdsInTable()).toEqual(["DL-2026-06-001", "DL-2026-06-002", "DL-2026-06-003"]);
   });
 
   it("uses Workbench route copy for active planning and folder-created rows", async () => {
@@ -354,15 +371,14 @@ describe("ProjectListPage lifecycle registry views", () => {
     render(<ProjectListPage onOpenProject={onOpenProject} />);
 
     expect(await screen.findByText("DL-2026-06-015")).toBeTruthy();
-    expect(screen.getByText("Folder Created")).toBeTruthy();
-    expect(screen.getByText("Continue setup in Workbench")).toBeTruthy();
+    expect(screen.getByText("Not scheduled")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: /Open Workbench.*DL-2026-06-015/ }));
     expect(onOpenProject).toHaveBeenCalledWith("P-FOLDER");
 
     await user.selectOptions(screen.getByLabelText("Project view"), "planning");
 
     expect(await screen.findByText("TMP-ROUTE01")).toBeTruthy();
-    expect(screen.getByText("Continue planning in Workbench")).toBeTruthy();
+    expect(screen.getByText("Not scheduled")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: /Open Workbench.*TMP-ROUTE01/ }));
     expect(onOpenProject).toHaveBeenCalledWith("P-TMP");
   });

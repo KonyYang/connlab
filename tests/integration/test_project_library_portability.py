@@ -114,6 +114,57 @@ def prepared_manual_project(client, root):
     return member
 
 
+def test_group_completion_events_travel_with_project(tmp_path):
+    from backend.infrastructure.storage.models_group_completion import GroupCompletionEventModel
+    a, _, engine_a = app_at(tmp_path / "A")
+    b, _, engine_b = app_at(tmp_path / "B")
+    try:
+        member = prepared_manual_project(a, tmp_path / "old")
+        with Session(engine_a) as session:
+            session.add(GroupCompletionEventModel(event_id="event-1", project_id=member["project_id"],
+                group_lineage="group-1", group_key="g1", matrix_revision=1, signature="a" * 64, completed=True,
+                completed_at="2026-10-28T00:00:00Z", recorded_at="2026-10-28T00:00:00Z"))
+            session.commit()
+        info = a.get(f"/api/project-library/members/{member['member_id']}/portable").json()
+        prepared = a.post(f"/api/project-library/members/{member['member_id']}/prepare", json={"fingerprint": info["fingerprint"]})
+        assert prepared.status_code == 200, prepared.text
+        plan = b.post("/api/project-library/restore-plan", json={"folder": member["folder_path"]}).json()
+        assert plan["status"] == "ready", plan
+        confirm(b, "/api/project-library/restore", plan)
+        with Session(engine_b) as session:
+            event = session.get(GroupCompletionEventModel, "event-1")
+            assert event is not None and event.completed and event.signature == "a" * 64
+    finally:
+        engine_a.dispose()
+        engine_b.dispose()
+
+
+def test_legacy_portable_snapshot_without_group_completion_restores(tmp_path):
+    from backend.infrastructure.project_library.portability import fingerprint
+    a, _, engine_a = app_at(tmp_path / "A")
+    b, _, engine_b = app_at(tmp_path / "B")
+    try:
+        member = prepared_manual_project(a, tmp_path / "old")
+        folder = Path(member["folder_path"])
+        packet_path = folder / ".connlab/portable/snapshot.json"
+        packet = json.loads(packet_path.read_text(encoding="utf-8"))
+        body = packet["body"]
+        body["rows"].pop("group_completion_events")
+        content = {key: body[key] for key in ("project_id", "ltr_number", "title", "rows", "files", "assets", "operation_history")}
+        body["source_signature"] = fingerprint(content)
+        packet["checksum"] = fingerprint(body)
+        packet_path.write_text(json.dumps(packet), encoding="utf-8")
+        plan = b.post("/api/project-library/restore-plan", json={"folder": str(folder)}).json()
+        assert plan["status"] == "ready", plan
+        result = confirm(b, "/api/project-library/restore", plan)
+        assert result["member"]["project_id"] == member["project_id"]
+        repeated = b.post("/api/project-library/restore-plan", json={"folder": str(folder)}).json()
+        assert repeated["status"] == "already_added", repeated
+    finally:
+        engine_a.dispose()
+        engine_b.dispose()
+
+
 def reject_unselected_restore(client, review):
     assert review["status"] == "conflict", review
     assert review["blockers"] == [], review

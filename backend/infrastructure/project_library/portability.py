@@ -147,7 +147,7 @@ class ProjectPortability:
             if path.is_file():
                 body = self._read_snapshot(member["folder_path"])
                 result["created_at"] = body["created_at"]
-                result["status"] = "current" if signature == body["source_signature"] else "stale"
+                result["status"] = "current" if self._matches_snapshot(current, body) else "stale"
                 result["record_counts"] = {key: len(value) for key, value in body["rows"].items()}
                 result["file_count"] = sum(not item["directory"] for item in body["files"])
                 if result["status"] == "stale":
@@ -191,7 +191,7 @@ class ProjectPortability:
         if type(body.get("format_version")) is not int or body["format_version"] != 1:
             raise ProjectLibraryError("This portable snapshot version is not supported by this ConnLab.")
         required = {"member_id", "project_id", "ltr_number", "title", "rows", "files", "assets", "source_signature", "created_at", "operation_history"}
-        if not required.issubset(body) or not isinstance(body["rows"], dict) or set(body["rows"]) != TABLES:
+        if not required.issubset(body) or not isinstance(body["rows"], dict) or set(body["rows"]) not in (TABLES, TABLES - {"group_completion_events"}):
             raise ProjectLibraryError("The portable snapshot does not include the supported project data contract.")
         if len(body["rows"].get("projects", [])) != 1 or body["rows"]["projects"][0].get("project_id") != body["project_id"]:
             raise ProjectLibraryError("The portable project identity is inconsistent.")
@@ -240,6 +240,8 @@ class ProjectPortability:
         content = {key: body[key] for key in ("project_id", "ltr_number", "title", "rows", "files", "assets", "operation_history")}
         if fingerprint(content) != body["source_signature"]:
             raise ProjectLibraryError("The portable source revision is inconsistent.")
+        if "group_completion_events" not in body["rows"]:
+            body = {**body, "rows": {**body["rows"], "group_completion_events": []}, "_legacy_group_completion": True}
         source_warnings = self._source_gap_warnings(body["operation_history"], body["project_id"])
         if source_warnings:
             stored_warnings = body.get("warnings", [])
@@ -249,6 +251,14 @@ class ProjectPortability:
             # source signature. A native Prepare persists these derived warnings.
             return {**body, "warnings": sorted(set(stored_warnings + source_warnings))}
         return body
+
+    def _matches_snapshot(self, current, body):
+        if fingerprint(current) == body["source_signature"]:
+            return True
+        if not body.get("_legacy_group_completion") or current["rows"].get("group_completion_events"):
+            return False
+        legacy_rows = {key: value for key, value in current["rows"].items() if key != "group_completion_events"}
+        return fingerprint({**current, "rows": legacy_rows}) == body["source_signature"]
 
     def _verify_files(self, folder, body):
         if project_inventory(folder) != body["files"]:
@@ -338,7 +348,8 @@ class ProjectPortability:
             existing = [row for row in self.store.members() if row["project_id"] == body["project_id"]]
             if existing:
                 current = self.status(existing[0])
-                if current["status"] == "current" and current["fingerprint"] == body["source_signature"]:
+                current_data, _ = self._capture(existing[0])
+                if current["status"] == "current" and self._matches_snapshot(current_data, body):
                     self.files.publish_workspace_metadata(existing[0]["folder_path"], self.store.workspace(body["project_id"]))
                     self.files.write_marker(existing[0])
                     return {"status": "already_added", "member": existing[0], "warnings": body.get("warnings", [])}

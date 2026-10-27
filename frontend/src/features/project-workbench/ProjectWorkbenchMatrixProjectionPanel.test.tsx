@@ -1,10 +1,13 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ApiRequestError } from "../../api/client";
 import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixProjectionPanel";
 
 const apiMocks = vi.hoisted(() => ({
   fetchConfirmedMatrixTestRecordPreview: vi.fn(),
+  getGroupCompletion: vi.fn(),
+  getProjectLifecycle: vi.fn(),
+  updateGroupCompletion: vi.fn(),
 }));
 
 vi.mock("../../api/client", async (importOriginal) => {
@@ -12,10 +15,20 @@ vi.mock("../../api/client", async (importOriginal) => {
   return {
     ...actual,
     fetchConfirmedMatrixTestRecordPreview: apiMocks.fetchConfirmedMatrixTestRecordPreview,
+    getGroupCompletion: apiMocks.getGroupCompletion,
+    getProjectLifecycle: apiMocks.getProjectLifecycle,
+    updateGroupCompletion: apiMocks.updateGroupCompletion,
   };
 });
 
 describe("ProjectWorkbenchMatrixProjectionPanel", () => {
+  beforeEach(() => {
+    apiMocks.getProjectLifecycle.mockResolvedValue({readonly: false, registry_state: "active"});
+    apiMocks.getGroupCompletion.mockResolvedValue({confirmed_matrix_id: "cm-1", groups: [
+      {group_key: "g1", group_label: "Group 1", completed: false, needs_review: false},
+      {group_key: "g2", group_label: "Group 2", completed: false, needs_review: false},
+    ], completed_count: 0, total_count: 2});
+  });
   it("keeps every preview step at its initial status until execution data exists", async () => {
     const onTokenSelect = vi.fn();
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
@@ -124,7 +137,16 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     expect(within(sampleSizesRow as HTMLElement).getByText("3")).toBeTruthy();
     expect(within(sampleSizesRow as HTMLElement).getByText("5")).toBeTruthy();
     expect(screen.getAllByText("Not scheduled")).toHaveLength(2);
-    expect(screen.getAllByText("Pending execution data")).toHaveLength(2);
+    expect(await screen.findAllByRole("checkbox", {name: /completed/i})).toHaveLength(2);
+    const groupOne = screen.getByRole("checkbox", {name: "Group 1 completed"}) as HTMLInputElement;
+    await waitFor(() => expect(groupOne.disabled).toBe(false));
+    apiMocks.updateGroupCompletion.mockResolvedValue({confirmed_matrix_id: "cm-1", groups: [
+      {group_key: "g1", group_label: "Group 1", completed: true, needs_review: false},
+      {group_key: "g2", group_label: "Group 2", completed: false, needs_review: false},
+    ], completed_count: 1, total_count: 2});
+    fireEvent.click(groupOne);
+    await waitFor(() => expect(groupOne.checked).toBe(true));
+    expect(apiMocks.updateGroupCompletion).toHaveBeenCalledWith("P1", "g1", "cm-1", true);
     expect(screen.queryByText("Review required")).toBeNull();
     expect(screen.queryByText("Reopened / retest")).toBeNull();
 
@@ -205,6 +227,7 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
   });
 
   it("renders not-ready state for missing active confirmed matrix", async () => {
+    apiMocks.getGroupCompletion.mockRejectedValue(new ApiRequestError("Not Found", 404, null));
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockRejectedValue(
       new ApiRequestError("Not Found", 404, null)
     );
@@ -214,6 +237,7 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     expect(
       await screen.findByText("No active confirmed matrix yet. Confirm Matrix authority first.")
     ).toBeTruthy();
+    expect(screen.queryByText("Group completion is unavailable.")).toBeNull();
     expect(screen.queryByRole("button", { name: "Test record" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Generate Test Record Draft" })).toBeNull();
   });
