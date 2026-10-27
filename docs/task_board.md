@@ -50,7 +50,38 @@
       "closed_at": "2026-10-26T23:47:10.164767Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_GROUP_COMPLETION_20261028": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\group-completion\\connlab",
+      "branch": "codex/group-completion",
+      "resources": [
+        "project-data"
+      ],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_GROUP_COMPLETION_20261028",
+        "summary": "Group completion tracking and project registry summary",
+        "tier": "high_risk",
+        "route": "full_chain",
+        "scope": "Manual group completion, Matrix revision and portable project compatibility",
+        "scope_paths": [
+          "backend",
+          "frontend/src",
+          "tests"
+        ],
+        "risk_reasons": [
+          "New durable project data and portable snapshot schema compatibility"
+        ],
+        "activation_head": "ff3f07258c3f9e95173cd8540e60e3038f0814d0",
+        "started_at": "2026-10-27T23:23:14.353402Z",
+        "updated_at": "2026-10-27T23:23:14.353402Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
