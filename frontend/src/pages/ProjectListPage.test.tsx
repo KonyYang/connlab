@@ -27,6 +27,14 @@ const listProjectRegistryRowsMock = vi.mocked(listProjectRegistryRows);
 const getProjectLifecycleMock = vi.mocked(getProjectLifecycle);
 
 describe("ProjectListPage lifecycle registry views", () => {
+  it("opens the unified Library without treating historical folders as business projects", async () => {
+    mockRows([]);
+    const openLibrary = vi.fn();
+    render(<ProjectListPage onOpenProject={vi.fn()} onShowLibrary={openLibrary} />);
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Library" }));
+    expect(openLibrary).toHaveBeenCalledOnce();
+  });
+
   beforeEach(() => {
     window.sessionStorage.clear();
     listProjectRegistryRowsMock.mockReset();

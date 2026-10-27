@@ -31,6 +31,7 @@ type ProjectListPageProps = {
   onOpenProject: (projectId: string) => void;
   legacy?: boolean;
   onShowLegacy?: () => void;
+  onShowLibrary?: () => void;
   onShowActive?: () => void;
   onOpenLegacyRecord?: (recordId: string) => void;
 };
@@ -76,7 +77,7 @@ export function ProjectListPage(props: ProjectListPageProps): ReactElement {
 }
 
 function BusinessProjectListPage({
-  onOpenProject, onShowLegacy
+  onOpenProject, onShowLegacy, onShowLibrary
 }: ProjectListPageProps): ReactElement {
   const initialViewState = useMemo(loadProjectRegistryViewState, []);
   const didHydrateViewState = useRef(false);
@@ -234,6 +235,7 @@ function BusinessProjectListPage({
         {(["active", "trash", "history"] as const).map((location) => <button key={location} className="registry-area-button ui-secondary-action" type="button"
           aria-pressed={area === location} disabled={management.busy}
           onClick={() => setArea(location)}>{REGISTRY_AREA_LABELS[location]}</button>)}
+        {onShowLibrary && <button className="registry-area-button ui-secondary-action" type="button" disabled={management.busy} onClick={onShowLibrary}>Library</button>}
         {onShowLegacy && <button className="registry-area-button ui-secondary-action" type="button" disabled={management.busy} onClick={onShowLegacy}>Legacy</button>}
       </nav>
     </div>
