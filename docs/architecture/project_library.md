@@ -139,7 +139,11 @@ The intended operator sequence is:
 
 1. In Tools, choose **Import Projects**, select source folders, then **Review
    Projects**. Check project boundaries, loose-file assignments and conflicts;
-   **Add Selected** and **Confirm Add** receive the selected copies.
+   **Add Selected** and **Confirm Add** receive the selected copies. For manual
+   layouts, expand **Check Project Boundaries**: **Use This Folder** previews the
+   selected root as one project; **Use Subfolders as Projects** previews its child
+   folders as separate projects. These explicit choices do not run discovery
+   again or copy files before confirmation.
 2. In **Library**, search by LTR or title and use **Open Folder** for ordinary
    Windows file work. **Manage** provides file refresh, **Edit Title** and
    **Locate Folder** when a directory was moved or renamed.
