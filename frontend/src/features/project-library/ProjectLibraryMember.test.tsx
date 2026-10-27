@@ -13,7 +13,7 @@ vi.mock("../../api/projectLibrary", () => ({
 }));
 const member: api.LibraryMember = { member_id: "member-1", project_id: null, ltr_number: "DL-2026-09-032", title: "CPI-450", folder_path: "D:/library/DL-2026-09-032 CPI-450", revision: 1, batch_id: "batch-1", snapshot_status: "missing", snapshot_created_at: null, warnings: [], can_continue: false };
 const portable: api.PortableInfo = { status: "stale", fingerprint: "data-now", created_at: "2026-10-26T08:00:00Z", format_version: 1, record_counts: { projects: 1, confirmed_matrix_versions: 2, result_dataset_revisions: 1 }, file_count: 8, warnings: ["Project data changed after this snapshot."], blockers: [] };
-const restore: api.PortableRestorePlan = { plan_id: "restore-1", fingerprint: "restore-proof", project_id: "project-1", ltr_number: "DL-2026-09-032", title: "CPI-450", source_path: "E:/received", target_path: "D:/library/CPI-450", status: "ready", created_at: "2026-10-26T08:00:00Z", record_counts: { projects: 1, confirmed_matrix_versions: 2 }, file_count: 8, warnings: [], blockers: [] };
+const restore: api.PortableRestorePlan = { plan_id: "restore-1", fingerprint: "restore-proof", project_id: "project-1", ltr_number: "DL-2026-09-032", title: "CPI-450", source_path: "E:/received", target_path: "D:/library/CPI-450", status: "ready", created_at: "2026-10-26T08:00:00Z", record_counts: { projects: 1, confirmed_matrix_versions: 2 }, file_count: 8, warnings: [], blockers: [], resolution_options: [], resolution: null, source_signature: null, target_revision: null, backup_path: null };
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -38,6 +38,16 @@ describe("Library project management", () => {
     expect(screen.getByRole("button", { name: "Edit Title" })).toHaveProperty("disabled", false);
     await act(async () => { resolvePlan({ plan_id: "old", fingerprint: "old", source_path: "D:/old", target_path: "D:/changed", warnings: [] }); });
     expect(screen.queryByRole("dialog", { name: "Confirm Title" })).toBeNull();
+  });
+
+  it("keeps history browsable without offering working-project changes or takeover", async () => {
+    vi.mocked(api.getLibraryMember).mockResolvedValue({ ...member, project_id: "old-project", can_continue: false, is_history: true });
+    render(<ProjectLibraryMember memberId="member-1" onBack={vi.fn()} onOpenProject={vi.fn()} />);
+    expect(await screen.findByRole("button", { name: "Open Folder" })).toBeTruthy();
+    expect(screen.getByText("Historical Copy")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Locate Folder" })).toBeTruthy();
+    for (const name of ["Edit Title", "Continue Testing", "Matrix", "Report", "Prepare to Take"]) expect(screen.queryByRole("button", { name })).toBeNull();
+    expect(screen.getByRole("button", { name: "Refresh Files" })).toBeTruthy();
   });
 
   it("requires takeover before opening test workspaces when a project identity is not yet usable", async () => {
@@ -123,6 +133,7 @@ describe("Library project management", () => {
 
   it.each(["title", "location"] as const)("refreshes snapshot coverage and file browsing after a confirmed %s change", async kind => {
     const user = userEvent.setup();
+    if (kind === "location") vi.mocked(api.getLibraryMember).mockResolvedValue({ ...member, is_history: true });
     const plan = { plan_id: "change-1", fingerprint: "change-proof", source_path: member.folder_path, target_path: "D:/library/Revised", warnings: [] };
     vi.mocked(api.planLibraryTitle).mockResolvedValue(plan);
     vi.mocked(api.planLibraryLocation).mockResolvedValue(plan);
@@ -200,6 +211,109 @@ describe("Portable project restore", () => {
     expect(api.restorePortableProject).toHaveBeenCalledWith({ plan_id: "restore-1", fingerprint: "restore-proof" });
     await user.click(await screen.findByRole("button", { name: "Open Recovered Project" }));
     expect(onOpenMember).toHaveBeenCalledWith("member-1");
+  });
+
+  it("requires an explicit replacement choice and a fresh bound plan before replacing a working copy", async () => {
+    const user = userEvent.setup();
+    const onOpenMember = vi.fn();
+    const conflict = { ...restore, status: "conflict" as const, resolution_options: ["replace_working_copy" as const], resolution: null, source_signature: "source-version-5", target_revision: 3, backup_path: "D:/library/history/recovery-3" };
+    const reviewed = { ...conflict, status: "ready" as const, resolution: "replace_working_copy" as const, plan_id: "replace-plan", fingerprint: "replace-proof" };
+    vi.mocked(api.inspectPortableProject).mockResolvedValue(conflict);
+    vi.mocked(api.planPortableRestore).mockResolvedValue(reviewed);
+    vi.mocked(api.restorePortableProject).mockResolvedValue({ status: "restored", member: { ...member, project_id: "project-1", can_continue: true }, warnings: [], backup_member_id: "backup-3" });
+    render(<PortableRestore onOpenMember={onOpenMember} />);
+    await user.click(screen.getByText("Take Over a Portable Project"));
+    await user.type(screen.getByLabelText("Portable project folder"), "E:/received");
+    await user.click(screen.getByRole("button", { name: "Inspect Project" }));
+    const choice = await screen.findByRole("radio", { name: "Replace Working Copy" });
+    expect(choice).toHaveProperty("checked", false);
+    expect(screen.getByRole("button", { name: "Review Restore" })).toHaveProperty("disabled", true);
+    expect(screen.getByText("D:/library/history/recovery-3")).toBeTruthy();
+    await user.click(choice);
+    expect(api.restorePortableProject).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Review Restore" }));
+    expect(api.planPortableRestore).toHaveBeenCalledWith("E:/received", "replace_working_copy");
+    expect(await screen.findByRole("dialog", { name: "Confirm Restore" })).toBeTruthy();
+    expect(screen.getByText("A complete recovery point of the current working copy will be saved before replacement.")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Confirm Restore" }));
+    expect(api.restorePortableProject).toHaveBeenCalledWith({ plan_id: "replace-plan", fingerprint: "replace-proof", resolution: "replace_working_copy" });
+    await user.click(await screen.findByRole("button", { name: "Open Recovery Point" }));
+    expect(onOpenMember).toHaveBeenCalledWith("backup-3");
+  });
+
+  it("keeps a same-LTR different project as browsable history without changing the current owner", async () => {
+    const user = userEvent.setup();
+    const onOpenMember = vi.fn();
+    const conflict = { ...restore, project_id: "different-project", status: "conflict" as const, resolution_options: ["keep_as_history" as const], resolution: null, source_signature: "alternate-copy-signature", target_revision: 4, backup_path: null };
+    vi.mocked(api.inspectPortableProject).mockResolvedValue(conflict);
+    vi.mocked(api.planPortableRestore).mockResolvedValue({ ...conflict, status: "ready", resolution: "keep_as_history", plan_id: "history-plan", fingerprint: "history-proof" });
+    vi.mocked(api.restorePortableProject).mockResolvedValue({ status: "history_kept", member: { ...member, member_id: "history-member", project_id: "different-project", can_continue: false, is_history: true }, warnings: [], backup_member_id: null });
+    render(<PortableRestore onOpenMember={onOpenMember} />);
+    await user.click(screen.getByText("Take Over a Portable Project"));
+    await user.type(screen.getByLabelText("Portable project folder"), "E:/alternate");
+    await user.click(screen.getByRole("button", { name: "Inspect Project" }));
+    const history = await screen.findByRole("radio", { name: "Keep as History" });
+    expect(history).toHaveProperty("checked", false);
+    expect(screen.queryByRole("radio", { name: "Replace Working Copy" })).toBeNull();
+    await user.click(history);
+    await user.click(screen.getByRole("button", { name: "Review Restore" }));
+    expect(api.planPortableRestore).toHaveBeenCalledWith("E:/alternate", "keep_as_history");
+    expect(await screen.findByText("The current LTR owner stays unchanged. This complete copy will be retained as history for browsing." )).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Confirm Restore" }));
+    expect(api.restorePortableProject).toHaveBeenCalledWith({ plan_id: "history-plan", fingerprint: "history-proof", resolution: "keep_as_history" });
+    await user.click(await screen.findByRole("button", { name: "Open History Project" }));
+    expect(onOpenMember).toHaveBeenCalledWith("history-member");
+  });
+
+  it("requires another reviewed plan when the target changes after replacement confirmation", async () => {
+    const user = userEvent.setup();
+    const conflict = { ...restore, status: "conflict" as const, resolution_options: ["replace_working_copy" as const], resolution: null, target_revision: 3, backup_path: "D:/library/history/recovery-3" };
+    const reviewed = { ...conflict, status: "ready" as const, resolution: "replace_working_copy" as const };
+    vi.mocked(api.inspectPortableProject).mockResolvedValue(conflict);
+    vi.mocked(api.planPortableRestore).mockResolvedValueOnce(reviewed).mockResolvedValue({ ...reviewed, plan_id: "new-plan", fingerprint: "new-proof", target_revision: 4, backup_path: "D:/library/history/recovery-4" });
+    vi.mocked(api.restorePortableProject).mockRejectedValueOnce(new Error("Target changed since preview.")).mockResolvedValue({ status: "restored", member, warnings: [] });
+    render(<PortableRestore onOpenMember={vi.fn()} />);
+    await user.click(screen.getByText("Take Over a Portable Project"));
+    await user.type(screen.getByLabelText("Portable project folder"), "E:/received");
+    await user.click(screen.getByRole("button", { name: "Inspect Project" }));
+    await user.click(await screen.findByRole("radio", { name: "Replace Working Copy" }));
+    await user.click(screen.getByRole("button", { name: "Review Restore" }));
+    await user.click(await screen.findByRole("button", { name: "Confirm Restore" }));
+    expect(await screen.findByText(/Target changed since preview/)).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: "Confirm Restore" })).toBeNull();
+    expect(api.restorePortableProject).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: "Review Restore" }));
+    expect(await screen.findByText("Current library revision: 4")).toBeTruthy();
+    expect(screen.getByText("D:/library/history/recovery-4")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Confirm Restore" }));
+    expect(api.restorePortableProject).toHaveBeenLastCalledWith({ plan_id: "new-plan", fingerprint: "new-proof", resolution: "replace_working_copy" });
+  });
+
+  it("does not confirm a replacement if the fresh plan is not bound to the selected choice", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.inspectPortableProject).mockResolvedValue({ ...restore, status: "conflict", resolution_options: ["replace_working_copy"], target_revision: 3 });
+    render(<PortableRestore onOpenMember={vi.fn()} />);
+    await user.click(screen.getByText("Take Over a Portable Project"));
+    await user.type(screen.getByLabelText("Portable project folder"), "E:/received");
+    await user.click(screen.getByRole("button", { name: "Inspect Project" }));
+    await user.click(await screen.findByRole("radio", { name: "Replace Working Copy" }));
+    await user.click(screen.getByRole("button", { name: "Review Restore" }));
+    expect(await screen.findByText(/available restore choices changed/)).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: "Confirm Restore" })).toBeNull();
+    expect(api.restorePortableProject).not.toHaveBeenCalled();
+  });
+
+  it("does not offer conflict resolutions when missing materials or cross-project references block restore", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.inspectPortableProject).mockResolvedValue({ ...restore, status: "conflict", resolution_options: ["replace_working_copy", "keep_as_history"], resolution: null, source_signature: null, target_revision: 2, backup_path: null, blockers: ["Required source file is missing.", "A test record refers to another project."] });
+    render(<PortableRestore onOpenMember={vi.fn()} />);
+    await user.click(screen.getByText("Take Over a Portable Project"));
+    await user.type(screen.getByLabelText("Portable project folder"), "E:/incomplete");
+    await user.click(screen.getByRole("button", { name: "Inspect Project" }));
+    expect(await screen.findByText("Required source file is missing.")).toBeTruthy();
+    expect(screen.queryByRole("radio")).toBeNull();
+    expect(screen.getByRole("button", { name: "Review Restore" })).toHaveProperty("disabled", true);
+    expect(api.planPortableRestore).not.toHaveBeenCalled();
   });
 
   it("blocks conflicting data and invalidates an inspection when the folder changes", async () => {

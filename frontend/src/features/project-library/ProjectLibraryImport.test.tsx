@@ -78,12 +78,14 @@ describe("ProjectLibraryImport", () => {
   it("requires explicit ownership for loose files before planning their reception", async () => {
     const user = userEvent.setup();
     vi.mocked(api.scanLibrarySources).mockResolvedValue({ items: [{ source_path: "D:/loose/result.xlsx", title: "result.xlsx", ltr_number: null, kind: "file", warnings: [], child_folders: [] }], warnings: [], truncated: false });
-    vi.mocked(api.listLibraryMembers).mockResolvedValue({ items: [{ member_id: "existing-1", project_id: "project-1", ltr_number: "DL-2026-09-032", title: "CPI-450", folder_path: "D:/managed/CPI", revision: 1, batch_id: null, snapshot_status: "current", snapshot_created_at: null, warnings: [], can_continue: true }] });
+    const active: api.LibraryMember = { member_id: "existing-1", project_id: "project-1", ltr_number: "DL-2026-09-032", title: "CPI-450", folder_path: "D:/managed/CPI", revision: 1, batch_id: null, snapshot_status: "current", snapshot_created_at: null, warnings: [], can_continue: true };
+    vi.mocked(api.listLibraryMembers).mockResolvedValue({ items: [active, { ...active, member_id: "history-1", title: "Historical CPI", is_history: true, can_continue: false }] });
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
     await user.type(screen.getByLabelText("Source paths"), "D:/loose/result.xlsx");
     await user.click(screen.getByRole("button", { name: "Review Projects" }));
     const assignment = await screen.findByLabelText("Assign result.xlsx");
     expect(api.planLibraryIntake).not.toHaveBeenCalled();
+    expect(within(assignment).queryByRole("option", { name: /Historical CPI/ })).toBeNull();
     await user.selectOptions(assignment, "existing-1");
     await user.click(screen.getByRole("button", { name: "Review File Assignments" }));
     await screen.findByRole("table", { name: "Projects to receive" });

@@ -20,3 +20,13 @@ it("searches library records, opens original files directly, and retains the sea
   await screen.findByRole("button", { name: "Manage CPI-450" });
   expect(screen.getByLabelText("Search library")).toHaveProperty("value", "CPI");
 });
+
+it("identifies historical copies and opens their browsing details", async () => {
+  const user = userEvent.setup(); const onOpen = vi.fn();
+  vi.mocked(api.listLibraryMembers).mockResolvedValue({ items: [{ member_id: "history-1", project_id: "old-project", ltr_number: "DL-2026-09-032", title: "Old CPI copy", folder_path: "D:/library/history/CPI", revision: 1, batch_id: null, snapshot_status: "current", snapshot_created_at: "2026-10-27", warnings: [], can_continue: false, is_history: true }] });
+  render(<ProjectLibraryList onOpen={onOpen} onBack={vi.fn()} onImport={vi.fn()} />);
+  expect(await screen.findByText("Historical Copy")).toBeTruthy();
+  expect(screen.queryByText("Managed Project")).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Browse History Old CPI copy" }));
+  expect(onOpen).toHaveBeenCalledWith("history-1");
+});
