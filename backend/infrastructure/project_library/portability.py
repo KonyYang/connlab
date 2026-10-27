@@ -126,6 +126,7 @@ class ProjectPortability:
             root = checked_path(member["folder_path"])
             body = {"format_version": 1, "created_at": now(), "member_id": member["member_id"],
                     "source_signature": signature, **current, "warnings": sorted(set(assets.warnings))}
+            self._validate_snapshot(body)
             assets.copy_to(root / ".connlab" / "portable")
             after, _ = self._capture(member)
             if fingerprint(after) != signature:
@@ -143,10 +144,13 @@ class ProjectPortability:
         if not isinstance(envelope, dict) or not isinstance(envelope.get("body"), dict):
             raise ProjectLibraryError("The portable snapshot is damaged.")
         body = envelope["body"]
-        if type(body.get("format_version")) is not int or body["format_version"] != 1:
-            raise ProjectLibraryError("This portable snapshot version is not supported by this ConnLab.")
         if fingerprint(body) != envelope.get("checksum"):
             raise ProjectLibraryConflict("The portable snapshot checksum does not match.")
+        return self._validate_snapshot(body)
+
+    def _validate_snapshot(self, body):
+        if type(body.get("format_version")) is not int or body["format_version"] != 1:
+            raise ProjectLibraryError("This portable snapshot version is not supported by this ConnLab.")
         required = {"member_id", "project_id", "ltr_number", "title", "rows", "files", "assets", "source_signature", "created_at", "operation_history"}
         if not required.issubset(body) or not isinstance(body["rows"], dict) or set(body["rows"]) != TABLES:
             raise ProjectLibraryError("The portable snapshot does not include the supported project data contract.")

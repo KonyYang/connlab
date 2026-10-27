@@ -1002,3 +1002,99 @@ def test_changed_registered_workbook_has_local_review_warning_without_rewriting_
         response=client.post(f"/api/project-library/members/{member_id}/prepare",json={"fingerprint":current["fingerprint"]})
         assert response.status_code==200,response.text
         assert any(path.name in warning and "changed" in warning.lower() for warning in response.json()["warnings"])
+
+
+@pytest.mark.parametrize("legacy_reference", ["old specification.docx", "../old specification.docx", "C:old specification.docx", "@project/../../old specification.docx"])
+def test_legacy_relative_source_is_provenance_without_guessing_a_same_named_file(tmp_path, legacy_reference):
+    from tests.fixtures.project_library.full_graph import seed_full_graph
+    from backend.infrastructure.project_library.ownership import capture
+    from sqlalchemy import text
+    with seed_full_graph(tmp_path / "A") as graph:
+        client = graph["lab"]["client"]
+        root = graph["project_root"]
+        # A same-named physical file is not proof that it was the historic source.
+        (root / "old specification.docx").write_bytes(b"unrelated same-named material")
+        with graph["lab"]["factory"]() as session:
+            source_id = session.execute(text("SELECT import_id FROM source_matrix_import_records LIMIT 1")).scalar_one()
+            session.execute(text("UPDATE source_matrix_import_records SET source_document_path=:path WHERE import_id=:id"), {"path": legacy_reference, "id": source_id})
+            session.commit()
+            original = capture(session, "P1")
+        plan = client.post("/api/project-library/intake-plan", json={"sources": [str(root)]}).json()
+        batch = client.post("/api/project-library/batches", json={**{key: plan[key] for key in ("plan_id", "fingerprint")}, "selected": [str(root)]}).json()
+        member_id = batch["items"][0]["member_id"]
+        info = client.get(f"/api/project-library/members/{member_id}/portable").json()
+        assert any(legacy_reference in warning and "unresolved" in warning.lower() for warning in info["warnings"]), info
+        prepared = client.post(f"/api/project-library/members/{member_id}/prepare", json={"fingerprint": info["fingerprint"]})
+        assert prepared.status_code == 200 and prepared.json()["status"] == "current", prepared.text
+        packet = json.loads((root / ".connlab/portable/snapshot.json").read_text(encoding="utf-8"))["body"]
+        encoded = next(row for row in packet["rows"]["source_matrix_import_records"] if row["import_id"] == source_id)["source_document_path"]
+        assert encoded == "manual:legacy-relative:" + legacy_reference
+        with graph["lab"]["factory"]() as session:
+            assert session.execute(text("SELECT source_document_path FROM source_matrix_import_records WHERE import_id=:id"), {"id": source_id}).scalar_one() == legacy_reference
+        travelling = tmp_path / "USB" / root.name
+        shutil.copytree(root, travelling)
+    (tmp_path / "A").rename(tmp_path / "A-unavailable")
+    b, settings, engine = app_at(tmp_path / "B")
+    try:
+        plan = b.post("/api/project-library/restore-plan", json={"folder": str(travelling)}).json()
+        assert plan["status"] == "ready", plan
+        restored = confirm(b, "/api/project-library/restore", plan)
+        member_id = restored["member"]["member_id"]
+        info = b.get(f"/api/project-library/members/{member_id}/portable").json()
+        assert info["status"] == "current" and not info["blockers"], info
+        assert any(legacy_reference in warning for warning in info["warnings"]), info
+        repeated = b.post(f"/api/project-library/members/{member_id}/prepare", json={"fingerprint": info["fingerprint"]})
+        assert repeated.status_code == 200 and repeated.json()["status"] == "current", repeated.text
+        with Session(engine) as session:
+            rows = capture(session, "P1")
+            source = next(row for row in rows["source_matrix_import_records"] if row["import_id"] == source_id)
+            assert source["source_document_path"] == encoded
+            for name in ("result_dataset_revisions", "confirmed_matrix_versions", "confirmed_matrix_groups", "confirmed_matrix_rows", "confirmed_matrix_cells"):
+                assert sorted(rows[name], key=lambda r: json.dumps(r, sort_keys=True)) == sorted(original[name], key=lambda r: json.dumps(r, sort_keys=True)), name
+    finally:
+        engine.dispose()
+
+
+def test_prepare_rejects_invalid_candidate_before_replacing_the_last_valid_snapshot(tmp_path, monkeypatch):
+    from backend.infrastructure.project_library.files import fingerprint
+    a, settings, engine = app_at(tmp_path / "A")
+    try:
+        member = prepared_manual_project(a, tmp_path / "manual")
+        root = Path(member["folder_path"])
+        snapshot = root / ".connlab/portable/snapshot.json"
+        previous = snapshot.read_bytes()
+        revisions = sorted(path.name for path in (snapshot.parent / "revisions").iterdir())
+        with Session(engine) as session:
+            stored = ProjectLibraryRepository(session).member(member["member_id"])["snapshot_fingerprint"]
+        original_capture = ProjectPortability._capture
+        def invalid_candidate(self, current):
+            content, assets = original_capture(self, current)
+            content["rows"]["project_folder_records"].append({"folder_id": "injected-invalid", "project_id": member["project_id"], "folder_path": "unbound-relative-location", "created_on": "2026-01-01"})
+            return content, assets
+        monkeypatch.setattr(ProjectPortability, "_capture", invalid_candidate)
+        info = a.get(f"/api/project-library/members/{member['member_id']}/portable").json()
+        response = a.post(f"/api/project-library/members/{member['member_id']}/prepare", json={"fingerprint": info["fingerprint"]})
+        assert response.status_code == 409, response.text
+        assert snapshot.read_bytes() == previous
+        assert sorted(path.name for path in (snapshot.parent / "revisions").iterdir()) == revisions
+        with Session(engine) as session:
+            assert ProjectLibraryRepository(session).member(member["member_id"])["snapshot_fingerprint"] == stored
+        # Receiver continues to reject an unbound location even with valid checksums.
+        envelope = json.loads(previous)
+        envelope["body"]["rows"]["project_folder_records"].append({"folder_id": "injected-invalid", "project_id": member["project_id"], "folder_path": "unbound-relative-location", "created_on": "2026-01-01"})
+        body = envelope["body"]
+        body["source_signature"] = fingerprint({key: body[key] for key in ("project_id", "ltr_number", "title", "rows", "files", "assets", "operation_history")})
+        envelope["checksum"] = fingerprint(body)
+        bad = tmp_path / "bad-packet"
+        shutil.copytree(root, bad)
+        (bad / ".connlab/portable/snapshot.json").write_text(json.dumps(envelope), encoding="utf-8")
+        b, _, target_engine = app_at(tmp_path / "B")
+        try:
+            refused = b.post("/api/project-library/restore-plan", json={"folder": str(bad)})
+            assert refused.status_code == 200 and refused.json()["status"] == "unavailable", refused.text
+            assert "unbound" in " ".join(refused.json()["blockers"]).lower()
+            assert b.get("/api/project-library/members").json()["items"] == []
+        finally:
+            target_engine.dispose()
+    finally:
+        engine.dispose()

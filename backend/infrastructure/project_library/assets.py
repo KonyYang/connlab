@@ -36,6 +36,9 @@ class PortableAssets:
 
     def encode(self, rows):
         def encode_path(value):
+            if value.startswith("manual:legacy-relative:"):
+                self.warnings.append("A legacy relative file reference is unresolved: " + value[len("manual:legacy-relative:"):])
+                return value
             if value.startswith(("manual:", "shared-package-provenance:")):
                 return value
             try:
@@ -63,7 +66,15 @@ class PortableAssets:
                 key = sha256(value.encode()).hexdigest()
                 self.warnings.append("A referenced location could not be read.")
                 return "@missing/" + key
-        transformed = transform_paths(rows, encode_path)
+        # Old Matrix imports retained a document name in this metadata field.
+        # Preserve it as opaque provenance; absolute-required workspace/asset
+        # fields still fail the shared reader contract rather than being guessed.
+        sources = [dict(row) for row in rows.get("source_matrix_import_records", [])]
+        for row in sources:
+            value = row.get("source_document_path")
+            if value and not value.startswith(("manual:", "shared-package-provenance:")) and not Path(value).is_absolute():
+                row["source_document_path"] = "manual:legacy-relative:" + value
+        transformed = transform_paths({**rows, "source_matrix_import_records": sources}, encode_path)
         for row in transformed.get("project_official_workspace_records", []):
             row["template_source_path"] = "@resource/project_folder_template"
         project_hash = sha256(self.member["project_id"].encode()).hexdigest()
