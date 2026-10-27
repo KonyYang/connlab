@@ -84,6 +84,88 @@ describe("Library project management", () => {
     expect(api.preparePortableProject).toHaveBeenCalledWith("member-1", "data-now");
   });
 
+  it("refreshes snapshot eligibility and files immediately after takeover", async () => {
+    const user = userEvent.setup();
+    const blocker = "Take over this project before preparing test-data portability.";
+    vi.mocked(api.getPortableInfo).mockResolvedValueOnce({ ...portable, status: "unavailable", created_at: null, blockers: [blocker], record_counts: {}, file_count: 0 }).mockResolvedValue({ ...portable, status: "missing", created_at: null, fingerprint: "after-takeover", blockers: [], warnings: [] });
+    vi.mocked(api.planLibraryTakeover).mockResolvedValue({ plan_id: "take-1", fingerprint: "take-proof", project_id: null, ltr_number: member.ltr_number, title: member.title, status: "needs_information", missing: ["Confirm sample information"], warnings: [], blockers: [] });
+    vi.mocked(api.takeoverLibraryProject).mockResolvedValue({ member: { ...member, project_id: "project-1", can_continue: true }, project_id: "project-1", warnings: [] });
+    render(<ProjectLibraryMember memberId="member-1" onBack={vi.fn()} onOpenProject={vi.fn()} />);
+    expect(await screen.findByText(blocker)).toBeTruthy();
+    vi.mocked(api.getLibraryFiles).mockResolvedValue({ items: [{ name: "Project data", relative_path: "Project data", is_directory: true, size_bytes: null }], warnings: [] });
+    await user.click(screen.getByRole("button", { name: "Continue Testing" }));
+    await user.click(await screen.findByRole("button", { name: "Confirm Takeover" }));
+    expect(await screen.findByText("No Snapshot")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Prepare to Take" })).toHaveProperty("disabled", false);
+    expect(screen.queryByText(blocker)).toBeNull();
+    expect(screen.getByText("Project data")).toBeTruthy();
+    expect(screen.getByText(/Data to Prepare/)).toBeTruthy();
+  });
+
+  it("keeps saved coverage separate from new files until the latest snapshot is prepared", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.getPortableInfo).mockResolvedValue({ ...portable, record_counts: { result_dataset_revisions: 1 }, file_count: 8, warnings: [] });
+    vi.mocked(api.preparePortableProject).mockResolvedValue({ ...portable, status: "current", record_counts: { result_dataset_revisions: 2 }, file_count: 9, warnings: [] });
+    render(<ProjectLibraryMember memberId="member-1" onBack={vi.fn()} onOpenProject={vi.fn()} />);
+    expect(await screen.findByText(/Saved Snapshot Data.*8 files/)).toBeTruthy();
+    vi.mocked(api.getLibraryFiles).mockResolvedValue({ items: [{ name: "New measurement.xlsx", relative_path: "New measurement.xlsx", is_directory: false, size_bytes: 2048 }], warnings: [] });
+    await user.click(screen.getByRole("button", { name: "Refresh Files" }));
+    expect(await screen.findByText("New measurement.xlsx")).toBeTruthy();
+    expect(screen.getByText("1 records")).toBeTruthy();
+    expect(screen.getByText(/Saved Snapshot Data.*8 files/)).toBeTruthy();
+    expect(screen.getByText("Saved snapshot does not include the latest project changes. Prepare again before taking this project to another computer.")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Prepare to Take" }));
+    await user.click(screen.getByRole("button", { name: "Confirm Snapshot" }));
+    expect(await screen.findByText(/Saved Snapshot Data.*9 files/)).toBeTruthy();
+    expect(screen.getByText("2 records")).toBeTruthy();
+    expect(screen.queryByText("Saved snapshot does not include the latest project changes. Prepare again before taking this project to another computer.")).toBeNull();
+  });
+
+  it.each(["title", "location"] as const)("refreshes snapshot coverage and file browsing after a confirmed %s change", async kind => {
+    const user = userEvent.setup();
+    const plan = { plan_id: "change-1", fingerprint: "change-proof", source_path: member.folder_path, target_path: "D:/library/Revised", warnings: [] };
+    vi.mocked(api.planLibraryTitle).mockResolvedValue(plan);
+    vi.mocked(api.planLibraryLocation).mockResolvedValue(plan);
+    vi.mocked(api.updateLibraryTitle).mockResolvedValue({ ...member, title: "Revised" });
+    vi.mocked(api.updateLibraryLocation).mockResolvedValue({ ...member, folder_path: plan.target_path });
+    const initialPortable = { ...portable, status: "current" as const, warnings: [] };
+    vi.mocked(api.getPortableInfo).mockResolvedValueOnce(initialPortable).mockResolvedValue({ ...portable, warnings: ["Review the updated project before preparing again."] });
+    render(<ProjectLibraryMember memberId="member-1" onBack={vi.fn()} onOpenProject={vi.fn()} />);
+    expect(await screen.findByText("Ready to Take")).toBeTruthy();
+    const label = kind === "title" ? "Title" : "Location";
+    await user.click(screen.getByRole("button", { name: kind === "title" ? "Edit Title" : "Locate Folder" }));
+    const input = screen.getByRole("textbox");
+    await user.clear(input); await user.type(input, kind === "title" ? "Revised" : plan.target_path);
+    await user.click(screen.getByRole("button", { name: `Review ${label}` }));
+    vi.mocked(api.getLibraryFiles).mockResolvedValue({ items: [{ name: "Updated files", relative_path: "Updated files", is_directory: true, size_bytes: null }], warnings: [] });
+    await user.click(await screen.findByRole("button", { name: `Confirm ${label}` }));
+    expect(await screen.findByText("Needs Update")).toBeTruthy();
+    expect(screen.getByText("Review the updated project before preparing again.")).toBeTruthy();
+    expect(screen.getByText("Updated files")).toBeTruthy();
+  });
+
+  it("ignores snapshot and file refreshes from a takeover after navigation to another member", async () => {
+    const user = userEvent.setup();
+    let resolveSnapshot!: (value: api.PortableInfo) => void;
+    let resolveFiles!: (value: api.LibraryFiles) => void;
+    vi.mocked(api.getLibraryMember).mockResolvedValueOnce(member).mockResolvedValueOnce({ ...member, member_id: "member-2", title: "Other project" });
+    vi.mocked(api.getPortableInfo).mockResolvedValueOnce(portable).mockImplementationOnce(() => new Promise(resolve => { resolveSnapshot = resolve; })).mockResolvedValue({ ...portable, status: "current", file_count: 20, warnings: [] });
+    vi.mocked(api.getLibraryFiles).mockResolvedValueOnce({ items: [], warnings: [] }).mockImplementationOnce(() => new Promise(resolve => { resolveFiles = resolve; })).mockResolvedValue({ items: [], warnings: [] });
+    vi.mocked(api.planLibraryTakeover).mockResolvedValue({ plan_id: "take-1", fingerprint: "take-proof", project_id: null, ltr_number: member.ltr_number, title: member.title, status: "ready", missing: [], warnings: [], blockers: [] });
+    vi.mocked(api.takeoverLibraryProject).mockResolvedValue({ member: { ...member, project_id: "project-1", can_continue: true }, project_id: "project-1", warnings: [] });
+    const view = render(<ProjectLibraryMember memberId="member-1" onBack={vi.fn()} onOpenProject={vi.fn()} />);
+    await user.click(await screen.findByRole("button", { name: "Continue Testing" }));
+    await user.click(await screen.findByRole("button", { name: "Confirm Takeover" }));
+    await screen.findByRole("button", { name: "Matrix" });
+    view.rerender(<ProjectLibraryMember memberId="member-2" onBack={vi.fn()} onOpenProject={vi.fn()} />);
+    await screen.findByRole("heading", { name: "Other project" });
+    await act(async () => { resolveSnapshot({ ...portable, warnings: ["Old project warning"] }); resolveFiles({ items: [{ name: "Old project file", relative_path: "old", is_directory: false, size_bytes: 1 }], warnings: [] }); });
+    expect(screen.queryByText("Old project warning")).toBeNull();
+    expect(screen.queryByText("Old project file")).toBeNull();
+    expect(screen.getByText(/Saved Snapshot Data.*20 files/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Edit Title" })).toHaveProperty("disabled", false);
+  });
+
   it("shows missing facts before takeover and then uses the existing Matrix and Report routes", async () => {
     const user = userEvent.setup();
     const onOpenProject = vi.fn();
