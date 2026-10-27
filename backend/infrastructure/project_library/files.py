@@ -328,7 +328,7 @@ class LibraryFiles:
         return [checked_path(path) for path in root.iterdir()
                 if path.is_dir() and path.name.upper().startswith(number.upper() + " ")]
 
-    def workspace_business(self, member, workspace, root=None):
+    def workspace_business(self, member, workspace, root=None, *, allow_identity_refresh=False):
         if not workspace:
             return {"ready": True, "candidate": None, "warning": ""}
         root = checked_path(root or member["folder_path"])
@@ -349,7 +349,9 @@ class LibraryFiles:
             return {"ready": False, "candidate": None, "warning": "The registered business folder is missing or has multiple candidates. Restore a single verified project folder before reconnecting."}
         candidate = candidates[0]
         if proof and identity(candidate) != proof:
-            return {"ready": False, "candidate": None, "warning": "The business folder identity changed. The existing project cannot be linked to an unverified replacement."}
+            if not allow_identity_refresh:
+                return {"ready": False, "candidate": None, "warning": "The business folder identity changed. The existing project cannot be linked to an unverified replacement."}
+            warning = "This complete project root was copied to a new location. Verify its project and full LTR before confirming; the file-system identity will be recorded for this location."
         return {"ready": False, "candidate": str(candidate), "warning": warning}
 
     def title_context(self, member, title):
@@ -387,10 +389,17 @@ class LibraryFiles:
         official = read_json(manifest_file) if manifest_file.is_file() else {}
         if official.get("project_id") and official["project_id"] != expected_project:
             raise ProjectLibraryConflict("The official folder manifest belongs to another project.")
+        if official.get("dl_number") and official["dl_number"] != member["ltr_number"]:
+            raise ProjectLibraryConflict("The official folder manifest has a different LTR number.")
         number = NUMBER.search(candidate.name)
         if number and member["ltr_number"] and number.group(0).upper() != member["ltr_number"].upper():
             raise ProjectLibraryConflict("The folder has a different LTR number. Verify its ownership before reconnecting.")
-        business = self.workspace_business(member, workspace, candidate)
+        # A copied complete root retains stable software identity while its inode
+        # changes across volumes. Only explicit Locate with a matching marker may
+        # review that new identity; ordinary refresh and same-root replacement
+        # checks remain strict.
+        copied_root = bool(marker and candidate != Path(member["folder_path"]))
+        business = self.workspace_business(member, workspace, candidate, allow_identity_refresh=copied_root)
         if workspace and not business["candidate"]:
             raise ProjectLibraryConflict(business["warning"])
         details = {}

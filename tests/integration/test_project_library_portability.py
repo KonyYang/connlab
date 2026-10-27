@@ -772,3 +772,52 @@ def test_member_list_does_not_read_project_contents_and_reports_unchecked_snapsh
     assert detail["snapshot_status"]=="stale",detail
     assert any(path.endswith("daily-measurement.bin") for path in reads)
     engine.dispose()
+
+
+@pytest.mark.parametrize("state",["complete_root_copy","foreign_marker","foreign_manifest_ltr","multiple_candidates","same_root_replacement"])
+def test_location_rechecks_copied_root_identity_without_adopting_inner_replacements(tmp_path,state):
+    from tests.fixtures.project_library.full_graph import seed_full_graph
+    from backend.infrastructure.project_library.files import identity
+    from sqlalchemy import text
+    with seed_full_graph(tmp_path/"A") as graph:
+        client=graph["lab"]["client"];root=graph["project_root"];business=graph["business_folder"]
+        plan=client.post("/api/project-library/intake-plan",json={"sources":[str(root)]}).json()
+        batch=client.post("/api/project-library/batches",json={**{k:plan[k] for k in ("plan_id","fingerprint")},"selected":[str(root)]}).json()
+        member_id=batch["items"][0]["member_id"]
+        old_identity=identity(business)
+        if state=="same_root_replacement":
+            retained=business.with_name("Retained original business folder")
+            business.rename(retained);shutil.copytree(retained,business)
+            candidate=root
+        else:
+            candidate=tmp_path/"Different disk"/root.name
+            shutil.copytree(root,candidate)
+            root.rename(root.with_name(root.name+" unavailable-original"))
+            if state=="foreign_marker":
+                marker=candidate/".connlab/library.json"
+                payload=json.loads(marker.read_text(encoding="utf-8"));payload["project_id"]="foreign-project"
+                marker.write_text(json.dumps(payload),encoding="utf-8")
+            elif state=="foreign_manifest_ltr":
+                manifest=candidate/".connlab/manifest.json"
+                payload=json.loads(manifest.read_text(encoding="utf-8"));payload["dl_number"]="DL-2026-05-999"
+                manifest.write_text(json.dumps(payload),encoding="utf-8")
+            elif state=="multiple_candidates":
+                (candidate/"DL-2026-05-001 Another candidate").mkdir()
+        assert client.get("/api/project-library/members/"+member_id).json()["can_continue"] is False
+        review=client.post(f"/api/project-library/members/{member_id}/location-plan",json={"folder":str(candidate)})
+        if state!="complete_root_copy":
+            assert review.status_code==409,review.text
+            return
+        assert review.status_code==200,review.text
+        assert review.json()["warnings"]
+        repaired=confirm(client,f"/api/project-library/members/{member_id}/location",review.json())
+        assert repaired["can_continue"] is True,repaired
+        assert repaired["project_id"]=="P1" and repaired["ltr_number"]=="DL-2026-05-001"
+        actual=candidate/business.name
+        assert identity(actual)!=old_identity
+        marker=json.loads((candidate/".connlab/library.json").read_text(encoding="utf-8"))
+        manifest=json.loads((candidate/".connlab/manifest.json").read_text(encoding="utf-8"))
+        assert marker["business_identity"]==manifest["official_folder_identity"]==identity(actual)
+        with graph["lab"]["factory"]() as session:
+            assert session.execute(text("SELECT official_folder_path FROM project_official_workspace_records WHERE project_id='P1'")).scalar_one()==str(actual)
+            assert session.execute(text("SELECT COUNT(*) FROM ltr_records WHERE project_id='P1'")).scalar_one()==2
