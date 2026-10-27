@@ -124,6 +124,9 @@ class RestoreConflicts:
             blockers, warnings, options = [], list(body.get("warnings", [])), []
             existing = next((row for row in self.store.members() if row["project_id"] == body["project_id"]), None)
             target_signature = None
+            recovery = None if existing else self.p.pending_receive(body)
+            if recovery:
+                target = recovery["target_path"]
             if existing:
                 current, _ = self.p._capture(existing)
                 target_signature = fingerprint(current)
@@ -141,6 +144,8 @@ class RestoreConflicts:
                 if numbers:
                     status, options = "conflict", ["keep_as_history"]
                     blockers.append("Another project owns this LTR. Retain the source as history without changing the current owner.")
+                elif recovery:
+                    warnings.append("A verified earlier receive was interrupted. Confirm this fresh review to finish its working-project restoration without copying or discarding it.")
                 elif self.files.exists(target):
                     status, options = "conflict", ["keep_as_history"]
                     blockers.append("The destination is occupied. A retained history copy uses a separate destination.")
@@ -163,7 +168,7 @@ class RestoreConflicts:
             extra["backup_path"] = str(backup) if backup else None
             payload = {"source_path": folder, "target_path": target, "source_signature": body["source_signature"], "project_id": body["project_id"], "status": status, "blockers": blockers, **extra,
                        "target_member_id": existing["member_id"] if existing else None, "target_signature": target_signature,
-                       "owner_state": fingerprint(self.store.project_numbers())}
+                       "owner_state": fingerprint(self.store.project_numbers()), "recovery_plan_id": recovery["plan_id"] if recovery else None}
             saved = self.files.save_plan("restore", payload)
             return {"plan_id": saved["plan_id"], "fingerprint": saved["fingerprint"], "project_id": body["project_id"], "ltr_number": body["ltr_number"], "title": body["title"], "source_path": folder, "target_path": target, "status": status, "created_at": body["created_at"], "record_counts": {name: len(records) for name, records in body["rows"].items()}, "file_count": sum(not row["directory"] for row in body["files"]), "warnings": warnings, "blockers": blockers, **extra}
         except (OSError, ValueError, LookupError) as error:

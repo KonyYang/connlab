@@ -20,7 +20,7 @@ class MemberResponse(BaseModel):
     folder_path: str
     revision: int
     batch_id: str | None
-    snapshot_status: Literal["missing", "current", "stale", "unavailable"]
+    snapshot_status: Literal["not_checked", "missing", "current", "stale", "unavailable"]
     snapshot_created_at: str | None
     warnings: list[str]
     can_continue: bool

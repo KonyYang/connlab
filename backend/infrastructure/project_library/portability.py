@@ -215,6 +215,35 @@ class ProjectPortability:
             if decoded is None or not decoded.is_relative_to(self.settings.data_dir.resolve()):
                 raise ProjectLibraryError("A portable asset location is not supported.")
 
+    def pending_receive(self, body):
+        """Find a verified software-owned receive after its browser review was lost."""
+        directory = checked_path(self.files.root / "restores", must_exist=False)
+        if not directory.is_dir():
+            return None
+        matches = []
+        for path in directory.glob("*.json"):
+            try:
+                journal = read_json(checked_path(path))
+                if journal.get("phase") not in {"copying", "files_received"}:
+                    continue
+                previous = read_json(self.files.plans / (path.stem + ".json"))
+                payload = self.files.plan(path.stem, previous["fingerprint"], "restore")
+                if payload.get("resolution") or payload.get("project_id") != body["project_id"] or payload.get("source_signature") != body["source_signature"]:
+                    continue
+                target = checked_path(payload["target_path"])
+                if not target.is_relative_to(self.settings.projects_dir.resolve()):
+                    continue
+                marker = self.files.marker(target)
+                if not marker or marker.get("project_id") != body["project_id"] or marker.get("member_id") != body["member_id"]:
+                    continue
+                self._verify_files(target, body)
+                matches.append({"plan_id": path.stem, "target_path": str(target)})
+            except (OSError, ValueError, KeyError, LookupError):
+                continue
+        if len(matches) > 1:
+            raise ProjectLibraryConflict("Multiple interrupted receives match this source. Review their destinations before continuing.")
+        return matches[0] if matches else None
+
     def restore_plan(self, folder, resolution=None):
         from backend.infrastructure.project_library.restore_conflicts import RestoreConflicts
         return RestoreConflicts(self).plan(folder, resolution)
@@ -267,7 +296,8 @@ class ProjectPortability:
                 raise ProjectLibraryConflict("LTR ownership changed. Review the restore again.")
             self._check_existing_keys(body["rows"])
             target = payload["target_path"]
-            journal_path = self.files.root / "restores" / (plan_id + ".json")
+            receive_id = payload.get("recovery_plan_id") or plan_id
+            journal_path = self.files.root / "restores" / (receive_id + ".json")
             journal = read_json(journal_path) if journal_path.is_file() else None
             if not journal:
                 if self.files.exists(target):
@@ -277,7 +307,7 @@ class ProjectPortability:
             if not self.files.exists(target):
                 source = self.files.inspect_source(payload["source_path"])
                 source["member_marker"] = {"member_id": body["member_id"], "project_id": body["project_id"], "ltr_number": body["ltr_number"]}
-                self.files.receive(source, target, plan_id, "restore")
+                self.files.receive(source, target, receive_id, "restore")
             marker = self.files.marker(target)
             if not marker or marker.get("project_id") != body["project_id"] or marker.get("member_id") != body["member_id"]:
                 raise ProjectLibraryConflict("The recovered target identity differs from the reviewed project.")

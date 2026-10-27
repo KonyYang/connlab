@@ -65,6 +65,14 @@ class ProjectLibraryRepository:
     def project_exists(self, project_id):
         return bool(project_id and self.session.get(ProjectModel, project_id))
 
+    def project_context(self, project_id):
+        row = self.session.get(ProjectModel, project_id, populate_existing=True)
+        if row is None:
+            raise ProjectLibraryConflict("The existing project is no longer available.")
+        return {"registry_state": row.registry_state, "registry_revision": row.registry_revision,
+                "workspace": self.workspace(project_id),
+                "numbers": [number for number in self.project_numbers() if number["project_id"] == project_id]}
+
     def project_numbers(self):
         return [{"project_id": row.project_id, "ltr_number": row.ltr_number, "is_current_owner": row.is_current_owner, "status": row.status}
                 for row in self.session.scalars(select(LtrRecordModel))]
@@ -92,6 +100,8 @@ class ProjectLibraryRepository:
         self.session.commit()
 
     def link_existing_project(self, member, project_id):
+        if self.project_context(project_id)["registry_state"] != "active":
+            raise ProjectLibraryConflict("The existing project is retained history or in Trash. Resolve its registry state before takeover.")
         from backend.infrastructure.project_library.ownership import rebind_project_paths
         if any(row["project_id"] == project_id and row["member_id"] != member["member_id"] for row in self.members()):
             raise ProjectLibraryConflict("Another entry already manages this project.")

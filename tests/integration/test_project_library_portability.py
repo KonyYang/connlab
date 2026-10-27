@@ -619,3 +619,156 @@ def test_working_copy_switch_respects_existing_project_writer_slot(tmp_path):
         assert (Path(member["folder_path"])/"target-note.txt").read_text()=="working data"
     assert b.post("/api/project-library/restore",json=request).status_code==200
     ea.dispose();eb.dispose()
+
+
+@pytest.mark.parametrize("state",["renamed","missing","ambiguous"])
+def test_manual_inner_folder_change_requires_verified_explicit_reconnection(tmp_path,state):
+    from tests.fixtures.project_library.full_graph import seed_full_graph
+    from sqlalchemy import text
+    with seed_full_graph(tmp_path/"A") as graph:
+        client=graph["lab"]["client"];root=graph["project_root"];old=graph["business_folder"]
+        plan=client.post("/api/project-library/intake-plan",json={"sources":[str(root)]}).json()
+        batch=client.post("/api/project-library/batches",json={**{k:plan[k] for k in ("plan_id","fingerprint")},"selected":[str(root)]}).json()
+        member_id=batch["items"][0]["member_id"]
+        assert client.get("/api/project-library/members/"+member_id).json()["can_continue"] is True
+        renamed=old.with_name("DL-2026-05-001 Operator revised title")
+        if state=="missing":
+            old.rename(root.parent/"temporarily unavailable business folder")
+        else:
+            old.rename(renamed)
+            if state=="ambiguous":
+                (root/"DL-2026-05-001 Another folder").mkdir()
+        refreshed=client.get("/api/project-library/members/"+member_id).json()
+        assert refreshed["can_continue"] is False,refreshed
+        assert refreshed["warnings"]
+        listing=client.get("/api/project-library/members").json()["items"]
+        assert next(item for item in listing if item["member_id"]==member_id)["can_continue"] is False
+        review=client.post(f"/api/project-library/members/{member_id}/location-plan",json={"folder":str(root)})
+        if state!="renamed":
+            assert review.status_code==409,review.text
+            return
+        assert review.status_code==200,review.text
+        assert review.json()["warnings"]
+        repaired=confirm(client,f"/api/project-library/members/{member_id}/location",review.json())
+        assert repaired["can_continue"] is True,repaired
+        assert repaired["title"]=="Operator revised title"
+        manifest=json.loads((root/".connlab/manifest.json").read_text(encoding="utf-8"))
+        assert manifest["official_project_folder_path"]==str(renamed)
+        with graph["lab"]["factory"]() as session:
+            assert session.execute(text("SELECT official_folder_path FROM project_official_workspace_records WHERE project_id='P1'")).scalar_one()==str(renamed)
+            assert session.execute(text("SELECT path FROM file_assets WHERE asset_id='qa-llcr-workbook'")).scalar_one().startswith(str(renamed))
+            assert session.execute(text("SELECT COUNT(*) FROM ltr_records WHERE project_id='P1'")).scalar_one()==2
+        assert (renamed/"Test results"/"DL-2026-05-001 LLCR Record.xlsx").exists()
+
+
+@pytest.mark.parametrize("state",["files_received","sql_committed","foreign_marker","changed_file"])
+def test_fresh_restore_review_recovers_owned_receive_without_adopting_foreign_changes(tmp_path,state):
+    import subprocess,sys
+    a,_,ea=app_at(tmp_path/"A");b,settings,eb=app_at(tmp_path/"B")
+    source=prepared_manual_project(a,tmp_path/"old")
+    plan=b.post("/api/project-library/restore-plan",json={"folder":source["folder_path"]}).json()
+    script="""
+import os
+from pathlib import Path
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+from backend.shared.config import Settings
+from backend.infrastructure.storage.database import init_db
+from backend.infrastructure.storage.repositories.project_library import ProjectLibraryRepository
+from backend.infrastructure.project_library.files import LibraryFiles
+from backend.infrastructure.project_library.portability import ProjectPortability
+root=Path(ROOT)
+settings=Settings(root/'Data',root/'Projects',root/'Templates',root/'Data'/'connlab.sqlite3',library_root=root)
+engine=create_engine('sqlite:///'+str(settings.database_path));init_db(engine)
+with Session(engine) as session:
+    operation=ProjectPortability(ProjectLibraryRepository(session),LibraryFiles(settings),settings)
+    original=operation._insert
+    def crash(*args,**kwargs):
+        if COMMIT:
+            original(*args,**kwargs)
+        os._exit(42)
+    operation._insert=crash
+    operation.restore(PLAN,EXPECTED)
+""".replace("ROOT",repr(str(settings.library_root))).replace("COMMIT",repr(state=="sql_committed")).replace("PLAN",repr(plan["plan_id"])).replace("EXPECTED",repr(plan["fingerprint"]))
+    crashed=subprocess.run([sys.executable,"-c",script],capture_output=True,text=True,timeout=20)
+    assert crashed.returncode==42,crashed.stderr
+    target=Path(plan["target_path"])
+    if state=="foreign_marker":
+        path=target/".connlab/library.json";data=json.loads(path.read_text(encoding="utf-8"));data["member_id"]="foreign-owner";path.write_text(json.dumps(data),encoding="utf-8")
+    elif state=="changed_file":
+        (target/"result.txt").write_text("unreviewed target change",encoding="utf-8")
+    fresh=b.post("/api/project-library/restore-plan",json={"folder":source["folder_path"]}).json()
+    assert fresh["plan_id"]!=plan["plan_id"]
+    if state in {"foreign_marker","changed_file"}:
+        assert fresh["status"]=="conflict",fresh
+        with Session(eb) as session:
+            assert session.get(ProjectModel,source["project_id"]) is None
+    else:
+        assert fresh["status"] in {"ready","already_added"},fresh
+        restored=confirm(b,"/api/project-library/restore",fresh)
+        assert restored["member"]["project_id"]==source["project_id"]
+        assert restored["member"]["can_continue"] is True
+        assert len(b.get("/api/project-library/members").json()["items"])==1
+    ea.dispose();eb.dispose()
+
+
+def test_link_existing_project_takeover_honors_writer_slot_and_stale_review(tmp_path):
+    from backend.infrastructure.storage.models import ProjectFolderRecordModel
+    from datetime import date
+    client,settings,engine=app_at(tmp_path/"library")
+    source=tmp_path/"DL-2026-09-032 Existing version";source.mkdir()
+    (source/"result.txt").write_text("existing evidence",encoding="utf-8")
+    (source/".connlab").mkdir()
+    (source/".connlab/manifest.json").write_text(json.dumps({"project_id":"existing-P1","dl_number":"DL-2026-09-032"}),encoding="utf-8")
+    with Session(engine) as session:
+        session.add(ProjectModel(project_id="existing-P1",product_name="Existing",requestor="Lab",status="draft",registry_state="active"))
+        session.flush()
+        session.add(ProjectFolderRecordModel(folder_id="existing-folder",project_id="existing-P1",folder_path=str(source),created_on=date.today()))
+        session.commit()
+    plan=client.post("/api/project-library/intake-plan",json={"sources":[str(source)]}).json()
+    batch=client.post("/api/project-library/batches",json={**{k:plan[k] for k in ("plan_id","fingerprint")},"selected":[str(source)]}).json()
+    member_id=batch["items"][0]["member_id"]
+    review=client.get(f"/api/project-library/members/{member_id}/takeover-plan").json()
+    with LibraryFiles(settings).project_lock("existing-P1"):
+        response=client.post(f"/api/project-library/members/{member_id}/takeover",json={k:review[k] for k in ("plan_id","fingerprint")})
+        assert response.status_code==409,response.text
+        with Session(engine) as session:
+            assert session.get(ProjectFolderRecordModel,"existing-folder").folder_path==str(source)
+    with Session(engine) as session:
+        session.get(ProjectModel,"existing-P1").registry_revision+=1
+        session.commit()
+    assert client.post(f"/api/project-library/members/{member_id}/takeover",json={k:review[k] for k in ("plan_id","fingerprint")}).status_code==409
+    review=client.get(f"/api/project-library/members/{member_id}/takeover-plan").json()
+    received=client.get("/api/project-library/members/"+member_id).json()
+    manifest=Path(received["folder_path"])/".connlab/manifest.json"
+    manifest.write_text(json.dumps({"project_id":"foreign-project","dl_number":"DL-2026-09-032"}),encoding="utf-8")
+    assert client.post(f"/api/project-library/members/{member_id}/takeover",json={k:review[k] for k in ("plan_id","fingerprint")}).status_code==409
+    with Session(engine) as session:
+        assert session.get(ProjectFolderRecordModel,"existing-folder").folder_path==str(source)
+    manifest.write_text(json.dumps({"project_id":"existing-P1","dl_number":"DL-2026-09-032"}),encoding="utf-8")
+    changed=confirm(client,f"/api/project-library/members/{member_id}/takeover",review)["member"]
+    assert changed["project_id"]=="existing-P1"
+    with Session(engine) as session:
+        assert session.get(ProjectFolderRecordModel,"existing-folder").folder_path==changed["folder_path"]
+    engine.dispose()
+
+
+def test_member_list_does_not_read_project_contents_and_reports_unchecked_snapshot(tmp_path,monkeypatch):
+    from backend.infrastructure.project_library import files as files_module
+    client,_,engine=app_at(tmp_path/"library")
+    member=prepared_manual_project(client,tmp_path/"old")
+    (Path(member["folder_path"])/"daily-measurement.bin").write_bytes(bytes(1024*1024))
+    original=files_module.file_hash;reads=[]
+    def track(path):
+        reads.append(str(path));return original(path)
+    monkeypatch.setattr(files_module,"file_hash",track)
+    for query in ("", "History"):
+        response=client.get("/api/project-library/members",params={"q":query})
+        assert response.status_code==200,response.text
+        assert response.json()["items"][0]["snapshot_status"]=="not_checked"
+        assert response.json()["items"][0]["snapshot_created_at"] is None
+    assert reads==[],reads
+    detail=client.get("/api/project-library/members/"+member["member_id"]).json()
+    assert detail["snapshot_status"]=="stale",detail
+    assert any(path.endswith("daily-measurement.bin") for path in reads)
+    engine.dispose()

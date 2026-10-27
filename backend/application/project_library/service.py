@@ -26,27 +26,39 @@ class ProjectLibraryService:
         return self.files.scan(roots)
 
     def members(self, query="", batch_id=None):
-        return {"items": [self._public(row) for row in self.store.members(query, batch_id)]}
+        return {"items": [self._public(row, check_snapshot=False) for row in self.store.members(query, batch_id)]}
 
     def member(self, member_id):
         return self._public(self.store.member(member_id))
 
-    def _public(self, row):
+    def _public(self, row, *, check_snapshot=True):
         available, current = self.files.member_folder_available(row)
         warnings = []
         if not available:
             warnings.append("The folder is unavailable. Reconnect its location to browse files.")
         elif current != row["folder_path"]:
             warnings.append("This project was moved or renamed. Reconnect the verified location before continuing.")
+        business_ready = True
+        if available:
+            try:
+                business = self.files.workspace_business(row, self.store.workspace(row["project_id"]) if row["project_id"] else None, current)
+                business_ready = business["ready"]
+                if not business_ready:
+                    warnings.append(business["warning"])
+            except (OSError, ValueError):
+                business_ready = False
+                warnings.append("The registered project folder cannot be verified. Reconnect its location before continuing.")
         pending = self.files.pending_change(row["member_id"])
         if pending:
             warnings.append("A project location change needs recovery. Review its title or location to finish it.")
-        portable = self.portability.status(row) if self.portability else {"status": "missing", "created_at": None}
+        portable = {"status": "not_checked", "created_at": None}
+        if check_snapshot:
+            portable = self.portability.status(row) if self.portability else {"status": "missing", "created_at": None}
         return {key: row[key] for key in ("member_id", "project_id", "ltr_number", "title", "folder_path", "revision", "batch_id")} | {
             "folder_path": current or row["folder_path"], "snapshot_status": portable["status"],
             "snapshot_created_at": portable.get("created_at"), "warnings": warnings,
             "is_history": row.get("is_history", False),
-            "can_continue": bool(row["project_id"] and not row.get("is_history") and available and current == row["folder_path"] and not pending)}
+            "can_continue": bool(row["project_id"] and not row.get("is_history") and available and business_ready and current == row["folder_path"] and not pending)}
 
     def intake_plan(self, sources, assignments=()):
         self._require_configured()
@@ -281,7 +293,7 @@ class ProjectLibraryService:
         if pending:
             return pending
         member = self.store.member(member_id)
-        payload = self.files.locate_context(member, folder) | {"kind": "location"}
+        payload = self.files.locate_context(member, folder, self.store.workspace(member["project_id"]) if member["project_id"] else None) | {"kind": "location"}
         for other in self.store.members():
             if other["member_id"] != member_id and self.files.overlap(other["folder_path"], payload["target_path"]):
                 raise ProjectLibraryConflict("Another library entry already uses this location.")
@@ -290,6 +302,8 @@ class ProjectLibraryService:
                 raise ProjectLibraryConflict("This location overlaps another project's working folder.")
         plan = self.files.save_plan("location", payload)
         warnings = ["The identity marker is missing. Verify this folder belongs to the selected LTR and project before confirming; its marker will be rebuilt."] if payload["manual_identity_rebuild"] else []
+        if payload.get("business_warning"):
+            warnings.append(payload["business_warning"])
         return {key: plan[key] for key in ("plan_id", "fingerprint")} | {key: payload[key] for key in ("source_path", "target_path")} | {"warnings": warnings}
 
     def change(self, member_id, plan_id, fingerprint, kind):
@@ -325,13 +339,17 @@ class ProjectLibraryService:
                 title = payload.get("title", member["title"])
                 if state["effects"]["phase"] == "moved":
                     if member["revision"] == payload["revision"]:
-                        business = self.files.business_path({**member, "folder_path": root})
+                        business = Path(payload["business_target_path"]) if payload.get("business_target_path") else self.files.business_path({**member, "folder_path": root})
                         member = self.store.publish_move(member, old, target, root, title, str(business))
                     elif not (member["revision"] == payload["revision"] + 1 and member["folder_path"] == root and member["title"] == title):
                         raise ProjectLibraryConflict("The project changed during recovery. Review the retained copies.")
                     state["effects"]["phase"] = "indexed"
                     self.files.changes.save(state)
-                self.files.rewrite_identity_metadata(root, old, target, member["project_id"])
+                workspace = self.store.workspace(member["project_id"]) if member["project_id"] else None
+                if workspace:
+                    self.files.publish_workspace_metadata(root, workspace)
+                else:
+                    self.files.rewrite_identity_metadata(root, old, target, member["project_id"])
                 self.files.write_marker(member)
                 state["status"] = "completed"
                 state["effects"]["phase"] = "completed"
@@ -374,7 +392,10 @@ class ProjectLibraryService:
             missing.extend(["Confirm Basic Information", "Review and confirm the test Matrix"])
             if member["ltr_number"]:
                 warnings.append("The old LTR is retained as evidence; no public workbook is changed or number registered automatically.")
-        payload = {"member_id": member_id, "revision": member["revision"], "project_id": member["project_id"], "existing_project_id": existing_project, "blockers": blockers}
+        existing_context = self.store.project_context(existing_project) if existing_project else None
+        if existing_context and existing_context["registry_state"] != "active":
+            blockers.append("The existing project is retained history or in Trash. Resolve its registry state before takeover.")
+        payload = {"member_id": member_id, "revision": member["revision"], "project_id": member["project_id"], "existing_project_id": existing_project, "existing_context": self.files.digest(existing_context), "blockers": blockers}
         plan = self.files.save_plan("takeover", payload)
         return {"plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"], "project_id": member["project_id"],
                 "ltr_number": member["ltr_number"], "title": member["title"],
@@ -384,23 +405,27 @@ class ProjectLibraryService:
     def takeover(self, member_id, plan_id, fingerprint):
         with self.files.lock():
             payload = self.files.plan(plan_id, fingerprint, "takeover")
-            member = self.store.member(member_id)
-            if payload["member_id"] != member_id or payload["revision"] != member["revision"]:
-                raise ProjectLibraryConflict("The project changed. Review takeover again.")
-            if not self.files.member_folder_available(member)[0]:
-                raise ProjectLibraryConflict("Reconnect the project folder before taking it over.")
-            if payload.get("blockers"):
-                raise ProjectLibraryConflict(" ".join(payload["blockers"]))
-            if not member["project_id"] and self.files.has_portable(member["folder_path"]):
-                raise ProjectLibraryConflict("Inspect and restore the carried test data before taking over this project.")
-            if not member["project_id"]:
-                existing = payload.get("existing_project_id")
-                if existing:
-                    self.store.link_existing_project(member, existing)
-                else:
-                    self.store.create_planning_project(member)
+            with self.files.project_lock(payload.get("existing_project_id") or payload.get("project_id")):
                 member = self.store.member(member_id)
-            self.files.publish_workspace_metadata(member["folder_path"], self.store.workspace(member["project_id"]))
-            self.files.write_marker(member)
-            return {"member": self._public(member), "project_id": member["project_id"],
-                    "warnings": ["Review missing project information before confirming test authority."] if not payload["project_id"] else []}
+                if payload["member_id"] != member_id or payload["revision"] != member["revision"]:
+                    raise ProjectLibraryConflict("The project changed. Review takeover again.")
+                if not self.files.member_folder_available(member)[0]:
+                    raise ProjectLibraryConflict("Reconnect the project folder before taking it over.")
+                if payload.get("blockers"):
+                    raise ProjectLibraryConflict(" ".join(payload["blockers"]))
+                if not member["project_id"] and self.files.has_portable(member["folder_path"]):
+                    raise ProjectLibraryConflict("Inspect and restore the carried test data before taking over this project.")
+                if not member["project_id"]:
+                    existing = payload.get("existing_project_id")
+                    if existing and self.files.digest(self.store.project_context(existing)) != payload.get("existing_context"):
+                        raise ProjectLibraryConflict("The existing project changed after review. Review takeover again.")
+                    if existing:
+                        self.files.locate_context(member, member["folder_path"], self.store.workspace(existing))
+                        self.store.link_existing_project(member, existing)
+                    else:
+                        self.store.create_planning_project(member)
+                    member = self.store.member(member_id)
+                self.files.publish_workspace_metadata(member["folder_path"], self.store.workspace(member["project_id"]))
+                self.files.write_marker(member)
+                return {"member": self._public(member), "project_id": member["project_id"],
+                        "warnings": ["Review missing project information before confirming test authority."] if not payload["project_id"] else []}

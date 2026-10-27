@@ -300,8 +300,18 @@ class LibraryFiles:
         return read_json(path) if path.is_file() else None
 
     def write_marker(self, member):
-        atomic_json(Path(member["folder_path"]) / SOFTWARE_MARKER,
-                    {"format_version": 1, "member_id": member["member_id"], "project_id": member["project_id"], "source_project_id": member.get("source_project_id") or member["project_id"], "ltr_number": member["ltr_number"]})
+        root = checked_path(member["folder_path"])
+        payload = {"format_version": 1, "member_id": member["member_id"], "project_id": member["project_id"], "source_project_id": member.get("source_project_id") or member["project_id"], "ltr_number": member["ltr_number"]}
+        business = self.business_path(member)
+        manifest = root / ".connlab" / "manifest.json"
+        if manifest.is_file():
+            official = read_json(manifest)
+            if official.get("project_id") == (member["project_id"] or member.get("source_project_id")):
+                registered = Path(official.get("official_project_folder_path") or root)
+                if registered.is_dir() and registered.is_relative_to(root):
+                    business = checked_path(registered)
+        payload.update(business_relative_path=business.relative_to(root).as_posix(), business_identity=identity(business))
+        atomic_json(root / SOFTWARE_MARKER, payload)
 
     def business_path(self, member):
         root = checked_path(member["folder_path"])
@@ -311,6 +321,36 @@ class LibraryFiles:
             if len(candidates) == 1:
                 return candidates[0]
         return root
+
+    def business_candidates(self, root, number):
+        if not number:
+            return []
+        return [checked_path(path) for path in root.iterdir()
+                if path.is_dir() and path.name.upper().startswith(number.upper() + " ")]
+
+    def workspace_business(self, member, workspace, root=None):
+        if not workspace:
+            return {"ready": True, "candidate": None, "warning": ""}
+        root = checked_path(root or member["folder_path"])
+        registered_root = Path(workspace["local_workspace_path"])
+        registered = Path(workspace["official_folder_path"])
+        if not registered.is_relative_to(registered_root):
+            raise ProjectLibraryConflict("The registered business folder is outside its project root.")
+        relative = registered.relative_to(registered_root)
+        expected = root / relative
+        marker = self.marker(root) or {}
+        manifest = read_json(root / ".connlab" / "manifest.json") if (root / ".connlab" / "manifest.json").is_file() else {}
+        proof = marker.get("business_identity") if marker.get("business_relative_path") == relative.as_posix() else manifest.get("official_folder_identity")
+        if expected.is_dir() and (not proof or identity(checked_path(expected)) == proof):
+            return {"ready": True, "candidate": str(checked_path(expected)), "warning": ""}
+        candidates = self.business_candidates(root, member["ltr_number"])
+        warning = "The inner project folder was moved or renamed. Reconnect this project root to review and update its registered references before continuing."
+        if len(candidates) != 1:
+            return {"ready": False, "candidate": None, "warning": "The registered business folder is missing or has multiple candidates. Restore a single verified project folder before reconnecting."}
+        candidate = candidates[0]
+        if proof and identity(candidate) != proof:
+            return {"ready": False, "candidate": None, "warning": "The business folder identity changed. The existing project cannot be linked to an unverified replacement."}
+        return {"ready": False, "candidate": str(candidate), "warning": warning}
 
     def title_context(self, member, title):
         marker = self.marker(member["folder_path"])
@@ -336,7 +376,7 @@ class LibraryFiles:
                 raise ProjectLibraryConflict("Another folder already uses the requested title.")
             os.rename(source, target)
 
-    def locate_context(self, member, folder):
+    def locate_context(self, member, folder, workspace=None):
         candidate = checked_path(folder)
         marker = self.marker(candidate)
         expected_project = member["project_id"] or member.get("source_project_id")
@@ -350,7 +390,17 @@ class LibraryFiles:
         number = NUMBER.search(candidate.name)
         if number and member["ltr_number"] and number.group(0).upper() != member["ltr_number"].upper():
             raise ProjectLibraryConflict("The folder has a different LTR number. Verify its ownership before reconnecting.")
-        return {"member_id": member["member_id"], "revision": member["revision"],
+        business = self.workspace_business(member, workspace, candidate)
+        if workspace and not business["candidate"]:
+            raise ProjectLibraryConflict(business["warning"])
+        details = {}
+        if workspace:
+            business_path = Path(business["candidate"])
+            name = business_path.name
+            title = name[len(member["ltr_number"]):].strip() if member["ltr_number"] and name.upper().startswith(member["ltr_number"].upper()+" ") else member["title"]
+            details = {"business_target_path": str(business_path), "business_identity": identity(business_path),
+                       "business_reconnect_required": not business["ready"], "business_warning": business["warning"], "title": title}
+        return {**details, "member_id": member["member_id"], "revision": member["revision"],
                 "source_path": member["folder_path"], "target_path": str(candidate), "identity": identity(candidate),
                 "marker": marker, "manual_identity_rebuild": marker is None,
                 "official_identity": {key: official.get(key) for key in ("project_id", "dl_number")}}
@@ -426,6 +476,11 @@ class LibraryFiles:
         if self.marker(root) != payload.get("marker"):
             return False
         if payload["kind"] == "location":
+            business = payload.get("business_target_path")
+            if business and (not Path(business).is_dir() or identity(checked_path(business)) != payload["business_identity"]):
+                return False
+            if business and payload.get("business_reconnect_required") and self.business_candidates(Path(root), member["ltr_number"]) != [Path(business)]:
+                return False
             manifest_file = Path(root) / ".connlab" / "manifest.json"
             official = read_json(manifest_file) if manifest_file.is_file() else {}
             if {key: official.get(key) for key in ("project_id", "dl_number")} != payload.get("official_identity"):

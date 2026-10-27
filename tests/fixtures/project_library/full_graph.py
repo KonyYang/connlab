@@ -102,7 +102,7 @@ def _seed_owned_sources(lab):
             FileAssetModel(asset_id="qa-file-application", project_id=PROJECT_ID, asset_type="application_form", path=str(attachment), original_name=attachment.name, source_package_id="qa-package", source_intake_asset_id="qa-intake-application", source_role="application_form", sha256=_hash(attachment)),
             ProjectTemporaryContextModel(context_id="qa-temporary-context", project_id=PROJECT_ID, request_summary="Historic request context remains provenance", sample_description="6 QA Connector samples", test_item="LLCR", source_asset_ids_json=json.dumps(["asset-1", "qa-file-application"])),
             LtrRecordModel(ltr_id="qa-ltr-current", project_id=PROJECT_ID, ltr_number=LTR, status="registered", registered_on=date(2026, 10, 1), is_current_owner=True, owner_version=2),
-            LtrRecordModel(ltr_id="qa-ltr-history", project_id=PROJECT_ID, ltr_number=LTR, status="superseded", registered_on=date(2026, 9, 30), is_current_owner=False, superseded_at=AT, superseded_by_ltr_id="qa-ltr-current", superseded_reason="Preserved association history", owner_version=1),
+            LtrRecordModel(ltr_id="qa-ltr-history", project_id=PROJECT_ID, ltr_number=LTR, status="registered", registered_on=date(2026, 9, 30), is_current_owner=False, superseded_at=AT, superseded_by_ltr_id="qa-ltr-current", superseded_reason="Preserved association history", owner_version=1),
             LtrAssociationEventModel(event_id="qa-ltr-event", ltr_number=LTR, event_type="association_reconfirmed", old_ltr_id="qa-ltr-history", old_project_id=PROJECT_ID, new_ltr_id="qa-ltr-current", new_project_id=PROJECT_ID, operator="QA Operator", reason="Keep history, no renumbering", created_at=AT),
             ProjectRegistryEventModel(event_id="qa-registry-event", operation_id="qa-registry-operation", project_id=PROJECT_ID, previous_state="active", new_state="active", revision=1, reason="Source identity verified", actor="QA Operator", changed_at=AT),
             ProjectLifecycleEventModel(event_id="qa-lifecycle-event", project_id=PROJECT_ID, event_type="resumed", previous_lifecycle_state="stopped", new_lifecycle_state="active", reason="QA continuing tests", operator="QA Operator", created_at=AT),
@@ -356,6 +356,8 @@ def seed_full_graph(root):
         _seed_remaining_families(lab, business)
         result = _ok(lab["client"].post("/api/application-forms/qa-form/precheck/run"))
         assert result["issues"], "The deliberately incomplete application must produce review issues"
+        workspace_preview = lab["client"].get("/api/projects/P1/official-workspace/preview")
+        assert workspace_preview.status_code == 200, workspace_preview.text
         expected = _inspect(lab, business, seed)
         yield {"lab": lab, "expected": expected, "project_root": local, "business_folder": business}
     finally:
