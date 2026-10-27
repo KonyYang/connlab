@@ -367,7 +367,11 @@ class ProjectPortability:
                     connection.execute(model.insert().values(**current))
             session.add(ProjectLibraryMemberModel(**member))
             if recovery_member:
-                session.add(ProjectLibraryMemberModel(**recovery_member))
+                old_recovery = session.get(ProjectLibraryMemberModel, recovery_member["member_id"])
+                if old_recovery is None:
+                    session.add(ProjectLibraryMemberModel(**recovery_member))
+                elif old_recovery.folder_path != recovery_member["folder_path"] or old_recovery.disposition != "recovery":
+                    raise ProjectLibraryConflict("The verified recovery point registration changed.")
             if operation_id:
                 from backend.infrastructure.storage.models_project_library import ProjectLibraryBatchModel
                 session.add(ProjectLibraryBatchModel(batch_id="restore_" + operation_id, payload_json=json.dumps({"committed": True})))

@@ -49,6 +49,9 @@ class ProjectLibraryService:
                 business_ready = False
                 warnings.append("The registered project folder cannot be verified. Reconnect its location before continuing.")
         pending = self.files.pending_change(row["member_id"])
+        replacement = self.files.pending_replacement_gate(row["project_id"])
+        if replacement:
+            warnings.append("A working-copy replacement was interrupted. Inspect the portable source again to finish recovery before continuing tests.")
         if pending:
             warnings.append("A project location change needs recovery. Review its title or location to finish it.")
         portable = {"status": "not_checked", "created_at": None}
@@ -58,7 +61,7 @@ class ProjectLibraryService:
             "folder_path": current or row["folder_path"], "snapshot_status": portable["status"],
             "snapshot_created_at": portable.get("created_at"), "warnings": warnings,
             "is_history": row.get("is_history", False),
-            "can_continue": bool(row["project_id"] and not row.get("is_history") and available and business_ready and current == row["folder_path"] and not pending)}
+            "can_continue": bool(row["project_id"] and not row.get("is_history") and available and business_ready and current == row["folder_path"] and not pending and not replacement)}
 
     def intake_plan(self, sources, assignments=()):
         self._require_configured()
@@ -77,6 +80,8 @@ class ProjectLibraryService:
                 member = self.store.member(target_id) if target_id else None
                 if member and member.get("is_history"):
                     raise ProjectLibraryConflict("Choose a working project for supplementary material; retained history is read-only.")
+                if member and self.files.pending_replacement_gate(member["project_id"]):
+                    raise ProjectLibraryConflict("Recover this project's interrupted replacement before adding supplementary material.")
                 target = self.files.suggested_target(source, new_title=new_title, target_member=member)
                 status, warnings, separate = "ready", [], False
                 workspace = self.store.workspace(source.get("project_id")) if source.get("project_id") else None
@@ -209,6 +214,8 @@ class ProjectLibraryService:
             member = self.store.member(existing)
             if member.get("is_history"):
                 raise ProjectLibraryConflict("Retained history cannot receive supplementary material.")
+            if self.files.pending_replacement_gate(member["project_id"]):
+                raise ProjectLibraryConflict("Recover the interrupted project replacement before receiving supplementary material.")
             if member["revision"] != source["target_revision"]:
                 raise ProjectLibraryConflict("The destination project changed. Review the intake again.")
         else:

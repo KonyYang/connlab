@@ -557,8 +557,12 @@ def test_receiver_rejects_self_consistent_assets_outside_own_project_partition(t
     engine.dispose()
 
 
-@pytest.mark.parametrize("crash_after_commit", [False,True])
-def test_process_crash_during_working_copy_switch_recovers_same_confirmation(tmp_path,crash_after_commit):
+@pytest.mark.parametrize("crash_after_commit,fresh_review,change", [
+    (False,False,None),(False,True,None),(True,False,None),(True,True,None),
+    (False,False,"file"),(False,True,"file"),(False,True,"database"),(False,True,"source"),
+    (False,True,"parcel_only"),
+])
+def test_process_crash_during_working_copy_switch_recovers_review(tmp_path,crash_after_commit,fresh_review,change):
     import subprocess
     import sys
     a,_,ea=app_at(tmp_path/"A");b,settings,eb=app_at(tmp_path/"B")
@@ -566,6 +570,13 @@ def test_process_crash_during_working_copy_switch_recovers_same_confirmation(tmp
     plan=b.post("/api/project-library/restore-plan",json={"folder":source["folder_path"]}).json()
     target=confirm(b,"/api/project-library/restore",plan)["member"]
     (Path(target["folder_path"])/"target-old.txt").write_text("old evidence",encoding="utf-8")
+    with Session(eb) as session:
+        session.get(ProjectModel,target["project_id"]).product_name="Original complete B SQL"
+        session.commit()
+    from backend.infrastructure.files.generation_journal import GenerationJournal
+    generation=GenerationJournal(settings.data_dir/"project_folder_generation")
+    previous=generation.create(target["project_id"],"update_in_place","previous-generation-context")
+    previous["status"]="completed";generation.save(previous)
     plan=b.post("/api/project-library/restore-plan",json={"folder":source["folder_path"],"resolution":"replace_working_copy"}).json()
     assert plan["status"]=="ready",plan
     script = """
@@ -595,6 +606,45 @@ with Session(engine) as session:
 """.replace("ROOT",repr(str(settings.library_root))).replace("AFTER",repr(crash_after_commit)).replace("PLAN",repr(plan["plan_id"])).replace("EXPECTED",repr(plan["fingerprint"]))
     result=subprocess.run([sys.executable,"-c",script],capture_output=True,text=True,timeout=20)
     assert result.returncode==42,result.stderr
+    assert b.get("/api/project-library/members/"+target["member_id"]).json()["can_continue"] is False
+    _assert_replacement_fences_public_writers(settings,eb,target["project_id"],plan["plan_id"])
+    histories=[item for item in b.get("/api/project-library/members").json()["items"] if item["is_history"]]
+    original=next(item for item in histories if (Path(item["folder_path"])/"target-old.txt").exists())
+    packet=json.loads((Path(original["folder_path"])/".connlab/portable/snapshot.json").read_text(encoding="utf-8"))
+    assert packet["body"]["rows"]["projects"][0]["product_name"]=="Original complete B SQL"
+    review_folder=source["folder_path"]
+    if change=="parcel_only":
+        source_folder=Path(source["folder_path"])
+        source_folder.rename(source_folder.with_name(source_folder.name+" unavailable-source"))
+        review_folder=target["folder_path"]
+    if change=="file":
+        (Path(target["folder_path"])/"added-after-crash.txt").write_text("retain new operator note",encoding="utf-8")
+    elif change=="database":
+        with Session(eb) as session:
+            session.get(ProjectModel,target["project_id"]).product_name="External edit after crash"
+            session.commit()
+    elif change=="source":
+        (Path(source["folder_path"])/"new-source-note.txt").write_text("new source revision",encoding="utf-8")
+        info=a.get(f"/api/project-library/members/{source['member_id']}/portable").json()
+        assert a.post(f"/api/project-library/members/{source['member_id']}/prepare",json={"fingerprint":info["fingerprint"]}).status_code==200
+    if change in {"file","database","source"}:
+        refused=b.post("/api/project-library/restore",json={"plan_id":plan["plan_id"],"fingerprint":plan["fingerprint"],"resolution":"replace_working_copy"})
+        assert refused.status_code==409,refused.text
+        fresh=b.post("/api/project-library/restore-plan",json={"folder":review_folder}).json()
+        assert fresh["status"]=="unavailable",fresh
+        if change=="file":
+            assert (Path(target["folder_path"])/"added-after-crash.txt").read_text()=="retain new operator note"
+        assert (Path(original["folder_path"])/"target-old.txt").read_text()=="old evidence"
+        assert LibraryFiles(settings).pending_replacement_gate(target["project_id"])
+        ea.dispose();eb.dispose()
+        return
+    if fresh_review:
+        fresh=b.post("/api/project-library/restore-plan",json={"folder":review_folder}).json()
+        assert fresh["status"]=="conflict",fresh
+        renewed=b.post("/api/project-library/restore-plan",json={"folder":review_folder,"resolution":"replace_working_copy"}).json()
+        assert renewed["backup_path"]==plan["backup_path"]
+        assert renewed["plan_id"]!=plan["plan_id"]
+        plan=renewed
     response=b.post("/api/project-library/restore",json={"plan_id":plan["plan_id"],"fingerprint":plan["fingerprint"],"resolution":"replace_working_copy"})
     assert response.status_code==200,response.text
     restored=response.json()
@@ -602,6 +652,8 @@ with Session(engine) as session:
     backup=b.get("/api/project-library/members/"+restored["backup_member_id"]).json()
     assert (Path(backup["folder_path"])/"target-old.txt").read_text()=="old evidence"
     assert not (Path(restored["member"]["folder_path"])/"target-old.txt").exists()
+    assert LibraryFiles(settings).pending_replacement_gate(target["project_id"]) is None
+    assert generation.read(target["project_id"])==previous
     ea.dispose();eb.dispose()
 
 
@@ -821,3 +873,41 @@ def test_location_rechecks_copied_root_identity_without_adopting_inner_replaceme
         with graph["lab"]["factory"]() as session:
             assert session.execute(text("SELECT official_folder_path FROM project_official_workspace_records WHERE project_id='P1'")).scalar_one()==str(actual)
             assert session.execute(text("SELECT COUNT(*) FROM ltr_records WHERE project_id='P1'")).scalar_one()==2
+
+
+def _assert_replacement_fences_public_writers(settings,engine,project_id,operation_id):
+    with pytest.MonkeyPatch.context() as patch:
+        for name,value in {"LIBRARY_ROOT":settings.library_root,"DATA_DIR":settings.data_dir,"PROJECTS_DIR":settings.projects_dir,
+                           "DATABASE_PATH":settings.database_path,"TEMPLATES_DIR":settings.templates_dir,"LOGS_DIR":settings.library_root/"logs",
+                           "LOCAL_CONFIG_PATH":settings.library_root/"local.toml","ADMIN_CONFIG_PATH":settings.library_root/"admin.toml"}.items():
+            patch.setenv("CONNLAB_"+name,str(value))
+        from backend.api.main import app
+        from backend.api import dependencies as deps
+        previous=dict(app.dependency_overrides)
+        def session():
+            with Session(engine) as current:
+                yield current
+                current.commit()
+        app.dependency_overrides[deps.get_settings]=lambda:settings
+        app.dependency_overrides[deps.get_session]=session
+        from backend.api.project_folder_generation_composition import ProjectFolderGenerationRunner
+        runner=ProjectFolderGenerationRunner(lambda:Session(engine),settings)
+        app.dependency_overrides[deps.get_project_folder_generation_service]=runner.service
+        try:
+            client=TestClient(app,raise_server_exceptions=False)
+            blocked=client.post(f"/api/projects/{project_id}/report-workspace/authoring/mappings",json={"expected_revision":0,"source_id":"not-a-source","kind":"specification","source_locator":"test","label":"Blocked edit","value":"must not write","status":"confirmed","reason":"fence verification"})
+            assert blocked.status_code==409,blocked.text
+            assert "unfinished" in blocked.text.lower() or "pending" in blocked.text.lower(),blocked.text
+            member=next(row for row in client.get("/api/project-library/members").json()["items"] if row["project_id"]==project_id)
+            supplement=settings.data_dir/"new-supplement.txt";supplement.write_text("Must wait for recovery",encoding="utf-8")
+            material=client.post("/api/project-library/intake-plan",json={"sources":[str(supplement)],"assignments":[{"source_path":str(supplement),"target_member_id":member["member_id"]}]}).json()
+            assert material["items"][0]["status"]=="unavailable",material
+            status=client.get(f"/api/projects/{project_id}/project-folder/generation")
+            assert status.status_code==200,status.text
+            assert status.json()["operation_id"]==operation_id
+            mistaken=client.post(f"/api/projects/{project_id}/project-folder/generation/resume",json={"operation_id":operation_id})
+            assert mistaken.status_code==409,mistaken.text
+            assert LibraryFiles(settings).pending_replacement_gate(project_id)["operation_id"]==operation_id
+        finally:
+            runner.pool.shutdown(wait=True)
+            app.dependency_overrides.clear();app.dependency_overrides.update(previous)

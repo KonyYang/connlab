@@ -531,16 +531,55 @@ class LibraryFiles:
         atomic_json(path, payload)
 
     @contextmanager
-    def project_lock(self, project_id):
+    def project_lock(self, project_id, *, restore_id=None):
         if not project_id:
             yield
             return
         journal = GenerationJournal(self.settings.data_dir / "project_folder_generation")
         with journal.lock(project_id):
             state = journal.read(project_id)
-            if state and state.get("status") != "completed":
+            matching_restore = bool(state and restore_id and state.get("strategy") == "project_library_replace"
+                                    and state.get("operation_id") == restore_id
+                                    and state.get("effects", {}).get("library_restore", {}).get("plan_id") == restore_id)
+            if state and state.get("status") != "completed" and not matching_restore:
                 raise ProjectLibraryConflict("Finish the interrupted project folder operation before changing its location.")
             yield
+
+    def pending_replacement_gate(self, project_id):
+        if not project_id:
+            return None
+        state = GenerationJournal(self.settings.data_dir / "project_folder_generation").read(project_id)
+        return state if state and state.get("strategy") == "project_library_replace" and state.get("status") != "completed" else None
+
+    def fence_replacement(self, project_id, plan_id):
+        journal = GenerationJournal(self.settings.data_dir / "project_folder_generation")
+        previous = journal.read(project_id)
+        if previous and previous["status"] != "completed":
+            raise ProjectLibraryConflict("Another unfinished project operation must be recovered first.")
+        if previous:
+            journal.archive(previous)
+        state = {"version": 1, "project_id": project_id, "operation_id": plan_id,
+                 "strategy": "project_library_replace", "context": "project_library_restore:" + plan_id,
+                 "status": "running", "step": 0, "completed_steps": [], "message": "Resume this replacement from Project Library.",
+                 "finalization_pending": True,
+                 "effects": {"library_restore": {"step": "library_restore", "plan_id": plan_id, "previous_state": previous}}}
+        journal.save(state)
+
+    def release_replacement_fence(self, project_id, plan_id):
+        journal = GenerationJournal(self.settings.data_dir / "project_folder_generation")
+        state = self.pending_replacement_gate(project_id)
+        if not state:
+            return
+        effect = state["effects"].get("library_restore", {})
+        if effect.get("plan_id") != plan_id or state.get("operation_id") != plan_id:
+            raise ProjectLibraryConflict("A different project replacement is pending. Its writer fence was retained.")
+        previous = effect.get("previous_state")
+        state.update(status="completed", finalization_pending=False, completed_steps=["library_restore"])
+        journal.archive(state)
+        if previous:
+            journal.save(previous)
+        else:
+            checked_path(journal.project_path(project_id) / "operation.json").unlink()
 
     def pending_change(self, member_id):
         state = self.changes.read(member_id)

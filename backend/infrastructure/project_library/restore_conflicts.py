@@ -114,12 +114,114 @@ class RestoreConflicts:
         self.p = portability
         self.store, self.files, self.settings = portability.store, portability.files, portability.settings
 
+    def _pending(self, project_id):
+        directory = checked_path(self.files.root / "restores", must_exist=False)
+        gate = self.files.pending_replacement_gate(project_id)
+        gate_id = gate["effects"].get("library_restore", {}).get("plan_id") if gate else None
+        matches = []
+        for path in directory.glob("*.json") if directory.is_dir() else ():
+            journal = read_json(checked_path(path))
+            if journal.get("resolution") != "replace_working_copy" or journal.get("member", {}).get("project_id") != project_id:
+                continue
+            if journal.get("phase") in {"rolled_back", "completed"} and path.stem != gate_id:
+                continue
+            saved = read_json(self.files.plans / (path.stem + ".json"))
+            payload = self.files.plan(path.stem, saved["fingerprint"], "restore")
+            self._validate_journal(journal, payload, path.stem)
+            matches.append({"plan_id": path.stem, "fingerprint": saved["fingerprint"], "journal": journal, "payload": payload})
+        if gate_id and not any(item["plan_id"] == gate_id for item in matches):
+            raise ProjectLibraryConflict("The interrupted replacement journal cannot be verified. The project writer remains blocked.")
+        if len(matches) > 1:
+            raise ProjectLibraryConflict("Multiple interrupted replacements require review before this project can continue.")
+        return matches[0] if matches else None
+
+    def _validate_journal(self, journal, payload, plan_id):
+        backup = Path(payload["backup_path"])
+        member, recovery = journal["member"], journal["backup_member"]
+        if (payload.get("resolution") != "replace_working_copy" or member["project_id"] != payload["project_id"]
+                or member["member_id"] != payload["target_member_id"] or journal["target_path"] != payload["target_path"]
+                or recovery["folder_path"] != str(backup) or Path(journal["old_folder"]) != backup.parent / "previous-working-folder"
+                or Path(journal["staging"]) != self.settings.projects_dir / (".connlab-restore-" + plan_id)):
+            raise ProjectLibraryConflict("The interrupted replacement ownership or locations do not match its immutable review.")
+        if not checked_path(backup).is_relative_to(self.settings.library_root / "Backups" / "Project Recovery"):
+            raise ProjectLibraryConflict("The recovery packet is outside this library's recovery storage.")
+        for entry in journal.get("asset_moves", []):
+            if not any(Path(entry["source"]) == self.settings.data_dir / name / sha256(member["project_id"].encode()).hexdigest()
+                       and Path(entry["backup"]) == backup.parent / "runtime-assets" / name for name in SPECIAL_DATA_ROOTS):
+                raise ProjectLibraryConflict("The interrupted asset move is outside its project partition.")
+        packet = self.p._read_snapshot(backup)
+        self.p._verify_files(backup, packet)
+        if packet["source_signature"] != payload["target_signature"] or packet["member_id"] != recovery["member_id"]:
+            raise ProjectLibraryConflict("The original complete recovery packet does not match the interrupted replacement.")
+        return packet
+
+    def _validate_uncommitted_site(self, journal, payload, body):
+        original = self._validate_journal(journal, payload, Path(journal.get("staging", "")).name.removeprefix(".connlab-restore-"))
+        current_rows = capture(self.store.session, payload["project_id"])
+        original_rows = decode_rows(original["rows"], self.settings, Path(payload["target_path"]))
+        def comparable(rows):
+            rows = deepcopy(rows)
+            for row in rows.get("project_official_workspace_records", []):
+                row.pop("template_source_path", None)
+            self._disable_permissions(rows)
+            for records in rows.values():
+                for row in records:
+                    for key, value in list(row.items()):
+                        if key.endswith("_json") and value:
+                            row[key] = json.loads(value)
+            return {name: sorted(records, key=fingerprint) for name, records in rows.items()}
+        if comparable(current_rows) != comparable(original_rows):
+            raise ProjectLibraryConflict("Project data changed after the interrupted replacement. The original complete recovery packet and both file locations were preserved; review the conflict before continuing.")
+        target = Path(journal["target_path"])
+        old = Path(journal["old_folder"])
+        if not old.exists() and journal.get("phase") in {"old_moved", "swapped"}:
+            try:
+                self.p._verify_files(target, original)
+            except (OSError, ValueError) as error:
+                raise ProjectLibraryConflict("The original working folder is unavailable and the current scene is not a verified rollback. The registered complete recovery packet and current files were preserved.") from error
+        if old.exists() and target.exists():
+            marker = self.files.marker(target)
+            if not marker or marker.get("member_id") != journal["member"]["member_id"] or marker.get("project_id") != payload["project_id"]:
+                raise ProjectLibraryConflict("The interrupted destination now has a foreign project identity. All locations were preserved.")
+            try:
+                self.p._verify_files(target, body)
+            except (OSError, ValueError) as error:
+                raise ProjectLibraryConflict("Files changed after the interrupted replacement. Preserve the new material before recovery; the original complete recovery packet remains available.") from error
+
+    def _review_pending(self, folder, body, resolution, pending):
+        old, journal = pending["payload"], pending["journal"]
+        if body["source_signature"] != old["source_signature"]:
+            raise ProjectLibraryConflict("A replacement from a different source revision is unfinished. Review the original portable revision; its complete target recovery packet was preserved.")
+        try:
+            committed = self.store.batch("restore_" + pending["plan_id"]).get("committed")
+        except LookupError:
+            committed = False
+        if not committed:
+            self._validate_uncommitted_site(journal, old, body)
+        if resolution not in (None, "replace_working_copy"):
+            raise ProjectLibraryConflict("Finish the interrupted working-copy replacement before choosing another conflict resolution.")
+        status = "ready" if resolution else "conflict"
+        blockers = [] if resolution else ["A working-copy replacement is unfinished. Review and confirm its existing recovery operation."]
+        extras = {"resolution_options": ["replace_working_copy"], "resolution": resolution, "target_revision": old["target_revision"],
+                  "backup_path": old["backup_path"], "source_signature": old["source_signature"]}
+        payload = {**old, **extras, "source_path": folder, "status": status, "blockers": blockers,
+                   "pending_replacement_id": pending["plan_id"], "pending_fingerprint": pending["fingerprint"]}
+        saved = self.files.save_plan("restore", payload)
+        return {"plan_id": saved["plan_id"], "fingerprint": saved["fingerprint"], "project_id": body["project_id"], "ltr_number": body["ltr_number"], "title": body["title"],
+                "source_path": folder, "target_path": old["target_path"], "status": status, "created_at": body["created_at"],
+                "record_counts": {name: len(rows) for name, rows in body["rows"].items()}, "file_count": sum(not row["directory"] for row in body["files"]),
+                "warnings": ["This review resumes the original replacement and keeps its already verified complete recovery point."], "blockers": blockers, **extras}
+
     def plan(self, folder, resolution):
         folder = str(checked_path(folder))
         extra = {"resolution_options": [], "resolution": resolution, "target_revision": None, "backup_path": None, "source_signature": None}
         try:
             body = self.p._read_snapshot(folder)
             self.p._verify_files(folder, body)
+            pending = self._pending(body["project_id"])
+            if pending:
+                extra["backup_path"] = pending["payload"]["backup_path"]
+                return self._review_pending(folder, body, resolution, pending)
             target = str(self.settings.projects_dir / Path(folder).name)
             blockers, warnings, options = [], list(body.get("warnings", [])), []
             existing = next((row for row in self.store.members() if row["project_id"] == body["project_id"]), None)
@@ -176,8 +278,14 @@ class RestoreConflicts:
             return {"plan_id": saved["plan_id"], "fingerprint": saved["fingerprint"], "project_id": None, "ltr_number": None, "title": Path(folder).name, "source_path": folder, "target_path": "", "status": "unavailable", "created_at": None, "record_counts": {}, "file_count": 0, "warnings": [], "blockers": [str(error)], **extra}
 
     def restore(self, payload, plan_id):
-        with self.files.project_lock(payload["project_id"]):
-            return self._restore_locked(payload, plan_id)
+        recovery_id = payload.get("pending_replacement_id") or plan_id
+        with self.files.project_lock(payload["project_id"], restore_id=recovery_id):
+            if payload.get("pending_replacement_id"):
+                original = self.files.plan(recovery_id, payload["pending_fingerprint"], "restore")
+                if original["project_id"] != payload["project_id"] or original["source_signature"] != payload["source_signature"]:
+                    raise ProjectLibraryConflict("The interrupted replacement differs from this review.")
+                payload = {**original, "source_path": payload["source_path"]}
+            return self._restore_locked(payload, recovery_id)
 
     def _restore_locked(self, payload, plan_id):
         if payload["status"] != "ready":
@@ -195,7 +303,15 @@ class RestoreConflicts:
                 committed = False
             if committed:
                 return self._finish(journal, journal_path, body)
+            if journal.get("resolution") == "replace_working_copy":
+                self._validate_uncommitted_site(journal, payload, body)
+            source_is_current = Path(payload["source_path"]) == Path(journal["target_path"])
             self._rollback_files(journal)
+            if source_is_current and journal.get("incoming_retained_path"):
+                payload = {**payload, "source_path": journal["incoming_retained_path"]}
+            journal["phase"] = "rolled_back"
+            atomic_json(journal_path, journal)
+            self.files.release_replacement_fence(payload["project_id"], plan_id)
         if fingerprint(self.store.project_numbers()) != payload["owner_state"]:
             raise ProjectLibraryConflict("LTR ownership changed. Review this restore again.")
         if payload["resolution"] == "replace_working_copy":
@@ -258,6 +374,7 @@ class RestoreConflicts:
         self.p._verify_files(backup_path, backup_body)
         if backup_body["source_signature"] != payload["target_signature"]:
             raise ProjectLibraryConflict("The target recovery copy does not match the reviewed revision.")
+        self._register_recovery(recovery)
         replacement = self._member(body, member["folder_path"], member["member_id"])
         replacement["revision"] = member["revision"] + 1
         staging = self.settings.projects_dir / (".connlab-restore-" + plan_id)
@@ -270,6 +387,7 @@ class RestoreConflicts:
             before_switch, _ = self.p._capture(member)
             if fingerprint(before_switch) != payload["target_signature"]:
                 raise ProjectLibraryConflict("The target files changed while preparing the recovery point. Review replacement again.")
+            self.files.fence_replacement(body["project_id"], plan_id)
             for name in SPECIAL_DATA_ROOTS:
                 original = self.settings.data_dir / name / sha256(body["project_id"].encode()).hexdigest()
                 saved = backup_path.parent / "runtime-assets" / name
@@ -290,9 +408,27 @@ class RestoreConflicts:
             self._disable_permissions(rows)
             self.p._insert(rows, replacement, replace_rows=old_rows, recovery_member=recovery, operation_id=plan_id)
         except Exception:
+            try:
+                committed = self.store.batch("restore_" + plan_id).get("committed")
+            except LookupError:
+                committed = False
+            if committed:
+                raise
             self._rollback_files(journal)
+            journal["phase"] = "rolled_back"
+            atomic_json(journal_path, journal)
+            self.files.release_replacement_fence(body["project_id"], plan_id)
             raise
         return self._finish(journal, journal_path, body)
+
+    def _register_recovery(self, recovery):
+        try:
+            current = self.store.member(recovery["member_id"])
+        except LookupError:
+            self.store.add_member(recovery)
+            return
+        if current["folder_path"] != recovery["folder_path"] or current["source_project_id"] != recovery["source_project_id"] or current.get("disposition") != "recovery":
+            raise ProjectLibraryConflict("The original recovery point registration changed. It was not overwritten.")
 
     @staticmethod
     def _disable_permissions(rows):
@@ -309,7 +445,10 @@ class RestoreConflicts:
                     raise ProjectLibraryConflict("The interrupted restore destination has another identity. Its recovery point was retained.")
                 checked_path(target)
                 inventory(target)
-                shutil.rmtree(target)
+                evidence = old.parent / ("interrupted-incoming-" + uuid4().hex)
+                os.rename(target, evidence)
+                journal["incoming_retained_path"] = str(evidence)
+                journal.setdefault("retained_locations", []).append(str(evidence))
             os.rename(old, target)
         if not old and target.exists():
             marker = self.files.marker(target)
@@ -321,7 +460,12 @@ class RestoreConflicts:
         if staging and staging.exists():
             checked_path(staging)
             inventory(staging)
-            shutil.rmtree(staging)
+            if old:
+                evidence = old.parent / ("interrupted-staging-" + uuid4().hex)
+                os.rename(staging, evidence)
+                journal.setdefault("retained_locations", []).append(str(evidence))
+            else:
+                shutil.rmtree(staging)
         for entry in reversed(journal.get("asset_moves", [])):
             original, saved = Path(entry["source"]), Path(entry["backup"])
             if saved.exists():
@@ -343,6 +487,7 @@ class RestoreConflicts:
                 self.files.publish_workspace_metadata(member["folder_path"], workspace)
         journal["phase"] = "completed"
         atomic_json(journal_path, journal)
+        self.files.release_replacement_fence(journal["member"].get("project_id"), journal_path.stem)
         return {"status": "history_kept" if journal["resolution"] == "keep_as_history" else "restored", "member": member,
                 "backup_member_id": journal["backup_member"]["member_id"] if journal.get("backup_member") else None,
                 "warnings": ["The complete previous working revision is retained as a recovery point."] if journal.get("backup_member") else body.get("warnings", [])}
