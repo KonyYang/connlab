@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime
+from decimal import Decimal
 from enum import Enum
 from hashlib import sha256
 import json
@@ -20,6 +21,8 @@ def json_value(value):
         return {str(k): json_value(v) for k, v in value.items()}
     if isinstance(value, (tuple, list)):
         return [json_value(v) for v in value]
+    if isinstance(value, Decimal):
+        return str(value)
     if isinstance(value, (Path, Enum)):
         return str(value)
     if isinstance(value, (date, datetime)):

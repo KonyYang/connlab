@@ -100,6 +100,20 @@ referenced by persistent records must be collected explicitly. Path tokens bind
 them to project-relative or target-data-relative locations. Historical missing
 references remain visible; original paths must not become live target bindings.
 
+Acknowledged migration-source material gaps travel in the signed
+`operation_history` as `migration_source_gaps` version 1. The record binds the
+project, source key and reviewed fingerprint, with stable gap IDs and descriptions;
+it is provenance only and explicitly non-replayable. Descriptions never become
+file locations, repair commands or target write permission. Inspection, member
+status and subsequent native snapshot preparation derive visible reminders from
+this history, including retained recovery packets. Repeated preparation deduplicates
+the same facts without adding timestamps or creating false freshness changes.
+Malformed/unsupported records, conflicting gap identities and a damaged inherited
+snapshot stop preparation/restoration rather than being silently discarded.
+Ordinary project-file changes are still handled as freshness/missing-reference
+observations; validating inherited snapshot structure does not require those
+ordinary files to remain unchanged.
+
 Local credentials, sessions, machine profiles and unrelated projects are excluded.
 Process-local customer-report jobs and source process IDs are not restorable
 execution state. Persistently referenced completed outputs are retained through

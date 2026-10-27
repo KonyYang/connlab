@@ -30,6 +30,43 @@ class ProjectPortability:
     def __init__(self, store, files, settings):
         self.store, self.files, self.settings = store, files, settings
 
+    @staticmethod
+    def _source_gap_warnings(history, project_id):
+        """Display signed source provenance; it never names an active file or action."""
+        warnings = set()
+        descriptions = {}
+        fields = {"kind", "version", "project_id", "source_key", "review_fingerprint", "provenance_only", "replayable", "gaps"}
+        for entry in history:
+            if not isinstance(entry, dict) or entry.get("kind") != "migration_source_gaps":
+                continue
+            if set(entry) != fields or type(entry["version"]) is not int or entry["version"] != 1:
+                raise ProjectLibraryError("The source-gap provenance version or fields are unsupported.")
+            if entry["project_id"] != project_id or entry["provenance_only"] is not True or entry["replayable"] is not False:
+                raise ProjectLibraryError("The source-gap provenance identity or non-executable flags are invalid.")
+            source = entry["source_key"]
+            if not isinstance(source, str) or not source.strip() or len(source) > 200:
+                raise ProjectLibraryError("The source-gap provenance source label is invalid.")
+            review = entry["review_fingerprint"]
+            if not isinstance(review, str) or not re.fullmatch(r"[a-fA-F0-9]{64}", review):
+                raise ProjectLibraryError("The source-gap provenance review fingerprint is invalid.")
+            gaps = entry["gaps"]
+            if not isinstance(gaps, list) or not 1 <= len(gaps) <= 10000:
+                raise ProjectLibraryError("The source-gap provenance records are invalid or too large.")
+            for gap in gaps:
+                if not isinstance(gap, dict) or set(gap) != {"gap_id", "description"}:
+                    raise ProjectLibraryError("A source-gap provenance record is malformed.")
+                identity, description = gap["gap_id"], gap["description"]
+                if not isinstance(identity, str) or not re.fullmatch(r"[a-fA-F0-9]{64}", identity):
+                    raise ProjectLibraryError("A source-gap provenance record identity is invalid.")
+                if not isinstance(description, str) or not description.strip() or len(description) > 4096:
+                    raise ProjectLibraryError("A source-gap provenance description is invalid or too large.")
+                identity = identity.casefold()
+                if identity in descriptions and descriptions[identity] != description:
+                    raise ProjectLibraryError("Conflicting descriptions share a source-gap provenance identity.")
+                descriptions[identity] = description
+                warnings.add("Historical source evidence gap [" + source + "]: " + description)
+        return sorted(warnings)
+
     def _capture(self, member):
         if not member["project_id"]:
             raise ProjectLibraryError("Take over this project before preparing test-data portability.")
@@ -50,9 +87,10 @@ class ProjectPortability:
         journal_history.extend(self._operation_evidence(member))
         inherited = Path(member["folder_path"]) / PORTABLE_FILE
         if inherited.is_file():
-            previous = read_json(inherited)
-            if isinstance(previous, dict) and isinstance(previous.get("body"), dict) and previous.get("checksum") == fingerprint(previous["body"]):
-                journal_history.extend(previous["body"].get("operation_history", []))
+            previous = self._read_snapshot(member["folder_path"])
+            if previous["project_id"] != member["project_id"]:
+                raise ProjectLibraryConflict("The saved portable snapshot belongs to another project. Review its source identity.")
+            journal_history.extend(previous.get("operation_history", []))
         permission_history = [item for item in journal_history if item.get("kind") == "public_permission"]
         for state in rows["project_public_folder_workflow_states"]:
             if not permission_history:
@@ -61,6 +99,7 @@ class ProjectPortability:
             state["sync_locked"] = False
         journal_history = sorted({fingerprint(item): item for item in journal_history}.values(), key=fingerprint)
         assets = PortableAssets(self.settings, member)
+        assets.warnings.extend(self._source_gap_warnings(journal_history, member["project_id"]))
         encoded_rows = assets.encode(rows)
         project_files = project_inventory(root)
         assets.warn_registered_changes(rows, project_files)
@@ -99,7 +138,7 @@ class ProjectPortability:
                 return {**result, "status": "current", "fingerprint": body["source_signature"], "created_at": body["created_at"],
                         "record_counts": {key: len(value) for key, value in body["rows"].items()},
                         "file_count": sum(not item["directory"] for item in body["files"]),
-                        "warnings": ["This retained recovery packet is not the active working project."]}
+                        "warnings": ["This retained recovery packet is not the active working project.", *self._source_gap_warnings(body["operation_history"], member.get("source_project_id") or body["project_id"])]}
             current, assets = self._capture(member)
             signature = fingerprint(current)
             result.update(fingerprint=signature, record_counts={key: len(value) for key, value in current["rows"].items()},
@@ -201,6 +240,14 @@ class ProjectPortability:
         content = {key: body[key] for key in ("project_id", "ltr_number", "title", "rows", "files", "assets", "operation_history")}
         if fingerprint(content) != body["source_signature"]:
             raise ProjectLibraryError("The portable source revision is inconsistent.")
+        source_warnings = self._source_gap_warnings(body["operation_history"], body["project_id"])
+        if source_warnings:
+            stored_warnings = body.get("warnings", [])
+            if not isinstance(stored_warnings, list) or any(not isinstance(value, str) for value in stored_warnings):
+                raise ProjectLibraryError("The source-gap snapshot warnings are malformed.")
+            # Enrich a validated view, never the envelope, stored rows/history or
+            # source signature. A native Prepare persists these derived warnings.
+            return {**body, "warnings": sorted(set(stored_warnings + source_warnings))}
         return body
 
     def _verify_files(self, folder, body):

@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from sqlalchemy import select, or_, Date, DateTime, Numeric, inspect
 from backend.domain.project_library import ProjectLibraryConflict, ProjectLibraryError
+from backend.domain.enums import ProjectOutputKind, ProjectOutputStatus, ProjectOutputSource
 from backend.infrastructure.storage.database import Base
 
 DIRECT_TABLES = (
@@ -213,6 +214,13 @@ def validate_relations(rows):
                 if value not in parents:
                     issues.append(f"{name} refers to a missing {parent_name} record")
                     break
+    for record in rows.get("project_output_records", []):
+        for column, enum in (("output_kind", ProjectOutputKind), ("status", ProjectOutputStatus), ("source", ProjectOutputSource)):
+            value = record.get(column)
+            try:
+                enum(value)
+            except (TypeError, ValueError):
+                issues.append(f"project_output_records {record.get('output_record_id')} has unsupported {column}: {value!r}")
     issues.extend(validate_explicit_references(rows))
     return issues
 

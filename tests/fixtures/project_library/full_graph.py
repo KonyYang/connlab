@@ -205,6 +205,8 @@ def _seed_point_and_fee_history(lab):
 
 def _seed_results_and_reports(lab, business):
     from openpyxl import Workbook
+    from docx import Document
+    from backend.domain.enums import ProjectOutputKind, ProjectOutputSource, ProjectOutputStatus
     from backend.domain.result_dataset_models import ResultDatasetSourceIdentity
     from backend.infrastructure.storage.repositories.result_dataset import ResultDatasetRepository
     from backend.infrastructure.storage.models import FileAssetModel, ProjectOutputRecordModel
@@ -223,6 +225,8 @@ def _seed_results_and_reports(lab, business):
     source = ResultDatasetSourceIdentity(original.name, _hash(original), original.stat().st_size)
     report_dir = lab["settings"].data_dir / "generated_test_reports"
     report_dir.mkdir(parents=True)
+    record_dir = lab["settings"].data_dir / "generated_test_records"
+    record_dir.mkdir(parents=True)
     with lab["factory"]() as session:
         repository = ResultDatasetRepository(session)
         for seq in (1, 2):
@@ -235,7 +239,12 @@ def _seed_results_and_reports(lab, business):
             report_path.write_bytes(docx_bytes())
             report = replace(_report(f"qa-report-{seq}", seq, dataset.dataset_id), file_name=report_path.name, file_path=str(report_path), file_sha256=_hash(report_path), size_bytes=report_path.stat().st_size, confirmed_matrix_id=MATRIX_ID, base_report_revision_id="qa-report-1" if seq == 2 else None)
             repository.create_report_revision(report)
-            session.add(ProjectOutputRecordModel(output_record_id=f"qa-output-{seq}", project_id=PROJECT_ID, draft_id="ptpd-seed", draft_version=1, output_kind="test_report", output_path=str(report_path), output_sha256=_hash(report_path), output_size_bytes=report_path.stat().st_size, source_context_signature="qa-source-context", status="current" if seq == 2 else "stale", source="qa-confirmed-report", created_at=AT, updated_at=AT))
+            record_path = record_dir / f"{LTR} Test Record Rev {seq}.docx"
+            record = Document()
+            record.add_heading(f"{LTR} Test Record", level=1)
+            record.add_paragraph(f"Retained test-plan output revision {seq}")
+            record.save(record_path)
+            session.add(ProjectOutputRecordModel(output_record_id=f"qa-output-{seq}", project_id=PROJECT_ID, draft_id="ptpd-seed", draft_version=1, output_kind=ProjectOutputKind.TEST_RECORD_FORM.value, output_path=str(record_path), output_sha256=_hash(record_path), output_size_bytes=record_path.stat().st_size, source_context_signature="qa-source-context", status=ProjectOutputStatus.CURRENT.value if seq == 2 else ProjectOutputStatus.STALE.value, source=ProjectOutputSource.SYSTEM_GENERATED.value, created_at=AT, updated_at=AT))
         session.add(FileAssetModel(asset_id="qa-llcr-workbook", project_id=PROJECT_ID, asset_type="other", path=str(original), original_name=original.name, source_role="llcr_raw_workbook", sha256=source.sha256))
         session.commit()
     state = _ok(upload(lab, content=docx_bytes()))

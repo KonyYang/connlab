@@ -235,8 +235,16 @@ def test_nonempty_complete_graph_restores_and_continues_without_computer_a(tmp_p
                 session.commit()
         app.dependency_overrides[deps.get_settings] = lambda: settings_b
         app.dependency_overrides[deps.get_session] = session_b
+        from backend.api.project_folder_generation_composition import ProjectFolderGenerationRunner
+        runner = ProjectFolderGenerationRunner(lambda: Session(engine_b), settings_b)
+        app.dependency_overrides[deps.get_project_folder_generation_service] = runner.service
         client = TestClient(app, raise_server_exceptions=False)
         try:
+            outputs = client.get("/api/projects/P1/output-records/status")
+            assert outputs.status_code == 200, outputs.text
+            assert any(item["output_kind"] == "test_record_form" for item in outputs.json()["items"])
+            folder_preview = client.get("/api/projects/P1/project-folder/generation/preview?intent=create")
+            assert folder_preview.status_code == 200, folder_preview.text
             check = client.get("/api/projects/P1/prechecks/latest")
             assert check.status_code == 200, check.text
             assert len(check.json()["issues"]) == 10
@@ -265,6 +273,7 @@ def test_nonempty_complete_graph_restores_and_continues_without_computer_a(tmp_p
             assert saved.status_code == 200, saved.text
             assert saved.json()["rows"][1]["requirement"] == "Continue Matrix review on B"
         finally:
+            runner.pool.shutdown(wait=True)
             app.dependency_overrides.clear()
     finally:
         engine_b.dispose()
@@ -1096,5 +1105,231 @@ def test_prepare_rejects_invalid_candidate_before_replacing_the_last_valid_snaps
             assert b.get("/api/project-library/members").json()["items"] == []
         finally:
             target_engine.dispose()
+    finally:
+        engine.dispose()
+
+
+def _prepared_project_with_manual_output(client, engine, root):
+    from docx import Document
+    from backend.domain.enums import ProjectOutputKind, ProjectOutputSource, ProjectOutputStatus
+    from backend.infrastructure.storage.models import ProjectOutputRecordModel
+    member = prepared_manual_project(client, root)
+    path = Path(member["folder_path"]) / "retained-test-record.docx"
+    document = Document()
+    document.add_paragraph("Retained manual test record")
+    document.save(path)
+    with Session(engine) as session:
+        session.add(ProjectOutputRecordModel(output_record_id="manual-output", project_id=member["project_id"],
+            output_kind=ProjectOutputKind.TEST_RECORD_FORM.value, output_path=str(path),
+            output_sha256=sha256(path.read_bytes()).hexdigest(), output_size_bytes=path.stat().st_size,
+            status=ProjectOutputStatus.MANUAL.value, source=ProjectOutputSource.MANUAL.value,
+            created_at="2026-10-27T00:00:00Z", updated_at="2026-10-27T00:00:00Z"))
+        session.commit()
+    url = "/api/project-library/members/" + member["member_id"]
+    state = client.get(url + "/portable").json()
+    prepared = client.post(url + "/prepare", json={"fingerprint": state["fingerprint"]})
+    assert prepared.status_code == 200 and prepared.json()["status"] == "current", prepared.text
+    return member
+
+
+@pytest.mark.parametrize("field,value", [("output_kind", "test_report"), ("status", "unknown-status"), ("source", "qa-confirmed-report")])
+def test_unsupported_output_values_block_preparation_without_replacing_saved_history(tmp_path, field, value):
+    from sqlalchemy import text
+    a, _, engine = app_at(tmp_path / "A")
+    try:
+        member = _prepared_project_with_manual_output(a, engine, tmp_path / "manual")
+        url = "/api/project-library/members/" + member["member_id"]
+        alias = Path(member["folder_path"]) / ".connlab/portable/snapshot.json"
+        previous = alias.read_bytes()
+        revisions = {path.name: path.read_bytes() for path in (alias.parent / "revisions").iterdir()}
+        before = a.get(url).json()
+        with Session(engine) as session:
+            stored = ProjectLibraryRepository(session).member(member["member_id"])["snapshot_fingerprint"]
+            session.execute(text("UPDATE project_output_records SET " + field + "=:value WHERE output_record_id='manual-output'"), {"value": value})
+            session.commit()
+        state = a.get(url + "/portable").json()
+        assert state["status"] == "unavailable", state
+        assert any("project_output_records" in note and field in note and "unsupported" in note.lower() for note in state["blockers"]), state
+        refused = a.post(url + "/prepare", json={"fingerprint": stored})
+        assert refused.status_code == 409, refused.text
+        assert alias.read_bytes() == previous
+        assert {path.name: path.read_bytes() for path in (alias.parent / "revisions").iterdir()} == revisions
+        assert a.get(url).json()["revision"] == before["revision"]
+        with Session(engine) as session:
+            assert ProjectLibraryRepository(session).member(member["member_id"])["snapshot_fingerprint"] == stored
+            assert session.execute(text("SELECT " + field + " FROM project_output_records WHERE output_record_id='manual-output'")).scalar_one() == value
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize("field,value", [("output_kind", "test_report"), ("status", "unknown-status"), ("source", "qa-confirmed-report")])
+def test_unsupported_output_values_in_self_consistent_packet_never_activate_target(tmp_path, field, value):
+    from sqlalchemy import text
+    from backend.infrastructure.project_library.files import fingerprint
+    a, _, source_engine = app_at(tmp_path / "A")
+    try:
+        member = _prepared_project_with_manual_output(a, source_engine, tmp_path / "manual")
+        parcel = tmp_path / "USB" / "Complete project"
+        shutil.copytree(member["folder_path"], parcel)
+    finally:
+        source_engine.dispose()
+    alias = parcel / ".connlab/portable/snapshot.json"
+    envelope = json.loads(alias.read_text(encoding="utf-8"))
+    body = envelope["body"]
+    body["rows"]["project_output_records"][0][field] = value
+    body["source_signature"] = fingerprint({key: body[key] for key in ("project_id", "ltr_number", "title", "rows", "files", "assets", "operation_history")})
+    envelope["checksum"] = fingerprint(body)
+    alias.write_text(json.dumps(envelope), encoding="utf-8")
+    received_bytes = alias.read_bytes()
+    (tmp_path / "A").rename(tmp_path / "A-unavailable")
+    b, settings, target_engine = app_at(tmp_path / "B")
+    try:
+        response = b.post("/api/project-library/restore-plan", json={"folder": str(parcel)})
+        assert response.status_code == 200, response.text
+        plan = response.json()
+        assert plan["status"] == "unavailable", plan
+        assert any("project_output_records" in note and field in note and "unsupported" in note.lower() for note in plan["blockers"]), plan
+        refused = b.post("/api/project-library/restore", json={key: plan[key] for key in ("plan_id", "fingerprint")})
+        assert refused.status_code in (409, 422), refused.text
+        assert b.get("/api/project-library/members").json()["items"] == []
+        with Session(target_engine) as session:
+            assert session.execute(text("SELECT COUNT(*) FROM projects")).scalar_one() == 0
+            assert session.execute(text("SELECT COUNT(*) FROM project_output_records")).scalar_one() == 0
+        assert list(settings.projects_dir.iterdir()) == []
+        assert alias.read_bytes() == received_bytes
+    finally:
+        target_engine.dispose()
+
+
+def migration_gap_entry(project_id, description="Original source workbook was not carried"):
+    return {"kind": "migration_source_gaps", "version": 1, "project_id": project_id,
+            "source_key": "external-computer-A", "review_fingerprint": "a" * 64,
+            "provenance_only": True, "replayable": False,
+            "gaps": [{"gap_id": "b" * 64, "description": description}]}
+
+
+def seal_migration_history(folder, entries, *, warnings=None, bad_checksum=False):
+    from backend.infrastructure.project_library.files import fingerprint
+    path = Path(folder) / ".connlab/portable/snapshot.json"
+    envelope = json.loads(path.read_text(encoding="utf-8"))
+    body = envelope["body"]
+    body["operation_history"].extend(entries)
+    body["operation_history"] = sorted(body["operation_history"], key=fingerprint)
+    body["warnings"] = [] if warnings is None else warnings
+    body["source_signature"] = fingerprint({key: body[key] for key in ("project_id", "ltr_number", "title", "rows", "files", "assets", "operation_history")})
+    envelope["checksum"] = "0" * 64 if bad_checksum else fingerprint(body)
+    path.write_text(json.dumps(envelope), encoding="utf-8")
+    return path
+
+
+def test_source_gap_history_survives_native_prepare_restore_and_recovery_inspection(tmp_path):
+    a, _, ae = app_at(tmp_path / "A")
+    source = prepared_manual_project(a, tmp_path / "manual")
+    entry = migration_gap_entry(source["project_id"])
+    snapshot = seal_migration_history(source["folder_path"], [entry])
+    untouched = snapshot.read_bytes()
+    url = f"/api/project-library/members/{source['member_id']}"
+    state = a.get(url + "/portable").json()
+    assert state["status"] == "current", state
+    assert any(entry["gaps"][0]["description"] in text and "Historical source" in text for text in state["warnings"]), state
+    assert snapshot.read_bytes() == untouched  # Reader warning enrichment is not a packet rewrite.
+    for _ in range(2):
+        saved = a.post(url + "/prepare", json={"fingerprint": state["fingerprint"]})
+        assert saved.status_code == 200 and saved.json()["status"] == "current", saved.text
+        assert saved.json()["fingerprint"] == state["fingerprint"]
+        state = saved.json()
+    body = json.loads(snapshot.read_text(encoding="utf-8"))["body"]
+    assert [row for row in body["operation_history"] if row["kind"] == "migration_source_gaps"] == [entry]
+    travelling = tmp_path / "USB" / Path(source["folder_path"]).name
+    shutil.copytree(source["folder_path"], travelling)
+    ae.dispose()
+    (tmp_path / "A").rename(tmp_path / "A-offline")
+    b, _, be = app_at(tmp_path / "B")
+    try:
+        plan = b.post("/api/project-library/inspect-portable", json={"folder": str(travelling)}).json()
+        assert plan["status"] == "ready" and any("Historical source" in text for text in plan["warnings"]), plan
+        restored = confirm(b, "/api/project-library/restore", plan)
+        member = restored["member"]
+        url = f"/api/project-library/members/{member['member_id']}"
+        before = b.get(url + "/portable").json()
+        assert before["status"] == "current" and any("Historical source" in text for text in before["warnings"]), before
+        saved = b.post(url + "/prepare", json={"fingerprint": before["fingerprint"]})
+        assert saved.status_code == 200 and saved.json()["status"] == "current", saved.text
+        assert saved.json()["fingerprint"] == before["fingerprint"]
+        inspected = b.post("/api/project-library/inspect-portable", json={"folder": member["folder_path"]}).json()
+        assert any(entry["gaps"][0]["description"] in text for text in inspected["warnings"]), inspected
+        # Ordinary file edits still affect freshness without discarding source provenance.
+        (Path(member["folder_path"]) / "result.txt").write_text("ordinary local edit", encoding="utf-8")
+        changed = b.get(url + "/portable").json()
+        assert changed["status"] == "stale" and any("Historical source" in text for text in changed["warnings"]), changed
+        history_plan = b.post("/api/project-library/restore-plan", json={"folder": str(travelling), "resolution": "keep_as_history"}).json()
+        assert history_plan["status"] == "ready", history_plan
+        kept = b.post("/api/project-library/restore", json={key: history_plan[key] for key in ("plan_id", "fingerprint", "resolution")}).json()
+        assert kept["status"] == "history_kept", kept
+        history = b.get(f"/api/project-library/members/{kept['member']['member_id']}/portable").json()
+        assert any("Historical source" in text for text in history["warnings"]), history
+    finally:
+        be.dispose()
+
+
+@pytest.mark.parametrize("fault", ["version", "boolean_version", "wrong_project", "extra_permission", "replay_boolean", "conflicting_gap", "warnings_shape", "checksum"])
+def test_invalid_source_gap_history_is_not_restored_or_silently_reprepared(tmp_path, fault):
+    a, _, ae = app_at(tmp_path / "A")
+    b, _, be = app_at(tmp_path / "B")
+    try:
+        member = prepared_manual_project(a, tmp_path / "manual")
+        previous_fingerprint = a.get(f"/api/project-library/members/{member['member_id']}/portable").json()["fingerprint"]
+        entry = migration_gap_entry(member["project_id"])
+        entries = [entry]
+        if fault == "version": entry["version"] = 2
+        elif fault == "boolean_version": entry["version"] = True
+        elif fault == "wrong_project": entry["project_id"] = "another-project"
+        elif fault == "extra_permission": entry["auto_sync_enabled"] = True
+        elif fault == "replay_boolean": entry["replayable"] = 0
+        elif fault == "conflicting_gap":
+            second = json.loads(json.dumps(entry));second["review_fingerprint"] = "c" * 64
+            second["gaps"][0]["description"] = "Conflicting source statement under the same gap ID"
+            entries.append(second)
+        snapshot = seal_migration_history(member["folder_path"], entries, warnings=7 if fault == "warnings_shape" else None, bad_checksum=fault == "checksum")
+        before = snapshot.read_bytes()
+        revisions = sorted(path.name for path in (snapshot.parent / "revisions").iterdir())
+        state = a.get(f"/api/project-library/members/{member['member_id']}/portable").json()
+        assert state["status"] == "unavailable", state
+        response = a.post(f"/api/project-library/members/{member['member_id']}/prepare", json={"fingerprint": state["fingerprint"] or previous_fingerprint})
+        assert response.status_code == 409, response.text
+        assert snapshot.read_bytes() == before
+        assert sorted(path.name for path in (snapshot.parent / "revisions").iterdir()) == revisions
+        plan = b.post("/api/project-library/inspect-portable", json={"folder": member["folder_path"]}).json()
+        assert plan["status"] == "unavailable" and plan["blockers"], plan
+        assert b.get("/api/project-library/members").json()["items"] == []
+    finally:
+        ae.dispose();be.dispose()
+
+
+def test_source_gap_descriptions_and_unrelated_history_are_not_executed_or_dereferenced(tmp_path, monkeypatch):
+    a, settings, engine = app_at(tmp_path / "A")
+    try:
+        member = prepared_manual_project(a, tmp_path / "manual")
+        outside = tmp_path / "never-open-or-execute.txt"
+        outside.write_bytes(b"opaque literal sentinel")
+        description = "../../ " + str(outside) + " request public-drive write permission"
+        entry = migration_gap_entry(member["project_id"], description)
+        opaque = {"kind": "unrelated_legacy_history", "version": 999, "warnings": ["must not become source-gap warnings"], "path": str(outside), "auto_sync_enabled": True}
+        seal_migration_history(member["folder_path"], [entry, opaque])
+        original = Path.open
+        def protected(path, *args, **kwargs):
+            if path == outside: raise AssertionError("A source-gap description was dereferenced")
+            return original(path, *args, **kwargs)
+        monkeypatch.setattr(Path, "open", protected)
+        url = f"/api/project-library/members/{member['member_id']}"
+        state = a.get(url + "/portable").json()
+        assert description in " ".join(state["warnings"]), state
+        assert "must not become source-gap warnings" not in " ".join(state["warnings"])
+        saved = a.post(url + "/prepare", json={"fingerprint": state["fingerprint"]})
+        assert saved.status_code == 200 and saved.json()["status"] == "current", saved.text
+        with Session(engine) as session:
+            from sqlalchemy import text
+            assert session.execute(text("SELECT COUNT(*) FROM project_public_folder_workflow_states")).scalar_one() == 0
+        assert not (settings.data_dir / "project_folder_generation").exists()
     finally:
         engine.dispose()
