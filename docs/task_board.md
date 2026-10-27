@@ -53,13 +53,13 @@
   "tasks": {
     "TASK_GROUP_COMPLETION_20261028": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\group-completion\\connlab",
       "branch": "codex/group-completion",
       "resources": [
         "project-data"
       ],
-      "integrated_head": null,
+      "integrated_head": "2fd92439d98654fac60484af5cc65bf5c3b46ef9",
       "task": {
         "task_id": "TASK_GROUP_COMPLETION_20261028",
         "summary": "Group completion tracking and project registry summary",
@@ -76,9 +76,79 @@
         ],
         "activation_head": "ff3f07258c3f9e95173cd8540e60e3038f0814d0",
         "started_at": "2026-10-27T23:23:14.353402Z",
-        "updated_at": "2026-10-27T23:23:14.353402Z",
+        "updated_at": "2026-10-27T23:49:18.016205Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "roles": {
+            "developer": {
+              "method": "independent group_developer",
+              "status": "passed"
+            },
+            "reviewer": {
+              "method": "independent group_review",
+              "finding": "Registry reads increase with project and Matrix history count",
+              "status": "passed"
+            },
+            "integrator": {
+              "method": "independent group_integrator; clean worktrees and parent verified",
+              "status": "passed"
+            },
+            "qa": {
+              "method": "independent group_qa",
+              "status": "passed"
+            },
+            "planner": {
+              "method": "independent group_planner",
+              "status": "passed"
+            }
+          },
+          "changed_paths": [
+            "backend/api/dependencies.py",
+            "backend/api/routes_project.py",
+            "backend/application/group_completion_service.py",
+            "backend/application/project_registry_summary_service.py",
+            "backend/infrastructure/project_library/ownership.py",
+            "backend/infrastructure/project_library/portability.py",
+            "backend/infrastructure/project_library/restore_conflicts.py",
+            "backend/infrastructure/storage/database.py",
+            "backend/infrastructure/storage/models_group_completion.py",
+            "backend/infrastructure/storage/repositories/group_completion.py",
+            "frontend/src/api/client.ts",
+            "frontend/src/features/project-workbench/ProjectWorkbenchMatrixProjectionPanel.test.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchMatrixProjectionPanel.tsx",
+            "frontend/src/pages/ProjectListPage.test.tsx",
+            "frontend/src/pages/ProjectListPage.tsx",
+            "tests/integration/test_group_completion_api.py",
+            "tests/integration/test_project_library_portability.py",
+            "tests/integration/test_project_registry_summary_api.py"
+          ],
+          "validation": [
+            {
+              "result": "110 backend tests, 36 frontend tests, production build, isolated browser completion/reload/undo",
+              "name": "Independent QA",
+              "status": "passed"
+            },
+            {
+              "result": "Matrix revision, group isolation, portability and lifecycle reviewed",
+              "name": "Independent review",
+              "status": "passed"
+            }
+          ],
+          "version": 1,
+          "schema": "connlab.sol-task-report",
+          "subject": "5ad3ba35ac03251caf39e83396b18c3b7da09d78",
+          "task_id": "TASK_GROUP_COMPLETION_20261028",
+          "summary": "Manual group completion and registry summary",
+          "scope_ok": true,
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "5ad3ba35ac03251caf39e83396b18c3b7da09d78",
+            "primary_before": "6ec679ce0e105ee870f95f7a1869cd91ed18c4e9",
+            "integrated_head": "2fd92439d98654fac60484af5cc65bf5c3b46ef9",
+            "recovered": false
+          }
+        }
       }
     }
   }
