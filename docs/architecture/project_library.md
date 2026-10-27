@@ -72,6 +72,13 @@ database is opened for application work. Legacy configurations without a selecte
 library retain their existing startup paths; selecting a new root does not move
 old data or change formal configuration automatically.
 
+Library listing and search inspect identity, location and pending-action metadata;
+they do not hash every project's material or export its complete data graph.
+The list reports **Not Checked** rather than claiming a verified current snapshot.
+Member details and **Prepare to Take** still perform full freshness checks.
+A renamed, missing or ambiguous inner business directory must produce a location
+review action before continuation; a valid outer marker alone is insufficient.
+
 ## Portable data contract
 
 The snapshot is held under the project's `.connlab/portable` area, with a format
