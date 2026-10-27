@@ -26,6 +26,96 @@ beforeEach(() => {
 });
 
 describe("ProjectLibraryImport", () => {
+  it("keeps an explicitly chosen manual project root without scanning it again", async () => {
+    const user = userEvent.setup();
+    const root: api.LibraryCandidate = { source_path: "D:/Manual project", title: "Manual project", ltr_number: null, kind: "project", warnings: [], child_folders: ["D:/Manual project/Photos", "D:/Manual project/Results"] };
+    vi.mocked(api.scanLibrarySources).mockResolvedValue({ items: [{ ...root, source_path: root.child_folders[1], title: "Results", child_folders: [] }], boundary_roots: [root], warnings: [], truncated: false });
+    vi.mocked(api.planLibraryIntake).mockResolvedValueOnce(plan as api.LibraryIntakePlan).mockResolvedValue({ plan_id: "manual-root", fingerprint: "root-proof", warnings: [], items: [{ ...plan.items[0], source_path: root.source_path, title: root.title, ltr_number: null, status: "ready" }] });
+    render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+    await user.type(screen.getByLabelText("Source paths"), root.source_path);
+    await user.click(screen.getByRole("button", { name: "Review Projects" }));
+    await screen.findByRole("table", { name: "Projects to receive" });
+    await user.click(screen.getByText("Check Project Boundaries"));
+    const boundary = screen.getByRole("group", { name: "Project boundary Manual project" });
+    expect(within(boundary).getByText(/Source Book/)).toBeTruthy();
+    await user.click(within(boundary).getByRole("button", { name: "Use This Folder" }));
+    expect(await screen.findByRole("checkbox", { name: "Select Manual project" })).toHaveProperty("checked", true);
+    expect(api.scanLibrarySources).toHaveBeenCalledTimes(1);
+    expect(api.planLibraryIntake).toHaveBeenLastCalledWith([root.source_path], expect.any(AbortSignal));
+    await user.click(screen.getByRole("button", { name: "Add Selected" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(api.startLibraryBatch).not.toHaveBeenCalled();
+  });
+
+  it("uses all immediate subfolders as explicit project boundaries in one preview and supports older scan responses", async () => {
+    const user = userEvent.setup();
+    const children = Array.from({ length: 300 }, (_, index) => `D:/Collection/Project ${index + 1}`);
+    const root: api.LibraryCandidate = { source_path: "D:/Collection", title: "Collection", ltr_number: null, kind: "project", warnings: [], child_folders: children };
+    vi.mocked(api.scanLibrarySources).mockResolvedValue({ items: [root], warnings: [], truncated: false });
+    vi.mocked(api.planLibraryIntake).mockResolvedValueOnce(plan as api.LibraryIntakePlan).mockResolvedValue({ plan_id: "all-children", fingerprint: "children-proof", warnings: [], items: children.map((path, index) => ({ ...plan.items[0], source_path: path, title: `Project ${index + 1}`, status: "ready" })) });
+    render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+    await user.type(screen.getByLabelText("Source paths"), root.source_path);
+    await user.click(screen.getByRole("button", { name: "Review Projects" }));
+    await screen.findByRole("table", { name: "Projects to receive" });
+    await user.click(screen.getByText("Check Project Boundaries"));
+    await user.click(screen.getByRole("button", { name: "Use Subfolders as Projects" }));
+    expect(await screen.findByText("300 found; 300 selected.")).toBeTruthy();
+    expect(screen.getByText("Page 1 of 15")).toBeTruthy();
+    expect(api.planLibraryIntake).toHaveBeenLastCalledWith(children, expect.any(AbortSignal));
+    expect(api.scanLibrarySources).toHaveBeenCalledTimes(1);
+    expect(api.startLibraryBatch).not.toHaveBeenCalled();
+  });
+
+  it("replaces incomplete automatic suggestions with a complete explicit-root preview", async () => {
+    const user = userEvent.setup();
+    const root: api.LibraryCandidate = { source_path: "D:/Whole project", title: "Whole project", ltr_number: null, kind: "project", warnings: [], child_folders: ["D:/Whole project/Source Book"] };
+    vi.mocked(api.scanLibrarySources).mockResolvedValue({ items: [], boundary_roots: [root], warnings: [], truncated: true });
+    render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+    await user.type(screen.getByLabelText("Source paths"), root.source_path);
+    await user.click(screen.getByRole("button", { name: "Review Projects" }));
+    expect(await screen.findByText(/Incomplete results/)).toBeTruthy();
+    expect(api.planLibraryIntake).not.toHaveBeenCalled();
+    await user.click(screen.getByText("Check Project Boundaries"));
+    await user.click(screen.getByRole("button", { name: "Use This Folder" }));
+    await screen.findByRole("table", { name: "Projects to receive" });
+    expect(screen.queryByText(/Incomplete results/)).toBeNull();
+    expect(screen.queryByText(/No projects found/)).toBeNull();
+    expect(api.planLibraryIntake).toHaveBeenCalledWith([root.source_path], expect.any(AbortSignal));
+    expect(api.startLibraryBatch).not.toHaveBeenCalled();
+  });
+
+  it("locks boundary changes during preview and ignores a late result after leaving the import page", async () => {
+    const user = userEvent.setup();
+    const root: api.LibraryCandidate = { source_path: "D:/Manual", title: "Manual", ltr_number: null, kind: "project", warnings: [], child_folders: ["D:/Manual/Results"] };
+    vi.mocked(api.scanLibrarySources).mockResolvedValue({ items: [root], boundary_roots: [root], warnings: [], truncated: false });
+    let finish!: (value: api.LibraryIntakePlan) => void;
+    let boundarySignal: AbortSignal | undefined;
+    const fresh = { plan_id: "fresh", fingerprint: "fresh-proof", warnings: [], items: [{ ...plan.items[0], source_path: "D:/Fresh", title: "Fresh project", status: "ready" as const }] };
+    vi.mocked(api.planLibraryIntake).mockResolvedValueOnce(plan as api.LibraryIntakePlan).mockImplementationOnce((_paths, signal) => { boundarySignal = signal; return new Promise(resolve => { finish = resolve; }); }).mockResolvedValue(fresh);
+    const view = render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+    await user.type(screen.getByLabelText("Source paths"), root.source_path);
+    await user.click(screen.getByRole("button", { name: "Review Projects" }));
+    await screen.findByRole("table", { name: "Projects to receive" });
+    await user.click(screen.getByText("Check Project Boundaries"));
+    await user.click(screen.getByRole("button", { name: "Use This Folder" }));
+    expect(screen.getByLabelText("Source paths")).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Use This Folder" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Use Subfolders as Projects" })).toHaveProperty("disabled", true);
+    expect(screen.queryByRole("button", { name: "Add Selected" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Use Subfolders as Projects" }));
+    expect(api.planLibraryIntake).toHaveBeenCalledTimes(2);
+    expect(api.startLibraryBatch).not.toHaveBeenCalled();
+    view.unmount();
+    expect(boundarySignal?.aborted).toBe(true);
+    render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+    await user.type(screen.getByLabelText("Source paths"), "D:/Fresh");
+    await user.click(screen.getByRole("button", { name: "Review Projects" }));
+    await screen.findByRole("checkbox", { name: "Select Fresh project" });
+    await act(async () => { finish({ ...fresh, items: [{ ...fresh.items[0], title: "Late old project" }] }); });
+    expect(screen.queryByRole("checkbox", { name: "Select Late old project" })).toBeNull();
+    expect(screen.getByRole("checkbox", { name: "Select Fresh project" })).toHaveProperty("checked", true);
+  });
+
   it("does not let late previous-batch recovery replace a newly reviewed source selection", async () => {
     let finish!: (value: api.LibraryBatch) => void;
     vi.mocked(api.getLibraryBatch).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
@@ -120,7 +210,7 @@ describe("ProjectLibraryImport", () => {
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
     await user.type(screen.getByLabelText("Source paths"), "D:/old");
     await user.click(screen.getByRole("button", { name: "Review Projects" }));
-    await screen.findByText("Force test");
+    await screen.findByRole("checkbox", { name: "Select Force test" });
     await user.click(screen.getByRole("checkbox", { name: "Keep Cable test separate" }));
     expect(screen.getByRole("checkbox", { name: "Select Cable test" })).toHaveProperty("checked", true);
     await user.type(screen.getByLabelText("Source paths"), "/different");

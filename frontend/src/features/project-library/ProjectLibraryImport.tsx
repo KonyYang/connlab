@@ -88,6 +88,20 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
     } catch (cause) { if (live.current && !controller.signal.aborted) setError((cause as Error).message); }
     finally { if (live.current && request.current === controller) { request.current = null; setBusy(false); } }
   }
+  async function reviewBoundary(paths: string[]) {
+    if (!paths.length || busy || confirming || batch?.status === "running") return;
+    interactionEpoch.current += 1;
+    request.current?.abort();
+    const controller = new AbortController(); request.current = controller;
+    setSources(paths.join("\n")); setAssignments({}); setRecoveryId(""); setSubmission(null);
+    setBusy(true); setError(""); setPlan(null); setBatch(null); setSelected([]); setSeparate([]); setFilter("all"); setPage(1);
+    try {
+      const checked = await planLibraryIntake(paths, controller.signal);
+      if (!live.current || controller.signal.aborted) return;
+      setPlan(checked); setSelected(checked.items.filter(row => row.status === "ready").map(row => row.source_path));
+    } catch (cause) { if (live.current && !controller.signal.aborted) setError((cause as Error).message); }
+    finally { if (live.current && request.current === controller) { request.current = null; setBusy(false); } }
+  }
   async function reviewAssignments() {
     if (!scan || busy) return;
     const controller = new AbortController(); request.current = controller;
@@ -133,6 +147,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
     finally { if (live.current) setBusy(false); }
   }
   const locked = busy || confirming || batch?.status === "running";
+  const boundaryRoots = (scan?.boundary_roots ?? scan?.items ?? []).filter(row => row.kind === "project");
   const visible = (plan?.items ?? []).filter(row => filter === "all" || row.status === filter);
   const pages = Math.max(1, Math.ceil(visible.length / 20));
   const currentPage = Math.min(page, pages);
@@ -147,10 +162,10 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
       <div className="library-actions"><button type="button" className="primary-action" disabled={locked || !sources.trim() || !runtime} onClick={() => void review()}>Review Projects</button>{onLegacyPreview && <button type="button" disabled={locked} title="Keep folders at their current locations using the existing read-only preview and registration flow." onClick={onLegacyPreview}>Link Existing Folders</button>}</div>
       {busy && !confirming && <p role="status">Checking or receiving projects…</p>}
       {error && <div><p role="alert">{error}</p>{recoveryId && !batch && <button type="button" disabled={busy} onClick={() => void refreshBatch()}>Recover Last Batch</button>}{submission && !batch && <button type="button" disabled={busy} onClick={() => void receive(false, true)}>Retry Batch Submission</button>}</div>}
-      {scan?.truncated && <p role="alert">Incomplete results. Choose a smaller source folder before receiving projects.</p>}
-      {scan && !scan.items.length && <p>No projects found. Choose a specific project folder or file.</p>}
+      {scan?.truncated && !plan && <p role="alert">Incomplete results. Choose a smaller source folder before receiving projects.</p>}
+      {scan && !plan && !scan.items.length && <p>No projects found. Choose a specific project folder or file.</p>}
       {scan?.warnings.map((note, i) => <p key={i} role="status">{note}</p>)}
-      {scan && scan.items.some(row => row.child_folders.length > 0) && <details><summary>Check Project Boundaries</summary>{scan.items.filter(row => row.child_folders.length > 0).map(row => <div key={row.source_path}><strong>{row.title}</strong><p>Choose the full project, including its Source Book, or inspect its children.</p><button type="button" disabled={locked} onClick={() => { changeSources(row.source_path); void review([row.source_path]); }}>Use This Folder</button><button type="button" disabled={locked} onClick={() => { changeSources(row.child_folders.join("\n")); void review(row.child_folders); }}>Inspect Subfolders</button></div>)}</details>}
+      {boundaryRoots.length > 0 && <details><summary>Check Project Boundaries</summary><p>These choices only update the preview. Nothing is copied until Confirm Add.</p>{boundaryRoots.map(row => <div key={row.source_path} role="group" aria-label={`Project boundary ${row.title}`}><strong>{row.title}</strong><p>Keep the complete project folder, including its Source Book. Use its subfolders only when each is a separate project.</p><div className="library-actions"><button type="button" disabled={locked} onClick={() => void reviewBoundary([row.source_path])}>Use This Folder</button><button type="button" disabled={locked || !row.child_folders.length} onClick={() => void reviewBoundary(row.child_folders)}>Use Subfolders as Projects</button></div></div>)}</details>}
     </section>
     {scan && !plan && !batch && scan.items.some(row => row.kind === "file") && <section className="library-panel" aria-label="Loose file assignments">
       <h2>Choose Where Files Belong</h2>

@@ -7,7 +7,7 @@ const post = <T,>(path: string, body: unknown, signal?: AbortSignal) => requestJ
 export type LibraryRuntime = { library_root: string; projects_root: string; data_root: string; database_path: string; configured: boolean; format_version: number };
 export type LibraryMember = { member_id: string; project_id: string | null; ltr_number: string | null; title: string; folder_path: string; revision: number; batch_id: string | null; snapshot_status: "missing" | "current" | "stale" | "unavailable" | "not_checked"; snapshot_created_at: string | null; warnings: string[]; can_continue: boolean; is_history?: boolean };
 export type LibraryCandidate = { source_path: string; title: string; ltr_number: string | null; kind: "project" | "file"; warnings: string[]; child_folders: string[] };
-export type LibraryScan = { items: LibraryCandidate[]; warnings: string[]; truncated: boolean };
+export type LibraryScan = { items: LibraryCandidate[]; boundary_roots?: LibraryCandidate[]; warnings: string[]; truncated: boolean };
 export type LibraryFileAssignment = { source_path: string; target_member_id?: string; new_project_title?: string };
 export type LibraryIntakeItem = { source_path: string; target_path: string; title: string; ltr_number: string | null; status: "ready" | "conflict" | "already_added" | "unavailable"; warnings: string[]; can_keep_separate: boolean; target_member_id?: string | null; new_project_title?: string | null };
 export type LibraryIntakePlan = { plan_id: string; fingerprint: string; items: LibraryIntakeItem[]; warnings: string[] };
