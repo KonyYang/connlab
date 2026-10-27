@@ -11,6 +11,7 @@ from backend.api.dependencies import (
     get_project_lifecycle_management_service,
     get_project_lifecycle_state_service,
     get_project_registry_summary_service,
+    get_group_completion_service,
     get_project_service,
 )
 from backend.application.project_lifecycle_management_service import (
@@ -48,6 +49,30 @@ from backend.domain import Project
 
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
+
+
+class GroupCompletionUpdateRequest(BaseModel):
+    confirmed_matrix_id: str
+    completed: bool
+
+
+@router.get("/{project_id}/group-completion")
+def get_group_completion(project_id: str, service=Depends(get_group_completion_service)):
+    result = service.read(project_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="No confirmed Matrix.")
+    return result
+
+
+@router.put("/{project_id}/group-completion/{group_key}")
+def update_group_completion(project_id: str, group_key: str, request: GroupCompletionUpdateRequest,
+                            service=Depends(get_group_completion_service)):
+    try:
+        return service.update(project_id, request.confirmed_matrix_id, group_key, request.completed)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 class ProjectCreateRequest(BaseModel):
@@ -195,6 +220,10 @@ class ProjectRegistryRowResponse(BaseModel):
     project_id: str
     registry_state: str = "active"
     registry_revision: int = 0
+    completed_group_count: int | None = None
+    total_group_count: int | None = None
+    estimated_completion_date: str | None = None
+    group_completion_details: list[dict] = Field(default_factory=list)
     has_confirmed_matrix: bool = False
     ltr_number: str | None = None
     sample_description: str | None = None
@@ -594,6 +623,10 @@ def _to_response(
 def _to_registry_response(row: ProjectRegistryRow) -> ProjectRegistryRowResponse:
     """Convert a registry application row to an API response DTO."""
     return ProjectRegistryRowResponse(
+        completed_group_count=row.completed_group_count,
+        total_group_count=row.total_group_count,
+        estimated_completion_date=row.estimated_completion_date,
+        group_completion_details=list(row.group_completion_details),
         project_id=row.project_id,
         registry_state=row.registry_state,
         registry_revision=row.registry_revision,

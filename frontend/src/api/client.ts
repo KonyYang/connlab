@@ -62,6 +62,10 @@ export type Project = {
 
 export type ProjectRegistryRow = {
   project_id: string;
+  completed_group_count?: number | null;
+  total_group_count?: number | null;
+  estimated_completion_date?: string | null;
+  group_completion_details?: {group_label: string; completed: boolean; needs_review: boolean}[];
   registry_state?: "active" | "trash" | "history";
   registry_revision?: number;
   created_on?: string | null;
@@ -81,6 +85,24 @@ export type ProjectRegistryRow = {
   registered_ltr_number?: string | null;
   temporary_source_asset_ids?: string[];
 };
+
+export type GroupCompletion = {
+  confirmed_matrix_id: string;
+  estimated_completion_date: string | null;
+  completed_count: number;
+  total_count: number;
+  groups: {group_key: string; group_label: string; completed: boolean; needs_review: boolean; completed_at: string | null}[];
+};
+
+export function getGroupCompletion(projectId: string): Promise<GroupCompletion> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/group-completion`);
+}
+
+export function updateGroupCompletion(projectId: string, groupKey: string, matrixId: string, completed: boolean): Promise<GroupCompletion> {
+  return requestJson(`/api/projects/${encodeURIComponent(projectId)}/group-completion/${encodeURIComponent(groupKey)}`, {
+    method: "PUT", body: JSON.stringify({confirmed_matrix_id: matrixId, completed}),
+  });
+}
 
 export type ProjectCreateInput = {
   project_no?: string | null;

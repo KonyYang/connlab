@@ -95,6 +95,7 @@ def init_db(engine: Engine) -> None:
     from backend.infrastructure.storage import models  # noqa: F401
     from backend.infrastructure.storage import models_legacy_projects  # noqa: F401
     from backend.infrastructure.storage import models_project_library  # noqa: F401
+    from backend.infrastructure.storage import models_group_completion  # noqa: F401
     from backend.infrastructure.storage import models_confirmed_matrix_authority  # noqa: F401
     from backend.infrastructure.storage import models_project_matrix_draft  # noqa: F401
     from backend.infrastructure.storage import models_matrix_source  # noqa: F401

@@ -235,7 +235,7 @@ class RestoreConflicts:
             if existing:
                 current, _ = self.p._capture(existing)
                 target_signature = fingerprint(current)
-                if target_signature == body["source_signature"]:
+                if self.p._matches_snapshot(current, body):
                     status, target = "already_added", existing["folder_path"]
                 else:
                     status, target, options = "conflict", existing["folder_path"], ["replace_working_copy", "keep_as_history"]

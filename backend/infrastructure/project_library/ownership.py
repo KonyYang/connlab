@@ -25,6 +25,7 @@ DIRECT_TABLES = (
     "confirmed_matrix_versions", "measurement_plan_roots", "contact_point_profile_roots",
     "project_schedule_revisions", "result_dataset_revisions", "report_draft_revisions",
     "report_authoring_revisions",
+    "group_completion_events",
 )
 PARENTS = {
     "precheck_results": ("application_forms", "application_form_id", "form_id"),

@@ -502,7 +502,19 @@ def get_project_registry_summary_service(
         temporary_context_store=ProjectTemporaryContextRepository(session),
         basic_information_store=ProjectBasicInformationRepository(session),
         matrix_store=ConfirmedMatrixAuthorityRepository(session),
+        group_completion_service=get_group_completion_service(session),
     )
+
+
+def get_group_completion_service(session: Session = Depends(get_session)):
+    from backend.application.group_completion_service import GroupCompletionService
+    from backend.application.project_lifecycle_write_guard import LifecycleWriteOperation
+    from backend.infrastructure.storage.repositories.group_completion import GroupCompletionRepository
+    guard = ProjectLifecycleWriteGuard(ProjectRepository(session))
+    return GroupCompletionService(ConfirmedMatrixAuthorityRepository(session),
+        GroupCompletionRepository(session),
+        lambda project_id: guard.require_write_allowed(project_id, LifecycleWriteOperation.MATRIX_EDITOR_CONFIRM),
+        lambda: datetime.now(timezone.utc).isoformat())
 
 
 def get_project_basic_information_service(

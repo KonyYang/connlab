@@ -89,6 +89,7 @@ function BusinessProjectListPage({
   const [currentPage, setCurrentPage] = useState(initialViewState.currentPage);
   const [selectedView, setSelectedView] = useState<RegistryView>(initialViewState.selectedView);
   const [projectIdSort, setProjectIdSort] = useState<ProjectIdSortDirection>(initialViewState.projectIdSort);
+  const [dateSort, setDateSort] = useState<"asc" | "desc" | null>(null);
   const [lastLtrApplyResult, setLastLtrApplyResult] = useState<LastLtrApplyResult | null>(null);
   const [area, setArea] = useState<"active" | "trash" | "history">("active");
   const [managedRevision, setManagedRevision] = useState(0);
@@ -149,8 +150,15 @@ function BusinessProjectListPage({
     [deferredSearch, viewRows]
   );
   const sortedRows = useMemo(
-    () => sortRowsByProjectId(filteredRows, projectIdSort),
-    [filteredRows, projectIdSort]
+    () => {
+      const rows = sortRowsByProjectId(filteredRows, projectIdSort);
+      return dateSort ? rows.sort((a, b) => {
+        const left = a.row.estimated_completion_date, right = b.row.estimated_completion_date;
+        if (!left || !right) return left ? -1 : right ? 1 : 0;
+        return left.localeCompare(right) * (dateSort === "asc" ? 1 : -1);
+      }) : rows;
+    },
+    [filteredRows, projectIdSort, dateSort]
   );
   const pageCount = Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const page = Math.min(currentPage, pageCount);
@@ -198,6 +206,7 @@ function BusinessProjectListPage({
   }
 
   function toggleProjectIdSort(): void {
+    setDateSort(null);
     setProjectIdSort((current) => (current === "asc" ? "desc" : "asc"));
   }
 
@@ -329,8 +338,8 @@ function BusinessProjectListPage({
                   </th>
                   <th>Sample Description</th>
                   <th className="registry-test-item-column">Test Item</th>
-                  <th>Status</th>
-                  <th>Next Step</th>
+                  <th>Group completion</th>
+                  <th><button className="project-id-sort-button" type="button" onClick={() => setDateSort((value) => value === "asc" ? "desc" : "asc")} aria-label="Sort estimated completion">Estimated completion</button></th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -339,6 +348,7 @@ function BusinessProjectListPage({
                   <tr className="project-registry-row" key={row.project_id}>
                     <td className="project-no registry-project-id-cell" data-label="Project ID">
                       {businessIdentifier(row)}
+                      {(lifecycle && lifecycle.lifecycle_state !== "active") || (!lifecycle && (row.status === "cancelled" || row.status === "closed")) ? <span className={`registry-lifecycle-badge ${registryLifecycleClassName(row, lifecycle)}`}>{registryStatusLabel(row, lifecycle)}</span> : null}
                       {row.display_project_id_kind === "temporary" ? (
                         <span className="registry-temp-badge">Temporary Planning</span>
                       ) : null}
@@ -349,13 +359,12 @@ function BusinessProjectListPage({
                     <td className="registry-test-item-column registry-test-item-cell" data-label="Test Item">
                       {displayText(row.test_item, "Not recorded")}
                     </td>
-                    <td className="registry-status-text registry-status-cell" data-label="Status">
-                      <span className={`registry-lifecycle-badge ${registryLifecycleClassName(row, lifecycle)}`}>
-                        {registryStatusLabel(row, lifecycle)}
-                      </span>
+                    <td className="registry-status-text registry-status-cell" data-label="Group completion" title={row.group_completion_details?.map((group) => `${group.group_label}: ${group.completed ? "Completed" : group.needs_review ? "Review needed" : "Not completed"}`).join("\n")}>
+                      {row.total_group_count == null ? "—" : `${row.completed_group_count ?? 0} / ${row.total_group_count}`}
                     </td>
-                    <td className="registry-next-step registry-next-step-cell" data-label="Next Step">
-                      {registryNextStepLabel(row, lifecycle)}
+                    <td className="registry-next-step registry-next-step-cell" data-label="Estimated completion">
+                      <span>{row.estimated_completion_date || "Not scheduled"}</span>
+                      {(lifecycle ? lifecycle.lifecycle_state === "active" : row.status !== "closed" && row.status !== "cancelled") && row.estimated_completion_date && scheduleHint(row.estimated_completion_date) ? <small> {scheduleHint(row.estimated_completion_date)}</small> : null}
                     </td>
                     <td className="registry-action-cell" data-label="Action">
                       <div className="project-registry-action-buttons" role="group" aria-label={`Actions for ${row.display_project_id}`}>
@@ -597,6 +606,18 @@ function footerProjectLabel(view: RegistryView): string {
 function displayText(value: string | null | undefined, fallback: string): string {
   const text = value?.trim();
   return text || fallback;
+}
+
+function scheduleHint(value: string): string | null {
+  const match = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(value.trim());
+  if (!match) return null;
+  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+  const planned = new Date(Date.UTC(year, month - 1, day));
+  if (planned.getUTCFullYear() !== year || planned.getUTCMonth() !== month - 1 || planned.getUTCDate() !== day) return null;
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = (planned.getTime() - today) / 86400000;
+  return days < 0 ? "Past planned date" : days <= 3 ? "Due soon" : null;
 }
 
 function hasDisplayText(value: string | null | undefined): boolean {

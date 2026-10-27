@@ -1,7 +1,11 @@
-import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import {
   ApiRequestError,
   fetchConfirmedMatrixTestRecordPreview,
+  getGroupCompletion,
+  getProjectLifecycle,
+  updateGroupCompletion,
+  type GroupCompletion,
   type ConfirmedMatrixTestRecordPreview,
 } from "../../api/client";
 import {
@@ -22,6 +26,11 @@ export function ProjectWorkbenchMatrixProjectionPanel({
   onTokenSelect,
 }: ProjectWorkbenchMatrixProjectionPanelProps): ReactElement {
   const [state, setState] = useState<PreviewState>("loading");
+  const [completion, setCompletion] = useState<GroupCompletion | null>(null);
+  const [completionError, setCompletionError] = useState<string | null>(null);
+  const [completionBusy, setCompletionBusy] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
+  const epoch = useRef(0);
   const [preview, setPreview] = useState<ConfirmedMatrixTestRecordPreview | null>(
     null
   );
@@ -30,9 +39,16 @@ export function ProjectWorkbenchMatrixProjectionPanel({
   >(null);
 
   useEffect(() => {
+    const current = ++epoch.current;
     let active = true;
     setState("loading");
     setPreview(null);
+    setCompletion(null);
+    setCompletionBusy(false);
+    setCanEdit(false);
+    setCompletionError(null);
+    void getGroupCompletion(projectId).then((value) => { if (active) setCompletion(value); }).catch((error: unknown) => { if (active && !(error instanceof ApiRequestError && error.status === 404)) setCompletionError("Group completion is unavailable."); });
+    void getProjectLifecycle(projectId).then((value) => { if (active) setCanEdit(!value.readonly && (!value.registry_state || value.registry_state === "active")); }).catch(() => { if (active) setCanEdit(false); });
     setSelectedTokenReference(null);
     onTokenSelect?.(null);
     void fetchConfirmedMatrixTestRecordPreview(projectId)
@@ -56,6 +72,7 @@ export function ProjectWorkbenchMatrixProjectionPanel({
       });
     return () => {
       active = false;
+      if (epoch.current === current) epoch.current++;
     };
   }, [onTokenSelect, projectId]);
 
@@ -66,6 +83,18 @@ export function ProjectWorkbenchMatrixProjectionPanel({
         : null,
     [preview]
   );
+  function renderCompletion(item: GroupCompletion["groups"][number]): ReactElement {
+    const current = epoch.current;
+    return <label key={item.group_key}><input type="checkbox" aria-label={`${item.group_label} completed`}
+      checked={item.completed} disabled={!canEdit || completionBusy} onChange={(event) => {
+        if (!completion) return;
+        setCompletionBusy(true); setCompletionError(null);
+        void updateGroupCompletion(projectId, item.group_key, completion.confirmed_matrix_id, event.target.checked)
+          .then((value) => { if (epoch.current === current) setCompletion(value); })
+          .catch(() => { if (epoch.current === current) setCompletionError("Unable to update group completion. Refresh the project and try again."); })
+          .finally(() => { if (epoch.current === current) setCompletionBusy(false); });
+      }} /> {item.needs_review ? "Review needed" : "Completed"}</label>;
+  }
   useEffect(() => {
     if (state !== "ready" || !viewModel || selectedTokenReference) {
       return;
@@ -79,6 +108,11 @@ export function ProjectWorkbenchMatrixProjectionPanel({
   }, [onTokenSelect, selectedTokenReference, state, viewModel]);
   return (
     <section className="runtime-console-matrix-projection" aria-label="Matrix Projection">
+      {completionError ? <p className="error" role="alert">{completionError}</p> : null}
+      {completion && viewModel && completion.confirmed_matrix_id !== viewModel.confirmedMatrixId ? <p role="alert">Matrix changed. Refresh the project to update group completion.</p> : null}
+      {completion && (!viewModel || completion.confirmed_matrix_id === viewModel.confirmedMatrixId) && completion.groups.some((item) => !viewModel?.groupColumns.some((group) => group.groupKey === item.group_key)) ? (
+        <div aria-label="Other groups">{completion.groups.filter((item) => !viewModel?.groupColumns.some((group) => group.groupKey === item.group_key)).map((item) => <div key={item.group_key}>{item.group_label}: {renderCompletion(item)}</div>)}</div>
+      ) : null}
       {state === "not_ready" ? (
         <p className="runtime-console-matrix-projection-empty">
           No active confirmed matrix yet. Confirm Matrix authority first.
@@ -163,7 +197,12 @@ export function ProjectWorkbenchMatrixProjectionPanel({
                 <tr className="runtime-console-matrix-meta-row">
                   <th scope="row">Status</th>
                   {viewModel.groupColumns.map((group) => (
-                    <td key={`status:${group.groupKey}`}>Pending execution data</td>
+                    <td key={`status:${group.groupKey}`}>
+                      {completion?.confirmed_matrix_id === viewModel.confirmedMatrixId && completion.groups.find((item) => item.group_key === group.groupKey) ? (() => {
+                        const item = completion.groups.find((entry) => entry.group_key === group.groupKey)!;
+                        return renderCompletion(item);
+                      })() : "Unavailable"}
+                    </td>
                   ))}
                 </tr>
               </tbody>
