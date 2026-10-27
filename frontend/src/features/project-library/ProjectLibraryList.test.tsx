@@ -30,3 +30,14 @@ it("identifies historical copies and opens their browsing details", async () => 
   await user.click(screen.getByRole("button", { name: "Browse History Old CPI copy" }));
   expect(onOpen).toHaveBeenCalledWith("history-1");
 });
+
+it.each([false, true])("shows an unchecked snapshot without implying portability readiness for history=%s", async isHistory => {
+  const user = userEvent.setup(); const onOpen = vi.fn();
+  vi.mocked(api.listLibraryMembers).mockResolvedValue({ items: [{ member_id: "unchecked-1", project_id: "p1", ltr_number: "DL-2026-09-032", title: "Unchecked CPI", folder_path: "D:/library/CPI", revision: 1, batch_id: null, snapshot_status: "not_checked", snapshot_created_at: "2026-10-27", warnings: [], can_continue: !isHistory, is_history: isHistory }] });
+  render(<ProjectLibraryList onOpen={onOpen} onBack={vi.fn()} onImport={vi.fn()} />);
+  expect(await screen.findByText("Not Checked")).toBeTruthy();
+  expect(screen.queryByText("Ready to Take")).toBeNull();
+  expect(screen.getByText(isHistory ? "Historical Copy" : "Managed Project")).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: `${isHistory ? "Browse History" : "Manage"} Unchecked CPI` }));
+  expect(onOpen).toHaveBeenCalledWith("unchecked-1");
+});

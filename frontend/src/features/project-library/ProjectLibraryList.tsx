@@ -6,7 +6,7 @@ import "./project-library.css";
 
 const SEARCH_KEY = "connlab.projectLibrary.search";
 const PAGE_KEY = "connlab.projectLibrary.page";
-const snapshotLabels = { missing: "Not Prepared", current: "Ready to Take", stale: "Needs Update", unavailable: "Unavailable" };
+const snapshotLabels = { missing: "Not Prepared", current: "Ready to Take", stale: "Needs Update", unavailable: "Unavailable", not_checked: "Not Checked" };
 export function ProjectLibraryList({ onOpen, onBack, onImport, batchId = "" }: { onOpen: (id: string) => void; onBack: () => void; onImport: () => void; batchId?: string }) {
   const [search, setSearch] = useState(() => sessionStorage.getItem(SEARCH_KEY) ?? "");
   const query = useDeferredValue(search);
