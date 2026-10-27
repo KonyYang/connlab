@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -104,12 +105,23 @@ def build_packaged_runtime_paths(
 def apply_packaged_environment_defaults(paths: PackagedRuntimePaths) -> None:
     """Apply packaged-mode environment defaults without overriding user choices."""
     program_data_root = Path(os.getenv("PROGRAMDATA", r"C:\ProgramData"))
+    library_value = os.getenv("CONNLAB_LIBRARY_ROOT")
+    config_path = Path(os.getenv("CONNLAB_LOCAL_CONFIG_PATH") or paths.local_config_path)
+    if not library_value and config_path.is_file():
+        with config_path.open("rb") as stream:
+            library_value = tomllib.load(stream).get("paths", {}).get("library_root")
+    library = Path(str(library_value)).expanduser() if library_value else None
+    if library is not None:
+        if not library.is_absolute():
+            raise ValueError("Choose an absolute project library path.")
+        library = library.resolve()
+        os.environ.setdefault("CONNLAB_LIBRARY_ROOT", str(library))
     defaults = {
-        "CONNLAB_DATA_DIR": paths.data_dir,
-        "CONNLAB_PROJECTS_DIR": paths.projects_dir,
+        "CONNLAB_DATA_DIR": library / "Data" if library else paths.data_dir,
+        "CONNLAB_PROJECTS_DIR": library / "Projects" if library else paths.projects_dir,
         "CONNLAB_TEMPLATES_DIR": paths.templates_dir,
-        "CONNLAB_LOGS_DIR": paths.logs_dir,
-        "CONNLAB_DATABASE_PATH": paths.database_path,
+        "CONNLAB_LOGS_DIR": library / "Logs" if library else paths.logs_dir,
+        "CONNLAB_DATABASE_PATH": library / "Data" / "connlab.sqlite3" if library else paths.database_path,
         "CONNLAB_RELEASE_MANIFEST_PATH": paths.app_root / "release_manifest.json",
         "CONNLAB_LOCAL_CONFIG_PATH": paths.local_config_path,
         "CONNLAB_ADMIN_CONFIG_PATH": (

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -65,12 +66,23 @@ def create_database_engine(
 ) -> Engine:
     """Create a SQLAlchemy engine using the configured SQLite database path."""
     resolved_settings = settings or Settings.load()
-    resolved_settings.database_path.parent.mkdir(parents=True, exist_ok=True)
-    return create_engine(
-        build_sqlite_url(resolved_settings.database_path),
-        future=True,
-        **engine_options,
-    )
+    lease = None
+    if resolved_settings.library_root is not None:
+        from backend.infrastructure.project_library.runtime import claim_runtime
+        lease = claim_runtime(resolved_settings)
+    try:
+        resolved_settings.database_path.parent.mkdir(parents=True, exist_ok=True)
+        engine = create_engine(
+            build_sqlite_url(resolved_settings.database_path), future=True, **engine_options,
+        )
+        if lease is not None:
+            from backend.infrastructure.project_library.runtime import bind_engine_lease
+            bind_engine_lease(engine, lease)
+        return engine
+    except Exception:
+        if lease is not None:
+            lease.release()
+        raise
 
 
 def create_session_factory(engine: Engine) -> sessionmaker[Session]:
@@ -82,6 +94,7 @@ def init_db(engine: Engine) -> None:
     """Create all registered SQLAlchemy tables for the supplied engine."""
     from backend.infrastructure.storage import models  # noqa: F401
     from backend.infrastructure.storage import models_legacy_projects  # noqa: F401
+    from backend.infrastructure.storage import models_project_library  # noqa: F401
     from backend.infrastructure.storage import models_confirmed_matrix_authority  # noqa: F401
     from backend.infrastructure.storage import models_project_matrix_draft  # noqa: F401
     from backend.infrastructure.storage import models_matrix_source  # noqa: F401
