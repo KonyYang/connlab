@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 import tempfile
 import tomllib
 from dataclasses import dataclass, field
@@ -85,35 +86,56 @@ class Settings:
     contact_measurement_plan_authority_enabled: bool = True
     ltr_workbook: LtrWorkbookSettings = field(default_factory=LtrWorkbookSettings)
     test_record: TestRecordSettings = field(default_factory=TestRecordSettings)
+    library_root: Path | None = None
 
     @classmethod
     def load(cls, base_dir: Path | None = None) -> "Settings":
         """Load settings from the environment and ensure required folders exist."""
         root_dir = base_dir or Path(__file__).resolve().parents[2]
         local_config = _load_local_config(root_dir)
-        admin_config = _load_admin_config(root_dir)
         paths_config = local_config.get("paths", {})
+        raw_library = os.getenv("CONNLAB_LIBRARY_ROOT") or paths_config.get("library_root")
+        library_root = Path(str(raw_library)).expanduser() if raw_library else None
+        if library_root is not None:
+            if not library_root.is_absolute():
+                raise ValueError("Choose an absolute project library path.")
+            for part in (*reversed(library_root.parents), library_root):
+                if part.exists() or part.is_symlink():
+                    if part.is_symlink() or getattr(part.lstat(), "st_file_attributes", 0) & 0x400:
+                        raise ValueError("Choose a local project library without redirected paths.")
+            library_root = library_root.resolve()
+        mutable_root = library_root or root_dir
+        data_default = mutable_root / ("Data" if library_root else "data")
+        data_dir = _resolve_directory("CONNLAB_DATA_DIR", data_default, root_dir)
+        projects_dir = _resolve_directory("CONNLAB_PROJECTS_DIR", mutable_root / ("Projects" if library_root else "projects"), root_dir)
+        database_path = _resolve_file_path("CONNLAB_DATABASE_PATH", data_default / "connlab.sqlite3", root_dir)
+        if library_root and any(not path.resolve().is_relative_to(library_root) for path in (data_dir, projects_dir, database_path)):
+            raise ValueError("Data, projects and database must remain inside the selected project library.")
+        if library_root:
+            marker = library_root / ".connlab" / "library-format.json"
+            if marker.is_file():
+                try:
+                    binding = json.loads(marker.read_text(encoding="utf-8"))
+                except (OSError, ValueError) as error:
+                    raise ValueError("The project library version binding cannot be read.") from error
+                expected = {"format_version": 1, "database_relative_path": database_path.relative_to(library_root).as_posix()}
+                if binding != expected:
+                    raise ValueError("The project library version or database binding is incompatible.")
+        admin_config = _load_admin_config(root_dir)
         workbook_config = local_config.get("ltr_workbook", {})
         admin_workbook_config = admin_config.get("ltr_workbook", {})
         test_record_config = local_config.get("test_record", {})
         settings = cls(
-            data_dir=_resolve_directory("CONNLAB_DATA_DIR", root_dir / "data", root_dir),
-            projects_dir=_resolve_directory(
-                "CONNLAB_PROJECTS_DIR",
-                root_dir / "projects",
-                root_dir,
-            ),
+            data_dir=data_dir,
+            projects_dir=projects_dir,
             templates_dir=_resolve_configured_directory(
                 "CONNLAB_TEMPLATES_DIR",
                 paths_config.get("templates_dir"),
-                root_dir / "templates",
+                mutable_root / ("Templates" if library_root else "templates"),
                 root_dir,
             ),
-            database_path=_resolve_file_path(
-                "CONNLAB_DATABASE_PATH",
-                root_dir / "data" / "connlab.sqlite3",
-                root_dir,
-            ),
+            database_path=database_path,
+            library_root=library_root,
             log_level=os.getenv("CONNLAB_LOG_LEVEL", DEFAULT_LOG_LEVEL).strip().upper()
             or DEFAULT_LOG_LEVEL,
             contact_measurement_plan_authority_enabled=(

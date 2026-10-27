@@ -197,6 +197,27 @@ change any overwrite/recovery authority, external configuration, or database sch
 
 ## Data Locations
 
+### Explicit unified library
+
+The project-library work adds the explicit `CONNLAB_LIBRARY_ROOT` startup binding.
+Its implementation and isolated acceptance status are tracked in
+`docs/plans/UNIFIED_PROJECT_LIBRARY_20261027.md`. Do not point a development smoke
+test or an unverified release at an operator's real library.
+
+The selected root is intended to bind business data and managed project storage
+independently of the program checkout/release folder. Existing explicit path
+overrides must be checked for compatibility with that root. Root changes require
+the supported startup/restart flow; an API request must not silently switch the
+database of a running server. Public LTR, templates and public-drive settings
+remain explicit external resources, not inferred portable-project authority.
+
+Operator migration remains separate from building a release. The migration review
+must identify the exact source databases, project folders, target binding,
+compatible program version, conflicts, consistent backup and rollback steps.
+Retain the original data and old binding until the copied target is verified.
+Do not copy only a live SQLite main file while ignoring WAL/journal state, and do
+not allow old and new instances to write the same business library concurrently.
+
 Default development paths from repository root:
 
 - `data\connlab.sqlite3`

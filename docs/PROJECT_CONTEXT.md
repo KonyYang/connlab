@@ -41,6 +41,16 @@ Do not use a dated snapshot as a substitute for the code.
 
 ### Project closure and registry location
 
+- The unified project library distinguishes managed file membership from business
+  Project identity and lifecycle. Full LTR stays the business reference; titles,
+  directory locations and ordinary file contents may change independently.
+  Project-level portable snapshots must retain the declared relational/JSON data
+  and required external assets, rather than only a directory identity manifest.
+  Receiving a separate copy does not silently switch the active working folder or
+  transfer public-drive write permission. See
+  [project library architecture](architecture/project_library.md) and its current
+  task acceptance status before treating portability as verified.
+
 - Historical folders registered through Tools are separate `legacy_project_records`, browsed through
   Projects > Legacy. They retain original paths/structures and do not create business Projects, LTR or
   Matrix authority. Numbers and legacy IDs are identity hints only; explicit Keep Separate never
