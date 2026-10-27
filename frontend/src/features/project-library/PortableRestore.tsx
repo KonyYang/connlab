@@ -1,8 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { inspectPortableProject, planPortableRestore, restorePortableProject, pickLibraryFolder, type PortableRestorePlan, type LibraryMember } from "../../api/projectLibrary";
 
+function coverageCategory(name: string): string {
+  if (name.includes("fee")) return "Fees";
+  if (name.includes("matrix") || name.startsWith("measurement_plan") || name.startsWith("contact_point")) return "Matrix";
+  if (name.startsWith("result_dataset")) return "Test Results";
+  if (name.includes("report") || name === "project_output_records") return "Reports";
+  if (name.startsWith("intake_") || name === "file_assets" || name.includes("request_material") || name.startsWith("source_")) return "Source Materials";
+  if (name.includes("schedule")) return "Schedule";
+  if (name.startsWith("ltr_") || name.includes("lifecycle") || name.includes("registry")) return "Project History";
+  if (name === "projects" || name.startsWith("project_") || name === "application_forms" || name === "sample_infos" || name.startsWith("precheck_")) return "Project Information";
+  return "Other Retained Data";
+}
 export function PortableCoverage({ counts, fileCount }: { counts: Record<string, number>; fileCount: number }) {
-  return <details open><summary>Carried Data · {fileCount} files</summary><dl className="library-facts">{Object.entries(counts).filter(([, count]) => count > 0).map(([name, count]) => <div key={name}><dt>{name.replaceAll("_", " ")}</dt><dd>{count}</dd></div>)}</dl></details>;
+  const records = Object.entries(counts).filter(([, count]) => count > 0);
+  const categories = records.reduce<Record<string, number>>((result, [name, count]) => {
+    const category = coverageCategory(name); result[category] = (result[category] ?? 0) + count; return result;
+  }, {});
+  return <details open><summary>Carried Data · {fileCount} files</summary><dl className="library-facts">{Object.entries(categories).map(([name, count]) => <div key={name}><dt>{name}</dt><dd>{count} records</dd></div>)}</dl>{!records.length && <p>No structured project records in this snapshot.</p>}<details><summary>Snapshot Diagnostics</summary><dl className="library-facts">{records.map(([name, count]) => <div key={name}><dt>{name}</dt><dd>{count}</dd></div>)}</dl></details></details>;
 }
 export function PortableRestore({ onOpenMember, disabled = false }: { onOpenMember: (id: string) => void; disabled?: boolean }) {
   const [folder, setFolder] = useState("");

@@ -63,6 +63,7 @@ it("opens the read-only legacy preview deep link and returns to Tools", async ()
   render(<App />);
   expect(await screen.findByRole("heading", { name: "Import Legacy Projects" })).toBeTruthy();
   await userEvent.setup().click(screen.getByRole("button", { name: "Back to Tools" }));
+  await userEvent.setup().click(await screen.findByText("Keep Folders in Place"));
   expect(await screen.findByRole("button", { name: "Import Legacy Projects" })).toBeTruthy();
   expect(window.location.pathname).toBe("/tools");
 });

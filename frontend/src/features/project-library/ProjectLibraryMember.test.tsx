@@ -2,7 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProjectLibraryMember } from "./ProjectLibraryMember";
-import { PortableRestore } from "./PortableRestore";
+import { PortableCoverage, PortableRestore } from "./PortableRestore";
 import * as api from "../../api/projectLibrary";
 
 vi.mock("../../api/projectLibrary", () => ({
@@ -111,7 +111,7 @@ describe("Portable project restore", () => {
     await user.type(screen.getByLabelText("Portable project folder"), "E:/received");
     await user.click(screen.getByRole("button", { name: "Inspect Project" }));
     expect(await screen.findByText(/8 files/)).toBeTruthy();
-    expect(screen.getByText("confirmed matrix versions")).toBeTruthy();
+    expect(screen.getByText("Matrix")).toBeTruthy();
     expect(api.restorePortableProject).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Review Restore" }));
     await user.click(await screen.findByRole("button", { name: "Confirm Restore" }));
@@ -133,4 +133,14 @@ describe("Portable project restore", () => {
     expect(screen.queryByRole("button", { name: "Review Restore" })).toBeNull();
     expect(api.restorePortableProject).not.toHaveBeenCalled();
   });
+});
+
+
+it("summarizes carried data by business category and keeps storage names in collapsed diagnostics", () => {
+  render(<PortableCoverage counts={{ projects: 1, confirmed_matrix_versions: 2, result_dataset_revisions: 3, report_draft_revisions: 4, file_assets: 5 }} fileCount={8} />);
+  expect(screen.getByText("Matrix")).toBeTruthy();
+  expect(screen.getByText("Test Results")).toBeTruthy();
+  expect(screen.getByText("Reports")).toBeTruthy();
+  expect(screen.getByText("Source Materials")).toBeTruthy();
+  expect(screen.getByText("Snapshot Diagnostics").closest("details")).toHaveProperty("open", false);
 });

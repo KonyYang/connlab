@@ -112,15 +112,16 @@ export function ToolsPage({
         <article className="tools-card">
           <div className="tools-card-heading"><h3>Project Library</h3></div>
           <button type="button" className="primary-action tools-picker-action" title="Receive existing projects into the library, or recover a portable project and its test data." onClick={onOpenProjectLibrary}>Import Projects</button>
-        </article>
-        <article className="tools-card">
-          <div className="tools-card-heading"><h3>Legacy Project Files</h3></div>
-          <button
-            type="button"
-            className="primary-action tools-picker-action"
-            title="Preview existing project folders in batches. Original files and folder structure remain unchanged."
-            onClick={onOpenLegacyProjects}
-          >Import Legacy Projects</button>
+          <details>
+            <summary>Keep Folders in Place</summary>
+            <h4>Legacy Project Files</h4>
+            <button
+              type="button"
+              className="ui-secondary-action"
+              title="Preview existing project folders in batches. Original files and folder structure remain unchanged."
+              onClick={onOpenLegacyProjects}
+            >Import Legacy Projects</button>
+          </details>
         </article>
         <ToolCard
           title="Internal Report → Customer Report"

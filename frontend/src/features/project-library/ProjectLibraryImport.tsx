@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
-import { getLibraryRuntime, listLibraryMembers, scanLibrarySources, planLibraryIntake, startLibraryBatch, getLibraryBatch, resumeLibraryBatch, pickLibraryFolder, type LibraryRuntime, type LibraryMember, type LibraryFileAssignment, type LibraryScan, type LibraryIntakePlan, type LibraryBatch } from "../../api/projectLibrary";
+import { getLibraryRuntime, listLibraryMembers, scanLibrarySources, planLibraryIntake, startLibraryBatch, getLibraryBatch, resumeLibraryBatch, pickLibraryFolder, type LibraryRuntime, type LibraryMember, type LibraryFileAssignment, type LibraryScan, type LibraryIntakePlan, type LibraryBatch, type LibraryBatchRequest } from "../../api/projectLibrary";
 import { PortableRestore } from "./PortableRestore";
 import "./project-library.css";
 
@@ -24,22 +24,29 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
   const [error, setError] = useState("");
   const [batch, setBatch] = useState<LibraryBatch | null>(null);
   const [recoveryId, setRecoveryId] = useState("");
+  const [submission, setSubmission] = useState<LibraryBatchRequest | null>(null);
+  const interactionEpoch = useRef(0);
   const live = useRef(true);
   const request = useRef<AbortController | null>(null);
   const topBar = useTopBarActionsRoot();
   useEffect(() => {
     live.current = true;
     const controller = new AbortController();
+    const recoveryEpoch = interactionEpoch.current;
     void getLibraryRuntime(controller.signal).then(async value => {
       if (controller.signal.aborted) return;
       setRuntime(value);
       const previousBatch = localStorage.getItem(`connlab.projectLibrary.lastBatch:${value.projects_root}`);
-      if (previousBatch) {
+      if (previousBatch && recoveryEpoch === interactionEpoch.current) {
         setRecoveryId(previousBatch);
+        try {
+          const saved: LibraryBatchRequest = JSON.parse(localStorage.getItem(`connlab.projectLibrary.lastBatchRequest:${value.projects_root}`) ?? "null");
+          if (saved?.batch_id === previousBatch && /^[a-f0-9]{32}$/.test(saved.batch_id) && typeof saved.plan_id === "string" && typeof saved.fingerprint === "string" && Array.isArray(saved.selected) && saved.selected.every(path => typeof path === "string") && Array.isArray(saved.keep_separate) && saved.keep_separate.every(path => typeof path === "string")) setSubmission(saved);
+        } catch { /* A damaged local recovery hint cannot authorize a new submission. */ }
         const previous = await getLibraryBatch(previousBatch, controller.signal);
-        if (!controller.signal.aborted) setBatch(previous);
+        if (!controller.signal.aborted && recoveryEpoch === interactionEpoch.current) { setBatch(previous); setSubmission(null); }
       }
-    }).catch(cause => { if (!controller.signal.aborted) setError((cause as Error).message); });
+    }).catch(cause => { if (!controller.signal.aborted && recoveryEpoch === interactionEpoch.current) setError((cause as Error).message); });
     return () => { live.current = false; controller.abort(); request.current?.abort(); };
   }, []);
   useEffect(() => {
@@ -49,10 +56,12 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
     return () => { window.clearTimeout(timer); controller.abort(); };
   }, [batch]);
   function changeSources(value: string) {
+    interactionEpoch.current += 1; setRecoveryId(""); setSubmission(null);
     request.current?.abort(); request.current = null;
     setSources(value); setAssignments({}); setScan(null); setPlan(null); setSelected([]); setSeparate([]); setBatch(null); setError(""); setConfirming(false); setPage(1);
   }
   async function choose() {
+    interactionEpoch.current += 1;
     setBusy(true); setError("");
     try { const folder = await pickLibraryFolder(); if (live.current && folder) changeSources([...new Set([...sources.split(/\r?\n/).filter(Boolean), folder])].join("\n")); }
     catch (cause) { if (live.current) setError((cause as Error).message); }
@@ -60,6 +69,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
   }
   async function review(paths = sources.split(/\r?\n/).map(value => value.trim().replace(/^"|"$/g, "")).filter(Boolean)) {
     if (!paths.length || busy) return;
+    interactionEpoch.current += 1;
     const controller = new AbortController(); request.current = controller;
     setBusy(true); setError(""); setPlan(null); setBatch(null); setSelected([]); setSeparate([]); setPage(1);
     try {
@@ -92,14 +102,28 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
     } catch (cause) { if (live.current && !controller.signal.aborted) setError((cause as Error).message); }
     finally { if (live.current && request.current === controller) { request.current = null; setBusy(false); } }
   }
-  async function receive(resume = false) {
-    if (busy || (!resume && !plan) || (resume && !batch)) return;
+  async function receive(resume = false, retrySubmission = false) {
+    if (busy || (resume ? !batch : retrySubmission ? !submission : !plan) || !runtime) return;
+    const currentEpoch = ++interactionEpoch.current;
     setBusy(true); setConfirming(false); setError("");
     try {
-      const next = resume && batch ? await resumeLibraryBatch(batch.batch_id) : await startLibraryBatch({ plan_id: plan!.plan_id, fingerprint: plan!.fingerprint, selected, keep_separate: separate });
-      if (live.current) { setBatch(next); setSelected([]); setRecoveryId(next.batch_id); if (runtime) localStorage.setItem(`connlab.projectLibrary.lastBatch:${runtime.projects_root}`, next.batch_id); }
-    } catch (cause) { if (live.current) setError((cause as Error).message); }
-    finally { if (live.current) setBusy(false); }
+      let next: LibraryBatch;
+      if (resume && batch) next = await resumeLibraryBatch(batch.batch_id);
+      else {
+        const intent: LibraryBatchRequest = retrySubmission ? submission! : { batch_id: crypto.randomUUID().replaceAll("-", ""), plan_id: plan!.plan_id, fingerprint: plan!.fingerprint, selected, keep_separate: separate };
+        // Persist the already-confirmed identity before POST, including the first attempt.
+        localStorage.setItem(`connlab.projectLibrary.lastBatch:${runtime.projects_root}`, intent.batch_id!);
+        localStorage.setItem(`connlab.projectLibrary.lastBatchRequest:${runtime.projects_root}`, JSON.stringify(intent));
+        setRecoveryId(intent.batch_id!); setSubmission(intent);
+        next = await startLibraryBatch(intent);
+      }
+      if (live.current && currentEpoch === interactionEpoch.current) {
+        setBatch(next); setSelected([]); setRecoveryId(next.batch_id); setSubmission(null);
+        localStorage.setItem(`connlab.projectLibrary.lastBatch:${runtime.projects_root}`, next.batch_id);
+        localStorage.removeItem(`connlab.projectLibrary.lastBatchRequest:${runtime.projects_root}`);
+      }
+    } catch (cause) { if (live.current && currentEpoch === interactionEpoch.current) setError((cause as Error).message); }
+    finally { if (live.current && currentEpoch === interactionEpoch.current) setBusy(false); }
   }
   async function refreshBatch() {
     if ((!batch && !recoveryId) || busy) return;
@@ -120,9 +144,9 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
       {runtime && <p className="library-location">Receiving into: <span>{runtime.projects_root}</span></p>}
       <div className="library-actions"><button type="button" disabled={locked} onClick={() => void choose()}>Choose Folder</button></div>
       <label>Source paths<textarea value={sources} rows={3} disabled={locked} onChange={event => changeSources(event.target.value)} placeholder="One folder or file path per line" /></label>
-      <div className="library-actions"><button type="button" className="primary-action" disabled={locked || !sources.trim()} onClick={() => void review()}>Review Projects</button>{onLegacyPreview && <button type="button" disabled={locked} title="Keep folders at their current locations using the existing read-only preview and registration flow." onClick={onLegacyPreview}>Link Existing Folders</button>}</div>
+      <div className="library-actions"><button type="button" className="primary-action" disabled={locked || !sources.trim() || !runtime} onClick={() => void review()}>Review Projects</button>{onLegacyPreview && <button type="button" disabled={locked} title="Keep folders at their current locations using the existing read-only preview and registration flow." onClick={onLegacyPreview}>Link Existing Folders</button>}</div>
       {busy && !confirming && <p role="status">Checking or receiving projects…</p>}
-      {error && <div><p role="alert">{error}</p>{recoveryId && !batch && <button type="button" disabled={busy} onClick={() => void refreshBatch()}>Recover Last Batch</button>}</div>}
+      {error && <div><p role="alert">{error}</p>{recoveryId && !batch && <button type="button" disabled={busy} onClick={() => void refreshBatch()}>Recover Last Batch</button>}{submission && !batch && <button type="button" disabled={busy} onClick={() => void receive(false, true)}>Retry Batch Submission</button>}</div>}
       {scan?.truncated && <p role="alert">Incomplete results. Choose a smaller source folder before receiving projects.</p>}
       {scan && !scan.items.length && <p>No projects found. Choose a specific project folder or file.</p>}
       {scan?.warnings.map((note, i) => <p key={i} role="status">{note}</p>)}

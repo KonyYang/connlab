@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProjectLibraryImport } from "./ProjectLibraryImport";
@@ -26,6 +26,43 @@ beforeEach(() => {
 });
 
 describe("ProjectLibraryImport", () => {
+  it("does not let late previous-batch recovery replace a newly reviewed source selection", async () => {
+    let finish!: (value: api.LibraryBatch) => void;
+    vi.mocked(api.getLibraryBatch).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    localStorage.setItem("connlab.projectLibrary.lastBatch:D:/managed/projects", "old-batch");
+    render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+    await screen.findByText("D:/managed/projects");
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("Source paths"), "D:/fresh");
+    await user.click(screen.getByRole("button", { name: "Review Projects" }));
+    await screen.findByRole("table", { name: "Projects to receive" });
+    await act(async () => { finish({ batch_id: "old-batch", status: "interrupted", counts: { added: 0, already_added: 0, review: 0, failed: 1 }, items: [{ source_path: "D:/old", status: "failed", message: "Old batch", member_id: null }] }); });
+    expect(screen.getByRole("table", { name: "Projects to receive" })).toBeTruthy();
+    expect(screen.queryByText("Old batch")).toBeNull();
+  });
+
+  it("persists a client batch identity before submission and reuses it after a lost response", async () => {
+    const user = userEvent.setup();
+    let submittedId = "";
+    vi.mocked(api.startLibraryBatch).mockImplementationOnce(async request => {
+      submittedId = request.batch_id!;
+      expect(submittedId).toMatch(/^[a-f0-9]{32}$/);
+      expect(localStorage.getItem("connlab.projectLibrary.lastBatch:D:/managed/projects")).toBe(submittedId);
+      throw new Error("The connection was interrupted.");
+    }).mockImplementationOnce(async request => {
+      expect(request.batch_id).toBe(submittedId);
+      return { batch_id: submittedId, status: "completed", counts: { added: 1, already_added: 0, review: 0, failed: 0 }, items: [] };
+    });
+    render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+    await user.type(screen.getByLabelText("Source paths"), "D:/old");
+    await user.click(screen.getByRole("button", { name: "Review Projects" }));
+    await user.click(await screen.findByRole("button", { name: "Add Selected" }));
+    await user.click(screen.getByRole("button", { name: "Confirm Add" }));
+    await screen.findByText("The connection was interrupted.");
+    await user.click(screen.getByRole("button", { name: "Retry Batch Submission" }));
+    expect(await screen.findByText(/1 added/)).toBeTruthy();
+  });
+
   it("recovers an interrupted batch after reopening and resumes only on explicit request", async () => {
     localStorage.setItem("connlab.projectLibrary.lastBatch:D:/managed/projects", "previous-batch");
     vi.mocked(api.getLibraryBatch).mockResolvedValue({ batch_id: "previous-batch", status: "interrupted", counts: { added: 0, already_added: 0, review: 0, failed: 1 }, items: [{ source_path: "D:/old/Force", status: "failed", message: "Copy interrupted.", member_id: null }] });
@@ -71,7 +108,7 @@ describe("ProjectLibraryImport", () => {
     await user.click(screen.getByRole("button", { name: "Add Selected" }));
     await user.click(screen.getByRole("button", { name: "Confirm Add" }));
     expect(await screen.findByText(/1 added/)).toBeTruthy();
-    expect(api.startLibraryBatch).toHaveBeenCalledWith({ plan_id: "plan-1", fingerprint: "verified", selected: ["D:/old/Force"], keep_separate: [] });
+    expect(api.startLibraryBatch).toHaveBeenCalledWith(expect.objectContaining({ batch_id: expect.stringMatching(/^[a-f0-9]{32}$/), plan_id: "plan-1", fingerprint: "verified", selected: ["D:/old/Force"], keep_separate: [] }));
     await user.click(screen.getByRole("button", { name: "Open Force test" }));
     expect(onOpenMember).toHaveBeenCalledWith("member-1");
   });

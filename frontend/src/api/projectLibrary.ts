@@ -12,6 +12,7 @@ export type LibraryFileAssignment = { source_path: string; target_member_id?: st
 export type LibraryIntakeItem = { source_path: string; target_path: string; title: string; ltr_number: string | null; status: "ready" | "conflict" | "already_added" | "unavailable"; warnings: string[]; can_keep_separate: boolean; target_member_id?: string | null; new_project_title?: string | null };
 export type LibraryIntakePlan = { plan_id: string; fingerprint: string; items: LibraryIntakeItem[]; warnings: string[] };
 export type LibraryBatch = { batch_id: string; status: "completed" | "interrupted" | "running"; counts: { added: number; already_added: number; review: number; failed: number }; items: { source_path: string; status: string; message: string; member_id: string | null }[] };
+export type LibraryBatchRequest = { batch_id?: string; plan_id: string; fingerprint: string; selected: string[]; keep_separate: string[] };
 export type LibraryPlanToken = { plan_id: string; fingerprint: string };
 export type LibraryLocationPlan = LibraryPlanToken & { source_path: string; target_path: string; warnings: string[] };
 export type LibraryFiles = { items: { name: string; relative_path: string; is_directory: boolean; size_bytes: number | null }[]; warnings: string[] };
@@ -24,7 +25,7 @@ export const listLibraryMembers = (query = "", batchId = "", signal?: AbortSigna
 export const getLibraryMember = (id: string, signal?: AbortSignal) => requestJson<LibraryMember>(memberPath(id), { signal });
 export const scanLibrarySources = (roots: string[], signal?: AbortSignal) => post<LibraryScan>(`${BASE}/scan`, { roots }, signal);
 export const planLibraryIntake = (sources: string[], signal?: AbortSignal, assignments?: LibraryFileAssignment[]) => post<LibraryIntakePlan>(`${BASE}/intake-plan`, { sources, ...(assignments ? { assignments } : {}) }, signal);
-export const startLibraryBatch = (selection: LibraryPlanToken & { selected: string[]; keep_separate: string[] }) => post<LibraryBatch>(`${BASE}/batches`, selection);
+export const startLibraryBatch = (selection: LibraryBatchRequest) => post<LibraryBatch>(`${BASE}/batches`, selection);
 export const getLibraryBatch = (id: string, signal?: AbortSignal) => requestJson<LibraryBatch>(`${BASE}/batches/${encodeURIComponent(id)}`, { signal });
 export const resumeLibraryBatch = (id: string) => post<LibraryBatch>(`${BASE}/batches/${encodeURIComponent(id)}/resume`, {});
 export const getLibraryFiles = (id: string, relativePath = "", signal?: AbortSignal) => requestJson<LibraryFiles>(`${memberPath(id)}/files?${new URLSearchParams({ relative_path: relativePath })}`, { signal });
