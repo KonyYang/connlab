@@ -911,3 +911,34 @@ def _assert_replacement_fences_public_writers(settings,engine,project_id,operati
         finally:
             runner.pool.shutdown(wait=True)
             app.dependency_overrides.clear();app.dependency_overrides.update(previous)
+
+
+def test_missing_project_file_is_local_warning_and_keeps_structured_results_and_reference(tmp_path):
+    from tests.fixtures.project_library.full_graph import seed_full_graph
+    from sqlalchemy import text
+    with seed_full_graph(tmp_path/"A") as graph:
+        client=graph["lab"]["client"];root=graph["project_root"]
+        plan=client.post("/api/project-library/intake-plan",json={"sources":[str(root)]}).json()
+        batch=client.post("/api/project-library/batches",json={**{key:plan[key] for key in ("plan_id","fingerprint")},"selected":[str(root)]}).json()
+        member_id=batch["items"][0]["member_id"]
+        missing=graph["business_folder"]/"Test results/DL-2026-05-001 LLCR Record.xlsx"
+        missing.unlink()
+        info=client.get(f"/api/project-library/members/{member_id}/portable").json()
+        assert not info["blockers"],info
+        assert any(missing.name in warning for warning in info["warnings"]),info
+        assert info["record_counts"]["file_assets"]==3 and info["record_counts"]["result_dataset_revisions"]==2
+        prepared=client.post(f"/api/project-library/members/{member_id}/prepare",json={"fingerprint":info["fingerprint"]})
+        assert prepared.status_code==200,prepared.text
+        parcel=tmp_path/"USB"/root.name;shutil.copytree(root,parcel)
+    b,settings,engine=app_at(tmp_path/"B")
+    plan=b.post("/api/project-library/restore-plan",json={"folder":str(parcel)}).json()
+    assert plan["status"]=="ready",plan
+    assert any(missing.name in warning for warning in plan["warnings"])
+    restored=confirm(b,"/api/project-library/restore",plan)
+    with Session(engine) as session:
+        path=Path(session.execute(text("SELECT path FROM file_assets WHERE asset_id='qa-llcr-workbook'")).scalar_one())
+        assert path.is_relative_to(settings.projects_dir) and path.name==missing.name
+        assert not path.exists()
+        assert session.execute(text("SELECT COUNT(*) FROM result_dataset_revisions")).scalar_one()==2
+    assert restored["member"]["project_id"]=="P1"
+    engine.dispose()

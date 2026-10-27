@@ -136,6 +136,9 @@ class ProjectLibraryService:
                 elif first.get("ltr_number") and first["ltr_number"] == second.get("ltr_number") and not first.get("new_project_title") and not first.get("has_portable"):
                     first["status"], first["can_keep_separate"] = "conflict", True
                     first["warnings"].append("Another selected folder uses this LTR. Review and keep separate if appropriate.")
+                elif first["target_path"].casefold() == second["target_path"].casefold() and not first.get("has_portable"):
+                    first["status"], first["can_keep_separate"] = "conflict", True
+                    first["warnings"].append("Another selected source uses the same destination. Keep Separate preserves both without overwriting either source.")
         plan = self.files.save_plan("intake", {"items": rows})
         keys = ("source_path", "target_path", "title", "ltr_number", "status", "warnings", "can_keep_separate", "target_member_id", "new_project_title")
         return {"plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"],
@@ -158,6 +161,7 @@ class ProjectLibraryService:
                 raise ProjectLibraryConflict("This batch identity belongs to a different confirmed request.")
             return self._run_batch(previous)
         batch = {"batch_id": batch_id, "status": "running", "groups": {}, "items": [], "counts": {}, "intent": intent}
+        reserved_targets = set()
         for path in dict.fromkeys(selected):
             source = lookup[path]
             separate = path in keep_separate
@@ -166,8 +170,10 @@ class ProjectLibraryService:
             if group:
                 member_id = batch["groups"].setdefault(group, member_id)
             target = source["target_path"]
-            if separate and self.files.exists(target):
-                target = self.files.alternate(target, batch_id)
+            if separate:
+                while target.casefold() in reserved_targets or self.files.exists(target):
+                    target = self.files.alternate(source["target_path"], uuid4().hex, is_file=source["kind"] == "file")
+            reserved_targets.add(target.casefold())
             batch["items"].append({"source_path": path, "status": "pending", "message": "", "member_id": None,
                                    "source": source, "target": target, "working_member_id": member_id,
                                    "keep_separate": separate, "phase": "planned"})
@@ -192,6 +198,8 @@ class ProjectLibraryService:
                         item.update(status="already_added", message="This source was already received.")
                     elif source["status"] == "unavailable":
                         item.update(status="failed", message=" ".join(source["warnings"]))
+                    elif item["keep_separate"] and not source["can_keep_separate"]:
+                        item.update(status="review", message="This review does not offer Keep Separate for the selected source. Review its available action again.")
                     elif source["status"] == "conflict" and not (item["keep_separate"] and source["can_keep_separate"]):
                         item.update(status="review", message=" ".join(source["warnings"]))
                     else:

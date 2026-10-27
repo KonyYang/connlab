@@ -37,7 +37,10 @@ class PortableAssets:
                     return value
                 checked_path(path, must_exist=False)
                 if path.is_relative_to(self.project):
-                    return "@project/" + path.relative_to(self.project).as_posix()
+                    relative = path.relative_to(self.project).as_posix()
+                    if not path.exists():
+                        self.warnings.append("A referenced project file or folder is missing: " + relative)
+                    return "@project/" + relative
                 missing_root = self.settings.data_dir / "project_library_missing"
                 if path.is_relative_to(missing_root):
                     self.warnings.append("A referenced location is unavailable or external: " + path.name)

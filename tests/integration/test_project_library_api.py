@@ -229,3 +229,84 @@ def test_reimport_same_path_compares_content_before_calling_it_a_duplicate(libra
     changed=client.post("/api/project-library/intake-plan",json={"sources":[str(source)]}).json()
     assert changed["items"][0]["status"]=="conflict",changed
     assert changed["items"][0]["can_keep_separate"] is True
+
+
+def test_scan_keeps_explicit_manual_parent_boundary_without_hashing_it_again(library,tmp_path,monkeypatch):
+    from backend.infrastructure.project_library import files as file_module
+    client,_,_=library
+    root=tmp_path/"Manual project archive"
+    for folder,name in (("Photos","photo.bin"),("Test results","result.csv")):
+        (root/folder).mkdir(parents=True)
+        (root/folder/name).write_bytes(b"original manual project evidence")
+    original=file_module.file_hash;reads=[]
+    def track(path):
+        reads.append(str(path));return original(path)
+    monkeypatch.setattr(file_module,"file_hash",track)
+    response=client.post("/api/project-library/scan",json={"roots":[str(root)]})
+    assert response.status_code==200,response.text
+    scan=response.json()
+    assert scan["boundary_roots"][0]["source_path"]==str(root)
+    assert set(scan["boundary_roots"][0]["child_folders"])=={str(root/"Photos"),str(root/"Test results")}
+    assert all(reads.count(str(path))<=1 for path in root.rglob("*") if path.is_file()),reads
+    # Explicit parent selection is authoritative even when auto suggestions go deeper.
+    plan=client.post("/api/project-library/intake-plan",json={"sources":[scan["boundary_roots"][0]["source_path"]]}).json()
+    assert [item["source_path"] for item in plan["items"]]==[str(root)]
+    received=client.post("/api/project-library/batches",json={**{key:plan[key] for key in ("plan_id","fingerprint")},"selected":[str(root)]}).json()
+    assert received["counts"]["added"]==1,received
+    member=client.get("/api/project-library/members/"+received["items"][0]["member_id"]).json()
+    assert (Path(member["folder_path"])/"Photos/photo.bin").read_bytes()==b"original manual project evidence"
+    assert (Path(member["folder_path"])/"Test results/result.csv").is_file()
+
+
+def test_scan_accepts_the_initial_batch_of_three_hundred_explicit_roots(library,tmp_path):
+    client,_,_=library
+    roots=[]
+    for i in range(300):
+        root=tmp_path/f"Manual root {i}"
+        (root/"Photos").mkdir(parents=True)
+        roots.append(str(root))
+    response=client.post("/api/project-library/scan",json={"roots":roots})
+    assert response.status_code==200,response.text
+    assert {row["source_path"] for row in response.json()["boundary_roots"]}==set(roots)
+
+
+@pytest.mark.parametrize("folder_name",["DL-2026-09-032 Same Project","Same manual project"])
+def test_same_batch_keep_separate_reserves_distinct_destinations_and_retries_once(library,tmp_path,folder_name):
+    client,settings,_=library
+    sources=[]
+    for i in (1,2):
+        source=tmp_path/f"computer-{i}"/folder_name
+        source.mkdir(parents=True)
+        (source/"result.txt").write_text(f"source evidence {i}",encoding="utf-8")
+        sources.append(str(source))
+    plan=client.post("/api/project-library/intake-plan",json={"sources":sources}).json()
+    assert all(item["status"]=="conflict" and item["can_keep_separate"] for item in plan["items"]),plan
+    request={**{key:plan[key] for key in ("plan_id","fingerprint")},"selected":sources,"keep_separate":sources,"batch_id":"b"*32}
+    response=client.post("/api/project-library/batches",json=request)
+    assert response.status_code==200,response.text
+    batch=response.json()
+    assert batch["counts"]["added"]==2 and batch["counts"]["failed"]==0,batch
+    members=client.get("/api/project-library/members").json()["items"]
+    assert len({row["folder_path"] for row in members})==2
+    assert {(Path(row["folder_path"])/"result.txt").read_text() for row in members}=={"source evidence 1","source evidence 2"}
+    repeated=client.post("/api/project-library/batches",json=request).json()
+    assert repeated["items"]==batch["items"]
+    assert len(client.get("/api/project-library/members").json()["items"])==2
+    assert len(list(settings.projects_dir.iterdir()))==2
+    assert [(Path(path)/"result.txt").read_text() for path in sources]==["source evidence 1","source evidence 2"]
+
+
+def test_keep_separate_same_name_loose_files_preserves_their_extension(library,tmp_path):
+    client,_,_=library
+    sources=[]
+    for i in (1,2):
+        path=tmp_path/f"computer-{i}"/"result.csv";path.parent.mkdir()
+        path.write_text(f"result,{i}",encoding="utf-8");sources.append(str(path))
+    plan=client.post("/api/project-library/intake-plan",json={"sources":sources,"assignments":[{"source_path":path,"new_project_title":"Supplementary project"} for path in sources]}).json()
+    assert all(row["status"]=="conflict" and row["can_keep_separate"] for row in plan["items"]),plan
+    batch=client.post("/api/project-library/batches",json={**{key:plan[key] for key in ("plan_id","fingerprint")},"selected":sources,"keep_separate":sources}).json()
+    assert batch["counts"]["added"]==2,batch
+    member=client.get("/api/project-library/members/"+batch["items"][0]["member_id"]).json()
+    files=list(Path(member["folder_path"]).glob("*.csv"))
+    assert len(files)==2
+    assert {path.read_text() for path in files}=={"result,1","result,2"}

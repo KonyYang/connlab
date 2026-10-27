@@ -32,7 +32,7 @@ class MembersResponse(BaseModel):
 
 
 class RootsRequest(BaseModel):
-    roots: list[str] = Field(min_length=1, max_length=20)
+    roots: list[str] = Field(min_length=1, max_length=1000)
 
 
 class CandidateResponse(BaseModel):
@@ -46,6 +46,7 @@ class CandidateResponse(BaseModel):
 
 class ScanResponse(BaseModel):
     items: list[CandidateResponse]
+    boundary_roots: list[CandidateResponse]
     warnings: list[str]
     truncated: bool
 

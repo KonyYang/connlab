@@ -181,8 +181,15 @@ class LibraryFiles:
         source = checked_path(value)
         if source == self.settings.projects_dir or self.settings.projects_dir.is_relative_to(source):
             raise ProjectLibraryError("Choose projects below the library root, not a directory containing the library.")
+        entries = inventory(source) if source.is_dir() else [{"relative_path": source.name, "directory": False, "size": source.stat().st_size, "sha256": file_hash(source)}]
+        return {**self.describe_source(source), "entries": entries, "identity": identity(source), "source_fingerprint": fingerprint(entries)}
+
+    def describe_source(self, value):
+        """Describe a selectable boundary without reading its material contents."""
+        source = checked_path(value)
+        if source == self.settings.projects_dir or self.settings.projects_dir.is_relative_to(source):
+            raise ProjectLibraryError("Choose projects below the library root, not a directory containing the library.")
         kind = "project" if source.is_dir() else "file"
-        entries = inventory(source) if kind == "project" else [{"relative_path": source.name, "directory": False, "size": source.stat().st_size, "sha256": file_hash(source)}]
         name = source.name if kind == "project" else source.stem
         marker = {}
         if source.is_dir():
@@ -201,11 +208,19 @@ class LibraryFiles:
             if len(business) == 1 and (source / "Source Book").is_dir():
                 title = business[0].name[len(number):].strip()
         return {"source_path": str(source), "title": title, "ltr_number": number, "kind": kind,
-                "warnings": [], "child_folders": children, "entries": entries, "identity": identity(source),
-                "project_id": marker.get("project_id") or marker.get("source_project_id"), "has_portable": (source / PORTABLE_FILE).exists() if kind == "project" else False, "source_fingerprint": fingerprint(entries)}
+                "warnings": [], "child_folders": children,
+                "project_id": marker.get("project_id") or marker.get("source_project_id"), "has_portable": (source / PORTABLE_FILE).exists() if kind == "project" else False}
 
     def scan(self, roots):
         items, warnings, seen = [], [], set()
+        boundaries = {}
+        for value in roots:
+            try:
+                description = self.describe_source(value)
+                if description["kind"] == "project":
+                    boundaries.setdefault(description["source_path"].casefold(), description)
+            except (OSError, ValueError) as error:
+                warnings.append(f"{value}: {error}")
         pending = [(value, 0) for value in reversed(roots)]
         scanned = 0
         while pending and scanned < 10000:
@@ -233,8 +248,10 @@ class LibraryFiles:
                     warnings.append("Some folders are deeper than the preview limit. Choose a specific project.")
             except (OSError, ValueError) as error:
                 warnings.append(f"{value}: {error}")
-        return {"items": [{key: row[key] for key in ("source_path", "title", "ltr_number", "kind", "warnings", "child_folders")} for row in items],
-                "warnings": warnings, "truncated": bool(pending)}
+        keys = ("source_path", "title", "ltr_number", "kind", "warnings", "child_folders")
+        return {"items": [{key: row[key] for key in keys} for row in items],
+                "boundary_roots": [{key: row[key] for key in keys} for row in boundaries.values()],
+                "warnings": list(dict.fromkeys(warnings)), "truncated": bool(pending)}
 
     def suggested_target(self, source, *, new_title=None, target_member=None):
         path = Path(source["source_path"])
@@ -247,9 +264,10 @@ class LibraryFiles:
     def exists(self, value):
         return checked_path(value, must_exist=False).exists()
 
-    def alternate(self, value, tag):
+    def alternate(self, value, tag, *, is_file=None):
         path = Path(value)
-        return str(path.with_name(path.stem + " [" + tag[:8] + "]" + path.suffix)) if path.is_file() else str(path.with_name(path.name + " [" + tag[:8] + "]"))
+        file_target = path.is_file() if is_file is None else is_file
+        return str(path.with_name(path.stem + " [" + tag[:8] + "]" + path.suffix)) if file_target else str(path.with_name(path.name + " [" + tag[:8] + "]"))
 
     def same_content(self, source, target):
         path = checked_path(target)
