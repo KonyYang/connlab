@@ -128,6 +128,26 @@ reporting a partially applied copy as complete.
 
 ## Acceptance boundaries
 
+The intended operator sequence is:
+
+1. In Tools, choose **Import Projects**, select source folders, then **Review
+   Projects**. Check project boundaries, loose-file assignments and conflicts;
+   **Add Selected** and **Confirm Add** receive the selected copies.
+2. In **Library**, search by LTR or title and use **Open Folder** for ordinary
+   Windows file work. **Manage** provides file refresh, **Edit Title** and
+   **Locate Folder** when a directory was moved or renamed.
+3. Use **Continue Testing** to review takeover before entering the existing
+   Project Workbench. Receiving documents alone does not confirm test authority.
+4. Before changing computers, use **Prepare to Take** and **Confirm Snapshot**.
+   Check that the saved data is current, then copy the complete project root.
+5. On the other computer, use **Take Over a Portable Project**, **Inspect
+   Project**, **Review Restore** and **Confirm Restore**. Resolve an offered
+   conflict explicitly. Review any missing dependencies before continuing tests.
+
+An old manual folder without a snapshot remains a valid material-intake source.
+Recovering structured test data from an old database requires the compatible
+database-copy rehearsal path; it cannot be inferred from a directory name.
+
 The task requires at least 300 isolated projects, interruption and retry tests,
 mutable-title and everyday-file-edit tests, and an A/B restore with the source
 paths unavailable. Each declared data family needs nonempty evidence. Restored
