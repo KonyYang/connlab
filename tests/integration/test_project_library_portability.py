@@ -955,3 +955,50 @@ def test_same_material_cannot_hide_known_workspace_identity_when_manifest_is_mis
         assert plan["items"][0]["status"]=="conflict" and plan["items"][0]["can_keep_separate"],plan
         assert any("identity" in warning.lower() for warning in plan["items"][0]["warnings"]),plan
         assert client.get("/api/project-library/members").json()["items"]==[]
+
+
+@pytest.mark.parametrize("prepared_first",[False,True])
+def test_changed_registered_workbook_has_local_review_warning_without_rewriting_data(tmp_path,monkeypatch,prepared_first):
+    from tests.fixtures.project_library.full_graph import seed_full_graph
+    from backend.infrastructure.project_library import files as files_module
+    from openpyxl import load_workbook
+    from sqlalchemy import text
+    with seed_full_graph(tmp_path/"A") as graph:
+        client=graph["lab"]["client"];root=graph["project_root"]
+        plan=client.post("/api/project-library/intake-plan",json={"sources":[str(root)]}).json()
+        batch=client.post("/api/project-library/batches",json={**{key:plan[key] for key in ("plan_id","fingerprint")},"selected":[str(root)]}).json()
+        member_id=batch["items"][0]["member_id"]
+        initial=client.get(f"/api/project-library/members/{member_id}/portable").json()
+        if prepared_first:
+            response=client.post(f"/api/project-library/members/{member_id}/prepare",json={"fingerprint":initial["fingerprint"]})
+            assert response.status_code==200,response.text
+        path=graph["business_folder"]/"Test results/DL-2026-05-001 LLCR Record.xlsx"
+        with graph["lab"]["factory"]() as session:
+            registered=session.execute(text("SELECT sha256 FROM file_assets WHERE asset_id='qa-llcr-workbook'")).scalar_one()
+        workbook=load_workbook(path)
+        assert workbook["SIG"]["D10"].value==0.248
+        workbook["SIG"]["D10"]=0.777
+        workbook.save(path);workbook.close()
+        assert sha256(path.read_bytes()).hexdigest()!=registered
+        original=files_module.file_hash;reads=[]
+        def track(value):
+            reads.append(str(value));return original(value)
+        monkeypatch.setattr(files_module,"file_hash",track)
+        listed=client.get("/api/project-library/members").json()
+        assert listed["items"][0]["snapshot_status"]=="not_checked" and reads==[]
+        current=client.get(f"/api/project-library/members/{member_id}/portable").json()
+        assert current["status"]==("stale" if prepared_first else "missing"),current
+        assert not current["blockers"],current
+        assert any(path.relative_to(root).as_posix() in warning and "changed" in warning.lower() for warning in current["warnings"]),current
+        assert reads.count(str(path))==1,reads
+        assert client.get("/api/project-library/members/"+member_id).json()["can_continue"] is True
+        report=client.get("/api/projects/P1/report-workspace")
+        assert report.status_code==200 and "0.198" in report.text,report.text
+        with graph["lab"]["factory"]() as session:
+            assert session.execute(text("SELECT sha256 FROM file_assets WHERE asset_id='qa-llcr-workbook'")).scalar_one()==registered
+            assert session.execute(text("SELECT COUNT(*) FROM file_assets")).scalar_one()==3
+            assert session.execute(text("SELECT COUNT(*) FROM result_dataset_revisions")).scalar_one()==2
+            assert session.execute(text("SELECT COUNT(*) FROM confirmed_matrix_versions")).scalar_one()==2
+        response=client.post(f"/api/project-library/members/{member_id}/prepare",json={"fingerprint":current["fingerprint"]})
+        assert response.status_code==200,response.text
+        assert any(path.name in warning and "changed" in warning.lower() for warning in response.json()["warnings"])

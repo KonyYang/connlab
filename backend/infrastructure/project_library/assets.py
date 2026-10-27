@@ -9,6 +9,13 @@ from backend.infrastructure.project_library.ownership import transform_paths
 
 SPECIAL_DATA_ROOTS = ("report_authoring_assets", "report_working_drafts")
 JOURNAL_ROOTS = ("project_folder_generation", "official_folder_relocation", "llcr_cr_record_publication", "ir_dwv_record_publication")
+REGISTERED_FILE_HASHES = {
+    "file_assets": (("path", "sha256"),),
+    "intake_assets": (("stored_path", "sha256"),),
+    "project_request_material_collection_items": (("source_path", "sha256"), ("target_path", "sha256")),
+    "project_output_records": (("output_path", "output_sha256"),),
+    "report_draft_revisions": (("file_path", "file_sha256"),),
+}
 IDENTITY_FILES = {".connlab/library.json", ".connlab/manifest.json"}
 FORBIDDEN_NAMES = {"connlab.sqlite3", "local_identity.sqlite3", "local_profile.sqlite3", "connlab.admin.toml"}
 
@@ -67,6 +74,28 @@ class PortableAssets:
                     if not entry["directory"]:
                         self._retain_description(folder / entry["relative_path"], force_data=True)
         return transformed
+
+    def warn_registered_changes(self, rows, project_files):
+        # Reuse this capture's verified hashes; registered hashes remain evidence,
+        # rather than being updated to accept a user's ordinary file edit.
+        actual = {self.project / item["relative_path"]: item["sha256"]
+                  for item in project_files if not item["directory"]}
+        actual.update({Path(item["source_path"]): item["sha256"] for item in self.records.values()})
+        for name, columns in REGISTERED_FILE_HASHES.items():
+            for row in rows.get(name, []):
+                for path_column, hash_column in columns:
+                    value, expected = row.get(path_column), row.get(hash_column)
+                    if not value or not isinstance(expected, str) or not re.fullmatch(r"[a-fA-F0-9]{64}", expected):
+                        continue
+                    path = Path(value)
+                    if not path.is_absolute():
+                        continue
+                    path = path.resolve()
+                    current = actual.get(path)
+                    if current is None or current.casefold() == expected.casefold():
+                        continue
+                    label = path.relative_to(self.project).as_posix() if path.is_relative_to(self.project) else path.name
+                    self.warnings.append("A registered file has changed: " + label + ". Review it against the saved test data.")
 
     def _retain_description(self, path, *, force_data=False):
         path = checked_path(path)

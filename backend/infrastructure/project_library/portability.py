@@ -62,9 +62,11 @@ class ProjectPortability:
         journal_history = sorted({fingerprint(item): item for item in journal_history}.values(), key=fingerprint)
         assets = PortableAssets(self.settings, member)
         encoded_rows = assets.encode(rows)
+        project_files = project_inventory(root)
+        assets.warn_registered_changes(rows, project_files)
         encoded_rows = {name: sorted(records, key=lambda row: json.dumps(row, sort_keys=True, ensure_ascii=False)) for name, records in encoded_rows.items()}
         content = {"project_id": member["project_id"], "ltr_number": member["ltr_number"], "title": member["title"],
-                   "rows": encoded_rows, "files": project_inventory(root), "assets": assets.descriptors(),
+                   "rows": encoded_rows, "files": project_files, "assets": assets.descriptors(),
                    "operation_history": journal_history}
         return content, assets
 
