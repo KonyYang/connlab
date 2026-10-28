@@ -95,6 +95,8 @@
           "frontend/src/features/legacy-projects/LegacyProjectList.tsx",
           "frontend/src/features/legacy-projects/LegacyProjectPreview.test.tsx",
           "frontend/src/features/legacy-projects/LegacyProjectPreview.tsx",
+          "frontend/src/features/project-library/ProjectImportResults.test.tsx",
+          "frontend/src/features/project-library/ProjectImportResults.tsx",
           "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
           "frontend/src/features/project-library/ProjectLibraryImport.tsx",
           "frontend/src/features/project-library/ProjectLibraryList.test.tsx",
@@ -109,7 +111,7 @@
         "risk_reasons": [],
         "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
         "started_at": "2026-10-28T14:26:30.121108Z",
-        "updated_at": "2026-10-28T16:19:01.598665Z",
+        "updated_at": "2026-10-28T16:23:40.055184Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
