@@ -71,7 +71,7 @@
   "tasks": {
     "TASK_PROJECT_IMPORT_ENTRY_20261028": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
@@ -104,84 +104,17 @@
         "risk_reasons": [],
         "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
         "started_at": "2026-10-28T14:26:30.121108Z",
-        "updated_at": "2026-10-28T15:11:27.922351Z",
+        "updated_at": "2026-10-28T15:14:27.870277Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
           "stage": "revision",
           "status": "running",
-          "summary": "用户反馈：Library 和 Legacy 选项过多，统一为一个项目库列表和导入入口；保留现有数据与兼容链接。",
+          "summary": "User selected smoother import and search: locate imported projects, preserve search/page and return context; frontend-only revision.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
-          "subject": "de2577bcccf0e2513c7eb2b7c828af54f3fa7eed",
-          "summary": "Project intake and browsing unified under Project Library: managed members and in-place folder registrations share one list, search, pagination and Open action. Import defaults to receiving; other methods collapsed. Existing data, detail routes, Workbench and old URLs retained. Frontend-only UI revision; no real business mutations, no push/publication or automatic Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "docs/architecture/project_library.md",
-            "frontend/src/App.test.tsx",
-            "frontend/src/App.tsx",
-            "frontend/src/features/legacy-projects/LegacyProjectBrowser.tsx",
-            "frontend/src/features/legacy-projects/LegacyProjectPreview.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-            "frontend/src/features/project-library/ProjectLibraryList.test.tsx",
-            "frontend/src/features/project-library/ProjectLibraryList.tsx",
-            "frontend/src/pages/ProjectListPage.test.tsx",
-            "frontend/src/pages/ProjectListPage.tsx"
-          ],
-          "validation": [
-            {
-              "name": "Behavioral RED/GREEN",
-              "status": "passed",
-              "result": "Initial unified-list-red.log: 2 behavioral failures; unified-affected-green.log: 54 passed including mixed IDs/search, pagination return, stale requests, partial failures/retry, batch isolation and navigation."
-            },
-            {
-              "name": "Full frontend QA",
-              "status": "passed",
-              "result": "1087 passed, 1 skipped at default concurrency; tsc -b and Vite build passed.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\unified-qa.log"
-            },
-            {
-              "name": "Isolated real UI",
-              "status": "passed",
-              "result": "Two synthetic projects registered using real isolated APIs, both visible and separately searchable/openable in one list. Returns preserve search. Advanced methods collapsed, old list URL compatible, batch filter and Show All Projects verified at 1280/598px. Private server stopped, viewport reset, own tab closed.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\unified-ui-result.json"
-            },
-            {
-              "name": "Exact review and integration preflight",
-              "status": "passed",
-              "result": "Distinct Standards/Spec passes by current agent, no actionable findings. Clean task/primary; master drift only board. No backend/schema edits; Python suite omitted as unaffected.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\unified-review.json"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Current agent; same authorized task revision, public behavioral RED/GREEN and targeted regression."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Current agent separate Standards/Spec self-review passes, not independent review; no new business authority or data migration."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Current agent after review; complete frontend and isolated real database/UI acceptance on this exact clean subject."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "de2577bcccf0e2513c7eb2b7c828af54f3fa7eed",
-            "primary_before": "cfbec9488baa1b2defe5609be87407e664f8e104",
-            "integrated_head": "4a904f3837f8980106885178710c13f318eaed60",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
