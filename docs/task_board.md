@@ -71,7 +71,7 @@
   "tasks": {
     "TASK_PROJECT_IMPORT_ENTRY_20261028": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
@@ -105,77 +105,17 @@
         "risk_reasons": [],
         "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
         "started_at": "2026-10-28T14:26:30.121108Z",
-        "updated_at": "2026-10-28T15:37:54.283167Z",
+        "updated_at": "2026-10-28T15:40:11.590939Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
           "stage": "revision",
           "status": "running",
-          "summary": "User requested the next step. Continue the same intake UX task: selected source-folder list, removal/reset and optional manual paths; preserve preview/confirmation and real-data isolation.",
+          "summary": "Continue the same intake UX task: open verified existing projects directly from duplicate preview and clarify all-duplicate/mixed preview guidance; additive read-only response only, no changes to receiving/conflict rules.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
-          "subject": "5ba9e89867872649c2c481d6e856e6a57e5b350f",
-          "summary": "Make project intake source selection visible: selected-location list, individual Remove and Clear All, optional collapsed manual editor, exact duplicate picker choices and cancellation preserve reviewed plan; changed sources invalidate it. Original preview/explicit intake confirmation preserved. Frontend only; no real files/data changed, no push/publication or automatic Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "docs/architecture/project_library.md",
-            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-            "frontend/src/features/project-library/project-library.css"
-          ],
-          "validation": [
-            {
-              "name": "Behavioral RED/GREEN",
-              "status": "passed",
-              "result": "source-selection-red.log: 3 intended behavior failures and 13 existing passes. source-final-affected.log: 27 passed including original intake/conflicts/recovery/navigation; native picker duplicate/cancel/busy cases use public API mocks."
-            },
-            {
-              "name": "Complete frontend gate",
-              "status": "passed",
-              "result": "1094 passed, 1 skipped at default concurrency. Typecheck tsc -b and production Vite build passed.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\source-qa.log"
-            },
-            {
-              "name": "Isolated selection and preview UI",
-              "status": "passed",
-              "result": "Default manual editor collapsed; temporary source list, long-path wrapping at 598px, real read-only Already Added/Ready preview, Remove and Clear All invalidate previous plan, clearing disables review. Source bytes unchanged, no new test project copied. Own server stopped, viewport reset and tab closed. Native Windows picker not opened in UI QA.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\source-ui-result.json"
-            },
-            {
-              "name": "Focused review/integration preflight",
-              "status": "passed",
-              "result": "Separate Standards and Spec self-review passes by current agent, no actionable findings. Clean task/primary; master drift only board. Four exact in-scope paths, no backend/schema changes; Python suite unaffected.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\source-review.json"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Current agent, bounded same-task UX revision, public behavioral RED/GREEN."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Current agent distinct Standards/Spec self-review passes, not independent review."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Current agent after focused review, complete frontend gate and isolated UI on clean final subject."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "5ba9e89867872649c2c481d6e856e6a57e5b350f",
-            "primary_before": "71c6ae4ade623d3c98eba05e8e2147f91724a5a7",
-            "integrated_head": "ab993f5b38b0f45f0ee1af7a04168dc47d4ee8d2",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
