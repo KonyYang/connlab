@@ -71,7 +71,7 @@
   "tasks": {
     "TASK_PROJECT_IMPORT_ENTRY_20261028": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
@@ -116,90 +116,17 @@
         "risk_reasons": [],
         "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
         "started_at": "2026-10-28T14:26:30.121108Z",
-        "updated_at": "2026-10-28T17:11:57.040367Z",
+        "updated_at": "2026-10-28T23:17:49.650497Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
           "stage": "revision",
           "status": "running",
-          "summary": "User requests one Projects homepage catalog and search across registered, received and linked projects; one Import Projects action, no duplicate Library navigation; default All, More for retained areas, batch return context. Frontend only and isolated QA; no real data/directory mutation, push or publication.",
+          "summary": "User requests a narrower Projects search, full All Projects label, directly visible Trash and History controls, and removal of More. Local frontend layout/copy only; preserve unified data/search, no real-data mutation or push/publication.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
-          "subject": "641805d66843faf4626ccd1fd5b0efe5f098d3aa",
-          "summary": "Unify Projects homepage catalog and metadata search across registry, received folders and linked folders. Single Import Projects action, no Library navigation, default All Projects, Trash/History under More. Verified workspace identity combines display rows only; retained records cannot leak through folder history flags. Preserve routes, workflow authority, per-batch search/page return context. Frontend/docs only; no real business/source mutation, push/publication or automatic Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "docs/architecture/project_library.md",
-            "frontend/src/App.test.tsx",
-            "frontend/src/App.tsx",
-            "frontend/src/features/legacy-projects/LegacyProjectBrowser.tsx",
-            "frontend/src/features/project-library/ProjectLibraryMember.tsx",
-            "frontend/src/features/projects-registry/ProjectFolderRow.tsx",
-            "frontend/src/features/projects-registry/projectCatalog.test.ts",
-            "frontend/src/features/projects-registry/projectCatalog.ts",
-            "frontend/src/pages/ProjectListPage.test.tsx",
-            "frontend/src/pages/ProjectListPage.tsx",
-            "frontend/src/project-dashboard.css"
-          ],
-          "validation": [
-            {
-              "name": "Public regression RED/GREEN",
-              "status": "passed",
-              "result": "Initial unified homepage search failed before implementation. 54 affected tests passed; real isolated UI found retained-member history flag edge, added a meaningful failing regression and fixed it. Final complete gate includes all affected tests. Search across requestor/title/path, exact-ID dedup, same-LTR distinct rows, namespace collisions, retained records, partial-failure Retry, batch/general page state and old URLs covered.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\catalog-targeted-green.log"
-            },
-            {
-              "name": "Complete final frontend gate",
-              "status": "passed",
-              "result": "1112 passed, 1 skipped; default concurrency; TypeScript tsc -b and production Vite build passed. Rerun on final bytes after isolated UI retained-identity finding.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\catalog-frontend-final-qa.log"
-            },
-            {
-              "name": "Standards then Spec review",
-              "status": "passed",
-              "result": "Current agent separate sequential self-review passes; all findings resolved; 11 final file hashes match tested/reviewed product bytes. No independent review claimed.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\catalog-review.json"
-            },
-            {
-              "name": "Actual isolated SQLite-backed UI",
-              "status": "passed",
-              "result": "Registered/received/linked data in one list and search; workbench and original file details open correctly; search preserved on return; More retained records verified; exact identity dedup and Trash exclusion; old URL compatibility. Real one-project QA003 intake completed in owned temp database/directory and returned to unified batch homepage. 598x804 and default1280 layout checked. 4 original source files unchanged; viewport/tab/server cleaned.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\catalog-ui-result.json"
-            },
-            {
-              "name": "Local integration/service safety",
-              "status": "passed",
-              "result": "Primary and task clean, upstream board-only changes merged. Exact diff contains frontend/docs only, no Python/backend bytes. Running development uvicorn uses default Python reload filter, no custom include; 8000 PID38740 and release8765 PID30588 unchanged, neither signalled. Owned18745 server stopped. No real DB or configuration accessed for writes."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Current agent frontend-only bounded task revision, public UI and identity projection RED/GREEN."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Current agent Standards and Spec sequential self-review, no independent-agent assertion."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Current agent complete final frontend gate and actual isolated read/intake UI acceptance; no backend code change, Python matrix not repeated."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "641805d66843faf4626ccd1fd5b0efe5f098d3aa",
-            "primary_before": "abeb5e948643ef046d3bda1b1d4dab1bf19832d3",
-            "integrated_head": "2bf957393cf6337491d2fc6954108744be6a2bfe",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
