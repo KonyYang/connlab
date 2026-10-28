@@ -35,6 +35,14 @@ The old Legacy list URL opens the shared library; existing detail and import URL
 remain compatible. File opening, location changes and test continuation remain in
 their corresponding project details.
 
+All-project and individual receiving-batch views retain separate session search
+and page state. New batches start unfiltered. Member links carry the batch in the
+URL so a reload or Back to Library returns to that same view. Import opened from
+the library also retains this return context through the optional linking flow.
+An already-added result opens its existing member without claiming membership in
+the new batch; View Added Projects refers only to newly received members. Empty
+search results offer Clear Search without suggesting another import is needed.
+
 ## Existing and new boundaries
 
 The existing `legacy_project_records` registry remains an in-place browsing

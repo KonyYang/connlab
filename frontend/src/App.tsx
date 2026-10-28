@@ -300,6 +300,14 @@ export default function App(): ReactElement {
         ? "Project Files"
         : undefined;
 
+  const libraryParams = new URLSearchParams(window.location.search);
+  const libraryBatchId = libraryParams.get("batch") ?? "";
+  const batchSuffix = libraryBatchId ? `?batch=${encodeURIComponent(libraryBatchId)}` : "";
+  const libraryListPath = `/project-library${batchSuffix}`;
+  const libraryImportSuffix = `?from=library${libraryBatchId ? `&batch=${encodeURIComponent(libraryBatchId)}` : ""}`;
+  const libraryImportPath = `/projects/import${libraryImportSuffix}`;
+  const importFromLibrary = libraryParams.get("from") === "library";
+
   return (
     <>
       <FrontendDiagnosticsReporter />
@@ -421,10 +429,10 @@ export default function App(): ReactElement {
       )}
       {route.name === "settings" && <SettingsPage />}
       {route.name === "tools" && <ToolsPage onOpenTemperatureRise={() => navigate('/tools/temperature-rise')} />}
-      {route.name === "projectLibraryImport" && <ProjectLibraryImport onBack={() => navigate('/projects')} onViewLibrary={batch => navigate(`/project-library${batch ? `?batch=${encodeURIComponent(batch)}` : ''}`)} onOpenMember={id => navigate(`/project-library/${encodeURIComponent(id)}`)} onLegacyPreview={() => navigate('/projects/import/link')} />}
-      {route.name === "projectLibraryList" && <ProjectLibraryList batchId={new URLSearchParams(window.location.search).get('batch') ?? ''} onOpenLinked={id => navigate(`/legacy-projects/${encodeURIComponent(id)}`)} onViewAll={() => navigate('/project-library')} onBack={() => navigate('/projects')} onImport={() => navigate('/projects/import')} onOpen={id => navigate(`/project-library/${encodeURIComponent(id)}`)} />}
-      {route.name === "projectLibraryMember" && <ProjectLibraryMember memberId={route.memberId} onBack={() => navigate('/project-library')} onOpenProject={(id, destination) => navigate(`/projects/${encodeURIComponent(id)}${destination === 'matrix' ? '/matrix-editor' : destination === 'report' ? '/report-workspace' : ''}`)} />}
-      {route.name === "legacyProjectPreview" && <LegacyProjectPreview onBack={() => navigate('/projects/import')} onViewImported={() => navigate('/project-library')} />}
+      {route.name === "projectLibraryImport" && <ProjectLibraryImport backLabel={importFromLibrary ? "Back to Project Library" : "Back to Projects"} onBack={() => navigate(importFromLibrary ? libraryListPath : '/projects')} onViewLibrary={batch => navigate(`/project-library${batch ? `?batch=${encodeURIComponent(batch)}` : ''}`)} onOpenMember={(id, batch) => navigate(`/project-library/${encodeURIComponent(id)}${batch ? `?batch=${encodeURIComponent(batch)}` : ''}`)} onLegacyPreview={() => navigate(`/projects/import/link${importFromLibrary ? libraryImportSuffix : ''}`)} />}
+      {route.name === "projectLibraryList" && <ProjectLibraryList batchId={libraryBatchId} onOpenLinked={id => navigate(`/legacy-projects/${encodeURIComponent(id)}`)} onViewAll={() => navigate('/project-library')} onBack={() => navigate('/projects')} onImport={() => navigate(libraryImportPath)} onOpen={id => navigate(`/project-library/${encodeURIComponent(id)}${batchSuffix}`)} />}
+      {route.name === "projectLibraryMember" && <ProjectLibraryMember memberId={route.memberId} onBack={() => navigate(libraryListPath)} onOpenProject={(id, destination) => navigate(`/projects/${encodeURIComponent(id)}${destination === 'matrix' ? '/matrix-editor' : destination === 'report' ? '/report-workspace' : ''}`)} />}
+      {route.name === "legacyProjectPreview" && <LegacyProjectPreview onBack={() => navigate(importFromLibrary ? libraryImportPath : '/projects/import')} onViewImported={() => navigate('/project-library')} />}
       {route.name === "legacyProjectDetail" && <LegacyProjectBrowser recordId={route.recordId} onBack={() => navigate('/project-library')} />}
       {route.name === "temperatureRise" && <TemperatureRisePage onBack={() => {
         // Called only after the confirmed workspace deletion has committed successfully.

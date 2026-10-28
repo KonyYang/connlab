@@ -5,10 +5,10 @@ import { getLibraryRuntime, listLibraryMembers, scanLibrarySources, planLibraryI
 import { PortableRestore } from "./PortableRestore";
 import "./project-library.css";
 
-type Props = { onBack: () => void; onViewLibrary: (batchId?: string) => void; onOpenMember: (id: string) => void; onLegacyPreview?: () => void };
+type Props = { onBack: () => void; onViewLibrary: (batchId?: string) => void; onOpenMember: (id: string, batchId?: string) => void; backLabel?: string; onLegacyPreview?: () => void };
 const labels = { ready: "Ready to Add", conflict: "Needs Review", already_added: "Already Added", unavailable: "Unavailable" };
 
-export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLegacyPreview }: Props) {
+export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLegacyPreview, backLabel = "Back to Projects" }: Props) {
   const [runtime, setRuntime] = useState<LibraryRuntime | null>(null);
   const [sources, setSources] = useState("");
   const [scan, setScan] = useState<LibraryScan | null>(null);
@@ -151,7 +151,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
   const visible = (plan?.items ?? []).filter(row => filter === "all" || row.status === filter);
   const pages = Math.max(1, Math.ceil(visible.length / 20));
   const currentPage = Math.min(page, pages);
-  const back = <button type="button" className="ui-secondary-action" disabled={locked} onClick={onBack}>Back to Projects</button>;
+  const back = <button type="button" className="ui-secondary-action" disabled={locked} onClick={onBack}>{backLabel}</button>;
   return <section className="project-library" aria-label="Import projects">
     {topBar ? createPortal(back, topBar) : <header className="library-heading"><h1>Import Projects</h1>{back}</header>}
     <section className="library-panel">
@@ -181,7 +181,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
       <div className="library-actions"><button type="button" disabled={locked || currentPage <= 1} onClick={() => setPage(currentPage - 1)}>Previous</button><span>Page {currentPage} of {pages}</span><button type="button" disabled={locked || currentPage >= pages} onClick={() => setPage(currentPage + 1)}>Next</button><button type="button" className="primary-action" disabled={locked || !selected.length} onClick={() => setConfirming(true)}>Add Selected</button></div>
     </section>}
     {confirming && <section className="library-panel" role="dialog" aria-modal="false" aria-labelledby="library-confirm-title"><h2 id="library-confirm-title">Confirm Add</h2><p>Copy {selected.length} selected projects into the library? Source files stay in place.</p><div className="library-actions"><button type="button" className="primary-action" autoFocus onClick={() => void receive()}>Confirm Add</button><button type="button" onClick={() => setConfirming(false)}>Cancel</button></div></section>}
-    {batch && <section className="library-panel" aria-label="Receiving result"><h2>3. Receiving Result</h2><p role="status">{batch.counts.added} added; {batch.counts.already_added} already added; {batch.counts.review} need review; {batch.counts.failed} failed.</p>{batch.items.map(item => <div key={item.source_path} className="library-result"><span>{plan?.items.find(row => row.source_path === item.source_path)?.title ?? item.source_path}</span>{item.status !== "added" && <p>{item.message}</p>}{item.member_id && <button type="button" onClick={() => onOpenMember(item.member_id!)}>Open {plan?.items.find(row => row.source_path === item.source_path)?.title ?? "Project"}</button>}</div>)}<div className="library-actions">{batch.status === "running" && <button type="button" disabled={busy} onClick={() => void refreshBatch()}>Refresh Batch Status</button>}{batch.status === "interrupted" && <button type="button" disabled={busy} onClick={() => void receive(true)}>Resume Batch</button>}<button type="button" disabled={batch.status === "running"} onClick={() => onViewLibrary(batch.batch_id)}>View This Batch</button><button type="button" disabled={locked} onClick={() => { setBatch(null); setPlan(null); setScan(null); }}>Receive More Projects</button></div></section>}
+    {batch && <section className="library-panel" aria-label="Receiving result"><h2>3. Receiving Result</h2><p role="status">{batch.counts.added} added; {batch.counts.already_added} already added; {batch.counts.review} need review; {batch.counts.failed} failed.</p>{batch.items.map(item => <div key={item.source_path} className="library-result"><span>{plan?.items.find(row => row.source_path === item.source_path)?.title ?? item.source_path}</span>{item.status !== "added" && <p>{item.message}</p>}{item.member_id && <button type="button" onClick={() => onOpenMember(item.member_id!, item.status === "added" ? batch.batch_id : undefined)}>Open {plan?.items.find(row => row.source_path === item.source_path)?.title ?? "Project"}</button>}</div>)}<div className="library-actions">{batch.status === "running" && <button type="button" disabled={busy} onClick={() => void refreshBatch()}>Refresh Batch Status</button>}{batch.status === "interrupted" && <button type="button" disabled={busy} onClick={() => void receive(true)}>Resume Batch</button>}<button type="button" disabled={batch.status === "running" || batch.counts.added === 0} onClick={() => onViewLibrary(batch.batch_id)}>View Added Projects</button><button type="button" disabled={locked} onClick={() => { setBatch(null); setPlan(null); setScan(null); }}>Receive More Projects</button></div></section>}
     <details className="library-panel"><summary>More Import Options</summary>
       {onLegacyPreview && <button type="button" disabled={locked} title="Keep folders at their current locations using the existing read-only preview and registration flow." onClick={onLegacyPreview}>Link Existing Folders</button>}
       <PortableRestore onOpenMember={onOpenMember} disabled={locked} />
