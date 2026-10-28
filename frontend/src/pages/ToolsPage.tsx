@@ -9,6 +9,7 @@ import {
   type StandaloneCustomerReportJob,
 } from "../api/client";
 import { EquipmentListTool } from "../features/tools/EquipmentListTool";
+import { MechanicalSummaryTool } from "../features/tools/MechanicalSummaryTool";
 import "../tools.css";
 
 type ToolKey = "customer-report" | "encrypt-copy";
@@ -144,6 +145,7 @@ export function ToolsPage({
           onRun={() => void run("encrypt-copy")}
         />
         <EquipmentListTool />
+        <MechanicalSummaryTool />
         <article className="tools-card">
           <div className="tools-card-heading"><h3>Select T-rise Data</h3></div>
           <button className="primary-action tools-picker-action" type="button" onClick={onOpenTemperatureRise}>Drawing Curves</button>

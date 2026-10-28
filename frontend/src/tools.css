@@ -72,6 +72,14 @@
 .tools-feedback-error { color: var(--color-danger) !important; }
 .tools-feedback-success { color: var(--color-success) !important; }
 
+.mechanical-summary-tool { grid-column: 1 / -1; }
+.mechanical-source { display: grid; gap: 10px; min-width: 0; border: 1px solid var(--color-border); border-radius: 10px; }
+.mechanical-source label { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mechanical-source details label { margin: 8px 0; }
+.mechanical-result-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.mechanical-source-values { max-height: 250px; overflow: auto; }
+.mechanical-source-values td, .mechanical-source-values th { padding: 4px 8px; border: 1px solid var(--color-border); }
+
 @media (max-width: 760px) {
   .tools-grid { grid-template-columns: 1fr; }
 }
