@@ -71,7 +71,7 @@
   "tasks": {
     "TASK_PROJECT_IMPORT_ENTRY_20261028": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
@@ -111,84 +111,17 @@
         "risk_reasons": [],
         "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
         "started_at": "2026-10-28T14:26:30.121108Z",
-        "updated_at": "2026-10-28T16:30:19.522001Z",
+        "updated_at": "2026-10-28T16:49:45.907776Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
           "stage": "revision",
           "status": "running",
-          "summary": "Continue intake UX: compact successful recovered batches, keep problems and active work visible, readable result labels, paged batch results and fresh Receive More selection; frontend only.",
+          "summary": "User requests one Projects homepage catalog and search across registered, received and linked projects; one Import Projects action, no duplicate Library navigation; default All, More for retained areas, batch return context. Frontend only and isolated QA; no real data/directory mutation, push or publication.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
-          "subject": "50d951508795eab2ffb271e3466fbdb2c6856782",
-          "summary": "Compact successful recovered import history, retain unresolved batches prominently, readable result project names, 20-row pages with attention items first, and fresh Receive More source selection. Frontend-only; no real data/directory mutation, push/publication, or automatic Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/features/project-library/ProjectImportResults.test.tsx",
-            "frontend/src/features/project-library/ProjectImportResults.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-            "frontend/src/features/project-library/project-library.css"
-          ],
-          "validation": [
-            {
-              "name": "Public UI regression RED/GREEN",
-              "status": "passed",
-              "result": "Desired successful recovery disclosure and result pagination each failed before implementation. Final affected import/results/App regressions: 41 passed. Recovered running/interrupted/review cases, explicit resume, readable Windows/UNC/POSIX labels, original member/batch navigation, same-batch page stability and fresh receiving selection covered.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\batch-result-green.log"
-            },
-            {
-              "name": "Complete frontend gate",
-              "status": "passed",
-              "result": "1108 passed, 1 skipped; default concurrency; tsc -b and production Vite build passed on final product bytes. Wrapper exited after a console-only GBK printing error; underlying gate exit was 0 and durable UTF-8 log ends All requested checks passed.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\batch-result-frontend-qa.log"
-            },
-            {
-              "name": "Standards then Spec review",
-              "status": "passed",
-              "result": "Two distinct sequential self-review passes by current agent; no actionable findings; no independent agent review claimed. All five product file hashes match reviewed/tested state.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\batch-result-review.json"
-            },
-            {
-              "name": "Isolated actual UI",
-              "status": "passed",
-              "result": "Actual previously completed batch collapsed on reopening; readable name opens correct member with original batch context; View Added scopes correct project; Receive More starts fresh; 598x804 screenshot layout passed. 4 source files unchanged; zero new intakes; owned tab closed, viewport reset, server normally stopped.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\batch-result-ui.json"
-            },
-            {
-              "name": "Local integration safety",
-              "status": "passed",
-              "result": "8000 remains stopped under previous authorization, own 18745 stopped; release 8765 remains original PID 30588. Primary clean; only board changed upstream. No backend changes, therefore previous backend acceptance not repeated."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Current agent; bounded frontend follow-up, public UI regression RED/GREEN."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Current agent sequential Standards and Spec self-review."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Current agent complete frontend gate and isolated actual UI, exact product state."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "50d951508795eab2ffb271e3466fbdb2c6856782",
-            "primary_before": "d1cc8f9620f71fe7992b8a4083dff5a4ab2663a2",
-            "integrated_head": "d4e23a673f81719c0526de3f3c003b75d3cee8a5",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
