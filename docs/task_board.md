@@ -68,7 +68,43 @@
       "closed_at": "2026-10-27T23:53:40.876783Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_PROJECT_IMPORT_ENTRY_20261028": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
+      "branch": "codex/project-import-entry-20261028",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
+        "summary": "Consolidate project import entry under Projects",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Projects is the project intake entry: Import Projects on active and legacy lists, no import cards in Tools, existing library/portable receiving and in-place linking preserved. Import returns to Projects and legacy preview returns to the common import flow. Preserve existing data, URLs and project navigation. Frontend only; no database/schema/data migration, no push/publication, no automatic Close.",
+        "scope_paths": [
+          "frontend/src/App.tsx",
+          "frontend/src/App.test.tsx",
+          "frontend/src/pages/ToolsPage.tsx",
+          "frontend/src/pages/ToolsPage.test.tsx",
+          "frontend/src/pages/ProjectListPage.tsx",
+          "frontend/src/pages/ProjectListPage.test.tsx",
+          "frontend/src/features/legacy-projects/LegacyProjectList.tsx",
+          "frontend/src/features/legacy-projects/LegacyProjectList.test.tsx",
+          "frontend/src/features/legacy-projects/LegacyProjectPreview.tsx",
+          "frontend/src/features/legacy-projects/LegacyProjectPreview.test.tsx",
+          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+          "frontend/src/features/project-library/ProjectLibraryImport.test.tsx"
+        ],
+        "risk_reasons": [],
+        "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
+        "started_at": "2026-10-28T14:26:30.121108Z",
+        "updated_at": "2026-10-28T14:26:30.121108Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
