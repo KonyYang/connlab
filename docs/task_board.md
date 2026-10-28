@@ -83,10 +83,13 @@
         "route": "sol_build_review_qa",
         "scope": "Projects is the project intake entry: Import Projects on active and legacy lists, no import cards in Tools, existing library/portable receiving and in-place linking preserved. Import returns to Projects and legacy preview returns to the common import flow. Preserve existing data, URLs and project navigation. Frontend only; no database/schema/data migration, no push/publication, no automatic Close.",
         "scope_paths": [
+          "backend/api/project_library_schemas.py",
+          "backend/application/project_library/service.py",
           "docs/architecture/project_library.md",
           "frontend/src/App.temperatureNavigation.test.tsx",
           "frontend/src/App.test.tsx",
           "frontend/src/App.tsx",
+          "frontend/src/api/projectLibrary.ts",
           "frontend/src/features/legacy-projects/LegacyProjectBrowser.tsx",
           "frontend/src/features/legacy-projects/LegacyProjectList.test.tsx",
           "frontend/src/features/legacy-projects/LegacyProjectList.tsx",
@@ -100,12 +103,13 @@
           "frontend/src/pages/ProjectListPage.test.tsx",
           "frontend/src/pages/ProjectListPage.tsx",
           "frontend/src/pages/ToolsPage.test.tsx",
-          "frontend/src/pages/ToolsPage.tsx"
+          "frontend/src/pages/ToolsPage.tsx",
+          "tests/integration/test_project_library_api.py"
         ],
         "risk_reasons": [],
         "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
         "started_at": "2026-10-28T14:26:30.121108Z",
-        "updated_at": "2026-10-28T15:40:11.590939Z",
+        "updated_at": "2026-10-28T15:48:59.824928Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
