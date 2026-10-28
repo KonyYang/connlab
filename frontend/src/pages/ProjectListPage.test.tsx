@@ -83,7 +83,7 @@ describe("ProjectListPage lifecycle registry views", () => {
     const toolbar = search.closest(".register-toolbar");
 
     expect(active).toBeTruthy();
-    expect(screen.getByRole("button", { name: "History", exact: true })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "History", exact: true })).toBeNull();
     expect(screen.queryByText("More", { exact: true })).toBeNull();
     expect(screen.queryByRole("button", { name: "Projects" })).toBeNull();
     expect(toolbar).not.toBeNull();
@@ -163,18 +163,29 @@ describe("ProjectListPage lifecycle registry views", () => {
     expect(managementApi.previewProjectRegistryAction).toHaveBeenLastCalledWith("original-A", "restore");
   });
 
-  it("offers a recycle bin with separate record identities and history restore", async () => {
+  it("offers one Recycle list for deleted and conflict-retained records with original restore identities", async () => {
     const user = userEvent.setup(); mockRows([]);
-    vi.mocked(managementApi.listManagedProjects).mockResolvedValue([{project_id: "unique-deleted-A", display_project_id: "DL-2026-01-002",
-      sample_description: "Old connector", test_item: "LLCR", requestor: "Lab", created_on: "2026-01-01",
-      lifecycle_state: "closed", close_reason_label: "Completed", registry_state: "trash", registry_revision: 1, changed_at: "2026-01-02", reason: "Duplicate"}]);
-    render(<ProjectListPage onOpenProject={vi.fn()} />);
+    const deleted: managementApi.ProjectRegistryEntry = {project_id: "unique-deleted-A", display_project_id: "DL-2026-01-002",
+      sample_description: "Deleted connector", test_item: "LLCR", requestor: "Lab", created_on: "2026-01-01",
+      lifecycle_state: "closed", close_reason_label: "Completed", registry_state: "trash", registry_revision: 1, changed_at: "2026-01-02", reason: "Duplicate"};
+    const retained: managementApi.ProjectRegistryEntry = {...deleted, project_id: "unique-retained-B", sample_description: "Retained connector", registry_state: "history", reason: "Retained while restoring project A."};
+    vi.mocked(managementApi.listManagedProjects).mockImplementation(async location => location === "trash" ? [deleted] : [retained]);
+    vi.mocked(managementApi.previewProjectRegistryAction).mockResolvedValue({project: retained, action: "restore", token: "retained-token", conflicts: [], blockers: [], warnings: [], retained_data: []});
+    const onOpenProject = vi.fn();
+    render(<ProjectListPage onOpenProject={onOpenProject} />);
     await user.click(screen.getByRole("button", {name: "Recycle"}));
-    expect(await screen.findByText("Old connector")).toBeTruthy();
-    expect(screen.getByText(/Record unique-delet/)).toBeTruthy();
-    expect(screen.getByRole("button", {name: "View read-only details"})).toBeTruthy();
-    await user.click(screen.getByRole("button", {name: "History"}));
-    await waitFor(() => expect(managementApi.listManagedProjects).toHaveBeenLastCalledWith("history"));
+    expect(await screen.findByText("Deleted connector")).toBeTruthy();
+    expect(screen.getByText("Retained connector")).toBeTruthy();
+    expect(screen.getByText("Deleted", {exact:true})).toBeTruthy();
+    expect(screen.getByText("Retained after conflict", {exact:true})).toBeTruthy();
+    expect(screen.queryByRole("button", {name:"History", exact:true})).toBeNull();
+    const retainedRow = screen.getByText("Retained connector").closest("article")!;
+    await user.click(within(retainedRow).getByRole("button", {name:"View read-only details"}));
+    expect(onOpenProject).toHaveBeenCalledWith("unique-retained-B");
+    await user.click(within(retainedRow).getByRole("button", {name:"Restore", exact:true}));
+    expect(await screen.findByRole("dialog", {name:"Restore project"})).toBeTruthy();
+    expect(managementApi.previewProjectRegistryAction).toHaveBeenLastCalledWith("unique-retained-B", "restore");
+    await user.click(screen.getByRole("button", {name:"Cancel"}));
   });
 
   it("keeps project closing in Workbench instead of exposing it in the registry", async () => {

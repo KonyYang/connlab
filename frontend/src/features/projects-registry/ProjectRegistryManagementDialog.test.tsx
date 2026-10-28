@@ -27,17 +27,17 @@ describe("project management decisions", () => {
     expect(dialog.getByText("Sample existing-record-one")).toBeTruthy();
     expect(dialog.getByText("Sample existing-record-two")).toBeTruthy();
     expect(dialog.getByText(/does not overwrite/)).toBeTruthy();
-    await user.click(dialog.getByRole("button", {name: "Restore as current; retain existing projects in history"}));
+    await user.click(dialog.getByRole("button", {name: "Restore and retain conflicts"}));
     expect(onRestore).toHaveBeenCalledWith("active", true);
   });
   it("can retain the restored record as history without replacing any current project", async () => {
     const {user, onRestore} = setup();
-    await user.click(screen.getByRole("button", {name: "Restore to history only"}));
+    await user.click(screen.getByRole("button", {name: "Keep as retained record"}));
     expect(onRestore).toHaveBeenCalledWith("history", false);
   });
   it("does not mutate on cancel and disables restore until stale evidence has been refreshed", async () => {
     const {user, onRestore, onCancel, onRefresh} = setup(base, true);
-    expect(screen.getByRole("button", {name: "Restore to history only"})).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", {name: "Keep as retained record"})).toHaveProperty("disabled", true);
     await user.click(screen.getByRole("button", {name: "Refresh preview"}));
     expect(onRefresh).toHaveBeenCalledOnce();
     await user.click(screen.getByRole("button", {name: "Cancel"}));
