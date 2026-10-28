@@ -71,11 +71,11 @@
   "tasks": {
     "TASK_PROJECT_IMPORT_ENTRY_20261028": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "613b9fd39b83740e5d4f63c8259e72ff43172e27",
       "task": {
         "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
         "summary": "Consolidate project import entry under Projects",
@@ -100,9 +100,77 @@
         "risk_reasons": [],
         "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
         "started_at": "2026-10-28T14:26:30.121108Z",
-        "updated_at": "2026-10-28T14:42:56.749839Z",
+        "updated_at": "2026-10-28T14:54:05.701094Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
+          "subject": "08b863e1d5a07e86b5b076c8ec17fd4ee61f0bee",
+          "summary": "Project intake consolidated under Projects with direct Import Projects on active/Legacy lists, Tools competing card removed, old deep links and receiving/restoration/linking flows preserved. Frontend only, no real data changes, no push/publication.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/App.temperatureNavigation.test.tsx",
+            "frontend/src/App.test.tsx",
+            "frontend/src/App.tsx",
+            "frontend/src/features/legacy-projects/LegacyProjectList.test.tsx",
+            "frontend/src/features/legacy-projects/LegacyProjectList.tsx",
+            "frontend/src/features/legacy-projects/LegacyProjectPreview.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+            "frontend/src/pages/ProjectListPage.test.tsx",
+            "frontend/src/pages/ProjectListPage.tsx",
+            "frontend/src/pages/ToolsPage.test.tsx",
+            "frontend/src/pages/ToolsPage.tsx"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Affected public behavior regression",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\affected-preload.log",
+              "result": "69 passed; final subsequent temperature-only changes validated by 8-test temperature-final.log and full QA."
+            },
+            {
+              "status": "passed",
+              "name": "Complete frontend gate",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\qa-complete.log",
+              "result": "1081 passed, 1 skipped; default concurrency; tsc -b and vite build passed."
+            },
+            {
+              "status": "passed",
+              "name": "Isolated real UI",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\ui-result.json",
+              "result": "Projects/Legacy entries, old URLs, return paths, sidebar selection, retained Tools, 1280/598 widths. Own temporary SQLite/config/projects only; server normally stopped."
+            },
+            {
+              "status": "passed",
+              "name": "Exact diff review and integration preflight",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\review.json",
+              "result": "Standards and Spec review are sequential passes by current agent; no actionable findings. Clean task and primary; primary drift only board. Backend/Python omitted as unaffected."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Current agent; behavioral RED/GREEN, frontend-only implementation."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Distinct Standards and Spec self-review passes in current agent, not independent review."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "Current agent after review, full frontend and isolated UI; preserved baseline and failed-run evidence. Existing concurrency issue reproduced on primary; final test-only fix uses two bounded route waits and one long-test budget with every assertion retained."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "08b863e1d5a07e86b5b076c8ec17fd4ee61f0bee",
+            "primary_before": "8573e96abfb824faf4bef1e4465b3b3cbebc56be",
+            "integrated_head": "613b9fd39b83740e5d4f63c8259e72ff43172e27",
+            "recovered": false
+          }
+        }
       }
     }
   }
