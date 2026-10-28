@@ -71,7 +71,7 @@
   "tasks": {
     "TASK_PROJECT_IMPORT_ENTRY_20261028": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
@@ -109,92 +109,17 @@
         "risk_reasons": [],
         "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
         "started_at": "2026-10-28T14:26:30.121108Z",
-        "updated_at": "2026-10-28T16:11:58.524807Z",
+        "updated_at": "2026-10-28T16:19:01.598665Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
           "stage": "revision",
           "status": "running",
-          "summary": "Continue the same intake UX task: open verified existing projects directly from duplicate preview and clarify all-duplicate/mixed preview guidance; additive read-only response only, no changes to receiving/conflict rules.",
+          "summary": "Continue intake UX: compact successful recovered batches, keep problems and active work visible, readable result labels, paged batch results and fresh Receive More selection; frontend only.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
-          "subject": "cd88753df9e211a2eca18b570990208127932350",
-          "summary": "Verified duplicate intake rows can open the existing project without receiving again. All-duplicate and mixed previews explain the next action; conflict/unavailable rows never infer a link. Additive read-only response metadata outside saved plan/fingerprint; original selection, conflict, receiving and restoration rules preserved. No real business mutations, no push/publication or automatic Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/api/project_library_schemas.py",
-            "backend/application/project_library/service.py",
-            "docs/architecture/project_library.md",
-            "frontend/src/api/projectLibrary.ts",
-            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-            "tests/integration/test_project_library_api.py"
-          ],
-          "validation": [
-            {
-              "name": "Targeted regression RED/GREEN",
-              "status": "passed",
-              "result": "Existing backend response-ID contract initially failed 2 cases; final affected backend 9 passed. Frontend desired duplicate entry initially failed; final affected frontend 32 passed. Same-source, cross-computer known identity, assigned files, differing identity, mixed selections and busy locking covered."
-            },
-            {
-              "name": "Relevant backend matrix",
-              "status": "passed",
-              "result": "104 passed: project-library API, portability and project-library units; isolated temporary databases/files. Default faulthandler timeout=0, all assertions retained.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\existing-backend-final-qa.log"
-            },
-            {
-              "name": "Complete frontend gate",
-              "status": "passed",
-              "result": "1099 passed, 1 skipped; default concurrency, tsc -b and production Vite build passed.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\existing-frontend-qa.log"
-            },
-            {
-              "name": "Isolated actual UI",
-              "status": "passed",
-              "result": "Real duplicate/mixed previews, correct original member opened without a new batch, all-duplicate submission disabled, busy confirmation lock. Source bytes unchanged, no new QA project copied. Owned UI service stopped and browser override/tab cleaned.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\existing-ui-result.json"
-            },
-            {
-              "name": "Standards/Spec review",
-              "status": "passed",
-              "result": "Separate passes by current agent, no actionable findings; no independent review claimed. Seven exact paths, no database schema or write-operation changes.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\existing-review.json"
-            },
-            {
-              "name": "Authorized normal development stop",
-              "status": "passed",
-              "result": "User explicitly approved stopping only the dedicated port-8000 reload console for local integration and keeping it stopped. One Ctrl-C, no force, all verified processes exited and no port-8000 listener. Release port 8765 was not signalled.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\existing-normal-stop.json"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Current agent, same-task bounded behavior slice; public API and UI RED/GREEN."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Current agent separate Standards and Spec self-review passes."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Current agent complete risk-proportionate backend/frontend/UI matrix on exact clean subject."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "cd88753df9e211a2eca18b570990208127932350",
-            "primary_before": "f954224421e158a1880f1b0061b386a07e0bb359",
-            "integrated_head": "48422840d1cfc9ce446f6a8c82dc57b8f06ab884",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
