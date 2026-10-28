@@ -92,6 +92,7 @@ from backend.api.routes_report_workspace import router as report_workspace_route
 from backend.api.routes_report_authoring import router as report_authoring_router
 from backend.api.routes_tools import router as tools_router
 from backend.api.routes_tools_temperature import router as tools_temperature_router
+from backend.api.routes_tools_mechanical_summary import router as tools_mechanical_summary_router
 from backend.api.routes_local_identity import router as local_identity_router
 from backend.api.routes_confirmed_matrix_authority_history import (
     router as confirmed_matrix_authority_history_router,
@@ -260,6 +261,7 @@ app.include_router(project_library_router)
 app.include_router(tools_legacy_projects_router)
 app.include_router(legacy_projects_router)
 _include_project_router(tools_temperature_router)
+_include_project_router(tools_mechanical_summary_router)
 _include_project_router(confirmed_matrix_authority_history_router)
 _include_project_router(confirmed_matrix_active_snapshot_router)
 _include_project_router(matrix_editor_session_router)
