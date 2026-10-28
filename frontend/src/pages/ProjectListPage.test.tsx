@@ -39,7 +39,7 @@ describe("ProjectListPage lifecycle registry views", () => {
     mockRows([]);
     const openLibrary = vi.fn();
     render(<ProjectListPage onOpenProject={vi.fn()} onShowLibrary={openLibrary} />);
-    await userEvent.setup().click(await screen.findByRole("button", { name: "Library" }));
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Project Library" }));
     expect(openLibrary).toHaveBeenCalledOnce();
   });
 
@@ -50,12 +50,12 @@ describe("ProjectListPage lifecycle registry views", () => {
     vi.mocked(managementApi.listManagedProjects).mockResolvedValue([]);
   });
 
-  it("offers a dedicated Legacy view without changing business row navigation", async () => {
+  it("offers one project library entry without separate legacy navigation", async () => {
     mockRows([]);
-    const showLegacy = vi.fn();
-    render(<ProjectListPage onOpenProject={vi.fn()} onShowLegacy={showLegacy} />);
-    await userEvent.setup().click(await screen.findByRole("button", { name: "Legacy" }));
-    expect(showLegacy).toHaveBeenCalledOnce();
+    render(<ProjectListPage onOpenProject={vi.fn()} onShowLibrary={vi.fn()} />);
+    expect(await screen.findByRole("button", { name: "Project Library" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Legacy", exact: true })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Library", exact: true })).toBeNull();
   });
 
   it("labels the normal registry area by its actual function", async () => {

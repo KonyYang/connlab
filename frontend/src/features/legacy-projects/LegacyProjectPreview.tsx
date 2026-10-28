@@ -93,7 +93,7 @@ export function LegacyProjectPreview({ onBack, onViewImported }: { onBack: () =>
   return <section className="legacy-preview" aria-label="Legacy project batch preview">
     {topBarRoot && createPortal(backButton, topBarRoot)}
     {!topBarRoot && <header className="legacy-preview-heading">
-      <h1>Import Legacy Projects</h1>
+      <h1>Link Existing Folders</h1>
       {backButton}
     </header>}
     <section className="legacy-preview-panel" aria-label="Choose legacy project folders">

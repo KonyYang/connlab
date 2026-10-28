@@ -19,6 +19,22 @@ separate, explicitly authorized operation.
   compatible ConnLab instance. The target must recover without reading the source
   computer's database or following its original absolute paths.
 
+## Project library entry
+
+Projects exposes one **Project Library** entry. Its shared search and pagination
+include managed library members and existing in-place folder registrations. Each
+row has one **Open** action, routed to its existing details without asking the
+engineer to choose a registry. Identifiers remain namespaced; displaying records
+together does not merge identities, infer equivalence from LTR, copy files, or
+migrate either registry. A failed source leaves available records visible with a
+retry notice. Receiving-batch views remain restricted to that batch.
+
+Import Projects defaults to receiving copies into the configured project folder.
+In-place linking and portable-data recovery remain under **More Import Options**.
+The old Legacy list URL opens the shared library; existing detail and import URLs
+remain compatible. File opening, location changes and test continuation remain in
+their corresponding project details.
+
 ## Existing and new boundaries
 
 The existing `legacy_project_records` registry remains an in-place browsing

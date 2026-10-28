@@ -29,14 +29,14 @@ export function LegacyProjectBrowser({ recordId, onBack }: { recordId: string; o
     try { await action(); } catch (cause) { if (live.current) setError((cause as Error).message); }
     finally { if (live.current) setBusy(false); }
   }
-  const back = <button type="button" className="ui-secondary-action" disabled={busy} onClick={onBack}>Back to Legacy Projects</button>;
+  const back = <button type="button" className="ui-secondary-action" disabled={busy} onClick={onBack}>Back to Project Library</button>;
   return <section className="legacy-preview" aria-label="Legacy project details">
     {topBarRoot ? createPortal(back, topBarRoot) : back}
     {error && <p role="alert">{error}</p>}
     {!record && !error && <p role="status">Loading legacy project…</p>}
     {error && <button type="button" disabled={busy} onClick={() => setReload(value => value + 1)}>Reload Record</button>}
     {record && <section className="legacy-preview-panel">
-      <h1>{record.name}</h1><span>Legacy</span>
+      <h1>{record.name}</h1><span>Folder Kept in Place</span>
       <dl className="legacy-record-facts"><dt>Old Number</dt><dd>{record.number || "No old number"}</dd><dt>Number Evidence</dt><dd>{record.number_evidence.join(", ") || "None"}</dd><dt>Folder</dt><dd>{record.folder_path}</dd><dt>Added</dt><dd>{new Date(record.imported_at).toLocaleString()}</dd></dl>
       {record.notes.length > 0 && <details><summary>Identification Notes ({record.notes.length})</summary><ul>{record.notes.map((note, i) => <li key={i}>{note}</li>)}</ul></details>}
       <div className="legacy-preview-actions"><button type="button" className="primary-action" title="Browse original files in Windows File Explorer. ConnLab does not move or rewrite them." disabled={busy} onClick={() => void act(async () => { const next = await openLegacyProjectFolder(record.record_id); if (live.current) setMessage(next.message); })}>Open Folder</button><button type="button" disabled={busy} title="Reconnect a moved folder by updating its ConnLab location. Files remain unchanged." onClick={() => { setEditing(true); setPath(record.folder_path); }}>Change Location</button></div>

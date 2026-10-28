@@ -233,3 +233,16 @@ describe("ProjectLibraryImport", () => {
     expect(await screen.findByText(/1 added/)).toBeTruthy();
   });
 });
+it("keeps normal receiving primary and reveals other methods only on request", async () => {
+  const onLegacyPreview = vi.fn();
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} onLegacyPreview={onLegacyPreview} />);
+  await screen.findByText(/Receiving into:/);
+  expect(screen.getByRole("button", { name: "Choose Folder", exact: true })).toBeTruthy();
+  const options = screen.getByText("More Import Options").closest("details");
+  expect(options).toHaveProperty("open", false);
+  expect(screen.queryByText("Legacy", { exact: true })).toBeNull();
+  await userEvent.setup().click(screen.getByText("More Import Options"));
+  expect(options).toHaveProperty("open", true);
+  await userEvent.setup().click(screen.getByRole("button", { name: "Link Existing Folders" }));
+  expect(onLegacyPreview).toHaveBeenCalledOnce();
+});
