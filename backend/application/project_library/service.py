@@ -88,10 +88,13 @@ class ProjectLibraryService:
         numbers = self.store.project_numbers()
         workspaces = self.store.workspaces()
         rows = []
+        # Navigation metadata is kept outside the saved plan and never authorizes receiving.
+        existing_member_ids = {}
         for value in dict.fromkeys(sources):
             assignment = assignments.get(value, {})
             target_id = assignment.get("target_member_id")
             new_title = assignment.get("new_project_title")
+            existing_member_id = None
             if target_id and new_title:
                 raise ProjectLibraryError("Choose an existing project or a new project title, not both.")
             try:
@@ -125,6 +128,7 @@ class ProjectLibraryService:
                             break
                     if matched:
                         status = "already_added"
+                        existing_member_id = previous["member_id"]
                         warnings.append("The same project identity and material are already received in the library.")
                     else:
                         status, separate = "conflict", True
@@ -139,10 +143,11 @@ class ProjectLibraryService:
                         status, separate = "conflict", True
                         warnings.append("The destination has a different project identity or full LTR. Keep Separate retains both projects even when their template files match.")
                     elif self.files.same_content(source, target):
-                        registered = bool(member) or any(row["folder_path"].casefold() == target.casefold()
-                            or new_title and row["folder_path"].casefold() == str(Path(target).parent).casefold() for row in members)
+                        registered = member or next((row for row in members if row["folder_path"].casefold() == target.casefold()
+                            or new_title and row["folder_path"].casefold() == str(Path(target).parent).casefold()), None)
                         if registered:
                             status = "already_added"
+                            existing_member_id = registered["member_id"]
                             warnings.append("The same project material is already in a registered library entry.")
                         else:
                             status, separate = "conflict", not bool(new_title)
@@ -160,6 +165,8 @@ class ProjectLibraryService:
                 if source.get("has_portable") and not reference_existing:
                     status, separate = "conflict", False
                     warnings.append("This project carries saved test data. Use Inspect and Restore Portable Project to preserve it; plain intake cannot create an empty replacement.")
+                if existing_member_id:
+                    existing_member_ids[source["source_path"]] = existing_member_id
                 rows.append({**source, "target_path": target, "status": status, "warnings": warnings,
                              "can_keep_separate": separate, "target_member_id": target_id,
                              "new_project_title": new_title, "target_revision": member["revision"] if member else None, "reference_existing": reference_existing})
@@ -184,7 +191,9 @@ class ProjectLibraryService:
         plan = self.files.save_plan("intake", {"items": rows})
         keys = ("source_path", "target_path", "title", "ltr_number", "status", "warnings", "can_keep_separate", "target_member_id", "new_project_title")
         return {"plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"],
-                "items": [{key: row.get(key) for key in keys} for row in rows], "warnings": []}
+                "items": [{**{key: row.get(key) for key in keys},
+                           "existing_member_id": existing_member_ids.get(row["source_path"]) if row["status"] == "already_added" else None}
+                          for row in rows], "warnings": []}
 
     def create_batch(self, plan_id, fingerprint, selected, keep_separate=(), batch_id=None):
         self._require_configured()
