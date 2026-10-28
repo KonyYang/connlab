@@ -5,6 +5,15 @@ import { LegacyProjectList } from "./LegacyProjectList";
 import { listLegacyProjects } from "../../api/legacyProjects";
 vi.mock("../../api/legacyProjects", () => ({ listLegacyProjects: vi.fn() }));
 beforeEach(() => { vi.resetAllMocks(); sessionStorage.clear(); });
+it("offers import directly from the empty folder list without sending users to Tools", async () => {
+  vi.mocked(listLegacyProjects).mockResolvedValue([]);
+  const onImport = vi.fn();
+  render(<LegacyProjectList onOpen={vi.fn()} onBack={vi.fn()} onImport={onImport} />);
+  await screen.findByText("0 legacy projects");
+  await userEvent.setup().click(screen.getByRole("button", { name: "Import Projects" }));
+  expect(onImport).toHaveBeenCalledOnce();
+  expect(screen.queryByText(/Tools →/)).toBeNull();
+});
 it("searches historical records and preserves the query after browsing a record", async () => {
   vi.mocked(listLegacyProjects).mockResolvedValue([{ record_id: "old", name: "Manual folder", number: null, number_evidence: [], folder_path: "D:/old/Manual folder", notes: [], revision: 1, imported_at: "2026-01-01", updated_at: "2026-01-01" }]);
   const onOpen = vi.fn();

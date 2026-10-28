@@ -114,11 +114,11 @@ function parseRoute(pathname: string): Route {
   if (pathname === "/tools/temperature-rise") {
     return { name: "temperatureRise" };
   }
-  if (pathname === "/tools/project-library") return { name: "projectLibraryImport" };
+  if (pathname === "/projects/import" || pathname === "/tools/project-library") return { name: "projectLibraryImport" };
   if (pathname === "/project-library") return { name: "projectLibraryList" };
   const libraryMemberMatch = pathname.match(/^\/project-library\/([^/]+)$/);
   if (libraryMemberMatch) return { name: "projectLibraryMember", memberId: decodeURIComponent(libraryMemberMatch[1]) };
-  if (pathname === "/tools/legacy-projects") {
+  if (pathname === "/projects/import/link" || pathname === "/tools/legacy-projects") {
     return { name: "legacyProjectPreview" };
   }
   const legacyMatch = pathname.match(/^\/legacy-projects\/([^/]+)$/);
@@ -265,7 +265,7 @@ export default function App(): ReactElement {
   }
 
   const activeRoute =
-    route.name === "legacyProjectDetail" || route.name === "projectLibraryList" || route.name === "projectLibraryMember" ? "projects" : route.name === "temperatureRise" || route.name === "legacyProjectPreview" || route.name === "projectLibraryImport" ? "tools" : route.name === "projectDetail"
+    route.name === "legacyProjectDetail" || route.name === "projectLibraryList" || route.name === "projectLibraryMember" || route.name === "legacyProjectPreview" || route.name === "projectLibraryImport" ? "projects" : route.name === "temperatureRise" ? "tools" : route.name === "projectDetail"
       ? "workbench"
       : route.name === "projectMatrixEditor"
         ? "workbench"
@@ -317,6 +317,7 @@ export default function App(): ReactElement {
           legacy={new URLSearchParams(window.location.search).get("view") === "legacy"}
           onShowLegacy={() => navigate('/projects?view=legacy')}
           onShowLibrary={() => navigate('/project-library')}
+          onImport={() => navigate('/projects/import')}
           onShowActive={() => navigate('/projects')}
           onOpenLegacyRecord={id => navigate(`/legacy-projects/${encodeURIComponent(id)}`)}
         />
@@ -422,11 +423,11 @@ export default function App(): ReactElement {
         />
       )}
       {route.name === "settings" && <SettingsPage />}
-      {route.name === "tools" && <ToolsPage onOpenTemperatureRise={() => navigate('/tools/temperature-rise')} onOpenLegacyProjects={() => navigate('/tools/legacy-projects')} onOpenProjectLibrary={() => navigate('/tools/project-library')} />}
-      {route.name === "projectLibraryImport" && <ProjectLibraryImport onBack={() => navigate('/tools')} onViewLibrary={batch => navigate(`/project-library${batch ? `?batch=${encodeURIComponent(batch)}` : ''}`)} onOpenMember={id => navigate(`/project-library/${encodeURIComponent(id)}`)} onLegacyPreview={() => navigate('/tools/legacy-projects')} />}
-      {route.name === "projectLibraryList" && <ProjectLibraryList batchId={new URLSearchParams(window.location.search).get('batch') ?? ''} onBack={() => navigate('/projects')} onImport={() => navigate('/tools/project-library')} onOpen={id => navigate(`/project-library/${encodeURIComponent(id)}`)} />}
+      {route.name === "tools" && <ToolsPage onOpenTemperatureRise={() => navigate('/tools/temperature-rise')} />}
+      {route.name === "projectLibraryImport" && <ProjectLibraryImport onBack={() => navigate('/projects')} onViewLibrary={batch => navigate(`/project-library${batch ? `?batch=${encodeURIComponent(batch)}` : ''}`)} onOpenMember={id => navigate(`/project-library/${encodeURIComponent(id)}`)} onLegacyPreview={() => navigate('/projects/import/link')} />}
+      {route.name === "projectLibraryList" && <ProjectLibraryList batchId={new URLSearchParams(window.location.search).get('batch') ?? ''} onBack={() => navigate('/projects')} onImport={() => navigate('/projects/import')} onOpen={id => navigate(`/project-library/${encodeURIComponent(id)}`)} />}
       {route.name === "projectLibraryMember" && <ProjectLibraryMember memberId={route.memberId} onBack={() => navigate('/project-library')} onOpenProject={(id, destination) => navigate(`/projects/${encodeURIComponent(id)}${destination === 'matrix' ? '/matrix-editor' : destination === 'report' ? '/report-workspace' : ''}`)} />}
-      {route.name === "legacyProjectPreview" && <LegacyProjectPreview onBack={() => navigate('/tools')} onViewImported={() => navigate('/projects?view=legacy')} />}
+      {route.name === "legacyProjectPreview" && <LegacyProjectPreview onBack={() => navigate('/projects/import')} onViewImported={() => navigate('/projects?view=legacy')} />}
       {route.name === "legacyProjectDetail" && <LegacyProjectBrowser recordId={route.recordId} onBack={() => navigate('/projects?view=legacy')} />}
       {route.name === "temperatureRise" && <TemperatureRisePage onBack={() => {
         // Called only after the confirmed workspace deletion has committed successfully.

@@ -24,31 +24,14 @@ const downloadCustomerReportMock = vi.mocked(downloadStandaloneCustomerReport);
 const encryptCopyMock = vi.mocked(encryptStandaloneCopy);
 
 describe("ToolsPage", () => {
-  it("opens managed project receiving while retaining the original folder-linking entry", async () => {
-    const openLibrary = vi.fn();
-    render(<ToolsPage onOpenProjectLibrary={openLibrary} onOpenLegacyProjects={vi.fn()} />);
-    await userEvent.setup().click(screen.getByRole("button", { name: "Import Projects" }));
-    expect(openLibrary).toHaveBeenCalledOnce();
-    expect(screen.getByText("Keep Folders in Place").closest("details")).toHaveProperty("open", false);
-    await userEvent.setup().click(screen.getByText("Keep Folders in Place"));
-    expect(screen.getByRole("button", { name: "Import Legacy Projects" })).toBeTruthy();
+  it("keeps project receiving in Projects rather than exposing competing Tools entries", () => {
+    render(<ToolsPage />);
+    expect(screen.queryByRole("button", { name: "Import Projects" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Import Legacy Projects" })).toBeNull();
+    expect(screen.queryByText("Keep Folders in Place")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Mechanical Summary" })).toBeTruthy();
   });
 
-  it("opens a dedicated legacy project preview without starting another tool", async () => {
-    const onOpenLegacyProjects = vi.fn();
-    render(<ToolsPage onOpenLegacyProjects={onOpenLegacyProjects} />);
-    await userEvent.setup().click(screen.getByText("Keep Folders in Place"));
-    const importButton = screen.getByRole("button", { name: "Import Legacy Projects" });
-    expect(screen.getByRole("heading", { name: "Legacy Project Files" })).toBeTruthy();
-    expect(importButton.title).toBe(
-      "Preview existing project folders in batches. Original files and folder structure remain unchanged."
-    );
-    expect(screen.queryByText(importButton.title)).toBeNull();
-    await userEvent.setup().click(importButton);
-    expect(onOpenLegacyProjects).toHaveBeenCalledOnce();
-    expect(startCustomerReportMock).not.toHaveBeenCalled();
-    expect(encryptCopyMock).not.toHaveBeenCalled();
-  });
   beforeEach(() => {
     // jsdom does not implement the browser's native dialog lifecycle.
     HTMLDialogElement.prototype.showModal ??= function () { this.setAttribute("open", ""); };

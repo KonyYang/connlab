@@ -151,7 +151,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
   const visible = (plan?.items ?? []).filter(row => filter === "all" || row.status === filter);
   const pages = Math.max(1, Math.ceil(visible.length / 20));
   const currentPage = Math.min(page, pages);
-  const back = <button type="button" className="ui-secondary-action" disabled={locked} onClick={onBack}>Back to Tools</button>;
+  const back = <button type="button" className="ui-secondary-action" disabled={locked} onClick={onBack}>Back to Projects</button>;
   return <section className="project-library" aria-label="Import projects">
     {topBar ? createPortal(back, topBar) : <header className="library-heading"><h1>Import Projects</h1>{back}</header>}
     <section className="library-panel">
