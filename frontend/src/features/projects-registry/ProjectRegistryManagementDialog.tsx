@@ -32,7 +32,7 @@ export function ProjectRegistryManagementDialog({action, preview, loading, busy,
         <label><span>Additional note (optional)</span><textarea rows={2} value={note} disabled={busy} onChange={(event) => setNote(event.target.value)} /></label>
       </> : conflicts.length > 0 ? <section aria-label="Conflicting current projects" className="project-management-conflicts">
         <strong>{conflicts.length} current {conflicts.length === 1 ? "project has" : "projects have"} the same identifier</strong>
-        <p>Review every record below. Restoring as current moves all these records into retained history, with their data intact.</p>
+        <p>Review every record below. Restoring as current moves these conflicting records into Recycle as retained records, with their data intact. You can also keep this project as a retained record in Recycle instead.</p>
         {conflicts.map((project) => <ProjectRecordIdentity key={project.project_id} project={project} />)}
       </section> : <p className="project-management-help">No current project conflicts were found in this preview.</p>}
     </>}
@@ -42,9 +42,9 @@ export function ProjectRegistryManagementDialog({action, preview, loading, busy,
       {action === "trash" ? <button className="primary-action ui-primary-action" type="button" disabled={disabled || !reason} onClick={() => void onTrash(note.trim() ? `${reason}: ${note.trim()}` : reason)}>Move to recycle bin</button>
         : <>
           <button className="primary-action ui-primary-action" type="button" disabled={disabled} onClick={() => void onRestore("active", conflicts.length > 0)}>
-            {conflicts.length > 0 ? "Restore as current; retain existing projects in history" : "Restore to projects"}
+            {conflicts.length > 0 ? "Restore and retain conflicts" : "Restore to projects"}
           </button>
-          {conflicts.length > 0 && <button className="secondary-action ui-secondary-action" type="button" disabled={disabled} onClick={() => void onRestore("history", false)}>Restore to history only</button>}
+          {conflicts.length > 0 && <button className="secondary-action ui-secondary-action" type="button" disabled={disabled} onClick={() => void onRestore("history", false)}>Keep as retained record</button>}
         </>}
       <button className="secondary-action ui-secondary-action" type="button" disabled={busy} onClick={onCancel}>Cancel</button>
     </div>

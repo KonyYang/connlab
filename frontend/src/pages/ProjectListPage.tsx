@@ -59,11 +59,6 @@ const VIEW_LABELS: Record<RegistryView, string> = {
   closed: "Closed",
   ongoing: "On-going",
 };
-const REGISTRY_AREA_LABELS: Record<"active" | "trash" | "history", string> = {
-  active: "Active",
-  trash: "Recycle",
-  history: "History",
-};
 
 const VIEW_ORDER: RegistryView[] = [
   "all",
@@ -98,7 +93,7 @@ function BusinessProjectListPage({
   const [projectIdSort, setProjectIdSort] = useState<ProjectIdSortDirection>(initialViewState.projectIdSort);
   const [dateSort, setDateSort] = useState<"asc" | "desc" | null>(null);
   const [lastLtrApplyResult, setLastLtrApplyResult] = useState<LastLtrApplyResult | null>(null);
-  const [area, setArea] = useState<"active" | "trash" | "history">("active");
+  const [area, setArea] = useState<"active" | "recycle">("active");
   const [managedRevision, setManagedRevision] = useState(0);
   const topBarActionsRoot = useTopBarActionsRoot();
   const refreshEpoch = useRef(0);
@@ -250,7 +245,7 @@ function BusinessProjectListPage({
       <nav className="project-registry-areas" aria-label="Project management areas">
         {onImport && <button className="primary-action" type="button" disabled={management.busy} title="Add existing project folders. Review before receiving; original files stay in place." onClick={onImport}>Import Projects</button>}
         {area !== "active" && <button className="registry-area-button ui-secondary-action" type="button" disabled={management.busy} onClick={() => setArea("active")}>Back to Projects</button>}
-        {(["trash", "history"] as const).map(location => <button key={location} className="registry-area-button ui-secondary-action" type="button" aria-pressed={area === location} disabled={management.busy} onClick={() => setArea(location)}>{REGISTRY_AREA_LABELS[location]}</button>)}
+        <button className="registry-area-button ui-secondary-action" type="button" aria-pressed={area === "recycle"} disabled={management.busy} onClick={() => setArea("recycle")}>Recycle</button>
       </nav>
     </div>
   );
@@ -260,7 +255,7 @@ function BusinessProjectListPage({
       <div className="project-register-panel">
         {topBarActionsRoot ? createPortal(registryControls, topBarActionsRoot) : registryControls}
         {management.lastChange && <div className="registry-result-banner" role="status">
-          <span>{management.lastChange.display_project_id} {management.lastChange.registry_state === "trash" ? "moved to the recycle bin." : management.lastChange.registry_state === "history" ? "restored to retained history." : "restored to projects."}</span>
+          <span>{management.lastChange.display_project_id} {management.lastChange.registry_state === "trash" ? "moved to the recycle bin." : management.lastChange.registry_state === "history" ? "kept in Recycle as a retained record." : "restored to projects."}</span>
           {management.lastChange.registry_state === "trash" && <button className="row-action" type="button" onClick={() => void management.open(management.lastChange!.project_id, "restore")}>Undo</button>}
           <button className="row-action" type="button" onClick={management.clearLastChange}>Dismiss</button>
         </div>}
@@ -281,7 +276,7 @@ function BusinessProjectListPage({
             </button>
           </div>
         ) : null}
-        {area !== "active" ? <ProjectRegistryManagementPanel location={area} search={deferredSearch} revision={managedRevision}
+        {area !== "active" ? <ProjectRegistryManagementPanel search={deferredSearch} revision={managedRevision}
           onManage={(id, action) => void management.open(id, action)} onOpenProject={onOpenProject} /> : <>
         {loading && <LoadingState label="Loading project registry..." />}
         {error && <div><ErrorMessage message={error} /><button className="row-action" type="button" onClick={() => void refreshProjects()}>Retry</button></div>}

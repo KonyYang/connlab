@@ -26,7 +26,16 @@ received project folders, and folders linked in place. One search covers LTR,
 title, sample, test item, requestor and folder path. The default **All Projects**
 view also includes materials that are not ready for testing; **Files Only** is an
 explicit filter. **Import Projects** is the sole visible receiving entry. **Recycle**
-and retained registry history are directly available beside the import action.
+is the single retained-record entry, combining deleted (`trash`) and conflict-retained
+(`history`) records. Rows show **Deleted** or **Retained after conflict**, the recorded
+reason, and their original identity. Both offer read-only details and **Restore**.
+The existing state values, preview tokens, blockers and replacement decisions remain
+unchanged; no database records or files are migrated. Conflicting active records
+retained during a restore appear in the same Recycle list. **Keep as retained record**
+preserves the existing restore-to-history choice without exposing another list.
+A partial source failure leaves available records visible with Retry. Duplicate
+responses for the same internal ID use the latest revision; equal LTRs never combine
+independent records.
 
 A received member combines with a registered row only through its explicit
 `project_id`. Its folder and mutable title remain searchable and **Project Files**
