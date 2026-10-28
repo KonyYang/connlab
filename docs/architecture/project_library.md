@@ -30,6 +30,10 @@ migrate either registry. A failed source leaves available records visible with a
 retry notice. Receiving-batch views remain restricted to that batch.
 
 Import Projects defaults to receiving copies into the configured project folder.
+Source locations are shown as a removable selection list; Clear All only resets
+that selection. Manual paths remain available in a collapsed section. Selection
+changes invalidate reviewed plans, while a cancelled or repeated folder choice
+preserves them. Choosing and removing sources never executes intake.
 In-place linking and portable-data recovery remain under **More Import Options**.
 The old Legacy list URL opens the shared library; existing detail and import URLs
 remain compatible. File opening, location changes and test continuation remain in

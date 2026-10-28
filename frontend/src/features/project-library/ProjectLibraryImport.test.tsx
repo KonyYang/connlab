@@ -16,6 +16,13 @@ const plan = {
   ],
 };
 
+async function enterSources(user: ReturnType<typeof userEvent.setup>, value: string) {
+  const editor = screen.getByLabelText("Source paths");
+  const section = editor.closest("details");
+  if (section && !section.open) await user.click(screen.getByText("Enter Source Paths Manually"));
+  await user.type(editor, value);
+}
+
 beforeEach(() => {
   vi.resetAllMocks();
   localStorage.clear();
@@ -26,13 +33,68 @@ beforeEach(() => {
 });
 
 describe("ProjectLibraryImport", () => {
+  it("lets the user add, review and remove source folders without editing paths", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.pickLibraryFolder).mockResolvedValueOnce("D:/one").mockResolvedValueOnce("D:/two").mockResolvedValueOnce("D:/two");
+    render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Choose Folder", exact: true }));
+    await user.click(screen.getByRole("button", { name: "Choose Folder", exact: true }));
+    await user.click(screen.getByRole("button", { name: "Choose Folder", exact: true }));
+    expect(screen.getByText("2 locations selected")).toBeTruthy();
+    expect(within(screen.getByRole("list", { name: "Selected sources" })).getAllByRole("listitem")).toHaveLength(2);
+    await user.click(screen.getByRole("button", { name: "Remove D:/one" }));
+    await user.click(screen.getByRole("button", { name: "Review Projects" }));
+    await screen.findByRole("table", { name: "Projects to receive" });
+    expect(api.scanLibrarySources).toHaveBeenCalledWith(["D:/two"], expect.any(AbortSignal));
+    expect(api.startLibraryBatch).not.toHaveBeenCalled();
+    vi.mocked(api.pickLibraryFolder).mockResolvedValueOnce("D:/two");
+    await user.click(screen.getByRole("button", { name: "Choose Folder", exact: true }));
+    expect(screen.getByRole("table", { name: "Projects to receive" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Remove D:/two" }));
+    expect(screen.queryByRole("table", { name: "Projects to receive" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add Selected" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Review Projects" })).toHaveProperty("disabled", true);
+  });
+
+  it("keeps manual entry optional and clears all selected locations without writing", async () => {
+    const user = userEvent.setup();
+    render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+    expect(screen.getByLabelText("Source paths").closest("details")).toHaveProperty("open", false);
+    await enterSources(user, '"D:/one"\n D:/two ');
+    expect(screen.getByText("2 locations selected")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Clear All" }));
+    expect(screen.queryByRole("list", { name: "Selected sources" })).toBeNull();
+    expect(screen.getByLabelText("Source paths")).toHaveProperty("value", "");
+    expect(api.scanLibrarySources).not.toHaveBeenCalled();
+    expect(api.startLibraryBatch).not.toHaveBeenCalled();
+  });
+
+  it("locks the selection during the folder picker and preserves the reviewed plan on cancellation", async () => {
+    const user = userEvent.setup();
+    await act(async () => {
+      render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+    });
+    await enterSources(user, "D:/one\nD:/two");
+    await user.click(screen.getByRole("button", { name: "Review Projects" }));
+    await screen.findByRole("table", { name: "Projects to receive" });
+    let cancel!: (path: null) => void;
+    vi.mocked(api.pickLibraryFolder).mockReturnValueOnce(new Promise(resolve => { cancel = resolve; }));
+    await user.click(screen.getByRole("button", { name: "Choose Folder", exact: true }));
+    expect(screen.getByRole("button", { name: "Remove D:/one" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Clear All" })).toHaveProperty("disabled", true);
+    await act(async () => cancel(null));
+    expect(screen.getByRole("table", { name: "Projects to receive" })).toBeTruthy();
+    expect(screen.getByText("2 locations selected")).toBeTruthy();
+    expect(api.startLibraryBatch).not.toHaveBeenCalled();
+  });
+
   it("keeps an explicitly chosen manual project root without scanning it again", async () => {
     const user = userEvent.setup();
     const root: api.LibraryCandidate = { source_path: "D:/Manual project", title: "Manual project", ltr_number: null, kind: "project", warnings: [], child_folders: ["D:/Manual project/Photos", "D:/Manual project/Results"] };
     vi.mocked(api.scanLibrarySources).mockResolvedValue({ items: [{ ...root, source_path: root.child_folders[1], title: "Results", child_folders: [] }], boundary_roots: [root], warnings: [], truncated: false });
     vi.mocked(api.planLibraryIntake).mockResolvedValueOnce(plan as api.LibraryIntakePlan).mockResolvedValue({ plan_id: "manual-root", fingerprint: "root-proof", warnings: [], items: [{ ...plan.items[0], source_path: root.source_path, title: root.title, ltr_number: null, status: "ready" }] });
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
-    await user.type(screen.getByLabelText("Source paths"), root.source_path);
+    await enterSources(user, root.source_path);
     await user.click(screen.getByRole("button", { name: "Review Projects" }));
     await screen.findByRole("table", { name: "Projects to receive" });
     await user.click(screen.getByText("Check Project Boundaries"));
@@ -54,7 +116,7 @@ describe("ProjectLibraryImport", () => {
     vi.mocked(api.scanLibrarySources).mockResolvedValue({ items: [root], warnings: [], truncated: false });
     vi.mocked(api.planLibraryIntake).mockResolvedValueOnce(plan as api.LibraryIntakePlan).mockResolvedValue({ plan_id: "all-children", fingerprint: "children-proof", warnings: [], items: children.map((path, index) => ({ ...plan.items[0], source_path: path, title: `Project ${index + 1}`, status: "ready" })) });
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
-    await user.type(screen.getByLabelText("Source paths"), root.source_path);
+    await enterSources(user, root.source_path);
     await user.click(screen.getByRole("button", { name: "Review Projects" }));
     await screen.findByRole("table", { name: "Projects to receive" });
     await user.click(screen.getByText("Check Project Boundaries"));
@@ -71,7 +133,7 @@ describe("ProjectLibraryImport", () => {
     const root: api.LibraryCandidate = { source_path: "D:/Whole project", title: "Whole project", ltr_number: null, kind: "project", warnings: [], child_folders: ["D:/Whole project/Source Book"] };
     vi.mocked(api.scanLibrarySources).mockResolvedValue({ items: [], boundary_roots: [root], warnings: [], truncated: true });
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
-    await user.type(screen.getByLabelText("Source paths"), root.source_path);
+    await enterSources(user, root.source_path);
     await user.click(screen.getByRole("button", { name: "Review Projects" }));
     expect(await screen.findByText(/Incomplete results/)).toBeTruthy();
     expect(api.planLibraryIntake).not.toHaveBeenCalled();
@@ -93,7 +155,7 @@ describe("ProjectLibraryImport", () => {
     const fresh = { plan_id: "fresh", fingerprint: "fresh-proof", warnings: [], items: [{ ...plan.items[0], source_path: "D:/Fresh", title: "Fresh project", status: "ready" as const }] };
     vi.mocked(api.planLibraryIntake).mockResolvedValueOnce(plan as api.LibraryIntakePlan).mockImplementationOnce((_paths, signal) => { boundarySignal = signal; return new Promise(resolve => { finish = resolve; }); }).mockResolvedValue(fresh);
     const view = render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
-    await user.type(screen.getByLabelText("Source paths"), root.source_path);
+    await enterSources(user, root.source_path);
     await user.click(screen.getByRole("button", { name: "Review Projects" }));
     await screen.findByRole("table", { name: "Projects to receive" });
     await user.click(screen.getByText("Check Project Boundaries"));
@@ -108,7 +170,7 @@ describe("ProjectLibraryImport", () => {
     view.unmount();
     expect(boundarySignal?.aborted).toBe(true);
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
-    await user.type(screen.getByLabelText("Source paths"), "D:/Fresh");
+    await enterSources(user, "D:/Fresh");
     await user.click(screen.getByRole("button", { name: "Review Projects" }));
     await screen.findByRole("checkbox", { name: "Select Fresh project" });
     await act(async () => { finish({ ...fresh, items: [{ ...fresh.items[0], title: "Late old project" }] }); });
@@ -123,7 +185,7 @@ describe("ProjectLibraryImport", () => {
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
     await screen.findByText("D:/managed/projects");
     const user = userEvent.setup();
-    await user.type(screen.getByLabelText("Source paths"), "D:/fresh");
+    await enterSources(user, "D:/fresh");
     await user.click(screen.getByRole("button", { name: "Review Projects" }));
     await screen.findByRole("table", { name: "Projects to receive" });
     await act(async () => { finish({ batch_id: "old-batch", status: "interrupted", counts: { added: 0, already_added: 0, review: 0, failed: 1 }, items: [{ source_path: "D:/old", status: "failed", message: "Old batch", member_id: null }] }); });
@@ -144,7 +206,7 @@ describe("ProjectLibraryImport", () => {
       return { batch_id: submittedId, status: "completed", counts: { added: 1, already_added: 0, review: 0, failed: 0 }, items: [] };
     });
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
-    await user.type(screen.getByLabelText("Source paths"), "D:/old");
+    await enterSources(user, "D:/old");
     await user.click(screen.getByRole("button", { name: "Review Projects" }));
     await user.click(await screen.findByRole("button", { name: "Add Selected" }));
     await user.click(screen.getByRole("button", { name: "Confirm Add" }));
@@ -171,7 +233,7 @@ describe("ProjectLibraryImport", () => {
     const active: api.LibraryMember = { member_id: "existing-1", project_id: "project-1", ltr_number: "DL-2026-09-032", title: "CPI-450", folder_path: "D:/managed/CPI", revision: 1, batch_id: null, snapshot_status: "current", snapshot_created_at: null, warnings: [], can_continue: true };
     vi.mocked(api.listLibraryMembers).mockResolvedValue({ items: [active, { ...active, member_id: "history-1", title: "Historical CPI", is_history: true, can_continue: false }] });
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
-    await user.type(screen.getByLabelText("Source paths"), "D:/loose/result.xlsx");
+    await enterSources(user, "D:/loose/result.xlsx");
     await user.click(screen.getByRole("button", { name: "Review Projects" }));
     const assignment = await screen.findByLabelText("Assign result.xlsx");
     expect(api.planLibraryIntake).not.toHaveBeenCalled();
@@ -186,7 +248,7 @@ describe("ProjectLibraryImport", () => {
     const user = userEvent.setup();
     const onOpenMember = vi.fn();
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={onOpenMember} />);
-    await user.type(screen.getByLabelText("Source paths"), "D:/old");
+    await enterSources(user, "D:/old");
     await user.click(screen.getByRole("button", { name: "Review Projects" }));
     const table = await screen.findByRole("table", { name: "Projects to receive" });
     expect(within(table).getByText("Force test")).toBeTruthy();
@@ -208,12 +270,12 @@ describe("ProjectLibraryImport", () => {
   it("requires a separate choice for number conflicts and invalidates results when sources change", async () => {
     const user = userEvent.setup();
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
-    await user.type(screen.getByLabelText("Source paths"), "D:/old");
+    await enterSources(user, "D:/old");
     await user.click(screen.getByRole("button", { name: "Review Projects" }));
     await screen.findByRole("checkbox", { name: "Select Force test" });
     await user.click(screen.getByRole("checkbox", { name: "Keep Cable test separate" }));
     expect(screen.getByRole("checkbox", { name: "Select Cable test" })).toHaveProperty("checked", true);
-    await user.type(screen.getByLabelText("Source paths"), "/different");
+    await enterSources(user, "/different");
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.queryByRole("button", { name: "Add Selected" })).toBeNull();
     expect(api.startLibraryBatch).not.toHaveBeenCalled();
@@ -224,7 +286,7 @@ describe("ProjectLibraryImport", () => {
     vi.mocked(api.startLibraryBatch).mockResolvedValue({ batch_id: "batch-1", status: "interrupted", counts: { added: 0, already_added: 0, review: 0, failed: 1 }, items: [{ source_path: "D:/old/Force", status: "failed", message: "File is locked. Retry when available.", member_id: null }] });
     vi.mocked(api.resumeLibraryBatch).mockResolvedValue({ batch_id: "batch-1", status: "completed", counts: { added: 1, already_added: 0, review: 0, failed: 0 }, items: [{ source_path: "D:/old/Force", status: "added", message: "Added", member_id: "member-1" }] });
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
-    await user.type(screen.getByLabelText("Source paths"), "D:/old");
+    await enterSources(user, "D:/old");
     await user.click(screen.getByRole("button", { name: "Review Projects" }));
     await user.click(await screen.findByRole("button", { name: "Add Selected" }));
     await user.click(screen.getByRole("button", { name: "Confirm Add" }));
@@ -251,7 +313,7 @@ it("opens an already registered result without attaching it to a new batch", asy
   vi.mocked(api.startLibraryBatch).mockResolvedValue({ batch_id: "duplicate-batch", status: "completed", counts: { added: 0, already_added: 1, review: 0, failed: 0 }, items: [{ source_path: "D:/old/Force", status: "already_added", message: "Already added", member_id: "existing-member" }] });
   const onOpenMember = vi.fn(), user = userEvent.setup();
   render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={onOpenMember} />);
-  await user.type(screen.getByLabelText("Source paths"), "D:/old");
+  await enterSources(user, "D:/old");
   await user.click(screen.getByRole("button", { name: "Review Projects" }));
   await user.click(await screen.findByRole("button", { name: "Add Selected" }));
   await user.click(screen.getByRole("button", { name: "Confirm Add" }));
