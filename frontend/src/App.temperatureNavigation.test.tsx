@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import * as api from './api/temperature';
 import * as storage from './features/temperature/temperatureWorkspaceStorage';
@@ -41,22 +41,14 @@ const analysis: api.TemperatureAnalysis = {
 };
 const sidebar = () => within(screen.getByRole('complementary', { name: 'Primary navigation' }));
 async function openImportedWorkspace() {
-  await userEvent.setup().click(await screen.findByRole('button', { name: 'Drawing Curves', exact: true }));
-  const input = await screen.findByLabelText('Load Initial Data');
+  // Wait for real lazy routes under full-suite concurrency, rather than assuming a warm module cache.
+  await userEvent.setup().click(await screen.findByRole('button', { name: 'Drawing Curves', exact: true }, { timeout: 5000 }));
+  const input = await screen.findByLabelText('Load Initial Data', {}, { timeout: 5000 });
   fireEvent.change(input, { target: { files: [new File(['source bytes'], 'navigation.csv')] } });
   await screen.findByRole('button', { name: 'Confirm Data', exact: true });
 }
 
 describe('Tools sidebar resumes the temperature workspace', () => {
-  beforeAll(async () => {
-    // Keep cold Vite transforms out of navigation timing under full-suite concurrency.
-    await Promise.all([
-      import('./pages/ToolsPage'),
-      import('./pages/TemperatureRisePage'),
-      import('./pages/SettingsPage'),
-    ]);
-  }, 30000);
-
   beforeEach(() => {
     vi.clearAllMocks();
     saved = null;
