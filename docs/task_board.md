@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_GROUP_COMPLETION_20261028",
-    "tier": "high_risk",
-    "subject": "5ad3ba35ac03251caf39e83396b18c3b7da09d78",
-    "summary": "Group completion tracking and project registry summary",
+    "task_id": "TASK_MECHANICAL_SUMMARY_TOOL_20261028",
+    "tier": "standard",
+    "subject": "b74f4d0847ed5be7cc42cba57b4438518d2ca4cf",
+    "summary": "Standalone mechanical test summary tool",
     "disposition": "completed",
-    "decision_ref": "用户确认关闭组别完成统计任务",
-    "closed_at": "2026-10-27T23:53:40.876783Z"
+    "decision_ref": "用户确认关闭 Tools 独立机械 Summary 第一部分",
+    "closed_at": "2026-10-28T14:02:09.933828Z"
   },
   "retained_history": [
     {
@@ -57,99 +57,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested closing this task, retaining local commits, with no push or publication.",
       "closed_at": "2026-10-27T23:03:07.142347Z"
+    },
+    {
+      "task_id": "TASK_GROUP_COMPLETION_20261028",
+      "tier": "high_risk",
+      "subject": "5ad3ba35ac03251caf39e83396b18c3b7da09d78",
+      "summary": "Group completion tracking and project registry summary",
+      "disposition": "completed",
+      "decision_ref": "用户确认关闭组别完成统计任务",
+      "closed_at": "2026-10-27T23:53:40.876783Z"
     }
   ],
-  "tasks": {
-    "TASK_MECHANICAL_SUMMARY_TOOL_20261028": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\mechanical-summary\\connlab",
-      "branch": "codex/mechanical-summary-tool",
-      "resources": [],
-      "integrated_head": "402e8f39778a4a6bbaeb5501e03240bc7930333b",
-      "task": {
-        "task_id": "TASK_MECHANICAL_SUMMARY_TOOL_20261028",
-        "summary": "Standalone mechanical test summary tool",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Independent Tools workflow to assemble uploaded mechanical instrument records into editable XLSX, with isolated validation; no project integration or temperature changes",
-        "scope_paths": [
-          "backend/api",
-          "backend/application",
-          "backend/infrastructure/files",
-          "backend/infrastructure/office",
-          "docs/mechanical_summary_tool.md",
-          "frontend/src",
-          "tests"
-        ],
-        "risk_reasons": [],
-        "activation_head": "9c9c51f30224402222f6b8d58ab41a7189871bfd",
-        "started_at": "2026-10-28T10:39:42.160098Z",
-        "updated_at": "2026-10-28T11:45:07.057862Z",
-        "checkpoint": null,
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "scope_ok": true,
-          "subject": "b74f4d0847ed5be7cc42cba57b4438518d2ca4cf",
-          "validation": [
-            {
-              "name": "21 focused Python and Office tests",
-              "status": "passed"
-            },
-            {
-              "name": "Frontend 1079 tests, 1 skipped; production build",
-              "status": "passed"
-            },
-            {
-              "name": "Isolated browser and Excel output smoke",
-              "status": "passed"
-            }
-          ],
-          "changed_paths": [
-            "backend/api/main.py",
-            "backend/api/routes_tools_mechanical_summary.py",
-            "backend/application/mechanical_summary.py",
-            "backend/infrastructure/files/mechanical_summary_pdf.py",
-            "backend/infrastructure/office/mechanical_summary_excel_copy.py",
-            "backend/infrastructure/office/mechanical_summary_workbook.py",
-            "frontend/src/api/mechanicalSummary.ts",
-            "frontend/src/features/tools/MechanicalSummaryTool.test.tsx",
-            "frontend/src/features/tools/MechanicalSummaryTool.tsx",
-            "frontend/src/pages/ToolsPage.tsx",
-            "frontend/src/tools.css",
-            "tests/integration/test_mechanical_summary_excel_copy.py",
-            "tests/integration/test_tools_mechanical_summary_api.py",
-            "tests/unit/test_mechanical_summary.py"
-          ],
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "b74f4d0847ed5be7cc42cba57b4438518d2ca4cf",
-            "primary_before": "ef2b67f847582403a1c2827a32a4c76ae1911db3",
-            "integrated_head": "402e8f39778a4a6bbaeb5501e03240bc7930333b",
-            "recovered": false
-          },
-          "summary": "Standalone mechanical summary with reviewed PDF and XLS sources",
-          "task_id": "TASK_MECHANICAL_SUMMARY_TOOL_20261028",
-          "roles": {
-            "reviewer": {
-              "status": "passed",
-              "method": "same agent focused code review"
-            },
-            "developer": {
-              "status": "passed",
-              "method": "implementation and targeted tests"
-            },
-            "qa": {
-              "status": "passed",
-              "method": "same agent clean-subject targeted backend, full frontend and build"
-            }
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
