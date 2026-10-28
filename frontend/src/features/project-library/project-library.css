@@ -40,6 +40,7 @@
 .library-location-pair dt { font-weight: 700; }
 .library-result { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 8px 0; }
 .library-result p { flex-basis: 100%; }
+.library-result > strong, .library-result > button, .library-result > details { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 @media (max-width: 760px) { .library-panel { padding: 14px; } .library-table table { min-width: 520px; } .library-heading { align-items: start; } }
 
 .library-resolution { display: grid; gap: 12px; min-width: 0; border: 1px solid var(--color-border); border-radius: 8px; padding: 12px; }
