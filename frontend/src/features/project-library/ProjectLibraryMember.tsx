@@ -7,7 +7,7 @@ import "./project-library.css";
 
 export type LibraryProjectDestination = "workbench" | "matrix" | "report";
 const snapshotLabels = { missing: "No Snapshot", current: "Ready to Take", stale: "Needs Update", unavailable: "Unavailable" };
-export function ProjectLibraryMember({ memberId, onBack, onOpenProject }: { memberId: string; onBack: () => void; onOpenProject: (id: string, destination: LibraryProjectDestination) => void }) {
+export function ProjectLibraryMember({ memberId, onBack, onOpenProject, backLabel = "Back to Library" }: { memberId: string; backLabel?: string; onBack: () => void; onOpenProject: (id: string, destination: LibraryProjectDestination) => void }) {
   const [member, setMember] = useState<LibraryMember | null>(null);
   const [files, setFiles] = useState<LibraryFiles | null>(null);
   const [relative, setRelative] = useState("");
@@ -59,7 +59,7 @@ export function ProjectLibraryMember({ memberId, onBack, onOpenProject }: { memb
     await act(current => refreshProjectData(current, path));
   }
   const locked = busy || Boolean(changePlan) || prepare || Boolean(takeover);
-  const back = <button type="button" className="ui-secondary-action" disabled={locked} onClick={onBack}>Back to Library</button>;
+  const back = <button type="button" className="ui-secondary-action" disabled={locked} onClick={onBack}>{backLabel}</button>;
   return <section className="project-library" aria-label="Library project details">
     {topBar ? createPortal(back, topBar) : back}
     {error && <div><p role="alert">{error}</p>{!member && <button type="button" onClick={() => setReload(value => value + 1)}>Retry</button>}</div>}

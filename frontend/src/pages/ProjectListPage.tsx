@@ -7,6 +7,11 @@ import {
   type ProjectLifecycleResponse,
   type ProjectRegistryRow,
 } from "../api/client";
+import { listManagedProjects } from "../api/projectRegistryManagement";
+import { listLibraryMembers, type LibraryMember } from "../api/projectLibrary";
+import { listLegacyProjects, type LegacyProjectRecord } from "../api/legacyProjects";
+import { buildProjectCatalog, selectProjectCatalog, catalogIdentifier, type CatalogView, type ProjectCatalogRow } from "../features/projects-registry/projectCatalog";
+import { ProjectFolderRow } from "../features/projects-registry/ProjectFolderRow";
 import { ProjectRegistryManagementPanel } from "../features/projects-registry/ProjectRegistryManagementPanel";
 import { ProjectRegistryManagementDialog } from "../features/projects-registry/ProjectRegistryManagementDialog";
 import { useProjectRegistryManagement } from "../features/projects-registry/useProjectRegistryManagement";
@@ -15,26 +20,26 @@ import { ErrorMessage } from "../components/common/ErrorMessage";
 import { LoadingState } from "../components/common/LoadingState";
 import { UiIcon } from "../components/common/UiIcon";
 import {
-  filterRegistryRowsForView,
   registryLifecycleClassName,
-  registryNextStepLabel,
   registryRowActionAriaLabel,
   registryRowActionLabel,
   registryStatusLabel,
   type ProjectRegistryLifecycleRow,
-  type ProjectRegistryView,
 } from "../features/projects-registry/projectRegistryLifecycleViews";
 import "../project-dashboard.css";
 
 type ProjectListPageProps = {
   onOpenProject: (projectId: string) => void;
   onImport?: () => void;
-  onShowLibrary?: () => void;
+  onOpenMember?: (id: string) => void;
+  onOpenLinked?: (id: string) => void;
+  batchId?: string;
+  onViewAll?: () => void;
 };
 
 type RegistryRow = ProjectRegistryRow;
 
-type RegistryView = ProjectRegistryView;
+type RegistryView = CatalogView;
 type ProjectIdSortDirection = "asc" | "desc";
 type ProjectRegistryViewState = {
   search: string;
@@ -48,7 +53,8 @@ type ProjectLifecycleOverlay = {
 };
 
 const VIEW_LABELS: Record<RegistryView, string> = {
-  all: "All",
+  all: "All Projects",
+  files: "Files Only",
   planning: "Planning",
   closed: "Closed",
   ongoing: "On-going",
@@ -60,23 +66,29 @@ const REGISTRY_AREA_LABELS: Record<"active" | "trash" | "history", string> = {
 };
 
 const VIEW_ORDER: RegistryView[] = [
+  "all",
   "ongoing",
   "planning",
   "closed",
-  "all",
+  "files",
 ];
-const PROJECT_REGISTRY_STATE_STORAGE_KEY = "connlab.projectRegistry.viewState";
+const PROJECT_REGISTRY_STATE_STORAGE_KEY = "connlab.projects.viewState";
 
 export function ProjectListPage(props: ProjectListPageProps): ReactElement {
-  return <BusinessProjectListPage {...props} />;
+  return <BusinessProjectListPage key={props.batchId || "all"} {...props} />;
 }
 
 function BusinessProjectListPage({
-  onOpenProject, onShowLibrary, onImport
+  onOpenProject, onOpenMember, onOpenLinked, onImport, batchId = "", onViewAll
 }: ProjectListPageProps): ReactElement {
-  const initialViewState = useMemo(loadProjectRegistryViewState, []);
+  const storageKey = batchId ? `${PROJECT_REGISTRY_STATE_STORAGE_KEY}:batch:${batchId}` : PROJECT_REGISTRY_STATE_STORAGE_KEY;
+  const initialViewState = useMemo(() => loadProjectRegistryViewState(storageKey), [storageKey]);
   const didHydrateViewState = useRef(false);
   const [rows, setRows] = useState<RegistryRow[]>([]);
+  const [members, setMembers] = useState<LibraryMember[]>([]);
+  const [linked, setLinked] = useState<LegacyProjectRecord[]>([]);
+  const [retainedProjectIds, setRetainedProjectIds] = useState<string[]>([]);
+  const [registryComplete, setRegistryComplete] = useState(false);
   const [lifecycleByProjectId, setLifecycleByProjectId] = useState<Record<string, ProjectLifecycleOverlay>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +102,7 @@ function BusinessProjectListPage({
   const [managedRevision, setManagedRevision] = useState(0);
   const topBarActionsRoot = useTopBarActionsRoot();
   const refreshEpoch = useRef(0);
+  const catalogRequest = useRef<AbortController | null>(null);
   const management = useProjectRegistryManagement(area, () => {
     setManagedRevision((value) => value + 1);
     void refreshProjects();
@@ -100,7 +113,7 @@ function BusinessProjectListPage({
   useEffect(() => {
     void refreshProjects();
     setLastLtrApplyResult(readLastLtrApplyResult());
-    return () => {refreshEpoch.current += 1;};
+    return () => {refreshEpoch.current += 1; catalogRequest.current?.abort();};
   }, []);
 
   useEffect(() => {
@@ -112,13 +125,13 @@ function BusinessProjectListPage({
   }, [deferredSearch, selectedView, projectIdSort]);
 
   useEffect(() => {
-    saveProjectRegistryViewState({
+    saveProjectRegistryViewState(storageKey, {
       search,
       selectedView,
       projectIdSort,
       currentPage,
     });
-  }, [search, selectedView, projectIdSort, currentPage]);
+  }, [search, selectedView, projectIdSort, currentPage, storageKey]);
 
   const lifecycleRows = useMemo<ProjectRegistryLifecycleRow[]>(
     () =>
@@ -136,19 +149,17 @@ function BusinessProjectListPage({
     () => lifecycleRows.filter((entry) => entry.lifecycleError).length,
     [lifecycleRows]
   );
-  const viewRows = useMemo(
-    () => filterRegistryRowsForView(lifecycleRows, selectedView),
-    [lifecycleRows, selectedView]
-  );
+  const catalogRows = useMemo(() => buildProjectCatalog(lifecycleRows, members, linked, { batchId, retainedProjectIds, registryComplete }), [lifecycleRows, members, linked, batchId, retainedProjectIds, registryComplete]);
+  const viewRows = useMemo(() => selectProjectCatalog(catalogRows, selectedView, ""), [catalogRows, selectedView]);
   const filteredRows = useMemo(
-    () => filterRows(viewRows, deferredSearch),
+    () => selectProjectCatalog(viewRows, "all", deferredSearch),
     [deferredSearch, viewRows]
   );
   const sortedRows = useMemo(
     () => {
       const rows = sortRowsByProjectId(filteredRows, projectIdSort);
       return dateSort ? rows.sort((a, b) => {
-        const left = a.row.estimated_completion_date, right = b.row.estimated_completion_date;
+        const left = a.kind === "registered" ? a.entry.row.estimated_completion_date : null, right = b.kind === "registered" ? b.entry.row.estimated_completion_date : null;
         if (!left || !right) return left ? -1 : right ? 1 : 0;
         return left.localeCompare(right) * (dateSort === "asc" ? 1 : -1);
       }) : rows;
@@ -164,20 +175,20 @@ function BusinessProjectListPage({
 
   async function refreshProjects(): Promise<void> {
     const request = ++refreshEpoch.current;
+    catalogRequest.current?.abort();
+    const controller = new AbortController(); catalogRequest.current = controller;
     setLoading(true);
-    try {
-      const nextRows = await listProjectRegistryRows();
-      if (request !== refreshEpoch.current) return;
-      setRows(nextRows);
-      setLifecycleByProjectId({});
-      setError(null);
-      void refreshLifecycleOverlays(nextRows, request);
-    } catch (err) {
-      if (request !== refreshEpoch.current) return;
-      setError((err as Error).message);
-    } finally {
-      if (request === refreshEpoch.current) setLoading(false);
-    }
+    const results = await Promise.allSettled([listProjectRegistryRows(), listLibraryMembers("", batchId, controller.signal), batchId ? Promise.resolve([] as LegacyProjectRecord[]) : listLegacyProjects("", controller.signal), listManagedProjects("trash"), listManagedProjects("history")]);
+    if (request !== refreshEpoch.current) return;
+    const [registry, managed, folders, trash, history] = results;
+    const nextRows = registry.status === "fulfilled" ? registry.value : [];
+    setRows(nextRows); setMembers(managed.status === "fulfilled" ? managed.value.items : []); setLinked(folders.status === "fulfilled" ? folders.value : []);
+    setRetainedProjectIds([...(trash.status === "fulfilled" ? trash.value : []), ...(history.status === "fulfilled" ? history.value : [])].map(entry => entry.project_id));
+    setRegistryComplete(registry.status === "fulfilled" && trash.status === "fulfilled" && history.status === "fulfilled");
+    setLifecycleByProjectId({});
+    setError(results.some(result => result.status === "rejected") ? "Some projects could not be loaded. Retry to load the complete list." : null);
+    setLoading(false);
+    void refreshLifecycleOverlays(nextRows, request);
   }
 
   async function refreshLifecycleOverlays(registryRows: RegistryRow[], request: number): Promise<void> {
@@ -214,7 +225,7 @@ function BusinessProjectListPage({
             <UiIcon name="search" />
             <input
               aria-label="Search projects"
-              placeholder="Search Project ID, sample, test item, requestor..."
+              placeholder="Search LTR, title, sample, test item, requestor or folder..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -225,7 +236,7 @@ function BusinessProjectListPage({
           <select
             aria-label="Project view"
             value={selectedView}
-            onChange={(event) => setSelectedView(normalizeRegistryView(event.target.value) ?? "ongoing")}
+            onChange={(event) => setSelectedView(normalizeRegistryView(event.target.value) ?? "all")}
           >
             {VIEW_ORDER.map((view) => (
               <option key={view} value={view}>
@@ -236,11 +247,11 @@ function BusinessProjectListPage({
         </label>}
       </div>
       <nav className="project-registry-areas" aria-label="Project management areas">
-        {onImport && <button className="primary-action" type="button" disabled={management.busy} onClick={onImport}>Import Projects</button>}
-        {(["active", "trash", "history"] as const).map((location) => <button key={location} className="registry-area-button ui-secondary-action" type="button"
-          aria-pressed={area === location} disabled={management.busy}
-          onClick={() => setArea(location)}>{REGISTRY_AREA_LABELS[location]}</button>)}
-        {onShowLibrary && <button className="registry-area-button ui-secondary-action" type="button" disabled={management.busy} onClick={onShowLibrary}>Project Library</button>}
+        {onImport && <button className="primary-action" type="button" disabled={management.busy} title="Add existing project folders. Review before receiving; original files stay in place." onClick={onImport}>Import Projects</button>}
+        {area !== "active" && <button className="registry-area-button ui-secondary-action" type="button" disabled={management.busy} onClick={() => setArea("active")}>Back to Projects</button>}
+        <details className="project-more"><summary aria-disabled={management.busy} onClick={event => { if (management.busy) event.preventDefault(); }}>{area === "active" ? "More" : REGISTRY_AREA_LABELS[area]}</summary>
+          <div>{(["trash", "history"] as const).map(location => <button key={location} className="registry-area-button ui-secondary-action" type="button" disabled={management.busy} onClick={event => { setArea(location); const menu = event.currentTarget.closest("details"); menu?.removeAttribute("open"); menu?.querySelector("summary")?.focus(); }}>{REGISTRY_AREA_LABELS[location]}</button>)}</div>
+        </details>
       </nav>
     </div>
   );
@@ -274,8 +285,10 @@ function BusinessProjectListPage({
         {area !== "active" ? <ProjectRegistryManagementPanel location={area} search={deferredSearch} revision={managedRevision}
           onManage={(id, action) => void management.open(id, action)} onOpenProject={onOpenProject} /> : <>
         {loading && <LoadingState label="Loading project registry..." />}
-        {error && <ErrorMessage message={error} />}
-        {!loading && !error && lifecycleOverlayErrorCount > 0 ? (
+        {error && <div><ErrorMessage message={error} /><button className="row-action" type="button" onClick={() => void refreshProjects()}>Retry</button></div>}
+        {batchId && <div className="registry-result-banner" role="status"><span>Showing projects from this import.</span>{onViewAll && <button className="row-action" type="button" onClick={onViewAll}>Show All Projects</button>}</div>}
+        {search && <button className="row-action" type="button" onClick={() => setSearch("")}>Clear Search</button>}
+        {!loading && lifecycleOverlayErrorCount > 0 ? (
           <div className="registry-result-banner registry-lifecycle-warning" role="status" aria-live="polite">
             <div className="registry-result-banner-text">
               <strong>
@@ -288,13 +301,13 @@ function BusinessProjectListPage({
             </div>
           </div>
         ) : null}
-        {!loading && !error && rows.length === 0 && (
+        {!loading && !error && catalogRows.length === 0 && (
           <EmptyState
             title="No projects yet"
-            message="Use the left navigation New Project entry to import a request package or create a manual project request."
+            message="Use Import Projects to add existing folders, or New Project to start a new request."
           />
         )}
-        {!loading && !error && rows.length > 0 && viewRows.length === 0 && (
+        {!loading && !error && catalogRows.length > 0 && viewRows.length === 0 && (
           <EmptyState
             title="No projects in this view"
             message="Choose another view or clear the search text."
@@ -306,7 +319,7 @@ function BusinessProjectListPage({
             message="Adjust the search text to return to the current view."
           />
         )}
-        {!loading && !error && filteredRows.length > 0 && (
+        {!loading && filteredRows.length > 0 && (
           <div className="project-table-wrap">
             <table className="project-table">
               <thead>
@@ -339,8 +352,11 @@ function BusinessProjectListPage({
                 </tr>
               </thead>
               <tbody>
-                {pagedRows.map(({ row, lifecycle }) => (
-                  <tr className="project-registry-row" key={row.project_id}>
+                {pagedRows.map(item => {
+                  if (item.kind !== "registered") return <ProjectFolderRow key={item.key} row={item} onOpenMember={onOpenMember} onOpenLinked={onOpenLinked} />;
+                  const { row, lifecycle } = item.entry;
+                  return (
+                  <tr className="project-registry-row" key={item.key}>
                     <td className="project-no registry-project-id-cell" data-label="Project ID">
                       {businessIdentifier(row)}
                       {(lifecycle && lifecycle.lifecycle_state !== "active") || (!lifecycle && (row.status === "cancelled" || row.status === "closed")) ? <span className={`registry-lifecycle-badge ${registryLifecycleClassName(row, lifecycle)}`}>{registryStatusLabel(row, lifecycle)}</span> : null}
@@ -350,6 +366,7 @@ function BusinessProjectListPage({
                     </td>
                     <td className="registry-sample-cell" data-label="Sample Description">
                       {displayText(row.sample_description, "Not recorded")}
+                      {item.members.length > 0 && <details><summary>Project Files</summary>{item.members.map(member => <div key={member.member_id}><p>{member.folder_path}</p><button className="row-action" type="button" disabled={!onOpenMember} onClick={() => onOpenMember?.(member.member_id)}>Browse Files</button></div>)}</details>}
                     </td>
                     <td className="registry-test-item-column registry-test-item-cell" data-label="Test Item">
                       {displayText(row.test_item, "Not recorded")}
@@ -384,7 +401,7 @@ function BusinessProjectListPage({
                       </div>
                     </td>
                   </tr>
-                ))}
+                ); })}
               </tbody>
             </table>
             <div className="registry-footer">
@@ -424,15 +441,15 @@ function BusinessProjectListPage({
   );
 }
 
-function loadProjectRegistryViewState(): ProjectRegistryViewState {
+function loadProjectRegistryViewState(storageKey: string): ProjectRegistryViewState {
   const fallback: ProjectRegistryViewState = {
     search: "",
-    selectedView: "ongoing",
+    selectedView: "all",
     projectIdSort: "desc",
     currentPage: 1,
   };
   try {
-    const raw = window.sessionStorage.getItem(PROJECT_REGISTRY_STATE_STORAGE_KEY);
+    const raw = window.sessionStorage.getItem(storageKey);
     if (!raw) {
       return fallback;
     }
@@ -450,9 +467,9 @@ function loadProjectRegistryViewState(): ProjectRegistryViewState {
   }
 }
 
-function saveProjectRegistryViewState(state: ProjectRegistryViewState): void {
+function saveProjectRegistryViewState(storageKey: string, state: ProjectRegistryViewState): void {
   try {
-    window.sessionStorage.setItem(PROJECT_REGISTRY_STATE_STORAGE_KEY, JSON.stringify(state));
+    window.sessionStorage.setItem(storageKey, JSON.stringify(state));
   } catch {
     // View-state persistence is a convenience only; the table still works if storage is unavailable.
   }
@@ -486,33 +503,13 @@ function isPositiveInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value > 0;
 }
 
-function filterRows(rows: ProjectRegistryLifecycleRow[], search: string): ProjectRegistryLifecycleRow[] {
-  const query = search.trim().toLowerCase();
-  if (!query) {
-    return rows;
-  }
-  return rows.filter(({ row, lifecycle }) =>
-    [
-      businessIdentifier(row),
-      row.sample_description ?? "",
-      row.test_item ?? "",
-      registryStatusLabel(row, lifecycle),
-      registryNextStepLabel(row, lifecycle),
-      row.notes ?? ""
-    ]
-      .join(" ")
-      .toLowerCase()
-      .includes(query)
-  );
-}
-
 function sortRowsByProjectId(
-  rows: ProjectRegistryLifecycleRow[],
+  rows: ProjectCatalogRow[],
   direction: ProjectIdSortDirection
-): ProjectRegistryLifecycleRow[] {
+): ProjectCatalogRow[] {
   const directionFactor = direction === "asc" ? 1 : -1;
   return rows
-    .map((entry, index) => ({ entry, index, key: projectIdSortKey(entry.row) }))
+    .map((entry, index) => ({ entry, index, key: projectIdSortKey(catalogIdentifier(entry)) }))
     .sort((left, right) => {
       const comparison = compareProjectIdSortKeys(left.key, right.key);
       if (comparison !== 0) {
@@ -532,8 +529,8 @@ type ProjectIdSortKey = {
   original: string;
 };
 
-function projectIdSortKey(row: RegistryRow): ProjectIdSortKey {
-  const original = businessIdentifier(row).trim();
+function projectIdSortKey(identifier: string): ProjectIdSortKey {
+  const original = identifier.trim();
   const normalized = original.toUpperCase();
   const registeredMatch = normalized.match(/^(?:DL|LTR)[-\s]*(\d{4})[-\s]*(\d{1,2})[-\s]*(\d+)/);
   if (registeredMatch) {

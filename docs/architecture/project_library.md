@@ -21,13 +21,26 @@ separate, explicitly authorized operation.
 
 ## Project library entry
 
-Projects exposes one **Project Library** entry. Its shared search and pagination
-include managed library members and existing in-place folder registrations. Each
-row has one **Open** action, routed to its existing details without asking the
-engineer to choose a registry. Identifiers remain namespaced; displaying records
-together does not merge identities, infer equivalence from LTR, copy files, or
-migrate either registry. A failed source leaves available records visible with a
-retry notice. Receiving-batch views remain restricted to that batch.
+The **Projects** homepage is the shared catalog for registered test projects,
+received project folders, and folders linked in place. One search covers LTR,
+title, sample, test item, requestor and folder path. The default **All Projects**
+view also includes materials that are not ready for testing; **Files Only** is an
+explicit filter. **Import Projects** is the sole visible receiving entry. Trash
+and retained registry history remain available under **More**.
+
+A received member combines with a registered row only through its explicit
+`project_id`. Its folder and mutable title remain searchable and **Project Files**
+opens its existing file-management details. Linked and unclaimed member IDs stay
+namespaced. Matching names, paths or LTRs never merge records or authorize writes.
+Read-only retained-registry checks prevent a trashed workspace from reappearing
+through its folder entry. If those checks fail, uncertain workspace entries wait
+for retry; independently available records remain visible with a warning.
+
+Import results return to `/projects?batch=...`, scoped to that batch. Normal and
+batch-specific searches/pages persist independently across detail and import
+navigation. Old `/project-library` and `/projects?view=legacy` URLs render the
+same homepage; existing member detail URLs remain compatible. This is a frontend
+composition of existing read APIs, with no database/schema migration.
 
 Import Projects defaults to receiving copies into the configured project folder.
 Source locations are shown as a removable selection list; Clear All only resets
@@ -186,14 +199,14 @@ reporting a partially applied copy as complete.
 
 The intended operator sequence is:
 
-1. In Tools, choose **Import Projects**, select source folders, then **Review
+1. In Projects, choose **Import Projects**, select source folders, then **Review
    Projects**. Check project boundaries, loose-file assignments and conflicts;
    **Add Selected** and **Confirm Add** receive the selected copies. For manual
    layouts, expand **Check Project Boundaries**: **Use This Folder** previews the
    selected root as one project; **Use Subfolders as Projects** previews its child
    folders as separate projects. These explicit choices do not run discovery
    again or copy files before confirmation.
-2. In **Library**, search by LTR or title and use **Open Folder** for ordinary
+2. In **Projects**, search by LTR or title, open the project details and use **Open Folder** for ordinary
    Windows file work. **Manage** provides file refresh, **Edit Title** and
    **Locate Folder** when a directory was moved or renamed.
 3. Use **Continue Testing** to review takeover before entering the existing
