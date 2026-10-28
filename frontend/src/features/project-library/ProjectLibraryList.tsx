@@ -5,25 +5,29 @@ import { listLibraryMembers, type LibraryMember } from "../../api/projectLibrary
 import { listLegacyProjects, type LegacyProjectRecord } from "../../api/legacyProjects";
 import "./project-library.css";
 
-const SEARCH_KEY = "connlab.projectLibrary.search";
-const PAGE_KEY = "connlab.projectLibrary.page";
 const snapshotLabels = { missing: "Not Prepared", current: "Ready to Take", stale: "Needs Update", unavailable: "Unavailable", not_checked: "Not Checked" };
 type ProjectRow = { kind: "managed"; record: LibraryMember } | { kind: "linked"; record: LegacyProjectRecord };
 const titleOf = (row: ProjectRow) => row.kind === "managed" ? row.record.title : row.record.name;
 type Props = { onOpen: (id: string) => void; onOpenLinked: (id: string) => void; onBack: () => void; onImport: () => void; batchId?: string; onViewAll?: () => void };
 
-export function ProjectLibraryList({ onOpen, onOpenLinked, onBack, onImport, batchId = "", onViewAll }: Props) {
-  const [search, setSearch] = useState(() => sessionStorage.getItem(SEARCH_KEY) ?? "");
+export function ProjectLibraryList(props: Props) {
+  return <ProjectLibraryResults key={props.batchId ? `batch:${props.batchId}` : "all"} {...props} />;
+}
+
+function ProjectLibraryResults({ onOpen, onOpenLinked, onBack, onImport, batchId = "", onViewAll }: Props) {
+  // A new batch must not inherit filters that can hide the projects just received.
+  const storageKey = batchId ? `connlab.projectLibrary.batch:${batchId}` : "connlab.projectLibrary";
+  const [search, setSearch] = useState(() => sessionStorage.getItem(`${storageKey}.search`) ?? "");
   const query = useDeferredValue(search);
   const [rows, setRows] = useState<ProjectRow[]>([]);
-  const [page, setPage] = useState(() => Math.max(1, Number(sessionStorage.getItem(PAGE_KEY)) || 1));
+  const [page, setPage] = useState(() => Math.max(1, Number(sessionStorage.getItem(`${storageKey}.page`)) || 1));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
   const previous = useRef({ query, batchId });
   const topBar = useTopBarActionsRoot();
-  useEffect(() => { sessionStorage.setItem(SEARCH_KEY, search); }, [search]);
-  useEffect(() => { sessionStorage.setItem(PAGE_KEY, String(page)); }, [page]);
+  useEffect(() => { sessionStorage.setItem(`${storageKey}.search`, search); }, [storageKey, search]);
+  useEffect(() => { sessionStorage.setItem(`${storageKey}.page`, String(page)); }, [storageKey, page]);
   useEffect(() => {
     const request = new AbortController();
     if (query !== previous.current.query || batchId !== previous.current.batchId) setPage(1);
@@ -55,11 +59,12 @@ export function ProjectLibraryList({ onOpen, onOpenLinked, onBack, onImport, bat
       <header className="library-heading"><h1>Project Library</h1><button type="button" onClick={() => setRevision(value => value + 1)}>Refresh Library</button></header>
       {batchId && <div className="library-actions"><p>Showing the selected receiving batch.</p>{onViewAll && <button type="button" onClick={onViewAll}>Show All Projects</button>}</div>}
       <label>Search library<input type="search" value={search} maxLength={4096} placeholder="LTR, title, folder or path" onChange={event => setSearch(event.target.value)} /></label>
+      {search && <div className="library-actions"><button type="button" onClick={() => { setSearch(""); setPage(1); }}>Clear Search</button></div>}
       {loading && <p role="status">Loading projects…</p>}
       {error && <div><p role="alert">{error}</p><button type="button" onClick={() => setRevision(value => value + 1)}>Retry</button></div>}
       {!loading && <>
         <p>{rows.length} projects</p>
-        {!rows.length ? !error && <p>No matching projects. Use Import Projects to add existing projects.</p> : <>
+        {!rows.length ? !error && <p>{query ? "No projects match this search. Clear Search to see the other projects." : batchId ? "No projects in this receiving batch." : "No projects yet. Use Import Projects to add existing projects."}</p> : <>
           <div className="library-table"><table aria-label="Library projects">
             <thead><tr><th>LTR / Project</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>{rows.slice((currentPage - 1) * 20, currentPage * 20).map(row => {

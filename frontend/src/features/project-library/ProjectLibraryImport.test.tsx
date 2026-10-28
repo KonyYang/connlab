@@ -202,7 +202,7 @@ describe("ProjectLibraryImport", () => {
     expect(await screen.findByText(/1 added/)).toBeTruthy();
     expect(api.startLibraryBatch).toHaveBeenCalledWith(expect.objectContaining({ batch_id: expect.stringMatching(/^[a-f0-9]{32}$/), plan_id: "plan-1", fingerprint: "verified", selected: ["D:/old/Force"], keep_separate: [] }));
     await user.click(screen.getByRole("button", { name: "Open Force test" }));
-    expect(onOpenMember).toHaveBeenCalledWith("member-1");
+    expect(onOpenMember).toHaveBeenCalledWith("member-1", "batch-1");
   });
 
   it("requires a separate choice for number conflicts and invalidates results when sources change", async () => {
@@ -245,4 +245,17 @@ it("keeps normal receiving primary and reveals other methods only on request", a
   expect(options).toHaveProperty("open", true);
   await userEvent.setup().click(screen.getByRole("button", { name: "Link Existing Folders" }));
   expect(onLegacyPreview).toHaveBeenCalledOnce();
+});
+
+it("opens an already registered result without attaching it to a new batch", async () => {
+  vi.mocked(api.startLibraryBatch).mockResolvedValue({ batch_id: "duplicate-batch", status: "completed", counts: { added: 0, already_added: 1, review: 0, failed: 0 }, items: [{ source_path: "D:/old/Force", status: "already_added", message: "Already added", member_id: "existing-member" }] });
+  const onOpenMember = vi.fn(), user = userEvent.setup();
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={onOpenMember} />);
+  await user.type(screen.getByLabelText("Source paths"), "D:/old");
+  await user.click(screen.getByRole("button", { name: "Review Projects" }));
+  await user.click(await screen.findByRole("button", { name: "Add Selected" }));
+  await user.click(screen.getByRole("button", { name: "Confirm Add" }));
+  await user.click(await screen.findByRole("button", { name: "Open Force test" }));
+  expect(onOpenMember).toHaveBeenCalledWith("existing-member", undefined);
+  expect(screen.getByRole("button", { name: "View Added Projects" })).toHaveProperty("disabled", true);
 });

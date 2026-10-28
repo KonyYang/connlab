@@ -45,6 +45,36 @@ it("keeps a receiving batch scoped to its own members", async () => {
   expect(listLegacyProjects).not.toHaveBeenCalled();
 });
 
+it("opens a new import batch without an old search and restores each list's own view", async () => {
+  const props = { onOpen: vi.fn(), onOpenLinked: vi.fn(), onBack: vi.fn(), onImport: vi.fn() };
+  vi.mocked(listLegacyProjects).mockResolvedValue(Array.from({ length: 21 }, (_, i) => ({ ...linked, record_id: String(i), name: `Old folder ${i + 1}` })));
+  const user = userEvent.setup();
+  const view = render(<ProjectLibraryList {...props} />);
+  await user.type(screen.getByLabelText("Search library"), "old");
+  await user.click(await screen.findByRole("button", { name: "Next" }));
+  expect(screen.getByText("Page 2 of 2")).toBeTruthy();
+  view.rerender(<ProjectLibraryList {...props} batchId="fresh-batch" />);
+  await waitFor(() => expect(screen.getByLabelText("Search library")).toHaveProperty("value", ""));
+  expect(api.listLibraryMembers).toHaveBeenLastCalledWith("", "fresh-batch", expect.any(AbortSignal));
+  await user.type(screen.getByLabelText("Search library"), "new");
+  view.rerender(<ProjectLibraryList {...props} />);
+  await screen.findByText("21 projects");
+  expect(screen.getByLabelText("Search library")).toHaveProperty("value", "old");
+  expect(screen.getByText("Page 2 of 2")).toBeTruthy();
+  view.rerender(<ProjectLibraryList {...props} batchId="fresh-batch" />);
+  await screen.findByText("0 projects");
+  expect(screen.getByLabelText("Search library")).toHaveProperty("value", "new");
+});
+
+it("offers clearing an empty search before suggesting another import", async () => {
+  render(<ProjectLibraryList onOpen={vi.fn()} onOpenLinked={vi.fn()} onBack={vi.fn()} onImport={vi.fn()} />);
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText("Search library"), "not-found");
+  await user.click(await screen.findByRole("button", { name: "Clear Search" }));
+  expect(screen.getByLabelText("Search library")).toHaveProperty("value", "");
+  await waitFor(() => expect(listLegacyProjects).toHaveBeenLastCalledWith("", expect.any(AbortSignal)));
+});
+
 it("paginates linked and managed results together and preserves the page after browsing", async () => {
   vi.mocked(listLegacyProjects).mockResolvedValue(Array.from({ length: 21 }, (_, i) => ({ ...linked, record_id: `linked-${i}`, name: `Folder ${i + 1}` })));
   const props = { onOpen: vi.fn(), onOpenLinked: vi.fn(), onBack: vi.fn(), onImport: vi.fn() };

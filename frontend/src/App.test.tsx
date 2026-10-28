@@ -13,6 +13,8 @@ vi.mock("./api/projectLibrary", async () => ({
 vi.mock("./pages/ProjectMatrixEditorPage", () => ({ ProjectMatrixEditorPage: ({ projectId }: { projectId: string }) => <section aria-label="Matrix editor">{projectId}</section> }));
 
 beforeEach(() => {
+  sessionStorage.clear();
+  vi.mocked(libraryApi.getLibraryRuntime).mockResolvedValue({ library_root: "D:/test-library", projects_root: "D:/test-library/projects", data_root: "D:/test-library/data", database_path: "D:/test-library/data/connlab.sqlite3", configured: true, format_version: 1 });
   vi.mocked(libraryApi.listLibraryMembers).mockResolvedValue({ items: [] });
   vi.mocked(listLegacyProjects).mockResolvedValue([]);
 });
@@ -30,17 +32,29 @@ it.each(["/projects/import", "/tools/project-library"])("opens project receiving
   expect(await screen.findByLabelText("Source paths")).toBeTruthy();
 });
 
-it("opens Library records separately and continues in the existing Matrix route", async () => {
+it.each(["", "batch-1"])("preserves list and import return context for batch=%s before continuing to Matrix", async (batchId) => {
   const record: libraryApi.LibraryMember = { member_id: "member-1", project_id: "project-1", ltr_number: "DL-2026-09-032", title: "CPI-450", folder_path: "D:/test-library/projects/CPI", revision: 1, batch_id: null, snapshot_status: "current", snapshot_created_at: "2026-10-27", warnings: [], can_continue: true };
   vi.mocked(libraryApi.listLibraryMembers).mockResolvedValue({ items: [record] });
   vi.mocked(libraryApi.getLibraryMember).mockResolvedValue(record);
   vi.mocked(libraryApi.getLibraryFiles).mockResolvedValue({ items: [], warnings: [] });
   vi.mocked(libraryApi.getPortableInfo).mockResolvedValue({ status: "current", fingerprint: "current", created_at: "2026-10-27", format_version: 1, record_counts: { projects: 1 }, file_count: 2, warnings: [], blockers: [] });
-  window.history.replaceState({}, "", "/project-library");
+  const suffix = batchId ? `?batch=${batchId}` : "";
+  const user = userEvent.setup();
+  window.history.replaceState({}, "", `/project-library${suffix}`);
   render(<App />);
-  await userEvent.setup().click(await screen.findByRole("button", { name: "Open CPI-450" }));
+  await user.click(await screen.findByRole("button", { name: "Open CPI-450" }));
   expect(window.location.pathname).toBe("/project-library/member-1");
-  await userEvent.setup().click(await screen.findByRole("button", { name: "Matrix" }));
+  expect(window.location.search).toBe(suffix);
+  await user.click(await screen.findByRole("button", { name: "Back to Library" }));
+  expect(window.location.pathname + window.location.search).toBe(`/project-library${suffix}`);
+  await user.click(await screen.findByRole("button", { name: "Import Projects" }));
+  await user.click(await screen.findByText("More Import Options"));
+  await user.click(screen.getByRole("button", { name: "Link Existing Folders" }));
+  await user.click(await screen.findByRole("button", { name: "Back to Import Projects" }));
+  await user.click(await screen.findByRole("button", { name: "Back to Project Library" }));
+  expect(window.location.pathname + window.location.search).toBe(`/project-library${suffix}`);
+  await user.click(await screen.findByRole("button", { name: "Open CPI-450" }));
+  await user.click(await screen.findByRole("button", { name: "Matrix" }));
   expect(window.location.pathname).toBe("/projects/project-1/matrix-editor");
   expect(await screen.findByLabelText("Matrix editor")).toBeTruthy();
 });
