@@ -47,6 +47,13 @@ An already-added result opens its existing member without claiming membership in
 the new batch; View Added Projects refers only to newly received members. Empty
 search results offer Clear Search without suggesting another import is needed.
 
+Duplicate previews offer **Open Existing Project** only when the existing
+identity/material checks return a verified member ID. This optional response
+field is navigation metadata outside the saved intake plan; it does not change
+fingerprints, selections or conflict rules. Conflicts and unregistered targets do
+not expose that link. An all-duplicate preview explains that no copies are needed;
+a mixed preview still receives only explicitly selected new projects.
+
 ## Existing and new boundaries
 
 The existing `legacy_project_records` registry remains an in-place browsing

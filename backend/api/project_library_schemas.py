@@ -71,6 +71,7 @@ class IntakeItemResponse(BaseModel):
     warnings: list[str]
     can_keep_separate: bool
     target_member_id: str | None = None
+    existing_member_id: str | None = None
     new_project_title: str | None = None
 
 

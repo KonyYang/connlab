@@ -114,6 +114,9 @@ def test_loose_files_require_explicit_assignment_and_group_into_one_project(libr
     assert added["counts"]["added"] == 1
     assert len(client.get("/api/project-library/members").json()["items"]) == 1
     assert (Path(members[0]["folder_path"]) / "Imported Material" / "more.csv").read_text() == "0.198"
+    duplicate = client.post("/api/project-library/intake-plan", json={"sources": [str(additional)], "assignments": [{"source_path": str(additional), "target_member_id": members[0]["member_id"]}]}).json()
+    assert duplicate["items"][0]["status"] == "already_added"
+    assert duplicate["items"][0]["existing_member_id"] == members[0]["member_id"]
 
 
 def test_interrupted_after_copy_can_resume_using_known_batch_identity(library, tmp_path, monkeypatch):
@@ -225,10 +228,15 @@ def test_reimport_same_path_compares_content_before_calling_it_a_duplicate(libra
     assert added["counts"]["added"]==1
     duplicate=client.post("/api/project-library/intake-plan",json={"sources":[str(source)]}).json()
     assert duplicate["items"][0]["status"]=="already_added"
+    member_id = added["items"][0]["member_id"]
+    assert duplicate["items"][0]["existing_member_id"] == member_id
+    assert client.get("/api/project-library/members").json()["items"][0]["member_id"] == member_id
+    assert (source/"result.txt").read_text(encoding="utf-8") == "first"
     (source/"result.txt").write_text("second source revision",encoding="utf-8")
     changed=client.post("/api/project-library/intake-plan",json={"sources":[str(source)]}).json()
     assert changed["items"][0]["status"]=="conflict",changed
     assert changed["items"][0]["can_keep_separate"] is True
+    assert changed["items"][0]["existing_member_id"] is None
 
 
 def test_scan_keeps_explicit_manual_parent_boundary_without_hashing_it_again(library,tmp_path,monkeypatch):
@@ -341,6 +349,7 @@ def test_equal_material_does_not_hide_a_different_stable_project_identity(librar
     plan=client.post("/api/project-library/intake-plan",json={"sources":[str(second)]}).json()
     assert plan["items"][0]["status"]=="conflict" and plan["items"][0]["can_keep_separate"],plan
     assert any("identity" in warning.lower() or "ltr" in warning.lower() for warning in plan["items"][0]["warnings"])
+    assert plan["items"][0]["existing_member_id"] is None
     separate=client.post("/api/project-library/batches",json={**{key:plan[key] for key in ("plan_id","fingerprint")},"selected":[str(second)],"keep_separate":[str(second)]}).json()
     assert separate["counts"]["added"]==1,separate
     members=client.get("/api/project-library/members").json()["items"]
@@ -365,6 +374,8 @@ def test_same_known_identity_and_equal_material_at_another_source_remains_duplic
     second=tmp_path/"computer-2"/"Same title";shutil.copytree(first,second)
     result=client.post("/api/project-library/intake-plan",json={"sources":[str(second)]}).json()
     assert result["items"][0]["status"]=="already_added",result
+    member_id = client.get("/api/project-library/members").json()["items"][0]["member_id"]
+    assert result["items"][0]["existing_member_id"] == member_id
 
 
 @pytest.mark.parametrize("source_is_target",[True,False])

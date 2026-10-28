@@ -33,6 +33,51 @@ beforeEach(() => {
 });
 
 describe("ProjectLibraryImport", () => {
+  it("opens verified duplicate projects directly without selecting or receiving them", async () => {
+    vi.mocked(api.planLibraryIntake).mockResolvedValue({ ...plan, items: [
+      { ...plan.items[0], status: "already_added", existing_member_id: "existing-1" },
+      { ...plan.items[1], status: "already_added", can_keep_separate: false },
+    ] } as api.LibraryIntakePlan);
+    const onOpenMember = vi.fn(), user = userEvent.setup();
+    render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={onOpenMember} />);
+    await enterSources(user, "D:/old");
+    await user.click(screen.getByRole("button", { name: "Review Projects" }));
+    await screen.findByRole("table", { name: "Projects to receive" });
+    expect(screen.getByText(/Nothing needs to be added/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add Selected" })).toHaveProperty("disabled", true);
+    expect(screen.queryByRole("button", { name: "Open Existing Cable test" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Open Existing Force test" }));
+    expect(onOpenMember).toHaveBeenCalledWith("existing-1");
+    expect(api.startLibraryBatch).not.toHaveBeenCalled();
+  });
+
+  it.each(["ready", "conflict", "unavailable"] as const)("does not offer an existing-project link for %s rows", async status => {
+    vi.mocked(api.planLibraryIntake).mockResolvedValue({ ...plan, items: [{ ...plan.items[0], status, existing_member_id: "unverified-link" }] } as api.LibraryIntakePlan);
+    const user = userEvent.setup();
+    render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+    await enterSources(user, "D:/old");
+    await user.click(screen.getByRole("button", { name: "Review Projects" }));
+    await screen.findByRole("table", { name: "Projects to receive" });
+    expect(screen.queryByRole("button", { name: "Open Existing Force test" })).toBeNull();
+    expect(api.startLibraryBatch).not.toHaveBeenCalled();
+  });
+
+  it("receives only selected new projects in a mixed preview and locks navigation during confirmation", async () => {
+    vi.mocked(api.planLibraryIntake).mockResolvedValue({ ...plan, items: [plan.items[0], { ...plan.items[1], status: "already_added", can_keep_separate: false, existing_member_id: "old-cable" }] } as api.LibraryIntakePlan);
+    const user = userEvent.setup();
+    render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+    await enterSources(user, "D:/old");
+    await user.click(screen.getByRole("button", { name: "Review Projects" }));
+    await screen.findByRole("table", { name: "Projects to receive" });
+    expect(screen.getByText(/Already added projects will be kept/)).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: "Select Cable test" })).toHaveProperty("checked", false);
+    await user.click(screen.getByRole("button", { name: "Add Selected" }));
+    expect(screen.getByRole("button", { name: "Open Existing Cable test" })).toHaveProperty("disabled", true);
+    await user.click(screen.getByRole("button", { name: "Confirm Add" }));
+    await screen.findByText(/1 added/);
+    expect(api.startLibraryBatch).toHaveBeenCalledWith(expect.objectContaining({ selected: ["D:/old/Force"], keep_separate: [] }));
+  });
+
   it("lets the user add, review and remove source folders without editing paths", async () => {
     const user = userEvent.setup();
     vi.mocked(api.pickLibraryFolder).mockResolvedValueOnce("D:/one").mockResolvedValueOnce("D:/two").mockResolvedValueOnce("D:/two");
