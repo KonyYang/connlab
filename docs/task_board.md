@@ -71,7 +71,7 @@
   "tasks": {
     "TASK_PROJECT_IMPORT_ENTRY_20261028": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
@@ -116,71 +116,17 @@
         "risk_reasons": [],
         "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
         "started_at": "2026-10-28T14:26:30.121108Z",
-        "updated_at": "2026-10-28T23:30:42.968907Z",
+        "updated_at": "2026-10-28T23:43:46.348693Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
           "stage": "revision",
           "status": "running",
-          "summary": "User asks for familiar Recycle Bin wording instead of Trash and a moderately wider search field while retaining full visible controls. Literal/CSS follow-up only, no business data changes, no push/publication.",
+          "summary": "User authorizes one Recycle entry combining deleted and conflict-retained records, reason labels, existing read-only details/restore/conflict checks. Frontend composition only, isolated DB QA; no real-data/source mutations, push or publication.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
-          "subject": "8ae055a50ab885da0eee3fb0e0c0cf6a9418c6f0",
-          "summary": "Latest user choice: Recycle text button, moderately wider project search (320px desktop maximum), complete All Projects and visible retained controls; responsive layout preserved. Literal/CSS only, no real data/source mutation or push/publication.",
-          "scope_ok": true,
-          "changed_paths": [
-            "docs/architecture/project_library.md",
-            "frontend/src/pages/ProjectListPage.test.tsx",
-            "frontend/src/pages/ProjectListPage.tsx",
-            "frontend/src/project-dashboard.css"
-          ],
-          "validation": [
-            {
-              "name": "Affected regression, typecheck and build",
-              "status": "passed",
-              "result": "19 homepage tests passed on final user-selected Recycle wording; tsc -b and Vite build passed. Literal/CSS change, no new behavior-mirroring tests or unrelated full-matrix repeat.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\recycle-final-validation.log"
-            },
-            {
-              "name": "Standards/Spec and isolated UI",
-              "status": "passed",
-              "result": "Current agent sequential review, no open findings or independent review claimed. Private DB actual desktop/user612x804 screenshot confirms wider search and complete controls. 4 source files unchanged; tab/viewport/service cleaned.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\recycle-review-ui.json"
-            },
-            {
-              "name": "Local integration safety",
-              "status": "passed",
-              "result": "Four frontend/doc files only; no backend/Python bytes, no business writes, primary clean; running development/release services not signalled, owned18745 stopped."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Current agent localized literal/CSS follow-up to latest user steering."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Current agent Standards and Spec self-review."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Current agent targeted regression, typecheck/build and isolated actual responsive UI."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "8ae055a50ab885da0eee3fb0e0c0cf6a9418c6f0",
-            "primary_before": "321c8d9b2580307b673c9fbb7d16b2a3619e2560",
-            "integrated_head": "13755f98481e6f22523cb7236be3e0cb93e633d4",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
