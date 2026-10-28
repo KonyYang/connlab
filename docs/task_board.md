@@ -59,7 +59,37 @@
       "closed_at": "2026-10-27T23:03:07.142347Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_MECHANICAL_SUMMARY_TOOL_20261028": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\mechanical-summary\\connlab",
+      "branch": "codex/mechanical-summary-tool",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_MECHANICAL_SUMMARY_TOOL_20261028",
+        "summary": "Standalone mechanical test summary tool",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Independent Tools workflow to assemble uploaded mechanical instrument records into editable XLSX, with isolated validation; no project integration or temperature changes",
+        "scope_paths": [
+          "backend/api",
+          "backend/application",
+          "backend/infrastructure/office",
+          "frontend/src",
+          "tests",
+          "docs/mechanical_summary_tool.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "9c9c51f30224402222f6b8d58ab41a7189871bfd",
+        "started_at": "2026-10-28T10:39:42.160098Z",
+        "updated_at": "2026-10-28T10:39:42.160098Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
