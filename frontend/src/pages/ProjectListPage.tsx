@@ -225,7 +225,8 @@ function BusinessProjectListPage({
             <UiIcon name="search" />
             <input
               aria-label="Search projects"
-              placeholder="Search LTR, title, sample, test item, requestor or folder..."
+              placeholder="Search projects…"
+              title="Search LTR, title, sample, test item, requestor or folder path."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -249,9 +250,7 @@ function BusinessProjectListPage({
       <nav className="project-registry-areas" aria-label="Project management areas">
         {onImport && <button className="primary-action" type="button" disabled={management.busy} title="Add existing project folders. Review before receiving; original files stay in place." onClick={onImport}>Import Projects</button>}
         {area !== "active" && <button className="registry-area-button ui-secondary-action" type="button" disabled={management.busy} onClick={() => setArea("active")}>Back to Projects</button>}
-        <details className="project-more"><summary aria-disabled={management.busy} onClick={event => { if (management.busy) event.preventDefault(); }}>{area === "active" ? "More" : REGISTRY_AREA_LABELS[area]}</summary>
-          <div>{(["trash", "history"] as const).map(location => <button key={location} className="registry-area-button ui-secondary-action" type="button" disabled={management.busy} onClick={event => { setArea(location); const menu = event.currentTarget.closest("details"); menu?.removeAttribute("open"); menu?.querySelector("summary")?.focus(); }}>{REGISTRY_AREA_LABELS[location]}</button>)}</div>
-        </details>
+        {(["trash", "history"] as const).map(location => <button key={location} className="registry-area-button ui-secondary-action" type="button" aria-pressed={area === location} disabled={management.busy} onClick={() => setArea(location)}>{REGISTRY_AREA_LABELS[location]}</button>)}
       </nav>
     </div>
   );

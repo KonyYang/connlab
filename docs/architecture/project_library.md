@@ -26,7 +26,7 @@ received project folders, and folders linked in place. One search covers LTR,
 title, sample, test item, requestor and folder path. The default **All Projects**
 view also includes materials that are not ready for testing; **Files Only** is an
 explicit filter. **Import Projects** is the sole visible receiving entry. Trash
-and retained registry history remain available under **More**.
+and retained registry history are directly available beside the import action.
 
 A received member combines with a registered row only through its explicit
 `project_id`. Its folder and mutable title remain searchable and **Project Files**
