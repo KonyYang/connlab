@@ -12,6 +12,11 @@ vi.mock("./api/projectLibrary", async () => ({
 }));
 vi.mock("./pages/ProjectMatrixEditorPage", () => ({ ProjectMatrixEditorPage: ({ projectId }: { projectId: string }) => <section aria-label="Matrix editor">{projectId}</section> }));
 
+beforeEach(() => {
+  vi.mocked(libraryApi.listLibraryMembers).mockResolvedValue({ items: [] });
+  vi.mocked(listLegacyProjects).mockResolvedValue([]);
+});
+
 it.each(["/projects/import", "/tools/project-library"])("opens project receiving from %s and returns to Projects", async (path) => {
   vi.mocked(libraryApi.getLibraryRuntime).mockResolvedValue({ library_root: "D:/test-library", projects_root: "D:/test-library/projects", data_root: "D:/test-library/data", database_path: "D:/test-library/data/connlab.sqlite3", configured: true, format_version: 1 });
   window.history.replaceState({}, "", path);
@@ -33,7 +38,7 @@ it("opens Library records separately and continues in the existing Matrix route"
   vi.mocked(libraryApi.getPortableInfo).mockResolvedValue({ status: "current", fingerprint: "current", created_at: "2026-10-27", format_version: 1, record_counts: { projects: 1 }, file_count: 2, warnings: [], blockers: [] });
   window.history.replaceState({}, "", "/project-library");
   render(<App />);
-  await userEvent.setup().click(await screen.findByRole("button", { name: "Manage CPI-450" }));
+  await userEvent.setup().click(await screen.findByRole("button", { name: "Open CPI-450" }));
   expect(window.location.pathname).toBe("/project-library/member-1");
   await userEvent.setup().click(await screen.findByRole("button", { name: "Matrix" }));
   expect(window.location.pathname).toBe("/projects/project-1/matrix-editor");
@@ -45,18 +50,18 @@ vi.mock("./api/legacyProjects", async () => ({
   listLegacyProjects: vi.fn(), getLegacyProject: vi.fn(),
 }));
 
-it("browses legacy records on their own route and returns to the Legacy list", async () => {
+it("opens the unified list from the old Legacy URL and returns there after browsing", async () => {
   const record = { record_id: "historical", name: "Manual legacy", number: null, number_evidence: [], folder_path: "D:/old", notes: [], revision: 1, imported_at: "2026-01-01", updated_at: "2026-01-01" };
   vi.mocked(listLegacyProjects).mockResolvedValue([record]);
   vi.mocked(getLegacyProject).mockResolvedValue(record);
   window.history.replaceState({}, "", "/projects?view=legacy");
   const user = userEvent.setup();
   render(<App />);
-  await user.click(await screen.findByRole("button", { name: "Browse Manual legacy" }));
+  await user.click(await screen.findByRole("button", { name: "Open Manual legacy" }));
   expect(window.location.pathname).toBe("/legacy-projects/historical");
-  await user.click(await screen.findByRole("button", { name: "Back to Legacy Projects" }));
-  expect(await screen.findByRole("button", { name: "Browse Manual legacy" })).toBeTruthy();
-  expect(window.location.search).toBe("?view=legacy");
+  await user.click(await screen.findByRole("button", { name: "Back to Project Library" }));
+  expect(await screen.findByRole("button", { name: "Open Manual legacy" })).toBeTruthy();
+  expect(window.location.pathname).toBe("/project-library");
   expect(screen.queryByRole("region", { name: "Project Workbench" })).toBeNull();
   await user.click(screen.getByRole("button", { name: "Import Projects" }));
   expect(window.location.pathname).toBe("/projects/import");
@@ -66,12 +71,13 @@ it("browses legacy records on their own route and returns to the Legacy list", a
 it("keeps old folder-linking links accessible and returns to the common import flow", async () => {
   window.history.replaceState({}, "", "/tools/legacy-projects");
   render(<App />);
-  expect(await screen.findByRole("heading", { name: "Import Legacy Projects" })).toBeTruthy();
+  expect(await screen.findByRole("heading", { name: "Link Existing Folders" })).toBeTruthy();
   await userEvent.setup().click(screen.getByRole("button", { name: "Back to Import Projects" }));
-  expect(await screen.findByRole("button", { name: "Link Existing Folders" })).toBeTruthy();
+  await userEvent.setup().click(await screen.findByText("More Import Options"));
+  expect(screen.getByRole("button", { name: "Link Existing Folders" })).toBeTruthy();
   expect(window.location.pathname).toBe("/projects/import");
   await userEvent.setup().click(screen.getByRole("button", { name: "Link Existing Folders" }));
-  expect(await screen.findByRole("heading", { name: "Import Legacy Projects" })).toBeTruthy();
+  expect(await screen.findByRole("heading", { name: "Link Existing Folders" })).toBeTruthy();
 });
 
 vi.mock("./components/layout/AppShell", () => ({
