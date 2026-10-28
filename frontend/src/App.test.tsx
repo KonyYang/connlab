@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { listLegacyProjects, getLegacyProject } from "./api/legacyProjects";
+import { listProjectRegistryRows } from "./api/client";
+vi.mock("./api/client", async () => ({ ...await vi.importActual<typeof import("./api/client")>("./api/client"), listProjectRegistryRows: vi.fn(), getProjectLifecycle: vi.fn().mockRejectedValue(new Error("Lifecycle unavailable")) }));
 import * as libraryApi from "./api/projectLibrary";
 
 vi.mock("./api/projectLibrary", async () => ({
@@ -14,6 +16,7 @@ vi.mock("./pages/ProjectMatrixEditorPage", () => ({ ProjectMatrixEditorPage: ({ 
 
 beforeEach(() => {
   sessionStorage.clear();
+  vi.mocked(listProjectRegistryRows).mockResolvedValue([]);
   vi.mocked(libraryApi.getLibraryRuntime).mockResolvedValue({ library_root: "D:/test-library", projects_root: "D:/test-library/projects", data_root: "D:/test-library/data", database_path: "D:/test-library/data/connlab.sqlite3", configured: true, format_version: 1 });
   vi.mocked(libraryApi.listLibraryMembers).mockResolvedValue({ items: [] });
   vi.mocked(listLegacyProjects).mockResolvedValue([]);
@@ -33,8 +36,9 @@ it.each(["/projects/import", "/tools/project-library"])("opens project receiving
 });
 
 it.each(["", "batch-1"])("preserves list and import return context for batch=%s before continuing to Matrix", async (batchId) => {
-  const record: libraryApi.LibraryMember = { member_id: "member-1", project_id: "project-1", ltr_number: "DL-2026-09-032", title: "CPI-450", folder_path: "D:/test-library/projects/CPI", revision: 1, batch_id: null, snapshot_status: "current", snapshot_created_at: "2026-10-27", warnings: [], can_continue: true };
+  const record: libraryApi.LibraryMember = { member_id: "member-1", project_id: "project-1", ltr_number: "DL-2026-09-032", title: "CPI-450", folder_path: "D:/test-library/projects/CPI", revision: 1, batch_id: batchId || null, snapshot_status: "current", snapshot_created_at: "2026-10-27", warnings: [], can_continue: true };
   vi.mocked(libraryApi.listLibraryMembers).mockResolvedValue({ items: [record] });
+  vi.mocked(listProjectRegistryRows).mockResolvedValue([{ project_id: "project-1", display_project_id: "DL-2026-09-032", display_project_id_kind: "registered", has_registered_ltr: true, requestor: "Lab", status: "active", progress: 0, sample_description: "CPI-450" }]);
   vi.mocked(libraryApi.getLibraryMember).mockResolvedValue(record);
   vi.mocked(libraryApi.getLibraryFiles).mockResolvedValue({ items: [], warnings: [] });
   vi.mocked(libraryApi.getPortableInfo).mockResolvedValue({ status: "current", fingerprint: "current", created_at: "2026-10-27", format_version: 1, record_counts: { projects: 1 }, file_count: 2, warnings: [], blockers: [] });
@@ -42,18 +46,20 @@ it.each(["", "batch-1"])("preserves list and import return context for batch=%s 
   const user = userEvent.setup();
   window.history.replaceState({}, "", `/project-library${suffix}`);
   render(<App />);
-  await user.click(await screen.findByRole("button", { name: "Open CPI-450" }));
+  await user.click(await screen.findByText("Project Files", {exact:true}));
+  await user.click(screen.getByRole("button", {name:"Browse Files"}));
   expect(window.location.pathname).toBe("/project-library/member-1");
   expect(window.location.search).toBe(suffix);
-  await user.click(await screen.findByRole("button", { name: "Back to Library" }));
-  expect(window.location.pathname + window.location.search).toBe(`/project-library${suffix}`);
+  await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
+  expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
   await user.click(await screen.findByRole("button", { name: "Import Projects" }));
   await user.click(await screen.findByText("More Import Options"));
   await user.click(screen.getByRole("button", { name: "Link Existing Folders" }));
   await user.click(await screen.findByRole("button", { name: "Back to Import Projects" }));
-  await user.click(await screen.findByRole("button", { name: "Back to Project Library" }));
-  expect(window.location.pathname + window.location.search).toBe(`/project-library${suffix}`);
-  await user.click(await screen.findByRole("button", { name: "Open CPI-450" }));
+  await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
+  expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
+  await user.click(await screen.findByText("Project Files", {exact:true}));
+  await user.click(screen.getByRole("button", {name:"Browse Files"}));
   await user.click(await screen.findByRole("button", { name: "Matrix" }));
   expect(window.location.pathname).toBe("/projects/project-1/matrix-editor");
   expect(await screen.findByLabelText("Matrix editor")).toBeTruthy();
@@ -73,9 +79,9 @@ it("opens the unified list from the old Legacy URL and returns there after brows
   render(<App />);
   await user.click(await screen.findByRole("button", { name: "Open Manual legacy" }));
   expect(window.location.pathname).toBe("/legacy-projects/historical");
-  await user.click(await screen.findByRole("button", { name: "Back to Project Library" }));
+  await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
   expect(await screen.findByRole("button", { name: "Open Manual legacy" })).toBeTruthy();
-  expect(window.location.pathname).toBe("/project-library");
+  expect(window.location.pathname).toBe("/projects");
   expect(screen.queryByRole("region", { name: "Project Workbench" })).toBeNull();
   await user.click(screen.getByRole("button", { name: "Import Projects" }));
   expect(window.location.pathname).toBe("/projects/import");

@@ -543,3 +543,10 @@
 .project-registry-icon-action:hover:not(:disabled) { border-color: var(--color-primary, #1f66d1); background: #e8f0fc; color: var(--color-primary-strong, #164aa3); }
 .project-registry-icon-action:focus-visible { outline: 3px solid rgba(31, 102, 209, 0.26); outline-offset: 2px; }
 @media (max-width: 760px) { .project-management-retained-row { grid-template-columns: 1fr; gap: 10px; } .project-registry-areas { gap: 5px; } }
+
+.project-more { position: relative; align-self: center; }
+.project-more summary { cursor: pointer; padding: 8px 14px; border: 1px solid var(--color-border); border-radius: 8px; }
+.project-more summary:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 2px; }
+.project-more > div { position: absolute; right: 0; top: 100%; z-index: 10; display: grid; gap: 6px; padding: 8px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; min-width: 130px; }
+.registry-sample-cell details { font-size: 13px; margin-top: 6px; }
+.registry-sample-cell details p { overflow-wrap: anywhere; }

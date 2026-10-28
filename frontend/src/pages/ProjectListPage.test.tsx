@@ -11,6 +11,10 @@ import {
 } from "../api/client";
 import { ProjectListPage } from "./ProjectListPage";
 import { AppShell } from "../components/layout/AppShell";
+import * as libraryApi from "../api/projectLibrary";
+import { listLegacyProjects } from "../api/legacyProjects";
+vi.mock("../api/projectLibrary", () => ({ listLibraryMembers: vi.fn() }));
+vi.mock("../api/legacyProjects", () => ({ listLegacyProjects: vi.fn() }));
 import * as managementApi from "../api/projectRegistryManagement";
 vi.mock("../api/projectRegistryManagement", () => ({listManagedProjects: vi.fn(), previewProjectRegistryAction: vi.fn(), moveProjectToTrash: vi.fn(), restoreManagedProject: vi.fn()}));
 
@@ -35,34 +39,45 @@ describe("ProjectListPage lifecycle registry views", () => {
     expect(onImport).toHaveBeenCalledOnce();
   });
 
-  it("opens the unified Library without treating historical folders as business projects", async () => {
-    mockRows([]);
-    const openLibrary = vi.fn();
-    render(<ProjectListPage onOpenProject={vi.fn()} onShowLibrary={openLibrary} />);
-    await userEvent.setup().click(await screen.findByRole("button", { name: "Project Library" }));
-    expect(openLibrary).toHaveBeenCalledOnce();
-  });
-
   beforeEach(() => {
     window.sessionStorage.clear();
     listProjectRegistryRowsMock.mockReset();
     getProjectLifecycleMock.mockReset();
     vi.mocked(managementApi.listManagedProjects).mockResolvedValue([]);
+    vi.mocked(libraryApi.listLibraryMembers).mockResolvedValue({ items: [] });
+    vi.mocked(listLegacyProjects).mockResolvedValue([]);
   });
 
-  it("offers one project library entry without separate legacy navigation", async () => {
-    mockRows([]);
-    render(<ProjectListPage onOpenProject={vi.fn()} onShowLibrary={vi.fn()} />);
-    expect(await screen.findByRole("button", { name: "Project Library" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Legacy", exact: true })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Library", exact: true })).toBeNull();
+  it("finds registered, received and linked projects through one homepage search without a Library entry", async () => {
+    mockRows([registryRow({ requestor: "Ada Operator" })]);
+    mockLifecycle({ P1: lifecycle() });
+    vi.mocked(libraryApi.listLibraryMembers).mockResolvedValue({ items: [{ member_id: "same-id", project_id: null, ltr_number: "DL-2022-01-001", title: "Received connector", folder_path: "D:/old/received", revision: 1, batch_id: null, snapshot_status: "missing", snapshot_created_at: null, warnings: [], can_continue: false }] });
+    vi.mocked(listLegacyProjects).mockResolvedValue([{ record_id: "same-id", name: "Linked connector", number: "DL-2022-01-001", number_evidence: [], folder_path: "D:/old/linked", notes: [], revision: 1, imported_at: "", updated_at: "" }]);
+    const user = userEvent.setup(), onOpenMember = vi.fn(), onOpenLinked = vi.fn();
+    render(<ProjectListPage onOpenProject={vi.fn()} onImport={vi.fn()} onOpenMember={onOpenMember} onOpenLinked={onOpenLinked} />);
+    expect(await screen.findByText("Received connector")).toBeTruthy();
+    expect(screen.getByText("Linked connector")).toBeTruthy();
+    expect(screen.getByLabelText("Project view")).toHaveProperty("value", "all");
+    expect(screen.queryByRole("button", { name: "Project Library" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Import Projects" })).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Open Received connector" }));
+    await user.click(screen.getByRole("button", { name: "Open Linked connector" }));
+    expect(onOpenMember).toHaveBeenCalledWith("same-id");
+    expect(onOpenLinked).toHaveBeenCalledWith("same-id");
+    const search = screen.getByRole("textbox", { name: "Search projects" });
+    await user.type(search, "D:/old/linked");
+    expect(screen.getByText("Linked connector")).toBeTruthy();
+    expect(screen.queryByText("Received connector")).toBeNull();
+    await user.clear(search); await user.type(search, "Ada Operator");
+    expect(screen.getByText("Connector sample")).toBeTruthy();
+    expect(screen.queryByText("Linked connector")).toBeNull();
   });
 
   it("labels the normal registry area by its actual function", async () => {
     mockRows([]);
     render(<ProjectListPage onOpenProject={vi.fn()} />);
 
-    const active = await screen.findByRole("button", { name: "Active" });
+    const active = await screen.findByText("More", { exact: true });
     const search = screen.getByRole("textbox", { name: "Search projects" });
     const projectView = screen.getByRole("combobox", { name: "Project view" });
     const toolbar = search.closest(".register-toolbar");
@@ -76,6 +91,39 @@ describe("ProjectListPage lifecycle registry views", () => {
     expect(Boolean(projectView.compareDocumentPosition(active) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
   });
 
+  it("keeps available folders visible on a partial failure and recovers the complete list on Retry", async () => {
+    listProjectRegistryRowsMock.mockRejectedValueOnce(new Error("Registry unavailable"));
+    vi.mocked(listLegacyProjects).mockResolvedValue([{ record_id: "linked", name: "Available folder", number: null, number_evidence: [], folder_path: "D:/old/available", notes: [], revision: 1, imported_at: "", updated_at: "" }]);
+    const user = userEvent.setup();
+    render(<ProjectListPage onOpenProject={vi.fn()} onOpenLinked={vi.fn()} />);
+    expect(await screen.findByText("Available folder")).toBeTruthy();
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.queryByText("No projects yet")).toBeNull();
+    mockRows([registryRow()]); mockLifecycle({ P1: lifecycle() });
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("Connector sample")).toBeTruthy();
+    expect(screen.getByText("Available folder")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps each batch and the normal homepage's search and page independent", async () => {
+    mockRows([]);
+    vi.mocked(libraryApi.listLibraryMembers).mockResolvedValue({ items: Array.from({ length: 21 }, (_, i) => ({ member_id: String(i), project_id: null, ltr_number: null, title: `Folder ${i + 1}`, folder_path: `D:/old/${i}`, revision: 1, batch_id: i === 20 ? "recent" : "other", snapshot_status: "missing", snapshot_created_at: null, warnings: [], can_continue: false })) });
+    const props = { onOpenProject: vi.fn(), onOpenMember: vi.fn() }, user = userEvent.setup();
+    const { rerender } = render(<ProjectListPage {...props} />);
+    await user.type(await screen.findByLabelText("Search projects"), "Folder");
+    await user.click(await screen.findByRole("button", { name: "Next" }));
+    expect(screen.getByText("Page 2 / 2")).toBeTruthy();
+    rerender(<ProjectListPage {...props} batchId="recent" />);
+    expect(await screen.findByText("Folder 21")).toBeTruthy();
+    expect(screen.getByLabelText("Search projects")).toHaveProperty("value", "");
+    expect(screen.getByText("Page 1 / 1")).toBeTruthy();
+    expect(screen.queryByText("Folder 1")).toBeNull();
+    rerender(<ProjectListPage {...props} />);
+    expect(await screen.findByText("Page 2 / 2")).toBeTruthy();
+    expect(screen.getByLabelText("Search projects")).toHaveProperty("value", "Folder");
+  });
+
   it("places registry controls in the shell top-bar action slot", async () => {
     mockRows([]);
     render(
@@ -84,7 +132,7 @@ describe("ProjectListPage lifecycle registry views", () => {
       </AppShell>
     );
 
-    await screen.findByRole("button", { name: "Active" });
+    await screen.findByText("More", { exact: true });
 
     const slot = document.querySelector<HTMLElement>("[data-top-bar-actions]");
     expect(slot).not.toBeNull();
@@ -119,10 +167,12 @@ describe("ProjectListPage lifecycle registry views", () => {
       sample_description: "Old connector", test_item: "LLCR", requestor: "Lab", created_on: "2026-01-01",
       lifecycle_state: "closed", close_reason_label: "Completed", registry_state: "trash", registry_revision: 1, changed_at: "2026-01-02", reason: "Duplicate"}]);
     render(<ProjectListPage onOpenProject={vi.fn()} />);
+    await user.click(screen.getByText("More", {exact: true}));
     await user.click(screen.getByRole("button", {name: "Trash"}));
     expect(await screen.findByText("Old connector")).toBeTruthy();
     expect(screen.getByText(/Record unique-delet/)).toBeTruthy();
     expect(screen.getByRole("button", {name: "View read-only details"})).toBeTruthy();
+    await user.click(screen.getByText("Trash", {selector: "summary", exact: true}));
     await user.click(screen.getByRole("button", {name: "History"}));
     await waitFor(() => expect(managementApi.listManagedProjects).toHaveBeenLastCalledWith("history"));
   });
@@ -137,7 +187,7 @@ describe("ProjectListPage lifecycle registry views", () => {
     expect(screen.queryByRole("dialog", {name: /Close project/})).toBeNull();
   });
 
-  it("defaults to the On-going view for active operational projects", async () => {
+  it("defaults to all projects while keeping On-going available as an explicit filter", async () => {
     mockRows([
       registryRow({ project_id: "P-ACTIVE", display_project_id: "DL-2026-06-001" }),
       registryRow({
@@ -159,8 +209,10 @@ describe("ProjectListPage lifecycle registry views", () => {
     render(<ProjectListPage onOpenProject={vi.fn()} />);
 
     expect(await screen.findByText("DL-2026-06-001")).toBeTruthy();
+    expect(screen.getByText("DL-2026-06-002")).toBeTruthy();
+    expect(screen.getByLabelText("Project view")).toHaveProperty("value", "all");
+    await userEvent.setup().selectOptions(screen.getByLabelText("Project view"), "ongoing");
     expect(screen.queryByText("DL-2026-06-002")).toBeNull();
-    expect(screen.getByLabelText("Project view")).toHaveProperty("value", "ongoing");
   });
 
   it("defaults Project IDs to newest first and lets the operator switch to oldest first", async () => {
@@ -251,6 +303,7 @@ describe("ProjectListPage lifecycle registry views", () => {
 
     render(<ProjectListPage onOpenProject={vi.fn()} />);
 
+    await user.selectOptions(await screen.findByLabelText("Project view"), "ongoing");
     expect(await screen.findByText("DL-2026-06-012")).toBeTruthy();
     expect(screen.queryByText("TMP-AABBCCDD")).toBeNull();
     expect(screen.getByRole("button", { name: /Open Workbench.*DL-2026-06-012/ })).toBeTruthy();
@@ -379,7 +432,7 @@ describe("ProjectListPage lifecycle registry views", () => {
     render(<ProjectListPage onOpenProject={onOpenProject} />);
 
     expect(await screen.findByText("DL-2026-06-015")).toBeTruthy();
-    expect(screen.getByText("Not scheduled")).toBeTruthy();
+    expect(screen.getAllByText("Not scheduled")).toHaveLength(2);
     await user.click(screen.getByRole("button", { name: /Open Workbench.*DL-2026-06-015/ }));
     expect(onOpenProject).toHaveBeenCalledWith("P-FOLDER");
 

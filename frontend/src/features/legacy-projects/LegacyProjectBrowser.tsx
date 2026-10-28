@@ -4,7 +4,7 @@ import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsConte
 import { changeLegacyProjectLocation, getLegacyProject, openLegacyProjectFolder, pickLegacyProjectDirectory, type LegacyProjectRecord } from "../../api/legacyProjects";
 import "./legacy-project-preview.css";
 
-export function LegacyProjectBrowser({ recordId, onBack }: { recordId: string; onBack: () => void }) {
+export function LegacyProjectBrowser({ recordId, onBack, backLabel = "Back to Project Library" }: { recordId: string; backLabel?: string; onBack: () => void }) {
   const [record, setRecord] = useState<LegacyProjectRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -29,7 +29,7 @@ export function LegacyProjectBrowser({ recordId, onBack }: { recordId: string; o
     try { await action(); } catch (cause) { if (live.current) setError((cause as Error).message); }
     finally { if (live.current) setBusy(false); }
   }
-  const back = <button type="button" className="ui-secondary-action" disabled={busy} onClick={onBack}>Back to Project Library</button>;
+  const back = <button type="button" className="ui-secondary-action" disabled={busy} onClick={onBack}>{backLabel}</button>;
   return <section className="legacy-preview" aria-label="Legacy project details">
     {topBarRoot ? createPortal(back, topBarRoot) : back}
     {error && <p role="alert">{error}</p>}
