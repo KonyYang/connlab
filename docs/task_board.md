@@ -76,15 +76,16 @@
         "scope_paths": [
           "backend/api",
           "backend/application",
+          "backend/infrastructure/files",
           "backend/infrastructure/office",
+          "docs/mechanical_summary_tool.md",
           "frontend/src",
-          "tests",
-          "docs/mechanical_summary_tool.md"
+          "tests"
         ],
         "risk_reasons": [],
         "activation_head": "9c9c51f30224402222f6b8d58ab41a7189871bfd",
         "started_at": "2026-10-28T10:39:42.160098Z",
-        "updated_at": "2026-10-28T10:39:42.160098Z",
+        "updated_at": "2026-10-28T11:43:14.149886Z",
         "checkpoint": null,
         "report": null
       }
