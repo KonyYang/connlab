@@ -71,11 +71,11 @@
   "tasks": {
     "TASK_PROJECT_IMPORT_ENTRY_20261028": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
-      "integrated_head": "2bf957393cf6337491d2fc6954108744be6a2bfe",
+      "integrated_head": "cd41327028a8d75c2a5c8aa611e946cf9ce37fc8",
       "task": {
         "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
         "summary": "Consolidate project import entry under Projects",
@@ -116,7 +116,7 @@
         "risk_reasons": [],
         "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
         "started_at": "2026-10-28T14:26:30.121108Z",
-        "updated_at": "2026-10-28T23:17:49.650497Z",
+        "updated_at": "2026-10-28T23:21:43.011716Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -126,7 +126,67 @@
           "summary": "User requests a narrower Projects search, full All Projects label, directly visible Trash and History controls, and removal of More. Local frontend layout/copy only; preserve unified data/search, no real-data mutation or push/publication.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
+          "subject": "14df596e75936f167e6a148f90661107a7d1bd3d",
+          "summary": "Narrow Projects search, fully visible All Projects label, direct Trash/History buttons, remove More. Preserve single import action, unified search, retained operations and busy locking. Frontend-only localized follow-up; no business/source mutations, push or publication.",
+          "scope_ok": true,
+          "changed_paths": [
+            "docs/architecture/project_library.md",
+            "frontend/src/pages/ProjectListPage.test.tsx",
+            "frontend/src/pages/ProjectListPage.tsx",
+            "frontend/src/project-dashboard.css"
+          ],
+          "validation": [
+            {
+              "name": "Targeted behavior regression RED/GREEN",
+              "status": "passed",
+              "result": "Direct controls/no More regression failed before change. 30 homepage and App regressions passed; current final JS/test bytes unchanged since that run.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\toolbar-validation.log"
+            },
+            {
+              "name": "Final typecheck and production build",
+              "status": "passed",
+              "result": "tsc -b and Vite build passed; final CSS refinement validated by rebuilt artifacts and actual UI, without repeating unrelated full matrix.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\toolbar-final-build.log"
+            },
+            {
+              "name": "Standards/Spec and isolated actual UI",
+              "status": "passed",
+              "result": "Current agent sequential self-review, no open findings or independent-agent claim. Desktop1280/narrow598 screenshots show complete labels and direct buttons; narrow layout uses two rows. Direct Trash/History/Back works on private SQLite. 4 original source files unchanged. Owned tab/viewport/server cleaned.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\toolbar-review-ui.json"
+            },
+            {
+              "name": "Integration safety",
+              "status": "passed",
+              "result": "Four frontend/doc paths only, no Python changes. Primary clean, exact reviewed file hashes. Development/release processes not signalled; owned18745 stopped."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Current agent, bounded user layout correction with meaningful behavioral RED/GREEN."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Current agent separate sequential Standards and Spec self-review."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "Current agent risk-proportionate targeted gate, typecheck/build and actual isolated responsive UI."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "14df596e75936f167e6a148f90661107a7d1bd3d",
+            "primary_before": "acf3866953bcd4ab88345975c08408fd561c9051",
+            "integrated_head": "cd41327028a8d75c2a5c8aa611e946cf9ce37fc8",
+            "recovered": false
+          }
+        }
       }
     }
   }
