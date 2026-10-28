@@ -11,6 +11,7 @@ const labels = { ready: "Ready to Add", conflict: "Needs Review", already_added:
 export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLegacyPreview, backLabel = "Back to Projects" }: Props) {
   const [runtime, setRuntime] = useState<LibraryRuntime | null>(null);
   const [sources, setSources] = useState("");
+  const sourcePaths = [...new Set(sources.split(/\r?\n/).map(value => value.trim().replace(/^"|"$/g, "")).filter(Boolean))];
   const [scan, setScan] = useState<LibraryScan | null>(null);
   const [plan, setPlan] = useState<LibraryIntakePlan | null>(null);
   const [assignments, setAssignments] = useState<Record<string, { target: string; title: string }>>({});
@@ -63,11 +64,11 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
   async function choose() {
     interactionEpoch.current += 1;
     setBusy(true); setError("");
-    try { const folder = await pickLibraryFolder(); if (live.current && folder) changeSources([...new Set([...sources.split(/\r?\n/).filter(Boolean), folder])].join("\n")); }
+    try { const folder = await pickLibraryFolder(); if (live.current && folder && !sourcePaths.includes(folder)) changeSources([...sourcePaths, folder].join("\n")); }
     catch (cause) { if (live.current) setError((cause as Error).message); }
     finally { if (live.current) setBusy(false); }
   }
-  async function review(paths = sources.split(/\r?\n/).map(value => value.trim().replace(/^"|"$/g, "")).filter(Boolean)) {
+  async function review(paths = sourcePaths) {
     if (!paths.length || busy) return;
     interactionEpoch.current += 1;
     const controller = new AbortController(); request.current = controller;
@@ -157,9 +158,13 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
     <section className="library-panel">
       <h2>1. Choose Sources</h2>
       {runtime && <p className="library-location">Receiving into: <span>{runtime.projects_root}</span></p>}
-      <div className="library-actions"><button type="button" disabled={locked} onClick={() => void choose()}>Choose Folder</button></div>
-      <label>Source paths<textarea value={sources} rows={3} disabled={locked} onChange={event => changeSources(event.target.value)} placeholder="One folder or file path per line" /></label>
-      <div className="library-actions"><button type="button" className="primary-action" disabled={locked || !sources.trim() || !runtime} onClick={() => void review()}>Review Projects</button></div>
+      <div className="library-actions"><button type="button" className="primary-action" disabled={locked} title="Choose a project folder or a parent folder containing several projects. You can add more locations before reviewing." onClick={() => void choose()}>Choose Folder</button>{sourcePaths.length > 1 && <button type="button" disabled={locked} title="Clear this selection. Original folders and files stay unchanged." onClick={() => changeSources("")}>Clear All</button>}</div>
+      {sourcePaths.length > 0 && <>
+        <p>{sourcePaths.length} locations selected</p>
+        <ul className="library-source-list" aria-label="Selected sources">{sourcePaths.map((path, index) => <li key={path}><span>{path}</span><button type="button" aria-label={`Remove ${path}`} title="Remove this location from the selection. Original files stay unchanged." disabled={locked} onClick={() => changeSources(sourcePaths.filter((_, position) => position !== index).join("\n"))}>Remove</button></li>)}</ul>
+      </>}
+      <details><summary>Enter Source Paths Manually</summary><label>Source paths<textarea value={sources} rows={3} disabled={locked} onChange={event => changeSources(event.target.value)} placeholder="One folder or file path per line" /></label></details>
+      <div className="library-actions"><button type="button" className="primary-action" disabled={locked || !sourcePaths.length || !runtime} onClick={() => void review()}>Review Projects</button></div>
       {busy && !confirming && <p role="status">Checking or receiving projects…</p>}
       {error && <div><p role="alert">{error}</p>{recoveryId && !batch && <button type="button" disabled={busy} onClick={() => void refreshBatch()}>Recover Last Batch</button>}{submission && !batch && <button type="button" disabled={busy} onClick={() => void receive(false, true)}>Retry Batch Submission</button>}</div>}
       {scan?.truncated && !plan && <p role="alert">Incomplete results. Choose a smaller source folder before receiving projects.</p>}

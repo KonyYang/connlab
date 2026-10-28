@@ -9,6 +9,10 @@
 .library-eyebrow, .library-location { color: var(--color-ink-muted); }
 .library-location span, .project-library dd, .project-library details p { overflow-wrap: anywhere; }
 .library-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.library-source-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; max-height: 240px; overflow: auto; }
+.library-source-list li { display: flex; align-items: start; gap: 12px; }
+.library-source-list li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.library-source-list li > button { flex: 0 0 auto; }
 .project-library button:not(.primary-action):not(.ui-secondary-action) { border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-ink); min-height: 36px; padding: 8px 12px; cursor: pointer; font: inherit; }
 .project-library button:disabled { opacity: .55; cursor: default; }
 .project-library button:focus-visible, .project-library summary:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 2px; }
