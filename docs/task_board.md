@@ -96,6 +96,7 @@
           "frontend/src/features/project-library/ProjectLibraryImport.tsx",
           "frontend/src/features/project-library/ProjectLibraryList.test.tsx",
           "frontend/src/features/project-library/ProjectLibraryList.tsx",
+          "frontend/src/features/project-library/project-library.css",
           "frontend/src/pages/ProjectListPage.test.tsx",
           "frontend/src/pages/ProjectListPage.tsx",
           "frontend/src/pages/ToolsPage.test.tsx",
@@ -104,7 +105,7 @@
         "risk_reasons": [],
         "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
         "started_at": "2026-10-28T14:26:30.121108Z",
-        "updated_at": "2026-10-28T15:29:02.111581Z",
+        "updated_at": "2026-10-28T15:33:05.861202Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
