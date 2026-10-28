@@ -71,7 +71,7 @@
   "tasks": {
     "TASK_PROJECT_IMPORT_ENTRY_20261028": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
@@ -104,80 +104,17 @@
         "risk_reasons": [],
         "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
         "started_at": "2026-10-28T14:26:30.121108Z",
-        "updated_at": "2026-10-28T15:25:59.000264Z",
+        "updated_at": "2026-10-28T15:29:02.111581Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
           "stage": "revision",
           "status": "running",
-          "summary": "User selected smoother import and search: locate imported projects, preserve search/page and return context; frontend-only revision.",
+          "summary": "User requested the next step. Continue the same intake UX task: selected source-folder list, removal/reset and optional manual paths; preserve preview/confirmation and real-data isolation.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
-          "subject": "7cd57ae374a4d66ac0697ed570ca3fce502a79f2",
-          "summary": "Smoother project intake and search: new receiving batches use independent search/page state; imported member links preserve batch across reload/back; import/link cancellation returns to original library view. Clear Search recovers empty results, and already-added members are not misrepresented as new-batch members. Frontend-only revision, no real business changes, no push/publication or automatic Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "docs/architecture/project_library.md",
-            "frontend/src/App.test.tsx",
-            "frontend/src/App.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-            "frontend/src/features/project-library/ProjectLibraryList.test.tsx",
-            "frontend/src/features/project-library/ProjectLibraryList.tsx"
-          ],
-          "validation": [
-            {
-              "name": "Behavioral RED/GREEN",
-              "status": "passed",
-              "result": "return-context-red.log: 2 failures; return-routes-red.log: 3 failures; duplicate-result-red.log: 1 failure. return-final-affected.log: 35 passed; final App test setup change: 11 passed in return-app-final.log."
-            },
-            {
-              "name": "Full frontend gate",
-              "status": "passed",
-              "result": "1091 passed, 1 skipped at default concurrency; tsc -b and Vite production build passed.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\return-qa.log"
-            },
-            {
-              "name": "Actual isolated intake/UI",
-              "status": "passed",
-              "result": "Explicitly received synthetic DL-2099-01-002 into owned temp library, opened from result, reloaded member, returned to same batch with empty search, cleared empty search, cancelled import back to batch, returned to general list with its previous linked search. 1280/598px checked, source/copy bytes verified; own server stopped.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\return-ui-result.json"
-            },
-            {
-              "name": "Review and integration preflight",
-              "status": "passed",
-              "result": "Standards/Spec review by current agent in separate passes: no actionable findings. Clean task and primary. Current master drift only board. No backend/schema changes, Python suite unaffected.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\return-review.json"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Current agent, same task revision, public behavioral RED/GREEN with bounded frontend implementation."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Distinct Standards and Spec self-review passes by current agent, no independent review claimed."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Current agent after review, complete frontend gate and isolated actual intake/UI acceptance on clean final subject."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "7cd57ae374a4d66ac0697ed570ca3fce502a79f2",
-            "primary_before": "6cd44657b930ced3b074d19b49aadcae4784ca80",
-            "integrated_head": "9e6e9396ea9e5e3e7a1fa9ec631435db1ec9e6f9",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
