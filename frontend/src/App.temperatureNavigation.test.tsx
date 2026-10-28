@@ -41,8 +41,9 @@ const analysis: api.TemperatureAnalysis = {
 };
 const sidebar = () => within(screen.getByRole('complementary', { name: 'Primary navigation' }));
 async function openImportedWorkspace() {
-  await userEvent.setup().click(await screen.findByRole('button', { name: 'Drawing Curves', exact: true }));
-  const input = await screen.findByLabelText('Load Initial Data');
+  // Cold lazy-route transforms can exceed RTL's one-second default under full-suite concurrency.
+  await userEvent.setup().click(await screen.findByRole('button', { name: 'Drawing Curves', exact: true }, { timeout: 5000 }));
+  const input = await screen.findByLabelText('Load Initial Data', {}, { timeout: 5000 });
   fireEvent.change(input, { target: { files: [new File(['source bytes'], 'navigation.csv')] } });
   await screen.findByRole('button', { name: 'Confirm Data', exact: true });
 }
