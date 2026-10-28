@@ -33,6 +33,59 @@ beforeEach(() => {
 });
 
 describe("ProjectLibraryImport", () => {
+  it("shows fresh completion directly and clears the old sources when receiving more projects", async () => {
+    const user = userEvent.setup();
+    render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+    await enterSources(user, "D:/old");
+    await user.click(screen.getByRole("button", { name: "Review Projects" }));
+    await screen.findByRole("table", { name: "Projects to receive" });
+    await user.click(screen.getByRole("button", { name: "Add Selected" }));
+    await user.click(screen.getByRole("button", { name: "Confirm Add" }));
+    await screen.findByRole("button", { name: "Open Force test" });
+    expect(screen.queryByText(/^Last Import/)).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Receive More Projects" }));
+    expect(screen.getByLabelText("Source paths")).toHaveProperty("value", "");
+    expect(screen.queryByRole("region", { name: "Receiving result" })).toBeNull();
+    expect(screen.queryByRole("table", { name: "Projects to receive" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Review Projects" })).toHaveProperty("disabled", true);
+    expect(api.startLibraryBatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a successful previous batch collapsed with readable project names when reopened", async () => {
+    localStorage.setItem("connlab.projectLibrary.lastBatch:D:/managed/projects", "previous-completed");
+    vi.mocked(api.getLibraryBatch).mockResolvedValue({ batch_id: "previous-completed", status: "completed", counts: { added: 1, already_added: 0, review: 0, failed: 0 }, items: [{ source_path: "D:\\old\\DL-2026-09-032 CPI-450", status: "added", message: "Added", member_id: "existing-cpi" }] });
+    const onOpenMember = vi.fn();
+    render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={onOpenMember} />);
+    const history = await screen.findByText(/^Last Import/);
+    expect(history.closest("details")).toHaveProperty("open", false);
+    await userEvent.setup().click(history);
+    await userEvent.setup().click(screen.getByRole("button", { name: "Open DL-2026-09-032 CPI-450" }));
+    expect(onOpenMember).toHaveBeenCalledWith("existing-cpi", "previous-completed");
+    expect(api.startLibraryBatch).not.toHaveBeenCalled();
+    expect(api.resumeLibraryBatch).not.toHaveBeenCalled();
+  });
+
+  it.each(["running", "interrupted", "completed"] as const)("keeps recovered %s work with unresolved items visible", async status => {
+    localStorage.setItem("connlab.projectLibrary.lastBatch:D:/managed/projects", "unfinished");
+    vi.mocked(api.getLibraryBatch).mockResolvedValue({ batch_id: "unfinished", status, counts: { added: 0, already_added: 0, review: 1, failed: 1 }, items: [{ source_path: "D:/old/problem", status: "failed", message: "The source folder is unavailable.", member_id: null }] });
+    render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+    expect(await screen.findByText("The source folder is unavailable.")).toBeTruthy();
+    expect(screen.queryByText(/^Last Import/)).toBeNull();
+    expect(api.resumeLibraryBatch).not.toHaveBeenCalled();
+  });
+
+  it("pages a large recovered result and puts items needing attention on the first page", async () => {
+    localStorage.setItem("connlab.projectLibrary.lastBatch:D:/managed/projects", "large-result");
+    const items = Array.from({ length: 24 }, (_, i) => ({ source_path: `D:/old/Project ${i + 1}`, status: "added", message: "Added", member_id: `member-${i + 1}` }));
+    vi.mocked(api.getLibraryBatch).mockResolvedValue({ batch_id: "large-result", status: "completed", counts: { added: 24, already_added: 0, review: 0, failed: 1 }, items: [...items, { source_path: "D:/old/problem", status: "failed", message: "Review this source folder.", member_id: null }] });
+    render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+    expect(await screen.findByText("Review this source folder.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Open Project 24", exact: true })).toBeNull();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByRole("button", { name: "Open Project 24", exact: true })).toBeTruthy();
+    expect(api.resumeLibraryBatch).not.toHaveBeenCalled();
+  });
+
   it("opens verified duplicate projects directly without selecting or receiving them", async () => {
     vi.mocked(api.planLibraryIntake).mockResolvedValue({ ...plan, items: [
       { ...plan.items[0], status: "already_added", existing_member_id: "existing-1" },

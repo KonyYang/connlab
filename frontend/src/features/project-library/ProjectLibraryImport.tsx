@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
 import { getLibraryRuntime, listLibraryMembers, scanLibrarySources, planLibraryIntake, startLibraryBatch, getLibraryBatch, resumeLibraryBatch, pickLibraryFolder, type LibraryRuntime, type LibraryMember, type LibraryFileAssignment, type LibraryScan, type LibraryIntakePlan, type LibraryBatch, type LibraryBatchRequest } from "../../api/projectLibrary";
 import { PortableRestore } from "./PortableRestore";
+import { ProjectImportResults } from "./ProjectImportResults";
 import "./project-library.css";
 
 type Props = { onBack: () => void; onViewLibrary: (batchId?: string) => void; onOpenMember: (id: string, batchId?: string) => void; backLabel?: string; onLegacyPreview?: () => void };
@@ -25,6 +26,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
   const [error, setError] = useState("");
   const [batch, setBatch] = useState<LibraryBatch | null>(null);
   const [recoveryId, setRecoveryId] = useState("");
+  const [recoveredCompletedId, setRecoveredCompletedId] = useState("");
   const [submission, setSubmission] = useState<LibraryBatchRequest | null>(null);
   const interactionEpoch = useRef(0);
   const live = useRef(true);
@@ -45,7 +47,10 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
           if (saved?.batch_id === previousBatch && /^[a-f0-9]{32}$/.test(saved.batch_id) && typeof saved.plan_id === "string" && typeof saved.fingerprint === "string" && Array.isArray(saved.selected) && saved.selected.every(path => typeof path === "string") && Array.isArray(saved.keep_separate) && saved.keep_separate.every(path => typeof path === "string")) setSubmission(saved);
         } catch { /* A damaged local recovery hint cannot authorize a new submission. */ }
         const previous = await getLibraryBatch(previousBatch, controller.signal);
-        if (!controller.signal.aborted && recoveryEpoch === interactionEpoch.current) { setBatch(previous); setSubmission(null); }
+        if (!controller.signal.aborted && recoveryEpoch === interactionEpoch.current) {
+          setBatch(previous); setSubmission(null);
+          if (previous.status === "completed" && previous.counts.review === 0 && previous.counts.failed === 0) setRecoveredCompletedId(previous.batch_id);
+        }
       }
     }).catch(cause => { if (!controller.signal.aborted && recoveryEpoch === interactionEpoch.current) setError((cause as Error).message); });
     return () => { live.current = false; controller.abort(); request.current?.abort(); };
@@ -57,7 +62,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
     return () => { window.clearTimeout(timer); controller.abort(); };
   }, [batch]);
   function changeSources(value: string) {
-    interactionEpoch.current += 1; setRecoveryId(""); setSubmission(null);
+    interactionEpoch.current += 1; setRecoveryId(""); setSubmission(null); setRecoveredCompletedId("");
     request.current?.abort(); request.current = null;
     setSources(value); setAssignments({}); setScan(null); setPlan(null); setSelected([]); setSeparate([]); setBatch(null); setError(""); setConfirming(false); setPage(1);
   }
@@ -120,7 +125,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
   async function receive(resume = false, retrySubmission = false) {
     if (busy || (resume ? !batch : retrySubmission ? !submission : !plan) || !runtime) return;
     const currentEpoch = ++interactionEpoch.current;
-    setBusy(true); setConfirming(false); setError("");
+    setBusy(true); setConfirming(false); setError(""); setRecoveredCompletedId("");
     try {
       let next: LibraryBatch;
       if (resume && batch) next = await resumeLibraryBatch(batch.batch_id);
@@ -154,6 +159,9 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
   const pages = Math.max(1, Math.ceil(visible.length / 20));
   const currentPage = Math.min(page, pages);
   const back = <button type="button" className="ui-secondary-action" disabled={locked} onClick={onBack}>{backLabel}</button>;
+  const results = batch && <ProjectImportResults batch={batch} titlesBySource={Object.fromEntries((plan?.items ?? []).map(item => [item.source_path, item.title]))}
+    busy={busy} onOpenMember={onOpenMember} onViewLibrary={onViewLibrary} onRefresh={() => void refreshBatch()}
+    onResume={() => void receive(true)} onReceiveMore={() => changeSources("")} heading={batch.batch_id === recoveredCompletedId ? "Import Result" : undefined} />;
   return <section className="project-library" aria-label="Import projects">
     {topBar ? createPortal(back, topBar) : <header className="library-heading"><h1>Import Projects</h1>{back}</header>}
     <section className="library-panel">
@@ -188,7 +196,9 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
       <div className="library-actions"><button type="button" disabled={locked || currentPage <= 1} onClick={() => setPage(currentPage - 1)}>Previous</button><span>Page {currentPage} of {pages}</span><button type="button" disabled={locked || currentPage >= pages} onClick={() => setPage(currentPage + 1)}>Next</button><button type="button" className="primary-action" disabled={locked || !selected.length} onClick={() => setConfirming(true)}>Add Selected</button></div>
     </section>}
     {confirming && <section className="library-panel" role="dialog" aria-modal="false" aria-labelledby="library-confirm-title"><h2 id="library-confirm-title">Confirm Add</h2><p>Copy {selected.length} selected projects into the library? Source files stay in place.</p><div className="library-actions"><button type="button" className="primary-action" autoFocus onClick={() => void receive()}>Confirm Add</button><button type="button" onClick={() => setConfirming(false)}>Cancel</button></div></section>}
-    {batch && <section className="library-panel" aria-label="Receiving result"><h2>3. Receiving Result</h2><p role="status">{batch.counts.added} added; {batch.counts.already_added} already added; {batch.counts.review} need review; {batch.counts.failed} failed.</p>{batch.items.map(item => <div key={item.source_path} className="library-result"><span>{plan?.items.find(row => row.source_path === item.source_path)?.title ?? item.source_path}</span>{item.status !== "added" && <p>{item.message}</p>}{item.member_id && <button type="button" onClick={() => onOpenMember(item.member_id!, item.status === "added" ? batch.batch_id : undefined)}>Open {plan?.items.find(row => row.source_path === item.source_path)?.title ?? "Project"}</button>}</div>)}<div className="library-actions">{batch.status === "running" && <button type="button" disabled={busy} onClick={() => void refreshBatch()}>Refresh Batch Status</button>}{batch.status === "interrupted" && <button type="button" disabled={busy} onClick={() => void receive(true)}>Resume Batch</button>}<button type="button" disabled={batch.status === "running" || batch.counts.added === 0} onClick={() => onViewLibrary(batch.batch_id)}>View Added Projects</button><button type="button" disabled={locked} onClick={() => { setBatch(null); setPlan(null); setScan(null); }}>Receive More Projects</button></div></section>}
+    {batch && (batch.batch_id === recoveredCompletedId
+      ? <details><summary>Last Import ({batch.counts.added} added; {batch.counts.already_added} already added)</summary>{results}</details>
+      : results)}
     <details className="library-panel"><summary>More Import Options</summary>
       {onLegacyPreview && <button type="button" disabled={locked} title="Keep folders at their current locations using the existing read-only preview and registration flow." onClick={onLegacyPreview}>Link Existing Folders</button>}
       <PortableRestore onOpenMember={onOpenMember} disabled={locked} />
