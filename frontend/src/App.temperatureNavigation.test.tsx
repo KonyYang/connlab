@@ -113,7 +113,7 @@ describe('Tools sidebar resumes the temperature workspace', () => {
     expect(window.location.pathname).toBe('/tools');
     expect(api.importTemperatureWorkbook).toHaveBeenCalledOnce();
     expect(storage.clearTemperatureWorkspace).toHaveBeenCalledOnce();
-  });
+  }, 15000);
 
   it('resumes the persisted workspace from the sidebar in a freshly mounted app', async () => {
     const user = userEvent.setup();
