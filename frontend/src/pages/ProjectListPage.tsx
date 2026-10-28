@@ -61,7 +61,7 @@ const VIEW_LABELS: Record<RegistryView, string> = {
 };
 const REGISTRY_AREA_LABELS: Record<"active" | "trash" | "history", string> = {
   active: "Active",
-  trash: "Trash",
+  trash: "Recycle",
   history: "History",
 };
 

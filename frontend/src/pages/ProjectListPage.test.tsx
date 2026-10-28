@@ -77,7 +77,7 @@ describe("ProjectListPage lifecycle registry views", () => {
     mockRows([]);
     render(<ProjectListPage onOpenProject={vi.fn()} />);
 
-    const active = await screen.findByRole("button", { name: "Trash", exact: true });
+    const active = await screen.findByRole("button", { name: "Recycle", exact: true });
     const search = screen.getByRole("textbox", { name: "Search projects" });
     const projectView = screen.getByRole("combobox", { name: "Project view" });
     const toolbar = search.closest(".register-toolbar");
@@ -134,7 +134,7 @@ describe("ProjectListPage lifecycle registry views", () => {
       </AppShell>
     );
 
-    await screen.findByRole("button", { name: "Trash", exact: true });
+    await screen.findByRole("button", { name: "Recycle", exact: true });
 
     const slot = document.querySelector<HTMLElement>("[data-top-bar-actions]");
     expect(slot).not.toBeNull();
@@ -169,7 +169,7 @@ describe("ProjectListPage lifecycle registry views", () => {
       sample_description: "Old connector", test_item: "LLCR", requestor: "Lab", created_on: "2026-01-01",
       lifecycle_state: "closed", close_reason_label: "Completed", registry_state: "trash", registry_revision: 1, changed_at: "2026-01-02", reason: "Duplicate"}]);
     render(<ProjectListPage onOpenProject={vi.fn()} />);
-    await user.click(screen.getByRole("button", {name: "Trash"}));
+    await user.click(screen.getByRole("button", {name: "Recycle"}));
     expect(await screen.findByText("Old connector")).toBeTruthy();
     expect(screen.getByText(/Record unique-delet/)).toBeTruthy();
     expect(screen.getByRole("button", {name: "View read-only details"})).toBeTruthy();

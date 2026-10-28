@@ -547,7 +547,9 @@
 .registry-sample-cell details { font-size: 13px; margin-top: 6px; }
 .registry-sample-cell details p { overflow-wrap: anywhere; }
 
-.top-bar-projects .register-toolbar .registry-tools { flex: 0 1 378px; max-width: 100%; }
-.top-bar-projects .register-toolbar .project-search { flex: 0 1 240px; max-width: 240px; min-width: 140px; }
+.top-bar-projects .register-toolbar .registry-tools { flex: 0 1 458px; max-width: 100%; flex-wrap: nowrap; }
+.top-bar-projects .register-toolbar .project-search { flex: 0 1 320px; max-width: 320px; min-width: 140px; }
 .top-bar-projects .register-toolbar .registry-view-select { flex: 0 0 132px; min-width: 132px; }
 .top-bar-projects .register-toolbar .registry-view-select select { font-size: 13px; padding-inline: 8px; text-overflow: clip; }
+
+@media (max-width: 420px) { .top-bar-projects .register-toolbar .registry-tools { flex-wrap: wrap; } }
