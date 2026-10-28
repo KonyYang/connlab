@@ -73,16 +73,18 @@ describe("ProjectListPage lifecycle registry views", () => {
     expect(screen.queryByText("Linked connector")).toBeNull();
   });
 
-  it("labels the normal registry area by its actual function", async () => {
+  it("keeps retained controls directly available beside the unified project controls", async () => {
     mockRows([]);
     render(<ProjectListPage onOpenProject={vi.fn()} />);
 
-    const active = await screen.findByText("More", { exact: true });
+    const active = await screen.findByRole("button", { name: "Trash", exact: true });
     const search = screen.getByRole("textbox", { name: "Search projects" });
     const projectView = screen.getByRole("combobox", { name: "Project view" });
     const toolbar = search.closest(".register-toolbar");
 
     expect(active).toBeTruthy();
+    expect(screen.getByRole("button", { name: "History", exact: true })).toBeTruthy();
+    expect(screen.queryByText("More", { exact: true })).toBeNull();
     expect(screen.queryByRole("button", { name: "Projects" })).toBeNull();
     expect(toolbar).not.toBeNull();
     expect(toolbar?.contains(projectView)).toBe(true);
@@ -132,7 +134,7 @@ describe("ProjectListPage lifecycle registry views", () => {
       </AppShell>
     );
 
-    await screen.findByText("More", { exact: true });
+    await screen.findByRole("button", { name: "Trash", exact: true });
 
     const slot = document.querySelector<HTMLElement>("[data-top-bar-actions]");
     expect(slot).not.toBeNull();
@@ -167,12 +169,10 @@ describe("ProjectListPage lifecycle registry views", () => {
       sample_description: "Old connector", test_item: "LLCR", requestor: "Lab", created_on: "2026-01-01",
       lifecycle_state: "closed", close_reason_label: "Completed", registry_state: "trash", registry_revision: 1, changed_at: "2026-01-02", reason: "Duplicate"}]);
     render(<ProjectListPage onOpenProject={vi.fn()} />);
-    await user.click(screen.getByText("More", {exact: true}));
     await user.click(screen.getByRole("button", {name: "Trash"}));
     expect(await screen.findByText("Old connector")).toBeTruthy();
     expect(screen.getByText(/Record unique-delet/)).toBeTruthy();
     expect(screen.getByRole("button", {name: "View read-only details"})).toBeTruthy();
-    await user.click(screen.getByText("Trash", {selector: "summary", exact: true}));
     await user.click(screen.getByRole("button", {name: "History"}));
     await waitFor(() => expect(managementApi.listManagedProjects).toHaveBeenLastCalledWith("history"));
   });
