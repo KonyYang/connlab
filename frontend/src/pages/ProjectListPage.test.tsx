@@ -27,6 +27,14 @@ const listProjectRegistryRowsMock = vi.mocked(listProjectRegistryRows);
 const getProjectLifecycleMock = vi.mocked(getProjectLifecycle);
 
 describe("ProjectListPage lifecycle registry views", () => {
+  it("opens project import directly from project management", async () => {
+    mockRows([]);
+    const onImport = vi.fn();
+    render(<ProjectListPage onOpenProject={vi.fn()} onImport={onImport} />);
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Import Projects" }));
+    expect(onImport).toHaveBeenCalledOnce();
+  });
+
   it("opens the unified Library without treating historical folders as business projects", async () => {
     mockRows([]);
     const openLibrary = vi.fn();

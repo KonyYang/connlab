@@ -4,7 +4,7 @@ import "./legacy-project-preview.css";
 
 const SEARCH_KEY = "connlab.legacyProjects.search";
 
-export function LegacyProjectList({ onOpen, onBack }: { onOpen: (recordId: string) => void; onBack: () => void }) {
+export function LegacyProjectList({ onOpen, onBack, onImport }: { onOpen: (recordId: string) => void; onBack: () => void; onImport?: () => void }) {
   const [search, setSearch] = useState(() => sessionStorage.getItem(SEARCH_KEY) ?? "");
   const query = useDeferredValue(search);
   const [rows, setRows] = useState<LegacyProjectRecord[]>([]);
@@ -28,10 +28,11 @@ export function LegacyProjectList({ onOpen, onBack }: { onOpen: (recordId: strin
     <section className="legacy-preview-panel">
       <div className="legacy-preview-actions"><nav className="legacy-preview-actions" aria-label="Project management areas"><button type="button" className="ui-secondary-action" onClick={onBack}>Active</button><button type="button" className="ui-secondary-action" aria-pressed="true">Legacy</button></nav></div>
       <h2>Legacy Projects</h2>
+      {onImport && <button type="button" className="primary-action" onClick={onImport}>Import Projects</button>}
       <label>Search legacy projects<input type="search" value={search} maxLength={4096} onChange={event => setSearch(event.target.value)} placeholder="Old number, name, folder or path" /></label>
       {loading && <p role="status">Loading legacy projects…</p>}
       {error && <><p role="alert">{error}</p><button type="button" onClick={() => setRevision(value => value + 1)}>Retry</button></>}
-      {!loading && !error && <><p>{rows.length} legacy projects</p>{!rows.length ? <p>No matching legacy projects. Add folders from Tools → Import Legacy Projects.</p> : <>
+      {!loading && !error && <><p>{rows.length} legacy projects</p>{!rows.length ? <p>No matching legacy projects. Use Import Projects to add existing folders.</p> : <>
         <div className="legacy-preview-table"><table aria-label="Legacy projects"><thead><tr><th>Old Number / Name</th><th>Folder</th><th>Action</th></tr></thead><tbody>{rows.slice((currentPage - 1) * 20, currentPage * 20).map(row => <tr key={row.record_id}><td><strong>{row.number || "No old number"}</strong><span>{row.name}</span><span>Legacy</span></td><td className="legacy-preview-folder">{row.folder_path}</td><td><button type="button" aria-label={`Browse ${row.name}`} onClick={() => onOpen(row.record_id)}>Browse</button></td></tr>)}</tbody></table></div>
         <div className="legacy-preview-actions"><button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>Previous</button><span>Page {currentPage} of {pages}</span><button type="button" disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)}>Next</button></div>
       </>}</>}

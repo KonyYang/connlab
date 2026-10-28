@@ -89,7 +89,7 @@ export function LegacyProjectPreview({ onBack, onViewImported }: { onBack: () =>
   }
   const locked = busy || picking || checking || importing || confirming;
   const projects = plan?.projects ?? result?.projects ?? [];
-  const backButton = <button type="button" className="ui-secondary-action" disabled={picking || checking || importing || confirming} onClick={onBack}>Back to Tools</button>;
+  const backButton = <button type="button" className="ui-secondary-action" disabled={picking || checking || importing || confirming} onClick={onBack}>Back to Import Projects</button>;
   return <section className="legacy-preview" aria-label="Legacy project batch preview">
     {topBarRoot && createPortal(backButton, topBarRoot)}
     {!topBarRoot && <header className="legacy-preview-heading">

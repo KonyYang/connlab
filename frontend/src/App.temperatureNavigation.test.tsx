@@ -41,8 +41,9 @@ const analysis: api.TemperatureAnalysis = {
 };
 const sidebar = () => within(screen.getByRole('complementary', { name: 'Primary navigation' }));
 async function openImportedWorkspace() {
-  await userEvent.setup().click(await screen.findByRole('button', { name: 'Drawing Curves', exact: true }));
-  const input = await screen.findByLabelText('Load Initial Data');
+  // Wait for real lazy routes under full-suite concurrency, rather than assuming a warm module cache.
+  await userEvent.setup().click(await screen.findByRole('button', { name: 'Drawing Curves', exact: true }, { timeout: 5000 }));
+  const input = await screen.findByLabelText('Load Initial Data', {}, { timeout: 5000 });
   fireEvent.change(input, { target: { files: [new File(['source bytes'], 'navigation.csv')] } });
   await screen.findByRole('button', { name: 'Confirm Data', exact: true });
 }
@@ -104,7 +105,7 @@ describe('Tools sidebar resumes the temperature workspace', () => {
     expect(window.location.pathname).toBe('/tools');
     expect(api.importTemperatureWorkbook).toHaveBeenCalledOnce();
     expect(storage.clearTemperatureWorkspace).toHaveBeenCalledOnce();
-  });
+  }, 15000);
 
   it('resumes the persisted workspace from the sidebar in a freshly mounted app', async () => {
     const user = userEvent.setup();

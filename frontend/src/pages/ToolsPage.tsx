@@ -31,9 +31,7 @@ const CUSTOMER_REPORT_POLL_DELAY_MS = 750;
 
 export function ToolsPage({
   onOpenTemperatureRise = () => { window.location.assign('/tools/temperature-rise'); },
-  onOpenLegacyProjects = () => { window.location.assign('/tools/legacy-projects'); },
-  onOpenProjectLibrary = () => { window.location.assign('/tools/project-library'); },
-}: { onOpenTemperatureRise?: () => void; onOpenLegacyProjects?: () => void; onOpenProjectLibrary?: () => void } = {}): ReactElement {
+}: { onOpenTemperatureRise?: () => void } = {}): ReactElement {
   const [state, setState] = useState(INITIAL_STATE);
   const runningTools = useRef(new Set<ToolKey>());
   const runTokens = useRef<Record<ToolKey, number>>({
@@ -110,20 +108,6 @@ export function ToolsPage({
   return (
     <section className="tools-page" aria-label="Tools">
       <div className="tools-grid">
-        <article className="tools-card">
-          <div className="tools-card-heading"><h3>Project Library</h3></div>
-          <button type="button" className="primary-action tools-picker-action" title="Receive existing projects into the library, or recover a portable project and its test data." onClick={onOpenProjectLibrary}>Import Projects</button>
-          <details>
-            <summary>Keep Folders in Place</summary>
-            <h4>Legacy Project Files</h4>
-            <button
-              type="button"
-              className="ui-secondary-action"
-              title="Preview existing project folders in batches. Original files and folder structure remain unchanged."
-              onClick={onOpenLegacyProjects}
-            >Import Legacy Projects</button>
-          </details>
-        </article>
         <ToolCard
           title="Internal Report → Customer Report"
           accept=".docx"
