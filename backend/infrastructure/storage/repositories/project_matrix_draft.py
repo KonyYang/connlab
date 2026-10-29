@@ -53,8 +53,12 @@ class ProjectMatrixDraftRepository:
         self._retire_other_working_drafts(snapshot.record)
         self._session.flush()
         self._session.add(_to_record_model(snapshot.record))
+        self._session.flush()
         self._session.add_all(_to_group_models(snapshot.groups))
         self._session.add_all(_to_row_models(snapshot.rows))
+        # These models have no ORM relationships to order inserts. Flush parents
+        # before their children while keeping the whole aggregate in one transaction.
+        self._session.flush()
         self._session.add_all(_to_cell_models(snapshot.cells))
         self._session.add_all(_to_step_quantity_models(snapshot.step_quantities))
         self._session.add_all(_to_duration_authority_models(snapshot.duration_authorities))
@@ -120,6 +124,7 @@ class ProjectMatrixDraftRepository:
         )
         self._session.add_all(_to_group_models(snapshot.groups))
         self._session.add_all(_to_row_models(snapshot.rows))
+        self._session.flush()
         self._session.add_all(_to_cell_models(snapshot.cells))
         self._session.add_all(_to_step_quantity_models(snapshot.step_quantities))
         self._session.add_all(_to_duration_authority_models(snapshot.duration_authorities))
