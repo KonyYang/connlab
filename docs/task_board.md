@@ -80,11 +80,11 @@
   "tasks": {
     "TASK_IMPORT_PROJECTS_UX_20261029": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "7ad49ed09df6fc77310a1453ab8f1bc033018b4e",
       "task": {
         "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
         "summary": "Simplify Import Projects selection, preview, results and restore entry",
@@ -105,9 +105,75 @@
         "risk_reasons": [],
         "activation_head": "2e90a3d636e9d613b61f721139d2995351650078",
         "started_at": "2026-10-29T10:47:06.903822Z",
-        "updated_at": "2026-10-29T10:49:02.641211Z",
+        "updated_at": "2026-10-29T10:56:09.299244Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
+          "subject": "76db97e94445c6b70861b78278f526bb032930ae",
+          "summary": "Simplified Import Projects folder choice, consistent preview/import wording, single-project controls, successful results and one-level Restore Project Data entry. Preserved confirmations, duplicate/boundary/conflict handling and recovery contracts.",
+          "scope_ok": true,
+          "changed_paths": [
+            "docs/architecture/project_library.md",
+            "frontend/src/App.test.tsx",
+            "frontend/src/features/project-library/PortableRestore.tsx",
+            "frontend/src/features/project-library/ProjectImportResults.test.tsx",
+            "frontend/src/features/project-library/ProjectImportResults.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+            "frontend/src/features/project-library/ProjectLibraryMember.test.tsx",
+            "frontend/src/features/project-library/project-library.css"
+          ],
+          "validation": [
+            {
+              "name": "Frontend full gate on final bytes",
+              "status": "passed",
+              "result": "1119 passed, 1 skipped; TypeScript build and Vite production build passed",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\import-projects-ux-20261029\\frontend-gate-final.log"
+            },
+            {
+              "name": "Isolated backend regression",
+              "status": "passed",
+              "result": "6 passed: batch intake/browsing/files, resume, duplicate comparison, manual boundary, complete data-graph restore without source computer, occupied-destination conflict history. Initial restricted run stalled and was stopped; authorized process-boundary rerun passed in 10.05s.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\import-projects-ux-20261029\\isolated-backend-final.log"
+            },
+            {
+              "name": "Isolated UI acceptance",
+              "status": "passed",
+              "result": "612x804: explicit confirmation, successful result, batch navigation, reopen, duplicate disabled, one-level restore and no-snapshot blocker. All 5 synthetic source hashes unchanged; owned server stopped.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\import-projects-ux-20261029\\isolated-ui-result.json"
+            },
+            {
+              "name": "Standards and Spec self-review",
+              "status": "passed",
+              "result": "No outstanding findings; git diff --check passed",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\import-projects-ux-20261029\\review.md"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Current agent; coherent TDD slices, frontend-only implementation"
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Current agent sequential Standards and Spec self-review; no independent review claimed"
+            },
+            "qa": {
+              "status": "passed",
+              "context": "Current agent final full frontend gate, isolated backend regression and real isolated UI"
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "76db97e94445c6b70861b78278f526bb032930ae",
+            "primary_before": "c6d9693ae637a23956f10d8d969fcb0c7a679fae",
+            "integrated_head": "7ad49ed09df6fc77310a1453ab8f1bc033018b4e",
+            "recovered": false
+          }
+        }
       }
     }
   }
