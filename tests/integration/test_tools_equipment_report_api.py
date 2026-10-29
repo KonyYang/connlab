@@ -1,9 +1,12 @@
+from copy import deepcopy
 from hashlib import sha256
 from io import BytesIO
 import json
 from pathlib import Path
+from zipfile import ZipFile
 
 from docx import Document
+from docx.oxml.ns import qn
 from fastapi.testclient import TestClient
 import pytest
 
@@ -142,3 +145,134 @@ def test_large_review_is_bounded_and_reports_omitted_items(client):
     review = json.loads(encoded)
     assert len(review["unmatched"]) + review["omitted"]["unmatched"] == 80
     assert review["omitted"]["unmatched"] > 0
+
+
+@pytest.mark.parametrize("merged_column", [0, 1, 4], ids=["item", "manufacturer", "due-date"])
+@pytest.mark.parametrize("mixed_spans", [False, True], ids=["same-spans", "mixed-spans"])
+def test_equipment_upload_updates_horizontally_merged_fields_without_shifting_values(client, merged_column, mixed_spans):
+    test_client, data = client
+    document = Document()
+    document.add_paragraph("Customer or Internal Report with an existing Equipment List")
+    table = document.add_table(rows=2, cols=6)
+    body_column = (1 if merged_column == 0 else 0) if mixed_spans else merged_column
+    for row, column in zip(table.rows, (merged_column, body_column), strict=True):
+        row.cells[column].merge(row.cells[column + 1])
+    headers = ("Item", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due")
+    # Use the document API to set each visible merged field once.
+    for row, values, column in zip(table.rows, (headers, ("old", "old maker", "old ID", "old last", "old due")), (merged_column, body_column), strict=True):
+        index = 0
+        for field, value in enumerate(values):
+            row.cells[index].text = value
+            index += 2 if field == column else 1
+    source = BytesIO()
+    document.save(source)
+    original = source.getvalue()
+    original_grid = table._tbl.tblGrid.xml
+    selection = Document()
+    selection.add_paragraph("Q-0033")
+    selection.add_paragraph("DG-Q-0033")
+    selection.add_paragraph("L-0002")
+    equipment = BytesIO()
+    selection.save(equipment)
+    response = test_client.post("/api/tools/equipment-list", files={
+        "file": ("Report-CR.docx", original),
+        "equipment_file": ("EquipmentID - copy.docx", equipment.getvalue()),
+    })
+    assert response.status_code == 200, response.text
+    result = Document(BytesIO(response.content))
+    assert result.paragraphs[0].text == document.paragraphs[0].text
+    updated = result.tables[0]
+    assert updated._tbl.tblGrid.xml == original_grid
+    assert [tc.grid_span for tc in updated.rows[0]._tr.tc_lst] == [tc.grid_span for tc in table.rows[0]._tr.tc_lst]
+    assert [tc.grid_span for tc in updated.rows[1]._tr.tc_lst] == [tc.grid_span for tc in table.rows[1]._tr.tc_lst]
+    with ZipFile(BytesIO(original)) as before, ZipFile(BytesIO(response.content)) as after:
+        assert before.namelist() == after.namelist()
+        for name in before.namelist():
+            if name != "word/document.xml":
+                assert before.read(name) == after.read(name)
+    before_body = deepcopy(document.element.body)
+    after_body = deepcopy(result.element.body)
+    before_body.remove(before_body.find(qn("w:tbl")))
+    after_body.remove(after_body.find(qn("w:tbl")))
+    assert before_body.xml == after_body.xml
+    expected = ["Multimeter", "Keysight", "DG-Q-0033", "01-Jan-2024", "01-Jan-2025"]
+    expected.insert(body_column, expected[body_column])
+    assert [cell.text for cell in updated.rows[1].cells] == expected
+    assert len(updated.rows) == 3  # Q-0033 and DG-Q-0033 are one equipment ID.
+    second = ["Microscope", "Nikon", "DG-L-0002", "Not calibrated", "Not applicable"]
+    second.insert(body_column, second[body_column])
+    assert [cell.text for cell in updated.rows[2].cells] == second
+    assert all(str(run.font.color.rgb) == "FF0000"
+               for p in updated.rows[1].cells[-1].paragraphs for run in p.runs if run.text)
+    assert all(str(run.font.color.rgb) == "000000"
+               for p in updated.rows[2].cells[-1].paragraphs for run in p.runs if run.text)
+    assert json.loads(response.headers["x-equipment-review"])["filled"] == 2
+    repeated = test_client.post("/api/tools/equipment-list", files={
+        "file": ("updated.docx", response.content),
+        "equipment_file": ("EquipmentID.docx", equipment.getvalue()),
+    })
+    assert repeated.status_code == 200, repeated.text
+    assert Document(BytesIO(repeated.content)).element.body.xml == result.element.body.xml
+    assert source.getvalue() == original
+    assert list(data.iterdir()) == []
+
+
+def test_customer_report_without_equipment_table_returns_actionable_error(client):
+    test_client, data = client
+    document = Document()
+    document.add_paragraph("Customer Test Report")
+    document.add_paragraph("REVISION RECORD")
+    source = BytesIO()
+    document.save(source)
+    response = test_client.post("/api/tools/equipment-list", files={
+        "file": ("Customer-CR.docx", source.getvalue()),
+    }, data={"references_text": "Q-0033"})
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert "Equipment List" in detail
+    assert "Customer reports without" in detail
+    assert "ID Number" in detail
+    assert "approved table contract" not in detail
+    assert "content-disposition" not in response.headers
+    assert list(data.iterdir()) == []
+
+
+@pytest.mark.parametrize("layout", ["vertical-merge", "merged-fields"])
+def test_ambiguous_equipment_body_layout_is_rejected_without_a_download(client, layout):
+    test_client, data = client
+    document = Document(BytesIO(report_bytes()))
+    table = document.tables[0]
+    table.add_row()
+    if layout == "vertical-merge":
+        table.cell(1, 0).merge(table.cell(2, 0))
+    elif layout == "merged-fields":
+        table.cell(1, 0).merge(table.cell(1, 1))
+    source = BytesIO()
+    document.save(source)
+    response = test_client.post("/api/tools/equipment-list", files={
+        "file": ("report.docx", source.getvalue()),
+    }, data={"references_text": "Q-0033"})
+    assert response.status_code == 422
+    assert "merged cells" in response.json()["detail"]
+    assert "content-disposition" not in response.headers
+    assert list(data.iterdir()) == []
+
+
+def test_empty_merged_equipment_table_keeps_its_layout_when_first_row_is_written(client):
+    test_client, data = client
+    document = Document()
+    table = document.add_table(rows=1, cols=6)
+    table.cell(0, 0).merge(table.cell(0, 1)).text = "Item"
+    for index, value in enumerate(("Manufacturer", "ID Number", "Last Cal.", "Cal. Due"), 2):
+        table.cell(0, index).text = value
+    source = BytesIO()
+    document.save(source)
+    response = test_client.post("/api/tools/equipment-list", files={
+        "file": ("empty.docx", source.getvalue()),
+    }, data={"references_text": "Q-0033"})
+    assert response.status_code == 200, response.text
+    updated = Document(BytesIO(response.content)).tables[0]
+    assert [c.text for c in updated.rows[1].cells] == [
+        "Multimeter", "Multimeter", "Keysight", "DG-Q-0033", "01-Jan-2024", "01-Jan-2025"]
+    assert updated._tbl.tblGrid.xml == table._tbl.tblGrid.xml
+    assert list(data.iterdir()) == []
