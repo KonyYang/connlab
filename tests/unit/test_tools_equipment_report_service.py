@@ -102,6 +102,7 @@ def test_real_xlsx_calibration_dates_reach_new_word_report_copy(tmp_path: Path):
     report = tmp_path / "Internal Report.docx"
     document = Document()
     document.add_paragraph("Keep reviewed test results")
+    document.add_paragraph("7. EQUIPMENTS")
     table = document.add_table(rows=2, cols=5)
     for cell, heading in zip(table.rows[0].cells,
                              ("Item", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due")):

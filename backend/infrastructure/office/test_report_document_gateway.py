@@ -37,6 +37,11 @@ from backend.domain.result_dataset_models import (
     LlcrSummaryRow,
     ResultDatasetRevision,
 )
+from backend.infrastructure.office.equipment_report_table import (
+    equipment_row_cells as _equipment_row_cells,
+    prepare_equipment_table as _find_equipment_table,
+    replace_equipment_rows as _replace_equipment_table_rows,
+)
 from backend.infrastructure.office.office_protected_document_gateway import (
     ProtectedWordPackageGateway,
 )
@@ -283,17 +288,12 @@ class TestReportDocumentGateway:
                 document = Document(temporary)
             except (BadZipFile, KeyError, ValueError, XMLSyntaxError) as exc:
                 raise ValueError("The Internal Report cannot be read. Select a valid .docx report.") from exc
-            equipment = _find_equipment_table(document)
-            actual = tuple(
-                tuple(cell.text.strip() for cell in _equipment_row_cells(row))
-                for row in equipment.rows[1:]
-            )
             body_before = document.element.body.xml
-            if actual != expected:
-                _replace_equipment_table_rows(equipment, expected)
+            equipment = _find_equipment_table(document)
+            _replace_equipment_table_rows(equipment, expected)
             expired = tuple(bool(row.expired) for row in rows)
             _set_equipment_due_colors(equipment, expired)
-            if actual != expected or document.element.body.xml != body_before:
+            if document.element.body.xml != body_before:
                 _save_updated_report_body(document, temporary)
             _audit_equipment_sync(temporary, expected, expired)
             self._protected_package_gateway.restore_password_protection(
@@ -401,55 +401,6 @@ def _find_table(document, expected_headers: tuple[str, ...], label: str) -> Tabl
         if actual[: len(expected)] == expected:
             return table
     raise ValueError(f"E-3707_H {label} does not match the approved table contract.")
-
-
-def _equipment_row_cells(row) -> tuple[_Cell, ...]:
-    # row.cells repeats a horizontally merged cell for every grid position it spans.
-    return tuple(_Cell(cell, row._parent) for cell in row._tr.tc_lst)
-
-
-def _find_equipment_table(document) -> Table:
-    expected = tuple(_normalized(value) for value in _EQUIPMENT_HEADERS)
-    for table in document.tables:
-        if not table.rows:
-            continue
-        header = _equipment_row_cells(table.rows[0])
-        if tuple(_normalized(cell.text) for cell in header) != expected:
-            continue
-        grid_width = len(table._tbl.tblGrid.gridCol_lst)
-        for row in table.rows:
-            cells = _equipment_row_cells(row)
-            if (len(cells) != len(expected)
-                    or sum(cell._tc.grid_span for cell in cells) != grid_width
-                    or any(cell._tc.vMerge is not None for cell in cells)):
-                raise ValueError(
-                    "Equipment List has unsupported merged cells. Each data row must "
-                    "have five fields spanning the full table width; "
-                    "vertically merged fields cannot be updated safely."
-                )
-        return table
-    raise ValueError(
-        "No compatible Equipment List table was found in the selected report. "
-        "Select a report with Item, Manufacturer, ID Number, Last Cal., and Cal. Due columns. "
-        "Customer reports without an Equipment List cannot be updated."
-    )
-
-
-def _replace_equipment_table_rows(
-    table: Table,
-    rows: tuple[tuple[str, str, str, str, str], ...],
-) -> None:
-    template_row = deepcopy(table.rows[1 if len(table.rows) > 1 else 0]._tr)
-    for marker in template_row.xpath("./w:trPr/w:tblHeader"):
-        marker.getparent().remove(marker)
-    for row in list(table.rows[1 + len(rows):]):
-        table._tbl.remove(row._tr)
-    while len(table.rows) < 1 + len(rows):
-        table._tbl.append(deepcopy(template_row))
-    for target_row, values in zip(table.rows[1:], rows, strict=True):
-        for cell, value in zip(_equipment_row_cells(target_row), values, strict=True):
-            if cell.text != value:
-                _set_cell_text(cell, value)
 
 
 def _set_equipment_table_geometry(table: Table) -> None:

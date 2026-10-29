@@ -131,12 +131,17 @@ Do not use a dated snapshot as a substitute for the code.
   incomplete or expired references need review. Feedback is transported with the download in a bounded
   header; unusually large issue lists show retained IDs and an explicit remaining count, not silent
   truncation. Inputs and calibration bytes are checked for changes while preparing the output.
-- Equipment section updates identify the five visible fields by their actual Word cells, not expanded
-  grid positions. Each row's horizontal spans are retained throughout reading, replacement and
-  calibration-colour auditing, including different spans between rows. Vertical merges, missing fields
-  or rows that do not span the table width fail before
-  output publication. Reports (including customer copies) with no compatible Equipment List receive
-  actionable guidance; the tool does not insert a missing section or infer one from the filename.
+- Equipment updates are restricted to one current Section 7 EQUIPMENTS table. Heading recognition
+  tolerates whitespace, tabs, common separators, case and full-width characters. The five visible
+  fields are read once per actual Word cell, including horizontal spans; tables in other chapters
+  are never a fallback. Missing or ambiguous targets stop with actionable guidance.
+- Current inserted/moved-in heading and table content is recognised, while deleted/moved-out content
+  is excluded. Only the target table's revisions are resolved before rebuilding: all old data rows
+  are removed, and new rows contain only the ordered unique equipment IDs and catalog values.
+  Reusable cell/row formatting and horizontal spans are retained where safe; unusable old rows do
+  not block rebuilding from the valid header. Other chapters' XML, revision history, review-display
+  settings and document password protection remain unchanged. No document-wide revision acceptance
+  or synthetic tracking of the generated equipment rows is performed.
 - Unsupported/unreadable documents or unavailable calibration data stop the download with guidance;
   only the request-owned temporary uploads/output are cleaned. Leaving Tools suppresses late downloads.
   Acceptance covers both selection modes, content preservation, original-file protection, failure

@@ -6,6 +6,7 @@ from pathlib import Path
 from zipfile import ZipFile
 
 from docx import Document
+from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from fastapi.testclient import TestClient
 import pytest
@@ -153,6 +154,7 @@ def test_equipment_upload_updates_horizontally_merged_fields_without_shifting_va
     test_client, data = client
     document = Document()
     document.add_paragraph("Customer or Internal Report with an existing Equipment List")
+    document.add_paragraph("7. EQUIPMENTS")
     table = document.add_table(rows=2, cols=6)
     body_column = (1 if merged_column == 0 else 0) if mixed_spans else merged_column
     for row, column in zip(table.rows, (merged_column, body_column), strict=True):
@@ -238,7 +240,7 @@ def test_customer_report_without_equipment_table_returns_actionable_error(client
 
 
 @pytest.mark.parametrize("layout", ["vertical-merge", "merged-fields"])
-def test_ambiguous_equipment_body_layout_is_rejected_without_a_download(client, layout):
+def test_old_equipment_body_merges_do_not_block_clearing_and_rebuilding(client, layout):
     test_client, data = client
     document = Document(BytesIO(report_bytes()))
     table = document.tables[0]
@@ -252,15 +254,18 @@ def test_ambiguous_equipment_body_layout_is_rejected_without_a_download(client, 
     response = test_client.post("/api/tools/equipment-list", files={
         "file": ("report.docx", source.getvalue()),
     }, data={"references_text": "Q-0033"})
-    assert response.status_code == 422
-    assert "merged cells" in response.json()["detail"]
-    assert "content-disposition" not in response.headers
+    assert response.status_code == 200, response.text
+    updated = Document(BytesIO(response.content)).tables[0]
+    assert len(updated.rows) == 2
+    assert [c.text for c in updated.rows[1].cells] == [
+        "Multimeter", "Keysight", "DG-Q-0033", "01-Jan-2024", "01-Jan-2025"]
     assert list(data.iterdir()) == []
 
 
 def test_empty_merged_equipment_table_keeps_its_layout_when_first_row_is_written(client):
     test_client, data = client
     document = Document()
+    document.add_paragraph("7. EQUIPMENTS")
     table = document.add_table(rows=1, cols=6)
     table.cell(0, 0).merge(table.cell(0, 1)).text = "Item"
     for index, value in enumerate(("Manufacturer", "ID Number", "Last Cal.", "Cal. Due"), 2):
@@ -276,3 +281,136 @@ def test_empty_merged_equipment_table_keeps_its_layout_when_first_row_is_written
         "Multimeter", "Multimeter", "Keysight", "DG-Q-0033", "01-Jan-2024", "01-Jan-2025"]
     assert updated._tbl.tblGrid.xml == table._tbl.tblGrid.xml
     assert list(data.iterdir()) == []
+
+
+@pytest.mark.parametrize("heading", ["7. EQUIPMENTS", "7       EQUIPMENTS", "7 . \t equipments", "７．　ＥＱＵＩＰＭＥＮＴＳ"])
+@pytest.mark.parametrize("count", [1, 4], ids=["fewer-IDs", "more-IDs"])
+def test_upload_rebuilds_only_section_seven_with_revisions_and_flexible_heading(client, heading, count):
+    test_client, data = client
+    doc = Document()
+    headers = ("Item", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due")
+    def table(marker):
+        t = doc.add_table(rows=4, cols=6)
+        for row in t.rows:
+            row.cells[0].merge(row.cells[1])
+        for cell, value in zip((t.cell(0, i) for i in (0, 2, 3, 4, 5)), headers, strict=True):
+            cell.text = value
+        for n, row in enumerate(t.rows[1:], 1):
+            row.cells[0].text = f"{marker}-{n}"
+        return t
+    doc.add_paragraph("6. TEST RESULTS")
+    outside_before = table("outside-before")
+    outside_revision = doc.add_paragraph()
+    insertion = OxmlElement("w:ins")
+    insertion.set(qn("w:id"), "11")
+    run = OxmlElement("w:r"); text = OxmlElement("w:t"); text.text = "Unaccepted review outside equipment"
+    run.append(text); insertion.append(run); outside_revision._p.append(insertion)
+    # The live section heading itself may be an unaccepted insertion.
+    title = doc.add_paragraph()
+    title_revision = deepcopy(insertion)
+    title_revision.find('.//' + qn('w:t')).text = heading
+    title._p.append(title_revision)
+    equipment = table("OLD-EQUIPMENT")
+    # The current header is inserted; the old spelling is a pending deletion.
+    para = equipment.cell(0, 0).paragraphs[0]
+    para.clear()
+    deletion = OxmlElement("w:del"); deletion.set(qn("w:id"), "12")
+    run = OxmlElement("w:r"); text = OxmlElement("w:delText"); text.text = "OLD HEADER"
+    run.append(text); deletion.append(run); para._p.append(deletion)
+    current = deepcopy(insertion); current.find('.//' + qn('w:t')).text = "Item"
+    para._p.append(current)
+    # A wholly deleted old header/row must not become the table header or survive the rebuild.
+    old_header = deepcopy(equipment.rows[0]._tr)
+    row_deletion = OxmlElement("w:del")
+    row_deletion.set(qn("w:id"), "13")
+    old_header.get_or_add_trPr().append(deepcopy(row_deletion))
+    equipment._tbl.insert(equipment._tbl.index(equipment.rows[0]._tr), old_header)
+    deleted_row = equipment.rows[-1]._tr
+    deleted_row.get_or_add_trPr().append(deepcopy(row_deletion))
+    doc.add_paragraph("8. REVISION RECORD")
+    outside_after = table("outside-after")
+    settings = doc.settings.element
+    tracking = OxmlElement("w:trackRevisions"); settings.append(tracking)
+    view = OxmlElement("w:revisionView"); view.set(qn("w:markup"), "0"); settings.append(view)
+    source = BytesIO(); doc.save(source)
+    original_tables = [outside_before._tbl.xml, outside_after._tbl.xml]
+    original_revision = outside_revision._p.xml
+    selection = Document()
+    for value in ["L-0002", "DG-L-0002"] + [f"Q-{9000+i}" for i in range(count-1)]:
+        selection.add_paragraph(value)
+    ids = BytesIO(); selection.save(ids)
+    response = test_client.post("/api/tools/equipment-list", files={
+        "file": ("report.docx", source.getvalue()), "equipment_file": ("EquipmentIDs.docx", ids.getvalue())})
+    assert response.status_code == 200, response.text
+    result = Document(BytesIO(response.content))
+    assert result.tables[0]._tbl.xml == original_tables[0]
+    assert result.tables[2]._tbl.xml == original_tables[1]
+    assert result.paragraphs[1]._p.xml == original_revision
+    target = result.tables[1]
+    assert len(target.rows) == count + 1
+    assert target.cell(1, 3).text == "DG-L-0002"
+    assert target.cell(1, 4).text == "Not calibrated"
+    assert "OLD-EQUIPMENT" not in target._tbl.xml
+    assert "OLD HEADER" not in target._tbl.xml
+    assert not target._tbl.xpath('.//w:ins | .//w:del | .//w:delText')
+    with ZipFile(source) as before, ZipFile(BytesIO(response.content)) as after:
+        for part in before.namelist():
+            if part != "word/document.xml":
+                assert before.read(part) == after.read(part)
+    assert json.loads(response.headers["x-equipment-review"])["filled"] == count
+    assert list(data.iterdir()) == []
+
+
+def test_equipment_table_outside_section_seven_is_not_a_fallback(client):
+    test_client, data = client
+    doc = Document(BytesIO(report_bytes()))
+    doc.paragraphs[-1].text = "8. REVISION RECORD"
+    source = BytesIO(); doc.save(source)
+    response = test_client.post("/api/tools/equipment-list", files={"file": ("wrong-section.docx", source.getvalue())}, data={"references_text": "L-0002"})
+    assert response.status_code == 422
+    assert "7" in response.json()["detail"]
+    assert "content-disposition" not in response.headers
+    assert list(data.iterdir()) == []
+
+
+@pytest.mark.parametrize("case", ["deleted-heading", "two-headings", "two-tables", "table-after-next-chapter"])
+def test_missing_or_ambiguous_current_section_seven_never_updates_another_table(client, case):
+    test_client, data = client
+    doc = Document(BytesIO(report_bytes()))
+    title = doc.paragraphs[-1]
+    if case == "deleted-heading":
+        deletion = OxmlElement("w:del")
+        title._p.addprevious(deletion)
+        deletion.append(title._p)
+    elif case == "two-headings":
+        doc.add_paragraph("7     EQUIPMENTS")
+    elif case == "two-tables":
+        doc.element.body.insert(doc.element.body.index(doc.tables[0]._tbl) + 1, deepcopy(doc.tables[0]._tbl))
+    else:
+        doc.tables[0]._tbl.addprevious(doc.add_paragraph("8    REVISION RECORD")._p)
+    source = BytesIO(); doc.save(source)
+    response = test_client.post("/api/tools/equipment-list", files={"file": ("report.docx", source.getvalue())}, data={"references_text": "L-0002"})
+    assert response.status_code == 422
+    assert "7" in response.json()["detail"]
+    assert "content-disposition" not in response.headers
+    assert list(data.iterdir()) == []
+
+
+def test_deleted_and_moved_out_equipment_tables_are_not_current_targets(client):
+    test_client, data = client
+    doc = Document(BytesIO(report_bytes()))
+    target = doc.tables[0]
+    for tag in ("w:del", "w:moveFrom"):
+        container = OxmlElement(tag)
+        old = deepcopy(target._tbl)
+        old.xpath('.//w:t')[0].text = "OLD deleted Item"
+        container.append(old)
+        target._tbl.addprevious(container)
+    source = BytesIO(); doc.save(source)
+    response = test_client.post("/api/tools/equipment-list", files={"file": ("report.docx", source.getvalue())}, data={"references_text": "L-0002"})
+    assert response.status_code == 200, response.text
+    result = Document(BytesIO(response.content))
+    assert result.tables[0].cell(1, 2).text == "DG-L-0002"
+    # Non-target revision wrappers remain byte-for-byte; their contents never become active rows.
+    assert len(result.element.body.xpath('./w:del | ./w:moveFrom')) == 2
+    assert len(result.tables[0].rows) == 2
