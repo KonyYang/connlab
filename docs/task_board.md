@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_MECHANICAL_SUMMARY_TOOL_20261028",
+    "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
     "tier": "standard",
-    "subject": "b74f4d0847ed5be7cc42cba57b4438518d2ca4cf",
-    "summary": "Standalone mechanical test summary tool",
+    "subject": "a7a547ecde2b7b76247ee25c4c57a803b84300f3",
+    "summary": "Consolidate project import entry under Projects",
     "disposition": "completed",
-    "decision_ref": "用户确认关闭 Tools 独立机械 Summary 第一部分",
-    "closed_at": "2026-10-28T14:02:09.933828Z"
+    "decision_ref": "User explicitly requested closing this task, retaining local commits, with no push or publication. Local close only; --publish-close intentionally omitted.",
+    "closed_at": "2026-10-29T00:11:03.627184Z"
   },
   "retained_history": [
     {
@@ -66,126 +66,18 @@
       "disposition": "completed",
       "decision_ref": "用户确认关闭组别完成统计任务",
       "closed_at": "2026-10-27T23:53:40.876783Z"
+    },
+    {
+      "task_id": "TASK_MECHANICAL_SUMMARY_TOOL_20261028",
+      "tier": "standard",
+      "subject": "b74f4d0847ed5be7cc42cba57b4438518d2ca4cf",
+      "summary": "Standalone mechanical test summary tool",
+      "disposition": "completed",
+      "decision_ref": "用户确认关闭 Tools 独立机械 Summary 第一部分",
+      "closed_at": "2026-10-28T14:02:09.933828Z"
     }
   ],
-  "tasks": {
-    "TASK_PROJECT_IMPORT_ENTRY_20261028": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
-      "branch": "codex/project-import-entry-20261028",
-      "resources": [],
-      "integrated_head": "88b946a4cd47936101dd1cff4071bd74d1cbf174",
-      "task": {
-        "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
-        "summary": "Consolidate project import entry under Projects",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Projects is the project intake entry: Import Projects on active and legacy lists, no import cards in Tools, existing library/portable receiving and in-place linking preserved. Import returns to Projects and legacy preview returns to the common import flow. Preserve existing data, URLs and project navigation. Frontend only; no database/schema/data migration, no push/publication, no automatic Close.",
-        "scope_paths": [
-          "backend/api/project_library_schemas.py",
-          "backend/application/project_library/service.py",
-          "docs/architecture/project_library.md",
-          "frontend/src/App.temperatureNavigation.test.tsx",
-          "frontend/src/App.test.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/api/projectLibrary.ts",
-          "frontend/src/features/legacy-projects/LegacyProjectBrowser.tsx",
-          "frontend/src/features/legacy-projects/LegacyProjectList.test.tsx",
-          "frontend/src/features/legacy-projects/LegacyProjectList.tsx",
-          "frontend/src/features/legacy-projects/LegacyProjectPreview.test.tsx",
-          "frontend/src/features/legacy-projects/LegacyProjectPreview.tsx",
-          "frontend/src/features/project-library/ProjectImportResults.test.tsx",
-          "frontend/src/features/project-library/ProjectImportResults.tsx",
-          "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
-          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-          "frontend/src/features/project-library/ProjectLibraryList.test.tsx",
-          "frontend/src/features/project-library/ProjectLibraryList.tsx",
-          "frontend/src/features/project-library/ProjectLibraryMember.tsx",
-          "frontend/src/features/project-library/project-library.css",
-          "frontend/src/features/projects-registry/ProjectFolderRow.tsx",
-          "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.test.tsx",
-          "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.tsx",
-          "frontend/src/features/projects-registry/ProjectRegistryManagementPanel.test.tsx",
-          "frontend/src/features/projects-registry/ProjectRegistryManagementPanel.tsx",
-          "frontend/src/features/projects-registry/projectCatalog.test.ts",
-          "frontend/src/features/projects-registry/projectCatalog.ts",
-          "frontend/src/pages/ProjectListPage.test.tsx",
-          "frontend/src/pages/ProjectListPage.tsx",
-          "frontend/src/pages/ToolsPage.test.tsx",
-          "frontend/src/pages/ToolsPage.tsx",
-          "frontend/src/project-dashboard.css",
-          "tests/integration/test_project_library_api.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
-        "started_at": "2026-10-28T14:26:30.121108Z",
-        "updated_at": "2026-10-29T00:09:11.557324Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User annotation requests removing Import Projects from the Recycle view only. Preserve the sole import action in normal Projects and show it again after Back to Projects. Local frontend visibility change only; no real data writes, push/publication or automatic Close.",
-          "requires_user": false
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
-          "subject": "a7a547ecde2b7b76247ee25c4c57a803b84300f3",
-          "summary": "Latest annotation: replace Import Projects position with Back to Projects within Recycle. Keep the sole import entry on normal Projects and restore it on return. Two frontend files only; no real business/source mutation, push/publication or automatic Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/pages/ProjectListPage.test.tsx",
-            "frontend/src/pages/ProjectListPage.tsx"
-          ],
-          "validation": [
-            {
-              "name": "Public visibility regression RED/GREEN and build",
-              "status": "passed",
-              "result": "Expanded existing regression failed before change because Import remained in Recycle. Final19 homepage regressions passed, tsc -b and Vite build passed.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\hide-recycle-import-validation.log"
-            },
-            {
-              "name": "Standards/Spec and isolated actual UI",
-              "status": "passed",
-              "result": "Current agent sequential self-review, no open findings. Private DB actual612x804 header confirms Back to Projects first and no import within Recycle, and import returns after Back. All4 source files unchanged; browser/service cleaned.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\hide-recycle-import-review-ui.json"
-            },
-            {
-              "name": "Local integration safety",
-              "status": "passed",
-              "result": "Exact2 frontend files, primary clean, no backend/Python changes; real services not signalled and isolated18745 stopped."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Current agent bounded annotation correction, existing public regression RED/GREEN."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Current agent Standards and Spec sequential self-review."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Current agent targeted test/typecheck/build and isolated actual UI; no independent review claimed."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "a7a547ecde2b7b76247ee25c4c57a803b84300f3",
-            "primary_before": "9a6cd2a13453fd9f92db6e7330adfbd1fcb3f7fc",
-            "integrated_head": "88b946a4cd47936101dd1cff4071bd74d1cbf174",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
