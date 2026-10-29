@@ -27,12 +27,12 @@ it.each(["/projects/import", "/tools/project-library"])("opens project receiving
   window.history.replaceState({}, "", path);
   render(<App />);
   expect(await screen.findByRole("heading", { name: "Import Projects" })).toBeTruthy();
-  expect(screen.getByLabelText("Source paths")).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "Choose Project Folders" })).toBeTruthy();
   expect(screen.getByTestId("active-area").textContent).toBe("projects");
   await userEvent.setup().click(screen.getByRole("button", { name: "Back to Projects" }));
   await userEvent.setup().click(await screen.findByRole("button", { name: "Import Projects" }));
   expect(window.location.pathname).toBe("/projects/import");
-  expect(await screen.findByLabelText("Source paths")).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "Choose Project Folders" })).toBeTruthy();
 });
 
 it.each(["", "batch-1"])("preserves list and import return context for batch=%s before continuing to Matrix", async (batchId) => {
@@ -53,8 +53,8 @@ it.each(["", "batch-1"])("preserves list and import return context for batch=%s 
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
   await user.click(await screen.findByRole("button", { name: "Import Projects" }));
-  await user.click(await screen.findByText("Other Import Methods"));
-  await user.click(screen.getByRole("button", { name: "Link Existing Folders" }));
+  await user.click(await screen.findByText("Advanced"));
+  await user.click(screen.getByRole("button", { name: "Link Folders Without Copying" }));
   await user.click(await screen.findByRole("button", { name: "Back to Import Projects" }));
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
@@ -85,7 +85,7 @@ it("opens the unified list from the old Legacy URL and returns there after brows
   expect(screen.queryByRole("region", { name: "Project Workbench" })).toBeNull();
   await user.click(screen.getByRole("button", { name: "Import Projects" }));
   expect(window.location.pathname).toBe("/projects/import");
-  expect(await screen.findByLabelText("Source paths")).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "Choose Project Folders" })).toBeTruthy();
 });
 
 it("keeps old folder-linking links accessible and returns to the common import flow", async () => {
@@ -93,10 +93,10 @@ it("keeps old folder-linking links accessible and returns to the common import f
   render(<App />);
   expect(await screen.findByRole("heading", { name: "Link Existing Folders" })).toBeTruthy();
   await userEvent.setup().click(screen.getByRole("button", { name: "Back to Import Projects" }));
-  await userEvent.setup().click(await screen.findByText("Other Import Methods"));
-  expect(screen.getByRole("button", { name: "Link Existing Folders" })).toBeTruthy();
+  await userEvent.setup().click(await screen.findByText("Advanced"));
+  expect(screen.getByRole("button", { name: "Link Folders Without Copying" })).toBeTruthy();
   expect(window.location.pathname).toBe("/projects/import");
-  await userEvent.setup().click(screen.getByRole("button", { name: "Link Existing Folders" }));
+  await userEvent.setup().click(screen.getByRole("button", { name: "Link Folders Without Copying" }));
   expect(await screen.findByRole("heading", { name: "Link Existing Folders" })).toBeTruthy();
 });
 

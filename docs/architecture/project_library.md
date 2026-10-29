@@ -1,9 +1,8 @@
 # Unified project library and portable project data
 
-Status: implementation and isolated acceptance in progress for
-`TASK_UNIFIED_PROJECT_LIBRARY_20261027`. The task plan and current test evidence,
-not this architecture note, determine completion. Production data migration is a
-separate, explicitly authorized operation.
+Status: current implementation contract. The shared task board and current test
+evidence determine acceptance. Production data migration is a separate,
+explicitly authorized operation.
 
 ## User contract
 
@@ -20,6 +19,43 @@ separate, explicitly authorized operation.
   computer's database or following its original absolute paths.
 
 ## Project library entry
+
+### Save location and guided import
+
+Ordinary instances reuse the active Settings **Project default save location**.
+They keep their existing database and data directories; import does not require
+a new library root or a database move. Missing or unavailable destinations are
+shown before source selection, with inline location setup. A valid existing
+directory can be saved through the same external-resource registration used by
+Settings. Data/database directories and redirected paths are rejected. Explicit
+managed libraries keep their existing root binding and do not expose a location
+override in this page. Changing the future import destination does not move or
+rewrite existing registered projects.
+
+Selecting a source automatically scans and reviews it. Ordinary files and
+portable snapshots share the chooser and final **Confirm Import** surface.
+Saved-data projects use the existing per-project restore tokens and reviewed
+conflict choices; warnings and replacement recovery consequences remain visible.
+The final destination comes from the reviewed server plans, rather than a stale
+page-load hint. Divergent destinations during a mixed review require another
+check. Manual path entry, explicit boundary adjustment and in-place linking are
+under **Advanced**. The page offers **Open Folder**, respects opener failures,
+and exposes initial-load retry instead of leaving the operator at a raw error.
+
+Intake and restore plans bind the destination path and directory identity. A
+changed/replaced destination invalidates old confirmations and unfinished batch
+resumes. Recovery packets for an ordinary instance live beneath its existing
+`data_dir/project_library/recovery`; explicit managed libraries retain
+`Backups/Project Recovery`. Neither mode moves the database or grants public-drive
+write authority.
+
+Mixed UI results retain the original backend batch identities. File-only batch
+recovery remains unchanged; snapshot failures are checked again before another
+confirmation and do not repeat successful file intake. Individual member links
+open each imported result. Mixed results return to the shared Projects list
+without inventing a synthetic backend batch filter.
+
+### Shared catalog
 
 The **Projects** homepage is the shared catalog for registered test projects,
 received project folders, and folders linked in place. One search covers LTR,

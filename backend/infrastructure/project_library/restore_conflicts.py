@@ -143,7 +143,7 @@ class RestoreConflicts:
                 or recovery["folder_path"] != str(backup) or Path(journal["old_folder"]) != backup.parent / "previous-working-folder"
                 or Path(journal["staging"]) != self.settings.projects_dir / (".connlab-restore-" + plan_id)):
             raise ProjectLibraryConflict("The interrupted replacement ownership or locations do not match its immutable review.")
-        if not checked_path(backup).is_relative_to(self.settings.library_root / "Backups" / "Project Recovery"):
+        if not checked_path(backup).is_relative_to(self.files.recovery_root()):
             raise ProjectLibraryConflict("The recovery packet is outside this library's recovery storage.")
         for entry in journal.get("asset_moves", []):
             if not any(Path(entry["source"]) == self.settings.data_dir / name / sha256(member["project_id"].encode()).hexdigest()
@@ -264,7 +264,7 @@ class RestoreConflicts:
                     rows = capture(self.store.session, body["project_id"])
                     validate_replace(self.store.session.connection(), rows)
                     self.store.session.rollback()
-                    backup = self.settings.library_root / "Backups" / "Project Recovery" / uuid4().hex / Path(target).name
+                    backup = self.files.recovery_root() / uuid4().hex / Path(target).name
                     warnings.append("The complete current project and its saved test data will be retained at the recovery point before switching this working copy.")
                 else:
                     target = str(self.settings.projects_dir / (Path(folder).name + " [history " + uuid4().hex[:8] + "]"))
@@ -273,7 +273,7 @@ class RestoreConflicts:
             extra["backup_path"] = str(backup) if backup else None
             payload = {"source_path": folder, "target_path": target, "source_signature": body["source_signature"], "project_id": body["project_id"], "status": status, "blockers": blockers, **extra,
                        "target_member_id": existing["member_id"] if existing else None, "target_signature": target_signature,
-                       "owner_state": fingerprint(self.store.project_numbers()), "recovery_plan_id": recovery["plan_id"] if recovery else None}
+                       "owner_state": self.p.owner_state(body), "recovery_plan_id": recovery["plan_id"] if recovery else None}
             saved = self.files.save_plan("restore", payload)
             return {"plan_id": saved["plan_id"], "fingerprint": saved["fingerprint"], "project_id": body["project_id"], "ltr_number": body["ltr_number"], "title": body["title"], "source_path": folder, "target_path": target, "status": status, "created_at": body["created_at"], "record_counts": {name: len(records) for name, records in body["rows"].items()}, "file_count": sum(not row["directory"] for row in body["files"]), "warnings": warnings, "blockers": blockers, **extra}
         except (OSError, ValueError, LookupError) as error:
@@ -315,7 +315,7 @@ class RestoreConflicts:
             journal["phase"] = "rolled_back"
             atomic_json(journal_path, journal)
             self.files.release_replacement_fence(payload["project_id"], plan_id)
-        if fingerprint(self.store.project_numbers()) != payload["owner_state"]:
+        if self.p.owner_state(body) != payload["owner_state"]:
             raise ProjectLibraryConflict("LTR ownership changed. Review this restore again.")
         if payload["resolution"] == "replace_working_copy":
             return self._replace(payload, plan_id, body, journal_path, journal)

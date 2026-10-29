@@ -10,6 +10,8 @@ class RuntimeResponse(BaseModel):
     database_path: str
     configured: bool
     format_version: int = 1
+    destination_editable: bool = True
+    location_error: str | None = None
 
 
 class MemberResponse(BaseModel):
@@ -42,6 +44,7 @@ class CandidateResponse(BaseModel):
     kind: Literal["project", "file"]
     warnings: list[str]
     child_folders: list[str]
+    has_portable: bool = False
 
 
 class ScanResponse(BaseModel):
@@ -80,6 +83,7 @@ class IntakePlanResponse(BaseModel):
     fingerprint: str
     items: list[IntakeItemResponse]
     warnings: list[str]
+    projects_root: str | None = None
 
 
 class ConfirmRequest(BaseModel):
@@ -157,6 +161,7 @@ class RestoreConfirmRequest(ConfirmRequest):
 
 
 class RestorePlanResponse(ConfirmRequest):
+    projects_root: str | None = None
     resolution_options: list[str] = Field(default_factory=list)
     resolution: str | None = None
     target_revision: int | None = None

@@ -142,8 +142,9 @@ def copy_verified(source, target, entries):
 
 
 class LibraryFiles:
-    def __init__(self, settings):
+    def __init__(self, settings, *, destination_configured=None):
         self.settings = settings
+        self.destination_configured = bool(settings.library_root) if destination_configured is None else destination_configured
         self.root = settings.data_dir / "project_library"
         self.plans = self.root / "plans"
         self.stage = self.root / "stage"
@@ -154,6 +155,8 @@ class LibraryFiles:
         return self.journal.lock("library")
 
     def save_plan(self, kind, payload):
+        if kind in {"intake", "restore"}:
+            payload = {**payload, "destination_binding": self.destination_binding()}
         plan_id = uuid4().hex
         body = {"kind": kind, "payload": payload, "created_at": now()}
         value = {"plan_id": plan_id, "fingerprint": fingerprint(body), **body}
@@ -167,15 +170,45 @@ class LibraryFiles:
         body = {key: value[key] for key in ("kind", "payload", "created_at")}
         if value["kind"] != kind or value["fingerprint"] != expected or fingerprint(body) != expected:
             raise ProjectLibraryConflict("The review changed. Refresh before confirming.")
+        if kind in {"intake", "restore"} and value["payload"].get("destination_binding") != self.destination_binding():
+            raise ProjectLibraryConflict("The save location changed. Check the selected projects again before importing.")
         return value["payload"]
 
     def digest(self, value):
         return fingerprint(value)
 
     def runtime(self):
+        error = None
+        try:
+            self.require_destination()
+        except (OSError, ValueError) as cause:
+            error = str(cause)
         return {"library_root": str(self.settings.library_root or self.settings.data_dir.parent),
                 "projects_root": str(self.settings.projects_dir), "data_root": str(self.settings.data_dir),
-                "database_path": str(self.settings.database_path), "configured": bool(self.settings.library_root), "format_version": 1}
+                "database_path": str(self.settings.database_path), "configured": error is None, "format_version": 1,
+                "destination_editable": self.settings.library_root is None, "location_error": error}
+
+    def check_destination(self, value):
+        root = checked_path(value)
+        if not root.is_dir():
+            raise ProjectLibraryError("Choose an existing folder for imported projects.")
+        data = self.settings.data_dir.resolve()
+        if root.is_relative_to(data) or data.is_relative_to(root) or self.settings.database_path.resolve().is_relative_to(root):
+            raise ProjectLibraryError("Choose a project folder separate from ConnLab's database and data files.")
+        return root
+
+    def require_destination(self):
+        if not self.destination_configured:
+            raise ProjectLibraryError("Choose where imported projects will be saved before selecting projects.")
+        return self.check_destination(self.settings.projects_dir)
+
+    def destination_binding(self):
+        root = self.require_destination()
+        return {"path": str(root), "identity": identity(root)}
+
+    def recovery_root(self):
+        root = self.settings.library_root / "Backups" / "Project Recovery" if self.settings.library_root else self.root / "recovery"
+        return checked_path(root, must_exist=False)
 
     def inspect_source(self, value):
         source = checked_path(value)
@@ -252,7 +285,7 @@ class LibraryFiles:
                     warnings.append("Some folders are deeper than the preview limit. Choose a specific project.")
             except (OSError, ValueError) as error:
                 warnings.append(f"{value}: {error}")
-        keys = ("source_path", "title", "ltr_number", "kind", "warnings", "child_folders")
+        keys = ("source_path", "title", "ltr_number", "kind", "warnings", "child_folders", "has_portable")
         return {"items": [{key: row[key] for key in keys} for row in items],
                 "boundary_roots": [{key: row[key] for key in keys} for row in boundaries.values()],
                 "warnings": list(dict.fromkeys(warnings)), "truncated": bool(pending)}

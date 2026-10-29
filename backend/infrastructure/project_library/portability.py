@@ -30,6 +30,15 @@ class ProjectPortability:
     def __init__(self, store, files, settings):
         self.store, self.files, self.settings = store, files, settings
 
+    def owner_state(self, body):
+        # Other LTRs may be imported in the same confirmed selection. Only this
+        # project's identities and competing number owners invalidate its review.
+        number = (body.get("ltr_number") or "").casefold()
+        rows = [row for row in self.store.project_numbers()
+                if row["project_id"] == body["project_id"]
+                or (number and (row["ltr_number"] or "").casefold() == number)]
+        return fingerprint(sorted(rows, key=lambda row: (row["project_id"], row["ltr_number"] or "", row["status"], row["is_current_owner"])))
+
     @staticmethod
     def _source_gap_warnings(history, project_id):
         """Display signed source provenance; it never names an active file or action."""
@@ -364,7 +373,7 @@ class ProjectPortability:
                 raise ProjectLibraryConflict("The target project changed after review. Compare the working copies.")
             if self.store.project_exists(body["project_id"]):
                 raise ProjectLibraryConflict("The project appeared in the target database after review.")
-            if payload.get("owner_state") != fingerprint(self.store.project_numbers()):
+            if payload.get("owner_state") != self.owner_state(body):
                 raise ProjectLibraryConflict("LTR ownership changed. Review the restore again.")
             self._check_existing_keys(body["rows"])
             target = payload["target_path"]
