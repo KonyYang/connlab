@@ -39,7 +39,10 @@ from backend.domain.matrix_contact_measurement_models import (
 )
 
 
-def test_project_matrix_draft_repository_create_and_get_roundtrip(tmp_path: Path) -> None:
+@pytest.mark.parametrize("foreign_keys_stage", [None, "create", "replace"])
+def test_project_matrix_draft_repository_create_and_get_roundtrip(
+    tmp_path: Path, foreign_keys_stage: str | None,
+) -> None:
     engine = _create_temp_engine(tmp_path)
     init_db(engine)
     session_factory = create_session_factory(engine)
@@ -47,6 +50,10 @@ def test_project_matrix_draft_repository_create_and_get_roundtrip(tmp_path: Path
         with session_factory() as session:
             _seed_project(session)
             source_import_id, source_snapshot = _seed_source_snapshot(session)
+            session.commit()
+            if foreign_keys_stage == "create":
+                session.execute(text("PRAGMA foreign_keys=ON"))
+                assert session.execute(text("PRAGMA foreign_keys")).scalar_one() == 1
             source_groups = source_snapshot.groups
             source_rows = source_snapshot.rows
             record = ProjectMatrixDraftRecord(
@@ -129,6 +136,10 @@ def test_project_matrix_draft_repository_create_and_get_roundtrip(tmp_path: Path
             repo.create_snapshot(snapshot)
             session.commit()
 
+            if foreign_keys_stage == "replace":
+                session.execute(text("PRAGMA foreign_keys=ON"))
+                assert session.execute(text("PRAGMA foreign_keys")).scalar_one() == 1
+
             loaded = repo.get("pmd-1")
             assert loaded is not None
             assert loaded.record.source_import_id == source_import_id
@@ -140,6 +151,27 @@ def test_project_matrix_draft_repository_create_and_get_roundtrip(tmp_path: Path
             assert loaded.record.base_confirmed_matrix_id is None
             assert loaded.record.point_profile == snapshot.record.point_profile
             assert loaded.record.point_overrides == snapshot.record.point_overrides
+
+            edited = replace(
+                snapshot,
+                rows=(replace(rows[0], requirement="Continue testing after restore"), rows[1]),
+                cells=(replace(cells[0], cell_value="1, 2"),),
+            )
+            repo.replace_snapshot(edited)
+            session.commit()
+            assert repo.get("pmd-1") == edited
+
+            if foreign_keys_stage is not None:
+                invalid = replace(
+                    edited,
+                    rows=(replace(rows[0], requirement="Must roll back"), rows[1]),
+                    cells=(replace(cells[0], draft_row_id="missing-row"),),
+                )
+                with pytest.raises(IntegrityError, match="FOREIGN KEY"):
+                    repo.replace_snapshot(invalid)
+                session.rollback()
+                assert repo.get("pmd-1") == edited
+                assert session.execute(text("PRAGMA foreign_key_check")).all() == []
     finally:
         engine.dispose()
 
