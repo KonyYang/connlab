@@ -80,11 +80,11 @@
   "tasks": {
     "TASK_IMPORT_PROJECTS_UX_20261029": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
-      "integrated_head": "d330b993ba4076e6deaefce95fb3c1929736e7b7",
+      "integrated_head": "c996d4c332b41282ce78ad8831ae73de5d599ed2",
       "task": {
         "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
         "summary": "Simplify Import Projects selection, preview, results and restore entry",
@@ -122,7 +122,7 @@
         "risk_reasons": [],
         "activation_head": "2e90a3d636e9d613b61f721139d2995351650078",
         "started_at": "2026-10-29T10:47:06.903822Z",
-        "updated_at": "2026-10-29T16:52:28.195509Z",
+        "updated_at": "2026-10-29T17:15:29.060174Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -132,7 +132,82 @@
           "requires_user": false,
           "summary": "Goal active. Design: docs/plans/IMPORT_PROJECTS_SIMPLE_FLOW_20261029.md. Destination/API and guided mixed import implemented; source edits uncommitted. Full Python and frontend/build gates running; logs: visualizations/import-simple-flow-20261029. Next: isolated first-use/mixed-sample UI and graph/source integrity, exact diff self-review, local commit/integration. Real 8000 is running: verify/stop its dedicated reload console before primary integration. No real DB startup/mutation, push/publication or automatic Close."
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
+          "subject": "6f2b6f8ee517bd47df32b9daf06a09f1cc9ab373",
+          "summary": "Guided project save location, automatic checking, unified file/snapshot import and compact final consent; private acceptance passed; no real data/source changes, push or publication.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/api/project_library_schemas.py",
+            "backend/api/routes_project_library.py",
+            "backend/application/project_library/service.py",
+            "backend/infrastructure/project_library/files.py",
+            "backend/infrastructure/project_library/portability.py",
+            "backend/infrastructure/project_library/restore_conflicts.py",
+            "docs/architecture/project_library.md",
+            "docs/plans/IMPORT_PROJECTS_SIMPLE_FLOW_20261029.md",
+            "frontend/src/App.test.tsx",
+            "frontend/src/api/projectLibrary.ts",
+            "frontend/src/features/project-library/PortableRestore.tsx",
+            "frontend/src/features/project-library/ProjectImportDestination.test.tsx",
+            "frontend/src/features/project-library/ProjectImportDestination.tsx",
+            "frontend/src/features/project-library/ProjectImportSnapshots.test.tsx",
+            "frontend/src/features/project-library/ProjectImportSnapshots.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+            "frontend/src/features/project-library/project-library.css",
+            "frontend/src/features/project-library/projectImportReview.ts",
+            "tests/integration/test_project_import_destination_api.py",
+            "tests/integration/test_project_library_portability.py"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Python project library API/destination/portability",
+              "result": "119 passed; isolated DBs; includes independent-LTR batch restore and same-LTR invalidation."
+            },
+            {
+              "status": "passed",
+              "name": "Frontend full gate",
+              "result": "1135 passed, 1 skipped; typecheck/build passed. Final confirmation scroll adjustment revalidated by 46 affected tests, typecheck/build and narrow UI."
+            },
+            {
+              "status": "passed",
+              "name": "Private UI and graph integrity",
+              "result": "First-use setup, automatic review, explicit consent, copies/restores, failure recheck, duplicate/conflict, selection cancellation, search and Matrix save/reload; 2978 rows checked across 64 table families per snapshot; 222 source/input files unchanged. OS picker/opener boundary uses test adapters."
+            },
+            {
+              "status": "passed",
+              "name": "Diff and local safety",
+              "result": "git diff --check; sequential Standards and Spec self-review; normal 8000 stop verified, release 8765 untouched."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "method": "Single-agent implementation with meaningful RED/GREEN evidence."
+            },
+            "reviewer": {
+              "status": "passed",
+              "method": "Sequential self-review, Standards then Spec; not an independent reviewer.",
+              "findings": []
+            },
+            "qa": {
+              "status": "passed",
+              "method": "Single-agent full automated matrix and isolated UI; not independent QA."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "6f2b6f8ee517bd47df32b9daf06a09f1cc9ab373",
+            "primary_before": "7ed0640444d8e3216681169b989d46c23b814762",
+            "integrated_head": "c996d4c332b41282ce78ad8831ae73de5d599ed2",
+            "recovered": false
+          }
+        }
       }
     }
   }
