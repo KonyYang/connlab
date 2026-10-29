@@ -416,16 +416,15 @@ def _find_equipment_table(document) -> Table:
         header = _equipment_row_cells(table.rows[0])
         if tuple(_normalized(cell.text) for cell in header) != expected:
             continue
-        spans = tuple(cell._tc.grid_span for cell in header)
         grid_width = len(table._tbl.tblGrid.gridCol_lst)
         for row in table.rows:
             cells = _equipment_row_cells(row)
-            if (tuple(cell._tc.grid_span for cell in cells) != spans
-                    or sum(spans) != grid_width
+            if (len(cells) != len(expected)
+                    or sum(cell._tc.grid_span for cell in cells) != grid_width
                     or any(cell._tc.vMerge is not None for cell in cells)):
                 raise ValueError(
                     "Equipment List has unsupported merged cells. Each data row must "
-                    "have the same five fields and column spans as its header; "
+                    "have five fields spanning the full table width; "
                     "vertically merged fields cannot be updated safely."
                 )
         return table

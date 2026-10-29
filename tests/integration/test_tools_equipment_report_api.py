@@ -148,20 +148,22 @@ def test_large_review_is_bounded_and_reports_omitted_items(client):
 
 
 @pytest.mark.parametrize("merged_column", [0, 1, 4], ids=["item", "manufacturer", "due-date"])
-def test_equipment_upload_updates_horizontally_merged_fields_without_shifting_values(client, merged_column):
+@pytest.mark.parametrize("mixed_spans", [False, True], ids=["same-spans", "mixed-spans"])
+def test_equipment_upload_updates_horizontally_merged_fields_without_shifting_values(client, merged_column, mixed_spans):
     test_client, data = client
     document = Document()
     document.add_paragraph("Customer or Internal Report with an existing Equipment List")
     table = document.add_table(rows=2, cols=6)
-    for row in table.rows:
-        row.cells[merged_column].merge(row.cells[merged_column + 1])
+    body_column = (1 if merged_column == 0 else 0) if mixed_spans else merged_column
+    for row, column in zip(table.rows, (merged_column, body_column), strict=True):
+        row.cells[column].merge(row.cells[column + 1])
     headers = ("Item", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due")
     # Use the document API to set each visible merged field once.
-    for row, values in zip(table.rows, (headers, ("old", "old maker", "old ID", "old last", "old due")), strict=True):
+    for row, values, column in zip(table.rows, (headers, ("old", "old maker", "old ID", "old last", "old due")), (merged_column, body_column), strict=True):
         index = 0
         for field, value in enumerate(values):
             row.cells[index].text = value
-            index += 2 if field == merged_column else 1
+            index += 2 if field == column else 1
     source = BytesIO()
     document.save(source)
     original = source.getvalue()
@@ -181,6 +183,8 @@ def test_equipment_upload_updates_horizontally_merged_fields_without_shifting_va
     assert result.paragraphs[0].text == document.paragraphs[0].text
     updated = result.tables[0]
     assert updated._tbl.tblGrid.xml == original_grid
+    assert [tc.grid_span for tc in updated.rows[0]._tr.tc_lst] == [tc.grid_span for tc in table.rows[0]._tr.tc_lst]
+    assert [tc.grid_span for tc in updated.rows[1]._tr.tc_lst] == [tc.grid_span for tc in table.rows[1]._tr.tc_lst]
     with ZipFile(BytesIO(original)) as before, ZipFile(BytesIO(response.content)) as after:
         assert before.namelist() == after.namelist()
         for name in before.namelist():
@@ -192,11 +196,11 @@ def test_equipment_upload_updates_horizontally_merged_fields_without_shifting_va
     after_body.remove(after_body.find(qn("w:tbl")))
     assert before_body.xml == after_body.xml
     expected = ["Multimeter", "Keysight", "DG-Q-0033", "01-Jan-2024", "01-Jan-2025"]
-    expected.insert(merged_column, expected[merged_column])
+    expected.insert(body_column, expected[body_column])
     assert [cell.text for cell in updated.rows[1].cells] == expected
     assert len(updated.rows) == 3  # Q-0033 and DG-Q-0033 are one equipment ID.
     second = ["Microscope", "Nikon", "DG-L-0002", "Not calibrated", "Not applicable"]
-    second.insert(merged_column, second[merged_column])
+    second.insert(body_column, second[body_column])
     assert [cell.text for cell in updated.rows[2].cells] == second
     assert all(str(run.font.color.rgb) == "FF0000"
                for p in updated.rows[1].cells[-1].paragraphs for run in p.runs if run.text)
@@ -233,7 +237,7 @@ def test_customer_report_without_equipment_table_returns_actionable_error(client
     assert list(data.iterdir()) == []
 
 
-@pytest.mark.parametrize("layout", ["vertical-merge", "merged-fields", "different-spans"])
+@pytest.mark.parametrize("layout", ["vertical-merge", "merged-fields"])
 def test_ambiguous_equipment_body_layout_is_rejected_without_a_download(client, layout):
     test_client, data = client
     document = Document(BytesIO(report_bytes()))
@@ -243,16 +247,6 @@ def test_ambiguous_equipment_body_layout_is_rejected_without_a_download(client, 
         table.cell(1, 0).merge(table.cell(2, 0))
     elif layout == "merged-fields":
         table.cell(1, 0).merge(table.cell(1, 1))
-    else:
-        # Same number of visible fields, but their grid spans do not match the header.
-        for row in table.rows:
-            row._tr.append(deepcopy(row._tr.tc_lst[-1]))
-        table._tbl.tblGrid.append(deepcopy(table._tbl.tblGrid.gridCol_lst[-1]))
-        table.cell(0, 0).merge(table.cell(0, 1)).text = "Item"
-        for index, value in enumerate(("Manufacturer", "ID Number", "Last Cal.", "Cal. Due"), 2):
-            table.cell(0, index).text = value
-        table.cell(1, 4).merge(table.cell(1, 5))
-        table.cell(2, 0).merge(table.cell(2, 1))
     source = BytesIO()
     document.save(source)
     response = test_client.post("/api/tools/equipment-list", files={

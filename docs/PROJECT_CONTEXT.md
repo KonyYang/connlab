@@ -132,8 +132,9 @@ Do not use a dated snapshot as a substitute for the code.
   header; unusually large issue lists show retained IDs and an explicit remaining count, not silent
   truncation. Inputs and calibration bytes are checked for changes while preparing the output.
 - Equipment section updates identify the five visible fields by their actual Word cells, not expanded
-  grid positions. Horizontal spans shared by header and data rows are retained throughout reading,
-  replacement and calibration-colour auditing. Vertical merges or inconsistent row spans fail before
+  grid positions. Each row's horizontal spans are retained throughout reading, replacement and
+  calibration-colour auditing, including different spans between rows. Vertical merges, missing fields
+  or rows that do not span the table width fail before
   output publication. Reports (including customer copies) with no compatible Equipment List receive
   actionable guidance; the tool does not insert a missing section or infer one from the filename.
 - Unsupported/unreadable documents or unavailable calibration data stop the download with guidance;
