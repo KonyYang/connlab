@@ -92,19 +92,20 @@
         "route": "sol_build_review_qa",
         "scope": "Frontend-only minimal UX: clear project-folder choice and copy guidance, consistent import wording, hide unnecessary single-project bulk controls and one-page pagination, one-level Restore Project Data entry under other methods, focused fresh-success results. Preserve final confirmations, boundaries, duplicate/conflict guards, retry identities and snapshot restoration. Isolated test DB/files only; no real data/source mutations, no push/publication or automatic close.",
         "scope_paths": [
-          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-          "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
-          "frontend/src/features/project-library/ProjectImportResults.tsx",
-          "frontend/src/features/project-library/ProjectImportResults.test.tsx",
+          "docs/architecture/project_library.md",
+          "frontend/src/App.test.tsx",
           "frontend/src/features/project-library/PortableRestore.tsx",
+          "frontend/src/features/project-library/ProjectImportResults.test.tsx",
+          "frontend/src/features/project-library/ProjectImportResults.tsx",
+          "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
+          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
           "frontend/src/features/project-library/ProjectLibraryMember.test.tsx",
-          "frontend/src/features/project-library/project-library.css",
-          "docs/architecture/project_library.md"
+          "frontend/src/features/project-library/project-library.css"
         ],
         "risk_reasons": [],
         "activation_head": "2e90a3d636e9d613b61f721139d2995351650078",
         "started_at": "2026-10-29T10:47:06.903822Z",
-        "updated_at": "2026-10-29T10:47:06.903822Z",
+        "updated_at": "2026-10-29T10:49:02.641211Z",
         "checkpoint": null,
         "report": null
       }
