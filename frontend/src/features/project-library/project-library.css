@@ -45,3 +45,12 @@
 
 .library-resolution { display: grid; gap: 12px; min-width: 0; border: 1px solid var(--color-border); border-radius: 8px; padding: 12px; }
 .library-resolution label { display: flex; align-items: center; gap: 8px; }
+.library-destination-current { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.library-destination-current > p { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.library-destination-editor, .library-snapshot-list { display: grid; gap: 12px; min-width: 0; }
+.library-destination-editor input { padding: 9px 12px; border: 1px solid var(--color-border); border-radius: 8px; font: inherit; }
+.library-snapshot-heading { display: flex; align-items: start; gap: 10px; }
+.library-snapshot-heading > div { min-width: 0; overflow-wrap: anywhere; }
+.library-review p { overflow-wrap: anywhere; }
+.library-panel > details { min-width: 0; }
+.library-panel > details[open] > :not(summary) { margin-top: 12px; }

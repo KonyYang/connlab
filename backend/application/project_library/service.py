@@ -11,16 +11,36 @@ def now():
 
 
 class ProjectLibraryService:
-    def __init__(self, store, settings, *, files, portability=None, opener=None):
+    def __init__(self, store, settings, *, files, portability=None, opener=None, destination_writer=None):
         self.store, self.settings, self.files = store, settings, files
         self.portability, self.opener = portability, opener
+        self.destination_writer = destination_writer
 
     def runtime(self):
         return self.files.runtime()
 
     def _require_configured(self):
-        if not self.settings.library_root:
-            raise ProjectLibraryError("Select a project library for this ConnLab instance before receiving projects.")
+        self.files.require_destination()
+
+    def configure_destination(self, folder):
+        root = self.files.check_destination(folder)
+        if self.settings.library_root:
+            if root != self.settings.projects_dir.resolve():
+                raise ProjectLibraryError("This managed library has a fixed project location. Keep its existing storage binding.")
+            return self.runtime()
+        if self.destination_writer is None:
+            raise ProjectLibraryError("The project save location cannot be changed in this instance.")
+        self.destination_writer(root)
+        return {**self.runtime(), "projects_root": str(root), "configured": True, "location_error": None}
+
+    def open_destination(self):
+        root = self.files.require_destination()
+        if self.opener is None:
+            raise ProjectLibraryError("The folder opener is unavailable.")
+        result = self.opener(str(root))
+        if result is not None and getattr(result, "status", "opened") != "opened":
+            return {"status": result.status, "message": result.message}
+        return {"status": "opened", "message": "Opened the import save location."}
 
     def scan(self, roots):
         return self.files.scan(roots)
@@ -191,6 +211,7 @@ class ProjectLibraryService:
         plan = self.files.save_plan("intake", {"items": rows})
         keys = ("source_path", "target_path", "title", "ltr_number", "status", "warnings", "can_keep_separate", "target_member_id", "new_project_title")
         return {"plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"],
+                "projects_root": str(self.settings.projects_dir),
                 "items": [{**{key: row.get(key) for key in keys},
                            "existing_member_id": existing_member_ids.get(row["source_path"]) if row["status"] == "already_added" else None}
                           for row in rows], "warnings": []}
@@ -211,7 +232,8 @@ class ProjectLibraryService:
             if previous.get("intent") != intent:
                 raise ProjectLibraryConflict("This batch identity belongs to a different confirmed request.")
             return self._run_batch(previous)
-        batch = {"batch_id": batch_id, "status": "running", "groups": {}, "items": [], "counts": {}, "intent": intent}
+        batch = {"batch_id": batch_id, "status": "running", "groups": {}, "items": [], "counts": {}, "intent": intent,
+                 "destination_binding": payload["destination_binding"]}
         reserved_targets = set()
         for path in dict.fromkeys(selected):
             source = lookup[path]
@@ -239,6 +261,9 @@ class ProjectLibraryService:
 
     def _run_batch(self, batch):
         with self.files.lock():
+            self._require_configured()
+            if batch.get("destination_binding") != self.files.destination_binding():
+                raise ProjectLibraryConflict("The save location changed. Check these projects again before resuming the import.")
             batch["status"] = "running"
             for index, item in enumerate(batch["items"]):
                 if item["status"] in {"added", "already_added", "review"}:
@@ -433,7 +458,7 @@ class ProjectLibraryService:
 
     def restore_plan(self, folder, resolution=None):
         self._require_configured()
-        return self.portability.restore_plan(folder, resolution)
+        return {**self.portability.restore_plan(folder, resolution), "projects_root": str(self.settings.projects_dir)}
 
     def restore(self, plan_id, fingerprint, resolution=None):
         self._require_configured()

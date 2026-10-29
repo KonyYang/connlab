@@ -1,5 +1,6 @@
 """Thin HTTP boundary for reviewed, local project-library operations."""
 from pathlib import Path
+from dataclasses import replace
 from fastapi import APIRouter, Depends, HTTPException, Query
 from backend.api.dependencies import get_session, get_settings
 from backend.api.project_library_schemas import (
@@ -13,17 +14,29 @@ from backend.application.project_library.service import ProjectLibraryService
 from backend.infrastructure.project_library.files import LibraryFiles
 from backend.infrastructure.storage.repositories.project_library import ProjectLibraryRepository
 from backend.infrastructure.files.local_folder_open_gateway import LocalFolderOpenGateway
+from backend.infrastructure.storage.repositories import ExternalResourceRepository
+from backend.application.external_resource_service import ExternalResourceService
+from backend.domain import ExternalResourceType
 
 router = APIRouter(prefix="/api/project-library", tags=["project-library"])
 
 
 def get_project_library_service(session=Depends(get_session), settings=Depends(get_settings)):
     from backend.infrastructure.project_library.portability import ProjectPortability
+    resources = ExternalResourceRepository(session)
+    registered = resources.get_by_type(ExternalResourceType.PROJECT_OUTPUT_ROOT)
+    selected = registered.path if registered and registered.active else None
+    # Explicit managed-library bindings stay authoritative. Ordinary instances
+    # reuse their existing Settings location without relocating their database.
+    if not settings.library_root and selected is not None:
+        settings = replace(settings, projects_dir=selected)
     store = ProjectLibraryRepository(session)
-    files = LibraryFiles(settings)
+    files = LibraryFiles(settings, destination_configured=bool(settings.library_root or selected))
     portability = ProjectPortability(store, files, settings)
     return ProjectLibraryService(store, settings, files=files, portability=portability,
-        opener=lambda value: LocalFolderOpenGateway().open_directory(Path(value)))
+        opener=lambda value: LocalFolderOpenGateway().open_directory(Path(value)),
+        destination_writer=lambda root: ExternalResourceService(resources).upsert_resource(
+            ExternalResourceType.PROJECT_OUTPUT_ROOT, root, True))
 
 
 def checked(action):
@@ -40,6 +53,16 @@ def checked(action):
 @router.get("/runtime", response_model=RuntimeResponse)
 def runtime(service=Depends(get_project_library_service)):
     return checked(service.runtime)
+
+
+@router.post("/destination", response_model=RuntimeResponse)
+def destination(request: FolderRequest, service=Depends(get_project_library_service)):
+    return checked(lambda: service.configure_destination(request.folder))
+
+
+@router.post("/open-destination")
+def open_destination(service=Depends(get_project_library_service)):
+    return checked(service.open_destination)
 
 
 @router.get("/members", response_model=MembersResponse)

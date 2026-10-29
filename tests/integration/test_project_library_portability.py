@@ -18,8 +18,8 @@ from backend.infrastructure.project_library.portability import ProjectPortabilit
 from backend.infrastructure.storage.repositories.project_library import ProjectLibraryRepository
 
 
-def app_at(root):
-    settings = Settings(root / "Data", root / "Projects", root / "Templates", root / "Data" / "connlab.sqlite3", library_root=root)
+def app_at(root, *, managed=True):
+    settings = Settings(root / "Data", root / "Projects", root / "Templates", root / "Data" / "connlab.sqlite3", library_root=root if managed else None)
     settings.ensure_directories()
     engine = create_engine(f"sqlite:///{settings.database_path}", connect_args={"check_same_thread": False})
     init_db(engine)
@@ -28,7 +28,7 @@ def app_at(root):
     def service():
         with Session(engine) as session:
             store = ProjectLibraryRepository(session)
-            files = LibraryFiles(settings)
+            files = LibraryFiles(settings, destination_configured=True)
             yield ProjectLibraryService(store, settings, files=files,
                 portability=ProjectPortability(store, files, settings), opener=lambda path: None)
     app.dependency_overrides[get_project_library_service] = service
@@ -137,8 +137,8 @@ def test_project_travels_without_source_database_and_preserves_report_evidence(t
     engine_b.dispose()
 
 
-def prepared_manual_project(client, root):
-    source = root / "DL-2026-09-032 History"
+def prepared_manual_project(client, root, ltr="DL-2026-09-032"):
+    source = root / f"{ltr} History"
     source.mkdir(parents=True)
     (source / "result.txt").write_text("source result", encoding="utf-8")
     plan = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()
@@ -150,6 +150,45 @@ def prepared_manual_project(client, root):
     response = client.post(f"/api/project-library/members/{member_id}/prepare", json={"fingerprint": info["fingerprint"]})
     assert response.status_code == 200, response.text
     return member
+
+
+@pytest.mark.parametrize("new_owner_ltr", ["DL-2026-09-033", "DL-2026-09-032"])
+def test_restore_review_tracks_relevant_ltr_owners_only(tmp_path, new_owner_ltr):
+    from backend.infrastructure.storage.models import LtrRecordModel
+    a, _, engine_a = app_at(tmp_path / "A")
+    b, settings_b, engine_b = app_at(tmp_path / "B", managed=False)
+    try:
+        first = prepared_manual_project(a, tmp_path / "sources")
+        second = prepared_manual_project(a, tmp_path / "sources", "DL-2026-09-033")
+        with Session(engine_a) as session:
+            for index, member in enumerate((first, second)):
+                session.add(LtrRecordModel(ltr_id=f"source-ltr-{index}", project_id=member["project_id"], ltr_number=member["ltr_number"], status="registered", is_current_owner=True))
+            session.commit()
+        for member in (first, second):
+            url = f"/api/project-library/members/{member['member_id']}"
+            info = a.get(url + "/portable").json()
+            assert a.post(url + "/prepare", json={"fingerprint": info["fingerprint"]}).status_code == 200
+        reviews = [b.post("/api/project-library/restore-plan", json={"folder": member["folder_path"]}).json() for member in (first, second)]
+        assert all(plan["status"] == "ready" for plan in reviews)
+        confirm(b, "/api/project-library/restore", reviews[0])
+        if new_owner_ltr == "DL-2026-09-033":
+            restored = confirm(b, "/api/project-library/restore", reviews[1])
+            assert restored["member"]["ltr_number"] == new_owner_ltr
+            assert len(b.get("/api/project-library/members").json()["items"]) == 2
+        else:
+            # A same-LTR decision must still be invalidated by a new owner.
+            with Session(engine_b) as session:
+                session.add(ProjectModel(project_id="new-owner", product_name="Other", requestor="Lab", status="draft"))
+                session.flush()
+                session.add(LtrRecordModel(ltr_id="new-ltr", project_id="new-owner", ltr_number="DL-2026-09-033", status="registered", is_current_owner=True))
+                session.commit()
+            response = b.post("/api/project-library/restore", json={key: reviews[1][key] for key in ("plan_id", "fingerprint")})
+            assert response.status_code == 409, response.text
+            assert "LTR ownership changed" in response.json()["detail"]
+            assert len(b.get("/api/project-library/members").json()["items"]) == 1
+            assert not Path(reviews[1]["target_path"]).exists()
+    finally:
+        a.close(); b.close(); engine_a.dispose(); engine_b.dispose()
 
 
 def test_group_completion_events_travel_with_project(tmp_path):
@@ -212,9 +251,10 @@ def reject_unselected_restore(client, review):
     assert response.status_code == 409, response.text
 
 
-def test_explicit_replacement_preserves_target_recovery_copy_and_binds_revision(tmp_path):
+@pytest.mark.parametrize("managed", [True, False])
+def test_explicit_replacement_preserves_target_recovery_copy_and_binds_revision(tmp_path, managed):
     a, _, ea = app_at(tmp_path / "A")
-    b, _, eb = app_at(tmp_path / "B")
+    b, settings_b, eb = app_at(tmp_path / "B", managed=managed)
     member_a = prepared_manual_project(a, tmp_path / "old")
     plan = b.post("/api/project-library/restore-plan", json={"folder": member_a["folder_path"]}).json()
     member_b = confirm(b, "/api/project-library/restore", plan)["member"]
@@ -238,6 +278,8 @@ def test_explicit_replacement_preserves_target_recovery_copy_and_binds_revision(
     assert restored["member"]["member_id"] == member_b["member_id"]
     assert restored["member"]["can_continue"] is True
     backup = b.get("/api/project-library/members/" + restored["backup_member_id"]).json()
+    expected_recovery = settings_b.library_root / "Backups/Project Recovery" if managed else settings_b.data_dir / "project_library/recovery"
+    assert Path(backup["folder_path"]).is_relative_to(expected_recovery)
     assert backup["is_history"] is True
     assert backup["can_continue"] is False
     assert (Path(backup["folder_path"]) / "target-only.txt").read_text() == "retain target evidence"
@@ -419,9 +461,10 @@ def test_portable_preflight_blocks_missing_history_without_repairing_source(tmp_
                 assert session.execute(text("SELECT COUNT(*) FROM project_matrix_draft_rows WHERE source_row_snapshot_id='missing-superseded-source'")).scalar_one() > 0
 
 
-def test_replacement_failure_rolls_back_and_same_review_can_resume(tmp_path, monkeypatch):
+@pytest.mark.parametrize("managed", [True, False])
+def test_replacement_failure_rolls_back_and_same_review_can_resume(tmp_path, monkeypatch, managed):
     a, _, ea = app_at(tmp_path / "A")
-    b, _, eb = app_at(tmp_path / "B")
+    b, _, eb = app_at(tmp_path / "B", managed=managed)
     member_a = prepared_manual_project(a, tmp_path / "old")
     plan = b.post("/api/project-library/restore-plan", json={"folder":member_a["folder_path"]}).json()
     member_b = confirm(b, "/api/project-library/restore", plan)["member"]

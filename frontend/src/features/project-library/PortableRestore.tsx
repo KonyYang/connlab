@@ -12,15 +12,15 @@ function coverageCategory(name: string): string {
   if (name === "projects" || name.startsWith("project_") || name === "application_forms" || name === "sample_infos" || name.startsWith("precheck_")) return "Project Information";
   return "Other Retained Data";
 }
-export function PortableCoverage({ counts, fileCount, label = "Saved Snapshot Data" }: { counts: Record<string, number>; fileCount: number; label?: string }) {
+export function PortableCoverage({ counts, fileCount, label = "Saved Snapshot Data", expanded = true, showFileCount = true }: { counts: Record<string, number>; fileCount: number; label?: string; expanded?: boolean; showFileCount?: boolean }) {
   const records = Object.entries(counts).filter(([, count]) => count > 0);
   const categories = records.reduce<Record<string, number>>((result, [name, count]) => {
     const category = coverageCategory(name); result[category] = (result[category] ?? 0) + count; return result;
   }, {});
-  return <details open><summary>{label} · {fileCount} files</summary><dl className="library-facts">{Object.entries(categories).map(([name, count]) => <div key={name}><dt>{name}</dt><dd>{count} records</dd></div>)}</dl>{!records.length && <p>No structured project records available.</p>}<details><summary>Snapshot Diagnostics</summary><dl className="library-facts">{records.map(([name, count]) => <div key={name}><dt>{name}</dt><dd>{count}</dd></div>)}</dl></details></details>;
+  return <details open={expanded}><summary>{label}{showFileCount && <> · {fileCount} files</>}</summary>{!showFileCount && <p>{fileCount} project files carried with this saved data.</p>}<dl className="library-facts">{Object.entries(categories).map(([name, count]) => <div key={name}><dt>{name}</dt><dd>{count} records</dd></div>)}</dl>{!records.length && <p>No structured project records available.</p>}<details><summary>Snapshot Diagnostics</summary><dl className="library-facts">{records.map(([name, count]) => <div key={name}><dt>{name}</dt><dd>{count}</dd></div>)}</dl></details></details>;
 }
-const resolutionLabels: Record<PortableResolution, string> = { replace_working_copy: "Replace Working Copy", keep_as_history: "Keep as History" };
-function RestoreProtection({ plan }: { plan: PortableRestorePlan }) {
+export const resolutionLabels: Record<PortableResolution, string> = { replace_working_copy: "Replace Working Copy", keep_as_history: "Keep as History" };
+export function RestoreProtection({ plan }: { plan: PortableRestorePlan }) {
   return <div className="library-review">
     <p>Source snapshot: {plan.created_at ? new Date(plan.created_at).toLocaleString() : "Not available"}</p>
     {plan.source_signature && <p>Source data version: <code title={plan.source_signature}>{plan.source_signature.slice(0, 12)}</code></p>}
