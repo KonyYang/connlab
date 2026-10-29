@@ -89,11 +89,11 @@
   "tasks": {
     "TASK_EQUIPMENT_MERGED_TABLE_20261030": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-table-merged\\connlab",
       "branch": "codex/equipment-table-merged",
       "resources": [],
-      "integrated_head": "e8e2165ac83a2b0b61a33539671c2353bfee7f39",
+      "integrated_head": "e1bf90044a0ae578f455db548532ab6523c22a44",
       "task": {
         "task_id": "TASK_EQUIPMENT_MERGED_TABLE_20261030",
         "summary": "Recognize horizontally merged equipment tables and explain reports without equipment tables",
@@ -109,7 +109,7 @@
         "risk_reasons": [],
         "activation_head": "a85458b181fe8f27a40da82080957c1747741ebf",
         "started_at": "2026-10-29T22:49:34.452588Z",
-        "updated_at": "2026-10-29T23:10:36.642690Z",
+        "updated_at": "2026-10-29T23:15:47.399996Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -119,7 +119,75 @@
           "summary": "User supplied the corrected Rev_A source report; continue same-task attachment verification and generate a separate copy without modifying originals.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_EQUIPMENT_MERGED_TABLE_20261030",
+          "subject": "11a56d6fa3b0a97516d1a9de88eef737108b86b0",
+          "summary": "Merged equipment table fix verified against corrected password-protected Rev_A report: 21 to 32 equipment rows in separate encrypted copy, dates and original geometry retained. Source files unchanged; no further product-code edits.",
+          "scope_ok": true,
+          "changed_paths": [],
+          "validation": [
+            {
+              "name": "Final affected Python matrix: 109 passed on 11a56d6f; existing Starlette deprecation warning only",
+              "status": "passed"
+            },
+            {
+              "name": "Actual EquipmentID: 32 unique IDs; one unmatched DG-Q-0864 and one incomplete DG-Q-0233 retained as review cases; no expired equipment",
+              "status": "passed"
+            },
+            {
+              "name": "Independent same-project Internal Report copy: 32 rows, dates and per-row merges preserved; 63 other package parts and unrelated body XML unchanged; all source/catalog hashes unchanged",
+              "status": "passed"
+            },
+            {
+              "name": "Word read-only render: 28 pages visually inspected; only equipment pages 25 and 26 differ; other 26 pages pixel identical. Bundled renderer unavailable without bundled LibreOffice; native isolated Word used, no source saves",
+              "status": "passed"
+            },
+            {
+              "name": "Supplied customer report: Word and OOXML both confirm no equipment table; new actionable failure creates no output",
+              "status": "passed"
+            },
+            {
+              "name": "Corrected Rev_A attachment: existing protected source successfully read; output remains encrypted with original password; 32 equipment rows and last two date columns verified",
+              "status": "passed"
+            },
+            {
+              "name": "Corrected Rev_A preservation: original source, EquipmentID and configured calibration workbook hashes unchanged; 51 other package parts plus unrelated body XML unchanged; existing mixed row spans retained",
+              "status": "passed"
+            },
+            {
+              "name": "Corrected Rev_A Word visual review: 19 to 20 pages, all 20 inspected; only total-page field changes on pages 1-15. Original empty spacer paragraphs retained, causing blank output page 18 before appendices",
+              "status": "passed"
+            },
+            {
+              "name": "Verification-only revision has no new product diff; original three-path fix remains integrated at e8e2165ac83a2b0b61a33539671c2353bfee7f39 and unchanged at subject 11a56d6f",
+              "status": "passed"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "method": "current agent TDD; original 4 red cases then green, additional 3 mixed-span red cases then green"
+            },
+            "reviewer": {
+              "status": "passed",
+              "method": "same agent separate Standards and Spec passes on exact diff; zero unresolved findings; not an independent review"
+            },
+            "qa": {
+              "status": "passed",
+              "method": "Same agent: retained 109-test results on byte-identical 11a56d6f; additionally verified corrected encrypted Rev_A attachment and inspected all 20 rendered pages. No further code/test changes."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "11a56d6fa3b0a97516d1a9de88eef737108b86b0",
+            "primary_before": "e1bf90044a0ae578f455db548532ab6523c22a44",
+            "integrated_head": "e1bf90044a0ae578f455db548532ab6523c22a44",
+            "recovered": false
+          }
+        }
       }
     }
   }
