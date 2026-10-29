@@ -80,7 +80,7 @@
   "tasks": {
     "TASK_IMPORT_PROJECTS_UX_20261029": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
@@ -109,89 +109,17 @@
         "risk_reasons": [],
         "activation_head": "2e90a3d636e9d613b61f721139d2995351650078",
         "started_at": "2026-10-29T10:47:06.903822Z",
-        "updated_at": "2026-10-29T14:59:26.319001Z",
+        "updated_at": "2026-10-29T15:55:59.527396Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
           "stage": "revision",
           "status": "running",
-          "summary": "User authorizes next step: reproduce and minimally fix restored Matrix page autosave failure using preserved isolated inputs; preserve FK/rollback protection and confirmed/test history, no real data changes, no push/publication.",
+          "summary": "User requests goal-mode implementation of simplified import onboarding: reuse instance project save location without DB relocation, automatic review after source selection, explicit final confirmation, clearer first-run setup, preserve conflicts/boundaries/snapshot recovery; isolated validation only, no real data mutation, push/publication or Close.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
-          "subject": "449011b88f9206886b149f176bdf6fe682e13540",
-          "summary": "Fix restored-project Matrix autosave with foreign-key-safe parent/child flush ordering; same transaction and integrity guards retained. Private continuous two-snapshot restore/UI save/reopen passes; original confirmed authority, result datasets, histories, and sample sources preserved. No real data mutation, push, publication, or automatic Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/infrastructure/storage/repositories/project_matrix_draft.py",
-            "tests/unit/test_project_matrix_draft_repository.py"
-          ],
-          "validation": [
-            {
-              "name": "affected_python",
-              "status": "passed",
-              "result": "189 passed, 1 existing Starlette/httpx deprecation warning in 689.61s",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\matrix-restore-autosave-fix-20261029\\affected-python-tests.txt"
-            },
-            {
-              "name": "tdd_fk_and_rollback",
-              "status": "passed",
-              "result": "Before fix 2 failed/1 passed; after fix all 12 repository tests pass. FK-on create/replace, invalid child rejection, rollback preservation, no FK violations.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\matrix-restore-autosave-fix-20261029\\pytest-red.txt"
-            },
-            {
-              "name": "actual_ui_continuous_restore_autosave",
-              "status": "passed",
-              "result": "Restore two copied real-derived snapshots without restarting service; edit actual Matrix page, reopen with persisted requirement, edit again, Confirm enabled after save; six exact-body replays HTTP 200.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\matrix-restore-autosave-fix-20261029\\replay-green.json"
-            },
-            {
-              "name": "history_and_original_source_integrity",
-              "status": "passed",
-              "result": "All 2978 original restored rows preserved except expected registry revision advance; 6 result datasets remain readable; only new non-authority draft and derived fee rebase added. 111 originals plus 111 copied inputs keep names, bytes, mtime and hashes.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\matrix-restore-autosave-fix-20261029\\green-history-and-source-verification.json"
-            },
-            {
-              "name": "review_and_diff_check",
-              "status": "passed",
-              "result": "Exact two-file diff reviewed; Standards 0 findings, Spec 0 findings; git diff --check clean. Sequential self-review, not independent agents.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\matrix-restore-autosave-fix-20261029\\review.md"
-            },
-            {
-              "name": "runtime_isolation",
-              "status": "passed",
-              "result": "Original-source open/listdir/scandir denied in private UI harness; only startup selftest denied. Owned UI server stopped; authorized normal developer stop confirmed; 8765 release PID unchanged. Test fallback DB newly created in private worktree and empty of projects/members.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\matrix-restore-autosave-fix-20261029\\normal-stop.json"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "method": "same-agent implementation and TDD"
-            },
-            "reviewer": {
-              "status": "passed",
-              "method": "same-agent sequential Standards/Spec review; no independent reviewer",
-              "findings": 0
-            },
-            "qa": {
-              "status": "passed",
-              "method": "same-agent execution of 189-test gate and isolated actual UI acceptance"
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "449011b88f9206886b149f176bdf6fe682e13540",
-            "primary_before": "5983ae4172d6c5503be444cd71e88f7314e2079d",
-            "integrated_head": "d330b993ba4076e6deaefce95fb3c1929736e7b7",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
