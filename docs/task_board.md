@@ -80,11 +80,11 @@
   "tasks": {
     "TASK_IMPORT_PROJECTS_UX_20261029": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
-      "integrated_head": "7ad49ed09df6fc77310a1453ab8f1bc033018b4e",
+      "integrated_head": "e13e8e1341c54624153de17bbb63c3276a053aed",
       "task": {
         "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
         "summary": "Simplify Import Projects selection, preview, results and restore entry",
@@ -107,7 +107,7 @@
         "risk_reasons": [],
         "activation_head": "2e90a3d636e9d613b61f721139d2995351650078",
         "started_at": "2026-10-29T10:47:06.903822Z",
-        "updated_at": "2026-10-29T12:21:14.611154Z",
+        "updated_at": "2026-10-29T12:26:55.039754Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -117,7 +117,66 @@
           "summary": "User requests missing ConnLab snapshot message distinct from unavailable source path; isolated tests only, preserve recovery guards, no push/publication.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
+          "subject": "7d282956fa0acf0dd41cb0e904f3089b0e3b2efb",
+          "summary": "Preserve simplified import UI; distinguish missing ConnLab snapshot from unavailable source location. Only filesystem error classification and isolated regression tests changed in this revision; restore authority and confirmation guards unchanged.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/infrastructure/project_library/portability.py",
+            "tests/integration/test_project_library_portability.py"
+          ],
+          "validation": [
+            {
+              "name": "Isolated portability regression",
+              "status": "passed",
+              "result": "17 passed: missing snapshot on both review routes, absent source HTTP409, corrupt metadata, unsupported/checksum packet, restore gates, real data restoration and explicit conflict handling. RED was 4 failed/4 passed before fix.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\import-projects-ux-20261029\\missing-snapshot\\green.log"
+            },
+            {
+              "name": "Isolated UI smoke",
+              "status": "passed",
+              "result": "Existing folder no snapshot displays 未找到 ConnLab 数据快照 and Review Restore disabled; missing source displays location unavailable with no confirmation. 8 source hashes unchanged; private server normally stopped.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\import-projects-ux-20261029\\missing-snapshot\\ui-result.json"
+            },
+            {
+              "name": "Standards and Spec review",
+              "status": "passed",
+              "result": "Current-agent sequential self-review: 0 outstanding findings; git diff --check passed. Unrelated frontend unchanged; prior complete frontend validation retained as historical evidence.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\import-projects-ux-20261029\\missing-snapshot\\review.md"
+            },
+            {
+              "name": "Local integration safety",
+              "status": "passed",
+              "result": "One normal Ctrl-C to verified dedicated 8000 console under prior user authorization; all backend/starter processes ended; no 8000 listener, no force. Release 8765 unchanged.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\import-projects-ux-20261029\\missing-snapshot\\normal-stop.json"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Current agent; API RED/GREEN, 2-file minimal change"
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Current agent sequential Standards and Spec self-review; no independent agent claimed"
+            },
+            "qa": {
+              "status": "passed",
+              "context": "17 isolated regression cases plus actual isolated UI verification"
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "7d282956fa0acf0dd41cb0e904f3089b0e3b2efb",
+            "primary_before": "3598bf7b8cce01ded8551bd8ef2493b5cc68c7dd",
+            "integrated_head": "e13e8e1341c54624153de17bbb63c3276a053aed",
+            "recovered": false
+          }
+        }
       }
     }
   }
