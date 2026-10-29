@@ -41,6 +41,44 @@ def confirm(client, url, plan):
     return response.json()
 
 
+@pytest.mark.parametrize("route", ["inspect-portable", "restore-plan"])
+@pytest.mark.parametrize("source_state", ["no_metadata", "empty_portable", "unavailable", "damaged"])
+def test_restore_review_distinguishes_missing_snapshot_and_keeps_restore_blocked(tmp_path, route, source_state):
+    client, settings, engine = app_at(tmp_path / "library")
+    source = tmp_path / "old project"
+    if source_state != "unavailable":
+        source.mkdir()
+        (source / "note.txt").write_text("Original project material", encoding="utf-8")
+    if source_state in {"empty_portable", "damaged"}:
+        portable = source / ".connlab/portable"
+        portable.mkdir(parents=True)
+        if source_state == "damaged":
+            (portable / "snapshot.json").write_text("{", encoding="utf-8")
+    original = {path.relative_to(source): path.read_bytes() for path in source.rglob("*") if path.is_file()}
+    try:
+        response = client.post(f"/api/project-library/{route}", json={"folder": str(source)})
+        if source_state == "unavailable":
+            assert response.status_code == 409, response.text
+            assert response.json()["detail"] == "The selected location is unavailable."
+        else:
+            assert response.status_code == 200, response.text
+            plan = response.json()
+            assert plan["status"] == "unavailable", plan
+            assert plan["resolution_options"] == [], plan
+            if source_state in {"no_metadata", "empty_portable"}:
+                assert plan["blockers"] == ["未找到 ConnLab 数据快照"]
+            else:
+                assert plan["blockers"] == ["Project metadata is damaged. Restore a verified copy."]
+            assert client.post("/api/project-library/restore", json={key: plan[key] for key in ("plan_id", "fingerprint")}).status_code == 409
+        assert client.get("/api/project-library/members").json()["items"] == []
+        assert list(settings.projects_dir.iterdir()) == []
+        assert {path.relative_to(source): path.read_bytes() for path in source.rglob("*") if path.is_file()} == original
+        assert source.exists() is (source_state != "unavailable")
+    finally:
+        client.close()
+        engine.dispose()
+
+
 def test_project_travels_without_source_database_and_preserves_report_evidence(tmp_path):
     a, settings_a, engine_a = app_at(tmp_path / "A")
     b, settings_b, engine_b = app_at(tmp_path / "B")

@@ -179,7 +179,15 @@ class ProjectPortability:
             return self.status(self.store.member(member["member_id"]))
 
     def _read_snapshot(self, folder):
-        envelope = read_json(checked_path(folder) / PORTABLE_FILE)
+        root = checked_path(folder)
+        snapshot = checked_path(root / PORTABLE_FILE, must_exist=False)
+        try:
+            snapshot.stat()
+        except FileNotFoundError as error:
+            # A disconnected project root is not a missing snapshot.
+            checked_path(root)
+            raise ProjectLibraryError("未找到 ConnLab 数据快照") from error
+        envelope = read_json(snapshot)
         if not isinstance(envelope, dict) or not isinstance(envelope.get("body"), dict):
             raise ProjectLibraryError("The portable snapshot is damaged.")
         body = envelope["body"]
