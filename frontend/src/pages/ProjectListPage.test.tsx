@@ -31,11 +31,16 @@ const listProjectRegistryRowsMock = vi.mocked(listProjectRegistryRows);
 const getProjectLifecycleMock = vi.mocked(getProjectLifecycle);
 
 describe("ProjectListPage lifecycle registry views", () => {
-  it("opens project import directly from project management", async () => {
+  it("offers import only in Projects and restores the entry after leaving Recycle", async () => {
     mockRows([]);
-    const onImport = vi.fn();
+    const onImport = vi.fn(), user = userEvent.setup();
     render(<ProjectListPage onOpenProject={vi.fn()} onImport={onImport} />);
-    await userEvent.setup().click(await screen.findByRole("button", { name: "Import Projects" }));
+    expect(await screen.findByRole("button", { name: "Import Projects" })).toBeTruthy();
+    await user.click(screen.getByRole("button", {name: "Recycle", exact: true}));
+    expect(screen.queryByRole("button", {name: "Import Projects", exact: true})).toBeNull();
+    expect(screen.getByRole("button", {name: "Back to Projects"})).toBeTruthy();
+    await user.click(screen.getByRole("button", {name: "Back to Projects"}));
+    await user.click(await screen.findByRole("button", { name: "Import Projects" }));
     expect(onImport).toHaveBeenCalledOnce();
   });
 
