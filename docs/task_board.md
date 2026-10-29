@@ -71,11 +71,11 @@
   "tasks": {
     "TASK_PROJECT_IMPORT_ENTRY_20261028": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
-      "integrated_head": "6b497256239c5c1f0aabf56c5159710691497247",
+      "integrated_head": "88b946a4cd47936101dd1cff4071bd74d1cbf174",
       "task": {
         "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
         "summary": "Consolidate project import entry under Projects",
@@ -120,7 +120,7 @@
         "risk_reasons": [],
         "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
         "started_at": "2026-10-28T14:26:30.121108Z",
-        "updated_at": "2026-10-29T00:06:21.088535Z",
+        "updated_at": "2026-10-29T00:09:11.557324Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -130,7 +130,59 @@
           "summary": "User annotation requests removing Import Projects from the Recycle view only. Preserve the sole import action in normal Projects and show it again after Back to Projects. Local frontend visibility change only; no real data writes, push/publication or automatic Close.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
+          "subject": "a7a547ecde2b7b76247ee25c4c57a803b84300f3",
+          "summary": "Latest annotation: replace Import Projects position with Back to Projects within Recycle. Keep the sole import entry on normal Projects and restore it on return. Two frontend files only; no real business/source mutation, push/publication or automatic Close.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/pages/ProjectListPage.test.tsx",
+            "frontend/src/pages/ProjectListPage.tsx"
+          ],
+          "validation": [
+            {
+              "name": "Public visibility regression RED/GREEN and build",
+              "status": "passed",
+              "result": "Expanded existing regression failed before change because Import remained in Recycle. Final19 homepage regressions passed, tsc -b and Vite build passed.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\hide-recycle-import-validation.log"
+            },
+            {
+              "name": "Standards/Spec and isolated actual UI",
+              "status": "passed",
+              "result": "Current agent sequential self-review, no open findings. Private DB actual612x804 header confirms Back to Projects first and no import within Recycle, and import returns after Back. All4 source files unchanged; browser/service cleaned.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\hide-recycle-import-review-ui.json"
+            },
+            {
+              "name": "Local integration safety",
+              "status": "passed",
+              "result": "Exact2 frontend files, primary clean, no backend/Python changes; real services not signalled and isolated18745 stopped."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Current agent bounded annotation correction, existing public regression RED/GREEN."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Current agent Standards and Spec sequential self-review."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "Current agent targeted test/typecheck/build and isolated actual UI; no independent review claimed."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "a7a547ecde2b7b76247ee25c4c57a803b84300f3",
+            "primary_before": "9a6cd2a13453fd9f92db6e7330adfbd1fcb3f7fc",
+            "integrated_head": "88b946a4cd47936101dd1cff4071bd74d1cbf174",
+            "recovered": false
+          }
+        }
       }
     }
   }
