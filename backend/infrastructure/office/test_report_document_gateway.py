@@ -283,9 +283,9 @@ class TestReportDocumentGateway:
                 document = Document(temporary)
             except (BadZipFile, KeyError, ValueError, XMLSyntaxError) as exc:
                 raise ValueError("The Internal Report cannot be read. Select a valid .docx report.") from exc
-            equipment = _find_table(document, _EQUIPMENT_HEADERS, "Equipment table")
+            equipment = _find_equipment_table(document)
             actual = tuple(
-                tuple(cell.text.strip() for cell in row.cells[:5])
+                tuple(cell.text.strip() for cell in _equipment_row_cells(row))
                 for row in equipment.rows[1:]
             )
             body_before = document.element.body.xml
@@ -403,20 +403,52 @@ def _find_table(document, expected_headers: tuple[str, ...], label: str) -> Tabl
     raise ValueError(f"E-3707_H {label} does not match the approved table contract.")
 
 
+def _equipment_row_cells(row) -> tuple[_Cell, ...]:
+    # row.cells repeats a horizontally merged cell for every grid position it spans.
+    return tuple(_Cell(cell, row._parent) for cell in row._tr.tc_lst)
+
+
+def _find_equipment_table(document) -> Table:
+    expected = tuple(_normalized(value) for value in _EQUIPMENT_HEADERS)
+    for table in document.tables:
+        if not table.rows:
+            continue
+        header = _equipment_row_cells(table.rows[0])
+        if tuple(_normalized(cell.text) for cell in header) != expected:
+            continue
+        spans = tuple(cell._tc.grid_span for cell in header)
+        grid_width = len(table._tbl.tblGrid.gridCol_lst)
+        for row in table.rows:
+            cells = _equipment_row_cells(row)
+            if (tuple(cell._tc.grid_span for cell in cells) != spans
+                    or sum(spans) != grid_width
+                    or any(cell._tc.vMerge is not None for cell in cells)):
+                raise ValueError(
+                    "Equipment List has unsupported merged cells. Each data row must "
+                    "have the same five fields and column spans as its header; "
+                    "vertically merged fields cannot be updated safely."
+                )
+        return table
+    raise ValueError(
+        "No compatible Equipment List table was found in the selected report. "
+        "Select a report with Item, Manufacturer, ID Number, Last Cal., and Cal. Due columns. "
+        "Customer reports without an Equipment List cannot be updated."
+    )
+
+
 def _replace_equipment_table_rows(
     table: Table,
     rows: tuple[tuple[str, str, str, str, str], ...],
 ) -> None:
-    template_row = deepcopy(table.rows[1]._tr) if len(table.rows) > 1 else None
+    template_row = deepcopy(table.rows[1 if len(table.rows) > 1 else 0]._tr)
+    for marker in template_row.xpath("./w:trPr/w:tblHeader"):
+        marker.getparent().remove(marker)
     for row in list(table.rows[1 + len(rows):]):
         table._tbl.remove(row._tr)
     while len(table.rows) < 1 + len(rows):
-        if template_row is not None:
-            table._tbl.append(deepcopy(template_row))
-        else:
-            table.add_row()
+        table._tbl.append(deepcopy(template_row))
     for target_row, values in zip(table.rows[1:], rows, strict=True):
-        for cell, value in zip(target_row.cells[:5], values, strict=True):
+        for cell, value in zip(_equipment_row_cells(target_row), values, strict=True):
             if cell.text != value:
                 _set_cell_text(cell, value)
 
@@ -481,15 +513,15 @@ def _audit_equipment_sync(
     expired: tuple[bool, ...],
 ) -> None:
     document = Document(path)
-    equipment = _find_table(document, _EQUIPMENT_HEADERS, "Equipment table")
+    equipment = _find_equipment_table(document)
     actual = tuple(
-        tuple(cell.text.strip() for cell in row.cells[:5])
+        tuple(cell.text.strip() for cell in _equipment_row_cells(row))
         for row in equipment.rows[1:]
     )
     if actual != expected:
         raise ValueError("Generated Equipment List does not match the confirmed preview.")
     for row, is_expired in zip(equipment.rows[1:], expired, strict=True):
-        for paragraph in row.cells[4].paragraphs:
+        for paragraph in _equipment_row_cells(row)[4].paragraphs:
             for run in paragraph.runs:
                 if run.text and str(run.font.color.rgb) != ("FF0000" if is_expired else "000000"):
                     raise ValueError("Generated Equipment List calibration date color is inconsistent.")
@@ -499,7 +531,7 @@ def _set_equipment_due_colors(table: Table, expired: tuple[bool, ...]) -> None:
     from docx.shared import RGBColor
 
     for row, is_expired in zip(table.rows[1:], expired, strict=True):
-        for paragraph in row.cells[4].paragraphs:
+        for paragraph in _equipment_row_cells(row)[4].paragraphs:
             for run in paragraph.runs:
                 run.font.color.rgb = RGBColor.from_string("FF0000" if is_expired else "000000")
 
