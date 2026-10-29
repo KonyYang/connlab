@@ -92,6 +92,7 @@
         "route": "sol_build_review_qa",
         "scope": "Frontend-only minimal UX: clear project-folder choice and copy guidance, consistent import wording, hide unnecessary single-project bulk controls and one-page pagination, one-level Restore Project Data entry under other methods, focused fresh-success results. Preserve final confirmations, boundaries, duplicate/conflict guards, retry identities and snapshot restoration. Isolated test DB/files only; no real data/source mutations, no push/publication or automatic close.",
         "scope_paths": [
+          "backend/infrastructure/project_library/portability.py",
           "docs/architecture/project_library.md",
           "frontend/src/App.test.tsx",
           "frontend/src/features/project-library/PortableRestore.tsx",
@@ -100,12 +101,13 @@
           "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
           "frontend/src/features/project-library/ProjectLibraryImport.tsx",
           "frontend/src/features/project-library/ProjectLibraryMember.test.tsx",
-          "frontend/src/features/project-library/project-library.css"
+          "frontend/src/features/project-library/project-library.css",
+          "tests/integration/test_project_library_portability.py"
         ],
         "risk_reasons": [],
         "activation_head": "2e90a3d636e9d613b61f721139d2995351650078",
         "started_at": "2026-10-29T10:47:06.903822Z",
-        "updated_at": "2026-10-29T12:20:31.613145Z",
+        "updated_at": "2026-10-29T12:21:14.611154Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
