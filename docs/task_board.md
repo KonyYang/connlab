@@ -89,11 +89,11 @@
   "tasks": {
     "TASK_EQUIPMENT_MERGED_TABLE_20261030": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-table-merged\\connlab",
       "branch": "codex/equipment-table-merged",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "e8e2165ac83a2b0b61a33539671c2353bfee7f39",
       "task": {
         "task_id": "TASK_EQUIPMENT_MERGED_TABLE_20261030",
         "summary": "Recognize horizontally merged equipment tables and explain reports without equipment tables",
@@ -109,9 +109,65 @@
         "risk_reasons": [],
         "activation_head": "a85458b181fe8f27a40da82080957c1747741ebf",
         "started_at": "2026-10-29T22:49:34.452588Z",
-        "updated_at": "2026-10-29T22:49:34.452588Z",
+        "updated_at": "2026-10-29T23:00:12.910831Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_EQUIPMENT_MERGED_TABLE_20261030",
+          "subject": "11a56d6fa3b0a97516d1a9de88eef737108b86b0",
+          "summary": "Merged and mixed-span equipment tables update in independent copies; actionable missing-table errors; actual EquipmentID validated. Supplied customer report has no equipment table; successful copy uses same-project Internal Report.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/infrastructure/office/test_report_document_gateway.py",
+            "docs/PROJECT_CONTEXT.md",
+            "tests/integration/test_tools_equipment_report_api.py"
+          ],
+          "validation": [
+            {
+              "name": "Final affected Python matrix: 109 passed on 11a56d6f; existing Starlette deprecation warning only",
+              "status": "passed"
+            },
+            {
+              "name": "Actual EquipmentID: 32 unique IDs; one unmatched DG-Q-0864 and one incomplete DG-Q-0233 retained as review cases; no expired equipment",
+              "status": "passed"
+            },
+            {
+              "name": "Independent same-project Internal Report copy: 32 rows, dates and per-row merges preserved; 63 other package parts and unrelated body XML unchanged; all source/catalog hashes unchanged",
+              "status": "passed"
+            },
+            {
+              "name": "Word read-only render: 28 pages visually inspected; only equipment pages 25 and 26 differ; other 26 pages pixel identical. Bundled renderer unavailable without bundled LibreOffice; native isolated Word used, no source saves",
+              "status": "passed"
+            },
+            {
+              "name": "Supplied customer report: Word and OOXML both confirm no equipment table; new actionable failure creates no output",
+              "status": "passed"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "method": "current agent TDD; original 4 red cases then green, additional 3 mixed-span red cases then green"
+            },
+            "reviewer": {
+              "status": "passed",
+              "method": "same agent separate Standards and Spec passes on exact diff; zero unresolved findings; not an independent review"
+            },
+            "qa": {
+              "status": "passed",
+              "method": "same agent final 5-module matrix once after final edits plus actual attachment/catalog and Word-copy verification"
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "11a56d6fa3b0a97516d1a9de88eef737108b86b0",
+            "primary_before": "829f562db804253b9ec7bf2defb213e1544bbce8",
+            "integrated_head": "e8e2165ac83a2b0b61a33539671c2353bfee7f39",
+            "recovered": false
+          }
+        }
       }
     }
   }
