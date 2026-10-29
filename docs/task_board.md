@@ -113,6 +113,7 @@
           "frontend/src/features/project-library/ProjectLibraryImport.tsx",
           "frontend/src/features/project-library/ProjectLibraryMember.test.tsx",
           "frontend/src/features/project-library/project-library.css",
+          "frontend/src/features/project-library/projectImportReview.ts",
           "tests/integration/test_project_import_destination_api.py",
           "tests/integration/test_project_library_portability.py",
           "tests/unit/test_project_matrix_draft_repository.py"
@@ -120,7 +121,7 @@
         "risk_reasons": [],
         "activation_head": "2e90a3d636e9d613b61f721139d2995351650078",
         "started_at": "2026-10-29T10:47:06.903822Z",
-        "updated_at": "2026-10-29T15:59:41.618618Z",
+        "updated_at": "2026-10-29T16:14:16.070991Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
