@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
+    "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
     "tier": "standard",
-    "subject": "a7a547ecde2b7b76247ee25c4c57a803b84300f3",
-    "summary": "Consolidate project import entry under Projects",
+    "subject": "6f2b6f8ee517bd47df32b9daf06a09f1cc9ab373",
+    "summary": "Simplify Import Projects selection, preview, results and restore entry",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested closing this task, retaining local commits, with no push or publication. Local close only; --publish-close intentionally omitted.",
-    "closed_at": "2026-10-29T00:11:03.627184Z"
+    "decision_ref": "User explicitly requested closing this completed task; preserve local commits. Existing no-push/no-publication instruction remains in force. Local close only; --publish-close omitted.",
+    "closed_at": "2026-10-29T22:42:59.921841Z"
   },
   "retained_history": [
     {
@@ -75,142 +75,18 @@
       "disposition": "completed",
       "decision_ref": "用户确认关闭 Tools 独立机械 Summary 第一部分",
       "closed_at": "2026-10-28T14:02:09.933828Z"
+    },
+    {
+      "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
+      "tier": "standard",
+      "subject": "a7a547ecde2b7b76247ee25c4c57a803b84300f3",
+      "summary": "Consolidate project import entry under Projects",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested closing this task, retaining local commits, with no push or publication. Local close only; --publish-close intentionally omitted.",
+      "closed_at": "2026-10-29T00:11:03.627184Z"
     }
   ],
-  "tasks": {
-    "TASK_IMPORT_PROJECTS_UX_20261029": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
-      "branch": "codex/project-import-entry-20261028",
-      "resources": [],
-      "integrated_head": "c996d4c332b41282ce78ad8831ae73de5d599ed2",
-      "task": {
-        "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
-        "summary": "Simplify Import Projects selection, preview, results and restore entry",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Frontend-only minimal UX: clear project-folder choice and copy guidance, consistent import wording, hide unnecessary single-project bulk controls and one-page pagination, one-level Restore Project Data entry under other methods, focused fresh-success results. Preserve final confirmations, boundaries, duplicate/conflict guards, retry identities and snapshot restoration. Isolated test DB/files only; no real data/source mutations, no push/publication or automatic close.",
-        "scope_paths": [
-          "backend/api/project_library_schemas.py",
-          "backend/api/routes_project_library.py",
-          "backend/application/project_library/service.py",
-          "backend/infrastructure/project_library/files.py",
-          "backend/infrastructure/project_library/portability.py",
-          "backend/infrastructure/project_library/restore_conflicts.py",
-          "backend/infrastructure/storage/repositories/project_matrix_draft.py",
-          "docs/architecture/project_library.md",
-          "docs/plans/IMPORT_PROJECTS_SIMPLE_FLOW_20261029.md",
-          "frontend/src/App.test.tsx",
-          "frontend/src/api/projectLibrary.ts",
-          "frontend/src/features/project-library/PortableRestore.tsx",
-          "frontend/src/features/project-library/ProjectImportDestination.test.tsx",
-          "frontend/src/features/project-library/ProjectImportDestination.tsx",
-          "frontend/src/features/project-library/ProjectImportResults.test.tsx",
-          "frontend/src/features/project-library/ProjectImportResults.tsx",
-          "frontend/src/features/project-library/ProjectImportSnapshots.test.tsx",
-          "frontend/src/features/project-library/ProjectImportSnapshots.tsx",
-          "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
-          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-          "frontend/src/features/project-library/ProjectLibraryMember.test.tsx",
-          "frontend/src/features/project-library/project-library.css",
-          "frontend/src/features/project-library/projectImportReview.ts",
-          "tests/integration/test_project_import_destination_api.py",
-          "tests/integration/test_project_library_portability.py",
-          "tests/unit/test_project_matrix_draft_repository.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "2e90a3d636e9d613b61f721139d2995351650078",
-        "started_at": "2026-10-29T10:47:06.903822Z",
-        "updated_at": "2026-10-29T17:15:29.060174Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
-          "stage": "qa",
-          "status": "running",
-          "requires_user": false,
-          "summary": "Goal active. Design: docs/plans/IMPORT_PROJECTS_SIMPLE_FLOW_20261029.md. Destination/API and guided mixed import implemented; source edits uncommitted. Full Python and frontend/build gates running; logs: visualizations/import-simple-flow-20261029. Next: isolated first-use/mixed-sample UI and graph/source integrity, exact diff self-review, local commit/integration. Real 8000 is running: verify/stop its dedicated reload console before primary integration. No real DB startup/mutation, push/publication or automatic Close."
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
-          "subject": "6f2b6f8ee517bd47df32b9daf06a09f1cc9ab373",
-          "summary": "Guided project save location, automatic checking, unified file/snapshot import and compact final consent; private acceptance passed; no real data/source changes, push or publication.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/api/project_library_schemas.py",
-            "backend/api/routes_project_library.py",
-            "backend/application/project_library/service.py",
-            "backend/infrastructure/project_library/files.py",
-            "backend/infrastructure/project_library/portability.py",
-            "backend/infrastructure/project_library/restore_conflicts.py",
-            "docs/architecture/project_library.md",
-            "docs/plans/IMPORT_PROJECTS_SIMPLE_FLOW_20261029.md",
-            "frontend/src/App.test.tsx",
-            "frontend/src/api/projectLibrary.ts",
-            "frontend/src/features/project-library/PortableRestore.tsx",
-            "frontend/src/features/project-library/ProjectImportDestination.test.tsx",
-            "frontend/src/features/project-library/ProjectImportDestination.tsx",
-            "frontend/src/features/project-library/ProjectImportSnapshots.test.tsx",
-            "frontend/src/features/project-library/ProjectImportSnapshots.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-            "frontend/src/features/project-library/project-library.css",
-            "frontend/src/features/project-library/projectImportReview.ts",
-            "tests/integration/test_project_import_destination_api.py",
-            "tests/integration/test_project_library_portability.py"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "name": "Python project library API/destination/portability",
-              "result": "119 passed; isolated DBs; includes independent-LTR batch restore and same-LTR invalidation."
-            },
-            {
-              "status": "passed",
-              "name": "Frontend full gate",
-              "result": "1135 passed, 1 skipped; typecheck/build passed. Final confirmation scroll adjustment revalidated by 46 affected tests, typecheck/build and narrow UI."
-            },
-            {
-              "status": "passed",
-              "name": "Private UI and graph integrity",
-              "result": "First-use setup, automatic review, explicit consent, copies/restores, failure recheck, duplicate/conflict, selection cancellation, search and Matrix save/reload; 2978 rows checked across 64 table families per snapshot; 222 source/input files unchanged. OS picker/opener boundary uses test adapters."
-            },
-            {
-              "status": "passed",
-              "name": "Diff and local safety",
-              "result": "git diff --check; sequential Standards and Spec self-review; normal 8000 stop verified, release 8765 untouched."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "method": "Single-agent implementation with meaningful RED/GREEN evidence."
-            },
-            "reviewer": {
-              "status": "passed",
-              "method": "Sequential self-review, Standards then Spec; not an independent reviewer.",
-              "findings": []
-            },
-            "qa": {
-              "status": "passed",
-              "method": "Single-agent full automated matrix and isolated UI; not independent QA."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "6f2b6f8ee517bd47df32b9daf06a09f1cc9ab373",
-            "primary_before": "7ed0640444d8e3216681169b989d46c23b814762",
-            "integrated_head": "c996d4c332b41282ce78ad8831ae73de5d599ed2",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
