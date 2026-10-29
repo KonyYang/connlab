@@ -97,6 +97,7 @@
           "backend/application/project_library/service.py",
           "backend/infrastructure/project_library/files.py",
           "backend/infrastructure/project_library/portability.py",
+          "backend/infrastructure/project_library/restore_conflicts.py",
           "backend/infrastructure/storage/repositories/project_matrix_draft.py",
           "docs/architecture/project_library.md",
           "docs/plans/IMPORT_PROJECTS_SIMPLE_FLOW_20261029.md",
@@ -121,7 +122,7 @@
         "risk_reasons": [],
         "activation_head": "2e90a3d636e9d613b61f721139d2995351650078",
         "started_at": "2026-10-29T10:47:06.903822Z",
-        "updated_at": "2026-10-29T16:14:16.070991Z",
+        "updated_at": "2026-10-29T16:28:26.068576Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
