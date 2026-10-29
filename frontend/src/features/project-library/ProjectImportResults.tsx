@@ -16,20 +16,20 @@ type Props = {
 const pageSize = 20;
 const needsAttention = (status: string) => status === "failed" || status === "review";
 
-export function ProjectImportResults({ batch, titlesBySource, busy, onOpenMember, onViewLibrary, onRefresh, onResume, onReceiveMore, heading = "3. Receiving Result" }: Props) {
+export function ProjectImportResults({ batch, titlesBySource, busy, onOpenMember, onViewLibrary, onRefresh, onResume, onReceiveMore, heading = "3. Import Results" }: Props) {
   const [location, setLocation] = useState({ batchId: batch.batch_id, page: 1 });
   const items = [...batch.items].sort((a, b) => Number(needsAttention(b.status)) - Number(needsAttention(a.status)));
   const pages = Math.max(1, Math.ceil(items.length / pageSize));
   const page = location.batchId === batch.batch_id ? Math.min(location.page, pages) : 1;
   const running = batch.status === "running";
-  return <section className="library-panel" aria-label="Receiving result">
+  return <section className="library-panel" aria-label="Import results">
     <h2>{heading}</h2>
     <p role="status">{batch.counts.added} added; {batch.counts.already_added} already added; {batch.counts.review} need review; {batch.counts.failed} failed.</p>
     <div className="library-actions">
       {running && <button type="button" disabled={busy} onClick={onRefresh}>Refresh Batch Status</button>}
       {batch.status === "interrupted" && <button type="button" className="primary-action" disabled={busy} onClick={onResume}>Resume Batch</button>}
-      <button type="button" disabled={busy || running || batch.counts.added === 0} onClick={() => onViewLibrary(batch.batch_id)}>View Added Projects</button>
-      <button type="button" disabled={busy || running} onClick={onReceiveMore}>Receive More Projects</button>
+      <button type="button" className={batch.status === "completed" && batch.counts.failed === 0 && batch.counts.review === 0 ? "primary-action" : undefined} disabled={busy || running || batch.counts.added === 0} onClick={() => onViewLibrary(batch.batch_id)}>View Imported Projects</button>
+      <button type="button" disabled={busy || running} onClick={onReceiveMore}>Import More</button>
     </div>
     {items.slice((page - 1) * pageSize, page * pageSize).map(item => {
       // A recovered batch has no preview titles. The basename is display-only; member IDs still own navigation.

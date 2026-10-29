@@ -20,7 +20,7 @@ describe("ProjectImportResults", () => {
     expect(callbacks.onOpenMember).toHaveBeenLastCalledWith("added-member", "batch-one");
     await user.click(screen.getByRole("button", { name: "Open Existing Project" }));
     expect(callbacks.onOpenMember).toHaveBeenLastCalledWith("existing-member", undefined);
-    await user.click(screen.getByRole("button", { name: "View Added Projects" }));
+    await user.click(screen.getByRole("button", { name: "View Imported Projects" }));
     expect(callbacks.onViewLibrary).toHaveBeenCalledWith("batch-one");
     expect(screen.getByText(batch.items[0].source_path).closest("details")).toHaveProperty("open", false);
     expect(screen.queryByRole("navigation", { name: "Import result pages" })).toBeNull();

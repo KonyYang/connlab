@@ -208,9 +208,13 @@ reporting a partially applied copy as complete.
 
 The intended operator sequence is:
 
-1. In Projects, choose **Import Projects**, select source folders, then **Review
-   Projects**. Check project boundaries, loose-file assignments and conflicts;
-   **Add Selected** and **Confirm Add** receive the selected copies. For manual
+1. In Projects, choose **Import Projects**, select one project folder or a parent
+   containing several projects, then **Preview Projects**. The target directory
+   is shown before copying; original folders and files stay in place. Check
+   project boundaries, loose-file assignments and conflicts; **Import Selected (N)**
+   and **Confirm Import** receive the selected copies. A single-project preview
+   omits bulk selection/filter controls, and a single page omits pagination.
+   Changing sources or starting a new preview resets the preview filter. For manual
    layouts, expand **Check Project Boundaries**: **Use This Folder** previews the
    selected root as one project; **Use Subfolders as Projects** previews its child
    folders as separate projects. These explicit choices do not run discovery
@@ -222,9 +226,19 @@ The intended operator sequence is:
    Project Workbench. Receiving documents alone does not confirm test authority.
 4. Before changing computers, use **Prepare to Take** and **Confirm Snapshot**.
    Check that the saved data is current, then copy the complete project root.
-5. On the other computer, use **Take Over a Portable Project**, **Inspect
+5. On the other computer, expand **Other Import Methods**, use **Restore Project
+   Data**, **Inspect
    Project**, **Review Restore** and **Confirm Restore**. Resolve an offered
    conflict explicitly. Review any missing dependencies before continuing tests.
+
+**Other Import Methods** also retains **Link Existing Folders** for in-place
+registration. Restoring saved ConnLab data is distinct from copying ordinary
+project folders; neither method bypasses its final confirmation or conflict checks.
+After a fresh completed import without failed or review items, the source chooser
+and other methods are hidden so **View Imported Projects** is the primary action,
+with **Import More** starting a clean selection. Errors and unfinished/review results
+remain visible. Reopening with a successful saved batch keeps the fresh chooser
+available and puts the previous result under **Last Import**.
 
 An old manual folder without a snapshot remains a valid material-intake source.
 Recovering structured test data from an old database requires the compatible

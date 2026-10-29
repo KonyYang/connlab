@@ -200,7 +200,7 @@ describe("Portable project restore", () => {
     const onOpenMember = vi.fn();
     vi.mocked(api.restorePortableProject).mockResolvedValue({ status: "restored", member: { ...member, project_id: "project-1" }, warnings: [] });
     render(<PortableRestore onOpenMember={onOpenMember} />);
-    await user.click(screen.getByText("Take Over a Portable Project"));
+    expect(screen.getByRole("heading", { name: "Restore Project Data" })).toBeTruthy();
     await user.type(screen.getByLabelText("Portable project folder"), "E:/received");
     await user.click(screen.getByRole("button", { name: "Inspect Project" }));
     expect(await screen.findByText(/8 files/)).toBeTruthy();
@@ -222,7 +222,6 @@ describe("Portable project restore", () => {
     vi.mocked(api.planPortableRestore).mockResolvedValue(reviewed);
     vi.mocked(api.restorePortableProject).mockResolvedValue({ status: "restored", member: { ...member, project_id: "project-1", can_continue: true }, warnings: [], backup_member_id: "backup-3" });
     render(<PortableRestore onOpenMember={onOpenMember} />);
-    await user.click(screen.getByText("Take Over a Portable Project"));
     await user.type(screen.getByLabelText("Portable project folder"), "E:/received");
     await user.click(screen.getByRole("button", { name: "Inspect Project" }));
     const choice = await screen.findByRole("radio", { name: "Replace Working Copy" });
@@ -249,7 +248,6 @@ describe("Portable project restore", () => {
     vi.mocked(api.planPortableRestore).mockResolvedValue({ ...conflict, status: "ready", resolution: "keep_as_history", plan_id: "history-plan", fingerprint: "history-proof" });
     vi.mocked(api.restorePortableProject).mockResolvedValue({ status: "history_kept", member: { ...member, member_id: "history-member", project_id: "different-project", can_continue: false, is_history: true }, warnings: [], backup_member_id: null });
     render(<PortableRestore onOpenMember={onOpenMember} />);
-    await user.click(screen.getByText("Take Over a Portable Project"));
     await user.type(screen.getByLabelText("Portable project folder"), "E:/alternate");
     await user.click(screen.getByRole("button", { name: "Inspect Project" }));
     const history = await screen.findByRole("radio", { name: "Keep as History" });
@@ -273,7 +271,6 @@ describe("Portable project restore", () => {
     vi.mocked(api.planPortableRestore).mockResolvedValueOnce(reviewed).mockResolvedValue({ ...reviewed, plan_id: "new-plan", fingerprint: "new-proof", target_revision: 4, backup_path: "D:/library/history/recovery-4" });
     vi.mocked(api.restorePortableProject).mockRejectedValueOnce(new Error("Target changed since preview.")).mockResolvedValue({ status: "restored", member, warnings: [] });
     render(<PortableRestore onOpenMember={vi.fn()} />);
-    await user.click(screen.getByText("Take Over a Portable Project"));
     await user.type(screen.getByLabelText("Portable project folder"), "E:/received");
     await user.click(screen.getByRole("button", { name: "Inspect Project" }));
     await user.click(await screen.findByRole("radio", { name: "Replace Working Copy" }));
@@ -293,7 +290,6 @@ describe("Portable project restore", () => {
     const user = userEvent.setup();
     vi.mocked(api.inspectPortableProject).mockResolvedValue({ ...restore, status: "conflict", resolution_options: ["replace_working_copy"], target_revision: 3 });
     render(<PortableRestore onOpenMember={vi.fn()} />);
-    await user.click(screen.getByText("Take Over a Portable Project"));
     await user.type(screen.getByLabelText("Portable project folder"), "E:/received");
     await user.click(screen.getByRole("button", { name: "Inspect Project" }));
     await user.click(await screen.findByRole("radio", { name: "Replace Working Copy" }));
@@ -307,7 +303,6 @@ describe("Portable project restore", () => {
     const user = userEvent.setup();
     vi.mocked(api.inspectPortableProject).mockResolvedValue({ ...restore, status: "conflict", resolution_options: ["replace_working_copy", "keep_as_history"], resolution: null, source_signature: null, target_revision: 2, backup_path: null, blockers: ["Required source file is missing.", "A test record refers to another project."] });
     render(<PortableRestore onOpenMember={vi.fn()} />);
-    await user.click(screen.getByText("Take Over a Portable Project"));
     await user.type(screen.getByLabelText("Portable project folder"), "E:/incomplete");
     await user.click(screen.getByRole("button", { name: "Inspect Project" }));
     expect(await screen.findByText("Required source file is missing.")).toBeTruthy();
@@ -320,7 +315,6 @@ describe("Portable project restore", () => {
     const user = userEvent.setup();
     vi.mocked(api.inspectPortableProject).mockResolvedValue({ ...restore, status: "conflict", blockers: ["Both copies contain changes. Choose the correct source before restoring."] });
     render(<PortableRestore onOpenMember={vi.fn()} />);
-    await user.click(screen.getByText("Take Over a Portable Project"));
     await user.type(screen.getByLabelText("Portable project folder"), "E:/received");
     await user.click(screen.getByRole("button", { name: "Inspect Project" }));
     expect(await screen.findByText("Both copies contain changes. Choose the correct source before restoring.")).toBeTruthy();

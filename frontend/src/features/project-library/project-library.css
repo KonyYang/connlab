@@ -32,7 +32,7 @@
 .library-files-table table { min-width: 520px; }
 .library-files-table th:first-child { width: 75%; }
 .library-review { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-canvas); }
-.library-editor, .library-restore[open] { display: grid; gap: 12px; }
+.library-editor, .library-restore { display: grid; gap: 12px; }
 .library-facts { display: grid; gap: 8px; margin: 0; }
 .library-facts > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
 .library-facts dd, .library-location-pair dd { margin: 0; }

@@ -53,7 +53,7 @@ it.each(["", "batch-1"])("preserves list and import return context for batch=%s 
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
   await user.click(await screen.findByRole("button", { name: "Import Projects" }));
-  await user.click(await screen.findByText("More Import Options"));
+  await user.click(await screen.findByText("Other Import Methods"));
   await user.click(screen.getByRole("button", { name: "Link Existing Folders" }));
   await user.click(await screen.findByRole("button", { name: "Back to Import Projects" }));
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
@@ -93,7 +93,7 @@ it("keeps old folder-linking links accessible and returns to the common import f
   render(<App />);
   expect(await screen.findByRole("heading", { name: "Link Existing Folders" })).toBeTruthy();
   await userEvent.setup().click(screen.getByRole("button", { name: "Back to Import Projects" }));
-  await userEvent.setup().click(await screen.findByText("More Import Options"));
+  await userEvent.setup().click(await screen.findByText("Other Import Methods"));
   expect(screen.getByRole("button", { name: "Link Existing Folders" })).toBeTruthy();
   expect(window.location.pathname).toBe("/projects/import");
   await userEvent.setup().click(screen.getByRole("button", { name: "Link Existing Folders" }));
