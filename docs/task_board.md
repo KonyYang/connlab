@@ -86,7 +86,35 @@
       "closed_at": "2026-10-29T00:11:03.627184Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_EQUIPMENT_MERGED_TABLE_20261030": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-table-merged\\connlab",
+      "branch": "codex/equipment-table-merged",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_EQUIPMENT_MERGED_TABLE_20261030",
+        "summary": "Recognize horizontally merged equipment tables and explain reports without equipment tables",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Repair Equipment List copy updates for merged columns, actionable missing-table errors, regression tests and attachment verification; no original report, registry or template mutation",
+        "scope_paths": [
+          "backend/infrastructure/office/test_report_document_gateway.py",
+          "tests/unit/test_test_report_document_gateway.py",
+          "tests/integration/test_tools_equipment_report_api.py",
+          "docs/PROJECT_CONTEXT.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "a85458b181fe8f27a40da82080957c1747741ebf",
+        "started_at": "2026-10-29T22:49:34.452588Z",
+        "updated_at": "2026-10-29T22:49:34.452588Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
