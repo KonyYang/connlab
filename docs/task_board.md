@@ -71,7 +71,7 @@
   "tasks": {
     "TASK_PROJECT_IMPORT_ENTRY_20261028": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
@@ -120,86 +120,17 @@
         "risk_reasons": [],
         "activation_head": "265625bc429234bc9e90ca09a7d705d0fc00cca4",
         "started_at": "2026-10-28T14:26:30.121108Z",
-        "updated_at": "2026-10-28T23:53:27.177621Z",
+        "updated_at": "2026-10-29T00:06:21.088535Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
           "stage": "revision",
           "status": "running",
-          "summary": "User authorizes one Recycle entry combining deleted and conflict-retained records, reason labels, existing read-only details/restore/conflict checks. Frontend composition only, isolated DB QA; no real-data/source mutations, push or publication.",
+          "summary": "User annotation requests removing Import Projects from the Recycle view only. Preserve the sole import action in normal Projects and show it again after Back to Projects. Local frontend visibility change only; no real data writes, push/publication or automatic Close.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_PROJECT_IMPORT_ENTRY_20261028",
-          "subject": "e7f5f7318820e4f603beec0fd926ff29ecea3cfe",
-          "summary": "One Recycle entry combines deleted and conflict-retained project records with source/reason labels, original IDs, read-only details and Restore. Existing backend states, preview tokens, stale/conflict/blocking checks and keep-as-retained choice preserved. Frontend-only; isolated real restore/stale-preview validation, no real business/source mutations, no push/publication or automatic Close.",
-          "scope_ok": true,
-          "changed_paths": [
-            "docs/architecture/project_library.md",
-            "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.test.tsx",
-            "frontend/src/features/projects-registry/ProjectRegistryManagementDialog.tsx",
-            "frontend/src/features/projects-registry/ProjectRegistryManagementPanel.test.tsx",
-            "frontend/src/features/projects-registry/ProjectRegistryManagementPanel.tsx",
-            "frontend/src/pages/ProjectListPage.test.tsx",
-            "frontend/src/pages/ProjectListPage.tsx"
-          ],
-          "validation": [
-            {
-              "name": "Public UI RED/GREEN and affected regression",
-              "status": "passed",
-              "result": "Desired combined list initially failed because retained record was missing. 30 affected tests passed; four new panel cases cover partial failure/Retry, same-number independent IDs and reason search, latest-revision dedup and stale list response suppression. Existing dialog/hook tests preserve exact restore flags and stale/blocking behavior.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\merged-recycle-targeted.log"
-            },
-            {
-              "name": "Complete frontend gate",
-              "status": "passed",
-              "result": "1116 passed, 1 skipped; default concurrency; tsc -b and Vite production build passed on final product bytes.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\merged-recycle-frontend-qa.log"
-            },
-            {
-              "name": "Existing backend restore contract regression",
-              "status": "passed",
-              "result": "1 passed: trash/restore conflict and read-only detail API consistency on pytest temporary SQLite. Existing dependency deprecation warning only, no backend code changes.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\merged-recycle-api-qa.log"
-            },
-            {
-              "name": "Standards/Spec and actual isolated UI",
-              "status": "passed",
-              "result": "Current agent sequential self-review, no open findings or independent-agent assertion. Actual private SQLite mixed list, original read-only workspace, no-conflict restore, same-LTR conflict, stale409 requiring refresh with no partial transition, fresh restore retaining displaced record in same list, cancellation and612x804 layout checked. Business fields/LTR records and 4 original source files unchanged; owned tab/viewport/service cleaned.",
-              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\project-entry-20261028\\merged-recycle-review-ui.json"
-            },
-            {
-              "name": "Integration safety",
-              "status": "passed",
-              "result": "7 frontend/doc paths, exact reviewed hashes, no Python/backend/API/schema bytes. Primary clean; development/release services not signalled and owned18745 stopped. No real business DB/config/source writes."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Current agent, bounded frontend composition and public behavioral RED/GREEN."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Current agent separate sequential Standards and Spec self-review."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Current agent full frontend gate, existing backend contract test and actual isolated SQLite restore/conflict/stale UI acceptance."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "e7f5f7318820e4f603beec0fd926ff29ecea3cfe",
-            "primary_before": "0e29d3b70281ce7028b92b69049cc996d2b1c9f8",
-            "integrated_head": "6b497256239c5c1f0aabf56c5159710691497247",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
