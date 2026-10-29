@@ -122,15 +122,15 @@
         "risk_reasons": [],
         "activation_head": "2e90a3d636e9d613b61f721139d2995351650078",
         "started_at": "2026-10-29T10:47:06.903822Z",
-        "updated_at": "2026-10-29T16:28:26.068576Z",
+        "updated_at": "2026-10-29T16:52:28.195509Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
-          "stage": "revision",
+          "stage": "qa",
           "status": "running",
-          "summary": "User requests goal-mode implementation of simplified import onboarding: reuse instance project save location without DB relocation, automatic review after source selection, explicit final confirmation, clearer first-run setup, preserve conflicts/boundaries/snapshot recovery; isolated validation only, no real data mutation, push/publication or Close.",
-          "requires_user": false
+          "requires_user": false,
+          "summary": "Goal active. Design: docs/plans/IMPORT_PROJECTS_SIMPLE_FLOW_20261029.md. Destination/API and guided mixed import implemented; source edits uncommitted. Full Python and frontend/build gates running; logs: visualizations/import-simple-flow-20261029. Next: isolated first-use/mixed-sample UI and graph/source integrity, exact diff self-review, local commit/integration. Real 8000 is running: verify/stop its dedicated reload console before primary integration. No real DB startup/mutation, push/publication or automatic Close."
         },
         "report": null
       }
