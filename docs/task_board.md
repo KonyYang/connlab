@@ -101,15 +101,17 @@
         "route": "sol_build_review_qa",
         "scope": "Repair Equipment List copy updates for merged columns, actionable missing-table errors, regression tests and attachment verification; no original report, registry or template mutation",
         "scope_paths": [
+          "backend/infrastructure/office/equipment_report_table.py",
           "backend/infrastructure/office/test_report_document_gateway.py",
-          "tests/unit/test_test_report_document_gateway.py",
+          "docs/PROJECT_CONTEXT.md",
           "tests/integration/test_tools_equipment_report_api.py",
-          "docs/PROJECT_CONTEXT.md"
+          "tests/unit/test_test_report_document_gateway.py",
+          "tests/unit/test_tools_equipment_report_service.py"
         ],
         "risk_reasons": [],
         "activation_head": "a85458b181fe8f27a40da82080957c1747741ebf",
         "started_at": "2026-10-29T22:49:34.452588Z",
-        "updated_at": "2026-10-29T23:38:29.157898Z",
+        "updated_at": "2026-10-29T23:40:31.220001Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
