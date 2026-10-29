@@ -243,7 +243,7 @@ function BusinessProjectListPage({
         </label>}
       </div>
       <nav className="project-registry-areas" aria-label="Project management areas">
-        {onImport && <button className="primary-action" type="button" disabled={management.busy} title="Add existing project folders. Review before receiving; original files stay in place." onClick={onImport}>Import Projects</button>}
+        {area === "active" && onImport && <button className="primary-action" type="button" disabled={management.busy} title="Add existing project folders. Review before receiving; original files stay in place." onClick={onImport}>Import Projects</button>}
         {area !== "active" && <button className="registry-area-button ui-secondary-action" type="button" disabled={management.busy} onClick={() => setArea("active")}>Back to Projects</button>}
         <button className="registry-area-button ui-secondary-action" type="button" aria-pressed={area === "recycle"} disabled={management.busy} onClick={() => setArea("recycle")}>Recycle</button>
       </nav>
