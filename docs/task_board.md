@@ -77,7 +77,39 @@
       "closed_at": "2026-10-28T14:02:09.933828Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_IMPORT_PROJECTS_UX_20261029": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
+      "branch": "codex/project-import-entry-20261028",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
+        "summary": "Simplify Import Projects selection, preview, results and restore entry",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Frontend-only minimal UX: clear project-folder choice and copy guidance, consistent import wording, hide unnecessary single-project bulk controls and one-page pagination, one-level Restore Project Data entry under other methods, focused fresh-success results. Preserve final confirmations, boundaries, duplicate/conflict guards, retry identities and snapshot restoration. Isolated test DB/files only; no real data/source mutations, no push/publication or automatic close.",
+        "scope_paths": [
+          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+          "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
+          "frontend/src/features/project-library/ProjectImportResults.tsx",
+          "frontend/src/features/project-library/ProjectImportResults.test.tsx",
+          "frontend/src/features/project-library/PortableRestore.tsx",
+          "frontend/src/features/project-library/ProjectLibraryMember.test.tsx",
+          "frontend/src/features/project-library/project-library.css",
+          "docs/architecture/project_library.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "2e90a3d636e9d613b61f721139d2995351650078",
+        "started_at": "2026-10-29T10:47:06.903822Z",
+        "updated_at": "2026-10-29T10:47:06.903822Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
