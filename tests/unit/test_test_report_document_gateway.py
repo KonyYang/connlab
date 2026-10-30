@@ -382,6 +382,54 @@ def test_synchronize_equipment_list_updates_only_the_equipment_table(
     assert not updated.element.body.xpath(".//w:keepNext")
 
 
+@pytest.mark.parametrize("cell_content", ["no_runs", "empty_run", "color_only", "explicit_override"])
+def test_equipment_update_preserves_cleared_cell_typography(tmp_path: Path, cell_content: str) -> None:
+    source, output = tmp_path / "source.docx", tmp_path / "updated.docx"
+    document = Document()
+    document.add_paragraph("7. EQUIPMENTS")
+    table = document.add_table(rows=2, cols=5)
+    for cell, label in zip(table.rows[0].cells,
+                           ("Item", "Manufacturer", "ID Number", "Last Cal.", "Cal. Due")):
+        cell.text = label
+    for cell in table.rows[1].cells:
+        paragraph = cell.paragraphs[0]
+        run = paragraph.add_run("old equipment")
+        run.font.name, run.font.size = "Arial", Pt(11)
+        paragraph._p.get_or_add_pPr().append(deepcopy(run._r.rPr))
+        paragraph.clear()
+        if cell_content != "no_runs":
+            run = paragraph.add_run("" if cell_content == "empty_run" else "old")
+            if cell_content == "color_only":
+                color = OxmlElement("w:color")
+                color.set(qn("w:val"), "000000")
+                run._r.get_or_add_rPr().append(color)
+            elif cell_content == "explicit_override":
+                run.font.name, run.font.size, run.italic = "Calibri", Pt(9), True
+    document.save(source)
+    original = source.read_bytes()
+    header_xml = table.rows[0]._tr.xml
+    row = EquipmentListReportRow(source_reference="DG-Q-0033", status="matched", item="Meter",
+        manufacturer="Maker", id_number="DG-Q-0033", last_calibration="01-Jan-2025",
+        calibration_due="01-Jan-2026", source_sheet="All", expired=False)
+    gateway = TestReportDocumentGateway()
+    gateway.synchronize_equipment_list(source_path=source, output_path=output, rows=(row, row))
+
+    updated = Document(output).tables[0]
+    assert updated.rows[0]._tr.xml == header_xml
+    expected_font, expected_size = ("Calibri", 9) if cell_content == "explicit_override" else ("Arial", 11)
+    for updated_row in updated.rows[1:]:
+        for cell in updated_row.cells:
+            run = cell.paragraphs[0].runs[0]
+            assert run.font.name == expected_font
+            assert run.font.size.pt == expected_size
+            if cell_content == "explicit_override":
+                assert run.italic is True
+    assert source.read_bytes() == original
+    repeated = tmp_path / "repeated.docx"
+    gateway.synchronize_equipment_list(source_path=output, output_path=repeated, rows=(row, row))
+    assert repeated.read_bytes() == output.read_bytes()
+
+
 @pytest.mark.parametrize("operation", ["llcr", "equipment"])
 def test_section_update_preserves_approved_content_and_package_parts(tmp_path: Path, operation: str) -> None:
     gateway = TestReportDocumentGateway()

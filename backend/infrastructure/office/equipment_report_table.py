@@ -127,6 +127,19 @@ def _write_field(cell: _Cell, value: str) -> None:
     paragraph = deepcopy(cell.paragraphs[0]._p) if cell.paragraphs else None
     run_properties = next((deepcopy(run._r.rPr) for p in cell.paragraphs
                            for run in p.runs if run._r.rPr is not None), None)
+    mark_properties = (paragraph.pPr.find(qn("w:rPr"))
+                       if paragraph is not None and paragraph.pPr is not None else None)
+    if mark_properties is not None:
+        # Clearing text in Word can leave typography only on the paragraph mark.
+        # Carry it into the replacement text; existing direct formatting wins.
+        inherited = deepcopy(mark_properties)
+        for prop in run_properties if run_properties is not None else ():
+            previous = inherited.find(prop.tag)
+            if previous is not None:
+                inherited.replace(previous, prop)
+            else:
+                inherited.append(prop)
+        run_properties = inherited
     for child in list(cell._tc):
         if child.tag != qn("w:tcPr"):
             cell._tc.remove(child)

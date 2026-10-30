@@ -142,6 +142,9 @@ Do not use a dated snapshot as a substitute for the code.
   not block rebuilding from the valid header. Other chapters' XML, revision history, review-display
   settings and document password protection remain unchanged. No document-wide revision acceptance
   or synthetic tracking of the generated equipment rows is performed.
+- Refilled equipment text retains the cell's paragraph-mark typography when Word has removed the
+  old text runs. Existing direct run formatting takes precedence; updates do not select a fixed font
+  or fall back to the document default merely because an operator cleared the cell contents.
 - Unsupported/unreadable documents or unavailable calibration data stop the download with guidance;
   only the request-owned temporary uploads/output are cleaned. Leaving Tools suppresses late downloads.
   Acceptance covers both selection modes, content preservation, original-file protection, failure
