@@ -71,6 +71,7 @@ export function ToolsPage({
           ...value,
           [tool]: { ...value[tool], progress },
         }));
+      });
       if (!isCurrentRun()) return;
       const fileName = response.fileName ?? fallbackName(file);
       downloadBlob(response, fileName);
