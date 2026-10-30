@@ -6,7 +6,7 @@ type Props = {
   titlesBySource: Record<string, string>;
   busy: boolean;
   onOpenMember: (id: string, batchId?: string) => void;
-  onViewLibrary: (batchId: string) => void;
+  onViewLibrary: () => void;
   onRefresh: () => void;
   onResume: () => void;
   onReceiveMore: () => void;
@@ -16,7 +16,7 @@ type Props = {
 const pageSize = 20;
 const needsAttention = (status: string) => status === "failed" || status === "review";
 
-export function ProjectImportResults({ batch, titlesBySource, busy, onOpenMember, onViewLibrary, onRefresh, onResume, onReceiveMore, heading = "3. Import Results" }: Props) {
+export function ProjectImportResults({ batch, titlesBySource, busy, onOpenMember, onViewLibrary, onRefresh, onResume, onReceiveMore, heading = "Import Results" }: Props) {
   const [location, setLocation] = useState({ batchId: batch.batch_id, page: 1 });
   const items = [...batch.items].sort((a, b) => Number(needsAttention(b.status)) - Number(needsAttention(a.status)));
   const pages = Math.max(1, Math.ceil(items.length / pageSize));
@@ -28,7 +28,7 @@ export function ProjectImportResults({ batch, titlesBySource, busy, onOpenMember
     <div className="library-actions">
       {running && <button type="button" disabled={busy} onClick={onRefresh}>Refresh Batch Status</button>}
       {batch.status === "interrupted" && <button type="button" className="primary-action" disabled={busy} onClick={onResume}>Resume Batch</button>}
-      <button type="button" className={batch.status === "completed" && batch.counts.failed === 0 && batch.counts.review === 0 ? "primary-action" : undefined} disabled={busy || running || batch.counts.added === 0} onClick={() => onViewLibrary(batch.batch_id)}>View Imported Projects</button>
+      <button type="button" className={batch.status === "completed" && batch.counts.failed === 0 && batch.counts.review === 0 ? "primary-action" : undefined} disabled={busy || running} onClick={() => onViewLibrary()}>View Projects</button>
       <button type="button" disabled={busy || running} onClick={onReceiveMore}>Import More</button>
     </div>
     {items.slice((page - 1) * pageSize, page * pageSize).map(item => {
@@ -38,7 +38,7 @@ export function ProjectImportResults({ batch, titlesBySource, busy, onOpenMember
         <strong>{title}</strong>
         {item.status !== "added" && <p>{item.message}</p>}
         <details><summary>Source Location</summary><p>{item.source_path}</p></details>
-        {item.member_id && <button type="button" disabled={busy || running} onClick={() => onOpenMember(item.member_id!, item.status === "added" ? batch.batch_id : undefined)}>Open {title}</button>}
+        {item.member_id && <button type="button" disabled={busy || running} onClick={() => onOpenMember(item.member_id!)}>Open {title}</button>}
       </div>;
     })}
     {pages > 1 && <nav className="library-actions" aria-label="Import result pages">
