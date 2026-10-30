@@ -95,7 +95,38 @@
       "closed_at": "2026-10-29T22:42:59.921841Z"
     }
   ],
-  "tasks": {}
+  "tasks": {
+    "TASK_IMPORT_FLOW_COMPACT_20261030": {
+      "slot": "micro",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
+      "branch": "codex/project-import-entry-20261028",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_IMPORT_FLOW_COMPACT_20261030",
+        "summary": "Simplify import controls and confirmation; return to full Projects",
+        "tier": "micro",
+        "route": "sol_direct",
+        "scope": "Localized frontend import presentation and navigation only; retain backend conflict, snapshot, destination and retry protections. Isolated validation only; no real data changes, push or publication.",
+        "scope_paths": [
+          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+          "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
+          "frontend/src/features/project-library/ProjectImportDestination.tsx",
+          "frontend/src/features/project-library/ProjectImportDestination.test.tsx",
+          "frontend/src/features/project-library/ProjectImportResults.tsx",
+          "frontend/src/features/project-library/ProjectImportResults.test.tsx",
+          "frontend/src/features/project-library/project-library.css"
+        ],
+        "risk_reasons": [],
+        "activation_head": "58acc1cf38e50703749e448138824bfdbd8f3415",
+        "started_at": "2026-10-30T00:00:32.976018Z",
+        "updated_at": "2026-10-30T00:00:32.976018Z",
+        "checkpoint": null,
+        "report": null
+      }
+    }
+  }
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
