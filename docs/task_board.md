@@ -185,6 +185,32 @@
           }
         }
       }
+    },
+    "TASK_EQUIPMENT_TABLE_FONT_20261030": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-table-merged\\connlab",
+      "branch": "codex/equipment-table-font-20261030",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_EQUIPMENT_TABLE_FONT_20261030",
+        "summary": "Preserve equipment table typography after clearing and refilling cells",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Preserve source cell paragraph-mark and text-run formatting while rebuilding Section 7 equipment rows. Regression tests and independent document copies only; do not overwrite operator reports, calibration resources or modify unrelated import UI.",
+        "scope_paths": [
+          "backend/infrastructure/office/equipment_report_table.py",
+          "tests/unit/test_test_report_document_gateway.py",
+          "docs/PROJECT_CONTEXT.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "e0a83b9dac80e428c9e8385a25b81599a00833f2",
+        "started_at": "2026-10-30T05:24:11.372348Z",
+        "updated_at": "2026-10-30T05:24:11.372348Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
