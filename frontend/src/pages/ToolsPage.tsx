@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type ChangeEvent, type ReactElement } from
 import { CustomerReportProgress } from "../components/common/CustomerReportProgress";
 import {
   downloadStandaloneCustomerReport,
-  encryptStandaloneCopy,
   readStandaloneCustomerReportJob,
   startStandaloneCustomerReport,
   type BlobDownloadResponse,
@@ -10,9 +9,10 @@ import {
 } from "../api/client";
 import { EquipmentListTool } from "../features/tools/EquipmentListTool";
 import { MechanicalSummaryTool } from "../features/tools/MechanicalSummaryTool";
+import { EncryptionTool } from "../features/tools/EncryptionTool";
 import "../tools.css";
 
-type ToolKey = "customer-report" | "encrypt-copy";
+type ToolKey = "customer-report";
 
 type ToolState = {
   file: File | null;
@@ -24,7 +24,6 @@ type ToolState = {
 
 const INITIAL_STATE: Record<ToolKey, ToolState> = {
   "customer-report": { file: null, busy: false, error: null, downloadedFileName: null, progress: null },
-  "encrypt-copy": { file: null, busy: false, error: null, downloadedFileName: null, progress: null },
 };
 
 const CUSTOMER_REPORT_POLL_DELAY_MS = 750;
@@ -36,12 +35,10 @@ export function ToolsPage({
   const runningTools = useRef(new Set<ToolKey>());
   const runTokens = useRef<Record<ToolKey, number>>({
     "customer-report": 0,
-    "encrypt-copy": 0,
   });
 
   useEffect(() => () => {
     runTokens.current["customer-report"] += 1;
-    runTokens.current["encrypt-copy"] += 1;
   }, []);
 
   function selectFile(tool: ToolKey, event: ChangeEvent<HTMLInputElement>): void {
@@ -69,16 +66,14 @@ export function ToolsPage({
     const token = ++runTokens.current[tool];
     const isCurrentRun = () => runTokens.current[tool] === token;
     try {
-      const response = tool === "customer-report"
-        ? await runCustomerReportJob(file, isCurrentRun, (progress) => {
-          setState((value) => ({
-            ...value,
-            [tool]: { ...value[tool], progress },
-          }));
-        })
-        : await encryptStandaloneCopy(file);
+      const response = await runCustomerReportJob(file, isCurrentRun, (progress) => {
+        setState((value) => ({
+          ...value,
+          [tool]: { ...value[tool], progress },
+        }));
+      });
       if (!isCurrentRun()) return;
-      const fileName = response.fileName ?? fallbackName(tool, file);
+      const fileName = response.fileName ?? fallbackName(file);
       downloadBlob(response, fileName);
       setState((value) => ({
         ...value,
@@ -118,16 +113,7 @@ export function ToolsPage({
           onSelect={(event) => selectFile("customer-report", event)}
           onRun={() => void run("customer-report")}
         />
-        <ToolCard
-          title="Encrypt a Copy"
-          accept=".doc,.docx,.xls,.xlsx,.pptx"
-          state={state["encrypt-copy"]}
-          inputLabel="Select Office File"
-          actionLabel="Create Encrypted Copy"
-          pickAndRun
-          onSelect={(event) => selectFile("encrypt-copy", event)}
-          onRun={() => void run("encrypt-copy")}
-        />
+        <EncryptionTool />
         <EquipmentListTool />
         <MechanicalSummaryTool />
         <article className="tools-card">
@@ -220,15 +206,11 @@ function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
-function fallbackName(tool: ToolKey, file: File): string {
-  if (tool === "customer-report") {
-    const dot = file.name.lastIndexOf(".");
-    const stem = dot > 0 ? file.name.slice(0, dot) : file.name;
-    const suffix = dot > 0 ? file.name.slice(dot) : ".docx";
-    return `${stem}-CR${suffix}`;
-  }
+function fallbackName(file: File): string {
   const dot = file.name.lastIndexOf(".");
-  return `${dot > 0 ? file.name.slice(0, dot) : file.name}_Secured${dot > 0 ? file.name.slice(dot) : ""}`;
+  const stem = dot > 0 ? file.name.slice(0, dot) : file.name;
+  const suffix = dot > 0 ? file.name.slice(dot) : ".docx";
+  return `${stem}-CR${suffix}`;
 }
 
 function downloadBlob(response: BlobDownloadResponse, fileName: string): void {

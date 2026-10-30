@@ -98,6 +98,28 @@ Do not use a dated snapshot as a substitute for the code.
 
 ## Architecture seams
 
+### Standalone Tools folder encryption
+
+- `Create Encrypted Copy` keeps its single-file behavior. `Choose Folder` selects a folder and
+  subfolders, previews the supported Word/Excel count, and requires `Encrypt Selected Folder` before
+  processing. Only `.doc`, `.docx`, `.xls`, `.xlsx` are included; other types remain untouched and are
+  counted as ignored. Office temporary files are skipped. Single-file PowerPoint support is unchanged.
+- Folder mode reuses `ToolsService.encrypt_copy` and the existing verified Office adapter without
+  changing encryption or password rules. Excel still requires a DL-prefixed filename. It uploads
+  copies rather than accepting server/local directory paths; nothing is written back to the selected
+  folder, project registry or History.
+- `/api/tools/encrypt-folder` validates one relative-path tree, Windows/Unicode duplicate names,
+  encrypted-file/directory conflicts and upload bounds before encryption. Limits are 500 files,
+  100 MiB per file and 500 MiB total. Per-file failures do not discard successful copies; failed or
+  skipped plaintext inputs never enter the result archive.
+- The ZIP preserves relative folder paths and `_Secured` names. Its UTF-8 `EncryptionSummary.csv`
+  records every submitted outcome without passwords and escapes spreadsheet formulas. An all-failed
+  batch returns only this report with an explicit zero-success warning. Browser downloads retain
+  ordinary duplicate-name handling; staging is request-owned and cleaned after download/failure.
+- Acceptance covers nested and Unicode names, unchanged source bytes, existing password derivation,
+  partial/all failure, invalid paths and size limits, cancellation/retry, duplicate submissions and
+  suppressed late downloads after leaving Tools. Real Office/browser checks use disposable fixtures.
+
 ### Standalone Tools temperature curves
 
 - `Tools > Generate Temperature-Rise Curves` opens `/tools/temperature-rise`. It reads scanner

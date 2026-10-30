@@ -67,6 +67,9 @@
 }
 
 .tools-card-hint { font-size: 13px; }
+.tools-encryption-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.tools-folder-selection { display: grid; gap: 10px; min-width: 0; overflow-wrap: anywhere; }
+.tools-feedback-warning { color: var(--color-warning) !important; }
 
 .tools-feedback { font-size: 14px; overflow-wrap: anywhere; }
 .tools-feedback-error { color: var(--color-danger) !important; }

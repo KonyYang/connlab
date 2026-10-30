@@ -31,9 +31,11 @@ from backend.application.test_report_template_resource import (
 from backend.application.tools_service import ToolsError, ToolsService
 from backend.application.tools_equipment_report_service import ToolsEquipmentReportService
 from backend.shared.config import Settings
+from backend.api.routes_tools_folder_encryption import router as folder_encryption_router
 
 
 router = APIRouter(prefix="/api/tools", tags=["tools"])
+router.include_router(folder_encryption_router)
 
 
 class CustomerReportJobResponse(BaseModel):
