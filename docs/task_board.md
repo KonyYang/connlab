@@ -188,11 +188,11 @@
     },
     "TASK_EQUIPMENT_TABLE_FONT_20261030": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-table-merged\\connlab",
       "branch": "codex/equipment-table-font-20261030",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "70492d0f52d1f9d84011802e51d0785e7d18a251",
       "task": {
         "task_id": "TASK_EQUIPMENT_TABLE_FONT_20261030",
         "summary": "Preserve equipment table typography after clearing and refilling cells",
@@ -207,9 +207,60 @@
         "risk_reasons": [],
         "activation_head": "e0a83b9dac80e428c9e8385a25b81599a00833f2",
         "started_at": "2026-10-30T05:24:11.372348Z",
-        "updated_at": "2026-10-30T05:24:11.372348Z",
+        "updated_at": "2026-10-30T05:31:38.079724Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "roles": {
+            "reviewer": {
+              "detail": "Separate same-agent Standards and Spec passes of exact three-path diff; zero unresolved findings; not an independent review.",
+              "status": "passed"
+            },
+            "qa": {
+              "detail": "Final 127-test affected matrix and real attachment validation passed on final bytes.",
+              "status": "passed"
+            },
+            "developer": {
+              "detail": "Minimal shared Word adapter fix with regression seam at synchronize_equipment_list.",
+              "status": "passed"
+            }
+          },
+          "changed_paths": [
+            "backend/infrastructure/office/equipment_report_table.py",
+            "docs/PROJECT_CONTEXT.md",
+            "tests/unit/test_test_report_document_gateway.py"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "TDD",
+              "detail": "Before fix: three typography failures and one direct-override pass. After fix: eight focused preservation cases passed."
+            },
+            {
+              "status": "passed",
+              "name": "Affected QA",
+              "detail": "127 tests across five equipment/API/Word modules; one existing Starlette deprecation warning. Sandbox attempt stopped after its file-link restriction; final run with required permission passed in 67.52 seconds."
+            },
+            {
+              "status": "passed",
+              "name": "Actual attachment pipeline",
+              "detail": "Original project Rev_A, cleared private copy, and other-computer EquipmentUpdated each produced four Arial 11 pt rows. Header XML, outside-section XML, all other package parts and all source hashes unchanged."
+            }
+          ],
+          "scope_ok": true,
+          "version": 1,
+          "summary": "Retain paragraph-mark typography when refilling cleared equipment cells; direct text-run formatting wins. Real source, cleared source and other-computer output verify Arial 11 pt with unchanged headers, other sections and original files.",
+          "task_id": "TASK_EQUIPMENT_TABLE_FONT_20261030",
+          "schema": "connlab.sol-task-report",
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "d1ee9f3c58be943f5ec4e7e6536e2e7020e93b7c",
+            "primary_before": "1f5ca75550182dd65ea9cbc180c201210c943dfc",
+            "integrated_head": "70492d0f52d1f9d84011802e51d0785e7d18a251",
+            "recovered": false
+          },
+          "subject": "d1ee9f3c58be943f5ec4e7e6536e2e7020e93b7c"
+        }
       }
     }
   }
