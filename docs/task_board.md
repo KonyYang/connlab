@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
+    "task_id": "TASK_EQUIPMENT_MERGED_TABLE_20261030",
     "tier": "standard",
-    "subject": "6f2b6f8ee517bd47df32b9daf06a09f1cc9ab373",
-    "summary": "Simplify Import Projects selection, preview, results and restore entry",
+    "subject": "33f26b1814b4ecca95614ea3d4f0fdfe755d1766",
+    "summary": "Recognize horizontally merged equipment tables and explain reports without equipment tables",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested closing this completed task; preserve local commits. Existing no-push/no-publication instruction remains in force. Local close only; --publish-close omitted.",
-    "closed_at": "2026-10-29T22:42:59.921841Z"
+    "decision_ref": "User explicitly requested final Close of the completed equipment-table source-code repair after 123 passing tests and successful browser upload/download validation on 2026-10-30.",
+    "closed_at": "2026-10-30T00:00:01.969757Z"
   },
   "retained_history": [
     {
@@ -84,101 +84,18 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested closing this task, retaining local commits, with no push or publication. Local close only; --publish-close intentionally omitted.",
       "closed_at": "2026-10-29T00:11:03.627184Z"
+    },
+    {
+      "task_id": "TASK_IMPORT_PROJECTS_UX_20261029",
+      "tier": "standard",
+      "subject": "6f2b6f8ee517bd47df32b9daf06a09f1cc9ab373",
+      "summary": "Simplify Import Projects selection, preview, results and restore entry",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested closing this completed task; preserve local commits. Existing no-push/no-publication instruction remains in force. Local close only; --publish-close omitted.",
+      "closed_at": "2026-10-29T22:42:59.921841Z"
     }
   ],
-  "tasks": {
-    "TASK_EQUIPMENT_MERGED_TABLE_20261030": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "C:\\Users\\White\\.codex\\worktrees\\equipment-table-merged\\connlab",
-      "branch": "codex/equipment-table-merged",
-      "resources": [],
-      "integrated_head": "d28198db59b1a8cf74024e84aed4ba3bd35ab5f7",
-      "task": {
-        "task_id": "TASK_EQUIPMENT_MERGED_TABLE_20261030",
-        "summary": "Recognize horizontally merged equipment tables and explain reports without equipment tables",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Repair Equipment List copy updates for merged columns, actionable missing-table errors, regression tests and attachment verification; no original report, registry or template mutation",
-        "scope_paths": [
-          "backend/infrastructure/office/equipment_report_table.py",
-          "backend/infrastructure/office/test_report_document_gateway.py",
-          "docs/PROJECT_CONTEXT.md",
-          "tests/integration/test_tools_equipment_report_api.py",
-          "tests/unit/test_test_report_document_gateway.py",
-          "tests/unit/test_tools_equipment_report_service.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "a85458b181fe8f27a40da82080957c1747741ebf",
-        "started_at": "2026-10-29T22:49:34.452588Z",
-        "updated_at": "2026-10-29T23:58:20.230283Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_EQUIPMENT_MERGED_TABLE_20261030",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User approved section-7-only clear-and-rebuild, flexible heading whitespace/punctuation, revision-aware recognition and preservation of other revisions/settings.",
-          "requires_user": false
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_EQUIPMENT_MERGED_TABLE_20261030",
-          "subject": "33f26b1814b4ecca95614ea3d4f0fdfe755d1766",
-          "summary": "Approved source-code fix: flexible Section 7 EQUIPMENTS anchor, current-view tracked revision handling, complete old-row clearing/rebuild from uploaded EquipmentIDs; other chapters/revisions/settings retained. Actual Tools browser upload and protected download verified.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/infrastructure/office/equipment_report_table.py",
-            "backend/infrastructure/office/test_report_document_gateway.py",
-            "docs/PROJECT_CONTEXT.md",
-            "tests/integration/test_tools_equipment_report_api.py",
-            "tests/unit/test_tools_equipment_report_service.py"
-          ],
-          "validation": [
-            {
-              "name": "TDD: 9 new public API regression cases failed before the fix, then passed; outside identical-table mis-selection reproduced",
-              "status": "passed"
-            },
-            {
-              "name": "Final affected 5-module backend QA: 123 passed on exact subject 33f26b18; existing Starlette deprecation warning only",
-              "status": "passed"
-            },
-            {
-              "name": "Browser Tools action: selected original protected Rev_A and EquipmentID files, clicked Update, verified actual completed download and expected catalog-only review feedback",
-              "status": "passed"
-            },
-            {
-              "name": "Downloaded protected report verified: exactly 32 ordered equipment rows and correct dates; all old target rows rebuilt; outside body XML and 51 other package parts unchanged; external insertion/deletion revisions and settings preserved; originals retain SHA256",
-              "status": "passed"
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "method": "same agent TDD and focused writer/API tests"
-            },
-            "reviewer": {
-              "status": "passed",
-              "method": "same agent separate Standards and Spec passes; exact tracked diff and new module reviewed; no unresolved findings; not independent"
-            },
-            "qa": {
-              "status": "passed",
-              "method": "same agent final affected backend matrix once plus real-browser upload/download verification on isolated app with read-only configured calibration source"
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "33f26b1814b4ecca95614ea3d4f0fdfe755d1766",
-            "primary_before": "a98bb9c044fe379c430d500a01d221db79567b7a",
-            "integrated_head": "d28198db59b1a8cf74024e84aed4ba3bd35ab5f7",
-            "recovered": false
-          }
-        }
-      }
-    }
-  }
+  "tasks": {}
 }
 ```
 <!-- CONNLAB_EXECUTION_CONTROL_END -->
