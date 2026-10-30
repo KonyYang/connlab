@@ -98,11 +98,11 @@
   "tasks": {
     "TASK_IMPORT_FLOW_COMPACT_20261030": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "8fef12518136e1a6bfcf0c4c944f4d5b5886da0d",
       "task": {
         "task_id": "TASK_IMPORT_FLOW_COMPACT_20261030",
         "summary": "Simplify import controls and confirmation; return to full Projects",
@@ -123,9 +123,67 @@
         "risk_reasons": [],
         "activation_head": "58acc1cf38e50703749e448138824bfdbd8f3415",
         "started_at": "2026-10-30T00:00:32.976018Z",
-        "updated_at": "2026-10-30T00:18:13.033182Z",
+        "updated_at": "2026-10-30T00:21:27.442454Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_IMPORT_FLOW_COMPACT_20261030",
+          "subject": "963b31d00f452951dc3434f438dd633bc132edf9",
+          "summary": "Import page uses Settings destination only, one selection checkbox per project and one final confirmation. Preserve conflict/restore protections and return all import exits to full Projects; isolated UI, files and snapshot verified. No real-data changes, push or publication.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/App.test.tsx",
+            "frontend/src/App.tsx",
+            "frontend/src/features/project-library/ProjectImportDestination.test.tsx",
+            "frontend/src/features/project-library/ProjectImportDestination.tsx",
+            "frontend/src/features/project-library/ProjectImportResults.test.tsx",
+            "frontend/src/features/project-library/ProjectImportResults.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+            "frontend/src/features/project-library/project-library.css"
+          ],
+          "validation": [
+            {
+              "name": "Frontend related regression",
+              "status": "passed",
+              "detail": "99 library/catalog/list + 20 App navigation; affected 44 rerun after final result-heading edit."
+            },
+            {
+              "name": "Python isolation",
+              "status": "passed",
+              "detail": "116 API/portability/runtime tests; private DB/temp/cache only."
+            },
+            {
+              "name": "Typecheck and build",
+              "status": "passed"
+            },
+            {
+              "name": "Isolated UI and integrity",
+              "status": "passed",
+              "detail": "2 imported, conflict skipped, previous project retained; 64 snapshot tables/326 rows/4 assets equal; 107 source-copy files unchanged."
+            },
+            {
+              "name": "Diff review",
+              "status": "passed",
+              "detail": "Sequential current-agent requirements and standards passes; git diff --check clean."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "method": "TDD, implementation, sequential self-review and isolated validation by current agent; no independent review claimed"
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "963b31d00f452951dc3434f438dd633bc132edf9",
+            "primary_before": "2c3fcaf516432a97b14ecf164f80a8fd696128d4",
+            "integrated_head": "8fef12518136e1a6bfcf0c4c944f4d5b5886da0d",
+            "recovered": false
+          }
+        }
       }
     }
   }
