@@ -13,15 +13,15 @@ const batch: LibraryBatch = { batch_id: "batch-one", status: "completed", counts
 ] };
 
 describe("ProjectImportResults", () => {
-  it("uses readable names while preserving the added and existing member navigation context", async () => {
+  it("uses readable names while returning added and existing members to the complete project list", async () => {
     const callbacks = props(batch), user = userEvent.setup();
     render(<ProjectImportResults {...callbacks} titlesBySource={{ [batch.items[0].source_path]: "Renamed Project" }} />);
     await user.click(screen.getByRole("button", { name: "Open Renamed Project" }));
-    expect(callbacks.onOpenMember).toHaveBeenLastCalledWith("added-member", "batch-one");
+    expect(callbacks.onOpenMember).toHaveBeenLastCalledWith("added-member");
     await user.click(screen.getByRole("button", { name: "Open Existing Project" }));
-    expect(callbacks.onOpenMember).toHaveBeenLastCalledWith("existing-member", undefined);
-    await user.click(screen.getByRole("button", { name: "View Imported Projects" }));
-    expect(callbacks.onViewLibrary).toHaveBeenCalledWith("batch-one");
+    expect(callbacks.onOpenMember).toHaveBeenLastCalledWith("existing-member");
+    await user.click(screen.getByRole("button", { name: "View Projects" }));
+    expect(callbacks.onViewLibrary).toHaveBeenCalledWith();
     expect(screen.getByText(batch.items[0].source_path).closest("details")).toHaveProperty("open", false);
     expect(screen.queryByRole("navigation", { name: "Import result pages" })).toBeNull();
   });

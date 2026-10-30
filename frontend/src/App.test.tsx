@@ -22,7 +22,7 @@ beforeEach(() => {
   vi.mocked(listLegacyProjects).mockResolvedValue([]);
 });
 
-it.each(["/projects/import", "/tools/project-library"])("opens project receiving from %s and returns to Projects", async (path) => {
+it.each(["/projects/import", "/projects/import?batch=old-batch", "/tools/project-library"])("opens project receiving from %s and returns to all Projects", async (path) => {
   vi.mocked(libraryApi.getLibraryRuntime).mockResolvedValue({ library_root: "D:/test-library", projects_root: "D:/test-library/projects", data_root: "D:/test-library/data", database_path: "D:/test-library/data/connlab.sqlite3", configured: true, format_version: 1 });
   window.history.replaceState({}, "", path);
   render(<App />);
@@ -30,12 +30,13 @@ it.each(["/projects/import", "/tools/project-library"])("opens project receiving
   expect(await screen.findByRole("button", { name: "Choose Project Folders" })).toBeTruthy();
   expect(screen.getByTestId("active-area").textContent).toBe("projects");
   await userEvent.setup().click(screen.getByRole("button", { name: "Back to Projects" }));
+  expect(window.location.pathname + window.location.search).toBe("/projects");
   await userEvent.setup().click(await screen.findByRole("button", { name: "Import Projects" }));
   expect(window.location.pathname).toBe("/projects/import");
   expect(await screen.findByRole("button", { name: "Choose Project Folders" })).toBeTruthy();
 });
 
-it.each(["", "batch-1"])("preserves list and import return context for batch=%s before continuing to Matrix", async (batchId) => {
+it.each(["", "batch-1"])("preserves browsing context but returns from import to all Projects for batch=%s", async (batchId) => {
   const record: libraryApi.LibraryMember = { member_id: "member-1", project_id: "project-1", ltr_number: "DL-2026-09-032", title: "CPI-450", folder_path: "D:/test-library/projects/CPI", revision: 1, batch_id: batchId || null, snapshot_status: "current", snapshot_created_at: "2026-10-27", warnings: [], can_continue: true };
   vi.mocked(libraryApi.listLibraryMembers).mockResolvedValue({ items: [record] });
   vi.mocked(listProjectRegistryRows).mockResolvedValue([{ project_id: "project-1", display_project_id: "DL-2026-09-032", display_project_id_kind: "registered", has_registered_ltr: true, requestor: "Lab", status: "active", progress: 0, sample_description: "CPI-450" }]);
@@ -53,11 +54,11 @@ it.each(["", "batch-1"])("preserves list and import return context for batch=%s 
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
   expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
   await user.click(await screen.findByRole("button", { name: "Import Projects" }));
-  await user.click(await screen.findByText("Advanced"));
+  await user.click(await screen.findByText("More Options"));
   await user.click(screen.getByRole("button", { name: "Link Folders Without Copying" }));
   await user.click(await screen.findByRole("button", { name: "Back to Import Projects" }));
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
-  expect(window.location.pathname + window.location.search).toBe(`/projects${suffix}`);
+  expect(window.location.pathname + window.location.search).toBe("/projects");
   await user.click(await screen.findByText("Project Files", {exact:true}));
   await user.click(screen.getByRole("button", {name:"Browse Files"}));
   await user.click(await screen.findByRole("button", { name: "Matrix" }));
@@ -93,7 +94,7 @@ it("keeps old folder-linking links accessible and returns to the common import f
   render(<App />);
   expect(await screen.findByRole("heading", { name: "Link Existing Folders" })).toBeTruthy();
   await userEvent.setup().click(screen.getByRole("button", { name: "Back to Import Projects" }));
-  await userEvent.setup().click(await screen.findByText("Advanced"));
+  await userEvent.setup().click(await screen.findByText("More Options"));
   expect(screen.getByRole("button", { name: "Link Folders Without Copying" })).toBeTruthy();
   expect(window.location.pathname).toBe("/projects/import");
   await userEvent.setup().click(screen.getByRole("button", { name: "Link Folders Without Copying" }));

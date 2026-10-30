@@ -20,7 +20,7 @@ const plan = {
 async function enterSources(user: ReturnType<typeof userEvent.setup>, value: string) {
   const editor = await screen.findByLabelText("Source paths");
   const section = editor.closest("details");
-  if (section && !section.open) await user.click(screen.getByText("Advanced"));
+  if (section && !section.open) await user.click(screen.getByText("Enter Paths Manually"));
   await user.type(editor, value);
 }
 
@@ -33,6 +33,29 @@ beforeEach(() => {
   vi.mocked(api.startLibraryBatch).mockResolvedValue({ batch_id: "batch-1", status: "completed", counts: { added: 1, already_added: 0, review: 0, failed: 0 }, items: [{ source_path: "D:/old/Force", status: "added", message: "Added", member_id: "member-1" }] });
 });
 
+it("uses one selection per project and one final confirmation, then returns without a batch filter", async () => {
+  const user = userEvent.setup(), onViewLibrary = vi.fn();
+  vi.mocked(api.pickLibraryFolder).mockResolvedValue("D:/old");
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={onViewLibrary} onOpenMember={vi.fn()} />);
+  await user.click(await screen.findByRole("button", { name: "Choose Project Folders" }));
+  const table = await screen.findByRole("table", { name: "Projects to receive" });
+  expect(within(table).getAllByRole("checkbox")).toHaveLength(2);
+  expect(screen.getByRole("checkbox", { name: "Select Cable test" })).toHaveProperty("disabled", true);
+  await user.click(screen.getByRole("button", { name: "Resolve conflict for Cable test" }));
+  await user.click(screen.getByRole("button", { name: "Keep as a Separate Project" }));
+  expect(screen.getByRole("checkbox", { name: "Select Cable test" })).toHaveProperty("checked", true);
+  await user.click(screen.getByRole("checkbox", { name: "Select Cable test" }));
+  expect(api.startLibraryBatch).not.toHaveBeenCalled();
+  const confirmation = screen.getByRole("region", { name: "Confirm import selection" });
+  expect(confirmation.textContent).toContain("D:/managed/projects");
+  expect(screen.queryByRole("dialog", { name: "Confirm Import" })).toBeNull();
+  await user.click(within(confirmation).getByRole("button", { name: "Confirm Import (1)" }));
+  await user.click(await screen.findByRole("button", { name: "View Projects" }));
+  expect(api.startLibraryBatch).toHaveBeenCalledTimes(1);
+  expect(api.startLibraryBatch).toHaveBeenCalledWith(expect.objectContaining({ selected: [plan.items[0].source_path], keep_separate: [] }));
+  expect(onViewLibrary).toHaveBeenCalledWith();
+});
+
 it("checks selected folders automatically and copies nothing before the final confirmation", async () => {
   const user = userEvent.setup();
   vi.mocked(api.pickLibraryFolder).mockResolvedValue("D:/old");
@@ -41,12 +64,11 @@ it("checks selected folders automatically and copies nothing before the final co
   await screen.findByRole("table", { name: "Projects to receive" });
   expect(api.scanLibrarySources).toHaveBeenCalledWith(["D:/old"], expect.any(AbortSignal));
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
-  await user.click(screen.getByRole("button", { name: /^Import Projects \(\d+\)$/ }));
-  const confirmation = screen.getByRole("dialog", { name: "Confirm Import" });
+  await screen.findByRole("button", { name: /^Confirm Import \(\d+\)$/ });
+  const confirmation = screen.getByRole("region", { name: "Confirm import selection" });
   expect(confirmation.textContent).toContain("D:/managed/projects");
-  expect(document.activeElement).toBe(within(confirmation).getByRole("heading", { name: "Confirm Import" }));
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
-  await user.click(within(confirmation).getByRole("button", { name: "Cancel" }));
+  await user.click(screen.getByRole("button", { name: "Back to Projects" }));
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
 });
 
@@ -56,8 +78,8 @@ it("uses the server-reviewed location in confirmation when Settings changed afte
   vi.mocked(api.planLibraryIntake).mockResolvedValue({ ...plan, projects_root: "D:/Current Save Location", items: [{ ...plan.items[0], target_path: "D:/Current Save Location/Force" }] } as api.LibraryIntakePlan);
   render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
   await user.click(await screen.findByRole("button", { name: "Choose Project Folders" }));
-  await user.click(await screen.findByRole("button", { name: "Import Projects (1)" }));
-  const confirmation = screen.getByRole("dialog", { name: "Confirm Import" });
+  await screen.findByRole("button", { name: "Confirm Import (1)" });
+  const confirmation = screen.getByRole("region", { name: "Confirm import selection" });
   expect(confirmation.textContent).toContain("D:/Current Save Location");
   expect(confirmation.textContent).not.toContain("D:/managed/projects");
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
@@ -76,22 +98,24 @@ const savedResult: api.PortableRestoreResult = { status: "restored", warnings: s
   warnings: savedProject.warnings, can_continue: true,
 } };
 
-it("offers first-use location setup before allowing any source checks", async () => {
-  const user = userEvent.setup();
-  const runtime: api.LibraryRuntime = { library_root: "D:/app", projects_root: "D:/unused-default", data_root: "D:/app/Data", database_path: "D:/app/Data/connlab.sqlite3", configured: false, format_version: 1 };
-  vi.mocked(api.getLibraryRuntime).mockResolvedValue(runtime);
-  vi.mocked(api.saveLibraryDestination).mockResolvedValue({ ...runtime, configured: true, projects_root: "D:/Projects Dev" });
+it("uses Settings as the only destination editor and blocks import until it is configured", async () => {
+  vi.mocked(api.getLibraryRuntime).mockResolvedValue({ library_root: "D:/app", projects_root: "D:/unused-default", data_root: "D:/app/Data", database_path: "D:/app/Data/connlab.sqlite3", configured: false, format_version: 1 });
   render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
-  const input = await screen.findByLabelText("Save imported projects to");
-  expect(screen.queryByText("D:/unused-default")).toBeNull();
+  expect(await screen.findByText(/Project default save location in Settings/)).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Choose Project Folders" })).toBeNull();
-  await user.type(input, "D:/Projects Dev");
+  expect(screen.queryByLabelText("Save imported projects to")).toBeNull();
+  expect(screen.queryByText("D:/unused-default")).toBeNull();
   expect(api.saveLibraryDestination).not.toHaveBeenCalled();
-  await user.click(screen.getByRole("button", { name: "Use This Location" }));
-  expect(await screen.findByRole("button", { name: "Choose Project Folders" })).toBeTruthy();
-  expect(screen.getByText("D:/Projects Dev")).toBeTruthy();
   expect(api.scanLibrarySources).not.toHaveBeenCalled();
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
+});
+
+it("does not offer destination controls when Settings already supplies the location", async () => {
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
+  await screen.findByRole("button", { name: "Choose Project Folders" });
+  expect(screen.queryByRole("heading", { name: "Save imported projects to" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Change" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Open Folder" })).toBeNull();
 });
 
 it("can retry a failed initial setup load without reloading or writing project data", async () => {
@@ -117,7 +141,7 @@ it("blocks mixed overlapping boundaries even when another folder sorts between t
   vi.mocked(api.inspectPortableProject).mockResolvedValue(root);
   render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
   await user.click(await screen.findByRole("button", { name: "Choose Project Folders" }));
-  expect(await screen.findByRole("button", { name: "Import Projects (3)" })).toHaveProperty("disabled", true);
+  expect(await screen.findByRole("button", { name: "Confirm Import (3)" })).toHaveProperty("disabled", true);
   expect(screen.getByRole("alert").textContent).toContain("contain one another");
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
   expect(api.restorePortableProject).not.toHaveBeenCalled();
@@ -134,10 +158,10 @@ it("requires a fresh backend conflict review before selecting a saved project fo
   await user.click(await screen.findByRole("button", { name: "Choose Project Folders" }));
   await user.click(await screen.findByRole("radio", { name: "Keep as History" }));
   expect(api.planPortableRestore).toHaveBeenCalledWith("D:/snapshot", "keep_as_history", expect.any(AbortSignal));
-  await user.click(await screen.findByRole("button", { name: "Import Projects (1)" }));
-  expect(screen.getByRole("dialog", { name: "Confirm Import" }).textContent).toContain("current LTR owner stays unchanged");
+  await screen.findByRole("button", { name: "Confirm Import (1)" });
+  expect(screen.getByText("This copy will be kept for browsing. The current LTR owner stays unchanged.")).toBeTruthy();
   expect(api.restorePortableProject).not.toHaveBeenCalled();
-  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Confirm Import" }));
+  await user.click(within(screen.getByRole("region", { name: "Confirm import selection" })).getByRole("button", { name: /^Confirm Import \(\d+\)$/ }));
   await screen.findByRole("button", { name: "Open Snapshot project" });
   expect(api.restorePortableProject).toHaveBeenCalledWith({ plan_id: "portable-plan", fingerprint: "retention-review", resolution: "keep_as_history" });
 });
@@ -153,12 +177,12 @@ it("recognizes saved test data from the ordinary chooser and restores only after
   await waitFor(() => expect(api.inspectPortableProject).toHaveBeenCalledWith("D:/snapshot", expect.any(AbortSignal)));
   expect(api.planLibraryIntake).not.toHaveBeenCalled();
   expect(api.restorePortableProject).not.toHaveBeenCalled();
-  await user.click(await screen.findByRole("button", { name: "Import Projects (1)" }));
-  const confirmation = screen.getByRole("dialog", { name: "Confirm Import" });
+  await screen.findByRole("button", { name: "Confirm Import (1)" });
+  const confirmation = screen.getByRole("region", { name: "Confirm import selection" });
   expect(confirmation.textContent).toContain("saved test data");
-  expect(confirmation.textContent).toContain("One original source file is unavailable.");
+  expect(screen.getByText("One original source file is unavailable.")).toBeTruthy();
   expect(api.restorePortableProject).not.toHaveBeenCalled();
-  await user.click(within(confirmation).getByRole("button", { name: "Confirm Import" }));
+  await user.click(within(confirmation).getByRole("button", { name: /^Confirm Import \(\d+\)$/ }));
   await screen.findByRole("button", { name: "Open Snapshot project" });
   expect(api.restorePortableProject).toHaveBeenCalledWith({ plan_id: "portable-plan", fingerprint: "snapshot-fingerprint" });
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
@@ -177,15 +201,15 @@ it("imports a mixed selection through one confirmation without sending snapshots
   const onView = vi.fn();
   render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={onView} onOpenMember={vi.fn()} />);
   await user.click(await screen.findByRole("button", { name: "Choose Project Folders" }));
-  await user.click(await screen.findByRole("button", { name: "Import Projects (2)" }));
+  await screen.findByRole("button", { name: "Confirm Import (2)" });
   expect(api.startLibraryBatch).not.toHaveBeenCalled();
   expect(api.restorePortableProject).not.toHaveBeenCalled();
-  await user.click(within(screen.getByRole("dialog", { name: "Confirm Import" })).getByRole("button", { name: "Confirm Import" }));
+  await user.click(within(screen.getByRole("region", { name: "Confirm import selection" })).getByRole("button", { name: /^Confirm Import \(\d+\)$/ }));
   await screen.findByRole("button", { name: "Open Snapshot project" });
   expect(screen.getByRole("button", { name: "Open Force test" })).toBeTruthy();
   expect(api.planLibraryIntake).toHaveBeenCalledWith(["D:/old/Force"], expect.any(AbortSignal));
   expect(api.startLibraryBatch).toHaveBeenCalledWith(expect.objectContaining({ selected: ["D:/old/Force"] }));
-  await user.click(screen.getByRole("button", { name: "View Imported Projects" }));
+  await user.click(screen.getByRole("button", { name: "View Projects" }));
   expect(onView).toHaveBeenCalledWith();
 });
 
@@ -200,14 +224,14 @@ it("rechecks only a failed saved project and never repeats successful file intak
   vi.mocked(api.restorePortableProject).mockRejectedValueOnce(new Error("The source became unavailable.")).mockResolvedValue(savedResult);
   render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
   await user.click(await screen.findByRole("button", { name: "Choose Project Folders" }));
-  await user.click(await screen.findByRole("button", { name: "Import Projects (2)" }));
-  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Confirm Import" }));
+  await screen.findByRole("button", { name: "Confirm Import (2)" });
+  await user.click(within(screen.getByRole("region", { name: "Confirm import selection" })).getByRole("button", { name: /^Confirm Import \(\d+\)$/ }));
   expect(await screen.findByRole("button", { name: "Open Force test" })).toBeTruthy();
   expect(screen.getByText("The source became unavailable.")).toBeTruthy();
   await user.click(screen.getByRole("button", { name: "Check Failed Projects Again" }));
-  await user.click(await screen.findByRole("button", { name: "Import Projects (1)" }));
+  await screen.findByRole("button", { name: "Confirm Import (1)" });
   expect(api.restorePortableProject).toHaveBeenCalledTimes(1);
-  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Confirm Import" }));
+  await user.click(within(screen.getByRole("region", { name: "Confirm import selection" })).getByRole("button", { name: /^Confirm Import \(\d+\)$/ }));
   await screen.findByRole("button", { name: "Open Snapshot project" });
   expect(api.startLibraryBatch).toHaveBeenCalledTimes(1);
   expect(api.restorePortableProject).toHaveBeenLastCalledWith({ plan_id: "portable-plan", fingerprint: "fresh-retry-review" });
@@ -220,13 +244,13 @@ describe("ProjectLibraryImport", () => {
     await enterSources(user, "D:/old");
     await user.click(screen.getByRole("button", { name: "Check Paths" }));
     await screen.findByRole("table", { name: "Projects to receive" });
-    await user.click(screen.getByRole("button", { name: /^Import Projects \(\d+\)$/ }));
-    await user.click(screen.getByRole("button", { name: "Confirm Import" }));
+    await screen.findByRole("button", { name: /^Confirm Import \(\d+\)$/ });
+    await user.click(screen.getByRole("button", { name: /^Confirm Import \(\d+\)$/ }));
     await screen.findByRole("button", { name: "Open Force test" });
     expect(screen.queryByText(/^Last Import/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Choose Project Folders", exact: true })).toBeNull();
-    expect(screen.queryByText("Advanced")).toBeNull();
-    expect(screen.getByRole("button", { name: "View Imported Projects" })).toHaveProperty("disabled", false);
+    expect(screen.queryByText("Enter Paths Manually")).toBeNull();
+    expect(screen.getByRole("button", { name: "View Projects" })).toHaveProperty("disabled", false);
     await user.click(screen.getByRole("button", { name: "Import More" }));
     expect(screen.getByLabelText("Source paths")).toHaveProperty("value", "");
     expect(screen.queryByRole("region", { name: "Import results" })).toBeNull();
@@ -245,7 +269,7 @@ describe("ProjectLibraryImport", () => {
     expect(screen.getByRole("button", { name: "Choose Project Folders", exact: true })).toBeTruthy();
     await userEvent.setup().click(history);
     await userEvent.setup().click(screen.getByRole("button", { name: "Open DL-2026-09-032 CPI-450" }));
-    expect(onOpenMember).toHaveBeenCalledWith("existing-cpi", "previous-completed");
+    expect(onOpenMember).toHaveBeenCalledWith("existing-cpi");
     expect(api.startLibraryBatch).not.toHaveBeenCalled();
     expect(api.resumeLibraryBatch).not.toHaveBeenCalled();
   });
@@ -287,12 +311,12 @@ describe("ProjectLibraryImport", () => {
     expect(screen.queryByRole("button", { name: "Previous" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
     await user.click(screen.getByRole("checkbox", { name: "Select Force test" }));
-    expect(screen.getByRole("button", { name: "Import Projects (0)" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Confirm Import (0)" })).toHaveProperty("disabled", true);
     await user.click(screen.getByRole("checkbox", { name: "Select Force test" }));
-    await user.click(screen.getByRole("button", { name: "Import Projects (1)" }));
-    expect(screen.getByRole("dialog", { name: "Confirm Import" })).toBeTruthy();
+    await screen.findByRole("button", { name: "Confirm Import (1)" });
+    expect(screen.getByRole("region", { name: "Confirm import selection" })).toBeTruthy();
     expect(api.startLibraryBatch).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: "Back to Projects" }));
     expect(api.startLibraryBatch).not.toHaveBeenCalled();
   });
 
@@ -318,13 +342,13 @@ describe("ProjectLibraryImport", () => {
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
     await enterSources(user, "D:/old");
     await user.click(screen.getByRole("button", { name: "Check Paths" }));
-    await screen.findByRole("button", { name: "Import Projects (21)" });
+    await screen.findByRole("button", { name: "Confirm Import (21)" });
     await user.click(screen.getByRole("button", { name: "Clear Selection" }));
-    expect(screen.getByRole("button", { name: "Import Projects (0)" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Confirm Import (0)" })).toHaveProperty("disabled", true);
     await user.click(screen.getByRole("button", { name: "Select Ready Projects" }));
     await user.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByRole("checkbox", { name: "Select Project 20" })).toHaveProperty("checked", true);
-    expect(screen.getByRole("button", { name: "Import Projects (21)" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Confirm Import (21)" })).toBeTruthy();
     expect(api.startLibraryBatch).not.toHaveBeenCalled();
   });
 
@@ -339,7 +363,7 @@ describe("ProjectLibraryImport", () => {
     await user.click(screen.getByRole("button", { name: "Check Paths" }));
     await screen.findByRole("table", { name: "Projects to receive" });
     expect(screen.getByText(/Nothing needs to be imported/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /^Import Projects \(\d+\)$/ })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: /^Confirm Import \(\d+\)$/ })).toHaveProperty("disabled", true);
     expect(screen.queryByRole("button", { name: "Open Existing Cable test" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Open Existing Force test" }));
     expect(onOpenMember).toHaveBeenCalledWith("existing-1");
@@ -357,7 +381,9 @@ describe("ProjectLibraryImport", () => {
     expect(api.startLibraryBatch).not.toHaveBeenCalled();
   });
 
-  it("receives only selected new projects in a mixed preview and locks navigation during confirmation", async () => {
+  it("receives only selected new projects and locks navigation while importing", async () => {
+    let finish!: (value: api.LibraryBatch) => void;
+    vi.mocked(api.startLibraryBatch).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
     vi.mocked(api.planLibraryIntake).mockResolvedValue({ ...plan, items: [plan.items[0], { ...plan.items[1], status: "already_added", can_keep_separate: false, existing_member_id: "old-cable" }] } as api.LibraryIntakePlan);
     const user = userEvent.setup();
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
@@ -366,9 +392,11 @@ describe("ProjectLibraryImport", () => {
     await screen.findByRole("table", { name: "Projects to receive" });
     expect(screen.getByText(/Already added projects will be kept/)).toBeTruthy();
     expect(screen.getByRole("checkbox", { name: "Select Cable test" })).toHaveProperty("checked", false);
-    await user.click(screen.getByRole("button", { name: /^Import Projects \(\d+\)$/ }));
+    await screen.findByRole("button", { name: /^Confirm Import \(\d+\)$/ });
+    await user.click(screen.getByRole("button", { name: /^Confirm Import \(\d+\)$/ }));
     expect(screen.getByRole("button", { name: "Open Existing Cable test" })).toHaveProperty("disabled", true);
-    await user.click(screen.getByRole("button", { name: "Confirm Import" }));
+    expect(screen.getByRole("button", { name: "Back to Projects" })).toHaveProperty("disabled", true);
+    await act(async () => finish({ batch_id: "batch-1", status: "completed", counts: { added: 1, already_added: 0, review: 0, failed: 0 }, items: [{ source_path: "D:/old/Force", status: "added", message: "Added", member_id: "member-1" }] }));
     await screen.findByText(/1 added/);
     expect(api.startLibraryBatch).toHaveBeenCalledWith(expect.objectContaining({ selected: ["D:/old/Force"], keep_separate: [] }));
   });
@@ -392,7 +420,7 @@ describe("ProjectLibraryImport", () => {
     expect(screen.getByRole("table", { name: "Projects to receive" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Remove D:/two from selection" }));
     expect(screen.queryByRole("table", { name: "Projects to receive" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Import Projects (0)" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Confirm Import (0)" })).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Check Paths" })).toHaveProperty("disabled", true);
   });
 
@@ -437,14 +465,15 @@ describe("ProjectLibraryImport", () => {
     await enterSources(user, root.source_path);
     await user.click(screen.getByRole("button", { name: "Check Paths" }));
     await screen.findByRole("table", { name: "Projects to receive" });
+    await user.click(screen.getByText("More Options"));
     const boundary = screen.getByRole("group", { name: "Project boundary Manual project" });
     expect(within(boundary).getByText(/complete folder/)).toBeTruthy();
     await user.click(within(boundary).getByRole("button", { name: "Import as One Project" }));
     expect(await screen.findByRole("checkbox", { name: "Select Manual project" })).toHaveProperty("checked", true);
     expect(api.scanLibrarySources).toHaveBeenCalled();
     expect(api.planLibraryIntake).toHaveBeenLastCalledWith([root.source_path], expect.any(AbortSignal));
-    await user.click(screen.getByRole("button", { name: /^Import Projects \(\d+\)$/ }));
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await screen.findByRole("button", { name: /^Confirm Import \(\d+\)$/ });
+    await user.click(screen.getByRole("button", { name: "Back to Projects" }));
     expect(api.startLibraryBatch).not.toHaveBeenCalled();
   });
 
@@ -458,6 +487,7 @@ describe("ProjectLibraryImport", () => {
     await enterSources(user, root.source_path);
     await user.click(screen.getByRole("button", { name: "Check Paths" }));
     await screen.findByRole("table", { name: "Projects to receive" });
+    await user.click(screen.getByText("More Options"));
     await user.click(screen.getByRole("button", { name: "Find Projects Inside" }));
     expect(await screen.findByText("300 found; 300 selected.")).toBeTruthy();
     expect(screen.getByText("Page 1 of 15")).toBeTruthy();
@@ -475,6 +505,7 @@ describe("ProjectLibraryImport", () => {
     await user.click(screen.getByRole("button", { name: "Check Paths" }));
     expect(await screen.findByText(/Incomplete results/)).toBeTruthy();
     expect(api.planLibraryIntake).not.toHaveBeenCalled();
+    await user.click(screen.getByText("More Options"));
     await user.click(screen.getByRole("button", { name: "Import as One Project" }));
     await screen.findByRole("table", { name: "Projects to receive" });
     expect(screen.queryByText(/Incomplete results/)).toBeNull();
@@ -495,11 +526,13 @@ describe("ProjectLibraryImport", () => {
     await enterSources(user, root.source_path);
     await user.click(screen.getByRole("button", { name: "Check Paths" }));
     await screen.findByRole("table", { name: "Projects to receive" });
+    await user.click(screen.getByText("More Options"));
     await user.click(screen.getByRole("button", { name: "Import as One Project" }));
     expect(screen.getByLabelText("Source paths")).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Import as One Project" })).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Find Projects Inside" })).toHaveProperty("disabled", true);
-    expect(screen.getByRole("button", { name: "Import Projects (0)" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Confirm Import (0)" })).toHaveProperty("disabled", true);
+    await user.click(screen.getByText("More Options"));
     await user.click(screen.getByRole("button", { name: "Find Projects Inside" }));
     expect(api.planLibraryIntake).toHaveBeenCalledTimes(2);
     expect(api.startLibraryBatch).not.toHaveBeenCalled();
@@ -519,7 +552,7 @@ describe("ProjectLibraryImport", () => {
     vi.mocked(api.getLibraryBatch).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
     localStorage.setItem("connlab.projectLibrary.lastBatch:D:/managed/projects", "old-batch");
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
-    await screen.findByText("D:/managed/projects");
+    await screen.findByRole("button", { name: "Choose Project Folders" });
     const user = userEvent.setup();
     await enterSources(user, "D:/fresh");
     await user.click(screen.getByRole("button", { name: "Check Paths" }));
@@ -544,8 +577,8 @@ describe("ProjectLibraryImport", () => {
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
     await enterSources(user, "D:/old");
     await user.click(screen.getByRole("button", { name: "Check Paths" }));
-    await user.click(await screen.findByRole("button", { name: /^Import Projects \(\d+\)$/ }));
-    await user.click(screen.getByRole("button", { name: "Confirm Import" }));
+    await screen.findByRole("button", { name: /^Confirm Import \(\d+\)$/ });
+    await user.click(screen.getByRole("button", { name: /^Confirm Import \(\d+\)$/ }));
     await screen.findByText("The connection was interrupted.");
     await user.click(screen.getByRole("button", { name: "Retry Batch Submission" }));
     expect(await screen.findByText(/1 added/)).toBeTruthy();
@@ -592,15 +625,15 @@ describe("ProjectLibraryImport", () => {
     expect(screen.getByRole("checkbox", { name: "Select Cable test" })).toHaveProperty("checked", false);
     expect(screen.getByText("Another project uses this LTR.")).toBeTruthy();
     expect(api.startLibraryBatch).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: /^Import Projects \(\d+\)$/ }));
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await screen.findByRole("button", { name: /^Confirm Import \(\d+\)$/ });
+    await user.click(screen.getByRole("button", { name: "Back to Projects" }));
     expect(api.startLibraryBatch).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: /^Import Projects \(\d+\)$/ }));
-    await user.click(screen.getByRole("button", { name: "Confirm Import" }));
+    await screen.findByRole("button", { name: /^Confirm Import \(\d+\)$/ });
+    await user.click(screen.getByRole("button", { name: /^Confirm Import \(\d+\)$/ }));
     expect(await screen.findByText(/1 added/)).toBeTruthy();
     expect(api.startLibraryBatch).toHaveBeenCalledWith(expect.objectContaining({ batch_id: expect.stringMatching(/^[a-f0-9]{32}$/), plan_id: "plan-1", fingerprint: "verified", selected: ["D:/old/Force"], keep_separate: [] }));
     await user.click(screen.getByRole("button", { name: "Open Force test" }));
-    expect(onOpenMember).toHaveBeenCalledWith("member-1", "batch-1");
+    expect(onOpenMember).toHaveBeenCalledWith("member-1");
   });
 
   it("requires a separate choice for number conflicts and invalidates results when sources change", async () => {
@@ -609,11 +642,12 @@ describe("ProjectLibraryImport", () => {
     await enterSources(user, "D:/old");
     await user.click(screen.getByRole("button", { name: "Check Paths" }));
     await screen.findByRole("checkbox", { name: "Select Force test" });
-    await user.click(screen.getByRole("checkbox", { name: "Keep Cable test separate" }));
+    await user.click(screen.getByRole("button", { name: "Resolve conflict for Cable test" }));
+    await user.click(screen.getByRole("button", { name: "Keep as a Separate Project" }));
     expect(screen.getByRole("checkbox", { name: "Select Cable test" })).toHaveProperty("checked", true);
     await enterSources(user, "/different");
     expect(screen.queryByRole("table")).toBeNull();
-    expect(screen.getByRole("button", { name: "Import Projects (0)" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Confirm Import (0)" })).toHaveProperty("disabled", true);
     expect(api.startLibraryBatch).not.toHaveBeenCalled();
   });
 
@@ -624,28 +658,29 @@ describe("ProjectLibraryImport", () => {
     render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} />);
     await enterSources(user, "D:/old");
     await user.click(screen.getByRole("button", { name: "Check Paths" }));
-    await user.click(await screen.findByRole("button", { name: /^Import Projects \(\d+\)$/ }));
-    await user.click(screen.getByRole("button", { name: "Confirm Import" }));
+    await screen.findByRole("button", { name: /^Confirm Import \(\d+\)$/ });
+    await user.click(screen.getByRole("button", { name: /^Confirm Import \(\d+\)$/ }));
     expect(await screen.findByText("File is locked. Retry when available.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Choose Project Folders", exact: true })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Resume Batch" }));
     expect(await screen.findByText(/1 added/)).toBeTruthy();
   });
 });
-it("keeps one project chooser and moves manual entry and in-place linking into Advanced", async () => {
+it("keeps one project chooser and keeps manual entry separate from optional boundary and linking controls", async () => {
   const onLegacyPreview = vi.fn();
   render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={vi.fn()} onLegacyPreview={onLegacyPreview} />);
-  await screen.findByRole("heading", { name: "Save imported projects to" });
+  await screen.findByRole("button", { name: "Choose Project Folders" });
   expect(screen.getByRole("button", { name: "Choose Project Folders", exact: true })).toBeTruthy();
-  const options = screen.getByText("Advanced").closest("details");
+  const options = screen.getByText("Enter Paths Manually").closest("details");
   expect(options).toHaveProperty("open", false);
   expect(screen.queryByText("Legacy", { exact: true })).toBeNull();
-  await userEvent.setup().click(screen.getByText("Advanced"));
+  await userEvent.setup().click(screen.getByText("Enter Paths Manually"));
   expect(options).toHaveProperty("open", true);
   expect(screen.queryByRole("heading", { name: "Restore Project Data" })).toBeNull();
   expect(screen.queryByRole("textbox", { name: "Portable project folder" })).toBeNull();
   expect(api.inspectPortableProject).not.toHaveBeenCalled();
   expect(api.restorePortableProject).not.toHaveBeenCalled();
+  await userEvent.setup().click(screen.getByText("More Options"));
   await userEvent.setup().click(screen.getByRole("button", { name: "Link Folders Without Copying" }));
   expect(onLegacyPreview).toHaveBeenCalledOnce();
 });
@@ -656,9 +691,9 @@ it("opens an already registered result without attaching it to a new batch", asy
   render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={onOpenMember} />);
   await enterSources(user, "D:/old");
   await user.click(screen.getByRole("button", { name: "Check Paths" }));
-  await user.click(await screen.findByRole("button", { name: /^Import Projects \(\d+\)$/ }));
-  await user.click(screen.getByRole("button", { name: "Confirm Import" }));
+  await screen.findByRole("button", { name: /^Confirm Import \(\d+\)$/ });
+  await user.click(screen.getByRole("button", { name: /^Confirm Import \(\d+\)$/ }));
   await user.click(await screen.findByRole("button", { name: "Open Force test" }));
-  expect(onOpenMember).toHaveBeenCalledWith("existing-member", undefined);
-  expect(screen.getByRole("button", { name: "View Imported Projects" })).toHaveProperty("disabled", true);
+  expect(onOpenMember).toHaveBeenCalledWith("existing-member");
+  expect(screen.getByRole("button", { name: "View Projects" })).toHaveProperty("disabled", false);
 });
