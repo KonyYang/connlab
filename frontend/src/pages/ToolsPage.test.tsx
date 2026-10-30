@@ -13,6 +13,7 @@ import { ToolsPage } from "./ToolsPage";
 vi.mock("../api/client", () => ({
   downloadStandaloneCustomerReport: vi.fn(),
   encryptStandaloneCopy: vi.fn(),
+  encryptStandaloneFolder: vi.fn(),
   readStandaloneCustomerReportJob: vi.fn(),
   startStandaloneCustomerReport: vi.fn(),
   updateStandaloneEquipmentList: vi.fn(),
@@ -132,7 +133,7 @@ describe("ToolsPage", () => {
     render(<ToolsPage />);
     const picker = screen.getByLabelText("Select Office File") as HTMLInputElement;
     const choose = vi.spyOn(picker, "click");
-    const instruction = screen.getByRole("heading", { name: "Select Office File" });
+    const instruction = screen.getByRole("heading", { name: "Select Office File or Folder" });
     const action = screen.getByRole("button", { name: "Create Encrypted Copy" });
     expect(instruction.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(picker.hidden).toBe(true);

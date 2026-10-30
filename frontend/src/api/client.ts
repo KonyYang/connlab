@@ -5648,6 +5648,25 @@ export function encryptStandaloneCopy(file: File): Promise<BlobDownloadResponse>
   });
 }
 
+export type FolderEncryptionSummary = { succeeded: number; failed: number; skipped: number };
+
+export async function encryptStandaloneFolder(files: File[]): Promise<BlobDownloadResponse & { summary: FolderEncryptionSummary }> {
+  const body = new FormData();
+  files.forEach(file => body.append("files", file));
+  body.append("relative_paths", JSON.stringify(files.map(file => file.webkitRelativePath)));
+  const response = await fetch(`${API_BASE}/api/tools/encrypt-folder`, { method: "POST", body });
+  if (!response.ok) throw await responseError(response);
+  let summary: FolderEncryptionSummary;
+  try {
+    summary = JSON.parse(response.headers.get("x-encryption-summary") ?? "null");
+    if (!summary || ![summary.succeeded, summary.failed, summary.skipped].every(value => Number.isInteger(value) && value >= 0)
+        || summary.succeeded + summary.failed + summary.skipped !== files.length) throw new Error("Invalid batch feedback");
+  } catch {
+    throw new Error("Folder encryption feedback is unavailable. Select the folder and retry.");
+  }
+  return { ...await blobDownloadFromResponse(response), summary };
+}
+
 export function customerReportDraftDownloadUrl(
   projectId: string,
   reportRevisionId: string
