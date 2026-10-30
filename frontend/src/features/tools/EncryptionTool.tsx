@@ -79,7 +79,7 @@ export function EncryptionTool() {
       <button className="primary-action tools-picker-action" type="button" disabled={Boolean(busy)} onClick={() => fileInput.current?.click()}>
         {busy === "file" ? "Starting..." : "Create Encrypted Copy"}
       </button>
-      <button type="button" disabled={Boolean(busy)} onClick={() => folderInput.current?.click()}>Choose Folder</button>
+      <button className="secondary-action" type="button" disabled={Boolean(busy)} onClick={() => folderInput.current?.click()}>Choose Folder</button>
     </div>
     {folder ? <div className="tools-folder-selection">
       <p><strong>{folder.name}</strong> · {folder.files.length} Word/Excel files, including subfolders.</p>
@@ -89,7 +89,7 @@ export function EncryptionTool() {
         <button className="primary-action" type="button" disabled={Boolean(busy)} onClick={() => void run()}>
           {busy === "folder" ? "Encrypting Folder..." : "Encrypt Selected Folder"}
         </button>
-        <button type="button" disabled={Boolean(busy)} aria-label="Cancel Folder Selection" onClick={() => setFolder(null)}>Cancel</button>
+        <button className="secondary-action" type="button" disabled={Boolean(busy)} aria-label="Cancel Folder Selection" onClick={() => setFolder(null)}>Cancel</button>
       </div>
     </div> : <p className="tools-card-hint">Folders: .doc, .docx, .xls, .xlsx, including subfolders.</p>}
     {error ? <p role="alert" className="tools-feedback tools-feedback-error">{error}</p> : null}

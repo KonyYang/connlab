@@ -24,7 +24,11 @@ def encrypt_folder(files: list[UploadFile] = File(...), relative_paths: str = Fo
                    tools: ToolsService = Depends(get_tools_service), settings: Settings = Depends(get_settings)):
     try:
         paths = validate_folder_paths(json.loads(relative_paths))
-        if len(paths) != len(files) or any(file.filename != path.name for file, path in zip(files, paths)):
+        # Directory pickers send the relative path as multipart filename; ordinary
+        # file clients send only the basename. Never trust either as a disk path.
+        if len(paths) != len(files) or any(
+            file.filename not in {path.name, path.as_posix()} for file, path in zip(files, paths)
+        ):
             raise ToolsError("The folder file list changed. Select the folder again.")
     except (ValueError, TypeError) as exc:
         detail = str(exc) if isinstance(exc, ToolsError) else "The folder file list is invalid. Select it again."

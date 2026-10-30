@@ -94,6 +94,28 @@ def test_all_failed_files_produce_an_explicit_report_without_plaintext(folder_la
     assert list(data.iterdir()) == []
 
 
+def test_browser_directory_upload_accepts_validated_relative_filenames(folder_lab):
+    client, data, protector = folder_lab
+    paths = ["Batch/report.docx", "Batch/子目录/DL-2026-10-030 data.xlsx"]
+    response = client.post("/api/tools/encrypt-folder", data={"relative_paths": json.dumps(paths)},
+        files=[("files", (path, b"original", "application/octet-stream")) for path in paths])
+    assert response.status_code == 200, response.text
+    assert json.loads(response.headers["x-encryption-summary"])["succeeded"] == 2
+    with ZipFile(BytesIO(response.content)) as bundle:
+        assert "Batch/子目录/DL-2026-10-030 data_Secured.xlsx" in bundle.namelist()
+    assert len(protector.calls) == 2 and list(data.iterdir()) == []
+
+
+@pytest.mark.parametrize("filename", ["Other/report.docx", "../report.docx", "different.docx"])
+def test_upload_filename_must_match_validated_metadata(folder_lab, filename):
+    client, data, protector = folder_lab
+    response = client.post("/api/tools/encrypt-folder",
+        data={"relative_paths": json.dumps(["Batch/report.docx"])},
+        files={"files": (filename, b"original")})
+    assert response.status_code == 422
+    assert not protector.calls and list(data.iterdir()) == []
+
+
 def test_folder_size_limit_rejects_before_encryption_and_cleans_staging(folder_lab, monkeypatch):
     from backend.api import routes_tools_folder_encryption as route
     monkeypatch.setattr(route, "MAX_FILE_BYTES", 4)
