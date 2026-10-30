@@ -194,6 +194,43 @@
           }
         }
       }
+    },
+    "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
+      "branch": "codex/tools-folder-encryption-20261030",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
+        "summary": "Batch encrypted Word/Excel copies from a selected folder without modifying originals",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Add a recursive browser folder picker alongside single-file encryption. Reuse unchanged Office encryption/password policy; stage uploaded copies, preserve relative paths in a downloadable ZIP, report individual failures without including plaintext originals, validate upload paths and limits, prevent duplicate/stale UI operations, and verify isolated native Office/browser behavior. No changes to cipher, passwords, project authority or original files.",
+        "scope_paths": [
+          "backend/application/tools_folder_encryption_service.py",
+          "backend/infrastructure/files/tools_folder_archive_gateway.py",
+          "backend/api/routes_tools_folder_encryption.py",
+          "backend/api/routes_tools.py",
+          "frontend/src/features/tools/EncryptionTool.tsx",
+          "frontend/src/features/tools/EncryptionTool.test.tsx",
+          "frontend/src/pages/ToolsPage.tsx",
+          "frontend/src/pages/ToolsPage.test.tsx",
+          "frontend/src/api/client.ts",
+          "frontend/src/api/toolsEncryption.test.ts",
+          "frontend/src/tools.css",
+          "tests/unit/test_tools_folder_encryption_service.py",
+          "tests/integration/test_tools_folder_encryption_api.py",
+          "docs/PROJECT_CONTEXT.md"
+        ],
+        "risk_reasons": [],
+        "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
+        "started_at": "2026-10-30T14:46:47.475269Z",
+        "updated_at": "2026-10-30T14:46:47.475269Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
