@@ -197,11 +197,11 @@
     },
     "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
       "branch": "codex/tools-folder-encryption-20261030",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "fa0e2cdd38931290ce371fbb3ca541c5aa3d85c0",
       "task": {
         "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
         "summary": "Batch encrypted Word/Excel copies from a selected folder without modifying originals",
@@ -227,9 +227,80 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-30T14:46:47.475269Z",
+        "updated_at": "2026-10-30T15:23:31.735588Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
+          "subject": "a03eb5212f4162bca799a48924e1b4f4abe589d3",
+          "summary": "Tools folder encryption: recursive Word/Excel selection, encrypted-copy ZIP and per-file results; original files and existing password policy preserved.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/api/routes_tools.py",
+            "backend/api/routes_tools_folder_encryption.py",
+            "backend/application/tools_folder_encryption_service.py",
+            "backend/infrastructure/files/tools_folder_archive_gateway.py",
+            "docs/PROJECT_CONTEXT.md",
+            "frontend/src/api/client.ts",
+            "frontend/src/api/toolsEncryption.test.ts",
+            "frontend/src/features/tools/EncryptionTool.test.tsx",
+            "frontend/src/features/tools/EncryptionTool.tsx",
+            "frontend/src/pages/ToolsPage.test.tsx",
+            "frontend/src/pages/ToolsPage.tsx",
+            "frontend/src/tools.css",
+            "tests/integration/test_tools_folder_encryption_api.py"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Backend affected matrix",
+              "evidence": "73 tests passed at 4583b5f4; after browser compatibility fix, 30 affected API/service tests passed including four additional public-contract cases. Other backend paths unchanged."
+            },
+            {
+              "status": "passed",
+              "name": "Frontend affected matrix",
+              "evidence": "36 tests passed at 4583b5f4; after final two button classes, 27 affected encryption/API/ToolsPage tests passed. Other frontend paths unchanged."
+            },
+            {
+              "status": "passed",
+              "name": "Production build",
+              "evidence": "Final TypeScript and Vite build passed, 217 modules."
+            },
+            {
+              "status": "passed",
+              "name": "Real browser and native Office outputs",
+              "evidence": "Independent app and empty DB at port 18831, only owned fixtures. Actual directory chooser, recursive Unicode paths, ZIP download, doc/docx/xls/xlsx native outputs independently decrypted with expected password and source content. Four encrypted, one deliberate invalid Excel failed, one Office lock skipped, one text ignored. Source SHA256 unchanged; staging cleaned. Final 660x804 screenshot inspected."
+            },
+            {
+              "status": "passed",
+              "name": "Exact diff review",
+              "evidence": "Sequential same-agent Standards/Spec review; no independent-agent claim. Final browser-filename and styling diff reviewed, git diff --check clean."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Primary Astra; TDD RED/GREEN on public API and UI seams."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Separate sequential same-agent exact-diff review. Path confinement, archive plaintext exclusion, failure isolation, password policy and lifecycle checked."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "Same agent final QA with isolated browser and real installed Office; independent file-level decryption avoids COM password-dialog verifier limitation."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "a03eb5212f4162bca799a48924e1b4f4abe589d3",
+            "primary_before": "7f2cfb48677c52ee233e1a04c7aecd30ca8f7a6b",
+            "integrated_head": "fa0e2cdd38931290ce371fbb3ca541c5aa3d85c0",
+            "recovered": false
+          }
+        }
       }
     }
   }
