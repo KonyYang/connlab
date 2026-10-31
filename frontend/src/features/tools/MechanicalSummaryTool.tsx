@@ -48,7 +48,6 @@ export function MechanicalSummaryTool(): ReactElement {
     finally { setBusy(false); }
   }
   return <article className="tools-card mechanical-summary-tool" aria-label="Mechanical Summary">
-    <div className="tools-card-heading"><h3>Mechanical Summary</h3></div>
     <p>Select instrument files, review the data and download an editable workbook. Original files stay unchanged.</p>
     <label className="tools-file-picker">Select mechanical test files
       <input type="file" multiple accept=".pdf,.xls,.xlsx" disabled={busy}

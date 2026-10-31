@@ -54,9 +54,6 @@ export function EquipmentListTool(): ReactElement {
   }
 
   return <article className="tools-card tools-equipment-card" aria-label="Update Equipment List">
-    <div className="tools-card-heading">
-      <h3>Select Internal Report</h3>
-    </div>
     <input ref={reportInput} type="file" hidden aria-label="Internal Report for Equipment Update" accept=".docx" disabled={busy}
       onChange={(event) => {
         const file = event.target.files?.[0] ?? null;

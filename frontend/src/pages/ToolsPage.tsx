@@ -116,8 +116,7 @@ export function ToolsPage({
         <EncryptionTool />
         <EquipmentListTool />
         <MechanicalSummaryTool />
-        <article className="tools-card">
-          <div className="tools-card-heading"><h3>Select T-rise Data</h3></div>
+        <article className="tools-card" aria-label="Temperature Rise">
           <button className="primary-action tools-picker-action" type="button" onClick={onOpenTemperatureRise}>Drawing Curves</button>
         </article>
       </div>
@@ -149,9 +148,6 @@ function ToolCard({
   const fileInput = useRef<HTMLInputElement>(null);
   return (
     <article className="tools-card" aria-label={title}>
-      <div className="tools-card-heading">
-        <h3>{pickAndRun ? inputLabel : title}</h3>
-      </div>
       {pickAndRun ? <input ref={fileInput} type="file" hidden aria-label={inputLabel}
         accept={accept} disabled={state.busy} onChange={onSelect} /> : <label className="tools-file-picker">
         <span>{inputLabel}</span>
