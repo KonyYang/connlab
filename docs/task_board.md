@@ -130,18 +130,12 @@
         "scope_paths": [
           "frontend/src/App.test.tsx",
           "frontend/src/App.tsx",
-          "frontend/src/features/project-library/ProjectImportDestination.test.tsx",
-          "frontend/src/features/project-library/ProjectImportDestination.tsx",
-          "frontend/src/features/project-library/ProjectImportResults.test.tsx",
-          "frontend/src/features/project-library/ProjectImportResults.tsx",
-          "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
-          "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-          "frontend/src/features/project-library/project-library.css"
+          "frontend/src/features/project-library"
         ],
         "risk_reasons": [],
         "activation_head": "58acc1cf38e50703749e448138824bfdbd8f3415",
         "started_at": "2026-10-30T00:00:32.976018Z",
-        "updated_at": "2026-10-31T11:14:32.087787Z",
+        "updated_at": "2026-10-31T11:15:58.380866Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
