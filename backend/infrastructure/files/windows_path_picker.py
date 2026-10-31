@@ -12,6 +12,13 @@ from backend.domain import ExternalResourceType
 class WindowsPathPicker:
     """Open local Windows file and folder pickers."""
 
+    def pick_encryption_directory(self) -> Path | None:
+        """Choose where separate encrypted siblings will be saved."""
+        selection = self._run_dialog(lambda: filedialog.askdirectory(
+            title="Choose folder — save encrypted copies beside original files", mustexist=True,
+        ))
+        return Path(selection) if selection else None
+
     def pick_legacy_project_directory(self) -> Path | None:
         """Choose an existing project or parent directory without changing it."""
         selection = self._run_dialog(lambda: filedialog.askdirectory(

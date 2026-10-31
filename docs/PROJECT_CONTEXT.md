@@ -100,15 +100,25 @@ Do not use a dated snapshot as a substitute for the code.
 
 ### Standalone Tools folder encryption
 
-- `Create Encrypted Copy` keeps its single-file behavior. `Choose Folder` selects a folder and
-  subfolders, previews the supported Word/Excel count, and requires `Encrypt Selected Folder` before
-  processing. Only `.doc`, `.docx`, `.xls`, `.xlsx` are included; other types remain untouched and are
-  counted as ignored. Office temporary files are skipped. Single-file PowerPoint support is unchanged.
-- Folder mode reuses `ToolsService.encrypt_copy` and the existing verified Office adapter without
-  changing encryption or password rules. Excel still requires a DL-prefixed filename. It uploads
-  copies rather than accepting server/local directory paths; nothing is written back to the selected
-  folder, project registry or History.
-- `/api/tools/encrypt-folder` validates one relative-path tree, Windows/Unicode duplicate names,
+- `Create Encrypted Copy` keeps its single-file download behavior. `Choose Folder` now opens a native
+  local directory picker and processes `.doc`, `.docx`, `.xls`, `.xlsx` recursively after selection,
+  without uploading files or downloading a ZIP. Each verified `_Secured` copy is saved beside its
+  source; existing names receive ` (1)`, ` (2)`, etc. Original and previous output files are never
+  replaced. Existing `_Secured` copies, Office temporary files, unsupported files and reparse links
+  are skipped. Single-file PowerPoint support is unchanged.
+- `/api/tools/encrypt-local-folder` accepts no client-supplied directory path. It requires a same-origin
+  loopback request with an explicit application header, then obtains the path from the native picker.
+  Folder traversal, source-change checks, owned sibling staging and atomic no-replace publication live
+  in `ToolsLocalFolderGateway`; application policy reuses `ToolsService.encrypt_copy`. Windows uses
+  no-replace rename, including volumes without hard-link support. Excel's existing DL password rule
+  remains unchanged. No project registry/History records are written.
+- Folder results show counts and per-file failures on the page. A failure does not discard other
+  successful copies. There is no confirmation/upload stage; cancelling the picker writes nothing.
+  Up to 500 eligible source documents are accepted per operation; existing secured copies do not
+  consume this limit. A scan failure stops before writes. Source and folder identities are rechecked
+  before publication, and owned staging is removed after success or failure.
+- The prior `/api/tools/encrypt-folder` upload endpoint remains compatible but is no longer used by
+  the folder UI. It validates one relative-path tree, Windows/Unicode duplicate names,
   encrypted-file/directory conflicts and upload bounds before encryption. Limits are 500 files,
   100 MiB per file and 500 MiB total. Per-file failures do not discard successful copies; failed or
   skipped plaintext inputs never enter the result archive.

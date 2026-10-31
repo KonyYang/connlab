@@ -14,6 +14,7 @@ vi.mock("../api/client", () => ({
   downloadStandaloneCustomerReport: vi.fn(),
   encryptStandaloneCopy: vi.fn(),
   encryptStandaloneFolder: vi.fn(),
+  encryptLocalFolder: vi.fn(),
   readStandaloneCustomerReportJob: vi.fn(),
   startStandaloneCustomerReport: vi.fn(),
   updateStandaloneEquipmentList: vi.fn(),

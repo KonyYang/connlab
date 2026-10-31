@@ -1,10 +1,10 @@
-"""Batch the existing copy-only Office policy; never publish to a source folder."""
+"""Batch the existing copy-only Office policy for local siblings and upload compatibility."""
 from dataclasses import dataclass
 import logging
 from pathlib import Path, PurePosixPath
 import re
 import unicodedata
-from typing import Protocol, Sequence
+from typing import Callable, Protocol, Sequence
 
 from backend.application.tools_service import ToolsError, ToolsService
 
@@ -23,6 +23,60 @@ class FolderEncryptionEntry:
 
 class FolderArchivePort(Protocol):
     def write(self, output: Path, entries: Sequence[FolderEncryptionEntry]) -> None: ...
+
+
+@dataclass(frozen=True)
+class LocalFolderCandidate:
+    source_path: Path
+    relative_path: str
+    skip_reason: str = ""
+
+
+class LocalFolderPort(Protocol):
+    root: Path
+
+    def scan(self) -> Sequence[LocalFolderCandidate]: ...
+
+    def create_copy(self, source: Path, encrypt: Callable[..., Path]) -> Path: ...
+
+
+def local_folder_skip_reason(path: Path) -> str:
+    if (path.suffix.lower() not in SUPPORTED_FOLDER_SUFFIXES
+        or path.name.startswith(("~$", ".connlab-"))
+        or re.search(r"(?i)_secured(?: \(\d+\))?$", path.stem)):
+        return "Temporary, already secured, or unsupported file."
+    return ""
+
+
+class ToolsLocalFolderEncryptionService:
+    """Apply unchanged Office rules to separate siblings selected on this computer."""
+
+    def __init__(self, *, tools: ToolsService, files: LocalFolderPort):
+        self._tools = tools
+        self._files = files
+
+    def encrypt(self) -> dict:
+        candidates = self._files.scan()
+        entries = []
+        for candidate in candidates:
+            path = candidate.source_path
+            reason = candidate.skip_reason or local_folder_skip_reason(path)
+            if reason:
+                entries.append({"file": candidate.relative_path, "status": "Skipped", "reason": reason})
+                continue
+            try:
+                output = self._files.create_copy(path, self._tools.encrypt_copy)
+            except Exception as exc:
+                logger.warning("Local folder encryption failed for %s", candidate.relative_path, exc_info=True)
+                reason = str(exc) if isinstance(exc, ToolsError) and str(exc).startswith("Excel files must start") else (
+                    "Could not save an encrypted copy. Close the file in Office and check its format and folder access.")
+                entries.append({"file": candidate.relative_path, "status": "Failed", "reason": reason})
+            else:
+                entries.append({"file": candidate.relative_path, "status": "Encrypted",
+                    "output": str(output.relative_to(self._files.root)), "reason": ""})
+        return {"cancelled": False, "folder": str(self._files.root), "entries": entries,
+            "summary": {key: sum(entry["status"] == status for entry in entries)
+                for key, status in (("succeeded", "Encrypted"), ("failed", "Failed"), ("skipped", "Skipped"))}}
 
 
 def secured_relative_path(path: PurePosixPath) -> PurePosixPath:
