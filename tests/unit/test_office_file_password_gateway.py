@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+from io import BytesIO
+import struct
 
 import msoffcrypto
 import pytest
@@ -43,7 +45,7 @@ class _OfficeDocument:
             self.output_writer.append(kwargs)
         else:
             Path(args[0]).write_bytes(b"powerpoint-encrypted")
-            self.output_writer.append({"path": args[0], "password": self.Password})
+            self.output_writer.append({"path": args[0], "password": self.Password, "format": args[1] if len(args) > 1 else None})
 
     def Close(self, *_args, **_kwargs) -> None:
         self.closed = True
@@ -154,7 +156,8 @@ def test_legacy_doc_and_excel_save_with_open_password_then_verify(tmp_path: Path
     assert all(app.quit for app in apps)
 
 
-def test_powerpoint_sets_open_password_and_runs_encrypted_container_verifier(tmp_path: Path) -> None:
+@pytest.mark.parametrize(("suffix", "file_format"), [(".pptx", 24), (".ppt", 1)])
+def test_powerpoint_sets_open_password_and_runs_encrypted_container_verifier(tmp_path: Path, suffix: str, file_format: int) -> None:
     runtime = _ComRuntime()
     saves: list[dict] = []
     opens: list[dict] = []
@@ -164,8 +167,8 @@ def test_powerpoint_sets_open_password_and_runs_encrypted_container_verifier(tmp
         com_runtime=runtime,
         output_verifier=lambda path, _kind: verified.append(path),
     )
-    source = tmp_path / "slides.pptx"
-    output = tmp_path / "slides-stage.pptx"
+    source = tmp_path / f"slides{suffix}"
+    output = tmp_path / f"slides-stage{suffix}"
     source.write_bytes(b"powerpoint")
 
     gateway.encrypt_and_verify(
@@ -175,7 +178,7 @@ def test_powerpoint_sets_open_password_and_runs_encrypted_container_verifier(tmp
         office_kind="powerpoint",
     )
 
-    assert saves == [{"path": str(output), "password": "DGLAB"}]
+    assert saves == [{"path": str(output), "password": "DGLAB", "format": file_format}]
     assert opens == [
         {
             "FileName": f"{source.resolve()}::DGLAB",
@@ -239,3 +242,33 @@ def test_office_automation_error_never_exposes_document_password(tmp_path: Path)
     assert "DGLAB" not in str(error.value)
     assert str(source.resolve()) not in str(error.value)
     assert error.value.__cause__ is None
+
+
+@pytest.mark.parametrize(("token", "accepted"), [(0xF3D1C4DF, True), (0xE391C05F, False)])
+def test_binary_powerpoint_verifies_encryption_marker_before_accepting_copy(tmp_path, monkeypatch, token, accepted):
+    import olefile
+    header = struct.pack("<HHIII", 0, 0x0FF6, 20, 20, token)
+
+    class Compound:
+        def __enter__(self): return self
+        def __exit__(self, *_args): pass
+        def listdir(self): return [["Current User"], ["PowerPoint Document"]]
+        def exists(self, name): return name in {"Current User", "PowerPoint Document"}
+        def openstream(self, name): return BytesIO(header)
+
+    monkeypatch.setattr(olefile, "isOleFile", lambda path: True)
+    monkeypatch.setattr(olefile, "OleFileIO", lambda path: Compound())
+    runtime = _ComRuntime()
+    app = _App("PowerPoint.Application", [], [])
+    source = tmp_path / "slides.ppt"
+    source.write_bytes(b"original")
+    output = tmp_path / "slides_Secured.ppt"
+    gateway = OfficeFilePasswordGateway(dispatch=lambda kind: app, com_runtime=runtime)
+    if accepted:
+        gateway.encrypt_and_verify(source_path=source, output_path=output, password="DGLAB", office_kind="powerpoint")
+        assert output.is_file()
+    else:
+        with pytest.raises(Exception, match="does not contain Office password-encryption"):
+            gateway.encrypt_and_verify(source_path=source, output_path=output, password="DGLAB", office_kind="powerpoint")
+        assert not output.exists()
+    assert app.quit and runtime.initialized == runtime.uninitialized == 1
