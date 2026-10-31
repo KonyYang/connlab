@@ -212,9 +212,11 @@
           "backend/api/routes_tools.py",
           "backend/api/routes_tools_folder_encryption.py",
           "backend/application/tools_folder_encryption_service.py",
+          "backend/application/tools_service.py",
           "backend/infrastructure/files/tools_folder_archive_gateway.py",
           "backend/infrastructure/files/tools_local_folder_gateway.py",
           "backend/infrastructure/files/windows_path_picker.py",
+          "backend/infrastructure/office/office_file_password_gateway.py",
           "docs/PROJECT_CONTEXT.md",
           "frontend/src/api/client.ts",
           "frontend/src/api/toolsEncryption.test.ts",
@@ -225,12 +227,14 @@
           "frontend/src/tools.css",
           "tests/integration/test_tools_folder_encryption_api.py",
           "tests/integration/test_tools_local_folder_encryption_api.py",
-          "tests/unit/test_tools_folder_encryption_service.py"
+          "tests/unit/test_office_file_password_gateway.py",
+          "tests/unit/test_tools_folder_encryption_service.py",
+          "tests/unit/test_tools_service.py"
         ],
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T01:04:13.992116Z",
+        "updated_at": "2026-10-31T01:04:56.706691Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
