@@ -197,11 +197,11 @@
     },
     "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
       "branch": "codex/tools-folder-encryption-20261030",
       "resources": [],
-      "integrated_head": "baeefd9e70f4fb86672184663860dbc7b89ff030",
+      "integrated_head": "b3f0648ab46520f0aca415c0fde9505872704fe0",
       "task": {
         "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
         "summary": "Batch encrypted Word/Excel copies from a selected folder without modifying originals",
@@ -234,7 +234,7 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T01:04:56.706691Z",
+        "updated_at": "2026-10-31T01:10:24.581251Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -244,7 +244,75 @@
           "summary": "User confirms DGLAB for Word and PowerPoint, LTR-derived Excel passwords, and requests .pptx and .ppt in single-file and folder modes.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
+          "subject": "71d5230c8fc7d0edbd0eb3b551c505ec2a575a29",
+          "summary": "Support PPT and PPTX in standalone and recursive local folder encryption; DGLAB, explicit format preservation, verified protected output, unchanged LTR Excel policy and copy safety.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/application/tools_folder_encryption_service.py",
+            "backend/application/tools_service.py",
+            "backend/infrastructure/files/tools_local_folder_gateway.py",
+            "backend/infrastructure/office/office_file_password_gateway.py",
+            "docs/PROJECT_CONTEXT.md",
+            "frontend/src/features/tools/EncryptionTool.test.tsx",
+            "frontend/src/features/tools/EncryptionTool.tsx",
+            "tests/integration/test_tools_local_folder_encryption_api.py",
+            "tests/unit/test_office_file_password_gateway.py",
+            "tests/unit/test_tools_service.py"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Affected backend matrix",
+              "evidence": "97 passed on clean 71d5230c: Tools policies, local/upload folder APIs, Office verifier, shared project encryption and neighboring Tools routes. One existing Starlette deprecation warning."
+            },
+            {
+              "status": "passed",
+              "name": "Affected frontend matrix",
+              "evidence": "38 passed on the same final frontend bytes: PPT/PPTX selection/download, local folder state and neighboring Tools/project encryption interactions."
+            },
+            {
+              "status": "passed",
+              "name": "Production build",
+              "evidence": "TypeScript and Vite production build passed, 217 modules."
+            },
+            {
+              "status": "passed",
+              "name": "Real installed PowerPoint smoke",
+              "evidence": "No user PowerPoint instance running before test. Created new PPTX/PPT fixtures in owned tmp tree. Public local-folder API with only native picker selection mocked: two real encrypted siblings, existing secured PPT skipped and collision numbered. Public single-file API: two real downloadable outputs. All four opened with DGLAB in PowerPoint and retained one slide and source text; PPTX also independently decrypted and slide XML checked. Original and prior-output SHA256 unchanged, all owned COM instances closed, staging and request temp directories empty. Evidence: tmp/ppt-encryption-smoke-v41rs3v8/evidence.json."
+            },
+            {
+              "status": "passed",
+              "name": "Exact diff review",
+              "evidence": "Sequential same-agent Standards and Spec passes. Explicit SaveAs 1/24 preserves binary/OOXML formats. Legacy verifier checks the CurrentUserAtom encrypted headerToken from Microsoft MS-PPT 2.3.2; cleartext output rejected and removed. Existing Excel LTR policy, original preservation, collision behavior, project business authority unchanged. git diff --check clean."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Primary context, TDD RED/GREEN at public Tools policy, folder API and PowerPoint format boundary."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Focused sequential same-agent Standards/Spec review; not an independent-agent claim."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "Final matrix once plus real PowerPoint encryption, password opening, contents and source-hash checks on owned fixtures."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "71d5230c8fc7d0edbd0eb3b551c505ec2a575a29",
+            "primary_before": "73c3db39979681a71e2342e21154dc3d861a0166",
+            "integrated_head": "b3f0648ab46520f0aca415c0fde9505872704fe0",
+            "recovered": false
+          }
+        }
       }
     }
   }
