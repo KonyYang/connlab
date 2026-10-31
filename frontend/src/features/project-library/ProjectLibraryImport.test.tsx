@@ -161,7 +161,7 @@ it("uses Settings as the only destination editor and blocks import until it is c
 });
 
 it.each(["files", "restored", "history"] as const)("explains the next step after importing one %s project", async kind => {
-  const user = userEvent.setup(), onOpenMember = vi.fn();
+  const user = userEvent.setup(), onOpenMember = vi.fn(), onOpenProject = vi.fn();
   const isSaved = kind !== "files";
   const candidate = isSaved ? savedProject : plan.items[0];
   vi.mocked(api.pickLibraryFolder).mockResolvedValue(candidate.source_path);
@@ -169,16 +169,46 @@ it.each(["files", "restored", "history"] as const)("explains the next step after
   vi.mocked(api.planLibraryIntake).mockResolvedValue({ ...plan, items: [plan.items[0]] } as api.LibraryIntakePlan);
   vi.mocked(api.inspectPortableProject).mockResolvedValue({ ...savedProject, resolution: kind === "history" ? "keep_as_history" : null });
   vi.mocked(api.restorePortableProject).mockResolvedValue(kind === "history" ? { ...savedResult, status: "history_kept", member: { ...savedResult.member, is_history: true, can_continue: false } } : savedResult);
-  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={onOpenMember} />);
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={onOpenMember} onOpenProject={onOpenProject} />);
   await user.click(await screen.findByRole("button", { name: "Choose Project Folders" }));
   await user.click(await screen.findByRole("button", { name: "Confirm Import (1)" }));
   const results = await screen.findByRole("region", { name: "Import results" });
   expect(within(results).getByText(kind === "files" ? "Project files imported." : kind === "history" ? "Historical copy saved for browsing." : "Project and saved test data restored.")).toBeTruthy();
-  expect(within(results).getByText(kind === "files" ? /choose Continue Testing/ : kind === "history" ? /current working project is unchanged/ : /choose Project Workbench/)).toBeTruthy();
+  expect(within(results).getByText(kind === "files" ? /choose Continue Testing/ : kind === "history" ? /current working project is unchanged/ : /review its data and continue testing/)).toBeTruthy();
+  expect(within(results).getByRole("heading", { name: `${candidate.ltr_number} ${candidate.title}` })).toBeTruthy();
+  if (isSaved) {
+    const issues = within(results).getByText("1 item needs review").closest("details")!;
+    expect(issues.open).toBe(true);
+    expect(within(issues).getByText(savedProject.warnings[0])).toBeTruthy();
+  }
   const open = within(results).getByRole("button", { name: `Open ${candidate.title}` });
   expect(open.textContent).toBe("Open Project");
   await user.click(open);
-  expect(onOpenMember).toHaveBeenCalledWith(isSaved ? "saved-member" : "member-1");
+  if (kind === "restored") {
+    expect(onOpenProject).toHaveBeenCalledWith("saved-project");
+    expect(onOpenMember).not.toHaveBeenCalled();
+  } else {
+    expect(onOpenMember).toHaveBeenCalledWith(isSaved ? "saved-member" : "member-1");
+    expect(onOpenProject).not.toHaveBeenCalled();
+  }
+});
+
+it.each([
+  { can_continue: false },
+  { project_id: null },
+  { is_history: true },
+])("keeps restored projects without workbench eligibility in their details: %j", async override => {
+  const user = userEvent.setup(), onOpenProject = vi.fn(), onOpenMember = vi.fn();
+  vi.mocked(api.pickLibraryFolder).mockResolvedValue(savedProject.source_path);
+  vi.mocked(api.scanLibrarySources).mockResolvedValue({ items: [{ ...savedProject, kind: "project", child_folders: [], has_portable: true }], warnings: [], truncated: false });
+  vi.mocked(api.inspectPortableProject).mockResolvedValue(savedProject);
+  vi.mocked(api.restorePortableProject).mockResolvedValue({ ...savedResult, member: { ...savedResult.member, ...override } });
+  render(<ProjectLibraryImport onBack={vi.fn()} onViewLibrary={vi.fn()} onOpenMember={onOpenMember} onOpenProject={onOpenProject} />);
+  await user.click(await screen.findByRole("button", { name: "Choose Project Folders" }));
+  await user.click(await screen.findByRole("button", { name: "Confirm Import (1)" }));
+  await user.click(await screen.findByRole("button", { name: "Open Snapshot project" }));
+  expect(onOpenMember).toHaveBeenCalledWith("saved-member");
+  expect(onOpenProject).not.toHaveBeenCalled();
 });
 
 it("does not offer destination controls when Settings already supplies the location", async () => {
