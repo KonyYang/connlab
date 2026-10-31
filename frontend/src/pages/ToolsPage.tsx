@@ -10,6 +10,7 @@ import {
 import { EquipmentListTool } from "../features/tools/EquipmentListTool";
 import { MechanicalSummaryTool } from "../features/tools/MechanicalSummaryTool";
 import { EncryptionTool } from "../features/tools/EncryptionTool";
+import { ToolsFeedback, ToolsFeedbackTarget } from "../features/tools/ToolsFeedback";
 import "../tools.css";
 
 type ToolKey = "customer-report";
@@ -32,6 +33,7 @@ export function ToolsPage({
   onOpenTemperatureRise = () => { window.location.assign('/tools/temperature-rise'); },
 }: { onOpenTemperatureRise?: () => void } = {}): ReactElement {
   const [state, setState] = useState(INITIAL_STATE);
+  const [feedbackTarget, setFeedbackTarget] = useState<HTMLDivElement | null>(null);
   const runningTools = useRef(new Set<ToolKey>());
   const runTokens = useRef<Record<ToolKey, number>>({
     "customer-report": 0,
@@ -101,8 +103,13 @@ export function ToolsPage({
   }
 
   return (
-    <section className="tools-page" aria-label="Tools">
-      <div className="tools-grid">
+    <ToolsFeedbackTarget value={feedbackTarget}><section className="tools-page" aria-label="Tools">
+      <div className="tools-grid" role="group" aria-label="Tool actions">
+        <EquipmentListTool />
+        <MechanicalSummaryTool />
+        <article className="tools-action-group" aria-label="Temperature Rise">
+          <button className="primary-action tools-picker-action" type="button" title="Open the temperature rise and derating workspace." onClick={onOpenTemperatureRise}>Drawing T-rise</button>
+        </article>
         <ToolCard
           title="Internal Report → Customer Report"
           accept=".docx"
@@ -114,13 +121,9 @@ export function ToolsPage({
           onRun={() => void run("customer-report")}
         />
         <EncryptionTool />
-        <EquipmentListTool />
-        <MechanicalSummaryTool />
-        <article className="tools-card" aria-label="Temperature Rise">
-          <button className="primary-action tools-picker-action" type="button" onClick={onOpenTemperatureRise}>Drawing T-rise</button>
-        </article>
       </div>
-    </section>
+      <div className="tools-feedback-stack" ref={setFeedbackTarget} />
+    </section></ToolsFeedbackTarget>
   );
 }
 
@@ -147,24 +150,24 @@ function ToolCard({
 }): ReactElement {
   const fileInput = useRef<HTMLInputElement>(null);
   return (
-    <article className="tools-card" aria-label={title}>
+    <article className="tools-action-group" aria-label={title}>
       {pickAndRun ? <input ref={fileInput} type="file" hidden aria-label={inputLabel}
         accept={accept} disabled={state.busy} onChange={onSelect} /> : <label className="tools-file-picker">
         <span>{inputLabel}</span>
         <input type="file" accept={accept} disabled={state.busy} onChange={onSelect} />
       </label>}
-      {hint && <p className="tools-card-hint">{hint}</p>}
-      {state.error && <p className="tools-feedback tools-feedback-error" role="alert">{state.error}</p>}
-      {state.busy && state.progress && (
-        <CustomerReportProgress stage={state.progress.stage} elapsedSeconds={state.progress.elapsed_seconds} />
-      )}
-      <button className={pickAndRun ? "primary-action tools-picker-action" : "primary-action"} type="button" disabled={state.busy}
+      <button className={pickAndRun ? "primary-action tools-picker-action" : "primary-action"} type="button" title={inputLabel} disabled={state.busy}
         onClick={pickAndRun ? () => fileInput.current?.click() : onRun}>
         {state.busy ? (state.progress ? "Generating..." : "Starting...") : actionLabel}
       </button>
-      {state.downloadedFileName && <p className="tools-feedback tools-feedback-success" role="status" aria-label="Downloaded File">
-        {state.downloadedFileName}
-      </p>}
+      {(hint || state.error || (state.busy && state.progress) || state.downloadedFileName) && <ToolsFeedback><div className="tools-action-feedback">
+        {hint && <p className="tools-card-hint">{hint}</p>}
+        {state.error && <p className="tools-feedback tools-feedback-error" role="alert">{state.error}</p>}
+        {state.busy && state.progress && <CustomerReportProgress stage={state.progress.stage} elapsedSeconds={state.progress.elapsed_seconds} />}
+        {state.downloadedFileName && <p className="tools-feedback tools-feedback-success" role="status" aria-label="Downloaded File">
+          {state.downloadedFileName}
+        </p>}
+      </div></ToolsFeedback>}
     </article>
   );
 }

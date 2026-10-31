@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import { updateStandaloneEquipmentList, type EquipmentReview } from "../../api/client";
 import { EquipmentSourceDialog, type EquipmentSourceSelection } from "./EquipmentSourceDialog";
+import { ToolsFeedback } from "./ToolsFeedback";
 
 export function EquipmentListTool(): ReactElement {
   const [report, setReport] = useState<File | null>(null);
@@ -53,7 +54,7 @@ export function EquipmentListTool(): ReactElement {
     }
   }
 
-  return <article className="tools-card tools-equipment-card" aria-label="Update Equipment List">
+  return <article className="tools-action-group" aria-label="Update Equipment List">
     <input ref={reportInput} type="file" hidden aria-label="Internal Report for Equipment Update" accept=".docx" disabled={busy}
       onChange={(event) => {
         const file = event.target.files?.[0] ?? null;
@@ -61,15 +62,17 @@ export function EquipmentListTool(): ReactElement {
         if (running.current || !file) return;
         setReport(file); clearFeedback(); setDialogOpen(true);
       }} />
-    <button ref={openButton} className="primary-action tools-picker-action" type="button" disabled={busy || dialogOpen}
+    <button ref={openButton} className="primary-action tools-picker-action" type="button" title="Select an internal report to update its equipment list." disabled={busy || dialogOpen}
       onClick={() => reportInput.current?.click()}>
       Updated Report Equipments
     </button>
     {dialogOpen && report && <EquipmentSourceDialog reportName={report.name} busy={busy} error={error}
       returnFocus={openButton} onCancel={() => { if (!running.current) setDialogOpen(false); }} onUpdate={run}
       onSourceChange={() => setError(null)} />}
-    {name && <p className="tools-feedback tools-feedback-success" role="status" aria-label="Downloaded File">{name}</p>}
-    {review && <EquipmentReviewFeedback review={review} />}
+    {(name || review) && <ToolsFeedback><div className="tools-action-feedback">
+      {name && <p className="tools-feedback tools-feedback-success" role="status" aria-label="Downloaded File">{name}</p>}
+      {review && <EquipmentReviewFeedback review={review} />}
+    </div></ToolsFeedback>}
   </article>;
 }
 
