@@ -1,10 +1,10 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
-import { encryptStandaloneCopy, encryptLocalFolder } from "../../api/client";
+import { encryptLocalFile, encryptLocalFolder } from "../../api/client";
 import { EncryptionTool } from "./EncryptionTool";
 
-vi.mock("../../api/client", () => ({ encryptStandaloneCopy: vi.fn(), encryptLocalFolder: vi.fn() }));
+vi.mock("../../api/client", () => ({ encryptLocalFile: vi.fn(), encryptLocalFolder: vi.fn() }));
 const completed = { cancelled: false as const, folder: "D:/Lab", summary: { succeeded: 1, failed: 1, skipped: 2 },
   entries: [{ file: "no-number.xlsx", status: "Failed", reason: "Excel files must start with DL-YYYY-MM-NNN." }] };
 
@@ -47,8 +47,8 @@ it("prevents concurrent operations and ignores late feedback after leaving", asy
   const mounted = render(<EncryptionTool />);
   await userEvent.click(screen.getByRole("button", { name: "Choose Folder" }));
   expect(screen.getByRole("button", { name: "Create Encrypted Copy" })).toHaveProperty("disabled", true);
-  fireEvent.change(screen.getByLabelText("Select Office File"), { target: { files: [new File(["x"], "report.docx")] } });
-  expect(encryptStandaloneCopy).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole("button", { name: "Create Encrypted Copy" }));
+  expect(encryptLocalFile).not.toHaveBeenCalled();
   mounted.unmount();
   await act(async () => finish(completed));
   expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
@@ -61,11 +61,13 @@ it("clearly reports zero successful files", async () => {
   expect(await screen.findByText(/No files were encrypted/)).toBeTruthy();
 });
 
-it.each([".ppt", ".pptx"])("accepts and downloads a single %s presentation", async suffix => {
-  vi.mocked(encryptStandaloneCopy).mockResolvedValue({ blob: new Blob(["encrypted slides"]), fileName: `slides_Secured${suffix}` });
+it.each([".ppt", ".pptx"])("saves a single %s presentation beside the source without downloading", async suffix => {
+  vi.mocked(encryptLocalFile).mockResolvedValue({ cancelled: false, folder: "D:/Lab", summary: { succeeded: 1, failed: 0, skipped: 0 },
+    entries: [{ file: `slides${suffix}`, status: "Encrypted", reason: "", output: `slides_Secured${suffix}` }] });
   render(<EncryptionTool />);
-  const file = new File(["slides"], `slides${suffix}`);
-  await userEvent.upload(screen.getByLabelText("Select Office File"), file);
-  expect(encryptStandaloneCopy).toHaveBeenCalledWith(file);
-  expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe(`slides_Secured${suffix}`);
+  await userEvent.click(screen.getByRole("button", { name: "Create Encrypted Copy" }));
+  expect((await screen.findByRole("status", { name: "Saved Encrypted File" })).textContent).toContain(`slides_Secured${suffix}`);
+  expect(screen.queryByLabelText("Select Office File")).toBeNull();
+  expect(URL.createObjectURL).not.toHaveBeenCalled();
+  expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
 });

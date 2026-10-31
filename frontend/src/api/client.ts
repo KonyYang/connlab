@@ -5663,6 +5663,12 @@ export function encryptLocalFolder(): Promise<LocalFolderEncryptionResult> {
   });
 }
 
+export function encryptLocalFile(): Promise<LocalFolderEncryptionResult> {
+  return requestJson("/api/tools/encrypt-local-file", {
+    method: "POST", headers: { "X-ConnLab-Local-Encryption": "1" },
+  });
+}
+
 export async function encryptStandaloneFolder(files: File[]): Promise<BlobDownloadResponse & { summary: FolderEncryptionSummary }> {
   const body = new FormData();
   files.forEach(file => body.append("files", file));

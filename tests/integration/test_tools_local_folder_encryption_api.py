@@ -202,3 +202,63 @@ def test_single_file_powerpoint_download_preserves_extension(local_lab, suffix):
     assert result.status_code == 200, result.text
     assert f"slides_Secured{suffix}" in result.headers["content-disposition"]
     assert result.content == b"secured:original slides"
+
+
+@pytest.mark.parametrize("name", ["report.doc", "report.docx", "DL-2026-10-030.xls", "DL-2026-10-030.xlsx", "slides.ppt", "slides.pptx"])
+def test_native_single_file_saves_beside_only_the_selected_original(local_lab, name):
+    root, client, app = local_lab
+    source = root / name
+    source.write_bytes(b"selected original")
+    (root / "unselected.docx").write_bytes(b"must not be processed")
+    target = source.with_name(f"{source.stem}_Secured{source.suffix}")
+    target.write_bytes(b"prior copy")
+    app.dependency_overrides[route.get_local_file_encryption_picker] = lambda: lambda: source
+    result = client.post("/api/tools/encrypt-local-file", headers=HEADERS)
+    assert result.status_code == 200, result.text
+    assert result.json()["summary"] == {"succeeded": 1, "failed": 0, "skipped": 0}
+    assert source.read_bytes() == b"selected original" and target.read_bytes() == b"prior copy"
+    assert source.with_name(f"{source.stem}_Secured (1){source.suffix}").read_bytes() == b"secured:selected original"
+    assert not (root / "unselected_Secured.docx").exists()
+    assert not any(path.name.startswith(".connlab") for path in root.rglob("*"))
+
+
+def test_single_native_cancel_and_untrusted_requests_write_nothing(local_lab):
+    root, client, app = local_lab
+    calls = []
+    app.dependency_overrides[route.get_local_file_encryption_picker] = lambda: lambda: calls.append(True)
+    assert client.post("/api/tools/encrypt-local-file").status_code == 403
+    assert not calls
+    assert client.post("/api/tools/encrypt-local-file", headers=HEADERS).json() == {"cancelled": True}
+    assert calls == [True] and not list(root.rglob("*_Secured*"))
+
+
+@pytest.mark.parametrize(("name", "reason"), [("unnumbered.xlsx", "DL-YYYY-MM-NNN"), ("file.pdf", "original Word"), ("file_Secured.ppt", "_Secured")])
+def test_single_native_file_validation_has_clear_feedback_and_preserves_source(local_lab, name, reason):
+    root, client, app = local_lab
+    source = root / name
+    source.write_bytes(b"untouched original")
+    app.dependency_overrides[route.get_local_file_encryption_picker] = lambda: lambda: source
+    result = client.post("/api/tools/encrypt-local-file", headers=HEADERS)
+    assert result.status_code == 422 and reason in result.json()["detail"]
+    assert source.read_bytes() == b"untouched original"
+    assert len(list(root.glob("*.*"))) == 1
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows native file picker boundary")
+@pytest.mark.parametrize("cancelled", [False, True])
+def test_single_native_picker_supports_unicode_formats_and_cancellation(monkeypatch, tmp_path, cancelled):
+    import pythoncom
+    import win32gui
+    from backend.infrastructure.files.windows_path_picker import WindowsPathPicker
+    selected = tmp_path / "演示.ppt"
+    released = []
+    monkeypatch.setattr(pythoncom, "CoInitialize", lambda: None)
+    monkeypatch.setattr(pythoncom, "CoUninitialize", lambda: released.append(True))
+    def choose(**kwargs):
+        assert "*.ppt;*.pptx" in kwargs["Filter"]
+        if cancelled:
+            raise win32gui.error(0, "GetOpenFileNameW", "Cancelled")
+        return str(selected), "", 0
+    monkeypatch.setattr(win32gui, "GetOpenFileNameW", choose)
+    assert WindowsPathPicker().pick_encryption_file() == (None if cancelled else selected)
+    assert released == [True]

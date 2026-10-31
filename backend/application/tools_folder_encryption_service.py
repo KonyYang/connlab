@@ -37,6 +37,8 @@ class LocalFolderPort(Protocol):
 
     def scan(self) -> Sequence[LocalFolderCandidate]: ...
 
+    def select_file(self, source: Path) -> LocalFolderCandidate: ...
+
     def create_copy(self, source: Path, encrypt: Callable[..., Path]) -> Path: ...
 
 
@@ -56,7 +58,18 @@ class ToolsLocalFolderEncryptionService:
         self._files = files
 
     def encrypt(self) -> dict:
-        candidates = self._files.scan()
+        return self._encrypt(self._files.scan())
+
+    def encrypt_file(self, source: Path) -> dict:
+        candidate = self._files.select_file(source)
+        if local_folder_skip_reason(candidate.source_path):
+            raise ToolsError("Select an original Word, Excel or PowerPoint file, not a temporary or _Secured copy.")
+        result = self._encrypt([candidate])
+        if result["summary"]["failed"]:
+            raise ToolsError(result["entries"][0]["reason"])
+        return result
+
+    def _encrypt(self, candidates: Sequence[LocalFolderCandidate]) -> dict:
         entries = []
         for candidate in candidates:
             path = candidate.source_path

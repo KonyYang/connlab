@@ -52,6 +52,15 @@ class ToolsLocalFolderGateway:
             raise ToolsError(f"Choose a folder with at most {MAX_FOLDER_FILES} Office files.")
         return result
 
+    def select_file(self, source: Path) -> LocalFolderCandidate:
+        source = Path(source)
+        self._check_location(source)
+        if not source.is_file():
+            raise ToolsError("Select an existing Office file.")
+        source = source.resolve(strict=True)
+        self._sources[source] = self._identity(source)
+        return LocalFolderCandidate(source, source.relative_to(self.root).as_posix())
+
     def create_copy(self, source: Path, encrypt: Callable[..., Path]) -> Path:
         self._check_source(source)
         # Same-volume staging enables no-replace publication. Windows rename
