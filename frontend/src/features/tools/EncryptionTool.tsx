@@ -36,14 +36,13 @@ export function EncryptionTool() {
   return <article className="tools-card" aria-label="Encrypt a Copy" aria-busy={Boolean(busy)}>
     <div className="tools-card-heading"><h3>Select Office File or Folder</h3></div>
     <div className="tools-encryption-actions">
-      <button className="primary-action tools-picker-action" type="button" disabled={Boolean(busy)} onClick={() => void run("file")}>
+      <button className="primary-action tools-picker-action" type="button" title="Select a Word, Excel or PowerPoint file. Save a _Secured copy beside the original." disabled={Boolean(busy)} onClick={() => void run("file")}>
         {busy === "file" ? "Working..." : "Create Encrypted Copy"}
       </button>
-      <button className="secondary-action" type="button" disabled={Boolean(busy)} onClick={() => void run("folder")}>
+      <button className="secondary-action" type="button" title="Encrypt Word, Excel and PowerPoint files directly in the selected folder. Save _Secured copies beside originals. Subfolders are excluded." disabled={Boolean(busy)} onClick={() => void run("folder")}>
         {busy === "folder" ? "Working..." : "Choose Folder"}
       </button>
     </div>
-    <p className="tools-card-hint">Word, Excel and PowerPoint. Saves _Secured copies beside originals. Folder mode excludes subfolders.</p>
     {error ? <p role="alert" className="tools-feedback tools-feedback-error">{error}</p> : null}
     {result ? <div className="tools-folder-selection" role={resultMode === "folder" ? "status" : undefined}>
       {resultMode === "file" && saved ? <p role="status" aria-label="Saved Encrypted File" className="tools-feedback tools-feedback-success">
