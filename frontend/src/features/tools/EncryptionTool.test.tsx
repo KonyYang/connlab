@@ -22,8 +22,8 @@ it("chooses a local folder and reports saved siblings without uploads or downloa
   expect(screen.getByText("D:/Lab")).toBeTruthy();
   expect(screen.queryByLabelText("Select Office Folder")).toBeNull();
   expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
-  await userEvent.click(screen.getByText("Failed files (1)"));
-  expect(screen.getByText(/no-number.xlsx.*DL-YYYY-MM-NNN/)).toBeTruthy();
+  expect(screen.queryByText(/Failed files/)).toBeNull();
+  expect(screen.queryByText(/no-number.xlsx/)).toBeNull();
 });
 
 it("keeps previous feedback on picker cancellation and allows retry after errors", async () => {

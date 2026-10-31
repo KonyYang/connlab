@@ -31,7 +31,6 @@ export function EncryptionTool() {
     }
   }
 
-  const failed = result?.entries.filter(entry => entry.status === "Failed") ?? [];
   const saved = result?.entries.find(entry => entry.status === "Encrypted");
   return <article className="tools-card" aria-label="Encrypt a Copy" aria-busy={Boolean(busy)}>
     <div className="tools-card-heading"><h3>Select Office File or Folder</h3></div>
@@ -52,9 +51,6 @@ export function EncryptionTool() {
         {result.summary.succeeded} encrypted · {result.summary.failed} failed · {result.summary.skipped} skipped.
       </p>}
       <p className="tools-feedback" title={result.folder}>{result.folder}</p>
-      {failed.length > 0 ? <details><summary>Failed files ({failed.length})</summary>
-        <ul>{failed.map(entry => <li key={entry.file}>{entry.file}: {entry.reason}</li>)}</ul>
-      </details> : null}
     </div> : null}
   </article>;
 }
