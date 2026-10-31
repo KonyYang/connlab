@@ -197,11 +197,11 @@
     },
     "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
       "branch": "codex/tools-folder-encryption-20261030",
       "resources": [],
-      "integrated_head": "19b792ab42792fa25e2431af7a93961780382789",
+      "integrated_head": "07b6085baddcc8f1f0147f1065d37328297bb193",
       "task": {
         "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
         "summary": "Batch encrypted Word/Excel copies from a selected folder without modifying originals",
@@ -234,7 +234,7 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T01:51:30.254256Z",
+        "updated_at": "2026-10-31T01:55:45.265446Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -244,7 +244,69 @@
           "summary": "User requests Choose Folder to inspect and encrypt only direct files in the selected directory, never entering subfolders.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
+          "subject": "1689b873a13c5db56967a73d85639d1bc751fcc3",
+          "summary": "Choose Folder now scans and encrypts direct files only; subdirectories are never enumerated. Existing password, sibling-copy and single-file rules remain unchanged.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/infrastructure/files/tools_local_folder_gateway.py",
+            "docs/PROJECT_CONTEXT.md",
+            "frontend/src/features/tools/EncryptionTool.tsx",
+            "tests/integration/test_tools_local_folder_encryption_api.py"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "TDD RED/GREEN",
+              "evidence": "Two public API cases failed on recursive traversal and passed after removing it. A directory-scan guard rejects entry into the child containing 501 Office files, with and without a direct source."
+            },
+            {
+              "status": "passed",
+              "name": "Final backend matrix",
+              "evidence": "52 passed: local folder/file API and legacy folder compatibility, including junction non-traversal, file bounds, existing output collisions, original preservation and PowerPoint support. One pre-existing Starlette deprecation warning."
+            },
+            {
+              "status": "passed",
+              "name": "Final frontend matrix",
+              "evidence": "22 passed: EncryptionTool and ToolsPage interaction tests on final bytes."
+            },
+            {
+              "status": "passed",
+              "name": "Production build",
+              "evidence": "TypeScript and Vite production build passed, 217 modules."
+            },
+            {
+              "status": "passed",
+              "name": "Exact diff review",
+              "evidence": "Sequential same-agent Standards and Spec review completed. Only native folder enumeration, matching hint/documentation and regression tests changed. No recursive walk remains in the selected-folder scan. No changes to Office adapter, password rules, native pickers or output publication. git diff --check passed."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Primary context, two meaningful RED/GREEN boundary tests and minimal implementation."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Focused sequential same-agent Standards and Spec passes, not independent agents."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "One complete proportional final matrix: 52 backend, 22 frontend tests and production build. Temporary fixtures only; no real business files touched."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "1689b873a13c5db56967a73d85639d1bc751fcc3",
+            "primary_before": "e8ab664b607ff67745645d560080155b4692287a",
+            "integrated_head": "07b6085baddcc8f1f0147f1065d37328297bb193",
+            "recovered": false
+          }
+        }
       }
     }
   }
