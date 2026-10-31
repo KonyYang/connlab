@@ -197,11 +197,11 @@
     },
     "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
       "branch": "codex/tools-folder-encryption-20261030",
       "resources": [],
-      "integrated_head": "cdf09e744d50d08e5cfa8b7006bfbda125f368d6",
+      "integrated_head": "86e619fb883ccba93cc239af0fe93915fd3a98f0",
       "task": {
         "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
         "summary": "Batch encrypted Word/Excel copies from a selected folder without modifying originals",
@@ -236,7 +236,7 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T07:07:37.683475Z",
+        "updated_at": "2026-10-31T07:08:26.308202Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -246,7 +246,54 @@
           "summary": "User requests removing redundant Select Internal Report headings; apply consistently to customer report and equipment list cards.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
+          "subject": "38aa5a3ca6383812699fe9c106544a9edf826aa6",
+          "summary": "Remove redundant headings above all Tools action cards, including customer report, equipment, mechanical summary and temperature drawing. Retain button labels, named articles and necessary file/parameter labels.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/features/tools/EquipmentListTool.tsx",
+            "frontend/src/features/tools/MechanicalSummaryTool.tsx",
+            "frontend/src/pages/ToolsPage.test.tsx",
+            "frontend/src/pages/ToolsPage.tsx"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Final affected UI matrix",
+              "evidence": "23 passed on final bytes: ToolsPage 16, EncryptionTool 6 and MechanicalSummaryTool 1. Existing page checks verify no redundant headings, report picker/cancel behavior, equipment dialog/focus, mechanical review workflow and encryption operations."
+            },
+            {
+              "status": "passed",
+              "name": "Exact diff review",
+              "evidence": "Sequential same-agent Standards and Spec review. Removed display-only headings; article names and hidden/native input labels remain, temperature card gains an accessible name. File selection, generation, downloads, errors and busy state unchanged. Necessary form labels and explanatory copy remain. git diff --check passed. Existing semantic tests updated; no new behavior or backend mutation."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Primary context, markup-only title removal and existing semantic regression updates."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Focused sequential same-agent Standards and Spec review; not independent-agent execution."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "One complete proportional 23-test final UI matrix. No real files generated or modified."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "38aa5a3ca6383812699fe9c106544a9edf826aa6",
+            "primary_before": "c030c41e2aa25d28d11df216ec7fec5d86d84a4b",
+            "integrated_head": "86e619fb883ccba93cc239af0fe93915fd3a98f0",
+            "recovered": false
+          }
+        }
       }
     }
   }
