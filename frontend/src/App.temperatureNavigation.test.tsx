@@ -42,7 +42,7 @@ const analysis: api.TemperatureAnalysis = {
 const sidebar = () => within(screen.getByRole('complementary', { name: 'Primary navigation' }));
 async function openImportedWorkspace() {
   // Wait for real lazy routes under full-suite concurrency, rather than assuming a warm module cache.
-  await userEvent.setup().click(await screen.findByRole('button', { name: 'Drawing Curves', exact: true }, { timeout: 5000 }));
+  await userEvent.setup().click(await screen.findByRole('button', { name: 'Drawing T-rise', exact: true }, { timeout: 5000 }));
   const input = await screen.findByLabelText('Load Initial Data', {}, { timeout: 5000 });
   fireEvent.change(input, { target: { files: [new File(['source bytes'], 'navigation.csv')] } });
   await screen.findByRole('button', { name: 'Confirm Data', exact: true });
@@ -97,11 +97,11 @@ describe('Tools sidebar resumes the temperature workspace', () => {
     expect(storage.clearTemperatureWorkspace).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Back To Tools' }));
     await user.click(screen.getByRole('button', { name: 'Clear and Return' }));
-    await screen.findByRole('button', { name: 'Drawing Curves', exact: true });
+    await screen.findByRole('button', { name: 'Drawing T-rise', exact: true });
     expect(window.location.pathname).toBe('/tools');
     await user.click(sidebar().getByRole('button', { name: 'Settings', exact: true }));
     await user.click(sidebar().getByRole('button', { name: 'Tools', exact: true }));
-    await screen.findByRole('button', { name: 'Drawing Curves', exact: true });
+    await screen.findByRole('button', { name: 'Drawing T-rise', exact: true });
     expect(window.location.pathname).toBe('/tools');
     expect(api.importTemperatureWorkbook).toHaveBeenCalledOnce();
     expect(storage.clearTemperatureWorkspace).toHaveBeenCalledOnce();
@@ -127,7 +127,7 @@ describe('Tools sidebar resumes the temperature workspace', () => {
     window.history.replaceState({}, '', '/settings');
     render(<App />);
     await userEvent.setup().click(sidebar().getByRole('button', { name: 'Tools', exact: true }));
-    await screen.findByRole('button', { name: 'Drawing Curves', exact: true });
+    await screen.findByRole('button', { name: 'Drawing T-rise', exact: true });
     expect(window.location.pathname).toBe('/tools');
     expect(storage.clearTemperatureWorkspace).not.toHaveBeenCalled();
   });
