@@ -43,7 +43,7 @@ export function EncryptionTool() {
         {busy === "folder" ? "Working..." : "Choose Folder"}
       </button>
     </div>
-    <p className="tools-card-hint">Word, Excel and PowerPoint. Saves _Secured copies beside originals. Folder mode includes subfolders.</p>
+    <p className="tools-card-hint">Word, Excel and PowerPoint. Saves _Secured copies beside originals. Folder mode excludes subfolders.</p>
     {error ? <p role="alert" className="tools-feedback tools-feedback-error">{error}</p> : null}
     {result ? <div className="tools-folder-selection" role={resultMode === "folder" ? "status" : undefined}>
       {resultMode === "file" && saved ? <p role="status" aria-label="Saved Encrypted File" className="tools-feedback tools-feedback-success">

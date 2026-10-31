@@ -101,7 +101,7 @@ Do not use a dated snapshot as a substitute for the code.
 ### Standalone Tools folder encryption
 
 - `Create Encrypted Copy` opens the native Office file picker and saves only the selected file;
-  `Choose Folder` opens the native directory picker and includes subfolders. Both process `.doc`,
+  `Choose Folder` opens the native directory picker and processes only direct files, excluding subfolders. Both process `.doc`,
   `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx` without file uploads or browser downloads.
   Each verified `_Secured` copy is saved beside its
   source; existing names receive ` (1)`, ` (2)`, etc. Original and previous output files are never
