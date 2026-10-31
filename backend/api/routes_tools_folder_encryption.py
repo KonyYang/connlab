@@ -1,22 +1,49 @@
-"""Folder uploads are isolated copies, never client-addressed server directories."""
+"""Native-selected local folders and the compatible isolated-upload endpoint."""
 import json
 import shutil
 import tempfile
 from pathlib import Path
+from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
 from backend.api.dependencies import get_settings, get_tools_service
 from backend.application.tools_service import ToolsError, ToolsService
-from backend.application.tools_folder_encryption_service import ToolsFolderEncryptionService, validate_folder_paths
+from backend.application.tools_folder_encryption_service import ToolsFolderEncryptionService, ToolsLocalFolderEncryptionService, validate_folder_paths
 from backend.infrastructure.files.tools_folder_archive_gateway import ToolsFolderArchiveGateway
+from backend.infrastructure.files.tools_local_folder_gateway import ToolsLocalFolderGateway
+from backend.infrastructure.files.windows_path_picker import WindowsPathPicker
 from backend.shared.config import Settings
 
 router = APIRouter()
 MAX_FILE_BYTES = 100 * 1024 * 1024
 MAX_TOTAL_BYTES = 500 * 1024 * 1024
+
+
+def get_local_encryption_picker():
+    return WindowsPathPicker().pick_encryption_directory
+
+
+@router.post("/encrypt-local-folder")
+def encrypt_local_folder(request: Request, picker=Depends(get_local_encryption_picker),
+                         tools: ToolsService = Depends(get_tools_service)):
+    origin = request.headers.get("origin", "")
+    if (request.url.hostname not in {"localhost", "127.0.0.1", "::1"} or not request.client
+        or request.client.host not in {"localhost", "127.0.0.1", "::1"}
+        or origin != f"{request.url.scheme}://{request.url.netloc}"
+        or urlsplit(origin).hostname not in {"localhost", "127.0.0.1", "::1"}
+        or request.headers.get("x-connlab-local-encryption") != "1"):
+        raise HTTPException(403, "Choose the folder from ConnLab on this computer.")
+    try:
+        folder = picker()
+        if folder is None:
+            return {"cancelled": True}
+        return ToolsLocalFolderEncryptionService(tools=tools, files=ToolsLocalFolderGateway(folder)).encrypt()
+    except (ToolsError, OSError, RuntimeError) as exc:
+        message = str(exc) if isinstance(exc, ToolsError) else "Could not read the selected folder. Check folder access and try again."
+        raise HTTPException(422, message) from exc
 
 
 @router.post("/encrypt-folder")

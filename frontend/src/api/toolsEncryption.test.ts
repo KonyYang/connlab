@@ -1,7 +1,17 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { encryptStandaloneFolder } from "./client";
+import { encryptStandaloneFolder, encryptLocalFolder } from "./client";
 
 afterEach(() => vi.unstubAllGlobals());
+
+it("starts native local-folder processing with no file body", async () => {
+  const value = { cancelled: true };
+  const mock = vi.fn().mockResolvedValue(new Response(JSON.stringify(value)));
+  vi.stubGlobal("fetch", mock);
+  expect(await encryptLocalFolder()).toEqual(value);
+  expect(mock.mock.calls[0][0]).toContain("/api/tools/encrypt-local-folder");
+  expect(mock.mock.calls[0][1].body).toBeUndefined();
+  expect(mock.mock.calls[0][1].headers).toMatchObject({ "X-ConnLab-Local-Encryption": "1" });
+});
 
 it("uploads files with recursive relative paths and reads the ZIP outcome counts", async () => {
   const mock = vi.fn().mockResolvedValue(new Response("zip", { headers: {
