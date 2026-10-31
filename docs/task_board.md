@@ -197,7 +197,7 @@
     },
     "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
       "branch": "codex/tools-folder-encryption-20261030",
       "resources": [],
@@ -234,69 +234,17 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T05:50:55.832306Z",
+        "updated_at": "2026-10-31T05:57:35.733543Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
           "stage": "revision",
           "status": "running",
-          "summary": "User requests counting Excel encryption failures only for valid leading LTR filenames; ineligible Excel files should be skipped.",
+          "summary": "User requests explicit batch file encryption wording for the folder action; use Encrypt File and Batch Encrypt Files.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
-          "subject": "755fed3906ca93905e12a64ad0453b26a4f4793f",
-          "summary": "Native folder encryption skips Excel files without valid leading LTRs before staging; only eligible operation failures count as failed. Reuse existing filename/password validation without changing cipher, password or single-file rejection rules.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/application/tools_folder_encryption_service.py",
-            "backend/application/tools_service.py",
-            "docs/PROJECT_CONTEXT.md",
-            "tests/integration/test_tools_local_folder_encryption_api.py"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "name": "TDD RED/GREEN",
-              "evidence": "Two .xls/.xlsx public API cases first failed because ineligible files reached create_copy, then passed with no attempted copies after preflight qualification. Added checks for missing prefix, nonleading LTR, wrong sequence width and invalid month; valid Excel/Word/PPT failures still counted."
-            },
-            {
-              "status": "passed",
-              "name": "Final affected backend matrix",
-              "evidence": "70 passed across local folder/file API, legacy folder API, ToolsService password rules and project encryption API. Covers LTR suffixes, actual eligible failures, invalid Excel skip, 501 invalid files excluded from eligible-source limit, native single-file error feedback, no-overwrite and original preservation. One existing Starlette deprecation warning. Frontend unchanged."
-            },
-            {
-              "status": "passed",
-              "name": "Exact diff review",
-              "evidence": "Sequential same-agent Standards and Spec review passed. Same prefix regex and LTR parser now serve selection and password derivation. Native folder only changes invalid Excel classification; legacy upload compatibility unchanged. Single-file validation still rejects ineligible sources. No Office adapter or output mutation change. Documentation corrected to current compact results. git diff --check passed."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Primary context, public API TDD RED/GREEN and shared existing validation extraction."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Focused sequential same-agent Standards and Spec passes; not independent-agent execution."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Complete final affected 70-test backend matrix once. Owned temporary fixtures only; no actual user folder encryption."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "755fed3906ca93905e12a64ad0453b26a4f4793f",
-            "primary_before": "7d54638b7e6d3febeb43189ee8c8aa1bfc1b9dfc",
-            "integrated_head": "e38e663e86403660d1956e034092776596e0b265",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
