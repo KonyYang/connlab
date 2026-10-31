@@ -164,15 +164,15 @@
         "risk_reasons": [],
         "activation_head": "394924ea3d8862e7a1fad5a5a154b1e8181e86d9",
         "started_at": "2026-10-31T21:21:46.877584Z",
-        "updated_at": "2026-10-31T23:53:36.217073Z",
+        "updated_at": "2026-10-31T23:58:42.306297Z",
         "checkpoint": {
+          "requires_user": false,
           "schema": "connlab.sol-task-checkpoint",
-          "summary": "Authorized local rollover completed. First slice: ordinary confirmed intake creates idempotent managed Project binding; preserve carried stable ID and reject existing-ID overwrite; keep explicit conflict-copy rules. RED reproduced missing project ID, final isolated import API 24 passed. Remaining: normalized LTR roots, truthful historical LTR/completeness, common workbench/recycle and final portability/UI QA. No real-data mutation, merge, push or publication; no further task-switch permission needed.",
-          "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
           "version": 1,
-          "stage": "implementation",
           "status": "running",
-          "requires_user": false
+          "stage": "implementation",
+          "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
+          "summary": "Second slice implemented: recognized business folder wraps under pure full-LTR root with Source Book, complete root is not nested twice, duplicate comparison accounts for envelope, title changes keep stable root, source-named unregistered folders require conflict review. Registry reads historical LTR via explicit membership with imported display kind, never fabricates LTR registration; standard row has workbench/recycle buttons and Matrix-needed state. Developer feedback: 38 Python API/registry tests, 23 frontend tests, build passed; 3 focused portability/guard tests passed after preserving damaged-snapshot takeover protection. Local commit saved. Remaining: actual workbench folder binding, direct Open Project after ordinary intake, truthful missing-information UI, broader portability/recycle and final isolated browser QA, review and local integration. No real-data writes/push/publication."
         },
         "report": null
       }
