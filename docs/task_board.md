@@ -224,6 +224,7 @@
           "frontend/src/features/tools/EncryptionTool.test.tsx",
           "frontend/src/features/tools/EncryptionTool.tsx",
           "frontend/src/features/tools/EquipmentListTool.tsx",
+          "frontend/src/features/tools/MechanicalSummaryTool.test.tsx",
           "frontend/src/features/tools/MechanicalSummaryTool.tsx",
           "frontend/src/pages/ToolsPage.test.tsx",
           "frontend/src/pages/ToolsPage.tsx",
@@ -237,7 +238,7 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T08:33:51.161924Z",
+        "updated_at": "2026-10-31T08:33:59.435407Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
