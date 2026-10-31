@@ -117,7 +117,7 @@ export function ToolsPage({
         <EquipmentListTool />
         <MechanicalSummaryTool />
         <article className="tools-card" aria-label="Temperature Rise">
-          <button className="primary-action tools-picker-action" type="button" onClick={onOpenTemperatureRise}>Drawing Curves</button>
+          <button className="primary-action tools-picker-action" type="button" onClick={onOpenTemperatureRise}>Drawing T-rise</button>
         </article>
       </div>
     </section>
