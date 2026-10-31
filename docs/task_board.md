@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_EQUIPMENT_TABLE_FONT_20261030",
+    "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
     "tier": "standard",
-    "subject": "d1ee9f3c58be943f5ec4e7e6536e2e7020e93b7c",
-    "summary": "Preserve equipment table typography after clearing and refilling cells",
+    "subject": "60b5f073724cd0d78e2168a1d1ad518d4e21eebf",
+    "summary": "Batch encrypted Word/Excel copies from a selected folder without modifying originals",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested closing the current equipment-table font repair task after 127 affected tests, 164 release checks, and successful new-EXE validation of three real document scenarios.",
-    "closed_at": "2026-10-30T05:59:50.377281Z"
+    "decision_ref": "User explicitly requested final task close after the Tools layout, encryption and copy refinements; final UI matrix 33 passed, production build and isolated browser checks completed.",
+    "closed_at": "2026-10-31T08:53:23.134515Z"
   },
   "retained_history": [
     {
@@ -102,6 +102,15 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested final Close of the completed equipment-table source-code repair after 123 passing tests and successful browser upload/download validation on 2026-10-30.",
       "closed_at": "2026-10-30T00:00:01.969757Z"
+    },
+    {
+      "task_id": "TASK_EQUIPMENT_TABLE_FONT_20261030",
+      "tier": "standard",
+      "subject": "d1ee9f3c58be943f5ec4e7e6536e2e7020e93b7c",
+      "summary": "Preserve equipment table typography after clearing and refilling cells",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested closing the current equipment-table font repair task after 127 affected tests, 164 release checks, and successful new-EXE validation of three real document scenarios.",
+      "closed_at": "2026-10-30T05:59:50.377281Z"
     }
   ],
   "tasks": {
@@ -190,130 +199,6 @@
             "subject": "963b31d00f452951dc3434f438dd633bc132edf9",
             "primary_before": "2c3fcaf516432a97b14ecf164f80a8fd696128d4",
             "integrated_head": "8fef12518136e1a6bfcf0c4c944f4d5b5886da0d",
-            "recovered": false
-          }
-        }
-      }
-    },
-    "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
-      "slot": "main",
-      "state": "ready_for_close",
-      "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
-      "branch": "codex/tools-folder-encryption-20261030",
-      "resources": [],
-      "integrated_head": "33397fe40c153d04c65280b8a0f39b65d46778d8",
-      "task": {
-        "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
-        "summary": "Batch encrypted Word/Excel copies from a selected folder without modifying originals",
-        "tier": "standard",
-        "route": "sol_build_review_qa",
-        "scope": "Add a recursive browser folder picker alongside single-file encryption. Reuse unchanged Office encryption/password policy; stage uploaded copies, preserve relative paths in a downloadable ZIP, report individual failures without including plaintext originals, validate upload paths and limits, prevent duplicate/stale UI operations, and verify isolated native Office/browser behavior. No changes to cipher, passwords, project authority or original files.",
-        "scope_paths": [
-          "backend/api/routes_tools.py",
-          "backend/api/routes_tools_folder_encryption.py",
-          "backend/application/tools_folder_encryption_service.py",
-          "backend/application/tools_service.py",
-          "backend/infrastructure/files/tools_folder_archive_gateway.py",
-          "backend/infrastructure/files/tools_local_folder_gateway.py",
-          "backend/infrastructure/files/windows_path_picker.py",
-          "backend/infrastructure/office/office_file_password_gateway.py",
-          "docs/PROJECT_CONTEXT.md",
-          "frontend/src/App.temperatureNavigation.test.tsx",
-          "frontend/src/api/client.ts",
-          "frontend/src/api/toolsEncryption.test.ts",
-          "frontend/src/features/tools/EncryptionTool.test.tsx",
-          "frontend/src/features/tools/EncryptionTool.tsx",
-          "frontend/src/features/tools/EquipmentListTool.tsx",
-          "frontend/src/features/tools/MechanicalSummaryTool.test.tsx",
-          "frontend/src/features/tools/MechanicalSummaryTool.tsx",
-          "frontend/src/features/tools/ToolsFeedback.tsx",
-          "frontend/src/pages/ToolsPage.test.tsx",
-          "frontend/src/pages/ToolsPage.tsx",
-          "frontend/src/tools.css",
-          "tests/integration/test_tools_folder_encryption_api.py",
-          "tests/integration/test_tools_local_folder_encryption_api.py",
-          "tests/unit/test_office_file_password_gateway.py",
-          "tests/unit/test_tools_folder_encryption_service.py",
-          "tests/unit/test_tools_service.py"
-        ],
-        "risk_reasons": [],
-        "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
-        "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T08:46:20.510151Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User requests replacing separate Tools cards with compact shared actions ordered equipment, mechanical, temperature, customer report, encryption; show mechanical review after selection.",
-          "requires_user": false
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
-          "subject": "60b5f073724cd0d78e2168a1d1ad518d4e21eebf",
-          "summary": "Replace separate Tools cards with one responsive action area ordered equipment, mechanical summary, temperature rise, customer report and file encryption. Mechanical review opens after source selection; shared feedback follows all actions without moving feature data ownership.",
-          "scope_ok": true,
-          "changed_paths": [
-            "docs/PROJECT_CONTEXT.md",
-            "frontend/src/features/tools/EncryptionTool.tsx",
-            "frontend/src/features/tools/EquipmentListTool.tsx",
-            "frontend/src/features/tools/MechanicalSummaryTool.test.tsx",
-            "frontend/src/features/tools/MechanicalSummaryTool.tsx",
-            "frontend/src/features/tools/ToolsFeedback.tsx",
-            "frontend/src/pages/ToolsPage.test.tsx",
-            "frontend/src/pages/ToolsPage.tsx",
-            "frontend/src/tools.css"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "name": "TDD RED/GREEN",
-              "evidence": "New public UI cases first failed for missing mechanical file action and incorrect workflow order, then passed. Mechanical cancellation preserves selected review; page integration asserts review follows all entry actions in DOM order."
-            },
-            {
-              "status": "passed",
-              "name": "Final affected UI matrix",
-              "evidence": "33 passed on final bytes: ToolsPage 17, MechanicalSummaryTool 2, EncryptionTool 6, temperature navigation 8. Includes report/equipment generation flows, file selection/cancel/retry, concurrency, reviewed sample gate, correct action order, shared feedback position and workspace/Undo navigation retention."
-            },
-            {
-              "status": "passed",
-              "name": "Final production build",
-              "evidence": "TypeScript and Vite production build passed, 218 modules, after final responsive CSS changes."
-            },
-            {
-              "status": "passed",
-              "name": "Real browser layout and mechanical interaction",
-              "evidence": "Independent Chrome session on owned Vite port 18835, isolated API routes and owned review.pdf fixture; no real project API calls or business-file mutations. Actual mechanical button/file chooser expands review below all actions. Preview, sample entry and confirmation control Generate Summary readiness; empty selection retains it. Tab from mechanical action advances to temperature action. Final 390/660/1366/1920 widths verified as 1/2/3/6 columns with no document horizontal overflow. Screenshots inspected, named articles remain accessible despite display:contents. Checkbox measured 16x16. Isolated browser and Vite service stopped. The preview API response was mocked; no claim of actual instrument parsing or Office output verification."
-            },
-            {
-              "status": "passed",
-              "name": "Exact diff review",
-              "evidence": "Sequential same-agent Standards and Spec passes: zero findings on each axis. Layout-only ToolsFeedback portal owns no business state; keeps reviews/results after actions in visual and keyboard order and falls back inline for standalone feature tests. Existing API, Office, password and file output rules unchanged. CSS scoped to Tools; responsive rows avoid orphan buttons. Documentation records the present UI seam. git diff --check passed."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Primary context, compact plan and meaningful UI TDD RED/GREEN slices; existing feature-owned state retained."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Focused sequential same-agent Standards and Spec passes, zero findings per axis; not independent-agent execution."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Final 33-test matrix, production build and isolated real-browser workflow/layout checks; no real business file mutation."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "60b5f073724cd0d78e2168a1d1ad518d4e21eebf",
-            "primary_before": "bede6379ce9da35db4dd9137c8ae4bbd2d5e5fb0",
-            "integrated_head": "33397fe40c153d04c65280b8a0f39b65d46778d8",
             "recovered": false
           }
         }
