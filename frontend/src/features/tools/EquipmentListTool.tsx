@@ -63,7 +63,7 @@ export function EquipmentListTool(): ReactElement {
       }} />
     <button ref={openButton} className="primary-action tools-picker-action" type="button" disabled={busy || dialogOpen}
       onClick={() => reportInput.current?.click()}>
-      Update Equipment List
+      Updated Report Equipments
     </button>
     {dialogOpen && report && <EquipmentSourceDialog reportName={report.name} busy={busy} error={error}
       returnFocus={openButton} onCancel={() => { if (!running.current) setDialogOpen(false); }} onUpdate={run}
