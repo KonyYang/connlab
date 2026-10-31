@@ -197,11 +197,11 @@
     },
     "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
       "branch": "codex/tools-folder-encryption-20261030",
       "resources": [],
-      "integrated_head": "e38e663e86403660d1956e034092776596e0b265",
+      "integrated_head": "3325913e65c10dd38685ea8ecaf3486f3124e058",
       "task": {
         "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
         "summary": "Batch encrypted Word/Excel copies from a selected folder without modifying originals",
@@ -234,7 +234,7 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T05:57:35.733543Z",
+        "updated_at": "2026-10-31T05:58:23.255633Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -244,7 +244,54 @@
           "summary": "User requests explicit batch file encryption wording for the folder action; use Encrypt File and Batch Encrypt Files.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
+          "subject": "87327d37473a217fbe22946f3582e5d5af17797a",
+          "summary": "Name the single-file action Encrypt File and folder batch action Batch Encrypt Files to clearly describe encrypting the files inside a selected folder.",
+          "scope_ok": true,
+          "changed_paths": [
+            "docs/PROJECT_CONTEXT.md",
+            "frontend/src/features/tools/EncryptionTool.test.tsx",
+            "frontend/src/features/tools/EncryptionTool.tsx",
+            "frontend/src/pages/ToolsPage.test.tsx"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Final affected UI matrix",
+              "evidence": "22 passed: EncryptionTool 6 and ToolsPage 16. Existing interaction tests use the new button names and still verify correct native file/folder operations, cancellation, retry, concurrency and result behavior. Literal-only change; no backend or build-system changes."
+            },
+            {
+              "status": "passed",
+              "name": "Exact diff review",
+              "evidence": "Sequential same-agent Standards and Spec passes. Only two button labels, existing test queries and the corresponding documentation labels changed. Folder picker/scan, password policy and output saving unchanged; tooltip retains direct-files scope. No stale old action names in the touched UI/tests. git diff --check passed."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Primary context, reversible copy-only change and existing test query update."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Focused sequential same-agent Standards and Spec review; not independent-agent execution."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "One complete proportional matrix of 22 affected component/page tests on final bytes."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "87327d37473a217fbe22946f3582e5d5af17797a",
+            "primary_before": "fc549ae37f75ca8f80ff50b9b586eb5fe33717ab",
+            "integrated_head": "3325913e65c10dd38685ea8ecaf3486f3124e058",
+            "recovered": false
+          }
+        }
       }
     }
   }
