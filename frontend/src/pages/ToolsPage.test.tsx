@@ -130,13 +130,13 @@ describe("ToolsPage", () => {
     expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
   });
 
-  it("shows Office file guidance above one picker button and leaves cancellation idle", async () => {
+  it("shows file and batch encryption actions without a redundant heading and leaves cancellation idle", async () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
     encryptCopyMock.mockResolvedValueOnce({ cancelled: true });
-    const instruction = screen.getByRole("heading", { name: "Select Office File or Folder" });
+    expect(screen.queryByRole("heading", { name: "Select Office File or Folder" })).toBeNull();
     const action = screen.getByRole("button", { name: "Encrypt File" });
-    expect(instruction.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Batch Encrypt Files" })).toBeTruthy();
     expect(screen.queryByLabelText("Select Office File")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Encrypt a Copy" })).toBeNull();
     await user.click(action);
