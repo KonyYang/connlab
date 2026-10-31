@@ -45,15 +45,16 @@ def test_batch_intake_browsing_title_and_daily_files_keep_identity(library, tmp_
     member = client.get(f"/api/project-library/members/{member_id}").json()
     target = Path(member["folder_path"])
     assert target.is_relative_to(settings.projects_dir)
-    (target / "Test results" / "record.csv").write_text("11.7", encoding="utf-8")
-    (target / "Photos").mkdir()
-    (target / "Photos" / "photo.txt").write_text("new photo", encoding="utf-8")
+    (target / source.name / "Test results" / "record.csv").write_text("11.7", encoding="utf-8")
+    (target / source.name / "Photos").mkdir()
+    (target / source.name / "Photos" / "photo.txt").write_text("new photo", encoding="utf-8")
     title = client.post(f"/api/project-library/members/{member_id}/title-plan", json={"title": "New title"}).json()
     changed = client.post(f"/api/project-library/members/{member_id}/title", json={"plan_id": title["plan_id"], "fingerprint": title["fingerprint"]}).json()
     assert changed["member_id"] == member_id
     assert changed["ltr_number"] == "DL-2026-09-032"
-    assert Path(changed["folder_path"]).name == "DL-2026-09-032 New title"
-    assert (Path(changed["folder_path"]) / "Test results" / "record.csv").read_text() == "11.7"
+    assert Path(changed["folder_path"]) == target
+    assert target.name == "DL-2026-09-032"
+    assert (target / "DL-2026-09-032 New title" / "Test results" / "record.csv").read_text() == "11.7"
     assert (source / "Test results" / "record.csv").read_text() == "10.2"
     client.post(f"/api/project-library/members/{member_id}/open-folder")
     assert opened == [changed["folder_path"]]
@@ -95,6 +96,42 @@ def test_confirmed_manual_import_is_managed_without_a_second_takeover(library, t
     assert len(members) == 1
     assert members[0]["project_id"] == member["project_id"]
     assert (source / "result.csv").read_text(encoding="utf-8") == "original,12.3"
+
+
+@pytest.mark.parametrize("selection", ["business", "root", "root_without_source_book"])
+def test_import_receives_standard_ltr_root_without_changing_original_material(library, tmp_path, selection):
+    client, settings, _ = library
+    number = "DL-2026-09-032A1"
+    name = number + " Manual connector"
+    source = tmp_path / "incoming" / (name if selection == "business" else number)
+    business = source if selection == "business" else source / name
+    (business / "Photos").mkdir(parents=True)
+    (business / "Photos" / "evidence.txt").write_text("original evidence", encoding="utf-8")
+    if selection == "root":
+        (source / "Source Book").mkdir()
+        (source / "Source Book" / "original.xlsx").write_bytes(b"original workbook")
+    original = {str(p.relative_to(source)): p.read_bytes() for p in source.rglob("*") if p.is_file()}
+    review = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()
+    assert review["items"][0]["target_path"] == str(settings.projects_dir / number)
+    assert review["items"][0]["title"] == "Manual connector"
+    assert not (settings.projects_dir / number).exists()
+    batch = client.post("/api/project-library/batches", json={**{k: review[k] for k in ("plan_id", "fingerprint")}, "selected": [str(source)]}).json()
+    assert batch["counts"]["added"] == 1, batch
+    member = client.get("/api/project-library/members/" + batch["items"][0]["member_id"]).json()
+    target = Path(member["folder_path"])
+    assert target == settings.projects_dir / number
+    assert (target / "Source Book").is_dir()
+    assert (target / name / "Photos/evidence.txt").read_text(encoding="utf-8") == "original evidence"
+    if selection == "root":
+        assert (target / "Source Book/original.xlsx").read_bytes() == b"original workbook"
+    else:
+        assert list((target / "Source Book").iterdir()) == []
+    assert {str(p.relative_to(source)): p.read_bytes() for p in source.rglob("*") if p.is_file()} == original
+    repeated = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()
+    assert repeated["items"][0]["status"] == "already_added", repeated
+    (business / "Photos/evidence.txt").write_text("changed evidence", encoding="utf-8")
+    changed = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()
+    assert changed["items"][0]["status"] == "conflict"
 
 
 def test_three_hundred_projects_are_received_once_and_retry_is_idempotent(library, tmp_path):
@@ -199,7 +236,7 @@ def test_title_change_recovers_after_copy_path_commit_failure(library, tmp_path,
     recovered = client.post(f"/api/project-library/members/{mid}/title", json={key: recovered_review[key] for key in ("plan_id", "fingerprint")})
     assert recovered.status_code == 200, recovered.text
     assert recovered.json()["member_id"] == mid
-    assert (Path(recovered.json()["folder_path"]) / "result.csv").read_text() == "never lose this"
+    assert (Path(recovered.json()["folder_path"]) / "DL-2026-09-032 Recovered title" / "result.csv").read_text() == "never lose this"
     assert len(client.get("/api/project-library/members").json()["items"]) == 1
 
 
@@ -222,7 +259,7 @@ def test_missing_marker_can_be_rebuilt_only_after_explicit_reconnect_review(libr
     assert updated.json()["member_id"] == mid
     assert updated.json()["ltr_number"] == before["ltr_number"]
     assert (folder / ".connlab" / "library.json").is_file()
-    assert (folder / "result.txt").read_text() == "original measurement"
+    assert (folder / source.name / "result.txt").read_text() == "original measurement"
 
 
 def test_foreign_identity_is_not_claimed_by_matching_ltr(library, tmp_path):
@@ -318,7 +355,7 @@ def test_same_batch_keep_separate_reserves_distinct_destinations_and_retries_onc
     assert batch["counts"]["added"]==2 and batch["counts"]["failed"]==0,batch
     members=client.get("/api/project-library/members").json()["items"]
     assert len({row["folder_path"] for row in members})==2
-    assert {(Path(row["folder_path"])/"result.txt").read_text() for row in members}=={"source evidence 1","source evidence 2"}
+    assert {next(Path(row["folder_path"]).rglob("result.txt")).read_text() for row in members}=={"source evidence 1","source evidence 2"}
     repeated=client.post("/api/project-library/batches",json=request).json()
     assert repeated["items"]==batch["items"]
     assert len(client.get("/api/project-library/members").json()["items"])==2
@@ -417,7 +454,7 @@ def test_unregistered_equal_material_has_explicit_managed_copy_action(library,tm
     assert batch["counts"]["added"]==1,batch
     members=client.get("/api/project-library/members").json()["items"]
     assert len(members)==1 and members[0]["folder_path"]!=str(target)
-    assert (Path(members[0]["folder_path"])/"record.txt").read_text()=="original evidence"
+    assert (Path(members[0]["folder_path"])/source.name/"record.txt").read_text()=="original evidence"
     assert not (target/".connlab/library.json").exists()
     assert not (source/".connlab/library.json").exists()
     assert (source/"record.txt").read_text()=="original evidence"

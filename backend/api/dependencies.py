@@ -496,6 +496,7 @@ def get_project_registry_summary_service(
     session: Session = Depends(get_session),
 ) -> ProjectRegistrySummaryService:
     """Build a read-only Project registry summary service."""
+    from backend.infrastructure.storage.repositories.project_library import ProjectLibraryRepository
     return ProjectRegistrySummaryService(
         project_store=ProjectRepository(session),
         ltr_store=LtrRecordRepository(session),
@@ -503,6 +504,7 @@ def get_project_registry_summary_service(
         basic_information_store=ProjectBasicInformationRepository(session),
         matrix_store=ConfirmedMatrixAuthorityRepository(session),
         group_completion_service=get_group_completion_service(session),
+        project_library_store=ProjectLibraryRepository(session),
     )
 
 

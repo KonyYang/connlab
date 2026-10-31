@@ -357,6 +357,7 @@ function BusinessProjectListPage({
                       {row.display_project_id_kind === "temporary" ? (
                         <span className="registry-temp-badge">Temporary Planning</span>
                       ) : null}
+                      {row.display_project_id_kind === "imported" && <span className="registry-temp-badge">Imported · Review Needed</span>}
                     </td>
                     <td className="registry-sample-cell" data-label="Sample Description">
                       {displayText(row.sample_description, "Not recorded")}
@@ -366,7 +367,7 @@ function BusinessProjectListPage({
                       {displayText(row.test_item, "Not recorded")}
                     </td>
                     <td className="registry-status-text registry-status-cell" data-label="Group completion" title={row.group_completion_details?.map((group) => `${group.group_label}: ${group.completed ? "Completed" : group.needs_review ? "Review needed" : "Not completed"}`).join("\n")}>
-                      {row.total_group_count == null ? "—" : `${row.completed_group_count ?? 0} / ${row.total_group_count}`}
+                      {row.total_group_count == null ? (row.display_project_id_kind === "imported" ? "Matrix needed" : "—") : `${row.completed_group_count ?? 0} / ${row.total_group_count}`}
                     </td>
                     <td className="registry-next-step registry-next-step-cell" data-label="Estimated completion">
                       <span>{row.estimated_completion_date || "Not scheduled"}</span>

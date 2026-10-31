@@ -123,7 +123,7 @@ def test_project_travels_without_source_database_and_preserves_report_evidence(t
     assert restored["member"]["project_id"] == project_id
     assert restored["member"]["can_continue"] is True
     assert restored["member"]["snapshot_status"] == "current"
-    assert (Path(restored["member"]["folder_path"]) / "result.csv").read_text() == "P1,12.34"
+    assert (Path(restored["member"]["folder_path"]) / source.name / "result.csv").read_text() == "P1,12.34"
     restored_evidence = settings_b.data_dir / "report_authoring_assets" / sha256(project_id.encode()).hexdigest() / (content_hash + ".txt")
     assert restored_evidence.read_bytes() == content
     with Session(engine_b) as session:
@@ -583,7 +583,7 @@ def test_carried_test_data_cannot_be_bypassed_by_plain_intake_or_empty_takeover(
     assert review["blockers"]
     assert b.post(f"/api/project-library/members/{member['member_id']}/takeover",json={k:review[k] for k in ("plan_id","fingerprint")}).status_code==409
     with Session(eb) as session:
-        assert list(session.scalars(select(ProjectModel)))==[]
+        assert list(session.scalars(select(ProjectModel.project_id))) == [member["project_id"]]
     ea.dispose();eb.dispose()
 
 

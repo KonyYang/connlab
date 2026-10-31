@@ -83,6 +83,11 @@ class ProjectRegistryMatrixStore(Protocol):
         """Return project ids with an active confirmed Matrix in one read."""
 
 
+class ProjectRegistryLibraryStore(Protocol):
+    def imported_identities(self) -> dict[str, dict[str, str | None]]:
+        """Read historical identifiers only through explicit project membership."""
+
+
 class ProjectRegistrySummaryService:
     """Build display-ready registry rows without frontend data parsing."""
 
@@ -95,6 +100,7 @@ class ProjectRegistrySummaryService:
         basic_information_store: ProjectRegistryBasicInformationStore | None = None,
         matrix_store: ProjectRegistryMatrixStore | None = None,
         group_completion_service=None,
+        project_library_store: ProjectRegistryLibraryStore | None = None,
     ) -> None:
         """Create the service with read-only stores."""
         self._projects = project_store
@@ -103,6 +109,7 @@ class ProjectRegistrySummaryService:
         self._basic_information = basic_information_store
         self._matrices = matrix_store
         self._group_completion = group_completion_service
+        self._library = project_library_store
 
     def list_rows(self) -> list[ProjectRegistryRow]:
         """Return registry summary rows for normal projects."""
@@ -111,6 +118,7 @@ class ProjectRegistrySummaryService:
     def _rows_for(self, projects: list[Project]) -> list[ProjectRegistryRow]:
         rows: list[ProjectRegistryRow] = []
         confirmed_project_ids = self._matrices.list_active_project_ids() if self._matrices else set()
+        imported = self._library.imported_identities() if self._library else {}
         for project in projects:
             completion = self._group_completion.read(project.project_id) if self._group_completion and project.project_id in confirmed_project_ids else None
             basic_information = (
@@ -126,6 +134,7 @@ class ProjectRegistrySummaryService:
                 self._ltrs.list_by_project(project.project_id),
                 identity_override=identity_override,
             )
+            imported_number = imported.get(project.project_id, {}).get("ltr_number") if not identity.has_registered_ltr else None
             temporary_context = (
                 self._temporary_contexts.get_by_project(project.project_id)
                 if self._temporary_contexts is not None
@@ -141,7 +150,7 @@ class ProjectRegistrySummaryService:
                     registry_state=project.registry_state,
                     registry_revision=project.registry_revision,
                     has_confirmed_matrix=project.project_id in confirmed_project_ids,
-                    ltr_number=identity.ltr_number,
+                    ltr_number=identity.ltr_number or imported_number,
                     sample_description=_first_text(
                         identity_override.sample_description if identity_override else None,
                         temporary_context.sample_description if temporary_context else None,
@@ -160,10 +169,10 @@ class ProjectRegistrySummaryService:
                         temporary_context.notes if temporary_context else None,
                         identity.operator_note,
                     ),
-                    display_project_id=identity.display_project_id,
-                    display_project_id_kind=identity.display_project_id_kind,
+                    display_project_id=imported_number or identity.display_project_id,
+                    display_project_id_kind="imported" if imported_number else identity.display_project_id_kind,
                     has_registered_ltr=identity.has_registered_ltr,
-                    temporary_project_id=identity.temporary_project_id,
+                    temporary_project_id=None if imported_number else identity.temporary_project_id,
                     registered_ltr_number=identity.registered_ltr_number,
                     temporary_source_asset_ids=(
                         temporary_context.source_asset_ids if temporary_context else ()

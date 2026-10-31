@@ -20,6 +20,30 @@ explicitly authorized operation.
 
 ## Project library entry
 
+### Managed ordinary intake
+
+Final ordinary intake confirmation establishes a stable Project binding as well as
+library membership. Repeated batch submissions reuse that binding. Carried stable
+project IDs are retained; an already-existing Project ID requires explicit review
+rather than creating or overwriting a project. Explicit conflict copies retain
+their separate review rules. No LTR workbook registration, Matrix confirmation or
+test values are manufactured by intake.
+
+A recognized `LTR Title` business folder is copied into `Projects/LTR/LTR Title`
+with an empty root-level `Source Book`. A pure LTR root containing one matching
+business folder is received without another outer layer; an absent `Source Book`
+is created in the copy. Original files and internal material paths remain intact.
+Supplementary assignments and portable restore keep their reviewed placement rules.
+Existing source-named folders require conflict review before standard reception.
+Material equality accounts for the copied envelope, so unchanged sources remain
+duplicates while changed evidence still requires review. Other layouts retain their
+existing handling until explicitly resolved; they are not silently rearranged.
+
+Registry summaries expose a historical LTR only through explicit Project membership.
+Its display kind is `imported`, with `has_registered_ltr=false` and no registered
+LTR record. A real LTR registration always wins. Imported rows use the normal
+project actions and show missing Matrix state rather than invented completion.
+
 ### Save location and guided import
 
 Ordinary instances reuse the active Settings **Project default save location**.

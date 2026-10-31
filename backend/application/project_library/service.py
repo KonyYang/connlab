@@ -119,6 +119,8 @@ class ProjectLibraryService:
                 raise ProjectLibraryError("Choose an existing project or a new project title, not both.")
             try:
                 source = self.files.inspect_source(value)
+                if target_id or new_title:
+                    source.pop("reception_layout", None)
                 member = self.store.member(target_id) if target_id else None
                 if member and member.get("is_history"):
                     raise ProjectLibraryConflict("Choose a working project for supplementary material; retained history is read-only.")
@@ -176,6 +178,11 @@ class ProjectLibraryService:
                     else:
                         status, separate = "conflict", True
                         warnings.append("The destination contains different content. Keep Separate preserves another version.")
+                layout = source.get("reception_layout")
+                legacy_target = self.settings.projects_dir / Path(source["source_path"]).name
+                if status == "ready" and layout and layout["prefix"] and str(legacy_target).casefold() != target.casefold() and self.files.exists(legacy_target):
+                    status, separate = "conflict", True
+                    warnings.append("An existing source-named folder is not registered at the standard project location. Keep Separate receives a verified copy without changing that folder.")
                 if source.get("ltr_number") and status != "already_added" and not target_id and not reference_existing and any(
                     str(item.get("ltr_number") or "").casefold() == source["ltr_number"].casefold()
                     for item in [*members, *numbers]
@@ -470,13 +477,23 @@ class ProjectLibraryService:
         result = self.portability.restore(plan_id, fingerprint, resolution)
         return {**result, "member": self._public(result["member"])}
 
+    def _takeover_metadata_problem(self, member):
+        if not self.files.has_portable(member["folder_path"]):
+            return None
+        if not member["project_id"]:
+            return "This folder carries test-data metadata. Inspect and restore the portable project before continuing; an empty planning project would lose its history."
+        if not self.portability or self.portability.status(member)["status"] == "unavailable":
+            return "The carried test-data metadata is unavailable. Inspect and restore a verified project before continuing."
+        return None
+
     def takeover_plan(self, member_id):
         member = self.store.member(member_id)
         warnings, blockers, missing = [], [], []
         if member.get("is_history"):
             blockers.append("This retained history is read-only. Resolve its project ownership before resuming tests.")
-        if not member["project_id"] and self.files.has_portable(member["folder_path"]):
-            blockers.append("This folder carries test-data metadata. Inspect and restore the portable project before continuing; an empty planning project would lose its history.")
+        metadata_problem = self._takeover_metadata_problem(member)
+        if metadata_problem:
+            blockers.append(metadata_problem)
         if not self.files.member_folder_available(member)[0]:
             blockers.append("Reconnect the project folder before taking it over.")
         existing_project = member.get("source_project_id") if self.store.project_exists(member.get("source_project_id")) else None
@@ -509,8 +526,9 @@ class ProjectLibraryService:
                     raise ProjectLibraryConflict("Reconnect the project folder before taking it over.")
                 if payload.get("blockers"):
                     raise ProjectLibraryConflict(" ".join(payload["blockers"]))
-                if not member["project_id"] and self.files.has_portable(member["folder_path"]):
-                    raise ProjectLibraryConflict("Inspect and restore the carried test data before taking over this project.")
+                metadata_problem = self._takeover_metadata_problem(member)
+                if metadata_problem:
+                    raise ProjectLibraryConflict(metadata_problem)
                 if not member["project_id"]:
                     existing = payload.get("existing_project_id")
                     if existing and self.files.digest(self.store.project_context(existing)) != payload.get("existing_context"):
