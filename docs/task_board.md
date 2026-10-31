@@ -197,11 +197,11 @@
     },
     "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
       "branch": "codex/tools-folder-encryption-20261030",
       "resources": [],
-      "integrated_head": "42ca14296dd0dd7d3df889e35f5e651e6bea6545",
+      "integrated_head": "33397fe40c153d04c65280b8a0f39b65d46778d8",
       "task": {
         "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
         "summary": "Batch encrypted Word/Excel copies from a selected folder without modifying originals",
@@ -239,7 +239,7 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T08:36:20.443484Z",
+        "updated_at": "2026-10-31T08:46:20.510151Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -249,7 +249,74 @@
           "summary": "User requests replacing separate Tools cards with compact shared actions ordered equipment, mechanical, temperature, customer report, encryption; show mechanical review after selection.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
+          "subject": "60b5f073724cd0d78e2168a1d1ad518d4e21eebf",
+          "summary": "Replace separate Tools cards with one responsive action area ordered equipment, mechanical summary, temperature rise, customer report and file encryption. Mechanical review opens after source selection; shared feedback follows all actions without moving feature data ownership.",
+          "scope_ok": true,
+          "changed_paths": [
+            "docs/PROJECT_CONTEXT.md",
+            "frontend/src/features/tools/EncryptionTool.tsx",
+            "frontend/src/features/tools/EquipmentListTool.tsx",
+            "frontend/src/features/tools/MechanicalSummaryTool.test.tsx",
+            "frontend/src/features/tools/MechanicalSummaryTool.tsx",
+            "frontend/src/features/tools/ToolsFeedback.tsx",
+            "frontend/src/pages/ToolsPage.test.tsx",
+            "frontend/src/pages/ToolsPage.tsx",
+            "frontend/src/tools.css"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "TDD RED/GREEN",
+              "evidence": "New public UI cases first failed for missing mechanical file action and incorrect workflow order, then passed. Mechanical cancellation preserves selected review; page integration asserts review follows all entry actions in DOM order."
+            },
+            {
+              "status": "passed",
+              "name": "Final affected UI matrix",
+              "evidence": "33 passed on final bytes: ToolsPage 17, MechanicalSummaryTool 2, EncryptionTool 6, temperature navigation 8. Includes report/equipment generation flows, file selection/cancel/retry, concurrency, reviewed sample gate, correct action order, shared feedback position and workspace/Undo navigation retention."
+            },
+            {
+              "status": "passed",
+              "name": "Final production build",
+              "evidence": "TypeScript and Vite production build passed, 218 modules, after final responsive CSS changes."
+            },
+            {
+              "status": "passed",
+              "name": "Real browser layout and mechanical interaction",
+              "evidence": "Independent Chrome session on owned Vite port 18835, isolated API routes and owned review.pdf fixture; no real project API calls or business-file mutations. Actual mechanical button/file chooser expands review below all actions. Preview, sample entry and confirmation control Generate Summary readiness; empty selection retains it. Tab from mechanical action advances to temperature action. Final 390/660/1366/1920 widths verified as 1/2/3/6 columns with no document horizontal overflow. Screenshots inspected, named articles remain accessible despite display:contents. Checkbox measured 16x16. Isolated browser and Vite service stopped. The preview API response was mocked; no claim of actual instrument parsing or Office output verification."
+            },
+            {
+              "status": "passed",
+              "name": "Exact diff review",
+              "evidence": "Sequential same-agent Standards and Spec passes: zero findings on each axis. Layout-only ToolsFeedback portal owns no business state; keeps reviews/results after actions in visual and keyboard order and falls back inline for standalone feature tests. Existing API, Office, password and file output rules unchanged. CSS scoped to Tools; responsive rows avoid orphan buttons. Documentation records the present UI seam. git diff --check passed."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Primary context, compact plan and meaningful UI TDD RED/GREEN slices; existing feature-owned state retained."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Focused sequential same-agent Standards and Spec passes, zero findings per axis; not independent-agent execution."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "Final 33-test matrix, production build and isolated real-browser workflow/layout checks; no real business file mutation."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "60b5f073724cd0d78e2168a1d1ad518d4e21eebf",
+            "primary_before": "bede6379ce9da35db4dd9137c8ae4bbd2d5e5fb0",
+            "integrated_head": "33397fe40c153d04c65280b8a0f39b65d46778d8",
+            "recovered": false
+          }
+        }
       }
     }
   }
