@@ -12,6 +12,28 @@ from backend.domain import ExternalResourceType
 class WindowsPathPicker:
     """Open local Windows file and folder pickers."""
 
+    def pick_encryption_file(self) -> Path | None:
+        """Select one original Office file for a separate encrypted sibling."""
+        import pythoncom
+        import win32con
+        import win32gui
+
+        pythoncom.CoInitialize()
+        try:
+            selected, _, _ = win32gui.GetOpenFileNameW(
+                Title="Select Office file: save encrypted copy beside original",
+                Filter="Office files\0*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx\0All files\0*.*\0",
+                Flags=win32con.OFN_EXPLORER | win32con.OFN_FILEMUSTEXIST
+                    | win32con.OFN_PATHMUSTEXIST | win32con.OFN_NOCHANGEDIR,
+            )
+            return Path(selected) if selected else None
+        except win32gui.error as exc:
+            if exc.winerror == 0:
+                return None
+            raise RuntimeError("Could not open the Office file picker.") from exc
+        finally:
+            pythoncom.CoUninitialize()
+
     def pick_encryption_directory(self) -> Path | None:
         """Choose where separate encrypted siblings will be saved."""
         import pythoncom

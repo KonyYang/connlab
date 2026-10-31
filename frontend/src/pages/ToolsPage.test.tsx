@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   downloadStandaloneCustomerReport,
-  encryptStandaloneCopy,
+  encryptLocalFile,
   readStandaloneCustomerReportJob,
   startStandaloneCustomerReport,
   updateStandaloneEquipmentList,
@@ -15,6 +15,7 @@ vi.mock("../api/client", () => ({
   encryptStandaloneCopy: vi.fn(),
   encryptStandaloneFolder: vi.fn(),
   encryptLocalFolder: vi.fn(),
+  encryptLocalFile: vi.fn(),
   readStandaloneCustomerReportJob: vi.fn(),
   startStandaloneCustomerReport: vi.fn(),
   updateStandaloneEquipmentList: vi.fn(),
@@ -23,7 +24,9 @@ vi.mock("../api/client", () => ({
 const startCustomerReportMock = vi.mocked(startStandaloneCustomerReport);
 const readCustomerReportMock = vi.mocked(readStandaloneCustomerReportJob);
 const downloadCustomerReportMock = vi.mocked(downloadStandaloneCustomerReport);
-const encryptCopyMock = vi.mocked(encryptStandaloneCopy);
+const encryptCopyMock = vi.mocked(encryptLocalFile);
+const savedEncryption = { cancelled: false as const, folder: "D:/Lab", summary: { succeeded: 1, failed: 0, skipped: 0 },
+  entries: [{ file: "sample.docx", status: "Encrypted", reason: "", output: "sample_Secured.docx" }] };
 
 describe("ToolsPage", () => {
   it("keeps project receiving in Projects rather than exposing competing Tools entries", () => {
@@ -70,7 +73,7 @@ describe("ToolsPage", () => {
       blob: new Blob(["report"]),
       fileName: "sample-CR.docx",
     });
-    encryptCopyMock.mockResolvedValue({ blob: new Blob(["secured"]), fileName: "sample_Secured.docx" });
+    encryptCopyMock.mockResolvedValue(savedEncryption);
   });
 
   it("generates and downloads a customer report immediately after choosing its source", async () => {
@@ -118,31 +121,27 @@ describe("ToolsPage", () => {
     expect(screen.getByText(/19 seconds elapsed/)).toBeTruthy();
   });
 
-  it("creates and downloads an encrypted copy immediately after choosing an Office file", async () => {
+  it("selects a local Office file and reports the saved sibling without downloading", async () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
-    const file = new File(["internal"], "sample.docx");
-
-    await user.upload(screen.getByLabelText(/Select Office File/i), file);
-
-    expect(encryptCopyMock).toHaveBeenCalledWith(file);
-    expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("sample_Secured.docx");
+    await user.click(screen.getByRole("button", { name: "Create Encrypted Copy" }));
+    expect(encryptCopyMock).toHaveBeenCalledWith();
+    expect((await screen.findByRole("status", { name: "Saved Encrypted File" })).textContent).toContain("sample_Secured.docx");
+    expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
   });
 
   it("shows Office file guidance above one picker button and leaves cancellation idle", async () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
-    const picker = screen.getByLabelText("Select Office File") as HTMLInputElement;
-    const choose = vi.spyOn(picker, "click");
+    encryptCopyMock.mockResolvedValueOnce({ cancelled: true });
     const instruction = screen.getByRole("heading", { name: "Select Office File or Folder" });
     const action = screen.getByRole("button", { name: "Create Encrypted Copy" });
     expect(instruction.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(picker.hidden).toBe(true);
+    expect(screen.queryByLabelText("Select Office File")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Encrypt a Copy" })).toBeNull();
     await user.click(action);
-    expect(choose).toHaveBeenCalledTimes(1);
-    fireEvent.change(picker, { target: { files: [] } });
-    expect(encryptCopyMock).not.toHaveBeenCalled();
+    expect(encryptCopyMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("status", { name: "Saved Encrypted File" })).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
@@ -150,34 +149,31 @@ describe("ToolsPage", () => {
     encryptCopyMock.mockRejectedValueOnce(new Error("Close the Office file and try again."));
     const user = userEvent.setup();
     render(<ToolsPage />);
-    const picker = screen.getByLabelText("Select Office File") as HTMLInputElement;
-    const file = new File(["office"], "sample.docx");
-    await user.upload(picker, file);
+    const action = screen.getByRole("button", { name: "Create Encrypted Copy" });
+    await user.click(action);
     expect((await screen.findByRole("alert")).textContent).toContain("Close the Office file");
-    expect(picker.value).toBe("");
-    fireEvent.change(picker, { target: { files: [] } });
+    encryptCopyMock.mockResolvedValueOnce({ cancelled: true });
+    await user.click(action);
     expect(screen.getByRole("alert").textContent).toContain("Close the Office file");
-    expect(encryptCopyMock).toHaveBeenCalledTimes(1);
-    await user.upload(picker, file);
-    expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe("sample_Secured.docx");
     expect(encryptCopyMock).toHaveBeenCalledTimes(2);
+    await user.click(action);
+    expect((await screen.findByRole("status", { name: "Saved Encrypted File" })).textContent).toContain("sample_Secured.docx");
+    expect(encryptCopyMock).toHaveBeenCalledTimes(3);
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("prevents repeated encryption selections and discards a late download after leaving Tools", async () => {
-    let complete!: (value: Awaited<ReturnType<typeof encryptStandaloneCopy>>) => void;
+  it("prevents repeated native selections and discards late saved-file feedback after leaving Tools", async () => {
+    let complete!: (value: Awaited<ReturnType<typeof encryptLocalFile>>) => void;
     encryptCopyMock.mockReturnValueOnce(new Promise(done => { complete = done; }));
     const user = userEvent.setup();
     const rendered = render(<ToolsPage />);
-    const picker = screen.getByLabelText("Select Office File") as HTMLInputElement;
-    const file = new File(["office"], "sample.xlsx");
-    await user.upload(picker, file);
-    expect(picker.disabled).toBe(true);
-    expect((screen.getByRole("button", { name: "Starting..." }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.change(picker, { target: { files: [file] } });
+    await user.click(screen.getByRole("button", { name: "Create Encrypted Copy" }));
+    const pending = screen.getByRole("button", { name: "Working..." }) as HTMLButtonElement;
+    expect(pending.disabled).toBe(true);
+    await user.click(pending);
     expect(encryptCopyMock).toHaveBeenCalledTimes(1);
     rendered.unmount();
-    await act(async () => complete({ blob: new Blob(["secured"]), fileName: "sample_Secured.xlsx" }));
+    await act(async () => complete(savedEncryption));
     expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
   });
 

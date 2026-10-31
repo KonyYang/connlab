@@ -100,9 +100,10 @@ Do not use a dated snapshot as a substitute for the code.
 
 ### Standalone Tools folder encryption
 
-- `Create Encrypted Copy` keeps its single-file download behavior. `Choose Folder` now opens a native
-  local directory picker and processes `.doc`, `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx` recursively after selection,
-  without uploading files or downloading a ZIP. Each verified `_Secured` copy is saved beside its
+- `Create Encrypted Copy` opens the native Office file picker and saves only the selected file;
+  `Choose Folder` opens the native directory picker and includes subfolders. Both process `.doc`,
+  `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx` without file uploads or browser downloads.
+  Each verified `_Secured` copy is saved beside its
   source; existing names receive ` (1)`, ` (2)`, etc. Original and previous output files are never
   replaced. Existing `_Secured` copies, Office temporary files, unsupported files and reparse links
   are skipped. Single-file mode supports the same six formats. Word and PowerPoint use `DGLAB`;
@@ -110,8 +111,8 @@ Do not use a dated snapshot as a substitute for the code.
 - PowerPoint output explicitly preserves binary `.ppt` or OOXML `.pptx`. Binary verification checks
   the CurrentUserAtom encrypted header token defined by [MS-PPT] 2.3.2; OOXML verification checks the
   encrypted package streams. Both reuse the existing owned PowerPoint lifecycle.
-- `/api/tools/encrypt-local-folder` accepts no client-supplied directory path. It requires a same-origin
-  loopback request with an explicit application header, then obtains the path from the native picker.
+- `/api/tools/encrypt-local-file` and `/api/tools/encrypt-local-folder` accept no client-supplied paths. They require a same-origin
+  loopback request with an explicit application header, then obtain the path from the native picker.
   Folder traversal, source-change checks, owned sibling staging and atomic no-replace publication live
   in `ToolsLocalFolderGateway`; application policy reuses `ToolsService.encrypt_copy`. Windows uses
   no-replace rename, including volumes without hard-link support. Excel's existing DL password rule
@@ -122,6 +123,10 @@ Do not use a dated snapshot as a substitute for the code.
   consume this limit. A scan failure stops before writes. Source and folder identities are rechecked
   before publication, and owned staging is removed after success or failure. Office only opens a
   local working copy inside this staging directory, so legacy metadata saves cannot alter originals.
+- Single-file mode displays the saved filename and parent directory. It does not enumerate neighbors;
+  cancellation preserves prior feedback, and invalid files or unnumbered Excel produce a clear error
+  without writing a copy. The original `/api/tools/encrypt-copy` upload/download API remains compatible
+  but is no longer used by the Tools encryption UI.
 - The prior `/api/tools/encrypt-folder` upload endpoint remains compatible but is no longer used by
   the folder UI. It validates one relative-path tree, Windows/Unicode duplicate names,
   encrypted-file/directory conflicts and upload bounds before encryption. Limits are 500 files,

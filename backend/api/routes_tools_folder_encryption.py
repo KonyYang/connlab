@@ -1,4 +1,4 @@
-"""Native-selected local folders and the compatible isolated-upload endpoint."""
+"""Native-selected local files/folders and the compatible isolated-upload endpoint."""
 import json
 import shutil
 import tempfile
@@ -26,16 +26,40 @@ def get_local_encryption_picker():
     return WindowsPathPicker().pick_encryption_directory
 
 
-@router.post("/encrypt-local-folder")
-def encrypt_local_folder(request: Request, picker=Depends(get_local_encryption_picker),
-                         tools: ToolsService = Depends(get_tools_service)):
+def get_local_file_encryption_picker():
+    return WindowsPathPicker().pick_encryption_file
+
+
+def _require_local_encryption_request(request: Request) -> None:
     origin = request.headers.get("origin", "")
     if (request.url.hostname not in {"localhost", "127.0.0.1", "::1"} or not request.client
         or request.client.host not in {"localhost", "127.0.0.1", "::1"}
         or origin != f"{request.url.scheme}://{request.url.netloc}"
         or urlsplit(origin).hostname not in {"localhost", "127.0.0.1", "::1"}
         or request.headers.get("x-connlab-local-encryption") != "1"):
-        raise HTTPException(403, "Choose the folder from ConnLab on this computer.")
+        raise HTTPException(403, "Choose the file or folder from ConnLab on this computer.")
+
+
+@router.post("/encrypt-local-file")
+def encrypt_local_file(request: Request, picker=Depends(get_local_file_encryption_picker),
+                       tools: ToolsService = Depends(get_tools_service)):
+    _require_local_encryption_request(request)
+    try:
+        source = picker()
+        if source is None:
+            return {"cancelled": True}
+        source = Path(source)
+        return ToolsLocalFolderEncryptionService(tools=tools,
+            files=ToolsLocalFolderGateway(source.parent)).encrypt_file(source)
+    except (ToolsError, OSError, RuntimeError) as exc:
+        message = str(exc) if isinstance(exc, ToolsError) else "Could not read the selected file. Check file and folder access and try again."
+        raise HTTPException(422, message) from exc
+
+
+@router.post("/encrypt-local-folder")
+def encrypt_local_folder(request: Request, picker=Depends(get_local_encryption_picker),
+                         tools: ToolsService = Depends(get_tools_service)):
+    _require_local_encryption_request(request)
     try:
         folder = picker()
         if folder is None:

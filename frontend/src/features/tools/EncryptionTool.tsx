@@ -1,79 +1,61 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { encryptStandaloneCopy, encryptLocalFolder, type LocalFolderEncryptionResult } from "../../api/client";
+import { useEffect, useRef, useState } from "react";
+import { encryptLocalFile, encryptLocalFolder, type LocalFolderEncryptionResult } from "../../api/client";
 
 export function EncryptionTool() {
-  const fileInput = useRef<HTMLInputElement>(null);
   const active = useRef(false);
   const generation = useRef(0);
   const [busy, setBusy] = useState<"file" | "folder" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [downloaded, setDownloaded] = useState<string | null>(null);
-  const [folder, setFolder] = useState<Extract<LocalFolderEncryptionResult, { cancelled: false }> | null>(null);
+  const [result, setResult] = useState<Extract<LocalFolderEncryptionResult, { cancelled: false }> | null>(null);
+  const [resultMode, setResultMode] = useState<"file" | "folder" | null>(null);
 
   useEffect(() => () => { generation.current += 1; }, []);
 
-  function chooseFile(event: ChangeEvent<HTMLInputElement>) {
-    if (active.current) return;
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (file) void run(file);
-  }
-
-  async function run(file?: File) {
+  async function run(mode: "file" | "folder") {
     if (active.current) return;
     active.current = true;
     const token = ++generation.current;
-    setBusy(file ? "file" : "folder"); setError(null);
+    setBusy(mode);
     try {
-      if (!file) {
-        const result = await encryptLocalFolder();
-        if (generation.current === token && !result.cancelled) {
-          setFolder(result); setDownloaded(null);
-        }
-        return;
+      const response = await (mode === "file" ? encryptLocalFile() : encryptLocalFolder());
+      if (generation.current === token && !response.cancelled) {
+        setResult(response); setResultMode(mode); setError(null);
       }
-      const response = await encryptStandaloneCopy(file);
-      if (generation.current !== token) return;
-      const fileName = response.fileName ?? file.name.replace(/(\.[^.]+)$/, "_Secured$1");
-      const url = URL.createObjectURL(response.blob);
-      const anchor = document.createElement("a");
-      try {
-        anchor.href = url; anchor.download = fileName;
-        document.body.append(anchor); anchor.click();
-      } finally { anchor.remove(); URL.revokeObjectURL(url); }
-      setDownloaded(fileName); setFolder(null);
     } catch (reason) {
-      if (generation.current === token) setError(reason instanceof Error ? reason.message : "Encryption failed. Select the source and retry.");
+      if (generation.current === token) {
+        setError(reason instanceof Error ? reason.message : "Encryption failed. Select the source and retry.");
+        setResult(null);
+      }
     } finally {
       if (generation.current === token) { active.current = false; setBusy(null); }
     }
   }
 
-  const failed = folder?.entries.filter(entry => entry.status === "Failed") ?? [];
+  const failed = result?.entries.filter(entry => entry.status === "Failed") ?? [];
+  const saved = result?.entries.find(entry => entry.status === "Encrypted");
   return <article className="tools-card" aria-label="Encrypt a Copy" aria-busy={Boolean(busy)}>
     <div className="tools-card-heading"><h3>Select Office File or Folder</h3></div>
-    <input ref={fileInput} type="file" hidden aria-label="Select Office File" accept=".doc,.docx,.xls,.xlsx,.ppt,.pptx"
-      disabled={Boolean(busy)} onChange={chooseFile} />
     <div className="tools-encryption-actions">
-      <button className="primary-action tools-picker-action" type="button" disabled={Boolean(busy)} onClick={() => fileInput.current?.click()}>
-        {busy === "file" ? "Starting..." : "Create Encrypted Copy"}
+      <button className="primary-action tools-picker-action" type="button" disabled={Boolean(busy)} onClick={() => void run("file")}>
+        {busy === "file" ? "Working..." : "Create Encrypted Copy"}
       </button>
-      <button className="secondary-action" type="button" disabled={Boolean(busy)} onClick={() => void run()}>
+      <button className="secondary-action" type="button" disabled={Boolean(busy)} onClick={() => void run("folder")}>
         {busy === "folder" ? "Working..." : "Choose Folder"}
       </button>
     </div>
-    <p className="tools-card-hint">Folders: Word, Excel and PowerPoint, including subfolders. Saves _Secured copies beside originals.</p>
+    <p className="tools-card-hint">Word, Excel and PowerPoint. Saves _Secured copies beside originals. Folder mode includes subfolders.</p>
     {error ? <p role="alert" className="tools-feedback tools-feedback-error">{error}</p> : null}
-    {folder ? <div className="tools-folder-selection" role="status">
-      <p className={folder.summary.failed ? "tools-feedback tools-feedback-warning" : "tools-feedback tools-feedback-success"}>
-        {folder.summary.succeeded === 0 ? "No files were encrypted. " : ""}
-        {folder.summary.succeeded} encrypted · {folder.summary.failed} failed · {folder.summary.skipped} skipped.
-      </p>
-      <p className="tools-feedback" title={folder.folder}>{folder.folder}</p>
+    {result ? <div className="tools-folder-selection" role={resultMode === "folder" ? "status" : undefined}>
+      {resultMode === "file" && saved ? <p role="status" aria-label="Saved Encrypted File" className="tools-feedback tools-feedback-success">
+        Saved: {saved.output}
+      </p> : <p className={result.summary.failed ? "tools-feedback tools-feedback-warning" : "tools-feedback tools-feedback-success"}>
+        {result.summary.succeeded === 0 ? "No files were encrypted. " : ""}
+        {result.summary.succeeded} encrypted · {result.summary.failed} failed · {result.summary.skipped} skipped.
+      </p>}
+      <p className="tools-feedback" title={result.folder}>{result.folder}</p>
       {failed.length > 0 ? <details><summary>Failed files ({failed.length})</summary>
         <ul>{failed.map(entry => <li key={entry.file}>{entry.file}: {entry.reason}</li>)}</ul>
       </details> : null}
     </div> : null}
-    {downloaded ? <p role="status" aria-label="Downloaded File" className="tools-feedback tools-feedback-success">{downloaded}</p> : null}
   </article>;
 }
