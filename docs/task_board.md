@@ -197,7 +197,7 @@
     },
     "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
       "branch": "codex/tools-folder-encryption-20261030",
       "resources": [],
@@ -234,67 +234,17 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T04:02:54.700262Z",
+        "updated_at": "2026-10-31T05:48:44.391675Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
           "stage": "revision",
           "status": "running",
-          "summary": "User requests removing the folder encryption Failed files details list while keeping compact result counts.",
+          "summary": "User requests counting Excel encryption failures only for valid leading LTR filenames; ineligible Excel files should be skipped.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
-          "subject": "cc8db6b553ce84c60e3869e2232a30ded098bd5e",
-          "summary": "Remove the folder encryption Failed files disclosure list while preserving compact counts, folder path and operation-level errors.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/features/tools/EncryptionTool.test.tsx",
-            "frontend/src/features/tools/EncryptionTool.tsx"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "name": "EncryptionTool tests",
-              "evidence": "6 passed on final bytes, including updated folder-result expectations: counts retained, Failed files list and per-file names absent. Cancellation, retry and single-file success still pass."
-            },
-            {
-              "status": "passed",
-              "name": "Production build",
-              "evidence": "TypeScript and Vite production build passed, 217 modules."
-            },
-            {
-              "status": "passed",
-              "name": "Exact diff review",
-              "evidence": "Sequential same-agent Standards and Spec passes. Only unused failed-entry filtering and disclosure markup removed; public API and encryption behavior unchanged. Existing test updated to requested compact display. git diff --check passed."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Primary context, localized UI simplification and existing regression update."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Sequential same-agent Standards and Spec review; not independent-agent execution."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Complete proportional matrix: 6 component tests and production build. Backend unchanged; no real files operated on."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "cc8db6b553ce84c60e3869e2232a30ded098bd5e",
-            "primary_before": "251df8f211afa6e88e4cdd93da2d77a0c16fab8d",
-            "integrated_head": "fed5672257de9b6432d9cef2dfc8cb58481f5517",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
