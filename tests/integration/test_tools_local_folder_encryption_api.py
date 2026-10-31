@@ -36,7 +36,7 @@ def local_lab(tmp_path):
 
 def test_local_folder_creates_siblings_without_overwriting_existing_files(local_lab):
     root, client, _ = local_lab
-    originals = {"report.docx": b"Word", "子目录/DL-2026-10-030.xlsx": b"Excel",
+    originals = {"report.docx": b"Word", "DL-2026-10-030.xlsx": b"Excel",
         "no-number.xlsx": b"Excel", "broken.doc": b"broken", "~$lock.docx": b"lock",
         "readme.txt": b"note", "report_Secured.docx": b"older secured copy"}
     for name, content in originals.items():
@@ -46,11 +46,35 @@ def test_local_folder_creates_siblings_without_overwriting_existing_files(local_
     value = result.json()
     assert value["summary"] == {"succeeded": 2, "failed": 2, "skipped": 3}
     assert (root / "report_Secured (1).docx").read_bytes() == b"secured:Word"
-    assert (root / "子目录/DL-2026-10-030_Secured.xlsx").read_bytes() == b"secured:Excel"
+    assert (root / "DL-2026-10-030_Secured.xlsx").read_bytes() == b"secured:Excel"
     assert all((root / name).read_bytes() == content for name, content in originals.items())
     assert not any(path.name.startswith(".connlab") for path in root.rglob("*"))
     assert not list(root.rglob("*.zip"))
     assert "DL-YYYY-MM-NNN" in next(item["reason"] for item in value["entries"] if item["file"] == "no-number.xlsx")
+
+
+@pytest.mark.parametrize("has_direct_file", [False, True])
+def test_folder_never_inspects_or_processes_subfolders(local_lab, monkeypatch, has_direct_file):
+    root, client, _ = local_lab
+    nested = root / "子目录"
+    for number in range(501):
+        (nested / f"report{number}.docx").write_bytes(b"child original")
+    if has_direct_file:
+        (root / "direct.pptx").write_bytes(b"direct original")
+    scan = os.scandir
+    def guarded_scan(path):
+        if isinstance(path, (str, bytes, os.PathLike)):
+            directory = Path(os.fsdecode(path)).resolve()
+            assert not directory.is_relative_to(nested.resolve()), "Subfolders must not even be inspected"
+        return scan(path)
+    monkeypatch.setattr(os, "scandir", guarded_scan)
+    result = client.post("/api/tools/encrypt-local-folder", headers=HEADERS)
+    monkeypatch.setattr(os, "scandir", scan)
+    assert result.status_code == 200, result.text
+    assert result.json()["summary"] == {"succeeded": int(has_direct_file), "failed": 0, "skipped": 0}
+    assert [entry["file"] for entry in result.json()["entries"]] == (["direct.pptx"] if has_direct_file else [])
+    assert not list(nested.glob("*_Secured*"))
+    assert all(path.read_bytes() == b"child original" for path in nested.glob("*.docx"))
 
 
 def test_repeated_runs_skip_generated_copies_and_keep_both_prior_outputs(local_lab):
@@ -142,7 +166,7 @@ def test_existing_secured_copies_do_not_consume_the_source_file_limit(local_lab)
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows directory junction boundary")
-def test_linked_folders_are_skipped_and_outside_sources_stay_untouched(local_lab, tmp_path):
+def test_linked_folders_are_ignored_and_outside_sources_stay_untouched(local_lab, tmp_path):
     import _winapi
     root, client, _ = local_lab
     outside = tmp_path / "Outside"
@@ -152,7 +176,7 @@ def test_linked_folders_are_skipped_and_outside_sources_stay_untouched(local_lab
     (root / "report.docx").write_bytes(b"Word")
     result = client.post("/api/tools/encrypt-local-folder", headers=HEADERS)
     assert result.status_code == 200, result.text
-    assert result.json()["summary"] == {"succeeded": 1, "failed": 0, "skipped": 1}
+    assert result.json()["summary"] == {"succeeded": 1, "failed": 0, "skipped": 0}
     assert list(outside.iterdir()) == [outside / "outside.docx"]
 
 
@@ -184,14 +208,14 @@ def test_native_encryption_picker_returns_unicode_paths_and_releases_com(monkeyp
 
 def test_folder_supports_powerpoint_without_ltr_and_skips_secured_presentations(local_lab):
     root, client, _ = local_lab
-    originals = {"slides.pptx": b"slides", "子目录/legacy.PPT": b"legacy", "slides_Secured.pptx": b"prior"}
+    originals = {"slides.pptx": b"slides", "legacy.PPT": b"legacy", "slides_Secured.pptx": b"prior"}
     for name, content in originals.items():
         (root / name).write_bytes(content)
     result = client.post("/api/tools/encrypt-local-folder", headers=HEADERS)
     assert result.status_code == 200, result.text
     assert result.json()["summary"] == {"succeeded": 2, "failed": 0, "skipped": 1}
     assert (root / "slides_Secured (1).pptx").read_bytes() == b"secured:slides"
-    assert (root / "子目录/legacy_Secured.PPT").read_bytes() == b"secured:legacy"
+    assert (root / "legacy_Secured.PPT").read_bytes() == b"secured:legacy"
     assert all((root / name).read_bytes() == content for name, content in originals.items())
 
 

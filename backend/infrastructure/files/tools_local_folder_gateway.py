@@ -1,4 +1,4 @@
-"""Enumerate one native-selected tree and publish verified copies without replacement."""
+"""Enumerate a selected folder's direct files and publish copies without replacement."""
 import os
 from pathlib import Path
 import shutil
@@ -28,26 +28,21 @@ class ToolsLocalFolderGateway:
 
     def scan(self) -> list[LocalFolderCandidate]:
         result = []
-        pending = [self.root]
         supported = 0
-        while pending:
-            folder = pending.pop()
-            self._check_location(folder)
-            with os.scandir(folder) as entries:
-                for entry in sorted(entries, key=lambda value: value.name.casefold()):
-                    path = Path(entry.path)
-                    relative = path.relative_to(self.root).as_posix()
-                    if _reparse(path):
-                        result.append(LocalFolderCandidate(path, relative, "Linked files and folders are skipped."))
-                    elif entry.is_dir(follow_symlinks=False):
-                        if not entry.name.startswith(".connlab-"):
-                            self._directories[path] = self._directory_identity(path)
-                            pending.append(path)
-                    elif entry.is_file(follow_symlinks=False):
-                        result.append(LocalFolderCandidate(path, relative))
-                        self._sources[path] = self._identity(path)
-                        if not local_folder_skip_reason(path):
-                            supported += 1
+        self._check_location(self.root)
+        with os.scandir(self.root) as entries:
+            for entry in sorted(entries, key=lambda value: value.name.casefold()):
+                if not entry.is_file(follow_symlinks=False):
+                    continue
+                path = Path(entry.path)
+                relative = path.name
+                if _reparse(path):
+                    result.append(LocalFolderCandidate(path, relative, "Linked files are skipped."))
+                else:
+                    result.append(LocalFolderCandidate(path, relative))
+                    self._sources[path] = self._identity(path)
+                    if not local_folder_skip_reason(path):
+                        supported += 1
         if supported > MAX_FOLDER_FILES:
             raise ToolsError(f"Choose a folder with at most {MAX_FOLDER_FILES} Office files.")
         return result
