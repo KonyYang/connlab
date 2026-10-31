@@ -197,7 +197,7 @@
     },
     "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
       "branch": "codex/tools-folder-encryption-20261030",
       "resources": [],
@@ -237,62 +237,17 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T08:22:52.061963Z",
+        "updated_at": "2026-10-31T08:33:51.161924Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
           "stage": "revision",
           "status": "running",
-          "summary": "User explicitly requests renaming Drawing Curves to Drawing T-rise.",
+          "summary": "User requests replacing separate Tools cards with compact shared actions ordered equipment, mechanical, temperature, customer report, encryption; show mechanical review after selection.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
-          "subject": "ce3a1b5bee93cbd5ede69b5de8246255d6eab099",
-          "summary": "Rename the temperature drawing action to the exact user-provided Drawing T-rise label.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/App.temperatureNavigation.test.tsx",
-            "frontend/src/pages/ToolsPage.tsx"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "name": "Final affected UI matrix",
-              "evidence": "24 passed on final bytes: ToolsPage 16 and temperature navigation 8. Renamed button still enters the workspace; sidebar resumption, analysis/parameter/Undo preservation and confirmed-exit clearing regressions pass."
-            },
-            {
-              "status": "passed",
-              "name": "Exact diff review",
-              "evidence": "Sequential same-agent Standards and Spec passes: one visible button literal and four existing navigation-test queries changed. Callback, route, state persistence and all other actions unchanged. git diff --check passed. No new implementation-mirroring tests for this reversible copy edit."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Primary context, exact literal replacement and existing navigation query updates."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Focused sequential same-agent Standards and Spec review; not independent-agent execution."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "One complete proportional final 24-test affected UI/navigation matrix."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "ce3a1b5bee93cbd5ede69b5de8246255d6eab099",
-            "primary_before": "7ef37baf0c8bc0f94b439277840dcf50cd790969",
-            "integrated_head": "42ca14296dd0dd7d3df889e35f5e651e6bea6545",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
