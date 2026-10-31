@@ -1,9 +1,18 @@
 import { useState } from "react";
 import type { LibraryBatch } from "../../api/projectLibrary";
 
+export type ImportOutcomeKind = "files" | "restored" | "history" | "existing_files";
+const guidance: Record<ImportOutcomeKind, { summary: string; next: string }> = {
+  files: { summary: "Project files imported.", next: "Open the project to browse files, or choose Continue Testing to complete project information and Matrix setup." },
+  restored: { summary: "Project and saved test data restored.", next: "Open the project and choose Project Workbench to review its data and continue testing. Missing source files still need attention." },
+  history: { summary: "Historical copy saved for browsing.", next: "Open the project to browse this copy. The current working project is unchanged." },
+  existing_files: { summary: "Files added to the existing project.", next: "Open the project to review the added files. Existing test data stays unchanged." },
+};
+
 type Props = {
   batch: LibraryBatch;
   titlesBySource: Record<string, string>;
+  outcomesBySource?: Record<string, ImportOutcomeKind>;
   busy: boolean;
   onOpenMember: (id: string, batchId?: string) => void;
   onViewLibrary: () => void;
@@ -16,29 +25,32 @@ type Props = {
 const pageSize = 20;
 const needsAttention = (status: string) => status === "failed" || status === "review";
 
-export function ProjectImportResults({ batch, titlesBySource, busy, onOpenMember, onViewLibrary, onRefresh, onResume, onReceiveMore, heading = "Import Results" }: Props) {
+export function ProjectImportResults({ batch, titlesBySource, outcomesBySource = {}, busy, onOpenMember, onViewLibrary, onRefresh, onResume, onReceiveMore, heading = "Import Results" }: Props) {
   const [location, setLocation] = useState({ batchId: batch.batch_id, page: 1 });
   const items = [...batch.items].sort((a, b) => Number(needsAttention(b.status)) - Number(needsAttention(a.status)));
   const pages = Math.max(1, Math.ceil(items.length / pageSize));
   const page = location.batchId === batch.batch_id ? Math.min(location.page, pages) : 1;
   const running = batch.status === "running";
+  const singleSuccess = items.length === 1 && batch.status === "completed" && items[0].status === "added" && Boolean(items[0].member_id);
   return <section className="library-panel" aria-label="Import results">
     <h2>{heading}</h2>
-    <p role="status">{batch.counts.added} added; {batch.counts.already_added} already added; {batch.counts.review} need review; {batch.counts.failed} failed.</p>
+    <p role="status">{singleSuccess ? "Import complete." : `${batch.counts.added} added; ${batch.counts.already_added} already added; ${batch.counts.review} need review; ${batch.counts.failed} failed.`}</p>
     <div className="library-actions">
       {running && <button type="button" disabled={busy} onClick={onRefresh}>Refresh Batch Status</button>}
       {batch.status === "interrupted" && <button type="button" className="primary-action" disabled={busy} onClick={onResume}>Resume Batch</button>}
-      <button type="button" className={batch.status === "completed" && batch.counts.failed === 0 && batch.counts.review === 0 ? "primary-action" : undefined} disabled={busy || running} onClick={() => onViewLibrary()}>View Projects</button>
+      <button type="button" className={!singleSuccess && batch.status === "completed" && batch.counts.failed === 0 && batch.counts.review === 0 ? "primary-action" : undefined} disabled={busy || running} onClick={() => onViewLibrary()}>View Projects</button>
       <button type="button" disabled={busy || running} onClick={onReceiveMore}>Import More</button>
     </div>
     {items.slice((page - 1) * pageSize, page * pageSize).map(item => {
       // A recovered batch has no preview titles. The basename is display-only; member IDs still own navigation.
       const title = titlesBySource[item.source_path] || item.source_path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || "Project";
+      const outcome = item.status === "added" ? guidance[outcomesBySource[item.source_path]] : undefined;
       return <div key={item.source_path} className="library-result">
         <strong>{title}</strong>
+        {outcome && <><p>{outcome.summary}</p><p>{outcome.next}</p></>}
         {item.status !== "added" && <p>{item.message}</p>}
         <details><summary>Source Location</summary><p>{item.source_path}</p></details>
-        {item.member_id && <button type="button" disabled={busy || running} onClick={() => onOpenMember(item.member_id!)}>Open {title}</button>}
+        {item.member_id && <button type="button" className={singleSuccess ? "primary-action" : undefined} aria-label={`Open ${title}`} disabled={busy || running} onClick={() => onOpenMember(item.member_id!)}>Open Project</button>}
       </div>;
     })}
     {pages > 1 && <nav className="library-actions" aria-label="Import result pages">

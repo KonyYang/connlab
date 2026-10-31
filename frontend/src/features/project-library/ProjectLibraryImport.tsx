@@ -2,13 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
 import { getLibraryRuntime, listLibraryMembers, scanLibrarySources, startLibraryBatch, getLibraryBatch, resumeLibraryBatch, pickLibraryFolder, planPortableRestore, type LibraryRuntime, type LibraryMember, type LibraryFileAssignment, type LibraryScan, type LibraryIntakePlan, type LibraryBatch, type LibraryBatchRequest, type PortableRestorePlan, type PortableResolution } from "../../api/projectLibrary";
-import { ProjectImportResults } from "./ProjectImportResults";
-import { ProjectImportSnapshots } from "./ProjectImportSnapshots";
+import { ProjectImportResults, type ImportOutcomeKind } from "./ProjectImportResults";
+import { ProjectImportReviewList } from "./ProjectImportReviewList";
 import { combinedImportResults, readyImportPaths, receiveSavedProjects, reviewImportCandidates, selectedImportProblem, type SnapshotImportOutcome } from "./projectImportReview";
 import "./project-library.css";
 
 type Props = { onBack: () => void; onViewLibrary: (batchId?: string) => void; onOpenMember: (id: string, batchId?: string) => void; backLabel?: string; onLegacyPreview?: () => void };
-const labels = { ready: "Ready to Import", conflict: "Needs Review", already_added: "Already Added", unavailable: "Unavailable" };
 
 export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLegacyPreview, backLabel = "Back to Projects" }: Props) {
   const [runtime, setRuntime] = useState<LibraryRuntime | null>(null);
@@ -22,10 +21,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
   const [existingMembers, setExistingMembers] = useState<LibraryMember[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [separate, setSeparate] = useState<string[]>([]);
-  const [filter, setFilter] = useState("all");
-  const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
-  const [resolving, setResolving] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [busyMessage, setBusyMessage] = useState("Checking selected folders…");
   const [manualOpen, setManualOpen] = useState(false);
@@ -72,7 +68,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
   function changeSources(value: string) {
     interactionEpoch.current += 1; setRecoveryId(""); setSubmission(null); setRecoveredCompletedId("");
     request.current?.abort(); request.current = null;
-    setSources(value); setAssignments({}); setScan(null); setPlan(null); setSelected([]); setSeparate([]); setBatch(null); setError(""); setResolving(null); setFilter("all"); setPage(1);
+    setSources(value); setAssignments({}); setScan(null); setPlan(null); setSelected([]); setSeparate([]); setBatch(null); setError("");
     setSnapshots([]); setSnapshotResults([]);
     setBusy(false);
   }
@@ -92,7 +88,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
     if (!paths.length || !runtime?.configured) return;
     interactionEpoch.current += 1;
     const controller = new AbortController(); request.current = controller;
-    setBusy(true); setBusyMessage("Checking selected folders…"); setError(""); setPlan(null); setSnapshots([]); setSnapshotResults([]); setBatch(null); setSelected([]); setSeparate([]); setFilter("all"); setPage(1);
+    setBusy(true); setBusyMessage("Checking selected folders…"); setError(""); setPlan(null); setSnapshots([]); setSnapshotResults([]); setBatch(null); setSelected([]); setSeparate([]);
     try {
       const found = await scanLibrarySources(paths, controller.signal);
       if (!live.current || controller.signal.aborted) return;
@@ -121,7 +117,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
     request.current?.abort();
     const controller = new AbortController(); request.current = controller;
     setSources(paths.join("\n")); setAssignments({}); setRecoveryId(""); setSubmission(null);
-    setBusy(true); setBusyMessage("Checking the selected project folders…"); setError(""); setPlan(null); setSnapshots([]); setSnapshotResults([]); setBatch(null); setSelected([]); setSeparate([]); setFilter("all"); setPage(1);
+    setBusy(true); setBusyMessage("Checking the selected project folders…"); setError(""); setPlan(null); setSnapshots([]); setSnapshotResults([]); setBatch(null); setSelected([]); setSeparate([]);
     try {
       const found = await scanLibrarySources(paths, controller.signal);
       if (!live.current || controller.signal.aborted) return;
@@ -170,7 +166,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
     if (busy || (resume ? !batch : retrySubmission ? !submission : (!plan && !snapshots.length)) || !runtime) return;
     if (!resume && !retrySubmission && (!selected.length || selectedImportProblem(plan, snapshots, selected))) return;
     const currentEpoch = ++interactionEpoch.current;
-    setBusy(true); setBusyMessage("Importing selected projects…"); setResolving(null); setError(""); setRecoveredCompletedId("");
+    setBusy(true); setBusyMessage("Importing selected projects…"); setError(""); setRecoveredCompletedId("");
     try {
       let next: LibraryBatch | null = null;
       const ordinary = selected.filter(path => plan?.items.some(row => row.source_path === path));
@@ -208,12 +204,14 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
   const freshSuccess = displayBatch?.status === "completed" && displayBatch.batch_id !== recoveredCompletedId && displayBatch.counts.failed === 0 && displayBatch.counts.review === 0 && !error && !busy;
   const selectionProblem = selectedImportProblem(plan, snapshots, selected);
   const boundaryRoots = (scan?.boundary_roots ?? scan?.items ?? []).filter(row => row.kind === "project" && row.child_folders.length > 0);
-  const alreadyAddedCount = plan?.items.filter(row => row.status === "already_added").length ?? 0;
-  const visible = (plan?.items ?? []).filter(row => filter === "all" || row.status === filter);
-  const pages = Math.max(1, Math.ceil(visible.length / 20));
-  const currentPage = Math.min(page, pages);
+  const outcomesBySource: Record<string, ImportOutcomeKind> = Object.fromEntries((plan?.items ?? []).map(row => [row.source_path, row.target_member_id ? "existing_files" : "files"]));
+  for (const row of snapshotResults) {
+    if (row.result?.status === "history_kept" || row.result?.member.is_history) outcomesBySource[row.source_path] = "history";
+    else if (row.result?.member.can_continue) outcomesBySource[row.source_path] = "restored";
+  }
   const back = <button type="button" className="ui-secondary-action" disabled={locked} onClick={onBack}>{backLabel}</button>;
   const results = displayBatch && <ProjectImportResults batch={displayBatch} titlesBySource={Object.fromEntries([...(plan?.items ?? []), ...snapshots, ...snapshotResults].map(item => [item.source_path, item.title]))}
+    outcomesBySource={outcomesBySource}
     busy={busy} onOpenMember={onOpenMember} onViewLibrary={() => onViewLibrary()} onRefresh={() => void refreshBatch()}
     onResume={() => void receive(true)} onReceiveMore={() => changeSources("")} heading={displayBatch.batch_id === recoveredCompletedId ? "Import Result" : undefined} />;
   return <section className="project-library" aria-label="Import projects">
@@ -225,7 +223,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
       <h2>Choose projects</h2>
       <p>Select a project folder or a folder containing several projects. We will check them before you confirm. Original files stay in place.</p>
       <div className="library-actions"><button type="button" className="primary-action" disabled={locked} title="Choose existing project folders. Selection only checks the files; copying requires your final confirmation." onClick={() => void choose()}>Choose Project Folders</button>{sourcePaths.length > 1 && <button type="button" disabled={locked} title="Clear this selection. Original folders and files stay unchanged." onClick={() => changeSources("")}>Clear All</button>}</div>
-      {sourcePaths.length > 0 && <p>{sourcePaths.length} locations selected</p>}
+      {sourcePaths.length > 0 && <p>{sourcePaths.length} {sourcePaths.length === 1 ? "location" : "locations"} selected</p>}
       {sourcePaths.length > 0 && !manualOpen && <>
         <ul className="library-source-list" aria-label="Selected sources">{sourcePaths.map((path, index) => <li key={path}><span>{path}</span><button type="button" aria-label={`Remove ${path} from selection`} title="Cancel this selection. Original folders and files stay unchanged." disabled={locked} onClick={() => { const next = sourcePaths.filter((_, position) => position !== index); changeSources(next.join("\n")); if (next.length) void review(next); }}>×</button></li>)}</ul>
       </>}
@@ -250,27 +248,18 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
       <button type="button" className="primary-action" disabled={locked || scan.items.filter(row => row.kind === "file").some(row => !assignments[row.source_path]?.target || assignments[row.source_path]?.target === "new" && !assignments[row.source_path]?.title.trim())} onClick={() => void reviewAssignments()}>Review File Assignments</button>
     </section>}
     {(plan || snapshots.length > 0) && !displayBatch && <section className="library-panel">
-      <h2>Review projects</h2><p>{(plan?.items.length ?? 0) + snapshots.length} found; {selected.length} selected.</p>
-      {plan && <>
-      {alreadyAddedCount > 0 && <p role="status">{alreadyAddedCount === plan.items.length ? "All projects in this preview are already in Projects. Nothing needs to be imported." : "Already added projects will be kept. Import only the projects you select."}</p>}
-      {plan.warnings.map((note, i) => <p key={i} role="status">{note}</p>)}
-      {plan.items.length > 1 && <div className="library-actions"><label>Show<select value={filter} disabled={locked} onChange={event => { setFilter(event.target.value); setPage(1); }}><option value="all">All ({plan.items.length})</option>{Object.entries(labels).map(([key, label]) => <option key={key} value={key}>{label} ({plan.items.filter(row => row.status === key).length})</option>)}</select></label><button type="button" disabled={locked} onClick={() => setSelected(readyImportPaths(plan, snapshots))}>Select Ready Projects</button><button type="button" disabled={locked} onClick={() => setSelected([])}>Clear Selection</button></div>}
-      <div className="library-table library-import-table"><table aria-label="Projects to receive"><thead><tr><th>Select</th><th>Project</th><th>Result</th></tr></thead><tbody>{visible.slice((currentPage - 1) * 20, currentPage * 20).map(row => <tr key={row.source_path}><td><input type="checkbox" aria-label={`Select ${row.title}`} disabled={locked || row.status === "already_added" || row.status === "unavailable" || row.status === "conflict" && !separate.includes(row.source_path)} checked={selected.includes(row.source_path)} onChange={event => setSelected(values => event.target.checked ? [...values, row.source_path] : values.filter(value => value !== row.source_path))} /></td><td><strong>{row.ltr_number || "No LTR yet"}</strong><span>{row.title}</span><details><summary>Locations</summary><dl><dt>From</dt><dd>{row.source_path}</dd><dt>To</dt><dd>{row.target_path}</dd></dl></details></td><td><strong>{labels[row.status]}</strong>{row.warnings.map((note, i) => <p key={i}>{note}</p>)}{row.status === "already_added" && row.existing_member_id && <button type="button" disabled={locked} aria-label={`Open Existing ${row.title}`} onClick={() => onOpenMember(row.existing_member_id!)}>Open Existing Project</button>}{row.can_keep_separate && <div className="library-conflict-actions">
-        <button type="button" disabled={locked} aria-expanded={resolving === row.source_path} aria-label={`Resolve conflict for ${row.title}`} onClick={() => setResolving(resolving === row.source_path ? null : row.source_path)}>{separate.includes(row.source_path) ? "Change Decision" : "Resolve Conflict"}</button>
-        {separate.includes(row.source_path) && <p>Keep as a separate project. Existing records stay unchanged.</p>}
-        {resolving === row.source_path && <div role="group" aria-label={`Conflict decision for ${row.title}`}>
-          <p>This will keep another complete copy, without merging or replacing the existing project.</p>
-          <div className="library-actions"><button type="button" disabled={locked} onClick={() => { setSeparate(values => [...new Set([...values, row.source_path])]); setSelected(values => [...new Set([...values, row.source_path])]); setResolving(null); }}>Keep as a Separate Project</button>
-          <button type="button" disabled={locked} onClick={() => { setSeparate(values => values.filter(value => value !== row.source_path)); setSelected(values => values.filter(value => value !== row.source_path)); setResolving(null); }}>Skip This Project</button></div>
-        </div>}
-      </div>}</td></tr>)}</tbody></table></div>
-      </>}
-      <ProjectImportSnapshots plans={snapshots} selected={selected} disabled={locked} onToggle={(path, checked) => setSelected(values => checked ? [...new Set([...values, path])] : values.filter(value => value !== path))} onResolve={(path, resolution) => void resolveSnapshot(path, resolution)} />
+      <ProjectImportReviewList plan={plan} snapshots={snapshots} selected={selected} separate={separate} disabled={locked}
+        onToggle={(path, checked) => setSelected(values => checked ? [...new Set([...values, path])] : values.filter(value => value !== path))}
+        onKeepSeparate={(path, keep) => {
+          setSeparate(values => keep ? [...new Set([...values, path])] : values.filter(value => value !== path));
+          setSelected(values => keep ? [...new Set([...values, path])] : values.filter(value => value !== path));
+        }}
+        onResolveSnapshot={(path, resolution) => void resolveSnapshot(path, resolution)} onOpenMember={onOpenMember}
+        onSelectReady={() => setSelected([...new Set([...readyImportPaths(plan, snapshots), ...separate])])} onClear={() => setSelected([])} />
       {selectionProblem && <p role="alert">{selectionProblem}</p>}
-      {pages > 1 && <nav className="library-actions" aria-label="Project review pages"><button type="button" disabled={locked || currentPage <= 1} onClick={() => setPage(currentPage - 1)}>Previous</button><span>Page {currentPage} of {pages}</span><button type="button" disabled={locked || currentPage >= pages} onClick={() => setPage(currentPage + 1)}>Next</button></nav>}
       <section className="library-import-confirm" aria-label="Confirm import selection">
-        <p>Copy {selected.length} selected projects to <strong>{runtime?.projects_root}</strong>. Original files stay in place.</p>
-        {snapshots.some(row => selected.includes(row.source_path)) && <p>Also restore saved test data for {snapshots.filter(row => selected.includes(row.source_path)).length} selected projects. Review the warnings above; missing source files will not be filled.</p>}
+        <p>Copy {selected.length} selected {selected.length === 1 ? "project" : "projects"} to <strong>{runtime?.projects_root}</strong>. Original files stay in place.</p>
+        {snapshots.some(row => selected.includes(row.source_path)) && <p>Also restore saved test data for the selected {snapshots.filter(row => selected.includes(row.source_path)).length === 1 ? "project" : "projects"}. Review the warnings above; missing source files will not be filled.</p>}
         <button type="button" className="primary-action" disabled={locked || !selected.length || Boolean(selectionProblem)} onClick={() => void receive()}>Confirm Import ({selected.length})</button>
       </section>
     </section>}
