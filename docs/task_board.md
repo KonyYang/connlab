@@ -197,7 +197,7 @@
     },
     "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
       "branch": "codex/tools-folder-encryption-20261030",
       "resources": [],
@@ -236,61 +236,17 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T07:14:46.317980Z",
+        "updated_at": "2026-10-31T07:15:25.980336Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
           "stage": "revision",
           "status": "running",
-          "summary": "User requests moving the Mechanical Summary explanatory paragraph into the Generate Summary button hover tooltip.",
+          "summary": "User explicitly requests renaming the Tools equipment button to Updated Report Equipments.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
-          "subject": "00a49b76c6779e6cb5a438282efcbf042e477f08",
-          "summary": "Move Mechanical Summary static guidance into the Generate Summary button native hover tooltip to reduce permanent card height.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/features/tools/MechanicalSummaryTool.tsx"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "name": "Final affected UI matrix",
-              "evidence": "17 passed on final bytes: ToolsPage 16 and MechanicalSummaryTool 1. Existing mechanical review/readiness and surrounding Tools flows remain functional."
-            },
-            {
-              "status": "passed",
-              "name": "Exact diff review",
-              "evidence": "Sequential same-agent Standards and Spec passes: one static paragraph removed and its exact content moved to the existing Generate Summary title attribute. Input labels, readiness/disabled state, generation and download handlers unchanged. git diff --check passed. Reversible copy-only change; no new implementation-mirroring tests."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Primary context, literal copy relocation only."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Focused sequential same-agent Standards and Spec review; not independent-agent execution."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "One complete proportional final 17-test affected UI matrix; no actual file generation."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "00a49b76c6779e6cb5a438282efcbf042e477f08",
-            "primary_before": "732c36520c4076da066532d43e177ece24f1cc21",
-            "integrated_head": "171679af1cab78e52f8697ae3ce41b60ee666a27",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
