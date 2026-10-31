@@ -33,7 +33,6 @@ export function EncryptionTool() {
 
   const saved = result?.entries.find(entry => entry.status === "Encrypted");
   return <article className="tools-card" aria-label="Encrypt a Copy" aria-busy={Boolean(busy)}>
-    <div className="tools-card-heading"><h3>Select Office File or Folder</h3></div>
     <div className="tools-encryption-actions">
       <button className="primary-action tools-picker-action" type="button" title="Select a Word, Excel or PowerPoint file. Save a _Secured copy beside the original." disabled={Boolean(busy)} onClick={() => void run("file")}>
         {busy === "file" ? "Working..." : "Encrypt File"}
