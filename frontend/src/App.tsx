@@ -432,7 +432,7 @@ export default function App(): ReactElement {
       )}
       {route.name === "settings" && <SettingsPage />}
       {route.name === "tools" && <ToolsPage onOpenTemperatureRise={() => navigate('/tools/temperature-rise')} />}
-      {route.name === "projectLibraryImport" && <ProjectLibraryImport onBack={() => navigate("/projects")} onViewLibrary={() => navigate("/projects")} onOpenMember={id => navigate(`/project-library/${encodeURIComponent(id)}`)} onLegacyPreview={() => navigate(`/projects/import/link${importSuffix}`)} />}
+      {route.name === "projectLibraryImport" && <ProjectLibraryImport onBack={() => navigate("/projects")} onViewLibrary={() => navigate("/projects")} onOpenMember={id => navigate(`/project-library/${encodeURIComponent(id)}`)} onOpenProject={id => navigate(`/projects/${encodeURIComponent(id)}`)} onLegacyPreview={() => navigate(`/projects/import/link${importSuffix}`)} />}
       {route.name === "projectLibraryMember" && <ProjectLibraryMember backLabel="Back to Projects" memberId={route.memberId} onBack={() => navigate(projectsPath)} onOpenProject={(id, destination) => navigate(`/projects/${encodeURIComponent(id)}${destination === 'matrix' ? '/matrix-editor' : destination === 'report' ? '/report-workspace' : ''}`)} />}
       {route.name === "legacyProjectPreview" && <LegacyProjectPreview onBack={() => navigate(importPath)} onViewImported={() => navigate('/projects')} />}
       {route.name === "legacyProjectDetail" && <LegacyProjectBrowser backLabel="Back to Projects" recordId={route.recordId} onBack={() => navigate(projectsPath)} />}

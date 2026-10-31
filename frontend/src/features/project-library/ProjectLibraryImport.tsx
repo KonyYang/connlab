@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTopBarActionsRoot } from "../../components/layout/TopBarActionsContext";
 import { getLibraryRuntime, listLibraryMembers, scanLibrarySources, startLibraryBatch, getLibraryBatch, resumeLibraryBatch, pickLibraryFolder, planPortableRestore, type LibraryRuntime, type LibraryMember, type LibraryFileAssignment, type LibraryScan, type LibraryIntakePlan, type LibraryBatch, type LibraryBatchRequest, type PortableRestorePlan, type PortableResolution } from "../../api/projectLibrary";
-import { ProjectImportResults, type ImportOutcomeKind } from "./ProjectImportResults";
+import { ProjectImportResults, type ImportResultDetails } from "./ProjectImportResults";
 import { ProjectImportReviewList } from "./ProjectImportReviewList";
 import { combinedImportResults, readyImportPaths, receiveSavedProjects, reviewImportCandidates, selectedImportProblem, type SnapshotImportOutcome } from "./projectImportReview";
 import "./project-library.css";
 
-type Props = { onBack: () => void; onViewLibrary: (batchId?: string) => void; onOpenMember: (id: string, batchId?: string) => void; backLabel?: string; onLegacyPreview?: () => void };
+type Props = { onBack: () => void; onViewLibrary: (batchId?: string) => void; onOpenMember: (id: string, batchId?: string) => void; onOpenProject?: (id: string) => void; backLabel?: string; onLegacyPreview?: () => void };
 
-export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLegacyPreview, backLabel = "Back to Projects" }: Props) {
+export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOpenProject, onLegacyPreview, backLabel = "Back to Projects" }: Props) {
   const [runtime, setRuntime] = useState<LibraryRuntime | null>(null);
   const [sources, setSources] = useState("");
   const sourcePaths = [...new Set(sources.split(/\r?\n/).map(value => value.trim().replace(/^"|"$/g, "")).filter(Boolean))];
@@ -204,15 +204,27 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
   const freshSuccess = displayBatch?.status === "completed" && displayBatch.batch_id !== recoveredCompletedId && displayBatch.counts.failed === 0 && displayBatch.counts.review === 0 && !error && !busy;
   const selectionProblem = selectedImportProblem(plan, snapshots, selected);
   const boundaryRoots = (scan?.boundary_roots ?? scan?.items ?? []).filter(row => row.kind === "project" && row.child_folders.length > 0);
-  const outcomesBySource: Record<string, ImportOutcomeKind> = Object.fromEntries((plan?.items ?? []).map(row => [row.source_path, row.target_member_id ? "existing_files" : "files"]));
+  const detailsBySource: Record<string, ImportResultDetails> = Object.fromEntries((plan?.items ?? []).map(row => [row.source_path, { ltrNumber: row.ltr_number, kind: row.target_member_id ? "existing_files" : "files", warnings: [...new Set(row.warnings)] }]));
+  for (const row of snapshots) detailsBySource[row.source_path] = { ltrNumber: row.ltr_number, warnings: [...new Set(row.warnings)] };
   for (const row of snapshotResults) {
-    if (row.result?.status === "history_kept" || row.result?.member.is_history) outcomesBySource[row.source_path] = "history";
-    else if (row.result?.member.can_continue) outcomesBySource[row.source_path] = "restored";
+    if (!row.result) continue;
+    const { member, status, warnings } = row.result;
+    detailsBySource[row.source_path] = {
+      ltrNumber: member.ltr_number,
+      kind: status === "history_kept" || member.is_history ? "history" : member.can_continue && member.project_id ? "restored" : undefined,
+      warnings: [...new Set([...warnings, ...member.warnings])],
+    };
+  }
+  function openImportedMember(memberId: string) {
+    const restored = snapshotResults.find(row => row.member_id === memberId)?.result;
+    // Only the completed restore result authorizes a workbench destination; an LTR match does not.
+    if (onOpenProject && restored && restored.status !== "history_kept" && !restored.member.is_history && restored.member.can_continue && restored.member.project_id) onOpenProject(restored.member.project_id);
+    else onOpenMember(memberId);
   }
   const back = <button type="button" className="ui-secondary-action" disabled={locked} onClick={onBack}>{backLabel}</button>;
   const results = displayBatch && <ProjectImportResults batch={displayBatch} titlesBySource={Object.fromEntries([...(plan?.items ?? []), ...snapshots, ...snapshotResults].map(item => [item.source_path, item.title]))}
-    outcomesBySource={outcomesBySource}
-    busy={busy} onOpenMember={onOpenMember} onViewLibrary={() => onViewLibrary()} onRefresh={() => void refreshBatch()}
+    detailsBySource={detailsBySource}
+    busy={busy} onOpenMember={openImportedMember} onViewLibrary={() => onViewLibrary()} onRefresh={() => void refreshBatch()}
     onResume={() => void receive(true)} onReceiveMore={() => changeSources("")} heading={displayBatch.batch_id === recoveredCompletedId ? "Import Result" : undefined} />;
   return <section className="project-library" aria-label="Import projects">
     {topBar ? createPortal(back, topBar) : <header className="library-heading"><h1>Import Projects</h1>{back}</header>}
@@ -266,10 +278,6 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onLe
     {displayBatch && (displayBatch.batch_id === recoveredCompletedId
       ? <details><summary>Last Import ({displayBatch.counts.added} added; {displayBatch.counts.already_added} already added)</summary>{results}</details>
       : results)}
-    {snapshotResults.some(row => row.result?.warnings.length || row.result?.status === "history_kept") && <section className="library-panel" aria-label="Imported project notes">{snapshotResults.map(row => <div key={row.source_path}>
-      {row.result?.status === "history_kept" && <p role="status">{row.title}: {row.message}</p>}
-      {row.result?.warnings.map((note, index) => <p key={index} role="status">{row.title}: {note}</p>)}
-    </div>)}</section>}
     {snapshotResults.some(row => row.status === "failed") && <button type="button" disabled={locked} onClick={() => { const failed = snapshotResults.filter(row => row.status === "failed").map(row => row.source_path); changeSources(failed.join("\n")); void review(failed); }}>Check Failed Projects Again</button>}
   </section>;
 }
