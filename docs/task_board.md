@@ -197,11 +197,11 @@
     },
     "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
       "branch": "codex/tools-folder-encryption-20261030",
       "resources": [],
-      "integrated_head": "fa0e2cdd38931290ce371fbb3ca541c5aa3d85c0",
+      "integrated_head": "baeefd9e70f4fb86672184663860dbc7b89ff030",
       "task": {
         "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
         "summary": "Batch encrypted Word/Excel copies from a selected folder without modifying originals",
@@ -230,7 +230,7 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-30T23:55:42.381090Z",
+        "updated_at": "2026-10-31T00:31:18.697196Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -240,7 +240,81 @@
           "summary": "User requests local folder processing without uploads or ZIP: save separate Secured copies beside originals, preserving existing files.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
+          "subject": "7ea356a182a2a31b8782dd15f274e370d9f5978c",
+          "summary": "Local folder encryption revision: native Windows selection, recursive encrypted sibling copies, collision numbering, no upload/ZIP, Office working-copy isolation preserving originals.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/api/routes_tools_folder_encryption.py",
+            "backend/application/tools_folder_encryption_service.py",
+            "backend/infrastructure/files/tools_local_folder_gateway.py",
+            "backend/infrastructure/files/windows_path_picker.py",
+            "docs/PROJECT_CONTEXT.md",
+            "frontend/src/api/client.ts",
+            "frontend/src/api/toolsEncryption.test.ts",
+            "frontend/src/features/tools/EncryptionTool.test.tsx",
+            "frontend/src/features/tools/EncryptionTool.tsx",
+            "frontend/src/pages/ToolsPage.test.tsx",
+            "tests/integration/test_tools_local_folder_encryption_api.py"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "Final affected backend matrix",
+              "evidence": "89 tests passed on 7ea356a1, including 12 local-folder cases, upload compatibility, shared Office adapter, standalone policy, project encryption and neighboring Tools APIs. One existing Starlette deprecation warning."
+            },
+            {
+              "status": "passed",
+              "name": "Frontend affected matrix",
+              "evidence": "36 tests passed; final frontend bytes unchanged since this run. File encryption, local no-body request, cancellation/retry, no download, stale response, Tools page and project encryption covered."
+            },
+            {
+              "status": "passed",
+              "name": "Production build",
+              "evidence": "Final frontend TypeScript and Vite build passed, 217 modules; no subsequent frontend changes."
+            },
+            {
+              "status": "passed",
+              "name": "Native picker + real Office acceptance",
+              "evidence": "Port 18832 isolated app, empty DB, newly created owned doc/docx/xls/xlsx fixtures only. Actual Windows native directory selection via production picker, JSON request with no uploaded body, no browser download. First run 4 encrypted / 1 intentional bad-DL failure / 3 skipped; repeat 4 encrypted / 1 failure / 7 skipped. Eight outputs independently decrypted with policy passwords and content checked. Original and prior-output SHA256 unchanged; no ZIP or staging leftovers. Actual native cancellation returned cancelled=true and preserved displayed prior result. 660x804 final screenshot inspected."
+            },
+            {
+              "status": "passed",
+              "name": "Standards review",
+              "evidence": "Sequential same-agent exact-diff review: filesystem/native UI behind adapters, policy in application service, no original or previous output replacement, atomic no-replace publish, source/folder identity and reparse checks, deterministic COM/staging cleanup."
+            },
+            {
+              "status": "passed",
+              "name": "Spec review",
+              "evidence": "Sequential same-agent review against user revision: no folder upload/download, separate Secured siblings in each original directory, recursive scope, unchanged password rules. Retains old upload API only for compatibility and single-file download behavior unchanged. Native/Office smoke findings fixed and revalidated; no unresolved findings."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Primary context with TDD RED/GREEN for local endpoint/UI, secured-source limit, native picker and Office input mutation."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Separate sequential Standards and Spec passes by the same primary agent; not an independent-agent review."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "Same primary context final affected QA plus real native UI and installed Office tests. Early smoke caught legacy XLS input metadata mutation; final owned-working-copy fix verified on a fresh fixture tree."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "7ea356a182a2a31b8782dd15f274e370d9f5978c",
+            "primary_before": "7bb9e68d185302da38172ff121d84d1b8859fceb",
+            "integrated_head": "baeefd9e70f4fb86672184663860dbc7b89ff030",
+            "recovered": false
+          }
+        }
       }
     }
   }
