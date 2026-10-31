@@ -1,6 +1,7 @@
 """Enumerate one native-selected tree and publish verified copies without replacement."""
 import os
 from pathlib import Path
+import shutil
 import stat
 import tempfile
 from typing import Callable
@@ -57,7 +58,13 @@ class ToolsLocalFolderGateway:
         # rejects existing targets and also works on volumes without hard links.
         with tempfile.TemporaryDirectory(prefix=".connlab-encryption-", dir=source.parent) as temporary:
             stage = Path(temporary) / source.name
-            encrypt(source_path=source, output_path=stage)
+            working_source = Path(temporary) / "source" / source.name
+            working_source.parent.mkdir()
+            shutil.copyfile(source, working_source)
+            self._check_source(source)
+            # Office may update legacy input metadata even when SaveChanges=False.
+            # Only an owned working copy is ever opened by the Office adapter.
+            encrypt(source_path=working_source, output_path=stage)
             self._check_source(source)
             for number in range(10000):
                 suffix = f" ({number})" if number else ""

@@ -116,7 +116,8 @@ Do not use a dated snapshot as a substitute for the code.
   successful copies. There is no confirmation/upload stage; cancelling the picker writes nothing.
   Up to 500 eligible source documents are accepted per operation; existing secured copies do not
   consume this limit. A scan failure stops before writes. Source and folder identities are rechecked
-  before publication, and owned staging is removed after success or failure.
+  before publication, and owned staging is removed after success or failure. Office only opens a
+  local working copy inside this staging directory, so legacy metadata saves cannot alter originals.
 - The prior `/api/tools/encrypt-folder` upload endpoint remains compatible but is no longer used by
   the folder UI. It validates one relative-path tree, Windows/Unicode duplicate names,
   encrypted-file/directory conflicts and upload bounds before encryption. Limits are 500 files,

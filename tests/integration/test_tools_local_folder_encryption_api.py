@@ -1,5 +1,6 @@
 """Local picker -> separate encrypted siblings, without upload or source replacement."""
 import os
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -88,6 +89,24 @@ def test_source_changes_during_encryption_are_not_published(local_lab):
     assert not (root / "report_Secured.docx").exists()
 
 
+def test_office_can_modify_its_working_input_without_touching_originals(local_lab):
+    root, client, app = local_lab
+    original = root / "DL-2026-10-030.xls"
+    original.write_bytes(b"original workbook")
+
+    class SavingProtector(Protector):
+        def encrypt_and_verify(self, **kwargs):
+            super().encrypt_and_verify(**kwargs)
+            kwargs["source_path"].write_bytes(b"Office changed working metadata")
+
+    app.dependency_overrides[deps.get_tools_service] = lambda: ToolsService(
+        customer_report_writer=None, office_protector=SavingProtector())
+    result = client.post("/api/tools/encrypt-local-folder", headers=HEADERS)
+    assert result.json()["summary"]["succeeded"] == 1
+    assert original.read_bytes() == b"original workbook"
+    assert (root / "DL-2026-10-030_Secured.xls").read_bytes() == b"secured:original workbook"
+
+
 def test_concurrent_existing_output_is_preserved(local_lab):
     root, client, app = local_lab
     (root / "report.docx").write_bytes(b"Word")
@@ -144,3 +163,20 @@ def test_too_many_new_sources_stop_before_any_file_is_written(local_lab):
     result = client.post("/api/tools/encrypt-local-folder", headers=HEADERS)
     assert result.status_code == 422
     assert not list(root.rglob("*_Secured*"))
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows native picker boundary")
+@pytest.mark.parametrize("cancelled", [False, True])
+def test_native_encryption_picker_returns_unicode_paths_and_releases_com(monkeypatch, tmp_path, cancelled):
+    import pythoncom
+    from win32com.shell import shell
+    from backend.infrastructure.files.windows_path_picker import WindowsPathPicker, filedialog
+    selected = tmp_path / "项目"
+    released = []
+    monkeypatch.setattr(pythoncom, "CoInitialize", lambda: None)
+    monkeypatch.setattr(pythoncom, "CoUninitialize", lambda: released.append(True))
+    monkeypatch.setattr(shell, "SHBrowseForFolder", lambda *args: (None if cancelled else b"selected", "name", 0))
+    monkeypatch.setattr(shell, "SHGetPathFromIDListW", lambda value: str(selected))
+    monkeypatch.setattr(filedialog, "askdirectory", lambda **kwargs: (_ for _ in ()).throw(RuntimeError("Tk owner not expected")))
+    assert WindowsPathPicker().pick_encryption_directory() == (None if cancelled else selected)
+    assert released == [True]

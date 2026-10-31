@@ -14,10 +14,23 @@ class WindowsPathPicker:
 
     def pick_encryption_directory(self) -> Path | None:
         """Choose where separate encrypted siblings will be saved."""
-        selection = self._run_dialog(lambda: filedialog.askdirectory(
-            title="Choose folder — save encrypted copies beside original files", mustexist=True,
-        ))
-        return Path(selection) if selection else None
+        import pythoncom
+        from win32com.shell import shell, shellcon
+
+        # API handlers run on worker threads; own the native picker COM lifetime
+        # and avoid an invisible Tk owner window for this local write operation.
+        pythoncom.CoInitialize()
+        try:
+            selection = shell.SHBrowseForFolder(0, None,
+                "Choose folder: encrypted copies will be saved beside originals",
+                # BIF_NEWDIALOGSTYLE is absent from some bundled pywin32 constants.
+                shellcon.BIF_RETURNONLYFSDIRS | 0x0040 | shellcon.BIF_EDITBOX,
+                None, None)
+            if not selection or not selection[0]:
+                return None
+            return Path(shell.SHGetPathFromIDListW(selection[0]))
+        finally:
+            pythoncom.CoUninitialize()
 
     def pick_legacy_project_directory(self) -> Path | None:
         """Choose an existing project or parent directory without changing it."""
