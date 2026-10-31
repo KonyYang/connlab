@@ -197,11 +197,11 @@
     },
     "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
       "branch": "codex/tools-folder-encryption-20261030",
       "resources": [],
-      "integrated_head": "07b6085baddcc8f1f0147f1065d37328297bb193",
+      "integrated_head": "d3fa5fe10e29ae4587401585b707dca5f9578bba",
       "task": {
         "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
         "summary": "Batch encrypted Word/Excel copies from a selected folder without modifying originals",
@@ -234,7 +234,7 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T03:12:50.902450Z",
+        "updated_at": "2026-10-31T03:13:51.085625Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -244,7 +244,56 @@
           "summary": "User requests moving the encryption card static hint into button hover tooltips to reduce space.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
+          "subject": "a60072ab183bf0dbacbb96a001aed475675be8c4",
+          "summary": "Move static encryption guidance into mode-specific button hover titles to reduce card height.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/features/tools/EncryptionTool.tsx"
+          ],
+          "validation": [
+            {
+              "status": "passed",
+              "name": "EncryptionTool regression",
+              "evidence": "6 existing interaction tests passed on final bytes; no changes to execution handlers or encryption rules."
+            },
+            {
+              "status": "passed",
+              "name": "Production build",
+              "evidence": "TypeScript and Vite build passed, 217 modules."
+            },
+            {
+              "status": "passed",
+              "name": "Exact diff review",
+              "evidence": "Sequential same-agent Standards and Spec review: static paragraph removed; native title attributes added to both existing buttons with distinct file/folder descriptions; folder exclusion retained. git diff --check passed. Low-impact copy relocation requires no new implementation-mirroring tests."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Primary context, localized copy-only UI relocation."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Sequential same-agent Standards and Spec review; no independent-agent claim."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "Proportional complete validation: 6 component tests plus TypeScript/production build; backend unchanged."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "a60072ab183bf0dbacbb96a001aed475675be8c4",
+            "primary_before": "ee758397453485aaee4ef5ebd44bd0c5b61e1766",
+            "integrated_head": "d3fa5fe10e29ae4587401585b707dca5f9578bba",
+            "recovered": false
+          }
+        }
       }
     }
   }
