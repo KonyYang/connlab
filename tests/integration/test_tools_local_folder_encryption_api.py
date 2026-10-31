@@ -44,13 +44,48 @@ def test_local_folder_creates_siblings_without_overwriting_existing_files(local_
     result = client.post("/api/tools/encrypt-local-folder", headers=HEADERS)
     assert result.status_code == 200, result.text
     value = result.json()
-    assert value["summary"] == {"succeeded": 2, "failed": 2, "skipped": 3}
+    assert value["summary"] == {"succeeded": 2, "failed": 1, "skipped": 4}
     assert (root / "report_Secured (1).docx").read_bytes() == b"secured:Word"
     assert (root / "DL-2026-10-030_Secured.xlsx").read_bytes() == b"secured:Excel"
     assert all((root / name).read_bytes() == content for name, content in originals.items())
     assert not any(path.name.startswith(".connlab") for path in root.rglob("*"))
     assert not list(root.rglob("*.zip"))
     assert "DL-YYYY-MM-NNN" in next(item["reason"] for item in value["entries"] if item["file"] == "no-number.xlsx")
+
+
+@pytest.mark.parametrize("suffix", [".xls", ".xlsx"])
+def test_folder_skips_ineligible_excel_without_attempting_a_copy(local_lab, monkeypatch, suffix):
+    from backend.infrastructure.files.tools_local_folder_gateway import ToolsLocalFolderGateway
+    root, client, _ = local_lab
+    names = [f"measurements{suffix}", f"notes DL-2026-10-030{suffix}",
+             f"DL-2026-10-0300{suffix}", f"DL-2026-13-030{suffix}"]
+    for name in names:
+        (root / name).write_bytes(b"original")
+    attempted = []
+    def unexpected_copy(*args, **kwargs):
+        attempted.append(args)
+        raise RuntimeError("Ineligible Excel files must not be staged or encrypted")
+    monkeypatch.setattr(ToolsLocalFolderGateway, "create_copy", unexpected_copy)
+    response = client.post("/api/tools/encrypt-local-folder", headers=HEADERS)
+    assert response.status_code == 200, response.text
+    assert attempted == []
+    assert response.json()["summary"] == {"succeeded": 0, "failed": 0, "skipped": len(names)}
+    assert all(entry["status"] == "Skipped" for entry in response.json()["entries"])
+    assert all((root / name).read_bytes() == b"original" for name in names)
+    assert not list(root.glob("*_Secured*"))
+
+
+@pytest.mark.parametrize("name", ["DL-2026-10-030.xls", "DL-2026-10-030A results.xlsx", "broken.docx", "broken.pptx"])
+def test_folder_counts_failed_operations_for_eligible_office_files(local_lab, name):
+    root, client, _ = local_lab
+    source = root / name
+    source.write_bytes(b"broken")
+    response = client.post("/api/tools/encrypt-local-folder", headers=HEADERS)
+    assert response.status_code == 200, response.text
+    assert response.json()["summary"] == {"succeeded": 0, "failed": 1, "skipped": 0}
+    assert response.json()["entries"][0]["status"] == "Failed"
+    assert source.read_bytes() == b"broken"
+    assert not list(root.glob("*_Secured*"))
 
 
 @pytest.mark.parametrize("has_direct_file", [False, True])
@@ -160,6 +195,16 @@ def test_existing_secured_copies_do_not_consume_the_source_file_limit(local_lab)
     (root / "report.docx").write_bytes(b"Word")
     for number in range(501):
         (root / f"older{number}_Secured.docx").write_bytes(b"previous output")
+    result = client.post("/api/tools/encrypt-local-folder", headers=HEADERS)
+    assert result.status_code == 200, result.text
+    assert result.json()["summary"] == {"succeeded": 1, "failed": 0, "skipped": 501}
+
+
+def test_ineligible_excel_files_do_not_consume_the_source_file_limit(local_lab):
+    root, client, _ = local_lab
+    (root / "report.docx").write_bytes(b"Word")
+    for number in range(501):
+        (root / f"measurements{number}.xlsx").write_bytes(b"Excel")
     result = client.post("/api/tools/encrypt-local-folder", headers=HEADERS)
     assert result.status_code == 200, result.text
     assert result.json()["summary"] == {"succeeded": 1, "failed": 0, "skipped": 501}

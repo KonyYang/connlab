@@ -188,6 +188,16 @@ def _resolve_encryption_password(
     """Resolve the shared Office password policy for one standalone copy."""
     if office_kind != "excel":
         return requested_password or OFFICE_DOCUMENT_PASSWORD
+    derived = excel_encryption_password(file_name)
+    if requested_password is not None and requested_password != derived:
+        raise ToolsError(
+            "Excel encryption passwords are derived from the filename and cannot be overridden."
+        )
+    return derived
+
+
+def excel_encryption_password(file_name: str) -> str:
+    """Validate the leading LTR and derive its password for both selection and encryption."""
     match = _EXCEL_DL_FILENAME_PREFIX.match(Path(file_name).stem)
     if match is None:
         raise ToolsError(
@@ -195,12 +205,8 @@ def _resolve_encryption_password(
         )
     try:
         derived = excel_password_for_dl_number(match.group(1))
-    except LtrNumberError as exc:  # pragma: no cover - regex and parser share the rule
+    except LtrNumberError as exc:
         raise ToolsError(
             "Excel files must start with DL-YYYY-MM-NNN before the first separator."
         ) from exc
-    if requested_password is not None and requested_password != derived:
-        raise ToolsError(
-            "Excel encryption passwords are derived from the filename and cannot be overridden."
-        )
     return derived

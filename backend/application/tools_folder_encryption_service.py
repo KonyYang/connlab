@@ -6,7 +6,7 @@ import re
 import unicodedata
 from typing import Callable, Protocol, Sequence
 
-from backend.application.tools_service import ToolsError, ToolsService
+from backend.application.tools_service import ToolsError, ToolsService, excel_encryption_password
 
 MAX_FOLDER_FILES = 500
 SUPPORTED_FOLDER_SUFFIXES = frozenset({".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"})
@@ -46,7 +46,12 @@ def local_folder_skip_reason(path: Path) -> str:
     if (path.suffix.lower() not in SUPPORTED_FOLDER_SUFFIXES
         or path.name.startswith(("~$", ".connlab-"))
         or re.search(r"(?i)_secured(?: \(\d+\))?$", path.stem)):
-        return "Temporary, already secured, or unsupported file."
+        return "Select an original Word, Excel or PowerPoint file, not a temporary or _Secured copy."
+    if path.suffix.lower() in {".xls", ".xlsx"}:
+        try:
+            excel_encryption_password(path.name)
+        except ToolsError as exc:
+            return str(exc)
     return ""
 
 
@@ -62,8 +67,9 @@ class ToolsLocalFolderEncryptionService:
 
     def encrypt_file(self, source: Path) -> dict:
         candidate = self._files.select_file(source)
-        if local_folder_skip_reason(candidate.source_path):
-            raise ToolsError("Select an original Word, Excel or PowerPoint file, not a temporary or _Secured copy.")
+        reason = local_folder_skip_reason(candidate.source_path)
+        if reason:
+            raise ToolsError(reason)
         result = self._encrypt([candidate])
         if result["summary"]["failed"]:
             raise ToolsError(result["entries"][0]["reason"])
