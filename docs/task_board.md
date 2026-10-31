@@ -197,7 +197,7 @@
     },
     "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
       "branch": "codex/tools-folder-encryption-20261030",
       "resources": [],
@@ -234,91 +234,17 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T01:29:41.695197Z",
+        "updated_at": "2026-10-31T01:51:30.254256Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
           "stage": "revision",
           "status": "running",
-          "summary": "User requests the single-file Create Encrypted Copy button to use local native selection and save beside the original, matching folder behavior, including PPT/PPTX.",
+          "summary": "User requests Choose Folder to inspect and encrypt only direct files in the selected directory, never entering subfolders.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
-          "subject": "8558f28ce6beda04d4db35328544bdebcb596716",
-          "summary": "Single-file Create Encrypted Copy now uses native Windows selection and saves a separate sibling without upload/download; six formats, unchanged password rules and non-overwrite behavior.",
-          "scope_ok": true,
-          "changed_paths": [
-            "backend/api/routes_tools_folder_encryption.py",
-            "backend/application/tools_folder_encryption_service.py",
-            "backend/infrastructure/files/tools_local_folder_gateway.py",
-            "backend/infrastructure/files/windows_path_picker.py",
-            "docs/PROJECT_CONTEXT.md",
-            "frontend/src/api/client.ts",
-            "frontend/src/api/toolsEncryption.test.ts",
-            "frontend/src/features/tools/EncryptionTool.test.tsx",
-            "frontend/src/features/tools/EncryptionTool.tsx",
-            "frontend/src/pages/ToolsPage.test.tsx",
-            "tests/integration/test_tools_local_folder_encryption_api.py"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "name": "Final backend matrix",
-              "evidence": "109 passed on clean 8558f28c: six local single-file formats, selected-only scope, cancellation, origin rejection, LTR/type validation, native Unicode/cancel boundary, folder regression, Office/shared project encryption and neighboring Tools APIs. One existing Starlette deprecation warning."
-            },
-            {
-              "status": "passed",
-              "name": "Final frontend matrix",
-              "evidence": "39 passed: native single-file no-body request, no upload/download DOM, saved path/name, cancellation and error retry, busy/stale response protection, folder and other Tools/project actions."
-            },
-            {
-              "status": "passed",
-              "name": "Production build",
-              "evidence": "TypeScript + Vite production build passed, 217 modules, no subsequent frontend changes."
-            },
-            {
-              "status": "passed",
-              "name": "Real browser/native file picker",
-              "evidence": "Isolated app/empty DB port 18834. Actual Create Encrypted Copy click opened production GetOpenFileNameW picker; selected owned PPTX and saved beside original as slides_Secured (1).pptx. Captured request had no uploaded body; no browser download event. Actual native cancel returned cancelled=true and retained prior Saved filename/path. Final 660x804 screenshot inspected."
-            },
-            {
-              "status": "passed",
-              "name": "Real six-format Office checks",
-              "evidence": "Owned fixture tree tmp/single-file-encryption-smoke-2hux6tx9 only. New local single-file public API with only picker selection mocked processed doc/docx/xls/xlsx/ppt/pptx. Seven saved outputs including real-browser output verified through independent decryption and contents; legacy PPT opened with DGLAB and slide text checked in PowerPoint. Original and prior-file SHA256 unchanged; owned staging empty; isolated service shutdown also passed hash assertions."
-            },
-            {
-              "status": "passed",
-              "name": "Exact diff review",
-              "evidence": "Separate sequential same-agent Standards and Spec passes. Shared source-copy/no-replace publisher reused; selected-file path never comes from HTTP body; neighbors not enumerated. Existing upload API retained for compatibility only. No changed cipher, password rules, project authority or unrelated UI actions. git diff --check clean."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Primary context, TDD RED/GREEN at native single-file public API and no-upload/no-download frontend seams."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Focused sequential same-agent Standards and Spec review, not an independent-agent claim."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "Final complete affected matrix once, native real-browser file selection/cancel and six-format installed-Office verification."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "8558f28ce6beda04d4db35328544bdebcb596716",
-            "primary_before": "ce1b9da0612517dec7c9da0bf783ba4477783480",
-            "integrated_head": "19b792ab42792fa25e2431af7a93961780382789",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
