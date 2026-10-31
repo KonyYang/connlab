@@ -78,11 +78,17 @@ class ProjectLibraryRepository:
                 for row in self.session.scalars(select(LtrRecordModel))]
 
     def create_planning_project(self, member):
-        project_id = uuid4().hex
+        row = self.session.get(ProjectLibraryMemberModel, member["member_id"], populate_existing=True)
+        if row is None:
+            raise LookupError("Project library entry not found.")
+        if row.project_id:
+            return row.project_id
+        project_id = member.get("source_project_id") or uuid4().hex
+        if self.session.get(ProjectModel, project_id) is not None:
+            raise ProjectLibraryConflict("This project identity already exists. Review its existing project before importing.")
         self.session.add(ProjectModel(project_id=project_id, project_no=member.get("ltr_number"),
             product_name=member["title"], requestor="Imported project", status="draft",
             lifecycle_state="active", registry_state="active", registry_revision=0, created_on=date.today()))
-        row = self.session.get(ProjectLibraryMemberModel, member["member_id"])
         row.project_id = project_id
         row.revision += 1
         self.session.commit()

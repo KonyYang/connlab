@@ -75,6 +75,28 @@ def receive(client, paths, assignments=None, batch_id=None):
     return result.json(), payload
 
 
+def test_confirmed_manual_import_is_managed_without_a_second_takeover(library, tmp_path):
+    client, settings, _ = library
+    source = tmp_path / "incoming" / "DL-2026-09-032A1 Manual connector"
+    source.mkdir(parents=True)
+    (source / "result.csv").write_text("original,12.3", encoding="utf-8")
+    batch, request = receive(client, [source], batch_id="a" * 32)
+    assert batch["counts"]["added"] == 1
+    member_id = batch["items"][0]["member_id"]
+    member = client.get(f"/api/project-library/members/{member_id}").json()
+    assert member["project_id"], "Final import confirmation must establish a managed project"
+    assert member["ltr_number"] == "DL-2026-09-032A1"
+    assert member["can_continue"] is True
+    assert member["snapshot_status"] == "missing"
+    retry = client.post("/api/project-library/batches", json=request)
+    assert retry.status_code == 200
+    assert retry.json()["items"][0]["member_id"] == member_id
+    members = client.get("/api/project-library/members").json()["items"]
+    assert len(members) == 1
+    assert members[0]["project_id"] == member["project_id"]
+    assert (source / "result.csv").read_text(encoding="utf-8") == "original,12.3"
+
+
 def test_three_hundred_projects_are_received_once_and_retry_is_idempotent(library, tmp_path):
     client, settings, _ = library
     sources = []

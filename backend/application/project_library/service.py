@@ -326,7 +326,12 @@ class ProjectLibraryService:
                 member = self.store.member(member["member_id"])
             except LookupError:
                 member = self.store.add_member(member)
-                self.files.write_marker(member)
+            if not member["project_id"] and not item["keep_separate"]:
+                # The final intake confirmation also establishes the lifecycle container.
+                # A retained conflict copy must still follow its reviewed takeover rules.
+                self.store.create_planning_project(member)
+                member = self.store.member(member["member_id"])
+            self.files.write_marker(member)
         item.update(status="added", message="Received and verified. Original source files remain unchanged.", member_id=member["member_id"])
 
     @staticmethod
