@@ -34,7 +34,8 @@ describe("ToolsPage", () => {
     expect(screen.queryByRole("button", { name: "Import Projects" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Import Legacy Projects" })).toBeNull();
     expect(screen.queryByText("Keep Folders in Place")).toBeNull();
-    expect(screen.getByRole("heading", { name: "Mechanical Summary" })).toBeTruthy();
+    expect(screen.getByRole("article", { name: "Mechanical Summary" })).toBeTruthy();
+    expect(screen.queryAllByRole("heading")).toHaveLength(0);
   });
 
   beforeEach(() => {
@@ -177,16 +178,15 @@ describe("ToolsPage", () => {
     expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
   });
 
-  it("shows the source instruction above one short picker button and does nothing when cancelled", async () => {
+  it("shows the customer report action without a redundant heading and does nothing when cancelled", async () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
     const picker = screen.getByLabelText("Select Internal Report") as HTMLInputElement;
     const choose = vi.spyOn(picker, "click");
 
-    const instruction = within(screen.getByRole("article", { name: "Internal Report → Customer Report" }))
-      .getByRole("heading", { name: "Select Internal Report" });
+    expect(within(screen.getByRole("article", { name: "Internal Report → Customer Report" }))
+      .queryByRole("heading", { name: "Select Internal Report" })).toBeNull();
     const action = screen.getByRole("button", { name: "Generate Customer Report" });
-    expect(instruction.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     await user.click(action);
     expect(choose).toHaveBeenCalledTimes(1);
     expect(picker.hidden).toBe(true);
@@ -274,7 +274,7 @@ describe("ToolsPage", () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
     const card = screen.getByRole("article", { name: "Update Equipment List" });
-    expect(within(card).getByRole("heading", { name: "Select Internal Report" })).toBeTruthy();
+    expect(within(card).queryByRole("heading", { name: "Select Internal Report" })).toBeNull();
     expect(within(card).getAllByRole("button")).toHaveLength(1);
     const opener = within(card).getByRole("button", { name: "Update Equipment List" });
     const picker = screen.getByLabelText("Internal Report for Equipment Update") as HTMLInputElement;
