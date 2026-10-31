@@ -108,6 +108,9 @@ Do not use a dated snapshot as a substitute for the code.
   replaced. Existing `_Secured` copies, Office temporary files, unsupported files and reparse links
   are skipped. Single-file mode supports the same six formats. Word and PowerPoint use `DGLAB`;
   Excel requires a filename starting with a valid LTR and uses the derived `YYYYMMNNN` plus suffix.
+  In native folder mode, Excel files without a valid leading LTR are skipped before staging;
+  only eligible files whose encryption/save operation fails count as failed. Single-file mode
+  still rejects an invalid Excel filename with a clear error.
 - PowerPoint output explicitly preserves binary `.ppt` or OOXML `.pptx`. Binary verification checks
   the CurrentUserAtom encrypted header token defined by [MS-PPT] 2.3.2; OOXML verification checks the
   encrypted package streams. Both reuse the existing owned PowerPoint lifecycle.
@@ -117,7 +120,7 @@ Do not use a dated snapshot as a substitute for the code.
   in `ToolsLocalFolderGateway`; application policy reuses `ToolsService.encrypt_copy`. Windows uses
   no-replace rename, including volumes without hard-link support. Excel's existing DL password rule
   remains unchanged. No project registry/History records are written.
-- Folder results show counts and per-file failures on the page. A failure does not discard other
+- Folder results show compact counts and the selected path on the page. A failure does not discard other
   successful copies. There is no confirmation/upload stage; cancelling the picker writes nothing.
   Up to 500 eligible source documents are accepted per operation; existing secured copies do not
   consume this limit. A scan failure stops before writes. Source and folder identities are rechecked
