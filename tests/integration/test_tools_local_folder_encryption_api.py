@@ -180,3 +180,25 @@ def test_native_encryption_picker_returns_unicode_paths_and_releases_com(monkeyp
     monkeypatch.setattr(filedialog, "askdirectory", lambda **kwargs: (_ for _ in ()).throw(RuntimeError("Tk owner not expected")))
     assert WindowsPathPicker().pick_encryption_directory() == (None if cancelled else selected)
     assert released == [True]
+
+
+def test_folder_supports_powerpoint_without_ltr_and_skips_secured_presentations(local_lab):
+    root, client, _ = local_lab
+    originals = {"slides.pptx": b"slides", "子目录/legacy.PPT": b"legacy", "slides_Secured.pptx": b"prior"}
+    for name, content in originals.items():
+        (root / name).write_bytes(content)
+    result = client.post("/api/tools/encrypt-local-folder", headers=HEADERS)
+    assert result.status_code == 200, result.text
+    assert result.json()["summary"] == {"succeeded": 2, "failed": 0, "skipped": 1}
+    assert (root / "slides_Secured (1).pptx").read_bytes() == b"secured:slides"
+    assert (root / "子目录/legacy_Secured.PPT").read_bytes() == b"secured:legacy"
+    assert all((root / name).read_bytes() == content for name, content in originals.items())
+
+
+@pytest.mark.parametrize("suffix", [".ppt", ".pptx"])
+def test_single_file_powerpoint_download_preserves_extension(local_lab, suffix):
+    _, client, _ = local_lab
+    result = client.post("/api/tools/encrypt-copy", files={"file": (f"slides{suffix}", b"original slides")})
+    assert result.status_code == 200, result.text
+    assert f"slides_Secured{suffix}" in result.headers["content-disposition"]
+    assert result.content == b"secured:original slides"

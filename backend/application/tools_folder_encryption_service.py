@@ -9,7 +9,7 @@ from typing import Callable, Protocol, Sequence
 from backend.application.tools_service import ToolsError, ToolsService
 
 MAX_FOLDER_FILES = 500
-SUPPORTED_FOLDER_SUFFIXES = frozenset({".doc", ".docx", ".xls", ".xlsx"})
+SUPPORTED_FOLDER_SUFFIXES = frozenset({".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"})
 logger = logging.getLogger(__name__)
 
 
@@ -127,7 +127,7 @@ class ToolsFolderEncryptionService:
         entries = []
         for index, (source, relative) in enumerate(sources):
             if relative.suffix.lower() not in SUPPORTED_FOLDER_SUFFIXES or relative.name.startswith("~$"):
-                entries.append(FolderEncryptionEntry(str(relative), "Skipped", "Not a supported Word/Excel document or an Office temporary file."))
+                entries.append(FolderEncryptionEntry(str(relative), "Skipped", "Not a supported Office document or an Office temporary file."))
                 continue
             target = output.parent / "encrypted" / str(index) / secured_relative_path(relative).name
             try:
@@ -140,7 +140,7 @@ class ToolsFolderEncryptionService:
             else:
                 entries.append(FolderEncryptionEntry(str(relative), "Encrypted", output_path=target))
         if not any(entry.status != "Skipped" for entry in entries):
-            raise ToolsError("No supported Word or Excel files were found in this folder.")
+            raise ToolsError("No supported Word, Excel or PowerPoint files were found in this folder.")
         self._archives.write(output, entries)
         return {key: sum(entry.status == status for entry in entries)
                 for key, status in (("succeeded", "Encrypted"), ("failed", "Failed"), ("skipped", "Skipped"))}

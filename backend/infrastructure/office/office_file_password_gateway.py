@@ -197,7 +197,8 @@ class OfficeFilePasswordGateway:
                 WithWindow=False,
             )
             presentation.Password = password
-            presentation.SaveAs(str(output))
+            # Preserve the actual format, independent of the operator's SaveAs default.
+            presentation.SaveAs(str(output), 1 if source.suffix.lower() == ".ppt" else 24)
             presentation.Close()
             presentation = None
             self._output_verifier(output, "powerpoint")
@@ -213,7 +214,7 @@ def _kind_from_suffix(suffix: str) -> str | None:
         return "word"
     if suffix in {".xls", ".xlsx"}:
         return "excel"
-    if suffix == ".pptx":
+    if suffix in {".ppt", ".pptx"}:
         return "powerpoint"
     return None
 
@@ -253,6 +254,11 @@ def _verify_password_protected_output(path: Path, office_kind: str) -> None:
             protected = compound.exists(workbook_stream) and _xls_stream_has_filepass(
                 compound.openstream(workbook_stream).read()
             )
+        elif suffix == ".ppt" and compound.exists("Current User") and compound.exists("PowerPoint Document"):
+            # [MS-PPT] 2.3.2 CurrentUserAtom: encrypted headerToken at offset 12.
+            header = compound.openstream("Current User").read(16)
+            protected = (len(header) == 16 and struct.unpack_from("<H", header, 2)[0] == 0x0FF6
+                and struct.unpack_from("<I", header, 12)[0] == 0xF3D1C4DF)
         else:
             protected = False
     if not protected:

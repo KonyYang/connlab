@@ -166,6 +166,7 @@ def _office_kind(source: Path) -> str:
         ".xls": "excel",
         ".xlsx": "excel",
         ".pptx": "powerpoint",
+        ".ppt": "powerpoint",
     }
     kind = kinds.get(source.suffix.casefold())
     if kind is None:

@@ -52,7 +52,7 @@ export function EncryptionTool() {
   const failed = folder?.entries.filter(entry => entry.status === "Failed") ?? [];
   return <article className="tools-card" aria-label="Encrypt a Copy" aria-busy={Boolean(busy)}>
     <div className="tools-card-heading"><h3>Select Office File or Folder</h3></div>
-    <input ref={fileInput} type="file" hidden aria-label="Select Office File" accept=".doc,.docx,.xls,.xlsx,.pptx"
+    <input ref={fileInput} type="file" hidden aria-label="Select Office File" accept=".doc,.docx,.xls,.xlsx,.ppt,.pptx"
       disabled={Boolean(busy)} onChange={chooseFile} />
     <div className="tools-encryption-actions">
       <button className="primary-action tools-picker-action" type="button" disabled={Boolean(busy)} onClick={() => fileInput.current?.click()}>
@@ -62,7 +62,7 @@ export function EncryptionTool() {
         {busy === "folder" ? "Working..." : "Choose Folder"}
       </button>
     </div>
-    <p className="tools-card-hint">Folders: .doc, .docx, .xls, .xlsx, including subfolders. Saves _Secured copies beside originals.</p>
+    <p className="tools-card-hint">Folders: Word, Excel and PowerPoint, including subfolders. Saves _Secured copies beside originals.</p>
     {error ? <p role="alert" className="tools-feedback tools-feedback-error">{error}</p> : null}
     {folder ? <div className="tools-folder-selection" role="status">
       <p className={folder.summary.failed ? "tools-feedback tools-feedback-warning" : "tools-feedback tools-feedback-success"}>

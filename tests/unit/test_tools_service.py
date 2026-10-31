@@ -135,3 +135,15 @@ def test_encrypt_copy_rejects_excel_without_dl_filename_prefix(tmp_path: Path) -
         ToolsService(customer_report_writer=FakeWriter(), office_protector=FakeProtector()).encrypt_copy(
             source_path=source, output_path=output
         )
+
+
+@pytest.mark.parametrize("suffix", [".ppt", ".pptx"])
+def test_powerpoint_copy_uses_shared_password_without_an_ltr(tmp_path: Path, suffix: str) -> None:
+    source = tmp_path / f"slides{suffix}"
+    source.write_bytes(b"original slides")
+    protector = FakeProtector()
+    output = tmp_path / f"slides_Secured{suffix}"
+    ToolsService(customer_report_writer=FakeWriter(), office_protector=protector).encrypt_copy(
+        source_path=source, output_path=output)
+    assert source.read_bytes() == b"original slides"
+    assert protector.calls[0][2:] == ("DGLAB", "powerpoint")

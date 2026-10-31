@@ -101,11 +101,15 @@ Do not use a dated snapshot as a substitute for the code.
 ### Standalone Tools folder encryption
 
 - `Create Encrypted Copy` keeps its single-file download behavior. `Choose Folder` now opens a native
-  local directory picker and processes `.doc`, `.docx`, `.xls`, `.xlsx` recursively after selection,
+  local directory picker and processes `.doc`, `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx` recursively after selection,
   without uploading files or downloading a ZIP. Each verified `_Secured` copy is saved beside its
   source; existing names receive ` (1)`, ` (2)`, etc. Original and previous output files are never
   replaced. Existing `_Secured` copies, Office temporary files, unsupported files and reparse links
-  are skipped. Single-file PowerPoint support is unchanged.
+  are skipped. Single-file mode supports the same six formats. Word and PowerPoint use `DGLAB`;
+  Excel requires a filename starting with a valid LTR and uses the derived `YYYYMMNNN` plus suffix.
+- PowerPoint output explicitly preserves binary `.ppt` or OOXML `.pptx`. Binary verification checks
+  the CurrentUserAtom encrypted header token defined by [MS-PPT] 2.3.2; OOXML verification checks the
+  encrypted package streams. Both reuse the existing owned PowerPoint lifecycle.
 - `/api/tools/encrypt-local-folder` accepts no client-supplied directory path. It requires a same-origin
   loopback request with an explicit application header, then obtains the path from the native picker.
   Folder traversal, source-change checks, owned sibling staging and atomic no-replace publication live

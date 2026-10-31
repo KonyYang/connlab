@@ -60,3 +60,12 @@ it("clearly reports zero successful files", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Choose Folder" }));
   expect(await screen.findByText(/No files were encrypted/)).toBeTruthy();
 });
+
+it.each([".ppt", ".pptx"])("accepts and downloads a single %s presentation", async suffix => {
+  vi.mocked(encryptStandaloneCopy).mockResolvedValue({ blob: new Blob(["encrypted slides"]), fileName: `slides_Secured${suffix}` });
+  render(<EncryptionTool />);
+  const file = new File(["slides"], `slides${suffix}`);
+  await userEvent.upload(screen.getByLabelText("Select Office File"), file);
+  expect(encryptStandaloneCopy).toHaveBeenCalledWith(file);
+  expect((await screen.findByRole("status", { name: "Downloaded File" })).textContent).toBe(`slides_Secured${suffix}`);
+});

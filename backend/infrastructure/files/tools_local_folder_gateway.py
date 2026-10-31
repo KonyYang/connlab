@@ -49,7 +49,7 @@ class ToolsLocalFolderGateway:
                         if not local_folder_skip_reason(path):
                             supported += 1
         if supported > MAX_FOLDER_FILES:
-            raise ToolsError(f"Choose a folder with at most {MAX_FOLDER_FILES} Word/Excel files.")
+            raise ToolsError(f"Choose a folder with at most {MAX_FOLDER_FILES} Office files.")
         return result
 
     def create_copy(self, source: Path, encrypt: Callable[..., Path]) -> Path:
