@@ -161,8 +161,16 @@
         "risk_reasons": [],
         "activation_head": "394924ea3d8862e7a1fad5a5a154b1e8181e86d9",
         "started_at": "2026-10-31T21:21:46.877584Z",
-        "updated_at": "2026-10-31T21:21:46.877584Z",
-        "checkpoint": null,
+        "updated_at": "2026-10-31T21:28:36.955786Z",
+        "checkpoint": {
+          "schema": "connlab.sol-task-checkpoint",
+          "summary": "Authorized local rollover completed. First slice: ordinary confirmed intake creates idempotent managed Project binding; preserve carried stable ID and reject existing-ID overwrite; keep explicit conflict-copy rules. RED reproduced missing project ID, final isolated import API 24 passed. Remaining: normalized LTR roots, truthful historical LTR/completeness, common workbench/recycle and final portability/UI QA. No real-data mutation, merge, push or publication; no further task-switch permission needed.",
+          "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
+          "version": 1,
+          "stage": "implementation",
+          "status": "running",
+          "requires_user": false
+        },
         "report": null
       }
     }
