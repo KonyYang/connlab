@@ -57,3 +57,17 @@
 .library-import-table table { min-width: 0; table-layout: fixed; }
 .library-import-table th:first-child { width: 64px; }
 .library-import-table th, .library-import-table td { padding: 10px 8px; }
+.library-import-table td > p.library-import-purpose { margin: 10px 0; }
+.library-snapshot-details { display: grid; gap: 10px; margin-top: 8px; }
+.library-import-single thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.library-import-single tbody, .library-import-single tr { display: block; }
+.library-import-single tr { display: grid; grid-template-columns: 32px minmax(0, 1fr); }
+.library-import-single td { border: 0; }
+.library-import-single td:last-child { grid-column: 2; }
+@media (max-width: 760px) {
+  .library-import-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .library-import-table tbody { display: block; }
+  .library-import-table tr { display: grid; grid-template-columns: 32px minmax(0, 1fr); border-bottom: 1px solid var(--color-border); }
+  .library-import-table td { border: 0; }
+  .library-import-table td:last-child { grid-column: 2; }
+}
