@@ -36,10 +36,10 @@ export function EncryptionTool() {
     <div className="tools-card-heading"><h3>Select Office File or Folder</h3></div>
     <div className="tools-encryption-actions">
       <button className="primary-action tools-picker-action" type="button" title="Select a Word, Excel or PowerPoint file. Save a _Secured copy beside the original." disabled={Boolean(busy)} onClick={() => void run("file")}>
-        {busy === "file" ? "Working..." : "Create Encrypted Copy"}
+        {busy === "file" ? "Working..." : "Encrypt File"}
       </button>
       <button className="secondary-action" type="button" title="Encrypt Word, Excel and PowerPoint files directly in the selected folder. Save _Secured copies beside originals. Subfolders are excluded." disabled={Boolean(busy)} onClick={() => void run("folder")}>
-        {busy === "folder" ? "Working..." : "Choose Folder"}
+        {busy === "folder" ? "Working..." : "Batch Encrypt Files"}
       </button>
     </div>
     {error ? <p role="alert" className="tools-feedback tools-feedback-error">{error}</p> : null}

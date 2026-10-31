@@ -17,7 +17,7 @@ beforeEach(() => {
 
 it("chooses a local folder and reports saved siblings without uploads or downloads", async () => {
   render(<EncryptionTool />);
-  await userEvent.click(screen.getByRole("button", { name: "Choose Folder" }));
+  await userEvent.click(screen.getByRole("button", { name: "Batch Encrypt Files" }));
   expect(await screen.findByText(/1 encrypted.*1 failed.*2 skipped/)).toBeTruthy();
   expect(screen.getByText("D:/Lab")).toBeTruthy();
   expect(screen.queryByLabelText("Select Office Folder")).toBeNull();
@@ -28,7 +28,7 @@ it("chooses a local folder and reports saved siblings without uploads or downloa
 
 it("keeps previous feedback on picker cancellation and allows retry after errors", async () => {
   render(<EncryptionTool />);
-  const button = screen.getByRole("button", { name: "Choose Folder" });
+  const button = screen.getByRole("button", { name: "Batch Encrypt Files" });
   await userEvent.click(button);
   await screen.findByText("D:/Lab");
   vi.mocked(encryptLocalFolder).mockResolvedValueOnce({ cancelled: true });
@@ -45,9 +45,9 @@ it("prevents concurrent operations and ignores late feedback after leaving", asy
   let finish!: (result: Awaited<ReturnType<typeof encryptLocalFolder>>) => void;
   vi.mocked(encryptLocalFolder).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
   const mounted = render(<EncryptionTool />);
-  await userEvent.click(screen.getByRole("button", { name: "Choose Folder" }));
-  expect(screen.getByRole("button", { name: "Create Encrypted Copy" })).toHaveProperty("disabled", true);
-  await userEvent.click(screen.getByRole("button", { name: "Create Encrypted Copy" }));
+  await userEvent.click(screen.getByRole("button", { name: "Batch Encrypt Files" }));
+  expect(screen.getByRole("button", { name: "Encrypt File" })).toHaveProperty("disabled", true);
+  await userEvent.click(screen.getByRole("button", { name: "Encrypt File" }));
   expect(encryptLocalFile).not.toHaveBeenCalled();
   mounted.unmount();
   await act(async () => finish(completed));
@@ -57,7 +57,7 @@ it("prevents concurrent operations and ignores late feedback after leaving", asy
 it("clearly reports zero successful files", async () => {
   vi.mocked(encryptLocalFolder).mockResolvedValue({ ...completed, summary: { succeeded: 0, failed: 1, skipped: 0 } });
   render(<EncryptionTool />);
-  await userEvent.click(screen.getByRole("button", { name: "Choose Folder" }));
+  await userEvent.click(screen.getByRole("button", { name: "Batch Encrypt Files" }));
   expect(await screen.findByText(/No files were encrypted/)).toBeTruthy();
 });
 
@@ -65,7 +65,7 @@ it.each([".ppt", ".pptx"])("saves a single %s presentation beside the source wit
   vi.mocked(encryptLocalFile).mockResolvedValue({ cancelled: false, folder: "D:/Lab", summary: { succeeded: 1, failed: 0, skipped: 0 },
     entries: [{ file: `slides${suffix}`, status: "Encrypted", reason: "", output: `slides_Secured${suffix}` }] });
   render(<EncryptionTool />);
-  await userEvent.click(screen.getByRole("button", { name: "Create Encrypted Copy" }));
+  await userEvent.click(screen.getByRole("button", { name: "Encrypt File" }));
   expect((await screen.findByRole("status", { name: "Saved Encrypted File" })).textContent).toContain(`slides_Secured${suffix}`);
   expect(screen.queryByLabelText("Select Office File")).toBeNull();
   expect(URL.createObjectURL).not.toHaveBeenCalled();

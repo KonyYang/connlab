@@ -124,7 +124,7 @@ describe("ToolsPage", () => {
   it("selects a local Office file and reports the saved sibling without downloading", async () => {
     const user = userEvent.setup();
     render(<ToolsPage />);
-    await user.click(screen.getByRole("button", { name: "Create Encrypted Copy" }));
+    await user.click(screen.getByRole("button", { name: "Encrypt File" }));
     expect(encryptCopyMock).toHaveBeenCalledWith();
     expect((await screen.findByRole("status", { name: "Saved Encrypted File" })).textContent).toContain("sample_Secured.docx");
     expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
@@ -135,7 +135,7 @@ describe("ToolsPage", () => {
     render(<ToolsPage />);
     encryptCopyMock.mockResolvedValueOnce({ cancelled: true });
     const instruction = screen.getByRole("heading", { name: "Select Office File or Folder" });
-    const action = screen.getByRole("button", { name: "Create Encrypted Copy" });
+    const action = screen.getByRole("button", { name: "Encrypt File" });
     expect(instruction.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByLabelText("Select Office File")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Encrypt a Copy" })).toBeNull();
@@ -149,7 +149,7 @@ describe("ToolsPage", () => {
     encryptCopyMock.mockRejectedValueOnce(new Error("Close the Office file and try again."));
     const user = userEvent.setup();
     render(<ToolsPage />);
-    const action = screen.getByRole("button", { name: "Create Encrypted Copy" });
+    const action = screen.getByRole("button", { name: "Encrypt File" });
     await user.click(action);
     expect((await screen.findByRole("alert")).textContent).toContain("Close the Office file");
     encryptCopyMock.mockResolvedValueOnce({ cancelled: true });
@@ -167,7 +167,7 @@ describe("ToolsPage", () => {
     encryptCopyMock.mockReturnValueOnce(new Promise(done => { complete = done; }));
     const user = userEvent.setup();
     const rendered = render(<ToolsPage />);
-    await user.click(screen.getByRole("button", { name: "Create Encrypted Copy" }));
+    await user.click(screen.getByRole("button", { name: "Encrypt File" }));
     const pending = screen.getByRole("button", { name: "Working..." }) as HTMLButtonElement;
     expect(pending.disabled).toBe(true);
     await user.click(pending);
