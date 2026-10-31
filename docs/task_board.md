@@ -197,7 +197,7 @@
     },
     "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
       "branch": "codex/tools-folder-encryption-20261030",
       "resources": [],
@@ -236,62 +236,17 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T07:16:01.944056Z",
+        "updated_at": "2026-10-31T08:22:05.970694Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
           "stage": "revision",
           "status": "running",
-          "summary": "User explicitly requests renaming the Tools equipment button to Updated Report Equipments.",
+          "summary": "User explicitly requests renaming Drawing Curves to Drawing T-rise.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
-          "subject": "f3ad8aaacbffc17a6fdbea05560d7ff0b4a2d5d0",
-          "summary": "Rename the standalone equipment action button to the exact user-provided Updated Report Equipments label.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/features/tools/EquipmentListTool.tsx",
-            "frontend/src/pages/ToolsPage.test.tsx"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "name": "Final ToolsPage matrix",
-              "evidence": "16 passed on final bytes. Existing equipment picker/source dialog/cancel/focus regression locates the renamed button; remaining Tools interactions pass."
-            },
-            {
-              "status": "passed",
-              "name": "Exact diff review",
-              "evidence": "Sequential same-agent Standards and Spec passes. Only the visible button literal and corresponding test query changed. Exact user wording retained; operation handlers, input labels and article name unchanged. git diff --check passed. No new implementation-mirroring tests required for this reversible copy edit."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Primary context, exact literal replacement and existing query update."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Focused sequential same-agent Standards and Spec review; not independent-agent execution."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "One complete proportional final 16-test ToolsPage matrix."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "f3ad8aaacbffc17a6fdbea05560d7ff0b4a2d5d0",
-            "primary_before": "b1dbbab0c811f4e79b60912127b7499316c12ee4",
-            "integrated_head": "ee925f61061baf125f01c9090c33f89075a23053",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
