@@ -1,5 +1,6 @@
-import { useState, type ReactElement } from 'react';
+import { useRef, useState, type ReactElement } from 'react';
 import { generateMechanicalSummary, previewMechanicalSource, type MechanicalPreview, type MechanicalRow } from '../../api/mechanicalSummary';
+import { ToolsFeedback } from './ToolsFeedback';
 
 type Entry = { file: File; kind: string; group: string; sheet: number; preview?: MechanicalPreview;
   rows: MechanicalRow[]; information: Record<string, string>; confirmed: boolean };
@@ -9,6 +10,7 @@ const ready = (entry: Entry) => Boolean(entry.preview && entry.kind && entry.row
   row.curve.trim() && row.sample.trim() && (entry.kind !== 'qualitative' || ['Pass', 'Fail', 'N/A'].includes(row.result || ''))));
 
 export function MechanicalSummaryTool(): ReactElement {
+  const fileInput = useRef<HTMLInputElement>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -47,11 +49,18 @@ export function MechanicalSummaryTool(): ReactElement {
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not generate the summary.'); }
     finally { setBusy(false); }
   }
-  return <article className="tools-card mechanical-summary-tool" aria-label="Mechanical Summary">
-    <label className="tools-file-picker">Select mechanical test files
-      <input type="file" multiple accept=".pdf,.xls,.xlsx" disabled={busy}
-        onChange={event => { setEntries(Array.from(event.target.files || []).map(initial)); setError(''); setDownloaded(''); }} />
-    </label>
+  return <article className="tools-action-group" aria-label="Mechanical Summary">
+    <input ref={fileInput} type="file" hidden aria-label="Select mechanical test files" multiple accept=".pdf,.xls,.xlsx" disabled={busy}
+      onChange={event => {
+        const files = Array.from(event.target.files || []);
+        event.target.value = '';
+        if (!files.length) return;
+        setEntries(files.map(initial)); setError(''); setDownloaded('');
+      }} />
+    <button type="button" className="primary-action tools-picker-action" disabled={busy}
+      title="Select instrument files, review the data and download an editable workbook. Original files stay unchanged."
+      onClick={() => fileInput.current?.click()}>Mechanical Summary</button>
+    {entries.length > 0 && <ToolsFeedback><section className="tools-action-feedback mechanical-summary-review" aria-label="Mechanical Summary Review">
     {entries.map((entry, index) => <fieldset className="mechanical-source" key={`${index}-${entry.file.name}`} disabled={busy}>
       <legend>{entry.file.name}</legend>
       <label>Test type for {entry.file.name}
@@ -98,5 +107,6 @@ export function MechanicalSummaryTool(): ReactElement {
     <button type="button" className="primary-action tools-picker-action" title="Select instrument files, review the data and download an editable workbook. Original files stay unchanged." disabled={busy || !entries.length || entries.some(entry => !entry.confirmed || !ready(entry))}
       onClick={() => void generate()}>Generate Summary</button>
     {downloaded && <p role="status">Downloaded: {downloaded}</p>}
+    </section></ToolsFeedback>}
   </article>;
 }

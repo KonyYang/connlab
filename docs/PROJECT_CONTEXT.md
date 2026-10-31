@@ -98,6 +98,17 @@ Do not use a dated snapshot as a substitute for the code.
 
 ## Architecture seams
 
+### Standalone Tools layout
+
+- Tools presents one compact action area, in workflow order: equipment update, mechanical summary,
+  temperature rise, customer report, then single-file and folder batch encryption. Action groups keep
+  their existing feature state without separate card surfaces. `ToolsFeedback` only places feature
+  feedback in the page's shared region below all actions, keeping visual and keyboard order aligned;
+  it owns no business data. Standalone feature rendering keeps feedback inline.
+- Mechanical Summary opens a multiple-file picker; selecting files reveals the existing review and
+  confirmation workflow below the actions. Cancelling selection preserves the current review.
+  Input reset allows selecting the same sources again. Original files and output rules are unchanged.
+
 ### Standalone Tools folder encryption
 
 - `Encrypt File` opens the native Office file picker and saves only the selected file;

@@ -29,6 +29,20 @@ const savedEncryption = { cancelled: false as const, folder: "D:/Lab", summary: 
   entries: [{ file: "sample.docx", status: "Encrypted", reason: "", output: "sample_Secured.docx" }] };
 
 describe("ToolsPage", () => {
+  it("orders the tool actions by the laboratory workflow", () => {
+    render(<ToolsPage />);
+    expect(screen.getAllByRole("button").map(button => button.textContent?.trim())).toEqual([
+      "Updated Report Equipments", "Mechanical Summary", "Drawing T-rise",
+      "Generate Customer Report", "Encrypt File", "Batch Encrypt Files",
+    ]);
+    fireEvent.change(screen.getByLabelText("Select mechanical test files"), {
+      target: { files: [new File(["source"], "review.pdf", { type: "application/pdf" })] },
+    });
+    const actions = screen.getByRole("group", { name: "Tool actions" });
+    const review = screen.getByRole("region", { name: "Mechanical Summary Review" });
+    expect(actions.compareDocumentPosition(review) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(actions).queryByRole("region", { name: "Mechanical Summary Review" })).toBeNull();
+  });
   it("keeps project receiving in Projects rather than exposing competing Tools entries", () => {
     render(<ToolsPage />);
     expect(screen.queryByRole("button", { name: "Import Projects" })).toBeNull();
