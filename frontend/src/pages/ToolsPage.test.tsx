@@ -276,7 +276,7 @@ describe("ToolsPage", () => {
     const card = screen.getByRole("article", { name: "Update Equipment List" });
     expect(within(card).queryByRole("heading", { name: "Select Internal Report" })).toBeNull();
     expect(within(card).getAllByRole("button")).toHaveLength(1);
-    const opener = within(card).getByRole("button", { name: "Update Equipment List" });
+    const opener = within(card).getByRole("button", { name: "Updated Report Equipments" });
     const picker = screen.getByLabelText("Internal Report for Equipment Update") as HTMLInputElement;
     const choose = vi.spyOn(picker, "click");
     await user.click(opener);
