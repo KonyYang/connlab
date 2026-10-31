@@ -116,11 +116,11 @@
   "tasks": {
     "TASK_IMPORT_FLOW_COMPACT_20261030": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
-      "integrated_head": "8fef12518136e1a6bfcf0c4c944f4d5b5886da0d",
+      "integrated_head": "43e532ddc79da59cdb0fda7d05338916b25d6128",
       "task": {
         "task_id": "TASK_IMPORT_FLOW_COMPACT_20261030",
         "summary": "Simplify import controls and confirmation; return to full Projects",
@@ -135,7 +135,7 @@
         "risk_reasons": [],
         "activation_head": "58acc1cf38e50703749e448138824bfdbd8f3415",
         "started_at": "2026-10-30T00:00:32.976018Z",
-        "updated_at": "2026-10-31T11:15:58.380866Z",
+        "updated_at": "2026-10-31T11:36:27.259473Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
@@ -145,7 +145,64 @@
           "summary": "User requests single-project-first unified review, counts, filters, pagination and outcome guidance; preserve conflict and recovery guards; isolated validation only, no push or publication.",
           "requires_user": false
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_IMPORT_FLOW_COMPACT_20261030",
+          "subject": "f153b765c80fce12ed1c9667119af44048a7f541",
+          "summary": "Single-project-first import review: one mixed list/count/filter/paginator and selection, explicit file/data/history outcomes and next steps. Preserve conflict/restore authority and full Projects navigation. Isolated validation only; no real data changes, push or publication.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/features/project-library/ProjectImportResults.tsx",
+            "frontend/src/features/project-library/ProjectImportReviewList.tsx",
+            "frontend/src/features/project-library/ProjectImportSnapshots.test.tsx",
+            "frontend/src/features/project-library/ProjectImportSnapshots.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+            "frontend/src/features/project-library/project-library.css"
+          ],
+          "validation": [
+            {
+              "name": "Frontend regression",
+              "status": "passed",
+              "detail": "102 tests on final state: library/import/member/results and App navigation; RED evidence for unified selection and next-step copy."
+            },
+            {
+              "name": "Isolated Python import and restore integration",
+              "status": "passed",
+              "detail": "108 passed in 743.91s; test_project_library_api.py and test_project_library_portability.py with dedicated temporary SQLite/files/cache. No backend code changes."
+            },
+            {
+              "name": "Typecheck and build",
+              "status": "passed",
+              "detail": "npm run build after final code edits; build.log"
+            },
+            {
+              "name": "Isolated browser and data integrity",
+              "status": "passed",
+              "detail": "Manual folder and snapshot imported individually through one confirmation; mixed duplicate/conflict counts and filtering, cancel without writes, 612px no horizontal overflow. 64 tables/326 rows/4 assets match; 107 source-copy files unchanged."
+            },
+            {
+              "name": "Exact diff review",
+              "status": "passed",
+              "detail": "Current agent performed separate standards and requirements passes. Backend requests, plan tokens, conflict resolutions, blockers, source and destination checks retained. No outstanding findings; git diff --check clean."
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "method": "TDD, implementation, sequential self-review and isolated browser/database verification in current agent; not independent review"
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "f153b765c80fce12ed1c9667119af44048a7f541",
+            "primary_before": "1a9722b028068c58f6ce3846c8049032fb157500",
+            "integrated_head": "43e532ddc79da59cdb0fda7d05338916b25d6128",
+            "recovered": false
+          }
+        }
       }
     }
   }
