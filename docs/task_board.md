@@ -197,7 +197,7 @@
     },
     "TASK_TOOLS_FOLDER_ENCRYPTION_20261030": {
       "slot": "main",
-      "state": "ready_for_close",
+      "state": "running",
       "worktree": "D:\\PythonProject\\connlab\\tmp\\worktrees\\tools-folder-encryption-20261030",
       "branch": "codex/tools-folder-encryption-20261030",
       "resources": [],
@@ -234,62 +234,17 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T07:01:09.412468Z",
+        "updated_at": "2026-10-31T07:03:05.583986Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
           "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
           "stage": "revision",
           "status": "running",
-          "summary": "User requests removing the redundant Select Office File or Folder heading from the encryption card.",
+          "summary": "User requests removing redundant Select Internal Report headings; apply consistently to customer report and equipment list cards.",
           "requires_user": false
         },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
-          "subject": "f419b1d6f03b075e3017dbd350a235ee47e8ad86",
-          "summary": "Remove the redundant Select Office File or Folder heading so the encryption card begins with its two action buttons.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/features/tools/EncryptionTool.tsx",
-            "frontend/src/pages/ToolsPage.test.tsx"
-          ],
-          "validation": [
-            {
-              "status": "passed",
-              "name": "Final UI matrix",
-              "evidence": "22 passed on final bytes: EncryptionTool 6 and ToolsPage 16. Updated existing page case confirms heading absent, both actions available and cancellation idle."
-            },
-            {
-              "status": "passed",
-              "name": "Exact diff review",
-              "evidence": "Sequential same-agent Standards and Spec passes: one redundant heading wrapper removed, existing semantic test updated. Named article, action labels, hover help, result feedback and encryption logic preserved. git diff --check passed. Low-impact markup removal; no new tests or backend/build changes needed."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "context": "Primary context, single heading removal and existing test update."
-            },
-            "reviewer": {
-              "status": "passed",
-              "context": "Focused sequential same-agent Standards and Spec review; not independent-agent execution."
-            },
-            "qa": {
-              "status": "passed",
-              "context": "One complete proportional 22-test affected UI matrix on final bytes."
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "f419b1d6f03b075e3017dbd350a235ee47e8ad86",
-            "primary_before": "e1667719cdc5d71610645ca712b334bea10cda06",
-            "integrated_head": "cdf09e744d50d08e5cfa8b7006bfbda125f368d6",
-            "recovered": false
-          }
-        }
+        "report": null
       }
     }
   }
