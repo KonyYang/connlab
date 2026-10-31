@@ -218,6 +218,7 @@
           "backend/infrastructure/files/windows_path_picker.py",
           "backend/infrastructure/office/office_file_password_gateway.py",
           "docs/PROJECT_CONTEXT.md",
+          "frontend/src/App.temperatureNavigation.test.tsx",
           "frontend/src/api/client.ts",
           "frontend/src/api/toolsEncryption.test.ts",
           "frontend/src/features/tools/EncryptionTool.test.tsx",
@@ -236,7 +237,7 @@
         "risk_reasons": [],
         "activation_head": "94bda8831421a86a6aae37dcc3855f022b8d30bf",
         "started_at": "2026-10-30T14:46:47.475269Z",
-        "updated_at": "2026-10-31T08:22:05.970694Z",
+        "updated_at": "2026-10-31T08:22:16.403546Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
