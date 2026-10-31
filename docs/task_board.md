@@ -12,13 +12,13 @@
   "mode": "sol_native",
   "wip_limit": 2,
   "last_closed": {
-    "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
-    "tier": "standard",
-    "subject": "60b5f073724cd0d78e2168a1d1ad518d4e21eebf",
-    "summary": "Batch encrypted Word/Excel copies from a selected folder without modifying originals",
+    "task_id": "TASK_IMPORT_FLOW_COMPACT_20261030",
+    "tier": "micro",
+    "subject": "35c18660c16871513836c7fab9da4fdd50f6e726",
+    "summary": "Simplify import controls and confirmation; return to full Projects",
     "disposition": "completed",
-    "decision_ref": "User explicitly requested final task close after the Tools layout, encryption and copy refinements; final UI matrix 33 passed, production build and isolated browser checks completed.",
-    "closed_at": "2026-10-31T08:53:23.134515Z"
+    "decision_ref": "User explicitly approved local close of prior task and start of full managed project import implementation; retain all commits and evidence; no push or publication.",
+    "closed_at": "2026-10-31T21:21:46.655993Z"
   },
   "retained_history": [
     {
@@ -111,91 +111,59 @@
       "disposition": "completed",
       "decision_ref": "User explicitly requested closing the current equipment-table font repair task after 127 affected tests, 164 release checks, and successful new-EXE validation of three real document scenarios.",
       "closed_at": "2026-10-30T05:59:50.377281Z"
+    },
+    {
+      "task_id": "TASK_TOOLS_FOLDER_ENCRYPTION_20261030",
+      "tier": "standard",
+      "subject": "60b5f073724cd0d78e2168a1d1ad518d4e21eebf",
+      "summary": "Batch encrypted Word/Excel copies from a selected folder without modifying originals",
+      "disposition": "completed",
+      "decision_ref": "User explicitly requested final task close after the Tools layout, encryption and copy refinements; final UI matrix 33 passed, production build and isolated browser checks completed.",
+      "closed_at": "2026-10-31T08:53:23.134515Z"
     }
   ],
   "tasks": {
-    "TASK_IMPORT_FLOW_COMPACT_20261030": {
-      "slot": "micro",
-      "state": "ready_for_close",
+    "TASK_MANAGED_PROJECT_IMPORT_20261101": {
+      "slot": "main",
+      "state": "running",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
-      "integrated_head": "56008e578f751434473a448b9a8476419cfee2a3",
+      "integrated_head": null,
       "task": {
-        "task_id": "TASK_IMPORT_FLOW_COMPACT_20261030",
-        "summary": "Simplify import controls and confirmation; return to full Projects",
-        "tier": "micro",
-        "route": "sol_direct",
-        "scope": "Localized frontend import presentation and navigation only; retain backend conflict, snapshot, destination and retry protections. Isolated validation only; no real data changes, push or publication.",
+        "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
+        "summary": "Imported projects use the standard project catalog and workbench with truthful completeness",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Implement confirmed import as managed projects, standard LTR directory reception, truthful identity/completeness and unified workbench/recycle actions; preserve conflict and portable restore protections. Isolated data only, no real-data migration, push or publication.",
         "scope_paths": [
-          "frontend/src/App.test.tsx",
+          "backend/application/project_library",
+          "backend/infrastructure/project_library",
+          "backend/infrastructure/storage/repositories/project_library.py",
+          "backend/application/project_registry_summary_service.py",
+          "backend/application/project_registry_models.py",
+          "backend/api/project_library_schemas.py",
+          "backend/api/routes_project_library.py",
+          "frontend/src/features/project-library",
+          "frontend/src/features/projects-registry",
+          "frontend/src/features/project-workbench",
+          "frontend/src/components/projects",
+          "frontend/src/pages/ProjectWorkbenchPage.tsx",
+          "frontend/src/api/projectLibrary.ts",
+          "frontend/src/api/client.ts",
           "frontend/src/App.tsx",
-          "frontend/src/features/project-library"
+          "frontend/src/App.test.tsx",
+          "tests/integration/test_project_library_api.py",
+          "tests/integration/test_project_library_portability.py",
+          "tests/unit",
+          "docs/architecture/project_library.md"
         ],
         "risk_reasons": [],
-        "activation_head": "58acc1cf38e50703749e448138824bfdbd8f3415",
-        "started_at": "2026-10-30T00:00:32.976018Z",
-        "updated_at": "2026-10-31T16:09:35.018048Z",
-        "checkpoint": {
-          "schema": "connlab.sol-task-checkpoint",
-          "version": 1,
-          "task_id": "TASK_IMPORT_FLOW_COMPACT_20261030",
-          "stage": "revision",
-          "status": "running",
-          "summary": "User authorizes compact import success identity/issues, direct workbench for restored eligible projects, secondary Import More; preserve file-only/history/conflict/restore protections; isolated tests, no real-data writes, no push/publication.",
-          "requires_user": false
-        },
-        "report": {
-          "schema": "connlab.sol-task-report",
-          "version": 1,
-          "task_id": "TASK_IMPORT_FLOW_COMPACT_20261030",
-          "subject": "35c18660c16871513836c7fab9da4fdd50f6e726",
-          "summary": "Compact import success identity and per-project review issues; Open Project goes directly to the workbench only for restored eligible projects; Import More is a secondary text action. Preserve manual-file/history browsing and all conflict/restore protections. No real-data mutation, push or publication.",
-          "scope_ok": true,
-          "changed_paths": [
-            "frontend/src/App.tsx",
-            "frontend/src/features/project-library/ProjectImportResults.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
-            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
-            "frontend/src/features/project-library/project-library.css"
-          ],
-          "validation": [
-            {
-              "name": "TDD and frontend regression",
-              "status": "passed",
-              "detail": "3 relevant success tests failed before implementation; final 105 tests passed across 7 files. Covers identity/issues, restored direct navigation, manual/history fallback, can_continue=false/null project ID/history flag guards, existing conflicts/retry/selection and App navigation."
-            },
-            {
-              "name": "Typecheck and build",
-              "status": "passed",
-              "detail": "npm run build (tsc -b + vite build) passed after final CSS edit; build.log."
-            },
-            {
-              "name": "Isolated browser and data integrity",
-              "status": "passed",
-              "detail": "New SQLite/config/source copies on 18759/18760. Final-build restored Open Project loaded workbench Matrix directly. Manual project opened file details; full Projects showed both records. Manual 37 copied files identical, source 53 files unchanged; restored 64 tables/326 rows/4 assets match. Final snapshot smoke source 16 files unchanged and prior 53 unchanged. Import More computed 0px border, 14px, underline. Missing source warnings remain visible."
-            },
-            {
-              "name": "Exact diff review",
-              "status": "passed",
-              "detail": "Current-agent sequential standards and requirements reviews. No outstanding findings. Five frontend files only; no backend/API contracts or conflict/restore requests changed. git diff --check passed. Not an independent agent review."
-            }
-          ],
-          "roles": {
-            "developer": {
-              "status": "passed",
-              "method": "TDD, implementation, sequential self-review and isolated browser/database verification by current agent"
-            }
-          },
-          "integration": {
-            "status": "passed",
-            "mode": "serial_local_merge",
-            "subject": "35c18660c16871513836c7fab9da4fdd50f6e726",
-            "primary_before": "0865fede10acf73b2197cd0cf2532ac30c8a88ff",
-            "integrated_head": "56008e578f751434473a448b9a8476419cfee2a3",
-            "recovered": false
-          }
-        }
+        "activation_head": "394924ea3d8862e7a1fad5a5a154b1e8181e86d9",
+        "started_at": "2026-10-31T21:21:46.877584Z",
+        "updated_at": "2026-10-31T21:21:46.877584Z",
+        "checkpoint": null,
+        "report": null
       }
     }
   }
