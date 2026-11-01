@@ -49,6 +49,7 @@ from backend.shared.config import Settings
 from backend.infrastructure.storage.standard_record_method_sync_schema_migration import (
     migrate_standard_record_method_sync_schema,
 )
+from backend.infrastructure.storage.group_completion_schema_migration import migrate_group_completion_description
 
 
 class Base(DeclarativeBase):
@@ -128,6 +129,7 @@ def init_db(engine: Engine) -> None:
         table for table in Base.metadata.tables.values() if table.name not in dedicated_tables
     ]
     Base.metadata.create_all(bind=engine, tables=general_tables)
+    migrate_group_completion_description(engine)
     migrate_standard_record_method_sync_schema(engine)
     _migrate_project_no_optional(engine)
     _migrate_file_asset_provenance_columns(engine)

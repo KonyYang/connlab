@@ -6,6 +6,49 @@ from tests.integration.test_confirmed_matrix_authority_api import _fill_matrix_d
 from tests.integration.test_confirmed_matrix_runtime_projection_api import _client, _seed_project, _seed_source_import
 
 
+def _confirm_group(client, tmp_path):
+    _seed_project("P1", tmp_path)
+    source_id = _seed_source_import("P1", tmp_path)
+    draft = client.post("/api/projects/P1/matrix-drafts", json={"source_import_id": source_id, "selected_group_keys": ["g1"]}).json()["record"]["project_matrix_draft_id"]
+    _fill_matrix_dates(client, draft)
+    return client.post(f"/api/projects/P1/matrix-drafts/{draft}/confirm", json={"confirmed_by": "operator"}).json()["version"]["confirmed_matrix_id"]
+
+
+def test_description_saves_independently_and_preserves_completion_timestamp(tmp_path):
+    client, engine, _ = _client(tmp_path)
+    try:
+        matrix_id = _confirm_group(client, tmp_path)
+        url = "/api/projects/P1/group-completion/g1"
+        def save(**changes):
+            response = client.put(url, json={"confirmed_matrix_id": matrix_id, **changes})
+            assert response.status_code == 200, response.text
+            return response.json()["groups"][0]
+        assert save(description="Waiting for inspection")["completed"] is False
+        marked = save(completed=True)
+        assert marked["description"] == "Waiting for inspection"
+        assert marked["completed_at"]
+        edited = save(description="Inspection complete\n复核完成")
+        assert edited["completed"] is True
+        assert edited["completed_at"] == marked["completed_at"]
+        assert edited["description"] == "Inspection complete\n复核完成"
+        assert save(completed=False)["description"] == edited["description"]
+        assert save(description="")["description"] == ""
+        assert client.get("/api/projects/P1/group-completion").json()["groups"][0]["description"] == ""
+        atomic = save(completed=True, description="x" * 2000)
+        assert atomic["completed"] is True and atomic["description"] == "x" * 2000
+        save(completed=False, description="")
+        for changes in ({}, {"completed": None}, {"description": "x" * 2001}):
+            assert client.put(url, json={"confirmed_matrix_id": matrix_id, **changes}).status_code == 422
+        assert client.put("/api/projects/P1/group-completion/missing", json={"confirmed_matrix_id": matrix_id, "description": "no"}).status_code == 404
+        assert client.put(url, json={"confirmed_matrix_id": "stale", "description": "no"}).status_code == 409
+        assert client.post("/api/projects/P1/lifecycle/stop", json={"reason": "Paused"}).status_code == 200
+        assert client.put(url, json={"confirmed_matrix_id": matrix_id, "description": "no"}).status_code == 409
+        assert client.get("/api/projects/P1/group-completion").json()["groups"][0]["description"] == ""
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+
+
 def test_mark_and_revoke_group_completion_visible_in_registry(tmp_path: Path):
     client, engine, sessions = _client(tmp_path)
     try:
@@ -63,12 +106,21 @@ def test_changed_group_does_not_regain_completion_if_later_reverted(tmp_path: Pa
         _fill_matrix_dates(client, draft)
         result = client.post(f"/api/projects/P1/matrix-drafts/{draft}/confirm", json={"confirmed_by": "operator"}).json()
         matrix_id = result["version"]["confirmed_matrix_id"]
-        assert client.put("/api/projects/P1/group-completion/g1", json={"confirmed_matrix_id": matrix_id, "completed": True}).status_code == 200
+        marked = client.put("/api/projects/P1/group-completion/g1", json={"confirmed_matrix_id": matrix_id, "completed": True})
+        assert marked.status_code == 200
+        original_completed_at = marked.json()["groups"][0]["completed_at"]
         with sessions() as session:
             first = ConfirmedMatrixAuthorityRepository(session).get(matrix_id)
             changed = replace(first, version=replace(first.version, confirmed_revision=2),
                               rows=(replace(first.rows[0], condition="Changed condition"), *first.rows[1:]))
             reverted = replace(first, version=replace(first.version, confirmed_revision=3))
+            class ChangedMatrices:
+                def get_active_by_project(self, project_id): return changed
+                def list_by_project(self, project_id): return (first, changed)
+            changed_service = GroupCompletionService(ChangedMatrices(), GroupCompletionRepository(session), lambda _: None, lambda: "now")
+            changed_edit = changed_service.update("P1", matrix_id, "g1", description="Changed content; inspect again")
+            assert changed_edit["groups"][0]["needs_review"] is True
+            assert changed_edit["groups"][0]["completed"] is False
             class Matrices:
                 def get_active_by_project(self, project_id): return reverted
                 def list_by_project(self, project_id): return (first, changed, reverted)
@@ -76,11 +128,25 @@ def test_changed_group_does_not_regain_completion_if_later_reverted(tmp_path: Pa
             state = service.read("P1")
             assert state["completed_count"] == 0
             assert state["groups"][0]["needs_review"] is True
+            edited = service.update("P1", matrix_id, "g1", description="Changed and reverted; inspect again")
+            assert edited["groups"][0]["needs_review"] is True
+            assert edited["groups"][0]["completed"] is False
+            assert edited["groups"][0]["description"] == "Changed and reverted; inspect again"
             class UnchangedMatrices:
                 def get_active_by_project(self, project_id): return reverted
                 def list_by_project(self, project_id): return (first, replace(first, version=replace(first.version, confirmed_revision=2)), reverted)
             unchanged_service = GroupCompletionService(UnchangedMatrices(), GroupCompletionRepository(session), lambda _: None, lambda: "now")
             assert unchanged_service.read("P1")["completed_count"] == 1
+            uncertain = replace(reverted, groups=(replace(reverted.groups[0], source_group_snapshot_id="new-lineage"),))
+            class UncertainMatrices:
+                def get_active_by_project(self, project_id): return uncertain
+                def list_by_project(self, project_id): return (first, changed, uncertain)
+            uncertain_service = GroupCompletionService(UncertainMatrices(), GroupCompletionRepository(session), lambda _: None, lambda: "now")
+            uncertain_edit = uncertain_service.update("P1", matrix_id, "g1", description="Check imported lineage")
+            assert uncertain_edit["groups"][0]["needs_review"] is True
+            assert uncertain_edit["groups"][0]["completed"] is False
+            assert uncertain_edit["groups"][0]["description"] == "Check imported lineage"
+            assert unchanged_service.read("P1")["groups"][0]["completed_at"] == original_completed_at
     finally:
         app.dependency_overrides.clear()
         engine.dispose()

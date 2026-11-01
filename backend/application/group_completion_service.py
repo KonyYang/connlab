@@ -5,6 +5,14 @@ from hashlib import sha256
 import json
 
 
+_UNSET = object()
+
+
+def _latest_record(records, snapshot, group):
+    record = next((r for r in records if r.group_lineage == group_lineage(snapshot, group)), None)
+    return record or next((r for r in records if r.group_key == group.group_key), None)
+
+
 def group_lineage(snapshot, group):
     source = group.source_group_snapshot_id
     if source and sum(item.source_group_snapshot_id == source for item in snapshot.groups) == 1:
@@ -87,14 +95,19 @@ class GroupCompletionService:
             groups.append({"group_key": group.group_key, "group_label": group.group_label,
                            "completed": bool(is_current and record.completed),
                            "needs_review": bool((record and record.completed and not is_current) or (uncertain_record and uncertain_record.completed)),
-                           "completed_at": record.completed_at if is_current and record.completed else None})
+                           "completed_at": record.completed_at if is_current and record.completed else None,
+                           "description": (record or uncertain_record).description if record or uncertain_record else None})
         return {"confirmed_matrix_id": snapshot.version.confirmed_matrix_id,
                 "estimated_completion_date": snapshot.version.estimated_completion_date,
                 "groups": groups, "completed_count": sum(g["completed"] for g in groups),
                 "total_count": len(groups)}
 
-    def update(self, project_id, matrix_id, group_key, completed):
+    def update(self, project_id, matrix_id, group_key, completed=None, *, description=_UNSET):
         self.guard(project_id)
+        if completed is None and description is _UNSET:
+            raise ValueError("Provide completion or a description to save.")
+        if description is not _UNSET and description is not None and (not isinstance(description, str) or len(description) > 2000):
+            raise ValueError("Description must contain at most 2000 characters.")
         snapshot = self.matrices.get_active_by_project(project_id)
         if snapshot is None or snapshot.version.confirmed_matrix_id != matrix_id:
             raise ValueError("Matrix changed. Reload before updating group completion.")
@@ -102,6 +115,14 @@ class GroupCompletionService:
         if len(matches) != 1:
             raise LookupError("Confirmed Matrix group was not found.")
         group = matches[0]
-        self.records.save(project_id, group_lineage(snapshot, group), group.group_key, snapshot.version.confirmed_revision, group_signature(snapshot, group),
-                          completed, self.clock() if completed else None)
+        record = _latest_record(self.records.list_by_project(project_id), snapshot, group)
+        saved_description = (record.description if record else None) if description is _UNSET else description
+        if completed is None and record is not None:
+            # A note must never re-attest changed/uncertain Matrix content or reset
+            # the history window that detects changes followed by reversions.
+            self.records.save(project_id, record.group_lineage, record.group_key, record.matrix_revision,
+                              record.signature, record.completed, record.completed_at, saved_description)
+        else:
+            self.records.save(project_id, group_lineage(snapshot, group), group.group_key, snapshot.version.confirmed_revision, group_signature(snapshot, group),
+                              bool(completed), self.clock() if completed else None, saved_description)
         return self.read(project_id)

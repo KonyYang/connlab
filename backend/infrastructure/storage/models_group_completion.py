@@ -1,5 +1,5 @@
 """Persist manual group-completion events with their Matrix content signature."""
-from sqlalchemy import Boolean, ForeignKey, Integer, String
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from backend.infrastructure.storage.database import Base
 
@@ -15,4 +15,5 @@ class GroupCompletionEventModel(Base):
     signature: Mapped[str] = mapped_column(String(64), nullable=False)
     completed: Mapped[bool] = mapped_column(Boolean, nullable=False)
     completed_at: Mapped[str | None] = mapped_column(String(64))
+    description: Mapped[str | None] = mapped_column(Text)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False)

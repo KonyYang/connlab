@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ApiRequestError } from "../../api/client";
 import { ProjectWorkbenchMatrixProjectionPanel } from "./ProjectWorkbenchMatrixProjectionPanel";
 
@@ -23,12 +23,100 @@ vi.mock("../../api/client", async (importOriginal) => {
 
 describe("ProjectWorkbenchMatrixProjectionPanel", () => {
   beforeEach(() => {
+    vi.resetAllMocks();
     apiMocks.getProjectLifecycle.mockResolvedValue({readonly: false, registry_state: "active"});
     apiMocks.getGroupCompletion.mockResolvedValue({confirmed_matrix_id: "cm-1", groups: [
       {group_key: "g1", group_label: "Group 1", completed: false, needs_review: false},
       {group_key: "g2", group_label: "Group 2", completed: false, needs_review: false},
     ], completed_count: 0, total_count: 2});
   });
+  function descriptionPreview() {
+    apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
+      project_id: "P1", confirmed_matrix_id: "cm-1", preview_status: "ready",
+      groups: [{group_key: "g1", group_label: "Group 1", sample_quantity_expression: "3", step_count: 1,
+        steps: [{sequence: 1, raw_token: "1", test_item: "Visual", section: "6.1", method: "Visual", condition: "", requirement: ""}]}],
+    });
+  }
+
+  it("saves description explicitly without changing completion and retains failed drafts", async () => {
+    descriptionPreview();
+    render(<ProjectWorkbenchMatrixProjectionPanel projectId="P1" />);
+    const description = await screen.findByRole("textbox", {name: "Group 1 description"}) as HTMLTextAreaElement;
+    await waitFor(() => expect(description.disabled).toBe(false));
+    expect(description.maxLength).toBe(2000);
+    expect(screen.queryByRole("button", {name: "Save Group 1 description"})).toBeNull();
+    fireEvent.change(description, {target: {value: "Waiting for inspection"}});
+    fireEvent.blur(description);
+    expect(apiMocks.updateGroupCompletion).not.toHaveBeenCalled();
+    apiMocks.updateGroupCompletion.mockRejectedValueOnce(new Error("offline"));
+    fireEvent.click(screen.getByRole("button", {name: "Save Group 1 description"}));
+    await screen.findByRole("alert");
+    expect(description.value).toBe("Waiting for inspection");
+    expect((screen.getByRole("checkbox", {name: "Group 1 completed"}) as HTMLInputElement).checked).toBe(false);
+    apiMocks.updateGroupCompletion.mockResolvedValue({confirmed_matrix_id: "cm-1", groups: [
+      {group_key: "g1", group_label: "Group 1", completed: false, needs_review: true, description: "Waiting for inspection"},
+    ], completed_count: 0, total_count: 1});
+    fireEvent.click(screen.getByRole("button", {name: "Save Group 1 description"}));
+    await waitFor(() => expect(screen.queryByRole("button", {name: "Save Group 1 description"})).toBeNull());
+    expect(apiMocks.updateGroupCompletion).toHaveBeenLastCalledWith("P1", "g1", "cm-1", {description: "Waiting for inspection"});
+    expect(screen.getByText("Review needed")).toBeTruthy();
+    fireEvent.change(description, {target: {value: "Inspection complete"}});
+    apiMocks.updateGroupCompletion.mockResolvedValue({confirmed_matrix_id: "cm-1", groups: [
+      {group_key: "g1", group_label: "Group 1", completed: true, needs_review: false, description: "Inspection complete"},
+    ], completed_count: 1, total_count: 1});
+    fireEvent.click(screen.getByRole("checkbox", {name: "Group 1 completed"}));
+    await waitFor(() => expect(screen.queryByRole("button", {name: "Save Group 1 description"})).toBeNull());
+    expect(apiMocks.updateGroupCompletion).toHaveBeenLastCalledWith("P1", "g1", "cm-1", {completed: true, description: "Inspection complete"});
+  });
+
+  it.each([{readonly: true, registry_state: "active"}, {readonly: false, registry_state: "trash"}])("disables descriptions when the project cannot be edited: %j", async (lifecycle) => {
+    descriptionPreview();
+    apiMocks.getProjectLifecycle.mockResolvedValue(lifecycle);
+    render(<ProjectWorkbenchMatrixProjectionPanel projectId="P1" />);
+    const description = await screen.findByRole("textbox", {name: "Group 1 description"}) as HTMLTextAreaElement;
+    expect(description.disabled).toBe(true);
+    expect((screen.getByRole("checkbox", {name: "Group 1 completed"}) as HTMLInputElement).disabled).toBe(true);
+  });
+
+  it("retains a draft when the save response belongs to a changed Matrix", async () => {
+    descriptionPreview();
+    render(<ProjectWorkbenchMatrixProjectionPanel projectId="P1" />);
+    const description = await screen.findByRole("textbox", {name: "Group 1 description"}) as HTMLTextAreaElement;
+    await waitFor(() => expect(description.disabled).toBe(false));
+    fireEvent.change(description, {target: {value: "Unsaved review"}});
+    apiMocks.updateGroupCompletion.mockResolvedValue({confirmed_matrix_id: "cm-2", groups: [
+      {group_key: "g1", group_label: "Group 1", completed: true, description: "Different Matrix"},
+    ]});
+    fireEvent.click(screen.getByRole("button", {name: "Save Group 1 description"}));
+    await screen.findByText("Matrix changed. Refresh the project before saving again.");
+    expect(description.value).toBe("Unsaved review");
+    expect((screen.getByRole("checkbox", {name: "Group 1 completed"}) as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("ignores a late save after switching project", async () => {
+    descriptionPreview();
+    const {rerender} = render(<ProjectWorkbenchMatrixProjectionPanel projectId="P1" />);
+    const description = await screen.findByRole("textbox", {name: "Group 1 description"}) as HTMLTextAreaElement;
+    await waitFor(() => expect(description.disabled).toBe(false));
+    fireEvent.change(description, {target: {value: "Old project draft"}});
+    let finish!: (value: unknown) => void;
+    apiMocks.updateGroupCompletion.mockReturnValue(new Promise((resolve) => {finish = resolve;}));
+    fireEvent.click(screen.getByRole("button", {name: "Save Group 1 description"}));
+    apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
+      project_id: "P2", confirmed_matrix_id: "cm-2", preview_status: "empty", groups: [],
+    });
+    apiMocks.getGroupCompletion.mockResolvedValue({confirmed_matrix_id: "cm-2", groups: [
+      {group_key: "g1", group_label: "Group 1", completed: false, description: "New project note"},
+    ]});
+    rerender(<ProjectWorkbenchMatrixProjectionPanel projectId="P2" />);
+    const nextDescription = await screen.findByDisplayValue("New project note") as HTMLTextAreaElement;
+    await act(async () => finish({confirmed_matrix_id: "cm-1", groups: [
+      {group_key: "g1", group_label: "Group 1", completed: true, description: "Old saved response"},
+    ]}));
+    expect(nextDescription.value).toBe("New project note");
+    expect((screen.getByRole("checkbox", {name: "Group 1 completed"}) as HTMLInputElement).checked).toBe(false);
+  });
+
   it("keeps every preview step at its initial status until execution data exists", async () => {
     const onTokenSelect = vi.fn();
     apiMocks.fetchConfirmedMatrixTestRecordPreview.mockResolvedValue({
@@ -146,7 +234,7 @@ describe("ProjectWorkbenchMatrixProjectionPanel", () => {
     ], completed_count: 1, total_count: 2});
     fireEvent.click(groupOne);
     await waitFor(() => expect(groupOne.checked).toBe(true));
-    expect(apiMocks.updateGroupCompletion).toHaveBeenCalledWith("P1", "g1", "cm-1", true);
+    expect(apiMocks.updateGroupCompletion).toHaveBeenCalledWith("P1", "g1", "cm-1", {completed: true});
     expect(screen.queryByText("Review required")).toBeNull();
     expect(screen.queryByText("Reopened / retest")).toBeNull();
 

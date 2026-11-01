@@ -5283,6 +5283,49 @@
   gap: 4px;
 }
 
+.runtime-console-group-completion {
+  display: grid;
+  gap: 6px;
+  min-width: 140px;
+}
+
+.runtime-console-group-completion .runtime-console-group-completion-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  min-height: 24px;
+  font-weight: 400;
+}
+
+.runtime-console-group-completion input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  flex: 0 0 16px;
+  padding: 0;
+  margin: 0;
+}
+
+.runtime-console-group-completion textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 6px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.runtime-console-group-completion button {
+  justify-self: start;
+  min-height: 26px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
 .runtime-console-matrix-token,
 .runtime-console-matrix-projection-legend span {
   border: 1px solid var(--color-border);

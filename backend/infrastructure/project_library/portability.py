@@ -263,6 +263,14 @@ class ProjectPortability:
             raise ProjectLibraryError("The portable source revision is inconsistent.")
         if "group_completion_events" not in body["rows"]:
             body = {**body, "rows": {**body["rows"], "group_completion_events": []}, "_legacy_group_completion": True}
+        events = body["rows"]["group_completion_events"]
+        missing_description = [row["event_id"] for row in events if "description" not in row]
+        if missing_description:
+            # Validate the original signature first; upgrade only this in-memory
+            # view. Keep exact old identities so later notes/events remain changes.
+            body = {**body, "rows": {**body["rows"], "group_completion_events": [
+                {"description": None, **row} for row in events
+            ]}, "_legacy_completion_description_ids": missing_description}
         source_warnings = self._source_gap_warnings(body["operation_history"], body["project_id"])
         if source_warnings:
             stored_warnings = body.get("warnings", [])
@@ -276,9 +284,19 @@ class ProjectPortability:
     def _matches_snapshot(self, current, body):
         if fingerprint(current) == body["source_signature"]:
             return True
-        if not body.get("_legacy_group_completion") or current["rows"].get("group_completion_events"):
+        legacy_rows = dict(current["rows"])
+        if body.get("_legacy_group_completion"):
+            if legacy_rows.get("group_completion_events"):
+                return False
+            legacy_rows.pop("group_completion_events", None)
+        elif legacy_ids := set(body.get("_legacy_completion_description_ids", ())):
+            legacy_rows["group_completion_events"] = sorted([
+                {key: value for key, value in row.items() if key != "description"}
+                if row["event_id"] in legacy_ids and row.get("description") is None else row
+                for row in legacy_rows["group_completion_events"]
+            ], key=lambda row: json.dumps(row, sort_keys=True, ensure_ascii=False))
+        else:
             return False
-        legacy_rows = {key: value for key, value in current["rows"].items() if key != "group_completion_events"}
         return fingerprint({**current, "rows": legacy_rows}) == body["source_signature"]
 
     def _verify_files(self, folder, body):

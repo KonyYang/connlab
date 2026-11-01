@@ -92,16 +92,19 @@ export type GroupCompletion = {
   estimated_completion_date: string | null;
   completed_count: number;
   total_count: number;
-  groups: {group_key: string; group_label: string; completed: boolean; needs_review: boolean; completed_at: string | null}[];
+  groups: {group_key: string; group_label: string; completed: boolean; needs_review: boolean; completed_at: string | null; description: string | null}[];
 };
 
 export function getGroupCompletion(projectId: string): Promise<GroupCompletion> {
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/group-completion`);
 }
 
-export function updateGroupCompletion(projectId: string, groupKey: string, matrixId: string, completed: boolean): Promise<GroupCompletion> {
+export type GroupCompletionUpdate = {completed?: boolean; description?: string};
+
+export function updateGroupCompletion(projectId: string, groupKey: string, matrixId: string, update: boolean | GroupCompletionUpdate): Promise<GroupCompletion> {
+  const changes = typeof update === "boolean" ? {completed: update} : update;
   return requestJson(`/api/projects/${encodeURIComponent(projectId)}/group-completion/${encodeURIComponent(groupKey)}`, {
-    method: "PUT", body: JSON.stringify({confirmed_matrix_id: matrixId, completed}),
+    method: "PUT", body: JSON.stringify({confirmed_matrix_id: matrixId, ...changes}),
   });
 }
 

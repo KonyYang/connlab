@@ -318,7 +318,7 @@ def test_group_completion_events_travel_with_project(tmp_path):
         with Session(engine_a) as session:
             session.add(GroupCompletionEventModel(event_id="event-1", project_id=member["project_id"],
                 group_lineage="group-1", group_key="g1", matrix_revision=1, signature="a" * 64, completed=True,
-                completed_at="2026-10-28T00:00:00Z", recorded_at="2026-10-28T00:00:00Z"))
+                completed_at="2026-10-28T00:00:00Z", recorded_at="2026-10-28T00:00:00Z", description="Reviewed\n复核完成"))
             session.commit()
         info = a.get(f"/api/project-library/members/{member['member_id']}/portable").json()
         prepared = a.post(f"/api/project-library/members/{member['member_id']}/prepare", json={"fingerprint": info["fingerprint"]})
@@ -329,9 +329,60 @@ def test_group_completion_events_travel_with_project(tmp_path):
         with Session(engine_b) as session:
             event = session.get(GroupCompletionEventModel, "event-1")
             assert event is not None and event.completed and event.signature == "a" * 64
+            assert event.description == "Reviewed\n复核完成"
     finally:
         engine_a.dispose()
         engine_b.dispose()
+
+
+def test_legacy_completion_notes_default_in_memory_and_remain_sensitive_to_edits(tmp_path):
+    from backend.infrastructure.project_library.portability import fingerprint
+    from backend.infrastructure.storage.models_group_completion import GroupCompletionEventModel
+    a, _, ea = app_at(tmp_path / "A")
+    b, _, eb = app_at(tmp_path / "B")
+    try:
+        member = prepared_manual_project(a, tmp_path / "old")
+        with Session(ea) as session:
+            session.add(GroupCompletionEventModel(event_id="old-event", project_id=member["project_id"],
+                group_lineage="group-1", group_key="g1", matrix_revision=1, signature="a" * 64,
+                completed=True, completed_at="completed", recorded_at="recorded"))
+            session.commit()
+        endpoint = f"/api/project-library/members/{member['member_id']}"
+        info = a.get(endpoint + "/portable").json()
+        assert a.post(endpoint + "/prepare", json={"fingerprint": info["fingerprint"]}).status_code == 200
+        packet_path = Path(member["folder_path"]) / ".connlab/portable/snapshot.json"
+        packet = json.loads(packet_path.read_text(encoding="utf-8"))
+        body = packet["body"]
+        body["rows"]["group_completion_events"][0].pop("description")
+        body["source_signature"] = fingerprint({key: body[key] for key in ("project_id", "ltr_number", "title", "rows", "files", "assets", "operation_history")})
+        packet["checksum"] = fingerprint(body)
+        packet_path.write_text(json.dumps(packet), encoding="utf-8")
+        original = packet_path.read_bytes()
+        assert a.get(endpoint + "/portable").json()["status"] == "current"
+        plan = b.post("/api/project-library/restore-plan", json={"folder": member["folder_path"]}).json()
+        assert plan["status"] == "ready", plan
+        received = confirm(b, "/api/project-library/restore", plan)["member"]
+        repeated = b.post("/api/project-library/restore-plan", json={"folder": member["folder_path"]}).json()
+        assert repeated["status"] == "already_added", repeated
+        target_endpoint = f"/api/project-library/members/{received['member_id']}/portable"
+        with Session(eb) as session:
+            event = session.get(GroupCompletionEventModel, "old-event")
+            assert event.description is None
+            event.description = "New review"
+            session.commit()
+        assert b.get(target_endpoint).json()["status"] == "stale"
+        assert b.post("/api/project-library/restore-plan", json={"folder": member["folder_path"]}).json()["status"] == "conflict"
+        with Session(eb) as session:
+            session.get(GroupCompletionEventModel, "old-event").description = None
+            session.add(GroupCompletionEventModel(event_id="new-event", project_id=member["project_id"],
+                group_lineage="group-1", group_key="g1", matrix_revision=1, signature="a" * 64,
+                completed=True, completed_at="completed", recorded_at="later"))
+            session.commit()
+        assert b.get(target_endpoint).json()["status"] == "stale"
+        assert packet_path.read_bytes() == original
+    finally:
+        ea.dispose()
+        eb.dispose()
 
 
 @pytest.mark.parametrize("future_area", ["snapshot", "marker"])
