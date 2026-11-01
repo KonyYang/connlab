@@ -96,6 +96,7 @@ it("opens the unified list from the old Legacy URL and returns there after brows
   window.history.replaceState({}, "", "/projects?view=legacy");
   const user = userEvent.setup();
   render(<App />);
+  await user.selectOptions(await screen.findByLabelText("Project view"), "all");
   await user.click(await screen.findByRole("button", { name: "Open Manual legacy" }));
   expect(window.location.pathname).toBe("/legacy-projects/historical");
   await user.click(await screen.findByRole("button", { name: "Back to Projects" }));
