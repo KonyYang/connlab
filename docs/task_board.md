@@ -221,6 +221,39 @@
           }
         }
       }
+    },
+    "TASK_SINGLE_PROJECT_IMPORT_20261102": {
+      "slot": "main",
+      "state": "running",
+      "worktree": "D:\\PythonProject\\connlab\\tmp\\basic-info-result-default-20261101",
+      "branch": "codex/single-project-import-20261102",
+      "resources": [],
+      "integrated_head": null,
+      "task": {
+        "task_id": "TASK_SINGLE_PROJECT_IMPORT_20261102",
+        "summary": "Make Import Projects default to one complete project folder",
+        "tier": "standard",
+        "route": "sol_build_review_qa",
+        "scope": "Single-project default chooser and manual path; check exact selected boundary without recursive expansion; contextual invalid-folder and missing-LTR handling. Preserve backend batch API, final reviewed confirmation, duplicate/conflict decisions, snapshot recovery protections and existing Open Project navigation. Use isolated DBs and temporary sources only; no real business DB/source mutations, push or publication.",
+        "scope_paths": [
+          "frontend/src/features/project-library",
+          "frontend/src/api/projectLibrary.ts",
+          "backend/api/routes_project_library.py",
+          "backend/api/project_library_schemas.py",
+          "backend/application/project_library/service.py",
+          "backend/infrastructure/project_library/files.py",
+          "backend/infrastructure/project_library/intake_layout.py",
+          "tests/integration/test_project_library_api.py",
+          "tests/unit",
+          "docs/architecture"
+        ],
+        "risk_reasons": [],
+        "activation_head": "5284b620e4ddcd641b43db54c4f33ca398bba411",
+        "started_at": "2026-11-01T23:56:22.459419Z",
+        "updated_at": "2026-11-01T23:56:22.459419Z",
+        "checkpoint": null,
+        "report": null
+      }
     }
   }
 }
