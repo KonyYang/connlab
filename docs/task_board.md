@@ -169,15 +169,15 @@
         "risk_reasons": [],
         "activation_head": "394924ea3d8862e7a1fad5a5a154b1e8181e86d9",
         "started_at": "2026-10-31T21:21:46.877584Z",
-        "updated_at": "2026-11-01T00:14:56.469975Z",
+        "updated_at": "2026-11-01T00:29:51.257285Z",
         "checkpoint": {
           "requires_user": false,
-          "stage": "implementation",
-          "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
+          "summary": "Fifth slice: flat legacy trees (including their original Source Book) are preserved under standard LTR envelopes; partial materials folders, multiple same-LTR business folders and canonical Source Book file collisions require boundary review, forced Keep Separate cannot bypass. 9 boundary/layout tests passed. Complete affected regression first run 145 passed/5 failed; 11 targeted crash/known-project/source-gap checks pass after fixture path/baseline updates and preserving known-ID explicit takeover (not empty replacement). Real UI smoke on stopped isolated 18761 confirmed manual+unnumbered import/workbench/files, normal row buttons, historical-LTR recycle/restore same ID; 54 source and 54 prior-copy files unchanged, zero LTR/confirmed Matrix fabrication. UI artifacts managed-import-20261101/ui-smoke. Remaining actual gaps: known-existing Project ID must join one reviewed final import with writer lock/stale-context guards and correct root-to-business path mapping; remove misleading default Matrix preview for imported projects with no real draft, improve file button style and preview copy; portable restore standard target naming; then exact diff review, full final QA incl snapshot real-sample UI and local integration. Goal incomplete, no real-data mutations/push/publication.",
           "version": 1,
-          "status": "running",
+          "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
+          "stage": "implementation",
           "schema": "connlab.sol-task-checkpoint",
-          "summary": "Fourth slice: shared imported-identity read rule now preserves historical LTR in Recycle and includes it in restore conflicts, with registered LTR priority and no workbook writes. Project detail exposes actual library_member_id, common workbench offers Browse Files plus truthful Basic Information/Matrix guidance even for unnumbered legacy layouts, and file details return to the same workbench. Actual isolated API recycle/restore/unregistered-number/files tests passed with registry unit regressions (32); frontend page/App/layout 93 passed, typecheck/build passed. Local commit saved. Remaining: boundary/ambiguous-layout checks, complete import/portability regression including original fixture contracts, final exact-diff review, isolated real-sample browser smoke, full risk-based QA and local integration. Complete goal not yet claimed; no real-data/source mutation, push or publication."
+          "status": "running"
         },
         "report": null
       }
