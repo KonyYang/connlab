@@ -15,11 +15,11 @@ const project: PortableRestorePlan = {
 it("shows data gaps and only backend-offered conflict choices, without enabling an unresolved copy", async () => {
   const user = userEvent.setup(), resolve = vi.fn();
   render(<ProjectImportSnapshotDetails plan={{ ...project, status: "conflict", resolution_options: ["keep_as_history"] }} disabled={false} onResolve={resolve} />);
-  expect(screen.getByRole("status").textContent).toContain("does not fill missing source files");
-  await user.click(screen.getByText("Review 1 warning"));
+  expect(screen.getByText("This project has different data. View the differences, then choose which copy to keep.")).toBeTruthy();
+  await user.click(screen.getByText("View Differences"));
   expect(screen.getByText("Original source is missing.").closest("details")).toHaveProperty("open", true);
-  expect(screen.queryByRole("radio", { name: "Replace Working Copy" })).toBeNull();
-  await user.click(screen.getByRole("radio", { name: "Keep as History" }));
+  expect(screen.queryByRole("button", { name: "Use Imported Version" })).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Keep Another Copy" }));
   expect(resolve).toHaveBeenCalledWith("D:/source", "keep_as_history");
 });
 
@@ -32,6 +32,6 @@ it("makes replacement and recovery-point consequences explicit in the final revi
 
 it("offers no conflict choices when the saved project has blockers", () => {
   render(<ProjectImportSnapshotDetails plan={{ ...project, blockers: ["Saved data is unavailable."], resolution_options: ["replace_working_copy"] }} disabled={false} onResolve={vi.fn()} />);
-  expect(screen.getByRole("alert").textContent).toContain("Saved data is unavailable.");
-  expect(screen.queryByRole("radio")).toBeNull();
+  expect(screen.getByRole("alert").textContent).toContain("Export this project again from the original computer.");
+  expect(screen.queryByRole("button", { name: "Use Imported Version" })).toBeNull();
 });

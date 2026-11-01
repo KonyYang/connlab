@@ -10,7 +10,7 @@ import shutil
 from uuid import uuid4
 from backend.domain.project_library import ProjectLibraryConflict, ProjectLibraryError
 from backend.infrastructure.files.generation_journal import GenerationJournal
-from backend.infrastructure.project_library.intake_layout import reception_layout, material_entries, received_material, boundary_problem
+from backend.infrastructure.project_library.intake_layout import reception_layout, files_only_layout, material_entries, received_material, boundary_problem
 
 NUMBER = re.compile(r"\bDL-\d{4}-\d{2}-\d{3}(?:[A-Z][A-Z0-9]*)?\b", re.I)
 SOFTWARE_MARKER = Path(".connlab") / "library.json"
@@ -220,6 +220,8 @@ class LibraryFiles:
         if inspected.get("ltr_number") and NUMBER.fullmatch(inspected["ltr_number"]):
             inspected["reception_layout"] = reception_layout(inspected)
         inspected["boundary_problem"] = boundary_problem(inspected)
+        if inspected["kind"] == "project":
+            inspected["files_only_layout"] = files_only_layout(inspected)
         return inspected
 
     def describe_source(self, value):
@@ -230,17 +232,33 @@ class LibraryFiles:
         kind = "project" if source.is_dir() else "file"
         name = source.name if kind == "project" else source.stem
         marker = {}
+        metadata_damaged, newer_version = False, False
         if source.is_dir():
             for relative in (SOFTWARE_MARKER, Path(".connlab") / "manifest.json"):
                 if (source / relative).is_file():
-                    candidate = read_json(source / relative)
+                    try:
+                        candidate = read_json(source / relative)
+                    except ProjectLibraryError as error:
+                        if not isinstance(error.__cause__, (ValueError, UnicodeError)):
+                            raise
+                        metadata_damaged = True
+                        continue
                     if not isinstance(candidate, dict):
+                        metadata_damaged = True
+                        continue
+                    versions = (candidate.get("format_version", 1), candidate.get("schema_version", 1))
+                    newer_version = newer_version or any(type(version) is int and version > 1 for version in versions)
+                    if any(candidate.get(key) is not None and not isinstance(candidate[key], str)
+                           for key in ("project_id", "source_project_id", "member_id", "ltr_number", "dl_number")):
+                        metadata_damaged = True
                         continue
                     if not marker:
                         marker = candidate
-                    if candidate.get("project_id") or candidate.get("source_project_id"):
+                    if not (marker.get("project_id") or marker.get("source_project_id")) and (candidate.get("project_id") or candidate.get("source_project_id")):
                         marker = candidate
-                        break
+        has_portable = (source / PORTABLE_FILE).exists() if kind == "project" else False
+        connlab_identity = metadata_damaged or any(marker.get(key) for key in ("project_id", "source_project_id", "member_id"))
+        source_state = "upgrade_required" if newer_version else "snapshot" if has_portable else "incomplete" if connlab_identity else "manual"
         match = NUMBER.search(name)
         number = marker.get("ltr_number") or marker.get("dl_number") or (match.group(0).upper() if match else None)
         children = [str(path) for path in source.iterdir() if path.is_dir() and path.name != ".connlab"] if kind == "project" else []
@@ -251,7 +269,9 @@ class LibraryFiles:
                 title = business[0].name[len(number):].strip()
         return {"source_path": str(source), "title": title, "ltr_number": number, "kind": kind,
                 "warnings": [], "child_folders": children,
-                "project_id": marker.get("project_id") or marker.get("source_project_id"), "has_portable": (source / PORTABLE_FILE).exists() if kind == "project" else False}
+                "project_id": marker.get("project_id") or marker.get("source_project_id"), "has_portable": has_portable and not newer_version,
+                "source_project_id": marker.get("source_project_id"),
+                "source_state": source_state}
 
     def scan(self, roots):
         items, warnings, seen = [], [], set()
@@ -290,7 +310,7 @@ class LibraryFiles:
                     warnings.append("Some folders are deeper than the preview limit. Choose a specific project.")
             except (OSError, ValueError) as error:
                 warnings.append(f"{value}: {error}")
-        keys = ("source_path", "title", "ltr_number", "kind", "warnings", "child_folders", "has_portable")
+        keys = ("source_path", "title", "ltr_number", "kind", "warnings", "child_folders", "has_portable", "source_state")
         return {"items": [{key: row[key] for key in keys} for row in items],
                 "boundary_roots": [{key: row[key] for key in keys} for row in boundaries.values()],
                 "warnings": list(dict.fromkeys(warnings)), "truncated": bool(pending)}

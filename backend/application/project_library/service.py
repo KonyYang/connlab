@@ -90,10 +90,15 @@ class ProjectLibraryService:
         identities.extend(row for row in members if row["folder_path"].casefold() == key)
         identities.extend(row for row in workspaces if any(str(row.get(field) or "").casefold() == key
                           for field in ("local_workspace_path", "official_folder_path")))
-        source_id = source.get("project_id") or source.get("source_project_id")
+        source_id = source.get("original_project_id") if source.get("files_only") else source.get("project_id") or source.get("source_project_id")
         source_ltr = str(source.get("ltr_number") or "").strip().casefold()
         for identity in identities:
             project_id = identity.get("project_id") or identity.get("source_project_id")
+            if source.get("files_only"):
+                linked = next((row for row in members if row["project_id"] == project_id), {})
+                project_id = identity.get("source_project_id") or linked.get("source_project_id") or project_id
+            elif project_id and project_id == source.get("previous_files_only_project_id"):
+                project_id = source_id
             ltr = str(identity.get("ltr_number") or identity.get("dl_number") or "").strip().casefold()
             if source_id and project_id and source_id != project_id:
                 return True
@@ -119,6 +124,21 @@ class ProjectLibraryService:
                 raise ProjectLibraryError("Choose an existing project or a new project title, not both.")
             try:
                 source = self.files.inspect_source(value)
+                if assignment.get("files_only"):
+                    if source.get("source_state") != "incomplete":
+                        raise ProjectLibraryConflict("Only a ConnLab folder missing its snapshot can use files-only import. Check this source again.")
+                    # Keep carried metadata inside the copied business subtree. The new
+                    # files-only project must not claim the original project's identity.
+                    source.update(original_project_id=source.get("project_id"), project_id=None, source_state="files_only", files_only=True)
+                    source["reception_layout"] = source["files_only_layout"]
+                elif source.get("source_state") == "incomplete" and source.get("project_id"):
+                    previous = next((row for row in members if row.get("source_project_id") == source.get("project_id")
+                        and row["project_id"] and row["project_id"] != row["source_project_id"] and not row.get("is_history")), None)
+                    if previous:
+                        # This alias only recognizes unchanged files already received by
+                        # an explicit files-only choice. Changed sources still require it.
+                        source["previous_files_only_project_id"] = previous["project_id"]
+                        source["reception_layout"] = source["files_only_layout"]
                 if target_id or new_title:
                     source.pop("reception_layout", None)
                     source.pop("boundary_problem", None)
@@ -130,7 +150,7 @@ class ProjectLibraryService:
                 target = self.files.suggested_target(source, new_title=new_title, target_member=member)
                 status, warnings, separate = "ready", [], False
                 workspace = self.store.workspace(source.get("project_id")) if source.get("project_id") else None
-                reference_existing = bool(workspace and workspace["local_workspace_path"].casefold() == target.casefold()
+                reference_existing = bool(source.get("source_state") != "upgrade_required" and workspace and workspace["local_workspace_path"].casefold() == target.casefold()
                     and workspace["dl_number"] == source.get("ltr_number") and self.files.exists(target)
                     and not self._identity_conflict_at(source, target, members, workspaces)
                     and self.files.same_content(source, target)
@@ -152,6 +172,8 @@ class ProjectLibraryService:
                     if matched:
                         status = "already_added"
                         existing_member_id = previous["member_id"]
+                        if previous["project_id"] == source.get("previous_files_only_project_id"):
+                            source["source_state"] = "files_only"
                         warnings.append("The same project identity and material are already received in the library.")
                     else:
                         status, separate = "conflict", True
@@ -160,6 +182,7 @@ class ProjectLibraryService:
                         else:
                             warnings.append("This source or its working copy has changed since intake. Review and Keep Separate to preserve both versions.")
                 elif reference_existing:
+                    source["source_state"] = "local_project"
                     warnings.append("Register the existing working folder without copying its files or changing the official project location.")
                 elif self.files.exists(target):
                     if self._identity_conflict_at(source, target, members, workspaces):
@@ -171,6 +194,8 @@ class ProjectLibraryService:
                         if registered:
                             status = "already_added"
                             existing_member_id = registered["member_id"]
+                            if registered["project_id"] == source.get("previous_files_only_project_id"):
+                                source["source_state"] = "files_only"
                             warnings.append("The same project material is already in a registered library entry.")
                         else:
                             status, separate = "conflict", not bool(new_title)
@@ -185,8 +210,10 @@ class ProjectLibraryService:
                     status, separate = "conflict", True
                     warnings.append("An existing source-named folder is not registered at the standard project location. Keep Separate receives a verified copy without changing that folder.")
                 known_project = source.get("project_id")
-                if known_project and not (target_id or new_title or reference_existing or source.get("has_portable")) and self.store.project_exists(known_project):
+                if known_project and source.get("source_state") != "upgrade_required" and not (target_id or new_title or reference_existing or source.get("has_portable")) and self.store.project_exists(known_project):
                     context = self.store.project_context(known_project)
+                    if context["registry_state"] == "active":
+                        source["source_state"] = "local_project"
                     if context["registry_state"] != "active":
                         source["takeover_blocker"] = "This project is retained or in Recycle. Restore its registry state before importing a working copy."
                     elif any(row["project_id"] == known_project for row in members):
@@ -195,6 +222,7 @@ class ProjectLibraryService:
                             warnings.append("Another entry already manages this project identity. Keep Separate retains history without creating a second working project.")
                     else:
                         source["existing_project_id"] = known_project
+                        source["source_state"] = "local_project"
                         source["existing_context"] = self.files.digest(context)
                         source["existing_registry_revision"] = context["registry_revision"]
                         old = context["workspace"]["local_workspace_path"] if context["workspace"] else (
@@ -217,11 +245,19 @@ class ProjectLibraryService:
                     warnings.append("This project carries saved test data. Use Inspect and Restore Portable Project to preserve it; plain intake cannot create an empty replacement.")
                 if existing_member_id:
                     existing_member_ids[source["source_path"]] = existing_member_id
+                differences = []
+                if status == "conflict":
+                    related = [row for row in members if row["project_id"] == source.get("project_id") and source.get("project_id")
+                        or row["ltr_number"] and source.get("ltr_number") and row["ltr_number"].casefold() == source["ltr_number"].casefold()]
+                    differences = [f"Existing project: {row['ltr_number'] or 'No LTR'} · {row['title']} ({row['folder_path']})" for row in related[:5]]
+                    differences.append(f"Incoming project: {source.get('ltr_number') or 'No LTR'} · {source['title']} ({source['source_path']})")
                 rows.append({**source, "target_path": target, "status": status, "warnings": warnings,
+                             "differences": differences,
                              "can_keep_separate": separate, "target_member_id": target_id,
                              "new_project_title": new_title, "target_revision": member["revision"] if member else None, "reference_existing": reference_existing})
             except (OSError, ValueError, LookupError) as error:
                 rows.append({"source_path": value, "target_path": "", "title": Path(value).name,
+                             "source_state": "unavailable", "differences": [],
                              "ltr_number": None, "status": "unavailable", "warnings": [str(error)],
                              "can_keep_separate": False, "target_member_id": target_id, "new_project_title": new_title})
         for first in rows:
@@ -239,12 +275,18 @@ class ProjectLibraryService:
                     first["status"], first["can_keep_separate"] = "conflict", True
                     first["warnings"].append("Another selected source uses the same destination. Keep Separate preserves both without overwriting either source.")
         for row in rows:
+            if row.get("source_state") == "incomplete" and row["status"] != "already_added" and not row.get("reference_existing"):
+                row["takeover_blocker"] = "This ConnLab project has no data snapshot. Export it from the original computer to restore its data, or explicitly import files only."
+            if row.get("source_state") == "upgrade_required":
+                row["takeover_blocker"] = "Update ConnLab before importing this project. It was created with a newer format."
+            if row.get("files_only"):
+                row["warnings"].append("Only files will be imported. Existing ConnLab test data will not be restored.")
             problem = row.get("boundary_problem") or row.get("takeover_blocker")
-            if problem and row["status"] != "already_added":
+            if problem and (row["status"] != "already_added" or row.get("source_state") == "upgrade_required"):
                 row["status"], row["can_keep_separate"] = "conflict", False
                 row["warnings"].append(problem)
         plan = self.files.save_plan("intake", {"items": rows})
-        keys = ("source_path", "target_path", "title", "ltr_number", "status", "warnings", "can_keep_separate", "target_member_id", "new_project_title")
+        keys = ("source_path", "target_path", "title", "ltr_number", "status", "warnings", "can_keep_separate", "target_member_id", "new_project_title", "source_state", "differences")
         return {"plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"],
                 "projects_root": str(self.settings.projects_dir),
                 "items": [{**{key: row.get(key) for key in keys},
@@ -368,7 +410,7 @@ class ProjectLibraryService:
             project_id = source.get("project_id") if source.get("reference_existing") else None
             member = {"member_id": item["working_member_id"], "project_id": project_id,
                       "ltr_number": source.get("ltr_number"), "title": title, "folder_path": root,
-                      "source_path": source["source_path"], "source_project_id": source.get("project_id"), "revision": 1, "batch_id": batch["batch_id"],
+                      "source_path": source["source_path"], "source_project_id": source.get("original_project_id") or source.get("project_id"), "revision": 1, "batch_id": batch["batch_id"],
                       "created_at": now(), "snapshot_fingerprint": None}
             if source.get("new_project_title"):
                 self.files.ensure_group(member)
@@ -393,12 +435,12 @@ class ProjectLibraryService:
                 self.files.locate_context(member, member["folder_path"], self.store.workspace(project_id))
                 self.store.link_existing_project(member, project_id, self.files.business_path(member))
                 member = self.store.member(member["member_id"])
-            if not member["project_id"] and not item["keep_separate"] and not self.store.project_exists(member.get("source_project_id")):
+            if not member["project_id"] and not item["keep_separate"] and (source.get("files_only") or not self.store.project_exists(member.get("source_project_id"))):
                 # The final intake confirmation also establishes the lifecycle container.
                 # A retained conflict copy must still follow its reviewed takeover rules.
-                self.store.create_planning_project(member)
+                self.store.create_planning_project(member, preserve_source_identity=not source.get("files_only"))
                 member = self.store.member(member["member_id"])
-            if source.get("reception_layout") and member["project_id"] and not item["keep_separate"]:
+            if source.get("reception_layout") and member["project_id"] and member["ltr_number"] and not item["keep_separate"]:
                 workspace = self.store.bind_imported_workspace(member, self.files.business_path(member), self.settings.templates_dir)
                 self.files.publish_workspace_metadata(member["folder_path"], workspace)
             self.files.write_marker(member)

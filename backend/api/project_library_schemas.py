@@ -38,6 +38,7 @@ class RootsRequest(BaseModel):
 
 
 class CandidateResponse(BaseModel):
+    source_state: str = "manual"
     source_path: str
     title: str
     ltr_number: str | None
@@ -55,6 +56,7 @@ class ScanResponse(BaseModel):
 
 
 class IntakeAssignment(BaseModel):
+    files_only: bool = False
     source_path: str
     target_member_id: str | None = None
     new_project_title: str | None = None
@@ -66,6 +68,8 @@ class IntakeRequest(BaseModel):
 
 
 class IntakeItemResponse(BaseModel):
+    differences: list[str] = Field(default_factory=list)
+    source_state: str = "manual"
     source_path: str
     target_path: str
     title: str
@@ -161,6 +165,8 @@ class RestoreConfirmRequest(ConfirmRequest):
 
 
 class RestorePlanResponse(ConfirmRequest):
+    differences: list[str] = Field(default_factory=list)
+    existing_member_id: str | None = None
     projects_root: str | None = None
     resolution_options: list[str] = Field(default_factory=list)
     resolution: str | None = None

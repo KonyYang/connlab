@@ -91,13 +91,13 @@ class ProjectLibraryRepository:
                                           ProjectLibraryMemberModel.title).where(ProjectLibraryMemberModel.project_id == project_id)).first()
         return {"member_id": row.member_id, "ltr_number": row.ltr_number, "title": row.title} if row else None
 
-    def create_planning_project(self, member):
+    def create_planning_project(self, member, *, preserve_source_identity=True):
         row = self.session.get(ProjectLibraryMemberModel, member["member_id"], populate_existing=True)
         if row is None:
             raise LookupError("Project library entry not found.")
         if row.project_id:
             return row.project_id
-        project_id = member.get("source_project_id") or uuid4().hex
+        project_id = (member.get("source_project_id") if preserve_source_identity else None) or uuid4().hex
         if self.session.get(ProjectModel, project_id) is not None:
             raise ProjectLibraryConflict("This project identity already exists. Review its existing project before importing.")
         self.session.add(ProjectModel(project_id=project_id, project_no=member.get("ltr_number"),

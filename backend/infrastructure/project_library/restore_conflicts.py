@@ -217,7 +217,7 @@ class RestoreConflicts:
 
     def plan(self, folder, resolution):
         folder = str(checked_path(folder))
-        extra = {"resolution_options": [], "resolution": resolution, "target_revision": None, "backup_path": None, "source_signature": None}
+        extra = {"resolution_options": [], "resolution": resolution, "target_revision": None, "backup_path": None, "source_signature": None, "differences": [], "existing_member_id": None}
         try:
             body = self.p._read_snapshot(folder)
             self.p._verify_files(folder, body)
@@ -235,11 +235,14 @@ class RestoreConflicts:
             if recovery:
                 target = recovery["target_path"]
             if existing:
+                from backend.infrastructure.project_library.comparison import snapshot_differences
                 current, _ = self.p._capture(existing)
+                extra["existing_member_id"] = existing["member_id"]
                 target_signature = fingerprint(current)
                 if self.p._matches_snapshot(current, body):
                     status, target = "already_added", existing["folder_path"]
                 else:
+                    extra["differences"] = snapshot_differences(current, body)
                     status, target, options = "conflict", existing["folder_path"], ["replace_working_copy", "keep_as_history"]
                     warnings.append("This project has a different working revision. Select how to retain the two copies.")
             elif self.store.project_exists(body["project_id"]):
