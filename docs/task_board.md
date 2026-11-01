@@ -147,6 +147,7 @@
           "backend/application/project_registry_management_service.py",
           "backend/application/project_registry_models.py",
           "backend/application/project_registry_summary_service.py",
+          "backend/domain/project_library.py",
           "backend/infrastructure/project_library",
           "backend/infrastructure/storage/repositories/project_library.py",
           "docs/architecture/project_library.md",
@@ -171,7 +172,7 @@
         "risk_reasons": [],
         "activation_head": "394924ea3d8862e7a1fad5a5a154b1e8181e86d9",
         "started_at": "2026-10-31T21:21:46.877584Z",
-        "updated_at": "2026-11-01T03:18:29.631057Z",
+        "updated_at": "2026-11-01T03:45:14.554168Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
