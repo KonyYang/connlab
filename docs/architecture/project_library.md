@@ -44,6 +44,20 @@ Its display kind is `imported`, with `has_registered_ltr=false` and no registere
 LTR record. A real LTR registration always wins. Imported rows use the normal
 project actions and show missing Matrix state rather than invented completion.
 
+Recognized standard imports also bind the received root, business folder and
+Source Book in the normal workspace record and publish a matching manifest.
+Existing mismatched workspace bindings require review. Ordinary successful import
+navigation reads the actual member identity before opening the workbench; retained,
+unavailable or unbound records keep their safe details entry.
+
+Project details expose the explicit `library_member_id` association. The common
+workbench uses it for Browse Files even when a legacy layout has no official-folder
+binding or LTR. Missing Basic Information and confirmed Matrix are stated without
+claiming restored data. Browsing returns to the same project. Recycle display and
+restore conflict checks use the same historical identity rule as Projects; a real
+registered LTR continues to take precedence. These reads do not register an LTR or
+mutate source materials.
+
 ### Save location and guided import
 
 Ordinary instances reuse the active Settings **Project default save location**.

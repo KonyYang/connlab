@@ -11,6 +11,7 @@ from backend.application.project_basic_information_service import (
 from backend.application.project_identity import (
     display_identity_override_from_values,
     resolve_project_identity,
+    with_imported_project_identity,
 )
 from backend.domain import LtrRecord, Project, ProjectTemporaryContext
 
@@ -74,6 +75,7 @@ class ProjectRegistryRow:
     total_group_count: int | None = None
     estimated_completion_date: str | None = None
     group_completion_details: tuple[dict, ...] = ()
+    library_member_id: str | None = None
 
 
 class ProjectRegistryMatrixStore(Protocol):
@@ -134,7 +136,7 @@ class ProjectRegistrySummaryService:
                 self._ltrs.list_by_project(project.project_id),
                 identity_override=identity_override,
             )
-            imported_number = imported.get(project.project_id, {}).get("ltr_number") if not identity.has_registered_ltr else None
+            identity = with_imported_project_identity(identity, imported.get(project.project_id, {}).get("ltr_number"))
             temporary_context = (
                 self._temporary_contexts.get_by_project(project.project_id)
                 if self._temporary_contexts is not None
@@ -142,6 +144,7 @@ class ProjectRegistrySummaryService:
             )
             rows.append(
                 ProjectRegistryRow(
+                    library_member_id=imported.get(project.project_id, {}).get("member_id"),
                     completed_group_count=completion["completed_count"] if completion else None,
                     total_group_count=completion["total_count"] if completion else None,
                     estimated_completion_date=completion["estimated_completion_date"] if completion else None,
@@ -150,7 +153,7 @@ class ProjectRegistrySummaryService:
                     registry_state=project.registry_state,
                     registry_revision=project.registry_revision,
                     has_confirmed_matrix=project.project_id in confirmed_project_ids,
-                    ltr_number=identity.ltr_number or imported_number,
+                    ltr_number=identity.ltr_number,
                     sample_description=_first_text(
                         identity_override.sample_description if identity_override else None,
                         temporary_context.sample_description if temporary_context else None,
@@ -169,10 +172,10 @@ class ProjectRegistrySummaryService:
                         temporary_context.notes if temporary_context else None,
                         identity.operator_note,
                     ),
-                    display_project_id=imported_number or identity.display_project_id,
-                    display_project_id_kind="imported" if imported_number else identity.display_project_id_kind,
+                    display_project_id=identity.display_project_id,
+                    display_project_id_kind=identity.display_project_id_kind,
                     has_registered_ltr=identity.has_registered_ltr,
-                    temporary_project_id=None if imported_number else identity.temporary_project_id,
+                    temporary_project_id=identity.temporary_project_id,
                     registered_ltr_number=identity.registered_ltr_number,
                     temporary_source_asset_ids=(
                         temporary_context.source_asset_ids if temporary_context else ()

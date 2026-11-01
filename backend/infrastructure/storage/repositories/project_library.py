@@ -79,9 +79,14 @@ class ProjectLibraryRepository:
                 for row in self.session.scalars(select(LtrRecordModel))]
 
     def imported_identities(self):
-        rows = self.session.execute(select(ProjectLibraryMemberModel.project_id, ProjectLibraryMemberModel.ltr_number,
+        rows = self.session.execute(select(ProjectLibraryMemberModel.project_id, ProjectLibraryMemberModel.member_id, ProjectLibraryMemberModel.ltr_number,
                                            ProjectLibraryMemberModel.title).where(ProjectLibraryMemberModel.project_id.is_not(None)))
-        return {row.project_id: {"ltr_number": row.ltr_number, "title": row.title} for row in rows}
+        return {row.project_id: {"member_id": row.member_id, "ltr_number": row.ltr_number, "title": row.title} for row in rows}
+
+    def imported_identity(self, project_id):
+        row = self.session.execute(select(ProjectLibraryMemberModel.member_id, ProjectLibraryMemberModel.ltr_number,
+                                          ProjectLibraryMemberModel.title).where(ProjectLibraryMemberModel.project_id == project_id)).first()
+        return {"member_id": row.member_id, "ltr_number": row.ltr_number, "title": row.title} if row else None
 
     def create_planning_project(self, member):
         row = self.session.get(ProjectLibraryMemberModel, member["member_id"], populate_existing=True)

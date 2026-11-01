@@ -45,6 +45,7 @@ export function resumeProjectFolderGeneration(projectId: string, operationId: st
 }
 
 export type Project = {
+  library_member_id?: string | null;
   project_id: string;
   registry_state?: "active" | "trash" | "history";
   registry_revision?: number;

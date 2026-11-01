@@ -3099,10 +3099,12 @@ def get_project_registry_management_service(
     """Build one atomic registry management unit without starting background workers."""
     from backend.application.project_registry_management_service import ProjectRegistryManagementService
     from backend.infrastructure.storage.repositories.project_registry import ProjectRegistryRepository
+    from backend.infrastructure.storage.repositories.project_library import ProjectLibraryRepository
     from backend.infrastructure.files.generation_journal import GenerationJournal
     return ProjectRegistryManagementService(
         ProjectRegistryRepository(session), LtrRecordRepository(session),
         GenerationJournal(settings.data_dir / "project_folder_generation"),
         basic_information=ProjectBasicInformationRepository(session),
         temporary_context=ProjectTemporaryContextRepository(session),
+        project_library_store=ProjectLibraryRepository(session),
     )

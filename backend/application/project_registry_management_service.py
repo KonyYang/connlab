@@ -8,7 +8,7 @@ import json
 from typing import Protocol
 from uuid import uuid4
 
-from backend.application.project_identity import resolve_project_identity, display_identity_override_from_values
+from backend.application.project_identity import resolve_project_identity, display_identity_override_from_values, with_imported_project_identity
 from backend.application.project_lifecycle_state_service import project_close_reason_label
 from backend.application.project_registry_models import (
     ProjectRegistryEntry, ProjectRegistryPreview, ProjectRegistryConflict, ProjectRegistryNotFound,
@@ -28,10 +28,11 @@ class ProjectRegistryManagementService:
     """Conflict decisions and complete audited transitions behind one public seam."""
 
     def __init__(self, registry: RegistryStore, ltrs, generation_journal, *, basic_information=None,
-                 temporary_context=None, clock=None):
+                 temporary_context=None, clock=None, project_library_store=None):
         self._registry, self._ltrs, self._generation = registry, ltrs, generation_journal
         self._basic, self._temporary = basic_information, temporary_context
         self._clock = clock or (lambda: datetime.now(timezone.utc).isoformat())
+        self._library = project_library_store
 
     def list_entries(self, location):
         if location not in {"trash", "history"}:
@@ -120,12 +121,18 @@ class ProjectRegistryManagementService:
 
     def _identity_key(self, project):
         identity = resolve_project_identity(project, self._ltrs.list_by_project(project.project_id))
+        identity = with_imported_project_identity(identity, self._imported_number(project.project_id))
         return identity.display_project_id.strip().casefold()
+
+    def _imported_number(self, project_id):
+        imported = self._library.imported_identity(project_id) if self._library else None
+        return imported.get("ltr_number") if imported else None
 
     def _entry(self, project):
         basic = self._basic.get_latest_confirmed(project.project_id) if self._basic else None
         identity = resolve_project_identity(project, self._ltrs.list_by_project(project.project_id),
             identity_override=display_identity_override_from_values(basic.values if basic else None))
+        identity = with_imported_project_identity(identity, self._imported_number(project.project_id))
         temporary = self._temporary.get_by_project(project.project_id) if self._temporary else None
         return ProjectRegistryEntry(
             project_id=project.project_id, display_project_id=identity.display_project_id,

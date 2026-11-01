@@ -101,6 +101,7 @@ class ProjectResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     project_id: str
+    library_member_id: str | None = None
     project_no: str | None = None
     product_name: str
     requestor: str
@@ -599,6 +600,7 @@ def _to_response(
     """Convert a project domain object to an API response DTO."""
     return ProjectResponse(
         project_id=project.project_id,
+        library_member_id=registry_row.library_member_id if registry_row else None,
         registry_state=project.registry_state,
         registry_revision=project.registry_revision,
         project_no=project.project_no,
