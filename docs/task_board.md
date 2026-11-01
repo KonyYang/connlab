@@ -134,11 +134,11 @@
   "tasks": {
     "TASK_PROJECTS_DEFAULT_ONGOING_20261101": {
       "slot": "micro",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "2b3ad410dd7dceccfa1fc28e40d90e51c97158ce",
       "task": {
         "task_id": "TASK_PROJECTS_DEFAULT_ONGOING_20261101",
         "summary": "Default Projects view to On-going",
@@ -153,9 +153,55 @@
         "risk_reasons": [],
         "activation_head": "5f3514effa800d93578b48fdfeedc9fbddaaba77",
         "started_at": "2026-11-01T10:44:18.897851Z",
-        "updated_at": "2026-11-01T10:46:55.045806Z",
+        "updated_at": "2026-11-01T10:47:17.055877Z",
         "checkpoint": null,
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_PROJECTS_DEFAULT_ONGOING_20261101",
+          "subject": "3b473cc2cd203ebb2165eedd25fb7ae6789dfb19",
+          "summary": "Projects defaults to On-going when no valid saved view exists. Preserve explicit saved view choices and all other filters. Regression tests explicitly choose All Projects when testing files-only/all-catalog behavior. No business data mutation, push/publication or automatic Close.",
+          "scope_ok": true,
+          "changed_paths": [
+            "frontend/src/App.test.tsx",
+            "frontend/src/pages/ProjectListPage.test.tsx",
+            "frontend/src/pages/ProjectListPage.tsx"
+          ],
+          "validation": [
+            {
+              "name": "Projects and App targeted tests",
+              "status": "passed",
+              "result": "33 tests passed across 2 files; new default regression first failed against old All Projects default, then passed. Search, view switching, pagination, saved return context and route behavior retained.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\projects-default-ongoing-20261101\\final-tests.log"
+            },
+            {
+              "name": "TypeScript",
+              "status": "passed",
+              "result": "npx tsc -b completed successfully on final code.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\projects-default-ongoing-20261101\\typecheck.log"
+            },
+            {
+              "name": "Micro self-review",
+              "status": "passed",
+              "result": "Only runtime change is fallback selectedView all to ongoing; saved valid choices retain precedence. Test-only adaptations preserve existing assertions. Exact diff reviewed, git diff --check clean. No backend, data or filesystem behavior changes.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\projects-default-ongoing-20261101\\subject.json"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Current agent implementation, self-review and targeted tests; no independent-agent review claimed."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "3b473cc2cd203ebb2165eedd25fb7ae6789dfb19",
+            "primary_before": "c17353e4f57090d077ccad67e21e86502461b150",
+            "integrated_head": "2b3ad410dd7dceccfa1fc28e40d90e51c97158ce",
+            "recovered": false
+          }
+        }
       }
     }
   }
