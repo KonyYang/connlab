@@ -439,7 +439,7 @@ function BusinessProjectListPage({
 function loadProjectRegistryViewState(storageKey: string): ProjectRegistryViewState {
   const fallback: ProjectRegistryViewState = {
     search: "",
-    selectedView: "all",
+    selectedView: "ongoing",
     projectIdSort: "desc",
     currentPage: 1,
   };

@@ -80,6 +80,7 @@ describe("ProjectListPage lifecycle registry views", () => {
     vi.mocked(listLegacyProjects).mockResolvedValue([{ record_id: "same-id", name: "Linked connector", number: "DL-2022-01-001", number_evidence: [], folder_path: "D:/old/linked", notes: [], revision: 1, imported_at: "", updated_at: "" }]);
     const user = userEvent.setup(), onOpenMember = vi.fn(), onOpenLinked = vi.fn();
     render(<ProjectListPage onOpenProject={vi.fn()} onImport={vi.fn()} onOpenMember={onOpenMember} onOpenLinked={onOpenLinked} />);
+    await user.selectOptions(screen.getByLabelText("Project view"), "all");
     expect(await screen.findByText("Received connector")).toBeTruthy();
     expect(screen.getByText("Linked connector")).toBeTruthy();
     expect(screen.getByLabelText("Project view")).toHaveProperty("value", "all");
@@ -123,6 +124,7 @@ describe("ProjectListPage lifecycle registry views", () => {
     vi.mocked(listLegacyProjects).mockResolvedValue([{ record_id: "linked", name: "Available folder", number: null, number_evidence: [], folder_path: "D:/old/available", notes: [], revision: 1, imported_at: "", updated_at: "" }]);
     const user = userEvent.setup();
     render(<ProjectListPage onOpenProject={vi.fn()} onOpenLinked={vi.fn()} />);
+    await user.selectOptions(screen.getByLabelText("Project view"), "all");
     expect(await screen.findByText("Available folder")).toBeTruthy();
     expect(screen.getByRole("alert")).toBeTruthy();
     expect(screen.queryByText("No projects yet")).toBeNull();
@@ -138,10 +140,12 @@ describe("ProjectListPage lifecycle registry views", () => {
     vi.mocked(libraryApi.listLibraryMembers).mockResolvedValue({ items: Array.from({ length: 21 }, (_, i) => ({ member_id: String(i), project_id: null, ltr_number: null, title: `Folder ${i + 1}`, folder_path: `D:/old/${i}`, revision: 1, batch_id: i === 20 ? "recent" : "other", snapshot_status: "missing", snapshot_created_at: null, warnings: [], can_continue: false })) });
     const props = { onOpenProject: vi.fn(), onOpenMember: vi.fn() }, user = userEvent.setup();
     const { rerender } = render(<ProjectListPage {...props} />);
+    await user.selectOptions(screen.getByLabelText("Project view"), "all");
     await user.type(await screen.findByLabelText("Search projects"), "Folder");
     await user.click(await screen.findByRole("button", { name: "Next" }));
     expect(screen.getByText("Page 2 / 2")).toBeTruthy();
     rerender(<ProjectListPage {...props} batchId="recent" />);
+    await user.selectOptions(screen.getByLabelText("Project view"), "all");
     expect(await screen.findByText("Folder 21")).toBeTruthy();
     expect(screen.getByLabelText("Search projects")).toHaveProperty("value", "");
     expect(screen.getByText("Page 1 / 1")).toBeTruthy();
@@ -223,7 +227,7 @@ describe("ProjectListPage lifecycle registry views", () => {
     expect(screen.queryByRole("dialog", {name: /Close project/})).toBeNull();
   });
 
-  it("defaults to all projects while keeping On-going available as an explicit filter", async () => {
+  it("defaults to On-going while keeping All Projects available as an explicit filter", async () => {
     mockRows([
       registryRow({ project_id: "P-ACTIVE", display_project_id: "DL-2026-06-001" }),
       registryRow({
@@ -245,10 +249,10 @@ describe("ProjectListPage lifecycle registry views", () => {
     render(<ProjectListPage onOpenProject={vi.fn()} />);
 
     expect(await screen.findByText("DL-2026-06-001")).toBeTruthy();
-    expect(screen.getByText("DL-2026-06-002")).toBeTruthy();
-    expect(screen.getByLabelText("Project view")).toHaveProperty("value", "all");
-    await userEvent.setup().selectOptions(screen.getByLabelText("Project view"), "ongoing");
+    expect(screen.getByLabelText("Project view")).toHaveProperty("value", "ongoing");
     expect(screen.queryByText("DL-2026-06-002")).toBeNull();
+    await userEvent.setup().selectOptions(screen.getByLabelText("Project view"), "all");
+    expect(screen.getByText("DL-2026-06-002")).toBeTruthy();
   });
 
   it("defaults Project IDs to newest first and lets the operator switch to oldest first", async () => {
@@ -468,6 +472,7 @@ describe("ProjectListPage lifecycle registry views", () => {
     render(<ProjectListPage onOpenProject={onOpenProject} />);
 
     expect(await screen.findByText("DL-2026-06-015")).toBeTruthy();
+    await user.selectOptions(screen.getByLabelText("Project view"), "all");
     expect(screen.getAllByText("Not scheduled")).toHaveLength(2);
     await user.click(screen.getByRole("button", { name: /Open Workbench.*DL-2026-06-015/ }));
     expect(onOpenProject).toHaveBeenCalledWith("P-FOLDER");
