@@ -218,13 +218,14 @@
         "route": "sol_direct",
         "scope": "Change Test Result UI fallback from OK to In progress, preserving valid saved and authoritative values. Targeted mock API tests only; no real business data writes, push or publication.",
         "scope_paths": [
-          "frontend/src/features/project-basic-information/basicInformationFieldConfig.ts",
-          "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx"
+          "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.test.tsx",
+          "frontend/src/features/project-basic-information/ProjectBasicInformationWorkspace.tsx",
+          "frontend/src/features/project-basic-information/basicInformationFieldConfig.ts"
         ],
         "risk_reasons": [],
         "activation_head": "a96b15ef819a6915e5c08a0b7d371029def89fc3",
         "started_at": "2026-11-01T10:49:56.769932Z",
-        "updated_at": "2026-11-01T10:58:17.357474Z",
+        "updated_at": "2026-11-01T11:00:16.112794Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "version": 1,
