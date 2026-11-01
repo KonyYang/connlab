@@ -66,6 +66,16 @@ restore conflict checks use the same historical identity rule as Projects; a rea
 registered LTR continues to take precedence. These reads do not register an LTR or
 mutate source materials.
 
+Imported projects without real Matrix draft steps show an empty setup state rather
+than sample test steps. Actual draft steps remain visible for review, and confirmed
+Matrix projections retain the normal execution workspace. No confirmation or test
+data is inferred from the presence of ordinary files.
+
+New portable working copies use the validated full LTR as their destination root,
+including suffixes, regardless of the transport folder's name. Existing working
+copy and recovery decisions keep their reviewed paths and protections. Unnumbered
+copies retain their transport-derived destination until their identity is resolved.
+
 ### Save location and guided import
 
 Ordinary instances reuse the active Settings **Project default save location**.

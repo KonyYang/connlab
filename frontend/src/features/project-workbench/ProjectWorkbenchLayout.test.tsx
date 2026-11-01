@@ -86,6 +86,23 @@ beforeEach(() => {
 });
 
 describe("ProjectWorkbenchLayout lifecycle modes", () => {
+  it.each([false, true])("shows an honest empty Matrix state for imported files instead of example test steps (empty saved draft: %s)", async hasEmptyDraft => {
+    const onOpenMatrixEditor = vi.fn();
+    renderWorkbench({ matrixDraft: hasEmptyDraft ? testPlanDraft : null }, { library_member_id: "imported-member" }, { onOpenMatrixEditor });
+    expect(screen.getByText("No confirmed Matrix")).toBeTruthy();
+    expect(screen.queryByText("Visual Examination")).toBeNull();
+    expect(screen.queryByText("Draft preview")).toBeNull();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Matrix Editor", exact: true }));
+    expect(onOpenMatrixEditor).toHaveBeenCalledOnce();
+  });
+
+  it("keeps actual imported draft steps visible for review", () => {
+    renderWorkbench({ matrixDraft: noMatrixPreviewDraft }, { library_member_id: "imported-member" });
+    expect(screen.getByText("Visual Examination")).toBeTruthy();
+    expect(screen.getByText("Draft preview")).toBeTruthy();
+    expect(screen.queryByText("No confirmed Matrix")).toBeNull();
+  });
+
   it("can hide workbench details while keeping the Matrix visible", async () => {
     const user = userEvent.setup();
     renderWorkbench({ activeConfirmedMatrixSnapshot: confirmedMatrixSnapshot });

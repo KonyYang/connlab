@@ -13,7 +13,7 @@ from uuid import uuid4
 from sqlalchemy import select, or_
 
 from backend.domain.project_library import ProjectLibraryConflict, ProjectLibraryError
-from backend.infrastructure.project_library.files import checked_path, read_json, atomic_json, fingerprint, now, inventory, copy_verified
+from backend.infrastructure.project_library.files import checked_path, read_json, atomic_json, fingerprint, now, inventory, copy_verified, NUMBER
 from backend.infrastructure.project_library.assets import PortableAssets, SPECIAL_DATA_ROOTS, decode_rows
 from backend.infrastructure.project_library.ownership import capture, table, TABLES, plain
 from backend.infrastructure.storage.database import Base
@@ -225,7 +225,9 @@ class RestoreConflicts:
             if pending:
                 extra["backup_path"] = pending["payload"]["backup_path"]
                 return self._review_pending(folder, body, resolution, pending)
-            target = str(self.settings.projects_dir / Path(folder).name)
+            number = body.get("ltr_number")
+            root_name = number if isinstance(number, str) and NUMBER.fullmatch(number) else Path(folder).name
+            target = str(self.settings.projects_dir / root_name)
             blockers, warnings, options = [], list(body.get("warnings", [])), []
             existing = next((row for row in self.store.members() if row["project_id"] == body["project_id"]), None)
             target_signature = None

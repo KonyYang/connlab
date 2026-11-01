@@ -642,6 +642,7 @@ export function ProjectWorkbenchLayout({
         ) : (
           <>
             <NoMatrixWorkspaceEmptyState
+              showPlaceholderSteps={!project.library_member_id}
               projectFolderTasks={projectFolderTasks}
               projectFolderHeaderAction={projectFolderHeaderAction}
               matrixDraft={matrixCandidateDraft ?? matrixDraft ?? null}

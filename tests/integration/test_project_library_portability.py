@@ -79,6 +79,27 @@ def test_restore_review_distinguishes_missing_snapshot_and_keeps_restore_blocked
         engine.dispose()
 
 
+def test_transport_folder_name_does_not_change_the_restored_ltr_root(tmp_path):
+    a, _, ea = app_at(tmp_path / "A")
+    b, settings, eb = app_at(tmp_path / "B")
+    try:
+        source = prepared_manual_project(a, tmp_path / "old", ltr="DL-2026-09-032A1")
+        transport = tmp_path / "Copied from another computer"
+        shutil.copytree(source["folder_path"], transport)
+        review = b.post("/api/project-library/restore-plan", json={"folder": str(transport)}).json()
+        assert review["status"] == "ready", review
+        target = settings.projects_dir / "DL-2026-09-032A1"
+        assert review["target_path"] == str(target)
+        result = confirm(b, "/api/project-library/restore", review)
+        assert Path(result["member"]["folder_path"]) == target
+        assert result["member"]["project_id"] == source["project_id"]
+        assert result["member"]["can_continue"] is True
+        assert (target / "DL-2026-09-032A1 History/result.txt").read_text(encoding="utf-8") == "source result"
+        assert b.post("/api/project-library/restore-plan", json={"folder": str(transport)}).json()["status"] == "already_added"
+    finally:
+        ea.dispose(); eb.dispose()
+
+
 def test_project_travels_without_source_database_and_preserves_report_evidence(tmp_path):
     a, settings_a, engine_a = app_at(tmp_path / "A")
     b, settings_b, engine_b = app_at(tmp_path / "B")

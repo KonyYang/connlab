@@ -43,7 +43,7 @@ export function ProjectWorkbenchPage({
             {model.basicInformation?.status !== "confirmed" && <span>Review Basic Information before testing.</span>}
             {!model.activeConfirmedMatrixSnapshot && <span>No confirmed Matrix. Review or create the Matrix before testing.</span>}
           </>}
-          <button type="button" onClick={() => onBrowseProjectFiles(model.project!.library_member_id!)}>Browse Files</button>
+          <div><button type="button" className="ui-secondary-action" onClick={() => onBrowseProjectFiles(model.project!.library_member_id!)}>Browse Files</button></div>
         </aside>}
         <ProjectWorkbenchLayout
           runtimeModel={runtimeModel}

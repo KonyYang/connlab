@@ -440,6 +440,7 @@ export function NoMatrixWorkspaceEmptyState({
   onProjectFolderTaskCancel,
   onPublicFolderAutoSyncChange,
   readonlyReason,
+  showPlaceholderSteps = true,
 }: {
   projectFolderTasks: ProjectFolderTaskRow[];
   projectFolderHeaderAction: ProjectFolderHeaderAction;
@@ -449,7 +450,9 @@ export function NoMatrixWorkspaceEmptyState({
   onProjectFolderTaskCancel?: (operation: PublicFolderWorkflowOperationType) => void;
   onPublicFolderAutoSyncChange?: (enabled: boolean) => void;
   readonlyReason?: string;
+  showPlaceholderSteps?: boolean;
 }): ReactElement {
+  const emptyImportedProject = !showPlaceholderSteps && !matrixDraft?.payload.groups?.some(group => (group.steps?.length ?? 0) > 0);
   const draftPreview = buildNoMatrixDraftPreview(matrixDraft);
   const [selectedTokenReference, setSelectedTokenReference] = useState<string | null>(
     null
@@ -463,7 +466,10 @@ export function NoMatrixWorkspaceEmptyState({
       aria-label="No active Matrix workspace"
     >
       <div className="runtime-console-no-matrix-main">
-        <table className="runtime-console-no-matrix-table">
+        {emptyImportedProject ? <div role="status">
+          <h3>No confirmed Matrix</h3>
+          <p>{readonlyReason ? `${readonlyReason} Project files remain available for browsing.` : "Project files are available. Use Matrix Editor to import or create the test plan, then review and confirm it before testing."}</p>
+        </div> : <table className="runtime-console-no-matrix-table">
           <thead>
             <tr>
               <th>No.</th>
@@ -515,10 +521,10 @@ export function NoMatrixWorkspaceEmptyState({
               </tr>
             ))}
           </tbody>
-        </table>
+        </table>}
       </div>
       <div className="runtime-console-no-matrix-side">
-        <aside className="runtime-console-step-workspace" aria-label="Step workspace">
+        {!emptyImportedProject && <aside className="runtime-console-step-workspace" aria-label="Step workspace">
           <header>
             <div>
               <p className="eyebrow">Step Actions</p>
@@ -551,7 +557,7 @@ export function NoMatrixWorkspaceEmptyState({
               </div>
             </dl>
           ) : null}
-        </aside>
+        </aside>}
         <ProjectFolderActionsSurface
           tasks={projectFolderTasks}
           headerAction={projectFolderHeaderAction}

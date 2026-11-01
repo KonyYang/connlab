@@ -25,7 +25,7 @@ function importPurpose(item: LibraryIntakeItem | PortableRestorePlan) {
     ? "Keep a complete historical copy for browsing. The working project stays unchanged."
     : "Restore the project and its saved test data. Review the restored project before continuing testing.";
   if (item.target_member_id) return "Add these files to the existing project for browsing. Existing test data stays unchanged.";
-  return "Copy project files for browsing. Complete project information and Matrix setup before continuing testing.";
+  return "Add this project and its files to Projects. Review missing information and Matrix setup in the workbench before testing.";
 }
 
 export function ProjectImportReviewList({ plan, snapshots, selected, separate, disabled, onToggle, onKeepSeparate, onResolveSnapshot, onOpenMember, onSelectReady, onClear }: Props) {
