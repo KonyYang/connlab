@@ -125,11 +125,11 @@
   "tasks": {
     "TASK_MANAGED_PROJECT_IMPORT_20261101": {
       "slot": "main",
-      "state": "running",
+      "state": "ready_for_close",
       "worktree": "C:\\Users\\White\\.codex\\worktrees\\unified-project-library-ui\\connlab",
       "branch": "codex/project-import-entry-20261028",
       "resources": [],
-      "integrated_head": null,
+      "integrated_head": "d8c923c54c8ddb521e31df30476c3e939b8a1f1e",
       "task": {
         "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
         "summary": "Imported projects use the standard project catalog and workbench with truthful completeness",
@@ -171,7 +171,7 @@
         "risk_reasons": [],
         "activation_head": "394924ea3d8862e7a1fad5a5a154b1e8181e86d9",
         "started_at": "2026-10-31T21:21:46.877584Z",
-        "updated_at": "2026-11-01T00:56:25.656154Z",
+        "updated_at": "2026-11-01T00:58:44.270025Z",
         "checkpoint": {
           "schema": "connlab.sol-task-checkpoint",
           "stage": "implementation",
@@ -181,7 +181,107 @@
           "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
           "version": 1
         },
-        "report": null
+        "report": {
+          "schema": "connlab.sol-task-report",
+          "version": 1,
+          "task_id": "TASK_MANAGED_PROJECT_IMPORT_20261101",
+          "subject": "bce16e716a5b0317ce46ee59aa0958012dfce0f5",
+          "summary": "Confirmed intake establishes a managed Project with standard catalog/workbench actions, truthful missing-information state and LTR-preserving directory reception. Known local identities reuse their data under writer/stale-review protection. Portable recovery and conflict/Recycle protections retained. Isolated acceptance complete; no real-data migration, push, publication or automatic Close.",
+          "scope_ok": true,
+          "changed_paths": [
+            "backend/api/dependencies.py",
+            "backend/api/routes_confirmed_fee_version.py",
+            "backend/api/routes_project.py",
+            "backend/application/project_identity.py",
+            "backend/application/project_library/service.py",
+            "backend/application/project_registry_management_service.py",
+            "backend/application/project_registry_summary_service.py",
+            "backend/infrastructure/project_library/files.py",
+            "backend/infrastructure/project_library/intake_layout.py",
+            "backend/infrastructure/project_library/restore_conflicts.py",
+            "backend/infrastructure/storage/repositories/project_library.py",
+            "docs/architecture/project_library.md",
+            "frontend/src/App.test.tsx",
+            "frontend/src/App.tsx",
+            "frontend/src/api/client.ts",
+            "frontend/src/features/project-library/ProjectImportResults.tsx",
+            "frontend/src/features/project-library/ProjectImportReviewList.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.test.tsx",
+            "frontend/src/features/project-library/ProjectLibraryImport.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.test.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLayout.tsx",
+            "frontend/src/features/project-workbench/ProjectWorkbenchLifecycleSections.tsx",
+            "frontend/src/pages/ProjectListPage.test.tsx",
+            "frontend/src/pages/ProjectListPage.tsx",
+            "frontend/src/pages/ProjectWorkbenchPage.test.tsx",
+            "frontend/src/pages/ProjectWorkbenchPage.tsx",
+            "tests/integration/test_confirmed_fee_version_api.py",
+            "tests/integration/test_project_library_api.py",
+            "tests/integration/test_project_library_portability.py",
+            "tests/integration/test_project_registry_management_api.py",
+            "tests/unit/test_project_registry_summary_service.py"
+          ],
+          "validation": [
+            {
+              "name": "Managed intake and recovery matrix",
+              "status": "passed",
+              "result": "177 passed in 274.04s: complete affected library API/portability, registry API/summary/management/generation lock and library unit suites.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\managed-import-20261101\\final-python-qa.log"
+            },
+            {
+              "name": "Final bounded QA finding and fees regression",
+              "status": "passed",
+              "result": "Final exact patch catches only missing-Matrix read exception as 404. RED reproduced 500; 46 fee API/service/lineage/automatic-build tests passed. Actual isolated manual and unnumbered status 404, restored status 200. Existing confirmation path unchanged. Earlier 177 unrelated checks remain applicable.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\managed-import-20261101\\fee-not-ready-green.log"
+            },
+            {
+              "name": "Complete affected frontend matrix",
+              "status": "passed",
+              "result": "31 files /371 tests passed; TypeScript tsc -b and Vite build passed sequentially. No frontend edits after this run.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\managed-import-20261101\\final-frontend-qa.log"
+            },
+            {
+              "name": "Isolated actual UI and data integrity",
+              "status": "passed",
+              "result": "Real historical force-test directory copy, EK200 portable snapshot and unnumbered fixture imported through one final confirmation. Normal workspace/list actions, files/back/search and Recycle/restore verified. No-Matrix placeholder absent. Snapshot 64 tables/326 rows and 4 asset hashes match; 54 source files and 54 previous-copy files unchanged. Duplicate already_added; changed same-LTR source review without overwrite. No invented manual LTR or confirmed Matrix.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\managed-import-20261101\\final-ui\\integrity.json"
+            },
+            {
+              "name": "Exact standards and requirements review",
+              "status": "passed",
+              "result": "Distinct review passes by current agent on complete task diff and final bounded fee patch: dependency boundaries, source preservation, identity, retry/writer context, conflict and authority checks reviewed. QA log finding fixed and verified. No outstanding actionable finding. Not an independent-agent review.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\managed-import-20261101\\final-review.json"
+            },
+            {
+              "name": "Local integration preflight",
+              "status": "passed",
+              "result": "Task and primary clean; primary changes since base board-only. Developer 8000 dedicated console inventory verified and normally stopped via Ctrl+C without force; not restarted. No release service changed.",
+              "evidence": "C:\\Users\\White\\.codex\\visualizations\\2026\\10\\16\\01a14537-004d-7463-950c-c066b79be2b2\\managed-import-20261101\\normal-stop.json"
+            }
+          ],
+          "roles": {
+            "developer": {
+              "status": "passed",
+              "context": "Current Astra agent; coherent TDD slices, local commits, targeted feedback."
+            },
+            "reviewer": {
+              "status": "passed",
+              "context": "Distinct focused standards/spec review pass by same agent, not independent."
+            },
+            "qa": {
+              "status": "passed",
+              "context": "Current agent final risk-proportionate 177 backend/371 frontend matrix/build and real isolated UI; bounded 46 fee tests and actual readiness after QA finding. No duplicate full suite claimed."
+            }
+          },
+          "integration": {
+            "status": "passed",
+            "mode": "serial_local_merge",
+            "subject": "bce16e716a5b0317ce46ee59aa0958012dfce0f5",
+            "primary_before": "8552dd1ae871c64d73a864c01a868c09e27485d9",
+            "integrated_head": "d8c923c54c8ddb521e31df30476c3e939b8a1f1e",
+            "recovered": false
+          }
+        }
       }
     }
   }
