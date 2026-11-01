@@ -7,13 +7,12 @@ from copy import deepcopy
 from hashlib import sha256
 from pathlib import Path
 import json
-import os
 import shutil
 from uuid import uuid4
 from sqlalchemy import select, or_
 
 from backend.domain.project_library import ProjectLibraryConflict, ProjectLibraryError
-from backend.infrastructure.project_library.files import checked_path, read_json, atomic_json, fingerprint, now, inventory, copy_verified, NUMBER
+from backend.infrastructure.project_library.files import checked_path, read_json, atomic_json, fingerprint, now, inventory, copy_verified, move_verified, NUMBER
 from backend.infrastructure.project_library.assets import PortableAssets, SPECIAL_DATA_ROOTS, decode_rows
 from backend.infrastructure.project_library.ownership import capture, table, TABLES, plain
 from backend.infrastructure.storage.database import Base
@@ -184,6 +183,11 @@ class RestoreConflicts:
             if not marker or marker.get("member_id") != journal["member"]["member_id"] or marker.get("project_id") != payload["project_id"]:
                 raise ProjectLibraryConflict("The interrupted destination now has a foreign project identity. All locations were preserved.")
             try:
+                # A cross-volume move may have promoted its verified backup
+                # before the old source was removed. Both originals are safe.
+                if inventory(old) == inventory(target):
+                    self.p._verify_files(target, original)
+                    return
                 self.p._verify_files(target, body)
             except (OSError, ValueError) as error:
                 raise ProjectLibraryConflict("Files changed after the interrupted replacement. Preserve the new material before recovery; the original complete recovery packet remains available.") from error
@@ -404,11 +408,11 @@ class RestoreConflicts:
                     saved.parent.mkdir(parents=True, exist_ok=True)
                     journal["asset_moves"].append({"source": str(original), "backup": str(saved)})
                     atomic_json(journal_path, journal)
-                    os.rename(original, saved)
-            os.rename(member["folder_path"], old_folder)
+                    move_verified(original, saved)
+            move_verified(member["folder_path"], old_folder)
             journal["phase"] = "old_moved"
             atomic_json(journal_path, journal)
-            os.rename(staging, member["folder_path"])
+            move_verified(staging, member["folder_path"])
             journal["phase"] = "swapped"
             atomic_json(journal_path, journal)
             PortableAssets.restore_assets(Path(member["folder_path"]), body["assets"], self.settings, body["project_id"])
@@ -454,10 +458,10 @@ class RestoreConflicts:
                 checked_path(target)
                 inventory(target)
                 evidence = old.parent / ("interrupted-incoming-" + uuid4().hex)
-                os.rename(target, evidence)
+                move_verified(target, evidence)
                 journal["incoming_retained_path"] = str(evidence)
                 journal.setdefault("retained_locations", []).append(str(evidence))
-            os.rename(old, target)
+            move_verified(old, target)
         if not old and target.exists():
             marker = self.files.marker(target)
             if not marker or marker.get("member_id") != journal["member"]["member_id"]:
@@ -470,7 +474,7 @@ class RestoreConflicts:
             inventory(staging)
             if old:
                 evidence = old.parent / ("interrupted-staging-" + uuid4().hex)
-                os.rename(staging, evidence)
+                move_verified(staging, evidence)
                 journal.setdefault("retained_locations", []).append(str(evidence))
             else:
                 shutil.rmtree(staging)
@@ -483,7 +487,7 @@ class RestoreConflicts:
                     inventory(original)
                     shutil.rmtree(original)
                 original.parent.mkdir(parents=True, exist_ok=True)
-                os.rename(saved, original)
+                move_verified(saved, original)
 
     def _finish(self, journal, journal_path, body):
         member = self.store.member(journal["member"]["member_id"])

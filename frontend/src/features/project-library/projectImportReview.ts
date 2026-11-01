@@ -1,8 +1,14 @@
 import {
   inspectPortableProject, planLibraryIntake, restorePortableProject,
-  type LibraryBatch, type LibraryCandidate, type LibraryFileAssignment, type LibraryIntakePlan,
+  type LibraryBatch, type LibraryCandidate, type LibraryFileAssignment, type LibraryIntakeItem, type LibraryIntakePlan,
   type PortableRestorePlan, type PortableRestoreResult,
 } from "../../api/projectLibrary";
+
+// A replan can change material without changing its name or readiness. Keep
+// decisions only for the exact reviewed source and destination context.
+export function intakeReviewKey(item: LibraryIntakeItem | PortableRestorePlan) {
+  return "review_fingerprint" in item && item.review_fingerprint ? item.review_fingerprint : JSON.stringify(item);
+}
 
 export async function reviewImportCandidates(candidates: LibraryCandidate[], signal: AbortSignal, assignments?: LibraryFileAssignment[]) {
   const ordinary = candidates.filter(row => !row.has_portable);

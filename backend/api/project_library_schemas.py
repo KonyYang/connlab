@@ -68,6 +68,7 @@ class IntakeRequest(BaseModel):
 
 
 class IntakeItemResponse(BaseModel):
+    review_fingerprint: str | None = None
     differences: list[str] = Field(default_factory=list)
     source_state: str = "manual"
     source_path: str

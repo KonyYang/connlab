@@ -251,6 +251,9 @@ class ProjectLibraryService:
                         or row["ltr_number"] and source.get("ltr_number") and row["ltr_number"].casefold() == source["ltr_number"].casefold()]
                     differences = [f"Existing project: {row['ltr_number'] or 'No LTR'} · {row['title']} ({row['folder_path']})" for row in related[:5]]
                     differences.append(f"Incoming project: {source.get('ltr_number') or 'No LTR'} · {source['title']} ({source['source_path']})")
+                    comparison = related[0]["folder_path"] if related else target
+                    if self.files.exists(comparison):
+                        differences.extend(self.files.differences(source, comparison))
                 rows.append({**source, "target_path": target, "status": status, "warnings": warnings,
                              "differences": differences,
                              "can_keep_separate": separate, "target_member_id": target_id,
@@ -290,6 +293,7 @@ class ProjectLibraryService:
         return {"plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"],
                 "projects_root": str(self.settings.projects_dir),
                 "items": [{**{key: row.get(key) for key in keys},
+                           "review_fingerprint": self.files.digest(row),
                            "existing_member_id": existing_member_ids.get(row["source_path"]) if row["status"] == "already_added" else None}
                           for row in rows], "warnings": []}
 
@@ -415,7 +419,18 @@ class ProjectLibraryService:
             if source.get("new_project_title"):
                 self.files.ensure_group(member)
         marker = self.files.marker(member["folder_path"]) if self.files.exists(member["folder_path"]) else None
-        received = source.get("reference_existing") or self.files.exists(item["target"]) and marker and marker.get("member_id") == member["member_id"]
+        received = bool(source.get("reference_existing"))
+        if received and not self.files.same_content(source, item["target"]):
+            raise ProjectLibraryConflict("The reviewed working folder changed. Review both copies before linking.")
+        if not received and self.files.exists(item["target"]):
+            owned_copy = item["phase"] in {"copying", "copied"} and marker and marker.get("member_id") == member["member_id"]
+            # A parent member marker cannot prove that a later same-named
+            # supplementary file was copied by this batch.
+            if existing and item["phase"] != "copied":
+                owned_copy = self.files.received_by_batch(source, item["target"], batch["batch_id"], str(index))
+            if not owned_copy or not self.files.same_content(source, item["target"]):
+                raise ProjectLibraryConflict("The destination is occupied or its received files changed. Nothing was registered; review both copies.")
+            received = True
         if not received:
             item["phase"] = "copying"
             self.store.save_batch(batch)

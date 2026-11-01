@@ -612,9 +612,10 @@ def test_portable_preflight_blocks_missing_history_without_repairing_source(tmp_
 
 
 @pytest.mark.parametrize("managed", [True, False])
-def test_replacement_failure_rolls_back_and_same_review_can_resume(tmp_path, monkeypatch, managed):
+@pytest.mark.parametrize("cross_volume", [False, True])
+def test_replacement_failure_rolls_back_and_same_review_can_resume(tmp_path, monkeypatch, managed, cross_volume):
     a, _, ea = app_at(tmp_path / "A")
-    b, _, eb = app_at(tmp_path / "B", managed=managed)
+    b, settings_b, eb = app_at(tmp_path / "B", managed=managed)
     member_a = prepared_manual_project(a, tmp_path / "old")
     plan = b.post("/api/project-library/restore-plan", json={"folder":member_a["folder_path"]}).json()
     member_b = confirm(b, "/api/project-library/restore", plan)["member"]
@@ -625,14 +626,26 @@ def test_replacement_failure_rolls_back_and_same_review_can_resume(tmp_path, mon
         session.commit()
     plan = b.post("/api/project-library/restore-plan", json={"folder":member_a["folder_path"], "resolution":"replace_working_copy"}).json()
     original = ProjectPortability._insert
+    publication_attempts = []
     def disk_failure(self, *args, **kwargs):
         if kwargs.get("replace_rows") is not None:
+            publication_attempts.append(True)
             raise OSError("simulated publication failure")
         return original(self, *args, **kwargs)
     monkeypatch.setattr(ProjectPortability, "_insert", disk_failure)
+    if cross_volume:
+        import errno, os
+        original_rename = os.rename
+        def different_volumes(source, target):
+            # Emulate project storage on another volume than Data/recovery.
+            if Path(source).is_relative_to(settings_b.projects_dir) != Path(target).is_relative_to(settings_b.projects_dir):
+                raise OSError(errno.EXDEV, "different volumes")
+            return original_rename(source, target)
+        monkeypatch.setattr(os, "rename", different_volumes)
     request = {"plan_id":plan["plan_id"], "fingerprint":plan["fingerprint"], "resolution":"replace_working_copy"}
     failed = b.post("/api/project-library/restore", json=request)
     assert failed.status_code == 422, failed.text
+    assert publication_attempts, "The cross-volume file switch must reach SQL publication before the injected failure."
     assert (folder / "B-only.txt").read_text() == "target remains recoverable"
     with Session(eb) as session:
         assert session.get(ProjectModel, member_b["project_id"]).product_name == "B historical test"

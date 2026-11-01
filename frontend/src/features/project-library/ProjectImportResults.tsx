@@ -38,7 +38,7 @@ export function ProjectImportResults({ batch, titlesBySource, detailsBySource = 
     <p role="status">{singleSuccess ? "Import complete." : `${batch.counts.added} added; ${batch.counts.already_added} already added; ${batch.counts.review} need review; ${batch.counts.failed} failed.`}</p>
     {(running || batch.status === "interrupted") && <div className="library-actions">
       {running && <button type="button" disabled={busy} onClick={onRefresh}>Refresh Batch Status</button>}
-      {batch.status === "interrupted" && <button type="button" className="primary-action" disabled={busy} onClick={onResume}>Resume Batch</button>}
+      <button type="button" className="primary-action" disabled={busy} onClick={onResume}>Resume Batch</button>
     </div>}
     {items.slice((page - 1) * pageSize, page * pageSize).map(item => {
       // A recovered batch has no preview titles. The basename is display-only; member IDs still own navigation.

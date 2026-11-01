@@ -5,7 +5,7 @@ import { getLibraryMember, planLibraryIntake } from "../../api/projectLibrary";
 import { getLibraryRuntime, listLibraryMembers, scanLibrarySources, startLibraryBatch, getLibraryBatch, resumeLibraryBatch, pickLibraryFolder, planPortableRestore, type LibraryRuntime, type LibraryMember, type LibraryFileAssignment, type LibraryScan, type LibraryIntakePlan, type LibraryBatch, type LibraryBatchRequest, type PortableRestorePlan, type PortableResolution } from "../../api/projectLibrary";
 import { ProjectImportResults, type ImportResultDetails } from "./ProjectImportResults";
 import { ProjectImportReviewList } from "./ProjectImportReviewList";
-import { combinedImportResults, readyImportPaths, receiveSavedProjects, reviewImportCandidates, selectedImportProblem, type SnapshotImportOutcome } from "./projectImportReview";
+import { combinedImportResults, intakeReviewKey, readyImportPaths, receiveSavedProjects, reviewImportCandidates, selectedImportProblem, type SnapshotImportOutcome } from "./projectImportReview";
 import "./project-library.css";
 
 type Props = { onBack: () => void; onViewLibrary: (batchId?: string) => void; onOpenMember: (id: string, batchId?: string) => void; onOpenProject?: (id: string) => void; onOpenSettings?: () => void; backLabel?: string; onLegacyPreview?: () => void };
@@ -167,8 +167,10 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
         changeSources(sources); setRuntime(value => value ? { ...value, projects_root: next.projects_root! } : value);
         setError("The save location changed. Check the selected folders again before importing."); return;
       }
-      setPlan(next); setFilesOnly(nextChoices);
-      setSelected(values => [...new Set([...values.filter(value => next.items.some(row => row.source_path === value && row.status === "ready") || snapshots.some(row => row.source_path === value)), ...next.items.filter(row => row.source_path === path && row.status === "ready").map(row => row.source_path)])]);
+      const unchanged = new Set(next.items.filter(row => plan.items.some(previous => previous.source_path === row.source_path && intakeReviewKey(previous) === intakeReviewKey(row))).map(row => row.source_path));
+      const retainedSeparate = separate.filter(value => unchanged.has(value) && next.items.some(row => row.source_path === value && row.status === "conflict" && row.can_keep_separate));
+      setPlan(next); setFilesOnly(nextChoices); setSeparate(retainedSeparate);
+      setSelected(values => [...new Set([...values.filter(value => unchanged.has(value) && next.items.some(row => row.source_path === value && (row.status === "ready" || retainedSeparate.includes(value))) || snapshots.some(row => row.source_path === value)), ...next.items.filter(row => row.source_path === path && row.status === "ready").map(row => row.source_path)])]);
     } catch (cause) { if (live.current && !controller.signal.aborted) setError((cause as Error).message); }
     finally { if (live.current && request.current === controller) { request.current = null; setBusy(false); } }
   }
@@ -285,9 +287,9 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
     {!runtime && !error && <p role="status">Loading import setup…</p>}
     {error && !runtime?.configured && <div><p role="alert">{error}</p>{!runtime && <button type="button" onClick={() => { setError(""); setSetupAttempt(value => value + 1); }}>Retry Setup</button>}</div>}
     {runtime && !runtime.configured && <p role="alert">{runtime.location_error && <>{runtime.location_error} </>}Set a valid Project default save location in Settings before importing projects.</p>}
-    {runtime?.configured && !freshSuccess && <section className="library-panel">
+    {runtime?.configured && !freshSuccess && <section className={`library-panel${hasReview && !manualOpen ? " library-source-panel" : ""}`}>
       {hasReview && !manualOpen ? <div className="library-source-summary" aria-label="Selected folders">
-        <span>{sourcePaths.map(path => path.split(/[\\/]/).pop()).join(", ")}</span>
+        <span title={sourcePaths.join("\n")}>Source: {sourcePaths.map(path => path.split(/[\\/]/).pop()).join(", ")}</span>
         <button type="button" className="library-text-action" disabled={locked} onClick={() => void choose(true)}>Change Folder</button>
       </div> : <>
       <h2>Choose projects</h2>
@@ -302,6 +304,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
       </details>
       </>}
       {(hasReview || boundaryRoots.length > 0 || onLegacyPreview) && <details open={moreOpen} onToggle={event => setMoreOpen(event.currentTarget.open)}><summary>More Options</summary>
+        {hasReview && <p className="library-save-summary">Save location: {runtime.projects_root}{onOpenSettings && <> · <button type="button" className="library-text-action" disabled={locked} onClick={onOpenSettings}>Change</button></>}</p>}
         {hasReview && <div className="library-actions"><button type="button" disabled={locked} onClick={() => void choose()}>Add Folder</button><button type="button" disabled={locked} onClick={() => setManualOpen(true)}>Enter Paths Manually</button></div>}
         {hasReview && !manualOpen && <><p>{sourcePaths.length} {sourcePaths.length === 1 ? "location" : "locations"} selected</p><ul className="library-source-list" aria-label="Selected sources">{sourcePaths.map(path => <li key={path}><span>{path}</span><button type="button" disabled={locked} aria-label={`Remove ${path} from selection`} onClick={() => { const next = sourcePaths.filter(value => value !== path); changeSources(next.join("\n")); if (next.length) void review(next); }}>×</button></li>)}</ul>{sourcePaths.length > 1 && <button type="button" disabled={locked} onClick={() => changeSources("")}>Clear All</button>}</>}
         {boundaryRoots.length > 0 && <div><h3>Adjust Folder Selection</h3><p>Keep each project together. Change this only if the detected projects are incorrect.</p>{boundaryRoots.map(row => <div key={row.source_path} role="group" aria-label={`Project boundary ${row.title}`}><strong>{row.title}</strong><p>Import this complete folder, or choose its subfolders only when each is a separate project.</p><div className="library-actions"><button type="button" disabled={locked} onClick={() => void reviewBoundary([row.source_path])}>Import as One Project</button><button type="button" disabled={locked || !row.child_folders.length} onClick={() => void reviewBoundary(row.child_folders)}>Find Projects Inside</button></div></div>)}</div>}
@@ -313,7 +316,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
       {scan?.truncated && !plan && <p role="alert">Incomplete results. Choose a smaller source folder before importing projects.</p>}
       {scan && !plan && !scan.items.length && <p>No projects found. Choose a specific project folder or file.</p>}
       {scan?.warnings.map((note, i) => <p key={i} role="status">{note}</p>)}
-      <p className="library-save-summary" title={runtime.projects_root}>Save to: {runtime.projects_root.split(/[\\/]/).pop() || runtime.projects_root}{onOpenSettings && <> · <button type="button" className="library-text-action" disabled={locked} onClick={onOpenSettings} title="Change Project default save location in Settings">Change</button></>}</p>
+      {!hasReview && <p className="library-save-summary" title={runtime.projects_root}>Save to: {runtime.projects_root.split(/[\\/]/).pop() || runtime.projects_root}{onOpenSettings && <> · <button type="button" className="library-text-action" disabled={locked} onClick={onOpenSettings} title="Change Project default save location in Settings">Change</button></>}</p>}
     </section>}
     {scan && !plan && !batch && scan.items.some(row => row.kind === "file") && <section className="library-panel" aria-label="Loose file assignments">
       <h2>Choose Where Files Belong</h2>
@@ -332,7 +335,7 @@ export function ProjectLibraryImport({ onBack, onViewLibrary, onOpenMember, onOp
         onSelectReady={() => setSelected([...new Set([...readyImportPaths(plan, snapshots), ...separate])])} onClear={() => setSelected([])} />
       {selectionProblem && <p role="alert">{selectionProblem}</p>}
       {(selected.length > 0 || (plan?.items.length ?? 0) + snapshots.length > 1) && <section className="library-import-confirm" aria-label="Confirm import selection">
-        <p>Original files stay in place. The selected {selected.length === 1 ? "project" : "projects"} will be copied to <strong>{runtime?.projects_root}</strong>.</p>
+        <p>Will copy to <strong title={runtime?.projects_root}>{runtime?.projects_root.split(/[\\/]/).filter(Boolean).pop() || runtime?.projects_root}</strong>. Original files stay in place.</p>
         <button type="button" className="primary-action" disabled={locked || !selected.length || Boolean(selectionProblem)} onClick={() => void receive()}>{(plan?.items.length ?? 0) + snapshots.length === 1 ? "Import Project" : `Import Projects (${selected.length})`}</button>
       </section>}
     </section>}

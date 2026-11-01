@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from hashlib import file_digest, sha256
 import json
+import errno
 import os
 from pathlib import Path
 import re
@@ -140,6 +141,61 @@ def copy_verified(source, target, entries):
                 raise ProjectLibraryConflict("A source file changed while it was being copied. Review and retry.")
     if inventory(source) != entries:
         raise ProjectLibraryConflict("Source files changed during intake. Review the source again.")
+
+
+def move_verified(source, target):
+    """Move an operation-owned path, including recoverable cross-volume copies."""
+    source, target = checked_path(source), checked_path(target, must_exist=False)
+    def signature(path):
+        return inventory(path) if path.is_dir() else {"size": path.stat().st_size, "sha256": file_hash(path)}
+    expected = signature(source)
+    token = {"source": str(source), "target": str(target), "identity": identity(source), "content": expected}
+    stage = target.parent / (".connlab-transfer-" + fingerprint(token)[:32])
+    receipt = stage.with_suffix(".json")
+    if target.exists():
+        # A process may stop after promotion and before deleting its original.
+        # Only this exact durable transfer authorizes completing that deletion.
+        if not receipt.exists() or read_json(receipt) != token or signature(target) != expected:
+            raise ProjectLibraryConflict("The move destination is occupied. Both locations were retained.")
+    else:
+        try:
+            os.rename(source, target)
+            return
+        except OSError as error:
+            if error.errno != errno.EXDEV and getattr(error, "winerror", None) != 17:
+                raise
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if receipt.exists() and read_json(receipt) != token:
+            raise ProjectLibraryConflict("The pending transfer changed. Both locations were retained.")
+        if stage.exists() and not receipt.exists():
+            raise ProjectLibraryConflict("The transfer staging location is occupied.")
+        atomic_json(receipt, token)
+        if stage.exists():
+            checked_path(stage)
+            if stage.is_dir():
+                inventory(stage)
+                shutil.rmtree(stage)
+            else:
+                stage.unlink()
+        if source.is_dir():
+            copy_verified(source, stage, expected)
+        else:
+            with source.open("rb") as reader, stage.open("xb") as writer:
+                shutil.copyfileobj(reader, writer)
+                writer.flush()
+                os.fsync(writer.fileno())
+            if signature(stage) != expected:
+                raise ProjectLibraryConflict("The file changed during transfer. Both locations were retained.")
+        if signature(source) != expected or target.exists():
+            raise ProjectLibraryConflict("The transfer changed before publication. Both locations were retained.")
+        os.rename(stage, target)
+    if signature(source) != expected or signature(target) != expected:
+        raise ProjectLibraryConflict("The transfer changed before cleanup. Both locations were retained.")
+    if source.is_dir():
+        shutil.rmtree(source)
+    else:
+        source.unlink()
+    receipt.unlink()
 
 
 class LibraryFiles:
@@ -346,6 +402,13 @@ class LibraryFiles:
                       or material_entries([{**row, "relative_path": row["relative_path"][len(prefix) + 1:]}])]
         return path.is_dir() and sorted(actual, key=lambda row: row["relative_path"]) == sorted(expected, key=lambda row: row["relative_path"])
 
+    def differences(self, source, target):
+        from backend.infrastructure.project_library.comparison import file_differences
+        path = checked_path(target)
+        if source["kind"] != "project" or not path.is_dir():
+            return []
+        return file_differences(material_entries(inventory(path)), received_material(source))
+
     def receive(self, source, target, batch_id, item_id):
         target = checked_path(target, must_exist=False)
         if not target.is_relative_to(self.settings.projects_dir.resolve()):
@@ -377,10 +440,17 @@ class LibraryFiles:
         if target.exists():
             raise ProjectLibraryConflict("The intake destination appeared during copying.")
         if source["kind"] == "file":
-            os.rename(stage / origin.name, target)
+            move_verified(stage / origin.name, target)
             stage.rmdir()
         else:
-            os.rename(stage, target)
+            move_verified(stage, target)
+        atomic_json(self.root / "receipts" / batch_id / (item_id + ".json"), {
+            "target": str(target), "identity": identity(target), "source_fingerprint": source["source_fingerprint"]})
+
+    def received_by_batch(self, source, target, batch_id, item_id):
+        receipt = self.root / "receipts" / batch_id / (item_id + ".json")
+        return receipt.is_file() and read_json(receipt) == {
+            "target": str(checked_path(target)), "identity": identity(target), "source_fingerprint": source["source_fingerprint"]}
 
     def has_portable(self, folder):
         return (checked_path(folder, must_exist=False) / PORTABLE_FILE).exists()
