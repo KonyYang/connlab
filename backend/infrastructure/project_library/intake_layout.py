@@ -9,12 +9,32 @@ def reception_layout(source):
     path = Path(source["source_path"])
     children = [Path(child) for child in source["child_folders"]]
     business = [child for child in children if child.name.upper().startswith(number.upper() + " ")]
-    if path.name.upper() == number.upper() and len(business) == 1:
+    if len(business) == 1 and (path.name.upper() == number.upper() or (path / "Source Book").is_dir()):
         if (path / "Source Book").exists() and not (path / "Source Book").is_dir():
             return None
         return {"root_name": number, "prefix": ""}
-    if path.name.upper().startswith(number.upper() + " ") and not (path / "Source Book").exists():
+    if path.name.upper() == number.upper() and not business:
+        return {"root_name": number, "prefix": number + " Imported files"}
+    if path.name.upper().startswith(number.upper() + " "):
         return {"root_name": number, "prefix": path.name}
+    return None
+
+
+def boundary_problem(source):
+    if source["kind"] != "project" or source.get("has_portable"):
+        return None
+    path = Path(source["source_path"])
+    if not source.get("ltr_number") and not source.get("project_id") and path.name.casefold() in {
+        "photos", "source book", "test results", "submitted material", "e-mail", "final examination"
+    }:
+        return "This appears to be part of a project. Select the complete project folder, or assign these materials to an existing project."
+    number = source.get("ltr_number")
+    if number and path.name.upper() == number.upper():
+        if (path / "Source Book").exists() and not (path / "Source Book").is_dir():
+            return "Source Book is a file where the project expects a directory. Review the project structure before importing."
+        business = [Path(child) for child in source["child_folders"] if Path(child).name.upper().startswith(number.upper() + " ")]
+        if len(business) > 1:
+            return "This project root contains several same-LTR folders. Select the intended business folder before importing; no version will be chosen automatically."
     return None
 
 

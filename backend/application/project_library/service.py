@@ -121,6 +121,7 @@ class ProjectLibraryService:
                 source = self.files.inspect_source(value)
                 if target_id or new_title:
                     source.pop("reception_layout", None)
+                    source.pop("boundary_problem", None)
                 member = self.store.member(target_id) if target_id else None
                 if member and member.get("is_history"):
                     raise ProjectLibraryConflict("Choose a working project for supplementary material; retained history is read-only.")
@@ -215,6 +216,10 @@ class ProjectLibraryService:
                 elif first["target_path"].casefold() == second["target_path"].casefold() and not first.get("has_portable"):
                     first["status"], first["can_keep_separate"] = "conflict", True
                     first["warnings"].append("Another selected source uses the same destination. Keep Separate preserves both without overwriting either source.")
+        for row in rows:
+            if row.get("boundary_problem") and row["status"] != "already_added":
+                row["status"], row["can_keep_separate"] = "conflict", False
+                row["warnings"].append(row["boundary_problem"])
         plan = self.files.save_plan("intake", {"items": rows})
         keys = ("source_path", "target_path", "title", "ltr_number", "status", "warnings", "can_keep_separate", "target_member_id", "new_project_title")
         return {"plan_id": plan["plan_id"], "fingerprint": plan["fingerprint"],
@@ -333,7 +338,7 @@ class ProjectLibraryService:
                 member = self.store.member(member["member_id"])
             except LookupError:
                 member = self.store.add_member(member)
-            if not member["project_id"] and not item["keep_separate"]:
+            if not member["project_id"] and not item["keep_separate"] and not self.store.project_exists(member.get("source_project_id")):
                 # The final intake confirmation also establishes the lifecycle container.
                 # A retained conflict copy must still follow its reviewed takeover rules.
                 self.store.create_planning_project(member)

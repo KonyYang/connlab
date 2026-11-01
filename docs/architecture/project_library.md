@@ -39,6 +39,14 @@ Material equality accounts for the copied envelope, so unchanged sources remain
 duplicates while changed evidence still requires review. Other layouts retain their
 existing handling until explicitly resolved; they are not silently rearranged.
 
+Flat legacy folders with an LTR are received as a complete business subtree,
+including any old Source Book inside that subtree. A new empty root-level Source
+Book does not claim that those old workbooks were restored into execution data.
+A bare LTR folder uses an `LTR Imported files` child when no business title is known.
+Selecting only a standard materials subfolder without project identity, multiple
+same-LTR business folders, or a file occupying the canonical Source Book location
+requires boundary review. Keep Separate cannot override these boundary blockers.
+
 Registry summaries expose a historical LTR only through explicit Project membership.
 Its display kind is `imported`, with `has_registered_ltr=false` and no registered
 LTR record. A real LTR registration always wins. Imported rows use the normal

@@ -140,6 +140,57 @@ def test_import_receives_standard_ltr_root_without_changing_original_material(li
     assert changed["items"][0]["status"] == "conflict"
 
 
+@pytest.mark.parametrize("layout", ["partial_photos", "partial_source_book", "multiple_business", "source_book_file"])
+def test_ambiguous_boundaries_require_review_and_cannot_create_empty_projects(library, tmp_path, layout):
+    client, settings, _ = library
+    number = "DL-2026-09-032"
+    root = tmp_path / "incoming" / number
+    root.mkdir(parents=True)
+    if layout.startswith("partial_"):
+        source = root / ("Photos" if layout == "partial_photos" else "Source Book")
+        source.mkdir()
+        (source / "record.txt").write_text("partial evidence", encoding="utf-8")
+    else:
+        source = root
+        (root / "record.txt").write_text("preserve evidence", encoding="utf-8")
+        if layout == "multiple_business":
+            for title in ("Old copy", "Current copy"):
+                (root / (number + " " + title)).mkdir()
+        elif layout == "source_book_file":
+            (root / (number + " Connector")).mkdir()
+            (root / "Source Book").write_text("not a directory", encoding="utf-8")
+    original = {str(p.relative_to(source)): p.read_bytes() for p in source.rglob("*") if p.is_file()}
+    check = client.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()
+    item = check["items"][0]
+    assert item["status"] == "conflict" and not item["can_keep_separate"], check
+    assert item["warnings"], check
+    forced = client.post("/api/project-library/batches", json={**{k: check[k] for k in ("plan_id", "fingerprint")}, "selected": [str(source)], "keep_separate": [str(source)]}).json()
+    assert forced["counts"]["added"] == 0
+    assert client.get("/api/project-library/members").json()["items"] == []
+    assert list(settings.projects_dir.iterdir()) == []
+    assert {str(p.relative_to(source)): p.read_bytes() for p in source.rglob("*") if p.is_file()} == original
+
+
+@pytest.mark.parametrize("name", ["DL-2026-09-032", "DL-2026-09-032 Old layout"])
+def test_flat_legacy_project_keeps_its_entire_tree_inside_the_received_business_folder(library, tmp_path, name):
+    client, settings, _ = library
+    source = tmp_path / "incoming" / name
+    (source / "Source Book").mkdir(parents=True)
+    (source / "Source Book/old-matrix.xlsx").write_bytes(b"original workbook")
+    (source / "record.txt").write_text("original material", encoding="utf-8")
+    batch, _ = receive(client, [source])
+    assert batch["counts"]["added"] == 1, batch
+    member = client.get("/api/project-library/members/" + batch["items"][0]["member_id"]).json()
+    target = Path(member["folder_path"])
+    assert target == settings.projects_dir / "DL-2026-09-032"
+    business_name = name if " " in name else name + " Imported files"
+    assert (target / business_name / "record.txt").read_text(encoding="utf-8") == "original material"
+    assert (target / business_name / "Source Book/old-matrix.xlsx").read_bytes() == b"original workbook"
+    assert list((target / "Source Book").iterdir()) == []
+    assert (source / "Source Book/old-matrix.xlsx").read_bytes() == b"original workbook"
+    assert client.post("/api/project-library/intake-plan", json={"sources": [str(source)]}).json()["items"][0]["status"] == "already_added"
+
+
 def test_three_hundred_projects_are_received_once_and_retry_is_idempotent(library, tmp_path):
     client, settings, _ = library
     sources = []

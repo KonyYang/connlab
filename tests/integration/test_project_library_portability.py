@@ -800,10 +800,11 @@ with Session(engine) as session:
     if fresh_review:
         fresh=b.post("/api/project-library/restore-plan",json={"folder":review_folder}).json()
         assert fresh["status"]=="conflict",fresh
-        scene_before = (Path(target["folder_path"])/"result.txt").read_bytes()
+        scene_file = Path(target["folder_path"]) / (source["ltr_number"] + " History") / "result.txt"
+        scene_before = scene_file.read_bytes()
         packet_before = (Path(original["folder_path"])/".connlab/portable/snapshot.json").read_bytes()
         reject_unselected_restore(b, fresh)
-        assert (Path(target["folder_path"])/"result.txt").read_bytes() == scene_before
+        assert scene_file.read_bytes() == scene_before
         assert (Path(original["folder_path"])/".connlab/portable/snapshot.json").read_bytes() == packet_before
         assert LibraryFiles(settings).pending_replacement_gate(target["project_id"])
         renewed=b.post("/api/project-library/restore-plan",json={"folder":review_folder,"resolution":"replace_working_copy"}).json()
@@ -1472,6 +1473,9 @@ def test_source_gap_descriptions_and_unrelated_history_are_not_executed_or_deref
         entry = migration_gap_entry(member["project_id"], description)
         opaque = {"kind": "unrelated_legacy_history", "version": 999, "warnings": ["must not become source-gap warnings"], "path": str(outside), "auto_sync_enabled": True}
         seal_migration_history(member["folder_path"], [entry, opaque])
+        journal_root = settings.data_dir / "project_folder_generation"
+        journal_existed = journal_root.exists()
+        journal_before = {str(path.relative_to(journal_root)): path.read_bytes() for path in journal_root.rglob("*") if path.is_file()}
         original = Path.open
         def protected(path, *args, **kwargs):
             if path == outside: raise AssertionError("A source-gap description was dereferenced")
@@ -1486,7 +1490,8 @@ def test_source_gap_descriptions_and_unrelated_history_are_not_executed_or_deref
         with Session(engine) as session:
             from sqlalchemy import text
             assert session.execute(text("SELECT COUNT(*) FROM project_public_folder_workflow_states")).scalar_one() == 0
-        assert not (settings.data_dir / "project_folder_generation").exists()
+        assert journal_root.exists() == journal_existed
+        assert {str(path.relative_to(journal_root)): path.read_bytes() for path in journal_root.rglob("*") if path.is_file()} == journal_before
     finally:
         engine.dispose()
 
